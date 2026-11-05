@@ -1,0 +1,102 @@
+[
+  {
+    "id": "INC-0088",
+    "opId": "OP-2026-0412",
+    "resId": "RES-2026-000347",
+    "severity": "alta",
+    "type": "Salud del pasajero",
+    "title": "Pasajera con mal de altura leve",
+    "desc": "Anna Keller presenta dolor de cabeza y náuseas al retorno del Valle. Se brinda oxígeno y se coordina revisión médica en hotel.",
+    "status": "en_proceso",
+    "assignee": "U05",
+    "reportedBy": "U10",
+    "createdAt": "2026-09-28 18:40",
+    "evidence": [
+      "foto_oximetro.jpg"
+    ],
+    "log": [
+      {
+        "ts": "2026-09-28 18:40",
+        "u": "U10",
+        "m": "Reporte desde app operador"
+      },
+      {
+        "ts": "2026-09-28 19:05",
+        "u": "U05",
+        "m": "Médico de turno coordinado con el hotel"
+      }
+    ]
+  },
+  {
+    "id": "INC-0087",
+    "opId": "OP-2026-0413",
+    "resId": "RES-2026-000348",
+    "severity": "media",
+    "type": "Proveedor",
+    "title": "Hotel observa hab. 306 (mantenimiento)",
+    "desc": "El hotel informa que la habitación 306 estará en mantenimiento el 01/10; propone upgrade a junior suite sin costo.",
+    "status": "abierta",
+    "assignee": "U06",
+    "reportedBy": "U17",
+    "createdAt": "2026-09-29 07:20",
+    "evidence": [],
+    "log": [
+      {
+        "ts": "2026-09-29 07:20",
+        "u": "U17",
+        "m": "Aviso enviado por proveedor"
+      }
+    ]
+  },
+  {
+    "id": "INC-0086",
+    "opId": "OP-2026-0411",
+    "resId": "RES-2026-000346",
+    "severity": "baja",
+    "type": "Horario",
+    "title": "Retraso de 25 min en recojo",
+    "desc": "Tráfico en Av. El Sol. Pasajera informada por WhatsApp.",
+    "status": "cerrada",
+    "assignee": "U05",
+    "reportedBy": "U11",
+    "createdAt": "2026-09-25 04:40",
+    "evidence": [
+      "gps_ruta.png"
+    ],
+    "log": [
+      {
+        "ts": "2026-09-25 04:40",
+        "u": "U11",
+        "m": "Reporte"
+      },
+      {
+        "ts": "2026-09-25 05:10",
+        "u": "U05",
+        "m": "Cerrada: sin impacto en el servicio"
+      }
+    ]
+  },
+  {
+    "id": "INC-0085",
+    "opId": "OP-2026-0412",
+    "resId": "RES-2026-000347",
+    "severity": "critica",
+    "type": "Transporte",
+    "title": "Huelga anunciada en vía Cusco — Ollantaytambo 30/09",
+    "desc": "Federación agraria anuncia paro regional para el 30/09. Riesgo para el tren de las 05:05. Evaluar salida 03:00 o tren desde Poroy.",
+    "status": "abierta",
+    "assignee": "U02",
+    "reportedBy": "U05",
+    "createdAt": "2026-09-29 06:30",
+    "evidence": [
+      "comunicado_paro.pdf"
+    ],
+    "log": [
+      {
+        "ts": "2026-09-29 06:30",
+        "u": "U05",
+        "m": "Alerta crítica registrada. Notificado a gerencia."
+      }
+    ]
+  }
+]

@@ -2,14 +2,14 @@
 # Ubicación esperada: raíz del espacio de trabajo, junto a backend/ y web/.
 #   cp docs/kit/infra/docker-compose.yml . && cp -r docs/kit/infra/docker .
 # Servicios: api (php-fpm 8.4) + nginx, queue (Horizon), scheduler, reverb, web (Next.js),
-#            postgres 17, redis 8, minio (S3), mailpit (correo).
+#            postgres 17, redis 8, storage (S3, RustFS), mailpit (correo).
 name: qhapaq
 
 x-php: &php
   build: { context: ./docker/php }
   image: qhapaq/php:8.4
   working_dir: /var/www/backend
-  volumes: [ "./backend:/var/www/backend" ]
+  volumes: [ "./backend:/var/www/backend", "./docs:/var/www/docs:ro" ]
   env_file: [ ./backend/.env ]
   depends_on:
     postgres: { condition: service_healthy }
@@ -81,23 +81,30 @@ services:
       interval: 5s
       retries: 10
 
-  minio:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
+  storage:
+    image: rustfs/rustfs:latest
+    command: /data
     environment:
-      MINIO_ROOT_USER: minio
-      MINIO_ROOT_PASSWORD: minio_local_only
+      RUSTFS_ACCESS_KEY: storage
+      RUSTFS_SECRET_KEY: storage_local_only
+      RUSTFS_CONSOLE_ENABLE: "true"
     ports: [ "9000:9000", "9001:9001" ]
-    volumes: [ "minio_data:/data" ]
+    volumes: [ "storage_data:/data" ]
 
-  minio-init:
-    image: minio/mc:latest
-    depends_on: [ minio ]
-    entrypoint: >
-      sh -c "sleep 3 &&
-             mc alias set local http://minio:9000 minio minio_local_only &&
-             mc mb -p local/qhapaq-private local/qhapaq-public &&
-             mc anonymous set download local/qhapaq-public"
+  storage-init:
+    image: amazon/aws-cli:latest
+    depends_on: [ storage ]
+    environment:
+      AWS_ACCESS_KEY_ID: storage
+      AWS_SECRET_ACCESS_KEY: storage_local_only
+      AWS_DEFAULT_REGION: us-east-1
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        sleep 4;
+        for b in qhapaq-private qhapaq-public; do aws --endpoint-url http://storage:9000 s3 mb "s3://$$b" || true; done;
+        aws --endpoint-url http://storage:9000 s3api put-bucket-policy --bucket qhapaq-public --policy '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"arn:aws:s3:::qhapaq-public/*"}]}';
+        aws --endpoint-url http://storage:9000 s3 ls
 
   mailpit:
     image: axllent/mailpit:latest
@@ -106,5 +113,5 @@ services:
 volumes:
   pg_data:
   redis_data:
-  minio_data:
+  storage_data:
   web_node_modules:

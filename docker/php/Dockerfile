@@ -16,4 +16,9 @@ COPY php.ini /usr/local/etc/php/conf.d/zz-qhapaq.ini
 
 # PDF (vouchers, comprobantes, itinerarios) con Chromium headless (spatie/browsershot o similar)
 ENV CHROME_PATH=/usr/bin/chromium
+
+ARG UID=1000
+ARG GID=1000
+RUN groupmod -o -g ${GID} www-data && usermod -o -u ${UID} -g ${GID} www-data
+
 WORKDIR /var/www/backend

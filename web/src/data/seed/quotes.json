@@ -1,0 +1,697 @@
+[
+  {
+    "id": "COT-2026-00191",
+    "clientId": "CLI-0009",
+    "oppId": "OPP-0121",
+    "title": "Convención Cusco 4D/3N — 60 pax",
+    "status": "negociacion",
+    "currentVersion": 3,
+    "validUntil": "2026-10-08",
+    "currency": "PEN",
+    "owner": "U02",
+    "createdAt": "2026-08-02",
+    "travelFrom": "2026-11-18",
+    "travelTo": "2026-11-21",
+    "pax": {
+      "adt": 60,
+      "chd": 0,
+      "inf": 0
+    },
+    "viewedAt": "2026-09-27 19:40",
+    "token": "q7x9-a1b2-convencion",
+    "versions": [
+      {
+        "v": 1,
+        "date": "2026-08-02",
+        "user": "U02",
+        "status": "reemplazada",
+        "items": [
+          {
+            "productId": "PRD-002",
+            "date": "2026-11-18",
+            "qty": 1,
+            "pax": 60,
+            "unitCost": 2900,
+            "unitPrice": 3700,
+            "segment": "Adulto"
+          }
+        ],
+        "markupPct": 25,
+        "discountPct": 0,
+        "taxPct": 18,
+        "notes": "Propuesta inicial",
+        "snapshot": "PRD-002 v1.1"
+      },
+      {
+        "v": 2,
+        "date": "2026-08-29",
+        "user": "U02",
+        "status": "reemplazada",
+        "items": [
+          {
+            "productId": "PRD-002",
+            "date": "2026-11-18",
+            "qty": 1,
+            "pax": 60,
+            "unitCost": 2900,
+            "unitPrice": 3550,
+            "segment": "Adulto"
+          },
+          {
+            "productId": "PRD-007",
+            "date": "2026-11-20",
+            "qty": 1,
+            "pax": 60,
+            "unitCost": 110,
+            "unitPrice": 170,
+            "segment": "Adulto"
+          }
+        ],
+        "markupPct": 22,
+        "discountPct": 3,
+        "taxPct": 18,
+        "notes": "Se agrega actividad gastronómica",
+        "snapshot": "PRD-002 v1.1 / PRD-007 v1.0"
+      },
+      {
+        "v": 3,
+        "date": "2026-09-24",
+        "user": "U02",
+        "status": "enviada",
+        "items": [
+          {
+            "productId": "PRD-002",
+            "date": "2026-11-18",
+            "qty": 1,
+            "pax": 60,
+            "unitCost": 2900,
+            "unitPrice": 3450,
+            "segment": "Adulto"
+          },
+          {
+            "productId": "PRD-007",
+            "date": "2026-11-20",
+            "qty": 1,
+            "pax": 60,
+            "unitCost": 110,
+            "unitPrice": 165,
+            "segment": "Adulto"
+          }
+        ],
+        "markupPct": 20,
+        "discountPct": 5,
+        "taxPct": 18,
+        "notes": "Descuento corporativo 5% aprobado por gerencia",
+        "snapshot": "PRD-002 v1.1 / PRD-007 v1.0"
+      }
+    ]
+  },
+  {
+    "id": "COT-2026-00190",
+    "clientId": "CLI-0005",
+    "oppId": "OPP-0116",
+    "title": "Año Nuevo Cusco 5* — 6 pax",
+    "status": "vista",
+    "currentVersion": 2,
+    "validUntil": "2026-10-05",
+    "currency": "PEN",
+    "owner": "U04",
+    "createdAt": "2026-08-26",
+    "travelFrom": "2026-12-29",
+    "travelTo": "2027-01-02",
+    "pax": {
+      "adt": 4,
+      "chd": 2,
+      "inf": 0
+    },
+    "viewedAt": "2026-09-28 21:05",
+    "token": "n8k2-casta",
+    "versions": [
+      {
+        "v": 1,
+        "date": "2026-08-26",
+        "user": "U04",
+        "status": "reemplazada",
+        "items": [
+          {
+            "productId": "PRD-002",
+            "date": "2026-12-29",
+            "qty": 1,
+            "pax": 4,
+            "unitCost": 2900,
+            "unitPrice": 3650,
+            "segment": "Adulto"
+          },
+          {
+            "productId": "PRD-002",
+            "date": "2026-12-29",
+            "qty": 1,
+            "pax": 2,
+            "unitCost": 2100,
+            "unitPrice": 2690,
+            "segment": "Niño"
+          }
+        ],
+        "markupPct": 25,
+        "discountPct": 0,
+        "taxPct": 18,
+        "notes": "Hotel 4*",
+        "snapshot": "PRD-002 v1.1"
+      },
+      {
+        "v": 2,
+        "date": "2026-09-22",
+        "user": "U04",
+        "status": "enviada",
+        "items": [
+          {
+            "productId": "PRD-002",
+            "date": "2026-12-29",
+            "qty": 1,
+            "pax": 4,
+            "unitCost": 4450,
+            "unitPrice": 5480,
+            "segment": "Adulto"
+          },
+          {
+            "productId": "PRD-002",
+            "date": "2026-12-29",
+            "qty": 1,
+            "pax": 2,
+            "unitCost": 2400,
+            "unitPrice": 3050,
+            "segment": "Niño"
+          },
+          {
+            "productId": "PRD-005",
+            "date": "2026-12-29",
+            "qty": 2,
+            "pax": 1,
+            "unitCost": 60,
+            "unitPrice": 90,
+            "segment": "Pasajero"
+          }
+        ],
+        "markupPct": 23,
+        "discountPct": 0,
+        "taxPct": 18,
+        "notes": "Upgrade a hotel 5* (Piedra Viva) + traslados privados. Temporada Año Nuevo (factor 1.40).",
+        "snapshot": "PRD-002 v1.1 / PRD-005 v1.0"
+      }
+    ]
+  },
+  {
+    "id": "COT-2026-00189",
+    "clientId": "CLI-0004",
+    "oppId": "OPP-0120",
+    "title": "Promoción escolar Cusco 5D/4N — 44 pax",
+    "status": "borrador",
+    "currentVersion": 2,
+    "validUntil": "2026-10-12",
+    "currency": "PEN",
+    "owner": "U03",
+    "createdAt": "2026-09-20",
+    "travelFrom": "2026-11-25",
+    "travelTo": "2026-11-29",
+    "pax": {
+      "adt": 4,
+      "chd": 40,
+      "inf": 0
+    },
+    "viewedAt": null,
+    "token": "p3m1-csaa",
+    "versions": [
+      {
+        "v": 1,
+        "date": "2026-09-20",
+        "user": "U03",
+        "status": "reemplazada",
+        "items": [
+          {
+            "productId": "PRD-002",
+            "date": "2026-11-25",
+            "qty": 1,
+            "pax": 44,
+            "unitCost": 1780,
+            "unitPrice": 2200,
+            "segment": "Grupo"
+          }
+        ],
+        "markupPct": 23,
+        "discountPct": 0,
+        "taxPct": 18,
+        "notes": "Tarifa grupal escolar. 4 liberados docentes.",
+        "snapshot": "PRD-002 v1.1"
+      },
+      {
+        "v": 2,
+        "date": "2026-09-28",
+        "user": "U03",
+        "status": "borrador",
+        "items": [
+          {
+            "productId": "PRD-002",
+            "date": "2026-11-25",
+            "qty": 1,
+            "pax": 44,
+            "unitCost": 1780,
+            "unitPrice": 2200,
+            "segment": "Grupo"
+          }
+        ],
+        "markupPct": 23,
+        "discountPct": 8,
+        "taxPct": 18,
+        "notes": "Ajuste por negociación: 8 % por abono del 50 % antes del 15/10 (acta APAFA). Tarifa grupal escolar. 4 liberados docentes.",
+        "snapshot": "PRD-002 v1.1",
+        "approvalRequest": {
+          "by": "U03",
+          "ts": "2026-09-28 17:40",
+          "v": 2,
+          "reasons": [
+            "descuento 8.0% > 5%",
+            "margen 12.1% < 15%"
+          ],
+          "note": "APAFA confirma 44 viajeros y abono del 50 % antes del 15/10. La competencia ofrece 7 %. Alta probabilidad de cierre.",
+          "status": "pendiente"
+        }
+      }
+    ]
+  },
+  {
+    "id": "COT-2026-00188",
+    "clientId": "CLI-0010",
+    "oppId": "OPP-0118",
+    "title": "Cusco & Machu Picchu 5D — 2 pax",
+    "status": "enviada",
+    "currentVersion": 1,
+    "validUntil": "2026-10-02",
+    "currency": "USD",
+    "owner": "U03",
+    "createdAt": "2026-09-19",
+    "travelFrom": "2026-10-20",
+    "travelTo": "2026-10-24",
+    "pax": {
+      "adt": 2,
+      "chd": 0,
+      "inf": 0
+    },
+    "viewedAt": "2026-09-20 03:12",
+    "token": "e5j7-emily",
+    "versions": [
+      {
+        "v": 1,
+        "date": "2026-09-19",
+        "user": "U03",
+        "status": "enviada",
+        "items": [
+          {
+            "productId": "PRD-002",
+            "date": "2026-10-20",
+            "qty": 1,
+            "pax": 2,
+            "unitCost": 780,
+            "unitPrice": 975,
+            "segment": "Adulto"
+          },
+          {
+            "productId": "PRD-004",
+            "date": "2026-10-23",
+            "qty": 1,
+            "pax": 2,
+            "unitCost": 26,
+            "unitPrice": 38,
+            "segment": "Adulto"
+          }
+        ],
+        "markupPct": 25,
+        "discountPct": 0,
+        "taxPct": 0,
+        "notes": "Exportación de servicios: no gravado con IGV (pasajero no domiciliado).",
+        "snapshot": "PRD-002 v1.1 / PRD-004 v1.0"
+      }
+    ]
+  },
+  {
+    "id": "COT-2026-00187",
+    "clientId": "CLI-0002",
+    "oppId": "OPP-0119",
+    "title": "Incentivo mineros Q4 — 12 pax",
+    "status": "convertida",
+    "currentVersion": 2,
+    "validUntil": "2026-09-15",
+    "currency": "PEN",
+    "owner": "U02",
+    "createdAt": "2026-08-03",
+    "travelFrom": "2026-10-01",
+    "travelTo": "2026-10-05",
+    "pax": {
+      "adt": 12,
+      "chd": 0,
+      "inf": 0
+    },
+    "viewedAt": "2026-09-02 10:30",
+    "token": "m2c9-minera",
+    "approvedAt": "2026-09-05 12:14",
+    "approvedBy": "Úrsula Benavides (cliente)",
+    "versions": [
+      {
+        "v": 1,
+        "date": "2026-08-03",
+        "user": "U02",
+        "status": "reemplazada",
+        "items": [
+          {
+            "productId": "PRD-002",
+            "date": "2026-10-01",
+            "qty": 1,
+            "pax": 12,
+            "unitCost": 2900,
+            "unitPrice": 3700,
+            "segment": "Adulto"
+          }
+        ],
+        "markupPct": 25,
+        "discountPct": 0,
+        "taxPct": 18,
+        "notes": "",
+        "snapshot": "PRD-002 v1.1"
+      },
+      {
+        "v": 2,
+        "date": "2026-08-30",
+        "user": "U02",
+        "status": "aprobada",
+        "items": [
+          {
+            "productId": "PRD-002",
+            "date": "2026-10-01",
+            "qty": 1,
+            "pax": 12,
+            "unitCost": 2900,
+            "unitPrice": 3600,
+            "segment": "Adulto"
+          },
+          {
+            "productId": "PRD-004",
+            "date": "2026-10-04",
+            "qty": 1,
+            "pax": 12,
+            "unitCost": 95,
+            "unitPrice": 140,
+            "segment": "Adulto"
+          },
+          {
+            "productId": "PRD-005",
+            "date": "2026-10-01",
+            "qty": 4,
+            "pax": 1,
+            "unitCost": 60,
+            "unitPrice": 90,
+            "segment": "Pasajero"
+          }
+        ],
+        "markupPct": 24,
+        "discountPct": 2,
+        "taxPct": 18,
+        "notes": "Incluye Humantay el día libre.",
+        "snapshot": "PRD-002 v1.1 / PRD-004 v1.0 / PRD-005 v1.0"
+      }
+    ]
+  },
+  {
+    "id": "COT-2026-00186",
+    "clientId": "CLI-0006",
+    "oppId": "OPP-0115",
+    "title": "Humantay + Machu Picchu — 1 pax",
+    "status": "convertida",
+    "currentVersion": 1,
+    "validUntil": "2026-09-12",
+    "currency": "USD",
+    "owner": "U03",
+    "createdAt": "2026-08-19",
+    "travelFrom": "2026-09-24",
+    "travelTo": "2026-09-27",
+    "pax": {
+      "adt": 1,
+      "chd": 0,
+      "inf": 0
+    },
+    "viewedAt": "2026-08-20 08:00",
+    "token": "f1s3-sophie",
+    "approvedAt": "2026-09-10 09:40",
+    "approvedBy": "Sophie Martin",
+    "versions": [
+      {
+        "v": 1,
+        "date": "2026-08-19",
+        "user": "U03",
+        "status": "aprobada",
+        "items": [
+          {
+            "productId": "PRD-001",
+            "date": "2026-09-26",
+            "qty": 1,
+            "pax": 1,
+            "unitCost": 268,
+            "unitPrice": 345,
+            "segment": "Adulto"
+          },
+          {
+            "productId": "PRD-004",
+            "date": "2026-09-25",
+            "qty": 1,
+            "pax": 1,
+            "unitCost": 26,
+            "unitPrice": 38,
+            "segment": "Adulto"
+          },
+          {
+            "productId": "PRD-005",
+            "date": "2026-09-24",
+            "qty": 2,
+            "pax": 1,
+            "unitCost": 16,
+            "unitPrice": 24,
+            "segment": "Pasajero"
+          }
+        ],
+        "markupPct": 28,
+        "discountPct": 0,
+        "taxPct": 0,
+        "notes": "",
+        "snapshot": "PRD-001 v2.0 / PRD-004 v1.0"
+      }
+    ]
+  },
+  {
+    "id": "COT-2026-00185",
+    "clientId": "CLI-0008",
+    "oppId": "OPP-0117",
+    "title": "Luna de miel Cusco + Paracas",
+    "status": "borrador",
+    "currentVersion": 1,
+    "validUntil": "2026-10-20",
+    "currency": "PEN",
+    "owner": "U04",
+    "createdAt": "2026-09-27",
+    "travelFrom": "2026-11-08",
+    "travelTo": "2026-11-14",
+    "pax": {
+      "adt": 2,
+      "chd": 0,
+      "inf": 0
+    },
+    "viewedAt": null,
+    "token": null,
+    "versions": [
+      {
+        "v": 1,
+        "date": "2026-09-27",
+        "user": "U04",
+        "status": "borrador",
+        "items": [
+          {
+            "productId": "PRD-002",
+            "date": "2026-11-08",
+            "qty": 1,
+            "pax": 2,
+            "unitCost": 2900,
+            "unitPrice": 3650,
+            "segment": "Adulto"
+          },
+          {
+            "productId": "PRD-009",
+            "date": "2026-11-13",
+            "qty": 1,
+            "pax": 2,
+            "unitCost": 150,
+            "unitPrice": 229,
+            "segment": "Adulto"
+          }
+        ],
+        "markupPct": 25,
+        "discountPct": 0,
+        "taxPct": 18,
+        "notes": "Pendiente elegir hotel boutique.",
+        "snapshot": "PRD-002 v1.1 / PRD-009 v1.0"
+      }
+    ]
+  },
+  {
+    "id": "COT-2026-00184",
+    "clientId": "CLI-0001",
+    "oppId": "OPP-0113",
+    "title": "Fiestas Patrias Arequipa — 4 pax",
+    "status": "rechazada",
+    "currentVersion": 1,
+    "validUntil": "2026-07-10",
+    "currency": "PEN",
+    "owner": "U04",
+    "createdAt": "2026-06-16",
+    "travelFrom": "2026-07-26",
+    "travelTo": "2026-07-29",
+    "pax": {
+      "adt": 2,
+      "chd": 2,
+      "inf": 0
+    },
+    "viewedAt": "2026-06-17 20:00",
+    "token": "r9o0-rios",
+    "rejectedReason": "Precio: eligió paquete de aerolínea",
+    "versions": [
+      {
+        "v": 1,
+        "date": "2026-06-16",
+        "user": "U04",
+        "status": "rechazada",
+        "items": [
+          {
+            "productId": "PRD-006",
+            "date": "2026-07-26",
+            "qty": 1,
+            "pax": 4,
+            "unitCost": 1480,
+            "unitPrice": 1850,
+            "segment": "Adulto"
+          }
+        ],
+        "markupPct": 25,
+        "discountPct": 0,
+        "taxPct": 18,
+        "notes": "",
+        "snapshot": "PRD-006 v0.9"
+      }
+    ]
+  },
+  {
+    "id": "COT-2026-00183",
+    "clientId": "CLI-0003",
+    "oppId": "OPP-0114",
+    "title": "Keller — Cusco aventura 6D",
+    "status": "convertida",
+    "currentVersion": 1,
+    "validUntil": "2026-08-30",
+    "currency": "USD",
+    "owner": "U03",
+    "createdAt": "2026-06-03",
+    "travelFrom": "2026-09-27",
+    "travelTo": "2026-10-02",
+    "pax": {
+      "adt": 2,
+      "chd": 0,
+      "inf": 0
+    },
+    "viewedAt": "2026-06-04 07:00",
+    "token": "k4l2-keller",
+    "approvedAt": "2026-08-28 14:02",
+    "approvedBy": "Thomas Keller",
+    "versions": [
+      {
+        "v": 1,
+        "date": "2026-06-03",
+        "user": "U03",
+        "status": "aprobada",
+        "items": [
+          {
+            "productId": "PRD-002",
+            "date": "2026-09-27",
+            "qty": 1,
+            "pax": 2,
+            "unitCost": 780,
+            "unitPrice": 975,
+            "segment": "Adulto"
+          },
+          {
+            "productId": "PRD-004",
+            "date": "2026-10-01",
+            "qty": 1,
+            "pax": 2,
+            "unitCost": 26,
+            "unitPrice": 38,
+            "segment": "Adulto"
+          },
+          {
+            "productId": "PRD-001",
+            "date": "2026-09-30",
+            "qty": 1,
+            "pax": 2,
+            "unitCost": 268,
+            "unitPrice": 345,
+            "segment": "Adulto"
+          }
+        ],
+        "markupPct": 25,
+        "discountPct": 0,
+        "taxPct": 0,
+        "notes": "",
+        "snapshot": "PRD-001 v2.0 / PRD-002 v1.1 / PRD-004 v1.0"
+      }
+    ]
+  },
+  {
+    "id": "COT-2026-00182",
+    "clientId": "CLI-0007",
+    "oppId": null,
+    "title": "Wayra — bloque MAPI setiembre",
+    "status": "vencida",
+    "currentVersion": 1,
+    "validUntil": "2026-09-10",
+    "currency": "USD",
+    "owner": "U02",
+    "createdAt": "2026-08-25",
+    "travelFrom": "2026-09-20",
+    "travelTo": "2026-09-20",
+    "pax": {
+      "adt": 10,
+      "chd": 0,
+      "inf": 0
+    },
+    "viewedAt": "2026-08-26 12:00",
+    "token": "w1y8-wayra",
+    "versions": [
+      {
+        "v": 1,
+        "date": "2026-08-25",
+        "user": "U02",
+        "status": "vencida",
+        "items": [
+          {
+            "productId": "PRD-001",
+            "date": "2026-09-20",
+            "qty": 1,
+            "pax": 10,
+            "unitCost": 268,
+            "unitPrice": 312,
+            "segment": "Adulto"
+          }
+        ],
+        "markupPct": 16,
+        "discountPct": 0,
+        "taxPct": 0,
+        "notes": "Tarifa B2B",
+        "snapshot": "PRD-001 v2.0"
+      }
+    ]
+  }
+]

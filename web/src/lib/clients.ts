@@ -1,0 +1,151 @@
+export type ClientKind = "Persona" | "Empresa";
+
+export interface ClientRow {
+  id: string;
+  kind: ClientKind;
+  name: string;
+  document: string;
+  email: string;
+  phone: string;
+  city: string;
+  country: string;
+  segment: string;
+  ownerName: string;
+  ownerColor: string | null;
+  satisfaction: number | null;
+  trips: number;
+  totalPen: number;
+  lastTripFrom: string | null;
+  upcomingTrip: boolean;
+  onTrip: boolean;
+  createdAt: string;
+}
+
+export interface ClientTrip {
+  id: string;
+  title: string;
+  status: string;
+  from: string;
+  to: string;
+  totalPen: number;
+  passengers: string[];
+}
+
+export interface ClientQuote {
+  id: string;
+  title: string;
+  status: string;
+  validUntil: string;
+}
+
+export interface TripDay {
+  date: string;
+  state: "done" | "today" | "risk" | "upcoming";
+}
+
+export interface ClientDetail extends ClientRow {
+  tags: string[];
+  birth: string | null;
+  history: ClientTrip[];
+  quotes: ClientQuote[];
+  balancePen: number;
+  overduePen: number;
+  companions: { name: string; document: string; diet: string }[];
+  currentTrip: { trip: ClientTrip; days: TripDay[]; dayNumber: number; incident: { id: string; title: string } | null } | null;
+}
+
+export interface ApiClient {
+  code: string;
+  kind: "persona" | "empresa";
+  name: string;
+  document: string;
+  email: string | null;
+  phone: string | null;
+  city: string | null;
+  country: string;
+  segment: string;
+  owner: { name: string; color: string | null };
+  satisfaction: number | null;
+  trips_count: number;
+  total_pen: number;
+  last_trip_from: string | null;
+  on_trip: boolean;
+  created_at: string;
+}
+
+interface ApiTrip {
+  code: string;
+  title: string;
+  status: string;
+  from: string;
+  to: string;
+  total_pen: number;
+  passengers: string[];
+}
+
+export interface ApiClientDetail extends ApiClient {
+  tags: string[];
+  birth_date: string | null;
+  trips: ApiTrip[];
+  quotes: { code: string; title: string; status: string; valid_until: string }[];
+  balance_pen: number;
+  overdue_pen: number;
+  companions: { name: string; document: string; diet: string }[];
+  current_trip: { trip: ApiTrip; days: TripDay[]; day_number: number; incident: { code: string; title: string } | null } | null;
+}
+
+const SEGMENT_LABEL: Record<string, string> = {
+  Retail: "Particular",
+  Corporativo: "Corporativo",
+  VIP: "VIP",
+  Grupos: "Grupos",
+  B2B: "Agencia aliada",
+};
+
+export function segmentLabel(code: string): string {
+  return SEGMENT_LABEL[code] ?? code;
+}
+
+function toTrip(trip: ApiTrip): ClientTrip {
+  return { id: trip.code, title: trip.title, status: trip.status, from: trip.from, to: trip.to, totalPen: trip.total_pen, passengers: trip.passengers };
+}
+
+export function toClientRow(client: ApiClient, today: string): ClientRow {
+  return {
+    id: client.code,
+    kind: client.kind === "empresa" ? "Empresa" : "Persona",
+    name: client.name,
+    document: client.document,
+    email: client.email ?? "",
+    phone: client.phone ?? "",
+    city: client.city ?? "",
+    country: client.country,
+    segment: segmentLabel(client.segment),
+    ownerName: client.owner.name,
+    ownerColor: client.owner.color,
+    satisfaction: client.satisfaction,
+    trips: client.trips_count,
+    totalPen: client.total_pen,
+    lastTripFrom: client.last_trip_from,
+    upcomingTrip: client.last_trip_from !== null && client.last_trip_from > today,
+    onTrip: client.on_trip,
+    createdAt: client.created_at,
+  };
+}
+
+export function toClientDetail(client: ApiClientDetail, today: string): ClientDetail {
+  const current = client.current_trip;
+  return {
+    ...toClientRow(client, today),
+    tags: client.tags,
+    birth: client.birth_date,
+    history: client.trips.map(toTrip),
+    quotes: client.quotes.map((quote) => ({ id: quote.code, title: quote.title, status: quote.status, validUntil: quote.valid_until })),
+    balancePen: client.balance_pen,
+    overduePen: client.overdue_pen,
+    companions: client.companions,
+    currentTrip: current
+      ? { trip: toTrip(current.trip), days: current.days, dayNumber: current.day_number, incident: current.incident ? { id: current.incident.code, title: current.incident.title } : null }
+      : null,
+  };
+}

@@ -1,0 +1,60 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Iam\Actions;
+
+use App\Domain\Iam\Models\User;
+use App\Domain\Iam\Support\SessionPayload;
+use App\Domain\Platform\Support\TenantResolver;
+use App\Domain\Shared\Audit\AuditLogger;
+use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Tenancy\TenantDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+
+final class AuthenticateUser
+{
+    public function __construct(
+        private readonly TenantResolver $tenants,
+        private readonly TenantDatabase $database,
+        private readonly AuditLogger $audit,
+        private readonly IssueAccessToken $issueToken,
+        private readonly RecordLogin $recordLogin,
+    ) {
+    }
+
+    public function __invoke(Request $request): array
+    {
+        $tenant = $this->tenants->forLogin($request) ?? throw $this->invalidCredentials();
+
+        if ($tenant->status === 'suspendido') {
+            throw ApiException::forbidden('TENANT_SUSPENDED', 'El acceso de tu empresa está suspendido. Comunícate con tu proveedor del sistema.');
+        }
+
+        $email = Str::lower(trim((string) $request->input('email')));
+
+        return $this->database->run($tenant->tenant_id, function () use ($request, $email): array {
+            $user = User::query()->with('roles')->whereRaw('lower(email) = ?', [$email])->first();
+
+            if ($user === null || ! Hash::check((string) $request->input('password'), (string) $user->password) || ! $user->isActive()) {
+                $this->audit->logOutsideTransaction('Sesión', $email, 'login_fallido');
+                throw $this->invalidCredentials();
+            }
+
+            $token = ($this->issueToken)($user, $request->input('device_name'));
+
+            if (! $user->needsMfa()) {
+                ($this->recordLogin)($user, 'OK');
+            }
+
+            return SessionPayload::make($user, $token, mfaPending: $user->needsMfa());
+        });
+    }
+
+    private function invalidCredentials(): ApiException
+    {
+        return new ApiException(401, 'UNAUTHENTICATED', null, 'El correo o la contraseña no son correctos.');
+    }
+}
