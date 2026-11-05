@@ -16,6 +16,7 @@ final class SessionPayload
             'token' => $token,
             'token_type' => $token === null ? null : 'Bearer',
             'mfa_required' => $mfaPending,
+            'mfa_enrolled' => $mfaPending ? $user->mfaFactor()->exists() : null,
             'experience' => $access['experience'],
             'home' => $access['home'],
         ], fn ($value) => $value !== null);

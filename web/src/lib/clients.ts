@@ -46,6 +46,11 @@ export interface TripDay {
 export interface ClientDetail extends ClientRow {
   tags: string[];
   birth: string | null;
+  rawKind: "persona" | "empresa";
+  docType: string;
+  docNumber: string;
+  ownerId: string;
+  rawSegment: string;
   history: ClientTrip[];
   quotes: ClientQuote[];
   balancePen: number;
@@ -86,6 +91,9 @@ interface ApiTrip {
 export interface ApiClientDetail extends ApiClient {
   tags: string[];
   birth_date: string | null;
+  doc_type: string;
+  doc_number: string;
+  owner_id: string;
   trips: ApiTrip[];
   quotes: { code: string; title: string; status: string; valid_until: string }[];
   balance_pen: number;
@@ -139,6 +147,11 @@ export function toClientDetail(client: ApiClientDetail, today: string): ClientDe
     ...toClientRow(client, today),
     tags: client.tags,
     birth: client.birth_date,
+    rawKind: client.kind,
+    docType: client.doc_type,
+    docNumber: client.doc_number,
+    ownerId: client.owner_id,
+    rawSegment: client.segment,
     history: client.trips.map(toTrip),
     quotes: client.quotes.map((quote) => ({ id: quote.code, title: quote.title, status: quote.status, validUntil: quote.valid_until })),
     balancePen: client.balance_pen,
@@ -149,3 +162,17 @@ export function toClientDetail(client: ApiClientDetail, today: string): ClientDe
       : null,
   };
 }
+
+export interface ClientFormOptions {
+  segments: string[];
+  advisors: { id: string; name: string; color: string | null }[];
+  canReassign: boolean;
+  canManage: boolean;
+}
+
+export const DOC_TYPES = [
+  { value: "DNI", label: "DNI" },
+  { value: "RUC", label: "RUC" },
+  { value: "PASAPORTE", label: "Pasaporte" },
+  { value: "CE", label: "Carné de extranjería" },
+];

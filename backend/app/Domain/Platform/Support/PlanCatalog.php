@@ -13,7 +13,14 @@ use Illuminate\Support\Str;
 
 final class PlanCatalog
 {
+    public const METRICS = ['users', 'sedes', 'storage_gb', 'reservations_month', 'whatsapp_month', 'email_month', 'api_calls_month', 'api_rate_per_min', 'webhooks', 'api_keys'];
+
     private const CONNECTION = 'pgsql_platform';
+
+    public function model(string $code): ?Plan
+    {
+        return Plan::on(self::CONNECTION)->where(Str::isUuid($code) ? 'id' : 'code', $code)->first();
+    }
 
     public function all(): Collection
     {

@@ -51,6 +51,7 @@ final class DemoSeeder extends Seeder
             $this->withinTenant($tenant, fn () => $this->seedTenantData($tenant, $tenantSeed, $permissions));
 
             if ($tenant->code === 'TNT-0001') {
+                $this->withinTenant($tenant, fn () => (new CatalogDemoSeeder($tenant))->run());
                 $this->withinTenant($tenant, fn () => (new CrmDemoSeeder($tenant))->run());
             }
         }
@@ -131,6 +132,7 @@ final class DemoSeeder extends Seeder
     private function seedTenantData(Tenant $tenant, array $tenantSeed, array $permissions): void
     {
         $sedes = $this->seedSedes($tenant);
+        (new CrmCatalogSeeder())->run($tenant);
         $roles = $this->seedRoles($tenant, $permissions);
         $users = $tenant->code === 'TNT-0001'
             ? array_filter(KitSeeds::read('users'), fn (array $user) => $user['role'] !== 'super_admin')

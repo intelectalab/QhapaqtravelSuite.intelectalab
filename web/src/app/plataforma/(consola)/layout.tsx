@@ -12,6 +12,8 @@ export default async function PlatformConsoleLayout({ children }: { children: Re
     account: { name: "Consola de plataforma", detail: "Qhapaq Travel Suite", initials: "QT" },
     person: { name: me.name, email: me.email, detail: "Super Admin", color: null },
     logoutHref: REALMS.platform.logout,
+    counts: {},
+    screens: null,
   };
 
   return (

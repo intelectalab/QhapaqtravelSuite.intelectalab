@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { cn } from "@/lib/cn";
 
 function scale(values: number[], height: number, padding = 4): number[] {
@@ -7,17 +10,52 @@ function scale(values: number[], height: number, padding = 4): number[] {
   return values.map((value) => padding + (1 - (value - min) / span) * (height - padding * 2));
 }
 
-export function Sparkline({ values, className }: { values: number[]; className?: string }) {
+export function Sparkline({ values, labels, className }: { values: number[]; labels?: string[]; className?: string }) {
+  const [active, setActive] = useState<number | null>(null);
   const width = 300;
   const height = 46;
   const ys = scale(values, height, 8);
   const step = width / Math.max(1, values.length - 1);
   const line = ys.map((y, index) => `${index === 0 ? "M" : "L"}${(index * step).toFixed(1)} ${y.toFixed(1)}`).join(" ");
+  const pick = (event: React.PointerEvent<HTMLDivElement>) => {
+    const box = event.currentTarget.getBoundingClientRect();
+    const ratio = (event.clientX - box.left) / box.width;
+    setActive(Math.min(values.length - 1, Math.max(0, Math.round(ratio * (values.length - 1)))));
+  };
+
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className={cn("pointer-events-none", className)} aria-hidden>
-      <path d={`${line} L${width} ${height} L0 ${height}Z`} fill="currentColor" opacity="0.18" />
-      <path d={line} stroke="currentColor" strokeWidth="2" fill="none" opacity="0.6" vectorEffect="non-scaling-stroke" />
-    </svg>
+    <div className={cn("group/spark", className)} onPointerMove={pick} onPointerLeave={() => setActive(null)}>
+      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="h-full w-full overflow-visible" aria-hidden>
+        <path d={`${line} L${width} ${height} L0 ${height}Z`} fill="currentColor" className="opacity-[0.16] transition-opacity duration-300 group-hover/spark:opacity-[0.26] motion-safe:animate-[fade-in_900ms_ease-out]" />
+        <path
+          d={line}
+          pathLength={1}
+          strokeDasharray={1}
+          stroke="currentColor"
+          strokeWidth="2"
+          fill="none"
+          vectorEffect="non-scaling-stroke"
+          className="opacity-60 transition-opacity duration-300 group-hover/spark:opacity-100 motion-safe:animate-[draw-line_1100ms_ease-out]"
+        />
+        {active !== null && <line x1={active * step} x2={active * step} y1={0} y2={height} stroke="currentColor" strokeWidth="1" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" className="opacity-50" />}
+      </svg>
+      {active !== null && (
+        <>
+          <span
+            className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-current bg-white transition-[left,top] duration-150"
+            style={{ left: `${(active / Math.max(1, values.length - 1)) * 100}%`, top: `${ys[active]}px` }}
+          />
+          {labels?.[active] && (
+            <span
+              className="pointer-events-none absolute -translate-x-1/2 whitespace-nowrap rounded-md bg-black/45 px-1.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm transition-[left] duration-150"
+              style={{ left: `${Math.min(88, Math.max(12, (active / Math.max(1, values.length - 1)) * 100))}%`, top: `${ys[active] - 28}px` }}
+            >
+              {labels[active]}
+            </span>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -25,27 +63,43 @@ export interface BarDatum {
   label: string;
   value: number;
   caption: string;
+  detail?: string;
   highlight?: boolean;
 }
 
 export function BarChart({ data, height = 118 }: { data: BarDatum[]; height?: number }) {
+  const [active, setActive] = useState<string | null>(null);
   const max = Math.max(...data.map((item) => item.value)) || 1;
+
   return (
-    <div className="grid items-end gap-3.5" style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }}>
-      {data.map((item) => (
-        <div key={item.label} className="flex flex-col items-center gap-1.5">
-          <div className="flex w-full items-end" style={{ height }}>
-            <div
-              title={item.caption}
-              className={cn("w-full rounded-t-[10px] rounded-b-[4px] transition-[height]", item.highlight ? "bg-t2" : "bg-[color-mix(in_srgb,var(--t1)_85%,transparent)]")}
-              style={{ height: `${Math.max(6, (item.value / max) * height)}px` }}
-            />
+    <div className="grid items-end gap-3.5" style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }} onPointerLeave={() => setActive(null)}>
+      {data.map((item, index) => {
+        const isActive = active === item.label;
+        const dimmed = active !== null && !isActive;
+        return (
+          <div key={item.label} className="flex cursor-default flex-col items-center gap-1.5" onPointerEnter={() => setActive(item.label)}>
+            <div className="relative flex w-full items-end" style={{ height }}>
+              {isActive && (
+                <span className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg bg-fg px-2 py-1 text-[11.5px] font-semibold text-bg shadow-lg motion-safe:animate-[drop-in_160ms_ease-out]" style={{ bottom: `${Math.max(6, (item.value / max) * height) + 8}px` }}>
+                  {item.detail ?? item.caption}
+                </span>
+              )}
+              <div
+                className={cn(
+                  "w-full origin-bottom rounded-t-[10px] rounded-b-[4px] transition-[transform,opacity,filter] duration-200 ease-out motion-safe:animate-[grow-up_700ms_cubic-bezier(0.2,0.8,0.2,1)_both]",
+                  item.highlight ? "bg-t2" : "bg-[color-mix(in_srgb,var(--t1)_85%,transparent)]",
+                  isActive && "scale-x-[1.06] brightness-110",
+                  dimmed && "opacity-45",
+                )}
+                style={{ height: `${Math.max(6, (item.value / max) * height)}px`, animationDelay: `${index * 70}ms` }}
+              />
+            </div>
+            <span className={cn("font-mono text-[11.5px] text-fg-3 transition-colors", isActive && "text-fg")}>
+              {item.label.toUpperCase()} <b className="font-semibold text-fg">{item.caption}</b>
+            </span>
           </div>
-          <span className="font-mono text-[11.5px] text-fg-3">
-            {item.label.toUpperCase()} <b className="font-semibold text-fg">{item.caption}</b>
-          </span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

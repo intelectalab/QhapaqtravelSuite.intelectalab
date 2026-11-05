@@ -8,7 +8,7 @@ export interface ApiResult<T> {
   ok: boolean;
   status: number;
   data: T | null;
-  error: { code?: string; message: string; errors?: Record<string, string[]> } | null;
+  error: { code?: string; message: string; errors?: Record<string, string[]>; details?: Record<string, unknown> } | null;
 }
 
 export async function apiFetch<T>(path: string, init: { method?: string; body?: unknown; token?: string | null; auth?: boolean; realm?: Realm; raw?: boolean } = {}): Promise<ApiResult<T>> {
@@ -35,6 +35,7 @@ export async function apiFetch<T>(path: string, init: { method?: string; body?: 
       code: payload?.code ?? payload?.error,
       message: payload?.message ?? "No pudimos conectar con el servidor. Inténtalo de nuevo en unos segundos.",
       errors: payload?.errors,
+      details: payload?.details,
     },
   };
 }

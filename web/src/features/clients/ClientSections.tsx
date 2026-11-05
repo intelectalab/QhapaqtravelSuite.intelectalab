@@ -16,7 +16,7 @@ const DAY_STYLE: Record<TripDay["state"], string> = {
 export function CurrentTrip({ current }: { current: NonNullable<ClientDetail["currentTrip"]> }) {
   const { trip, days, incident } = current;
   return (
-    <div className="rounded-[14px] border border-line p-4">
+    <div className="lift rounded-[14px] border border-line p-4 hover:border-[color-mix(in_srgb,var(--accent)_35%,transparent)]">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <Link href={`/reservas/${trip.id}`} className="text-[15px] font-semibold hover:underline">

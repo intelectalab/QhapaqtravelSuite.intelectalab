@@ -1,10 +1,11 @@
 import { Building2, Check, Headset, Hourglass, Infinity as InfinityIcon, Lock, Minus, PackagePlus, Sparkles, Ticket } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { HeroBand, HeroChip, HeroPanel, SOFT_TINT, TintCardTitle } from "@/components/ui/Tinted";
+import { PlanEditAction } from "@/features/platform/PlanEditAction";
 import { PLAN_LIMITS, limitValue } from "@/features/platform/planLimits";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
@@ -13,8 +14,6 @@ import { getPlan } from "@/lib/server/platform";
 import { toneStyle } from "@/lib/tone";
 
 const KIND_LABEL: Partial<Record<FeatureKind, string>> = { limit: "Con límite", addon: "Se contrata aparte", beta: "En prueba cerrada" };
-
-const softTint = "bg-[color-mix(in_srgb,var(--tint)_9%,var(--surface))]";
 
 export async function generateMetadata({ params }: PageProps<"/plataforma/planes/[code]">): Promise<Metadata> {
   const { code } = await params;
@@ -43,7 +42,7 @@ export default async function PlanPage({ params }: PageProps<"/plataforma/planes
             <Badge tone={status.tone}>{status.label}</Badge>
           </span>
         }
-        subtitle={`${plan.module_count} módulos · ${plan.rules_included} de ${plan.rules_total} reglas de reserva`}
+        actions={<PlanEditAction plan={plan} supportLevel={plan.support_level} agencies={tenantTotal(plan)} />}
       />
 
       <PlanHero plan={plan} />
@@ -53,7 +52,7 @@ export default async function PlanPage({ params }: PageProps<"/plataforma/planes
           const value = limitValue(plan, info);
           const Icon = info.icon;
           return (
-            <div key={info.metric} title={info.hint} style={toneStyle(info.tone)} className={cn("rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] px-4 py-3.5", softTint)}>
+            <div key={info.metric} title={info.hint} style={toneStyle(info.tone)} className={cn("lift rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] px-4 py-3.5", SOFT_TINT)}>
               <span className="mb-2.5 grid h-8 w-8 place-items-center rounded-[9px] bg-[var(--tint)] text-white">
                 <Icon size={16} />
               </span>
@@ -73,15 +72,15 @@ export default async function PlanPage({ params }: PageProps<"/plataforma/planes
 
       <div className="mb-5 grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <Card>
-          <CardTitle icon={<Check size={16} />} title="Módulos" aside={`${plan.module_count} incluidos`} />
+          <TintCardTitle icon={Check} title="Módulos" aside={`${plan.module_count} incluidos`} />
           <FeatureGroups features={plan.features} />
         </Card>
         <div className="flex flex-col gap-5">
           <Card>
-            <CardTitle icon={<PackagePlus size={16} />} title="Complementos" />
+            <TintCardTitle icon={PackagePlus} title="Complementos" />
             <ul className="flex flex-col gap-2">
               {plan.addons.map((addon) => (
-                <li key={addon.code} className={cn("flex items-center gap-3 rounded-[11px] px-3 py-2.5", addon.included ? softTint : "bg-surface-2")}>
+                <li key={addon.code} className={cn("flex items-center gap-3 rounded-[11px] px-3 py-2.5", addon.included ? SOFT_TINT : "bg-surface-2")}>
                   <span className="min-w-0 flex-1 text-[13px] font-medium">{addon.label}</span>
                   {addon.included ? (
                     <span className="text-xs font-semibold text-[var(--tint)]">Incluido</span>
@@ -96,7 +95,7 @@ export default async function PlanPage({ params }: PageProps<"/plataforma/planes
             </ul>
           </Card>
           <Card>
-            <CardTitle icon={<Building2 size={16} />} title="Agencias con este plan" aside={String(tenantTotal(plan))} />
+            <TintCardTitle icon={Building2} title="Agencias con este plan" aside={String(tenantTotal(plan))} />
             {plan.agencies.length === 0 ? (
               <p className="text-[13.5px] text-fg-3">Ninguna agencia usa este plan todavía.</p>
             ) : (
@@ -116,13 +115,13 @@ export default async function PlanPage({ params }: PageProps<"/plataforma/planes
       </div>
 
       <Card>
-        <CardTitle icon={<Lock size={16} />} title="Reglas de reserva" aside={`${plan.rules_included} de ${plan.rules_total}`} />
+        <TintCardTitle icon={Lock} title="Reglas de reserva" aside={`${plan.rules_included} de ${plan.rules_total}`} />
         <div className="mb-4 h-2 overflow-hidden rounded-full bg-surface-2">
           <span className="block h-full rounded-full bg-[var(--tint)]" style={{ width: `${(plan.rules_included / Math.max(plan.rules_total, 1)) * 100}%` }} />
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {plan.rules.map((group) => (
-            <div key={group.group} className={cn("rounded-[14px] p-3.5", softTint)}>
+            <div key={group.group} className={cn("rounded-[14px] p-3.5", SOFT_TINT)}>
               <p className="mb-2 flex items-center justify-between text-[13px] font-bold">
                 {group.group}
                 <span className="font-mono text-xs font-semibold text-[var(--tint)]">
@@ -151,9 +150,7 @@ export default async function PlanPage({ params }: PageProps<"/plataforma/planes
 function PlanHero({ plan }: { plan: PlanDetail }) {
   const saving = Number(plan.price_month) * 12 - Number(plan.price_year);
   return (
-    <section className="relative isolate mb-5 overflow-hidden rounded-card bg-[var(--tint)] p-6 text-white shadow-[0_18px_40px_-24px_var(--tint)] sm:p-7">
-      <span aria-hidden className="weave-pattern absolute inset-0 -z-10 bg-[length:22px_22px] opacity-[0.09]" />
-      <span aria-hidden className="absolute -right-24 -top-24 -z-10 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+    <HeroBand>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div>
           <p className="text-[13px] font-medium text-white/70">Precio mensual</p>
@@ -169,7 +166,7 @@ function PlanHero({ plan }: { plan: PlanDetail }) {
             </HeroChip>
           </div>
         </div>
-        <div className="rounded-[16px] bg-white/[0.1] p-4 ring-1 ring-white/15">
+        <HeroPanel>
           <p className="mb-2.5 flex items-center gap-2 text-[13px] font-semibold">
             <Sparkles size={15} />
             {plan.previous ? `Todo lo de ${plan.previous}, más:` : "Incluye:"}
@@ -182,30 +179,9 @@ function PlanHero({ plan }: { plan: PlanDetail }) {
               </li>
             ))}
           </ul>
-        </div>
+        </HeroPanel>
       </div>
-    </section>
-  );
-}
-
-function HeroChip({ icon, children }: { icon: ReactNode; children: ReactNode }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[12.5px] font-medium">
-      {icon}
-      {children}
-    </span>
-  );
-}
-
-function CardTitle({ icon, title, aside }: { icon: ReactNode; title: string; aside?: string }) {
-  return (
-    <div className="mb-3.5 flex items-center justify-between gap-3">
-      <h3 className="flex items-center gap-2 text-[15px] font-semibold">
-        <span className="grid h-7 w-7 place-items-center rounded-lg bg-[color-mix(in_srgb,var(--tint)_14%,transparent)] text-[var(--tint)]">{icon}</span>
-        {title}
-      </h3>
-      {aside && <span className="text-[13px] font-semibold text-fg-3">{aside}</span>}
-    </div>
+    </HeroBand>
   );
 }
 

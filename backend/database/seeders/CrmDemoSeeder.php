@@ -30,6 +30,12 @@ final class CrmDemoSeeder
 
     private array $reservations = [];
 
+    private array $opportunities = [];
+
+    private array $leads = [];
+
+    private array $quotes = [];
+
     public function __construct(private readonly Tenant $tenant)
     {
         $this->shift = (int) Carbon::parse(self::KIT_TODAY)->diffInDays(Carbon::today(), false);
@@ -41,11 +47,16 @@ final class CrmDemoSeeder
         $this->users = DB::table('iam_users')->where('tenant_id', $this->tenant->getKey())->pluck('id', 'code')->all();
         $this->sedes = DB::table('iam_sedes')->where('tenant_id', $this->tenant->getKey())->pluck('id', 'code')->all();
 
+        $this->seedFxRate();
         $this->seedClients();
+        $this->seedStages();
+        $this->seedOpportunities();
+        $this->seedLeads();
         $this->seedReservations();
         $this->seedQuotes();
         $this->seedReceivables();
         $this->seedIncidents();
+        $this->seedActivities();
     }
 
     private function seedClients(): void
@@ -72,6 +83,101 @@ final class CrmDemoSeeder
         }
     }
 
+    private function seedFxRate(): void
+    {
+        DB::table('fin_fx_rates')->where('tenant_id', $this->tenant->getKey())->delete();
+        DB::table('fin_fx_rates')->insert([
+            'id' => (string) Str::uuid7(),
+            'tenant_id' => $this->tenant->getKey(),
+            'currency_code' => 'USD',
+            'base_currency' => 'PEN',
+            'rate_pen' => $this->fx,
+            'rate_date' => Carbon::today()->toDateString(),
+            'source' => 'Manual diario (SBS referencial)',
+        ]);
+    }
+
+    private function seedStages(): void
+    {
+        foreach (KitSeeds::read('stages') as $index => $stage) {
+            $this->insert('crm_pipeline_stages', ['code' => $stage['id']], [
+                'name' => $stage['name'],
+                'default_probability' => $stage['prob'],
+                'sort_order' => $index + 1,
+                'is_closed' => in_array($stage['id'], ['ganada', 'perdida'], true),
+            ]);
+        }
+    }
+
+    private function seedOpportunities(): void
+    {
+        foreach (KitSeeds::read('opportunities') as $seed) {
+            $closed = in_array($seed['stage'], ['ganada', 'perdida'], true);
+            $this->opportunities[$seed['id']] = $this->insert('crm_opportunities', ['code' => $seed['id']], [
+                'client_id' => $this->clients[$seed['clientId']],
+                'title' => $this->text($seed['title']),
+                'stage' => $seed['stage'],
+                'amount' => $seed['amount'],
+                'currency' => $seed['currency'],
+                'probability' => $seed['stage'] === 'ganada' ? 100 : ($seed['stage'] === 'perdida' ? 0 : $seed['probability']),
+                'expected_close_date' => $this->day($seed['closeDate']),
+                'closed_at' => $closed ? $this->day($seed['closeDate']) : null,
+                'owner_id' => $this->user($seed['owner']),
+                'destination_label' => $seed['destination'] ?? null,
+                'pax' => $seed['pax'] ?? 0,
+                'origin' => $seed['leadId'] ? 'lead' : 'directo',
+                'lost_reason_code' => $seed['stage'] === 'perdida' ? 'precio' : null,
+                'lost_detail' => $seed['stage'] === 'perdida' ? ($seed['lostReason'] ?: null) : null,
+                'lost_at_stage' => $seed['stage'] === 'perdida' ? 'cotizacion' : null,
+                'created_at' => $this->date($seed['createdAt']),
+            ]);
+        }
+    }
+
+    private function seedLeads(): void
+    {
+        foreach (KitSeeds::read('leads') as $seed) {
+            $status = $seed['status'];
+            $owner = ($seed['owner'] ?? '') !== '' ? $this->user($seed['owner']) : null;
+            $created = $this->date($seed['createdAt']);
+            $duplicate = $seed['duplicateOf'] ?? null;
+            $leadId = $this->leads[$seed['id']] = $this->insert('crm_leads', ['code' => $seed['id']], [
+                'full_name' => $seed['name'],
+                'company' => ($seed['company'] ?? '') ?: null,
+                'email' => ($seed['email'] ?? '') ?: null,
+                'phone' => ($seed['phone'] ?? '') ?: null,
+                'phone_norm' => substr(preg_replace('/\D/', '', (string) ($seed['phone'] ?? '')), -9) ?: null,
+                'channel_code' => CrmCatalogSeeder::code($seed['channel']),
+                'source_code' => CrmCatalogSeeder::code($seed['source']),
+                'interest_code' => CrmCatalogSeeder::code($seed['interest']),
+                'destination_label' => ($seed['destination'] ?? '') ?: null,
+                'travel_date' => ($seed['travelDate'] ?? '') !== '' ? $this->day($seed['travelDate']) : null,
+                'pax' => $seed['pax'] ?? 0,
+                'status' => $status,
+                'owner_id' => $owner,
+                'score' => $seed['score'] ?? 0,
+                'notes' => ($seed['notes'] ?? '') ? $this->text($seed['notes']) : null,
+                'duplicate_of_type' => $duplicate ? (str_starts_with($duplicate, 'CLI-') ? 'client' : 'lead') : null,
+                'duplicate_of_id' => $duplicate ? ($this->clients[$duplicate] ?? null) : null,
+                'validated_at' => $this->date($seed['validatedAt'] ?? $seed['createdAt']),
+                'assigned_at' => $owner ? $created : null,
+                'first_contact_at' => in_array($status, ['contactado', 'calificado', 'convertido'], true) ? $created : null,
+                'discard_reason_code' => $status === 'descartado' ? CrmCatalogSeeder::code(CrmCatalogSeeder::ITEMS['discard_reason'][0]) : null,
+                'discard_detail' => $status === 'descartado' ? ($seed['notes'] ?? null) : null,
+                'discarded_at' => $status === 'descartado' ? $created : null,
+                'converted_client_id' => $status === 'convertido' ? $this->clients[$seed['convertedClientId']] : null,
+                'converted_opportunity_id' => $status === 'convertido' ? ($this->opportunities[$seed['convertedOppId']] ?? null) : null,
+                'converted_at' => $status === 'convertido' ? $created : null,
+                'converted_by' => $status === 'convertido' ? $owner : null,
+                'created_at' => $created,
+            ]);
+
+            if ($status === 'convertido' && isset($this->opportunities[$seed['convertedOppId'] ?? ''])) {
+                DB::table('crm_opportunities')->where('id', $this->opportunities[$seed['convertedOppId']])->update(['lead_id' => $leadId, 'origin' => 'lead']);
+            }
+        }
+    }
+
     private function seedReservations(): void
     {
         foreach (KitSeeds::read('reservations') as $seed) {
@@ -95,6 +201,7 @@ final class CrmDemoSeeder
                 'created_at' => $created,
             ]);
             $this->reservations[$seed['id']] = ['id' => $id, 'quote' => $seed['quoteId'] ?? null];
+            $this->seedServices($id, $seed);
 
             DB::table('booking_passengers')->where('reservation_id', $id)->delete();
             foreach ($seed['passengers'] ?? [] as $index => $passenger) {
@@ -121,14 +228,78 @@ final class CrmDemoSeeder
         }
     }
 
+    private function seedActivities(): void
+    {
+        $related = ['lead' => $this->leads, 'opportunity' => $this->opportunities, 'client' => $this->clients, 'quote' => $this->quotes];
+
+        foreach (KitSeeds::read('activities') as $seed) {
+            $due = Carbon::parse($this->date($seed['due']))->utc();
+            $relatedId = $related[$seed['relType']][$seed['relId']] ?? null;
+            $status = $seed['status'] === 'completada' ? 'completada' : ($due->isPast() ? 'vencida' : 'pendiente');
+            $this->insert('crm_activities', ['code' => $seed['id']], [
+                'type' => strtolower(Str::ascii($seed['type'])),
+                'subject' => $this->text($seed['subject']),
+                'related_type' => $relatedId ? $seed['relType'] : null,
+                'related_id' => $relatedId,
+                'owner_id' => $this->user($seed['owner']),
+                'due_at' => $due,
+                'status' => $status,
+                'result' => $status === 'completada' ? (($seed['result'] ?? '') ?: 'Hecho.') : null,
+                'completed_at' => $status === 'completada' ? $due : null,
+                'completed_by' => $status === 'completada' ? $this->user($seed['owner']) : null,
+                'created_at' => $due->copy()->subDay(),
+            ]);
+        }
+    }
+
+    private function seedServices(string $reservationId, array $seed): void
+    {
+        DB::table('booking_reservation_services')->where('reservation_id', $reservationId)->delete();
+
+        foreach ($seed['services'] ?? [] as $service) {
+            $status = $service['status'];
+            $code = ($service['confirmationCode'] ?? '') ?: null;
+            DB::table('booking_reservation_services')->insert([
+                'tenant_id' => $this->tenant->getKey(),
+                'reservation_id' => $reservationId,
+                'code' => $service['id'],
+                'name' => Str::limit($service['name'], 195),
+                'service_date' => $this->day($service['date']),
+                'service_time' => preg_match('/^\d{1,2}:\d{2}$/', (string) ($service['time'] ?? '')) ? $service['time'] : null,
+                'pax' => count($seed['passengers'] ?? []) ?: null,
+                'status' => $status === 'confirmado' && $code === null ? 'completado' : $status,
+                'currency' => $seed['currency'],
+                'fx_rate' => $seed['currency'] === 'USD' ? $this->fx : 1,
+                'cost_amount' => $service['cost'] ?? 0,
+                'price_amount' => $service['price'] ?? 0,
+                'service_kind' => $this->serviceKind($service),
+                'confirmation_code' => $code,
+            ]);
+        }
+    }
+
+    private function serviceKind(array $service): string
+    {
+        $name = Str::lower($service['name']);
+
+        return match (true) {
+            str_contains($name, 'traslado') || ($service['pickup'] ?? false) => 'traslado',
+            isset($service['nights']) || isset($service['rooms']) || isset($service['lodgingLeg']) || str_contains($name, 'hotel') || str_contains($name, 'noche') => 'alojamiento',
+            str_contains($name, 'tren') || str_contains($name, 'entrada') || str_contains($name, '→') => 'tren_entrada',
+            str_contains($name, 'libre') => 'libre',
+            default => 'tour',
+        };
+    }
+
     private function seedQuotes(): void
     {
         $byQuote = collect($this->reservations)->filter(fn ($reservation) => $reservation['quote'] !== null)->mapWithKeys(fn ($reservation) => [$reservation['quote'] => $reservation['id']]);
 
         foreach (KitSeeds::read('quotes') as $seed) {
             $reservation = $byQuote[$seed['id']] ?? null;
-            $quoteId = $this->insert('quote_quotes', ['code' => $seed['id']], [
+            $quoteId = $this->quotes[$seed['id']] = $this->insert('quote_quotes', ['code' => $seed['id']], [
                 'client_id' => $this->clients[$seed['clientId']],
+                'opportunity_id' => isset($seed['oppId']) ? ($this->opportunities[$seed['oppId']] ?? null) : null,
                 'owner_id' => $this->user($seed['owner']),
                 'title' => $this->text($seed['title']),
                 'status' => $seed['status'],
@@ -177,7 +348,7 @@ final class CrmDemoSeeder
     private function seedIncidents(): void
     {
         foreach (KitSeeds::read('incidents') as $seed) {
-            $created = Carbon::parse($this->date($seed['createdAt']));
+            $created = Carbon::parse($this->date($seed['createdAt']))->utc();
             $hours = self::SLA_HOURS[$seed['severity']] ?? 24;
             $this->insert('ops_incidents', ['code' => $seed['id']], [
                 'reservation_id' => $this->reservations[$seed['resId']]['id'] ?? null,

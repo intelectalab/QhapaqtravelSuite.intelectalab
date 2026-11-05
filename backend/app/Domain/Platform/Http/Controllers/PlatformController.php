@@ -8,6 +8,8 @@ use App\Domain\Iam\Http\Requests\MfaVerifyRequest;
 use App\Domain\Iam\Models\AccessToken;
 use App\Domain\Platform\Actions\ChangeTenantStatus;
 use App\Domain\Platform\Actions\PlatformSession;
+use App\Domain\Platform\Actions\UpdatePlan;
+use App\Domain\Platform\Http\Requests\PlanUpdateRequest;
 use App\Domain\Platform\Http\Requests\TenantStatusRequest;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Models\Tenant;
@@ -60,6 +62,14 @@ final class PlatformController
     public function plan(string $code, PlanCatalog $catalog): JsonResponse
     {
         return response()->json(['data' => $catalog->find($code) ?? throw ApiException::notFound('El plan no existe.')]);
+    }
+
+    public function updatePlan(string $code, PlanUpdateRequest $request, PlanCatalog $catalog, UpdatePlan $update): JsonResponse
+    {
+        $plan = $catalog->model($code) ?? throw ApiException::notFound('El plan no existe.');
+        $update($plan, $request->validated(), $this->user($request));
+
+        return response()->json(['data' => $catalog->find($plan->code)]);
     }
 
     public function suspend(string $id, TenantStatusRequest $request, ChangeTenantStatus $change, TenantDirectory $directory): JsonResponse

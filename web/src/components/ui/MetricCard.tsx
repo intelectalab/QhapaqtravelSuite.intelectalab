@@ -19,12 +19,12 @@ export function MetricCard({ label, value, icon, tone = "t1", active = false, on
       aria-pressed={active}
       style={toneStyle(tone)}
       className={cn(
-        "flex min-w-0 items-center gap-3 rounded-tile border px-4 py-3.5 text-left shadow-card transition",
+        "lift group flex min-w-0 items-center gap-3 rounded-tile border px-4 py-3.5 text-left shadow-card",
         active ? "border-[var(--tint)] bg-[var(--tint)] text-white" : "border-line bg-surface hover:border-[color-mix(in_srgb,var(--tint)_40%,transparent)]",
       )}
     >
       {icon && (
-        <span className={cn("grid h-[38px] w-[38px] flex-none place-items-center rounded-[12px]", active ? "bg-white/15 text-white" : "tint-soft")}>{icon}</span>
+        <span className={cn("grid h-[38px] w-[38px] flex-none place-items-center rounded-[12px] transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110", active ? "bg-white/15 text-white" : "tint-soft")}>{icon}</span>
       )}
       <span className="min-w-0">
         <span className="block text-[22px] font-bold leading-none tracking-tight">{value}</span>

@@ -6,9 +6,8 @@ import { BulkAction, DataTable } from "@/components/table/DataTable";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, LiveTag } from "@/components/ui/Badge";
-import { shortName } from "@/data/workspace";
 import type { ClientRow } from "@/lib/clients";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatMoney, shortName } from "@/lib/format";
 import type { Tone } from "@/lib/tone";
 
 const SEGMENT_TONE: Record<string, Tone> = { Corporativo: "t1", VIP: "sun", Particular: "mute", "Agencia aliada": "t3", Grupos: "t4" };

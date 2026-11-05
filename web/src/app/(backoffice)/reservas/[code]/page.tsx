@@ -1,0 +1,207 @@
+import { CalendarDays, FileText, MapPin, Receipt, Route, TriangleAlert, UserRound, Users, Wallet } from "lucide-react";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { LiveTag, StatusBadge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { HeroBand, HeroChip, HeroPanel, SOFT_TINT, TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
+import { cn } from "@/lib/cn";
+import { formatDate, formatMoney, shortName } from "@/lib/format";
+import { PAX_TYPE, SERVICE_KIND } from "@/lib/reservations";
+import { getReservation } from "@/lib/server/reservations";
+import { statusTone } from "@/lib/tone";
+
+export async function generateMetadata({ params }: PageProps<"/reservas/[code]">): Promise<Metadata> {
+  const { code } = await params;
+  return { title: (await getReservation(code)).title };
+}
+
+const dayLabel = (iso: string) => formatDate(iso, "long");
+
+export default async function ReservaPage({ params }: PageProps<"/reservas/[code]">) {
+  const { code } = await params;
+  const reservation = await getReservation(code);
+  const charged = reservation.receivables.filter((item) => item.status !== "cancelada");
+  const totalCharged = charged.reduce((sum, item) => sum + Number(item.amount), 0);
+  const totalPaid = charged.reduce((sum, item) => sum + Number(item.paid_amount), 0);
+  const paidPct = totalCharged > 0 ? Math.round((totalPaid / totalCharged) * 100) : 0;
+  const overdue = charged.some((item) => item.status === "vencida");
+  const traveling = reservation.travel_from <= reservation.today && reservation.travel_to >= reservation.today && reservation.status !== "cancelada";
+  const days = [...new Set(reservation.services.map((service) => service.date))];
+
+  return (
+    <ToneScope tone={statusTone(reservation.status)}>
+      <PageHeader
+        back={{ href: "/reservas", label: "Reservas" }}
+        jump={false}
+        leading={
+          <span className="grid h-14 w-14 place-items-center rounded-2xl bg-[var(--tint)] text-white shadow-[0_10px_24px_-12px_var(--tint)]">
+            <Route size={24} />
+          </span>
+        }
+        title={reservation.title}
+        info={
+          <span className="ml-2 flex flex-none items-center gap-2">
+            <StatusBadge status={reservation.status} />
+            {traveling && <LiveTag>De viaje</LiveTag>}
+          </span>
+        }
+        subtitle={reservation.code}
+      />
+
+      <HeroBand>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+          <div>
+            <p className="text-[13px] font-medium text-white/70">Total del viaje</p>
+            <p className="mt-1 text-[38px] font-bold leading-none tracking-[-0.03em]">{formatMoney(reservation.total, reservation.currency)}</p>
+            {reservation.currency !== "PEN" && <p className="mt-2 text-[13.5px] text-white/75">{formatMoney(reservation.total_pen)} al cambio de la reserva</p>}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <HeroChip icon={<CalendarDays size={14} />}>
+                {formatDate(reservation.travel_from).replace(/ \d{4}$/, "")} al {formatDate(reservation.travel_to)}
+              </HeroChip>
+              <HeroChip icon={<Users size={14} />}>{reservation.passengers.length === 1 ? "1 pasajero" : `${reservation.passengers.length} pasajeros`}</HeroChip>
+              <HeroChip icon={<MapPin size={14} />}>{reservation.channel}</HeroChip>
+            </div>
+          </div>
+          <HeroPanel solid>
+            <div className="mb-2.5 flex items-center justify-between">
+              <p className="text-[13.5px] font-semibold">Cobros</p>
+              <span className={cn("text-[13px] font-semibold", overdue ? "text-bad" : totalPaid >= totalCharged && totalCharged > 0 ? "text-ok" : "text-fg-2")}>
+                {totalCharged === 0 ? "Sin cobros programados" : totalPaid >= totalCharged ? "Pagado" : overdue ? "Tiene cuotas vencidas" : "Al día"}
+              </span>
+            </div>
+            <div className="h-2.5 overflow-hidden rounded-full bg-surface-2">
+              <span className={cn("block h-full rounded-full", overdue ? "bg-bad" : "bg-ok")} style={{ width: `${paidPct}%` }} />
+            </div>
+            <div className="mt-2.5 grid grid-cols-2 text-[13px]">
+              <span>
+                <span className="block text-[12px] text-fg-3">Pagado</span>
+                <b className="font-semibold">{formatMoney(totalPaid, reservation.currency)}</b>
+              </span>
+              <span className="text-right">
+                <span className="block text-[12px] text-fg-3">Falta cobrar</span>
+                <b className={cn("font-semibold", overdue && "text-bad")}>{formatMoney(Math.max(0, totalCharged - totalPaid), reservation.currency)}</b>
+              </span>
+            </div>
+          </HeroPanel>
+        </div>
+      </HeroBand>
+
+      {reservation.status === "cancelada" && reservation.cancel_reason && (
+        <p className="mb-5 rounded-card border border-line bg-surface-2 px-4 py-3 text-[13.5px] text-fg-2">
+          <b className="text-fg">Cancelada.</b> {reservation.cancel_reason}
+        </p>
+      )}
+
+      <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <TintTile icon={UserRound} tone="t1" label="Cliente" value={<Link href={`/crm/clientes/${reservation.client.code}`} className="text-[16px] hover:underline">{reservation.client.name}</Link>} />
+        <TintTile icon={Users} tone="t4" label="Responsable" value={<span className="text-[16px]">{shortName(reservation.owner.name)}</span>} note={reservation.sede ?? undefined} />
+        <TintTile icon={FileText} tone="violet" label="Cotización" value={<span className="text-[16px]">{reservation.quote ? <Link href={`/cotizaciones/${reservation.quote.code}`} className="hover:underline">{reservation.quote.code}</Link> : "Venta directa"}</span>} />
+        <TintTile icon={Wallet} tone="sun" label="Margen" value={reservation.margin_pct === null ? <span className="text-[14px] text-fg-3">Solo Finanzas</span> : `${reservation.margin_pct} %`} />
+      </section>
+
+      <div className="mb-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+        <Card>
+          <TintCardTitle icon={Route} title="Servicios" aside={String(reservation.services.length)} />
+          {days.length === 0 ? (
+            <p className="text-[13.5px] text-fg-3">Esta reserva no tiene servicios todavía.</p>
+          ) : (
+            <ol className="flex flex-col gap-4">
+              {days.map((day) => (
+                <li key={day}>
+                  <p className={cn("mb-2 text-[13px] font-semibold first-letter:uppercase", day === reservation.today ? "text-[var(--tint)]" : "text-fg-2")}>
+                    {dayLabel(day)}
+                    {day === reservation.today && " · hoy"}
+                  </p>
+                  <ul className="flex flex-col gap-1.5">
+                    {reservation.services
+                      .filter((service) => service.date === day)
+                      .map((service) => {
+                        const kind = SERVICE_KIND[service.kind] ?? SERVICE_KIND.tour;
+                        const Icon = kind.icon;
+                        return (
+                          <li key={service.code} className={cn("flex items-center gap-3 rounded-[12px] px-3 py-2.5", SOFT_TINT, service.status === "cancelado" && "opacity-50")}>
+                            <span className="grid h-8 w-8 flex-none place-items-center rounded-[9px] bg-surface text-[var(--tint)]">
+                              <Icon size={16} />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <b className="block truncate text-[13.5px] font-semibold">{service.name}</b>
+                              <span className="text-xs text-fg-3">
+                                {service.time ? `${service.time} · ` : ""}
+                                {kind.label}
+                                {service.confirmation ? ` · ${service.confirmation}` : ""}
+                              </span>
+                            </span>
+                            <StatusBadge status={service.status} />
+                          </li>
+                        );
+                      })}
+                  </ul>
+                </li>
+              ))}
+            </ol>
+          )}
+        </Card>
+
+        <div className="flex flex-col gap-5">
+          <Card>
+            <TintCardTitle icon={Users} title="Pasajeros" aside={String(reservation.passengers.length)} />
+            <ul className="flex flex-col">
+              {reservation.passengers.map((passenger) => (
+                <li key={`${passenger.full_name}-${passenger.doc_number}`} className="flex items-center gap-3 border-t border-line-2 py-2.5 first:border-t-0">
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate text-[13.5px] font-semibold">
+                      {passenger.full_name}
+                      {passenger.is_lead && <span className="ml-1.5 text-[11.5px] font-medium text-[var(--tint)]">Titular</span>}
+                    </b>
+                    <span className="text-xs text-fg-3">
+                      {[PAX_TYPE[passenger.pax_type] ?? passenger.pax_type, passenger.doc_number ? `${passenger.doc_type ?? ""} ${passenger.doc_number}`.trim() : null, passenger.diet_notes].filter(Boolean).join(" · ")}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+
+          <Card>
+            <TintCardTitle icon={Receipt} title="Cuotas" />
+            {charged.length === 0 ? (
+              <p className="text-[13.5px] text-fg-3">Sin cuotas programadas.</p>
+            ) : (
+              <ul className="flex flex-col">
+                {charged.map((item) => (
+                  <li key={item.code} className="flex items-center gap-3 border-t border-line-2 py-2.5 text-[13px] first:border-t-0">
+                    <span className="min-w-0 flex-1">
+                      <b className="block truncate font-semibold">{item.concept}</b>
+                      <span className="text-xs text-fg-3">Vence el {formatDate(item.due_date)}</span>
+                    </span>
+                    <span className="font-mono text-[13px]">{formatMoney(item.amount, item.currency)}</span>
+                    <StatusBadge status={item.status} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          {reservation.incidents.length > 0 && (
+            <ToneScope tone="bad">
+              <Card>
+                <TintCardTitle icon={TriangleAlert} title="Incidencias" />
+                <ul className="flex flex-col gap-2">
+                  {reservation.incidents.map((incident) => (
+                    <li key={incident.code} className={cn("rounded-[12px] px-3 py-2.5 text-[13px]", SOFT_TINT)}>
+                      <b className="block font-semibold">{incident.title}</b>
+                      <span className="text-xs text-fg-3">
+                        {incident.code} · {incident.type} · gravedad {incident.severity}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            </ToneScope>
+          )}
+        </div>
+      </div>
+    </ToneScope>
+  );
+}

@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Domain\Iam\Http\Controllers;
 
 use App\Domain\Iam\Actions\AuthenticateUser;
+use App\Domain\Iam\Actions\EnrollMfa;
 use App\Domain\Iam\Actions\VerifyMfa;
 use App\Domain\Iam\Http\Requests\LoginRequest;
 use App\Domain\Iam\Http\Requests\MfaVerifyRequest;
 use App\Domain\Iam\Http\Resources\MeResource;
 use App\Domain\Iam\Models\AccessToken;
 use App\Domain\Iam\Models\User;
+use App\Domain\Iam\Support\AccessMap;
 use App\Domain\Platform\Actions\PlatformSession;
 use App\Domain\Shared\Audit\AuditLogger;
 use Illuminate\Http\JsonResponse;
@@ -41,6 +43,21 @@ final class SessionController
         $audit->log('Sesión', (string) $user->code, 'logout');
 
         return response()->json(['data' => ['message' => 'Cerraste sesión.']]);
+    }
+
+    public function enrollMfa(Request $request, EnrollMfa $enroll): JsonResponse
+    {
+        return response()->json(['data' => $enroll->start($this->user($request), $this->token($request))]);
+    }
+
+    public function confirmMfa(MfaVerifyRequest $request, EnrollMfa $enroll): JsonResponse
+    {
+        return response()->json(['data' => $enroll->confirm($this->user($request), $this->token($request), (string) $request->input('code'))]);
+    }
+
+    public function access(Request $request, AccessMap $access): JsonResponse
+    {
+        return response()->json(['data' => $access->for($this->user($request))]);
     }
 
     public function me(Request $request): MeResource

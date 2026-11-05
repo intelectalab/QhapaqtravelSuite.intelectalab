@@ -1,5 +1,7 @@
 const LOCALE = "es-PE";
 
+export const TIME_ZONE = "America/Lima";
+
 const CURRENCY_SYMBOL: Record<string, string> = { PEN: "S/", USD: "US$" };
 
 export function formatMoney(amount: number | string, currency = "PEN", options: { compact?: boolean } = {}): string {
@@ -24,9 +26,19 @@ export function formatPercent(value: number, digits = 1): string {
 export function formatDate(iso: string, style: "short" | "long" = "short"): string {
   const date = new Date(iso.length === 10 ? `${iso}T12:00:00` : iso);
   const options: Intl.DateTimeFormatOptions = style === "long"
-    ? { weekday: "long", day: "numeric", month: "long" }
-    : { day: "numeric", month: "short", year: "numeric" };
+    ? { weekday: "long", day: "numeric", month: "long", timeZone: TIME_ZONE }
+    : { day: "numeric", month: "short", year: "numeric", timeZone: TIME_ZONE };
   return new Intl.DateTimeFormat(LOCALE, options).format(date).replace(/\./g, "");
+}
+
+export function shortName(fullName: string): string {
+  const [first, last] = fullName.split(" ");
+  return last ? `${first} ${last}` : first;
+}
+
+export function formatDateTime(iso: string, withYear = true): string {
+  const options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: TIME_ZONE, ...(withYear ? { year: "numeric" } : {}) };
+  return new Intl.DateTimeFormat(LOCALE, options).format(new Date(iso)).replace(/\./g, "");
 }
 
 export function capitalize(text: string): string {

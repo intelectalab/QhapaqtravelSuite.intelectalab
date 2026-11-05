@@ -1,4 +1,4 @@
-import { MoreHorizontal, Plus, Send } from "lucide-react";
+import { Plus, Send } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Avatar } from "@/components/ui/Avatar";
@@ -6,9 +6,9 @@ import { Badge, LiveTag } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Tabs } from "@/components/ui/Tabs";
-import { shortName } from "@/data/workspace";
-import { formatDate, formatMoney } from "@/lib/format";
-import { getClient } from "@/lib/server/clients";
+import { formatDate, formatMoney, shortName } from "@/lib/format";
+import { getClient, getClientFormOptions } from "@/lib/server/clients";
+import { ClientArchiveAction, ClientEditAction } from "@/features/clients/ClientForms";
 import { FieldList, SectionTitle, StatCard } from "@/components/ui/Details";
 import { CurrentTrip, QuoteList, TripList } from "@/features/clients/ClientSections";
 
@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: PageProps<"/crm/clientes/[id]
 
 export default async function ClientePage({ params }: PageProps<"/crm/clientes/[id]">) {
   const { id } = await params;
-  const client = await getClient(id);
+  const [client, options] = await Promise.all([getClient(id), getClientFormOptions()]);
 
   const otherTrips = client.history.filter((trip) => trip.id !== client.currentTrip?.trip.id);
   const since = new Intl.DateTimeFormat("es-PE", { month: "long", year: "numeric" }).format(new Date(`${client.createdAt}T12:00:00`));
@@ -32,14 +32,19 @@ export default async function ClientePage({ params }: PageProps<"/crm/clientes/[
         leading={<Avatar name={client.name} size="lg" />}
         title={client.name}
         info={client.currentTrip ? <span className="ml-2 flex-none"><LiveTag>De viaje · día {client.currentTrip.dayNumber} de {client.currentTrip.days.length}</LiveTag></span> : null}
-        subtitle={[client.id, client.segment, `${client.city}, ${client.country}`, `Cliente desde ${since}`].join(" · ")}
+        subtitle={[client.id, client.segment, [client.city, client.country].filter(Boolean).join(", "), `Cliente desde ${since}`].join(" · ")}
         actions={
           <>
             <Button iconOnlyOnMobile icon={<Send size={16} />}>Escribirle</Button>
             <Button variant="primary" iconOnlyOnMobile icon={<Plus size={16} strokeWidth={2.4} />}>
               Nueva cotización
             </Button>
-            <Button iconOnly label="Más acciones" icon={<MoreHorizontal size={18} />} />
+            {options.canManage && (
+              <>
+                <ClientEditAction client={client} options={options} />
+                <ClientArchiveAction client={client} />
+              </>
+            )}
           </>
         }
       />

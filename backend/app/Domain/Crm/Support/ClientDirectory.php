@@ -50,6 +50,9 @@ final class ClientDirectory
             ...$this->summary($row),
             'tags' => $this->tags($row->tags),
             'birth_date' => $row->birth_date,
+            'doc_type' => $row->doc_type,
+            'doc_number' => $row->doc_number,
+            'owner_id' => $row->owner_id,
             'trips' => $trips->values(),
             'quotes' => DB::table('quote_quotes')->where('client_id', $row->id)->whereNull('deleted_at')->orderByDesc('created_at')
                 ->get(['code', 'title', 'status', 'valid_until']),
@@ -72,23 +75,14 @@ final class ClientDirectory
             ->groupBy('c.id', 'u.id')
             ->select([
                 'c.id', 'c.code', 'c.kind', 'c.name', 'c.doc_type', 'c.doc_number', 'c.email', 'c.phone', 'c.city', 'c.country',
-                'c.segment_code', 'c.nps_last', 'c.tags', 'c.birth_date', 'c.created_at', 'u.name as owner_name', 'u.avatar_color as owner_color',
+                'c.segment_code', 'c.owner_id', 'c.nps_last', 'c.tags', 'c.birth_date', 'c.created_at', 'u.name as owner_name', 'u.avatar_color as owner_color',
             ])
             ->selectRaw("count(r.id) filter (where {$counted}) as trips")
             ->selectRaw("coalesce(sum(r.total_amount * r.fx_rate) filter (where {$counted}), 0) as total_pen")
             ->selectRaw("max(r.travel_from) filter (where {$counted}) as last_trip_from")
             ->selectRaw("coalesce(bool_or({$counted} and r.travel_from <= ?::date and r.travel_to >= ?::date), false) as on_trip", [$today, $today]);
 
-        if ($this->ownPortfolioOnly($viewer)) {
-            $query->where('c.owner_id', $viewer->getKey());
-        }
-
-        return $query;
-    }
-
-    private function ownPortfolioOnly(User $viewer): bool
-    {
-        return $viewer->hasRole('sales') && ! $viewer->can('crm.records.reassign');
+        return Portfolio::scope($query, $viewer, 'c.owner_id');
     }
 
     private function summary(object $row): array

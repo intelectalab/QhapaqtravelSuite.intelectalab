@@ -32,7 +32,7 @@ export function FieldList({ fields }: { fields: { label: string; value: ReactNod
 
 export function StatCard({ label, value, note, tone }: { label: string; value: ReactNode; note?: ReactNode; tone?: "ok" | "bad" }) {
   return (
-    <div className="rounded-tile border border-line bg-surface px-4 py-3.5 shadow-card">
+    <div className="lift rounded-tile border border-line bg-surface px-4 py-3.5 shadow-card hover:border-[color-mix(in_srgb,var(--tint,var(--accent))_35%,transparent)]">
       <p className="text-[12.5px] text-fg-3">{label}</p>
       <p className={cn("mt-1.5 text-[22px] font-bold tracking-tight", tone === "ok" && "text-ok", tone === "bad" && "text-bad")}>{value}</p>
       {note && <p className="mt-0.5 text-xs text-fg-3">{note}</p>}

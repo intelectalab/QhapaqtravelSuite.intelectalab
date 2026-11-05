@@ -5,10 +5,9 @@ import { ChevronDown, ChevronsUpDown, LogOut, PanelLeftClose, PanelLeftOpen } fr
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { groupFor, isUnder, type NavGroup, type Screen } from "@/config/navigation";
-import { NAV_COUNTS } from "@/data/navCounts";
-import { shortName } from "@/data/workspace";
 import { cn } from "@/lib/cn";
-import { initials } from "@/lib/format";
+import { initials, shortName } from "@/lib/format";
+import type { NavCounts } from "@/lib/dashboard";
 import { useStoredValue } from "@/lib/useStoredValue";
 import { BrandMark } from "./BrandMark";
 import { useWorkspace } from "./Workspace";
@@ -23,7 +22,7 @@ const parseOpen = (raw: string | null): string[] => {
 };
 const serializeOpen = (value: string[]) => JSON.stringify(value);
 
-const groupCount = (group: NavGroup) => group.screens.reduce((total, screen) => total + (screen.countKey ? NAV_COUNTS[screen.countKey] : 0), 0);
+const groupCount = (group: NavGroup, counts: NavCounts) => group.screens.reduce((total, screen) => total + (screen.countKey ? counts[screen.countKey] ?? 0 : 0), 0);
 
 interface SidebarProps {
   collapsed: boolean;
@@ -144,7 +143,7 @@ function UserMenu({ collapsed }: { collapsed: boolean }) {
 
 function RailItem({ group, active, onClick }: { group: NavGroup; active: boolean; onClick: () => void }) {
   const Icon = group.icon;
-  const count = groupCount(group);
+  const count = groupCount(group, useWorkspace().counts);
   return (
     <button
       type="button"
@@ -161,7 +160,7 @@ function RailItem({ group, active, onClick }: { group: NavGroup; active: boolean
 }
 
 function GroupBlock({ group, open, onToggle, pathname, onNavigate }: { group: NavGroup; open: boolean; onToggle: () => void; pathname: string; onNavigate?: () => void }) {
-  const count = groupCount(group);
+  const count = groupCount(group, useWorkspace().counts);
   return (
     <div className="mb-0.5">
       <button
@@ -187,7 +186,8 @@ function GroupBlock({ group, open, onToggle, pathname, onNavigate }: { group: Na
 
 function ScreenLink({ screen, active, onNavigate }: { screen: Screen; active: boolean; onNavigate?: () => void }) {
   const Icon = screen.icon;
-  const count = screen.countKey ? NAV_COUNTS[screen.countKey] : 0;
+  const { counts } = useWorkspace();
+  const count = screen.countKey ? counts[screen.countKey] ?? 0 : 0;
   return (
     <Link
       href={screen.href}
