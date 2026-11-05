@@ -1,0 +1,59 @@
+permiso,modulo,descripcion,pantallas_que_habilita,super_admin,tenant_admin,manager,sales,operations,finance,accounting,guide,driver,b2b,customer,passenger,provider
+admin.tenant.manage,Administración,tenants y planes de la plataforma,admin/tenants | admin/integraciones | admin/plataforma | admin,1,0,0,0,0,0,0,0,0,0,0,0,0
+admin.users.manage,Administración,usuarios y sedes,admin/usuarios | admin,0,1,0,0,0,0,0,0,0,0,0,0,0
+admin.roles.manage,Administración,roles y permisos,admin/roles,0,1,0,0,0,0,0,0,0,0,0,0,0
+admin.settings.manage,Administración,"configuración, notificaciones e integraciones",admin/configuracion | admin/notificaciones | admin/integraciones | admin/reglas | admin/comunicaciones | admin/monedas,0,1,0,0,0,0,0,0,0,0,0,0,0
+admin.audit.view,Administración,consultar auditoría,admin/auditoria,1,1,1,0,0,0,0,0,0,0,0,0,0
+admin.billing.manage,Administración,"suscripción, plan y facturación de la plataforma (admin/suscripcion) — derivada de la pantalla (supuesto)",admin/suscripcion,0,1,0,0,0,0,0,0,0,0,0,0,0
+admin.api.manage,Administración,"API keys, apps OAuth y webhooks del tenant (admin/api) — derivada de la pantalla (supuesto)",admin/api | canales/integracion-web,0,1,0,0,0,0,0,0,0,0,0,0,0
+approvals.view,Colaboración,bandeja de aprobaciones (aprobaciones) — derivada de la pantalla (supuesto),aprobaciones,0,1,1,1,1,1,0,0,0,0,0,0,0
+inbox.view,Colaboración,consultar la bandeja omnicanal (inbox) — derivada de la pantalla (supuesto),inbox,0,1,1,1,1,0,0,0,0,0,0,0,0
+inbox.manage,Colaboración,responder y gestionar conversaciones del inbox — derivada de la pantalla (supuesto),,0,1,1,1,1,0,0,0,0,0,0,0,0
+crm.leads.view,CRM,ver leads,crm/leads | crm,0,1,1,1,0,0,0,0,0,0,0,0,0
+crm.leads.manage,CRM,gestionar leads,,0,1,1,1,0,0,0,0,0,0,0,0,0
+crm.opportunities.manage,CRM,oportunidades,crm/oportunidades,0,1,1,1,0,0,0,0,0,0,0,0,0
+crm.activities.manage,CRM,actividades,crm/actividades,0,1,1,1,0,0,0,0,0,0,0,0,0
+crm.clients.manage,CRM,clientes 360 y postventa,crm/clientes | crm/postventa | canales/portal-cliente | canales/resenas-propias | canales/resenas,0,1,1,1,0,0,0,0,0,0,0,0,0
+crm.targets.view,CRM,consultar metas comerciales (crm/metas) — derivada de la pantalla (supuesto),crm/metas,0,1,1,1,0,0,0,0,0,0,0,0,0
+crm.targets.manage,CRM,crear y ajustar metas comerciales — derivada de la pantalla (supuesto),crm/metas,0,1,1,0,0,0,0,0,0,0,0,0,0
+crm.claims.manage,CRM,reclamaciones y libro de reclamaciones — derivada de la pantalla (supuesto),crm/reclamaciones | libro-reclamaciones,0,1,1,0,0,0,0,0,0,0,0,0,0
+marketing.campaigns.manage,Marketing,"campañas, segmentos y automatizaciones de marketing — derivada de la pantalla (supuesto)",marketing,0,1,1,0,0,0,0,0,0,0,0,0,0
+catalog.products.view,Catálogo,consultar oferta,catalogo/productos | catalogo/salidas | catalogo/tarifas | catalogo/servicios | catalogo/destinos | catalogo,0,1,1,1,1,1,0,0,0,1,0,0,0
+catalog.products.create,Catálogo,crear productos,,0,1,1,0,0,0,0,0,0,0,0,0,0
+catalog.products.update,Catálogo,editar productos,catalogo/proveedores | catalogo/categorias,0,1,1,0,0,0,0,0,0,0,0,0,0
+catalog.products.activate,Catálogo,activar / inactivar,,0,1,1,0,0,0,0,0,0,0,0,0,0
+catalog.products.manage_rates,Catálogo,tarifas y temporadas,,0,1,1,0,0,0,0,0,0,0,0,0,0
+catalog.products.manage_availability,Catálogo,"salidas, cupos y holds",,0,1,1,0,1,0,0,0,0,0,0,0,0
+catalog.products.view_profitability,Catálogo,ver costos y márgenes,catalogo/cupos,0,1,1,0,0,1,0,0,0,0,0,0,0
+catalog.products.publish,Catálogo,publicar en canales,,0,1,1,0,0,0,0,0,0,0,0,0,0
+catalog.providers.manage,Catálogo,gestionar proveedores y servicios,catalogo/proveedores,0,1,0,0,1,0,0,0,0,0,0,0,0
+catalog.allotments.manage,Catálogo,contratos de cupos (allotments) y liberaciones — derivada de la pantalla (supuesto),catalogo/cupos,0,1,1,0,1,0,0,0,0,0,0,0,0
+quotes.view,Cotizaciones,consultar,cotizaciones,0,1,1,1,0,1,0,0,0,0,1,0,0
+quotes.create,Cotizaciones,crear,,0,1,1,1,0,0,0,0,0,1,0,0,0
+quotes.approve_internal,Cotizaciones,aprobar internamente,,0,1,1,0,0,0,0,0,0,0,0,0,0
+quotes.send,Cotizaciones,enviar al cliente,,0,1,1,1,0,0,0,0,0,0,0,0,0
+quotes.discount_override,Cotizaciones,autorizar descuentos,,0,1,1,0,0,0,0,0,0,0,0,0,0
+reservations.view,Reservas,consultar,reservas,0,1,1,1,1,1,1,0,0,1,1,1,0
+reservations.create,Reservas,crear,operaciones/documentos-viaje,0,1,1,1,0,0,0,0,0,1,0,0,0
+reservations.modify,Reservas,modificar,,0,1,1,0,1,0,0,0,0,0,0,0,0
+reservations.cancel,Reservas,cancelar,,0,1,1,0,0,0,0,0,0,0,0,0,0
+operations.view,Operaciones,consultar,operaciones,0,1,1,0,1,0,0,1,1,0,0,0,1
+operations.assign,Operaciones,asignar recursos,canales/portal-pasajero | mobile | admin/comunicaciones,0,1,1,0,1,0,0,0,0,0,0,0,0
+operations.vouchers,Operaciones,emitir vouchers,,0,1,1,0,1,0,0,0,0,0,0,0,0
+operations.incidents,Operaciones,registrar incidencias,,0,1,1,0,1,0,0,1,1,0,0,0,0
+operations.close,Operaciones,cerrar servicios,,0,1,1,0,1,0,0,0,0,0,0,0,0
+operations.travel_docs,Operaciones,documentos de viaje de los pasajeros — derivada de la pantalla (supuesto),operaciones/documentos-viaje,0,1,1,0,1,0,0,0,0,0,0,0,0
+finance.receivables,Finanzas,cuentas por cobrar,crm/clientes | finanzas/cobros | finanzas/pagos | finanzas,0,1,1,0,0,1,1,0,0,0,0,0,0
+finance.payments.register,Finanzas,registrar pagos,finanzas/pagos | finanzas/conciliacion,0,1,0,0,0,1,0,0,0,0,0,0,0
+finance.payments.revert,Finanzas,revertir pagos,,0,1,0,0,0,1,0,0,0,0,0,0,0
+finance.payables,Finanzas,cuentas por pagar,catalogo/proveedores | finanzas/proveedores,0,1,1,0,0,1,0,0,0,0,0,0,0
+finance.commissions,Finanzas,comisiones,finanzas/comisiones,0,1,1,0,0,1,0,0,0,0,0,0,0
+finance.profitability,Finanzas,rentabilidad,finanzas/rentabilidad | finanzas/facturacion | finanzas/conciliacion,0,1,1,0,0,1,0,0,0,0,0,0,0
+finance.invoicing,Finanzas,facturación electrónica,finanzas/facturacion | finanzas,0,1,0,0,0,1,1,0,0,0,0,0,0
+finance.treasury,Finanzas,"tesorería: cuentas, caja chica y movimientos — derivada de la pantalla (supuesto)",finanzas/tesoreria | admin/monedas,0,1,1,0,0,1,1,0,0,0,0,0,0
+channels.b2b.manage,Canales,canal B2B,canales/b2b | canales/portal-cliente | canales/portal-pasajero,0,1,1,0,0,0,0,0,0,0,0,0,0
+channels.ecommerce.manage,Canales,e-commerce,canales/ecommerce | canales/resenas-propias | canales/resenas | canales/integracion-web,0,1,1,0,0,0,0,0,0,0,0,0,0
+channels.cms.publish,Canales,CMS,canales/cms | canales/portal-cliente | canales/portal-pasajero,0,1,1,0,0,0,0,0,0,0,0,0,0
+reports.view,Reportes,consultar reportes,reportes,0,1,1,1,1,1,1,0,0,0,0,0,0
+reports.export,Reportes,exportar y programar,,0,1,1,0,0,1,1,0,0,0,0,0,0
+TOTAL,,,,2,56,47,16,16,15,6,2,2,4,2,1,1

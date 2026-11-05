@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make:*)",
+      "Bash(php artisan:*)",
+      "Bash(composer:*)",
+      "Bash(./vendor/bin/pest:*)",
+      "Bash(./vendor/bin/pint:*)",
+      "Bash(./vendor/bin/phpstan:*)",
+      "Bash(npm run:*)",
+      "Bash(npx playwright:*)",
+      "Bash(npx expo:*)",
+      "Bash(docker compose:*)",
+      "Bash(python3 docs/kit/api/*)",
+      "Bash(bash docs/kit/database/tests/validate.sh:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [
+      "Read(./**/.env)",
+      "Read(./**/.env.production)",
+      "Bash(git push --force:*)",
+      "Bash(php artisan migrate:fresh --env=production:*)",
+      "Bash(rm -rf:*)"
+    ]
+  }
+}

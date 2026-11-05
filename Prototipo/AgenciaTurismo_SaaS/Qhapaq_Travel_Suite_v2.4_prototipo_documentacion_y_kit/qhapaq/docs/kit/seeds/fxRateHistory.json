@@ -1,0 +1,137 @@
+[
+  {
+    "id": "FXH-GBP-4",
+    "code": "GBP",
+    "rate": 4.78,
+    "prev": 4.79,
+    "at": "2026-09-30 08:00",
+    "by": "U07",
+    "source": "Manual (Finanzas)"
+  },
+  {
+    "id": "FXH-GBP-3",
+    "code": "GBP",
+    "rate": 4.79,
+    "prev": 4.78,
+    "at": "2026-09-29 08:00",
+    "by": "Sistema",
+    "source": "SBS referencial"
+  },
+  {
+    "id": "FXH-GBP-2",
+    "code": "GBP",
+    "rate": 4.78,
+    "prev": 4.79,
+    "at": "2026-09-28 08:00",
+    "by": "Sistema",
+    "source": "SBS referencial"
+  },
+  {
+    "id": "FXH-GBP-1",
+    "code": "GBP",
+    "rate": 4.79,
+    "prev": 4.8,
+    "at": "2026-09-27 08:00",
+    "by": "Sistema",
+    "source": "SBS referencial"
+  },
+  {
+    "id": "FXH-GBP-0",
+    "code": "GBP",
+    "rate": 4.8,
+    "prev": null,
+    "at": "2026-09-26 08:00",
+    "by": "Sistema",
+    "source": "SBS referencial"
+  },
+  {
+    "id": "FXH-EUR-4",
+    "code": "EUR",
+    "rate": 4.05,
+    "prev": 4.04,
+    "at": "2026-09-30 08:00",
+    "by": "U07",
+    "source": "Manual (Finanzas)"
+  },
+  {
+    "id": "FXH-EUR-3",
+    "code": "EUR",
+    "rate": 4.04,
+    "prev": 4.06,
+    "at": "2026-09-29 08:00",
+    "by": "Sistema",
+    "source": "SBS referencial"
+  },
+  {
+    "id": "FXH-EUR-2",
+    "code": "EUR",
+    "rate": 4.06,
+    "prev": 4.07,
+    "at": "2026-09-28 08:00",
+    "by": "Sistema",
+    "source": "SBS referencial"
+  },
+  {
+    "id": "FXH-EUR-1",
+    "code": "EUR",
+    "rate": 4.07,
+    "prev": 4.09,
+    "at": "2026-09-27 08:00",
+    "by": "Sistema",
+    "source": "SBS referencial"
+  },
+  {
+    "id": "FXH-EUR-0",
+    "code": "EUR",
+    "rate": 4.09,
+    "prev": null,
+    "at": "2026-09-26 08:00",
+    "by": "Sistema",
+    "source": "SBS referencial"
+  },
+  {
+    "id": "FXH-USD-4",
+    "code": "USD",
+    "rate": 3.74,
+    "prev": 3.73,
+    "at": "2026-09-30 08:00",
+    "by": "U07",
+    "source": "Manual (Finanzas)"
+  },
+  {
+    "id": "FXH-USD-3",
+    "code": "USD",
+    "rate": 3.73,
+    "prev": 3.75,
+    "at": "2026-09-29 08:00",
+    "by": "Sistema",
+    "source": "SBS referencial"
+  },
+  {
+    "id": "FXH-USD-2",
+    "code": "USD",
+    "rate": 3.75,
+    "prev": 3.75,
+    "at": "2026-09-28 08:00",
+    "by": "Sistema",
+    "source": "SBS referencial"
+  },
+  {
+    "id": "FXH-USD-1",
+    "code": "USD",
+    "rate": 3.75,
+    "prev": 3.76,
+    "at": "2026-09-27 08:00",
+    "by": "Sistema",
+    "source": "SBS referencial"
+  },
+  {
+    "id": "FXH-USD-0",
+    "code": "USD",
+    "rate": 3.76,
+    "prev": null,
+    "at": "2026-09-26 08:00",
+    "by": "Sistema",
+    "source": "SBS referencial"
+  }
+]

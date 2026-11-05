@@ -1,0 +1,224 @@
+[
+  {
+    "id": "CLI-0001",
+    "kind": "Persona",
+    "name": "Gabriela Ríos Montoya",
+    "doc": "DNI 45781236",
+    "email": "gabriela.rios@correo.pe",
+    "phone": "999 102 334",
+    "country": "Perú",
+    "city": "Lima",
+    "segment": "Retail",
+    "owner": "U04",
+    "createdAt": "2025-12-10",
+    "tags": [
+      "Familia",
+      "Recurrente"
+    ],
+    "nps": 9,
+    "birth": "1988-04-12",
+    "contacts": []
+  },
+  {
+    "id": "CLI-0002",
+    "kind": "Empresa",
+    "name": "Minera Cordillera Blanca S.A.",
+    "doc": "RUC 20100088771",
+    "email": "viajes@mcblanca.com.pe",
+    "phone": "01 705 3300",
+    "country": "Perú",
+    "city": "Lima",
+    "segment": "Corporativo",
+    "owner": "U02",
+    "createdAt": "2026-01-20",
+    "tags": [
+      "Incentivos",
+      "Crédito 30d"
+    ],
+    "nps": 8,
+    "contactName": "Úrsula Benavides (RR. HH.)",
+    "contacts": [
+      {
+        "name": "Úrsula Benavides (RR. HH.)",
+        "role": "Contacto principal",
+        "email": "viajes@mcblanca.com.pe",
+        "phone": "01 705 3300",
+        "primary": true
+      }
+    ]
+  },
+  {
+    "id": "CLI-0003",
+    "kind": "Persona",
+    "name": "Thomas Keller",
+    "doc": "Pasaporte C4F82991",
+    "email": "t.keller@mail.de",
+    "phone": "+49 171 5550102",
+    "country": "Alemania",
+    "city": "Múnich",
+    "segment": "Retail",
+    "owner": "U03",
+    "createdAt": "2026-06-02",
+    "tags": [
+      "Extranjero",
+      "Aventura"
+    ],
+    "nps": 10,
+    "contacts": []
+  },
+  {
+    "id": "CLI-0004",
+    "kind": "Empresa",
+    "name": "Colegio San Agustín de Arequipa",
+    "doc": "RUC 20455001122",
+    "email": "promocion@csaa.edu.pe",
+    "phone": "054 22 1180",
+    "country": "Perú",
+    "city": "Arequipa",
+    "segment": "Grupos",
+    "owner": "U03",
+    "createdAt": "2026-05-14",
+    "tags": [
+      "Viaje de promoción"
+    ],
+    "nps": null,
+    "contactName": "Prof. Álvaro Núñez",
+    "contacts": [
+      {
+        "name": "Prof. Álvaro Núñez",
+        "role": "Contacto principal",
+        "email": "promocion@csaa.edu.pe",
+        "phone": "054 22 1180",
+        "primary": true
+      }
+    ]
+  },
+  {
+    "id": "CLI-0005",
+    "kind": "Persona",
+    "name": "Familia Castañeda Ugarte",
+    "doc": "DNI 41220988",
+    "email": "jcastaneda@correo.pe",
+    "phone": "987 450 221",
+    "country": "Perú",
+    "city": "Trujillo",
+    "segment": "VIP",
+    "owner": "U04",
+    "createdAt": "2025-11-28",
+    "tags": [
+      "VIP",
+      "Hotel 5*"
+    ],
+    "nps": 9,
+    "contacts": []
+  },
+  {
+    "id": "CLI-0006",
+    "kind": "Persona",
+    "name": "Sophie Martin",
+    "doc": "Pasaporte 19FR22871",
+    "email": "sophie.martin@mail.fr",
+    "phone": "+33 6 12 34 56 78",
+    "country": "Francia",
+    "city": "Lyon",
+    "segment": "Retail",
+    "owner": "U03",
+    "createdAt": "2026-08-19",
+    "tags": [
+      "Extranjero"
+    ],
+    "nps": null,
+    "contacts": []
+  },
+  {
+    "id": "CLI-0007",
+    "kind": "Empresa",
+    "name": "Wayra Viajes S.A.C. (agencia B2B)",
+    "doc": "RUC 20600991230",
+    "email": "reservas@wayraviajes.pe",
+    "phone": "01 445 9012",
+    "country": "Perú",
+    "city": "Lima",
+    "segment": "B2B",
+    "owner": "U02",
+    "createdAt": "2026-02-01",
+    "tags": [
+      "Mayorista"
+    ],
+    "nps": 8,
+    "contactName": "Pamela Ortiz",
+    "contacts": [
+      {
+        "name": "Pamela Ortiz",
+        "role": "Contacto principal",
+        "email": "reservas@wayraviajes.pe",
+        "phone": "01 445 9012",
+        "primary": true
+      }
+    ]
+  },
+  {
+    "id": "CLI-0008",
+    "kind": "Persona",
+    "name": "Ricardo Benites Alarcón",
+    "doc": "DNI 70112045",
+    "email": "rbenites@correo.pe",
+    "phone": "945 201 889",
+    "country": "Perú",
+    "city": "Lima",
+    "segment": "Retail",
+    "owner": "U04",
+    "createdAt": "2026-09-02",
+    "tags": [
+      "Luna de miel"
+    ],
+    "nps": null,
+    "contacts": []
+  },
+  {
+    "id": "CLI-0009",
+    "kind": "Empresa",
+    "name": "Laboratorios Andinos S.A.",
+    "doc": "RUC 20511220034",
+    "email": "eventos@labandinos.pe",
+    "phone": "01 611 7000",
+    "country": "Perú",
+    "city": "Lima",
+    "segment": "Corporativo",
+    "owner": "U02",
+    "createdAt": "2026-07-11",
+    "tags": [
+      "Convención"
+    ],
+    "nps": null,
+    "contactName": "Daniela Soto (Marketing)",
+    "contacts": [
+      {
+        "name": "Daniela Soto (Marketing)",
+        "role": "Contacto principal",
+        "email": "eventos@labandinos.pe",
+        "phone": "01 611 7000",
+        "primary": true
+      }
+    ]
+  },
+  {
+    "id": "CLI-0010",
+    "kind": "Persona",
+    "name": "Emily Johnson",
+    "doc": "Passport 58812290",
+    "email": "emily.j@mail.com",
+    "phone": "+1 415 555 0192",
+    "country": "Estados Unidos",
+    "city": "San Francisco",
+    "segment": "Retail",
+    "owner": "U03",
+    "createdAt": "2026-09-18",
+    "tags": [
+      "Extranjero",
+      "Web"
+    ],
+    "nps": null,
+    "contacts": []
+  }
+]

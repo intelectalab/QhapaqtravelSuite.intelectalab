@@ -1,0 +1,54 @@
+[
+  {
+    "id": "ERR-0418",
+    "ts": "2026-09-29 06:00",
+    "source": "Job",
+    "ref": "JOB-07",
+    "target": "Adapter tren (Ferrovía Sur Andina)",
+    "error": "Timeout 30 s al consultar disponibilidad",
+    "cls": "Transitorio",
+    "attempt": 3,
+    "max": 5,
+    "nextRetry": "2026-09-29 06:16",
+    "status": "reintentando"
+  },
+  {
+    "id": "ERR-0417",
+    "ts": "2026-09-28 18:00",
+    "source": "Notificación",
+    "ref": "NTF-9916",
+    "target": "WhatsApp Business API (sandbox)",
+    "error": "Número destino no registrado en sandbox (código 131026)",
+    "cls": "Permanente",
+    "attempt": 3,
+    "max": 3,
+    "nextRetry": "—",
+    "status": "fallo_definitivo"
+  },
+  {
+    "id": "ERR-0416",
+    "ts": "2026-09-28 09:00",
+    "source": "Job",
+    "ref": "JOB-03",
+    "target": "Recordatorios de pago",
+    "error": "1 envío WhatsApp fallido",
+    "cls": "Permanente",
+    "attempt": 1,
+    "max": 1,
+    "nextRetry": "—",
+    "status": "fallo_definitivo"
+  },
+  {
+    "id": "ERR-0415",
+    "ts": "2026-09-27 14:12",
+    "source": "Integración",
+    "ref": "INT-03",
+    "target": "Correo transaccional",
+    "error": "SMTP 421 servicio temporalmente no disponible",
+    "cls": "Transitorio",
+    "attempt": 2,
+    "max": 5,
+    "nextRetry": "—",
+    "status": "resuelto"
+  }
+]

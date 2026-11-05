@@ -1,0 +1,42 @@
+[
+  {
+    "id": "BNK-1",
+    "date": "2026-09-29",
+    "bank": "BCP",
+    "desc": "ABONO TRANSF INTERBANK REF 99812",
+    "amount": 1907.4,
+    "currency": "PEN",
+    "match": "PAG-01922",
+    "status": "sugerido"
+  },
+  {
+    "id": "BNK-2",
+    "date": "2026-09-28",
+    "bank": "BCP",
+    "desc": "ABONO YAPE 44910022",
+    "amount": 1496,
+    "currency": "PEN",
+    "match": "PAG-01921",
+    "status": "conciliado"
+  },
+  {
+    "id": "BNK-3",
+    "date": "2026-09-28",
+    "bank": "BBVA",
+    "desc": "ABONO SIN REFERENCIA",
+    "amount": 350,
+    "currency": "PEN",
+    "match": null,
+    "status": "excepción"
+  },
+  {
+    "id": "BNK-4",
+    "date": "2026-09-27",
+    "bank": "BCP",
+    "desc": "CARGO PAGO PROV 20480099887",
+    "amount": -11781,
+    "currency": "PEN",
+    "match": "CXP-00403",
+    "status": "conciliado"
+  }
+]

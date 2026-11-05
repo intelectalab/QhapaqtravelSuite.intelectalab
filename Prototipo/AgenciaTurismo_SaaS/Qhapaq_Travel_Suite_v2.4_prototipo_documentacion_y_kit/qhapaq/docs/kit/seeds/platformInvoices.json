@@ -1,0 +1,1282 @@
+[
+  {
+    "id": "FQ01-00000215",
+    "tenantId": "TNT-0004",
+    "kind": "suscripcion",
+    "period": "2026-09",
+    "periodFrom": "2026-09-26",
+    "periodTo": "2026-10-25",
+    "issueDate": "2026-09-26",
+    "dueDate": "2026-10-03",
+    "lines": [
+      {
+        "desc": "Suscripción plan Enterprise — periodo 26 set 2026 al 25 oct 2026",
+        "qty": 1,
+        "unit": 3150,
+        "amount": 3150
+      }
+    ],
+    "subtotal": 3150,
+    "igv": 567,
+    "total": 3717,
+    "currency": "PEN",
+    "status": "fallida",
+    "paidAt": null,
+    "method": "Visa •••• 0092",
+    "attempts": [
+      {
+        "ts": "2026-09-26 06:00",
+        "result": "rechazado",
+        "code": "insufficient_funds",
+        "msg": "Fondos insuficientes (51)"
+      },
+      {
+        "ts": "2026-09-27 10:00",
+        "result": "rechazado",
+        "code": "insufficient_funds",
+        "msg": "Fondos insuficientes (51) · reintento 1 de 3"
+      }
+    ],
+    "dunning": {
+      "failedAt": "2026-09-26",
+      "retriesDone": 1,
+      "nextRetryAt": "2026-09-29 10:00",
+      "extendedDays": 0
+    },
+    "sunat": "aceptado",
+    "hash": "feb5c697448a995473072128b05c",
+    "billTo": {
+      "name": "Altiplano Corporate Travel S.A.",
+      "ruc": "20603337788",
+      "address": "Av. El Puerto 455, Puno"
+    }
+  },
+  {
+    "id": "FQ01-00000214",
+    "tenantId": "TNT-0002",
+    "kind": "suscripcion",
+    "period": "2026-09",
+    "periodFrom": "2026-09-15",
+    "periodTo": "2026-10-14",
+    "issueDate": "2026-09-15",
+    "dueDate": "2026-09-15",
+    "lines": [
+      {
+        "desc": "Suscripción plan Professional — periodo 15 set 2026 al 14 oct 2026",
+        "qty": 1,
+        "unit": 1190,
+        "amount": 1190
+      }
+    ],
+    "subtotal": 1190,
+    "igv": 214.2,
+    "total": 1404.2,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-09-15 06:05",
+    "method": "Mastercard •••• 1034",
+    "attempts": [
+      {
+        "ts": "2026-09-15 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "2b13fe362f0ccf3f9319f0499d36",
+    "billTo": {
+      "name": "Selva Viva Expediciones E.I.R.L.",
+      "ruc": "20609876543",
+      "address": "Jr. Putumayo 382, Iquitos, Loreto"
+    }
+  },
+  {
+    "id": "FQ01-00000213",
+    "tenantId": "TNT-0001",
+    "kind": "suscripcion",
+    "period": "2026-09",
+    "periodFrom": "2026-09-03",
+    "periodTo": "2026-10-02",
+    "issueDate": "2026-09-03",
+    "dueDate": "2026-09-03",
+    "lines": [
+      {
+        "desc": "Suscripción plan Enterprise — periodo 03 set 2026 al 02 oct 2026",
+        "qty": 1,
+        "unit": 2890,
+        "amount": 2890
+      },
+      {
+        "desc": "Add-on: Dominio propio + certificado SSL",
+        "qty": 1,
+        "unit": 45,
+        "amount": 45
+      },
+      {
+        "desc": "Add-on: Paquete WhatsApp +1 000 mensajes/mes",
+        "qty": 2,
+        "unit": 65,
+        "amount": 130
+      }
+    ],
+    "subtotal": 3065,
+    "igv": 551.7,
+    "total": 3616.7,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-09-03 06:04",
+    "method": "Visa •••• 4821",
+    "attempts": [
+      {
+        "ts": "2026-09-03 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "3a435c6a0586afdfd2d1498c69b2",
+    "billTo": {
+      "name": "Andes Horizonte Travel S.A.C.",
+      "ruc": "20611234567",
+      "address": "Av. José Larco 1150, Of. 602, Miraflores, Lima"
+    }
+  },
+  {
+    "id": "FQ01-00000212",
+    "tenantId": "TNT-0003",
+    "kind": "suscripcion",
+    "period": "2026-09",
+    "periodFrom": "2026-09-02",
+    "periodTo": "2026-10-01",
+    "issueDate": "2026-09-02",
+    "dueDate": "2026-09-02",
+    "lines": [
+      {
+        "desc": "Suscripción plan Professional — periodo 02 set 2026 al 01 oct 2026",
+        "qty": 1,
+        "unit": 1190,
+        "amount": 1190
+      }
+    ],
+    "subtotal": 1190,
+    "igv": 214.2,
+    "total": 1404.2,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-09-05 10:00",
+    "method": "Visa •••• 7719",
+    "attempts": [
+      {
+        "ts": "2026-09-02 06:00",
+        "result": "rechazado",
+        "code": "card_declined",
+        "msg": "Tarjeta rechazada por el emisor (05)"
+      },
+      {
+        "ts": "2026-09-03 10:00",
+        "result": "rechazado",
+        "code": "card_declined",
+        "msg": "Tarjeta rechazada por el emisor (05)"
+      },
+      {
+        "ts": "2026-09-05 10:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado (reintento 2 de 3)"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "b33b650ffaa348e07ebde490008f",
+    "billTo": {
+      "name": "Costa Sur DMC S.A.C.",
+      "ruc": "20605551234",
+      "address": "Av. Paracas 214, Paracas, Ica"
+    },
+    "recovered": true
+  },
+  {
+    "id": "FQ01-00000211",
+    "tenantId": "TNT-0004",
+    "kind": "suscripcion",
+    "period": "2026-08",
+    "periodFrom": "2026-08-26",
+    "periodTo": "2026-09-25",
+    "issueDate": "2026-08-26",
+    "dueDate": "2026-08-26",
+    "lines": [
+      {
+        "desc": "Suscripción plan Enterprise — periodo 26 ago 2026 al 25 set 2026",
+        "qty": 1,
+        "unit": 3150,
+        "amount": 3150
+      }
+    ],
+    "subtotal": 3150,
+    "igv": 567,
+    "total": 3717,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-08-26 06:02",
+    "method": "Visa •••• 0092",
+    "attempts": [
+      {
+        "ts": "2026-08-26 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "9b761e1b5ebf533239112bd18f8c",
+    "billTo": {
+      "name": "Altiplano Corporate Travel S.A.",
+      "ruc": "20603337788",
+      "address": "Av. El Puerto 455, Puno"
+    }
+  },
+  {
+    "id": "FQ01-00000210",
+    "tenantId": "TNT-0002",
+    "kind": "suscripcion",
+    "period": "2026-08",
+    "periodFrom": "2026-08-15",
+    "periodTo": "2026-09-14",
+    "issueDate": "2026-08-15",
+    "dueDate": "2026-08-15",
+    "lines": [
+      {
+        "desc": "Suscripción plan Professional — periodo 15 ago 2026 al 14 set 2026",
+        "qty": 1,
+        "unit": 1190,
+        "amount": 1190
+      }
+    ],
+    "subtotal": 1190,
+    "igv": 214.2,
+    "total": 1404.2,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-08-15 06:01",
+    "method": "Mastercard •••• 1034",
+    "attempts": [
+      {
+        "ts": "2026-08-15 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "a0d8c04224c4edbb1ad3a910a9fa",
+    "billTo": {
+      "name": "Selva Viva Expediciones E.I.R.L.",
+      "ruc": "20609876543",
+      "address": "Jr. Putumayo 382, Iquitos, Loreto"
+    }
+  },
+  {
+    "id": "FQ01-00000209",
+    "tenantId": "TNT-0001",
+    "kind": "suscripcion",
+    "period": "2026-08",
+    "periodFrom": "2026-08-03",
+    "periodTo": "2026-09-02",
+    "issueDate": "2026-08-03",
+    "dueDate": "2026-08-03",
+    "lines": [
+      {
+        "desc": "Suscripción plan Enterprise — periodo 03 ago 2026 al 02 set 2026",
+        "qty": 1,
+        "unit": 2890,
+        "amount": 2890
+      },
+      {
+        "desc": "Add-on: Dominio propio + certificado SSL",
+        "qty": 1,
+        "unit": 45,
+        "amount": 45
+      },
+      {
+        "desc": "Add-on: Paquete WhatsApp +1 000 mensajes/mes",
+        "qty": 2,
+        "unit": 65,
+        "amount": 130
+      }
+    ],
+    "subtotal": 3065,
+    "igv": 551.7,
+    "total": 3616.7,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-08-03 06:00",
+    "method": "Visa •••• 4821",
+    "attempts": [
+      {
+        "ts": "2026-08-03 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "525b23dd40a49e9e851fbe251195",
+    "billTo": {
+      "name": "Andes Horizonte Travel S.A.C.",
+      "ruc": "20611234567",
+      "address": "Av. José Larco 1150, Of. 602, Miraflores, Lima"
+    }
+  },
+  {
+    "id": "FQ01-00000208",
+    "tenantId": "TNT-0003",
+    "kind": "suscripcion",
+    "period": "2026-08",
+    "periodFrom": "2026-08-02",
+    "periodTo": "2026-09-01",
+    "issueDate": "2026-08-02",
+    "dueDate": "2026-08-02",
+    "lines": [
+      {
+        "desc": "Suscripción plan Professional — periodo 02 ago 2026 al 01 set 2026",
+        "qty": 1,
+        "unit": 1190,
+        "amount": 1190
+      }
+    ],
+    "subtotal": 1190,
+    "igv": 214.2,
+    "total": 1404.2,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-08-02 06:09",
+    "method": "Visa •••• 7719",
+    "attempts": [
+      {
+        "ts": "2026-08-02 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "f99030cc2f20eba2bc35e7e32c5d",
+    "billTo": {
+      "name": "Costa Sur DMC S.A.C.",
+      "ruc": "20605551234",
+      "address": "Av. Paracas 214, Paracas, Ica"
+    }
+  },
+  {
+    "id": "FQ01-00000207",
+    "tenantId": "TNT-0006",
+    "kind": "suscripcion",
+    "period": "2026-08",
+    "periodFrom": "2026-08-01",
+    "periodTo": "2026-08-31",
+    "issueDate": "2026-08-01",
+    "dueDate": "2026-08-08",
+    "lines": [
+      {
+        "desc": "Suscripción plan Starter — periodo 01 ago 2026 al 31 ago 2026",
+        "qty": 1,
+        "unit": 490,
+        "amount": 490
+      }
+    ],
+    "subtotal": 490,
+    "igv": 88.2,
+    "total": 578.2,
+    "currency": "PEN",
+    "status": "vencida",
+    "paidAt": null,
+    "method": "Visa •••• 5530 (vencida)",
+    "attempts": [
+      {
+        "ts": "2026-08-01 06:00",
+        "result": "rechazado",
+        "code": "expired_card",
+        "msg": "Tarjeta vencida (54)"
+      },
+      {
+        "ts": "2026-08-02 10:00",
+        "result": "rechazado",
+        "code": "expired_card",
+        "msg": "Tarjeta vencida (54)"
+      },
+      {
+        "ts": "2026-08-04 10:00",
+        "result": "rechazado",
+        "code": "expired_card",
+        "msg": "Tarjeta vencida (54)"
+      },
+      {
+        "ts": "2026-08-08 10:00",
+        "result": "rechazado",
+        "code": "expired_card",
+        "msg": "Tarjeta vencida (54)"
+      }
+    ],
+    "dunning": {
+      "failedAt": "2026-08-01",
+      "retriesDone": 3,
+      "nextRetryAt": null,
+      "extendedDays": 0,
+      "exhausted": true
+    },
+    "sunat": "aceptado",
+    "hash": "57990e320dad07db98ef027e3e35",
+    "billTo": {
+      "name": "Nevados Tours S.R.L.",
+      "ruc": "20601119090",
+      "address": "Av. Luzuriaga 612, Huaraz, Áncash"
+    }
+  },
+  {
+    "id": "FQ01-00000206",
+    "tenantId": "TNT-0004",
+    "kind": "suscripcion",
+    "period": "2026-07",
+    "periodFrom": "2026-07-26",
+    "periodTo": "2026-08-25",
+    "issueDate": "2026-07-26",
+    "dueDate": "2026-07-26",
+    "lines": [
+      {
+        "desc": "Suscripción plan Enterprise — periodo 26 jul 2026 al 25 ago 2026",
+        "qty": 1,
+        "unit": 3150,
+        "amount": 3150
+      }
+    ],
+    "subtotal": 3150,
+    "igv": 567,
+    "total": 3717,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-07-26 06:07",
+    "method": "Visa •••• 0092",
+    "attempts": [
+      {
+        "ts": "2026-07-26 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "e2b42ec7c5754b9b5b06de0cc3b0",
+    "billTo": {
+      "name": "Altiplano Corporate Travel S.A.",
+      "ruc": "20603337788",
+      "address": "Av. El Puerto 455, Puno"
+    }
+  },
+  {
+    "id": "FQ01-00000205",
+    "tenantId": "TNT-0002",
+    "kind": "suscripcion",
+    "period": "2026-07",
+    "periodFrom": "2026-07-15",
+    "periodTo": "2026-08-14",
+    "issueDate": "2026-07-15",
+    "dueDate": "2026-07-15",
+    "lines": [
+      {
+        "desc": "Suscripción plan Professional — periodo 15 jul 2026 al 14 ago 2026",
+        "qty": 1,
+        "unit": 1190,
+        "amount": 1190
+      }
+    ],
+    "subtotal": 1190,
+    "igv": 214.2,
+    "total": 1404.2,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-07-15 06:06",
+    "method": "Mastercard •••• 1034",
+    "attempts": [
+      {
+        "ts": "2026-07-15 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "21c2746035dde4762436d969c5d9",
+    "billTo": {
+      "name": "Selva Viva Expediciones E.I.R.L.",
+      "ruc": "20609876543",
+      "address": "Jr. Putumayo 382, Iquitos, Loreto"
+    }
+  },
+  {
+    "id": "FQ01-00000204",
+    "tenantId": "TNT-0001",
+    "kind": "suscripcion",
+    "period": "2026-07",
+    "periodFrom": "2026-07-03",
+    "periodTo": "2026-08-02",
+    "issueDate": "2026-07-03",
+    "dueDate": "2026-07-03",
+    "lines": [
+      {
+        "desc": "Suscripción plan Enterprise — periodo 03 jul 2026 al 02 ago 2026",
+        "qty": 1,
+        "unit": 2890,
+        "amount": 2890
+      },
+      {
+        "desc": "Add-on: Dominio propio + certificado SSL",
+        "qty": 1,
+        "unit": 45,
+        "amount": 45
+      },
+      {
+        "desc": "Add-on: Paquete WhatsApp +1 000 mensajes/mes",
+        "qty": 2,
+        "unit": 65,
+        "amount": 130
+      }
+    ],
+    "subtotal": 3065,
+    "igv": 551.7,
+    "total": 3616.7,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-07-03 06:05",
+    "method": "Visa •••• 4821",
+    "attempts": [
+      {
+        "ts": "2026-07-03 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "8eda0bfed2cf4f80c29be62866ab",
+    "billTo": {
+      "name": "Andes Horizonte Travel S.A.C.",
+      "ruc": "20611234567",
+      "address": "Av. José Larco 1150, Of. 602, Miraflores, Lima"
+    }
+  },
+  {
+    "id": "FQ01-00000203",
+    "tenantId": "TNT-0003",
+    "kind": "suscripcion",
+    "period": "2026-07",
+    "periodFrom": "2026-07-02",
+    "periodTo": "2026-08-01",
+    "issueDate": "2026-07-02",
+    "dueDate": "2026-07-02",
+    "lines": [
+      {
+        "desc": "Suscripción plan Professional — periodo 02 jul 2026 al 01 ago 2026",
+        "qty": 1,
+        "unit": 1190,
+        "amount": 1190
+      }
+    ],
+    "subtotal": 1190,
+    "igv": 214.2,
+    "total": 1404.2,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-07-02 06:04",
+    "method": "Visa •••• 7719",
+    "attempts": [
+      {
+        "ts": "2026-07-02 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "af5bee45f72fa710eac370ac800a",
+    "billTo": {
+      "name": "Costa Sur DMC S.A.C.",
+      "ruc": "20605551234",
+      "address": "Av. Paracas 214, Paracas, Ica"
+    }
+  },
+  {
+    "id": "FQ01-00000202",
+    "tenantId": "TNT-0006",
+    "kind": "suscripcion",
+    "period": "2026-07",
+    "periodFrom": "2026-07-01",
+    "periodTo": "2026-07-31",
+    "issueDate": "2026-07-01",
+    "dueDate": "2026-07-08",
+    "lines": [
+      {
+        "desc": "Suscripción plan Starter — periodo 01 jul 2026 al 31 jul 2026",
+        "qty": 1,
+        "unit": 490,
+        "amount": 490
+      }
+    ],
+    "subtotal": 490,
+    "igv": 88.2,
+    "total": 578.2,
+    "currency": "PEN",
+    "status": "vencida",
+    "paidAt": null,
+    "method": "Visa •••• 5530 (vencida)",
+    "attempts": [
+      {
+        "ts": "2026-07-01 06:00",
+        "result": "rechazado",
+        "code": "expired_card",
+        "msg": "Tarjeta vencida (54)"
+      },
+      {
+        "ts": "2026-07-02 10:00",
+        "result": "rechazado",
+        "code": "expired_card",
+        "msg": "Tarjeta vencida (54)"
+      },
+      {
+        "ts": "2026-07-04 10:00",
+        "result": "rechazado",
+        "code": "expired_card",
+        "msg": "Tarjeta vencida (54)"
+      },
+      {
+        "ts": "2026-07-08 10:00",
+        "result": "rechazado",
+        "code": "expired_card",
+        "msg": "Tarjeta vencida (54)"
+      }
+    ],
+    "dunning": {
+      "failedAt": "2026-07-01",
+      "retriesDone": 3,
+      "nextRetryAt": null,
+      "extendedDays": 24,
+      "exhausted": true
+    },
+    "sunat": "aceptado",
+    "hash": "4fefd1b1a1591c7ab06c90a8144d",
+    "billTo": {
+      "name": "Nevados Tours S.R.L.",
+      "ruc": "20601119090",
+      "address": "Av. Luzuriaga 612, Huaraz, Áncash"
+    }
+  },
+  {
+    "id": "FQ01-00000201",
+    "tenantId": "TNT-0004",
+    "kind": "suscripcion",
+    "period": "2026-06",
+    "periodFrom": "2026-06-26",
+    "periodTo": "2026-07-25",
+    "issueDate": "2026-06-26",
+    "dueDate": "2026-06-26",
+    "lines": [
+      {
+        "desc": "Suscripción plan Enterprise — periodo 26 jun 2026 al 25 jul 2026",
+        "qty": 1,
+        "unit": 3150,
+        "amount": 3150
+      }
+    ],
+    "subtotal": 3150,
+    "igv": 567,
+    "total": 3717,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-06-26 06:02",
+    "method": "Visa •••• 0092",
+    "attempts": [
+      {
+        "ts": "2026-06-26 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "e47ac6c69c53748638a1bdd2d435",
+    "billTo": {
+      "name": "Altiplano Corporate Travel S.A.",
+      "ruc": "20603337788",
+      "address": "Av. El Puerto 455, Puno"
+    }
+  },
+  {
+    "id": "FQ01-00000200",
+    "tenantId": "TNT-0002",
+    "kind": "suscripcion",
+    "period": "2026-06",
+    "periodFrom": "2026-06-15",
+    "periodTo": "2026-07-14",
+    "issueDate": "2026-06-15",
+    "dueDate": "2026-06-15",
+    "lines": [
+      {
+        "desc": "Suscripción plan Professional — periodo 15 jun 2026 al 14 jul 2026",
+        "qty": 1,
+        "unit": 1190,
+        "amount": 1190
+      }
+    ],
+    "subtotal": 1190,
+    "igv": 214.2,
+    "total": 1404.2,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-06-15 06:01",
+    "method": "Mastercard •••• 1034",
+    "attempts": [
+      {
+        "ts": "2026-06-15 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "9018ef47e1723a3f218833bf4ad7",
+    "billTo": {
+      "name": "Selva Viva Expediciones E.I.R.L.",
+      "ruc": "20609876543",
+      "address": "Jr. Putumayo 382, Iquitos, Loreto"
+    }
+  },
+  {
+    "id": "FQ01-00000199",
+    "tenantId": "TNT-0001",
+    "kind": "suscripcion",
+    "period": "2026-06",
+    "periodFrom": "2026-06-03",
+    "periodTo": "2026-07-02",
+    "issueDate": "2026-06-03",
+    "dueDate": "2026-06-03",
+    "lines": [
+      {
+        "desc": "Suscripción plan Enterprise — periodo 03 jun 2026 al 02 jul 2026",
+        "qty": 1,
+        "unit": 2890,
+        "amount": 2890
+      },
+      {
+        "desc": "Add-on: Dominio propio + certificado SSL",
+        "qty": 1,
+        "unit": 45,
+        "amount": 45
+      },
+      {
+        "desc": "Add-on: Paquete WhatsApp +1 000 mensajes/mes",
+        "qty": 2,
+        "unit": 65,
+        "amount": 130
+      }
+    ],
+    "subtotal": 3065,
+    "igv": 551.7,
+    "total": 3616.7,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-06-03 06:00",
+    "method": "Visa •••• 4821",
+    "attempts": [
+      {
+        "ts": "2026-06-03 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "c1c21d1d20305d0c84b88cc31b7d",
+    "billTo": {
+      "name": "Andes Horizonte Travel S.A.C.",
+      "ruc": "20611234567",
+      "address": "Av. José Larco 1150, Of. 602, Miraflores, Lima"
+    }
+  },
+  {
+    "id": "FQ01-00000198",
+    "tenantId": "TNT-0003",
+    "kind": "suscripcion",
+    "period": "2026-06",
+    "periodFrom": "2026-06-02",
+    "periodTo": "2026-07-01",
+    "issueDate": "2026-06-02",
+    "dueDate": "2026-06-02",
+    "lines": [
+      {
+        "desc": "Suscripción plan Professional — periodo 02 jun 2026 al 01 jul 2026",
+        "qty": 1,
+        "unit": 1190,
+        "amount": 1190
+      }
+    ],
+    "subtotal": 1190,
+    "igv": 214.2,
+    "total": 1404.2,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-06-02 06:09",
+    "method": "Visa •••• 7719",
+    "attempts": [
+      {
+        "ts": "2026-06-02 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "685c2c0c5ed3182bda3806b06060",
+    "billTo": {
+      "name": "Costa Sur DMC S.A.C.",
+      "ruc": "20605551234",
+      "address": "Av. Paracas 214, Paracas, Ica"
+    }
+  },
+  {
+    "id": "FQ01-00000197",
+    "tenantId": "TNT-0006",
+    "kind": "suscripcion",
+    "period": "2026-06",
+    "periodFrom": "2026-06-01",
+    "periodTo": "2026-06-30",
+    "issueDate": "2026-06-01",
+    "dueDate": "2026-06-01",
+    "lines": [
+      {
+        "desc": "Suscripción plan Starter — periodo 01 jun 2026 al 30 jun 2026",
+        "qty": 1,
+        "unit": 490,
+        "amount": 490
+      }
+    ],
+    "subtotal": 490,
+    "igv": 88.2,
+    "total": 578.2,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-06-01 06:08",
+    "method": "Visa •••• 5530 (vencida)",
+    "attempts": [
+      {
+        "ts": "2026-06-01 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "285f28726e97b509837a85719b3a",
+    "billTo": {
+      "name": "Nevados Tours S.R.L.",
+      "ruc": "20601119090",
+      "address": "Av. Luzuriaga 612, Huaraz, Áncash"
+    }
+  },
+  {
+    "id": "FQ01-00000196",
+    "tenantId": "TNT-0004",
+    "kind": "suscripcion",
+    "period": "2026-05",
+    "periodFrom": "2026-05-26",
+    "periodTo": "2026-06-25",
+    "issueDate": "2026-05-26",
+    "dueDate": "2026-05-26",
+    "lines": [
+      {
+        "desc": "Suscripción plan Enterprise — periodo 26 may 2026 al 25 jun 2026",
+        "qty": 1,
+        "unit": 3150,
+        "amount": 3150
+      }
+    ],
+    "subtotal": 3150,
+    "igv": 567,
+    "total": 3717,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-05-26 06:07",
+    "method": "Visa •••• 0092",
+    "attempts": [
+      {
+        "ts": "2026-05-26 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "5d825007408fac22eae6ac2c6aea",
+    "billTo": {
+      "name": "Altiplano Corporate Travel S.A.",
+      "ruc": "20603337788",
+      "address": "Av. El Puerto 455, Puno"
+    }
+  },
+  {
+    "id": "FQ01-00000195",
+    "tenantId": "TNT-0002",
+    "kind": "suscripcion",
+    "period": "2026-05",
+    "periodFrom": "2026-05-15",
+    "periodTo": "2026-06-14",
+    "issueDate": "2026-05-15",
+    "dueDate": "2026-05-15",
+    "lines": [
+      {
+        "desc": "Suscripción plan Professional — periodo 15 may 2026 al 14 jun 2026",
+        "qty": 1,
+        "unit": 1190,
+        "amount": 1190
+      }
+    ],
+    "subtotal": 1190,
+    "igv": 214.2,
+    "total": 1404.2,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-05-15 06:06",
+    "method": "Mastercard •••• 1034",
+    "attempts": [
+      {
+        "ts": "2026-05-15 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "9c9095a0bd11bb51a2cd872e9963",
+    "billTo": {
+      "name": "Selva Viva Expediciones E.I.R.L.",
+      "ruc": "20609876543",
+      "address": "Jr. Putumayo 382, Iquitos, Loreto"
+    }
+  },
+  {
+    "id": "FQ01-00000194",
+    "tenantId": "TNT-0001",
+    "kind": "suscripcion",
+    "period": "2026-05",
+    "periodFrom": "2026-05-03",
+    "periodTo": "2026-06-02",
+    "issueDate": "2026-05-03",
+    "dueDate": "2026-05-03",
+    "lines": [
+      {
+        "desc": "Suscripción plan Enterprise — periodo 03 may 2026 al 02 jun 2026",
+        "qty": 1,
+        "unit": 2890,
+        "amount": 2890
+      },
+      {
+        "desc": "Add-on: Dominio propio + certificado SSL",
+        "qty": 1,
+        "unit": 45,
+        "amount": 45
+      }
+    ],
+    "subtotal": 2935,
+    "igv": 528.3,
+    "total": 3463.3,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-05-03 06:05",
+    "method": "Visa •••• 4821",
+    "attempts": [
+      {
+        "ts": "2026-05-03 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "fda6073e2fbe60a72afcad936345",
+    "billTo": {
+      "name": "Andes Horizonte Travel S.A.C.",
+      "ruc": "20611234567",
+      "address": "Av. José Larco 1150, Of. 602, Miraflores, Lima"
+    }
+  },
+  {
+    "id": "FQ01-00000193",
+    "tenantId": "TNT-0003",
+    "kind": "suscripcion",
+    "period": "2026-05",
+    "periodFrom": "2026-05-02",
+    "periodTo": "2026-06-01",
+    "issueDate": "2026-05-02",
+    "dueDate": "2026-05-02",
+    "lines": [
+      {
+        "desc": "Suscripción plan Professional — periodo 02 may 2026 al 01 jun 2026",
+        "qty": 1,
+        "unit": 1190,
+        "amount": 1190
+      }
+    ],
+    "subtotal": 1190,
+    "igv": 214.2,
+    "total": 1404.2,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-05-02 06:04",
+    "method": "Visa •••• 7719",
+    "attempts": [
+      {
+        "ts": "2026-05-02 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "1ec2e785492f0ad1371f0cf6a7d1",
+    "billTo": {
+      "name": "Costa Sur DMC S.A.C.",
+      "ruc": "20605551234",
+      "address": "Av. Paracas 214, Paracas, Ica"
+    }
+  },
+  {
+    "id": "FQ01-00000192",
+    "tenantId": "TNT-0006",
+    "kind": "suscripcion",
+    "period": "2026-05",
+    "periodFrom": "2026-05-01",
+    "periodTo": "2026-05-31",
+    "issueDate": "2026-05-01",
+    "dueDate": "2026-05-01",
+    "lines": [
+      {
+        "desc": "Suscripción plan Starter — periodo 01 may 2026 al 31 may 2026",
+        "qty": 1,
+        "unit": 490,
+        "amount": 490
+      }
+    ],
+    "subtotal": 490,
+    "igv": 88.2,
+    "total": 578.2,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-05-01 06:03",
+    "method": "Visa •••• 5530 (vencida)",
+    "attempts": [
+      {
+        "ts": "2026-05-01 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "14b3c5f13619c9aa4bcb9431420b",
+    "billTo": {
+      "name": "Nevados Tours S.R.L.",
+      "ruc": "20601119090",
+      "address": "Av. Luzuriaga 612, Huaraz, Áncash"
+    }
+  },
+  {
+    "id": "FQ01-00000191",
+    "tenantId": "TNT-0002",
+    "kind": "suscripcion",
+    "period": "2026-04",
+    "periodFrom": "2026-04-15",
+    "periodTo": "2026-05-14",
+    "issueDate": "2026-04-15",
+    "dueDate": "2026-04-15",
+    "lines": [
+      {
+        "desc": "Suscripción plan Professional — periodo 15 abr 2026 al 14 may 2026",
+        "qty": 1,
+        "unit": 1190,
+        "amount": 1190
+      }
+    ],
+    "subtotal": 1190,
+    "igv": 214.2,
+    "total": 1404.2,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-04-15 06:02",
+    "method": "Mastercard •••• 1034",
+    "attempts": [
+      {
+        "ts": "2026-04-15 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "5546c52cd99eeee8095c0acdd5e4",
+    "billTo": {
+      "name": "Selva Viva Expediciones E.I.R.L.",
+      "ruc": "20609876543",
+      "address": "Jr. Putumayo 382, Iquitos, Loreto"
+    }
+  },
+  {
+    "id": "FQ01-00000190",
+    "tenantId": "TNT-0001",
+    "kind": "suscripcion",
+    "period": "2026-04",
+    "periodFrom": "2026-04-03",
+    "periodTo": "2026-05-02",
+    "issueDate": "2026-04-03",
+    "dueDate": "2026-04-03",
+    "lines": [
+      {
+        "desc": "Suscripción plan Enterprise — periodo 03 abr 2026 al 02 may 2026",
+        "qty": 1,
+        "unit": 2890,
+        "amount": 2890
+      },
+      {
+        "desc": "Add-on: Dominio propio + certificado SSL",
+        "qty": 1,
+        "unit": 45,
+        "amount": 45
+      }
+    ],
+    "subtotal": 2935,
+    "igv": 528.3,
+    "total": 3463.3,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-04-03 06:01",
+    "method": "Visa •••• 4821",
+    "attempts": [
+      {
+        "ts": "2026-04-03 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "61440d1aa51dc45c94ec6f99331e",
+    "billTo": {
+      "name": "Andes Horizonte Travel S.A.C.",
+      "ruc": "20611234567",
+      "address": "Av. José Larco 1150, Of. 602, Miraflores, Lima"
+    }
+  },
+  {
+    "id": "FQ01-00000189",
+    "tenantId": "TNT-0003",
+    "kind": "suscripcion",
+    "period": "2026-04",
+    "periodFrom": "2026-04-02",
+    "periodTo": "2026-05-01",
+    "issueDate": "2026-04-02",
+    "dueDate": "2026-04-02",
+    "lines": [
+      {
+        "desc": "Suscripción plan Professional — periodo 02 abr 2026 al 01 may 2026",
+        "qty": 1,
+        "unit": 1190,
+        "amount": 1190
+      }
+    ],
+    "subtotal": 1190,
+    "igv": 214.2,
+    "total": 1404.2,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-04-02 06:00",
+    "method": "Visa •••• 7719",
+    "attempts": [
+      {
+        "ts": "2026-04-02 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "c5ba7112b14ef8e18b932168897f",
+    "billTo": {
+      "name": "Costa Sur DMC S.A.C.",
+      "ruc": "20605551234",
+      "address": "Av. Paracas 214, Paracas, Ica"
+    }
+  },
+  {
+    "id": "FQ01-00000188",
+    "tenantId": "TNT-0006",
+    "kind": "suscripcion",
+    "period": "2026-04",
+    "periodFrom": "2026-04-01",
+    "periodTo": "2026-04-30",
+    "issueDate": "2026-04-01",
+    "dueDate": "2026-04-01",
+    "lines": [
+      {
+        "desc": "Suscripción plan Starter — periodo 01 abr 2026 al 30 abr 2026",
+        "qty": 1,
+        "unit": 490,
+        "amount": 490
+      }
+    ],
+    "subtotal": 490,
+    "igv": 88.2,
+    "total": 578.2,
+    "currency": "PEN",
+    "status": "pagada",
+    "paidAt": "2026-04-01 06:09",
+    "method": "Visa •••• 5530 (vencida)",
+    "attempts": [
+      {
+        "ts": "2026-04-01 06:00",
+        "result": "exitoso",
+        "code": "00",
+        "msg": "Aprobado"
+      }
+    ],
+    "dunning": null,
+    "sunat": "aceptado",
+    "hash": "c0afdf6e454987bc9a81c877b531",
+    "billTo": {
+      "name": "Nevados Tours S.R.L.",
+      "ruc": "20601119090",
+      "address": "Av. Luzuriaga 612, Huaraz, Áncash"
+    }
+  }
+]

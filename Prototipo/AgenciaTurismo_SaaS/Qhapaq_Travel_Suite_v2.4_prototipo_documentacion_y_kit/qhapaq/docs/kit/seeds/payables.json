@@ -1,0 +1,86 @@
+[
+  {
+    "id": "CXP-00402",
+    "providerId": "PRV-001",
+    "resId": "RES-2026-000348",
+    "concept": "Hotel 24 noches-hab.",
+    "amount": 14910,
+    "currency": "PEN",
+    "due": "2026-10-16",
+    "paid": 0,
+    "status": "aprobada",
+    "approved": true
+  },
+  {
+    "id": "CXP-00403",
+    "providerId": "PRV-005",
+    "resId": "RES-2026-000348",
+    "concept": "Tren Expedition 12 pax",
+    "amount": 11781,
+    "currency": "PEN",
+    "due": "2026-09-25",
+    "paid": 11781,
+    "status": "pagada",
+    "approved": true
+  },
+  {
+    "id": "CXP-00404",
+    "providerId": "PRV-009",
+    "resId": "RES-2026-000348",
+    "concept": "Entradas MAPI 12",
+    "amount": 3192,
+    "currency": "PEN",
+    "due": "2026-09-20",
+    "paid": 3192,
+    "status": "pagada",
+    "approved": true
+  },
+  {
+    "id": "CXP-00405",
+    "providerId": "PRV-004",
+    "resId": "RES-2026-000348",
+    "concept": "Transporte y traslados",
+    "amount": 2835,
+    "currency": "PEN",
+    "due": "2026-10-31",
+    "paid": 0,
+    "status": "abierta",
+    "approved": false
+  },
+  {
+    "id": "CXP-00398",
+    "providerId": "PRV-006",
+    "resId": "RES-2026-000347",
+    "concept": "Guiado en alemán 3 jornadas",
+    "amount": 660,
+    "currency": "PEN",
+    "due": "2026-10-03",
+    "paid": 0,
+    "status": "abierta",
+    "approved": false
+  },
+  {
+    "id": "CXP-00397",
+    "providerId": "PRV-001",
+    "resId": "RES-2026-000347",
+    "concept": "Hotel 5 noches",
+    "amount": 475,
+    "currency": "USD",
+    "due": "2026-10-12",
+    "paid": 0,
+    "status": "aprobada",
+    "approved": true
+  },
+  {
+    "id": "CXP-00390",
+    "providerId": "PRV-007",
+    "resId": "RES-2026-000346",
+    "concept": "Alimentación",
+    "amount": 90,
+    "currency": "PEN",
+    "due": "2026-09-20",
+    "paid": 0,
+    "status": "vencida",
+    "approved": false
+  }
+]

@@ -1,0 +1,71 @@
+[
+  {
+    "id": "G01",
+    "userId": "U09",
+    "name": "Wilber Condori Sutta",
+    "languages": [
+      "ES",
+      "EN",
+      "QU"
+    ],
+    "license": "GOT-CUS-0441",
+    "rating": 4.9,
+    "status": "disponible",
+    "phone": "974 118 552"
+  },
+  {
+    "id": "G02",
+    "userId": "U10",
+    "name": "Hilda Ccahuana Puma",
+    "languages": [
+      "ES",
+      "EN",
+      "DE"
+    ],
+    "license": "GOT-CUS-0588",
+    "rating": 4.8,
+    "status": "asignado",
+    "phone": "974 228 671"
+  },
+  {
+    "id": "G03",
+    "userId": null,
+    "name": "Raúl Pumacahua Soto",
+    "languages": [
+      "ES",
+      "FR",
+      "EN"
+    ],
+    "license": "GOT-CUS-0712",
+    "rating": 4.6,
+    "status": "disponible",
+    "phone": "974 551 330"
+  },
+  {
+    "id": "G04",
+    "userId": null,
+    "name": "Yesenia Arce Huamaní",
+    "languages": [
+      "ES",
+      "EN",
+      "PT"
+    ],
+    "license": "GOT-CUS-0803",
+    "rating": 4.7,
+    "status": "vacaciones",
+    "phone": "974 668 120"
+  },
+  {
+    "id": "G05",
+    "userId": null,
+    "name": "Óscar Delgado Paz",
+    "languages": [
+      "ES",
+      "EN"
+    ],
+    "license": "GOT-ARE-0120",
+    "rating": 4.5,
+    "status": "disponible",
+    "phone": "959 110 443"
+  }
+]

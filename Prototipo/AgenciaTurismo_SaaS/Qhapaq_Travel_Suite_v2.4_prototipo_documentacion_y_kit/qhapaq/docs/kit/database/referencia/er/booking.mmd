@@ -1,0 +1,180 @@
+erDiagram
+  booking_cancel_requests {
+    uuid id PK
+    uuid reservation_id FK
+    uuid requested_by FK
+    varchar status
+    uuid decided_by FK
+  }
+  booking_cancellations {
+    uuid id PK
+    uuid reservation_id FK,UK
+    char currency
+    uuid credit_note_id FK
+    uuid refund_payment_id FK
+    uuid penalty_receivable_id FK
+    uuid cancelled_by FK
+  }
+  booking_changes {
+    uuid id PK
+    uuid reservation_id FK
+    varchar type
+    uuid product_id FK
+    date service_date
+    varchar status
+    uuid requested_by FK
+    uuid decided_by FK
+  }
+  booking_inventory_holds {
+    uuid id PK
+    uuid departure_id FK
+    uuid reservation_id FK
+    uuid booking_service_id FK
+    varchar status
+  }
+  booking_passengers {
+    uuid id PK
+    uuid reservation_id FK
+    varchar email
+  }
+  booking_reservation_services {
+    uuid id PK
+    uuid reservation_id FK
+    uuid product_id FK
+    uuid catalog_service_id FK
+    uuid quote_item_id FK
+    uuid departure_id FK
+    uuid provider_id FK
+    uuid confirmed_by FK
+    uuid requested_by FK
+    uuid alt_of_id FK
+    uuid replaced_by_id FK
+    uuid addon_id FK
+    varchar name
+    date service_date
+    otras mas_5_columnas
+  }
+  booking_reservation_web_addons {
+    uuid id PK
+    uuid snapshot_id FK
+    uuid addon_id FK
+    varchar name
+    numeric amount
+  }
+  booking_reservation_web_lodging {
+    uuid id PK
+    uuid snapshot_id FK
+    uuid hotel_id FK
+  }
+  booking_reservation_web_snapshots {
+    uuid id PK
+    uuid tenant_id UK
+    uuid reservation_id FK,UK
+    uuid product_id FK
+    date service_date
+  }
+  booking_reservations {
+    uuid id PK
+    uuid quote_id FK
+    uuid quote_version_id FK
+    uuid client_id FK
+    uuid agency_id FK
+    uuid owner_id FK
+    uuid sede_id FK
+    uuid ecom_order_id FK
+    uuid cancel_request_id FK
+    varchar title
+    varchar status
+    date travel_from
+    char currency
+    numeric total_amount
+    otras mas_2_columnas
+  }
+  catalog_accommodation_hotels {
+    uuid id PK
+  }
+  catalog_product_addons {
+    uuid id PK
+  }
+  catalog_product_departures {
+    uuid id PK
+  }
+  catalog_products {
+    uuid id PK
+  }
+  catalog_providers {
+    uuid id PK
+  }
+  catalog_services {
+    uuid id PK
+  }
+  channel_b2b_agencies {
+    uuid id PK
+  }
+  channel_ecom_orders {
+    uuid id PK
+  }
+  crm_clients {
+    uuid id PK
+  }
+  fin_invoices {
+    uuid id PK
+  }
+  fin_payments {
+    uuid id PK
+  }
+  fin_receivables {
+    uuid id PK
+  }
+  iam_sedes {
+    uuid id PK
+  }
+  iam_users {
+    uuid id PK
+  }
+  quote_items {
+    uuid id PK
+  }
+  quote_quotes {
+    uuid id PK
+  }
+  quote_versions {
+    uuid id PK
+  }
+  booking_cancel_requests |o--o{ booking_reservations : "cancel_request_id"
+  booking_reservation_services |o--o{ booking_inventory_holds : "booking_service_id"
+  booking_reservation_services |o--o{ booking_reservation_services : "alt_of_id, replaced_by_id"
+  booking_reservation_web_snapshots ||--o{ booking_reservation_web_addons : "snapshot_id"
+  booking_reservation_web_snapshots ||--o{ booking_reservation_web_lodging : "snapshot_id"
+  booking_reservations ||--o{ booking_cancel_requests : "reservation_id"
+  booking_reservations ||--o| booking_cancellations : "reservation_id"
+  booking_reservations ||--o{ booking_changes : "reservation_id"
+  booking_reservations ||--o{ booking_inventory_holds : "reservation_id"
+  booking_reservations ||--o{ booking_passengers : "reservation_id"
+  booking_reservations ||--o{ booking_reservation_services : "reservation_id"
+  booking_reservations ||--o{ booking_reservation_web_snapshots : "reservation_id"
+  catalog_accommodation_hotels |o--o{ booking_reservation_web_lodging : "hotel_id"
+  catalog_product_addons |o--o{ booking_reservation_services : "addon_id"
+  catalog_product_addons |o--o{ booking_reservation_web_addons : "addon_id"
+  catalog_product_departures ||--o{ booking_inventory_holds : "departure_id"
+  catalog_product_departures |o--o{ booking_reservation_services : "departure_id"
+  catalog_products |o--o{ booking_changes : "product_id"
+  catalog_products |o--o{ booking_reservation_services : "product_id"
+  catalog_products ||--o{ booking_reservation_web_snapshots : "product_id"
+  catalog_providers |o--o{ booking_reservation_services : "provider_id"
+  catalog_services |o--o{ booking_reservation_services : "catalog_service_id"
+  channel_b2b_agencies |o--o{ booking_reservations : "agency_id"
+  channel_ecom_orders |o--o{ booking_reservations : "ecom_order_id"
+  crm_clients ||--o{ booking_reservations : "client_id"
+  fin_invoices |o--o{ booking_cancellations : "credit_note_id"
+  fin_payments |o--o{ booking_cancellations : "refund_payment_id"
+  fin_receivables |o--o{ booking_cancellations : "penalty_receivable_id"
+  iam_sedes ||--o{ booking_reservations : "sede_id"
+  iam_users ||--o{ booking_cancel_requests : "decided_by, requested_by"
+  iam_users ||--o{ booking_cancellations : "cancelled_by"
+  iam_users ||--o{ booking_changes : "decided_by, requested_by"
+  iam_users |o--o{ booking_reservation_services : "confirmed_by, requested_by"
+  iam_users ||--o{ booking_reservations : "owner_id"
+  quote_items |o--o{ booking_reservation_services : "quote_item_id"
+  quote_quotes |o--o{ booking_reservations : "quote_id"
+  quote_versions |o--o{ booking_reservations : "quote_version_id"

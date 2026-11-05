@@ -1,0 +1,72 @@
+erDiagram
+  supplier_invoices {
+    uuid id PK
+    uuid payable_id FK
+    uuid provider_id FK
+    numeric amount
+    char currency
+    uuid document_id FK
+    varchar status
+    uuid uploaded_by FK
+    uuid validated_by FK
+  }
+  supplier_rate_requests {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    uuid provider_id FK
+    uuid service_id FK
+    char currency
+    varchar status
+    uuid requested_by FK
+    uuid reviewed_by FK
+    uuid resulting_rate_id FK
+  }
+  supplier_request_responses {
+    uuid id PK
+    uuid supplier_request_id FK
+    uuid reservation_service_id FK
+    uuid provider_id FK
+    varchar type
+    uuid responded_by_user_id FK
+    uuid alt_service_id FK
+    char currency
+    uuid reviewed_by FK
+  }
+  booking_reservation_services {
+    uuid id PK
+  }
+  catalog_providers {
+    uuid id PK
+  }
+  catalog_service_cost_history {
+    uuid id PK
+  }
+  catalog_services {
+    uuid id PK
+  }
+  fin_payables {
+    uuid id PK
+  }
+  iam_users {
+    uuid id PK
+  }
+  ops_supplier_requests {
+    uuid id PK
+  }
+  sys_documents {
+    uuid id PK
+  }
+  booking_reservation_services ||--o{ supplier_request_responses : "reservation_service_id"
+  catalog_providers ||--o{ supplier_invoices : "provider_id"
+  catalog_providers ||--o{ supplier_rate_requests : "provider_id"
+  catalog_providers ||--o{ supplier_request_responses : "provider_id"
+  catalog_service_cost_history |o--o{ supplier_rate_requests : "resulting_rate_id"
+  catalog_services ||--o{ supplier_rate_requests : "service_id"
+  catalog_services |o--o{ supplier_request_responses : "alt_service_id"
+  fin_payables ||--o{ supplier_invoices : "payable_id"
+  iam_users ||--o{ supplier_invoices : "uploaded_by, validated_by"
+  iam_users ||--o{ supplier_rate_requests : "requested_by, reviewed_by"
+  iam_users ||--o{ supplier_request_responses : "responded_by_user_id, reviewed_by"
+  ops_supplier_requests ||--o{ supplier_request_responses : "supplier_request_id"
+  sys_documents ||--o{ supplier_invoices : "document_id"

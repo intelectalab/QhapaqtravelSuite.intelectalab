@@ -1,0 +1,61 @@
+[
+  {
+    "id": "CJS-0118",
+    "accountId": "CTA-07",
+    "sede": "SED-01",
+    "date": "2026-09-28",
+    "openedAt": "08:20",
+    "openedBy": "U07",
+    "openingAmount": 887.6,
+    "closedAt": "19:05",
+    "closedBy": "U07",
+    "closingCountId": "ARQ-0041",
+    "status": "cerrada"
+  },
+  {
+    "id": "CJS-0119",
+    "accountId": "CTA-08",
+    "sede": "SED-02",
+    "date": "2026-09-28",
+    "openedAt": "08:25",
+    "openedBy": "U05",
+    "openingAmount": 1454.5,
+    "closedAt": "19:06",
+    "closedBy": "U05",
+    "closingCountId": "ARQ-0042",
+    "status": "cerrada"
+  },
+  {
+    "id": "CJS-0120",
+    "accountId": "CTA-09",
+    "sede": "SED-03",
+    "date": "2026-09-28",
+    "openedAt": "08:30",
+    "openedBy": "U03",
+    "openingAmount": 614,
+    "closedAt": "19:07",
+    "closedBy": "U03",
+    "closingCountId": "ARQ-0043",
+    "status": "cerrada"
+  },
+  {
+    "id": "CJS-0121",
+    "accountId": "CTA-07",
+    "sede": "SED-01",
+    "date": "2026-09-29",
+    "openedAt": "08:25",
+    "openedBy": "U07",
+    "openingAmount": 887.6,
+    "status": "abierta"
+  },
+  {
+    "id": "CJS-0122",
+    "accountId": "CTA-08",
+    "sede": "SED-02",
+    "date": "2026-09-29",
+    "openedAt": "07:40",
+    "openedBy": "U05",
+    "openingAmount": 1451,
+    "status": "abierta"
+  }
+]

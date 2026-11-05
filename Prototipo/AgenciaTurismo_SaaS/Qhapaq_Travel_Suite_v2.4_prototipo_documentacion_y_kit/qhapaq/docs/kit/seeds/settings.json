@@ -1,0 +1,2237 @@
+{
+  "currency": "PEN",
+  "altCurrency": "USD",
+  "fx": 3.74,
+  "fxSource": "Manual diario (SBS referencial)",
+  "taxPct": 18,
+  "rounding": "0.10",
+  "quoteValidityDays": 10,
+  "holdMinutes": 30,
+  "series": [
+    {
+      "doc": "Cotización",
+      "prefix": "COT-2026-",
+      "next": 192
+    },
+    {
+      "doc": "Reserva",
+      "prefix": "RES-2026-",
+      "next": 351
+    },
+    {
+      "doc": "Orden operativa",
+      "prefix": "OP-2026-",
+      "next": 416
+    },
+    {
+      "doc": "Voucher",
+      "prefix": "VOU-2026-",
+      "next": 1205
+    },
+    {
+      "doc": "Factura",
+      "prefix": "F001-",
+      "next": 1484
+    },
+    {
+      "doc": "Boleta",
+      "prefix": "B001-",
+      "next": 8813
+    }
+  ],
+  "notifications": [
+    {
+      "event": "Cotización enviada",
+      "email": true,
+      "whatsapp": true,
+      "push": false,
+      "portal": true
+    },
+    {
+      "event": "Cotización aprobada",
+      "email": true,
+      "whatsapp": false,
+      "push": true,
+      "portal": true
+    },
+    {
+      "event": "Reserva confirmada",
+      "email": true,
+      "whatsapp": true,
+      "push": true,
+      "portal": true
+    },
+    {
+      "event": "Pago recibido",
+      "email": true,
+      "whatsapp": true,
+      "push": false,
+      "portal": true
+    },
+    {
+      "event": "Asignación",
+      "email": false,
+      "whatsapp": true,
+      "push": true,
+      "portal": false
+    },
+    {
+      "event": "Cambio de horario",
+      "email": true,
+      "whatsapp": true,
+      "push": true,
+      "portal": true
+    },
+    {
+      "event": "Incidencia crítica",
+      "email": true,
+      "whatsapp": true,
+      "push": true,
+      "portal": false
+    },
+    {
+      "event": "Voucher emitido",
+      "email": true,
+      "whatsapp": false,
+      "push": true,
+      "portal": true
+    },
+    {
+      "event": "Inicio/fin de servicio",
+      "email": false,
+      "whatsapp": true,
+      "push": true,
+      "portal": true
+    },
+    {
+      "event": "Cierre de viaje",
+      "email": true,
+      "whatsapp": false,
+      "push": false,
+      "portal": true
+    }
+  ],
+  "ecommerce": {
+    "baseCurrency": "PEN",
+    "currencies": [
+      {
+        "code": "PEN",
+        "name": "Sol peruano",
+        "symbol": "S/",
+        "rate": 1,
+        "active": true
+      },
+      {
+        "code": "USD",
+        "name": "Dólar estadounidense",
+        "symbol": "US$",
+        "rate": 3.74,
+        "active": true
+      },
+      {
+        "code": "EUR",
+        "name": "Euro",
+        "symbol": "€",
+        "rate": 4.05,
+        "active": true
+      },
+      {
+        "code": "GBP",
+        "name": "Libra esterlina",
+        "symbol": "£",
+        "rate": 4.78,
+        "active": true
+      },
+      {
+        "code": "BRL",
+        "name": "Real brasileño",
+        "symbol": "R$",
+        "rate": 0.68,
+        "active": true
+      },
+      {
+        "code": "CLP",
+        "name": "Peso chileno",
+        "symbol": "CLP$",
+        "rate": 0.004,
+        "active": true
+      },
+      {
+        "code": "MXN",
+        "name": "Peso mexicano",
+        "symbol": "MX$",
+        "rate": 0.2,
+        "active": true
+      },
+      {
+        "code": "COP",
+        "name": "Peso colombiano",
+        "symbol": "COL$",
+        "rate": 0.00092,
+        "active": true
+      },
+      {
+        "code": "ARS",
+        "name": "Peso argentino",
+        "symbol": "AR$",
+        "rate": 0.0039,
+        "active": false
+      },
+      {
+        "code": "JPY",
+        "name": "Yen japonés",
+        "symbol": "¥",
+        "rate": 0.025,
+        "active": false
+      }
+    ],
+    "rateSource": "Tabla manual diaria (referencial). En producción: proveedor de tipos de cambio + margen configurable.",
+    "rateUpdatedAt": "2026-09-30 08:00",
+    "fxMarginPct": 2,
+    "chargeCurrencies": [
+      "PEN",
+      "USD"
+    ],
+    "depositPctDefault": 30,
+    "balanceDueDaysDefault": 15,
+    "paymentModes": [
+      "total",
+      "adelanto"
+    ],
+    "holdMinutes": 30,
+    "defaultPaxRules": {
+      "adultMinAge": 11,
+      "childMinAge": 4,
+      "childMaxAge": 10,
+      "childPays": true,
+      "childPricePct": 70,
+      "infantMaxAge": 3,
+      "infantPays": false,
+      "maxChildrenPerAdult": 2,
+      "maxInfantsPerAdult": 1,
+      "minAdults": 1
+    },
+    "isDemoRates": true,
+    "fxProviders": [
+      {
+        "id": "FX-DEMO",
+        "name": "Proveedor de tipo de cambio (DEMO)",
+        "kind": "Simulado",
+        "status": "activo",
+        "schedule": "Diario 08:00 (America/Lima)",
+        "lastRun": "2026-09-30 08:00",
+        "note": "Genera valores de prueba. Reemplazar por el proveedor contratado."
+      },
+      {
+        "id": "FX-SBS",
+        "name": "SBS · tipo de cambio referencial (por integrar)",
+        "kind": "Oficial",
+        "status": "por_validar",
+        "schedule": "—",
+        "lastRun": null,
+        "note": "Referencia oficial para PEN/USD; validar disponibilidad de API o carga."
+      },
+      {
+        "id": "FX-API",
+        "name": "Proveedor comercial de tipos de cambio (por definir)",
+        "kind": "API",
+        "status": "por_validar",
+        "schedule": "—",
+        "lastRun": null,
+        "note": "Para monedas distintas de USD (EUR, GBP, BRL, CLP, MXN, COP…)."
+      },
+      {
+        "id": "FX-MAN",
+        "name": "Carga manual",
+        "kind": "Manual",
+        "status": "activo",
+        "schedule": "Cuando se edite",
+        "lastRun": "2026-09-30 08:00",
+        "note": "Finanzas puede corregir cualquier valor; queda auditado."
+      }
+    ],
+    "rateProvider": "FX-DEMO",
+    "rateHistory": {
+      "USD": [
+        {
+          "date": "2026-09-01",
+          "rate": 3.6949,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-02",
+          "rate": 3.6973,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-03",
+          "rate": 3.7065,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-04",
+          "rate": 3.6931,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-05",
+          "rate": 3.6947,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-06",
+          "rate": 3.706,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-07",
+          "rate": 3.6921,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-08",
+          "rate": 3.6791,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-09",
+          "rate": 3.6924,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-10",
+          "rate": 3.702,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-11",
+          "rate": 3.7024,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-12",
+          "rate": 3.7006,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-13",
+          "rate": 3.7108,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-14",
+          "rate": 3.7057,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-15",
+          "rate": 3.7135,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-16",
+          "rate": 3.7136,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-17",
+          "rate": 3.7262,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-18",
+          "rate": 3.7215,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-19",
+          "rate": 3.7132,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-20",
+          "rate": 3.7196,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-21",
+          "rate": 3.7222,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-22",
+          "rate": 3.7196,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-23",
+          "rate": 3.7083,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-24",
+          "rate": 3.7209,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-25",
+          "rate": 3.7207,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-26",
+          "rate": 3.7224,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-27",
+          "rate": 3.73,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-28",
+          "rate": 3.7415,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-29",
+          "rate": 3.7397,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-30",
+          "rate": 3.74,
+          "source": "FX-DEMO"
+        }
+      ],
+      "EUR": [
+        {
+          "date": "2026-09-01",
+          "rate": 3.9882,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-02",
+          "rate": 3.9824,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-03",
+          "rate": 3.9852,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-04",
+          "rate": 3.9997,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-05",
+          "rate": 4.0128,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-06",
+          "rate": 4.0144,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-07",
+          "rate": 4.0233,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-08",
+          "rate": 4.0351,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-09",
+          "rate": 4.0301,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-10",
+          "rate": 4.0218,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-11",
+          "rate": 4.025,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-12",
+          "rate": 4.0217,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-13",
+          "rate": 4.0302,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-14",
+          "rate": 4.0311,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-15",
+          "rate": 4.0188,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-16",
+          "rate": 4.0272,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-17",
+          "rate": 4.0135,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-18",
+          "rate": 4.027,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-19",
+          "rate": 4.0319,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-20",
+          "rate": 4.0367,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-21",
+          "rate": 4.0279,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-22",
+          "rate": 4.0391,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-23",
+          "rate": 4.0446,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-24",
+          "rate": 4.043,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-25",
+          "rate": 4.0517,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-26",
+          "rate": 4.0535,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-27",
+          "rate": 4.0378,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-28",
+          "rate": 4.0485,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-29",
+          "rate": 4.0556,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-30",
+          "rate": 4.05,
+          "source": "FX-DEMO"
+        }
+      ],
+      "GBP": [
+        {
+          "date": "2026-09-01",
+          "rate": 4.8125,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-02",
+          "rate": 4.8215,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-03",
+          "rate": 4.8123,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-04",
+          "rate": 4.8052,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-05",
+          "rate": 4.8093,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-06",
+          "rate": 4.8203,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-07",
+          "rate": 4.8258,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-08",
+          "rate": 4.8326,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-09",
+          "rate": 4.851,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-10",
+          "rate": 4.8489,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-11",
+          "rate": 4.8435,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-12",
+          "rate": 4.8339,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-13",
+          "rate": 4.82,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-14",
+          "rate": 4.8036,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-15",
+          "rate": 4.7857,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-16",
+          "rate": 4.772,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-17",
+          "rate": 4.7619,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-18",
+          "rate": 4.7706,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-19",
+          "rate": 4.7847,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-20",
+          "rate": 4.7754,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-21",
+          "rate": 4.7855,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-22",
+          "rate": 4.7946,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-23",
+          "rate": 4.7969,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-24",
+          "rate": 4.7988,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-25",
+          "rate": 4.7858,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-26",
+          "rate": 4.7882,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-27",
+          "rate": 4.7883,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-28",
+          "rate": 4.7907,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-29",
+          "rate": 4.7974,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-30",
+          "rate": 4.78,
+          "source": "FX-DEMO"
+        }
+      ],
+      "BRL": [
+        {
+          "date": "2026-09-01",
+          "rate": 0.6752,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-02",
+          "rate": 0.6734,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-03",
+          "rate": 0.6716,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-04",
+          "rate": 0.6714,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-05",
+          "rate": 0.674,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-06",
+          "rate": 0.6762,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-07",
+          "rate": 0.6788,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-08",
+          "rate": 0.6806,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-09",
+          "rate": 0.6788,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-10",
+          "rate": 0.6802,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-11",
+          "rate": 0.6782,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-12",
+          "rate": 0.6774,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-13",
+          "rate": 0.6763,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-14",
+          "rate": 0.6752,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-15",
+          "rate": 0.677,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-16",
+          "rate": 0.6796,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-17",
+          "rate": 0.6809,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-18",
+          "rate": 0.6788,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-19",
+          "rate": 0.6772,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-20",
+          "rate": 0.6792,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-21",
+          "rate": 0.6794,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-22",
+          "rate": 0.6789,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-23",
+          "rate": 0.6769,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-24",
+          "rate": 0.6771,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-25",
+          "rate": 0.6745,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-26",
+          "rate": 0.6767,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-27",
+          "rate": 0.677,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-28",
+          "rate": 0.6766,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-29",
+          "rate": 0.6773,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-30",
+          "rate": 0.68,
+          "source": "FX-DEMO"
+        }
+      ],
+      "CLP": [
+        {
+          "date": "2026-09-01",
+          "rate": 0.003882,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-02",
+          "rate": 0.003895,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-03",
+          "rate": 0.003899,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-04",
+          "rate": 0.003906,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-05",
+          "rate": 0.003902,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-06",
+          "rate": 0.003895,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-07",
+          "rate": 0.003882,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-08",
+          "rate": 0.003887,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-09",
+          "rate": 0.00388,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-10",
+          "rate": 0.003881,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-11",
+          "rate": 0.003873,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-12",
+          "rate": 0.003888,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-13",
+          "rate": 0.003891,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-14",
+          "rate": 0.003892,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-15",
+          "rate": 0.003904,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-16",
+          "rate": 0.003907,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-17",
+          "rate": 0.00392,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-18",
+          "rate": 0.003916,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-19",
+          "rate": 0.003932,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-20",
+          "rate": 0.003942,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-21",
+          "rate": 0.003954,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-22",
+          "rate": 0.003945,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-23",
+          "rate": 0.003951,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-24",
+          "rate": 0.00396,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-25",
+          "rate": 0.003964,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-26",
+          "rate": 0.003978,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-27",
+          "rate": 0.003978,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-28",
+          "rate": 0.003985,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-29",
+          "rate": 0.004,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-30",
+          "rate": 0.004,
+          "source": "FX-DEMO"
+        }
+      ],
+      "MXN": [
+        {
+          "date": "2026-09-01",
+          "rate": 0.2025,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-02",
+          "rate": 0.2023,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-03",
+          "rate": 0.2015,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-04",
+          "rate": 0.2014,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-05",
+          "rate": 0.2007,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-06",
+          "rate": 0.2003,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-07",
+          "rate": 0.1999,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-08",
+          "rate": 0.1999,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-09",
+          "rate": 0.2001,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-10",
+          "rate": 0.1995,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-11",
+          "rate": 0.1987,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-12",
+          "rate": 0.1988,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-13",
+          "rate": 0.1985,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-14",
+          "rate": 0.1979,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-15",
+          "rate": 0.1979,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-16",
+          "rate": 0.1976,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-17",
+          "rate": 0.197,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-18",
+          "rate": 0.1976,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-19",
+          "rate": 0.1977,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-20",
+          "rate": 0.1977,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-21",
+          "rate": 0.197,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-22",
+          "rate": 0.197,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-23",
+          "rate": 0.1972,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-24",
+          "rate": 0.1972,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-25",
+          "rate": 0.1971,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-26",
+          "rate": 0.1978,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-27",
+          "rate": 0.1981,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-28",
+          "rate": 0.1986,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-29",
+          "rate": 0.1993,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-30",
+          "rate": 0.2,
+          "source": "FX-DEMO"
+        }
+      ],
+      "COP": [
+        {
+          "date": "2026-09-01",
+          "rate": 0.000915,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-02",
+          "rate": 0.000918,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-03",
+          "rate": 0.000918,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-04",
+          "rate": 0.000922,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-05",
+          "rate": 0.000922,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-06",
+          "rate": 0.000918,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-07",
+          "rate": 0.000922,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-08",
+          "rate": 0.000923,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-09",
+          "rate": 0.000923,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-10",
+          "rate": 0.000925,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-11",
+          "rate": 0.000928,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-12",
+          "rate": 0.000926,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-13",
+          "rate": 0.000929,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-14",
+          "rate": 0.000928,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-15",
+          "rate": 0.000924,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-16",
+          "rate": 0.000924,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-17",
+          "rate": 0.000925,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-18",
+          "rate": 0.000929,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-19",
+          "rate": 0.000927,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-20",
+          "rate": 0.000924,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-21",
+          "rate": 0.000925,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-22",
+          "rate": 0.000925,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-23",
+          "rate": 0.000922,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-24",
+          "rate": 0.000921,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-25",
+          "rate": 0.000921,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-26",
+          "rate": 0.00092,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-27",
+          "rate": 0.00092,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-28",
+          "rate": 0.000916,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-29",
+          "rate": 0.00092,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-30",
+          "rate": 0.00092,
+          "source": "FX-DEMO"
+        }
+      ],
+      "ARS": [
+        {
+          "date": "2026-09-01",
+          "rate": 0.003838,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-02",
+          "rate": 0.003841,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-03",
+          "rate": 0.00385,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-04",
+          "rate": 0.003853,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-05",
+          "rate": 0.003865,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-06",
+          "rate": 0.003853,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-07",
+          "rate": 0.003851,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-08",
+          "rate": 0.003852,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-09",
+          "rate": 0.003845,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-10",
+          "rate": 0.003858,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-11",
+          "rate": 0.003873,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-12",
+          "rate": 0.003878,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-13",
+          "rate": 0.003878,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-14",
+          "rate": 0.003881,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-15",
+          "rate": 0.003889,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-16",
+          "rate": 0.003889,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-17",
+          "rate": 0.0039,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-18",
+          "rate": 0.003913,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-19",
+          "rate": 0.003911,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-20",
+          "rate": 0.003898,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-21",
+          "rate": 0.003901,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-22",
+          "rate": 0.003906,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-23",
+          "rate": 0.003916,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-24",
+          "rate": 0.003906,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-25",
+          "rate": 0.003909,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-26",
+          "rate": 0.003906,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-27",
+          "rate": 0.003893,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-28",
+          "rate": 0.003899,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-29",
+          "rate": 0.003892,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-30",
+          "rate": 0.0039,
+          "source": "FX-DEMO"
+        }
+      ],
+      "JPY": [
+        {
+          "date": "2026-09-01",
+          "rate": 0.024963,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-02",
+          "rate": 0.024879,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-03",
+          "rate": 0.024947,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-04",
+          "rate": 0.024983,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-05",
+          "rate": 0.025013,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-06",
+          "rate": 0.025058,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-07",
+          "rate": 0.024965,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-08",
+          "rate": 0.024947,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-09",
+          "rate": 0.024903,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-10",
+          "rate": 0.024976,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-11",
+          "rate": 0.025034,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-12",
+          "rate": 0.025117,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-13",
+          "rate": 0.025134,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-14",
+          "rate": 0.025074,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-15",
+          "rate": 0.024985,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-16",
+          "rate": 0.025008,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-17",
+          "rate": 0.024919,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-18",
+          "rate": 0.024842,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-19",
+          "rate": 0.024817,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-20",
+          "rate": 0.02487,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-21",
+          "rate": 0.024872,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-22",
+          "rate": 0.024826,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-23",
+          "rate": 0.024879,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-24",
+          "rate": 0.02491,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-25",
+          "rate": 0.024954,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-26",
+          "rate": 0.024947,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-27",
+          "rate": 0.025041,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-28",
+          "rate": 0.024971,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-29",
+          "rate": 0.024925,
+          "source": "FX-DEMO"
+        },
+        {
+          "date": "2026-09-30",
+          "rate": 0.025,
+          "source": "FX-DEMO"
+        }
+      ]
+    }
+  },
+  "bookingRules": [
+    {
+      "id": "R-AVAIL-RANGES",
+      "group": "Disponibilidad",
+      "name": "Disponibilidad por rangos de fechas",
+      "desc": "Define periodos disponibles, cerrados u ocupados y agotados por producto (p. ej. disponible 02–06 oct, ocupado 07–09 oct).",
+      "enabled": true,
+      "params": {},
+      "scope": [
+        "Catálogo",
+        "Sitio web",
+        "Widget",
+        "Cotizaciones",
+        "Reservas"
+      ],
+      "productOverride": true,
+      "minPlan": "Starter"
+    },
+    {
+      "id": "R-CUTOFF",
+      "group": "Disponibilidad",
+      "name": "Anticipación mínima de reserva",
+      "desc": "Bloquea fechas dentro de las horas de anticipación del producto.",
+      "enabled": true,
+      "params": {
+        "defaultHours": 48
+      },
+      "scope": [
+        "Sitio web",
+        "Widget",
+        "B2B"
+      ],
+      "productOverride": true,
+      "minPlan": "Starter"
+    },
+    {
+      "id": "R-WEEKDAYS",
+      "group": "Disponibilidad",
+      "name": "Días de operación por semana",
+      "desc": "El producto solo se vende los días de la semana configurados.",
+      "enabled": true,
+      "params": {},
+      "scope": [
+        "Sitio web",
+        "Widget"
+      ],
+      "productOverride": true,
+      "minPlan": "Starter"
+    },
+    {
+      "id": "R-HOLD",
+      "group": "Disponibilidad",
+      "name": "Bloqueo temporal de cupos en el carrito",
+      "desc": "Reserva los cupos mientras el cliente paga.",
+      "enabled": true,
+      "params": {
+        "minutes": 30
+      },
+      "scope": [
+        "Sitio web",
+        "Widget"
+      ],
+      "productOverride": false,
+      "minPlan": "Starter"
+    },
+    {
+      "id": "R-MIN-GROUP",
+      "group": "Disponibilidad",
+      "name": "Grupo mínimo para garantizar la salida",
+      "desc": "Si no se alcanza el mínimo X días antes, la salida se reprograma o reembolsa.",
+      "enabled": false,
+      "params": {
+        "minPax": 2,
+        "decisionDays": 3
+      },
+      "scope": [
+        "Operaciones",
+        "Sitio web"
+      ],
+      "productOverride": true,
+      "minPlan": "Professional"
+    },
+    {
+      "id": "R-MIN-ADULTS",
+      "group": "Pasajeros",
+      "name": "Adulto responsable obligatorio",
+      "desc": "Toda reserva requiere al menos un adulto.",
+      "enabled": true,
+      "params": {
+        "minAdults": 1,
+        "adultMinAge": 11
+      },
+      "scope": [
+        "Sitio web",
+        "Widget",
+        "Cotizaciones",
+        "B2B"
+      ],
+      "productOverride": true,
+      "minPlan": "Starter"
+    },
+    {
+      "id": "R-CHILD-PER-ADULT",
+      "group": "Pasajeros",
+      "name": "Límite de niños que pagan por adulto",
+      "desc": "Niños de 4 a 10 años (configurable) pagan tarifa de niño; máximo N por adulto.",
+      "enabled": true,
+      "params": {
+        "childMinAge": 4,
+        "childMaxAge": 10,
+        "maxChildrenPerAdult": 2,
+        "childPricePct": 70
+      },
+      "scope": [
+        "Sitio web",
+        "Widget",
+        "Cotizaciones",
+        "B2B"
+      ],
+      "productOverride": true,
+      "minPlan": "Starter"
+    },
+    {
+      "id": "R-INFANT-FREE",
+      "group": "Pasajeros",
+      "name": "Infantes sin costo y límite por adulto",
+      "desc": "Menores de 3 años (configurable) no pagan y comparten asiento/cama; máximo N por adulto.",
+      "enabled": true,
+      "params": {
+        "infantMaxAge": 3,
+        "maxInfantsPerAdult": 1
+      },
+      "scope": [
+        "Sitio web",
+        "Widget",
+        "Cotizaciones",
+        "B2B"
+      ],
+      "productOverride": true,
+      "minPlan": "Starter"
+    },
+    {
+      "id": "R-MAX-PAX",
+      "group": "Pasajeros",
+      "name": "Máximo de pasajeros por reserva",
+      "desc": "Grupos mayores se derivan a cotización a medida.",
+      "enabled": true,
+      "params": {
+        "max": 16
+      },
+      "scope": [
+        "Sitio web",
+        "Widget"
+      ],
+      "productOverride": true,
+      "minPlan": "Starter"
+    },
+    {
+      "id": "R-COMPANIONS",
+      "group": "Pasajeros",
+      "name": "Datos de acompañantes",
+      "desc": "Solicita nombre, documento, nacionalidad, fecha de nacimiento y parentesco de cada acompañante.",
+      "enabled": true,
+      "params": {
+        "when": "al_reservar",
+        "daysBeforeIfLater": 7,
+        "requireDocument": true
+      },
+      "scope": [
+        "Sitio web",
+        "Widget",
+        "Portal cliente"
+      ],
+      "productOverride": true,
+      "minPlan": "Starter"
+    },
+    {
+      "id": "R-ALTITUDE",
+      "group": "Pasajeros",
+      "name": "Declaración de salud para altura",
+      "desc": "Casilla de declaración y recomendación médica en tours sobre 3 500 m s. n. m. (sin registrar diagnósticos).",
+      "enabled": false,
+      "params": {
+        "minAltitude": 3500
+      },
+      "scope": [
+        "Sitio web",
+        "Widget"
+      ],
+      "productOverride": true,
+      "minPlan": "Professional"
+    },
+    {
+      "id": "R-LODGING",
+      "group": "Alojamiento",
+      "name": "Alojamiento opcional por ciudad",
+      "desc": "El cliente elige hotel, tipo y número de habitaciones por ciudad; se muestran total de habitaciones y noches.",
+      "enabled": true,
+      "params": {},
+      "scope": [
+        "Sitio web",
+        "Widget",
+        "Cotizaciones"
+      ],
+      "productOverride": true,
+      "minPlan": "Professional"
+    },
+    {
+      "id": "R-LODGING-CAPACITY",
+      "group": "Alojamiento",
+      "name": "Validar camas suficientes",
+      "desc": "Las habitaciones elegidas deben alojar a adultos y niños; los infantes comparten cama.",
+      "enabled": true,
+      "params": {},
+      "scope": [
+        "Sitio web",
+        "Widget",
+        "Cotizaciones"
+      ],
+      "productOverride": false,
+      "minPlan": "Professional"
+    },
+    {
+      "id": "R-SINGLE-SUPP",
+      "group": "Alojamiento",
+      "name": "Suplemento de habitación simple",
+      "desc": "Cobra un recargo cuando un adulto viaja solo en habitación simple.",
+      "enabled": false,
+      "params": {
+        "pct": 40
+      },
+      "scope": [
+        "Sitio web",
+        "Cotizaciones"
+      ],
+      "productOverride": true,
+      "minPlan": "Professional"
+    },
+    {
+      "id": "R-ADDONS",
+      "group": "Adicionales",
+      "name": "Adicionales (entradas a museos, extensiones, comidas)",
+      "desc": "Permite agregar servicios opcionales por pasajero o por reserva.",
+      "enabled": true,
+      "params": {},
+      "scope": [
+        "Sitio web",
+        "Widget",
+        "Cotizaciones",
+        "Portal cliente"
+      ],
+      "productOverride": true,
+      "minPlan": "Professional"
+    },
+    {
+      "id": "R-PROMO",
+      "group": "Precios",
+      "name": "Códigos promocionales",
+      "desc": "Acepta cupones de descuento vigentes.",
+      "enabled": true,
+      "params": {},
+      "scope": [
+        "Sitio web",
+        "Widget"
+      ],
+      "productOverride": false,
+      "minPlan": "Starter"
+    },
+    {
+      "id": "R-GROUP-DISC",
+      "group": "Precios",
+      "name": "Descuento por grupo",
+      "desc": "Descuento automático desde N pasajeros que pagan.",
+      "enabled": false,
+      "params": {
+        "fromPax": 6,
+        "pct": 5
+      },
+      "scope": [
+        "Sitio web",
+        "Widget",
+        "Cotizaciones"
+      ],
+      "productOverride": true,
+      "minPlan": "Professional"
+    },
+    {
+      "id": "R-EARLY-BIRD",
+      "group": "Precios",
+      "name": "Descuento por reserva anticipada",
+      "desc": "Descuento si se reserva con X días o más de anticipación.",
+      "enabled": false,
+      "params": {
+        "days": 60,
+        "pct": 7
+      },
+      "scope": [
+        "Sitio web",
+        "Widget"
+      ],
+      "productOverride": true,
+      "minPlan": "Professional"
+    },
+    {
+      "id": "R-LAST-MINUTE",
+      "group": "Precios",
+      "name": "Recargo de última hora",
+      "desc": "Recargo si se reserva con menos de X días.",
+      "enabled": false,
+      "params": {
+        "days": 3,
+        "pct": 10
+      },
+      "scope": [
+        "Sitio web",
+        "Widget"
+      ],
+      "productOverride": true,
+      "minPlan": "Professional"
+    },
+    {
+      "id": "R-SEASON",
+      "group": "Precios",
+      "name": "Factor de temporada",
+      "desc": "Aplica el factor de la temporada vigente en la fecha del servicio.",
+      "enabled": true,
+      "params": {},
+      "scope": [
+        "Sitio web",
+        "Widget",
+        "Cotizaciones"
+      ],
+      "productOverride": false,
+      "minPlan": "Starter"
+    },
+    {
+      "id": "R-MULTICURRENCY",
+      "group": "Monedas y pagos",
+      "name": "Mostrar precios en varias monedas",
+      "desc": "El cliente elige la moneda de visualización; se cobra en las monedas de cobro configuradas.",
+      "enabled": true,
+      "params": {
+        "fxMarginPct": 2
+      },
+      "scope": [
+        "Sitio web",
+        "Widget",
+        "Portal cliente"
+      ],
+      "productOverride": false,
+      "minPlan": "Professional"
+    },
+    {
+      "id": "R-DEPOSIT",
+      "group": "Monedas y pagos",
+      "name": "Pago con adelanto (porcentaje)",
+      "desc": "Permite pagar un porcentaje al reservar y el saldo antes del viaje.",
+      "enabled": true,
+      "params": {
+        "pct": 30,
+        "balanceDueDays": 15
+      },
+      "scope": [
+        "Sitio web",
+        "Widget",
+        "Portal cliente",
+        "B2B"
+      ],
+      "productOverride": true,
+      "minPlan": "Starter"
+    },
+    {
+      "id": "R-PAY-LATER",
+      "group": "Monedas y pagos",
+      "name": "Reservar ahora, pagar después",
+      "desc": "Reserva sin pago con bloqueo de cupos por X horas; se libera si no se paga.",
+      "enabled": false,
+      "params": {
+        "holdHours": 24
+      },
+      "scope": [
+        "Sitio web",
+        "Widget"
+      ],
+      "productOverride": true,
+      "minPlan": "Enterprise"
+    },
+    {
+      "id": "R-PAY-FEE",
+      "group": "Monedas y pagos",
+      "name": "Recargo por medio de pago",
+      "desc": "Traslada al cliente un % por pago con tarjeta (verificar normativa y contrato con la pasarela).",
+      "enabled": false,
+      "params": {
+        "cardPct": 3.5
+      },
+      "scope": [
+        "Sitio web",
+        "Widget"
+      ],
+      "productOverride": false,
+      "minPlan": "Enterprise"
+    },
+    {
+      "id": "R-PREVIEW-REMOVE",
+      "group": "Checkout",
+      "name": "Previsualización con opción de quitar ítems",
+      "desc": "Antes de pagar, el cliente revisa el resumen y puede quitar adicionales y alojamiento.",
+      "enabled": true,
+      "params": {},
+      "scope": [
+        "Sitio web",
+        "Widget"
+      ],
+      "productOverride": false,
+      "minPlan": "Starter"
+    },
+    {
+      "id": "R-PICKUP",
+      "group": "Checkout",
+      "name": "Punto de partida / recojo obligatorio",
+      "desc": "Solicita punto de recojo o dirección del hotel, y vuelo de llegada si aplica.",
+      "enabled": true,
+      "params": {
+        "askFlight": true
+      },
+      "scope": [
+        "Sitio web",
+        "Widget",
+        "Portal cliente"
+      ],
+      "productOverride": true,
+      "minPlan": "Starter"
+    },
+    {
+      "id": "R-COMMENTS",
+      "group": "Checkout",
+      "name": "Comentarios del cliente",
+      "desc": "Campo libre para pedidos especiales (dietas, celebraciones, accesibilidad).",
+      "enabled": true,
+      "params": {
+        "maxChars": 1000
+      },
+      "scope": [
+        "Sitio web",
+        "Widget",
+        "Portal cliente"
+      ],
+      "productOverride": false,
+      "minPlan": "Starter"
+    },
+    {
+      "id": "R-NOMINATIVE",
+      "group": "Checkout",
+      "name": "Documento obligatorio para entradas nominativas",
+      "desc": "Exige documento de todos los pasajeros cuando el producto incluye entradas nominativas (Machu Picchu).",
+      "enabled": true,
+      "params": {},
+      "scope": [
+        "Sitio web",
+        "Operaciones"
+      ],
+      "productOverride": true,
+      "minPlan": "Professional"
+    },
+    {
+      "id": "R-PAX-MESSAGES",
+      "group": "Comunicación",
+      "name": "Mensajes automáticos al pasajero",
+      "desc": "Envía mensajes programados (confirmación, previaje, día del servicio, postviaje).",
+      "enabled": true,
+      "params": {},
+      "scope": [
+        "Comunicaciones"
+      ],
+      "productOverride": false,
+      "minPlan": "Professional"
+    },
+    {
+      "id": "R-PAX-FEEDBACK",
+      "group": "Comunicación",
+      "name": "Comentarios del pasajero desde su panel",
+      "desc": "El pasajero envía comentarios o incidencias durante y después del viaje.",
+      "enabled": true,
+      "params": {},
+      "scope": [
+        "Portal pasajero",
+        "App pasajero"
+      ],
+      "productOverride": false,
+      "minPlan": "Professional"
+    },
+    {
+      "id": "R-REVIEW-INVITE",
+      "group": "Comunicación",
+      "name": "Invitación a reseña externa",
+      "desc": "Tras el viaje invita a dejar reseña en TripAdvisor, Trustpilot o Google (según integración activa).",
+      "enabled": false,
+      "params": {
+        "daysAfter": 2
+      },
+      "scope": [
+        "Comunicaciones",
+        "Reseñas"
+      ],
+      "productOverride": false,
+      "minPlan": "Enterprise"
+    },
+    {
+      "id": "R-OWN-REVIEWS",
+      "group": "Comunicación",
+      "name": "Reseñas propias verificadas",
+      "desc": "Solicita calificación y reseña a los pasajeros después del viaje; se moderan y publican en el sitio y el widget con sello de «viaje verificado».",
+      "enabled": true,
+      "params": {
+        "daysAfter": 1,
+        "minStarsAutoPublish": 4,
+        "moderation": true
+      },
+      "scope": [
+        "Portal pasajero",
+        "Sitio web",
+        "Widget",
+        "Reseñas"
+      ],
+      "productOverride": true,
+      "minPlan": "Professional"
+    }
+  ],
+  "general": {
+    "email": "administracion@andeshorizonte.pe",
+    "phone": "01 640 2210",
+    "web": "www.andeshorizonte.pe",
+    "address": "Av. José Larco 1150, Of. 602, Miraflores, Lima",
+    "mainSede": "SED-01",
+    "lang": "es-PE",
+    "dateFmt": "DD/MM/AAAA",
+    "legalRep": "Mariela Quispe Rojas",
+    "mincetur": "Registro MINCETUR N.° 0412-2025"
+  },
+  "policies": {
+    "cancel": "Sin penalidad hasta 15 días antes. 50% entre 14 y 7 días. 100% dentro de 7 días o no-show.",
+    "modify": "Cambios de fecha sin costo hasta 10 días antes, sujetos a disponibilidad y diferencia tarifaria.",
+    "noshow": "No-show se factura al 100%. No hay reembolso de entradas nominativas.",
+    "refund": "Reembolsos en 7–15 días hábiles por el mismo medio de pago, descontando gastos bancarios.",
+    "maxDiscountPct": 5,
+    "advancePct": 40,
+    "balanceDaysBefore": 15,
+    "markupPct": 25
+  },
+  "ops": {
+    "voucherHoursBefore": 72,
+    "assignExpiryMin": 120,
+    "checkinToleranceMin": 15,
+    "modifyMinHours": 48,
+    "maxPaxPerGuide": 16,
+    "offlineSyncMin": 10,
+    "payReminderDays": 3,
+    "tripNoticeHours": 48,
+    "incidentEscalateMin": 30
+  },
+  "channels": {
+    "portalCliente": true,
+    "portalPasajero": true,
+    "b2b": true,
+    "whatsapp": true,
+    "web": true,
+    "ecommerce": true,
+    "appOperador": true,
+    "appPasajero": true
+  },
+  "fxHistory": [
+    {
+      "date": "2026-09-29",
+      "fx": 3.74,
+      "source": "Manual diario (SBS referencial)",
+      "user": "U07"
+    },
+    {
+      "date": "2026-09-28",
+      "fx": 3.752,
+      "source": "Manual diario (SBS referencial)",
+      "user": "U07"
+    },
+    {
+      "date": "2026-09-27",
+      "fx": 3.748,
+      "source": "Manual diario (SBS referencial)",
+      "user": "U07"
+    },
+    {
+      "date": "2026-09-26",
+      "fx": 3.741,
+      "source": "Manual diario (SBS referencial)",
+      "user": "U07"
+    }
+  ],
+  "priceWithTax": true,
+  "roundMode": "Al más cercano",
+  "notifRules": {
+    "Cotización enviada": "Cliente",
+    "Cotización aprobada": "Vendedor + Gerencia",
+    "Reserva confirmada": "Cliente + Operaciones",
+    "Pago recibido": "Cliente + Finanzas",
+    "Asignación": "Guía / Conductor",
+    "Cambio de horario": "Pasajeros + Guía",
+    "Incidencia crítica": "Gerencia + Operaciones",
+    "Voucher emitido": "Cliente + Proveedor",
+    "Inicio/fin de servicio": "Pasajeros",
+    "Cierre de viaje": "Cliente (encuesta NPS)"
+  },
+  "templates": {}
+}

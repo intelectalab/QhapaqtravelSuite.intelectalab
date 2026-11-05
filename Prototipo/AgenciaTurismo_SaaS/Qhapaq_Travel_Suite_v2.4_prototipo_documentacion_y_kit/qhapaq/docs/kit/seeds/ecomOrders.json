@@ -1,0 +1,42 @@
+[
+  {
+    "id": "WEB-10433",
+    "date": "2026-09-29 06:50",
+    "customer": "Emily Johnson",
+    "product": "PRD-004",
+    "pax": 2,
+    "total": 258,
+    "currency": "PEN",
+    "status": "pago_pendiente"
+  },
+  {
+    "id": "WEB-10432",
+    "date": "2026-09-28 22:14",
+    "customer": "Lucas Pereira",
+    "product": "PRD-001",
+    "pax": 2,
+    "total": 690,
+    "currency": "USD",
+    "status": "confirmado"
+  },
+  {
+    "id": "WEB-10431",
+    "date": "2026-09-28 15:02",
+    "customer": "Nadia Reyes",
+    "product": "PRD-007",
+    "pax": 3,
+    "total": 555,
+    "currency": "PEN",
+    "status": "confirmado"
+  },
+  {
+    "id": "WEB-10430",
+    "date": "2026-09-27 19:40",
+    "customer": "Kenji Watanabe",
+    "product": "PRD-001",
+    "pax": 1,
+    "total": 345,
+    "currency": "USD",
+    "status": "pago_rechazado"
+  }
+]

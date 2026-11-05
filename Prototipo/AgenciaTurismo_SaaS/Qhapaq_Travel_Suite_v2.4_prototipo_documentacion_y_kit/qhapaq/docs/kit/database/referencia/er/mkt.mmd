@@ -1,0 +1,127 @@
+erDiagram
+  mkt_attributions {
+    uuid id PK
+    uuid campaign_id FK
+    varchar kind
+    uuid reservation_id FK
+    uuid lead_id FK
+    uuid ecom_order_id FK
+  }
+  mkt_automation_enrollments {
+    uuid id PK
+    uuid automation_id FK
+    varchar status
+  }
+  mkt_automation_runs {
+    uuid id PK
+    uuid automation_id FK
+    uuid triggered_by FK
+  }
+  mkt_automations {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    varchar key UK
+    varchar name
+    uuid template_id FK
+    varchar status
+  }
+  mkt_campaign_recipients {
+    uuid id PK
+    uuid campaign_id FK
+    varchar status
+  }
+  mkt_campaign_suppressions {
+    uuid id PK
+    uuid campaign_id FK
+  }
+  mkt_campaign_tests {
+    uuid id PK
+    uuid campaign_id FK
+    uuid to_user_id FK
+  }
+  mkt_campaigns {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    varchar name
+    uuid segment_id FK
+    uuid template_id FK
+    uuid promotion_id FK
+    varchar status
+    uuid owner_id FK
+  }
+  mkt_consent_events {
+    uuid id PK
+    uuid consent_id FK
+    uuid actor_id FK
+  }
+  mkt_consents {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    varchar status
+    uuid revoke_campaign_id FK
+  }
+  mkt_contacts_subscribers {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    citext email UK
+    uuid client_id FK
+    uuid lead_id FK
+  }
+  mkt_segments {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    varchar name
+    uuid owner_id FK
+  }
+  mkt_templates {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    varchar name
+    varchar status
+  }
+  booking_reservations {
+    uuid id PK
+  }
+  catalog_product_promotions {
+    uuid id PK
+  }
+  channel_ecom_orders {
+    uuid id PK
+  }
+  crm_clients {
+    uuid id PK
+  }
+  crm_leads {
+    uuid id PK
+  }
+  iam_users {
+    uuid id PK
+  }
+  booking_reservations |o--o{ mkt_attributions : "reservation_id"
+  catalog_product_promotions |o--o{ mkt_campaigns : "promotion_id"
+  channel_ecom_orders |o--o{ mkt_attributions : "ecom_order_id"
+  crm_clients |o--o{ mkt_contacts_subscribers : "client_id"
+  crm_leads |o--o{ mkt_attributions : "lead_id"
+  crm_leads |o--o{ mkt_contacts_subscribers : "lead_id"
+  iam_users |o--o{ mkt_automation_runs : "triggered_by"
+  iam_users ||--o{ mkt_campaign_tests : "to_user_id"
+  iam_users ||--o{ mkt_campaigns : "owner_id"
+  iam_users |o--o{ mkt_consent_events : "actor_id"
+  iam_users ||--o{ mkt_segments : "owner_id"
+  mkt_automations ||--o{ mkt_automation_enrollments : "automation_id"
+  mkt_automations ||--o{ mkt_automation_runs : "automation_id"
+  mkt_campaigns ||--o{ mkt_attributions : "campaign_id"
+  mkt_campaigns ||--o{ mkt_campaign_recipients : "campaign_id"
+  mkt_campaigns ||--o{ mkt_campaign_suppressions : "campaign_id"
+  mkt_campaigns ||--o{ mkt_campaign_tests : "campaign_id"
+  mkt_campaigns |o--o{ mkt_consents : "revoke_campaign_id"
+  mkt_consents ||--o{ mkt_consent_events : "consent_id"
+  mkt_segments ||--o{ mkt_campaigns : "segment_id"
+  mkt_templates ||--o{ mkt_automations : "template_id"
+  mkt_templates ||--o{ mkt_campaigns : "template_id"

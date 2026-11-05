@@ -1,0 +1,50 @@
+[
+  {
+    "id": "DC-0021",
+    "period": "2026-08",
+    "date": "2026-08-31",
+    "accountId": "CTA-02",
+    "balance": 21480,
+    "bookRate": 3.69,
+    "closeRate": 3.71,
+    "diffPEN": 429.6,
+    "by": "U08",
+    "at": "2026-08-31 18:00"
+  },
+  {
+    "id": "DC-0022",
+    "period": "2026-08",
+    "date": "2026-08-31",
+    "accountId": "CTA-04",
+    "balance": 8950,
+    "bookRate": 3.69,
+    "closeRate": 3.71,
+    "diffPEN": 179,
+    "by": "U08",
+    "at": "2026-08-31 18:00"
+  },
+  {
+    "id": "DC-0023",
+    "period": "2026-08",
+    "date": "2026-08-31",
+    "accountId": "CTA-06",
+    "balance": 3200,
+    "bookRate": 3.69,
+    "closeRate": 3.71,
+    "diffPEN": 64,
+    "by": "U08",
+    "at": "2026-08-31 18:00"
+  },
+  {
+    "id": "DC-0024",
+    "period": "2026-08",
+    "date": "2026-08-31",
+    "accountId": "CTA-10",
+    "balance": 4612.66,
+    "bookRate": 3.74,
+    "closeRate": 3.71,
+    "diffPEN": -138.38,
+    "by": "U08",
+    "at": "2026-08-31 18:00"
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "WH-0001",
+    "tenantId": "TNT-0001",
+    "url": "https://erp.andeshorizonte.pe/api/qhapaq/webhooks",
+    "description": "ERP contable: pagos, comprobantes y reservas",
+    "events": [
+      "reservation.confirmed",
+      "reservation.cancelled",
+      "payment.applied",
+      "invoice.issued"
+    ],
+    "secretPrefix": "whsec_3kd9",
+    "secretRotatedAt": "2026-05-12 11:30",
+    "status": "activo",
+    "health": "ok",
+    "consecutiveFailures": 0,
+    "createdBy": "U01",
+    "createdAt": "2026-05-12 11:30",
+    "apiVersion": "2026-09-01"
+  },
+  {
+    "id": "WH-0002",
+    "tenantId": "TNT-0001",
+    "url": "https://crm-mkt.andeshorizonte.pe/hooks/qts",
+    "description": "Automatización de marketing (seguimiento de cotizaciones)",
+    "events": [
+      "lead.created",
+      "quote.sent",
+      "quote.approved"
+    ],
+    "secretPrefix": "whsec_Tq81",
+    "secretRotatedAt": "2026-07-03 15:10",
+    "status": "activo",
+    "health": "fail",
+    "consecutiveFailures": 7,
+    "createdBy": "U01",
+    "createdAt": "2026-07-03 15:10",
+    "apiVersion": "2026-09-01"
+  },
+  {
+    "id": "WH-0003",
+    "tenantId": "TNT-0001",
+    "url": "https://alertas.andeshorizonte.pe/ops/incidencias",
+    "description": "Alertas operativas al canal de guardia",
+    "events": [
+      "incident.created",
+      "incident.resolved",
+      "voucher.issued"
+    ],
+    "secretPrefix": "whsec_Zm20",
+    "secretRotatedAt": "2026-08-10 08:00",
+    "status": "pausado",
+    "health": "ok",
+    "consecutiveFailures": 0,
+    "createdBy": "U01",
+    "createdAt": "2026-08-10 08:00",
+    "apiVersion": "2026-09-01",
+    "pausedAt": "2026-09-29 08:00",
+    "pausedBy": "U01"
+  }
+]

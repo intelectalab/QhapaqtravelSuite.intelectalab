@@ -1,0 +1,38 @@
+[
+  {
+    "id": "C01",
+    "userId": "U11",
+    "name": "Edwin Choque Layme",
+    "license": "A-IIIb Q48219033",
+    "expires": "2027-05-10",
+    "status": "asignado",
+    "phone": "958 330 214"
+  },
+  {
+    "id": "C02",
+    "userId": null,
+    "name": "Marco Sullca Quispe",
+    "license": "A-IIIb Q47100822",
+    "expires": "2026-11-02",
+    "status": "disponible",
+    "phone": "958 441 207"
+  },
+  {
+    "id": "C03",
+    "userId": null,
+    "name": "Víctor Hanco Mayta",
+    "license": "A-IIb Q46631190",
+    "expires": "2026-10-08",
+    "status": "disponible",
+    "phone": "958 552 318"
+  },
+  {
+    "id": "C04",
+    "userId": null,
+    "name": "Nilo Ramos Chura",
+    "license": "A-IIIb Q45522871",
+    "expires": "2027-02-21",
+    "status": "descanso",
+    "phone": "958 663 902"
+  }
+]

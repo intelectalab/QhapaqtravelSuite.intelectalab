@@ -1,0 +1,18 @@
+{
+  "reminderDays": [
+    15,
+    7,
+    3
+  ],
+  "channels": [
+    "Email",
+    "WhatsApp"
+  ],
+  "passportMonths": 6,
+  "visaNationalities": [
+    "China",
+    "India",
+    "Vietnamita"
+  ],
+  "insuranceTrekking": true
+}

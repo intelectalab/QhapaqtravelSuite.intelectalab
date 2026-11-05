@@ -1,0 +1,19 @@
+{
+  "tiers": [
+    {
+      "min": 90,
+      "pay": 50
+    },
+    {
+      "min": 100,
+      "pay": 100
+    },
+    {
+      "min": 120,
+      "pay": 130
+    }
+  ],
+  "primary": "sales",
+  "lockDecreaseAfterPct": 50,
+  "attributionWindowDays": 30
+}

@@ -1,0 +1,17 @@
+{
+  "id": "TNT-0001",
+  "name": "Andes Horizonte Travel S.A.C.",
+  "short": "Andes Horizonte",
+  "ruc": "20611234567",
+  "country": "Perú",
+  "currency": "PEN",
+  "altCurrency": "USD",
+  "fx": 3.74,
+  "tz": "America/Lima",
+  "plan": "Enterprise",
+  "status": "activo",
+  "createdAt": "2025-11-03",
+  "taxPct": 18,
+  "rounding": "Redondeo a 0.10",
+  "logo": "AH"
+}

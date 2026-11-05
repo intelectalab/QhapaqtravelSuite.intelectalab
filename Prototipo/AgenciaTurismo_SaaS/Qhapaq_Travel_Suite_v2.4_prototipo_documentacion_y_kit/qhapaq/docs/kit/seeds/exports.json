@@ -1,0 +1,22 @@
+[
+  {
+    "id": "EXP-0031",
+    "ts": "2026-09-28 07:00",
+    "report": "Finanzas y rentabilidad",
+    "format": "PDF",
+    "rows": 42,
+    "size": "184 KB",
+    "user": "U02",
+    "status": "disponible"
+  },
+  {
+    "id": "EXP-0030",
+    "ts": "2026-09-26 17:44",
+    "report": "Reservas",
+    "format": "XLSX",
+    "rows": 58,
+    "size": "36 KB",
+    "user": "U07",
+    "status": "disponible"
+  }
+]

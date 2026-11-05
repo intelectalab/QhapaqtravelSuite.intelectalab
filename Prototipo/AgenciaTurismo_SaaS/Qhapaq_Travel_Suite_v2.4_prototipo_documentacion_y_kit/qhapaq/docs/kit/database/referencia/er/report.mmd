@@ -1,0 +1,16 @@
+erDiagram
+  report_exports {
+    uuid id PK
+    varchar code
+    varchar status
+    uuid requested_by FK
+    uuid scheduled_job_id FK
+  }
+  iam_users {
+    uuid id PK
+  }
+  sys_scheduled_jobs {
+    uuid id PK
+  }
+  iam_users |o--o{ report_exports : "requested_by"
+  sys_scheduled_jobs |o--o{ report_exports : "scheduled_job_id"

@@ -1,0 +1,92 @@
+[
+  {
+    "id": "PAG-01923",
+    "receivableId": "CXC-00715",
+    "resId": "RES-2026-000350",
+    "method": "Tarjeta (e-commerce)",
+    "amount": 1896.66,
+    "currency": "USD",
+    "date": "2026-08-20",
+    "status": "aplicado",
+    "ref": "TXN 9120-WB12 · pedido WEB-10412",
+    "by": "Sistema"
+  },
+  {
+    "id": "PAG-01920",
+    "receivableId": "CXC-00710",
+    "resId": "RES-2026-000348",
+    "method": "Transferencia BCP",
+    "amount": 23444,
+    "currency": "PEN",
+    "date": "2026-09-11",
+    "status": "aplicado",
+    "ref": "OP 00918273",
+    "by": "U07"
+  },
+  {
+    "id": "PAG-01915",
+    "receivableId": "CXC-00705",
+    "resId": "RES-2026-000347",
+    "method": "Tarjeta (pasarela)",
+    "amount": 2716,
+    "currency": "USD",
+    "date": "2026-08-28",
+    "status": "aplicado",
+    "ref": "TXN 8812-AA90",
+    "by": "U07"
+  },
+  {
+    "id": "PAG-01912",
+    "receivableId": "CXC-00701",
+    "resId": "RES-2026-000346",
+    "method": "Tarjeta (e-commerce)",
+    "amount": 431,
+    "currency": "USD",
+    "date": "2026-09-10",
+    "status": "aplicado",
+    "ref": "TXN 7710-CC12",
+    "by": "Sistema"
+  },
+  {
+    "id": "PAG-01921",
+    "receivableId": "CXC-00713",
+    "resId": "RES-2026-000344",
+    "method": "Yape",
+    "amount": 400,
+    "currency": "USD",
+    "date": "2026-09-25",
+    "status": "aplicado",
+    "ref": "YP 44910022",
+    "by": "U07",
+    "reversalRequest": {
+      "by": "U04",
+      "ts": "2026-09-29 08:20",
+      "reason": "El Yape se abonó en soles (S/ 1 496, ver BNK-2) y no en USD 400: revertir y volver a registrar con el tipo de cambio del día para corregir la boleta B001-00008812 observada.",
+      "status": "pendiente"
+    }
+  },
+  {
+    "id": "PAG-01922",
+    "receivableId": "CXC-00713",
+    "resId": "RES-2026-000344",
+    "method": "Transferencia Interbank",
+    "amount": 510,
+    "currency": "USD",
+    "date": "2026-09-29",
+    "status": "pendiente",
+    "ref": "Voucher por validar",
+    "by": "U04"
+  },
+  {
+    "id": "PAG-01910",
+    "receivableId": null,
+    "resId": "RES-2026-000343",
+    "method": "Tarjeta (e-commerce)",
+    "amount": 229,
+    "currency": "PEN",
+    "date": "2026-09-05",
+    "status": "revertido",
+    "ref": "Reembolso TXN 6610",
+    "by": "U07"
+  }
+]

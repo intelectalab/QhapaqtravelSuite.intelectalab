@@ -1,0 +1,40 @@
+[
+  {
+    "id": "FB-00002",
+    "resId": "RES-2026-000350",
+    "passenger": "José Castañeda Ugarte",
+    "type": "sugerencia",
+    "rating": null,
+    "serviceId": "RS-35001",
+    "text": "¿Podrían asignar una silla de bebé en el traslado del aeropuerto? Viajamos con nuestra hija de 2 años.",
+    "createdAt": "2026-09-28 21:40",
+    "status": "nuevo",
+    "reply": null,
+    "repliedAt": null,
+    "repliedBy": null,
+    "channel": "Portal pasajero",
+    "contact": {
+      "email": "jcastaneda@correo.pe",
+      "phone": "987 450 221"
+    }
+  },
+  {
+    "id": "FB-00001",
+    "resId": "RES-2026-000350",
+    "passenger": "José Castañeda Ugarte",
+    "type": "comentario",
+    "rating": 5,
+    "serviceId": null,
+    "text": "El 14 de octubre es nuestro aniversario de bodas. ¿Es posible preparar una sorpresa sencilla en la cena de Puno?",
+    "createdAt": "2026-09-24 19:05",
+    "status": "respondido",
+    "reply": "Con gusto, Sr. Castañeda. Coordinamos con el Titicaca Lodge una torta pequeña (sin frutos secos) y una mesa con vista al lago para el 14/10. Sin costo adicional.",
+    "repliedAt": "2026-09-25 09:20",
+    "repliedBy": "U05",
+    "channel": "Portal pasajero",
+    "contact": {
+      "email": "jcastaneda@correo.pe",
+      "phone": "987 450 221"
+    }
+  }
+]
