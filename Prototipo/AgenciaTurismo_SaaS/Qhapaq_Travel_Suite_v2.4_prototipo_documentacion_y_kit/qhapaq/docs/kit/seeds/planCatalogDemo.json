@@ -1,9 +1,0 @@
-{
-  "isDemo": true,
-  "note": "Planes, precios y límites de PRUEBA para validar el modelo; se reemplazarán por los definitivos.",
-  "order": [
-    "Starter",
-    "Professional",
-    "Enterprise"
-  ]
-}
