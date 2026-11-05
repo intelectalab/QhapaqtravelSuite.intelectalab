@@ -1,0 +1,57 @@
+[
+  {
+    "id": "HLD-0001",
+    "depId": "SAL-0103",
+    "qty": 2,
+    "ref": "COT-2026-00188",
+    "status": "hold",
+    "createdAt": "2026-09-29 08:50",
+    "expiresAt": "2026-09-29 23:50",
+    "user": "U03",
+    "notes": "Bloqueo mientras el cliente aprueba la cotización"
+  },
+  {
+    "id": "HLD-0002",
+    "depId": "SAL-0403",
+    "qty": 4,
+    "ref": "B2B Mundo Andino Tours",
+    "status": "hold",
+    "createdAt": "2026-09-29 00:05",
+    "expiresAt": "2026-09-29 00:35",
+    "user": "U13",
+    "notes": "Hold desde portal B2B"
+  },
+  {
+    "id": "HLD-0003",
+    "depId": "SAL-0404",
+    "qty": 2,
+    "ref": "WEB-10433",
+    "status": "confirmada",
+    "createdAt": "2026-09-28 22:10",
+    "expiresAt": "2026-09-28 22:40",
+    "user": "Sistema",
+    "notes": "Pedido e-commerce"
+  },
+  {
+    "id": "HLD-0004",
+    "depId": "SAL-0105",
+    "qty": 3,
+    "ref": "COT-2026-00190",
+    "status": "liberada",
+    "createdAt": "2026-09-27 10:00",
+    "expiresAt": "2026-09-27 10:30",
+    "user": "U04",
+    "notes": "Cliente cambió de fecha"
+  },
+  {
+    "id": "HLD-0005",
+    "depId": "SAL-0101",
+    "qty": 2,
+    "ref": "RES-2026-000347",
+    "status": "confirmada",
+    "createdAt": "2026-08-28 14:12",
+    "expiresAt": "2026-08-28 14:42",
+    "user": "U03",
+    "notes": "Keller — MAPI"
+  }
+]

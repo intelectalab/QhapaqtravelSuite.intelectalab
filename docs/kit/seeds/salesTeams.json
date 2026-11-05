@@ -1,0 +1,19 @@
+[
+  {
+    "id": "EQ-01",
+    "name": "Ventas directas y e-commerce",
+    "leader": "U02",
+    "members": [
+      "U03",
+      "U04"
+    ]
+  },
+  {
+    "id": "EQ-02",
+    "name": "Cuentas corporativas y B2B",
+    "leader": "U02",
+    "members": [
+      "U02"
+    ]
+  }
+]

@@ -1,0 +1,231 @@
+erDiagram
+  crm_activities {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    varchar type
+    uuid owner_id FK
+    varchar status
+    uuid completed_by FK
+    uuid previous_activity_id FK
+    uuid merged_from_lead_id FK
+  }
+  crm_case_events {
+    uuid id PK
+    uuid case_id FK
+    uuid user_id FK
+  }
+  crm_cases {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    uuid client_id FK
+    uuid reservation_id FK
+    uuid survey_id FK
+    varchar status
+    uuid owner_id FK
+    uuid sede_id FK
+    uuid submitted_by FK
+  }
+  crm_catalog_items {
+    uuid id PK
+    varchar kind
+    varchar code
+  }
+  crm_claim_book_settings {
+    uuid id PK
+    uuid tenant_id UK
+  }
+  crm_client_contacts {
+    uuid id PK
+    uuid client_id FK
+    varchar name
+    varchar email
+    uuid source_lead_id FK
+  }
+  crm_clients {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    varchar kind
+    varchar name
+    varchar email
+    uuid owner_id FK
+    uuid source_lead_id FK
+    uuid b2b_agency_id FK
+  }
+  crm_lead_qualifications {
+    uuid id PK
+    uuid lead_id FK
+    char currency
+    uuid qualified_by FK
+  }
+  crm_leads {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    varchar email
+    uuid destination_id FK
+    uuid product_id FK
+    varchar status
+    uuid owner_id FK
+    uuid taken_by FK
+    uuid converted_client_id FK
+    uuid converted_opportunity_id FK
+    uuid converted_by FK
+    uuid matched_client_id FK
+  }
+  crm_opportunities {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    uuid client_id FK
+    varchar title
+    varchar stage
+    numeric amount
+    char currency
+    uuid owner_id FK
+    uuid lead_id FK
+    uuid product_id FK
+  }
+  crm_own_review_log {
+    uuid id PK
+    uuid review_id FK
+    uuid user_id FK
+  }
+  crm_own_reviews {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    uuid reservation_id FK
+    uuid product_id FK
+    uuid client_id FK
+    uuid passenger_id FK
+    varchar title
+    varchar status
+    uuid reply_by FK
+    uuid request_id FK
+    uuid moderated_by FK
+  }
+  crm_pipeline_stages {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    varchar name
+  }
+  crm_review_requests {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    uuid reservation_id FK,UK
+    uuid client_id FK
+    char token_hash UK
+    varchar status
+  }
+  crm_sales_target_adjustments {
+    uuid id PK
+    uuid target_id FK
+    uuid actor_id FK
+  }
+  crm_sales_target_policies {
+    uuid id PK
+    uuid tenant_id UK
+  }
+  crm_sales_targets {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    varchar status
+    uuid bonus_commission_id FK
+  }
+  crm_sales_team_members {
+    uuid id PK
+    uuid team_id FK
+    uuid user_id FK
+    date valid_from
+    date valid_to
+  }
+  crm_sales_teams {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    varchar name
+    uuid leader_id FK
+  }
+  crm_surveys {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    uuid client_id FK
+    uuid reservation_id FK
+    uuid recorded_by FK
+  }
+  booking_passengers {
+    uuid id PK
+  }
+  booking_reservations {
+    uuid id PK
+  }
+  catalog_destinations {
+    uuid id PK
+  }
+  catalog_products {
+    uuid id PK
+  }
+  channel_b2b_agencies {
+    uuid id PK
+  }
+  fin_commissions {
+    uuid id PK
+  }
+  iam_sedes {
+    uuid id PK
+  }
+  iam_users {
+    uuid id PK
+  }
+  booking_passengers |o--o{ crm_own_reviews : "passenger_id"
+  booking_reservations |o--o{ crm_cases : "reservation_id"
+  booking_reservations ||--o{ crm_own_reviews : "reservation_id"
+  booking_reservations ||--o{ crm_review_requests : "reservation_id"
+  booking_reservations |o--o{ crm_surveys : "reservation_id"
+  catalog_destinations |o--o{ crm_leads : "destination_id"
+  catalog_products |o--o{ crm_leads : "product_id"
+  catalog_products |o--o{ crm_opportunities : "product_id"
+  catalog_products ||--o{ crm_own_reviews : "product_id"
+  channel_b2b_agencies |o--o{ crm_clients : "b2b_agency_id"
+  crm_activities |o--o{ crm_activities : "previous_activity_id"
+  crm_cases ||--o{ crm_case_events : "case_id"
+  crm_clients |o--o{ crm_cases : "client_id"
+  crm_clients ||--o{ crm_client_contacts : "client_id"
+  crm_clients |o--o{ crm_leads : "converted_client_id, matched_client_id"
+  crm_clients ||--o{ crm_opportunities : "client_id"
+  crm_clients ||--o{ crm_own_reviews : "client_id"
+  crm_clients ||--o{ crm_review_requests : "client_id"
+  crm_clients ||--o{ crm_surveys : "client_id"
+  crm_leads |o--o{ crm_activities : "merged_from_lead_id"
+  crm_leads |o--o{ crm_client_contacts : "source_lead_id"
+  crm_leads |o--o{ crm_clients : "source_lead_id"
+  crm_leads ||--o{ crm_lead_qualifications : "lead_id"
+  crm_leads |o--o{ crm_opportunities : "lead_id"
+  crm_opportunities |o--o{ crm_leads : "converted_opportunity_id"
+  crm_own_reviews ||--o{ crm_own_review_log : "review_id"
+  crm_review_requests |o--o{ crm_own_reviews : "request_id"
+  crm_sales_targets ||--o{ crm_sales_target_adjustments : "target_id"
+  crm_sales_teams ||--o{ crm_sales_team_members : "team_id"
+  crm_surveys |o--o{ crm_cases : "survey_id"
+  fin_commissions |o--o{ crm_sales_targets : "bonus_commission_id"
+  iam_sedes |o--o{ crm_cases : "sede_id"
+  iam_users ||--o{ crm_activities : "completed_by, owner_id"
+  iam_users |o--o{ crm_case_events : "user_id"
+  iam_users ||--o{ crm_cases : "owner_id, submitted_by"
+  iam_users ||--o{ crm_clients : "owner_id"
+  iam_users ||--o{ crm_lead_qualifications : "qualified_by"
+  iam_users |o--o{ crm_leads : "converted_by, owner_id, taken_by"
+  iam_users ||--o{ crm_opportunities : "owner_id"
+  iam_users |o--o{ crm_own_review_log : "user_id"
+  iam_users |o--o{ crm_own_reviews : "moderated_by, reply_by"
+  iam_users ||--o{ crm_sales_target_adjustments : "actor_id"
+  iam_users ||--o{ crm_sales_team_members : "user_id"
+  iam_users |o--o{ crm_sales_teams : "leader_id"
+  iam_users ||--o{ crm_surveys : "recorded_by"

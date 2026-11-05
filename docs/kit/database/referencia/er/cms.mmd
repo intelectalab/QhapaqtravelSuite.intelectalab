@@ -1,0 +1,24 @@
+erDiagram
+  cms_content_events {
+    uuid id PK
+    uuid content_id FK
+    uuid user_id FK
+  }
+  cms_contents {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    varchar title
+    varchar type
+    varchar slug
+    varchar status
+    uuid author_id FK
+    date valid_from
+    date valid_to
+  }
+  iam_users {
+    uuid id PK
+  }
+  cms_contents ||--o{ cms_content_events : "content_id"
+  iam_users ||--o{ cms_content_events : "user_id"
+  iam_users ||--o{ cms_contents : "author_id"

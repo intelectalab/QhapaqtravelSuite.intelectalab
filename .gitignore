@@ -1,1 +1,53 @@
-Prototipo/
+# Sistema y editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+~$*
+
+# Archivos de Claude (no forman parte del proyecto)
+.claude/
+CLAUDE.md
+AGENTS.md
+**/CLAUDE.md
+**/AGENTS.md
+
+# Contraseñas y llaves
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencias y compilados
+vendor/
+node_modules/
+.next/
+out/
+dist/
+build/
+.expo/
+coverage/
+
+# Laravel
+backend/storage/logs/
+backend/storage/framework/cache/data/
+backend/storage/framework/sessions/
+backend/storage/framework/views/
+backend/public/storage
+backend/public/hot
+.phpunit.result.cache
+.phpunit.cache/
+
+# Pruebas E2E
+playwright-report/
+test-results/
+
+# Varios
+*.log
+*.dump
+*.bak
+*.tmp
+*.zip

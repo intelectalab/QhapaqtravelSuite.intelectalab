@@ -1,0 +1,568 @@
+// Fase 3 · SaaS y crecimiento — 28 tablas. Solo refs internas a la fase.
+// Tablas de fases previas que esta fase amplía (columnas nuevas): catalog_product_promotions, channel_ecom_orders, crm_leads, fin_commissions
+
+Table integration_api_keys {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(30) [not null]
+  name varchar(120) [not null]
+  environment varchar(10) [not null, note: 'in (live, test)']
+  prefix varchar(16) [not null]
+  last4 char(4) [not null]
+  token_hash char(64) [not null]
+  scopes "text[]" [not null]
+  ip_allowlist "cidr[]"
+  expires_at date
+  last_used_at timestamptz
+  last_used_ip inet
+  status varchar(20) [not null, note: 'in (active, revoked, expired)']
+  revoked_at timestamptz
+  revoked_by uuid
+  revoke_reason varchar(300)
+  created_by uuid
+  created_at timestamptz [not null]
+  Note: '13 §3.11 · API keys del tenant (solo hash del token).'
+}
+
+Table integration_webhooks {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(30) [not null]
+  url varchar(500) [not null]
+  description varchar(200)
+  events "text[]" [not null]
+  secret_encrypted text [not null]
+  previous_secret_encrypted text
+  previous_secret_expires_at timestamptz
+  secret_prefix varchar(12) [not null]
+  api_version varchar(10) [not null]
+  status varchar(20) [not null, note: 'in (active, paused, disabled, deleted)']
+  consecutive_failures smallint [not null]
+  disabled_reason varchar(200)
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  Note: '13 §3.12 · Suscripciones de webhooks del tenant.'
+}
+
+Table integration_webhook_deliveries {
+  id uuid [not null]
+  tenant_id uuid [not null]
+  code varchar(30) [not null]
+  webhook_id uuid [not null]
+  event_type varchar(50) [not null]
+  event_id varchar(40) [not null]
+  entity_code varchar(40)
+  payload jsonb [not null]
+  attempt smallint [not null]
+  status varchar(20) [not null, note: 'in (pending, delivered, retrying, failed)']
+  http_status smallint
+  duration_ms integer
+  response_excerpt varchar(2000)
+  error varchar(300)
+  next_retry_at timestamptz
+  manual boolean [not null]
+  created_at timestamptz [not null]
+  indexes {
+    (id, created_at) [pk]
+  }
+  Note: '13 §3.13 · Entregas de webhooks (particionada por mes, retención 30 días).'
+}
+
+Table oauth_clients {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  owner_type varchar(255)
+  owner_id uuid
+  name varchar(255) [not null]
+  secret varchar(255)
+  provider varchar(255)
+  redirect_uris text [not null]
+  grant_types text [not null]
+  revoked boolean [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '13 §3.14 · Clientes OAuth (Laravel Passport) extendidos con tenant_id.'
+}
+
+Table integration_oauth_apps {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  client_id uuid [not null]
+  vendor varchar(120) [not null]
+  allowed_scopes "text[]" [not null]
+  status varchar(20) [not null, note: 'in (active, revoked)']
+  created_by uuid
+  created_at timestamptz [not null]
+  Note: '13 §3.14 · Apps OAuth de terceros autorizadas (Authorization Code + PKCE).'
+}
+
+Table mkt_contacts_subscribers {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20) [not null]
+  full_name varchar(160) [not null]
+  email citext [not null]
+  phone varchar(30)
+  phone_e164 varchar(20)
+  country varchar(60)
+  interest_destination varchar(120)
+  source varchar(60) [not null]
+  client_id uuid
+  lead_id uuid
+  double_opt_in_at timestamptz
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  Note: '14 §3.1 · Suscriptores del newsletter.'
+}
+
+Table mkt_segments {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20) [not null]
+  name varchar(160) [not null]
+  description text
+  match varchar(5) [not null, note: 'in (all, any)']
+  rules jsonb [not null]
+  owner_id uuid [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  Note: '14 §3.4 · Segmentos de audiencia.'
+}
+
+Table mkt_templates {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20) [not null]
+  name varchar(120) [not null]
+  channel varchar(20) [not null, note: 'in (email, whatsapp)']
+  category varchar(20) [not null, note: 'in (MARKETING, UTILITY, SERVICIO)']
+  status varchar(20) [not null, note: 'in (activa, en_revision, aprobada, rechazada)']
+  provider_template_id varchar(60)
+  language varchar(10) [not null]
+  subject varchar(200)
+  body text [not null]
+  reviewed_at timestamptz
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '14 §3.5 · Plantillas de marketing (email / WhatsApp).'
+}
+
+Table mkt_campaigns {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20) [not null]
+  name varchar(160) [not null]
+  channel varchar(20) [not null, note: 'in (email, whatsapp)']
+  segment_id uuid [not null]
+  template_id uuid [not null]
+  subject varchar(200)
+  body text [not null]
+  promotion_id uuid
+  promo_code varchar(20)
+  utm varchar(200) [not null]
+  status varchar(20) [not null, note: 'in (borrador, programada, enviando, enviada, cancelada)']
+  scheduled_at timestamptz
+  sent_at timestamptz
+  completed_at timestamptz
+  cancel_reason text
+  audience_snapshot jsonb
+  owner_id uuid [not null]
+  lock_version integer [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '14 §3.6 · Campañas de marketing.'
+}
+
+Table mkt_consents {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20) [not null]
+  subject_type varchar(20) [not null, note: 'in (client, lead, subscriber)']
+  subject_id uuid [not null]
+  channel varchar(20) [not null, note: 'in (email, whatsapp)']
+  status varchar(20) [not null, note: 'in (otorgado, revocado)']
+  granted_at timestamptz [not null]
+  source varchar(120) [not null]
+  evidence text [not null]
+  policy_version varchar(20) [not null]
+  revoked_at timestamptz
+  revoke_source varchar(120)
+  revoke_campaign_id uuid
+  lock_version integer [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '14 §3.2 · Consentimiento vigente por titular y canal.'
+}
+
+Table mkt_consent_events {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  consent_id uuid [not null]
+  event varchar(20) [not null, note: 'in (otorgado, revocado)']
+  source varchar(120) [not null]
+  evidence text
+  actor_id uuid
+  occurred_at timestamptz [not null]
+  ip inet
+  Note: '14 §3.3 · Historial inmutable de consentimientos (evidencia ANPD).'
+}
+
+Table mkt_campaign_tests {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  campaign_id uuid [not null]
+  to_user_id uuid [not null]
+  to_address varchar(160) [not null]
+  sample_subject_type varchar(20)
+  sample_subject_id uuid
+  sent_at timestamptz [not null]
+  invalidated_at timestamptz
+  created_by uuid
+  created_at timestamptz [not null]
+  Note: '14 §3.7 · Envíos de prueba de campaña.'
+}
+
+Table mkt_campaign_recipients {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  campaign_id uuid [not null]
+  subject_type varchar(20) [not null]
+  subject_id uuid [not null]
+  address varchar(160) [not null]
+  provider_message_id varchar(120)
+  status varchar(20) [not null, note: 'in (pendiente, enviado, entregado, rebotado, fallido)']
+  delivered_at timestamptz
+  opened_at timestamptz
+  clicked_at timestamptz
+  replied_at timestamptz
+  unsubscribed_at timestamptz
+  error text
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '14 §3.8 · Destinatarios de la campaña y métricas.'
+}
+
+Table mkt_campaign_suppressions {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  campaign_id uuid [not null]
+  subject_type varchar(20) [not null]
+  subject_id uuid [not null]
+  reason varchar(20) [not null, note: 'in (optout, nodata, consent, fatigue)']
+  created_by uuid
+  created_at timestamptz [not null]
+  Note: '14 §3.9 · Contactos suprimidos del envío (evidencia).'
+}
+
+Table mkt_attributions {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  campaign_id uuid [not null]
+  kind varchar(20) [not null, note: 'in (reservation, lead, promo_use)']
+  reservation_id uuid
+  lead_id uuid
+  ecom_order_id uuid
+  revenue_pen numeric(14,2)
+  attributed_at timestamptz [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '14 §3.10 · Atribución de conversiones a campañas (read model).'
+}
+
+Table mkt_automations {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20) [not null]
+  key varchar(30) [not null, note: 'in (welcome, cart, pretrip, survey, birthday, reactivation)']
+  name varchar(120) [not null]
+  trigger_desc varchar(200) [not null]
+  delay_desc varchar(80) [not null]
+  delay_minutes integer
+  schedule_cron varchar(60)
+  channel varchar(20) [not null, note: 'in (email, whatsapp)']
+  template_id uuid [not null]
+  purpose varchar(20) [not null, note: 'in (comercial, servicio)']
+  status varchar(20) [not null, note: 'in (activa, pausada)']
+  sent_total integer [not null]
+  suppressed_total integer [not null]
+  conversions_total integer [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '14 §3.11 · Automatizaciones de marketing / servicio.'
+}
+
+Table mkt_automation_runs {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  automation_id uuid [not null]
+  started_at timestamptz [not null]
+  finished_at timestamptz
+  queued integer [not null]
+  sent integer [not null]
+  suppressed integer [not null]
+  triggered_by uuid
+  Note: '14 §3.12 · Ejecuciones de automatizaciones.'
+}
+
+Table mkt_automation_enrollments {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  automation_id uuid [not null]
+  subject_type varchar(20) [not null]
+  subject_id uuid [not null]
+  ref_type varchar(20) [not null, note: 'in (subscriber, ecom_order, reservation, client)']
+  ref_id uuid [not null]
+  status varchar(20) [not null, note: 'in (enviado, suprimido)']
+  reason varchar(60)
+  processed_at timestamptz [not null]
+  Note: '14 §3.12 · Disparos procesados por automatización (idempotencia).'
+}
+
+Table crm_sales_teams {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20) [not null]
+  name varchar(120) [not null]
+  leader_id uuid
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '14 §3.13 · Equipos de venta.'
+}
+
+Table crm_sales_team_members {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  team_id uuid [not null]
+  user_id uuid [not null]
+  valid_from date [not null]
+  valid_to date
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '14 §3.13 · Integrantes del equipo (vigencias).'
+}
+
+Table crm_sales_targets {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20) [not null]
+  scope_type varchar(10) [not null, note: 'in (asesor, sede, equipo)']
+  scope_id uuid [not null]
+  period_type varchar(10) [not null, note: 'in (mes, trimestre)']
+  period_key varchar(7) [not null]
+  period_from date [not null]
+  period_to date [not null]
+  goal_sales_pen numeric(14,2) [not null]
+  goal_bookings integer
+  goal_margin_pen numeric(14,2)
+  goal_conversion_pct numeric(5,2)
+  bonus_amount numeric(14,2)
+  bonus_currency char(3)
+  status varchar(20) [not null, note: 'in (borrador, vigente, cerrada, anulada)']
+  result jsonb
+  bonus_commission_id uuid
+  lock_version integer [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '14 §3.14 · Metas comerciales por asesor, sede o equipo.'
+}
+
+Table crm_sales_target_adjustments {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  target_id uuid [not null]
+  action varchar(20) [not null, note: 'in (crear, activar, ajustar, anular, cerrar, bono)']
+  before jsonb
+  after jsonb
+  reason text
+  actor_id uuid [not null]
+  occurred_at timestamptz [not null]
+  Note: '14 §3.15 · Historial de ajustes de la meta.'
+}
+
+Table crm_sales_target_policies {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  tiers jsonb [not null]
+  primary_metric varchar(20) [not null]
+  lock_decrease_after_pct integer [not null]
+  attribution_window_days integer [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '14 §3.16 · Política de metas y bonos (1 fila por tenant).'
+}
+
+Table integration_review_sources {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  provider varchar(20) [not null, note: 'in (tripadvisor, trustpilot, google, facebook, getyourguide, viator)']
+  status varchar(20) [not null, note: 'in (no_conectado, pendiente, conectado, error)']
+  account_ref varchar(120)
+  secret_ref varchar(200)
+  secret_last4 char(4)
+  scopes "text[]" [not null]
+  can_reply boolean [not null]
+  supports_invites boolean [not null]
+  rating numeric(3,2)
+  review_count integer [not null]
+  last_sync_at timestamptz
+  connected_at timestamptz
+  connected_by uuid
+  contract_ack_at timestamptz
+  contract_ack_by uuid
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '17 §3.7 · Conectores de reseñas externas (TripAdvisor, Google…).'
+}
+
+Table channel_external_reviews {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  source_id uuid [not null]
+  external_id varchar(120) [not null]
+  author_display varchar(120) [not null]
+  review_date date [not null]
+  rating smallint [not null]
+  title text
+  body text
+  lang char(2)
+  product_id uuid
+  url text
+  response_status varchar(20) [not null, note: 'in (sin_responder, pendiente_publicar, publicada, no_admite)']
+  reply text
+  replied_at timestamptz
+  replied_by uuid
+  conversation_id uuid
+  raw jsonb
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '17 §3.7 · Reseñas importadas (texto inmutable).'
+}
+
+Table crm_review_requests {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(30) [not null]
+  reservation_id uuid [not null]
+  client_id uuid [not null]
+  to_address varchar(160) [not null]
+  channel varchar(10) [not null, note: 'in (email, whatsapp)']
+  lang char(2) [not null]
+  token_hash char(64) [not null]
+  scheduled_at timestamptz
+  sent_at timestamptz
+  opened_at timestamptz
+  reminded_at timestamptz
+  expires_at timestamptz
+  status varchar(15) [not null, note: 'in (programada, enviada, abierta, respondida, vencida, cancelada)']
+  is_demo boolean [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '18 §3.3 · Solicitudes de reseña post-viaje.'
+}
+
+Table crm_own_reviews {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(30) [not null]
+  reservation_id uuid [not null]
+  product_id uuid [not null]
+  client_id uuid [not null]
+  passenger_id uuid
+  author_display varchar(80) [not null]
+  author_name varchar(160) [not null]
+  country varchar(60)
+  travel_date date [not null]
+  stars smallint [not null]
+  subratings jsonb [not null]
+  title varchar(120) [not null]
+  body text [not null]
+  photos jsonb [not null]
+  lang char(2) [not null, note: 'in (es, en, de, fr, pt)']
+  verified boolean [not null]
+  consent_publish boolean [not null]
+  status varchar(20) [not null, note: 'in (pendiente, publicada, rechazada, oculta)']
+  moderation_reason text
+  reply_text text
+  reply_by uuid
+  replied_at timestamptz
+  helpful_count integer [not null]
+  source varchar(10) [not null, note: 'in (portal, email, widget)']
+  request_id uuid
+  is_demo boolean [not null]
+  published_at timestamptz
+  moderated_by uuid
+  lock_version integer [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  Note: '18 §3.1 · Reseñas propias verificadas por reserva.'
+}
+
+Table crm_own_review_log {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  review_id uuid [not null]
+  action varchar(30) [not null, note: 'in (crear, publicar, rechazar, ocultar, responder, editar_respuesta, autopublicar)']
+  note text
+  user_id uuid
+  created_at timestamptz [not null]
+  Note: '18 §3.2 · Historial de moderación de la reseña.'
+}
+
+Ref: integration_webhook_deliveries.webhook_id > integration_webhooks.id
+Ref: integration_oauth_apps.client_id > oauth_clients.id
+Ref: mkt_campaigns.segment_id > mkt_segments.id
+Ref: mkt_campaigns.template_id > mkt_templates.id
+Ref: mkt_consents.revoke_campaign_id > mkt_campaigns.id
+Ref: mkt_consent_events.consent_id > mkt_consents.id
+Ref: mkt_campaign_tests.campaign_id > mkt_campaigns.id
+Ref: mkt_campaign_recipients.campaign_id > mkt_campaigns.id
+Ref: mkt_campaign_suppressions.campaign_id > mkt_campaigns.id
+Ref: mkt_attributions.campaign_id > mkt_campaigns.id
+Ref: mkt_automations.template_id > mkt_templates.id
+Ref: mkt_automation_runs.automation_id > mkt_automations.id
+Ref: mkt_automation_enrollments.automation_id > mkt_automations.id
+Ref: crm_sales_team_members.team_id > crm_sales_teams.id
+Ref: crm_sales_target_adjustments.target_id > crm_sales_targets.id
+Ref: channel_external_reviews.source_id > integration_review_sources.id
+Ref: crm_own_reviews.request_id > crm_review_requests.id
+Ref: crm_own_review_log.review_id > crm_own_reviews.id

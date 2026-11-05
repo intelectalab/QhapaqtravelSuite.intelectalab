@@ -1,0 +1,233 @@
+[
+  {
+    "id": "PMT-001",
+    "name": "Reserva confirmada",
+    "event": "reserva_confirmada",
+    "offsetHours": 0,
+    "channels": [
+      "email",
+      "whatsapp",
+      "portal"
+    ],
+    "subject": "Su reserva {{reserva}} está confirmada",
+    "body": "Hola {{pasajero}}:\n\nSu reserva {{reserva}} para {{producto}} con inicio el {{fecha}} está confirmada.\n\nEn su portal encontrará el itinerario, los vouchers y los datos de contacto de operaciones: {{enlace_portal}}\n\nGracias por viajar con Andes Horizonte Travel.",
+    "lang": "ES",
+    "active": true,
+    "conditions": {
+      "products": [],
+      "channels": [],
+      "requiresRule": null,
+      "onlyIfBalance": false,
+      "onlyIfMissingDocs": false
+    },
+    "updatedAt": "2026-09-20 10:00",
+    "updatedBy": "U01"
+  },
+  {
+    "id": "PMT-002",
+    "name": "Recordatorio de saldo",
+    "event": "saldo_vence",
+    "offsetHours": -72,
+    "channels": [
+      "email",
+      "whatsapp"
+    ],
+    "subject": "Recordatorio: saldo de su reserva {{reserva}}",
+    "body": "Hola {{pasajero}}:\n\nLe recordamos que el saldo de {{saldo}} de su reserva {{reserva}} vence el {{fecha_saldo}}. Puede pagarlo con tarjeta o transferencia desde {{enlace_portal}}.\n\nSi ya realizó el pago, ignore este mensaje.",
+    "lang": "ES",
+    "active": true,
+    "conditions": {
+      "products": [],
+      "channels": [],
+      "requiresRule": "R-DEPOSIT",
+      "onlyIfBalance": true,
+      "onlyIfMissingDocs": false
+    },
+    "updatedAt": "2026-09-20 10:00",
+    "updatedBy": "U01"
+  },
+  {
+    "id": "PMT-003",
+    "name": "Datos de acompañantes pendientes",
+    "event": "viaje",
+    "offsetHours": -240,
+    "channels": [
+      "email",
+      "portal"
+    ],
+    "subject": "Complete los datos de sus acompañantes · {{reserva}}",
+    "body": "Hola {{pasajero}}:\n\nPara emitir las entradas y el seguro de su viaje del {{fecha}} necesitamos nombre, documento, nacionalidad y fecha de nacimiento de cada acompañante.\n\nComplételos aquí: {{enlace_portal}}",
+    "lang": "ES",
+    "active": true,
+    "conditions": {
+      "products": [],
+      "channels": [],
+      "requiresRule": "R-COMPANIONS",
+      "onlyIfBalance": false,
+      "onlyIfMissingDocs": true
+    },
+    "updatedAt": "2026-09-20 10:00",
+    "updatedBy": "U01"
+  },
+  {
+    "id": "PMT-004",
+    "name": "7 días antes del viaje",
+    "event": "viaje",
+    "offsetHours": -168,
+    "channels": [
+      "email",
+      "push"
+    ],
+    "subject": "Faltan 7 días para {{producto}}",
+    "body": "Hola {{pasajero}}:\n\nFaltan 7 días para su viaje ({{fecha}}). Revise su itinerario, recomendaciones de altura y lista de equipaje en {{enlace_portal}}.\n\nSi necesita cambiar su punto de recojo, respóndanos por este medio.",
+    "lang": "ES",
+    "active": true,
+    "conditions": {
+      "products": [],
+      "channels": [],
+      "requiresRule": null,
+      "onlyIfBalance": false,
+      "onlyIfMissingDocs": false
+    },
+    "updatedAt": "2026-09-20 10:00",
+    "updatedBy": "U01"
+  },
+  {
+    "id": "PMT-005",
+    "name": "48 h antes: punto y hora de recojo",
+    "event": "viaje",
+    "offsetHours": -48,
+    "channels": [
+      "whatsapp",
+      "email",
+      "push"
+    ],
+    "subject": "Recojo confirmado: {{fecha}} a las {{hora_recojo}}",
+    "body": "Hola {{pasajero}}:\n\nLe recogeremos el {{fecha}} a las {{hora_recojo}} en {{punto_recojo}}. Esté en el lobby 10 minutos antes con su documento de identidad.\n\nLínea de operaciones 24 h: +51 984 100 200.",
+    "lang": "ES",
+    "active": true,
+    "conditions": {
+      "products": [],
+      "channels": [],
+      "requiresRule": null,
+      "onlyIfBalance": false,
+      "onlyIfMissingDocs": false
+    },
+    "updatedAt": "2026-09-20 10:00",
+    "updatedBy": "U01"
+  },
+  {
+    "id": "PMT-006",
+    "name": "Día del servicio",
+    "event": "viaje",
+    "offsetHours": -2,
+    "channels": [
+      "whatsapp",
+      "push"
+    ],
+    "subject": "Hoy inicia {{producto}}",
+    "body": "Buenos días, {{pasajero}}. Su guía le espera a las {{hora_recojo}} en {{punto_recojo}}. Que disfrute el viaje.",
+    "lang": "ES",
+    "active": true,
+    "conditions": {
+      "products": [],
+      "channels": [],
+      "requiresRule": null,
+      "onlyIfBalance": false,
+      "onlyIfMissingDocs": false
+    },
+    "updatedAt": "2026-09-20 10:00",
+    "updatedBy": "U01"
+  },
+  {
+    "id": "PMT-007",
+    "name": "Cambio de horario o incidencia",
+    "event": "cambio_horario",
+    "offsetHours": 0,
+    "channels": [
+      "whatsapp",
+      "email",
+      "push"
+    ],
+    "subject": "Cambio en su servicio · {{reserva}}",
+    "body": "Hola {{pasajero}}:\n\nHubo un cambio en su servicio del {{fecha}}. Nueva hora de recojo: {{hora_recojo}} en {{punto_recojo}}.\n\nDisculpe las molestias; ante cualquier duda llame a operaciones: +51 984 100 200.",
+    "lang": "ES",
+    "active": true,
+    "conditions": {
+      "products": [],
+      "channels": [],
+      "requiresRule": null,
+      "onlyIfBalance": false,
+      "onlyIfMissingDocs": false
+    },
+    "updatedAt": "2026-09-20 10:00",
+    "updatedBy": "U01"
+  },
+  {
+    "id": "PMT-008",
+    "name": "Postviaje con encuesta",
+    "event": "fin_viaje",
+    "offsetHours": 24,
+    "channels": [
+      "email"
+    ],
+    "subject": "¿Cómo estuvo {{producto}}?",
+    "body": "Hola {{pasajero}}:\n\nGracias por viajar con nosotros. Cuéntenos su experiencia en 2 minutos; sus comentarios llegan directamente a nuestro equipo: {{enlace_portal}}",
+    "lang": "ES",
+    "active": true,
+    "conditions": {
+      "products": [],
+      "channels": [],
+      "requiresRule": null,
+      "onlyIfBalance": false,
+      "onlyIfMissingDocs": false
+    },
+    "updatedAt": "2026-09-20 10:00",
+    "updatedBy": "U01"
+  },
+  {
+    "id": "PMT-009",
+    "name": "Invitación a reseña externa",
+    "event": "fin_viaje",
+    "offsetHours": 48,
+    "channels": [
+      "email"
+    ],
+    "subject": "Su opinión ayuda a otros viajeros",
+    "body": "Hola {{pasajero}}:\n\nSi disfrutó {{producto}}, nos ayudaría mucho que comparta su experiencia en la plataforma de su preferencia. El enlace le llevará directamente a la página oficial de reseñas.\n\n{{enlace_portal}}",
+    "lang": "ES",
+    "active": true,
+    "conditions": {
+      "products": [],
+      "channels": [],
+      "requiresRule": "R-REVIEW-INVITE",
+      "onlyIfBalance": false,
+      "onlyIfMissingDocs": false
+    },
+    "updatedAt": "2026-09-20 10:00",
+    "updatedBy": "U01",
+    "offsetFromRule": true
+  },
+  {
+    "id": "PMT-010",
+    "name": "Cumpleaños durante el viaje (opcional)",
+    "event": "cumpleanos",
+    "offsetHours": 0,
+    "channels": [
+      "whatsapp"
+    ],
+    "subject": "Feliz cumpleaños, {{pasajero}}",
+    "body": "Feliz cumpleaños, {{pasajero}}. Todo el equipo de Andes Horizonte le desea un gran día en su viaje.",
+    "lang": "ES",
+    "active": false,
+    "conditions": {
+      "products": [],
+      "channels": [],
+      "requiresRule": null,
+      "onlyIfBalance": false,
+      "onlyIfMissingDocs": false
+    },
+    "updatedAt": "2026-09-20 10:00",
+    "updatedBy": "U01"
+  }
+]

@@ -1,0 +1,51 @@
+[
+  {
+    "id": "INT-01",
+    "name": "Facturación electrónica (OSE/SUNAT)",
+    "kind": "Fiscal",
+    "status": "por_validar",
+    "note": "Adaptador preparado. Proveedor OSE, contrato y API por definir con el cliente."
+  },
+  {
+    "id": "INT-02",
+    "name": "Pasarela de pagos con tarjeta",
+    "kind": "Pagos",
+    "status": "por_validar",
+    "note": "Proveedor por definir. Webhook de confirmación e idempotencia contemplados."
+  },
+  {
+    "id": "INT-03",
+    "name": "Correo transaccional (SMTP / API)",
+    "kind": "Email",
+    "status": "activo",
+    "note": "Plantillas por evento. Reintentos con backoff."
+  },
+  {
+    "id": "INT-04",
+    "name": "WhatsApp Business API",
+    "kind": "Mensajería",
+    "status": "sandbox",
+    "note": "Plantillas en aprobación. Envíos en entorno de pruebas."
+  },
+  {
+    "id": "INT-05",
+    "name": "Mapas y geocodificación",
+    "kind": "Mapas",
+    "status": "activo",
+    "note": "Coordenadas de destinos y puntos de encuentro."
+  },
+  {
+    "id": "INT-06",
+    "name": "Proveedores (tren, entradas, hoteles)",
+    "kind": "Proveedores",
+    "status": "parcial",
+    "note": "Disponibilidad externa solo informativa hasta confirmar integración."
+  },
+  {
+    "id": "INT-07",
+    "name": "OTA / GDS",
+    "kind": "Distribución",
+    "status": "futuro",
+    "note": "Fase futura. No se asume inventario externo."
+  }
+]

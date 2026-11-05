@@ -1,0 +1,156 @@
+[
+  {
+    "id": "D01",
+    "name": "Perú",
+    "type": "País",
+    "parent": null,
+    "lat": -9.19,
+    "lng": -75.02
+  },
+  {
+    "id": "D02",
+    "name": "Sur Andino",
+    "type": "Región",
+    "parent": "D01"
+  },
+  {
+    "id": "D03",
+    "name": "Cusco",
+    "type": "Departamento",
+    "parent": "D02",
+    "lat": -13.53,
+    "lng": -71.97
+  },
+  {
+    "id": "D04",
+    "name": "Cusco (ciudad)",
+    "type": "Ciudad",
+    "parent": "D03",
+    "lat": -13.5319,
+    "lng": -71.9675
+  },
+  {
+    "id": "D05",
+    "name": "Valle Sagrado",
+    "type": "Zona",
+    "parent": "D03",
+    "lat": -13.33,
+    "lng": -72.08
+  },
+  {
+    "id": "D06",
+    "name": "Machu Picchu",
+    "type": "Atracción",
+    "parent": "D03",
+    "lat": -13.1631,
+    "lng": -72.545
+  },
+  {
+    "id": "D07",
+    "name": "Laguna Humantay",
+    "type": "Atracción",
+    "parent": "D03",
+    "lat": -13.3876,
+    "lng": -72.6121
+  },
+  {
+    "id": "D08",
+    "name": "Montaña de Colores (Vinicunca)",
+    "type": "Atracción",
+    "parent": "D03",
+    "lat": -13.8697,
+    "lng": -71.3031
+  },
+  {
+    "id": "D09",
+    "name": "Puno",
+    "type": "Departamento",
+    "parent": "D02",
+    "lat": -15.84,
+    "lng": -70.02
+  },
+  {
+    "id": "D10",
+    "name": "Lago Titicaca",
+    "type": "Atracción",
+    "parent": "D09",
+    "lat": -15.77,
+    "lng": -69.68
+  },
+  {
+    "id": "D11",
+    "name": "Arequipa",
+    "type": "Departamento",
+    "parent": "D02",
+    "lat": -16.4,
+    "lng": -71.54
+  },
+  {
+    "id": "D12",
+    "name": "Cañón del Colca",
+    "type": "Atracción",
+    "parent": "D11",
+    "lat": -15.61,
+    "lng": -71.9
+  },
+  {
+    "id": "D13",
+    "name": "Costa Centro",
+    "type": "Región",
+    "parent": "D01"
+  },
+  {
+    "id": "D14",
+    "name": "Lima",
+    "type": "Departamento",
+    "parent": "D13",
+    "lat": -12.05,
+    "lng": -77.04
+  },
+  {
+    "id": "D15",
+    "name": "Ica",
+    "type": "Departamento",
+    "parent": "D13",
+    "lat": -14.07,
+    "lng": -75.73
+  },
+  {
+    "id": "D16",
+    "name": "Paracas",
+    "type": "Ciudad",
+    "parent": "D15",
+    "lat": -13.83,
+    "lng": -76.25
+  },
+  {
+    "id": "D17",
+    "name": "Huacachina",
+    "type": "Lugar",
+    "parent": "D15",
+    "lat": -14.087,
+    "lng": -75.763
+  },
+  {
+    "id": "D18",
+    "name": "Amazonía",
+    "type": "Región",
+    "parent": "D01"
+  },
+  {
+    "id": "D19",
+    "name": "Loreto — Iquitos",
+    "type": "Ciudad",
+    "parent": "D18",
+    "lat": -3.74,
+    "lng": -73.25
+  },
+  {
+    "id": "D20",
+    "name": "Madre de Dios — Tambopata",
+    "type": "Zona",
+    "parent": "D18",
+    "lat": -12.59,
+    "lng": -69.19
+  }
+]

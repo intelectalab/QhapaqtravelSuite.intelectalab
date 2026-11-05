@@ -1,0 +1,64 @@
+{
+  "tenantSlug": "andes-horizonte",
+  "publicKey": "pk_live_ah_7Qm2x9LkR4",
+  "keyCreatedAt": "2026-06-01 09:00",
+  "keyCreatedBy": "U01",
+  "cdn": "https://cdn.qhapaq.app/widget/v1",
+  "host": "https://reservas.andeshorizonte.pe",
+  "defaults": {
+    "product": "PRD-011",
+    "mode": "producto",
+    "category": "Cultural",
+    "lang": "es",
+    "currency": "USD",
+    "theme": "#0A3A73",
+    "radius": 10,
+    "reviews": true,
+    "method": "webcomponent",
+    "domain": "blog.andeshorizonte.pe"
+  },
+  "domains": [
+    {
+      "id": "DOM-001",
+      "domain": "www.andeshorizonte.pe",
+      "cms": "Sitio propio (Next.js)",
+      "status": "verificado",
+      "token": "qhapaq-verify=ah-19c2",
+      "addedAt": "2026-02-02 16:45",
+      "addedBy": "U01",
+      "verifiedAt": "2026-02-02 17:10"
+    },
+    {
+      "id": "DOM-002",
+      "domain": "blog.andeshorizonte.pe",
+      "cms": "WordPress",
+      "status": "verificado",
+      "token": "qhapaq-verify=ah-7d41",
+      "addedAt": "2026-06-01 09:05",
+      "addedBy": "U01",
+      "verifiedAt": "2026-06-01 09:30"
+    },
+    {
+      "id": "DOM-003",
+      "domain": "www.hostalqoriwasi.pe",
+      "cms": "Wix (hotel aliado)",
+      "status": "pendiente",
+      "token": "qhapaq-verify=ah-a0f3",
+      "addedAt": "2026-09-28 11:20",
+      "addedBy": "U01",
+      "verifiedAt": null
+    }
+  ],
+  "draft": {
+    "product": "PRD-011",
+    "mode": "producto",
+    "category": "Cultural",
+    "lang": "es",
+    "currency": "USD",
+    "theme": "#0A3A73",
+    "radius": 10,
+    "reviews": true,
+    "method": "webcomponent",
+    "domain": "blog.andeshorizonte.pe"
+  }
+}

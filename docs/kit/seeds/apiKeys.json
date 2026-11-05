@@ -1,0 +1,75 @@
+[
+  {
+    "id": "KEY-0003",
+    "tenantId": "TNT-0001",
+    "name": "ERP contable — exportación de ventas",
+    "env": "live",
+    "prefix": "qts_live_4fZp",
+    "last4": "x9Q1",
+    "hash": "sha256:b618f3b6c3dec88bfa11",
+    "scopes": [
+      "invoices:read",
+      "payments:read",
+      "reservations:read"
+    ],
+    "ipAllow": "200.48.22.17",
+    "createdBy": "U01",
+    "createdAt": "2026-05-12 11:20",
+    "expiresAt": "2027-05-12",
+    "lastUsedAt": "2026-09-29 08:05",
+    "lastIp": "200.48.22.17",
+    "calls30d": 18240,
+    "throttled24h": 0,
+    "status": "activa"
+  },
+  {
+    "id": "KEY-0002",
+    "tenantId": "TNT-0001",
+    "name": "Sitio web — motor de reservas",
+    "env": "live",
+    "prefix": "qts_live_9Qa1",
+    "last4": "Lk7m",
+    "hash": "sha256:b718f5490e044f39d0db",
+    "scopes": [
+      "catalog:read",
+      "availability:read",
+      "quotes:write",
+      "reservations:write",
+      "crm:write"
+    ],
+    "ipAllow": "",
+    "createdBy": "U01",
+    "createdAt": "2026-02-02 16:45",
+    "expiresAt": null,
+    "lastUsedAt": "2026-09-29 09:11",
+    "lastIp": "161.132.8.40",
+    "calls30d": 612300,
+    "throttled24h": 37,
+    "status": "activa"
+  },
+  {
+    "id": "KEY-0001",
+    "tenantId": "TNT-0001",
+    "name": "Pruebas integración Wayra (sandbox)",
+    "env": "test",
+    "prefix": "qts_test_2Lm8",
+    "last4": "pP3d",
+    "hash": "sha256:b418f09007a597e17ffa",
+    "scopes": [
+      "catalog:read",
+      "reservations:write"
+    ],
+    "ipAllow": "",
+    "createdBy": "U01",
+    "createdAt": "2026-01-20 10:02",
+    "expiresAt": "2026-07-20",
+    "lastUsedAt": "2026-05-28 17:40",
+    "lastIp": "190.12.77.4",
+    "calls30d": 0,
+    "throttled24h": 0,
+    "status": "revocada",
+    "revokedAt": "2026-06-01 09:15",
+    "revokedBy": "U01",
+    "revokeReason": "Fin de pruebas con la agencia"
+  }
+]

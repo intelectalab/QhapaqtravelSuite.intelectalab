@@ -1,0 +1,433 @@
+[
+  {
+    "authorName": "Sophie Martin",
+    "verified": true,
+    "photos": [
+      "humantay-laguna.jpg"
+    ],
+    "subratings": {
+      "guia": 5,
+      "transporte": 5,
+      "organizacion": 5,
+      "valor": 4
+    },
+    "reply": {
+      "text": "Merci Sophie ! Wilber sera ravi de lire votre message. Au plaisir de vous revoir au Pérou.",
+      "by": "U02",
+      "at": "2026-09-28 11:20"
+    },
+    "helpful": 4,
+    "moderationReason": "",
+    "isDemo": true,
+    "log": [
+      {
+        "ts": "2026-09-28 11:18",
+        "u": "U02",
+        "m": "Publicada tras moderación"
+      }
+    ],
+    "id": "RVO-0001",
+    "resId": "RES-2026-000346",
+    "productId": "PRD-004",
+    "clientId": "CLI-0006",
+    "author": "Sophie M.",
+    "country": "Francia",
+    "travelDate": "2026-09-25",
+    "stars": 5,
+    "title": "Une journée inoubliable à Humantay",
+    "text": "Départ très tôt mais tout était parfaitement organisé. Le guide Wilber nous a expliqué comment gérer l’altitude et nous a attendus sans pression. La lagune est magnifique.",
+    "lang": "fr",
+    "status": "publicada",
+    "createdAt": "2026-09-28 10:05",
+    "publishedAt": "2026-09-28 11:18",
+    "source": "email"
+  },
+  {
+    "authorName": "Sophie Martin",
+    "verified": true,
+    "photos": [],
+    "subratings": {
+      "guia": 5,
+      "transporte": 4,
+      "organizacion": 5,
+      "valor": 5
+    },
+    "reply": null,
+    "helpful": 2,
+    "moderationReason": "",
+    "isDemo": true,
+    "log": [
+      {
+        "ts": "2026-09-28 11:19",
+        "u": "U02",
+        "m": "Publicada tras moderación"
+      }
+    ],
+    "id": "RVO-0002",
+    "resId": "RES-2026-000346",
+    "productId": "PRD-001",
+    "clientId": "CLI-0006",
+    "author": "Sophie M.",
+    "country": "Francia",
+    "travelDate": "2026-09-26",
+    "stars": 5,
+    "title": "Machu Picchu sin estrés",
+    "text": "Tren puntual, entradas nominativas listas y el guía explicó la ciudadela con mucho detalle. Recomiendo el ingreso de la mañana.",
+    "lang": "es",
+    "status": "publicada",
+    "createdAt": "2026-09-28 10:12",
+    "publishedAt": "2026-09-28 11:19",
+    "source": "email"
+  },
+  {
+    "authorName": "Anna Keller",
+    "verified": true,
+    "photos": [],
+    "subratings": {
+      "transporte": 4,
+      "organizacion": 5
+    },
+    "reply": null,
+    "helpful": 0,
+    "moderationReason": "",
+    "isDemo": true,
+    "log": [
+      {
+        "ts": "2026-09-29 07:40",
+        "u": "Pasajero",
+        "m": "Enviada desde el portal (viaje en curso)"
+      }
+    ],
+    "id": "RVO-0003",
+    "resId": "RES-2026-000347",
+    "productId": "PRD-005",
+    "clientId": "CLI-0003",
+    "author": "Anna K.",
+    "country": "Alemania",
+    "travelDate": "2026-09-27",
+    "stars": 4,
+    "title": "Pünktlicher Transfer",
+    "text": "Der Fahrer wartete mit einem Schild am Ausgang. Das Auto war sauber, nur die Klimaanlage funktionierte nicht richtig.",
+    "lang": "de",
+    "status": "pendiente",
+    "createdAt": "2026-09-29 07:40",
+    "publishedAt": null,
+    "source": "portal"
+  },
+  {
+    "authorName": "Ernesto V.",
+    "verified": true,
+    "photos": [],
+    "subratings": {
+      "guia": 5,
+      "transporte": 5,
+      "alojamiento": 5,
+      "organizacion": 5,
+      "valor": 4
+    },
+    "reply": {
+      "text": "Gracias, Ernesto. Fue un gusto acompañar al equipo; los esperamos en octubre.",
+      "by": "U02",
+      "at": "2025-11-24 09:10"
+    },
+    "helpful": 6,
+    "moderationReason": "",
+    "isDemo": true,
+    "log": [],
+    "id": "RVO-0004",
+    "resId": "RES-2025-000212",
+    "productId": "PRD-002",
+    "clientId": "CLI-0002",
+    "author": "Ernesto V.",
+    "country": "Perú",
+    "travelDate": "2025-11-14",
+    "stars": 5,
+    "title": "Incentivo corporativo impecable",
+    "text": "Viajamos 14 colaboradores de la minera. Coordinación permanente por WhatsApp, hoteles cómodos y guías con mucha paciencia para el grupo. Ya estamos organizando el viaje de este año con ellos.",
+    "lang": "es",
+    "status": "publicada",
+    "createdAt": "2025-11-22 18:30",
+    "publishedAt": "2025-11-23 09:00",
+    "source": "email"
+  },
+  {
+    "authorName": "Karla U.",
+    "verified": true,
+    "photos": [],
+    "subratings": {
+      "guia": 5,
+      "transporte": 3,
+      "organizacion": 4,
+      "valor": 4
+    },
+    "reply": {
+      "text": "Gracias por el comentario, Karla. Coordinamos con Consettur un horario de retorno con más holgura para grupos.",
+      "by": "U05",
+      "at": "2025-11-25 10:00"
+    },
+    "helpful": 3,
+    "moderationReason": "",
+    "isDemo": true,
+    "log": [],
+    "id": "RVO-0005",
+    "resId": "RES-2025-000212",
+    "productId": "PRD-001",
+    "clientId": "CLI-0002",
+    "author": "Karla U.",
+    "country": "Perú",
+    "travelDate": "2025-11-16",
+    "stars": 4,
+    "title": "Muy buen tour, bus con demora",
+    "text": "El guía excelente. En el retorno el bus de Aguas Calientes demoró casi una hora, pero la agencia nos mantuvo informados todo el tiempo.",
+    "lang": "es",
+    "status": "publicada",
+    "createdAt": "2025-11-23 08:15",
+    "publishedAt": "2025-11-23 12:30",
+    "source": "email"
+  },
+  {
+    "authorName": "Gabriela R.",
+    "verified": true,
+    "photos": [],
+    "subratings": {
+      "guia": 4,
+      "transporte": 4,
+      "organizacion": 4,
+      "valor": 5
+    },
+    "reply": null,
+    "helpful": 1,
+    "moderationReason": "",
+    "isDemo": true,
+    "log": [
+      {
+        "ts": "2026-07-14 20:40",
+        "u": "Sistema",
+        "m": "Autopublicada (≥ 4 estrellas, sin alertas)"
+      }
+    ],
+    "id": "RVO-0006",
+    "resId": "RES-2026-000261",
+    "productId": "PRD-009",
+    "clientId": "CLI-0001",
+    "author": "Gabriela R.",
+    "country": "Perú",
+    "travelDate": "2026-07-12",
+    "stars": 4,
+    "title": "Paracas en familia",
+    "text": "Salida puntual desde Miraflores y los niños disfrutaron mucho los lobos marinos. El almuerzo no estaba incluido y no lo teníamos claro.",
+    "lang": "es",
+    "status": "publicada",
+    "createdAt": "2026-07-14 20:40",
+    "publishedAt": "2026-07-14 20:40",
+    "source": "portal"
+  },
+  {
+    "authorName": "Familia Castañeda",
+    "verified": true,
+    "photos": [
+      "clase-cocina-1.jpg",
+      "mercado-san-pedro.jpg"
+    ],
+    "subratings": {
+      "guia": 5,
+      "organizacion": 5,
+      "valor": 5
+    },
+    "reply": null,
+    "helpful": 5,
+    "moderationReason": "",
+    "isDemo": true,
+    "log": [],
+    "id": "RVO-0007",
+    "resId": "RES-2026-000288",
+    "productId": "PRD-007",
+    "clientId": "CLI-0005",
+    "author": "Familia Castañeda",
+    "country": "Perú",
+    "travelDate": "2026-08-03",
+    "stars": 5,
+    "title": "La mejor actividad del viaje",
+    "text": "Recorrimos el mercado San Pedro y luego preparamos causa y lomo saltado. La chef tuvo mucha paciencia con los chicos.",
+    "lang": "es",
+    "status": "publicada",
+    "createdAt": "2026-08-06 19:02",
+    "publishedAt": "2026-08-07 09:30",
+    "source": "widget"
+  },
+  {
+    "authorName": "Emily J.",
+    "verified": true,
+    "photos": [],
+    "subratings": {
+      "guia": 5,
+      "transporte": 2,
+      "organizacion": 3,
+      "valor": 3
+    },
+    "reply": {
+      "text": "Thank you, Emily. The delay was caused by a track incident; we now send WhatsApp updates every 30 minutes in these cases.",
+      "by": "U05",
+      "at": "2026-08-25 16:45"
+    },
+    "helpful": 7,
+    "moderationReason": "",
+    "isDemo": true,
+    "log": [],
+    "id": "RVO-0008",
+    "resId": "RES-2026-000301",
+    "productId": "PRD-001",
+    "clientId": "CLI-0010",
+    "author": "Emily J.",
+    "country": "Estados Unidos",
+    "travelDate": "2026-08-21",
+    "stars": 3,
+    "title": "Amazing site, long train delay",
+    "text": "Our guide was fantastic, but the return train was delayed two hours and we only got a short message. Better communication would help.",
+    "lang": "en",
+    "status": "publicada",
+    "createdAt": "2026-08-24 22:10",
+    "publishedAt": "2026-08-25 16:40",
+    "source": "email"
+  },
+  {
+    "authorName": "Prof. Milagros A.",
+    "verified": true,
+    "photos": [],
+    "subratings": {
+      "guia": 5,
+      "transporte": 4,
+      "alojamiento": 3,
+      "organizacion": 5
+    },
+    "reply": null,
+    "helpful": 0,
+    "moderationReason": "Revisión requerida: contiene datos personales (teléfono)",
+    "isDemo": true,
+    "log": [
+      {
+        "ts": "2026-09-27 12:30",
+        "u": "Sistema",
+        "m": "Retenida: datos personales detectados"
+      }
+    ],
+    "id": "RVO-0009",
+    "resId": "RES-2026-000240",
+    "productId": "PRD-002",
+    "clientId": "CLI-0004",
+    "author": "Prof. Milagros A.",
+    "country": "Perú",
+    "travelDate": "2026-06-20",
+    "stars": 4,
+    "title": "Viaje de promoción muy seguro",
+    "text": "Excelente control del grupo de 32 alumnos. Para cualquier consulta de otros colegios pueden escribirme al 954 330 112.",
+    "lang": "es",
+    "status": "pendiente",
+    "createdAt": "2026-09-27 12:30",
+    "publishedAt": null,
+    "source": "email"
+  },
+  {
+    "authorName": "Ricardo B.",
+    "verified": true,
+    "photos": [],
+    "subratings": {
+      "guia": 3,
+      "transporte": 2,
+      "valor": 2
+    },
+    "reply": null,
+    "helpful": 0,
+    "moderationReason": "Publicidad o enlaces de terceros (política de reseñas, punto 3)",
+    "isDemo": true,
+    "log": [
+      {
+        "ts": "2026-09-08 11:02",
+        "u": "U02",
+        "m": "Rechazada: publicidad de terceros. Se derivó el retraso a postventa."
+      }
+    ],
+    "id": "RVO-0010",
+    "resId": "RES-2026-000275",
+    "productId": "PRD-004",
+    "clientId": "CLI-0008",
+    "author": "Ricardo B.",
+    "country": "Perú",
+    "travelDate": "2026-09-05",
+    "stars": 2,
+    "title": "Mejor reserven en www.otraagencia.pe",
+    "text": "El recojo se retrasó. Reserven con otra agencia en www.otraagencia.pe que es más barata.",
+    "lang": "es",
+    "status": "rechazada",
+    "createdAt": "2026-09-08 09:14",
+    "publishedAt": null,
+    "source": "portal"
+  },
+  {
+    "authorName": "Laboratorios Andinos (viajero corporativo)",
+    "verified": true,
+    "photos": [],
+    "subratings": {
+      "transporte": 5,
+      "organizacion": 5
+    },
+    "reply": null,
+    "helpful": 0,
+    "moderationReason": "",
+    "isDemo": true,
+    "log": [
+      {
+        "ts": "2026-05-12 08:00",
+        "u": "Sistema",
+        "m": "Autopublicada (≥ 4 estrellas, sin alertas)"
+      }
+    ],
+    "id": "RVO-0011",
+    "resId": "RES-2026-000230",
+    "productId": "PRD-005",
+    "clientId": "CLI-0009",
+    "author": "Laboratorios Andinos (viajero corporativo)",
+    "country": "Perú",
+    "travelDate": "2026-05-11",
+    "stars": 5,
+    "title": "Traslado puntual a las 5 a. m.",
+    "text": "Vuelo muy temprano y el conductor llegó 10 minutos antes. Servicio confiable para viajes de trabajo.",
+    "lang": "es",
+    "status": "publicada",
+    "createdAt": "2026-05-12 08:00",
+    "publishedAt": "2026-05-12 08:00",
+    "source": "portal"
+  },
+  {
+    "authorName": "Luis H.",
+    "verified": true,
+    "photos": [],
+    "subratings": {},
+    "reply": null,
+    "helpful": 0,
+    "moderationReason": "Duplicada: el mismo viajero envió dos reseñas del mismo producto",
+    "isDemo": true,
+    "log": [
+      {
+        "ts": "2025-11-24 09:00",
+        "u": "U02",
+        "m": "Oculta por duplicidad"
+      }
+    ],
+    "id": "RVO-0012",
+    "resId": "RES-2025-000212",
+    "productId": "PRD-002",
+    "clientId": "CLI-0002",
+    "author": "Luis H.",
+    "country": "Perú",
+    "travelDate": "2025-11-14",
+    "stars": 5,
+    "title": "Todo excelente",
+    "text": "Todo excelente, muy recomendable.",
+    "lang": "es",
+    "status": "oculta",
+    "createdAt": "2025-11-23 21:40",
+    "publishedAt": "2025-11-23 21:40",
+    "source": "email"
+  }
+]

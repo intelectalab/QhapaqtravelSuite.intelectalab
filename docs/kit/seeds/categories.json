@@ -1,0 +1,47 @@
+[
+  {
+    "id": "CAT-1",
+    "name": "Aventura",
+    "subs": [
+      "Trekking",
+      "Montañismo",
+      "Deportes extremos"
+    ]
+  },
+  {
+    "id": "CAT-2",
+    "name": "Cultural",
+    "subs": [
+      "Arqueología",
+      "Museos",
+      "City Tours"
+    ]
+  },
+  {
+    "id": "CAT-3",
+    "name": "Naturaleza",
+    "subs": [
+      "Ecoturismo",
+      "Fauna",
+      "Paisajes"
+    ]
+  },
+  {
+    "id": "CAT-4",
+    "name": "Gastronomía",
+    "subs": [
+      "Restaurantes",
+      "Experiencias gastronómicas",
+      "Degustaciones"
+    ]
+  },
+  {
+    "id": "CAT-5",
+    "name": "Logística",
+    "subs": [
+      "Traslados",
+      "Alojamiento",
+      "Seguros"
+    ]
+  }
+]

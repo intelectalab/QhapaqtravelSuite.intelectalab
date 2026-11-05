@@ -1,0 +1,139 @@
+[
+  {
+    "id": "SEG-001",
+    "name": "Newsletter — contactos con email autorizado",
+    "desc": "Todos los clientes, leads y suscriptores con consentimiento de email vigente.",
+    "match": "all",
+    "rules": [
+      {
+        "f": "consent",
+        "op": "has",
+        "v": "email"
+      }
+    ],
+    "owner": "U01",
+    "createdAt": "2026-06-01 10:00",
+    "updatedAt": "2026-06-01 10:00"
+  },
+  {
+    "id": "SEG-002",
+    "name": "Interés en Cusco con WhatsApp autorizado",
+    "desc": "Contactos con interés o compras en Cusco y opt-in de WhatsApp.",
+    "match": "all",
+    "rules": [
+      {
+        "f": "dest",
+        "op": "contains",
+        "v": "Cusco"
+      },
+      {
+        "f": "consent",
+        "op": "has",
+        "v": "whatsapp"
+      }
+    ],
+    "owner": "U02",
+    "createdAt": "2026-09-12 11:00",
+    "updatedAt": "2026-09-12 11:00"
+  },
+  {
+    "id": "SEG-003",
+    "name": "Alto valor: VIP, corporativo o gasto ≥ S/ 5 000",
+    "desc": "Clientes de mayor valor para preventas y lanzamientos.",
+    "match": "any",
+    "rules": [
+      {
+        "f": "segment",
+        "op": "eq",
+        "v": "VIP"
+      },
+      {
+        "f": "segment",
+        "op": "eq",
+        "v": "Corporativo"
+      },
+      {
+        "f": "spent",
+        "op": "gte",
+        "v": 5000
+      }
+    ],
+    "owner": "U02",
+    "createdAt": "2026-09-20 09:30",
+    "updatedAt": "2026-09-20 09:30"
+  },
+  {
+    "id": "SEG-004",
+    "name": "Mercado receptivo (extranjeros)",
+    "desc": "Contactos con país distinto de Perú.",
+    "match": "all",
+    "rules": [
+      {
+        "f": "country",
+        "op": "neq",
+        "v": "Perú"
+      }
+    ],
+    "owner": "U01",
+    "createdAt": "2026-07-15 10:00",
+    "updatedAt": "2026-07-15 10:00"
+  },
+  {
+    "id": "SEG-005",
+    "name": "Reactivación: clientes sin compra en 12 meses",
+    "desc": "Clientes con última compra hace más de 365 días o sin compras.",
+    "match": "all",
+    "rules": [
+      {
+        "f": "type",
+        "op": "eq",
+        "v": "client"
+      },
+      {
+        "f": "last",
+        "op": "older",
+        "v": 365
+      }
+    ],
+    "owner": "U01",
+    "createdAt": "2026-09-18 09:00",
+    "updatedAt": "2026-09-18 09:00"
+  },
+  {
+    "id": "SEG-006",
+    "name": "Promotores NPS ≥ 9 (referidos)",
+    "desc": "Clientes promotores para el programa de referidos.",
+    "match": "all",
+    "rules": [
+      {
+        "f": "nps",
+        "op": "gte",
+        "v": 9
+      }
+    ],
+    "owner": "U02",
+    "createdAt": "2026-08-01 10:00",
+    "updatedAt": "2026-08-01 10:00"
+  },
+  {
+    "id": "SEG-007",
+    "name": "Colegios y grupos",
+    "desc": "Segmento Grupos o leads de viaje de promoción.",
+    "match": "any",
+    "rules": [
+      {
+        "f": "segment",
+        "op": "eq",
+        "v": "Grupos"
+      },
+      {
+        "f": "tags",
+        "op": "has",
+        "v": "Viaje de promoción"
+      }
+    ],
+    "owner": "U03",
+    "createdAt": "2026-09-27 15:40",
+    "updatedAt": "2026-09-27 15:40"
+  }
+]

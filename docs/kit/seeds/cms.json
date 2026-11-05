@@ -1,0 +1,110 @@
+[
+  {
+    "id": "CMS-01",
+    "title": "Home — Temporada de primavera",
+    "type": "Página",
+    "channel": "Web",
+    "status": "publicado",
+    "updated": "2026-09-15",
+    "author": "U01",
+    "body": "## Primavera en los Andes\nDe setiembre a noviembre Cusco ofrece días soleados, noches frescas y menos visitantes en Machu Picchu. Es la mejor época para combinar ciudad, Valle Sagrado y trekking.\n\n- Machu Picchu Full Day desde US$ 345\n- Laguna Humantay a S/ 129 con precio web\n- Cusco Mágico 5D/4N con hotel 4 estrellas\n\n## Reserve con confianza\nConfirmación inmediata, voucher digital y asistencia 24/7 durante su viaje.",
+    "slug": "home-temporada-de-primavera",
+    "log": [
+      {
+        "ts": "2026-09-15 09:00",
+        "u": "U01",
+        "m": "Estado: Publicado"
+      }
+    ]
+  },
+  {
+    "id": "CMS-02",
+    "title": "Banner: Promo Humantay S/ 129",
+    "type": "Banner",
+    "channel": "Web / E-commerce",
+    "status": "publicado",
+    "updated": "2026-09-15",
+    "author": "U03",
+    "body": "Laguna Humantay Full Day a S/ 129 por persona reservando en línea hasta el 31 de octubre. Incluye transporte turístico, desayuno, almuerzo campestre y guía oficial.",
+    "slug": "banner-promo-humantay-s-129",
+    "log": [
+      {
+        "ts": "2026-09-15 09:00",
+        "u": "U03",
+        "m": "Estado: Publicado"
+      }
+    ]
+  },
+  {
+    "id": "CMS-03",
+    "title": "Blog: 10 consejos para el mal de altura",
+    "type": "Artículo",
+    "channel": "Web",
+    "status": "en_revision",
+    "updated": "2026-09-27",
+    "author": "U04",
+    "body": "## 10 consejos para el mal de altura\nCusco se encuentra a 3 399 m s. n. m. La mayoría de viajeros se adapta en 24 a 48 horas siguiendo recomendaciones simples.\n\n- Descanse la tarde de llegada y evite esfuerzos intensos\n- Hidrátese: agua y mate de coca\n- Comidas ligeras la primera noche\n- Evite el alcohol las primeras 24 horas\n- Planifique Humantay o Vinicunca después del segundo día\n\nSi los síntomas persisten, comuníquese con nuestra central 24/7.",
+    "slug": "blog-10-consejos-para-el-mal-de-altura",
+    "log": [
+      {
+        "ts": "2026-09-27 09:00",
+        "u": "U04",
+        "m": "Estado: En revisión"
+      }
+    ]
+  },
+  {
+    "id": "CMS-04",
+    "title": "Landing: Año Nuevo en Cusco 2027",
+    "type": "Página",
+    "channel": "Web",
+    "status": "borrador",
+    "updated": "2026-09-28",
+    "author": "U04",
+    "body": "## Año Nuevo en Cusco 2027\nReciba el año en la Plaza de Armas con un programa de 5 días que incluye hotel 5 estrellas, cena de gala y Machu Picchu.\n\n- Salidas del 28 de diciembre\n- Cupos limitados por la temporada (factor Año Nuevo)",
+    "slug": "landing-ano-nuevo-en-cusco-2027",
+    "log": [
+      {
+        "ts": "2026-09-28 09:00",
+        "u": "U04",
+        "m": "Estado: Borrador"
+      }
+    ]
+  },
+  {
+    "id": "CMS-05",
+    "title": "Política de cancelaciones",
+    "type": "Página legal",
+    "channel": "Web / Portal",
+    "status": "publicado",
+    "updated": "2026-06-01",
+    "author": "U01",
+    "body": "## Política de cancelaciones\nLas cancelaciones sin penalidad aplican hasta 15 días antes del inicio del servicio. Entre 14 y 7 días se retiene el 50%. Dentro de los 7 días o en caso de no-show se factura el 100%.\n\nLas entradas nominativas y boletos de tren emitidos no son reembolsables.",
+    "slug": "politica-de-cancelaciones",
+    "log": [
+      {
+        "ts": "2026-06-01 09:00",
+        "u": "U01",
+        "m": "Estado: Publicado"
+      }
+    ]
+  },
+  {
+    "id": "CMS-06",
+    "title": "Banner Fiestas Patrias",
+    "type": "Banner",
+    "channel": "Web",
+    "status": "despublicado",
+    "updated": "2026-08-01",
+    "author": "U03",
+    "body": "Fiestas Patrias en el sur andino: paquetes a Arequipa y Colca con 10% de descuento. Vigente del 1 al 31 de julio.",
+    "slug": "banner-fiestas-patrias",
+    "log": [
+      {
+        "ts": "2026-08-01 09:00",
+        "u": "U03",
+        "m": "Estado: Despublicado"
+      }
+    ]
+  }
+]

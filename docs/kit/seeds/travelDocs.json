@@ -1,0 +1,984 @@
+[
+  {
+    "resId": "RES-2026-000347",
+    "pax": [
+      {
+        "name": "Thomas Keller",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "C4F82991",
+            "expiry": "2031-05-10",
+            "file": {
+              "name": "pasaporte_thomas_keller.pdf",
+              "size": 184000,
+              "at": "2026-09-02 09:30",
+              "by": "Cliente"
+            },
+            "validatedBy": "U05",
+            "validatedAt": "2026-09-02 09:30"
+          },
+          "insurance": {
+            "status": "completo",
+            "number": "VA-771203",
+            "expiry": "2026-10-05",
+            "file": {
+              "name": "poliza_viajero_andino_VA-771203.pdf",
+              "size": 184000,
+              "at": "2026-09-02 09:35",
+              "by": "Cliente"
+            },
+            "validatedBy": "U05",
+            "validatedAt": "2026-09-02 09:35"
+          },
+          "migration": {
+            "status": "completo",
+            "number": "TAM-DE-5520",
+            "expiry": "",
+            "file": {
+              "name": "tam_virtual_thomas.pdf",
+              "size": 184000,
+              "at": "2026-09-26 18:00",
+              "by": "Cliente"
+            },
+            "validatedBy": "U05",
+            "validatedAt": "2026-09-26 18:00"
+          },
+          "emergency": {
+            "name": "Monika Keller",
+            "phone": "+49 89 5550199",
+            "relation": "Familiar"
+          },
+          "special": {
+            "flag": false,
+            "note": ""
+          }
+        }
+      },
+      {
+        "name": "Anna Keller",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "C4F82992",
+            "expiry": "2029-08-14",
+            "file": {
+              "name": "pasaporte_anna_keller.pdf",
+              "size": 184000,
+              "at": "2026-09-02 09:30",
+              "by": "Cliente"
+            },
+            "validatedBy": "U05",
+            "validatedAt": "2026-09-02 09:30"
+          },
+          "insurance": {
+            "status": "completo",
+            "number": "VA-771203",
+            "expiry": "2026-10-05",
+            "file": {
+              "name": "poliza_viajero_andino_VA-771203.pdf",
+              "size": 184000,
+              "at": "2026-09-02 09:35",
+              "by": "Cliente"
+            },
+            "validatedBy": "U05",
+            "validatedAt": "2026-09-02 09:35"
+          },
+          "migration": {
+            "status": "completo",
+            "number": "TAM-DE-5521",
+            "expiry": "",
+            "file": {
+              "name": "tam_virtual_anna.pdf",
+              "size": 184000,
+              "at": "2026-09-26 18:00",
+              "by": "Cliente"
+            },
+            "validatedBy": "U05",
+            "validatedAt": "2026-09-26 18:00"
+          },
+          "emergency": {
+            "name": "Monika Keller",
+            "phone": "+49 89 5550199",
+            "relation": "Familiar"
+          },
+          "special": {
+            "flag": false,
+            "note": "Dieta vegetariana"
+          }
+        }
+      }
+    ],
+    "reminders": [],
+    "log": [
+      {
+        "ts": "2026-09-26 18:05",
+        "user": "U05",
+        "m": "Checklist completo. Emisión de entradas nominativas habilitada."
+      }
+    ]
+  },
+  {
+    "resId": "RES-2026-000346",
+    "pax": [
+      {
+        "name": "Sophie Martin",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "19FR22871",
+            "expiry": "2030-11-02",
+            "file": {
+              "name": "passeport_martin.pdf",
+              "size": 184000,
+              "at": "2026-09-12 09:00",
+              "by": "Cliente"
+            },
+            "validatedBy": "U05",
+            "validatedAt": "2026-09-12 09:00"
+          },
+          "insurance": {
+            "status": "completo",
+            "number": "AXA-FR-889012",
+            "expiry": "2026-09-28",
+            "file": {
+              "name": "assurance_martin.pdf",
+              "size": 184000,
+              "at": "2026-09-12 09:02",
+              "by": "Cliente"
+            },
+            "validatedBy": "U05",
+            "validatedAt": "2026-09-12 09:02"
+          },
+          "migration": {
+            "status": "completo",
+            "number": "TAM-FR-2201",
+            "expiry": "",
+            "file": {
+              "name": "tam_martin.pdf",
+              "size": 184000,
+              "at": "2026-09-23 20:00",
+              "by": "Cliente"
+            },
+            "validatedBy": "U05",
+            "validatedAt": "2026-09-23 20:00"
+          },
+          "emergency": {
+            "name": "Claire Martin",
+            "phone": "+33 6 88 12 40 11",
+            "relation": "Familiar"
+          },
+          "special": {
+            "flag": false,
+            "note": ""
+          }
+        }
+      }
+    ],
+    "reminders": [],
+    "log": []
+  },
+  {
+    "resId": "RES-2026-000348",
+    "pax": [
+      {
+        "name": "Ernesto Valdivia Ríos",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "40112233",
+            "expiry": "2029-03-11",
+            "file": {
+              "name": "dni_40112233.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:15",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:15"
+          },
+          "insurance": {
+            "status": "completo",
+            "number": "VA-G-2210",
+            "expiry": "2026-10-06",
+            "file": {
+              "name": "poliza_grupal_VA-G-2210.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:20",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:20"
+          },
+          "emergency": {
+            "name": "Úrsula Benavides (RR. HH. empresa)",
+            "phone": "01 705 3300",
+            "relation": "Empresa"
+          },
+          "special": {
+            "flag": false,
+            "note": ""
+          }
+        }
+      },
+      {
+        "name": "Julio César Mena",
+        "items": {
+          "id_doc": {
+            "status": "recibido",
+            "number": "42228811",
+            "expiry": "2030-07-22",
+            "file": {
+              "name": "dni_julio_mena.jpg",
+              "size": 912000,
+              "at": "2026-09-28 17:40",
+              "by": "Cliente"
+            }
+          },
+          "insurance": {
+            "status": "completo",
+            "number": "VA-G-2210",
+            "expiry": "2026-10-06",
+            "file": {
+              "name": "poliza_grupal_VA-G-2210.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:20",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:20"
+          },
+          "emergency": {
+            "name": "Úrsula Benavides (RR. HH. empresa)",
+            "phone": "01 705 3300",
+            "relation": "Empresa"
+          },
+          "special": {
+            "flag": false,
+            "note": "Dieta vegetariano"
+          }
+        }
+      },
+      {
+        "name": "Karla Ugaz Soto",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "45567712",
+            "expiry": "2031-01-05",
+            "file": {
+              "name": "dni_45567712.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:15",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:15"
+          },
+          "insurance": {
+            "status": "completo",
+            "number": "VA-G-2210",
+            "expiry": "2026-10-06",
+            "file": {
+              "name": "poliza_grupal_VA-G-2210.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:20",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:20"
+          },
+          "emergency": {
+            "name": "Úrsula Benavides (RR. HH. empresa)",
+            "phone": "01 705 3300",
+            "relation": "Empresa"
+          },
+          "special": {
+            "flag": false,
+            "note": ""
+          }
+        }
+      },
+      {
+        "name": "Óscar Linares Paz",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "41009921",
+            "expiry": "2028-10-30",
+            "file": {
+              "name": "dni_41009921.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:15",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:15"
+          },
+          "insurance": {
+            "status": "completo",
+            "number": "VA-G-2210",
+            "expiry": "2026-10-06",
+            "file": {
+              "name": "poliza_grupal_VA-G-2210.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:20",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:20"
+          },
+          "emergency": {
+            "name": "Úrsula Benavides (RR. HH. empresa)",
+            "phone": "01 705 3300",
+            "relation": "Empresa"
+          },
+          "special": {
+            "flag": false,
+            "note": ""
+          }
+        }
+      },
+      {
+        "name": "Mónica Farfán Quiroz",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "46677123",
+            "expiry": "2032-12-14",
+            "file": {
+              "name": "dni_46677123.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:15",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:15"
+          },
+          "insurance": {
+            "status": "completo",
+            "number": "VA-G-2210",
+            "expiry": "2026-10-06",
+            "file": {
+              "name": "poliza_grupal_VA-G-2210.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:20",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:20"
+          },
+          "emergency": {},
+          "special": {
+            "flag": false,
+            "note": "Dieta sin gluten"
+          }
+        }
+      },
+      {
+        "name": "Raúl Espinoza Llerena",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "40551287",
+            "expiry": "2027-05-19",
+            "file": {
+              "name": "dni_40551287.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:15",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:15"
+          },
+          "insurance": {
+            "status": "completo",
+            "number": "VA-G-2210",
+            "expiry": "2026-10-06",
+            "file": {
+              "name": "poliza_grupal_VA-G-2210.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:20",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:20"
+          },
+          "emergency": {
+            "name": "Úrsula Benavides (RR. HH. empresa)",
+            "phone": "01 705 3300",
+            "relation": "Empresa"
+          },
+          "special": {
+            "flag": true,
+            "note": "Coordinar ritmo pausado en caminatas y asiento delantero en bus"
+          }
+        }
+      },
+      {
+        "name": "Sandra Chávez Molina",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "44120987",
+            "expiry": "2029-09-01",
+            "file": {
+              "name": "dni_44120987.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:15",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:15"
+          },
+          "insurance": {
+            "status": "completo",
+            "number": "VA-G-2210",
+            "expiry": "2026-10-06",
+            "file": {
+              "name": "poliza_grupal_VA-G-2210.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:20",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:20"
+          },
+          "emergency": {
+            "name": "Úrsula Benavides (RR. HH. empresa)",
+            "phone": "01 705 3300",
+            "relation": "Empresa"
+          },
+          "special": {
+            "flag": false,
+            "note": ""
+          }
+        }
+      },
+      {
+        "name": "Luis Alberto Huerta",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "43218876",
+            "expiry": "2030-02-26",
+            "file": {
+              "name": "dni_43218876.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:15",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:15"
+          },
+          "insurance": {
+            "status": "completo",
+            "number": "VA-G-2210",
+            "expiry": "2026-10-06",
+            "file": {
+              "name": "poliza_grupal_VA-G-2210.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:20",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:20"
+          },
+          "emergency": {
+            "name": "Úrsula Benavides (RR. HH. empresa)",
+            "phone": "01 705 3300",
+            "relation": "Empresa"
+          },
+          "special": {
+            "flag": false,
+            "note": ""
+          }
+        }
+      },
+      {
+        "name": "Teresa Anaya Cruz",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "47781203",
+            "expiry": "2033-06-08",
+            "file": {
+              "name": "dni_47781203.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:15",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:15"
+          },
+          "insurance": {
+            "status": "completo",
+            "number": "VA-G-2210",
+            "expiry": "2026-10-06",
+            "file": {
+              "name": "poliza_grupal_VA-G-2210.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:20",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:20"
+          },
+          "emergency": {
+            "name": "Úrsula Benavides (RR. HH. empresa)",
+            "phone": "01 705 3300",
+            "relation": "Empresa"
+          },
+          "special": {
+            "flag": false,
+            "note": ""
+          }
+        }
+      },
+      {
+        "name": "Fernando Rivas Olaya",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "40987612",
+            "expiry": "2028-11-17",
+            "file": {
+              "name": "dni_40987612.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:15",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:15"
+          },
+          "insurance": {
+            "status": "completo",
+            "number": "VA-G-2210",
+            "expiry": "2026-10-06",
+            "file": {
+              "name": "poliza_grupal_VA-G-2210.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:20",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:20"
+          },
+          "emergency": {
+            "name": "Úrsula Benavides (RR. HH. empresa)",
+            "phone": "01 705 3300",
+            "relation": "Empresa"
+          },
+          "special": {
+            "flag": false,
+            "note": ""
+          }
+        }
+      },
+      {
+        "name": "Rocío Salinas Tapia",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "45510098",
+            "expiry": "2031-08-03",
+            "file": {
+              "name": "dni_45510098.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:15",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:15"
+          },
+          "insurance": {
+            "status": "completo",
+            "number": "VA-G-2210",
+            "expiry": "2026-10-06",
+            "file": {
+              "name": "poliza_grupal_VA-G-2210.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:20",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:20"
+          },
+          "emergency": {
+            "name": "Úrsula Benavides (RR. HH. empresa)",
+            "phone": "01 705 3300",
+            "relation": "Empresa"
+          },
+          "special": {
+            "flag": false,
+            "note": ""
+          }
+        }
+      },
+      {
+        "name": "Manuel Oré Guzmán",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "41876640",
+            "expiry": "2026-08-15",
+            "file": {
+              "name": "dni_41876640.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:15",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:15"
+          },
+          "insurance": {
+            "status": "completo",
+            "number": "VA-G-2210",
+            "expiry": "2026-10-06",
+            "file": {
+              "name": "poliza_grupal_VA-G-2210.pdf",
+              "size": 184000,
+              "at": "2026-09-20 10:20",
+              "by": "Cliente"
+            },
+            "validatedBy": "U06",
+            "validatedAt": "2026-09-20 10:20"
+          },
+          "emergency": {
+            "name": "Úrsula Benavides (RR. HH. empresa)",
+            "phone": "01 705 3300",
+            "relation": "Empresa"
+          },
+          "special": {
+            "flag": false,
+            "note": ""
+          }
+        }
+      }
+    ],
+    "reminders": [
+      {
+        "ts": "2026-09-24 08:00",
+        "channel": "Email",
+        "to": "viajes@mcblanca.com.pe",
+        "by": "Sistema",
+        "kind": "Recordatorio automático (7 días)"
+      }
+    ],
+    "log": [
+      {
+        "ts": "2026-09-29 07:10",
+        "user": "U06",
+        "m": "DNI de Manuel Oré Guzmán caducado (15/08/2026): se solicitó DNI renovado o pasaporte a RR. HH."
+      }
+    ]
+  },
+  {
+    "resId": "RES-2026-000345",
+    "pax": [
+      {
+        "name": "Pasajero Wayra 1",
+        "items": {
+          "id_doc": {
+            "status": "pendiente",
+            "number": "71022330"
+          },
+          "emergency": {},
+          "special": {}
+        }
+      },
+      {
+        "name": "Pasajero Wayra 2",
+        "items": {
+          "id_doc": {
+            "status": "pendiente",
+            "number": "71022331"
+          },
+          "emergency": {},
+          "special": {}
+        }
+      },
+      {
+        "name": "Pasajero Wayra 3",
+        "items": {
+          "id_doc": {
+            "status": "pendiente",
+            "number": "71022332"
+          },
+          "emergency": {},
+          "special": {}
+        }
+      },
+      {
+        "name": "Pasajero Wayra 4",
+        "items": {
+          "id_doc": {
+            "status": "pendiente",
+            "number": "71022333"
+          },
+          "emergency": {},
+          "special": {}
+        }
+      },
+      {
+        "name": "Pasajero Wayra 5",
+        "items": {
+          "id_doc": {
+            "status": "pendiente",
+            "number": "71022334"
+          },
+          "emergency": {},
+          "special": {}
+        }
+      },
+      {
+        "name": "Pasajero Wayra 6",
+        "items": {
+          "id_doc": {
+            "status": "pendiente",
+            "number": "71022335"
+          },
+          "emergency": {},
+          "special": {}
+        }
+      },
+      {
+        "name": "Pasajero Wayra 7",
+        "items": {
+          "id_doc": {
+            "status": "pendiente",
+            "number": "71022336"
+          },
+          "emergency": {},
+          "special": {}
+        }
+      },
+      {
+        "name": "Pasajero Wayra 8",
+        "items": {
+          "id_doc": {
+            "status": "pendiente",
+            "number": "71022337"
+          },
+          "emergency": {},
+          "special": {}
+        }
+      }
+    ],
+    "reminders": [
+      {
+        "ts": "2026-09-28 10:15",
+        "channel": "Email",
+        "to": "reservas@wayraviajes.pe",
+        "by": "U06",
+        "kind": "Solicitud de documentos a la agencia"
+      }
+    ],
+    "log": []
+  },
+  {
+    "resId": "RES-2026-000344",
+    "pax": [
+      {
+        "name": "Gabriela Ríos Montoya",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "45781236",
+            "expiry": "2031-04-12",
+            "file": {
+              "name": "dni_45781236.pdf",
+              "size": 184000,
+              "at": "2026-09-26 09:00",
+              "by": "Cliente"
+            },
+            "validatedBy": "U05",
+            "validatedAt": "2026-09-26 09:00"
+          },
+          "emergency": {
+            "name": "Rosa Montoya Salas",
+            "phone": "998 223 410",
+            "relation": "Familiar"
+          },
+          "special": {
+            "flag": false,
+            "note": ""
+          }
+        }
+      },
+      {
+        "name": "Iván Castro Díaz",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "44001289",
+            "expiry": "2028-01-20",
+            "file": {
+              "name": "dni_44001289.pdf",
+              "size": 184000,
+              "at": "2026-09-26 09:00",
+              "by": "Cliente"
+            },
+            "validatedBy": "U05",
+            "validatedAt": "2026-09-26 09:00"
+          },
+          "emergency": {
+            "name": "Rosa Montoya Salas",
+            "phone": "998 223 410",
+            "relation": "Familiar"
+          },
+          "special": {
+            "flag": false,
+            "note": ""
+          }
+        }
+      },
+      {
+        "name": "Valeria Castro Ríos",
+        "items": {
+          "id_doc": {
+            "status": "recibido",
+            "number": "81230011",
+            "expiry": "2029-06-02",
+            "file": {
+              "name": "dni_valeria.jpg",
+              "size": 640000,
+              "at": "2026-09-26 21:10",
+              "by": "Cliente"
+            }
+          },
+          "minor_auth": {
+            "status": "pendiente",
+            "note": "Acreditar filiación con ambos padres (partida de nacimiento) o presentar permiso notarial del padre/madre que no viaja."
+          },
+          "emergency": {
+            "name": "Rosa Montoya Salas",
+            "phone": "998 223 410",
+            "relation": "Familiar"
+          },
+          "special": {
+            "flag": false,
+            "note": ""
+          }
+        }
+      },
+      {
+        "name": "Mateo Castro Ríos",
+        "items": {
+          "id_doc": {
+            "status": "recibido",
+            "number": "81994410",
+            "expiry": "2027-03-15",
+            "file": {
+              "name": "dni_mateo.jpg",
+              "size": 640000,
+              "at": "2026-09-26 21:10",
+              "by": "Cliente"
+            }
+          },
+          "minor_auth": {
+            "status": "pendiente",
+            "note": "Acreditar filiación con ambos padres (partida de nacimiento) o presentar permiso notarial del padre/madre que no viaja."
+          },
+          "emergency": {
+            "name": "Rosa Montoya Salas",
+            "phone": "998 223 410",
+            "relation": "Familiar"
+          },
+          "special": {
+            "flag": false,
+            "note": ""
+          }
+        }
+      }
+    ],
+    "reminders": [
+      {
+        "ts": "2026-09-27 08:00",
+        "channel": "Email",
+        "to": "gabriela.rios@correo.pe",
+        "by": "Sistema",
+        "kind": "Recordatorio automático (15 días)"
+      }
+    ],
+    "log": []
+  },
+  {
+    "resId": "RES-2026-000349",
+    "pax": [
+      {
+        "name": "Emily Johnson",
+        "items": {
+          "id_doc": {
+            "status": "completo",
+            "number": "58812290",
+            "expiry": "2027-03-10",
+            "file": {
+              "name": "passport_johnson.pdf",
+              "size": 402000,
+              "at": "2026-09-29 08:40",
+              "by": "Cliente"
+            },
+            "validatedBy": "U05",
+            "validatedAt": "2026-09-29 09:10"
+          },
+          "emergency": {},
+          "special": {}
+        }
+      }
+    ],
+    "reminders": [],
+    "log": []
+  },
+  {
+    "resId": "RES-2026-000350",
+    "pax": [
+      {
+        "name": "José Castañeda Ugarte",
+        "items": {
+          "id_doc": {
+            "status": "pendiente",
+            "number": "DNI 41220988"
+          },
+          "emergency": {},
+          "special": {}
+        }
+      },
+      {
+        "name": "Rosa Ugarte de Castañeda",
+        "items": {
+          "id_doc": {
+            "status": "pendiente",
+            "number": "DNI 41337520"
+          },
+          "emergency": {},
+          "special": {}
+        }
+      },
+      {
+        "name": "Sebastián Castañeda Ugarte",
+        "items": {
+          "id_doc": {
+            "status": "pendiente",
+            "number": "DNI 79120455"
+          },
+          "emergency": {},
+          "special": {}
+        }
+      },
+      {
+        "name": "Valentina Castañeda Ugarte",
+        "items": {
+          "id_doc": {
+            "status": "pendiente",
+            "number": "DNI 91004872"
+          },
+          "emergency": {},
+          "special": {}
+        }
+      }
+    ],
+    "reminders": [],
+    "log": []
+  }
+]

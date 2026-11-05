@@ -1,0 +1,101 @@
+/* Qhapaq Travel Suite — CSS global (Next.js: app/globals.css)
+   Generado desde docs/kit/design/tokens.json. Paleta: azul marino #0A3A73 + dorado #F4B400. */
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #F3F5F9;
+  --surface: #FFFFFF;
+  --surface-2: #F7F9FC;
+  --surface-3: #EEF2F8;
+  --fg: #15202E;
+  --fg-2: #4A5568;
+  --fg-3: #8792A2;
+  --line: #E4E8EF;
+  --line-2: #F0F2F6;
+  --side: #0A3A73;
+  --side-fg: rgba(255,255,255,.80);
+  --side-fg-2: rgba(255,255,255,.45);
+  --side-act: rgba(255,255,255,.14);
+  --accent: #0A3A73;
+  --accent-2: #11509A;
+  --accent-soft: #EAF3FC;
+  --accent-fg: #FFFFFF;
+  --link: #1F6FB8;
+  --sun: #F4B400;
+  --sun-2: #D99A00;
+  --sun-soft: #FFF6D6;
+  --sun-fg: #2B1F00;
+  --ok: #22A55A;
+  --ok-soft: #E4F6EB;
+  --warn: #D98A0B;
+  --warn-soft: #FFF4DB;
+  --bad: #E5484D;
+  --bad-soft: #FDECEC;
+  --info: #2F80D1;
+  --info-soft: #EAF3FC;
+  --violet: #9B4FC0;
+  --violet-soft: #F3EAF8;
+  --mute-soft: #F1F4F8;
+  --cyan: #0EA5B7;
+  --r: 16px; --r-sm: 10px; --r-control: 8px;
+  --shadow: 0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06);
+  --shadow-m: 0 4px 16px -4px rgba(16,24,40,.10),0 2px 6px -2px rgba(16,24,40,.05);
+  --shadow-lg: 0 24px 60px -12px rgba(8,25,55,.35);
+  --side-grad: linear-gradient(180deg,#0B3E7B 0%,#082F5E 55%,#06244A 100%);
+  color-scheme: light;
+}
+.dark, [data-theme="dark"] {
+  --bg: #0B1422;
+  --surface: #111C2E;
+  --surface-2: #152238;
+  --surface-3: #1B2A44;
+  --fg: #E6ECF5;
+  --fg-2: #A8B4C7;
+  --fg-3: #7A879C;
+  --line: #22324D;
+  --line-2: #1A2840;
+  --side: #06244A;
+  --side-fg: rgba(255,255,255,.80);
+  --side-fg-2: rgba(255,255,255,.45);
+  --side-act: rgba(255,255,255,.14);
+  --accent: #5B9DE6;
+  --accent-2: #7AB2EE;
+  --accent-soft: #16304F;
+  --accent-fg: #06162C;
+  --link: #7AB2EE;
+  --sun: #F4B400;
+  --sun-2: #FFC933;
+  --sun-soft: #3A2F0E;
+  --sun-fg: #2B1F00;
+  --ok: #4CC984;
+  --ok-soft: #13351F;
+  --warn: #F2B04A;
+  --warn-soft: #3A2A12;
+  --bad: #F2777A;
+  --bad-soft: #3F1B1E;
+  --info: #6FA8EC;
+  --info-soft: #16304F;
+  --violet: #C08BE0;
+  --violet-soft: #2E1F3D;
+  --mute-soft: #1B2A44;
+  --cyan: #22C3D6;
+  --shadow: 0 1px 2px rgba(0,0,0,.3),0 1px 3px rgba(0,0,0,.3);
+  --shadow-m: 0 4px 16px -4px rgba(0,0,0,.5);
+  --shadow-lg: 0 24px 60px -12px rgba(0,0,0,.6);
+  --side-grad: linear-gradient(180deg,#082F5E 0%,#061F40 55%,#041630 100%);
+  color-scheme: dark;
+}
+
+@layer base {
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  h1, h2, h3, h4 { letter-spacing: -.01em; text-wrap: balance; color: var(--fg); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  a { color: var(--link); }
+  .num, td.num { font-variant-numeric: tabular-nums; text-align: right; }
+  svg[aria-hidden="true"] { width: 1em; height: 1em; flex: none; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+}

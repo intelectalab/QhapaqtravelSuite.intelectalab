@@ -1,0 +1,66 @@
+flowchart LR
+  subgraph T["Transversal y plataforma"]
+    direction TB
+    plataforma["Plataforma SaaS<br/>plataforma_ · 27 tablas"]
+    iam["Identidad y acceso<br/>iam_ · 11 tablas<br/>← 141 FK desde otros dominios"]
+    sys["Sistema<br/>sys_ · 12 tablas<br/>← 15 FK desde otros dominios"]
+    notif["Notificaciones<br/>notif_ · 6 tablas"]
+    integration["Integraciones<br/>integration_ · 8 tablas"]
+  end
+  subgraph N["Dominios de negocio"]
+    catalog["Catálogo<br/>catalog_ · 50 tablas"]
+    crm["CRM<br/>crm_ · 20 tablas"]
+    quote["Cotizaciones<br/>quote_ · 9 tablas"]
+    booking["Reservas<br/>booking_ · 10 tablas"]
+    ops["Operaciones<br/>ops_ · 23 tablas"]
+    supplier["Extranet de proveedores<br/>supplier_ · 3 tablas"]
+    fin["Finanzas y tesorería<br/>fin_ · 34 tablas"]
+    channel["Canales<br/>channel_ · 22 tablas"]
+    cms["Contenidos<br/>cms_ · 2 tablas"]
+    collab["Aprobaciones e inbox<br/>collab_ · 11 tablas"]
+    mkt["Marketing<br/>mkt_ · 13 tablas"]
+    report["Reportes<br/>report_ · 1 tablas"]
+  end
+  booking ---|12| catalog
+  booking ---|11| channel
+  booking ---|1| collab
+  booking ---|6| crm
+  booking ---|11| fin
+  booking ---|1| iam
+  booking ---|1| mkt
+  booking ---|2| notif
+  booking ---|16| ops
+  booking ---|4| quote
+  booking ---|1| supplier
+  catalog ---|17| channel
+  catalog ---|2| collab
+  catalog ---|4| crm
+  catalog ---|2| fin
+  catalog ---|1| iam
+  catalog ---|2| mkt
+  catalog ---|10| ops
+  catalog ---|3| quote
+  catalog ---|7| supplier
+  channel ---|5| collab
+  channel ---|6| crm
+  channel ---|5| fin
+  channel ---|1| iam
+  channel ---|1| integration
+  channel ---|1| mkt
+  channel ---|1| notif
+  channel ---|1| ops
+  collab ---|2| crm
+  collab ---|1| fin
+  collab ---|2| quote
+  crm ---|4| fin
+  crm ---|1| iam
+  crm ---|3| mkt
+  crm ---|1| notif
+  crm ---|2| quote
+  fin ---|1| supplier
+  iam ---|2| ops
+  notif ---|1| quote
+  ops ---|1| supplier
+  classDef default fill:#EAF3FC,stroke:#0A3A73,color:#15202E
+  style T fill:#F7F9FC,stroke:#C9D3E1
+  style N fill:#FFFFFF,stroke:#C9D3E1

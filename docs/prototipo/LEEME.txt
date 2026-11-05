@@ -1,0 +1,44 @@
+QHAPAQ TRAVEL SUITE — Prototipo funcional
+SaaS multi-tenant de gestión integral para agencias de viajes y operadores turísticos
+Basado en: DOC-PROC-001 v1.0 (Flujo de Procesos) y Especificación Funcional PRD (Productos Turísticos)
+
+INSTALACIÓN
+1. Subir el contenido de esta carpeta a public_html (o a una subcarpeta).
+2. Abrir index.html en el navegador. No requiere servidor de aplicaciones, base de datos ni compilación.
+   (También funciona abriendo index.html directamente desde el disco.)
+
+TECNOLOGÍA
+HTML5 + CSS3 + JavaScript vanilla. Sin frameworks ni librerías externas (solo la tipografía Plus Jakarta Sans desde Google Fonts).
+
+USO
+- En la pantalla de inicio elija un perfil de demostración. Cada rol tiene su propia experiencia:
+  · Back-office interno: Tenant Admin, Manager, Ventas (solo su cartera), Operaciones, Finanzas, Contabilidad.
+  · Portales externos: Agencia B2B, Cliente, Pasajero, Extranet de proveedores (solo sus datos).
+  · App móvil: Guía / Conductor (solo sus asignaciones).
+  · Consola de plataforma: Super Admin SaaS (tenants, planes, jobs; sin datos comerciales).
+- Cada pantalla exige un permiso; si se intenta abrir por URL una pantalla no permitida, se muestra 403
+  y el intento queda en auditoría. La matriz completa está en Administración › Roles y permisos › Mapa de acceso.
+- Desde el menú de usuario: "Cambiar de rol (demo)" y "Restablecer datos de demostración".
+- Los cambios se guardan en el navegador (localStorage) solo para la demostración.
+- Todos los datos (empresas, personas, proveedores) son ficticios. Fecha de referencia: 29/09/2026.
+
+ESTRUCTURA
+index.html
+assets/css/app.css
+assets/js/data.js          Datos de demostración
+assets/js/core.js          Núcleo: store, RBAC, router, componentes, motor de precios, auditoría
+assets/js/modules/*.js     dashboard, crm, catalogo, ventas, operaciones (+móvil), finanzas, canales, admin (+reportes)
+
+NOTA
+Prototipo navegable para validación funcional. Las integraciones externas (OSE/SUNAT, pasarela de pagos,
+WhatsApp, proveedores, OTA/GDS) están simuladas y deben validarse antes de producción (DOC-PROC-001 §23).
+
+DOCUMENTACIÓN PARA DESARROLLO
+Abrir ../index.html (portal con buscador) o leer los .md de la carpeta superior docs/:
+  00-LEEME.md, 01-RESUMEN-Y-CAMBIOS.md, 02-ARQUITECTURA.md, CONVENCIONES.md,
+  03-PLAN-DE-IMPLEMENTACION.md, 04-HALLAZGOS-Y-DECISIONES.md, CHANGELOG.md
+  especificaciones/00…18-*.md (una por módulo)
+Stack objetivo: Laravel 12 / PHP 8.4, PostgreSQL 17, Redis 8, Next.js, React Native (Expo).
+
+SITIO WEB PÚBLICO
+Desde el login: "Ver sitio web público de la agencia" (no requiere sesión).

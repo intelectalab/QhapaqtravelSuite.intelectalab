@@ -1,0 +1,28 @@
+[
+  {
+    "id": "SOL-TAR-0102",
+    "providerId": "PRV-001",
+    "serviceId": "SRV-008",
+    "current": 95,
+    "proposed": 104,
+    "currency": "USD",
+    "from": "2026-11-01",
+    "reason": "Ajuste por inflación / costos: incremento de energía y planilla (+9,5 %). Se mantiene desayuno buffet y late check-out sujeto a disponibilidad.",
+    "status": "pendiente",
+    "ts": "2026-09-28 11:05",
+    "user": "U17"
+  },
+  {
+    "id": "SOL-TAR-0101",
+    "providerId": "PRV-004",
+    "serviceId": "SRV-012",
+    "current": 40,
+    "proposed": 45,
+    "currency": "PEN",
+    "from": "2026-11-01",
+    "reason": "Cambio de temporada: mayor costo de combustible y peajes en la ruta Cusco — Mollepata — Soraypampa.",
+    "status": "pendiente",
+    "ts": "2026-09-27 15:30",
+    "user": null
+  }
+]

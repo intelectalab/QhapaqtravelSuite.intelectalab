@@ -1,0 +1,47 @@
+[
+  {
+    "id": "AGB-01",
+    "name": "Wayra Viajes S.A.C.",
+    "ruc": "20600991230",
+    "clientId": "CLI-0007",
+    "priceList": "Mayorista 2026",
+    "commissionPct": 12,
+    "creditLimit": 25000,
+    "creditUsed": 8960,
+    "currency": "PEN",
+    "status": "activa",
+    "since": "2026-02-01",
+    "contact": "Pamela Ortiz",
+    "validTo": "2026-12-31"
+  },
+  {
+    "id": "AGB-02",
+    "name": "Mundo Andino Tours E.I.R.L.",
+    "ruc": "20607788991",
+    "clientId": null,
+    "priceList": "Minorista 2026",
+    "commissionPct": 8,
+    "creditLimit": 0,
+    "creditUsed": 0,
+    "currency": "PEN",
+    "status": "activa",
+    "since": "2026-05-10",
+    "contact": "Iván Salas",
+    "validTo": "2026-12-31"
+  },
+  {
+    "id": "AGB-03",
+    "name": "Pacífico Travel Group",
+    "ruc": "20609901122",
+    "clientId": null,
+    "priceList": "Mayorista 2026",
+    "commissionPct": 10,
+    "creditLimit": 15000,
+    "creditUsed": 14200,
+    "currency": "PEN",
+    "status": "bloqueada",
+    "since": "2026-03-15",
+    "contact": "Laura Meza",
+    "validTo": "2026-12-31"
+  }
+]

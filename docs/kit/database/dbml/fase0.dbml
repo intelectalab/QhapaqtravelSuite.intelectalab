@@ -1,0 +1,454 @@
+// Fase 0 · Fundaciones — 24 tablas. Solo refs internas a la fase.
+
+
+Table iam_sedes {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20) [not null]
+  name varchar(120) [not null]
+  city varchar(80)
+  address varchar(250) [not null]
+  phone varchar(30)
+  manager_user_id uuid
+  status varchar(20) [not null, note: 'in (activa, inactiva)']
+  is_main boolean [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  Note: '09 §3.6 · Sedes (sucursales) del tenant.'
+}
+
+Table iam_users {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20)
+  name varchar(150) [not null]
+  email varchar(190) [not null]
+  password varchar(255)
+  phone varchar(30)
+  sede_id uuid [not null]
+  status varchar(20) [not null, note: 'in (pendiente, activo, inactivo)']
+  mfa_enabled boolean [not null]
+  mfa_required boolean [not null]
+  last_login_at timestamptz
+  last_login_ip inet
+  avatar_color char(7)
+  client_id uuid
+  agency_id uuid
+  provider_id uuid
+  guide_id uuid
+  driver_id uuid
+  reservation_id uuid
+  invited_at timestamptz
+  invited_by uuid
+  deactivated_at timestamptz
+  deactivated_reason text
+  locale varchar(10)
+  remember_token varchar(100)
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  deleted_at timestamptz
+  provider_role varchar(20) [note: 'in (admin, reservas, recepcion, contabilidad)']
+  created_via varchar(20) [not null, note: 'in (backoffice, sitio_web)']
+  email_verified_at timestamptz
+  Note: '00 §3.2 · Usuarios del tenant (internos y externos: cliente, pasajero, B2B, proveedor, guía, conductor).'
+}
+
+Table iam_mfa_factors {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  user_id uuid [not null]
+  type varchar(10) [not null, note: 'in (totp)']
+  secret text [not null]
+  confirmed_at timestamptz
+  recovery_codes jsonb [not null]
+  last_used_step bigint
+  created_at timestamptz [not null]
+  Note: '00 §3.3 · Factor TOTP por usuario (secreto cifrado).'
+}
+
+Table personal_access_tokens {
+  id uuid [pk, not null]
+  tenant_id uuid
+  tokenable_type varchar(255) [not null]
+  tokenable_id uuid [not null]
+  name varchar(255) [not null]
+  token varchar(64) [not null]
+  abilities text
+  last_used_at timestamptz
+  expires_at timestamptz
+  experience varchar(20) [not null, note: 'in (backoffice, portal, mobile, platform)']
+  mfa_verified_at timestamptz
+  device_name varchar(120)
+  ip inet
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '00 §3.4 · Tokens Sanctum extendidos. Sin RLS: se consultan antes de conocer el tenant (son la fuente del tenant).'
+}
+
+Table roles {
+  id uuid [pk, not null]
+  tenant_id uuid
+  name varchar(125) [not null]
+  guard_name varchar(125) [not null]
+  display_name varchar(120) [not null]
+  description varchar(250)
+  scope varchar(10) [not null, note: 'in (tenant, mobile, canal)']
+  is_custom boolean [not null]
+  experience varchar(20) [not null, note: 'in (backoffice, portal, mobile)']
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '00 §3.5 · Roles spatie con teams (tenant_id NULL = plantilla de sistema).'
+}
+
+Table role_has_permissions {
+  permission_id uuid [not null]
+  role_id uuid [not null]
+  indexes {
+    (permission_id, role_id) [pk]
+  }
+  Note: '00 §3.5 · Pivote rol-permiso (spatie). Sin tenant_id propio: se filtra vía `roles`.'
+}
+
+Table model_has_roles {
+  tenant_id uuid [not null]
+  role_id uuid [not null]
+  model_type varchar(255) [not null]
+  model_id uuid [not null]
+  indexes {
+    (tenant_id, role_id, model_id, model_type) [pk]
+  }
+  Note: '00 §3.5 · Asignación de rol a usuario (un rol por usuario).'
+}
+
+Table model_has_permissions {
+  tenant_id uuid [not null]
+  permission_id uuid [not null]
+  model_type varchar(255) [not null]
+  model_id uuid [not null]
+  indexes {
+    (tenant_id, permission_id, model_id, model_type) [pk]
+  }
+  Note: '00 §3.5 · Tabla del paquete spatie. NO se usa: prohibidos permisos directos a usuario (se crea por compatibilidad con la migración del paquete).'
+}
+
+Table audit_events {
+  id uuid [not null]
+  tenant_id uuid
+  code bigint [not null]
+  actor_type varchar(20) [not null, note: 'in (user, platform_user, system, api_client)']
+  actor_id uuid
+  actor_role varchar(60)
+  entity varchar(40) [not null]
+  entity_id varchar(80) [not null]
+  action varchar(40) [not null]
+  is_critical boolean [not null]
+  before_value text
+  after_value text
+  diff jsonb
+  ip inet
+  user_agent varchar(250)
+  correlation_id varchar(40) [not null]
+  evidence jsonb
+  occurred_at timestamptz [not null]
+  indexes {
+    (id, occurred_at) [pk]
+  }
+  Note: '00 §3.6 · Bitácora append-only (PROC-063), particionada por mes.'
+}
+
+Table sys_sequences {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  doc_type varchar(60) [not null]
+  label varchar(60) [not null]
+  series varchar(10) [not null]
+  prefix varchar(30) [not null]
+  pad_width smallint [not null]
+  next_number bigint [not null]
+  year_reset boolean [not null]
+  updated_at timestamptz [not null]
+  Note: '00 §3.7 · Correlativos por tenant, tipo y serie (SELECT … FOR UPDATE).'
+}
+
+Table sys_idempotency_keys {
+  id uuid [pk, not null]
+  tenant_id uuid
+  key varchar(80) [not null]
+  user_id uuid
+  method varchar(10) [not null]
+  path varchar(250) [not null]
+  request_hash char(64) [not null]
+  status varchar(20) [not null, note: 'in (processing, completed, failed)']
+  response_code smallint
+  response_body jsonb
+  locked_until timestamptz
+  expires_at timestamptz [not null]
+  created_at timestamptz [not null]
+  Note: '00 §3.8 · Claves Idempotency-Key (TTL 24 h).'
+}
+
+Table sys_outbox {
+  id uuid [pk, not null]
+  tenant_id uuid
+  aggregate_type varchar(40) [not null]
+  aggregate_id uuid [not null]
+  event varchar(80) [not null]
+  payload jsonb [not null]
+  status varchar(20) [not null, note: 'in (pending, dispatched, failed)']
+  attempts smallint [not null]
+  available_at timestamptz [not null]
+  dispatched_at timestamptz
+  created_at timestamptz [not null]
+  Note: '00 §3.9 · Outbox transaccional (fuente de webhooks e integraciones).'
+}
+
+Table iam_access_requests {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  user_id uuid [not null]
+  path varchar(250) [not null]
+  required_permissions "text[]" [not null]
+  status varchar(20) [not null, note: 'in (pendiente, atendida, rechazada)']
+  resolved_by uuid
+  resolved_at timestamptz
+  created_by uuid
+  created_at timestamptz [not null]
+  Note: '00 §3.10 · Solicitudes de acceso desde la pantalla 403.'
+}
+
+Table iam_user_invitations {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  user_id uuid [not null]
+  token_hash char(64) [not null]
+  expires_at timestamptz [not null]
+  accepted_at timestamptz
+  require_mfa boolean [not null]
+  invited_by uuid [not null]
+  resent_count smallint [not null]
+  created_by uuid
+  created_at timestamptz [not null]
+  Note: '09 §3.7 · Invitaciones de usuario (token de un solo uso, 72 h).'
+}
+
+Table sys_settings {
+  tenant_id uuid [not null]
+  section varchar(30) [not null, note: 'in (general, currency, policies, operations, channels, notifications, travel_docs, ecommerce, own_reviews, rules)']
+  values jsonb [not null]
+  updated_by uuid
+  updated_at timestamptz [not null]
+  lock_version integer [not null]
+  indexes {
+    (tenant_id, section) [pk]
+  }
+  Note: '09 §3.8 · Configuración del tenant por sección (JSONB validado por FormRequest).'
+}
+
+Table notif_event_rules {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  event_code varchar(50) [not null]
+  label varchar(80) [not null]
+  ch_email boolean [not null]
+  ch_whatsapp boolean [not null]
+  ch_push boolean [not null]
+  ch_portal boolean [not null]
+  recipients varchar(200) [not null]
+  timing varchar(20) [not null, note: 'in (immediate, batch_15m, business_hours)']
+  condition varchar(30) [not null, note: 'in (always, marketing_consent, amount_gt_5000)']
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '09 §3.10 · Matriz evento × canal de notificaciones (PROC-059).'
+}
+
+Table notif_templates {
+  id uuid [pk, not null]
+  tenant_id uuid
+  event_code varchar(50) [not null]
+  channel varchar(20) [not null, note: 'in (email, whatsapp, push)']
+  version integer [not null]
+  subject varchar(200) [not null]
+  body text [not null]
+  is_current boolean [not null]
+  provider_template_id varchar(120)
+  created_by uuid
+  created_at timestamptz [not null]
+  Note: '09 §3.11 · Plantillas de notificación versionadas (tenant NULL = predeterminada del sistema).'
+}
+
+Table notif_messages {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(30)
+  event_code varchar(50) [not null]
+  channel varchar(20) [not null, note: 'in (email, whatsapp, push, portal)']
+  recipient_user_id uuid
+  recipient_address varchar(190)
+  subject varchar(200) [not null]
+  body_rendered text
+  template_id uuid
+  source_type varchar(40)
+  source_id uuid
+  client_id uuid
+  reservation_id uuid
+  audience varchar(20) [not null, note: 'in (internal, client, passenger, agency, provider)']
+  status varchar(20) [not null, note: 'in (pendiente, enviado, fallido)']
+  retries smallint [not null]
+  last_error text
+  is_fallback boolean [not null]
+  fallback_of_id uuid
+  read_at timestamptz
+  provider_message_id varchar(120)
+  sent_at timestamptz
+  created_by uuid
+  created_at timestamptz [not null]
+  Note: '09 §3.12 + 05 §3.14 + 01 §3.12 · Log de notificaciones enviadas (campana, email, WhatsApp, push).'
+}
+
+Table notif_reads {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  notification_id uuid [not null]
+  user_id uuid [not null]
+  read_at timestamptz [not null]
+  Note: '05 §3.14 · Lecturas de notificación por usuario (app pasajero, campana).'
+}
+
+Table sys_documents {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  doc_type varchar(40) [not null]
+  entity_type varchar(40)
+  entity_id uuid
+  version integer [not null]
+  storage_disk varchar(20) [not null]
+  storage_path varchar(400) [not null]
+  file_name varchar(200) [not null]
+  mime_type varchar(100) [not null]
+  size_bytes bigint [not null]
+  sha256 char(64) [not null]
+  generated_by_job varchar(150)
+  created_by uuid
+  created_at timestamptz [not null]
+  Note: 'CONVENCIONES §5 (supuesto) · Documentos generados/subidos (PDF, XML, CDR, evidencias) versionados con hash. Referenciada por 03-12; ninguna spec la define: columnas supuestas.'
+}
+
+Table integration_adapters {
+  id uuid [pk, not null]
+  tenant_id uuid
+  code varchar(20) [not null]
+  name varchar(120) [not null]
+  kind varchar(30) [not null, note: 'in (fiscal, payments, email, messaging, maps, suppliers, distribution)']
+  status varchar(20) [not null, note: 'in (activo, por_validar, sandbox, parcial, futuro)']
+  environment varchar(20) [not null, note: 'in (sandbox, production)']
+  owner_user_id uuid
+  max_retries smallint [not null]
+  backoff_base_s integer [not null]
+  timeout_s integer [not null]
+  secret_ref varchar(200)
+  secret_rotated_at timestamptz
+  note text
+  last_test_at timestamptz
+  last_test_ok boolean
+  last_test_result varchar(250)
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '09 §3.13 · Adaptadores de integración INT-01…07 (tenant NULL = compartido de plataforma).'
+}
+
+Table sys_scheduled_jobs {
+  id uuid [pk, not null]
+  tenant_id uuid
+  code varchar(20) [not null]
+  name varchar(150) [not null]
+  job_class varchar(150) [not null]
+  cron varchar(60) [not null]
+  cron_label varchar(60) [not null]
+  queue varchar(20) [not null, note: 'in (critical, default, notifications, documents, integrations, reports, low)']
+  paused boolean [not null]
+  last_run_at timestamptz
+  next_run_at timestamptz
+  last_status varchar(20) [note: 'in (ok, advertencia, error, en_curso)']
+  last_result varchar(250)
+  report_key varchar(60)
+  report_format varchar(10) [note: 'in (PDF, XLSX, CSV)']
+  recipients text
+  owner_user_id uuid
+  is_system boolean [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '09 §3.14 · Jobs programados (JOB-01…) y reportes programados.'
+}
+
+Table sys_job_runs {
+  id uuid [pk, not null]
+  tenant_id uuid
+  scheduled_job_id uuid
+  job_class varchar(150)
+  trigger varchar(20) [not null, note: 'in (schedule, manual, retry)']
+  triggered_by uuid
+  status varchar(20) [not null, note: 'in (en_curso, ok, advertencia, error)']
+  result varchar(250)
+  started_at timestamptz [not null]
+  finished_at timestamptz
+  attempt smallint [not null]
+  correlation_id varchar(40)
+  Note: '09 §3.14 + CONVENCIONES §4 · Ejecuciones de jobs.'
+}
+
+Table integration_errors {
+  id uuid [pk, not null]
+  tenant_id uuid
+  code varchar(20)
+  source varchar(20) [not null, note: 'in (job, notification, integration)']
+  ref_code varchar(30) [not null]
+  target varchar(150) [not null]
+  error text [not null]
+  error_class varchar(20) [not null, note: 'in (transitorio, permanente)']
+  attempt smallint [not null]
+  max_attempts smallint [not null]
+  next_retry_at timestamptz
+  status varchar(20) [not null, note: 'in (reintentando, fallo_definitivo, resuelto)']
+  resolution text
+  resolved_by uuid
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '09 §3.15 · Errores de jobs/notificaciones/integraciones (jobLog).'
+}
+
+Ref: iam_sedes.manager_user_id > iam_users.id
+Ref: iam_users.sede_id > iam_sedes.id
+Ref: iam_users.invited_by > iam_users.id
+Ref: iam_mfa_factors.user_id > iam_users.id
+Ref: role_has_permissions.role_id > roles.id
+Ref: model_has_roles.role_id > roles.id
+Ref: sys_idempotency_keys.user_id > iam_users.id
+Ref: iam_access_requests.user_id > iam_users.id
+Ref: iam_access_requests.resolved_by > iam_users.id
+Ref: iam_user_invitations.user_id > iam_users.id
+Ref: iam_user_invitations.invited_by > iam_users.id
+Ref: notif_messages.recipient_user_id > iam_users.id
+Ref: notif_messages.template_id > notif_templates.id
+Ref: notif_messages.fallback_of_id > notif_messages.id
+Ref: notif_reads.notification_id > notif_messages.id
+Ref: notif_reads.user_id > iam_users.id
+Ref: integration_adapters.owner_user_id > iam_users.id
+Ref: sys_scheduled_jobs.owner_user_id > iam_users.id
+Ref: sys_job_runs.scheduled_job_id > sys_scheduled_jobs.id
+Ref: sys_job_runs.triggered_by > iam_users.id
+Ref: integration_errors.resolved_by > iam_users.id

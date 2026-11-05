@@ -1,0 +1,907 @@
+[
+  {
+    "id": "CNS-0001",
+    "key": "client:CLI-0001",
+    "subjectType": "client",
+    "subjectId": "CLI-0001",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2025-12-10 11:20",
+    "source": "Ficha física firmada en oficina",
+    "evidence": "Ficha F-0112 firmada (Miraflores)",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2025-12-10 11:20",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Ficha física firmada en oficina"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0002",
+    "key": "client:CLI-0001",
+    "subjectType": "client",
+    "subjectId": "CLI-0001",
+    "channel": "whatsapp",
+    "status": "otorgado",
+    "grantedAt": "2025-12-10 11:20",
+    "source": "Ficha física firmada en oficina",
+    "evidence": "Ficha F-0112 firmada (Miraflores)",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2025-12-10 11:20",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Ficha física firmada en oficina"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0003",
+    "key": "client:CLI-0002",
+    "subjectType": "client",
+    "subjectId": "CLI-0002",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-01-20 16:00",
+    "source": "Contrato corporativo / convenio",
+    "evidence": "Contrato marco 2026, cláusula 12 (comunicaciones)",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-01-20 16:00",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Contrato corporativo / convenio"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0004",
+    "key": "client:CLI-0003",
+    "subjectType": "client",
+    "subjectId": "CLI-0003",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-06-02 09:14",
+    "source": "Checkout e-commerce — casilla",
+    "evidence": "IP 91.64.10.22 · texto política v2026.1",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-06-02 09:14",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Checkout e-commerce — casilla"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0005",
+    "key": "client:CLI-0003",
+    "subjectType": "client",
+    "subjectId": "CLI-0003",
+    "channel": "whatsapp",
+    "status": "otorgado",
+    "grantedAt": "2026-06-02 09:40",
+    "source": "WhatsApp opt-in (respuesta SÍ)",
+    "evidence": "Mensaje wamid.HBgL…A1 respuesta \"SÍ\"",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-06-02 09:40",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · WhatsApp opt-in (respuesta SÍ)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0006",
+    "key": "client:CLI-0004",
+    "subjectType": "client",
+    "subjectId": "CLI-0004",
+    "channel": "email",
+    "status": "revocado",
+    "grantedAt": "2026-05-14 10:00",
+    "source": "Formulario web — casilla de marketing",
+    "evidence": "IP 190.235.8.14",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": "2026-08-14 09:30",
+    "revokeSource": "Solicitud ARCO (derecho de oposición)",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-05-14 10:00",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Formulario web — casilla de marketing"
+      },
+      {
+        "ts": "2026-08-14 09:30",
+        "u": "Sistema",
+        "m": "Baja (opt-out) · Solicitud ARCO (derecho de oposición)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0007",
+    "key": "client:CLI-0005",
+    "subjectType": "client",
+    "subjectId": "CLI-0005",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2025-11-28 17:45",
+    "source": "Ficha física firmada en oficina",
+    "evidence": "Ficha F-0098 (Trujillo, visita)",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2025-11-28 17:45",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Ficha física firmada en oficina"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0008",
+    "key": "client:CLI-0005",
+    "subjectType": "client",
+    "subjectId": "CLI-0005",
+    "channel": "whatsapp",
+    "status": "otorgado",
+    "grantedAt": "2025-11-28 17:45",
+    "source": "Ficha física firmada en oficina",
+    "evidence": "Ficha F-0098 (Trujillo, visita)",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2025-11-28 17:45",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Ficha física firmada en oficina"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0009",
+    "key": "client:CLI-0006",
+    "subjectType": "client",
+    "subjectId": "CLI-0006",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-08-19 22:31",
+    "source": "Checkout e-commerce — casilla",
+    "evidence": "IP 82.66.140.9 · texto política v2026.1",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-08-19 22:31",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Checkout e-commerce — casilla"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0010",
+    "key": "client:CLI-0007",
+    "subjectType": "client",
+    "subjectId": "CLI-0007",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-02-01 12:00",
+    "source": "Contrato corporativo / convenio",
+    "evidence": "Convenio B2B Wayra 2026, anexo 3",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-02-01 12:00",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Contrato corporativo / convenio"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0011",
+    "key": "client:CLI-0008",
+    "subjectType": "client",
+    "subjectId": "CLI-0008",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-09-02 15:10",
+    "source": "Llamada grabada — consentimiento verbal",
+    "evidence": "Grabación CALL-20260902-151",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-09-02 15:10",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Llamada grabada — consentimiento verbal"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0012",
+    "key": "client:CLI-0008",
+    "subjectType": "client",
+    "subjectId": "CLI-0008",
+    "channel": "whatsapp",
+    "status": "revocado",
+    "grantedAt": "2026-09-02 15:10",
+    "source": "Llamada grabada — consentimiento verbal",
+    "evidence": "Grabación CALL-20260902-151",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": "2026-09-15 10:22",
+    "revokeSource": "Respuesta BAJA por WhatsApp",
+    "revokeCampaign": "CMP-0010",
+    "history": [
+      {
+        "ts": "2026-09-02 15:10",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Llamada grabada — consentimiento verbal"
+      },
+      {
+        "ts": "2026-09-15 10:22",
+        "u": "Sistema",
+        "m": "Baja (opt-out) · Respuesta BAJA por WhatsApp"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0013",
+    "key": "client:CLI-0010",
+    "subjectType": "client",
+    "subjectId": "CLI-0010",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-08-30 21:05",
+    "source": "Newsletter web (doble opt-in)",
+    "evidence": "SUB-0003 · confirmación doble 2026-08-30 21:07",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-08-30 21:05",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Newsletter web (doble opt-in)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0014",
+    "key": "lead:LEAD-0231",
+    "subjectType": "lead",
+    "subjectId": "LEAD-0231",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-09-29 07:44",
+    "source": "Formulario web — casilla de marketing",
+    "evidence": "IP 200.121.44.7",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-09-29 07:44",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Formulario web — casilla de marketing"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0015",
+    "key": "lead:LEAD-0230",
+    "subjectType": "lead",
+    "subjectId": "LEAD-0230",
+    "channel": "whatsapp",
+    "status": "otorgado",
+    "grantedAt": "2026-09-28 16:20",
+    "source": "WhatsApp opt-in (respuesta SÍ)",
+    "evidence": "Chat entrante, respuesta \"SÍ\" a política",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-09-28 16:20",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · WhatsApp opt-in (respuesta SÍ)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0016",
+    "key": "lead:LEAD-0229",
+    "subjectType": "lead",
+    "subjectId": "LEAD-0229",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-09-28 10:02",
+    "source": "Formulario Facebook Lead Ads — casilla",
+    "evidence": "Lead ID fb 88120034 · casilla marcada",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-09-28 10:02",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Formulario Facebook Lead Ads — casilla"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0017",
+    "key": "lead:LEAD-0224",
+    "subjectType": "lead",
+    "subjectId": "LEAD-0224",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-09-24 11:30",
+    "source": "Llamada grabada — consentimiento verbal",
+    "evidence": "Grabación CALL-20260924-113",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-09-24 11:30",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Llamada grabada — consentimiento verbal"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0018",
+    "key": "lead:LEAD-0223",
+    "subjectType": "lead",
+    "subjectId": "LEAD-0223",
+    "channel": "whatsapp",
+    "status": "otorgado",
+    "grantedAt": "2026-09-29 06:12",
+    "source": "WhatsApp opt-in (respuesta SÍ)",
+    "evidence": "Derivado de Instagram DM, respuesta \"SÍ\"",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-09-29 06:12",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · WhatsApp opt-in (respuesta SÍ)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0019",
+    "key": "subscriber:SUB-0001",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0001",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-03-14 10:12",
+    "source": "Newsletter web (doble opt-in)",
+    "evidence": "Confirmación doble · 2026-03-14 10:12",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-03-14 10:12",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Newsletter web (doble opt-in)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0020",
+    "key": "subscriber:SUB-0001",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0001",
+    "channel": "whatsapp",
+    "status": "otorgado",
+    "grantedAt": "2026-03-14 10:12",
+    "source": "Casilla WhatsApp en formulario",
+    "evidence": "Casilla marcada · 2026-03-14 10:12",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-03-14 10:12",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Casilla WhatsApp en formulario"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0021",
+    "key": "subscriber:SUB-0002",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0002",
+    "channel": "email",
+    "status": "revocado",
+    "grantedAt": "2026-04-02 18:40",
+    "source": "Newsletter web (doble opt-in)",
+    "evidence": "Confirmación doble · 2026-04-02 18:40",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": "2026-07-11 08:02",
+    "revokeSource": "Enlace de baja en correo",
+    "revokeCampaign": "CMP-0008",
+    "history": [
+      {
+        "ts": "2026-04-02 18:40",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Newsletter web (doble opt-in)"
+      },
+      {
+        "ts": "2026-07-11 08:02",
+        "u": "Sistema",
+        "m": "Baja (opt-out) · Enlace de baja en correo"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0022",
+    "key": "subscriber:SUB-0004",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0004",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-05-20 13:30",
+    "source": "Newsletter web (doble opt-in)",
+    "evidence": "Confirmación doble · 2026-05-20 13:30",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-05-20 13:30",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Newsletter web (doble opt-in)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0023",
+    "key": "subscriber:SUB-0005",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0005",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-06-11 08:15",
+    "source": "Pop-up del blog — casilla de marketing",
+    "evidence": "Confirmación doble · 2026-06-11 08:15",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-06-11 08:15",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Pop-up del blog — casilla de marketing"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0024",
+    "key": "subscriber:SUB-0005",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0005",
+    "channel": "whatsapp",
+    "status": "otorgado",
+    "grantedAt": "2026-06-11 08:15",
+    "source": "Casilla WhatsApp en formulario",
+    "evidence": "Casilla marcada · 2026-06-11 08:15",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-06-11 08:15",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Casilla WhatsApp en formulario"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0025",
+    "key": "subscriber:SUB-0006",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0006",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-07-01 20:22",
+    "source": "Newsletter web (doble opt-in)",
+    "evidence": "Confirmación doble · 2026-07-01 20:22",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-07-01 20:22",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Newsletter web (doble opt-in)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0026",
+    "key": "subscriber:SUB-0007",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0007",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-07-19 12:02",
+    "source": "Newsletter web (doble opt-in)",
+    "evidence": "Confirmación doble · 2026-07-19 12:02",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-07-19 12:02",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Newsletter web (doble opt-in)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0027",
+    "key": "subscriber:SUB-0007",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0007",
+    "channel": "whatsapp",
+    "status": "otorgado",
+    "grantedAt": "2026-07-19 12:02",
+    "source": "Casilla WhatsApp en formulario",
+    "evidence": "Casilla marcada · 2026-07-19 12:02",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-07-19 12:02",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Casilla WhatsApp en formulario"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0028",
+    "key": "subscriber:SUB-0008",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0008",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-07-25 16:48",
+    "source": "Newsletter web (doble opt-in)",
+    "evidence": "Confirmación doble · 2026-07-25 16:48",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-07-25 16:48",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Newsletter web (doble opt-in)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0029",
+    "key": "subscriber:SUB-0009",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0009",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-08-03 09:31",
+    "source": "Feria Turismo (tablet) — casilla de marketing",
+    "evidence": "Confirmación doble · 2026-08-03 09:31",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-08-03 09:31",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Feria Turismo (tablet) — casilla de marketing"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0030",
+    "key": "subscriber:SUB-0010",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0010",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-08-12 19:10",
+    "source": "Newsletter web (doble opt-in)",
+    "evidence": "Confirmación doble · 2026-08-12 19:10",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-08-12 19:10",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Newsletter web (doble opt-in)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0031",
+    "key": "subscriber:SUB-0010",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0010",
+    "channel": "whatsapp",
+    "status": "otorgado",
+    "grantedAt": "2026-08-12 19:10",
+    "source": "Casilla WhatsApp en formulario",
+    "evidence": "Casilla marcada · 2026-08-12 19:10",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-08-12 19:10",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Casilla WhatsApp en formulario"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0032",
+    "key": "subscriber:SUB-0011",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0011",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-08-21 07:44",
+    "source": "Newsletter web (doble opt-in)",
+    "evidence": "Confirmación doble · 2026-08-21 07:44",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-08-21 07:44",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Newsletter web (doble opt-in)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0033",
+    "key": "subscriber:SUB-0012",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0012",
+    "channel": "email",
+    "status": "revocado",
+    "grantedAt": "2026-08-27 22:18",
+    "source": "Newsletter web (doble opt-in)",
+    "evidence": "Confirmación doble · 2026-08-27 22:18",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": "2026-09-02 10:14",
+    "revokeSource": "Enlace de baja en correo",
+    "revokeCampaign": "CMP-0009",
+    "history": [
+      {
+        "ts": "2026-08-27 22:18",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Newsletter web (doble opt-in)"
+      },
+      {
+        "ts": "2026-09-02 10:14",
+        "u": "Sistema",
+        "m": "Baja (opt-out) · Enlace de baja en correo"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0034",
+    "key": "subscriber:SUB-0013",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0013",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-09-04 11:25",
+    "source": "Newsletter web (doble opt-in)",
+    "evidence": "Confirmación doble · 2026-09-04 11:25",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-09-04 11:25",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Newsletter web (doble opt-in)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0035",
+    "key": "subscriber:SUB-0013",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0013",
+    "channel": "whatsapp",
+    "status": "otorgado",
+    "grantedAt": "2026-09-04 11:25",
+    "source": "Casilla WhatsApp en formulario",
+    "evidence": "Casilla marcada · 2026-09-04 11:25",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-09-04 11:25",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Casilla WhatsApp en formulario"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0036",
+    "key": "subscriber:SUB-0014",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0014",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-09-06 15:00",
+    "source": "Newsletter web (doble opt-in)",
+    "evidence": "Confirmación doble · 2026-09-06 15:00",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-09-06 15:00",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Newsletter web (doble opt-in)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0037",
+    "key": "subscriber:SUB-0015",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0015",
+    "channel": "email",
+    "status": "revocado",
+    "grantedAt": "2026-09-12 17:36",
+    "source": "Newsletter web (doble opt-in)",
+    "evidence": "Confirmación doble · 2026-09-12 17:36",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": "2026-09-20 12:40",
+    "revokeSource": "Solicitud ARCO (derecho de oposición)",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-09-12 17:36",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Newsletter web (doble opt-in)"
+      },
+      {
+        "ts": "2026-09-20 12:40",
+        "u": "Sistema",
+        "m": "Baja (opt-out) · Solicitud ARCO (derecho de oposición)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0038",
+    "key": "subscriber:SUB-0016",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0016",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-09-26 10:50",
+    "source": "Newsletter web (doble opt-in)",
+    "evidence": "Confirmación doble · 2026-09-26 10:50",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-09-26 10:50",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Newsletter web (doble opt-in)"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0039",
+    "key": "subscriber:SUB-0016",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0016",
+    "channel": "whatsapp",
+    "status": "otorgado",
+    "grantedAt": "2026-09-26 10:50",
+    "source": "Casilla WhatsApp en formulario",
+    "evidence": "Casilla marcada · 2026-09-26 10:50",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-09-26 10:50",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Casilla WhatsApp en formulario"
+      }
+    ]
+  },
+  {
+    "id": "CNS-0040",
+    "key": "subscriber:SUB-0017",
+    "subjectType": "subscriber",
+    "subjectId": "SUB-0017",
+    "channel": "email",
+    "status": "otorgado",
+    "grantedAt": "2026-09-28 08:05",
+    "source": "Pop-up del blog — casilla de marketing",
+    "evidence": "Confirmación doble · 2026-09-28 08:05",
+    "policyVersion": "PDP-2026.1",
+    "revokedAt": null,
+    "revokeSource": "",
+    "revokeCampaign": null,
+    "history": [
+      {
+        "ts": "2026-09-28 08:05",
+        "u": "Sistema",
+        "m": "Consentimiento otorgado · Pop-up del blog — casilla de marketing"
+      }
+    ]
+  }
+]

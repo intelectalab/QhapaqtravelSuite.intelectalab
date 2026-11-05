@@ -1,0 +1,114 @@
+[
+  {
+    "module": "Administración",
+    "perms": [
+      "admin.tenant.manage",
+      "admin.users.manage",
+      "admin.roles.manage",
+      "admin.settings.manage",
+      "admin.audit.view",
+      "admin.billing.manage",
+      "admin.api.manage"
+    ]
+  },
+  {
+    "module": "Colaboración",
+    "perms": [
+      "approvals.view",
+      "inbox.view",
+      "inbox.manage"
+    ]
+  },
+  {
+    "module": "CRM",
+    "perms": [
+      "crm.leads.view",
+      "crm.leads.manage",
+      "crm.opportunities.manage",
+      "crm.activities.manage",
+      "crm.clients.manage",
+      "crm.targets.view",
+      "crm.targets.manage",
+      "crm.claims.manage"
+    ]
+  },
+  {
+    "module": "Marketing",
+    "perms": [
+      "marketing.campaigns.manage"
+    ]
+  },
+  {
+    "module": "Catálogo",
+    "perms": [
+      "catalog.products.view",
+      "catalog.products.create",
+      "catalog.products.update",
+      "catalog.products.activate",
+      "catalog.products.manage_rates",
+      "catalog.products.manage_availability",
+      "catalog.products.view_profitability",
+      "catalog.products.publish",
+      "catalog.providers.manage",
+      "catalog.allotments.manage"
+    ]
+  },
+  {
+    "module": "Cotizaciones",
+    "perms": [
+      "quotes.view",
+      "quotes.create",
+      "quotes.approve_internal",
+      "quotes.send",
+      "quotes.discount_override"
+    ]
+  },
+  {
+    "module": "Reservas",
+    "perms": [
+      "reservations.view",
+      "reservations.create",
+      "reservations.modify",
+      "reservations.cancel"
+    ]
+  },
+  {
+    "module": "Operaciones",
+    "perms": [
+      "operations.view",
+      "operations.assign",
+      "operations.vouchers",
+      "operations.incidents",
+      "operations.close",
+      "operations.travel_docs"
+    ]
+  },
+  {
+    "module": "Finanzas",
+    "perms": [
+      "finance.receivables",
+      "finance.payments.register",
+      "finance.payments.revert",
+      "finance.payables",
+      "finance.commissions",
+      "finance.profitability",
+      "finance.invoicing",
+      "finance.treasury"
+    ]
+  },
+  {
+    "module": "Canales",
+    "perms": [
+      "channels.b2b.manage",
+      "channels.ecommerce.manage",
+      "channels.cms.publish"
+    ]
+  },
+  {
+    "module": "Reportes",
+    "perms": [
+      "reports.view",
+      "reports.export"
+    ]
+  }
+]

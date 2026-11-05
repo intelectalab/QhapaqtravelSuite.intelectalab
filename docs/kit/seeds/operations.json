@@ -1,0 +1,398 @@
+[
+  {
+    "id": "OP-2026-0415",
+    "resId": "RES-2026-000350",
+    "title": "Castañeda — Perú Clásico 10D/9N (web)",
+    "status": "pendiente_asignacion",
+    "coordinator": "U05",
+    "createdAt": "2026-09-22",
+    "dateFrom": "2026-10-10",
+    "dateTo": "2026-10-19",
+    "tasks": [
+      {
+        "t": "Enviar solicitudes a proveedores",
+        "done": true
+      },
+      {
+        "t": "Asignar guías, conductores y vehículos",
+        "done": false
+      },
+      {
+        "t": "Confirmar torta de aniversario en Puno (14/10)",
+        "done": false
+      },
+      {
+        "t": "Informar alergia a frutos secos a restaurantes y hoteles",
+        "done": false
+      },
+      {
+        "t": "Silla de bebé para traslados (infante 2 años)",
+        "done": false
+      }
+    ],
+    "assignments": [
+      {
+        "serviceId": "RS-35001",
+        "date": "2026-10-10",
+        "time": "09:35",
+        "service": "Traslado de llegada: aeropuerto Jorge Chávez → Miraflores (Lima)",
+        "guideId": null,
+        "driverId": null,
+        "vehicleId": null,
+        "status": "pendiente",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-35002",
+        "date": "2026-10-10",
+        "time": "15:00",
+        "service": "City tour colonial y moderno (Lima)",
+        "guideId": null,
+        "driverId": null,
+        "vehicleId": null,
+        "status": "pendiente",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-35003",
+        "date": "2026-10-11",
+        "time": "09:00",
+        "service": "Lima → Arequipa",
+        "guideId": null,
+        "driverId": null,
+        "vehicleId": null,
+        "status": "pendiente",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-35004",
+        "date": "2026-10-12",
+        "time": "09:00",
+        "service": "Arequipa: campiña",
+        "guideId": null,
+        "driverId": null,
+        "vehicleId": null,
+        "status": "pendiente",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-35005",
+        "date": "2026-10-13",
+        "time": "08:00",
+        "service": "Arequipa → Puno",
+        "guideId": null,
+        "driverId": null,
+        "vehicleId": null,
+        "status": "pendiente",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-35006",
+        "date": "2026-10-14",
+        "time": "07:30",
+        "service": "Lago Titicaca",
+        "guideId": null,
+        "driverId": null,
+        "vehicleId": null,
+        "status": "pendiente",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-35007",
+        "date": "2026-10-15",
+        "time": "07:00",
+        "service": "Puno → Cusco (Ruta del Sol)",
+        "guideId": null,
+        "driverId": null,
+        "vehicleId": null,
+        "status": "pendiente",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-35008",
+        "date": "2026-10-16",
+        "time": "13:30",
+        "service": "Cusco: City tour",
+        "guideId": null,
+        "driverId": null,
+        "vehicleId": null,
+        "status": "pendiente",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-35009",
+        "date": "2026-10-17",
+        "time": "08:00",
+        "service": "Valle Sagrado",
+        "guideId": null,
+        "driverId": null,
+        "vehicleId": null,
+        "status": "pendiente",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-35010",
+        "date": "2026-10-18",
+        "time": "05:05",
+        "service": "Machu Picchu",
+        "guideId": null,
+        "driverId": null,
+        "vehicleId": null,
+        "status": "pendiente",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-35011",
+        "date": "2026-10-19",
+        "time": "10:00",
+        "service": "Traslado de salida → aeropuerto de Cusco",
+        "guideId": null,
+        "driverId": null,
+        "vehicleId": null,
+        "status": "pendiente",
+        "checkin": null
+      }
+    ],
+    "evidence": []
+  },
+  {
+    "id": "OP-2026-0412",
+    "resId": "RES-2026-000347",
+    "title": "Keller — Cusco aventura 6D",
+    "status": "en_ejecucion",
+    "coordinator": "U05",
+    "createdAt": "2026-08-29",
+    "dateFrom": "2026-09-27",
+    "dateTo": "2026-10-02",
+    "tasks": [
+      {
+        "t": "Confirmar guía en alemán para MAPI",
+        "done": true
+      },
+      {
+        "t": "Enviar vouchers al pasajero",
+        "done": true
+      },
+      {
+        "t": "Verificar pasaportes para entradas nominativas",
+        "done": true
+      },
+      {
+        "t": "Llamada de bienvenida",
+        "done": true
+      },
+      {
+        "t": "Encuesta de cierre",
+        "done": false
+      }
+    ],
+    "assignments": [
+      {
+        "serviceId": "RS-3476",
+        "date": "2026-09-30",
+        "time": "04:10",
+        "service": "Machu Picchu Full Day",
+        "guideId": "G02",
+        "driverId": "C01",
+        "vehicleId": "V01",
+        "status": "confirmada",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-3477",
+        "date": "2026-10-01",
+        "time": "04:30",
+        "service": "Laguna Humantay Full Day",
+        "guideId": "G03",
+        "driverId": "C02",
+        "vehicleId": "V03",
+        "status": "asignada",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-3478",
+        "date": "2026-10-02",
+        "time": "08:30",
+        "service": "Traslado hotel → aeropuerto",
+        "guideId": null,
+        "driverId": "C03",
+        "vehicleId": "V05",
+        "status": "pendiente",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-3474",
+        "date": "2026-09-28",
+        "time": "07:30",
+        "service": "Valle Sagrado + almuerzo",
+        "guideId": "G02",
+        "driverId": "C01",
+        "vehicleId": "V02",
+        "status": "completada",
+        "checkin": "2026-09-28 07:26"
+      }
+    ]
+  },
+  {
+    "id": "OP-2026-0413",
+    "resId": "RES-2026-000348",
+    "title": "Incentivo mineros Q4 — Cusco",
+    "status": "asignada",
+    "coordinator": "U06",
+    "createdAt": "2026-09-06",
+    "dateFrom": "2026-10-01",
+    "dateTo": "2026-10-05",
+    "tasks": [
+      {
+        "t": "Rooming list enviada al hotel",
+        "done": true
+      },
+      {
+        "t": "Confirmar Humantay con proveedor",
+        "done": false
+      },
+      {
+        "t": "Dietas especiales comunicadas a restaurante",
+        "done": true
+      },
+      {
+        "t": "Kit de bienvenida corporativo",
+        "done": false
+      },
+      {
+        "t": "Vouchers emitidos",
+        "done": false
+      }
+    ],
+    "assignments": [
+      {
+        "serviceId": "RS-3481",
+        "date": "2026-10-01",
+        "time": "10:30",
+        "service": "Traslado aeropuerto → hotel (2 veh.)",
+        "guideId": null,
+        "driverId": "C02",
+        "vehicleId": "V02",
+        "status": "confirmada",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-3483",
+        "date": "2026-10-01",
+        "time": "13:30",
+        "service": "City Tour Cusco",
+        "guideId": "G01",
+        "driverId": "C02",
+        "vehicleId": "V02",
+        "status": "confirmada",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-3484",
+        "date": "2026-10-02",
+        "time": "07:30",
+        "service": "Valle Sagrado + almuerzo",
+        "guideId": "G01",
+        "driverId": "C01",
+        "vehicleId": "V03",
+        "status": "asignada",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-3485",
+        "date": "2026-10-03",
+        "time": "05:05",
+        "service": "Machu Picchu (tren + entrada)",
+        "guideId": "G01",
+        "driverId": "C01",
+        "vehicleId": "V03",
+        "status": "asignada",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-3487",
+        "date": "2026-10-04",
+        "time": "04:30",
+        "service": "Laguna Humantay Full Day",
+        "guideId": null,
+        "driverId": null,
+        "vehicleId": null,
+        "status": "pendiente",
+        "checkin": null
+      },
+      {
+        "serviceId": "RS-3488",
+        "date": "2026-10-05",
+        "time": "09:00",
+        "service": "Traslado hotel → aeropuerto",
+        "guideId": null,
+        "driverId": null,
+        "vehicleId": null,
+        "status": "pendiente",
+        "checkin": null
+      }
+    ]
+  },
+  {
+    "id": "OP-2026-0411",
+    "resId": "RES-2026-000346",
+    "title": "Sophie Martin — Humantay + MAPI",
+    "status": "completada",
+    "coordinator": "U05",
+    "createdAt": "2026-09-11",
+    "dateFrom": "2026-09-24",
+    "dateTo": "2026-09-27",
+    "tasks": [
+      {
+        "t": "Vouchers",
+        "done": true
+      },
+      {
+        "t": "Encuesta",
+        "done": true
+      }
+    ],
+    "assignments": [
+      {
+        "serviceId": "RS-3463",
+        "date": "2026-09-26",
+        "time": "04:10",
+        "service": "Machu Picchu Full Day",
+        "guideId": "G01",
+        "driverId": "C01",
+        "vehicleId": "V01",
+        "status": "completada",
+        "checkin": "2026-09-26 04:06"
+      }
+    ]
+  },
+  {
+    "id": "OP-2026-0414",
+    "resId": "RES-2026-000345",
+    "title": "Wayra — 8 pax Humantay (B2B)",
+    "status": "pendiente_asignacion",
+    "coordinator": "U06",
+    "createdAt": "2026-09-27",
+    "dateFrom": "2026-10-02",
+    "dateTo": "2026-10-02",
+    "tasks": [
+      {
+        "t": "Asignar guía a salida SAL-0403",
+        "done": false
+      }
+    ],
+    "assignments": [
+      {
+        "serviceId": "RS-3451",
+        "date": "2026-10-02",
+        "time": "04:30",
+        "service": "Laguna Humantay (SAL-0403)",
+        "guideId": null,
+        "driverId": null,
+        "vehicleId": "V02",
+        "status": "pendiente",
+        "checkin": null
+      }
+    ]
+  }
+]
