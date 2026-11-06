@@ -31,6 +31,7 @@ final class TenantSettings
             'values' => isset($rows[$section]) ? (array) json_decode((string) $rows[$section]->values, true) : [],
             'updated_at' => $rows[$section]->updated_at ?? null,
             'updated_by' => $rows[$section]->user_name ?? null,
+            'lock_version' => isset($rows[$section]) ? (int) $rows[$section]->lock_version : 0,
         ]])->all();
     }
 

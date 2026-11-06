@@ -12,7 +12,7 @@ use Illuminate\Http\Request;
 
 final class ActivityController
 {
-    private const TYPES = 'in:llamada,email,whatsapp,reunion,tarea,postventa';
+    public const TYPES = 'in:llamada,email,whatsapp,reunion,tarea,postventa';
 
     public function __construct(private readonly ActivityDirectory $directory, private readonly ActivityWorkflow $workflow) {}
 

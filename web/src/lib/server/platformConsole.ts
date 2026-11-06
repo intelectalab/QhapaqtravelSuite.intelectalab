@@ -1,6 +1,9 @@
 import "server-only";
+import { redirect } from "next/navigation";
 import type { AuditEvent, BillingOverview, Coupon, DunningOverview, FlagsOverview, InvoiceFull, InvoiceSummary, OperationsOverview, PlatformHomeOverview, TrialsOverview, UsageOverview } from "@/lib/platformBilling";
+import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
+import { fetchPages } from "./pages";
 import { platformGet } from "./platform";
 
 export const getPlatformHome = () => platformGet<PlatformHomeOverview>("/home");
@@ -23,7 +26,12 @@ export const getUsage = () => platformGet<UsageOverview>("/usage");
 
 export const getOperations = () => platformGet<OperationsOverview>("/operations");
 
-export const listPlatformAudit = () => platformGet<AuditEvent[]>("/audit");
+export async function listPlatformAudit(): Promise<AuditEvent[]> {
+  const result = await fetchPages<AuditEvent>("/platform/audit-events", 500, "platform");
+  if (result.status === 403 && result.error?.code === "MFA_REQUIRED") redirect(REALMS.platform.mfaPage);
+  if (!result.ok || !result.data) redirect(REALMS.platform.logout);
+  return result.data.data;
+}
 
 export interface ConsoleResult {
   message: string | null;

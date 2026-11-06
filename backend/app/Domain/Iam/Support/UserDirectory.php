@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\Iam\Support;
 
+use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class UserDirectory
 {
@@ -36,6 +39,55 @@ final class UserDirectory
                 'deactivated_reason' => $user->deactivated_reason,
                 'invitation_expires_at' => $pending[$user->id] ?? null,
             ]);
+    }
+
+    public function find(string $id): array
+    {
+        $user = User::query()->with(['roles', 'sede'])->whereNull('deleted_at')->where(fn ($query) => Str::isUuid($id) ? $query->whereKey($id) : $query->where('code', $id))->first()
+            ?? throw ApiException::notFound('El usuario no existe.');
+        $role = $user->primaryRole();
+        $pending = DB::table('iam_user_invitations')->where('user_id', $user->getKey())->whereNull('accepted_at')->where('expires_at', '>', now())->max('expires_at');
+        $activity = DB::table('audit_events')
+            ->where(fn ($query) => $query->where('actor_id', $user->getKey())->orWhere(fn ($own) => $own->where('entity', 'Usuario')->whereIn('entity_id', array_filter([$user->code, $user->email]))))
+            ->orderByDesc('occurred_at')
+            ->limit(8)
+            ->get(['id', 'code', 'entity', 'entity_id', 'action', 'before_value', 'after_value', 'is_critical', 'occurred_at']);
+
+        return [
+            'id' => $user->getKey(),
+            'code' => $user->code,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'sede_id' => $user->sede_id,
+            'status' => $user->status,
+            'mfa_enabled' => (bool) $user->mfa_enabled,
+            'mfa_required' => (bool) $user->mfa_required,
+            'last_login_at' => $user->last_login_at?->toIso8601String(),
+            'last_login_ip' => $user->last_login_ip,
+            'avatar_color' => $user->avatar_color,
+            'invited_at' => $user->invited_at?->toIso8601String(),
+            'deactivated_at' => $user->deactivated_at?->toIso8601String(),
+            'deactivated_reason' => $user->deactivated_reason,
+            'locale' => $user->locale,
+            'created_at' => $user->created_at?->toIso8601String(),
+            'updated_at' => $user->updated_at?->toIso8601String(),
+            'role' => $role ? ['code' => $role->name, 'name' => $role->display_name, 'scope' => $role->scope] : null,
+            'sede' => $user->sede ? ['id' => $user->sede->getKey(), 'name' => $user->sede->name] : null,
+            'invitation_expires_at' => $pending,
+            'permissions' => $user->getAllPermissions()->pluck('name')->sort()->values()->all(),
+            'activity' => $activity->map(fn (object $event): array => [
+                'id' => $event->id,
+                'code' => (string) $event->code,
+                'entity' => $event->entity,
+                'entity_id' => $event->entity_id,
+                'action' => $event->action,
+                'before' => $event->before_value,
+                'after' => $event->after_value,
+                'critical' => (bool) $event->is_critical,
+                'at' => $event->occurred_at,
+            ])->values()->all(),
+        ];
     }
 
     public function options(): array

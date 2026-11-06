@@ -38,9 +38,9 @@ final class PlatformOperationsController
         return response()->json(['data' => ['paused' => (bool) $data['paused']]]);
     }
 
-    public function audit(PlatformAudit $audit): JsonResponse
+    public function audit(Request $request, PlatformAudit $audit): JsonResponse
     {
-        return response()->json(['data' => $audit->recent()]);
+        return response()->json($audit->page($request));
     }
 
     private function user(Request $request): PlatformUser

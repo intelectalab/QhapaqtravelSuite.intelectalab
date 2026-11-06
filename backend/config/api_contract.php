@@ -5,6 +5,8 @@ declare(strict_types=1);
 return [
     'idempotent' => [
         'approvals.store',
+        'audit-events.exports',
+        'auth.invitations.accept',
         'approvals.approve',
         'approvals.reject',
         'b2b.receivables.payments.store',
@@ -26,6 +28,7 @@ return [
         'finance.payments.confirm',
         'finance.receivables.payments.store',
         'iam.users.store',
+        'jobs.run',
         'inbox.conversations.reply',
         'marketing.campaigns.test',
         'ops.incidents.store',
@@ -136,6 +139,7 @@ return [
         'reservations.passengers.update' => 'booking_reservations,code,code',
         'reservations.passengers.destroy' => 'booking_reservations,code,code',
         'reservations.reschedule' => 'booking_reservations,code,code',
+        'settings.update' => 'sys_settings,section,section',
         'supplier.requests.confirm' => 'booking_reservation_services,code,code',
         'supplier.requests.reject' => 'booking_reservation_services,code,code',
     ],

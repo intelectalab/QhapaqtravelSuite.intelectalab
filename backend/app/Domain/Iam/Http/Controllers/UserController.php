@@ -19,6 +19,11 @@ final class UserController
         return response()->json(['data' => $this->directory->list(), 'meta' => $this->directory->options()]);
     }
 
+    public function show(string $id): JsonResponse
+    {
+        return response()->json(['data' => $this->directory->find($id)]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([

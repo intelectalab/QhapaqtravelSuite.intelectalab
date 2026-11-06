@@ -29,7 +29,7 @@ return [
     'platform_permissions' => ['admin.tenant.manage', 'admin.audit.view'],
 
     'experience_routes' => [
-        'shared' => ['me', 'me.access', 'me.counts'],
+        'shared' => ['me', 'me.access', 'me.counts', 'me.permissions', 'me.notifications.index', 'me.notifications.read-all'],
         'portal' => ['b2b.', 'supplier.', 'portal.'],
     ],
 

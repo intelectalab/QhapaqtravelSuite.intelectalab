@@ -35,9 +35,10 @@ interface LoginFormProps {
   title?: string;
   description?: string;
   placeholder?: string;
+  recoverHref?: string;
 }
 
-export function LoginForm({ action: submit, next, title = "Inicia sesión", description = "Entra con el correo y la contraseña de tu cuenta.", placeholder = "tu@empresa.pe" }: LoginFormProps) {
+export function LoginForm({ action: submit, next, title = "Inicia sesión", description = "Entra con el correo y la contraseña de tu cuenta.", placeholder = "tu@empresa.pe", recoverHref }: LoginFormProps) {
   const [state, action, pending] = useActionState(submit, initial);
 
   return (
@@ -51,6 +52,11 @@ export function LoginForm({ action: submit, next, title = "Inicia sesión", desc
       <TextField label="Correo" name="email" type="email" autoComplete="email" required autoFocus defaultValue={state.fields?.email} placeholder={placeholder} icon={<Mail size={17} />} data-testid="login-email" />
       <TextField label="Contraseña" name="password" revealable autoComplete="current-password" required icon={<Lock size={17} />} data-testid="login-password" />
       <SubmitButton pending={pending}>Ingresar</SubmitButton>
+      {recoverHref && (
+        <Link href={recoverHref} prefetch={false} className="text-center text-[13px] font-semibold text-fg-3 hover:text-fg">
+          ¿Olvidaste tu contraseña?
+        </Link>
+      )}
     </form>
   );
 }

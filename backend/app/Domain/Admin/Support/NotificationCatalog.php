@@ -36,6 +36,53 @@ final class NotificationCatalog
 
     public const CONDITIONS = ['always' => 'Siempre', 'marketing_consent' => 'Solo con consentimiento de marketing', 'amount_gt_5000' => 'Solo si el monto supera S/ 5 000'];
 
+    public const TEMPLATE_CHANNELS = ['email' => 'Correo', 'whatsapp' => 'WhatsApp', 'push' => 'Push'];
+
+    public const VARIABLES = ['cliente', 'reserva', 'cotizacion', 'fecha_viaje', 'monto', 'servicio', 'hora', 'enlace', 'agencia', 'vendedor'];
+
+    public const SAMPLE = [
+        'cliente' => 'Ana Torres',
+        'reserva' => 'RES-2026-000350',
+        'cotizacion' => 'COT-2026-00188',
+        'fecha_viaje' => '12/10/2026',
+        'monto' => 'S/ 4 850.00',
+        'servicio' => 'Machu Picchu full day',
+        'hora' => '05:30',
+        'enlace' => 'https://andes.qhapaq.local/portal',
+        'agencia' => 'Andes Horizonte',
+        'vendedor' => 'Lucía Paredes',
+    ];
+
+    public const MESSAGES = [
+        'cotizacion.enviada' => 'Te enviamos la cotización {{cotizacion}}. Revísala y apruébala aquí: {{enlace}}',
+        'cotizacion.aprobada' => '{{cliente}} aprobó la cotización {{cotizacion}} por {{monto}}.',
+        'reserva.confirmada' => 'Tu reserva {{reserva}} está confirmada para el {{fecha_viaje}}.',
+        'pago.recibido' => 'Recibimos tu pago de {{monto}} para la reserva {{reserva}}. Gracias.',
+        'asignacion.creada' => 'Tienes un servicio asignado: {{servicio}} el {{fecha_viaje}} a las {{hora}}.',
+        'servicio.cambio_horario' => 'Cambió el horario de {{servicio}}: ahora es el {{fecha_viaje}} a las {{hora}}.',
+        'incidencia.critica' => 'Incidencia crítica en {{servicio}} ({{reserva}}). Revísala de inmediato: {{enlace}}',
+        'voucher.emitido' => 'Ya está disponible el voucher de {{servicio}} para la reserva {{reserva}}: {{enlace}}',
+        'servicio.inicio' => '{{servicio}} comienza el {{fecha_viaje}} a las {{hora}}. Te esperamos.',
+        'viaje.cierre' => 'Gracias por viajar con {{agencia}}. Cuéntanos cómo te fue: {{enlace}}',
+    ];
+
+    public static function exists(string $code): bool
+    {
+        return isset(self::EVENTS[$code]) || isset(self::SYSTEM_EVENTS[$code]);
+    }
+
+    public static function render(string $text, array $values = self::SAMPLE): string
+    {
+        return (string) preg_replace_callback('/\{\{\s*([a-z_]+)\s*\}\}/', fn (array $m): string => (string) ($values[$m[1]] ?? $m[0]), $text);
+    }
+
+    public static function unknownVariables(string ...$texts): array
+    {
+        preg_match_all('/\{\{\s*([^}]*?)\s*\}\}/', implode("\n", $texts), $matches);
+
+        return array_values(array_unique(array_diff($matches[1], self::VARIABLES)));
+    }
+
     public static function label(string $code): string
     {
         return self::EVENTS[$code]['label'] ?? self::SYSTEM_EVENTS[$code] ?? $code;

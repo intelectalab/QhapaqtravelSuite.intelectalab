@@ -14,7 +14,7 @@ export interface Option {
 }
 
 export interface AuditEntry {
-  code: string;
+  code: number;
   at: string;
   entity: string;
   entity_id: string;
@@ -265,6 +265,39 @@ export interface NotificationMessage {
   audience: string;
   at: string;
   sent_at: string | null;
+  can_fallback: boolean;
+}
+
+export interface NotificationRuleRecord extends Omit<NotificationRule, "updated_by"> {
+  event_code: string;
+  updated_by: string | null;
+  updated_by_name: string | null;
+}
+
+export interface NotificationMessageRecord {
+  id: string;
+  code: string;
+  event_code: string;
+  event_label: string;
+  channel: string;
+  to: string;
+  subject: string;
+  status: NotificationMessage["status"];
+  retries: number;
+  last_error: string | null;
+  permanent: boolean;
+  is_fallback: boolean;
+  can_fallback: boolean;
+  audience: string;
+  created_at: string;
+  sent_at: string | null;
+}
+
+export interface NotificationRulesMeta {
+  kpis: NotificationsOverview["kpis"];
+  options: NotificationsOverview["options"];
+  history: AuditEntry[];
+  can_manage: boolean;
 }
 
 export interface NotificationsOverview {
@@ -446,6 +479,25 @@ export interface IntegrationsOverview {
   owners: Option[];
   history: AuditEntry[];
   can_manage: boolean;
+}
+
+export interface AdaptersMeta {
+  owners: Option[];
+  history: AuditEntry[];
+  can_manage: boolean;
+}
+
+export interface IntegrationErrorRecord extends Omit<IntegrationError, "resolved_by"> {
+  resolved_by: string | null;
+  resolved_by_name: string | null;
+}
+
+export interface AuditMeta {
+  days: number;
+  total: number;
+  kpis: AuditOverview["kpis"];
+  top_entities: AuditOverview["top_entities"];
+  daily: AuditOverview["daily"];
 }
 
 export const CHANNEL_LABELS: Record<string, string> = { email: "Correo", whatsapp: "WhatsApp", push: "Push", portal: "Portal" };

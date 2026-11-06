@@ -14,7 +14,7 @@ import { getResource } from "@/lib/server/resource";
 export const metadata: Metadata = { title: "Configuración" };
 
 export default async function ConfiguracionPage() {
-  const data = await getResource<SettingsOverview>("/admin/settings", "No pudimos cargar la configuración.");
+  const data = await getResource<SettingsOverview>("/settings", "No pudimos cargar la configuración.");
   if (!data) return <NoAccess home="/dashboard" />;
 
   return (

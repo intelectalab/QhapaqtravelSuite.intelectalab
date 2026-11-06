@@ -26,7 +26,7 @@ function ValueBox({ title, value, tone }: { title: string; value: string | null;
 
 export default async function AuditEventPage({ params }: { params: Promise<{ codigo: string }> }) {
   const { codigo } = await params;
-  const event = await getResource<AuditDetail>(`/admin/audit-events/${encodeURIComponent(codigo)}`, "No pudimos cargar el evento.");
+  const event = await getResource<AuditDetail>(`/audit-events/${encodeURIComponent(codigo)}`, "No pudimos cargar el evento.");
   if (!event) return <NoAccess home="/dashboard" />;
 
   return (

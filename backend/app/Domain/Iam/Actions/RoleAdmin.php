@@ -132,26 +132,62 @@ final class RoleAdmin
         return ['applied' => $applied, 'blocked' => $blocked];
     }
 
+    public function toggle(string $code, string $permission, bool $grant): array
+    {
+        $role = $this->role($code);
+
+        if (! Permission::query()->where('name', $permission)->where('guard_name', 'api')->exists()) {
+            throw ApiException::notFound('Ese permiso no existe.');
+        }
+
+        $blocked = $this->blockedRule($role, $permission, $grant);
+
+        if ($blocked !== null) {
+            throw ApiException::unprocessable($blocked[0], $blocked[1]);
+        }
+
+        $result = $this->set($code, [$permission], $grant);
+
+        return ['role' => $code, 'permission' => $permission, 'granted' => $grant, 'changed' => $result['applied'] !== []];
+    }
+
+    public function matrix(): array
+    {
+        $roles = $this->list();
+        $catalog = $this->catalog();
+
+        return [
+            'roles' => $roles->map(fn (array $role) => ['code' => $role['code'], 'name' => $role['name'], 'scope' => $role['scope'], 'custom' => $role['custom'], 'users' => $role['users']])->values(),
+            'modules' => $catalog,
+            'matrix' => $roles->mapWithKeys(fn (array $role) => [$role['code'] => $catalog->pluck('permissions')->flatten()->mapWithKeys(fn (string $permission) => [$permission => $role['permissions']->contains($permission)])])->all(),
+        ];
+    }
+
     private function blockedReason(Role $role, string $permission, bool $grant): ?string
     {
         if (! Permission::query()->where('name', $permission)->where('guard_name', 'api')->exists()) {
             return 'Ese permiso no existe.';
         }
 
+        return $this->blockedRule($role, $permission, $grant)[1] ?? null;
+    }
+
+    private function blockedRule(Role $role, string $permission, bool $grant): ?array
+    {
         if (in_array($permission, self::PLATFORM_ONLY, true)) {
-            return 'Reservado a la plataforma.';
+            return ['RBAC-BR-05', 'Reservado a la plataforma.'];
         }
 
         if (! $grant) {
-            return $role->name === 'tenant_admin' && in_array($permission, self::ADMIN_LOCKED, true) ? 'El administrador no puede perder la gestión de usuarios y roles.' : null;
+            return $role->name === 'tenant_admin' && in_array($permission, self::ADMIN_LOCKED, true) ? ['RBAC-BR-02', 'El administrador no puede perder la gestión de usuarios y roles.'] : null;
         }
 
         if (in_array($role->scope, ['canal', 'mobile'], true)) {
             if (str_starts_with($permission, 'admin.')) {
-                return 'Los roles externos o móviles no administran la agencia.';
+                return ['RBAC-BR-03', 'Los roles externos o móviles no administran la agencia.'];
             }
             if (str_starts_with($permission, 'finance.') || str_contains($permission, 'profitability') || $permission === 'quotes.discount_override') {
-                return 'Los roles externos o móviles no ven finanzas ni rentabilidad.';
+                return ['RBAC-BR-04', 'Los roles externos o móviles no ven finanzas ni rentabilidad.'];
             }
         }
 

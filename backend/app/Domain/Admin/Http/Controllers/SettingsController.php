@@ -12,6 +12,7 @@ use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 final class SettingsController
 {
@@ -35,23 +36,71 @@ final class SettingsController
 
         $result = $update->section($section, $data, $this->user($request));
 
-        return response()->json(['data' => ['changed' => $result['changed']], 'meta' => ['warnings' => $result['warnings']]]);
+        $version = $section === 'agency' ? null : DB::table('sys_settings')->where('section', $section)->value('lock_version');
+
+        return response()->json(['data' => ['section' => $section, 'changed' => $result['changed'], 'lock_version' => $version === null ? null : (int) $version], 'meta' => ['warnings' => $result['warnings']]]);
     }
 
-    public function sequence(Request $request, string $docType, UpdateSettings $update): JsonResponse
+    public function sequences(Request $request, SettingsDirectory $directory): JsonResponse
+    {
+        return response()->json($directory->sequencePage($request));
+    }
+
+    public function storeSequence(Request $request, UpdateSettings $update, SettingsDirectory $directory): JsonResponse
     {
         $data = $request->validate([
-            'prefix' => ['required', 'string', 'max:30', 'regex:/^[A-Z0-9][A-Z0-9-]*$/'],
-            'next_number' => ['required', 'integer', 'min:1', 'max:999999999'],
-        ], [
-            'prefix.required' => 'El prefijo no puede quedar vacío (CFG-BR-07).',
-            'prefix.regex' => 'Usa letras mayúsculas, números y guiones.',
-            'prefix.*' => 'Revisa el prefijo.',
-            'next_number.*' => 'El próximo número debe ser un entero positivo.',
-        ]);
-        $update->sequence($docType, $data);
+            'doc_type' => ['required', 'string', 'max:40'],
+            'label' => ['nullable', 'string', 'max:60'],
+            'series' => ['nullable', 'string', 'max:10'],
+            ...$this->sequenceRules(''),
+            'pad_width' => ['nullable', 'integer', 'between:3,10'],
+            'year_reset' => ['nullable', 'boolean'],
+        ], [...$this->sequenceMessages(''), 'doc_type.*' => 'Elige el tipo de documento.', 'pad_width.*' => 'Los dígitos van de 3 a 10.']);
 
-        return response()->json(['data' => ['doc_type' => $docType]]);
+        return response()->json(['data' => $directory->sequenceById($update->createSequence($data))], 201);
+    }
+
+    public function updateSequences(Request $request, UpdateSettings $update, SettingsDirectory $directory): JsonResponse
+    {
+        $batch = $request->has('sequences') ? 'sequences.*.' : (array_is_list($request->all()) && $request->all() !== [] ? '*.' : '');
+        $data = $request->validate([
+            ...($batch === 'sequences.*.' ? ['sequences' => ['required', 'array', 'min:1', 'max:30']] : []),
+            $batch.'doc_type' => ['required', 'string', 'max:40'],
+            $batch.'series' => ['nullable', 'string', 'max:10'],
+            ...$this->sequenceRules($batch),
+        ], [...$this->sequenceMessages($batch), $batch.'doc_type.*' => 'Indica la serie que cambias.']);
+        $items = match ($batch) {
+            'sequences.*.' => $data['sequences'],
+            '*.' => $data,
+            default => [$data],
+        };
+        $changed = $update->sequences($items);
+        $rows = DB::table('sys_sequences')->whereIn('doc_type', $changed)->orderBy('label')->get()->map(fn (object $row): array => SettingsDirectory::sequence($row))->values();
+
+        return response()->json(['data' => $batch === '' ? $rows->first() : $rows, 'meta' => ['changed' => $changed]]);
+    }
+
+    public function fxRates(Request $request, SettingsDirectory $directory): JsonResponse
+    {
+        return response()->json($directory->fxPage($request));
+    }
+
+    private function sequenceRules(string $prefix): array
+    {
+        return [
+            $prefix.'prefix' => ['required', 'string', 'max:30', 'regex:/^[A-Z0-9][A-Z0-9-]*$/'],
+            $prefix.'next_number' => [$prefix === '' ? 'nullable' : 'required', 'integer', 'min:1', 'max:999999999'],
+        ];
+    }
+
+    private function sequenceMessages(string $prefix): array
+    {
+        return [
+            $prefix.'prefix.required' => 'El prefijo no puede quedar vacío (CFG-BR-07).',
+            $prefix.'prefix.regex' => 'Usa letras mayúsculas, números y guiones.',
+            $prefix.'prefix.*' => 'Revisa el prefijo.',
+            $prefix.'next_number.*' => 'El próximo número debe ser un entero positivo.',
+        ];
     }
 
     public function branding(Request $request, Branding $branding): JsonResponse

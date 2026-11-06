@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Platform\Http\Controllers;
 
+use App\Domain\Iam\Http\Requests\LoginRequest;
 use App\Domain\Iam\Http\Requests\MfaVerifyRequest;
 use App\Domain\Iam\Models\AccessToken;
 use App\Domain\Platform\Actions\ChangeTenantStatus;
@@ -18,6 +19,7 @@ use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Support\PlanCatalog;
 use App\Domain\Platform\Support\TenantDirectory;
+use App\Domain\Platform\Support\TenantHealth;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,6 +27,18 @@ use Illuminate\Http\Request;
 final class PlatformController
 {
     public function __construct(private readonly PlatformSession $session) {}
+
+    public function login(LoginRequest $request): JsonResponse
+    {
+        return response()->json(['data' => [...$this->session->login((string) $request->input('email'), (string) $request->input('password')), 'realm' => 'platform']]);
+    }
+
+    public function health(TenantHealth $health): JsonResponse
+    {
+        $rows = $health->all();
+
+        return response()->json(['data' => $rows, 'meta' => ['kpis' => $health->kpis($rows)]]);
+    }
 
     public function verifyMfa(MfaVerifyRequest $request): JsonResponse
     {

@@ -9,6 +9,8 @@ use App\Domain\Crm\Http\Controllers\ActivityController;
 use App\Domain\Crm\Http\Controllers\ClientController;
 use App\Domain\Crm\Http\Controllers\LeadController;
 use App\Domain\Crm\Http\Controllers\OpportunityController;
+use App\Domain\Iam\Http\Controllers\MeController;
+use App\Domain\Iam\Http\Controllers\PasswordController;
 use App\Domain\Iam\Http\Controllers\RoleController;
 use App\Domain\Iam\Http\Controllers\SedeController;
 use App\Domain\Iam\Http\Controllers\SessionController;
@@ -29,18 +31,27 @@ Route::prefix('public')->middleware('throttle:public')->name('public.')->group(f
 
 Route::post('auth/login', [SessionController::class, 'login'])->middleware('throttle:login')->name('auth.login');
 Route::get('auth/invitations/{token}', [SessionController::class, 'invitation'])->middleware('throttle:login')->name('auth.invitations.show');
-Route::post('auth/invitations/{token}', [SessionController::class, 'acceptInvitation'])->middleware('throttle:login')->name('auth.invitations.accept');
+Route::post('auth/invitations/{token}/accept', [SessionController::class, 'acceptInvitation'])->middleware('throttle:login')->name('auth.invitations.accept');
+Route::post('auth/password/forgot', [PasswordController::class, 'forgot'])->middleware('throttle:login')->name('auth.password.forgot');
+Route::post('auth/password/reset', [PasswordController::class, 'reset'])->middleware('throttle:login')->name('auth.password.reset');
 
 Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'permissions.team'])->group(function (): void {
     Route::post('auth/mfa/verify', [SessionController::class, 'verifyMfa'])->middleware(['ability:mfa:verify', 'throttle:login'])->name('auth.mfa.verify');
     Route::post('auth/logout', [SessionController::class, 'logout'])->name('auth.logout');
     Route::post('me/mfa/enroll', [SessionController::class, 'enrollMfa'])->middleware(['ability:mfa:verify', 'throttle:login'])->name('me.mfa.enroll');
     Route::post('me/mfa/confirm', [SessionController::class, 'confirmMfa'])->middleware(['ability:mfa:verify', 'throttle:login'])->name('me.mfa.confirm');
+    Route::delete('me/mfa', [MeController::class, 'disableMfa'])->middleware('mfa')->name('me.mfa.destroy');
 
     Route::middleware(['mfa', 'experience'])->group(function (): void {
         Route::get('me', [SessionController::class, 'me'])->name('me');
         Route::get('me/access', [SessionController::class, 'access'])->name('me.access');
         Route::get('me/counts', [DashboardController::class, 'counts'])->name('me.counts');
+        Route::get('me/permissions', [MeController::class, 'permissions'])->name('me.permissions');
+        Route::get('me/notifications', [MeController::class, 'notifications'])->name('me.notifications.index');
+        Route::post('me/notifications/read-all', [MeController::class, 'readNotifications'])->name('me.notifications.read-all');
+        Route::get('me/tenant', [MeController::class, 'tenant'])->name('me.tenant');
+        Route::get('search', [MeController::class, 'search'])->name('search');
+        Route::post('access-requests', [MeController::class, 'requestAccess'])->name('access-requests.store');
         Route::get('dashboard/home', [DashboardController::class, 'home'])->name('dashboard.home');
 
         Route::middleware('permission:crm.leads.view')->group(function (): void {
@@ -140,10 +151,16 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
             Route::patch('iam/roles/{code}', [RoleController::class, 'update'])->name('iam.roles.update');
             Route::delete('iam/roles/{code}', [RoleController::class, 'destroy'])->name('iam.roles.destroy');
             Route::post('iam/roles/{code}/permissions/bulk', [RoleController::class, 'permissions'])->name('iam.roles.permissions');
+            Route::put('iam/roles/{id}/permissions/{permission}', [RoleController::class, 'grant'])->name('iam.roles.permissions.grant');
+            Route::delete('iam/roles/{id}/permissions/{permission}', [RoleController::class, 'revoke'])->name('iam.roles.permissions.revoke');
+            Route::get('iam/permissions', [RoleController::class, 'catalog'])->name('iam.permissions.index');
+            Route::get('iam/role-permissions', [RoleController::class, 'matrix'])->name('iam.role-permissions.index');
+            Route::get('iam/access-map', [RoleController::class, 'accessMap'])->name('iam.access-map');
         });
 
         Route::middleware('permission:admin.users.manage')->group(function (): void {
             Route::get('iam/users', [UserController::class, 'index'])->name('iam.users.index');
+            Route::get('iam/users/{id}', [UserController::class, 'show'])->name('iam.users.show');
             Route::post('iam/users', [UserController::class, 'store'])->name('iam.users.store');
             Route::patch('iam/users/{code}', [UserController::class, 'update'])->name('iam.users.update');
             Route::post('iam/users/{code}/deactivate', [UserController::class, 'deactivate'])->name('iam.users.deactivate');
@@ -177,6 +194,8 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
 });
 
 Route::prefix('platform')->name('platform.')->group(function (): void {
+    Route::post('auth/login', [PlatformController::class, 'login'])->middleware('throttle:login')->name('auth.login');
+
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('auth/mfa/verify', [PlatformController::class, 'verifyMfa'])->middleware(['platform.user:pending', 'ability:mfa:verify', 'throttle:login'])->name('auth.mfa.verify');
         Route::post('auth/logout', [PlatformController::class, 'logout'])->middleware('platform.user:pending')->name('auth.logout');
@@ -188,6 +207,7 @@ Route::prefix('platform')->name('platform.')->group(function (): void {
                 Route::post('tenants', [PlatformController::class, 'provision'])->name('tenants.store');
                 Route::post('tenants/validate-step', [PlatformController::class, 'validateStep'])->name('tenants.validate');
                 Route::get('tenants/provision-options', [PlatformController::class, 'provisionOptions'])->name('tenants.options');
+                Route::get('tenants/health', [PlatformController::class, 'health'])->name('tenants.health');
                 Route::get('tenants/{id}', [PlatformController::class, 'tenant'])->name('tenants.show');
                 Route::post('tenants/{id}/suspend', [PlatformController::class, 'suspend'])->name('tenants.suspend');
                 Route::post('tenants/{id}/change-plan', [PlatformController::class, 'changePlan'])->name('tenants.change-plan');

@@ -8,10 +8,10 @@ import { InfoTip } from "@/components/ui/InfoTip";
 import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
 import { KpiGrid } from "@/features/admin/AdminParts";
 import { AuditActivity, AuditTable, TopEntities } from "@/features/admin/Audit";
-import type { AuditOverview } from "@/lib/admin";
+import type { AuditEntry, AuditMeta, AuditOverview } from "@/lib/admin";
 import { cn } from "@/lib/cn";
 import { formatNumber } from "@/lib/format";
-import { getResource } from "@/lib/server/resource";
+import { getCollection } from "@/lib/server/admin";
 
 export const metadata: Metadata = { title: "Auditoría" };
 
@@ -26,8 +26,9 @@ const PERIODS = [
 export default async function AuditoriaPage({ searchParams }: { searchParams: Promise<{ periodo?: string }> }) {
   const { periodo } = await searchParams;
   const days = PERIODS.find((period) => String(period.days) === periodo)?.days ?? 30;
-  const data = await getResource<AuditOverview>(`/admin/audit-events?days=${days}`, "No pudimos cargar la auditoría.");
-  if (!data) return <NoAccess home="/dashboard" />;
+  const page = await getCollection<AuditEntry, AuditMeta>(`/audit-events?filter[days]=${days}`, "No pudimos cargar la auditoría.", 1500);
+  if (!page) return <NoAccess home="/dashboard" />;
+  const data: AuditOverview = { days: page.meta.days, total: page.meta.total, truncated: page.more, events: page.data, kpis: page.meta.kpis, top_entities: page.meta.top_entities, daily: page.meta.daily };
   const current = PERIODS.find((period) => period.days === data.days) ?? PERIODS[2];
 
   return (

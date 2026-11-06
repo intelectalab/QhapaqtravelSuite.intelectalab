@@ -11,8 +11,11 @@ use App\Domain\Integrations\Contracts\MessagingChannel;
 use App\Domain\Integrations\Contracts\PaymentGateway;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Http\Middleware\AssignCorrelationId;
 use Cron\CronExpression;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Throwable;
 
 final class ManageIntegrations
@@ -47,7 +50,7 @@ final class ManageIntegrations
             }
 
             DB::table('integration_adapters')->where('id', $adapter->id)->update([...$values, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
-            $this->audit->log('Integración', $code, 'configurar', $this->summary($before), $this->summary($after));
+            $this->audit->log('Integración', $adapter->code, 'configurar', $this->summary($before), $this->summary($after));
         });
     }
 
@@ -73,31 +76,92 @@ final class ManageIntegrations
         }
 
         DB::table('integration_adapters')->where('id', $adapter->id)->update(['last_test_at' => now(), 'last_test_ok' => $ok, 'last_test_result' => $result, 'updated_by' => $actor->getKey()]);
-        $this->audit->log('Integración', $code, 'probar_conexion', null, ($ok ? 'ok · ' : 'error · ').$result);
+        $this->audit->log('Integración', $adapter->code, 'probar_conexion', null, ($ok ? 'ok · ' : 'error · ').$result);
 
         return ['ok' => $ok, 'result' => $result];
     }
 
-    public function job(string $code, string $mode): void
+    public function job(string $id, string $mode): void
     {
-        DB::transaction(function () use ($code, $mode): void {
-            $job = DB::table('sys_scheduled_jobs')->where('code', $code)->lockForUpdate()->first(['id', 'paused', 'cron']) ?? throw ApiException::notFound('El proceso no existe.');
+        DB::transaction(function () use ($id, $mode): void {
+            $job = $this->scheduled($id);
             $pause = $mode === 'pause';
 
             if ((bool) $job->paused === $pause) {
-                throw ApiException::unprocessable('JOB-BR-02', $pause ? 'El proceso ya está pausado.' : 'El proceso ya está en marcha.');
+                throw ApiException::conflict('JOB-BR-02', $pause ? 'El proceso ya está pausado.' : 'El proceso ya está en marcha.');
             }
 
             $next = $pause ? null : (new CronExpression($job->cron))->getNextRunDate(now('America/Lima'))->format(DATE_ATOM);
             DB::table('sys_scheduled_jobs')->where('id', $job->id)->update(['paused' => $pause, 'next_run_at' => $next, 'updated_at' => now()]);
-            $this->audit->log('Job', $code, $pause ? 'pausar' : 'reanudar', $pause ? 'activo' : 'pausado', $pause ? 'pausado' : "activo · próxima {$next}");
+            $this->audit->log('Job', $job->code, $pause ? 'pausar' : 'reanudar', $pause ? 'activo' : 'pausado', $pause ? 'pausado' : "activo · próxima {$next}");
         });
     }
 
-    public function retryError(string $code): void
+    public function run(string $id, User $actor): array
     {
-        DB::transaction(function () use ($code): void {
-            $error = $this->error($code);
+        return DB::transaction(function () use ($id, $actor): array {
+            $job = $this->scheduled($id);
+
+            if ($job->last_status === 'en_curso' || DB::table('sys_job_runs')->where('scheduled_job_id', $job->id)->where('status', 'en_curso')->exists()) {
+                throw ApiException::conflict('JOB-BR-01', 'El proceso ya se está ejecutando. Espera a que termine.');
+            }
+
+            if ($job->paused) {
+                throw ApiException::conflict('JOB-BR-02', 'El proceso está pausado. Reanúdalo antes de ejecutarlo.');
+            }
+
+            $available = $this->available((string) $job->job_class);
+            $status = $available ? 'en_curso' : 'advertencia';
+            $result = $available ? 'Ejecución manual en cola.' : 'Ejecución manual registrada: el proceso aún no está disponible en este entorno.';
+            $runId = (string) Str::uuid7();
+            DB::table('sys_job_runs')->insert([
+                'id' => $runId,
+                'scheduled_job_id' => $job->id,
+                'job_class' => $job->job_class,
+                'trigger' => 'manual',
+                'triggered_by' => $actor->getKey(),
+                'status' => $status,
+                'result' => $result,
+                'started_at' => now(),
+                'finished_at' => $available ? null : now(),
+                'correlation_id' => mb_substr(AssignCorrelationId::current(), 0, 40),
+            ]);
+            DB::table('sys_scheduled_jobs')->where('id', $job->id)->update(['last_run_at' => now(), 'last_status' => $status, 'last_result' => $result, 'updated_at' => now()]);
+
+            if ($available) {
+                $this->enqueue((string) $job->job_class, (string) $job->queue);
+            }
+
+            $this->audit->log('Job', $job->code, 'ejecutar', null, $result);
+
+            return ['id' => $runId, 'job_id' => (string) $job->id, 'code' => (string) $job->code, 'status' => $status, 'result' => $result];
+        });
+    }
+
+    public function delete(string $id, User $actor): void
+    {
+        DB::transaction(function () use ($id, $actor): void {
+            $job = $this->scheduled($id);
+
+            if ($job->is_system || $job->report_key === null) {
+                throw ApiException::conflict('JOB-BR-03', 'Solo se eliminan los envíos programados de reportes.');
+            }
+
+            if (! $actor->can('admin.settings.manage') && $job->owner_user_id !== $actor->getKey()) {
+                throw ApiException::forbidden('SCOPE_OWNERSHIP', 'Solo puedes eliminar los envíos que programaste.', ['admin.settings.manage']);
+            }
+
+            DB::table('report_exports')->where('scheduled_job_id', $job->id)->update(['scheduled_job_id' => null]);
+            DB::table('sys_job_runs')->where('scheduled_job_id', $job->id)->update(['scheduled_job_id' => null]);
+            DB::table('sys_scheduled_jobs')->where('id', $job->id)->delete();
+            $this->audit->log('Job', $job->code, 'eliminar', $job->name, null);
+        });
+    }
+
+    public function retryError(string $id, ?User $actor = null): void
+    {
+        DB::transaction(function () use ($id, $actor): void {
+            $error = $this->error($id, $actor);
 
             if ($error->status === 'resuelto') {
                 throw ApiException::unprocessable('INT-BR-05', 'El error ya está resuelto.');
@@ -108,21 +172,33 @@ final class ManageIntegrations
             }
 
             DB::table('integration_errors')->where('id', $error->id)->update(['status' => 'reintentando', 'attempt' => 0, 'next_retry_at' => now()->addMinute(), 'updated_at' => now()]);
-            $this->audit->log('Integración', $code, 'reintentar', $error->status, 'reintentando');
+            $this->audit->log('Integración', $error->code, 'reintentar', $error->status, 'reintentando');
         });
     }
 
-    public function resolveError(string $code, string $resolution, User $actor): void
+    public function resolveError(string $id, string $resolution, User $actor): void
     {
-        DB::transaction(function () use ($code, $resolution, $actor): void {
-            $error = $this->error($code);
+        DB::transaction(function () use ($id, $resolution, $actor): void {
+            $error = $this->error($id, $actor);
 
             if ($error->status === 'resuelto') {
                 throw ApiException::unprocessable('INT-BR-06', 'El error ya está resuelto.');
             }
 
             DB::table('integration_errors')->where('id', $error->id)->update(['status' => 'resuelto', 'resolution' => $resolution, 'resolved_by' => $actor->getKey(), 'next_retry_at' => null, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
-            $this->audit->log('Integración', $code, 'resolver_error', $error->status, $resolution);
+            $this->audit->log('Integración', $error->code, 'resolver_error', $error->status, $resolution);
+        });
+    }
+
+    private function available(string $class): bool
+    {
+        return class_exists($class);
+    }
+
+    private function enqueue(string $class, string $queue): void
+    {
+        DB::afterCommit(function () use ($class, $queue): void {
+            Queue::pushOn($queue, app()->make($class));
         });
     }
 
@@ -131,14 +207,29 @@ final class ManageIntegrations
         return app()->make($contract);
     }
 
-    private function adapter(string $code): object
+    private function adapter(string $id): object
     {
-        return DB::table('integration_adapters')->where('code', $code)->first() ?? throw ApiException::notFound('La integración no existe.');
+        return DB::table('integration_adapters')->where(Str::isUuid($id) ? 'id' : 'code', $id)->first() ?? throw ApiException::notFound('La integración no existe.');
     }
 
-    private function error(string $code): object
+    private function scheduled(string $id): object
     {
-        return DB::table('integration_errors')->where('code', $code)->lockForUpdate()->first() ?? throw ApiException::notFound('El error no existe.');
+        return DB::table('sys_scheduled_jobs')->where(Str::isUuid($id) ? 'id' : 'code', $id)->lockForUpdate()->first() ?? throw ApiException::notFound('El proceso no existe.');
+    }
+
+    private function error(string $id, ?User $actor): object
+    {
+        $error = DB::table('integration_errors')->where(Str::isUuid($id) ? 'id' : 'code', $id)->lockForUpdate()->first() ?? throw ApiException::notFound('El error no existe.');
+
+        if ($actor !== null && ! $actor->can('admin.settings.manage')) {
+            $owned = $error->source === 'job' && DB::table('sys_scheduled_jobs')->where('code', $error->ref_code)->whereNotNull('report_key')->where('owner_user_id', $actor->getKey())->exists();
+
+            if (! $owned) {
+                throw ApiException::notFound('El error no existe.');
+            }
+        }
+
+        return $error;
     }
 
     private function summary(array $values): string

@@ -15,9 +15,9 @@ export async function updateSettings(_state: AdminActionState, form: FormData): 
     body[key] = value.trim() === "" ? null : value.trim();
   });
   for (const key of SWITCHES[section] ?? []) body[key] = flag(form, key);
-  return sendAdmin(`/admin/settings/${encodeURIComponent(section)}`, "PATCH", body, PATH);
+  return sendAdmin(`/settings/${encodeURIComponent(section)}`, "PATCH", body, PATH);
 }
 
 export async function updateSequence(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
-  return sendAdmin(`/admin/settings/sequences/${encodeURIComponent(text(form, "doc_type") ?? "")}`, "PATCH", { prefix: text(form, "prefix")?.toUpperCase(), next_number: text(form, "next_number") }, PATH);
+  return sendAdmin("/settings/sequences", "PATCH", { doc_type: text(form, "doc_type"), prefix: text(form, "prefix")?.toUpperCase(), next_number: text(form, "next_number") }, PATH);
 }

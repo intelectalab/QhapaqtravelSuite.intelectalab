@@ -1,8 +1,8 @@
 "use client";
 
-import { AlertOctagon, CheckCircle2, CircleDashed, CreditCard, FileCheck2, Globe2, Mail, MapPinned, MessageCircle, Pause, Play, Plug, PlugZap, RefreshCw, Settings2, ShieldCheck, Truck, XCircle } from "lucide-react";
+import { AlertOctagon, CheckCircle2, CircleDashed, CreditCard, FileCheck2, Globe2, Mail, MapPinned, MessageCircle, Pause, Play, Plug, PlugZap, RefreshCw, Settings2, ShieldCheck, Truck, XCircle, Zap } from "lucide-react";
 import { useState } from "react";
-import { configureAdapter, resolveIntegrationError, retryIntegrationError, setJobStatus, testAdapter } from "@/app/(backoffice)/admin/integraciones/actions";
+import { configureAdapter, resolveIntegrationError, retryIntegrationError, runJob, setJobStatus, testAdapter } from "@/app/(backoffice)/admin/integraciones/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -174,6 +174,11 @@ export function JobsTable({ data }: { data: IntegrationsOverview }) {
       cell: (job) => (
         <RowActions>
           <JobRuns job={job} />
+          {data.can_manage && !job.paused && job.status !== "en_curso" && (
+            <PanelAction<AdminActionState> label="Ejecutar ahora" variant="ghost" size="sm" formId={`job-run-${job.code}`} trigger={(open) => <RowIcon tone="neutral" label="Ejecutar ahora" icon={<Zap size={15} />} onClick={open} />} title="Ejecutar ahora" description="Se encola una ejecución manual sin cambiar su programación. Si ya está en curso, espera a que termine." submitLabel="Ejecutar" action={runJob} initial={ADMIN_INITIAL}>
+              {() => <input type="hidden" name="code" value={job.code} />}
+            </PanelAction>
+          )}
           {data.can_manage && (
             <PanelAction<AdminActionState>
               label={job.paused ? "Reanudar" : "Pausar"}

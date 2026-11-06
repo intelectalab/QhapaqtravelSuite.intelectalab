@@ -12,6 +12,7 @@ use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class UpdateSettings
 {
@@ -57,33 +58,83 @@ final class UpdateSettings
         });
     }
 
-    public function sequence(string $docType, array $data): void
+    public function sequences(array $items): array
     {
-        DB::transaction(function () use ($docType, $data): void {
-            $row = DB::table('sys_sequences')->where('doc_type', $docType)->where('series', 'default')->lockForUpdate()->first(['id', 'label', 'prefix', 'next_number']);
+        return DB::transaction(function () use ($items): array {
+            $changed = [];
 
-            if ($row === null) {
-                throw ApiException::notFound('La serie no existe.');
+            foreach ($items as $item) {
+                if ($this->applySequence((string) $item['doc_type'], (string) ($item['series'] ?? 'default'), trim((string) $item['prefix']), (int) $item['next_number'])) {
+                    $changed[] = (string) $item['doc_type'];
+                }
             }
 
-            $prefix = trim((string) $data['prefix']);
-            $next = (int) $data['next_number'];
-
-            if ($next < (int) $row->next_number) {
-                throw ApiException::unprocessable('CFG-BR-07', "El correlativo solo puede avanzar. El próximo número actual es {$row->next_number}.");
-            }
-
-            if (DB::table('sys_sequences')->where('prefix', $prefix)->where('id', '<>', $row->id)->exists()) {
-                throw ApiException::conflict('CFG-BR-07', 'Ese prefijo ya lo usa otra serie.');
-            }
-
-            if ($prefix === $row->prefix && $next === (int) $row->next_number) {
+            if ($changed === []) {
                 throw ApiException::unprocessable('CFG-BR-01', 'No hay cambios que guardar.');
             }
 
-            DB::table('sys_sequences')->where('id', $row->id)->update(['prefix' => $prefix, 'next_number' => $next, 'updated_at' => now()]);
-            $this->audit->log('Configuración', "series.{$row->label}", 'actualizar', "{$row->prefix} · {$row->next_number}", "{$prefix} · {$next}");
+            return $changed;
         });
+    }
+
+    public function createSequence(array $data): string
+    {
+        $docType = (string) $data['doc_type'];
+        $catalog = SettingsCatalog::SEQUENCE_TYPES[$docType] ?? throw ApiException::unprocessable('CFG-BR-08', 'Solo se agregan series para nota de crédito, nota de débito, liquidación de comisión, recibo de caja u orden de compra.');
+        $series = (string) ($data['series'] ?? 'default');
+        $prefix = trim((string) $data['prefix']);
+
+        return DB::transaction(function () use ($docType, $catalog, $series, $prefix, $data): string {
+            if (DB::table('sys_sequences')->where('doc_type', $docType)->exists()) {
+                throw ApiException::conflict('CFG-BR-08', 'Ese tipo de documento ya tiene su serie.');
+            }
+
+            if (DB::table('sys_sequences')->where('prefix', $prefix)->exists()) {
+                throw ApiException::conflict('CFG-BR-07', 'Ese prefijo ya lo usa otra serie.');
+            }
+
+            $id = (string) Str::uuid7();
+            DB::table('sys_sequences')->insert([
+                'id' => $id,
+                'doc_type' => $docType,
+                'label' => $data['label'] ?? $catalog['label'],
+                'series' => $series,
+                'prefix' => $prefix,
+                'pad_width' => (int) ($data['pad_width'] ?? $catalog['pad']),
+                'next_number' => (int) ($data['next_number'] ?? 1),
+                'year_reset' => (bool) ($data['year_reset'] ?? $catalog['year_reset']),
+                'updated_at' => now(),
+            ]);
+            $this->audit->log('Configuración', "series.{$catalog['label']}", 'crear', null, $prefix.' · '.($data['next_number'] ?? 1));
+
+            return $id;
+        });
+    }
+
+    private function applySequence(string $docType, string $series, string $prefix, int $next): bool
+    {
+        $row = DB::table('sys_sequences')->where('doc_type', $docType)->where('series', $series)->lockForUpdate()->first(['id', 'label', 'prefix', 'next_number']);
+
+        if ($row === null) {
+            throw ApiException::notFound("La serie {$docType} no existe.");
+        }
+
+        if ($next < (int) $row->next_number) {
+            throw ApiException::unprocessable('CFG-BR-07', "El correlativo de {$row->label} solo puede avanzar. El próximo número actual es {$row->next_number}.");
+        }
+
+        if (DB::table('sys_sequences')->where('prefix', $prefix)->where('id', '<>', $row->id)->exists()) {
+            throw ApiException::conflict('CFG-BR-07', "El prefijo {$prefix} ya lo usa otra serie.");
+        }
+
+        if ($prefix === $row->prefix && $next === (int) $row->next_number) {
+            return false;
+        }
+
+        DB::table('sys_sequences')->where('id', $row->id)->update(['prefix' => $prefix, 'next_number' => $next, 'updated_at' => now()]);
+        $this->audit->log('Configuración', "series.{$row->label}", 'actualizar', "{$row->prefix} · {$row->next_number}", "{$prefix} · {$next}");
+
+        return true;
     }
 
     private function agency(array $data): array
@@ -112,7 +163,7 @@ final class UpdateSettings
         $baseChanged = $section === 'currency' && isset($data['base_currency']) && $data['base_currency'] !== ($before['base_currency'] ?? 'PEN');
 
         if ($baseChanged && (DB::table('booking_reservations')->exists() || DB::table('fin_payments')->exists())) {
-            throw ApiException::unprocessable('CFG-BR-05', 'La moneda base no se puede cambiar porque ya hay reservas o pagos registrados.');
+            throw ApiException::conflict('CFG-BR-05', 'La moneda base no se puede cambiar porque ya hay reservas o pagos registrados.');
         }
 
         if ($section === 'channels') {

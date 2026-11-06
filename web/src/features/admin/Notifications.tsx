@@ -1,7 +1,7 @@
 "use client";
 
-import { CheckCircle2, Clock, RefreshCw, XCircle } from "lucide-react";
-import { retryNotification, updateNotificationRule } from "@/app/(backoffice)/admin/notificaciones/actions";
+import { CheckCircle2, Clock, Mail, RefreshCw, XCircle } from "lucide-react";
+import { fallbackNotification, retryNotification, updateNotificationRule } from "@/app/(backoffice)/admin/notificaciones/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -136,6 +136,11 @@ export function NotificationLog({ data }: { data: NotificationsOverview }) {
               <RowIcon tone="neutral" label="Reintentar" icon={<RefreshCw size={15} />} disabledHint="Error permanente: reintentar no lo resuelve. Corrige el destinatario." />
             ) : (
               <PanelAction<AdminActionState> label="Reintentar" variant="ghost" size="sm" formId={`notif-retry-${message.code}`} trigger={(open) => <RowIcon tone="neutral" label="Reintentar envío" icon={<RefreshCw size={15} />} onClick={open} />} title="Reintentar envío" description={message.error ?? undefined} submitLabel="Reintentar" action={retryNotification} initial={ADMIN_INITIAL}>
+                {() => <input type="hidden" name="code" value={message.code} />}
+              </PanelAction>
+            )}
+            {message.can_fallback && (
+              <PanelAction<AdminActionState> label="Reenviar por correo" variant="ghost" size="sm" formId={`notif-fallback-${message.code}`} trigger={(open) => <RowIcon tone="neutral" label="Reenviar por correo" icon={<Mail size={15} />} onClick={open} />} title="Reenviar por correo" description="Enviamos el mismo aviso al correo del destinatario. El envío original queda registrado como fallido." submitLabel="Reenviar" action={fallbackNotification} initial={ADMIN_INITIAL}>
                 {() => <input type="hidden" name="code" value={message.code} />}
               </PanelAction>
             )}

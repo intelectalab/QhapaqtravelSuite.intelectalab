@@ -1,7 +1,20 @@
 import "server-only";
 import { revalidatePath } from "next/cache";
+import { notFound, redirect } from "next/navigation";
 import type { AdminActionState } from "@/lib/admin";
+import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
+import { type Collection, fetchPages } from "./pages";
+
+export async function getCollection<T, M = Record<string, unknown>>(path: string, failure: string, limit = 500): Promise<Collection<T, M> | null> {
+  const result = await fetchPages<T, M>(path, limit);
+  if (result.status === 401) redirect(REALMS.agency.logout);
+  if (result.status === 403 && result.error?.code === "MFA_REQUIRED") redirect(REALMS.agency.mfaPage);
+  if (result.status === 404) notFound();
+  if (result.status === 403) return null;
+  if (!result.ok || !result.data) throw new Error(result.error?.message ?? failure);
+  return result.data;
+}
 
 export async function sendAdmin(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body: Record<string, unknown>, revalidate: string, failure = "No pudimos guardar el cambio."): Promise<AdminActionState> {
   const result = await apiFetch<{ data?: Record<string, unknown>; meta?: { warnings?: string[] } }>(path, { method, body, raw: true });

@@ -23,18 +23,28 @@ Route::prefix('admin')->name('admin.')->group(function (): void {
         Route::delete('api/webhooks/{code}', [ApiAccessController::class, 'destroyWebhook'])->name('api.webhooks.destroy');
         Route::post('api/webhooks/{code}/{mode}', [ApiAccessController::class, 'webhookStatus'])->whereIn('mode', ['pause', 'resume'])->name('api.webhooks.status');
     });
+});
 
-    Route::middleware('permission:admin.settings.manage')->group(function (): void {
-        Route::get('integrations', [IntegrationController::class, 'index'])->name('integrations.index');
-        Route::patch('integrations/{code}', [IntegrationController::class, 'configure'])->name('integrations.configure');
-        Route::post('integrations/{code}/test', [IntegrationController::class, 'test'])->name('integrations.test');
-        Route::post('jobs/{code}/{mode}', [IntegrationController::class, 'job'])->whereIn('mode', ['pause', 'resume'])->name('jobs.status');
-        Route::post('integration-errors/{code}/retry', [IntegrationController::class, 'retryError'])->name('integration-errors.retry');
-        Route::post('integration-errors/{code}/resolve', [IntegrationController::class, 'resolveError'])->name('integration-errors.resolve');
-    });
+Route::middleware('permission:admin.settings.manage')->group(function (): void {
+    Route::get('integrations', [IntegrationController::class, 'index'])->name('integrations.index');
+    Route::patch('integrations/{id}/config', [IntegrationController::class, 'configure'])->name('integrations.config');
+    Route::post('integrations/{id}/test', [IntegrationController::class, 'test'])->name('integrations.test');
+    Route::get('jobs', [IntegrationController::class, 'jobs'])->name('jobs.index');
+    Route::post('jobs/{id}/run', [IntegrationController::class, 'run'])->name('jobs.run');
+    Route::post('jobs/{id}/pause', [IntegrationController::class, 'pause'])->name('jobs.pause');
+    Route::post('jobs/{id}/resume', [IntegrationController::class, 'resume'])->name('jobs.resume');
+});
 
-    Route::middleware('permission:admin.audit.view')->group(function (): void {
-        Route::get('audit-events', [AuditController::class, 'index'])->name('audit.index');
-        Route::get('audit-events/{code}', [AuditController::class, 'show'])->whereNumber('code')->name('audit.show');
-    });
+Route::middleware('permission:admin.settings.manage|reports.export')->group(function (): void {
+    Route::delete('jobs/{id}', [IntegrationController::class, 'destroyJob'])->name('jobs.destroy');
+    Route::get('integration-errors', [IntegrationController::class, 'errors'])->name('integration-errors.index');
+    Route::post('integration-errors/{id}/retry', [IntegrationController::class, 'retryError'])->name('integration-errors.retry');
+    Route::post('integration-errors/{id}/resolve', [IntegrationController::class, 'resolveError'])->name('integration-errors.resolve');
+});
+
+Route::get('audit-events', [AuditController::class, 'index'])->middleware('permission:admin.audit.view|admin.roles.manage')->name('audit-events.index');
+
+Route::middleware('permission:admin.audit.view')->group(function (): void {
+    Route::post('audit-events/exports', [AuditController::class, 'export'])->middleware('throttle:exports')->name('audit-events.exports');
+    Route::get('audit-events/{id}', [AuditController::class, 'show'])->name('audit-events.show');
 });

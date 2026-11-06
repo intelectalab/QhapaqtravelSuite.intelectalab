@@ -8,7 +8,7 @@ export async function acceptInvitation(_state: FormState, form: FormData): Promi
   const token = String(form.get("token") ?? "");
   const password = String(form.get("password") ?? "");
   const confirmation = String(form.get("password_confirmation") ?? "");
-  const result = await apiFetch<{ email: string }>(`/auth/invitations/${encodeURIComponent(token)}`, { method: "POST", auth: false, body: { password, password_confirmation: confirmation } });
+  const result = await apiFetch<{ email: string }>(`/auth/invitations/${encodeURIComponent(token)}/accept`, { method: "POST", auth: false, body: { password, password_confirmation: confirmation } });
 
   if (!result.ok) {
     const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;

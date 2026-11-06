@@ -6,8 +6,10 @@ namespace App\Domain\Iam\Http\Controllers;
 
 use App\Domain\Iam\Actions\RoleAdmin;
 use App\Domain\Iam\Models\User;
+use App\Domain\Iam\Support\AccessMap;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 final class RoleController
 {
@@ -58,6 +60,35 @@ final class RoleController
         ]);
 
         return response()->json(['data' => $this->roles->set($code, $data['permissions'], (bool) $data['grant'])]);
+    }
+
+    public function catalog(): JsonResponse
+    {
+        $groups = $this->roles->catalog();
+
+        return response()->json(['data' => $groups, 'meta' => ['modules' => $groups->count(), 'permissions' => $groups->sum(fn (array $group) => $group['permissions']->count())]]);
+    }
+
+    public function matrix(): JsonResponse
+    {
+        return response()->json(['data' => $this->roles->matrix()]);
+    }
+
+    public function grant(string $id, string $permission): JsonResponse
+    {
+        return response()->json(['data' => $this->roles->toggle($id, $permission, true)]);
+    }
+
+    public function revoke(string $id, string $permission): Response
+    {
+        $this->roles->toggle($id, $permission, false);
+
+        return response()->noContent();
+    }
+
+    public function accessMap(AccessMap $access): JsonResponse
+    {
+        return response()->json(['data' => $access->matrix()]);
     }
 
     private function messages(): array

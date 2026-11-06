@@ -7,21 +7,48 @@ import { InfoTip } from "@/components/ui/InfoTip";
 import { TintCardTitle } from "@/components/ui/Tinted";
 import { AuditTrail } from "@/features/admin/AdminParts";
 import { NotificationLog, NotificationMatrix } from "@/features/admin/Notifications";
-import type { NotificationsOverview } from "@/lib/admin";
-import { getResource } from "@/lib/server/resource";
+import type { NotificationMessageRecord, NotificationRuleRecord, NotificationRulesMeta, NotificationsOverview } from "@/lib/admin";
+import { getCollection } from "@/lib/server/admin";
 
 export const metadata: Metadata = { title: "Notificaciones" };
 
 export default async function NotificacionesPage() {
-  const data = await getResource<NotificationsOverview>("/admin/notifications", "No pudimos cargar las notificaciones.");
-  if (!data) return <NoAccess home="/dashboard" />;
+  const [rules, messages] = await Promise.all([
+    getCollection<NotificationRuleRecord, NotificationRulesMeta>("/notifications/rules", "No pudimos cargar las reglas de aviso.", 100),
+    getCollection<NotificationMessageRecord>("/notifications/messages", "No pudimos cargar el historial de envíos."),
+  ]);
+  if (!rules || !messages) return <NoAccess home="/dashboard" />;
+  const data: NotificationsOverview = {
+    rules: rules.data.map((rule) => ({ ...rule, event: rule.event_code, updated_by: rule.updated_by_name })),
+    messages: messages.data.map((message) => ({
+      code: message.code,
+      event: message.event_code,
+      event_label: message.event_label,
+      channel: message.channel,
+      to: message.to,
+      subject: message.subject,
+      status: message.status,
+      retries: message.retries,
+      error: message.last_error,
+      permanent: message.permanent,
+      fallback: message.is_fallback,
+      can_fallback: message.can_fallback,
+      audience: message.audience,
+      at: message.created_at,
+      sent_at: message.sent_at,
+    })),
+    kpis: rules.meta.kpis,
+    options: rules.meta.options,
+    history: rules.meta.history,
+    can_manage: rules.meta.can_manage,
+  };
 
   return (
     <>
       <PageHeader
         title="Notificaciones"
         subtitle={`${data.kpis.routes} avisos configurados entre ${data.rules.length} eventos y 4 canales · ${data.kpis.sent_7d} enviados en los últimos 7 días.`}
-        info={<InfoTip>Un fallo de envío nunca deshace la operación que lo originó. Los errores temporales se reintentan; los permanentes, como un número no registrado en WhatsApp, necesitan corregir el destinatario.</InfoTip>}
+        info={<InfoTip>Un fallo de envío nunca deshace la operación que lo originó. Los errores temporales se reintentan; los permanentes, como un número no registrado en WhatsApp, se pueden reenviar por correo.</InfoTip>}
       />
       <Card className="mb-5">
         <TintCardTitle icon={BellRing} title="Qué se avisa y por dónde" aside={`${data.rules.length} eventos`} />

@@ -19,6 +19,14 @@ final class SettingsCatalog
         'app_pasajero' => ['label' => 'App del pasajero', 'plan' => 3, 'description' => 'Viaje en el teléfono, con avisos push.'],
     ];
 
+    public const SEQUENCE_TYPES = [
+        'credit_note' => ['label' => 'Nota de crédito', 'pad' => 8, 'year_reset' => false],
+        'debit_note' => ['label' => 'Nota de débito', 'pad' => 8, 'year_reset' => false],
+        'commission_settlement' => ['label' => 'Liquidación de comisión', 'pad' => 5, 'year_reset' => true],
+        'cash_receipt' => ['label' => 'Recibo de caja', 'pad' => 5, 'year_reset' => true],
+        'purchase_order' => ['label' => 'Orden de compra', 'pad' => 5, 'year_reset' => true],
+    ];
+
     public const PLAN_NAMES = [1 => 'Starter', 2 => 'Professional', 3 => 'Enterprise'];
 
     public const FX_SOURCES = ['Manual diario (SBS referencial)', 'Manual semanal (tesorería)', 'Automático SBS (integración por definir)'];

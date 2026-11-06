@@ -22,7 +22,7 @@ export const REALMS: Record<Realm, RealmConfig> = {
     mfaPage: "/mfa",
     logout: "/salir",
     home: "/dashboard",
-    publicPaths: ["/login", "/salir", "/invitacion", "/sitio", "/software"],
+    publicPaths: ["/login", "/salir", "/invitacion", "/recuperar", "/restablecer", "/sitio", "/software"],
   },
   platform: {
     session: "qhapaq_platform_session",
