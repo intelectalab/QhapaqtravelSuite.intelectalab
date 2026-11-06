@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsc --noEmit",
+    "test": "next typegen && tsc --noEmit",
     "api:gen": "openapi-typescript ../docs/kit/api/openapi.yaml -o src/lib/api/schema.d.ts"
   },
   "dependencies": {
