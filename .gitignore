@@ -32,10 +32,13 @@ build/
 coverage/
 
 # Laravel
-backend/storage/logs/
+backend/storage/logs/*
+!backend/storage/logs/.gitignore
 backend/storage/framework/cache/data/
-backend/storage/framework/sessions/
-backend/storage/framework/views/
+backend/storage/framework/sessions/*
+!backend/storage/framework/sessions/.gitignore
+backend/storage/framework/views/*
+!backend/storage/framework/views/.gitignore
 backend/public/storage
 backend/public/hot
 .phpunit.result.cache
