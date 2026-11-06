@@ -412,6 +412,13 @@ Entidad `Cotización` (antes → después): `crear`, `descuento_sobre_tope`, `ed
 | 15 | Duplicar / comparar versiones | No definido | Duplicar cotización; comparar dos versiones con diff por línea y totales | Agregado | Productividad comercial |
 | 16 | Datos sensibles | No definido | Costos, margen y pestaña Pricing ocultos a quien no tiene permiso de rentabilidad (salvo Ventas en lo propio) | Agregado | Principio 2 de roles |
 
+### v3.0 — Implementación (06/11/2026)
+Desviaciones temporales de la implementación respecto al kit, detectadas en la auditoría de cumplimiento del 06/11/2026 (`Documentación/Auditoria_de_cumplimiento_2026-11-06.md`). Se corrigen en las fases A (pruebas, idempotencia, permisos), B (flujo canónico según `docs/kit/ejemplos`) y C (módulo por módulo).
+
+- Ciclo de vida implementado (enviar, negociar, nueva versión, aprobación interna, aprobación del cliente, rechazo, eliminación lógica, conversión) con `QuoteLifecycle` y `ConvertQuote`, sin `QuoteStateMachine` ni Policy del kit (fase B).
+- QTE-BR-10 (editar el borrador anula la aprobación interna): en corrección en la fase A.
+- Umbrales de aprobación interna (5 % de descuento, 15 % de margen) fijos en el código (H-21): pasarán a la configuración del tenant.
+
 ## 12. Supuestos y puntos a validar con negocio
 
 1. Umbrales de política (descuento > 5 %, margen < 15 %, tope 10 %, override hasta 50 %) están fijos en código: ¿se parametrizan por tenant/segmento en `sys_settings`?

@@ -14,7 +14,7 @@ export interface ActivityItem {
   due_at: string;
   result: string | null;
   completed_at: string | null;
-  owner: { name: string; color: string | null };
+  owner: { id: string; name: string; color: string | null };
   related: { type: string; code: string; name: string; href: string } | null;
 }
 
@@ -28,6 +28,7 @@ export interface RelatedOptions {
   lead: { code: string; name: string }[];
   opportunity: { code: string; name: string }[];
   client: { code: string; name: string }[];
+  owners: { id: string; name: string; color: string | null }[];
 }
 
 export const ACTIVITY_TYPES: Record<ActivityType, { label: string; icon: LucideIcon; tone: Tone }> = {

@@ -1,4 +1,4 @@
-import { Plus, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Avatar } from "@/components/ui/Avatar";
@@ -8,6 +8,8 @@ import { Card } from "@/components/ui/Card";
 import { Tabs } from "@/components/ui/Tabs";
 import { formatDate, formatMoney, shortName } from "@/lib/format";
 import { getClient, getClientFormOptions } from "@/lib/server/clients";
+import { getOpportunityFormOptions } from "@/lib/server/opportunities";
+import { OpportunityCreateAction } from "@/features/opportunities/OpportunityForms";
 import { ClientArchiveAction, ClientEditAction } from "@/features/clients/ClientForms";
 import { FieldList, SectionTitle, StatCard } from "@/components/ui/Details";
 import { CurrentTrip, QuoteList, TripList } from "@/features/clients/ClientSections";
@@ -17,9 +19,10 @@ export async function generateMetadata({ params }: PageProps<"/crm/clientes/[id]
   return { title: (await getClient(id)).name };
 }
 
-export default async function ClientePage({ params }: PageProps<"/crm/clientes/[id]">) {
+export default async function ClientePage({ params, searchParams }: PageProps<"/crm/clientes/[id]">) {
   const { id } = await params;
-  const [client, options] = await Promise.all([getClient(id), getClientFormOptions()]);
+  const { editar } = await searchParams;
+  const [client, options, opportunityOptions] = await Promise.all([getClient(id), getClientFormOptions(), getOpportunityFormOptions()]);
 
   const otherTrips = client.history.filter((trip) => trip.id !== client.currentTrip?.trip.id);
   const since = new Intl.DateTimeFormat("es-PE", { month: "long", year: "numeric" }).format(new Date(`${client.createdAt}T12:00:00`));
@@ -36,12 +39,10 @@ export default async function ClientePage({ params }: PageProps<"/crm/clientes/[
         actions={
           <>
             <Button iconOnlyOnMobile icon={<Send size={16} />}>Escribirle</Button>
-            <Button variant="primary" iconOnlyOnMobile icon={<Plus size={16} strokeWidth={2.4} />}>
-              Nueva cotización
-            </Button>
+            {opportunityOptions && <OpportunityCreateAction options={opportunityOptions} clientCode={client.id} />}
             {options.canManage && (
               <>
-                <ClientEditAction client={client} options={options} />
+                <ClientEditAction client={client} options={options} defaultOpen={editar === "1"} />
                 <ClientArchiveAction client={client} />
               </>
             )}

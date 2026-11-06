@@ -17,9 +17,7 @@ final class OpportunityDirectory
 
     private ?float $fx = null;
 
-    public function __construct(private readonly CrmCatalog $catalog, private readonly TenantContext $context)
-    {
-    }
+    public function __construct(private readonly CrmCatalog $catalog, private readonly TenantContext $context) {}
 
     public function stages(): Collection
     {
@@ -60,6 +58,8 @@ final class OpportunityDirectory
         return [
             ...$this->summary($row),
             'notes' => $row->notes,
+            'lock_version' => (int) $row->lock_version,
+            'owner_id' => $row->owner_id,
             'origin' => $row->origin,
             'lost_reason' => $this->catalog->label('lost_reason', $row->lost_reason_code),
             'lost_detail' => $row->lost_detail,

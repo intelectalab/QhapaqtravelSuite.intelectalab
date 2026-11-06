@@ -6,7 +6,7 @@ export function proxy(request: NextRequest) {
   const realm = REALMS[realmFor(pathname)];
   const hasSession = request.cookies.has(realm.session);
   const mfaPending = request.cookies.has(realm.mfa);
-  const isPublic = realm.publicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+  const isPublic = pathname === "/" || realm.publicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
   const isEntry = pathname === realm.login || pathname === realm.mfaPage;
 
   if (!hasSession && !isPublic) {

@@ -16,15 +16,14 @@ use Illuminate\Support\Str;
 
 final class PlatformSession
 {
-    public const HOME = '/plataforma/agencias';
+    public const HOME = '/plataforma/inicio';
 
     private const CONNECTION = 'pgsql_platform';
 
     public function __construct(
         private readonly TotpVerifier $totp,
         private readonly AuditLogger $audit,
-    ) {
-    }
+    ) {}
 
     public function owns(string $email): bool
     {

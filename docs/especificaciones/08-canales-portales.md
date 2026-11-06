@@ -881,6 +881,12 @@ Playwright (`e2e_resenas.js`): U15 ve el aviso, califica PRD-002 → pendiente; 
 
 ---
 
+### v3.0 — Implementación (06/11/2026)
+Desviaciones temporales de la implementación respecto al kit, detectadas en la auditoría de cumplimiento del 06/11/2026 (`Documentación/Auditoria_de_cumplimiento_2026-11-06.md`). Se corrigen en las fases A (pruebas, idempotencia, permisos), B (flujo canónico según `docs/kit/ejemplos`) y C (módulo por módulo).
+
+- Portal del cliente en `/portal`, portal B2B en `/agencia` y extranet de proveedores en `/proveedor` (en lugar de `/portal/client/*`, `/portal/b2b/*`, `/supplier/*` del contrato). Los endpoints `/api/v1/portal/*`, `/b2b/*` y `/supplier/*` no coinciden aún con el contrato.
+- La extranet autoriza hoy por nombre de rol (H-08): pasa a permisos `supplier.*` en la fase A.
+
 ## 12. Supuestos y puntos a validar con negocio
 
 | # | Punto | Propuesta / supuesto |

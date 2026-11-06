@@ -1,19 +1,20 @@
 "use client";
 
-import { CircleCheck, Eye, Plane, TriangleAlert, Wallet } from "lucide-react";
+import { Ban, CircleCheck, Plane, TriangleAlert, Wallet } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
+import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { LiveTag, StatusBadge } from "@/components/ui/Badge";
 import { formatDate, formatMoney } from "@/lib/format";
-import type { ReservationRow } from "@/lib/reservations";
+import { CLOSED_RESERVATION, type ReservationRow } from "@/lib/reservations";
 import { statusLabel } from "@/lib/tone";
 
 const href = (row: ReservationRow) => `/reservas/${row.code}`;
 
 const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es"));
 
-export function ReservationsTable({ rows, today }: { rows: ReservationRow[]; today: string }) {
+export function ReservationsTable({ rows, today, can, prices = true }: { rows: ReservationRow[]; today: string; can: { modify: boolean; cancel: boolean }; prices?: boolean }) {
   const traveling = (row: ReservationRow) => row.travel_from <= today && row.travel_to >= today && row.status !== "cancelada";
 
   const columns: Column<ReservationRow>[] = [
@@ -47,12 +48,12 @@ export function ReservationsTable({ rows, today }: { rows: ReservationRow[]; tod
         </span>
       ),
     },
-    { id: "total", header: "Total", align: "right", cell: (row) => <span className="font-mono text-[13px] font-semibold">{formatMoney(row.total, row.currency)}</span> },
+    { id: "total", header: "Total", align: "right", cell: (row) => <span className="font-mono text-[13px] font-semibold">{formatMoney(row.total ?? 0, row.currency)}</span> },
     {
       id: "balance",
       header: "Por cobrar",
       align: "right",
-      cell: (row) => (row.balance_pen > 0 ? <span className="font-mono text-[13px] text-bad">{formatMoney(row.balance_pen)}</span> : <span className="text-[12.5px] text-ok">Pagado</span>),
+      cell: (row) => ((row.balance_pen ?? 0) > 0 ? <span className="font-mono text-[13px] text-bad">{formatMoney(row.balance_pen ?? 0)}</span> : <span className="text-[12.5px] text-ok">Pagado</span>),
     },
     {
       id: "status",
@@ -69,18 +70,24 @@ export function ReservationsTable({ rows, today }: { rows: ReservationRow[]; tod
       header: "",
       mobile: "hidden",
       align: "right",
-      cell: (row) => (
-        <Link href={href(row)} aria-label={`Ver ${row.code}`} title="Ver reserva" className="ml-auto grid h-8 w-8 place-items-center rounded-[9px] bg-accent/10 text-accent">
-          <Eye size={16} />
-        </Link>
-      ),
+      cell: (row) => {
+        const closed = CLOSED_RESERVATION.includes(row.status);
+        const hint = row.status === "cancelada" ? "Ya está cancelada" : "El viaje ya terminó";
+        return (
+          <RowActions>
+            <RowIcon tone="view" label="Ver reserva" href={href(row)} />
+            {can.modify && <RowIcon tone="edit" label="Editar" href={`${href(row)}?editar=1`} disabledHint={closed ? hint : undefined} />}
+            {can.cancel && <RowIcon tone="delete" label="Cancelar" icon={<Ban size={15} />} href={`${href(row)}?cancelar=1`} disabledHint={closed ? hint : undefined} />}
+          </RowActions>
+        );
+      },
     },
   ];
 
   const metrics: MetricFilter<ReservationRow>[] = [
     { id: "traveling", label: "De viaje ahora", tone: "t4", icon: <Plane size={19} />, matches: traveling },
     { id: "confirmed", label: "Confirmadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "confirmada" },
-    { id: "balance", label: "Con saldo por cobrar", tone: "warn", icon: <Wallet size={19} />, matches: (row) => row.balance_pen > 0 },
+    { id: "balance", label: "Con saldo por cobrar", tone: "warn", icon: <Wallet size={19} />, matches: (row) => (row.balance_pen ?? 0) > 0 },
     { id: "incidents", label: "Con incidencia", tone: "bad", icon: <TriangleAlert size={19} />, matches: (row) => row.open_incidents > 0 },
   ];
 
@@ -91,22 +98,27 @@ export function ReservationsTable({ rows, today }: { rows: ReservationRow[]; tod
 
   const sorts: SortOption<ReservationRow>[] = [
     { id: "travel", label: "Fecha de viaje", type: "date", value: (row) => row.travel_from },
-    { id: "total", label: "Total en soles", type: "number", value: (row) => row.total_pen },
-    { id: "balance", label: "Saldo por cobrar", type: "number", value: (row) => row.balance_pen },
+    { id: "total", label: "Total en soles", type: "number", value: (row) => row.total_pen ?? 0 },
+    { id: "balance", label: "Saldo por cobrar", type: "number", value: (row) => row.balance_pen ?? 0 },
   ];
+
+  const amounts = new Set(["total", "balance"]);
+  const visibleColumns = prices ? columns : columns.filter((column) => !amounts.has(column.id));
+  const visibleMetrics = prices ? metrics : metrics.filter((metric) => !amounts.has(metric.id));
+  const visibleSorts = prices ? sorts : sorts.filter((sort) => !amounts.has(sort.id));
 
   return (
     <DataTable
       screen="reservas"
       rows={rows}
-      columns={columns}
+      columns={visibleColumns}
       getKey={(row) => row.code}
       entityLabel="reservas"
       searchText={(row) => `${row.code} ${row.title} ${row.client.name}`}
       searchPlaceholder="Buscar reserva o cliente"
-      metrics={metrics}
+      metrics={visibleMetrics}
       filters={filters}
-      sorts={sorts}
+      sorts={visibleSorts}
     />
   );
 }

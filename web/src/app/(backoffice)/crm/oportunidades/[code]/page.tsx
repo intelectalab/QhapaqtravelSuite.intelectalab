@@ -6,11 +6,12 @@ import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { HeroBand, HeroChip, HeroPanel, Journey, SOFT_TINT, TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
 import { OpportunityActions } from "@/features/opportunities/OpportunityActions";
+import { OpportunityEditAction } from "@/features/opportunities/OpportunityForms";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney, shortName } from "@/lib/format";
 import { OPEN_STAGES, STAGE_TONE } from "@/lib/opportunities";
 import { getCatalogs } from "@/lib/server/leads";
-import { getOpportunity } from "@/lib/server/opportunities";
+import { getOpportunity, getOpportunityFormOptions } from "@/lib/server/opportunities";
 
 export async function generateMetadata({ params }: PageProps<"/crm/oportunidades/[code]">): Promise<Metadata> {
   const { code } = await params;
@@ -19,7 +20,7 @@ export async function generateMetadata({ params }: PageProps<"/crm/oportunidades
 
 export default async function OportunidadPage({ params }: PageProps<"/crm/oportunidades/[code]">) {
   const { code } = await params;
-  const [opportunity, catalogs] = await Promise.all([getOpportunity(code), getCatalogs()]);
+  const [opportunity, catalogs, options] = await Promise.all([getOpportunity(code), getCatalogs(), getOpportunityFormOptions()]);
   const stageName = (stage: string | null) => opportunity.stages.find((item) => item.code === stage)?.name ?? stage ?? "";
   const lost = opportunity.stage === "perdida";
   const order = [...OPEN_STAGES, "ganada"];
@@ -44,7 +45,12 @@ export default async function OportunidadPage({ params }: PageProps<"/crm/oportu
           </span>
         }
         subtitle={opportunity.code}
-        actions={catalogs ? <OpportunityActions opportunity={opportunity} lostReasons={catalogs.lost_reason} /> : undefined}
+        actions={
+          <>
+            {options && <OpportunityEditAction opportunity={opportunity} options={options} />}
+            {catalogs && <OpportunityActions opportunity={opportunity} lostReasons={catalogs.lost_reason} />}
+          </>
+        }
       />
 
       <HeroBand>

@@ -1,0 +1,145 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Using nullsafe property access "\?\-\>availability_model" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Catalog/Actions/ProductWorkflow.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>internal_name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Catalog/Actions/ProductWorkflow.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>markup_pct" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Catalog/Actions/ProductWorkflow.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>sku" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Catalog/Actions/ProductWorkflow.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Catalog/Support/ProductChecklist.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Domain/Catalog/Support/ProductDirectory.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),mixed\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Domain/Catalog/Support/ProductOptions.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,stdClass\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Domain/Catalog/Support/ProductOptions.php
+
+		-
+			message: '#^Parameter \#1 \$callback of static method Illuminate\\Database\\Connection\:\:transaction\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Domain/Crm/Actions/LeadWorkflow.php
+
+		-
+			message: '#^Parameter \#1 \$factor of method App\\Domain\\Iam\\Actions\\VerifyMfa\:\:useRecoveryCode\(\) expects App\\Domain\\Iam\\Models\\MfaFactor, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Domain/Iam/Actions/VerifyMfa.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Iam/Support/RoleExperience.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>price_month" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Domain/Platform/Actions/ChangeTenantStatus.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>name" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: app/Domain/Platform/Actions/UpdatePlan.php
+
+		-
+			message: '#^Call to function assert\(\) with false will always evaluate to false\.$#'
+			identifier: function.impossibleType
+			count: 1
+			path: app/Domain/Platform/Http/Controllers/PlatformController.php
+
+		-
+			message: '#^Instanceof between App\\Domain\\Iam\\Models\\User\|null and App\\Domain\\Platform\\Models\\PlatformUser will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: app/Domain/Platform/Http/Controllers/PlatformController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Domain\\Platform\\Models\\Tenant\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Domain/Platform/Support/PlanCatalog.php
+
+		-
+			message: '#^Class App\\Domain\\Integrations\\Models\\ApiClient not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: app/Domain/Shared/Audit/AuditLogger.php
+
+		-
+			message: '#^Trait App\\Domain\\Shared\\Http\\Resources\\RevealsSensitiveAmounts is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: app/Domain/Shared/Http/Resources/RevealsSensitiveAmounts.php
+
+		-
+			message: '#^Trait App\\Domain\\Shared\\Tenancy\\Jobs\\TenantAware is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: app/Domain/Shared/Tenancy/Jobs/TenantAware.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Auth\\Access\\Response\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Exceptions/ApiExceptionRenderer.php
+
+		-
+			message: '#^Instanceof between App\\Domain\\Iam\\Models\\User\|null and App\\Domain\\Platform\\Models\\PlatformUser will always evaluate to false\.$#'
+			identifier: instanceof.alwaysFalse
+			count: 1
+			path: app/Http/Middleware/EnsurePlatformUser.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: app/Http/Middleware/EnsurePlatformUser.php
+
+		-
+			message: '#^Call to function method_exists\(\) with App\\Domain\\Iam\\Models\\User and ''currentAccessToken'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Http/Middleware/ResolveTenant.php
+
+		-
+			message: '#^Instanceof between Laravel\\Sanctum\\PersonalAccessToken and Laravel\\Sanctum\\PersonalAccessToken will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Http/Middleware/ResolveTenant.php

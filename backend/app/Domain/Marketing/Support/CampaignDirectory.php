@@ -1,0 +1,175 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Marketing\Support;
+
+use App\Domain\Iam\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+
+final class CampaignDirectory
+{
+    public const STATUSES = ['borrador' => 'Borrador', 'programada' => 'Programada', 'enviando' => 'Enviando', 'enviada' => 'Enviada', 'cancelada' => 'Cancelada'];
+
+    public const CHANNELS = ['email' => 'Email', 'whatsapp' => 'WhatsApp'];
+
+    private const WINDOW_DAYS = 30;
+
+    public function __construct(private readonly ContactBook $contacts) {}
+
+    public function overview(User $viewer): array
+    {
+        $segments = DB::table('mkt_segments')->whereNull('deleted_at')->orderBy('code')->get();
+        $templates = DB::table('mkt_templates')->orderBy('code')->get();
+        $rows = DB::table('mkt_campaigns as c')->leftJoin('iam_users as u', 'u.id', '=', 'c.owner_id')->orderByDesc('c.created_at')->get(['c.*', 'u.name as owner']);
+        $recipients = DB::table('mkt_campaign_recipients')->whereIn('campaign_id', $rows->pluck('id'))->get()->groupBy('campaign_id');
+        $tests = DB::table('mkt_campaign_tests')->whereIn('campaign_id', $rows->pluck('id'))->whereNull('invalidated_at')->get(['campaign_id', 'to_address', 'sent_at'])->groupBy('campaign_id');
+        $segmentById = $segments->keyBy('id');
+        $templateById = $templates->keyBy('id');
+        $campaigns = $rows->map(fn (object $row): array => $this->campaign($row, $recipients->get($row->id, collect()), $tests->get($row->id, collect()), $segmentById, $templateById));
+        $sent = $campaigns->where('status', 'enviada')->filter(fn (array $campaign): bool => $campaign['sent_at'] !== null && Carbon::parse($campaign['sent_at'])->gte(Carbon::now()->subDays(90)));
+        $delivered = $sent->sum('metrics.delivered');
+        $all = $this->contacts->all();
+
+        return [
+            'kpis' => [
+                'sent_90' => $sent->count(),
+                'open_rate' => $delivered > 0 ? round($sent->sum('metrics.opened') / $delivered * 100, 1) : null,
+                'click_rate' => $delivered > 0 ? round($sent->sum('metrics.clicked') / $delivered * 100, 1) : null,
+                'revenue' => round($sent->sum('attribution.revenue'), 2),
+                'reservations' => $sent->sum('attribution.reservations'),
+                'contactable_email' => $all->filter(fn (array $contact): bool => $contact['consent']['email'] && $contact['email'])->count(),
+                'contactable_whatsapp' => $all->filter(fn (array $contact): bool => $contact['consent']['whatsapp'] && $contact['mobile'])->count(),
+                'contacts' => $all->count(),
+            ],
+            'campaigns' => $campaigns->values(),
+            'segments' => $segments->map(function (object $row) use ($campaigns): array {
+                $rules = json_decode((string) $row->rules, true) ?: [];
+                $email = $this->contacts->audience($row->match, $rules, 'email');
+                $whatsapp = $this->contacts->audience($row->match, $rules, 'whatsapp');
+
+                return [
+                    'code' => $row->code,
+                    'name' => $row->name,
+                    'description' => $row->description,
+                    'match' => $row->match,
+                    'rules' => $rules,
+                    'rules_text' => $this->contacts->describe($rules, $row->match),
+                    'matched' => $email['matched'],
+                    'email' => $email['eligible'],
+                    'whatsapp' => $whatsapp['eligible'],
+                    'campaigns' => $campaigns->where('segment.code', $row->code)->count(),
+                ];
+            })->values(),
+            'templates' => $templates->map(fn (object $row): array => [
+                'code' => $row->code,
+                'name' => $row->name,
+                'channel' => $row->channel,
+                'category' => $row->category,
+                'status' => $row->status,
+                'subject' => $row->subject,
+                'body' => $row->body,
+                'usable' => $row->channel === 'email' ? $row->status === 'activa' : $row->status === 'aprobada',
+            ])->values(),
+            'codes' => $this->codes($campaigns),
+            'consents' => [
+                'email' => DB::table('mkt_consents')->where('channel', 'email')->where('status', 'otorgado')->count(),
+                'whatsapp' => DB::table('mkt_consents')->where('channel', 'whatsapp')->where('status', 'otorgado')->count(),
+                'revoked_30' => DB::table('mkt_consents')->where('status', 'revocado')->where('revoked_at', '>=', Carbon::now()->subDays(30))->count(),
+                'subscribers' => DB::table('mkt_contacts_subscribers')->whereNull('deleted_at')->count(),
+            ],
+            'can' => ['manage' => $viewer->can('marketing.campaigns.manage')],
+        ];
+    }
+
+    private function campaign(object $row, Collection $recipients, Collection $tests, Collection $segments, Collection $templates): array
+    {
+        $segment = $segments->get($row->segment_id);
+        $template = $templates->get($row->template_id);
+        $total = $recipients->count();
+        $delivered = $recipients->whereIn('status', ['entregado'])->count();
+        $audience = $row->audience_snapshot ? json_decode((string) $row->audience_snapshot, true) : null;
+
+        if ($audience === null && $segment !== null && in_array($row->status, ['borrador', 'programada'], true)) {
+            $audience = $this->contacts->audience($segment->match, json_decode((string) $segment->rules, true) ?: [], $row->channel);
+        }
+
+        return [
+            'code' => $row->code,
+            'name' => $row->name,
+            'channel' => $row->channel,
+            'channel_label' => self::CHANNELS[$row->channel] ?? $row->channel,
+            'status' => $row->status,
+            'status_label' => self::STATUSES[$row->status] ?? $row->status,
+            'segment' => $segment ? ['code' => $segment->code, 'name' => $segment->name] : null,
+            'template' => $template ? ['code' => $template->code, 'name' => $template->name, 'status' => $template->status] : null,
+            'subject' => $row->subject,
+            'body' => $row->body,
+            'promo_code' => $row->promo_code,
+            'utm' => $row->utm,
+            'scheduled_at' => $row->scheduled_at,
+            'sent_at' => $row->sent_at,
+            'created_at' => $row->created_at,
+            'cancel_reason' => $row->cancel_reason,
+            'owner' => $row->owner,
+            'audience' => $audience,
+            'tests' => $tests->map(fn ($test): array => ['to' => $test->to_address, 'at' => $test->sent_at])->values(),
+            'metrics' => [
+                'recipients' => $total,
+                'delivered' => $delivered,
+                'opened' => $recipients->whereNotNull('opened_at')->count(),
+                'clicked' => $recipients->whereNotNull('clicked_at')->count(),
+                'replied' => $recipients->whereNotNull('replied_at')->count(),
+                'unsubscribed' => $recipients->whereNotNull('unsubscribed_at')->count(),
+                'failed' => $recipients->whereIn('status', ['rebotado', 'fallido'])->count(),
+            ],
+            'attribution' => $row->status === 'enviada' ? $this->attribution($row, $recipients) : ['reservations' => 0, 'revenue' => 0.0, 'items' => []],
+        ];
+    }
+
+    private function attribution(object $campaign, Collection $recipients): array
+    {
+        $clients = $recipients->where('subject_type', 'client')->pluck('subject_id')->all();
+
+        if ($clients === [] || $campaign->sent_at === null) {
+            return ['reservations' => 0, 'revenue' => 0.0, 'items' => []];
+        }
+
+        $sent = Carbon::parse($campaign->sent_at);
+        $rows = DB::table('booking_reservations as r')->leftJoin('quote_quotes as q', 'q.id', '=', 'r.quote_id')
+            ->whereNull('r.deleted_at')->whereNotIn('r.status', ['borrador', 'cancelada'])->whereIn('r.client_id', $clients)
+            ->where('r.created_at', '>', $sent)->where('r.created_at', '<=', $sent->copy()->addDays(self::WINDOW_DAYS))
+            ->where(fn ($query) => $query->whereNull('q.created_at')->orWhere('q.created_at', '>', $sent))
+            ->get(['r.code', 'r.title', 'r.total_amount', 'r.fx_rate', 'r.created_at']);
+
+        return [
+            'reservations' => $rows->count(),
+            'revenue' => round($rows->sum(fn (object $row): float => (float) $row->total_amount * (float) $row->fx_rate), 2),
+            'items' => $rows->map(fn (object $row): array => ['code' => $row->code, 'title' => $row->title, 'total_pen' => round((float) $row->total_amount * (float) $row->fx_rate, 2)])->values()->all(),
+        ];
+    }
+
+    private function codes(Collection $campaigns): array
+    {
+        $promotions = DB::table('catalog_product_promotions as p')->join('catalog_products as c', 'c.id', '=', 'p.product_id')
+            ->whereNull('p.deleted_at')->whereNotNull('p.promo_code')
+            ->get(['p.promo_code', 'p.kind', 'p.value', 'p.date_from', 'p.date_to', 'p.status', 'c.name as product'])->keyBy('promo_code');
+        $codes = $campaigns->pluck('promo_code')->filter()->merge($promotions->keys())->unique()->values();
+
+        return $codes->map(function (string $code) use ($promotions, $campaigns): array {
+            $promotion = $promotions->get($code);
+
+            return [
+                'code' => $code,
+                'product' => $promotion->product ?? null,
+                'kind' => $promotion->kind ?? null,
+                'value' => $promotion ? (float) $promotion->value : null,
+                'valid_to' => $promotion->date_to ?? null,
+                'status' => $promotion->status ?? null,
+                'campaigns' => $campaigns->where('promo_code', $code)->map(fn (array $campaign): array => ['code' => $campaign['code'], 'name' => $campaign['name'], 'status' => $campaign['status']])->values()->all(),
+            ];
+        })->all();
+    }
+}

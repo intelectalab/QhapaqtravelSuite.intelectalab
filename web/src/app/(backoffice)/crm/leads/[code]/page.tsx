@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney, initials, shortName } from "@/lib/format";
 import type { LeadDetail } from "@/lib/leads";
 import { LeadActions } from "@/features/leads/LeadActions";
-import { getCatalogs, getLead } from "@/lib/server/leads";
+import { getAdvisors, getCatalogs, getLead } from "@/lib/server/leads";
 import { currentUser } from "@/lib/server/me";
 import { statusLabel, statusTone } from "@/lib/tone";
 
@@ -31,9 +31,10 @@ function journey(lead: LeadDetail) {
   ];
 }
 
-export default async function LeadPage({ params }: PageProps<"/crm/leads/[code]">) {
+export default async function LeadPage({ params, searchParams }: PageProps<"/crm/leads/[code]">) {
   const { code } = await params;
-  const [lead, catalogs, me] = await Promise.all([getLead(code), getCatalogs(), currentUser()]);
+  const { editar } = await searchParams;
+  const [lead, catalogs, me, advisors] = await Promise.all([getLead(code), getCatalogs(), currentUser(), getAdvisors()]);
   const closed = lead.status === "descartado" || lead.status === "duplicado";
   const steps = journey(lead);
 
@@ -50,7 +51,7 @@ export default async function LeadPage({ params }: PageProps<"/crm/leads/[code]"
           </span>
         }
         subtitle={[lead.code, lead.company].filter(Boolean).join(" · ")}
-        actions={catalogs ? <LeadActions lead={lead} catalogs={catalogs} viewerId={me.id} /> : undefined}
+        actions={catalogs ? <LeadActions lead={lead} catalogs={catalogs} viewerId={me.id} advisors={advisors} editOpen={editar === "1"} /> : undefined}
       />
 
       <HeroBand>

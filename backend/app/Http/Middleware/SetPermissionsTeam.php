@@ -15,12 +15,19 @@ final class SetPermissionsTeam
     public function __construct(
         private readonly TenantContext $context,
         private readonly PermissionRegistrar $permissions,
-    ) {
-    }
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
-        $this->permissions->setPermissionsTeamId($this->context->id());
+        $tenantId = $this->context->id();
+        $key = config('permission.cache.key').'.'.($tenantId ?? 'platform');
+
+        if ($this->permissions->cacheKey !== $key) {
+            $this->permissions->cacheKey = $key;
+            $this->permissions->clearPermissionsCollection();
+        }
+
+        $this->permissions->setPermissionsTeamId($tenantId);
 
         return $next($request);
     }

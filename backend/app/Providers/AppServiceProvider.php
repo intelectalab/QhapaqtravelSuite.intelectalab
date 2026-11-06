@@ -6,12 +6,12 @@ namespace App\Providers;
 
 use App\Domain\Iam\Models\AccessToken;
 use App\Domain\Shared\Tenancy\TenantContext;
-use Laravel\Sanctum\Sanctum;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\Sanctum;
 
 final class AppServiceProvider extends ServiceProvider
 {
@@ -24,6 +24,7 @@ final class AppServiceProvider extends ServiceProvider
     {
         Model::shouldBeStrict(! $this->app->isProduction());
         Sanctum::usePersonalAccessTokenModel(AccessToken::class);
+        Sanctum::authenticateAccessTokensUsing(fn ($token, bool $isValid): bool => $isValid && (! method_exists($token->tokenable, 'isActive') || $token->tokenable->isActive()));
 
         $tenantKey = fn (Request $request): string => 't:'.app(TenantContext::class)->id().':u:'
             .($request->user()?->getAuthIdentifier() ?? $request->ip());
@@ -35,7 +36,7 @@ final class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('exports', fn (Request $request) => Limit::perHour(10)->by($tenantKey($request)));
 
-        RateLimiter::for('public', fn (Request $request) => Limit::perMinute(60)
+        RateLimiter::for('public', fn (Request $request) => Limit::perMinute(600)
             ->by((string) $request->header('X-Qhapaq-Key').'|'.$request->ip()));
     }
 }

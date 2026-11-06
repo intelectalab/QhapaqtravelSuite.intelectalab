@@ -1,13 +1,18 @@
 "use client";
 
-import { CircleCheckBig, Eye, PhoneCall, Sparkles, Target } from "lucide-react";
+import { CircleCheckBig, PhoneCall, Sparkles, Target } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
+import { RowActions, RowIcon } from "@/components/table/RowActions";
+import { useCan } from "@/components/shell/SessionProvider";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { formatDate, shortName } from "@/lib/format";
-import { scoreTone, type LeadRow } from "@/lib/leads";
+import { scoreTone, type CrmCatalogs, type LeadRow } from "@/lib/leads";
+import { LeadDiscardAction } from "./LeadEditActions";
+
+const OPEN = ["nuevo", "contactado", "calificado"];
 import { statusLabel, toneStyle } from "@/lib/tone";
 
 const leadHref = (lead: LeadRow) => `/crm/leads/${lead.code}`;
@@ -25,7 +30,7 @@ export function ScoreMeter({ score }: { score: number }) {
   );
 }
 
-const columns: Column<LeadRow>[] = [
+const buildColumns = (catalogs: CrmCatalogs | null): Column<LeadRow>[] => [
   {
     id: "lead",
     header: "Lead",
@@ -92,9 +97,21 @@ const columns: Column<LeadRow>[] = [
     mobile: "hidden",
     align: "right",
     cell: (lead) => (
-      <Link href={leadHref(lead)} aria-label={`Ver el lead ${lead.name}`} title="Ver ficha" className="ml-auto grid h-8 w-8 place-items-center rounded-[9px] bg-accent/10 text-accent">
-        <Eye size={16} />
-      </Link>
+      <RowActions>
+        <RowIcon tone="view" label="Ver ficha" href={leadHref(lead)} />
+        {catalogs &&
+          (OPEN.includes(lead.status) ? (
+            <>
+              <RowIcon tone="edit" label="Editar" href={`${leadHref(lead)}?editar=1`} />
+              <LeadDiscardAction lead={lead} catalogs={catalogs} iconOnly />
+            </>
+          ) : (
+            <>
+              <RowIcon tone="edit" label="Editar" disabledHint="Ya está cerrado" />
+              <RowIcon tone="delete" label="Descartar" disabledHint="Ya está cerrado" />
+            </>
+          ))}
+      </RowActions>
     ),
   },
 ];
@@ -113,7 +130,8 @@ const sorts: SortOption<LeadRow>[] = [
   { id: "name", label: "Nombre", type: "text", value: (lead) => lead.name },
 ];
 
-export function LeadsTable({ leads }: { leads: LeadRow[] }) {
+export function LeadsTable({ leads, catalogs }: { leads: LeadRow[]; catalogs: CrmCatalogs | null }) {
+  const canManage = useCan("crm.leads.manage");
   const filters: FilterConfig<LeadRow>[] = [
     { id: "status", label: "Estado", options: unique(leads.map((lead) => lead.status)).map((option) => ({ ...option, label: statusLabel(option.value) })), value: (lead) => lead.status },
     { id: "source", label: "Fuente", options: unique(leads.map((lead) => lead.source)), value: (lead) => lead.source },
@@ -124,7 +142,7 @@ export function LeadsTable({ leads }: { leads: LeadRow[] }) {
     <DataTable
       screen="leads"
       rows={leads}
-      columns={columns}
+      columns={buildColumns(canManage ? catalogs : null)}
       getKey={(lead) => lead.code}
       entityLabel="leads"
       searchText={(lead) => `${lead.name} ${lead.company ?? ""} ${lead.email ?? ""} ${lead.phone ?? ""} ${lead.code} ${lead.destination ?? ""}`}

@@ -608,6 +608,13 @@ Eventos transversales registrados por el núcleo:
 
 ---
 
+### v3.0 — Implementación (06/11/2026)
+Desviaciones temporales de la implementación respecto al kit, detectadas en la auditoría de cumplimiento del 06/11/2026 (`Documentación/Auditoria_de_cumplimiento_2026-11-06.md`). Se corrigen en las fases A (pruebas, idempotencia, permisos), B (flujo canónico según `docs/kit/ejemplos`) y C (módulo por módulo).
+
+- Ingreso único `/login` para todos los perfiles; el destino por rol sale de `config/access.php` (back-office, `/plataforma`, `/portal`, `/agencia`, `/proveedor`). Agregado.
+- Roles externos (customer, passenger, b2b, provider): sin permisos del back-office; sus portales usan endpoints propios con alcance por dueño. En revisión contra la matriz `rolePerms` del kit (fase A).
+- Idempotency-Key e If-Match: el middleware existe; se conecta a las operaciones del contrato en la fase A.
+
 ## 12. Supuestos y puntos a validar con negocio
 
 | # | Punto | Propuesta |

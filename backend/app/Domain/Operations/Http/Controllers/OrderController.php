@@ -1,0 +1,121 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Operations\Http\Controllers;
+
+use App\Domain\Iam\Models\User;
+use App\Domain\Operations\Actions\AssignmentWorkflow;
+use App\Domain\Operations\Actions\OrderWorkflow;
+use App\Domain\Operations\Support\OrderDirectory;
+use App\Domain\Operations\Support\OrderFlow;
+use App\Domain\Shared\Errors\ApiException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+final class OrderController
+{
+    public function __construct(private readonly OrderDirectory $directory, private readonly OrderWorkflow $workflow) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        return response()->json(['data' => $this->directory->list($this->user($request))]);
+    }
+
+    public function show(Request $request, string $code): JsonResponse
+    {
+        return response()->json(['data' => $this->directory->find($this->user($request), $code) ?? throw ApiException::notFound('La orden operativa no existe.')]);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'reservation_code' => ['required', 'string', 'max:30'],
+            'coordinator_id' => ['required', 'uuid'],
+        ], ['reservation_code.*' => 'Elige una reserva confirmada.', 'coordinator_id.*' => 'Elige un coordinador.']);
+        $code = $this->workflow->create($data['reservation_code'], $data['coordinator_id'], $this->user($request));
+
+        return response()->json(['data' => ['code' => $code]], 201);
+    }
+
+    public function update(Request $request, string $code): JsonResponse
+    {
+        $data = $request->validate(['coordinator_id' => ['required', 'uuid']], ['coordinator_id.*' => 'Elige un coordinador.']);
+        $this->workflow->update($code, $data['coordinator_id'], $this->user($request));
+
+        return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function status(Request $request, string $code): JsonResponse
+    {
+        $data = $request->validate(['status' => ['required', 'in:'.implode(',', OrderFlow::STEPS)]], ['status.*' => 'Elige el siguiente estado.']);
+        $this->workflow->advance($code, $data['status'], $this->user($request));
+
+        return response()->json(['data' => ['code' => $code, 'status' => $data['status']]]);
+    }
+
+    public function cancel(Request $request, string $code): JsonResponse
+    {
+        $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:500']], ['reason.*' => 'Explica el motivo de la cancelación (mínimo 5 caracteres).']);
+        $this->workflow->cancel($code, $data['reason'], $this->user($request));
+
+        return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function addTask(Request $request, string $code): JsonResponse
+    {
+        $data = $request->validate(['title' => ['required', 'string', 'min:3', 'max:250']], ['title.*' => 'Escribe la tarea (mínimo 3 caracteres).']);
+        $this->workflow->addTask($code, $data['title'], $this->user($request));
+
+        return response()->json(['data' => ['code' => $code]], 201);
+    }
+
+    public function updateTask(Request $request, string $task): JsonResponse
+    {
+        $data = $request->validate(['done' => ['required', 'boolean']]);
+        $this->workflow->toggleTask($task, (bool) $data['done'], $this->user($request));
+
+        return response()->json(['data' => ['id' => $task]]);
+    }
+
+    public function deleteTask(Request $request, string $task): JsonResponse
+    {
+        $this->workflow->deleteTask($task, $this->user($request));
+
+        return response()->json(['data' => ['id' => $task]]);
+    }
+
+    public function assign(Request $request, string $assignment, AssignmentWorkflow $assignments): JsonResponse
+    {
+        $data = $request->validate([
+            'guide_id' => ['nullable', 'uuid'],
+            'driver_id' => ['nullable', 'uuid'],
+            'vehicle_id' => ['nullable', 'uuid'],
+            'ack_warnings' => ['nullable', 'boolean'],
+        ], ['*.uuid' => 'Elige un recurso de la lista.']);
+
+        return response()->json(['data' => $assignments->assign($assignment, $data, $this->user($request))]);
+    }
+
+    public function confirmAssignment(Request $request, string $assignment, AssignmentWorkflow $assignments): JsonResponse
+    {
+        $assignments->confirm($assignment, $this->user($request));
+
+        return response()->json(['data' => ['id' => $assignment]]);
+    }
+
+    public function releaseAssignment(Request $request, string $assignment, AssignmentWorkflow $assignments): JsonResponse
+    {
+        $assignments->release($assignment, $this->user($request));
+
+        return response()->json(['data' => ['id' => $assignment]]);
+    }
+
+    private function user(Request $request): User
+    {
+        $user = $request->user();
+        assert($user instanceof User);
+
+        return $user;
+    }
+}

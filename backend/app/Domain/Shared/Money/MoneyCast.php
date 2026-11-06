@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\Money;
 
+use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Brick\Money\Money;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
@@ -12,9 +13,7 @@ use InvalidArgumentException;
 
 final class MoneyCast implements CastsAttributes
 {
-    public function __construct(private readonly string $currencyColumn = 'currency')
-    {
-    }
+    public function __construct(private readonly string $currencyColumn = 'currency') {}
 
     public function get(Model $model, string $key, mixed $value, array $attributes): ?Money
     {
@@ -44,7 +43,7 @@ final class MoneyCast implements CastsAttributes
         }
 
         if (is_string($value) && preg_match('/^-?\d+(\.\d+)?$/', $value) === 1) {
-            return [$key => (string) \Brick\Math\BigDecimal::of($value)->toScale(2, RoundingMode::HALF_UP)];
+            return [$key => (string) BigDecimal::of($value)->toScale(2, RoundingMode::HALF_UP)];
         }
 
         throw new InvalidArgumentException("{$key} debe ser Money o string decimal; nunca float.");

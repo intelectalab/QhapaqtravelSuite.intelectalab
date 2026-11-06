@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useState, type FormEvent, type ReactNode } from "react";
+import { startTransition, useActionState, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { FormError } from "@/features/auth/AuthForms";
 import { Button } from "./Button";
 import { SidePanel } from "./SidePanel";
@@ -24,11 +24,16 @@ interface PanelActionProps<S extends PanelActionState> {
   onDone?: (state: S) => void;
   children: (state: S) => ReactNode;
   footerExtra?: (state: S, pending: boolean) => ReactNode;
+  trigger?: (open: () => void) => ReactNode;
+  defaultOpen?: boolean;
 }
 
-export function PanelAction<S extends PanelActionState>({ label, icon, variant = "secondary", size = "md", formId: explicitFormId, title, description, submitLabel, action, initial, onDone, children, footerExtra }: PanelActionProps<S>) {
-  const [open, setOpen] = useState(false);
+export function PanelAction<S extends PanelActionState>({ label, icon, variant = "secondary", size = "md", formId: explicitFormId, title, description, submitLabel, action, initial, onDone, children, footerExtra, trigger, defaultOpen = false }: PanelActionProps<S>) {
+  const [open, setOpen] = useState(defaultOpen);
   const [formKey, setFormKey] = useState(0);
+  useEffect(() => {
+    if (defaultOpen && !open && /(editar|cancelar)=/.test(window.location.search)) window.history.replaceState(null, "", window.location.pathname);
+  }, [defaultOpen, open]);
   const [state, run, pending] = useActionState<S, FormData>(async (previous: S, form: FormData) => {
     const next = await action(previous, form);
     if (next.done) {
@@ -48,9 +53,13 @@ export function PanelAction<S extends PanelActionState>({ label, icon, variant =
 
   return (
     <>
-      <Button variant={variant} size={size} iconOnlyOnMobile icon={icon} onClick={() => setOpen(true)}>
-        {label}
-      </Button>
+      {trigger ? (
+        trigger(() => setOpen(true))
+      ) : (
+        <Button variant={variant} size={size} iconOnlyOnMobile icon={icon} onClick={() => setOpen(true)}>
+          {label}
+        </Button>
+      )}
       <SidePanel
         open={open}
         onOpenChange={setOpen}

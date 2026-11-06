@@ -40,6 +40,20 @@ final class ProductDirectory
         return [
             ...$this->summary($row),
             'internal_name' => $row->internal_name,
+            'lock_version' => (int) $row->lock_version,
+            'ids' => [
+                'type' => $row->product_type_id,
+                'category' => $row->category_id,
+                'subcategory' => $row->subcategory_id,
+                'destination' => $row->primary_destination_id,
+                'provider' => $row->main_provider_id,
+            ],
+            'raw' => [
+                'is_b2b' => (bool) $row->is_b2b,
+                'is_ecommerce' => (bool) $row->is_ecommerce,
+                'availability_model' => $row->availability_model,
+                'markup_pct' => $showCost ? (float) $row->markup_pct : null,
+            ],
             'sku' => $row->sku,
             'short_description' => $row->short_description,
             'long_description' => $row->long_description,

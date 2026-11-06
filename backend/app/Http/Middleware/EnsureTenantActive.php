@@ -12,9 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class EnsureTenantActive
 {
-    public function __construct(private readonly TenantContext $context)
-    {
-    }
+    public function __construct(private readonly TenantContext $context) {}
 
     public function handle(Request $request, Closure $next): Response
     {

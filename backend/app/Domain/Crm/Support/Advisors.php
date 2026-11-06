@@ -11,19 +11,19 @@ final class Advisors
 {
     public const ROLES = ['tenant_admin', 'manager', 'sales'];
 
-    public function all(): Collection
+    public function all(array $roles = self::ROLES): Collection
     {
         return DB::table('iam_users as u')
             ->join('model_has_roles as mr', 'mr.model_id', '=', 'u.id')
             ->join('roles as r', 'r.id', '=', 'mr.role_id')
-            ->whereIn('r.name', self::ROLES)->where('u.status', 'activo')->whereNull('u.deleted_at')
+            ->whereIn('r.name', $roles)->where('u.status', 'activo')->whereNull('u.deleted_at')
             ->orderBy('u.name')->distinct()
             ->get(['u.id', 'u.name', 'u.avatar_color'])
             ->map(fn (object $user) => ['id' => $user->id, 'name' => $user->name, 'color' => $user->avatar_color]);
     }
 
-    public function has(string $id): bool
+    public function has(string $id, array $roles = self::ROLES): bool
     {
-        return $this->all()->contains('id', $id);
+        return $this->all($roles)->contains('id', $id);
     }
 }

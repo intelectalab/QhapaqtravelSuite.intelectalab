@@ -1,7 +1,7 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
-import type { CrmCatalogs, LeadDetail, LeadRow } from "@/lib/leads";
+import type { Advisor, CrmCatalogs, LeadDetail, LeadRow } from "@/lib/leads";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
 
@@ -24,3 +24,5 @@ export const getLead = cache(async (code: string): Promise<LeadDetail> => {
 });
 
 export const getCatalogs = cache(async (): Promise<CrmCatalogs | null> => leadGet<CrmCatalogs>("/crm/catalogs"));
+
+export const getAdvisors = cache(async (): Promise<Advisor[]> => (await leadGet<Advisor[]>("/crm/advisors")) ?? []);

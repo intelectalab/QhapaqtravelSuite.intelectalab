@@ -1,0 +1,172 @@
+"use client";
+
+import { Ban, CalendarClock, ClipboardList, Pencil, Plus, Siren, TriangleAlert, UserCog, Users } from "lucide-react";
+import Link from "next/link";
+import { DataTable } from "@/components/table/DataTable";
+import { RowActions, RowIcon } from "@/components/table/RowActions";
+import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
+import { LiveTag, StatusBadge } from "@/components/ui/Badge";
+import { SelectField } from "@/components/ui/SelectField";
+import { TextArea } from "@/components/ui/TextArea";
+import { formatDate } from "@/lib/format";
+import type { OrderCandidate, OrderList, OrderRow, Person } from "@/lib/operations";
+import { statusLabel } from "@/lib/tone";
+import { DateRange, Meter, PersonChip } from "./OpsBits";
+import { ConfirmNote, OpsStep } from "./OpsStep";
+
+const href = (code: string) => `/operaciones/ordenes/${code}`;
+
+const CLOSED = ["completada", "cancelada"];
+
+export function OrderCreateAction({ candidates, coordinators, viewerId }: { candidates: OrderCandidate[]; coordinators: Person[]; viewerId: string }) {
+  const fallback = coordinators.some((person) => person.id === viewerId) ? viewerId : (coordinators[0]?.id ?? "");
+  return (
+    <OpsStep step="order_create" label="Nueva orden" icon={<Plus size={16} strokeWidth={2.4} />} variant="primary" title="Nueva orden operativa" description="Se crea desde una reserva confirmada. Los tours y traslados pasan a asignación con las cinco tareas habituales." submitLabel="Crear orden">
+      {candidates.length === 0 ? (
+        <ConfirmNote>Todas las reservas confirmadas ya tienen su orden operativa.</ConfirmNote>
+      ) : (
+        <>
+          <SelectField label="Reserva" name="reservation_code" options={candidates.map((item) => ({ value: item.code, label: `${item.code} · ${item.title}`, hint: `${item.client} · ${formatDate(item.travel_from)}` }))} placeholder="Elegir reserva" />
+          <SelectField label="Coordinador" name="coordinator_id" options={coordinators.map((person) => ({ value: person.id, label: person.name }))} defaultValue={fallback} />
+        </>
+      )}
+    </OpsStep>
+  );
+}
+
+export function OrderEditAction({ code, title, coordinator, coordinators, iconOnly = false }: { code: string; title: string; coordinator: string; coordinators: Person[]; iconOnly?: boolean }) {
+  return (
+    <OpsStep
+      step="order_update"
+      target={code}
+      label="Coordinador"
+      icon={<UserCog size={16} />}
+      title="Cambiar coordinador"
+      description={`${title} · ${code}`}
+      submitLabel="Guardar"
+      trigger={iconOnly ? (open) => <RowIcon tone="edit" label="Cambiar coordinador" icon={<Pencil size={15} />} onClick={open} /> : undefined}
+    >
+      <SelectField label="Coordinador" name="coordinator_id" options={coordinators.map((person) => ({ value: person.id, label: person.name }))} defaultValue={coordinator} />
+      <ConfirmNote>El nuevo coordinador recibe las alertas de la orden y queda como responsable por defecto de sus incidencias.</ConfirmNote>
+    </OpsStep>
+  );
+}
+
+export function OrderCancelAction({ code, title, iconOnly = false }: { code: string; title: string; iconOnly?: boolean }) {
+  return (
+    <OpsStep
+      step="order_cancel"
+      target={code}
+      label="Cancelar orden"
+      icon={<Ban size={16} />}
+      title="Cancelar orden operativa"
+      description={`${title} · ${code}`}
+      submitLabel="Cancelar orden"
+      trigger={iconOnly ? (open) => <RowIcon tone="delete" label="Cancelar orden" icon={<Ban size={15} />} onClick={open} /> : undefined}
+    >
+      <ConfirmNote tone="warn">Se liberan los guías, conductores y vehículos asignados. La orden queda en el historial como cancelada.</ConfirmNote>
+      <TextArea label="Motivo" name="reason" rows={3} minLength={5} maxLength={500} required placeholder="Reserva anulada por el cliente, cambio de operador…" />
+    </OpsStep>
+  );
+}
+
+export function OrdersTable({ data }: { data: OrderList }) {
+  const { items, today, can, coordinators } = data;
+  const running = (row: OrderRow) => row.date_from <= today && row.date_to >= today && !CLOSED.includes(row.status);
+
+  const columns: Column<OrderRow>[] = [
+    {
+      id: "order",
+      header: "Orden",
+      mobile: "title",
+      cell: (row) => (
+        <div className="min-w-0">
+          <Link href={href(row.code)} className="font-semibold hover:underline">
+            {row.title}
+          </Link>
+          {running(row) && (
+            <span className="ml-2">
+              <LiveTag>En curso</LiveTag>
+            </span>
+          )}
+          <small className="block text-xs text-fg-3">
+            {row.code} · <Link href={`/reservas/${row.reservation.code}`} className="hover:text-accent hover:underline">{row.reservation.code}</Link> · {row.reservation.client}
+          </small>
+        </div>
+      ),
+    },
+    {
+      id: "dates",
+      header: "Fechas",
+      cell: (row) => (
+        <span>
+          <DateRange from={row.date_from} to={row.date_to} />
+          <span className="block text-xs text-fg-3">{row.passengers === 1 ? "1 pasajero" : `${row.passengers} pasajeros`}</span>
+        </span>
+      ),
+    },
+    { id: "assignments", header: "Asignaciones", cell: (row) => (row.assignments.total === 0 ? <span className="text-[12.5px] text-fg-3">Sin servicios con recursos</span> : <Meter value={row.assignments.total - row.assignments.pending} total={row.assignments.total} tone={row.assignments.pending > 0 ? "warn" : "ok"} label={`${row.assignments.pending} sin recursos · ${row.assignments.confirmed} confirmadas por el recurso`} />) },
+    { id: "tasks", header: "Tareas", wideOnly: true, cell: (row) => <Meter value={row.tasks.done} total={row.tasks.total} tone="violet" /> },
+    { id: "coordinator", header: "Coordinador", wideOnly: true, cell: (row) => <PersonChip name={row.coordinator.name} color={row.coordinator.color} /> },
+    {
+      id: "status",
+      header: "Estado",
+      cell: (row) => (
+        <span className="flex items-center gap-2">
+          <StatusBadge status={row.status} />
+          {row.open_incidents > 0 && <TriangleAlert size={15} className={row.critical ? "text-bad" : "text-warn"} aria-label={`${row.open_incidents} incidencias abiertas`} />}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "",
+      mobile: "hidden",
+      align: "right",
+      cell: (row) => {
+        const closed = CLOSED.includes(row.status);
+        const hint = row.status === "cancelada" ? "La orden está cancelada" : "La orden ya está cerrada";
+        return (
+          <RowActions>
+            <RowIcon tone="view" label="Ver orden" href={href(row.code)} />
+            {can.assign && (closed ? <RowIcon tone="edit" label="Editar" disabledHint={hint} /> : <OrderEditAction code={row.code} title={row.title} coordinator={row.coordinator.id} coordinators={coordinators} iconOnly />)}
+            {can.assign && (closed || row.status === "en_ejecucion" ? <RowIcon tone="delete" label="Cancelar" icon={<Ban size={15} />} disabledHint={closed ? hint : "En ejecución: registra una incidencia"} /> : <OrderCancelAction code={row.code} title={row.title} iconOnly />)}
+          </RowActions>
+        );
+      },
+    },
+  ];
+
+  const metrics: MetricFilter<OrderRow>[] = [
+    { id: "running", label: "En ejecución", tone: "t4", icon: <CalendarClock size={19} />, matches: (row) => row.status === "en_ejecucion" },
+    { id: "pending", label: "Con servicios sin recursos", tone: "warn", icon: <Users size={19} />, matches: (row) => row.assignments.pending > 0 && !CLOSED.includes(row.status) },
+    { id: "incidents", label: "Con incidencias abiertas", tone: "bad", icon: <Siren size={19} />, matches: (row) => row.open_incidents > 0 },
+    { id: "closed", label: "Completadas", tone: "ok", icon: <ClipboardList size={19} />, matches: (row) => row.status === "completada" },
+  ];
+
+  const filters: FilterConfig<OrderRow>[] = [
+    { id: "status", label: "Estado", options: [...new Set(items.map((row) => row.status))].map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status },
+    { id: "coordinator", label: "Coordinador", options: [...new Map(items.map((row) => [row.coordinator.id, row.coordinator.name])).entries()].map(([value, label]) => ({ value, label })), value: (row) => row.coordinator.id },
+  ];
+
+  const sorts: SortOption<OrderRow>[] = [
+    { id: "from", label: "Inicio", type: "date", value: (row) => row.date_from },
+    { id: "pending", label: "Servicios sin recursos", type: "number", value: (row) => row.assignments.pending },
+    { id: "created", label: "Creación", type: "date", value: (row) => row.created_at },
+  ];
+
+  return (
+    <DataTable
+      screen="operaciones-ordenes"
+      rows={items}
+      columns={columns}
+      getKey={(row) => row.code}
+      entityLabel="órdenes"
+      searchText={(row) => `${row.code} ${row.title} ${row.reservation.code} ${row.reservation.client} ${row.coordinator.name}`}
+      searchPlaceholder="Buscar orden, reserva o cliente"
+      metrics={metrics}
+      filters={filters}
+      sorts={sorts}
+    />
+  );
+}

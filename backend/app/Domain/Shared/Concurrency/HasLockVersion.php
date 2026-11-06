@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\Concurrency;
 
-use Illuminate\Database\Eloquent\Builder;
+use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Database\Eloquent\Model;
 
 trait HasLockVersion
@@ -45,7 +45,7 @@ trait HasLockVersion
             $current = (int) static::query()->whereKey($this->getKey())->value('lock_version');
             IfMatch::assertMatches($expected, $current, $this->lockVersionLabel());
 
-            throw \App\Domain\Shared\Errors\ApiException::notFound();
+            throw ApiException::notFound();
         }
 
         $this->forceFill($dirty)->syncOriginal();

@@ -12,9 +12,7 @@ use Illuminate\Support\Facades\DB;
 
 final class LeadDirectory
 {
-    public function __construct(private readonly CrmCatalog $catalog)
-    {
-    }
+    public function __construct(private readonly CrmCatalog $catalog) {}
 
     public function list(User $viewer): Collection
     {
@@ -90,6 +88,7 @@ final class LeadDirectory
             'score' => (int) $row->score,
             'status' => $row->status,
             'lock_version' => (int) $row->lock_version,
+            'codes' => ['source' => $row->source_code, 'channel' => $row->channel_code, 'interest' => $row->interest_code],
             'owner_id' => $row->owner_id,
             'owner' => $row->owner_id ? ['name' => $row->owner_name, 'color' => $row->owner_color] : null,
             'created_at' => $this->iso($row->created_at),

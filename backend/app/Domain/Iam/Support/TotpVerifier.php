@@ -9,9 +9,7 @@ use PragmaRX\Google2FA\Google2FA;
 
 final class TotpVerifier
 {
-    public function __construct(private readonly Google2FA $totp)
-    {
-    }
+    public function __construct(private readonly Google2FA $totp) {}
 
     public function verify(string $secret, string $code, ?int $lastUsedStep): int
     {

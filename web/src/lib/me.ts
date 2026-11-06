@@ -1,3 +1,10 @@
+export interface Branding {
+  brand: string;
+  accent: string;
+  menu: string;
+  tile_variant: string;
+}
+
 export interface Me {
   id: string;
   code: string | null;
@@ -9,7 +16,7 @@ export interface Me {
   home: string;
   mfa_enabled: boolean;
   sede: { id: string | null; name: string | null };
-  tenant: { id: string; code: string; name: string; legal_name: string; initials: string; base_currency: string; timezone: string };
+  tenant: { id: string; code: string; name: string; legal_name: string; initials: string; base_currency: string; timezone: string; branding?: Branding };
   permissions: string[];
 }
 

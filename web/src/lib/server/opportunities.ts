@@ -1,7 +1,7 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
-import type { OpportunityBoard, OpportunityDetail } from "@/lib/opportunities";
+import type { OpportunityBoard, OpportunityDetail, OpportunityFormOptions } from "@/lib/opportunities";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
 
@@ -20,3 +20,5 @@ export async function getBoard(): Promise<OpportunityBoard | null> {
 }
 
 export const getOpportunity = cache(async (code: string): Promise<OpportunityDetail> => (await get<OpportunityDetail>(`/crm/opportunities/${encodeURIComponent(code)}`)) ?? notFound());
+
+export const getOpportunityFormOptions = cache(async (): Promise<OpportunityFormOptions | null> => get<OpportunityFormOptions>("/crm/opportunities/form-options"));

@@ -13,6 +13,5 @@ final readonly class FxRate
         public string $source,
         public ?string $buy = null,
         public ?string $sell = null,
-    ) {
-    }
+    ) {}
 }

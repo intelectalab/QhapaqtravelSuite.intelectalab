@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class EnsurePlatformUser
 {
-    public function handle(Request $request, Closure $next, string $stage = 'verified'): Response
+    public function handle(Request $request, Closure $next, string $stage = 'verified', ?string $permission = null): Response
     {
         $user = $request->user();
 
@@ -25,6 +25,10 @@ final class EnsurePlatformUser
 
         if ($stage === 'verified' && (! $token instanceof AccessToken || ! $token->isMfaVerified())) {
             throw ApiException::forbidden('MFA_REQUIRED', 'Falta confirmar el código de verificación en dos pasos.');
+        }
+
+        if ($permission !== null && ! $user->hasPlatformPermission($permission)) {
+            throw ApiException::forbidden('FORBIDDEN', 'Tu usuario de plataforma no tiene permiso para esta acción.', [$permission]);
         }
 
         return $next($request);

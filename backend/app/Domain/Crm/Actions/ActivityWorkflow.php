@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Crm\Actions;
 
 use App\Domain\Crm\Support\ActivityDirectory;
+use App\Domain\Crm\Support\Advisors;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -20,8 +21,8 @@ final class ActivityWorkflow
         private readonly ActivityDirectory $directory,
         private readonly AuditLogger $audit,
         private readonly TenantContext $context,
-    ) {
-    }
+        private readonly Advisors $advisors,
+    ) {}
 
     public function create(array $data, User $actor, ?string $previousId = null): string
     {
@@ -128,6 +129,61 @@ final class ActivityWorkflow
         $due = $this->dueAt($dueAt);
         DB::table('crm_activities')->where('id', $activity->id)->update(['due_at' => $due->copy()->utc(), 'status' => 'pendiente', 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         $this->audit->log('Actividad', $activity->code, 'reprogramar', Carbon::parse($activity->due_at)->toIso8601String(), $due->toIso8601String());
+    }
+
+    public function update(string $code, array $data, User $actor): void
+    {
+        $activity = $this->activity($code, $actor);
+
+        if ($activity->status === 'completada') {
+            throw ApiException::conflict('ACTIVITY_DONE', 'Una actividad completada ya no se edita.');
+        }
+
+        $values = [
+            'type' => $data['type'],
+            'subject' => trim($data['subject']),
+            'description' => trim((string) ($data['description'] ?? '')) ?: null,
+        ];
+
+        if (! empty($data['owner_id']) && $data['owner_id'] !== $activity->owner_id) {
+            if (Portfolio::ownOnly($actor)) {
+                throw ApiException::forbidden('CRM-BR-31', 'Solo un supervisor puede asignar la actividad a otra persona.');
+            }
+            if (! $this->advisors->has($data['owner_id'], [...Advisors::ROLES, 'operations'])) {
+                throw ApiException::unprocessable('CRM-BR-31', 'Elige un responsable activo de ventas u operaciones.');
+            }
+            $values['owner_id'] = $data['owner_id'];
+        }
+
+        $labels = ['type' => 'Tipo', 'subject' => 'Asunto', 'description' => 'Detalle', 'owner_id' => 'Responsable'];
+        $changed = array_filter($labels, fn (string $label, string $field) => array_key_exists($field, $values) && (string) $values[$field] !== (string) $activity->{$field}, ARRAY_FILTER_USE_BOTH);
+
+        if ($changed === []) {
+            return;
+        }
+
+        DB::table('crm_activities')->where('id', $activity->id)->update([...$values, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+        $this->audit->log('Actividad', $activity->code, 'editar', after: implode(', ', $changed));
+
+        if (isset($changed['owner_id'])) {
+            $this->audit->log('Actividad', $activity->code, 'reasignar', DB::table('iam_users')->where('id', $activity->owner_id)->value('name'), DB::table('iam_users')->where('id', $values['owner_id'])->value('name'));
+        }
+    }
+
+    public function delete(string $code, ?string $reason, User $actor): void
+    {
+        $activity = $this->activity($code, $actor);
+
+        if ($activity->status === 'completada') {
+            throw ApiException::conflict('ACTIVITY_DONE', 'Una actividad completada es parte del historial y no se elimina.');
+        }
+
+        if (DB::table('crm_activities')->where('previous_activity_id', $activity->id)->exists()) {
+            throw ApiException::conflict('ACTIVITY_LINKED', 'Otra actividad viene de esta. Reprográmala en lugar de eliminarla.');
+        }
+
+        DB::table('crm_activities')->where('id', $activity->id)->delete();
+        $this->audit->log('Actividad', $activity->code, 'eliminar', $activity->subject, $reason);
     }
 
     private function activity(string $code, User $actor): object

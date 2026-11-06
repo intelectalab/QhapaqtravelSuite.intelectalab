@@ -3,6 +3,7 @@
 import { CirclePause, CirclePlay } from "lucide-react";
 import { useActionState, useState } from "react";
 import { changeTenantStatus, type StatusState } from "@/app/plataforma/actions";
+import { RowIcon } from "@/components/table/RowActions";
 import { Button } from "@/components/ui/Button";
 import { SidePanel } from "@/components/ui/SidePanel";
 import { TextArea } from "@/components/ui/TextArea";
@@ -29,7 +30,7 @@ const COPY = {
 
 const initial: StatusState = { message: null, done: false };
 
-export function TenantStatusAction({ tenant }: { tenant: TenantSummary }) {
+export function TenantStatusAction({ tenant, iconOnly = false }: { tenant: TenantSummary; iconOnly?: boolean }) {
   const mode = tenant.status === "suspendido" ? "reactivate" : "suspend";
   const copy = COPY[mode];
   const [open, setOpen] = useState(false);
@@ -41,9 +42,13 @@ export function TenantStatusAction({ tenant }: { tenant: TenantSummary }) {
 
   return (
     <>
-      <Button variant={mode === "suspend" ? "secondary" : "primary"} iconOnlyOnMobile icon={mode === "suspend" ? <CirclePause size={16} /> : <CirclePlay size={16} />} onClick={() => setOpen(true)}>
-        {copy.button}
-      </Button>
+      {iconOnly ? (
+        <RowIcon tone={mode === "suspend" ? "delete" : "neutral"} label={copy.button} icon={mode === "suspend" ? <CirclePause size={15} /> : <CirclePlay size={15} />} onClick={() => setOpen(true)} />
+      ) : (
+        <Button variant={mode === "suspend" ? "secondary" : "primary"} iconOnlyOnMobile icon={mode === "suspend" ? <CirclePause size={16} /> : <CirclePlay size={16} />} onClick={() => setOpen(true)}>
+          {copy.button}
+        </Button>
+      )}
       <SidePanel
         open={open}
         onOpenChange={setOpen}
@@ -54,13 +59,13 @@ export function TenantStatusAction({ tenant }: { tenant: TenantSummary }) {
             <Button variant="ghost" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" form="tenant-status" variant="primary" disabled={pending}>
+            <Button type="submit" form={`tenant-status-${tenant.code}`} variant="primary" disabled={pending}>
               {pending ? "Un momento…" : copy.confirm}
             </Button>
           </>
         }
       >
-        <form id="tenant-status" action={action} className="flex flex-col gap-4">
+        <form id={`tenant-status-${tenant.code}`} action={action} className="flex flex-col gap-4">
           <FormError message={state.message} />
           <input type="hidden" name="tenant" value={tenant.code} />
           <input type="hidden" name="mode" value={mode} />

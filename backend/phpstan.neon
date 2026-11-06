@@ -1,0 +1,18 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    level: 5
+    paths:
+        - app
+        - routes
+        - database
+    tmpDir: storage/phpstan
+    ignoreErrors:
+        -
+            identifier: property.notFound
+            path: app/*
+        -
+            identifier: property.notFound
+            path: database/*

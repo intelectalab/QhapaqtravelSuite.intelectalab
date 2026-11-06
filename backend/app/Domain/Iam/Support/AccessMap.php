@@ -11,8 +11,9 @@ final class AccessMap
     public function for(User $user): array
     {
         $permissions = $user->getAllPermissions()->pluck('name')->flip();
-        $screens = collect(config('access.routes'))->map(fn (array $required) => $this->satisfies($required, $permissions->all()));
         $experience = RoleExperience::for($user);
+        $backoffice = $experience['experience'] === 'backoffice';
+        $screens = collect(config('access.routes'))->map(fn (array $required) => $backoffice && $this->satisfies($required, $permissions->all()));
 
         return [
             'experience' => $experience['experience'],
@@ -30,7 +31,7 @@ final class AccessMap
             ->sortByDesc(fn (string $prefix) => strlen($prefix))
             ->first();
 
-        return $match === null || $this->satisfies($routes[$match], $user->getAllPermissions()->pluck('name')->flip()->all());
+        return RoleExperience::isBackoffice($user) && ($match === null || $this->satisfies($routes[$match], $user->getAllPermissions()->pluck('name')->flip()->all()));
     }
 
     private function satisfies(array $required, array $permissions): bool

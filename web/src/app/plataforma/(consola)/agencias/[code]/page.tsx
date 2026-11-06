@@ -6,11 +6,12 @@ import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { HeroBand, HeroChip, HeroPanel, SOFT_TINT, TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
+import { TenantEditAction, TenantPlanAction } from "@/features/platform/TenantManageActions";
 import { TenantStatusAction } from "@/features/platform/TenantStatusAction";
 import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatDateTime, formatMoney, initials } from "@/lib/format";
 import { formatBytes, planTone, type TenantDetail } from "@/lib/platform";
-import { getTenant } from "@/lib/server/platform";
+import { getTenant, listPlans } from "@/lib/server/platform";
 
 const ACTIONS: Record<string, { label: string; tone: "bad" | "ok" | "t1" | "warn"; icon: typeof History }> = {
   suspender: { label: "Suspendida", tone: "bad", icon: CirclePause },
@@ -27,9 +28,10 @@ export async function generateMetadata({ params }: PageProps<"/plataforma/agenci
   return { title: (await getTenant(code)).name };
 }
 
-export default async function AgenciaPage({ params }: PageProps<"/plataforma/agencias/[code]">) {
+export default async function AgenciaPage({ params, searchParams }: PageProps<"/plataforma/agencias/[code]">) {
   const { code } = await params;
-  const tenant = await getTenant(code);
+  const { editar } = await searchParams;
+  const [tenant, plans] = await Promise.all([getTenant(code), listPlans()]);
   const tone = tenant.status === "suspendido" ? "mute" : planTone(tenant.plan?.rank ?? 1);
 
   return (
@@ -45,7 +47,13 @@ export default async function AgenciaPage({ params }: PageProps<"/plataforma/age
           </span>
         }
         subtitle={[tenant.code, `${tenant.subdomain}.qhapaq.cloud`, tenant.created_at ? `Alta el ${formatDate(tenant.created_at)}` : null].filter(Boolean).join(" · ")}
-        actions={<TenantStatusAction tenant={tenant} />}
+        actions={
+          <>
+            <TenantEditAction tenant={tenant} defaultOpen={editar === "1"} />
+            <TenantPlanAction tenant={tenant} plans={plans} />
+            <TenantStatusAction tenant={tenant} />
+          </>
+        }
       />
 
       {tenant.status === "suspendido" && <SuspendedNotice tenant={tenant} />}

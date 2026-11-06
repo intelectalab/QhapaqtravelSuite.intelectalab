@@ -10,9 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 final class TenantDatabase
 {
-    public function __construct(private readonly TenantContext $context)
-    {
-    }
+    public function __construct(private readonly TenantContext $context) {}
 
     public function run(string $tenantId, Closure $fn, int $attempts = 1, ?string $connection = null): mixed
     {

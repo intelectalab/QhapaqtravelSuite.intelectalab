@@ -17,9 +17,7 @@ final class ClientDirectory
 
     private const DOC_LABELS = ['DNI' => 'DNI', 'RUC' => 'RUC', 'PASAPORTE' => 'Pasaporte', 'CE' => 'CE'];
 
-    public function __construct(private readonly TenantContext $context)
-    {
-    }
+    public function __construct(private readonly TenantContext $context) {}
 
     public function today(): string
     {

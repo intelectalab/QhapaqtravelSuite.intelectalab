@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Crm\Actions;
 
+use App\Domain\Crm\Support\Advisors;
 use App\Domain\Crm\Support\ClientDocument;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Crm\Support\CrmCatalog;
@@ -25,8 +26,8 @@ final class LeadWorkflow
         private readonly TenantContext $context,
         private readonly ActivityWorkflow $activities,
         private readonly CodeSequence $codes,
-    ) {
-    }
+        private readonly Advisors $advisors,
+    ) {}
 
     public function create(array $data, User $actor): array
     {
@@ -75,6 +76,80 @@ final class LeadWorkflow
         $this->audit->log('Lead', $code, 'crear', after: $resolution === 'mark_duplicate' ? 'duplicado' : 'nuevo');
 
         return ['code' => $code];
+    }
+
+    public function update(string $code, array $data, int $version, User $actor): void
+    {
+        $lead = $this->lead($code, $actor);
+        $this->assertOpen($lead);
+        $this->assertCatalog($data);
+
+        $values = [
+            'full_name' => trim($data['name']),
+            'company' => trim((string) ($data['company'] ?? '')) ?: null,
+            'email' => trim((string) ($data['email'] ?? '')) ?: null,
+            'phone' => trim((string) ($data['phone'] ?? '')) ?: null,
+            'phone_norm' => $this->phoneNorm($data['phone'] ?? null),
+            'channel_code' => $data['channel'],
+            'source_code' => $data['source'],
+            'interest_code' => $data['interest'],
+            'destination_label' => trim((string) ($data['destination'] ?? '')) ?: null,
+            'travel_date' => $data['travel_date'] ?? null,
+            'pax' => (int) ($data['pax'] ?? 0),
+            'notes' => trim((string) ($data['notes'] ?? '')) ?: null,
+        ];
+        if ($values['travel_date'] && $values['travel_date'] !== $lead->travel_date && $values['travel_date'] < now($this->context->tenant()->timezone ?: 'America/Lima')->toDateString()) {
+            throw ApiException::unprocessable('CRM-BR-05', 'La fecha de viaje no puede ser anterior a hoy.');
+        }
+
+        $labels = ['full_name' => 'Nombre', 'company' => 'Empresa', 'email' => 'Correo', 'phone' => 'Teléfono', 'channel_code' => 'Canal', 'source_code' => 'Fuente', 'interest_code' => 'Interés', 'destination_label' => 'Destino', 'travel_date' => 'Fecha de viaje', 'pax' => 'Pasajeros', 'notes' => 'Notas'];
+        $changed = array_filter($labels, fn (string $label, string $field) => (string) $values[$field] !== (string) $lead->{$field}, ARRAY_FILTER_USE_BOTH);
+
+        if ($changed === []) {
+            return;
+        }
+
+        $this->save($lead, $version, $values, $actor);
+        $this->audit->log('Lead', $code, 'editar', after: implode(', ', $changed));
+    }
+
+    public function assign(string $code, string $ownerId, bool $firstContact, ?string $reason, User $actor): void
+    {
+        if (! $actor->can('crm.records.reassign')) {
+            throw ApiException::forbidden('CRM-BR-09', 'Solo Gerencia o la Administración pueden asignar o reasignar leads.', ['crm.records.reassign']);
+        }
+
+        $lead = $this->lead($code, $actor);
+        $this->assertOpen($lead);
+
+        if ($lead->owner_id === $ownerId) {
+            throw ApiException::unprocessable('CRM-BR-09', 'Elige un asesor distinto del actual.');
+        }
+
+        if (! $this->advisors->has($ownerId)) {
+            throw ApiException::unprocessable('CRM-BR-09', 'Elige un asesor activo de la lista.');
+        }
+
+        DB::transaction(function () use ($lead, $ownerId, $firstContact, $reason, $actor): void {
+            DB::table('crm_leads')->where('id', $lead->id)->update([
+                'owner_id' => $ownerId,
+                'assigned_at' => now(),
+                'lock_version' => $lead->lock_version + 1,
+                'updated_by' => $actor->getKey(),
+                'updated_at' => now(),
+            ]);
+            DB::table('crm_activities')->where('related_type', 'lead')->where('related_id', $lead->id)->whereIn('status', ['pendiente', 'vencida'])
+                ->update(['owner_id' => $ownerId, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+
+            $before = $lead->owner_id ? DB::table('iam_users')->where('id', $lead->owner_id)->value('name') : null;
+            $after = DB::table('iam_users')->where('id', $ownerId)->value('name');
+            $this->audit->log('Lead', $lead->code, $lead->owner_id ? 'reasignar' : 'asignar', $before, trim($after.($reason ? " · {$reason}" : '')));
+
+            if ($firstContact) {
+                $activity = $this->activities->scheduleFirstContact(DB::table('crm_leads')->where('id', $lead->id)->first(), $actor);
+                DB::table('crm_activities')->where('code', $activity)->update(['owner_id' => $ownerId]);
+            }
+        });
     }
 
     public function take(string $code, User $actor): void

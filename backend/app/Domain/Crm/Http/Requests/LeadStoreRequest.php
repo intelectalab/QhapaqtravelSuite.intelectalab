@@ -20,7 +20,7 @@ final class LeadStoreRequest extends FormRequest
             'source' => ['required', 'string'],
             'interest' => ['required', 'string'],
             'destination' => ['nullable', 'string', 'max:120'],
-            'travel_date' => ['nullable', 'date', 'after_or_equal:today'],
+            'travel_date' => ['nullable', 'date', ...($this->isMethod('post') ? ['after_or_equal:today'] : [])],
             'pax' => ['nullable', 'integer', 'min:0', 'max:999'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'duplicate_resolution' => ['nullable', 'in:create_new,mark_duplicate'],

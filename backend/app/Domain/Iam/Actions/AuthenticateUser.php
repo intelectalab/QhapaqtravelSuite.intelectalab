@@ -13,6 +13,7 @@ use App\Domain\Shared\Tenancy\TenantDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Spatie\Permission\PermissionRegistrar;
 
 final class AuthenticateUser
 {
@@ -22,8 +23,7 @@ final class AuthenticateUser
         private readonly AuditLogger $audit,
         private readonly IssueAccessToken $issueToken,
         private readonly RecordLogin $recordLogin,
-    ) {
-    }
+    ) {}
 
     public function __invoke(Request $request): array
     {
@@ -35,7 +35,8 @@ final class AuthenticateUser
 
         $email = Str::lower(trim((string) $request->input('email')));
 
-        return $this->database->run($tenant->tenant_id, function () use ($request, $email): array {
+        return $this->database->run($tenant->tenant_id, function () use ($request, $email, $tenant): array {
+            app(PermissionRegistrar::class)->setPermissionsTeamId($tenant->tenant_id);
             $user = User::query()->with('roles')->whereRaw('lower(email) = ?', [$email])->first();
 
             if ($user === null || ! Hash::check((string) $request->input('password'), (string) $user->password) || ! $user->isActive()) {

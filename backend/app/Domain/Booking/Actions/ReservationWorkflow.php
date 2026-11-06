@@ -1,0 +1,332 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Booking\Actions;
+
+use App\Domain\Channels\Support\B2bCredit;
+use App\Domain\Crm\Support\Advisors;
+use App\Domain\Crm\Support\CodeSequence;
+use App\Domain\Crm\Support\Portfolio;
+use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Audit\AuditLogger;
+use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Tenancy\TenantContext;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+
+final class ReservationWorkflow
+{
+    public const CLOSED = ['cancelada', 'completada'];
+
+    public const CANCEL_REASONS = ['Cliente desistió', 'Cambio de planes', 'Motivo de salud', 'Problema de pago', 'Fuerza mayor', 'Error de registro', 'Otro'];
+
+    public function __construct(
+        private readonly TenantContext $context,
+        private readonly CodeSequence $sequence,
+        private readonly AuditLogger $audit,
+        private readonly Advisors $advisors,
+        private readonly ReservationMailer $mailer,
+        private readonly B2bCredit $credit,
+    ) {}
+
+    public function update(string $code, array $data, User $actor): void
+    {
+        $reservation = $this->open($code, $actor);
+        $values = ['notes' => $data['notes'] ?? null];
+
+        if (! empty($data['owner_id']) && $data['owner_id'] !== $reservation->owner_id) {
+            if (! $actor->can('crm.records.reassign')) {
+                throw ApiException::forbidden('FORBIDDEN', 'Solo Gerencia reasigna reservas.', ['crm.records.reassign']);
+            }
+
+            if (! $this->advisors->has($data['owner_id'])) {
+                throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige un asesor activo.');
+            }
+
+            $values['owner_id'] = $data['owner_id'];
+            $this->audit->log('Reserva', $reservation->code, 'reasignar', $reservation->owner_id, $data['owner_id']);
+        }
+
+        DB::table('booking_reservations')->where('id', $reservation->id)->update([...$values, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+        $this->audit->log('Reserva', $reservation->code, 'editar', null, $values['notes']);
+    }
+
+    public function savePassenger(string $code, ?string $passengerId, array $data, User $actor): void
+    {
+        $reservation = $this->open($code, $actor);
+
+        DB::transaction(function () use ($reservation, $passengerId, $data, $actor): void {
+            $values = [
+                'full_name' => $data['full_name'],
+                'doc_type' => $data['doc_type'] ?? null,
+                'doc_number' => $data['doc_number'] ?? null,
+                'pax_type' => $data['pax_type'],
+                'nationality' => $data['nationality'] ?? null,
+                'birth_date' => $data['birth_date'] ?? null,
+                'age' => isset($data['birth_date']) ? CarbonImmutable::parse($data['birth_date'])->age : null,
+                'phone' => $data['phone'] ?? null,
+                'email' => $data['email'] ?? null,
+                'diet_notes' => $data['diet_notes'] ?? null,
+                'relationship' => $data['relationship'] ?? null,
+                'is_placeholder' => false,
+                'updated_by' => $actor->getKey(),
+                'updated_at' => now(),
+            ];
+
+            if (! empty($data['is_lead'])) {
+                DB::table('booking_passengers')->where('reservation_id', $reservation->id)->update(['is_lead' => false]);
+                $values['is_lead'] = true;
+            }
+
+            if ($passengerId) {
+                $updated = DB::table('booking_passengers')->where('reservation_id', $reservation->id)->where('id', $passengerId)->update($values);
+                if ($updated === 0) {
+                    throw ApiException::notFound('El pasajero no existe.');
+                }
+                $this->audit->log('Reserva', $reservation->code, 'editar_pasajero', null, $data['full_name']);
+
+                return;
+            }
+
+            $seq = (int) DB::table('booking_passengers')->where('reservation_id', $reservation->id)->max('seq') + 1;
+            $first = ! DB::table('booking_passengers')->where('reservation_id', $reservation->id)->exists();
+            DB::table('booking_passengers')->insert([...$values, 'reservation_id' => $reservation->id, 'seq' => $seq, 'is_lead' => $values['is_lead'] ?? $first, 'created_by' => $actor->getKey()]);
+            $this->audit->log('Reserva', $reservation->code, 'agregar_pasajero', null, $data['full_name']);
+        });
+    }
+
+    public function deletePassenger(string $code, string $passengerId, User $actor): void
+    {
+        $reservation = $this->open($code, $actor);
+
+        DB::transaction(function () use ($reservation, $passengerId): void {
+            $passengers = DB::table('booking_passengers')->where('reservation_id', $reservation->id)->orderBy('seq')->get(['id', 'full_name', 'is_lead']);
+            $passenger = $passengers->firstWhere('id', $passengerId) ?? throw ApiException::notFound('El pasajero no existe.');
+
+            if ($passengers->count() === 1) {
+                throw ApiException::conflict('RES-BR-07', 'La reserva necesita al menos un pasajero.');
+            }
+
+            DB::table('booking_passengers')->where('id', $passengerId)->delete();
+
+            if ($passenger->is_lead) {
+                DB::table('booking_passengers')->where('id', $passengers->firstWhere('id', '!=', $passengerId)->id)->update(['is_lead' => true]);
+            }
+
+            $this->audit->log('Reserva', $reservation->code, 'quitar_pasajero', $passenger->full_name);
+        });
+    }
+
+    public function cancellationPreview(string $code, User $actor): array
+    {
+        $reservation = $this->open($code, $actor);
+
+        return $this->penalty($reservation);
+    }
+
+    public function cancel(string $code, string $reason, string $detail, User $actor): void
+    {
+        if (! $actor->can('reservations.cancel')) {
+            throw ApiException::forbidden('FORBIDDEN', 'Tu rol solo puede solicitar la anulación.', ['reservations.cancel']);
+        }
+
+        DB::transaction(function () use ($code, $reason, $detail, $actor): void {
+            $reservation = $this->open($code, $actor, true);
+            $calc = $this->penalty($reservation);
+            $full = "{$reason}: {$detail}";
+            $now = now();
+
+            $this->releaseSeats($reservation->id, $actor);
+            $this->credit->reservationCancelled($reservation->id, $reservation->code, $actor->getKey());
+
+            DB::table('booking_reservation_services')->where('reservation_id', $reservation->id)->whereNotIn('status', ['cancelado', 'completado', 'rechazado'])->update(['status' => 'cancelado', 'updated_by' => $actor->getKey(), 'updated_at' => $now]);
+
+            foreach (DB::table('ops_vouchers')->where('reservation_id', $reservation->id)->where('status', 'emitido')->get(['id', 'code']) as $voucher) {
+                DB::table('ops_vouchers')->where('id', $voucher->id)->update(['status' => 'anulado', 'void_reason' => 'Reserva cancelada', 'void_at' => $now, 'void_by' => $actor->getKey()]);
+                $this->audit->log('Voucher', $voucher->code, 'anular', 'emitido', 'anulado');
+            }
+
+            foreach (DB::table('fin_receivables')->where('reservation_id', $reservation->id)->whereNull('deleted_at')->whereNotIn('status', ['pagada', 'cancelada'])->get(['id', 'code', 'status']) as $receivable) {
+                DB::table('fin_receivables')->where('id', $receivable->id)->update(['status' => 'cancelada', 'cancelled_at' => $now, 'cancel_reason' => 'Reserva cancelada', 'updated_by' => $actor->getKey(), 'updated_at' => $now]);
+                $this->audit->log('Cuenta por cobrar', $receivable->code, 'cancelar', $receivable->status, 'cancelada');
+            }
+
+            $penaltyReceivable = null;
+            if ($calc['owed'] > 0) {
+                $penaltyCode = $this->sequence->next('fin_receivables', 'CXC-', 5);
+                $penaltyReceivable = (string) DB::table('fin_receivables')->insertGetId(['code' => $penaltyCode, 'reservation_id' => $reservation->id, 'client_id' => $reservation->client_id, 'kind' => 'penalidad', 'concept' => mb_substr("Penalidad por cancelación — {$reservation->code}", 0, 255), 'amount' => $calc['owed'], 'currency' => $reservation->currency, 'fx_rate' => $reservation->fx_rate, 'due_date' => $this->today()->addDays(7)->toDateString(), 'status' => 'abierta', 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
+                $this->audit->log('Cuenta por cobrar', $penaltyCode, 'crear', null, "{$reservation->currency} {$calc['owed']}");
+            }
+
+            $refundPayment = null;
+            if ($calc['refund'] > 0) {
+                $paymentCode = $this->sequence->next('fin_payments', 'PAG-', 5);
+                $refundPayment = (string) DB::table('fin_payments')->insertGetId(['code' => $paymentCode, 'reservation_id' => $reservation->id, 'kind' => 'reembolso', 'source' => 'reserva', 'method' => 'Reembolso (mismo medio de pago)', 'amount' => $calc['refund'], 'currency' => $reservation->currency, 'fx_rate' => $reservation->fx_rate, 'paid_on' => $this->today()->toDateString(), 'reference' => 'Reembolso por cancelación · 7 a 15 días hábiles', 'status' => 'pendiente', 'registered_by' => $actor->getKey(), 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
+                $this->audit->log('Pago', $paymentCode, 'crear_reembolso', null, "{$reservation->currency} {$calc['refund']}");
+            }
+
+            DB::table('ops_orders')->where('reservation_id', $reservation->id)->whereNotIn('status', ['completada', 'cancelada'])->update(['status' => 'cancelada', 'cancelled_at' => $now, 'cancel_reason' => 'Reserva cancelada']);
+
+            DB::table('booking_reservations')->where('id', $reservation->id)->update(['status' => 'cancelada', 'cancel_reason' => $full, 'cancelled_at' => $now, 'penalty_amount' => $calc['penalty'], 'refund_amount' => $calc['refund'], 'updated_by' => $actor->getKey(), 'updated_at' => $now]);
+            DB::table('booking_cancellations')->insert(['reservation_id' => $reservation->id, 'total_at_cancel' => $calc['total'], 'paid_at_cancel' => $calc['paid'], 'penalty_services' => $calc['penalty_services'], 'consumed_amount' => $calc['consumed'], 'factor_k' => $calc['factor_k'], 'penalty_amount' => $calc['penalty'], 'refund_amount' => $calc['refund'], 'owed_amount' => $calc['owed'], 'currency' => $reservation->currency, 'lines' => json_encode($calc['lines'], JSON_UNESCAPED_UNICODE), 'refund_payment_id' => $refundPayment, 'penalty_receivable_id' => $penaltyReceivable, 'reason' => $full, 'cancelled_by' => $actor->getKey(), 'cancelled_at' => $now, 'created_by' => $actor->getKey()]);
+            DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->where('status', 'pendiente')->update(['status' => 'aprobada', 'decided_by' => $actor->getKey(), 'decided_at' => $now, 'decision_note' => 'Cancelación procesada']);
+
+            $this->mailer->send($reservation->id, 'Tu reserva fue cancelada', "Cancelamos tu viaje {$reservation->title}.".($calc['refund'] > 0 ? " Te reembolsaremos {$reservation->currency} {$calc['refund']} en 7 a 15 días hábiles." : ''));
+            $this->audit->log('Reserva', $reservation->code, 'cancelar', $reservation->status, "cancelada · penalidad {$reservation->currency} {$calc['penalty']} · reembolso {$calc['refund']}");
+        });
+    }
+
+    public function requestCancel(string $code, string $reason, string $detail, User $actor): void
+    {
+        $reservation = $this->open($code, $actor);
+
+        if ($reservation->owner_id !== $actor->getKey()) {
+            throw ApiException::forbidden('FORBIDDEN', 'Solo el responsable de la reserva puede pedir su anulación.');
+        }
+
+        if (DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->where('status', 'pendiente')->exists()) {
+            throw ApiException::conflict('CANCEL_REQUEST_PENDING', 'Ya hay una solicitud de anulación pendiente.');
+        }
+
+        DB::table('booking_cancel_requests')->insert(['reservation_id' => $reservation->id, 'reason' => "{$reason}: {$detail}", 'requested_by' => $actor->getKey(), 'requested_at' => now(), 'status' => 'pendiente', 'created_by' => $actor->getKey()]);
+        $this->audit->log('Reserva', $reservation->code, 'solicitar_anulacion', null, "{$reason}: {$detail}");
+    }
+
+    public function rejectCancelRequest(string $code, string $note, User $actor): void
+    {
+        $reservation = $this->open($code, $actor);
+        $updated = DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->where('status', 'pendiente')->update(['status' => 'rechazada', 'decided_by' => $actor->getKey(), 'decided_at' => now(), 'decision_note' => $note, 'updated_at' => now()]);
+
+        if ($updated === 0) {
+            throw ApiException::notFound('No hay una solicitud de anulación pendiente.');
+        }
+
+        $this->audit->log('Reserva', $reservation->code, 'rechazar_anulacion', null, $note);
+    }
+
+    private function penalty(object $reservation): array
+    {
+        $today = $this->today();
+        $services = DB::table('booking_reservation_services as s')
+            ->leftJoin('catalog_products as p', 'p.id', '=', 's.product_id')
+            ->where('s.reservation_id', $reservation->id)
+            ->get(['s.code', 's.name', 's.status', 's.service_date', 's.price_amount', 's.product_id', 'p.code as product_code']);
+        $snapshot = json_decode((string) $reservation->policies_snapshot, true) ?: [];
+        $policies = DB::table('catalog_product_policies')->whereIn('product_id', $services->pluck('product_id')->filter()->unique()->values()->all())->pluck('cancellation', 'product_id');
+        $active = $services->whereNotIn('status', ['cancelado', 'completado', 'rechazado']);
+        $used = $services->where('status', 'completado');
+        $lines = [];
+        $penaltyServices = 0.0;
+
+        foreach ($active as $service) {
+            $policy = (string) ($snapshot[$service->product_code]['cancel'] ?? $snapshot[$service->product_code]['cancellation'] ?? $policies[$service->product_id] ?? '');
+            $days = (int) $today->diffInDays(CarbonImmutable::parse($service->service_date, $today->getTimezone()), false);
+            $pct = $this->penaltyPct($this->tiers($policy), $days);
+            $amount = round((float) $service->price_amount * $pct / 100, 2);
+            $penaltyServices += $amount;
+            $lines[] = ['code' => $service->code, 'name' => $service->name, 'date' => $service->service_date, 'days' => $days, 'policy' => $policy ?: 'Política estándar', 'pct' => $pct, 'price' => (float) $service->price_amount, 'penalty' => $amount];
+        }
+
+        $consumed = round($used->sum(fn (object $service): float => (float) $service->price_amount), 2);
+        $allTotal = $active->merge($used)->sum(fn (object $service): float => (float) $service->price_amount) ?: 1.0;
+        $total = (float) $reservation->total_amount;
+        $factor = $total / $allTotal;
+        $paid = $this->paid($reservation);
+        $penalty = round(min($total, ($penaltyServices + $consumed) * $factor), 2);
+
+        return [
+            'code' => $reservation->code,
+            'currency' => $reservation->currency,
+            'total' => $total,
+            'paid' => $paid,
+            'penalty_services' => round($penaltyServices, 2),
+            'consumed' => $consumed,
+            'factor_k' => round($factor, 6),
+            'penalty' => $penalty,
+            'refund' => round(max(0, $paid - $penalty), 2),
+            'owed' => round(max(0, $penalty - $paid), 2),
+            'lines' => $lines,
+            'reasons' => self::CANCEL_REASONS,
+            'request' => DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->where('status', 'pendiente')->value('reason'),
+        ];
+    }
+
+    private function tiers(string $policy): array
+    {
+        $text = mb_strtolower($policy);
+
+        return match (true) {
+            str_contains($text, '48 h') && str_contains($text, 'sin penalidad') => [[2, 0], [0, 100]],
+            str_contains($text, '24 h') && str_contains($text, 'sin penalidad') => [[1, 0], [0, 100]],
+            str_contains($text, 'tren:') => [[15, 0], [7, 50], [2, 50], [0, 100]],
+            default => [[15, 0], [7, 50], [0, 100]],
+        };
+    }
+
+    private function penaltyPct(array $tiers, int $days): int
+    {
+        foreach ($tiers as [$min, $pct]) {
+            if ($days >= $min) {
+                return $pct;
+            }
+        }
+
+        return 100;
+    }
+
+    private function paid(object $reservation): float
+    {
+        return round(DB::table('fin_payments')->where('reservation_id', $reservation->id)->where('kind', 'cobro')->whereIn('status', ['aplicado', 'confirmado'])->get(['amount', 'currency'])
+            ->sum(fn (object $payment): float => $this->convert((float) $payment->amount, (string) $payment->currency, (string) $reservation->currency, (float) $reservation->fx_rate)), 2);
+    }
+
+    private function convert(float $amount, string $from, string $to, float $fx): float
+    {
+        if ($from === $to || $fx <= 0) {
+            return $amount;
+        }
+
+        return $from === 'USD' ? $amount * $fx : $amount / $fx;
+    }
+
+    private function releaseSeats(string $reservationId, User $actor): void
+    {
+        $holds = DB::table('booking_inventory_holds')->where('reservation_id', $reservationId)->whereIn('status', ['hold', 'confirmada'])->get(['id', 'departure_id', 'pax']);
+        $byDeparture = $holds->groupBy('departure_id')->map(fn (Collection $items): int => (int) $items->max('pax'));
+        $ids = $byDeparture->keys()->sort()->values()->all();
+
+        if ($ids) {
+            DB::table('catalog_product_departures')->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get(['id']);
+        }
+
+        foreach ($byDeparture as $departureId => $pax) {
+            DB::table('catalog_product_departures')->where('id', $departureId)->update([
+                'sold' => DB::raw("greatest(0, sold - {$pax})"),
+                'status' => DB::raw("case when status = 'completa' and sold - {$pax} < capacity then 'abierta' else status end"),
+                'updated_by' => $actor->getKey(),
+            ]);
+            $this->audit->log('Disponibilidad', (string) $departureId, 'liberar', null, "{$pax} cupos");
+        }
+
+        DB::table('booking_inventory_holds')->whereIn('id', $holds->pluck('id')->all())->update(['status' => 'liberada', 'released_at' => now(), 'updated_by' => $actor->getKey()]);
+    }
+
+    private function open(string $code, User $actor, bool $lock = false): object
+    {
+        $query = Portfolio::scope(DB::table('booking_reservations')->whereNull('deleted_at'), $actor, 'owner_id')->where('code', $code);
+        $reservation = ($lock ? $query->lockForUpdate() : $query)->first() ?? throw ApiException::notFound('La reserva no existe.');
+
+        if (in_array($reservation->status, self::CLOSED, true)) {
+            throw ApiException::conflict('RESERVATION_CLOSED', 'La reserva ya está '.($reservation->status === 'cancelada' ? 'cancelada' : 'completada').' y no admite cambios.');
+        }
+
+        return $reservation;
+    }
+
+    private function today(): CarbonImmutable
+    {
+        return CarbonImmutable::now($this->context->tenant()->timezone ?: 'America/Lima')->startOfDay();
+    }
+}

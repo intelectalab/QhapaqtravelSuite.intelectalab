@@ -14,9 +14,7 @@ final class ActivityController
 {
     private const TYPES = 'in:llamada,email,whatsapp,reunion,tarea,postventa';
 
-    public function __construct(private readonly ActivityDirectory $directory, private readonly ActivityWorkflow $workflow)
-    {
-    }
+    public function __construct(private readonly ActivityDirectory $directory, private readonly ActivityWorkflow $workflow) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -67,6 +65,27 @@ final class ActivityController
     {
         $data = $request->validate(['due_at' => ['required', 'date']], ['due_at.required' => 'Elige la nueva fecha y hora.']);
         $this->workflow->reschedule($code, $data['due_at'], $this->user($request));
+
+        return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function update(Request $request, string $code): JsonResponse
+    {
+        $data = $request->validate([
+            'type' => ['required', self::TYPES],
+            'subject' => ['required', 'string', 'max:200'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'owner_id' => ['nullable', 'uuid'],
+        ], ['subject.required' => 'Escribe el asunto.']);
+        $this->workflow->update($code, $data, $this->user($request));
+
+        return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function destroy(Request $request, string $code): JsonResponse
+    {
+        $request->validate(['reason' => ['nullable', 'string', 'max:300']]);
+        $this->workflow->delete($code, $request->input('reason'), $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
     }

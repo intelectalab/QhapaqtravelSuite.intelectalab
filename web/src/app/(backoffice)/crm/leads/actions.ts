@@ -21,8 +21,8 @@ const number = (form: FormData, key: string) => {
   return value === undefined ? undefined : Number(value);
 };
 
-async function send(path: string, body: Record<string, unknown>): Promise<LeadActionState> {
-  const result = await apiFetch<LeadActionState["result"]>(path, { method: "POST", body });
+async function send(path: string, body: Record<string, unknown>, method: "POST" | "PATCH" = "POST"): Promise<LeadActionState> {
+  const result = await apiFetch<LeadActionState["result"]>(path, { method, body });
   if (!result.ok) {
     const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
     const matches = result.error?.details?.matches as DuplicateMatch[] | undefined;
@@ -86,5 +86,34 @@ export async function convertLead(_state: LeadActionState, form: FormData): Prom
     currency: text(form, "currency") ?? "PEN",
     expected_close_date: text(form, "expected_close_date"),
     lock_version: number(form, "lock_version"),
+  });
+}
+
+export async function updateLead(_state: LeadActionState, form: FormData): Promise<LeadActionState> {
+  return send(
+    `/crm/leads/${encodeURIComponent(text(form, "code") ?? "")}`,
+    {
+      name: text(form, "name"),
+      company: text(form, "company"),
+      email: text(form, "email"),
+      phone: text(form, "phone"),
+      channel: text(form, "channel"),
+      source: text(form, "source"),
+      interest: text(form, "interest"),
+      destination: text(form, "destination"),
+      travel_date: text(form, "travel_date"),
+      pax: number(form, "pax"),
+      notes: text(form, "notes"),
+      lock_version: number(form, "lock_version"),
+    },
+    "PATCH",
+  );
+}
+
+export async function assignLead(_state: LeadActionState, form: FormData): Promise<LeadActionState> {
+  return send(`/crm/leads/${encodeURIComponent(text(form, "code") ?? "")}/assign`, {
+    owner_id: text(form, "owner_id"),
+    schedule_first_contact: form.get("schedule_first_contact") === "on",
+    reason: text(form, "reason"),
   });
 }

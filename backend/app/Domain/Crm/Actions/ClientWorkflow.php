@@ -30,8 +30,7 @@ final class ClientWorkflow
         private readonly CodeSequence $codes,
         private readonly Advisors $advisors,
         private readonly TenantContext $context,
-    ) {
-    }
+    ) {}
 
     public function create(array $data, User $actor): string
     {

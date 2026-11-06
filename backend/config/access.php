@@ -12,10 +12,10 @@ return [
         'accounting' => ['experience' => 'backoffice', 'home' => '/dashboard'],
         'guide' => ['experience' => 'mobile', 'home' => '/mobile/operador'],
         'driver' => ['experience' => 'mobile', 'home' => '/mobile/operador'],
-        'passenger' => ['experience' => 'portal', 'home' => '/canales/portal-pasajero/viajes'],
-        'customer' => ['experience' => 'portal', 'home' => '/canales/portal-cliente'],
-        'b2b' => ['experience' => 'portal', 'home' => '/canales/b2b/portal/catalogo'],
-        'provider' => ['experience' => 'portal', 'home' => '/proveedor/solicitudes'],
+        'passenger' => ['experience' => 'portal', 'home' => '/portal'],
+        'customer' => ['experience' => 'portal', 'home' => '/portal'],
+        'b2b' => ['experience' => 'portal', 'home' => '/agencia'],
+        'provider' => ['experience' => 'portal', 'home' => '/proveedor'],
     ],
 
     'session_hours' => [
@@ -25,6 +25,13 @@ return [
     ],
 
     'mfa_roles' => ['tenant_admin', 'manager', 'finance', 'accounting'],
+
+    'platform_permissions' => ['admin.tenant.manage', 'admin.audit.view'],
+
+    'experience_routes' => [
+        'shared' => ['me', 'me.access', 'me.counts'],
+        'portal' => ['b2b.', 'supplier.', 'portal.'],
+    ],
 
     'routes' => [
         '/dashboard' => ['*'],

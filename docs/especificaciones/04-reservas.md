@@ -516,6 +516,15 @@ Jobs: **JOB-01 `holds:expire`** cada 5 min (`holdMinutes` 30) para holds tempora
 ### v2.1 — Cambios
 Se agregó el snapshot de la reserva web (pedido del cliente puntos 2–7, 10, 11, 13), parentesco/edad/titular de pasajeros (punto 5) y la gestión de comentarios del pasajero desde Reserva 360 (punto 9). Decisión: en el back-office el snapshot no se oculta al desactivar una regla (es evidencia de lo cobrado); en portales sí se oculta. Pruebas: Pest — snapshot inmutable, Operaciones sin importes (403 de campos), respuesta crea mensaje saliente, derivar crea incidencia; Playwright — U01 pestañas web/comentarios, U03 reserva ajena bloqueada, U05 sin importes.
 
+### v3.0 — Implementación (06/11/2026)
+Desviaciones temporales de la implementación respecto al kit, detectadas en la auditoría de cumplimiento del 06/11/2026 (`Documentación/Auditoria_de_cumplimiento_2026-11-06.md`). Se corrigen en las fases A (pruebas, idempotencia, permisos), B (flujo canónico según `docs/kit/ejemplos`) y C (módulo por módulo).
+
+- Implementado: conversión idempotente por negocio (FOR UPDATE + UNIQUE parcial), editar, pasajeros, modificar con aprobación, reprogramar con factor de temporada, cancelar con penalidad y solicitud de anulación de Ventas y de agencias B2B.
+- Penalidad de cancelación: hoy se deducen los tramos del texto de la política (copia H-10); deben venir de los tramos estructurados de la política.
+- Faltan: reserva directa (RES-BR-04 a 06), «Confirmar reserva», transiciones de servicios por Operaciones, nota de crédito al cancelar con reembolso.
+- Visibilidad por rol del detalle (§7): en corrección en la fase A.
+- Correo al cliente al modificar, reprogramar y cancelar: síncrono; pasará a la cola `notifications` con outbox (fase B).
+
 ## 12. Supuestos y puntos a validar con negocio
 
 1. Tramos de penalidad derivados de texto libre (`tiersFor` por regex). El backend debe guardar tramos estructurados `[{min_days, pct}]` en la política del producto y en el snapshot; confirmar la regla "Tren" (el texto dice "50 % hasta 7 días" pero el tramo aplicado da 0 % con ≥ 15 días).

@@ -14,6 +14,5 @@ final readonly class PaymentRequest
         public string $customerEmail,
         public ?string $returnUrl = null,
         public array $metadata = [],
-    ) {
-    }
+    ) {}
 }

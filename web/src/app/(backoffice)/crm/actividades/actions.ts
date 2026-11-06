@@ -13,8 +13,8 @@ const value = (form: FormData, key: string) => {
   return typeof raw === "string" && raw.trim() !== "" ? raw.trim() : undefined;
 };
 
-async function send(path: string, body: Record<string, unknown>): Promise<ActivityState> {
-  const result = await apiFetch(path, { method: "POST", body });
+async function send(path: string, body: Record<string, unknown>, method: "POST" | "PATCH" | "DELETE" = "POST"): Promise<ActivityState> {
+  const result = await apiFetch(path, { method, body });
   if (!result.ok) {
     const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
     return { message: firstError ?? result.error?.message ?? "No pudimos guardar la actividad.", done: false };
@@ -44,4 +44,12 @@ export async function completeActivity(_state: ActivityState, form: FormData): P
 
 export async function rescheduleActivity(_state: ActivityState, form: FormData): Promise<ActivityState> {
   return send(`/crm/activities/${encodeURIComponent(value(form, "code") ?? "")}/reschedule`, { due_at: value(form, "due_at") });
+}
+
+export async function updateActivity(_state: ActivityState, form: FormData): Promise<ActivityState> {
+  return send(`/crm/activities/${encodeURIComponent(value(form, "code") ?? "")}`, { type: value(form, "type"), subject: value(form, "subject"), description: value(form, "description"), owner_id: value(form, "owner_id") }, "PATCH");
+}
+
+export async function deleteActivity(_state: ActivityState, form: FormData): Promise<ActivityState> {
+  return send(`/crm/activities/${encodeURIComponent(value(form, "code") ?? "")}`, { reason: value(form, "reason") }, "DELETE");
 }

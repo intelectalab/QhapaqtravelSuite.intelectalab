@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\Audit;
 
+use App\Domain\Integrations\Models\ApiClient;
+use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Shared\Tenancy\TenantContext;
 use App\Domain\Shared\Tenancy\TenantDatabase;
 use App\Http\Middleware\AssignCorrelationId;
@@ -24,8 +26,7 @@ final class AuditLogger
     public function __construct(
         private readonly TenantContext $context,
         private readonly AuditCodeGenerator $codes,
-    ) {
-    }
+    ) {}
 
     public function log(
         string $entity,
@@ -85,8 +86,8 @@ final class AuditLogger
     {
         return match (true) {
             $actor === null => 'system',
-            $actor instanceof \App\Domain\Platform\Models\PlatformUser => 'platform_user',
-            $actor instanceof \App\Domain\Integrations\Models\ApiClient => 'api_client',
+            $actor instanceof PlatformUser => 'platform_user',
+            $actor instanceof ApiClient => 'api_client',
             default => 'user',
         };
     }

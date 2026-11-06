@@ -17,8 +17,7 @@ final class SetPostgresTenant
     public function __construct(
         private readonly TenantContext $context,
         private readonly TenantDatabase $database,
-    ) {
-    }
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {

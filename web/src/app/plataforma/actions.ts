@@ -69,3 +69,49 @@ export async function updatePlan(_state: StatusState, form: FormData): Promise<S
   revalidatePath("/plataforma", "layout");
   return { message: null, done: true };
 }
+
+export interface ProvisionState {
+  message: string | null;
+  done: boolean;
+  code?: string;
+}
+
+const PROVISION_FIELDS = ["commercial_name", "legal_name", "ruc", "fiscal_address", "business_type", "subdomain", "plan", "status", "sede_name", "sede_city", "sede_address", "admin_name", "admin_email"] as const;
+
+export async function provisionTenant(_state: ProvisionState, form: FormData): Promise<ProvisionState> {
+  const body = Object.fromEntries(PROVISION_FIELDS.map((field) => [field, String(form.get(field) ?? "").trim()]));
+  const result = await apiFetch<{ code: string }>("/platform/tenants", { method: "POST", body, realm: "platform" });
+
+  if (!result.ok) {
+    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { message: firstError ?? result.error?.message ?? "No pudimos crear la agencia.", done: false };
+  }
+
+  revalidatePath("/plataforma", "layout");
+  return { message: null, done: true, code: result.data?.code };
+}
+
+const TENANT_FIELDS = ["commercial_name", "legal_name", "ruc", "fiscal_address", "business_type", "subdomain"] as const;
+
+async function tenantRequest(path: string, method: "POST" | "PATCH", body: Record<string, unknown>): Promise<ProvisionState> {
+  const result = await apiFetch(path, { method, body, realm: "platform" });
+  if (!result.ok) {
+    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { message: firstError ?? result.error?.message ?? "No pudimos guardar el cambio.", done: false };
+  }
+  revalidatePath("/plataforma", "layout");
+  return { message: null, done: true };
+}
+
+export async function changeTenantPlan(_state: ProvisionState, form: FormData): Promise<ProvisionState> {
+  const tenant = String(form.get("tenant") ?? "");
+  const plan = String(form.get("plan") ?? "").trim();
+  if (!plan) return { message: "Elige el nuevo plan.", done: false };
+  return tenantRequest(`/platform/tenants/${encodeURIComponent(tenant)}/change-plan`, "POST", { plan, reason: String(form.get("reason") ?? "").trim() || undefined });
+}
+
+export async function updateTenant(_state: ProvisionState, form: FormData): Promise<ProvisionState> {
+  const tenant = String(form.get("tenant") ?? "");
+  const body = Object.fromEntries(TENANT_FIELDS.map((field) => [field, String(form.get(field) ?? "").trim()]));
+  return tenantRequest(`/platform/tenants/${encodeURIComponent(tenant)}`, "PATCH", body);
+}

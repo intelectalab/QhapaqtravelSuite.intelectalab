@@ -1,0 +1,89 @@
+"use client";
+
+import { AtSign, KeyRound, MailPlus, Pencil, Phone, Power, PowerOff, User, UserPlus } from "lucide-react";
+import { activateUser, deactivateUser, inviteUser, resendInvitation, resetUserMfa, updateUser, type UserActionState } from "@/app/(backoffice)/admin/usuarios/actions";
+import { RowActions, RowIcon } from "@/components/table/RowActions";
+import { PanelAction } from "@/components/ui/PanelAction";
+import { SelectField } from "@/components/ui/SelectField";
+import { TextArea } from "@/components/ui/TextArea";
+import { TextField } from "@/components/ui/TextField";
+import type { TeamOptions, TeamUser } from "@/lib/users";
+
+const initial: UserActionState = { message: null, done: false };
+
+function PersonFields({ options, user }: { options: TeamOptions; user?: TeamUser }) {
+  return (
+    <>
+      <TextField label="Nombre completo" name="name" required defaultValue={user?.name} icon={<User size={17} />} />
+      {!user && <TextField label="Correo" name="email" type="email" required hint="Le llegará la invitación. Después no se puede cambiar." icon={<AtSign size={17} />} />}
+      <TextField label="Teléfono (opcional)" name="phone" inputMode="tel" defaultValue={user?.phone ?? undefined} icon={<Phone size={17} />} />
+      <SelectField label="Rol" name="role" options={options.roles.map((role) => ({ value: role.code, label: role.name }))} defaultValue={user?.role?.code ?? "sales"} />
+      <SelectField label="Sede" name="sede_id" options={options.sedes.map((sede) => ({ value: sede.id, label: sede.name }))} defaultValue={user?.sede?.id ?? options.sedes[0]?.id} />
+    </>
+  );
+}
+
+export function UserInviteAction({ options }: { options: TeamOptions }) {
+  return (
+    <PanelAction<UserActionState>
+      label="Invitar usuario"
+      icon={<UserPlus size={16} />}
+      variant="primary"
+      formId="user-invite"
+      title="Invitar usuario"
+      description="Le enviamos un correo para que cree su contraseña. Nunca mandamos contraseñas por correo."
+      submitLabel="Enviar invitación"
+      action={inviteUser}
+      initial={initial}
+    >
+      {() => <PersonFields options={options} />}
+    </PanelAction>
+  );
+}
+
+export function UserRowActions({ user, options, isSelf }: { user: TeamUser; options: TeamOptions; isSelf: boolean }) {
+  return (
+    <RowActions>
+      <PanelAction<UserActionState> label="Editar" icon={<Pencil size={15} />} variant="ghost" size="sm" formId={`user-edit-${user.code}`} trigger={(open) => <RowIcon tone="edit" label="Editar" onClick={open} />} title="Editar usuario" description={`${user.name} · ${user.email}`} submitLabel="Guardar cambios" action={updateUser} initial={initial}>
+        {() => (
+          <>
+            <input type="hidden" name="code" value={user.code} />
+            <PersonFields options={options} user={user} />
+            {isSelf && <p className="text-[12.5px] text-fg-3">Tu propio rol solo lo puede cambiar otro administrador.</p>}
+          </>
+        )}
+      </PanelAction>
+      {user.status === "pendiente" && (
+        <PanelAction<UserActionState> label="Reenviar" icon={<MailPlus size={15} />} variant="ghost" size="sm" formId={`user-resend-${user.code}`} trigger={(open) => <RowIcon tone="neutral" label="Reenviar invitación" icon={<MailPlus size={15} />} onClick={open} />} title="Reenviar invitación" description={`Enviaremos un enlace nuevo a ${user.email}. El anterior deja de funcionar.`} submitLabel="Reenviar invitación" action={resendInvitation} initial={initial}>
+          {() => <input type="hidden" name="code" value={user.code} />}
+        </PanelAction>
+      )}
+      {user.mfa.enabled && !isSelf && (
+        <PanelAction<UserActionState> label="Reiniciar 2 pasos" icon={<KeyRound size={15} />} variant="ghost" size="sm" formId={`user-mfa-${user.code}`} trigger={(open) => <RowIcon tone="neutral" label="Reiniciar verificación en dos pasos" icon={<KeyRound size={15} />} onClick={open} />} title="Reiniciar verificación en dos pasos" description={`${user.name} tendrá que volver a configurarla la próxima vez que entre. Sus sesiones abiertas se cierran.`} submitLabel="Reiniciar" action={resetUserMfa} initial={initial}>
+          {() => (
+            <>
+              <input type="hidden" name="code" value={user.code} />
+              <TextArea label="Motivo" name="reason" rows={2} required minLength={3} placeholder="Por ejemplo: cambió de teléfono." />
+            </>
+          )}
+        </PanelAction>
+      )}
+      {user.status === "inactivo" ? (
+        <PanelAction<UserActionState> label="Reactivar" icon={<Power size={15} />} variant="ghost" size="sm" formId={`user-activate-${user.code}`} trigger={(open) => <RowIcon tone="neutral" label="Reactivar" icon={<Power size={15} />} onClick={open} />} title="Reactivar usuario" description={`${user.name} podrá volver a entrar. Cuenta para el límite de usuarios de tu plan.`} submitLabel="Reactivar" action={activateUser} initial={initial}>
+          {() => <input type="hidden" name="code" value={user.code} />}
+        </PanelAction>
+      ) : (
+        !isSelf && (
+          <PanelAction<UserActionState> label="Desactivar" icon={<PowerOff size={15} />} variant="ghost" size="sm" formId={`user-deactivate-${user.code}`} trigger={(open) => <RowIcon tone="delete" label="Desactivar" icon={<PowerOff size={15} />} onClick={open} />} title="Desactivar usuario" description={`${user.name} no podrá entrar y sus sesiones se cierran. Su historial se conserva.`} submitLabel="Desactivar" action={deactivateUser} initial={initial}>
+            {() => (
+              <>
+                <input type="hidden" name="code" value={user.code} />
+                <TextArea label="Motivo" name="reason" rows={2} required minLength={3} placeholder="Por ejemplo: dejó la empresa." />
+              </>
+            )}
+          </PanelAction>
+        )
+      )}
+    </RowActions>
+  );
+}

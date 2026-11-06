@@ -22,6 +22,5 @@ final readonly class FiscalDocument
         public string $totalAmount,
         public array $lines,
         public ?string $referenceDocument = null,
-    ) {
-    }
+    ) {}
 }

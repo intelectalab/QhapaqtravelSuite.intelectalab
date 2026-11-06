@@ -863,6 +863,14 @@ Toda modificación de `fx_rate`, reversión, NC y cierre es "acción crítica" (
 
 ---
 
+### v3.0 — Implementación (06/11/2026)
+Desviaciones temporales de la implementación respecto al kit, detectadas en la auditoría de cumplimiento del 06/11/2026 (`Documentación/Auditoria_de_cumplimiento_2026-11-06.md`). Se corrigen en las fases A (pruebas, idempotencia, permisos), B (flujo canónico según `docs/kit/ejemplos`) y C (módulo por módulo).
+
+- Implementado: cuentas por cobrar, pagos (validar, rechazar, revertir), cuentas por pagar, comisiones, rentabilidad, notas de crédito, tesorería y conciliación; liberación de crédito B2B al aplicar pagos (B2B-BR-12).
+- Faltan: emitir factura y boleta (FIN-BR-39/40/43), liquidación (FIN-BR-36/37), anticipo (FIN-BR-02/03). OSE y pasarela simulados.
+- Copias de hallazgos a corregir: H-01 (extranjero = exportación), H-11 (margen sobre total con IGV en rentabilidad).
+- Montos manejados con float en varios cálculos: migración a decimales exactos en la fase B.
+
 ## 12. Supuestos y puntos a validar con negocio
 
 | ID | Punto | Impacto | Propuesta |

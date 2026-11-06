@@ -22,9 +22,7 @@ final class HomeDashboard
 
     private const MONTHS = 6;
 
-    public function __construct(private readonly TenantContext $context)
-    {
-    }
+    public function __construct(private readonly TenantContext $context) {}
 
     public function build(User $viewer): array
     {

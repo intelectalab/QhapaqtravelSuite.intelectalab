@@ -797,6 +797,12 @@ Acciones marcadas como críticas en la UI (`CRIT`): login, asignar, aprobar, rec
 
 ---
 
+### v3.0 — Implementación (06/11/2026)
+Desviaciones temporales de la implementación respecto al kit, detectadas en la auditoría de cumplimiento del 06/11/2026 (`Documentación/Auditoria_de_cumplimiento_2026-11-06.md`). Se corrigen en las fases A (pruebas, idempotencia, permisos), B (flujo canónico según `docs/kit/ejemplos`) y C (módulo por módulo).
+
+- Personalización por agencia (colores y diseño de tarjeta) guardada en `tenants.settings.branding` y aplicada en todo el back-office. Agregado.
+- Monedas y tipo de cambio sobre `fin_fx_rates` (solo inserción), con USD, EUR y GBP.
+
 ## 12. Supuestos y puntos a validar con negocio
 
 | # | Punto | Propuesta |

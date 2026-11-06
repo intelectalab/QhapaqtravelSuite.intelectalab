@@ -616,6 +616,12 @@ La ficha agrega al JSON-LD `TouristTrip`+`Product` (solo si hay reseñas propias
 ```
 Máximo 5 `review`. Nunca se usan reseñas externas ni la calificación de catálogo para `aggregateRating` (guías de Google para fragmentos de reseñas de terceros). Ver especificación 18.
 
+### v3.0 — Implementación (06/11/2026)
+Desviaciones temporales de la implementación respecto al kit, detectadas en la auditoría de cumplimiento del 06/11/2026 (`Documentación/Auditoria_de_cumplimiento_2026-11-06.md`). Se corrigen en las fases A (pruebas, idempotencia, permisos), B (flujo canónico según `docs/kit/ejemplos`) y C (módulo por módulo).
+
+- Sitio por ruta `/sitio/{agencia}` en desarrollo; en producción, por subdominio. El tenant se resuelve con `public.site` desde la ruta, no aún con `app_resolve_tenant_by_host()`.
+- Faltan: i18n ES/EN y selector de moneda, blog, nosotros, ofertas, paquetes, experiencias, «Mi cuenta» y páginas legales. Pago simulado.
+
 ## 12. Supuestos y puntos a validar con negocio
 
 1. **Porcentajes y plazos del anticipo** (30 % ≥ 30 días; 40 % 15–29 días; saldo −15 días; solo total < 15 días) y penalidad si no se paga el saldo.

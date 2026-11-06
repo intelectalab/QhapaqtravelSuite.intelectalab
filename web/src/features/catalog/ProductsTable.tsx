@@ -1,18 +1,20 @@
 "use client";
 
-import { CircleCheck, CirclePause, Eye, FilePen, Hourglass, MapPin, Star } from "lucide-react";
+import { CircleCheck, CirclePause, FilePen, Hourglass, MapPin, Star } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
+import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { durationLabel, PRODUCT_STATUS, type ProductRow } from "@/lib/catalog";
 import { formatMoney } from "@/lib/format";
+import { ProductDeleteAction } from "./ProductForms";
 
 const href = (product: ProductRow) => `/catalogo/productos/${product.code}`;
 
 const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es")).map((value) => ({ value, label: value }));
 
-const columns: Column<ProductRow>[] = [
+const buildColumns = (can: { edit: boolean; remove: boolean }): Column<ProductRow>[] => [
   {
     id: "product",
     header: "Producto",
@@ -49,9 +51,11 @@ const columns: Column<ProductRow>[] = [
     mobile: "hidden",
     align: "right",
     cell: (product) => (
-      <Link href={href(product)} aria-label={`Ver ${product.name}`} title="Ver ficha" className="ml-auto grid h-8 w-8 place-items-center rounded-[9px] bg-accent/10 text-accent">
-        <Eye size={16} />
-      </Link>
+      <RowActions>
+        <RowIcon tone="view" label="Ver ficha" href={href(product)} />
+        {can.edit && <RowIcon tone="edit" label="Editar" href={`${href(product)}?editar=1`} disabledHint={product.status === "ARCHIVED" ? "Archivado: reactívalo desde la ficha" : undefined} />}
+        {can.remove && (["ACTIVE", "SUSPENDED"].includes(product.status) ? <RowIcon tone="delete" label="Eliminar" disabledHint="Activo o suspendido: primero inactívalo" /> : <ProductDeleteAction product={product} iconOnly />)}
+      </RowActions>
     ),
   },
 ];
@@ -69,7 +73,7 @@ const sorts: SortOption<ProductRow>[] = [
   { id: "destination", label: "Destino", type: "text", value: (product) => product.destination },
 ];
 
-export function ProductsTable({ products }: { products: ProductRow[] }) {
+export function ProductsTable({ products, can }: { products: ProductRow[]; can: { edit: boolean; remove: boolean } }) {
   const filters: FilterConfig<ProductRow>[] = [
     { id: "type", label: "Tipo", options: unique(products.map((product) => product.type)), value: (product) => product.type },
     { id: "category", label: "Categoría", options: unique(products.map((product) => product.category)), value: (product) => product.category },
@@ -81,7 +85,7 @@ export function ProductsTable({ products }: { products: ProductRow[] }) {
     <DataTable
       screen="productos"
       rows={products}
-      columns={columns}
+      columns={buildColumns(can)}
       getKey={(product) => product.code}
       entityLabel="productos"
       searchText={(product) => `${product.name} ${product.code} ${product.destination_path} ${product.category} ${product.type}`}

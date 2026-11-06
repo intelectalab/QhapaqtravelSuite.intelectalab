@@ -7,9 +7,12 @@ namespace App\Domain\Platform\Http\Controllers;
 use App\Domain\Iam\Http\Requests\MfaVerifyRequest;
 use App\Domain\Iam\Models\AccessToken;
 use App\Domain\Platform\Actions\ChangeTenantStatus;
+use App\Domain\Platform\Actions\ManageTenant;
 use App\Domain\Platform\Actions\PlatformSession;
+use App\Domain\Platform\Actions\ProvisionTenant;
 use App\Domain\Platform\Actions\UpdatePlan;
 use App\Domain\Platform\Http\Requests\PlanUpdateRequest;
+use App\Domain\Platform\Http\Requests\TenantProvisionRequest;
 use App\Domain\Platform\Http\Requests\TenantStatusRequest;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Models\Tenant;
@@ -21,9 +24,7 @@ use Illuminate\Http\Request;
 
 final class PlatformController
 {
-    public function __construct(private readonly PlatformSession $session)
-    {
-    }
+    public function __construct(private readonly PlatformSession $session) {}
 
     public function verifyMfa(MfaVerifyRequest $request): JsonResponse
     {
@@ -49,9 +50,48 @@ final class PlatformController
         return response()->json(['data' => $directory->all()]);
     }
 
+    public function provision(TenantProvisionRequest $request, ProvisionTenant $provision): JsonResponse
+    {
+        $tenant = $provision($request->validated(), $this->user($request));
+
+        return response()->json(['data' => ['code' => $tenant->code]], 201);
+    }
+
+    public function validateStep(TenantProvisionRequest $request, ProvisionTenant $provision): JsonResponse
+    {
+        $provision->validate($request->validated());
+
+        return response()->json(['data' => ['valid' => true]]);
+    }
+
+    public function provisionOptions(): JsonResponse
+    {
+        return response()->json(['data' => ['business_types' => TenantProvisionRequest::BUSINESS_TYPES]]);
+    }
+
     public function tenant(string $id, TenantDirectory $directory): JsonResponse
     {
         return response()->json(['data' => $directory->find($id) ?? throw ApiException::notFound('La agencia no existe.')]);
+    }
+
+    public function changePlan(string $id, Request $request, ManageTenant $manage, TenantDirectory $directory): JsonResponse
+    {
+        $data = $request->validate([
+            'plan' => ['required', 'string', 'max:20'],
+            'reason' => ['nullable', 'string', 'max:500'],
+        ], ['plan.required' => 'Elige el nuevo plan.']);
+        $tenant = $directory->locate($id) ?? throw ApiException::notFound('La agencia no existe.');
+        $manage->changePlan($tenant, $data['plan'], $data['reason'] ?? null, $this->user($request));
+
+        return response()->json(['data' => $directory->find($tenant->code)]);
+    }
+
+    public function updateTenant(string $id, TenantProvisionRequest $request, ManageTenant $manage, TenantDirectory $directory): JsonResponse
+    {
+        $tenant = $directory->locate($id) ?? throw ApiException::notFound('La agencia no existe.');
+        $manage->update($tenant, $request->validated(), $this->user($request));
+
+        return response()->json(['data' => $directory->find($tenant->code)]);
     }
 
     public function plans(PlanCatalog $catalog): JsonResponse

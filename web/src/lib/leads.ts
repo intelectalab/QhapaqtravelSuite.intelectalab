@@ -15,6 +15,7 @@ export interface LeadRow {
   score: number;
   status: LeadStatus;
   lock_version: number;
+  codes: { source: string; channel: string; interest: string };
   owner_id: string | null;
   owner: { name: string; color: string | null } | null;
   created_at: string;
@@ -62,3 +63,9 @@ export const BANT_LEVELS = [
   { value: "18", label: "Bastante" },
   { value: "25", label: "Sí, claramente" },
 ];
+
+export interface Advisor {
+  id: string;
+  name: string;
+  color: string | null;
+}

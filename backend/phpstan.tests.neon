@@ -1,0 +1,33 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - tests
+    tmpDir: storage/phpstan-tests
+    ignoreErrors:
+        -
+            identifier: variable.undefined
+            message: '#^Undefined variable: \$this$#'
+        -
+            identifier: method.notFound
+            message: '#^Call to an undefined method (PHPUnit\\Framework\\TestCase|Pest\\PendingCalls\\TestCall\|Pest\\Support\\HigherOrderTapProxy|Pest\\Expectation<[^>]+>)::#'
+        -
+            identifier: property.notFound
+            message: '#^Access to an undefined property PHPUnit\\Framework\\TestCase::\$#'
+        -
+            identifier: property.notFound
+            message: '#^Access to an undefined property App\\Domain\\(Platform|Iam)\\Models\\[A-Za-z]+::\$#'
+        -
+            identifier: class.notFound
+            message: '#App\\Domain\\(Booking\\(BookingEngine|Data|Testing)|Quotes\\StateMachines)#'
+        -
+            identifier: argument.unresolvableType
+            path: tests/Unit/Quotes/QuoteStateMachineTest.php
+        -
+            identifier: argument.type
+            path: tests/Unit/Quotes/QuoteStateMachineTest.php
+        -
+            identifier: method.alreadyNarrowedType
+            path: tests/Unit/ExampleTest.php

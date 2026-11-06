@@ -20,6 +20,9 @@ export interface ProductRow {
 
 export interface ProductDetail extends ProductRow {
   internal_name: string;
+  lock_version: number;
+  ids: { type: string; category: string; subcategory: string | null; destination: string; provider: string | null };
+  raw: { is_b2b: boolean; is_ecommerce: boolean; availability_model: string; markup_pct: number | null };
   sku: string;
   short_description: string | null;
   long_description: string | null;
@@ -51,3 +54,45 @@ export function durationLabel(duration: ProductRow["duration"]): string {
   const unit = duration.value === 1 ? duration.unit.replace(/s$/, "").replace(/día$/, "día") : duration.unit;
   return `${value} ${unit}`;
 }
+
+export interface ProductFormOptions {
+  types: { id: string; name: string }[];
+  categories: { id: string; name: string; subcategories: { id: string; name: string }[] }[];
+  destinations: { id: string; name: string; path: string; level: number }[];
+  providers: { id: string; name: string; type: string }[];
+  units: string[];
+  modalities: string[];
+  availability: string[];
+  can_create: boolean;
+  can_update: boolean;
+  can_activate: boolean;
+}
+
+export interface ChecklistItem {
+  key: string;
+  label: string;
+  ok: boolean;
+  detail: string | null;
+}
+
+export const AVAILABILITY_LABEL: Record<string, string> = {
+  SIN_CONTROL: "Sin control de cupos",
+  CUPOS: "Cupos por día",
+  CAPACIDAD: "Capacidad fija",
+  POR_PROVEEDOR: "Según el proveedor",
+  POR_ACTIVIDAD: "Por actividad",
+  POR_TRANSPORTE: "Por transporte",
+  POR_HABITACION: "Por habitación",
+  POR_SALIDA: "Por salida programada",
+  POR_FECHA: "Por fecha",
+};
+
+export const LIFECYCLE: { action: string; label: string; from: ProductStatus[]; reason: boolean; activate: boolean; primary?: boolean; description: string }[] = [
+  { action: "submit-review", label: "Enviar a revisión", from: ["DRAFT"], reason: false, activate: false, primary: true, description: "Gerencia lo revisa antes de aprobarlo. Mientras tanto se puede seguir completando." },
+  { action: "approve", label: "Aprobar", from: ["REVIEW"], reason: false, activate: true, primary: true, description: "Queda listo para activarse cuando cumpla el checklist." },
+  { action: "return-to-draft", label: "Devolver", from: ["REVIEW"], reason: true, activate: true, description: "Vuelve a borrador para que lo corrijan. Explica qué falta." },
+  { action: "activate", label: "Activar", from: ["APPROVED", "SUSPENDED", "INACTIVE"], reason: false, activate: true, primary: true, description: "Se podrá cotizar y vender. Antes revisamos los 12 requisitos del checklist." },
+  { action: "suspend", label: "Suspender", from: ["ACTIVE"], reason: true, activate: true, description: "Deja de venderse por un tiempo. Ventas recibe el aviso." },
+  { action: "deactivate", label: "Inactivar", from: ["ACTIVE", "SUSPENDED"], reason: true, activate: true, description: "Deja de venderse hasta que alguien lo vuelva a activar." },
+  { action: "archive", label: "Archivar", from: ["DRAFT", "REVIEW", "APPROVED", "ACTIVE", "SUSPENDED", "INACTIVE"], reason: true, activate: true, description: "Sale del catálogo de forma definitiva. Su historial se conserva." },
+];

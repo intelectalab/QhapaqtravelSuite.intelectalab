@@ -1,12 +1,17 @@
+import { redirect } from "next/navigation";
 import { AppShell } from "@/components/shell/AppShell";
+import { BrandStyle } from "@/components/shell/BrandStyle";
 import { SessionProvider } from "@/components/shell/SessionProvider";
 import { WorkspaceProvider, type WorkspaceInfo } from "@/components/shell/Workspace";
+import { TileVariantProvider } from "@/components/ui/TileVariant";
 import { roleLabel } from "@/lib/me";
 import { getAccess, getNavCounts } from "@/lib/server/dashboard";
 import { currentUser } from "@/lib/server/me";
 
 export default async function BackofficeLayout({ children }: LayoutProps<"/">) {
   const me = await currentUser();
+  if (me.home === "/portal" || me.home === "/agencia") redirect(me.home);
+  if (me.home === "/proveedor") redirect(me.home);
   const [counts, access] = await Promise.all([getNavCounts(), getAccess()]);
   const workspace: WorkspaceInfo = {
     navigation: "agency",
@@ -20,9 +25,12 @@ export default async function BackofficeLayout({ children }: LayoutProps<"/">) {
 
   return (
     <SessionProvider me={me}>
-      <WorkspaceProvider value={workspace}>
-        <AppShell>{children}</AppShell>
-      </WorkspaceProvider>
+      <BrandStyle branding={me.tenant.branding} />
+      <TileVariantProvider variant={me.tenant.branding?.tile_variant}>
+        <WorkspaceProvider value={workspace}>
+          <AppShell>{children}</AppShell>
+        </WorkspaceProvider>
+      </TileVariantProvider>
     </SessionProvider>
   );
 }

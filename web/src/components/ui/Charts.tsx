@@ -86,7 +86,7 @@ export function BarChart({ data, height = 118 }: { data: BarDatum[]; height?: nu
               )}
               <div
                 className={cn(
-                  "w-full origin-bottom rounded-t-[10px] rounded-b-[4px] transition-[transform,opacity,filter] duration-200 ease-out motion-safe:animate-[grow-up_700ms_cubic-bezier(0.2,0.8,0.2,1)_both]",
+                  "w-full origin-bottom rounded-t-[10px] rounded-b-[4px] transition-[transform,opacity,filter] duration-200 ease-out motion-safe:animate-[grow-up_700ms_cubic-bezier(0.2,0.8,0.2,1)_backwards]",
                   item.highlight ? "bg-t2" : "bg-[color-mix(in_srgb,var(--t1)_85%,transparent)]",
                   isActive && "scale-x-[1.06] brightness-110",
                   dimmed && "opacity-45",
@@ -95,7 +95,7 @@ export function BarChart({ data, height = 118 }: { data: BarDatum[]; height?: nu
               />
             </div>
             <span className={cn("font-mono text-[11.5px] text-fg-3 transition-colors", isActive && "text-fg")}>
-              {item.label.toUpperCase()} <b className="font-semibold text-fg">{item.caption}</b>
+              {item.label.charAt(0).toUpperCase() + item.label.slice(1)} <b className="font-semibold text-fg">{item.caption}</b>
             </span>
           </div>
         );

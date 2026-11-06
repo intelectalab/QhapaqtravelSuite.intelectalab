@@ -26,7 +26,7 @@ export default async function ClientesPage() {
           </>
         }
       />
-      <ClientsTable clients={clients} />
+      <ClientsTable clients={clients} canManage={options.canManage} />
     </>
   );
 }

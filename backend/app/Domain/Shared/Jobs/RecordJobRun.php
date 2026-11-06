@@ -15,8 +15,7 @@ final class RecordJobRun
     public function __construct(
         private readonly string $trigger = 'schedule',
         private readonly ?string $tenantId = null,
-    ) {
-    }
+    ) {}
 
     public function handle(object $job, Closure $next): mixed
     {

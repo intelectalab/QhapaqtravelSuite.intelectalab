@@ -21,8 +21,7 @@ final class VerifyMfa
         private readonly IssueAccessToken $issueToken,
         private readonly RecordLogin $recordLogin,
         private readonly AuditLogger $audit,
-    ) {
-    }
+    ) {}
 
     public function __invoke(User $user, AccessToken $token, string $code): array
     {

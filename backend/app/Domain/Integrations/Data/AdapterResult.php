@@ -13,8 +13,7 @@ final readonly class AdapterResult
         public ?string $errorClass = null,
         public ?string $message = null,
         public array $payload = [],
-    ) {
-    }
+    ) {}
 
     public static function success(string $status, ?string $externalId = null, array $payload = []): self
     {

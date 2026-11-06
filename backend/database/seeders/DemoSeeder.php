@@ -6,28 +6,21 @@ namespace Database\Seeders;
 
 use App\Domain\Iam\Models\MfaFactor;
 use App\Domain\Iam\Models\Permission;
-use App\Domain\Iam\Models\Role;
 use App\Domain\Iam\Models\Sede;
 use App\Domain\Iam\Models\User;
 use App\Domain\Platform\Models\Plan;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Platform\Support\TenantBootstrap;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Database\Support\KitSeeds;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
 
 final class DemoSeeder extends Seeder
 {
-    private const EXTRA_PERMISSIONS = [['module' => 'CRM', 'name' => 'crm.records.reassign']];
-
-    private const ROLE_EXTRA_PERMISSIONS = ['tenant_admin' => ['crm.records.reassign'], 'manager' => ['crm.records.reassign']];
-
-    private const PLATFORM_ONLY = ['admin.tenant.manage'];
-
     private const DEMO_TENANTS = [
         'TNT-0001' => ['business_type' => 'Operador turístico', 'address' => 'Av. José Larco 1150, Of. 602, Miraflores, Lima', 'city' => 'Lima', 'initials' => 'AH', 'short' => 'Andes Horizonte'],
         'TNT-0002' => ['business_type' => 'Operador turístico', 'address' => 'Jr. Loreto 255, Tambopata, Madre de Dios', 'city' => 'Puerto Maldonado', 'initials' => 'SV', 'short' => 'Selva Viva'],
@@ -53,6 +46,10 @@ final class DemoSeeder extends Seeder
             if ($tenant->code === 'TNT-0001') {
                 $this->withinTenant($tenant, fn () => (new CatalogDemoSeeder($tenant))->run());
                 $this->withinTenant($tenant, fn () => (new CrmDemoSeeder($tenant))->run());
+
+                foreach ($this->moduleSeeders() as $class) {
+                    $this->withinTenant($tenant, fn () => (new $class($tenant))->run());
+                }
             }
         }
 
@@ -76,14 +73,14 @@ final class DemoSeeder extends Seeder
 
     private function seedPlans(): array
     {
-        return (new PlanCatalogSeeder())->run();
+        return (new PlanCatalogSeeder)->run();
     }
 
     private function seedPermissions(): array
     {
         $rows = collect(KitSeeds::read('permissionGroups'))
             ->flatMap(fn (array $group) => array_map(fn (string $name) => ['module' => $group['module'], 'name' => $name], $group['perms']))
-            ->concat(self::EXTRA_PERMISSIONS);
+            ->concat(TenantBootstrap::extraPermissionRows());
 
         return $rows->mapWithKeys(fn (array $row) => [
             $row['name'] => Permission::query()->firstOrCreate(['name' => $row['name'], 'guard_name' => 'api'], ['module' => $row['module']]),
@@ -122,6 +119,15 @@ final class DemoSeeder extends Seeder
         return (int) round((float) $amount * 1024 ** $power);
     }
 
+    private function moduleSeeders(): array
+    {
+        return collect(glob(database_path('seeders/Modules/*Seeder.php')) ?: [])
+            ->map(fn (string $file): string => 'Database\\Seeders\\Modules\\'.basename($file, '.php'))
+            ->sortBy(fn (string $class): string => sprintf('%03d-%s', defined("{$class}::ORDER") ? constant("{$class}::ORDER") : 50, $class))
+            ->values()
+            ->all();
+    }
+
     private function withinTenant(Tenant $tenant, callable $callback): void
     {
         app(TenantContext::class)->set($tenant);
@@ -132,7 +138,7 @@ final class DemoSeeder extends Seeder
     private function seedTenantData(Tenant $tenant, array $tenantSeed, array $permissions): void
     {
         $sedes = $this->seedSedes($tenant);
-        (new CrmCatalogSeeder())->run($tenant);
+        (new CrmCatalogSeeder)->run($tenant);
         $roles = $this->seedRoles($tenant, $permissions);
         $users = $tenant->code === 'TNT-0001'
             ? array_filter(KitSeeds::read('users'), fn (array $user) => $user['role'] !== 'super_admin')
@@ -168,28 +174,7 @@ final class DemoSeeder extends Seeder
 
     private function seedRoles(Tenant $tenant, array $permissions): array
     {
-        $rolePermissions = KitSeeds::read('rolePerms');
-        $roles = [];
-
-        foreach (KitSeeds::read('roles') as $seed) {
-            if ($seed['scope'] === 'plataforma') {
-                continue;
-            }
-            $role = Role::query()->updateOrCreate(
-                ['name' => $seed['id'], 'guard_name' => 'api', 'tenant_id' => $tenant->getKey()],
-                [
-                    'display_name' => $seed['name'],
-                    'description' => $seed['desc'] ?? null,
-                    'scope' => $seed['scope'],
-                    'experience' => config("access.roles.{$seed['id']}.experience", 'backoffice'),
-                ],
-            );
-            $names = array_diff([...($rolePermissions[$seed['id']] ?? []), ...(self::ROLE_EXTRA_PERMISSIONS[$seed['id']] ?? [])], self::PLATFORM_ONLY);
-            $role->syncPermissions(array_values(Arr::only($permissions, $names)));
-            $roles[$seed['id']] = $role;
-        }
-
-        return $roles;
+        return app(TenantBootstrap::class)->roles($tenant, $permissions);
     }
 
     private function seedUser(array $seed, array $sedes, array $roles): void

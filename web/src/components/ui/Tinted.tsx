@@ -2,6 +2,8 @@ import { Check, type LucideIcon } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { toneStyle, type Tone } from "@/lib/tone";
+import { TILE_VARIANTS, type TileVariant } from "@/lib/tileVariants";
+import { TileVariantSwitch } from "./TileVariant";
 
 export const SOFT_TINT = "bg-[color-mix(in_srgb,var(--tint)_9%,var(--surface))]";
 
@@ -25,7 +27,7 @@ export function HeroBand({ children, className }: { children: ReactNode; classNa
 
 export function HeroChip({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[12.5px] font-medium">
+    <span className="inline-flex cursor-default items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[12.5px] font-medium transition-[background-color,transform] duration-200 hover:-translate-y-0.5 hover:bg-white/25">
       {icon}
       {children}
     </span>
@@ -33,7 +35,7 @@ export function HeroChip({ icon, children }: { icon?: ReactNode; children: React
 }
 
 export function HeroPanel({ children, className, solid = false }: { children: ReactNode; className?: string; solid?: boolean }) {
-  return <div className={cn("rounded-[16px] p-4", solid ? "bg-surface text-fg shadow-[0_12px_30px_-18px_rgb(14_17_32/0.45)]" : "bg-white/[0.1] ring-1 ring-white/15", className)}>{children}</div>;
+  return <div className={cn("lift rounded-[16px] p-4", solid ? "bg-surface text-fg shadow-[0_12px_30px_-18px_rgb(14_17_32/0.45)]" : "bg-white/[0.1] ring-1 ring-white/15", className)}>{children}</div>;
 }
 
 export interface JourneyStep {
@@ -43,18 +45,35 @@ export interface JourneyStep {
 }
 
 export function Journey({ steps, formatAt }: { steps: JourneyStep[]; formatAt: (iso: string) => string }) {
+  const current = steps.findIndex((step) => !step.done);
+  const delay = (index: number, base = 0) => ({ animationDelay: `${base + index * 240}ms` });
+
   return (
     <ol className="grid" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
       {steps.map((step, index) => {
         const next = steps[index + 1];
+        const isCurrent = index === current;
         return (
-          <li key={step.label} className="relative flex flex-col items-center gap-1.5 text-center">
-            {next && <span aria-hidden className={cn("absolute left-1/2 top-[15px] h-[3px] w-full rounded-full", next.done ? "bg-[var(--tint)]" : "bg-line")} />}
-            <span className={cn("relative grid h-8 w-8 place-items-center rounded-full ring-4 ring-surface", step.done ? "bg-[var(--tint)] text-white" : "bg-surface-2 text-fg-3")}>
-              {step.done ? <Check size={15} strokeWidth={3} /> : <span className="h-2 w-2 rounded-full bg-current" />}
+          <li key={step.label} className="group/step relative flex cursor-default flex-col items-center gap-1.5 text-center">
+            {next && (
+              <span aria-hidden className="absolute left-1/2 top-[15px] h-[3px] w-full overflow-hidden rounded-full bg-line">
+                {next.done && <span className="block h-full w-full origin-left rounded-full bg-[var(--tint)] motion-safe:animate-[fill-x_520ms_cubic-bezier(0.4,0,0.2,1)_backwards]" style={delay(index, 180)} />}
+              </span>
+            )}
+            <span className="relative grid h-8 w-8 place-items-center">
+              {isCurrent && <span aria-hidden className="absolute inset-0 rounded-full bg-[var(--tint)] opacity-40 motion-safe:animate-ping" />}
+              <span
+                className={cn(
+                  "relative grid h-8 w-8 place-items-center rounded-full ring-4 ring-surface transition-transform duration-300 ease-out group-hover/step:-translate-y-0.5 group-hover/step:scale-115",
+                  step.done ? "bg-[var(--tint)] text-white motion-safe:animate-[pop-in_420ms_cubic-bezier(0.34,1.56,0.64,1)_backwards]" : isCurrent ? "bg-[color-mix(in_srgb,var(--tint)_16%,var(--surface))] text-[var(--tint)]" : "bg-surface-2 text-fg-3",
+                )}
+                style={step.done ? delay(index) : undefined}
+              >
+                {step.done ? <Check size={15} strokeWidth={3} /> : <span className={cn("h-2 w-2 rounded-full bg-current", isCurrent && "motion-safe:animate-pulse")} />}
+              </span>
             </span>
-            <span className={cn("text-[12.5px] font-semibold", step.done ? "text-fg" : "text-fg-3")}>{step.label}</span>
-            <span className="text-[11.5px] text-fg-2">{step.done && step.at ? formatAt(step.at) : step.done ? "Hecho" : "Pendiente"}</span>
+            <span className={cn("text-[12.5px] font-semibold transition-colors duration-200", step.done ? "text-fg" : isCurrent ? "text-[var(--tint)]" : "text-fg-3 group-hover/step:text-fg-2")}>{step.label}</span>
+            <span className="text-[11.5px] text-fg-2">{step.done && step.at ? formatAt(step.at) : step.done ? "Hecho" : isCurrent ? "Siguiente" : "Pendiente"}</span>
           </li>
         );
       })}
@@ -98,9 +117,14 @@ interface TintTileProps {
   variant?: TileVariant;
 }
 
-export type TileVariant = "stacked" | "side" | "inline" | "watermark" | "stripe" | "bento-split" | "bento" | "bento-stack";
+export type { TileVariant };
 
-export function TintTile({ icon: Icon, label, value, note, tone, title, variant = "bento" }: TintTileProps) {
+export function TintTile(props: TintTileProps) {
+  if (props.variant) return renderTile(props.variant, props);
+  return <TileVariantSwitch options={Object.fromEntries(TILE_VARIANTS.map((variant) => [variant, renderTile(variant, props)]))} />;
+}
+
+function renderTile(variant: TileVariant, { icon: Icon, label, value, note, tone, title }: TintTileProps) {
   const style: CSSProperties | undefined = tone ? toneStyle(tone) : undefined;
   const text = (
     <>
@@ -169,7 +193,7 @@ export function TintTile({ icon: Icon, label, value, note, tone, title, variant 
           <Icon size={18} className="relative transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-115" />
         </span>
         <p className="flex items-center rounded-[11px] bg-[color-mix(in_srgb,var(--tint)_14%,var(--surface))] px-3 text-[12px] font-semibold text-[var(--tint)] transition-colors duration-300 group-hover:bg-[color-mix(in_srgb,var(--tint)_20%,var(--surface))]">{label}</p>
-        <div className="col-span-2 flex flex-wrap items-end justify-between gap-x-2 gap-y-1.5 rounded-[12px] bg-surface px-3.5 py-3">
+        <div className="col-span-2 flex min-h-[64px] flex-col items-start justify-center gap-1.5 rounded-[12px] bg-surface px-3.5 py-3">
           <div className="min-w-0 text-[19px] font-bold leading-tight tracking-tight transition-transform duration-300 group-hover:translate-x-0.5">{value}</div>
           {note && <span className="rounded-full bg-[color-mix(in_srgb,var(--tint)_12%,transparent)] px-2.5 py-1 text-[11.5px] font-medium text-[var(--tint)] transition-[transform,background-color] duration-300 group-hover:-translate-y-0.5 group-hover:bg-[color-mix(in_srgb,var(--tint)_20%,transparent)]">{note}</span>}
         </div>

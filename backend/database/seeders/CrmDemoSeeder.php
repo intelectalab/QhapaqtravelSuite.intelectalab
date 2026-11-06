@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Quotes\Support\QuotePricing;
 use Database\Support\KitSeeds;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +39,7 @@ final class CrmDemoSeeder
 
     public function __construct(private readonly Tenant $tenant)
     {
-        $this->shift = (int) Carbon::parse(self::KIT_TODAY)->diffInDays(Carbon::today(), false);
+        $this->shift = (int) Carbon::parse(self::KIT_TODAY)->diffInDays(Carbon::parse(Carbon::today('America/Lima')->toDateString()), false);
         $this->fx = (float) (KitSeeds::read('tenant')['fx'] ?? 3.75);
     }
 
@@ -85,7 +86,10 @@ final class CrmDemoSeeder
 
     private function seedFxRate(): void
     {
-        DB::table('fin_fx_rates')->where('tenant_id', $this->tenant->getKey())->delete();
+        if (DB::table('fin_fx_rates')->where('tenant_id', $this->tenant->getKey())->where('currency_code', 'USD')->exists()) {
+            return;
+        }
+
         DB::table('fin_fx_rates')->insert([
             'id' => (string) Str::uuid7(),
             'tenant_id' => $this->tenant->getKey(),
@@ -203,13 +207,9 @@ final class CrmDemoSeeder
             $this->reservations[$seed['id']] = ['id' => $id, 'quote' => $seed['quoteId'] ?? null];
             $this->seedServices($id, $seed);
 
-            DB::table('booking_passengers')->where('reservation_id', $id)->delete();
             foreach ($seed['passengers'] ?? [] as $index => $passenger) {
                 [$type, $number] = $this->document($passenger['doc'] ?? '');
-                DB::table('booking_passengers')->insert([
-                    'tenant_id' => $this->tenant->getKey(),
-                    'reservation_id' => $id,
-                    'seq' => $index + 1,
+                $this->insert('booking_passengers', ['reservation_id' => $id, 'seq' => $index + 1], [
                     'full_name' => $passenger['name'],
                     'doc_type' => $number === '' ? null : ($type === 'Passport' ? 'Passport' : ($type === 'Pasaporte' ? 'Pasaporte' : ($type === 'CE' ? 'CE' : 'DNI'))),
                     'doc_number' => $number ?: null,
@@ -254,15 +254,16 @@ final class CrmDemoSeeder
 
     private function seedServices(string $reservationId, array $seed): void
     {
-        DB::table('booking_reservation_services')->where('reservation_id', $reservationId)->delete();
+        $providers = DB::table('catalog_providers')->where('tenant_id', $this->tenant->getKey())->pluck('id', 'ref')->all();
 
         foreach ($seed['services'] ?? [] as $service) {
             $status = $service['status'];
             $code = ($service['confirmationCode'] ?? '') ?: null;
-            DB::table('booking_reservation_services')->insert([
-                'tenant_id' => $this->tenant->getKey(),
+            $kind = $this->serviceKind($service);
+            $this->insert('booking_reservation_services', ['code' => $service['id']], [
                 'reservation_id' => $reservationId,
-                'code' => $service['id'],
+                'provider_id' => $providers[$service['providerId'] ?? ''] ?? null,
+                'requires_assignment' => in_array($kind, ['tour', 'traslado'], true),
                 'name' => Str::limit($service['name'], 195),
                 'service_date' => $this->day($service['date']),
                 'service_time' => preg_match('/^\d{1,2}:\d{2}$/', (string) ($service['time'] ?? '')) ? $service['time'] : null,
@@ -272,7 +273,7 @@ final class CrmDemoSeeder
                 'fx_rate' => $seed['currency'] === 'USD' ? $this->fx : 1,
                 'cost_amount' => $service['cost'] ?? 0,
                 'price_amount' => $service['price'] ?? 0,
-                'service_kind' => $this->serviceKind($service),
+                'service_kind' => $kind,
                 'confirmation_code' => $code,
             ]);
         }
@@ -323,6 +324,68 @@ final class CrmDemoSeeder
             if ($reservation) {
                 DB::table('booking_reservations')->where('id', $reservation)->update(['quote_id' => $quoteId]);
             }
+
+            $this->seedQuoteVersions($quoteId, $seed);
+        }
+    }
+
+    private function seedQuoteVersions(string $quoteId, array $seed): void
+    {
+        $products = DB::table('catalog_products')->where('tenant_id', $this->tenant->getKey())->get(['id', 'ref', 'name'])->keyBy('ref');
+        $currentId = null;
+
+        foreach ($seed['versions'] ?? [] as $version) {
+            $items = collect($version['items'])->filter(fn (array $item) => isset($products[$item['productId']]))->values()->map(fn (array $item) => [
+                'product_id' => $products[$item['productId']]->id,
+                'product_name' => $products[$item['productId']]->name,
+                'service_date' => $this->day($item['date']),
+                'qty' => (int) $item['qty'],
+                'pax' => (int) $item['pax'],
+                'unit_cost' => (float) $item['unitCost'],
+                'unit_price' => (float) $item['unitPrice'],
+                'segment' => $item['segment'] ?? 'Adulto',
+            ]);
+            $totals = QuotePricing::totals($items->all(), (float) ($version['discountPct'] ?? 0), (float) ($version['taxPct'] ?? 18));
+            $versionId = $this->insert('quote_versions', ['quote_id' => $quoteId, 'version_no' => $version['v']], [
+                'status' => $version['status'],
+                'issued_on' => $this->day($version['date']),
+                'author_id' => $this->user($version['user']),
+                'discount_pct' => $version['discountPct'] ?? 0,
+                'tax_pct' => $version['taxPct'] ?? 18,
+                'markup_pct' => $version['markupPct'] ?? 0,
+                'notes' => isset($version['notes']) ? $this->text($version['notes']) : null,
+                'snapshot_label' => $version['snapshot'] ?? 'Catálogo vigente',
+                'catalog_snapshot' => json_encode($items->map(fn (array $item) => ['product_id' => $item['product_id'], 'name' => $item['product_name']])->all(), JSON_UNESCAPED_UNICODE),
+                'policies_snapshot' => '{}',
+                'fx_rate' => $seed['currency'] === 'USD' ? $this->fx : 1,
+                'currency' => $seed['currency'],
+                ...$totals,
+            ]);
+            DB::table('quote_items')->where('quote_version_id', $versionId)->delete();
+            foreach ($items as $index => $item) {
+                DB::table('quote_items')->insert([
+                    'id' => (string) Str::uuid7(),
+                    'tenant_id' => $this->tenant->getKey(),
+                    'quote_version_id' => $versionId,
+                    'line_no' => $index + 1,
+                    'product_id' => $item['product_id'],
+                    'product_version' => '1.0',
+                    'segment' => $item['segment'],
+                    'service_date' => $item['service_date'],
+                    'qty' => $item['qty'],
+                    'pax' => $item['pax'],
+                    'unit_cost' => $item['unit_cost'],
+                    'unit_price' => $item['unit_price'],
+                    'price_source' => 'manual',
+                ]);
+            }
+            if ((int) $version['v'] === (int) ($seed['currentVersion'] ?? 1)) {
+                $currentId = $versionId;
+            }
+        }
+
+        if ($currentId) {
+            DB::table('quote_quotes')->where('id', $quoteId)->update(['current_version_id' => $currentId]);
         }
     }
 

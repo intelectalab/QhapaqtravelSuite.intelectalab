@@ -7,8 +7,11 @@ import { Card } from "@/components/ui/Card";
 import { HeroBand, HeroChip, HeroPanel, SOFT_TINT, TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney, shortName } from "@/lib/format";
-import { PAX_TYPE, SERVICE_KIND } from "@/lib/reservations";
-import { getReservation } from "@/lib/server/reservations";
+import { PendingChanges, ReservationModifyAction, ReservationRescheduleAction } from "@/features/reservations/ReservationChangeActions";
+import { PassengerAddAction, PassengerRowActions, ReservationCancelAction, ReservationEditAction, ReservationRejectRequestAction, ReservationRequestCancelAction } from "@/features/reservations/ReservationActions";
+import { CLOSED_RESERVATION, PAX_TYPE, SERVICE_KIND } from "@/lib/reservations";
+import { getAdvisors } from "@/lib/server/leads";
+import { getChangeOptions, getReservation, getReservationCancellation } from "@/lib/server/reservations";
 import { statusTone } from "@/lib/tone";
 
 export async function generateMetadata({ params }: PageProps<"/reservas/[code]">): Promise<Metadata> {
@@ -18,10 +21,17 @@ export async function generateMetadata({ params }: PageProps<"/reservas/[code]">
 
 const dayLabel = (iso: string) => formatDate(iso, "long");
 
-export default async function ReservaPage({ params }: PageProps<"/reservas/[code]">) {
+export default async function ReservaPage({ params, searchParams }: PageProps<"/reservas/[code]">) {
   const { code } = await params;
+  const { editar, cancelar } = await searchParams;
   const reservation = await getReservation(code);
-  const charged = reservation.receivables.filter((item) => item.status !== "cancelada");
+  const closed = CLOSED_RESERVATION.includes(reservation.status);
+  const canCancel = !closed && (reservation.can.cancel || reservation.can.request_cancel);
+  const [preview, advisors, changeOptions] = await Promise.all([canCancel ? getReservationCancellation(code) : null, !closed && reservation.can.modify && reservation.can.reassign ? getAdvisors() : [], !closed && reservation.can.modify ? getChangeOptions(code) : null]);
+  const editable = !closed && reservation.can.modify;
+  const receivables = reservation.receivables;
+  const operationsView = reservation.view?.mode === "operations";
+  const charged = (receivables ?? []).filter((item) => item.status !== "cancelada");
   const totalCharged = charged.reduce((sum, item) => sum + Number(item.amount), 0);
   const totalPaid = charged.reduce((sum, item) => sum + Number(item.paid_amount), 0);
   const paidPct = totalCharged > 0 ? Math.round((totalPaid / totalCharged) * 100) : 0;
@@ -47,14 +57,34 @@ export default async function ReservaPage({ params }: PageProps<"/reservas/[code
           </span>
         }
         subtitle={reservation.code}
+        actions={
+          closed ? undefined : (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {reservation.can.modify && <ReservationEditAction reservation={reservation} advisors={advisors} defaultOpen={editar === "1"} />}
+              {changeOptions && <ReservationModifyAction code={reservation.code} currency={reservation.currency} options={changeOptions} />}
+              {changeOptions && <ReservationRescheduleAction code={reservation.code} />}
+              {preview && reservation.can.cancel && <ReservationCancelAction reservation={reservation} preview={preview} defaultOpen={cancelar === "1"} />}
+              {preview && reservation.can.request_cancel && !reservation.cancel_request && <ReservationRequestCancelAction reservation={reservation} preview={preview} defaultOpen={cancelar === "1"} />}
+            </div>
+          )
+        }
       />
 
       <HeroBand>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
           <div>
-            <p className="text-[13px] font-medium text-white/70">Total del viaje</p>
-            <p className="mt-1 text-[38px] font-bold leading-none tracking-[-0.03em]">{formatMoney(reservation.total, reservation.currency)}</p>
-            {reservation.currency !== "PEN" && <p className="mt-2 text-[13.5px] text-white/75">{formatMoney(reservation.total_pen)} al cambio de la reserva</p>}
+            {reservation.total !== undefined ? (
+              <>
+                <p className="text-[13px] font-medium text-white/70">Total del viaje</p>
+                <p className="mt-1 text-[38px] font-bold leading-none tracking-[-0.03em]">{formatMoney(reservation.total, reservation.currency)}</p>
+                {reservation.currency !== "PEN" && reservation.total_pen !== undefined && <p className="mt-2 text-[13.5px] text-white/75">{formatMoney(reservation.total_pen)} al cambio de la reserva</p>}
+              </>
+            ) : (
+              <>
+                <p className="text-[13px] font-medium text-white/70">Vista de Operaciones</p>
+                <p className="mt-1 max-w-sm text-[15px] leading-snug text-white/85">Servicios, pasajeros y costo de proveedores. Los importes de venta y los cobros los lleva Finanzas.</p>
+              </>
+            )}
             <div className="mt-4 flex flex-wrap gap-2">
               <HeroChip icon={<CalendarDays size={14} />}>
                 {formatDate(reservation.travel_from).replace(/ \d{4}$/, "")} al {formatDate(reservation.travel_to)}
@@ -63,41 +93,55 @@ export default async function ReservaPage({ params }: PageProps<"/reservas/[code
               <HeroChip icon={<MapPin size={14} />}>{reservation.channel}</HeroChip>
             </div>
           </div>
-          <HeroPanel solid>
-            <div className="mb-2.5 flex items-center justify-between">
-              <p className="text-[13.5px] font-semibold">Cobros</p>
-              <span className={cn("text-[13px] font-semibold", overdue ? "text-bad" : totalPaid >= totalCharged && totalCharged > 0 ? "text-ok" : "text-fg-2")}>
-                {totalCharged === 0 ? "Sin cobros programados" : totalPaid >= totalCharged ? "Pagado" : overdue ? "Tiene cuotas vencidas" : "Al día"}
-              </span>
-            </div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-surface-2">
-              <span className={cn("block h-full rounded-full", overdue ? "bg-bad" : "bg-ok")} style={{ width: `${paidPct}%` }} />
-            </div>
-            <div className="mt-2.5 grid grid-cols-2 text-[13px]">
-              <span>
-                <span className="block text-[12px] text-fg-3">Pagado</span>
-                <b className="font-semibold">{formatMoney(totalPaid, reservation.currency)}</b>
-              </span>
-              <span className="text-right">
-                <span className="block text-[12px] text-fg-3">Falta cobrar</span>
-                <b className={cn("font-semibold", overdue && "text-bad")}>{formatMoney(Math.max(0, totalCharged - totalPaid), reservation.currency)}</b>
-              </span>
-            </div>
-          </HeroPanel>
+          {receivables && (
+            <HeroPanel solid>
+              <div className="mb-2.5 flex items-center justify-between">
+                <p className="text-[13.5px] font-semibold">Cobros</p>
+                <span className={cn("text-[13px] font-semibold", overdue ? "text-bad" : totalPaid >= totalCharged && totalCharged > 0 ? "text-ok" : "text-fg-2")}>
+                  {totalCharged === 0 ? "Sin cobros programados" : totalPaid >= totalCharged ? "Pagado" : overdue ? "Tiene cuotas vencidas" : "Al día"}
+                </span>
+              </div>
+              <div className="h-2.5 overflow-hidden rounded-full bg-surface-2">
+                <span className={cn("block h-full rounded-full", overdue ? "bg-bad" : "bg-ok")} style={{ width: `${paidPct}%` }} />
+              </div>
+              <div className="mt-2.5 grid grid-cols-2 text-[13px]">
+                <span>
+                  <span className="block text-[12px] text-fg-3">Pagado</span>
+                  <b className="font-semibold">{formatMoney(totalPaid, reservation.currency)}</b>
+                </span>
+                <span className="text-right">
+                  <span className="block text-[12px] text-fg-3">Falta cobrar</span>
+                  <b className={cn("font-semibold", overdue && "text-bad")}>{formatMoney(Math.max(0, totalCharged - totalPaid), reservation.currency)}</b>
+                </span>
+              </div>
+            </HeroPanel>
+          )}
         </div>
       </HeroBand>
 
       {reservation.status === "cancelada" && reservation.cancel_reason && (
         <p className="mb-5 rounded-card border border-line bg-surface-2 px-4 py-3 text-[13.5px] text-fg-2">
           <b className="text-fg">Cancelada.</b> {reservation.cancel_reason}
+          {reservation.cancellation?.penalty_amount !== undefined && ` · Penalidad ${formatMoney(reservation.cancellation.penalty_amount, reservation.currency)}${Number(reservation.cancellation.refund_amount ?? 0) > 0 ? ` · Reembolso ${formatMoney(reservation.cancellation.refund_amount ?? 0, reservation.currency)}` : ""}`}
         </p>
       )}
+
+      {!closed && reservation.cancel_request && (
+        <div className="mb-5 flex animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] flex-wrap items-center gap-3 rounded-card border border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-4 py-3 text-[13.5px]">
+          <span className="min-w-0 flex-1">
+            <b className="font-semibold">Anulación solicitada</b> el {formatDate(reservation.cancel_request.requested_at)} · {reservation.cancel_request.reason}
+          </span>
+          {reservation.can.cancel && <ReservationRejectRequestAction code={reservation.code} />}
+        </div>
+      )}
+
+      {!closed && <PendingChanges code={reservation.code} currency={reservation.currency} changes={reservation.changes} canApprove={reservation.can.approve_changes} />}
 
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <TintTile icon={UserRound} tone="t1" label="Cliente" value={<Link href={`/crm/clientes/${reservation.client.code}`} className="text-[16px] hover:underline">{reservation.client.name}</Link>} />
         <TintTile icon={Users} tone="t4" label="Responsable" value={<span className="text-[16px]">{shortName(reservation.owner.name)}</span>} note={reservation.sede ?? undefined} />
         <TintTile icon={FileText} tone="violet" label="Cotización" value={<span className="text-[16px]">{reservation.quote ? <Link href={`/cotizaciones/${reservation.quote.code}`} className="hover:underline">{reservation.quote.code}</Link> : "Venta directa"}</span>} />
-        <TintTile icon={Wallet} tone="sun" label="Margen" value={reservation.margin_pct === null ? <span className="text-[14px] text-fg-3">Solo Finanzas</span> : `${reservation.margin_pct} %`} />
+        <TintTile icon={Wallet} tone="sun" label="Margen" value={reservation.margin_pct === undefined ? <span className="text-[14px] text-fg-3">No visible para tu rol</span> : reservation.margin_pct === null ? <span className="text-[14px] text-fg-3">Sin servicios activos</span> : `${reservation.margin_pct} %`} />
       </section>
 
       <div className="mb-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
@@ -132,6 +176,7 @@ export default async function ReservaPage({ params }: PageProps<"/reservas/[code
                                 {service.confirmation ? ` · ${service.confirmation}` : ""}
                               </span>
                             </span>
+                            {operationsView && service.cost !== undefined && <span className="flex-none font-mono text-[12.5px] text-fg-2" title="Costo del proveedor">{formatMoney(service.cost, service.currency)}</span>}
                             <StatusBadge status={service.status} />
                           </li>
                         );
@@ -145,10 +190,10 @@ export default async function ReservaPage({ params }: PageProps<"/reservas/[code
 
         <div className="flex flex-col gap-5">
           <Card>
-            <TintCardTitle icon={Users} title="Pasajeros" aside={String(reservation.passengers.length)} />
+            <TintCardTitle icon={Users} title="Pasajeros" aside={editable ? <PassengerAddAction code={reservation.code} /> : String(reservation.passengers.length)} />
             <ul className="flex flex-col">
               {reservation.passengers.map((passenger) => (
-                <li key={`${passenger.full_name}-${passenger.doc_number}`} className="flex items-center gap-3 border-t border-line-2 py-2.5 first:border-t-0">
+                <li key={passenger.id} className="flex items-center gap-3 border-t border-line-2 py-2.5 first:border-t-0">
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[13.5px] font-semibold">
                       {passenger.full_name}
@@ -158,30 +203,33 @@ export default async function ReservaPage({ params }: PageProps<"/reservas/[code
                       {[PAX_TYPE[passenger.pax_type] ?? passenger.pax_type, passenger.doc_number ? `${passenger.doc_type ?? ""} ${passenger.doc_number}`.trim() : null, passenger.diet_notes].filter(Boolean).join(" · ")}
                     </span>
                   </span>
+                  {editable && <PassengerRowActions code={reservation.code} passenger={passenger} canRemove={reservation.passengers.length > 1} />}
                 </li>
               ))}
             </ul>
           </Card>
 
-          <Card>
-            <TintCardTitle icon={Receipt} title="Cuotas" />
-            {charged.length === 0 ? (
-              <p className="text-[13.5px] text-fg-3">Sin cuotas programadas.</p>
-            ) : (
-              <ul className="flex flex-col">
-                {charged.map((item) => (
-                  <li key={item.code} className="flex items-center gap-3 border-t border-line-2 py-2.5 text-[13px] first:border-t-0">
-                    <span className="min-w-0 flex-1">
-                      <b className="block truncate font-semibold">{item.concept}</b>
-                      <span className="text-xs text-fg-3">Vence el {formatDate(item.due_date)}</span>
-                    </span>
-                    <span className="font-mono text-[13px]">{formatMoney(item.amount, item.currency)}</span>
-                    <StatusBadge status={item.status} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+          {receivables && (
+            <Card>
+              <TintCardTitle icon={Receipt} title="Cuotas" />
+              {charged.length === 0 ? (
+                <p className="text-[13.5px] text-fg-3">Sin cuotas programadas.</p>
+              ) : (
+                <ul className="flex flex-col">
+                  {charged.map((item) => (
+                    <li key={item.code} className="flex items-center gap-3 border-t border-line-2 py-2.5 text-[13px] first:border-t-0">
+                      <span className="min-w-0 flex-1">
+                        <b className="block truncate font-semibold">{item.concept}</b>
+                        <span className="text-xs text-fg-3">Vence el {formatDate(item.due_date)}</span>
+                      </span>
+                      <span className="font-mono text-[13px]">{formatMoney(item.amount, item.currency)}</span>
+                      <StatusBadge status={item.status} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          )}
 
           {reservation.incidents.length > 0 && (
             <ToneScope tone="bad">

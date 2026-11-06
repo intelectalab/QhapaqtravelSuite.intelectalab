@@ -3,14 +3,15 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TintTile } from "@/components/ui/Tinted";
+import { OpportunityCreateAction } from "@/features/opportunities/OpportunityForms";
 import { PipelineBoard } from "@/features/opportunities/PipelineBoard";
 import { formatMoney, TIME_ZONE } from "@/lib/format";
-import { getBoard } from "@/lib/server/opportunities";
+import { getBoard, getOpportunityFormOptions } from "@/lib/server/opportunities";
 
 export const metadata: Metadata = { title: "Oportunidades" };
 
 export default async function OportunidadesPage() {
-  const board = await getBoard();
+  const [board, options] = await Promise.all([getBoard(), getOpportunityFormOptions()]);
   if (!board) return null;
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE }).format(new Date());
   const { kpis } = board;
@@ -19,6 +20,7 @@ export default async function OportunidadesPage() {
     <>
       <PageHeader
         title="Oportunidades"
+        actions={options ? <OpportunityCreateAction options={options} /> : undefined}
         info={<InfoTip>El monto ponderado multiplica cada oportunidad por la probabilidad de su etapa. Los montos en dólares se pasan a soles con el tipo de cambio del día.</InfoTip>}
       />
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">

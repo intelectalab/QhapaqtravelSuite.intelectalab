@@ -14,9 +14,7 @@ final class UpdatePlan
 {
     private const CONNECTION = 'pgsql_platform';
 
-    public function __construct(private readonly PlatformSession $session)
-    {
-    }
+    public function __construct(private readonly PlatformSession $session) {}
 
     public function __invoke(Plan $plan, array $data, PlatformUser $actor): void
     {

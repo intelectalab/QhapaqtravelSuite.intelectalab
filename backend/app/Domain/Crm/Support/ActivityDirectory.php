@@ -21,9 +21,7 @@ final class ActivityDirectory
         'reservation' => ['table' => 'booking_reservations', 'name' => 'title', 'path' => '/reservas/'],
     ];
 
-    public function __construct(private readonly TenantContext $context)
-    {
-    }
+    public function __construct(private readonly TenantContext $context) {}
 
     public function agenda(User $viewer): array
     {
@@ -59,6 +57,7 @@ final class ActivityDirectory
             'lead' => $own(DB::table('crm_leads')->whereNull('deleted_at')->whereIn('status', ['nuevo', 'contactado', 'calificado']), 'owner_id')->orderBy('full_name')->get(['code', 'full_name as name']),
             'opportunity' => $own(DB::table('crm_opportunities')->whereNull('deleted_at')->whereNotIn('stage', ['ganada', 'perdida']), 'owner_id')->orderBy('title')->get(['code', 'title as name']),
             'client' => $own(DB::table('crm_clients')->whereNull('deleted_at'), 'owner_id')->orderBy('name')->get(['code', 'name']),
+            'owners' => Portfolio::ownOnly($viewer) ? [] : (new Advisors)->all([...Advisors::ROLES, 'operations'])->values(),
         ];
     }
 
@@ -98,7 +97,7 @@ final class ActivityDirectory
             'due_at' => $due->toIso8601String(),
             'result' => $row->result,
             'completed_at' => $row->completed_at ? Carbon::parse($row->completed_at)->toIso8601String() : null,
-            'owner' => ['name' => $row->owner_name, 'color' => $row->owner_color],
+            'owner' => ['id' => $row->owner_id, 'name' => $row->owner_name, 'color' => $row->owner_color],
             'related' => $link ? [
                 'type' => $row->related_type,
                 'code' => $link->code,

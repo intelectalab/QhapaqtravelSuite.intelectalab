@@ -1,8 +1,8 @@
 "use client";
 
-import { CalendarClock, Check, Plus } from "lucide-react";
+import { CalendarClock, Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { completeActivity, createActivity, rescheduleActivity, type ActivityState } from "@/app/(backoffice)/crm/actividades/actions";
+import { completeActivity, createActivity, deleteActivity, rescheduleActivity, updateActivity, type ActivityState } from "@/app/(backoffice)/crm/actividades/actions";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
@@ -54,9 +54,52 @@ function NextFields() {
   );
 }
 
-export function ActivityRowActions({ activity }: { activity: ActivityItem }) {
+export function ActivityRowActions({ activity, options }: { activity: ActivityItem; options: RelatedOptions | null }) {
   return (
     <div className="flex gap-1.5">
+      <PanelAction
+        label="Editar"
+        icon={<Pencil size={15} />}
+        variant="ghost"
+        size="sm"
+        formId={`editar-${activity.code}`}
+        title="Editar actividad"
+        description={`${activity.code} · para cambiar la fecha usa Reprogramar`}
+        submitLabel="Guardar cambios"
+        action={updateActivity}
+        initial={initial}
+      >
+        {() => (
+          <>
+            <input type="hidden" name="code" value={activity.code} />
+            <SelectField label="Tipo" name="type" options={typeOptions} defaultValue={activity.type} />
+            <TextField label="Asunto" name="subject" required maxLength={200} defaultValue={activity.subject} />
+            {options && options.owners.length > 0 && (
+              <SelectField label="Responsable" name="owner_id" options={options.owners.map((owner) => ({ value: owner.id, label: owner.name }))} defaultValue={activity.owner.id} />
+            )}
+            <TextArea label="Detalle (opcional)" name="description" rows={3} maxLength={2000} defaultValue={activity.description ?? undefined} />
+          </>
+        )}
+      </PanelAction>
+      <PanelAction
+        label="Eliminar"
+        icon={<Trash2 size={15} />}
+        variant="ghost"
+        size="sm"
+        formId={`eliminar-${activity.code}`}
+        title="Eliminar actividad"
+        description={`${activity.subject}. Se borra de la agenda; queda registrado en la auditoría.`}
+        submitLabel="Eliminar"
+        action={deleteActivity}
+        initial={initial}
+      >
+        {() => (
+          <>
+            <input type="hidden" name="code" value={activity.code} />
+            <TextArea label="Motivo (opcional)" name="reason" rows={2} maxLength={300} placeholder="Por ejemplo: se agendó dos veces." />
+          </>
+        )}
+      </PanelAction>
       <PanelAction
         label="Reprogramar"
         icon={<CalendarClock size={15} />}

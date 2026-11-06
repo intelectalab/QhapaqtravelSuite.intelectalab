@@ -1,13 +1,15 @@
 "use client";
 
-import { CircleCheck, CirclePause, Eye, Hourglass } from "lucide-react";
+import { CircleCheck, CirclePause, Hourglass } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
+import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { formatDate, formatMoney } from "@/lib/format";
 import { formatBytes, type TenantSummary } from "@/lib/platform";
+import { TenantStatusAction } from "./TenantStatusAction";
 
 const tenantHref = (tenant: TenantSummary) => `/plataforma/agencias/${tenant.code}`;
 
@@ -43,9 +45,11 @@ const columns: Column<TenantSummary>[] = [
     mobile: "hidden",
     align: "right",
     cell: (tenant) => (
-      <Link href={tenantHref(tenant)} aria-label={`Ver ficha de ${tenant.name}`} title="Ver ficha" className="ml-auto grid h-8 w-8 place-items-center rounded-[9px] bg-accent/10 text-accent">
-        <Eye size={16} />
-      </Link>
+      <RowActions>
+        <RowIcon tone="view" label="Ver ficha" href={tenantHref(tenant)} />
+        <RowIcon tone="edit" label="Editar" href={`${tenantHref(tenant)}?editar=1`} />
+        <TenantStatusAction tenant={tenant} iconOnly />
+      </RowActions>
     ),
   },
 ];

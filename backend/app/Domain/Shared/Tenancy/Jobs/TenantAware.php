@@ -31,6 +31,6 @@ trait TenantAware
 
     protected function tenantMiddleware(): array
     {
-        return [new RestoreTenantContext()];
+        return [new RestoreTenantContext];
     }
 }

@@ -8,7 +8,8 @@ import { HeroBand, HeroChip, HeroPanel, TintCardTitle, TintTile, ToneScope } fro
 import { cn } from "@/lib/cn";
 import { durationLabel, PRODUCT_STATUS } from "@/lib/catalog";
 import { formatDate, formatMoney } from "@/lib/format";
-import { getProduct } from "@/lib/server/catalog";
+import { getProduct, getProductFormOptions } from "@/lib/server/catalog";
+import { ProductDeleteAction, ProductEditAction, ProductLifecycleActions } from "@/features/catalog/ProductForms";
 import { ProductHighlights } from "@/features/catalog/ProductHighlights";
 
 export async function generateMetadata({ params }: PageProps<"/catalogo/productos/[code]">): Promise<Metadata> {
@@ -16,9 +17,10 @@ export async function generateMetadata({ params }: PageProps<"/catalogo/producto
   return { title: (await getProduct(code)).name };
 }
 
-export default async function ProductoPage({ params }: PageProps<"/catalogo/productos/[code]">) {
+export default async function ProductoPage({ params, searchParams }: PageProps<"/catalogo/productos/[code]">) {
   const { code } = await params;
-  const product = await getProduct(code);
+  const { editar } = await searchParams;
+  const [product, options] = await Promise.all([getProduct(code), getProductFormOptions()]);
   const status = PRODUCT_STATUS[product.status];
   const sale = product.rates.filter((rate) => rate.active && rate.type === "Venta" && ["Adulto", "Pasajero"].includes(rate.segment)).sort((a, b) => Number(a.price) - Number(b.price))[0];
   const showCost = product.rates.some((rate) => rate.cost !== null);
@@ -40,6 +42,15 @@ export default async function ProductoPage({ params }: PageProps<"/catalogo/prod
           </span>
         }
         subtitle={`${product.code} · ${product.sku}`}
+        actions={
+          options ? (
+            <>
+              {options.can_update && product.status !== "ARCHIVED" && <ProductEditAction product={product} options={options} defaultOpen={editar === "1"} />}
+              <ProductLifecycleActions product={product} options={options} />
+              {options.can_activate && !["ACTIVE", "SUSPENDED"].includes(product.status) && <ProductDeleteAction product={product} />}
+            </>
+          ) : undefined
+        }
       />
 
       <HeroBand>
@@ -57,7 +68,7 @@ export default async function ProductoPage({ params }: PageProps<"/catalogo/prod
               <HeroChip icon={<MapPin size={14} />}>{product.destination_path}</HeroChip>
             </div>
           </div>
-          <HeroPanel solid className="lift">
+          <HeroPanel solid>
             <ProductHighlights product={product} />
           </HeroPanel>
         </div>

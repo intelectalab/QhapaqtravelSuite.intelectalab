@@ -15,7 +15,17 @@ final class TenantResolver
         $slug = (string) $request->input('tenant_slug', '');
         $host = config('tenancy.allow_slug_login') && $slug !== '' ? "{$slug}.{$base}" : strtolower($request->getHost());
 
-        return $this->byHost($host, $base);
+        return $this->byHost($host, $base) ?? ($slug === '' ? $this->byEmail((string) $request->input('email')) : null);
+    }
+
+    public function byEmail(string $email): ?object
+    {
+        $matches = DB::connection('pgsql_platform')->table('iam_users as u')
+            ->join('tenants as t', 't.id', '=', 'u.tenant_id')
+            ->whereRaw('lower(u.email) = ?', [strtolower(trim($email))])->whereNull('u.deleted_at')
+            ->limit(2)->get(['u.tenant_id', 't.status']);
+
+        return $matches->count() === 1 ? $matches->first() : null;
     }
 
     public function byHost(string $host, string $base): ?object

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Iam\Http\Controllers;
 
+use App\Domain\Iam\Actions\AcceptInvitation;
 use App\Domain\Iam\Actions\AuthenticateUser;
 use App\Domain\Iam\Actions\EnrollMfa;
 use App\Domain\Iam\Actions\VerifyMfa;
@@ -71,6 +72,25 @@ final class SessionController
         assert($user instanceof User);
 
         return $user;
+    }
+
+    public function invitation(string $token, AcceptInvitation $invitations): JsonResponse
+    {
+        return response()->json(['data' => $invitations->show($token)]);
+    }
+
+    public function acceptInvitation(Request $request, string $token, AcceptInvitation $invitations): JsonResponse
+    {
+        $data = $request->validate([
+            'password' => ['required', 'string', 'min:10', 'max:72', 'regex:/[A-Za-z]/', 'regex:/\d/', 'confirmed'],
+        ], [
+            'password.required' => 'Escribe una contraseña.',
+            'password.min' => 'La contraseña necesita al menos 10 caracteres.',
+            'password.regex' => 'Usa letras y números en la contraseña.',
+            'password.confirmed' => 'Las contraseñas no coinciden.',
+        ]);
+
+        return response()->json(['data' => ['email' => $invitations->accept($token, $data['password'])]]);
     }
 
     private function token(Request $request): AccessToken

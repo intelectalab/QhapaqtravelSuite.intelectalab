@@ -6,7 +6,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { TintTile, ToneScope } from "@/components/ui/Tinted";
 import { ActivityCreateAction, ActivityRowActions } from "@/features/activities/ActivityForms";
 import { cn } from "@/lib/cn";
-import { ACTIVITY_TYPES, BUCKETS, RELATION_LABEL, type ActivityItem } from "@/lib/activities";
+import { ACTIVITY_TYPES, BUCKETS, RELATION_LABEL, type ActivityItem, type RelatedOptions } from "@/lib/activities";
 import { formatDateTime, shortName } from "@/lib/format";
 import { getAgenda, getRelatedOptions } from "@/lib/server/activities";
 import { toneStyle } from "@/lib/tone";
@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Actividades" };
 
 const timeOnly = (iso: string) => formatDateTime(iso, false);
 
-function ActivityRow({ activity }: { activity: ActivityItem }) {
+function ActivityRow({ activity, options }: { activity: ActivityItem; options: RelatedOptions | null }) {
   const type = ACTIVITY_TYPES[activity.type];
   const Icon = type.icon;
   const done = activity.status === "completada";
@@ -39,7 +39,7 @@ function ActivityRow({ activity }: { activity: ActivityItem }) {
       <span className={cn("text-[12.5px] font-medium", activity.bucket === "overdue" ? "text-bad" : "text-fg-2")}>{timeOnly(done && activity.completed_at ? activity.completed_at : activity.due_at)}</span>
       <Avatar name={activity.owner.name} size="xs" solid />
       <span className="sr-only">{shortName(activity.owner.name)}</span>
-      {!done && <ActivityRowActions activity={activity} />}
+      {!done && <ActivityRowActions activity={activity} options={options} />}
     </li>
   );
 }
@@ -72,7 +72,7 @@ export default async function ActividadesPage() {
                 </header>
                 <ul>
                   {(bucket.id === "done" ? [...items].reverse() : items).map((item) => (
-                    <ActivityRow key={item.code} activity={item} />
+                    <ActivityRow key={item.code} activity={item} options={options} />
                   ))}
                 </ul>
               </section>

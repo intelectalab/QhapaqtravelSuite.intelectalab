@@ -531,6 +531,13 @@ Datos del prototipo creados por el módulo:
 - `DB.subscription`: TNT-0001.
 - `DB.featureFlags`, `DB.coupons`, `DB.platformMetrics`, `DB.apiKeys`, `DB.webhooks`, `DB.webhookDeliveries`, `DB.oauthApps`.
 
+### v3.0 — Implementación (06/11/2026)
+Desviaciones temporales de la implementación respecto al kit, detectadas en la auditoría de cumplimiento del 06/11/2026 (`Documentación/Auditoria_de_cumplimiento_2026-11-06.md`). Se corrigen en las fases A (pruebas, idempotencia, permisos), B (flujo canónico según `docs/kit/ejemplos`) y C (módulo por módulo).
+
+- Consola completa: inicio, facturación (MRR, facturas, cobranza, pruebas, cupones, funcionalidades, uso), integraciones y auditoría. Pasarela simulada (`LocalGateway`).
+- Tablas nuevas fuera del esquema del kit: `platform_demo_requests` (solicitudes de demo desde la página comercial) y `platform_settings` (política de cobranza; `sys_settings` exige tenant). Pendiente incorporarlas a `docs/kit/database`.
+- Página comercial pública de Qhapaq (`/` y `/software/*`) con los planes reales. Agregado por decisión de producto.
+
 ## 12. Supuestos y puntos a validar con negocio
 1. Pasarela de pagos (Cashier con Stripe o pasarela local) y OSE de la plataforma: por definir. El diseño las aísla tras interfaces.
 2. Precios del prototipo sin IGV. Confirmar si se publican con o sin IGV y si hay precios en USD para agencias exportadoras.

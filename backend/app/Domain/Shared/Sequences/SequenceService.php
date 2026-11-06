@@ -10,9 +10,7 @@ use RuntimeException;
 
 final class SequenceService
 {
-    public function __construct(private readonly TenantContext $context)
-    {
-    }
+    public function __construct(private readonly TenantContext $context) {}
 
     public function next(string $docType, string $series = 'default'): string
     {

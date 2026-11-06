@@ -11,7 +11,12 @@ final class Portfolio
 {
     public static function ownOnly(User $viewer): bool
     {
-        return $viewer->hasRole('sales') && ! $viewer->can('crm.records.reassign');
+        return $viewer->can('crm.leads.manage') && ! $viewer->can('crm.records.reassign');
+    }
+
+    public static function owns(User $viewer, ?string $ownerId): bool
+    {
+        return self::ownOnly($viewer) && $ownerId !== null && $ownerId === (string) $viewer->getKey();
     }
 
     public static function scope(Builder $query, User $viewer, string $ownerColumn): Builder

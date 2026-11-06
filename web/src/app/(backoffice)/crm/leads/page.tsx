@@ -21,7 +21,7 @@ export default async function LeadsPage() {
         actions={catalogs ? <LeadCreateAction catalogs={catalogs} /> : undefined}
         info={<InfoTip>Cada lead se revisa contra los leads y clientes que ya existen, se asigna, se contacta y se califica antes de convertirlo en cliente y oportunidad. Los duplicados no cuentan para la conversión.</InfoTip>}
       />
-      <LeadsTable leads={leads} />
+      <LeadsTable leads={leads} catalogs={catalogs} />
     </>
   );
 }

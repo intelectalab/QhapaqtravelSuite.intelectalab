@@ -61,39 +61,83 @@ export function PipelineBoard({ board, today }: { board: OpportunityBoard; today
         </div>
       </div>
 
-      <div className="grid gap-3.5 md:grid-cols-2">
-        <ClosedList title="Ganadas" tone="ok" icon={<CircleCheckBig size={16} />} items={won} />
-        <ClosedList title="Perdidas" tone="mute" icon={<CircleX size={16} />} items={lost} />
-      </div>
+      <ClosedSummary won={won} lost={lost} />
     </div>
   );
 }
 
-function ClosedList({ title, tone, icon, items }: { title: string; tone: "ok" | "mute"; icon: React.ReactNode; items: OpportunityItem[] }) {
-  const total = items.reduce((sum, item) => sum + item.amount_pen, 0);
+function ClosedSummary({ won, lost }: { won: OpportunityItem[]; lost: OpportunityItem[] }) {
+  const wonTotal = won.reduce((sum, item) => sum + item.amount_pen, 0);
+  const lostTotal = lost.reduce((sum, item) => sum + item.amount_pen, 0);
+  const share = wonTotal + lostTotal > 0 ? Math.round((wonTotal / (wonTotal + lostTotal)) * 100) : 0;
+
   return (
-    <section style={toneStyle(tone)} className="rounded-card border border-line bg-surface p-4 shadow-card">
-      <header className="mb-2 flex items-center gap-2">
-        <span className="grid h-7 w-7 place-items-center rounded-lg bg-[color-mix(in_srgb,var(--tint)_14%,transparent)] text-[var(--tint)]">{icon}</span>
-        <h2 className="text-[14px] font-bold">{title}</h2>
-        <span className="ml-auto text-[13px] font-semibold text-fg-2">
-          {items.length} · {formatMoney(total, "PEN", { compact: true })}
-        </span>
+    <section className="rounded-card border border-line bg-surface p-4 shadow-card sm:p-5">
+      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-[15px] font-bold">Cerradas</h2>
+          <p className="text-[12.5px] text-fg-3">Lo que se ganó y lo que se perdió, en soles.</p>
+        </div>
+        {wonTotal + lostTotal > 0 && (
+          <div className="min-w-[240px] flex-1 sm:max-w-[380px]">
+            <div className="mb-1.5 flex justify-between text-[12px] font-semibold">
+              <span className="text-ok">{share} % del monto ganado</span>
+              <span className="text-bad">{100 - share} % perdido</span>
+            </div>
+            <div className="flex h-2.5 overflow-hidden rounded-full bg-surface-2">
+              <span className="h-full origin-left rounded-l-full bg-ok motion-safe:animate-[fill-x_700ms_cubic-bezier(0.4,0,0.2,1)_backwards]" style={{ width: `${share}%` }} />
+              <span className="h-full origin-right rounded-r-full bg-bad/70 motion-safe:animate-[fill-x_700ms_200ms_cubic-bezier(0.4,0,0.2,1)_backwards]" style={{ width: `${100 - share}%` }} />
+            </div>
+          </div>
+        )}
+      </header>
+      <div className="grid gap-3.5 md:grid-cols-2">
+        <ClosedList title="Ganadas" tone="ok" icon={<CircleCheckBig size={18} />} items={won} total={wonTotal} />
+        <ClosedList title="Perdidas" tone="bad" icon={<CircleX size={18} />} items={lost} total={lostTotal} />
+      </div>
+    </section>
+  );
+}
+
+function ClosedList({ title, tone, icon, items, total }: { title: string; tone: "ok" | "bad"; icon: React.ReactNode; items: OpportunityItem[]; total: number }) {
+  return (
+    <div style={toneStyle(tone)} className={cn("lift group/closed overflow-hidden rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)]", SOFT_TINT)}>
+      <header className="relative flex items-center gap-3 overflow-hidden bg-[var(--tint)] px-4 py-3 text-white">
+        <span aria-hidden className="weave-pattern absolute inset-0 bg-[length:18px_18px] opacity-[0.12] transition-[background-position] duration-700 ease-out group-hover/closed:bg-[position:9px_9px]" />
+        <span className="relative grid h-9 w-9 place-items-center rounded-[10px] bg-white/15 transition-transform duration-300 group-hover/closed:-rotate-6 group-hover/closed:scale-110">{icon}</span>
+        <div className="relative min-w-0 flex-1">
+          <h3 className="text-[14px] font-bold">{title}</h3>
+          <p className="text-[12px] text-white/75">{items.length === 1 ? "1 oportunidad" : `${items.length} oportunidades`}</p>
+        </div>
+        <p className="relative text-[22px] font-bold tracking-tight">{formatMoney(total, "PEN", { compact: true })}</p>
       </header>
       {items.length === 0 ? (
-        <p className="py-2 text-[12.5px] text-fg-3">Ninguna todavía.</p>
+        <p className="px-4 py-5 text-[12.5px] text-fg-3">Ninguna todavía.</p>
       ) : (
-        <ul className="flex flex-col">
-          {items.map((item) => (
-            <li key={item.code} className="border-t border-line-2 first:border-t-0">
-              <Link href={`/crm/oportunidades/${item.code}`} className="flex items-center gap-3 py-2 text-[13px] hover:text-[var(--tint)]">
-                <span className="min-w-0 flex-1 truncate font-medium">{item.client.name}</span>
-                <span className="font-mono text-[12.5px]">{formatMoney(item.amount, item.currency)}</span>
+        <ul className="flex flex-col gap-1 p-1.5">
+          {items.map((item, index) => (
+            <li key={item.code} style={{ animationDelay: `${index * 60}ms` }} className="motion-safe:animate-[drop-in_300ms_ease-out_backwards]">
+              <Link href={`/crm/oportunidades/${item.code}`} className="group/row relative flex items-center gap-3 overflow-hidden rounded-[11px] px-2.5 py-2 transition-[background-color,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:bg-surface hover:shadow-[0_8px_18px_-14px_var(--tint)]">
+                <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] origin-center scale-y-0 rounded-full bg-[var(--tint)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/row:scale-y-100" />
+                <span className="flex-none transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/row:scale-110">
+                  <Avatar name={item.client.name} size="sm" />
+                </span>
+                <span className="min-w-0 flex-1 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/row:translate-x-1">
+                  <b className="block truncate text-[13px] font-semibold">{item.client.name}</b>
+                  <span className="block truncate text-[12px] text-fg-3">
+                    {item.title}
+                    {item.closed_at && ` · ${formatDate(item.closed_at).replace(/ \d{4}$/, "")}`}
+                  </span>
+                </span>
+                <span className="text-right">
+                  <b className="block font-mono text-[13px] font-semibold">{formatMoney(item.amount, item.currency)}</b>
+                  {item.currency !== "PEN" && <span className="block text-[11.5px] text-fg-3">{formatMoney(item.amount_pen, "PEN", { compact: true })}</span>}
+                </span>
               </Link>
             </li>
           ))}
         </ul>
       )}
-    </section>
+    </div>
   );
 }

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { archiveClient, createClient, updateClient, type ClientActionState } from "@/app/(backoffice)/crm/clientes/actions";
 import { Button } from "@/components/ui/Button";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
+import { RowIcon } from "@/components/table/RowActions";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
@@ -124,13 +125,14 @@ export function ClientCreateAction({ options }: { options: ClientFormOptions }) 
   );
 }
 
-export function ClientEditAction({ client, options }: { client: ClientDetail; options: ClientFormOptions }) {
+export function ClientEditAction({ client, options, defaultOpen = false }: { client: ClientDetail; options: ClientFormOptions; defaultOpen?: boolean }) {
   const router = useRouter();
   return (
     <PanelAction<ClientActionState>
       label="Editar"
       icon={<Pencil size={16} />}
       formId="client-edit"
+      defaultOpen={defaultOpen}
       title="Editar cliente"
       description={`${client.name} · ${client.id}`}
       submitLabel="Guardar cambios"
@@ -150,20 +152,21 @@ export function ClientEditAction({ client, options }: { client: ClientDetail; op
   );
 }
 
-export function ClientArchiveAction({ client }: { client: ClientDetail }) {
+export function ClientArchiveAction({ client, iconOnly = false }: { client: Pick<ClientDetail, "id" | "name">; iconOnly?: boolean }) {
   const router = useRouter();
   return (
     <PanelAction<ClientActionState>
       label="Archivar"
       icon={<Archive size={16} />}
       variant="ghost"
-      formId="client-archive"
+      formId={`client-archive-${client.id}`}
       title="Archivar cliente"
       description={`${client.name} dejará de aparecer en la lista y en los buscadores. Su historial de viajes, pagos y auditoría se conserva.`}
       submitLabel="Archivar cliente"
       action={archiveClient}
       initial={initial}
-      onDone={() => router.push("/crm/clientes")}
+      trigger={iconOnly ? (open) => <RowIcon tone="delete" label="Archivar" onClick={open} /> : undefined}
+      onDone={() => (iconOnly ? router.refresh() : router.push("/crm/clientes"))}
     >
       {() => (
         <>

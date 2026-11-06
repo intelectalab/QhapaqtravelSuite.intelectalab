@@ -43,13 +43,13 @@ export function ProductHighlights({ product }: { product: ProductDetail }) {
         <ul className="relative flex flex-col gap-1.5 text-[13px]">
           {showIncludes
             ? highlights.map((text, index) => (
-                <li key={text} style={stagger(index)} className="flex items-start gap-1.5 transition-transform duration-200 hover:translate-x-1 motion-safe:animate-[drop-in_320ms_ease-out_both]">
+                <li key={text} style={stagger(index)} className="flex items-start gap-1.5 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:translate-x-1 motion-safe:animate-[drop-in_320ms_ease-out_backwards]">
                   <Check size={14} strokeWidth={2.6} className="mt-0.5 flex-none text-ok" />
                   {text}
                 </li>
               ))
             : missing.map((check, index) => (
-                <li key={check.label} style={stagger(index)} className="flex items-center gap-1.5 text-fg-2 transition-transform duration-200 hover:translate-x-1 motion-safe:animate-[drop-in_320ms_ease-out_both]">
+                <li key={check.label} style={stagger(index)} className="flex items-center gap-1.5 text-fg-2 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:translate-x-1 motion-safe:animate-[drop-in_320ms_ease-out_backwards]">
                   <CircleDashed size={14} className="flex-none text-fg-3 transition-transform duration-700 group-hover/panel:rotate-180" />
                   {check.label}
                 </li>

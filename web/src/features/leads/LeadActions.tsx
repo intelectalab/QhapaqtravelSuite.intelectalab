@@ -1,9 +1,9 @@
 "use client";
 
-import { ArrowRightLeft, CircleSlash, Hand, Target, Wand2 } from "lucide-react";
+import { ArrowRightLeft, Hand, Target, Wand2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { changeLeadStatus, convertLead, discardLead, qualifyLead, takeLead, type LeadActionState } from "@/app/(backoffice)/crm/leads/actions";
+import { changeLeadStatus, convertLead, qualifyLead, takeLead, type LeadActionState } from "@/app/(backoffice)/crm/leads/actions";
 import { useCan } from "@/components/shell/SessionProvider";
 import { Button } from "@/components/ui/Button";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
@@ -14,7 +14,8 @@ import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { FormError } from "@/features/auth/AuthForms";
 import { cn } from "@/lib/cn";
-import { BANT_LEVELS, type CrmCatalogs, type LeadDetail } from "@/lib/leads";
+import { BANT_LEVELS, type Advisor, type CrmCatalogs, type LeadDetail } from "@/lib/leads";
+import { LeadAssignAction, LeadDiscardAction, LeadEditAction } from "./LeadEditActions";
 
 const initial: LeadActionState = { message: null, done: false };
 
@@ -89,7 +90,7 @@ function BantForm({ lead }: { lead: LeadDetail }) {
   );
 }
 
-export function LeadActions({ lead, catalogs, viewerId }: { lead: LeadDetail; catalogs: CrmCatalogs; viewerId: string }) {
+export function LeadActions({ lead, catalogs, viewerId, advisors, editOpen = false }: { lead: LeadDetail; catalogs: CrmCatalogs; viewerId: string; advisors: Advisor[]; editOpen?: boolean }) {
   const router = useRouter();
   const canManage = useCan("crm.leads.manage");
   const canConvert = useCan("crm.opportunities.manage");
@@ -104,6 +105,9 @@ export function LeadActions({ lead, catalogs, viewerId }: { lead: LeadDetail; ca
   if (lead.owner_id === null) {
     return (
       <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-wrap justify-end gap-2">
+        {canReassign && <LeadAssignAction lead={lead} advisors={advisors} />}
+        <LeadEditAction lead={lead} catalogs={catalogs} defaultOpen={editOpen} />
         <Button
           variant="primary"
           icon={<Hand size={16} />}
@@ -118,6 +122,7 @@ export function LeadActions({ lead, catalogs, viewerId }: { lead: LeadDetail; ca
         >
           {taking ? "Un momento…" : "Tomar lead"}
         </Button>
+        </div>
         {takeError && <FormError message={takeError} />}
       </div>
     );
@@ -127,6 +132,8 @@ export function LeadActions({ lead, catalogs, viewerId }: { lead: LeadDetail; ca
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
+      <LeadEditAction lead={lead} catalogs={catalogs} defaultOpen={editOpen} />
+      {canReassign && <LeadAssignAction lead={lead} advisors={advisors} />}
       <PanelAction label="Estado" icon={<ArrowRightLeft size={16} />} title="Cambiar estado" description="Para convertirlo o descartarlo usa sus propias acciones." submitLabel="Guardar" action={changeLeadStatus} initial={initial}>
         {() => (
           <>
@@ -138,15 +145,7 @@ export function LeadActions({ lead, catalogs, viewerId }: { lead: LeadDetail; ca
       <PanelAction label="Calificar" icon={<Target size={16} />} title="Calificar (BANT)" description="Cuatro preguntas para saber qué tan listo está para comprar." submitLabel="Guardar calificación" action={qualifyLead} initial={initial}>
         {() => <BantForm lead={lead} />}
       </PanelAction>
-      <PanelAction label="Descartar" icon={<CircleSlash size={16} />} variant="ghost" title="Descartar lead" description="El lead no se borra: queda en el historial con su motivo." submitLabel="Descartar" action={discardLead} initial={initial}>
-        {() => (
-          <>
-            <Hidden lead={lead} />
-            <SelectField label="Motivo" name="reason" options={catalogs.discard_reason.map((item) => ({ value: item.code, label: item.label }))} placeholder="Elegir" />
-            <TextArea label="Detalle (opcional)" name="detail" rows={3} />
-          </>
-        )}
-      </PanelAction>
+      <LeadDiscardAction lead={lead} catalogs={catalogs} />
       {lead.status === "calificado" && canConvert && (
         <PanelAction
           label="Convertir"

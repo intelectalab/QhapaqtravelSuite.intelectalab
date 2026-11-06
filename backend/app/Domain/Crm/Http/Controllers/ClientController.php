@@ -17,9 +17,7 @@ use Illuminate\Http\Request;
 
 final class ClientController
 {
-    public function __construct(private readonly ClientDirectory $directory, private readonly ClientWorkflow $workflow)
-    {
-    }
+    public function __construct(private readonly ClientDirectory $directory, private readonly ClientWorkflow $workflow) {}
 
     public function index(Request $request): JsonResponse
     {

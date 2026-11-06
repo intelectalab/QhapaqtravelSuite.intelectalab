@@ -25,8 +25,7 @@ final class EnrollMfa
         private readonly IssueAccessToken $issueToken,
         private readonly RecordLogin $recordLogin,
         private readonly AuditLogger $audit,
-    ) {
-    }
+    ) {}
 
     public function start(User $user, AccessToken $token): array
     {

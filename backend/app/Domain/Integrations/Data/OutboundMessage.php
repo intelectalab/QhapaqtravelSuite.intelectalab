@@ -14,6 +14,5 @@ final readonly class OutboundMessage
         public ?string $templateCode = null,
         public array $variables = [],
         public ?string $locale = 'es',
-    ) {
-    }
+    ) {}
 }

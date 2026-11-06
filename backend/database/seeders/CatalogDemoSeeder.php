@@ -27,9 +27,7 @@ final class CatalogDemoSeeder
 
     private array $providers = [];
 
-    public function __construct(private readonly Tenant $tenant)
-    {
-    }
+    public function __construct(private readonly Tenant $tenant) {}
 
     public function run(): void
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Iam\Http\Resources;
 
+use App\Domain\Admin\Support\Branding;
 use App\Domain\Iam\Models\User;
 use App\Domain\Iam\Support\RoleExperience;
 use App\Domain\Shared\Tenancy\TenantContext;
@@ -39,6 +40,7 @@ final class MeResource extends JsonResource
                 'initials' => $tenant->logo_initials,
                 'base_currency' => $tenant->base_currency,
                 'timezone' => $tenant->timezone,
+                'branding' => app(Branding::class)->current(),
             ],
             'permissions' => $user->getAllPermissions()->pluck('name')->sort()->values(),
         ];

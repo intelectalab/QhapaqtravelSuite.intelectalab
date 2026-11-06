@@ -15,6 +15,5 @@ final readonly class ExternalReview
         public string $reviewDate,
         public ?string $url = null,
         public ?string $lang = null,
-    ) {
-    }
+    ) {}
 }

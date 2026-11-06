@@ -34,4 +34,9 @@ final class PlatformUser extends Authenticatable
     {
         return $this->status === 'activo';
     }
+
+    public function hasPlatformPermission(string $permission): bool
+    {
+        return $this->isActive() && in_array($permission, config('access.platform_permissions', []), true);
+    }
 }

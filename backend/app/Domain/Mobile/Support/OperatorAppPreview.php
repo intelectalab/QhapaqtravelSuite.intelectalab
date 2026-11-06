@@ -1,0 +1,100 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\Mobile\Support;
+
+use App\Domain\Channels\Support\ChannelKit;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+
+final class OperatorAppPreview
+{
+    public const FIELD_KINDS = ['tour', 'traslado', 'tren_entrada'];
+
+    public function __construct(private readonly ChannelKit $kit) {}
+
+    public function show(?string $date, ?string $staff): array
+    {
+        $today = $this->kit->today();
+        $staffList = $this->staff();
+        $selectedStaff = $staffList->firstWhere('code', $staff);
+        $days = $this->base($selectedStaff)
+            ->whereBetween('s.service_date', [Carbon::parse($today)->subDays(7)->toDateString(), Carbon::parse($today)->addDays(21)->toDateString()])
+            ->selectRaw('s.service_date as day, count(*) as total')
+            ->groupBy('s.service_date')
+            ->orderBy('s.service_date')
+            ->get();
+        $day = $date && $days->contains('day', $date) ? $date : ($days->firstWhere('day', '>=', $today)->day ?? $days->last()->day ?? $today);
+
+        $rows = $this->base($selectedStaff)
+            ->where('s.service_date', $day)
+            ->leftJoin('ops_vehicles as v', 'v.id', '=', 'a.vehicle_id')
+            ->orderBy('s.service_time')
+            ->get(['s.code', 's.name', 's.service_time', 's.service_kind', 's.status', 's.pax', 's.confirmation_code', 's.reservation_id', 'r.code as reservation', 'r.title as reservation_title', 'a.status as assignment_status', 'a.confirmed_at', 'a.started_at', 'a.finished_at', 'g.full_name as guide', 'd.full_name as driver', 'v.plate', 'v.vehicle_type']);
+        $leads = DB::table('booking_passengers')->whereIn('reservation_id', $rows->pluck('reservation_id')->unique())->orderByDesc('is_lead')->orderBy('seq')->get(['reservation_id', 'full_name', 'phone'])->groupBy('reservation_id');
+        $devices = DB::table('ops_mobile_devices')->where('app', 'operador')->whereNull('revoked_at');
+
+        return [
+            'today' => $today,
+            'date' => $day,
+            'days' => $days->map(fn (object $row): array => ['date' => $row->day, 'services' => (int) $row->total])->values(),
+            'staff' => $staffList->values(),
+            'selected_staff' => $selectedStaff,
+            'devices' => ['active' => (clone $devices)->count(), 'last_sync_at' => (clone $devices)->max('last_sync_at')],
+            'kpis' => [
+                'services' => $rows->count(),
+                'pax' => (int) $rows->sum('pax'),
+                'assigned' => $rows->filter(fn (object $row): bool => $row->guide !== null || $row->driver !== null)->count(),
+                'confirmed' => $rows->whereIn('assignment_status', ['confirmada', 'en_curso', 'completada'])->count(),
+                'done' => $rows->where('assignment_status', 'completada')->count(),
+            ],
+            'services' => $rows->map(function (object $row) use ($leads): array {
+                $lead = ($leads[$row->reservation_id] ?? collect())->first();
+
+                return [
+                    'code' => $row->code,
+                    'name' => $row->name,
+                    'time' => $row->service_time ? substr((string) $row->service_time, 0, 5) : null,
+                    'kind' => $row->service_kind,
+                    'status' => $row->status,
+                    'pax' => (int) $row->pax,
+                    'confirmation' => $row->confirmation_code,
+                    'reservation' => $row->reservation,
+                    'reservation_title' => $row->reservation_title,
+                    'lead' => $lead ? ['name' => $lead->full_name, 'phone' => $lead->phone] : null,
+                    'assignment' => $row->assignment_status,
+                    'confirmed_at' => $row->confirmed_at,
+                    'started_at' => $row->started_at,
+                    'finished_at' => $row->finished_at,
+                    'guide' => $row->guide,
+                    'driver' => $row->driver,
+                    'vehicle' => $row->plate ? trim($row->plate.' · '.($row->vehicle_type ?? '')) : null,
+                ];
+            })->values(),
+        ];
+    }
+
+    private function staff()
+    {
+        $guides = DB::table('ops_guides as g')->whereNull('g.deleted_at')->whereExists(fn (Builder $sub) => $sub->from('ops_assignments as a')->whereColumn('a.guide_id', 'g.id'))->orderBy('g.full_name')->get(['g.id', 'g.code', 'g.full_name', 'g.phone'])->map(fn (object $row): array => ['id' => $row->id, 'code' => $row->code, 'name' => $row->full_name, 'phone' => $row->phone, 'role' => 'guia']);
+        $drivers = DB::table('ops_drivers as d')->whereNull('d.deleted_at')->whereExists(fn (Builder $sub) => $sub->from('ops_assignments as a')->whereColumn('a.driver_id', 'd.id'))->orderBy('d.full_name')->get(['d.id', 'd.code', 'd.full_name', 'd.phone'])->map(fn (object $row): array => ['id' => $row->id, 'code' => $row->code, 'name' => $row->full_name, 'phone' => $row->phone, 'role' => 'conductor']);
+
+        return $guides->concat($drivers);
+    }
+
+    private function base(?array $staff): Builder
+    {
+        return DB::table('booking_reservation_services as s')
+            ->join('booking_reservations as r', 'r.id', '=', 's.reservation_id')
+            ->leftJoin('ops_assignments as a', 'a.reservation_service_id', '=', 's.id')
+            ->leftJoin('ops_guides as g', 'g.id', '=', 'a.guide_id')
+            ->leftJoin('ops_drivers as d', 'd.id', '=', 'a.driver_id')
+            ->whereNull('r.deleted_at')
+            ->whereNotIn('r.status', ['cancelada', 'borrador'])
+            ->where('s.status', '<>', 'cancelado')
+            ->whereIn('s.service_kind', self::FIELD_KINDS)
+            ->when($staff, fn (Builder $query) => $staff['role'] === 'guia' ? $query->where('a.guide_id', $staff['id']) : $query->where('a.driver_id', $staff['id']));
+    }
+}

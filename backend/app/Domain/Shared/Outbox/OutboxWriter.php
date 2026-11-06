@@ -10,9 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 final class OutboxWriter
 {
-    public function __construct(private readonly TenantContext $context)
-    {
-    }
+    public function __construct(private readonly TenantContext $context) {}
 
     public function add(string $aggregateType, string $aggregateId, string $event, array $payload): void
     {

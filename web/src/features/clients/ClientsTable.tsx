@@ -1,8 +1,10 @@
 "use client";
 
-import { Building2, Eye, MoreHorizontal, Plane, Send, Sprout, Star, Tag, UserPlus } from "lucide-react";
+import { Building2, Plane, Send, Sprout, Star, Tag, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { BulkAction, DataTable } from "@/components/table/DataTable";
+import { RowActions, RowIcon } from "@/components/table/RowActions";
+import { ClientArchiveAction } from "./ClientForms";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, LiveTag } from "@/components/ui/Badge";
@@ -14,7 +16,7 @@ const SEGMENT_TONE: Record<string, Tone> = { Corporativo: "t1", VIP: "sun", Part
 
 const uniqueOptions = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es")).map((value) => ({ value, label: value }));
 
-const columns: Column<ClientRow>[] = [
+const buildColumns = (canManage: boolean): Column<ClientRow>[] => [
   {
     id: "client",
     header: "Cliente",
@@ -93,14 +95,15 @@ const columns: Column<ClientRow>[] = [
     mobile: "hidden",
     align: "right",
     cell: (client) => (
-      <span className="flex justify-end gap-1">
-        <Link href={`/crm/clientes/${client.id}`} aria-label={`Ver ficha de ${client.name}`} title="Ver ficha" className="grid h-8 w-8 place-items-center rounded-[9px] bg-accent/10 text-accent">
-          <Eye size={16} />
-        </Link>
-        <button type="button" aria-label="Más acciones" className="grid h-8 w-8 place-items-center rounded-[9px] text-fg-3 hover:bg-surface-2">
-          <MoreHorizontal size={16} />
-        </button>
-      </span>
+      <RowActions>
+        <RowIcon tone="view" label="Ver ficha" href={`/crm/clientes/${client.id}`} />
+        {canManage && (
+          <>
+            <RowIcon tone="edit" label="Editar" href={`/crm/clientes/${client.id}?editar=1`} />
+            <ClientArchiveAction client={client} iconOnly />
+          </>
+        )}
+      </RowActions>
     ),
   },
 ];
@@ -119,7 +122,7 @@ const sorts: SortOption<ClientRow>[] = [
   { id: "since", label: "Cliente desde", type: "date", value: (client) => client.createdAt },
 ];
 
-export function ClientsTable({ clients }: { clients: ClientRow[] }) {
+export function ClientsTable({ clients, canManage }: { clients: ClientRow[]; canManage: boolean }) {
   const filters: FilterConfig<ClientRow>[] = [
     { id: "kind", label: "Tipo", options: [{ value: "Persona", label: "Personas" }, { value: "Empresa", label: "Empresas" }], value: (client) => client.kind },
     { id: "segment", label: "Segmento", options: uniqueOptions(clients.map((client) => client.segment)), value: (client) => client.segment },
@@ -131,7 +134,7 @@ export function ClientsTable({ clients }: { clients: ClientRow[] }) {
     <DataTable
       screen="clientes"
       rows={clients}
-      columns={columns}
+      columns={buildColumns(canManage)}
       getKey={(client) => client.id}
       entityLabel="clientes"
       searchText={(client) => `${client.name} ${client.document} ${client.email} ${client.id}`}

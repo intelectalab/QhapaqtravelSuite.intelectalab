@@ -10,9 +10,7 @@ use Illuminate\Support\Facades\Request;
 
 final class RecordLogin
 {
-    public function __construct(private readonly AuditLogger $audit)
-    {
-    }
+    public function __construct(private readonly AuditLogger $audit) {}
 
     public function __invoke(User $user, string $result): void
     {

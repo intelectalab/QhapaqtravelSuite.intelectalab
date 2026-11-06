@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Closure;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -16,17 +17,19 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class IdempotencyMiddleware
 {
+    public const HEADER = 'Idempotency-Key';
+
     private const TTL_HOURS = 24;
 
     private const LOCK_SECONDS = 60;
 
-    public function __construct(private readonly TenantContext $context)
-    {
-    }
+    private const PLATFORM_CONNECTION = 'pgsql_platform';
+
+    public function __construct(private readonly TenantContext $context) {}
 
     public function handle(Request $request, Closure $next): Response
     {
-        $key = trim((string) $request->header('Idempotency-Key', ''));
+        $key = trim((string) $request->header(self::HEADER, ''));
 
         if ($key === '') {
             throw ApiException::unprocessable('IDEMPOTENCY_KEY_REQUIRED', 'Esta operación requiere el header Idempotency-Key.');
@@ -35,12 +38,13 @@ final class IdempotencyMiddleware
             throw ApiException::unprocessable('IDEMPOTENCY_KEY_INVALID', 'Idempotency-Key debe tener entre 8 y 80 caracteres.');
         }
 
-        $hash = $this->requestHash($request);
-        $cacheKey = $this->context->key('idem', $key);
+        $tenantId = $this->context->id();
+        $hash = $this->requestHash($request, $tenantId);
+        $cacheKey = $tenantId === null ? 'p:idem:'.$key : $this->context->key('idem', $key);
 
-        $stored = Cache::get($cacheKey) ?? $this->fromDatabase($key);
+        $stored = Cache::get($cacheKey) ?? $this->fromDatabase($tenantId, $key);
         if (is_array($stored)) {
-            return $this->replay($stored, $hash, $request);
+            return $this->replay($stored, $hash, $this->tenantUser($request, $tenantId));
         }
 
         $lock = Cache::lock($cacheKey.':lock', self::LOCK_SECONDS);
@@ -56,7 +60,7 @@ final class IdempotencyMiddleware
         }
 
         if ($response->isSuccessful()) {
-            $record = $this->persist($request, $key, $hash, $response);
+            $record = $this->persist($request, $tenantId, $key, $hash, $response);
 
             DB::afterCommit(function () use ($cacheKey, $record, $lock): void {
                 Cache::put($cacheKey, $record, now()->addHours(self::TTL_HOURS));
@@ -69,12 +73,25 @@ final class IdempotencyMiddleware
         return $response;
     }
 
-    private function requestHash(Request $request): string
+    private function connection(?string $tenantId): ConnectionInterface
+    {
+        return DB::connection($tenantId === null ? self::PLATFORM_CONNECTION : null);
+    }
+
+    private function tenantUser(Request $request, ?string $tenantId): ?string
+    {
+        $id = $request->user()?->getAuthIdentifier();
+
+        return $tenantId === null || $id === null ? null : (string) $id;
+    }
+
+    private function requestHash(Request $request, ?string $tenantId): string
     {
         $body = $request->json()->all();
         $this->ksortRecursive($body);
+        $actor = $tenantId === null && $request->user() !== null ? $request->user()::class.':'.$request->user()->getAuthIdentifier() : '';
 
-        return hash('sha256', $request->method().' '.$request->path().' '.json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        return hash('sha256', $request->method().' '.$request->path().' '.$actor.' '.json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 
     private function ksortRecursive(array &$data): void
@@ -87,10 +104,10 @@ final class IdempotencyMiddleware
         }
     }
 
-    private function fromDatabase(string $key): ?array
+    private function fromDatabase(?string $tenantId, string $key): ?array
     {
-        $row = DB::table('sys_idempotency_keys')
-            ->where('tenant_id', $this->context->idOrFail())
+        $row = $this->connection($tenantId)->table('sys_idempotency_keys')
+            ->when($tenantId === null, fn ($query) => $query->whereNull('tenant_id'), fn ($query) => $query->where('tenant_id', $tenantId))
             ->where('key', $key)
             ->where('status', 'completed')
             ->where('expires_at', '>', now())
@@ -104,9 +121,9 @@ final class IdempotencyMiddleware
         ];
     }
 
-    private function replay(array $stored, string $hash, Request $request): Response
+    private function replay(array $stored, string $hash, ?string $userId): Response
     {
-        $sameUser = $stored['user_id'] === null || $stored['user_id'] === $request->user()?->getAuthIdentifier();
+        $sameUser = $stored['user_id'] === null || $stored['user_id'] === $userId;
 
         if ($stored['hash'] !== $hash || ! $sameUser) {
             throw ApiException::unprocessable(
@@ -118,13 +135,13 @@ final class IdempotencyMiddleware
         return new JsonResponse($stored['body'], $stored['status'], ['Idempotent-Replayed' => 'true']);
     }
 
-    private function persist(Request $request, string $key, string $hash, Response $response): array
+    private function persist(Request $request, ?string $tenantId, string $key, string $hash, Response $response): array
     {
         $body = json_decode((string) $response->getContent(), true);
-        $userId = $request->user()?->getAuthIdentifier();
+        $userId = $this->tenantUser($request, $tenantId);
 
-        DB::table('sys_idempotency_keys')->insert([
-            'tenant_id' => $this->context->idOrFail(),
+        $this->connection($tenantId)->table('sys_idempotency_keys')->insert([
+            'tenant_id' => $tenantId,
             'key' => $key,
             'user_id' => $userId,
             'method' => $request->method(),

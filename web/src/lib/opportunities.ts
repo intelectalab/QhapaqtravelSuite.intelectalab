@@ -35,6 +35,8 @@ export interface OpportunityBoard {
 
 export interface OpportunityDetail extends OpportunityItem {
   notes: string | null;
+  lock_version: number;
+  owner_id: string;
   origin: string | null;
   lost_reason: string | null;
   lost_detail: string | null;
@@ -53,3 +55,9 @@ export const STAGE_TONE: Record<OpportunityStage, Tone> = {
   ganada: "ok",
   perdida: "mute",
 };
+
+export interface OpportunityFormOptions {
+  clients: { code: string; name: string; kind: string }[];
+  advisors: { id: string; name: string; color: string | null }[];
+  can_reassign: boolean;
+}

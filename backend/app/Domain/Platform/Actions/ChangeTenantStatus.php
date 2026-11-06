@@ -14,9 +14,7 @@ final class ChangeTenantStatus
 {
     private const CONNECTION = 'pgsql_platform';
 
-    public function __construct(private readonly PlatformSession $session)
-    {
-    }
+    public function __construct(private readonly PlatformSession $session) {}
 
     public function suspend(Tenant $tenant, string $reason, PlatformUser $actor): void
     {

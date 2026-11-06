@@ -10,9 +10,7 @@ use App\Domain\Integrations\Data\FxRate;
 
 final class FakeFxRateProvider implements FxRateProvider
 {
-    public function __construct(private readonly array $rates = ['USD' => '3.740000', 'EUR' => '4.050000', 'GBP' => '4.780000', 'BRL' => '0.680000'])
-    {
-    }
+    public function __construct(private readonly array $rates = ['USD' => '3.740000', 'EUR' => '4.050000', 'GBP' => '4.780000', 'BRL' => '0.680000']) {}
 
     public function latest(array $currencies, string $date): array
     {

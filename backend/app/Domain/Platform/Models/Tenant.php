@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Platform\Models;
 
+use App\Domain\Shared\Concurrency\HasLockVersion;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 final class Tenant extends Model
 {
+    use HasLockVersion;
     use HasUuids;
 
     protected $table = 'tenants';
@@ -26,6 +28,11 @@ final class Tenant extends Model
             'storage_used_bytes' => 'integer',
             'lock_version' => 'integer',
         ];
+    }
+
+    protected function lockVersionLabel(): string
+    {
+        return 'La agencia';
     }
 
     public function isSuspended(): bool

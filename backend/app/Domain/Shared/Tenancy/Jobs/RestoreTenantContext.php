@@ -12,9 +12,7 @@ use RuntimeException;
 
 final class RestoreTenantContext
 {
-    public function __construct(private readonly ?string $tenantId = null)
-    {
-    }
+    public function __construct(private readonly ?string $tenantId = null) {}
 
     public function handle(object $job, Closure $next): mixed
     {

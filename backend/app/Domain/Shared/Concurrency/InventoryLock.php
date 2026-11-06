@@ -7,16 +7,13 @@ namespace App\Domain\Shared\Concurrency;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Closure;
-use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 final class InventoryLock
 {
-    public function __construct(private readonly TenantContext $context)
-    {
-    }
+    public function __construct(private readonly TenantContext $context) {}
 
     public function withLocks(string $resource, array $ids, Closure $fn, int $ttlSeconds = 30, int $waitSeconds = 5): mixed
     {

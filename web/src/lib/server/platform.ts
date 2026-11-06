@@ -5,7 +5,7 @@ import type { PlanDetail, PlanSummary, PlatformMe, TenantDetail, TenantSummary }
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
 
-async function platformGet<T>(path: string): Promise<T> {
+export async function platformGet<T>(path: string): Promise<T> {
   const result = await apiFetch<T>(`/platform${path}`, { realm: "platform" });
   if (result.status === 403 && result.error?.code === "MFA_REQUIRED") redirect(REALMS.platform.mfaPage);
   if (result.status === 404) notFound();
