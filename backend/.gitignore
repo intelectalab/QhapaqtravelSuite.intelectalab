@@ -24,3 +24,4 @@ Homestead.yaml
 Thumbs.db
 /storage/phpstan
 /storage/openapi.generated.json
+/storage/phpstan-tests
