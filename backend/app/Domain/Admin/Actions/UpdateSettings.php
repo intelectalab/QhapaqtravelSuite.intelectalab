@@ -123,7 +123,7 @@ final class UpdateSettings
             throw ApiException::unprocessable('CFG-BR-07', "El correlativo de {$row->label} solo puede avanzar. El próximo número actual es {$row->next_number}.");
         }
 
-        if (DB::table('sys_sequences')->where('prefix', $prefix)->where('id', '<>', $row->id)->exists()) {
+        if (DB::table('sys_sequences')->where('prefix', $prefix)->where('doc_type', '<>', $docType)->exists()) {
             throw ApiException::conflict('CFG-BR-07', "El prefijo {$prefix} ya lo usa otra serie.");
         }
 

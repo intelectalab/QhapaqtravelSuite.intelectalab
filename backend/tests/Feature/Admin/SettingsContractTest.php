@@ -50,13 +50,13 @@ it('settings/sequences lista las series con el próximo documento', function () 
 
 it('T-15: PATCH settings/sequences en lote solo avanza el correlativo', function () {
     actingAsSeed('U01');
-    $quote = withinTenant(tenantA(), fn () => DB::table('sys_sequences')->where('doc_type', 'quote')->first());
+    $quote = withinTenant(tenantA(), fn () => DB::table('sys_sequences')->where('doc_type', 'quote')->where('series', 'default')->first());
 
     expect($this->patchJson('/api/v1/settings/sequences', ['sequences' => [['doc_type' => 'quote', 'prefix' => $quote->prefix, 'next_number' => $quote->next_number - 1]]]))->toBeApiError(422, 'CFG-BR-07');
 
     $this->patchJson('/api/v1/settings/sequences', ['sequences' => [['doc_type' => 'quote', 'prefix' => $quote->prefix, 'next_number' => $quote->next_number + 10]]])
         ->assertOk()->assertJsonPath('meta.changed', ['quote']);
-    expect((int) withinTenant(tenantA(), fn () => DB::table('sys_sequences')->where('doc_type', 'quote')->value('next_number')))->toBe($quote->next_number + 10);
+    expect((int) withinTenant(tenantA(), fn () => DB::table('sys_sequences')->where('doc_type', 'quote')->where('series', 'default')->value('next_number')))->toBe($quote->next_number + 10);
 });
 
 it('POST settings/sequences agrega una serie nueva solo para tipos permitidos', function () {
