@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Http\Middleware\AssignCorrelationId;
@@ -102,9 +103,11 @@ final class ApiExceptionRenderer
 
     private function auditDenied(Request $request, string $after): void
     {
+        $user = $request->user();
+
         try {
             app(AuditLogger::class)->logOutsideTransaction('Acceso', '/'.$request->path(), 'acceso_denegado',
-                (string) $request->user()?->getRoleNames()->first(), $after);
+                $user instanceof User ? (string) $user->getRoleNames()->first() : '', $after);
         } catch (Throwable $ignored) {
             report($ignored);
         }

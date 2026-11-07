@@ -13,6 +13,8 @@ final class B2bPortalSeeder
 {
     use SeedsTenant;
 
+    public const ORDER = 55;
+
     public function __construct(private readonly Tenant $tenant) {}
 
     protected function tenant(): Tenant

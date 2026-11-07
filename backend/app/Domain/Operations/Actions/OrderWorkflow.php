@@ -145,13 +145,18 @@ final class OrderWorkflow
             ]);
 
             $reservationStatus = match ($target) {
-                'en_ejecucion' => ['from' => 'confirmada', 'to' => 'en_operacion'],
-                'completada' => ['from' => 'en_operacion', 'to' => 'completada'],
+                'en_ejecucion' => ['from' => 'confirmada', 'to' => 'en_operacion', 'action' => 'iniciar_operacion'],
+                'completada' => ['from' => 'en_operacion', 'to' => 'completada', 'action' => 'completar'],
                 default => null,
             };
 
             if ($reservationStatus !== null) {
-                DB::table('booking_reservations')->where('id', $order->reservation_id)->where('status', $reservationStatus['from'])->update(['status' => $reservationStatus['to'], 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+                $moved = DB::table('booking_reservations')->where('id', $order->reservation_id)->where('status', $reservationStatus['from'])->update(['status' => $reservationStatus['to'], 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+
+                if ($moved > 0) {
+                    $reservationCode = (string) DB::table('booking_reservations')->where('id', $order->reservation_id)->value('code');
+                    $this->audit->log('Reserva', $reservationCode, $reservationStatus['action'], $reservationStatus['from'], $reservationStatus['to'], actor: $actor);
+                }
             }
         });
 
