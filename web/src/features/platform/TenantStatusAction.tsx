@@ -69,6 +69,7 @@ export function TenantStatusAction({ tenant, iconOnly = false }: { tenant: Tenan
           <FormError message={state.message} />
           <input type="hidden" name="tenant" value={tenant.code} />
           <input type="hidden" name="mode" value={mode} />
+          <input type="hidden" name="lock_version" value={tenant.lock_version} />
           <TextArea label="Motivo" name="reason" required minLength={5} maxLength={500} placeholder={copy.placeholder} hint="Queda registrado en la auditoría de la plataforma." autoFocus />
         </form>
       </SidePanel>

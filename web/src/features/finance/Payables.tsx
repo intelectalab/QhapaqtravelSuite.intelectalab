@@ -79,6 +79,7 @@ function EditPayableAction({ row }: { row: PayableRow }) {
 function ApprovePayableAction({ row }: { row: PayableRow }) {
   return (
     <FinanceStep step="payable_approve" itemKey={row.code} label="Aprobar" title="Aprobar obligación" description="Una vez aprobada se puede programar y pagar. Si es un costo adicional, empieza a restar en la rentabilidad." submitLabel="Aprobar" trigger={(open) => <RowIcon tone="neutral" label="Aprobar" icon={<Stamp size={15} />} onClick={open} />}>
+      <input type="hidden" name="lock_version" value={row.lock_version} />
       <SummaryBox rows={[...payableSummary(row), { label: "Vence", value: formatDate(row.due_date) }]} />
       {row.provider.status !== "activo" && <p className="rounded-xl bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] px-3.5 py-2.5 text-[12.5px] text-fg-2">El proveedor no está activo. Puedes aprobar, pero revisa el contrato antes de pagar.</p>}
     </FinanceStep>
@@ -88,6 +89,7 @@ function ApprovePayableAction({ row }: { row: PayableRow }) {
 function PayPayableAction({ row, methods, today, usdRate }: { row: PayableRow; methods: PayablesOverview["options"]["payout_methods"]; today: string; usdRate: number }) {
   return (
     <FinanceStep step="payable_pay" itemKey={row.code} label="Pagar" title="Registrar pago al proveedor" description="Si el pago cubre el saldo, la obligación queda pagada." submitLabel="Registrar pago" trigger={(open) => <RowIcon tone="edit" label="Pagar" icon={<HandCoins size={15} />} onClick={open} />}>
+      <input type="hidden" name="lock_version" value={row.lock_version} />
       <SummaryBox rows={payableSummary(row)} />
       <SelectField label="Forma de pago" name="method" options={methods} defaultValue={methods[0]?.value} />
       <div className="grid grid-cols-2 gap-3">

@@ -9,6 +9,6 @@ export const metadata: Metadata = { title: "Mis viajes" };
 export default async function PortalTripsPage() {
   const session = await portalSession();
   if (session?.role === "passenger" && session.trip) redirect(`/portal/viajes/${session.trip}`);
-  const { trips } = await portalData<{ today: string; trips: PortalTripSummary[] }>("/trips", "No pudimos cargar tus viajes.");
+  const { trips } = await portalData<{ today: string; trips: PortalTripSummary[] }>("/reservations", "No pudimos cargar tus viajes.");
   return <PortalTrips trips={trips} />;
 }

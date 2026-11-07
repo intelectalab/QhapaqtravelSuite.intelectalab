@@ -7,15 +7,30 @@ namespace App\Domain\Quotes\Support;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Quotes\Actions\QuoteLifecycle;
+use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Http\CursorPage;
+use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Tenancy\TenantContext;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class QuoteDirectory
 {
     public const OPEN = ['borrador', 'enviada', 'vista', 'negociacion'];
+
+    private const SORTS = [
+        'created_at' => 'q.created_at',
+        'code' => 'q.code',
+        'valid_until' => 'q.valid_until',
+        'travel_from' => 'q.travel_from',
+        'total' => 'v.grand_total',
+    ];
 
     public function __construct(private readonly TenantContext $context) {}
 
@@ -24,24 +39,196 @@ final class QuoteDirectory
         return Carbon::now($this->context->tenant()->timezone ?: 'America/Lima')->toDateString();
     }
 
-    public function list(User $viewer): array
+    public function list(User $viewer, Request $request): array
     {
         $today = $this->today();
-        $rows = $this->rows($viewer)->orderByDesc('q.created_at')->get()->map(fn (object $row) => $this->summary($row, $today, $viewer));
-        $open = $rows->filter(fn (array $quote) => in_array($quote['status'], self::OPEN, true));
+        $filters = CursorPage::filters($request);
+        $scoped = $this->byOwner($this->rows($viewer), $viewer, $filters['owner'] ?? null);
+        $query = $this->filtered(clone $scoped, $filters, $today);
+
+        return CursorPage::respond($request, $query, self::SORTS, '-created_at,-code', fn (object $row): array => $this->summary($row, $today, $viewer), [
+            'kpis' => $this->kpis($scoped, $today, $viewer),
+            'can' => ['manage' => $viewer->can('quotes.create')],
+            'today' => $today,
+        ]);
+    }
+
+    private function kpis(Builder $scoped, string $today, User $viewer): array
+    {
+        $rows = $scoped->get()->map(fn (object $row): array => $this->summary($row, $today, $viewer));
+        $open = $rows->filter(fn (array $quote): bool => in_array($quote['status'], self::OPEN, true));
+        $openPen = $open->reduce(fn (BigDecimal $sum, array $quote): BigDecimal => $sum->plus($quote['total_pen']), BigDecimal::zero());
 
         return [
-            'items' => $rows->values(),
-            'can' => ['manage' => $viewer->can('quotes.create')],
-            'kpis' => [
-                'open' => $open->count(),
-                'open_pen' => (int) round($open->sum('total_pen')),
-                'expiring' => $open->filter(fn (array $quote) => $quote['days_left'] !== null && $quote['days_left'] <= 3)->count(),
-                'approved' => $rows->whereIn('status', ['aprobada', 'convertida'])->count(),
-                'conversion' => $this->conversion($rows),
-            ],
-            'today' => $today,
+            'open' => $open->count(),
+            'open_pen' => (string) $openPen->toScale(0, RoundingMode::HALF_UP),
+            'expiring' => $open->filter(fn (array $quote): bool => $quote['days_left'] !== null && $quote['days_left'] <= 3)->count(),
+            'approved' => $rows->whereIn('status', ['aprobada', 'convertida'])->count(),
+            'conversion' => $this->conversion($rows),
+            'total' => $rows->count(),
         ];
+    }
+
+    private function byOwner(Builder $query, User $viewer, ?string $owner): Builder
+    {
+        if ($owner === null || Portfolio::ownOnly($viewer)) {
+            return $query;
+        }
+
+        $ownerId = $owner === 'me' ? (string) $viewer->getKey() : $owner;
+
+        return Str::isUuid($ownerId) ? $query->where('q.owner_id', $ownerId) : $query->whereRaw('false');
+    }
+
+    private function filtered(Builder $query, array $filters, string $today): Builder
+    {
+        if (isset($filters['status'])) {
+            $statuses = array_values(array_filter(array_map('trim', explode(',', $filters['status']))));
+            $query->where(function (Builder $where) use ($statuses, $today): void {
+                foreach ($statuses as $status) {
+                    $where->orWhere(fn (Builder $one): Builder => $this->status($one, $status, $today));
+                }
+            });
+        }
+
+        if (isset($filters['internal_approval'])) {
+            $this->internalApproval($query, $filters['internal_approval']);
+        }
+
+        if (isset($filters['q'])) {
+            $term = '%'.mb_strtolower($filters['q']).'%';
+            $query->where(fn (Builder $where): Builder => $where->whereRaw('lower(q.code) like ?', [$term])
+                ->orWhereRaw('lower(q.title) like ?', [$term])
+                ->orWhereRaw('lower(c.name) like ?', [$term]));
+        }
+
+        return $query;
+    }
+
+    private function status(Builder $query, string $status, string $today): Builder
+    {
+        if ($status === 'vencida') {
+            return $query->where('q.status', 'vencida')
+                ->orWhere(fn (Builder $expired): Builder => $expired->whereIn('q.status', self::OPEN)->where('q.valid_until', '<', $today));
+        }
+
+        $query->where('q.status', $status);
+
+        return in_array($status, self::OPEN, true) ? $query->where('q.valid_until', '>=', $today) : $query;
+    }
+
+    private function internalApproval(Builder $query, string $state): void
+    {
+        $last = '(select a.status from quote_internal_approvals a where a.quote_version_id = v.id order by a.created_at desc limit 1)';
+        $required = '(v.discount_pct > ? or v.margin_pct < ?)';
+        $limits = [QuoteLifecycle::DISCOUNT_LIMIT, QuoteLifecycle::MARGIN_FLOOR];
+
+        match ($state) {
+            'pend' => $query->whereRaw("{$last} = 'pendiente'"),
+            'ok' => $query->whereRaw("{$last} = 'aprobada'"),
+            'req' => $query->whereRaw("{$required} and coalesce({$last}, '') not in ('pendiente', 'aprobada')", $limits),
+            default => throw ApiException::unprocessable('FILTER_INVALID', 'filter[internal_approval] admite pend, req u ok.'),
+        };
+    }
+
+    public function kpisFor(User $viewer, Request $request): array
+    {
+        $filters = CursorPage::filters($request);
+
+        return $this->kpis($this->byOwner($this->rows($viewer), $viewer, $filters['owner'] ?? null), $this->today(), $viewer);
+    }
+
+    public function versions(User $viewer, string $code): ?array
+    {
+        $quote = $this->find($viewer, $code);
+
+        return $quote === null ? null : ['code' => $quote['code'], 'current' => $quote['version'], 'see_margin' => $quote['see_margin'], 'versions' => collect($quote['versions'])->values()->all()];
+    }
+
+    public function versionOf(User $viewer, string $code, int $number): ?array
+    {
+        $versions = $this->versions($viewer, $code);
+
+        return $versions === null ? null : collect($versions['versions'])->firstWhere('number', $number);
+    }
+
+    public function compare(User $viewer, string $code, int $a, int $b): ?array
+    {
+        $left = $this->versionOf($viewer, $code, $a);
+        $right = $this->versionOf($viewer, $code, $b);
+
+        if ($left === null || $right === null) {
+            return null;
+        }
+
+        $keyed = function (array $version): array {
+            $seen = [];
+            $rows = [];
+            foreach ($version['items'] as $item) {
+                $base = $item['product']['code'].'|'.$item['segment'];
+                $seen[$base] = ($seen[$base] ?? 0) + 1;
+                $rows[$base.'#'.$seen[$base]] = $item;
+            }
+
+            return $rows;
+        };
+        $before = $keyed($left);
+        $after = $keyed($right);
+        $lines = [];
+
+        foreach (array_unique([...array_keys($before), ...array_keys($after)]) as $key) {
+            $old = $before[$key] ?? null;
+            $new = $after[$key] ?? null;
+            $changes = $old && $new ? array_values(array_filter(['date', 'qty', 'pax', 'unit_price', 'total'], fn (string $field): bool => (string) $old[$field] !== (string) $new[$field])) : [];
+            $lines[] = [
+                'key' => $key,
+                'product' => ($new ?? $old)['product'],
+                'segment' => ($new ?? $old)['segment'],
+                'change' => $old === null ? 'agregada' : ($new === null ? 'quitada' : ($changes === [] ? 'igual' : 'modificada')),
+                'fields' => $changes,
+                'before' => $old,
+                'after' => $new,
+            ];
+        }
+
+        $delta = fn (string $field): ?string => $left['totals'][$field] === null || $right['totals'][$field] === null
+            ? null
+            : (string) BigDecimal::of((string) $right['totals'][$field])->minus((string) $left['totals'][$field])->toScale(2, RoundingMode::HALF_UP);
+
+        return [
+            'code' => $code,
+            'a' => ['number' => $left['number'], 'status' => $left['status'], 'totals' => $left['totals'], 'discount_pct' => $left['discount_pct']],
+            'b' => ['number' => $right['number'], 'status' => $right['status'], 'totals' => $right['totals'], 'discount_pct' => $right['discount_pct']],
+            'lines' => $lines,
+            'summary' => [
+                'added' => count(array_filter($lines, fn (array $line): bool => $line['change'] === 'agregada')),
+                'removed' => count(array_filter($lines, fn (array $line): bool => $line['change'] === 'quitada')),
+                'changed' => count(array_filter($lines, fn (array $line): bool => $line['change'] === 'modificada')),
+                'grand_delta' => $delta('grand'),
+                'margin_delta' => $delta('margin_pct'),
+            ],
+        ];
+    }
+
+    public function activity(User $viewer, Request $request, string $code): ?array
+    {
+        if ($this->rows($viewer)->where('q.code', $code)->doesntExist()) {
+            return null;
+        }
+
+        $query = DB::table('audit_events as e')->leftJoin('iam_users as u', 'u.id', '=', 'e.actor_id')
+            ->where('e.entity', 'Cotización')->where('e.entity_id', $code)
+            ->select(['e.id', 'e.code', 'e.action', 'e.before_value', 'e.after_value', 'e.actor_type', 'e.occurred_at', 'u.name as actor_name']);
+
+        return CursorPage::respond($request, $query, ['occurred_at' => 'e.occurred_at'], '-occurred_at', fn (object $event): array => [
+            'id' => $event->id,
+            'code' => $event->code,
+            'action' => $event->action,
+            'before' => $event->before_value,
+            'after' => $event->after_value,
+            'actor' => $event->actor_name ?? ($event->actor_type === 'system' ? 'Sistema' : null),
+            'at' => $event->occurred_at,
+        ]);
     }
 
     public function find(User $viewer, string $code): ?array
@@ -52,7 +239,7 @@ final class QuoteDirectory
             return null;
         }
 
-        $seeMargin = $this->seesMargin($viewer);
+        $seeMargin = $this->seesMargin($viewer, (string) $row->owner_id);
         $current = DB::table('quote_versions')->where('id', $row->current_version_id)->first();
         $versions = DB::table('quote_versions as v')->join('iam_users as u', 'u.id', '=', 'v.author_id')->where('v.quote_id', $row->id)->orderByDesc('v.version_no')
             ->get(['v.id', 'v.version_no', 'v.status', 'v.issued_on', 'v.discount_pct', 'v.tax_pct', 'v.notes', 'v.snapshot_label', 'v.sale_total', 'v.discount_total', 'v.net_total', 'v.tax_total', 'v.grand_total', 'v.cost_total', 'v.profit_total', 'v.margin_pct', 'u.name as author']);
@@ -72,6 +259,8 @@ final class QuoteDirectory
             'lock_version' => (int) $row->lock_version,
             'internal' => $current ? app(QuoteLifecycle::class)->internalState($current) : null,
             'can' => [
+                'reassign' => $viewer->can('crm.records.reassign'),
+                'duplicate' => $viewer->can('quotes.create'),
                 'edit' => $viewer->can('quotes.create'),
                 'send' => $viewer->can('quotes.send'),
                 'approve_internal' => $viewer->can('quotes.approve_internal'),
@@ -92,17 +281,17 @@ final class QuoteDirectory
             'author' => $version->author,
             'notes' => $version->notes,
             'snapshot' => $version->snapshot_label,
-            'discount_pct' => (float) $version->discount_pct,
-            'tax_pct' => (float) $version->tax_pct,
+            'discount_pct' => (string) BigDecimal::of((string) $version->discount_pct)->stripTrailingZeros(),
+            'tax_pct' => (string) BigDecimal::of((string) $version->tax_pct)->stripTrailingZeros(),
             'totals' => [
-                'sale' => (float) $version->sale_total,
-                'discount' => (float) $version->discount_total,
-                'net' => (float) $version->net_total,
-                'tax' => (float) $version->tax_total,
-                'grand' => (float) $version->grand_total,
-                'cost' => $seeMargin ? (float) $version->cost_total : null,
-                'profit' => $seeMargin ? (float) $version->profit_total : null,
-                'margin_pct' => $seeMargin ? (float) $version->margin_pct : null,
+                'sale' => Decimal::toApi((string) $version->sale_total),
+                'discount' => Decimal::toApi((string) $version->discount_total),
+                'net' => Decimal::toApi((string) $version->net_total),
+                'tax' => Decimal::toApi((string) $version->tax_total),
+                'grand' => Decimal::toApi((string) $version->grand_total),
+                'cost' => $seeMargin ? Decimal::toApi((string) $version->cost_total) : null,
+                'profit' => $seeMargin ? Decimal::toApi((string) $version->profit_total) : null,
+                'margin_pct' => $seeMargin ? (string) $version->margin_pct : null,
             ],
             'items' => $items->map(fn (object $item): array => $this->item($item, $seeMargin))->values(),
         ];
@@ -110,8 +299,6 @@ final class QuoteDirectory
 
     private function item(object $item, bool $seeMargin): array
     {
-        $sale = (float) $item->sale_total;
-
         return [
             'line' => (int) $item->line_no,
             'product' => ['code' => $item->product_code, 'name' => $item->product_name],
@@ -119,10 +306,10 @@ final class QuoteDirectory
             'qty' => (int) $item->qty,
             'pax' => (int) $item->pax,
             'segment' => $item->segment,
-            'unit_price' => (float) $item->unit_price,
-            'total' => $sale,
-            'unit_cost' => $seeMargin ? (float) $item->unit_cost : null,
-            'margin_pct' => $seeMargin && $sale > 0 ? round(($sale - (float) $item->cost_total) / $sale * 100, 1) : null,
+            'unit_price' => Decimal::toApi((string) $item->unit_price),
+            'total' => Decimal::toApi((string) $item->sale_total),
+            'unit_cost' => $seeMargin ? Decimal::toApi((string) $item->unit_cost) : null,
+            'margin_pct' => $seeMargin ? QuotePricing::lineMargin((string) $item->sale_total, (string) $item->cost_total) : null,
         ];
     }
 
@@ -142,21 +329,30 @@ final class QuoteDirectory
 
     private function summary(object $row, string $today, User $viewer): array
     {
-        $total = (float) ($row->grand_total ?? 0);
+        $total = Decimal::round2((string) ($row->grand_total ?? '0'));
         $expired = in_array($row->status, self::OPEN, true) && $row->valid_until < $today;
         $status = $expired ? 'vencida' : $row->status;
 
         return [
+            'id' => $row->id,
             'code' => $row->code,
+            'client_id' => $row->client_id,
+            'opportunity_id' => $row->opportunity_id,
+            'owner_id' => $row->owner_id,
             'title' => $row->title,
             'status' => $status,
             'client' => ['code' => $row->client_code, 'name' => $row->client_name],
             'owner' => ['name' => $row->owner_name, 'color' => $row->owner_color],
             'version' => (int) $row->current_version_no,
+            'current_version_no' => (int) $row->current_version_no,
+            'current_version_id' => $row->current_version_id,
+            'reservation_id' => $row->reservation_id,
             'currency' => $row->currency,
-            'total' => $total,
-            'total_pen' => round($total * (float) $row->fx_rate, 2),
-            'margin_pct' => $this->seesMargin($viewer) && $row->version_margin !== null ? (float) $row->version_margin : null,
+            'fx_rate' => (string) $row->fx_rate,
+            'total' => (string) $total,
+            'total_pen' => (string) Decimal::round2($total->multipliedBy((string) $row->fx_rate)),
+            'margin_pct' => $this->seesMargin($viewer, (string) $row->owner_id) && $row->version_margin !== null ? (string) $row->version_margin : null,
+            'lock_version' => (int) $row->lock_version,
             'travel_from' => $row->travel_from,
             'travel_to' => $row->travel_to,
             'valid_until' => $row->valid_until,
@@ -173,8 +369,11 @@ final class QuoteDirectory
         return $closed->isEmpty() ? null : (int) round($rows->whereIn('status', ['aprobada', 'convertida'])->count() / $closed->count() * 100);
     }
 
-    private function seesMargin(User $viewer): bool
+    private function seesMargin(User $viewer, ?string $ownerId = null): bool
     {
-        return $viewer->can('finance.profitability') || $viewer->can('catalog.products.view_profitability');
+        return $viewer->can('finance.profitability')
+            || $viewer->can('catalog.products.view_profitability')
+            || $viewer->can('quotes.approve_internal')
+            || Portfolio::owns($viewer, $ownerId);
     }
 }

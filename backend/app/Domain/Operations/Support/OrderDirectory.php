@@ -26,7 +26,7 @@ final class OrderDirectory
             ->leftJoin('iam_users as u', 'u.id', '=', 'o.coordinator_id')
             ->whereNull('o.deleted_at')
             ->orderBy('o.date_from')
-            ->get(['o.id', 'o.code', 'o.title', 'o.status', 'o.date_from', 'o.date_to', 'o.created_at', 'o.cancel_reason', 'r.id as reservation_id', 'r.code as reservation_code', 'r.status as reservation_status', 'c.name as client_name', 'u.id as coordinator_id', 'u.name as coordinator_name', 'u.avatar_color as coordinator_color']);
+            ->get(['o.id', 'o.code', 'o.lock_version', 'o.title', 'o.status', 'o.date_from', 'o.date_to', 'o.created_at', 'o.cancel_reason', 'r.id as reservation_id', 'r.code as reservation_code', 'r.status as reservation_status', 'c.name as client_name', 'u.id as coordinator_id', 'u.name as coordinator_name', 'u.avatar_color as coordinator_color']);
         $ids = $orders->pluck('id');
         $assignments = DB::table('ops_assignments')->whereIn('order_id', $ids)->get(['order_id', 'status', 'service_date']);
         $tasks = DB::table('ops_order_tasks')->whereIn('order_id', $ids)->whereNull('deleted_at')->get(['order_id', 'done']);
@@ -54,6 +54,7 @@ final class OrderDirectory
 
                 return [
                     'code' => $order->code,
+                    'lock_version' => (int) $order->lock_version,
                     'title' => $order->title,
                     'status' => $order->status,
                     'date_from' => $order->date_from,
@@ -112,6 +113,7 @@ final class OrderDirectory
 
         return [
             'code' => $order->code,
+            'lock_version' => (int) $order->lock_version,
             'title' => $order->title,
             'status' => $order->status,
             'date_from' => $order->date_from,

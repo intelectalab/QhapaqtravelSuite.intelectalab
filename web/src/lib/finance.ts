@@ -82,6 +82,7 @@ export interface ApplyOption {
 
 export interface PaymentRow {
   code: string;
+  lock_version: number;
   kind: string;
   source: string;
   method: string;
@@ -111,6 +112,7 @@ export interface PaymentsOverview {
 
 export interface PayableRow {
   code: string;
+  lock_version: number;
   kind: string;
   cost_type: string | null;
   concept: string;
@@ -151,6 +153,7 @@ export interface PayablesOverview {
 
 export interface CommissionRow {
   code: string;
+  lock_version: number;
   kind: string;
   kind_label: string;
   beneficiary: string;
@@ -238,14 +241,66 @@ export interface InvoiceRow {
   receivable: string | null;
   ref_number: string | null;
   issued_by: string | null;
+  lock_version: number;
   creditable: number;
 }
 
-export interface InvoicesOverview {
-  rows: InvoiceRow[];
-  kpis: { month_count: number; month_pen: number; accepted: number; observed: number; credit_notes_pen: number; uninvoiced_pen: number };
+export interface InvoiceKpis {
+  month_count: number;
+  month_pen: number;
+  accepted: number;
+  observed: number;
+  waiting: number;
+  credit_notes_pen: number;
+  uninvoiced_pen: number;
+}
+
+export interface InvoiceListMeta {
+  kpis: InvoiceKpis;
   reasons: FinanceOption[];
   can: { issue: boolean };
+}
+
+export interface InvoicesOverview extends InvoiceListMeta {
+  rows: InvoiceRow[];
+  pending: InvoicePending[];
+}
+
+export interface InvoicePending {
+  code: string;
+  concept: string;
+  client: string;
+  reservation: string;
+  currency: string;
+  paid: string;
+  pending: string;
+}
+
+export interface InvoiceDraft {
+  receivable: { code: string; kind: string; concept: string; amount: string; paid: string; status: string };
+  reservation: { code: string; title: string };
+  doc_type: "01" | "03";
+  customer_doc_type: string;
+  customer_doc_number: string;
+  customer_name: string;
+  customer_address: string | null;
+  domiciled: boolean;
+  currency: string;
+  fx_rate: string | null;
+  amount: string;
+  maximum: string;
+  description: string;
+}
+
+export interface InvoiceCheck {
+  ok: boolean;
+  checks: { rule: string; ok: boolean; message: string | null }[];
+  maximum: string;
+  operation_type: string;
+  taxable_amount: string;
+  igv_amount: string;
+  total_amount: string;
+  amount_in_words: string;
 }
 
 export interface TreasuryAccount {
@@ -329,4 +384,14 @@ export interface ReconciliationOverview {
   kpis: { pending: number; suggested: number; exceptions: number; reconciled: number; credits_pen: number; debits_pen: number; progress: number };
   closures: { code: string; period: string; closed_at: string; lines_count: number; credits: number; debits: number; net: number }[];
   can: { operate: boolean };
+}
+
+export interface InvoiceDetail extends InvoiceRow {
+  customer_address: string | null;
+  lines: { line_no: number; description: string; quantity: string; unit_code: string; unit_value: string; igv_affectation: string; line_amount: string; igv_amount: string }[];
+  fiscal_events: { action: string; attempt: number; response_code: string | null; response_message: string | null; status: string; created_at: string }[];
+  history: { status: string; note: string | null; created_at: string; user: string | null }[];
+  credit_notes: { number: string; status: string; total_amount: string; credit_note_reason: string | null }[];
+  ose_ticket: string | null;
+  hash: string | null;
 }

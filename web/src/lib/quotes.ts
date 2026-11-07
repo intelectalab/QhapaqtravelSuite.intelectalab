@@ -1,26 +1,27 @@
-export interface QuoteRow {
-  code: string;
-  title: string;
-  status: string;
+import type { QuoteQuote } from "@/lib/api/types";
+
+type QuoteContractFields = Pick<QuoteQuote, "id" | "code" | "client_id" | "owner_id" | "title" | "current_version_no" | "travel_from" | "travel_to" | "valid_until" | "currency" | "lock_version">;
+
+export interface QuoteRow extends QuoteContractFields {
+  opportunity_id: string | null;
+  status: QuoteQuote["status"];
   client: { code: string; name: string };
   owner: { name: string; color: string | null };
   version: number;
-  currency: string;
-  total: number;
-  total_pen: number;
-  margin_pct: number | null;
-  travel_from: string;
-  travel_to: string;
-  valid_until: string;
+  current_version_id: string | null;
+  reservation_id: string | null;
+  fx_rate: string;
+  total: string;
+  total_pen: string;
+  margin_pct: string | null;
   days_left: number | null;
   pax: { adt: number; chd: number; inf: number };
   created_at: string;
 }
 
-export interface QuoteList {
-  items: QuoteRow[];
+export interface QuoteListMeta {
+  kpis: { open: number; open_pen: string; expiring: number; approved: number; conversion: number | null; total: number };
   can: { manage: boolean };
-  kpis: { open: number; open_pen: number; expiring: number; approved: number; conversion: number | null };
   today: string;
 }
 
@@ -31,10 +32,10 @@ export interface QuoteItem {
   qty: number;
   pax: number;
   segment: string;
-  unit_price: number;
-  total: number;
-  unit_cost: number | null;
-  margin_pct: number | null;
+  unit_price: string;
+  total: string;
+  unit_cost: string | null;
+  margin_pct: string | null;
 }
 
 export interface QuoteVersion {
@@ -44,9 +45,9 @@ export interface QuoteVersion {
   author: string;
   notes: string | null;
   snapshot: string;
-  discount_pct: number;
-  tax_pct: number;
-  totals: { sale: number; discount: number; net: number; tax: number; grand: number; cost: number | null; profit: number | null; margin_pct: number | null };
+  discount_pct: string;
+  tax_pct: string;
+  totals: { sale: string; discount: string; net: string; tax: string; grand: string; cost: string | null; profit: string | null; margin_pct: string | null };
   items: QuoteItem[];
 }
 
@@ -58,9 +59,8 @@ export interface QuoteDetail extends QuoteRow {
   rejected_reason: string | null;
   viewed_at: string | null;
   see_margin: boolean;
-  lock_version: number;
   internal: { required: boolean; status: string | null; note: string | null } | null;
-  can: { edit: boolean; send: boolean; approve_internal: boolean; register_approval: boolean };
+  can: { edit: boolean; send: boolean; approve_internal: boolean; register_approval: boolean; reassign: boolean; duplicate: boolean };
   contact: { email: string | null; phone: string | null } | null;
   versions: QuoteVersion[];
   history: { action: string; before_value: string | null; after_value: string | null; occurred_at: string }[];
@@ -83,7 +83,7 @@ export const QUOTE_JOURNEY = [
 export interface QuoteFormOptions {
   clients: { code: string; name: string }[];
   opportunities: { code: string; title: string; currency: string; pax: number; client_code: string }[];
-  products: { code: string; name: string; duration: string; rates: { segment: string; currency: string; price: number }[] }[];
+  products: { code: string; name: string; duration: string; rates: { segment: string; currency: string; price: string }[] }[];
   defaults: { valid_until: string; tax_pct: number; max_discount: number };
 }
 
@@ -98,8 +98,8 @@ export interface QuoteLineInput {
 }
 
 export interface QuotePreview {
-  lines: { total: number; margin_pct: number | null }[];
-  totals: { sale_total: number; discount_total: number; net_total: number; tax_total: number; grand_total: number; cost_total: number | null; profit_total: number | null; margin_pct: number | null };
+  lines: { unit_price: string; price_source: "rate" | "manual"; total: string; margin_pct: string | null }[];
+  totals: { sale_total: string; discount_total: string; net_total: string; tax_total: string; grand_total: string; cost_total: string | null; profit_total: string | null; margin_pct: string | null };
   needs_internal_approval: boolean;
 }
 
@@ -108,8 +108,18 @@ export interface QuoteConversion {
   status: string;
   reservation: string | null;
   currency: string;
-  total: number;
+  total: string;
   pax: number;
-  receivables: { concept: string; amount: number; due: string }[];
+  receivables: { concept: string; amount: string; due: string }[];
   items: { line: number; product: string; date: string; pax: number; ok: boolean; note: string }[];
+}
+
+type ComparedItem = QuoteItem;
+
+export interface QuoteComparison {
+  code: string;
+  a: { number: number; status: string; totals: QuoteVersion["totals"]; discount_pct: string };
+  b: { number: number; status: string; totals: QuoteVersion["totals"]; discount_pct: string };
+  lines: { key: string; product: { code: string; name: string }; segment: string; change: "agregada" | "quitada" | "modificada" | "igual"; fields: string[]; before: ComparedItem | null; after: ComparedItem | null }[];
+  summary: { added: number; removed: number; changed: number; grand_delta: string | null; margin_delta: string | null };
 }

@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\Operations\Actions;
 
-use App\Domain\Crm\Support\CodeSequence;
+use App\Domain\Booking\Actions\ReservationLifecycle;
 use App\Domain\Iam\Models\User;
 use App\Domain\Operations\Support\OpsCommon;
 use App\Domain\Operations\Support\OrderDirectory;
 use App\Domain\Operations\Support\OrderFlow;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Sequences\SequenceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -25,8 +26,8 @@ final class OrderWorkflow
     ];
 
     public function __construct(
+        private readonly SequenceService $sequences,
         private readonly OpsCommon $common,
-        private readonly CodeSequence $sequence,
         private readonly AuditLogger $audit,
         private readonly OrderDirectory $directory,
     ) {}
@@ -42,8 +43,8 @@ final class OrderWorkflow
                 throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige una reserva.');
             }
 
-            if (! in_array($reservation->status, ['confirmada', 'en_operacion'], true)) {
-                throw ApiException::unprocessable('OPS-BR-01', 'Solo una reserva confirmada genera orden operativa.');
+            if (! in_array($reservation->status, ReservationLifecycle::ORDERABLE, true)) {
+                throw ApiException::unprocessable('OPS-BR-01', 'Solo una reserva confirmada, pendiente de pago o de proveedor, reprogramada o en operación genera orden operativa.');
             }
 
             if (DB::table('ops_orders')->where('reservation_id', $reservation->id)->whereNull('deleted_at')->exists()) {
@@ -52,7 +53,7 @@ final class OrderWorkflow
 
             $services = DB::table('booking_reservation_services')->where('reservation_id', $reservation->id)->where('status', '<>', 'cancelado')
                 ->whereIn('service_kind', ['tour', 'traslado'])->orderBy('service_date')->orderBy('service_time')->get(['id', 'name', 'service_date', 'service_time']);
-            $code = $this->sequence->next('ops_orders', 'OP-'.substr($reservation->travel_from, 0, 4).'-', 4);
+            $code = $this->sequences->next('ops_order', year: (int) substr((string) $reservation->travel_from, 0, 4));
             $orderId = (string) Str::uuid7();
             DB::table('ops_orders')->insert([
                 'id' => $orderId,
@@ -93,7 +94,7 @@ final class OrderWorkflow
         $order = $this->order($code);
         $this->ensureOpen($order);
         $this->common->ensureCoordinator($coordinatorId);
-        DB::table('ops_orders')->where('id', $order->id)->update(['coordinator_id' => $coordinatorId, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+        DB::table('ops_orders')->where('id', $order->id)->update(['coordinator_id' => $coordinatorId, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         $this->audit->log('Orden operativa', $code, 'cambiar_coordinador', $order->coordinator_id, $coordinatorId);
     }
 
@@ -138,6 +139,7 @@ final class OrderWorkflow
                 'status' => $target,
                 'closed_at' => $target === 'completada' ? now() : null,
                 'closed_by' => $target === 'completada' ? $actor->getKey() : null,
+                'lock_version' => DB::raw('lock_version + 1'),
                 'updated_by' => $actor->getKey(),
                 'updated_at' => now(),
             ]);
@@ -166,7 +168,7 @@ final class OrderWorkflow
         }
 
         DB::transaction(function () use ($order, $reason, $actor): void {
-            DB::table('ops_orders')->where('id', $order->id)->update(['status' => 'cancelada', 'cancelled_at' => now(), 'cancel_reason' => $reason, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            DB::table('ops_orders')->where('id', $order->id)->update(['status' => 'cancelada', 'cancelled_at' => now(), 'cancel_reason' => $reason, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             DB::table('ops_assignments')->where('order_id', $order->id)->whereNotIn('status', ['completada'])->update(['guide_id' => null, 'driver_id' => null, 'vehicle_id' => null, 'status' => 'pendiente', 'updated_at' => now()]);
         });
 

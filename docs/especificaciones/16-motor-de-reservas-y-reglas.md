@@ -507,6 +507,13 @@ it('bloquea la sobreventa concurrente al confirmar', function () {
 | Permisos | Disponibilidad y recojo con `manage_availability` (Operaciones); precios (adicionales, alojamiento, pago) con `manage_rates`; pasajeros y reglas con `update` | Separación Operaciones vs Comercial de BRIEF_ROLES |
 | Leyenda | Segmenta por estado **y** capacidad, desde hoy | «10–14 oct (12/día)» no se funde con «15–31 oct (8/día)» |
 
+### v3.0 — Implementación (06/11/2026)
+- `App\Domain\Booking\BookingEngine` copiado de `docs/kit/ejemplos` (disponibilidad y pasajeros) y completado en precio según `booking-engine.js` del prototipo: líneas base por tipo de pasajero, factor de temporada, opciones, adicionales, alojamiento por ciudad con habitaciones y noches, suplemento simple, ajustes de grupo, anticipada, última hora y recargo por tarjeta, y plan de pago (modalidades, % de adelanto y vencimiento del saldo). Dinero con `brick/money`, sin float. La prueba de referencia PRD-011 pasa con los valores del prototipo (27 casos).
+- `R-PROMO` sigue sin efecto (el motor recibe un código y no un porcentaje): pendiente de la fase 2.
+- Agregado `segmentPrice`: precio y costo unitario por segmento (también «Grupo» y «Pasajero»), con la misma resolución de tarifa, temporada y moneda que `quote()`. Lo usa el cotizador.
+- `TenantBookingEngine` arma el motor de cada agencia desde la base: `RuleResolver` (`sys_booking_rules` + plan), `catalog_seasons`, `fin_fx_rates`, `catalog_rates` vigentes en la fecha y `catalog_pax_rules`. `sys_settings` no tiene sección `ecommerce`: se usan los valores por defecto del kit.
+- Pendiente (fase C): que el sitio público, el portal B2B y la reserva directa también calculen con el motor; hoy solo el cotizador lo usa.
+
 ---
 
 ## 12. Supuestos y puntos a validar con negocio

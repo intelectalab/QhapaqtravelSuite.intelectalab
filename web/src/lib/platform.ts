@@ -1,3 +1,5 @@
+import type { AuditEntry } from "@/lib/admin";
+import type { Branding } from "@/lib/me";
 export type TenantStatus = "activo" | "prueba" | "suspendido";
 
 export interface PlatformMe {
@@ -5,6 +7,19 @@ export interface PlatformMe {
   name: string;
   email: string;
   home: string;
+  branding: Branding;
+}
+
+export interface PlatformSettingsOverview {
+  sections: {
+    issuer: { name: string; ruc: string; address: string; email: string; web: string };
+    taxes: { igv_pct: number; currency: string };
+    notices: { trial_days: number[]; usage_warn_pct: number; api_key_days: number };
+    dunning: { retry_days: number[]; suspend_after_last: boolean };
+  };
+  lock_version: number;
+  updated_at: string | null;
+  history: AuditEntry[];
 }
 
 export interface TenantSummary {
@@ -27,6 +42,7 @@ export interface TenantSummary {
   suspend_reason: string | null;
   suspended_at: string | null;
   created_at: string | null;
+  lock_version: number;
 }
 
 export interface TenantDetail extends TenantSummary {

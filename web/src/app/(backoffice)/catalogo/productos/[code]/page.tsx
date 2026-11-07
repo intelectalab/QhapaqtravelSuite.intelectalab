@@ -8,9 +8,10 @@ import { HeroBand, HeroChip, HeroPanel, TintCardTitle, TintTile, ToneScope } fro
 import { cn } from "@/lib/cn";
 import { durationLabel, PRODUCT_STATUS } from "@/lib/catalog";
 import { formatDate, formatMoney } from "@/lib/format";
-import { getProduct, getProductFormOptions } from "@/lib/server/catalog";
+import { getProduct, getProductFormOptions, getProductTranslations } from "@/lib/server/catalog";
 import { ProductDeleteAction, ProductEditAction, ProductLifecycleActions } from "@/features/catalog/ProductForms";
 import { ProductHighlights } from "@/features/catalog/ProductHighlights";
+import { ProductTranslationsCard } from "@/features/catalog/ProductTranslations";
 
 export async function generateMetadata({ params }: PageProps<"/catalogo/productos/[code]">): Promise<Metadata> {
   const { code } = await params;
@@ -20,7 +21,7 @@ export async function generateMetadata({ params }: PageProps<"/catalogo/producto
 export default async function ProductoPage({ params, searchParams }: PageProps<"/catalogo/productos/[code]">) {
   const { code } = await params;
   const { editar } = await searchParams;
-  const [product, options] = await Promise.all([getProduct(code), getProductFormOptions()]);
+  const [product, options, translations] = await Promise.all([getProduct(code), getProductFormOptions(), getProductTranslations(code)]);
   const status = PRODUCT_STATUS[product.status];
   const sale = product.rates.filter((rate) => rate.active && rate.type === "Venta" && ["Adulto", "Pasajero"].includes(rate.segment)).sort((a, b) => Number(a.price) - Number(b.price))[0];
   const showCost = product.rates.some((rate) => rate.cost !== null);
@@ -145,6 +146,7 @@ export default async function ProductoPage({ params, searchParams }: PageProps<"
               </ul>
             </Card>
           )}
+          {translations && <ProductTranslationsCard data={translations} canEdit={Boolean(options?.can_update) && product.status !== "ARCHIVED"} />}
         </div>
       </div>
 

@@ -111,12 +111,13 @@ final class AfterSalesDirectory
             ->leftJoin('crm_catalog_items as t', fn ($join) => $join->on('t.code', '=', 'k.type_code')->where('t.kind', '=', 'case_type'))
             ->orderByRaw("case k.status when 'abierta' then 0 when 'en_proceso' then 1 when 'resuelta' then 2 else 3 end")
             ->orderByDesc('k.created_at')
-            ->get(['k.id', 'k.code', 'k.type_code', 'k.priority', 'k.subject', 'k.description', 'k.status', 'k.origin', 'k.resolution', 'k.created_at', 'k.resolved_at', 'k.closed_at', 'k.owner_id', 'c.code as client_code', 'c.name as client', 'r.code as reservation', 's.code as survey', 's.score', 'u.name as owner', 't.label as type']);
+            ->get(['k.id', 'k.code', 'k.lock_version', 'k.type_code', 'k.priority', 'k.subject', 'k.description', 'k.status', 'k.origin', 'k.resolution', 'k.created_at', 'k.resolved_at', 'k.closed_at', 'k.owner_id', 'c.code as client_code', 'c.name as client', 'r.code as reservation', 's.code as survey', 's.score', 'u.name as owner', 't.label as type']);
         $events = DB::table('crm_case_events as e')->leftJoin('iam_users as u', 'u.id', '=', 'e.user_id')->whereIn('e.case_id', $rows->pluck('id'))->orderBy('e.created_at')
             ->get(['e.case_id', 'e.event', 'e.message', 'e.created_at', 'u.name'])->groupBy('case_id');
 
         return $rows->map(fn (object $row): array => [
             'code' => $row->code,
+            'lock_version' => (int) $row->lock_version,
             'type_code' => $row->type_code,
             'type' => $row->type ?? $row->type_code,
             'priority' => $row->priority,

@@ -9,6 +9,7 @@ use App\Domain\Finance\Http\Controllers\Concerns\ResolvesActor;
 use App\Domain\Finance\Support\ReceivableDirectory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 
 final class ReceivableController
 {
@@ -19,9 +20,10 @@ final class ReceivableController
         return response()->json(['data' => $directory->overview($this->actor($request))]);
     }
 
-    public function registerPayment(Request $request, string $code, ReceivableWorkflow $workflow): JsonResponse
+    public function registerPayment(Request $request, ReceivableWorkflow $workflow): JsonResponse
     {
         $data = $request->validate([
+            'receivable_id' => ['required', 'string', 'max:40'],
             'method' => ['required', 'string', 'max:40'],
             'amount' => ['required', 'numeric', 'gt:0'],
             'paid_on' => ['required', 'date', 'before_or_equal:today'],
@@ -29,6 +31,7 @@ final class ReceivableController
             'fx_rate' => ['nullable', 'numeric', 'gt:0.5', 'lt:20'],
             'note' => ['nullable', 'string', 'max:500'],
         ], [
+            'receivable_id.*' => 'Indica la cuota que se paga.',
             'method.*' => 'Elige el medio de pago.',
             'amount.*' => 'El monto debe ser mayor que cero.',
             'paid_on.required' => 'Indica la fecha del pago.',
@@ -38,6 +41,7 @@ final class ReceivableController
             'fx_rate.*' => 'El tipo de cambio debe estar entre 0.5 y 20.',
             'note.*' => 'La observación admite hasta 500 caracteres.',
         ]);
+        $code = (string) Arr::pull($data, 'receivable_id');
         $payment = $workflow->registerPayment($code, $data, $this->actor($request));
 
         return response()->json(['data' => ['payment' => $payment]], 201);

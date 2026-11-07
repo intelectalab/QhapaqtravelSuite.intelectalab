@@ -476,6 +476,10 @@ Tiempo real (Reverb): avance de envío (`enviando`) y conteo del constructor opc
 
 ---
 
+### v3.0 — Rutas propias de la API (06/11/2026)
+
+Este módulo expone 2 rutas que no están en el contrato: 2 editar, borrar o cambiar estado. El detalle, con el equivalente en el contrato o el motivo de cada una, está en `docs/RUTAS-PROPIAS.md` (sección «Marketing y metas»).
+
 ## 12. Supuestos y puntos a validar con negocio
 
 | # | Punto |

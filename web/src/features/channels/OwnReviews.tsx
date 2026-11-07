@@ -97,6 +97,7 @@ function ModerateAction({ review, action }: { review: OwnReview; action: keyof t
       {() => (
         <>
           <input type="hidden" name="code" value={review.code} />
+          <input type="hidden" name="lock_version" value={review.lock_version} />
           <input type="hidden" name="action" value={action} />
           {action === "publicar" ? (
             <p className="text-[13px] text-fg-2">{review.moderation_reason ? `Tiene una alerta: ${review.moderation_reason}. Confirma que puede publicarse.` : "El viajero autorizó su publicación."}</p>
@@ -124,6 +125,7 @@ function ReplyAction({ review }: { review: OwnReview }) {
       {() => (
         <>
           <input type="hidden" name="code" value={review.code} />
+          <input type="hidden" name="lock_version" value={review.lock_version} />
           <blockquote className="rounded-tile border-l-2 border-accent bg-surface-2 px-3 py-2 text-[13px] text-fg-2">{review.body}</blockquote>
           <TextArea label="Respuesta" name="text" rows={5} required minLength={5} maxLength={1000} defaultValue={review.reply ?? undefined} />
         </>

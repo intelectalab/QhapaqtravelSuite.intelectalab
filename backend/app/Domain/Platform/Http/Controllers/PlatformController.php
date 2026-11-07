@@ -18,6 +18,7 @@ use App\Domain\Platform\Http\Requests\TenantStatusRequest;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Support\PlanCatalog;
+use App\Domain\Platform\Support\PlatformBranding;
 use App\Domain\Platform\Support\TenantDirectory;
 use App\Domain\Platform\Support\TenantHealth;
 use App\Domain\Shared\Errors\ApiException;
@@ -56,7 +57,7 @@ final class PlatformController
     {
         $user = $this->user($request);
 
-        return response()->json(['data' => ['id' => $user->getKey(), 'name' => $user->name, 'email' => $user->email, 'home' => PlatformSession::HOME]]);
+        return response()->json(['data' => ['id' => $user->getKey(), 'name' => $user->name, 'email' => $user->email, 'home' => PlatformSession::HOME, 'branding' => app(PlatformBranding::class)->current()]]);
     }
 
     public function tenants(TenantDirectory $directory): JsonResponse

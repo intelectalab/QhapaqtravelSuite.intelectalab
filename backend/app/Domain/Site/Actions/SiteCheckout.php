@@ -7,9 +7,12 @@ namespace App\Domain\Site\Actions;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
+use App\Domain\Shared\Sequences\SequenceService;
 use App\Domain\Shared\Tenancy\TenantContext;
 use App\Domain\Site\Support\SiteProfile;
 use App\Domain\Site\Support\SiteQuote;
+use Brick\Math\BigDecimal;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -22,6 +25,7 @@ final class SiteCheckout
     public function __construct(
         private readonly TenantContext $context,
         private readonly CodeSequence $codes,
+        private readonly SequenceService $sequences,
         private readonly AuditLogger $audit,
         private readonly SiteCart $carts,
         private readonly SiteQuote $quotes,
@@ -57,12 +61,13 @@ final class SiteCheckout
             return ['item' => $item, 'product' => $product, 'quote' => $quote];
         });
         $currency = $lines->first()['quote']['currency'];
-        $convert = fn (float $amount, string $from): float => $from === $currency ? $amount : round($from === 'USD' ? $amount * $fx : $amount / $fx, 2);
-        $orderTotal = round($lines->sum(fn (array $l): float => $convert($l['quote']['total'], $l['quote']['currency'])), 2);
-        $discount = round($lines->sum(fn (array $l): float => $convert($l['quote']['discount']['amount'] ?? 0, $l['quote']['currency'])), 2);
+        $rate = number_format($fx, 6, '.', '');
+        $convert = fn (string $amount, string $from): BigDecimal => Decimal::round2(Decimal::convert($amount, $from, $currency, $rate));
+        $orderTotal = (string) $lines->reduce(fn (BigDecimal $sum, array $l): BigDecimal => $sum->plus($convert($l['quote']['total'], $l['quote']['currency'])), BigDecimal::zero()->toScale(2));
+        $discount = (string) $lines->reduce(fn (BigDecimal $sum, array $l): BigDecimal => $sum->plus($convert($l['quote']['discount']['amount'] ?? '0', $l['quote']['currency'])), BigDecimal::zero()->toScale(2));
         $clientId = $this->client($data, $owner);
         $orderId = (string) Str::uuid7();
-        $orderCode = $this->codes->next('channel_ecom_orders', 'WEB-', 5);
+        $orderCode = $this->sequences->next('web_order');
         $accessToken = Str::random(48);
         $billing = ($data['billing_type'] ?? 'Boleta') === 'Factura'
             ? ['type' => 'Factura', 'doc_type' => 'RUC', 'doc_number' => $data['ruc'], 'name' => $data['business_name'], 'fiscal_address' => $data['fiscal_address']]
@@ -131,13 +136,13 @@ final class SiteCheckout
                 'season_id' => $rate?->season_id,
                 'season_factor' => $quote['season']['factor'] ?? 1,
                 'unit_adult' => collect($quote['lines'])->firstWhere('key', 'adults')['unit'] ?? $quote['lines'][0]['unit'],
-                'unit_child' => collect($quote['lines'])->firstWhere('key', 'children')['unit'] ?? 0,
+                'unit_child' => collect($quote['lines'])->firstWhere('key', 'children')['unit'] ?? '0',
                 'units' => collect($quote['lines'])->firstWhere('key', 'service')['qty'] ?? null,
                 'subtotal' => $quote['subtotal'],
-                'discount' => $quote['discount']['amount'] ?? 0,
+                'discount' => $quote['discount']['amount'] ?? '0',
                 'total' => $quote['total'],
                 'currency' => $quote['currency'],
-                'cost_total' => round((float) ($rate->cost ?? 0) * $seats, 2),
+                'cost_total' => (string) Decimal::round2(BigDecimal::of((string) ($rate->cost ?? '0'))->multipliedBy($seats)),
                 'hold_id' => $line['item']->hold_id,
                 'reservation_service_id' => $serviceId,
             ]);
@@ -168,8 +173,8 @@ final class SiteCheckout
             'status' => $order->status,
             'ordered_at' => Carbon::parse($order->ordered_at)->toIso8601String(),
             'customer' => ['name' => $order->customer_name, 'email' => $order->customer_email],
-            'total' => (float) $order->total,
-            'discount' => (float) $order->discount_amount,
+            'total' => Decimal::toApi((string) $order->total),
+            'discount' => Decimal::toApi((string) $order->discount_amount),
             'currency' => $order->currency,
             'hold_expires_at' => $order->hold_expires_at ? Carbon::parse($order->hold_expires_at)->toIso8601String() : null,
             'reservations' => $reservations->map(fn (stdClass $r): array => [
@@ -177,10 +182,10 @@ final class SiteCheckout
                 'status' => $r->status,
                 'title' => $r->title,
                 'date' => $r->travel_from,
-                'total' => (float) $r->total_amount,
+                'total' => Decimal::toApi((string) $r->total_amount),
                 'currency' => $r->currency,
                 'services' => $services->where('reservation_id', $r->id)->map(fn (stdClass $s): array => ['name' => $s->name, 'date' => $s->service_date, 'time' => $s->service_time ? substr((string) $s->service_time, 0, 5) : null, 'pax' => (int) $s->pax, 'status' => $s->status, 'confirmation' => $s->confirmation_code])->values()->all(),
-                'receivables' => $receivables->where('reservation_id', $r->id)->map(fn (stdClass $c): array => ['code' => $c->code, 'concept' => $c->concept, 'amount' => (float) $c->amount, 'paid' => (float) $c->paid_amount, 'currency' => $c->currency, 'status' => $c->status, 'due_date' => $c->due_date])->values()->all(),
+                'receivables' => $receivables->where('reservation_id', $r->id)->map(fn (stdClass $c): array => ['code' => $c->code, 'concept' => $c->concept, 'amount' => Decimal::toApi((string) $c->amount), 'paid' => Decimal::toApi((string) $c->paid_amount), 'currency' => $c->currency, 'status' => $c->status, 'due_date' => $c->due_date])->values()->all(),
             ])->all(),
         ];
     }
@@ -201,13 +206,13 @@ final class SiteCheckout
                 DB::table('fin_payments')->insert([
                     'id' => (string) Str::uuid7(),
                     'tenant_id' => $this->context->idOrFail(),
-                    'code' => $this->codes->next('fin_payments', 'PAG-', 5),
+                    'code' => $this->sequences->next('payment'),
                     'reservation_id' => $reservation->id,
                     'receivable_id' => $receivable->id,
                     'kind' => 'cobro',
                     'source' => 'ecommerce',
                     'method' => 'tarjeta',
-                    'amount' => (float) $receivable->amount - (float) $receivable->paid_amount,
+                    'amount' => (string) BigDecimal::of((string) $receivable->amount)->minus((string) $receivable->paid_amount),
                     'currency' => $receivable->currency,
                     'fx_rate' => $receivable->currency === 'USD' ? $reservation->fx_rate : null,
                     'paid_on' => $now->toDateString(),
@@ -258,7 +263,7 @@ final class SiteCheckout
         $quote = $line['quote'];
         $year = Carbon::parse($today)->year;
         $reservationId = (string) Str::uuid7();
-        $code = $this->codes->next('booking_reservations', "RES-{$year}-", 6);
+        $code = $this->sequences->next('reservation');
         $days = max(1, (int) ceil((float) $product->days));
         $seats = (int) $item->pax_adults + (int) $item->pax_children;
         $rate = DB::table('catalog_rates')->where('id', $quote['rate_id'])->first(['cost']);
@@ -302,7 +307,7 @@ final class SiteCheckout
             'status' => 'solicitado',
             'currency' => $quote['currency'],
             'fx_rate' => $fx,
-            'cost_amount' => round((float) ($rate->cost ?? 0) * $seats, 2),
+            'cost_amount' => (string) Decimal::round2(BigDecimal::of((string) ($rate->cost ?? '0'))->multipliedBy($seats)),
             'price_amount' => $quote['total'],
             'service_kind' => $product->kind === 'traslados' ? 'traslado' : 'tour',
             'requested_at' => now(),
@@ -313,7 +318,7 @@ final class SiteCheckout
         DB::table('fin_receivables')->insert([
             'id' => $receivableId,
             'tenant_id' => $this->context->idOrFail(),
-            'code' => $this->codes->next('fin_receivables', 'CXC-', 5),
+            'code' => $this->sequences->next('receivable'),
             'reservation_id' => $reservationId,
             'client_id' => $clientId,
             'kind' => 'total',

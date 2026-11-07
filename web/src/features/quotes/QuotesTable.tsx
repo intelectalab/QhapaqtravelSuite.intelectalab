@@ -50,7 +50,7 @@ export function QuotesTable({ rows, canManage }: { rows: QuoteRow[]; canManage: 
       cell: (row) => (
         <span className="font-mono text-[13px] font-semibold">
           {formatMoney(row.total, row.currency)}
-          {row.margin_pct !== null && <span className={cn("block text-[11.5px] font-medium", row.margin_pct < 15 ? "text-warn" : "text-ok")}>{row.margin_pct} % de margen</span>}
+          {row.margin_pct !== null && <span className={cn("block text-[11.5px] font-medium", Number(row.margin_pct) < 15 ? "text-warn" : "text-ok")}>{row.margin_pct} % de margen</span>}
         </span>
       ),
     },
@@ -103,8 +103,8 @@ export function QuotesTable({ rows, canManage }: { rows: QuoteRow[]; canManage: 
   const sorts: SortOption<QuoteRow>[] = [
     { id: "created", label: "Más recientes", type: "date", value: (row) => row.created_at },
     { id: "valid", label: "Vigencia", type: "date", value: (row) => row.valid_until },
-    { id: "total", label: "Total en soles", type: "number", value: (row) => row.total_pen },
-    ...(showMargin ? [{ id: "margin", label: "Margen", type: "number" as const, value: (row: QuoteRow) => row.margin_pct }] : []),
+    { id: "total", label: "Total en soles", type: "number", value: (row) => Number(row.total_pen) },
+    ...(showMargin ? [{ id: "margin", label: "Margen", type: "number" as const, value: (row: QuoteRow) => (row.margin_pct === null ? null : Number(row.margin_pct)) }] : []),
   ];
 
   return (

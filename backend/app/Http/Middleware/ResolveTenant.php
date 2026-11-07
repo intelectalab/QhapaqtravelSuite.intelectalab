@@ -9,6 +9,7 @@ use App\Domain\Shared\Tenancy\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -31,7 +32,7 @@ final class ResolveTenant
             throw ApiException::forbidden('TENANT_REQUIRED', 'No se pudo determinar la empresa (tenant) de la solicitud.');
         }
 
-        $this->rejectClientSuppliedTenant($request, $tenantId);
+        $this->ignoreClientSuppliedTenant($request, $tenantId);
 
         $this->context->set($tenantId);
         $request->attributes->set('tenant_id', $tenantId);
@@ -72,19 +73,28 @@ final class ResolveTenant
         return $row?->tenant_id;
     }
 
-    private function rejectClientSuppliedTenant(Request $request, string $tenantId): void
+    private function ignoreClientSuppliedTenant(Request $request, string $tenantId): void
     {
         $claimed = array_filter([
-            $request->header('X-Tenant-Id'),
-            $request->query('tenant'),
-        ]);
+            'header' => $request->header('X-Tenant-Id'),
+            'query' => $request->query('tenant'),
+            'body' => $request->request->get('tenant_id'),
+        ], fn (mixed $value): bool => is_scalar($value) && (string) $value !== '');
 
-        foreach ($claimed as $value) {
+        $fixing = in_array($request->route()?->getName(), (array) config('api_contract.tenant_fixing', []), true);
+
+        foreach ($claimed as $source => $value) {
+            if ((string) $value !== $tenantId && $fixing) {
+                throw ApiException::forbidden('TENANT_SCOPE_VIOLATION', 'No puedes operar sobre otra empresa.');
+            }
+
             if ((string) $value !== $tenantId) {
-                throw ApiException::forbidden('TENANT_SCOPE_VIOLATION', 'No puede operar sobre otra empresa.');
+                Log::warning('Tenant enviado por el cliente ignorado (SEC-BR-02).', ['source' => $source, 'claimed' => (string) $value, 'tenant_id' => $tenantId, 'path' => $request->path()]);
             }
         }
 
+        $request->headers->remove('X-Tenant-Id');
+        $request->query->remove('tenant');
         $request->request->remove('tenant_id');
     }
 }

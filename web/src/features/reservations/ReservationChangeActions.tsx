@@ -13,6 +13,7 @@ import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
+import { ReservationLockInput } from "./ReservationLock";
 import { CHANGE_TYPE, type ChangeImpact, type ChangeOptions, type ReschedulePlan, type ReservationChange } from "@/lib/reservations";
 
 const initial: ReservationState = { message: null, done: false };
@@ -34,7 +35,7 @@ function ChangeFields({ code, currency, options }: { code: string; currency: str
       const result = await previewChange(code, { type, extra_pax: type === "pax" ? Number(extra) || 1 : undefined, product_code: type === "servicio" ? product : undefined, service_date: type === "servicio" ? date : undefined });
       setImpact(result.impact);
       setError(result.message);
-      if (result.impact && !touched) setDelta(result.impact.suggested ? String(result.impact.suggested) : "");
+      if (result.impact && !touched) setDelta(Number(result.impact.suggested) ? result.impact.suggested : "");
     }, 300);
     return () => clearTimeout(timer);
   }, [code, type, extra, product, date, touched]);
@@ -98,6 +99,7 @@ export function ReservationModifyAction({ code, currency, options }: { code: str
       {() => (
         <>
           <input type="hidden" name="code" value={code} />
+          <ReservationLockInput />
           <input type="hidden" name="step" value="change" />
           <ChangeFields code={code} currency={currency} options={options} />
         </>
@@ -125,6 +127,7 @@ function Decision({ code, change, approve }: { code: string; change: Reservation
       {() => (
         <>
           <input type="hidden" name="code" value={code} />
+          <ReservationLockInput />
           <input type="hidden" name="change" value={change.id} />
           <input type="hidden" name="step" value={approve ? "approve_change" : "reject_change"} />
           {approve ? <p className="text-[13.5px] text-fg-2">Se aplica el cambio y su impacto en las cuotas.</p> : <TextArea label="Motivo" name="note" rows={3} required minLength={3} maxLength={500} />}
@@ -199,7 +202,7 @@ function RescheduleFields({ code }: { code: string }) {
             </div>
           ))}
           <p className={cn("text-[12.5px]", plan.blocked ? "text-bad" : "text-fg-2")}>
-            {plan.blocked ?? (plan.diff > 0 ? `Por temporada sube ${formatMoney(plan.diff, plan.currency)}: se crea una cuota por la diferencia.` : plan.diff < 0 ? `Por temporada baja ${formatMoney(Math.abs(plan.diff), plan.currency)}.` : "La tarifa no cambia. Los servicios vuelven a pendiente y los vouchers emitidos se anulan.")}
+            {plan.blocked ?? (Number(plan.diff) > 0 ? `Por temporada sube ${formatMoney(plan.diff, plan.currency)}: se crea una cuota por la diferencia.` : Number(plan.diff) < 0 ? `Por temporada baja ${formatMoney(Math.abs(Number(plan.diff)), plan.currency)}.` : "La tarifa no cambia. Los servicios vuelven a pendiente y los vouchers emitidos se anulan.")}
           </p>
         </section>
       )}
@@ -226,6 +229,7 @@ export function ReservationRescheduleAction({ code }: { code: string }) {
       {() => (
         <>
           <input type="hidden" name="code" value={code} />
+          <ReservationLockInput />
           <input type="hidden" name="step" value="reschedule" />
           <RescheduleFields code={code} />
         </>

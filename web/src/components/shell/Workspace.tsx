@@ -25,8 +25,8 @@ export interface Workspace extends WorkspaceInfo {
 }
 
 const NAVIGATIONS: Record<NavigationId, { groups: NavGroup[]; searchHint: string }> = {
-  agency: { groups: NAV_GROUPS, searchHint: "Busca o pregunta: “reservas sin pagar de octubre”" },
-  platform: { groups: PLATFORM_NAV_GROUPS, searchHint: "Busca o pregunta: “agencias con la prueba por vencer”" },
+  agency: { groups: NAV_GROUPS, searchHint: "Busca clientes, cotizaciones, reservas o productos" },
+  platform: { groups: PLATFORM_NAV_GROUPS, searchHint: "Busca agencias, facturas, planes, cupones o pantallas" },
 };
 
 const WorkspaceContext = createContext<Workspace | null>(null);

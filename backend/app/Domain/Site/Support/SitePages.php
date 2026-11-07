@@ -82,6 +82,7 @@ final class SitePages
                 'lat' => $destination->lat !== null ? (float) $destination->lat : null,
                 'lng' => $destination->lng !== null ? (float) $destination->lng : null,
                 'faqs' => json_decode((string) $destination->faqs, true) ?: [],
+                'content_locale' => $destination->content_locale,
                 'region' => Str::of($destination->path)->explode(' / ')->slice(0, -1)->implode(' · '),
             ],
             'months' => $months->all(),
@@ -191,10 +192,10 @@ final class SitePages
                 'promotions' => $product->promotions,
                 'media' => DB::table('catalog_product_media')->where('product_id', $product->id)->orderByDesc('is_main')->orderBy('sort_order')->get(['storage_path as url', 'alt_text as alt'])->all(),
             ],
-            'itinerary' => $this->itinerary($product->id),
-            'inclusions' => DB::table('catalog_product_inclusions')->where('product_id', $product->id)->where('kind', 'include')->orderBy('sort_order')->pluck('text')->all(),
-            'exclusions' => DB::table('catalog_product_inclusions')->where('product_id', $product->id)->where('kind', 'exclude')->orderBy('sort_order')->pluck('text')->all(),
-            'requirements' => DB::table('catalog_product_requirements')->where('product_id', $product->id)->orderBy('created_at')->get(['category', 'text'])->all(),
+            'itinerary' => $this->translated($product, 'itinerary') ?? $this->itinerary($product->id),
+            'inclusions' => $this->translated($product, 'inclusions') ?? DB::table('catalog_product_inclusions')->where('product_id', $product->id)->where('kind', 'include')->orderBy('sort_order')->pluck('text')->all(),
+            'exclusions' => $this->translated($product, 'exclusions') ?? DB::table('catalog_product_inclusions')->where('product_id', $product->id)->where('kind', 'exclude')->orderBy('sort_order')->pluck('text')->all(),
+            'requirements' => $this->translated($product, 'requirements') ?? DB::table('catalog_product_requirements')->where('product_id', $product->id)->orderBy('created_at')->get(['category', 'text'])->all(),
             'policies' => array_filter([
                 'Cancelación' => $policy->cancellation ?? $profilePolicies['cancel'],
                 'Cambios de fecha' => $policy->date_change ?? $policy->modification ?? $profilePolicies['modify'],
@@ -203,7 +204,7 @@ final class SitePages
                 'Anticipación' => $policy?->advance_min ? "Reserva con al menos {$policy->advance_min} de anticipación." : null,
             ]),
             'faqs' => [
-                ...DB::table('catalog_product_faqs')->where('product_id', $product->id)->orderBy('sort_order')->get(['question as q', 'answer as a'])->map(fn (stdClass $f): array => (array) $f)->all(),
+                ...$this->translated($product, 'faqs') ?? DB::table('catalog_product_faqs')->where('product_id', $product->id)->orderBy('sort_order')->get(['question as q', 'answer as a'])->map(fn (stdClass $f): array => (array) $f)->all(),
                 ...($destination ? json_decode((string) $destination->faqs, true) ?: [] : []),
             ],
             'departures' => $departures->all(),
@@ -268,6 +269,14 @@ final class SitePages
             'min' => $sellable->min('price'),
             'currency' => $sellable->first()['currency'] ?? null,
         ];
+    }
+
+    private function translated(stdClass $product, string $field): ?array
+    {
+        $value = $product->translation === null ? null : ($product->translation->{$field} ?? null);
+        $decoded = $value === null ? null : json_decode((string) $value, true);
+
+        return is_array($decoded) && $decoded !== [] ? $decoded : null;
     }
 
     private function itinerary(string $productId): array
@@ -362,13 +371,13 @@ final class SitePages
 
         return [
             'destinations' => $this->catalog->destinations()->filter(fn (stdClass $d): bool => $d->products->isNotEmpty())->map(fn (stdClass $d): array => ['value' => $d->slug, 'label' => $d->name, 'count' => $d->products->count()])->values()->all(),
-            'kinds' => collect(SiteCatalog::KINDS)->map(fn (array $k, string $key): array => ['value' => $key, 'label' => $k['label'], 'count' => $products->where('kind', $key)->count()])->filter(fn (array $k): bool => $k['count'] > 0)->values()->all(),
+            'kinds' => collect(SiteCatalog::KINDS)->map(fn (array $k, string $key): array => ['value' => $key, 'label' => $this->catalog->locale()->label('kinds', $key, $k['label']), 'count' => $products->where('kind', $key)->count()])->filter(fn (array $k): bool => $k['count'] > 0)->values()->all(),
             'categories' => $products->groupBy('category_name')->map(fn (Collection $g, string $name): array => ['value' => $name, 'label' => $name, 'count' => $g->count()])->sortBy('label')->values()->all(),
-            'difficulties' => collect(SiteCatalog::DIFFICULTIES)->map(fn (string $label, string $key): array => ['value' => $key, 'label' => $label, 'count' => $products->where('difficulty', $key)->count()])->filter(fn (array $d): bool => $d['count'] > 0)->values()->all(),
-            'languages' => collect(SiteCatalog::LANGUAGES)->map(fn (string $label, string $key): array => ['value' => $key, 'label' => $label, 'count' => $products->filter(fn (stdClass $p): bool => in_array($key, $p->languages, true))->count()])->filter(fn (array $l): bool => $l['count'] > 0)->values()->all(),
+            'difficulties' => collect(SiteCatalog::DIFFICULTIES)->map(fn (string $label, string $key): array => ['value' => $key, 'label' => $this->catalog->locale()->label('difficulties', $key, $label), 'count' => $products->where('difficulty', $key)->count()])->filter(fn (array $d): bool => $d['count'] > 0)->values()->all(),
+            'languages' => collect(SiteCatalog::LANGUAGES)->map(fn (string $label, string $key): array => ['value' => $key, 'label' => $this->catalog->locale()->label('languages', $key, $label), 'count' => $products->filter(fn (stdClass $p): bool => in_array($key, $p->languages, true))->count()])->filter(fn (array $l): bool => $l['count'] > 0)->values()->all(),
             'modalities' => $products->groupBy('modality')->map(fn (Collection $g, string $name): array => ['value' => $name, 'label' => $name, 'count' => $g->count()])->values()->all(),
-            'durations' => collect(SiteCatalog::DURATIONS)->map(fn (string $label, string $key): array => ['value' => $key, 'label' => $label, 'count' => $products->filter(fn (stdClass $p): bool => $this->durationBucket($p) === $key)->count()])->filter(fn (array $d): bool => $d['count'] > 0)->values()->all(),
-            'sorts' => collect(SiteCatalog::SORTS)->map(fn (string $label, string $key): array => ['value' => $key, 'label' => $label])->values()->all(),
+            'durations' => collect(SiteCatalog::DURATIONS)->map(fn (string $label, string $key): array => ['value' => $key, 'label' => $this->catalog->locale()->label('durations', $key, $label), 'count' => $products->filter(fn (stdClass $p): bool => $this->durationBucket($p) === $key)->count()])->filter(fn (array $d): bool => $d['count'] > 0)->values()->all(),
+            'sorts' => collect(SiteCatalog::SORTS)->map(fn (string $label, string $key): array => ['value' => $key, 'label' => $this->catalog->locale()->label('sorts', $key, $label)])->values()->all(),
         ];
     }
 

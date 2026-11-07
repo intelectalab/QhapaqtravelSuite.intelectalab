@@ -59,6 +59,7 @@ final class ConversationWorkflow
                     'assignee_id' => $conversation->assignee_id ?? $actor->getKey(),
                     'resolved_at' => $resolve ? $now : null,
                     'resolved_by' => $resolve ? $actor->getKey() : null,
+                    'lock_version' => DB::raw('lock_version + 1'),
                 ];
             }
 
@@ -82,7 +83,7 @@ final class ConversationWorkflow
             throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige a una persona del equipo de atención.');
         }
 
-        DB::table('collab_conversations')->where('id', $conversation->id)->update(['assignee_id' => $target, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+        DB::table('collab_conversations')->where('id', $conversation->id)->update(['assignee_id' => $target, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         $this->audit->log('Conversación', $conversation->code, 'asignar', $conversation->assignee_id, $target);
     }
 
@@ -100,6 +101,7 @@ final class ConversationWorkflow
                 'status' => $status,
                 'resolved_at' => $resolved ? now() : null,
                 'resolved_by' => $resolved ? $actor->getKey() : null,
+                'lock_version' => DB::raw('lock_version + 1'),
                 'updated_by' => $actor->getKey(),
                 'updated_at' => now(),
             ]);
@@ -125,6 +127,7 @@ final class ConversationWorkflow
         DB::table('collab_conversations')->where('id', $conversation->id)->update([
             'priority' => $data['priority'],
             'tags' => '{'.$tags->map(fn (string $tag): string => '"'.$tag.'"')->implode(',').'}',
+            'lock_version' => DB::raw('lock_version + 1'),
             'updated_by' => $actor->getKey(),
             'updated_at' => now(),
         ]);

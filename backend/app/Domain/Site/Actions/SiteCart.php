@@ -10,6 +10,7 @@ use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
 use App\Domain\Site\Support\SiteProfile;
 use App\Domain\Site\Support\SiteQuote;
+use Brick\Math\BigDecimal;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -144,9 +145,9 @@ final class SiteCart
         $totals = $lines->filter(fn (array $l): bool => $l['quote'] !== null)->groupBy(fn (array $l): string => $l['quote']['currency'])
             ->map(fn ($group, string $currency): array => [
                 'currency' => $currency,
-                'subtotal' => round($group->sum(fn (array $l): float => $l['quote']['subtotal']), 2),
-                'discount' => round($group->sum(fn (array $l): float => $l['quote']['discount']['amount'] ?? 0), 2),
-                'total' => round($group->sum(fn (array $l): float => $l['quote']['total']), 2),
+                'subtotal' => (string) $group->reduce(fn (BigDecimal $sum, array $l): BigDecimal => $sum->plus($l['quote']['subtotal']), BigDecimal::zero()->toScale(2)),
+                'discount' => (string) $group->reduce(fn (BigDecimal $sum, array $l): BigDecimal => $sum->plus($l['quote']['discount']['amount'] ?? '0'), BigDecimal::zero()->toScale(2)),
+                'total' => (string) $group->reduce(fn (BigDecimal $sum, array $l): BigDecimal => $sum->plus($l['quote']['total']), BigDecimal::zero()->toScale(2)),
             ])->values();
 
         return [

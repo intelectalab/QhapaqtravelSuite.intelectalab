@@ -75,22 +75,24 @@ final class SiteController
         return response()->json(['data' => $pages->calendar($slug, $data['mes'], (int) ($data['viajeros'] ?? 2))]);
     }
 
-    public function quote(Request $request, string $slug, SiteQuote $quote): JsonResponse
+    public function quote(Request $request, SiteQuote $quote): JsonResponse
     {
         $data = $request->validate([
+            'product' => ['required', 'string', 'max:160'],
             'date' => ['required', 'date_format:Y-m-d'],
             'adults' => ['required', 'integer', 'min:1', 'max:40'],
             'children' => ['nullable', 'integer', 'min:0', 'max:20'],
             'infants' => ['nullable', 'integer', 'min:0', 'max:10'],
             'promo' => ['nullable', 'string', 'max:40'],
         ], [
+            'product.*' => 'Elige un producto.',
             'date.*' => 'Elige una fecha del calendario.',
             'adults.*' => 'Incluye al menos 1 adulto.',
             'children.*' => 'Revisa el número de niños.',
             'infants.*' => 'Revisa el número de infantes.',
         ]);
 
-        return response()->json(['data' => $quote->quote($quote->product($slug), $data['date'], (int) $data['adults'], (int) ($data['children'] ?? 0), (int) ($data['infants'] ?? 0), $data['promo'] ?? null)]);
+        return response()->json(['data' => $quote->quote($quote->product($data['product']), $data['date'], (int) $data['adults'], (int) ($data['children'] ?? 0), (int) ($data['infants'] ?? 0), $data['promo'] ?? null)]);
     }
 
     public function formOptions(SitePages $pages): JsonResponse

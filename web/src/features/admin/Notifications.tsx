@@ -14,6 +14,7 @@ import { ADMIN_INITIAL, CHANNEL_LABELS, type AdminActionState, type Notification
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
 import { RISE, ToggleField } from "./AdminParts";
+import { TemplateEditor } from "./TemplateEditor";
 import { ChannelChips } from "./PaxTemplates";
 
 const CHANNELS = ["email", "whatsapp", "push", "portal"] as const;
@@ -81,7 +82,14 @@ export function NotificationMatrix({ data }: { data: NotificationsOverview }) {
                   {rule.condition !== "always" && <InfoTip label="Condición">{data.options.conditions.find((option) => option.value === rule.condition)?.label}</InfoTip>}
                 </span>
               </td>
-              <td className="px-2 py-2.5 text-right">{data.can_manage && <RuleEditor rule={rule} options={data.options} />}</td>
+              <td className="px-2 py-2.5 text-right">
+                {data.can_manage && (
+                  <span className="inline-flex items-center gap-1">
+                    <TemplateEditor event={rule.event} label={rule.label} />
+                    <RuleEditor rule={rule} options={data.options} />
+                  </span>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

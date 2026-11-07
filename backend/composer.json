@@ -7,6 +7,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
+        "barryvdh/laravel-dompdf": "^3.1",
         "brick/money": "^0.11.2",
         "dedoc/scramble": "^0.13.53",
         "laravel/framework": "^12.0",
@@ -15,6 +16,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "league/flysystem-aws-s3-v3": "^3.35",
+        "openspout/openspout": "^5.13",
         "pragmarx/google2fa": "^9.1",
         "spatie/laravel-permission": "^8.4"
     },

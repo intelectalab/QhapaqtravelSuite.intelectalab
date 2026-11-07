@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders\Modules;
 
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Shared\Jobs\JobCatalog;
 use Database\Support\KitSeeds;
 use Database\Support\SeedsTenant;
 use Illuminate\Support\Carbon;
@@ -17,20 +18,6 @@ final class IntegrationsJobsSeeder
     private const KINDS = ['Fiscal' => 'fiscal', 'Pagos' => 'payments', 'Email' => 'email', 'Mensajería' => 'messaging', 'Mapas' => 'maps', 'Proveedores' => 'suppliers', 'Distribución' => 'distribution'];
 
     private const OWNERS = ['fiscal' => 'U07', 'payments' => 'U07', 'email' => 'U01', 'messaging' => 'U01', 'maps' => 'U05', 'suppliers' => 'U05', 'distribution' => 'U01'];
-
-    private const JOBS = [
-        'JOB-01' => ['ExpireAvailabilityHolds', '*/5 * * * *', 'critical'],
-        'JOB-02' => ['ExpireQuotes', '5 0 * * *', 'default'],
-        'JOB-03' => ['SendPaymentReminders', '0 9 * * *', 'notifications'],
-        'JOB-04' => ['RemindCrmActivities', '0 * * * *', 'notifications'],
-        'JOB-05' => ['NotifyUpcomingTrips', '0 5 * * *', 'notifications'],
-        'JOB-06' => ['DetectPendingSupplierServices', '0 */2 * * *', 'default'],
-        'JOB-07' => ['SyncSupplierAdapters', '0 */6 * * *', 'integrations'],
-        'JOB-08' => ['SendScheduledReports', '0 7 * * 1', 'reports'],
-        'JOB-09' => ['ExpireUnconfirmedAssignments', '*/30 * * * *', 'default'],
-        'JOB-10' => ['ReleaseAllotments', '15 0 * * *', 'default'],
-        'JOB-11' => ['RemindTravelDocuments', '0 8 * * *', 'notifications'],
-    ];
 
     private const SOURCES = ['Job' => 'job', 'Notificación' => 'notification', 'Integración' => 'integration'];
 
@@ -75,11 +62,17 @@ final class IntegrationsJobsSeeder
     private function jobs(): void
     {
         foreach (KitSeeds::read('jobs') as $row) {
-            [$class, $cron, $queue] = self::JOBS[$row['id']] ?? ['ScheduledJob', '0 * * * *', 'default'];
+            $job = JobCatalog::TENANT[$row['id']] ?? null;
+
+            if ($job === null) {
+                continue;
+            }
+
+            [$class, $cron, $queue] = [$job['class'], $job['cron'], $job['queue']];
             $last = $this->moment($row['last']);
             $id = $this->upsert('sys_scheduled_jobs', ['code' => $row['id']], [
                 'name' => $row['name'],
-                'job_class' => 'App\\Jobs\\'.$class,
+                'job_class' => $class,
                 'cron' => $cron,
                 'cron_label' => $row['cron'],
                 'queue' => $queue,
@@ -98,7 +91,7 @@ final class IntegrationsJobsSeeder
                 DB::table('sys_job_runs')->insert([
                     'tenant_id' => $this->tenant->getKey(),
                     'scheduled_job_id' => $id,
-                    'job_class' => 'App\\Jobs\\'.$class,
+                    'job_class' => $class,
                     'trigger' => 'schedule',
                     'status' => $row['status'],
                     'result' => $row['lastResult'],

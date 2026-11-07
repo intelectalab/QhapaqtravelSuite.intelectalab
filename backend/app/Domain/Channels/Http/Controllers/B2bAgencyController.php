@@ -31,13 +31,18 @@ final class B2bAgencyController
         return response()->json(['data' => ['code' => $code]]);
     }
 
-    public function status(Request $request, string $code, ManageB2bAgency $manage): JsonResponse
+    public function block(Request $request, string $code, ManageB2bAgency $manage): JsonResponse
     {
-        $data = $request->validate([
-            'status' => ['required', 'in:activa,bloqueada,inactiva'],
-            'reason' => ['nullable', 'required_if:status,bloqueada', 'string', 'max:200'],
-        ], ['status.*' => 'Elige el nuevo estado.', 'reason.required_if' => 'Indica el motivo del bloqueo.', 'reason.*' => 'El motivo admite hasta 200 caracteres.']);
-        $manage->setStatus($code, $data['status'], $data['reason'] ?? null, $this->user($request));
+        $data = $request->validate(['reason' => ['required', 'string', 'max:200']], ['reason.required' => 'Indica el motivo del bloqueo.', 'reason.*' => 'El motivo admite hasta 200 caracteres.']);
+        $manage->setStatus($code, 'bloqueada', $data['reason'], $this->user($request));
+
+        return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function unblock(Request $request, string $code, ManageB2bAgency $manage): JsonResponse
+    {
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:200']], ['reason.*' => 'El motivo admite hasta 200 caracteres.']);
+        $manage->setStatus($code, 'activa', $data['reason'] ?? null, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
     }

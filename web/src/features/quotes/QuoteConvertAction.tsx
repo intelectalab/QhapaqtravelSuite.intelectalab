@@ -28,6 +28,8 @@ export function QuoteConvertAction({ conversion, lockVersion }: { conversion: Qu
       submitLabel={blocked ? "Revisar disponibilidad" : "Crear reserva"}
       action={convertQuote}
       initial={initial}
+      testId="quote-convert"
+      confirmTestId="quote-convert-confirm"
       onDone={(state) => router.push(state.reservation ? `/reservas/${state.reservation}` : "/reservas")}
     >
       {() => (
@@ -36,7 +38,7 @@ export function QuoteConvertAction({ conversion, lockVersion }: { conversion: Qu
           <input type="hidden" name="lock_version" value={lockVersion} />
           <input type="hidden" name="idempotency_key" value={key} />
 
-          <section className="flex flex-col gap-2">
+          <section className="flex flex-col gap-2" data-testid="quote-convert-preview">
             <h3 className="text-[13.5px] font-semibold">Disponibilidad</h3>
             {conversion.items.map((item, index) => (
               <div
@@ -60,7 +62,7 @@ export function QuoteConvertAction({ conversion, lockVersion }: { conversion: Qu
             <h3 className="text-[13.5px] font-semibold">Plan de cobro</h3>
             <div className="grid grid-cols-2 gap-2">
               {conversion.receivables.map((receivable) => (
-                <div key={receivable.concept} className="lift rounded-xl border border-line-2 bg-surface px-3.5 py-3">
+                <div key={receivable.concept} data-amount={receivable.amount} data-due={receivable.due} className="lift rounded-xl border border-line-2 bg-surface px-3.5 py-3">
                   <p className="text-[12px] text-fg-3">{receivable.concept}</p>
                   <p className="mt-0.5 text-[17px] font-bold tracking-[-0.02em]">{formatMoney(receivable.amount, conversion.currency)}</p>
                   <p className="text-[12px] text-fg-2">Vence el {formatDate(receivable.due)}</p>

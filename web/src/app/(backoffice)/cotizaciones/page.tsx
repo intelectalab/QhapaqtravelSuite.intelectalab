@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Cotizaciones" };
 export default async function CotizacionesPage() {
   const list = await listQuotes();
   if (!list) return <NoAccess home="/dashboard" />;
-  const { kpis } = list;
+  const { kpis, can } = list.meta;
 
   return (
     <>
@@ -28,7 +28,7 @@ export default async function CotizacionesPage() {
         }
         info={<InfoTip>Una cotización vence al pasar su fecha de vigencia si nadie la aprobó. El porcentaje de aprobación compara las aprobadas con todas las ya cerradas.</InfoTip>}
       />
-      <QuotesTable rows={list.items} canManage={list.can.manage} />
+      <QuotesTable rows={list.data} canManage={can.manage} />
     </>
   );
 }

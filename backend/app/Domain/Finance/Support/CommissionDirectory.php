@@ -30,9 +30,10 @@ final class CommissionDirectory
             ->leftJoin('channel_b2b_agencies as a', 'a.id', '=', 'm.beneficiary_agency_id')
             ->whereNull('m.deleted_at')
             ->orderByDesc('m.created_at')
-            ->get(['m.code', 'm.kind', 'm.rule_description', 'm.base_amount', 'm.pct', 'm.amount', 'm.currency', 'm.fx_rate', 'm.status', 'm.approved_at', 'm.paid_at', 'm.payment_method', 'm.payment_ref', 'm.created_at', 'b.code as reservation_code', 'b.title as reservation_title', 'u.name as user_name', 'a.legal_name as agency_name'])
+            ->get(['m.code', 'm.lock_version', 'm.kind', 'm.rule_description', 'm.base_amount', 'm.pct', 'm.amount', 'm.currency', 'm.fx_rate', 'm.status', 'm.approved_at', 'm.paid_at', 'm.payment_method', 'm.payment_ref', 'm.created_at', 'b.code as reservation_code', 'b.title as reservation_title', 'u.name as user_name', 'a.legal_name as agency_name'])
             ->map(fn (object $row): array => [
                 'code' => $row->code,
+                'lock_version' => (int) $row->lock_version,
                 'kind' => $row->kind,
                 'kind_label' => self::KIND_LABELS[$row->kind] ?? $row->kind,
                 'beneficiary' => $row->user_name ?? $row->agency_name ?? 'Sin beneficiario',

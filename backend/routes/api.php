@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Domain\Booking\Http\Controllers\ReservationController;
 use App\Domain\Catalog\Actions\ProductWorkflow;
 use App\Domain\Catalog\Http\Controllers\ProductController;
+use App\Domain\Catalog\Http\Controllers\ProductTranslationController;
 use App\Domain\Crm\Http\Controllers\ActivityController;
 use App\Domain\Crm\Http\Controllers\ClientController;
 use App\Domain\Crm\Http\Controllers\LeadController;
@@ -17,6 +18,7 @@ use App\Domain\Iam\Http\Controllers\SessionController;
 use App\Domain\Iam\Http\Controllers\UserController;
 use App\Domain\Platform\Http\Controllers\PlatformController;
 use App\Domain\Quotes\Http\Controllers\QuoteController;
+use App\Domain\Quotes\Http\Controllers\QuoteConversionController;
 use App\Domain\Reports\Http\Controllers\DashboardController;
 use App\Domain\Shared\Http\Controllers\HealthController;
 use Illuminate\Support\Facades\Route;
@@ -74,11 +76,27 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
 
         Route::middleware('permission:reservations.view')->group(function (): void {
             Route::get('reservations', [ReservationController::class, 'index'])->name('reservations.index');
+            Route::get('reservations/kpis', [ReservationController::class, 'kpis'])->name('reservations.kpis');
+            Route::get('reservations/form-options', [ReservationController::class, 'formOptions'])->middleware('permission:reservations.create')->name('reservations.options');
+            Route::post('reservations/availability-check', [ReservationController::class, 'availabilityCheck'])->middleware('permission:reservations.create')->name('reservations.availability-check');
+            Route::post('reservations', [ReservationController::class, 'store'])->middleware('permission:reservations.create')->name('reservations.store');
             Route::get('reservations/{code}', [ReservationController::class, 'show'])->name('reservations.show');
+            Route::get('reservations/{code}/history', [ReservationController::class, 'history'])->name('reservations.history');
             Route::patch('reservations/{code}', [ReservationController::class, 'update'])->middleware('permission:reservations.modify')->name('reservations.update');
+            Route::post('reservations/{code}/confirm', [ReservationController::class, 'confirm'])->middleware('permission:reservations.modify')->name('reservations.confirm');
+            Route::post('reservations/{code}/start-operation', [ReservationController::class, 'startOperation'])->middleware('permission:reservations.modify')->name('reservations.start-operation');
+            Route::post('reservations/{code}/complete', [ReservationController::class, 'complete'])->middleware('permission:reservations.modify')->name('reservations.complete');
+            Route::post('reservations/{code}/reassign', [ReservationController::class, 'reassign'])->middleware('permission:crm.records.reassign')->name('reservations.reassign');
+            Route::post('reservations/{code}/receivables/generate', [ReservationController::class, 'generateReceivables'])->middleware('permission:finance.receivables')->name('reservations.receivables.generate');
+            Route::post('reservations/{code}/operation-order', [ReservationController::class, 'operationOrder'])->middleware('permission:operations.view')->name('reservations.operation-order');
             Route::post('reservations/{code}/passengers', [ReservationController::class, 'savePassenger'])->middleware('permission:reservations.modify')->name('reservations.passengers.store');
+            Route::put('reservations/{code}/passengers/{passenger}', [ReservationController::class, 'savePassenger'])->middleware('permission:reservations.modify')->name('reservations.passengers.replace');
             Route::patch('reservations/{code}/passengers/{passenger}', [ReservationController::class, 'savePassenger'])->middleware('permission:reservations.modify')->name('reservations.passengers.update');
             Route::delete('reservations/{code}/passengers/{passenger}', [ReservationController::class, 'deletePassenger'])->middleware('permission:reservations.modify')->name('reservations.passengers.destroy');
+            Route::post('reservations/{code}/services/request-pending', [ReservationController::class, 'requestPendingServices'])->middleware('permission:reservations.modify')->name('reservations.services.request-pending');
+            Route::post('reservations/{code}/services/{service}/request', [ReservationController::class, 'requestService'])->middleware('permission:reservations.modify')->name('reservations.services.request');
+            Route::post('reservations/{code}/services/{service}/confirm', [ReservationController::class, 'confirmService'])->middleware('permission:reservations.modify')->name('reservations.services.confirm');
+            Route::post('reservations/{code}/services/{service}/reject', [ReservationController::class, 'rejectService'])->middleware('permission:reservations.modify')->name('reservations.services.reject');
             Route::get('reservations/{code}/changes/options', [ReservationController::class, 'changeOptions'])->middleware('permission:reservations.modify')->name('reservations.changes.options');
             Route::post('reservations/{code}/changes/preview', [ReservationController::class, 'changePreview'])->middleware('permission:reservations.modify')->name('reservations.changes.preview');
             Route::post('reservations/{code}/changes', [ReservationController::class, 'requestChange'])->middleware('permission:reservations.modify')->name('reservations.changes.store');
@@ -86,10 +104,10 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
             Route::post('reservations/{code}/changes/{change}/reject', [ReservationController::class, 'rejectChange'])->middleware('permission:quotes.approve_internal')->name('reservations.changes.reject');
             Route::post('reservations/{code}/reschedule/preview', [ReservationController::class, 'reschedulePreview'])->middleware('permission:reservations.modify')->name('reservations.reschedule.preview');
             Route::post('reservations/{code}/reschedule', [ReservationController::class, 'reschedule'])->middleware('permission:reservations.modify')->name('reservations.reschedule');
-            Route::get('reservations/{code}/cancellation', [ReservationController::class, 'cancellation'])->middleware('permission:reservations.cancel|reservations.create')->name('reservations.cancellation');
+            Route::post('reservations/{code}/cancellation/preview', [ReservationController::class, 'cancellationPreview'])->middleware('permission:reservations.cancel|reservations.create')->name('reservations.cancellation.preview');
             Route::post('reservations/{code}/cancel', [ReservationController::class, 'cancel'])->middleware('permission:reservations.cancel')->name('reservations.cancel');
             Route::post('reservations/{code}/cancel-requests', [ReservationController::class, 'requestCancel'])->middleware('permission:reservations.create')->name('reservations.cancel-requests.store');
-            Route::post('reservations/{code}/cancel-requests/reject', [ReservationController::class, 'rejectCancelRequest'])->middleware('permission:reservations.cancel')->name('reservations.cancel-requests.reject');
+            Route::post('reservations/{code}/cancel-requests/{cancelRequest}/reject', [ReservationController::class, 'rejectCancelRequest'])->middleware('permission:reservations.cancel')->name('reservations.cancel-requests.reject');
         });
 
         Route::middleware('permission:catalog.products.view')->group(function (): void {
@@ -97,6 +115,9 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
             Route::get('catalog/products/form-options', [ProductController::class, 'formOptions'])->name('catalog.products.options');
             Route::get('catalog/products/{code}', [ProductController::class, 'show'])->name('catalog.products.show');
             Route::get('catalog/products/{code}/activation-checklist', [ProductController::class, 'checklist'])->name('catalog.products.checklist');
+            Route::get('catalog/products/{code}/translations', [ProductTranslationController::class, 'index'])->name('catalog.products.translations.index');
+            Route::put('catalog/products/{code}/translations/{locale}', [ProductTranslationController::class, 'update'])->middleware('permission:catalog.products.update')->name('catalog.products.translations.update');
+            Route::delete('catalog/products/{code}/translations/{locale}', [ProductTranslationController::class, 'destroy'])->middleware('permission:catalog.products.update')->name('catalog.products.translations.destroy');
             Route::post('catalog/products', [ProductController::class, 'store'])->middleware('permission:catalog.products.create')->name('catalog.products.store');
             Route::patch('catalog/products/{code}', [ProductController::class, 'update'])->middleware('permission:catalog.products.update')->name('catalog.products.update');
             Route::delete('catalog/products/{code}', [ProductController::class, 'destroy'])->middleware('permission:catalog.products.activate')->name('catalog.products.destroy');
@@ -128,20 +149,27 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
 
         Route::middleware('permission:quotes.view')->group(function (): void {
             Route::get('quotes', [QuoteController::class, 'index'])->name('quotes.index');
+            Route::get('quotes/kpis', [QuoteController::class, 'kpis'])->name('quotes.kpis');
             Route::get('quotes/form-options', [QuoteController::class, 'formOptions'])->middleware('permission:quotes.create')->name('quotes.options');
             Route::post('quotes/pricing/preview', [QuoteController::class, 'preview'])->middleware('permission:quotes.create')->name('quotes.preview');
             Route::post('quotes', [QuoteController::class, 'store'])->middleware('permission:quotes.create')->name('quotes.store');
             Route::get('quotes/{code}', [QuoteController::class, 'show'])->name('quotes.show');
-            Route::put('quotes/{code}', [QuoteController::class, 'update'])->middleware('permission:quotes.create')->name('quotes.update');
+            Route::get('quotes/{code}/versions', [QuoteController::class, 'versions'])->name('quotes.versions.index');
+            Route::get('quotes/{code}/versions/compare', [QuoteController::class, 'compare'])->name('quotes.versions.compare');
+            Route::get('quotes/{code}/versions/{version}', [QuoteController::class, 'version'])->whereNumber('version')->name('quotes.versions.show');
+            Route::put('quotes/{code}/versions/{version}', [QuoteController::class, 'update'])->whereNumber('version')->middleware('permission:quotes.create')->name('quotes.update');
+            Route::get('quotes/{code}/activity', [QuoteController::class, 'activity'])->name('quotes.activity');
+            Route::post('quotes/{code}/duplicate', [QuoteController::class, 'duplicate'])->middleware('permission:quotes.create')->name('quotes.duplicate');
+            Route::post('quotes/{code}/reassign', [QuoteController::class, 'reassign'])->middleware('permission:crm.records.reassign')->name('quotes.reassign');
             Route::post('quotes/{code}/versions', [QuoteController::class, 'newVersion'])->middleware('permission:quotes.create')->name('quotes.versions.store');
             Route::post('quotes/{code}/internal-approval-requests', [QuoteController::class, 'requestInternal'])->middleware('permission:quotes.create|quotes.send')->name('quotes.internal.request');
-            Route::post('quotes/{code}/internal-approval', [QuoteController::class, 'decideInternal'])->middleware('permission:quotes.approve_internal')->name('quotes.internal.decide');
+            Route::post('quotes/{code}/versions/{version}/internal-approval', [QuoteController::class, 'decideVersion'])->whereNumber('version')->middleware('permission:quotes.approve_internal')->name('quotes.internal.decide');
             Route::post('quotes/{code}/send', [QuoteController::class, 'send'])->middleware('permission:quotes.send')->name('quotes.send');
             Route::post('quotes/{code}/negotiations', [QuoteController::class, 'negotiate'])->middleware('permission:quotes.send')->name('quotes.negotiations');
             Route::post('quotes/{code}/approve', [QuoteController::class, 'approve'])->middleware('permission:reservations.create')->name('quotes.approve');
             Route::delete('quotes/{code}', [QuoteController::class, 'destroy'])->middleware('permission:quotes.create')->name('quotes.destroy');
-            Route::get('quotes/{code}/conversion', [ReservationController::class, 'conversion'])->middleware('permission:reservations.create')->name('quotes.conversion');
-            Route::post('quotes/{code}/convert', [ReservationController::class, 'convert'])->middleware('permission:reservations.create')->name('quotes.convert');
+            Route::get('quotes/{quote}/conversion-preview', [QuoteConversionController::class, 'preview'])->middleware('permission:reservations.create')->name('quotes.conversion');
+            Route::post('quotes/{quote}/convert', [QuoteConversionController::class, 'convert'])->middleware('permission:reservations.create')->name('quotes.convert');
             Route::post('quotes/{code}/reject', [QuoteController::class, 'reject'])->middleware('permission:quotes.send')->name('quotes.reject');
         });
 

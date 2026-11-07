@@ -9,9 +9,9 @@ Route::middleware('permission:catalog.allotments.manage|catalog.products.view_pr
     Route::get('catalog/availability', [AvailabilityController::class, 'index'])->name('catalog.availability.index');
 
     Route::middleware('permission:catalog.allotments.manage')->group(function (): void {
-        Route::post('catalog/availability/ranges', [AvailabilityController::class, 'storeRange'])->name('catalog.availability.ranges.store');
-        Route::patch('catalog/availability/ranges/{code}', [AvailabilityController::class, 'updateRange'])->name('catalog.availability.ranges.update');
-        Route::delete('catalog/availability/ranges/{code}', [AvailabilityController::class, 'destroyRange'])->name('catalog.availability.ranges.destroy');
+        Route::post('catalog/products/{product}/availability-ranges', [AvailabilityController::class, 'storeRange'])->name('catalog.availability.ranges.store');
+        Route::patch('catalog/products/{product}/availability-ranges/{code}', [AvailabilityController::class, 'updateRange'])->name('catalog.availability.ranges.update');
+        Route::delete('catalog/products/{product}/availability-ranges/{code}', [AvailabilityController::class, 'destroyRange'])->name('catalog.availability.ranges.destroy');
     });
 
     Route::middleware('permission:catalog.products.manage_availability')->group(function (): void {

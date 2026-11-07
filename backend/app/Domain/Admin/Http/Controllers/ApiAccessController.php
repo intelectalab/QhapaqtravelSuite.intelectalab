@@ -17,6 +17,16 @@ final class ApiAccessController
         return response()->json(['data' => $directory->overview($this->user($request))]);
     }
 
+    public function keys(ApiDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->keys()]);
+    }
+
+    public function webhooks(ApiDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->webhooks()]);
+    }
+
     public function storeKey(Request $request, ManageApiAccess $access): JsonResponse
     {
         $data = $request->validate([
@@ -54,14 +64,14 @@ final class ApiAccessController
 
     public function updateWebhook(Request $request, string $code, ManageApiAccess $access): JsonResponse
     {
+        if ($request->has('status')) {
+            $data = $request->validate(['status' => ['required', 'in:active,paused']], ['status.*' => 'Indica si el webhook queda activo o en pausa.']);
+            $access->status($code, $data['status'] === 'paused' ? 'pause' : 'resume', $this->user($request));
+
+            return response()->json(['data' => ['code' => $code]]);
+        }
+
         $access->updateWebhook($code, $this->webhook($request), $this->user($request));
-
-        return response()->json(['data' => ['code' => $code]]);
-    }
-
-    public function webhookStatus(Request $request, string $code, string $mode, ManageApiAccess $access): JsonResponse
-    {
-        $access->status($code, $mode, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
     }

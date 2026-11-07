@@ -52,11 +52,15 @@ final class ManagePaxTemplates
         });
     }
 
-    public function toggle(string $code, User $actor): bool
+    public function setActive(string $code, bool $active, User $actor): bool
     {
-        return DB::transaction(function () use ($code, $actor): bool {
+        return DB::transaction(function () use ($code, $active, $actor): bool {
             $row = $this->find($code);
-            $active = ! $row->active;
+
+            if ((bool) $row->active === $active) {
+                throw ApiException::unprocessable('CFG-BR-01', $active ? 'La plantilla ya está activa.' : 'La plantilla ya está inactiva.');
+            }
+
             DB::table('notif_pax_message_templates')->where('id', $row->id)->update(['active' => $active, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             $this->audit->log('Plantilla de mensaje', $code, $active ? 'activar' : 'desactivar', $active ? 'inactiva' : 'activa', $active ? 'activa' : 'inactiva');
 

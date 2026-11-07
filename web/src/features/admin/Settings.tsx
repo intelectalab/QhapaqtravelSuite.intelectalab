@@ -34,7 +34,7 @@ const OPERATIONS: { key: string; label: string; unit: string; hint: string }[] =
   { key: "incident_escalate_min", label: "Escalar incidencia", unit: "min", hint: "Sin respuesta, se avisa a gerencia." },
 ];
 
-function SectionCard({ icon, title, tone, updated, children, action, index }: { icon: typeof Building2; title: string; tone: Tone; updated?: string | null; children: ReactNode; action?: ReactNode; index: number }) {
+export function SectionCard({ icon, title, tone, updated, children, action, index }: { icon: typeof Building2; title: string; tone: Tone; updated?: string | null; children: ReactNode; action?: ReactNode; index: number }) {
   return (
     <div style={{ animationDelay: `${index * 60}ms` }} className={RISE}>
       <Card className="lift h-full">
@@ -46,7 +46,7 @@ function SectionCard({ icon, title, tone, updated, children, action, index }: { 
   );
 }
 
-function EditSection({ section, title, description, children }: { section: string; title: string; description: string; children: ReactNode }) {
+export function EditSection({ section, version, title, description, children, action = updateSettings }: { section: string; version: number; title: string; description: string; children: ReactNode; action?: (state: AdminActionState, form: FormData) => Promise<AdminActionState> }) {
   const [warnings, setWarnings] = useState<string[]>([]);
   return (
     <>
@@ -59,13 +59,14 @@ function EditSection({ section, title, description, children }: { section: strin
         title={title}
         description={description}
         submitLabel="Guardar cambios"
-        action={updateSettings}
+        action={action}
         initial={ADMIN_INITIAL}
         onDone={(state) => setWarnings(state.warnings ?? [])}
       >
         {() => (
           <>
             <input type="hidden" name="section" value={section} />
+            <input type="hidden" name="lock_version" value={version} />
             {children}
           </>
         )}
@@ -98,7 +99,7 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
         title="Datos de la agencia"
         action={
           manage && (
-            <EditSection section="agency" title="Datos de la agencia" description="El RUC y el país solo los cambia la plataforma, porque requieren validación.">
+            <EditSection section="agency" version={agency.lock_version} title="Datos de la agencia" description="El RUC y el país solo los cambia la plataforma, porque requieren validación.">
               <TextField label="Razón social" name="legal_name" required defaultValue={agency.legal_name} />
               <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-3">
                 <TextField label="Nombre comercial" name="commercial_name" required defaultValue={agency.commercial_name} />
@@ -136,7 +137,7 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
         updated={sections.general.updated_at}
         action={
           manage && (
-            <EditSection section="general" title="Contacto y preferencias" description="Aparecen en cotizaciones, vouchers y correos a clientes.">
+            <EditSection section="general" version={sections.general.lock_version} title="Contacto y preferencias" description="Aparecen en cotizaciones, vouchers y correos a clientes.">
               <TextField label="Correo de la agencia" name="email" type="email" required defaultValue={general.email} icon={<Mail size={17} />} />
               <div className="grid grid-cols-2 gap-3">
                 <TextField label="Teléfono" name="phone" defaultValue={general.phone} icon={<Phone size={17} />} />
@@ -173,7 +174,7 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
         updated={sections.currency.updated_at}
         action={
           manage && (
-            <EditSection section="currency" title="Moneda e impuestos" description="Los cambios aplican a documentos nuevos. Los ya emitidos conservan sus valores.">
+            <EditSection section="currency" version={sections.currency.lock_version} title="Moneda e impuestos" description="Los cambios aplican a documentos nuevos. Los ya emitidos conservan sus valores.">
               <div className="grid grid-cols-2 gap-3">
                 <SelectField label="Moneda base" name="base_currency" options={[{ value: "PEN", label: "Soles (PEN)" }, { value: "USD", label: "Dólares (USD)" }]} defaultValue={currency.base_currency} hint={data.base_locked ? "Bloqueada: ya hay reservas o pagos." : undefined} />
                 <SelectField label="Moneda alterna" name="alt_currency" options={options.alt_currencies} defaultValue={currency.alt_currency} />
@@ -216,7 +217,7 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
         updated={sections.policies.updated_at}
         action={
           manage && (
-            <EditSection section="policies" title="Políticas comerciales" description="Se copian a cada cotización nueva; las ya enviadas conservan las suyas.">
+            <EditSection section="policies" version={sections.policies.lock_version} title="Políticas comerciales" description="Se copian a cada cotización nueva; las ya enviadas conservan las suyas.">
               <div className="grid grid-cols-2 gap-3">
                 {numberField("quote_validity_days", "Validez de cotización (días)", policies.quote_validity_days, 1, 60, "De 1 a 60 días")}
                 {numberField("hold_minutes", "Retención de cupos (min)", policies.hold_minutes, 5, 1440, "De 5 a 1 440 min")}
@@ -279,7 +280,7 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
         updated={sections.operations.updated_at}
         action={
           manage && (
-            <EditSection section="operations" title="Parámetros operativos" description="Todos son números enteros desde 0.">
+            <EditSection section="operations" version={sections.operations.lock_version} title="Parámetros operativos" description="Todos son números enteros desde 0.">
               <div className="grid grid-cols-2 gap-3">
                 {OPERATIONS.map((item) => (
                   <TextField key={item.key} label={`${item.label} (${item.unit})`} name={item.key} type="number" inputMode="numeric" min={item.key === "max_pax_per_guide" ? 1 : 0} max={item.key === "max_pax_per_guide" ? 40 : undefined} required defaultValue={ops[item.key]} />
@@ -309,7 +310,7 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
         updated={sections.channels.updated_at}
         action={
           manage && (
-            <EditSection section="channels" title="Canales" description="Solo puedes activar los canales que incluye tu plan.">
+            <EditSection section="channels" version={sections.channels.lock_version} title="Canales" description="Solo puedes activar los canales que incluye tu plan.">
               {data.channels.map((channel) => (
                 <ToggleField key={channel.key} label={channel.label} name={channel.key} defaultChecked={channel.enabled} disabled={!channel.allowed} hint={channel.allowed ? channel.description : `Disponible desde el plan ${channel.min_plan}.`} />
               ))}

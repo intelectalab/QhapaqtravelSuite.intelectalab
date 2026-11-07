@@ -13,8 +13,8 @@ import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
-import { formatDate, formatMoney } from "@/lib/format";
-import type { Advisor } from "@/lib/leads";
+import { amountAttr, formatDate, formatMoney } from "@/lib/format";
+import { ReservationLockInput } from "./ReservationLock";
 import { PAX_TYPE, RELATIONSHIPS, type ReservationCancellation, type ReservationDetail, type ReservationPassenger } from "@/lib/reservations";
 
 const initial: ReservationState = { message: null, done: false };
@@ -32,10 +32,12 @@ interface StepProps {
   defaultOpen?: boolean;
   formKey?: string;
   onDone?: () => void;
+  testId?: string;
+  confirmTestId?: string;
   children?: ReactNode;
 }
 
-function Step({ code, step, label, icon, variant = "secondary", title, description, submitLabel, trigger, defaultOpen, formKey, onDone, children }: StepProps) {
+export function Step({ code, step, label, icon, variant = "secondary", title, description, submitLabel, trigger, defaultOpen, formKey, onDone, testId, confirmTestId, children }: StepProps) {
   const router = useRouter();
   return (
     <PanelAction<ReservationState>
@@ -51,11 +53,14 @@ function Step({ code, step, label, icon, variant = "secondary", title, descripti
       trigger={trigger}
       defaultOpen={defaultOpen}
       onDone={onDone ?? (() => router.refresh())}
+      testId={testId}
+      confirmTestId={confirmTestId}
     >
       {() => (
         <>
           <input type="hidden" name="code" value={code} />
           <input type="hidden" name="step" value={step} />
+          <ReservationLockInput />
           {children}
         </>
       )}
@@ -63,10 +68,9 @@ function Step({ code, step, label, icon, variant = "secondary", title, descripti
   );
 }
 
-export function ReservationEditAction({ reservation, advisors, defaultOpen }: { reservation: ReservationDetail; advisors: Advisor[]; defaultOpen?: boolean }) {
+export function ReservationEditAction({ reservation, defaultOpen }: { reservation: ReservationDetail; defaultOpen?: boolean }) {
   return (
     <Step code={reservation.code} step="update" label="Editar" icon={<Pencil size={16} />} title="Editar reserva" description={`${reservation.title} · ${reservation.code}`} submitLabel="Guardar cambios" defaultOpen={defaultOpen}>
-      {reservation.can.reassign && advisors.length > 0 && <SelectField label="Responsable" name="owner_id" options={advisors.map((advisor) => ({ value: advisor.id, label: advisor.name }))} defaultValue={reservation.owner_id} />}
       <TextArea label="Notas para Operaciones" name="notes" rows={5} maxLength={2000} defaultValue={reservation.notes ?? ""} placeholder="Pedidos especiales, horarios de vuelo, alergias del grupo." />
       <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[12.5px] text-fg-2">Para cambiar fechas, servicios o número de pasajeros con su impacto en el precio, usa Modificar o Reprogramar cuando estén disponibles.</p>
     </Step>
@@ -125,7 +129,7 @@ export function PassengerRowActions({ code, passenger, canRemove }: { code: stri
 }
 
 function CancelSummary({ preview }: { preview: ReservationCancellation }) {
-  const money = (value: number) => formatMoney(value, preview.currency);
+  const money = (value: string) => formatMoney(value, preview.currency);
   return (
     <>
       <section className="flex flex-col gap-2">
@@ -145,13 +149,13 @@ function CancelSummary({ preview }: { preview: ReservationCancellation }) {
       </section>
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: "Penalidad", value: preview.penalty, tone: preview.penalty > 0 ? "text-bad" : "text-fg" },
-          { label: "Pagado", value: preview.paid, tone: "text-fg" },
-          { label: preview.refund > 0 ? "Se reembolsa" : "Queda por cobrar", value: preview.refund > 0 ? preview.refund : preview.owed, tone: preview.refund > 0 ? "text-ok" : preview.owed > 0 ? "text-bad" : "text-fg" },
+          { id: "cancellation-penalty", label: "Penalidad", value: preview.penalty, tone: Number(preview.penalty) > 0 ? "text-bad" : "text-fg" },
+          { id: "cancellation-paid", label: "Pagado", value: preview.paid, tone: "text-fg" },
+          { id: "cancellation-refund", label: Number(preview.refund) > 0 ? "Se reembolsa" : "Queda por cobrar", value: Number(preview.refund) > 0 ? preview.refund : preview.owed, tone: Number(preview.refund) > 0 ? "text-ok" : Number(preview.owed) > 0 ? "text-bad" : "text-fg" },
         ].map((item) => (
           <div key={item.label} className="lift rounded-xl border border-line-2 bg-surface px-3 py-2.5">
             <p className="text-[12px] text-fg-3">{item.label}</p>
-            <p className={cn("mt-0.5 text-[16px] font-bold tracking-[-0.02em]", item.tone)}>{money(item.value)}</p>
+            <p data-testid={item.id} data-amount={amountAttr(item.value)} className={cn("mt-0.5 text-[16px] font-bold tracking-[-0.02em]", item.tone)}>{money(item.value)}</p>
           </div>
         ))}
       </div>
@@ -171,7 +175,8 @@ export function ReservationCancelAction({ reservation, preview, defaultOpen }: {
       description="Se liberan los cupos, se cancelan los servicios y las cuotas pendientes. No se puede deshacer."
       submitLabel="Cancelar reserva"
       defaultOpen={defaultOpen}
-      trigger={(open) => <Button iconOnly icon={<Ban size={16} />} label="Cancelar reserva" onClick={open} className="transition-transform duration-300 hover:-translate-y-0.5" />}
+      confirmTestId="cancellation-confirm"
+      trigger={(open) => <Button iconOnly icon={<Ban size={16} />} label="Cancelar reserva" onClick={open} data-testid="reservation-cancel" className="transition-transform duration-300 hover:-translate-y-0.5" />}
     >
       <CancelSummary preview={preview} />
       <SelectField label="Motivo" name="reason" options={preview.reasons.map((value) => ({ value, label: value }))} defaultValue={requested?.[0] ?? ""} placeholder="Elegir" />
@@ -190,9 +195,10 @@ export function ReservationRequestCancelAction({ reservation, preview, defaultOp
   );
 }
 
-export function ReservationRejectRequestAction({ code }: { code: string }) {
+export function ReservationRejectRequestAction({ code, request }: { code: string; request: string }) {
   return (
     <Step code={code} step="reject_request" label="No anular" icon={<CircleX size={15} />} variant="ghost" title="Rechazar la solicitud de anulación" description="La reserva sigue vigente y se avisa a quien la pidió." submitLabel="Rechazar solicitud">
+      <input type="hidden" name="request" value={request} />
       <TextArea label="Motivo" name="note" rows={3} required minLength={3} maxLength={500} placeholder="Por ejemplo: el cliente confirmó que viaja." />
     </Step>
   );

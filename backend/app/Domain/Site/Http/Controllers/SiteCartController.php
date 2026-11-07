@@ -97,6 +97,8 @@ final class SiteCartController
 
     private function token(Request $request): ?string
     {
-        return $request->header('X-Cart-Token') ?: null;
+        $cookie = $request->cookies->get((string) config('sites.cart_cookie'));
+
+        return is_string($cookie) && $cookie !== '' ? $cookie : null;
     }
 }

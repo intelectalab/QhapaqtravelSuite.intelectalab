@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { useSite } from "./SiteContext";
 
 export function NightBackdrop({ className }: { className?: string }) {
   return (
@@ -40,8 +43,9 @@ export function PageHero({ eyebrow, title, description, children, aside }: { eye
 }
 
 export function Breadcrumbs({ items }: { items: { label: string; href?: string }[] }) {
+  const { t } = useSite();
   return (
-    <nav aria-label="Ruta de navegación" className="mb-4 flex flex-wrap items-center gap-1.5 text-[12.5px] text-white/60">
+    <nav aria-label={t.common.breadcrumbs} className="mb-4 flex flex-wrap items-center gap-1.5 text-[12.5px] text-white/60">
       {items.map((item, index) => (
         <span key={`${item.label}-${index}`} className="inline-flex items-center gap-1.5">
           {index > 0 && <span aria-hidden>/</span>}

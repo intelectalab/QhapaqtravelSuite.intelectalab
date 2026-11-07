@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domain\Finance\Actions;
 
-use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Finance\Support\Consolidation;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
+use App\Domain\Shared\Sequences\SequenceService;
 use Illuminate\Support\Facades\DB;
 
 final class TreasuryMovementWorkflow
 {
-    public function __construct(private readonly Consolidation $money, private readonly CodeSequence $sequence, private readonly AuditLogger $audit) {}
+    public function __construct(private readonly SequenceService $sequences, private readonly Consolidation $money, private readonly AuditLogger $audit) {}
 
     public function record(array $data, User $actor): string
     {
@@ -24,24 +25,24 @@ final class TreasuryMovementWorkflow
                 throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige una cuenta activa.');
             }
 
-            $amount = round((float) $data['amount'], 2);
+            $amount = Decimal::money($data['amount']);
             $direction = $data['direction'];
             if ($direction === 'out') {
                 $flow = DB::table('fin_treasury_movements')->where('account_id', $account->id)->where('status', 'posted')
                     ->selectRaw("coalesce(sum(case when direction = 'in' then amount else -amount end), 0) as net")->value('net');
-                if ($amount - ((float) $account->opening_balance + (float) $flow) > 0.005) {
+                if ($amount->isGreaterThan(Decimal::of($account->opening_balance)->plus(Decimal::of($flow)))) {
                     throw ApiException::unprocessable('TES-BR-01', 'El egreso supera el saldo disponible de la cuenta.');
                 }
             }
 
-            $code = $this->sequence->next('fin_treasury_movements', 'MOV-', 6);
+            $code = $this->sequences->next('treasury_movement');
             DB::table('fin_treasury_movements')->insert([
                 'code' => $code,
                 'account_id' => $account->id,
                 'movement_date' => $data['date'],
                 'direction' => $direction,
                 'type' => $direction === 'in' ? 'other_income' : 'other_expense',
-                'amount' => $amount,
+                'amount' => (string) $amount,
                 'currency' => $account->currency,
                 'fx_rate' => $this->money->fxFor($account->currency),
                 'source_type' => 'manual',

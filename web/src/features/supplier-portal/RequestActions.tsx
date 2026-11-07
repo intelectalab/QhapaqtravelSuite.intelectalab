@@ -45,6 +45,7 @@ export function ConfirmPanel({ row, contact, size = "md", asIcon = false }: { ro
       {() => (
         <>
           <Summary row={row} />
+          <input type="hidden" name="lock_version" value={row.lock_version} />
           <TextField label="Código de confirmación" name="confirmation_code" required minLength={4} maxLength={40} icon={<KeyRound size={17} />} placeholder="TR-55890" hint="Mínimo 4 caracteres. Se guarda en mayúsculas." />
           <TextField label="Hora del servicio" name="service_time" type="time" defaultValue={row.time ?? ""} icon={<Clock size={17} />} hint="Ajústela si difiere de la solicitada." />
           <TextField label="Confirmado por" name="confirmed_by_name" maxLength={120} defaultValue={contact} icon={<UserRound size={17} />} />
@@ -76,6 +77,7 @@ export function RejectPanel({ row, reasons, today, size = "md", asIcon = false }
       {() => (
         <>
           <Summary row={row} />
+          <input type="hidden" name="lock_version" value={row.lock_version} />
           <SelectField label="Motivo" name="reason" placeholder="Elija el motivo" options={reasons.map((value) => ({ value, label: value }))} />
           <TextArea label="Detalle" name="note" rows={3} required minLength={5} maxLength={1000} placeholder="Explique la situación para que la agencia pueda resolverla." />
           <SwitchField label="Proponer otra fecha" name="propose_alternative" hint="Se crea un servicio alternativo para que la agencia lo solicite." checked={alternative} onCheckedChange={setAlternative} />

@@ -22,7 +22,7 @@ final class RuleDirectory
         $rules = DB::table('sys_booking_rules as r')
             ->leftJoin('iam_users as u', 'u.id', '=', 'r.updated_by')
             ->orderBy('r.sort_order')
-            ->get(['r.code', 'r.rule_group', 'r.name', 'r.description', 'r.enabled', 'r.params', 'r.scope', 'r.product_override', 'r.is_custom', 'r.depends_on', 'r.min_plan', 'r.updated_at', 'u.name as user_name'])
+            ->get(['r.code', 'r.rule_group', 'r.name', 'r.description', 'r.enabled', 'r.params', 'r.scope', 'r.product_override', 'r.is_custom', 'r.depends_on', 'r.min_plan', 'r.updated_at', 'r.lock_version', 'u.name as user_name'])
             ->map(function (object $row) use ($rank, $defaults): array {
                 $params = (array) json_decode((string) $row->params, true);
                 $default = $defaults[$row->code] ?? null;
@@ -43,6 +43,7 @@ final class RuleDirectory
                     'modified' => $default !== null && ((bool) $default->default_enabled !== (bool) $row->enabled || (array) json_decode((string) $default->default_params, true) != $params),
                     'updated_at' => $row->updated_at,
                     'updated_by' => $row->user_name,
+                    'lock_version' => (int) $row->lock_version,
                 ];
             });
 

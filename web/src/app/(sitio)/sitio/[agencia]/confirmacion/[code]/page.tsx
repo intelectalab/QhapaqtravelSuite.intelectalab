@@ -111,7 +111,7 @@ export default async function ConfirmationPage({ params }: PageProps<"/sitio/[ag
               <span>Total del pedido</span>
               <b className="text-[18px] tabular-nums text-fg">{formatMoney(order.total, order.currency)}</b>
             </div>
-            {order.discount > 0 && <p className="mt-1 text-right text-ok">Incluye descuentos por {formatMoney(order.discount, order.currency)}</p>}
+            {Number(order.discount) > 0 && <p className="mt-1 text-right text-ok">Incluye descuentos por {formatMoney(order.discount, order.currency)}</p>}
             <p className="mt-3 inline-flex items-center gap-1.5 text-fg-3">
               <Clock3 size={13} />
               Pedido creado el {formatDateTime(order.ordered_at)}

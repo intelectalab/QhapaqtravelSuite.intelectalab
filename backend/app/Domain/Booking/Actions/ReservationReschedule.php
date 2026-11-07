@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Actions;
 
-use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
+use App\Domain\Shared\Sequences\SequenceService;
 use App\Domain\Shared\Tenancy\TenantContext;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +21,7 @@ final class ReservationReschedule
 {
     public function __construct(
         private readonly TenantContext $context,
-        private readonly CodeSequence $sequence,
+        private readonly SequenceService $sequences,
         private readonly AuditLogger $audit,
         private readonly ReservationMailer $mailer,
     ) {}
@@ -74,27 +77,28 @@ final class ReservationReschedule
             }
             DB::table('ops_orders')->where('reservation_id', $reservation->id)->whereNotIn('status', ['completada', 'cancelada'])->update(['status' => 'pendiente_asignacion']);
 
-            $diff = $plan['diff'];
+            $diff = Decimal::of($plan['diff']);
             DB::table('booking_reservations')->where('id', $reservation->id)->update([
                 'travel_from' => $plan['new_from'],
                 'travel_to' => $plan['new_to'],
-                'total_amount' => DB::raw("total_amount + ({$diff})"),
+                'total_amount' => DB::raw('total_amount + ('.$diff.')'),
                 'status' => 'reprogramada',
                 'rescheduled_at' => $now,
+                'lock_version' => DB::raw('lock_version + 1'),
                 'updated_by' => $actor->getKey(),
                 'updated_at' => $now,
             ]);
-            DB::table('booking_changes')->insert(['reservation_id' => $reservation->id, 'type' => 'reprogramacion', 'description' => $reason, 'delta_amount' => $diff, 'status' => 'aplicada', 'requested_by' => $actor->getKey(), 'decided_by' => $actor->getKey(), 'decided_at' => $now, 'applied_at' => $now, 'payload' => json_encode(['from' => $reservation->travel_from, 'to' => $plan['new_from'], 'shift' => $plan['shift']]), 'created_by' => $actor->getKey()]);
+            DB::table('booking_changes')->insert(['reservation_id' => $reservation->id, 'type' => 'reprogramacion', 'description' => $reason, 'delta_amount' => (string) $diff, 'status' => 'aplicada', 'requested_by' => $actor->getKey(), 'decided_by' => $actor->getKey(), 'decided_at' => $now, 'applied_at' => $now, 'payload' => json_encode(['from' => $reservation->travel_from, 'to' => $plan['new_from'], 'shift' => $plan['shift']]), 'created_by' => $actor->getKey()]);
 
-            if ($diff > 0) {
-                $code = $this->sequence->next('fin_receivables', 'CXC-', 5);
+            if ($diff->isPositive()) {
+                $code = $this->sequences->next('receivable');
                 $due = CarbonImmutable::parse($plan['new_from'])->subDays(7)->max($this->today());
-                DB::table('fin_receivables')->insert(['code' => $code, 'reservation_id' => $reservation->id, 'client_id' => $reservation->client_id, 'kind' => 'ajuste', 'concept' => mb_substr("Diferencia tarifaria por reprogramación — {$reservation->title}", 0, 255), 'amount' => $diff, 'currency' => $reservation->currency, 'fx_rate' => $reservation->fx_rate, 'due_date' => $due->toDateString(), 'status' => 'abierta', 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
+                DB::table('fin_receivables')->insert(['code' => $code, 'reservation_id' => $reservation->id, 'client_id' => $reservation->client_id, 'kind' => 'ajuste', 'concept' => mb_substr("Diferencia tarifaria por reprogramación — {$reservation->title}", 0, 255), 'amount' => (string) $diff, 'currency' => $reservation->currency, 'fx_rate' => $reservation->fx_rate, 'due_date' => $due->toDateString(), 'status' => 'abierta', 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
                 $this->audit->log('Cuenta por cobrar', $code, 'crear', null, "{$reservation->currency} {$diff}");
             }
 
             $this->audit->log('Reserva', $reservation->code, 'reprogramar', "{$reservation->travel_from} → {$reservation->travel_to}", "{$plan['new_from']} → {$plan['new_to']} · {$reason}");
-            $this->mailer->send($reservation->id, 'Tu viaje cambió de fecha', "Tu viaje {$reservation->title} ahora es del {$plan['new_from']} al {$plan['new_to']}.".($diff > 0 ? " La diferencia de tarifa es {$reservation->currency} {$diff}." : ''));
+            $this->mailer->send($reservation->id, 'Tu viaje cambió de fecha', "Tu viaje {$reservation->title} ahora es del {$plan['new_from']} al {$plan['new_to']}.".($diff->isPositive() ? " La diferencia de tarifa es {$reservation->currency} {$diff}." : ''));
         });
     }
 
@@ -122,14 +126,14 @@ final class ReservationReschedule
         }
 
         $lines = [];
-        $diff = 0.0;
+        $diff = BigDecimal::zero()->toScale(2);
 
         foreach ($services as $service) {
             $newDate = CarbonImmutable::parse((string) $service->service_date, $today->getTimezone())->addDays($shift)->toDateString();
             $fo = $this->seasonFactor((string) $service->product_id, (string) $service->service_date);
             $fn = $this->seasonFactor((string) $service->product_id, $newDate);
-            $newPrice = round((float) $service->price_amount * $fn / $fo, 2);
-            $newCost = round((float) $service->cost_amount * $fn / $fo, 2);
+            $newPrice = Decimal::of($service->price_amount)->multipliedBy($fn)->dividedBy($fo, 2, RoundingMode::HALF_UP);
+            $newCost = Decimal::of($service->cost_amount)->multipliedBy($fn)->dividedBy($fo, 2, RoundingMode::HALF_UP);
             $departureId = null;
             $note = 'Se pide de nuevo al proveedor.';
             $ok = true;
@@ -147,8 +151,8 @@ final class ReservationReschedule
                 $blocked = "{$service->name}: {$note}";
             }
 
-            $diff += round((float) $service->price_amount * ($fn / $fo - 1), 2);
-            $lines[] = ['id' => $service->id, 'code' => $service->code, 'name' => $service->name, 'date' => $service->service_date, 'new_date' => $newDate, 'pax' => (int) $service->pax, 'price' => (float) $service->price_amount, 'new_price' => $newPrice, 'new_cost' => $newCost, 'departure_id' => $departureId, 'ok' => $ok, 'note' => $note];
+            $diff = $diff->plus($newPrice->minus(Decimal::money($service->price_amount)));
+            $lines[] = ['id' => $service->id, 'code' => $service->code, 'name' => $service->name, 'date' => $service->service_date, 'new_date' => $newDate, 'pax' => (int) $service->pax, 'price' => (string) Decimal::money($service->price_amount), 'new_price' => (string) $newPrice, 'new_cost' => (string) $newCost, 'departure_id' => $departureId, 'ok' => $ok, 'note' => $note];
         }
 
         $length = (int) $from->diffInDays(CarbonImmutable::parse((string) $reservation->travel_to, $today->getTimezone()));
@@ -162,7 +166,7 @@ final class ReservationReschedule
             'new_from' => $start->toDateString(),
             'new_to' => $start->addDays($length)->toDateString(),
             'shift' => $shift,
-            'diff' => round($diff, 2),
+            'diff' => (string) $diff,
             'blocked' => $blocked,
             'lines' => $lines,
         ];
@@ -184,10 +188,10 @@ final class ReservationReschedule
         return $from->addDays(7)->max($today);
     }
 
-    private function seasonFactor(string $productId, string $date): float
+    private function seasonFactor(string $productId, string $date): string
     {
         if ($productId === '') {
-            return 1.0;
+            return '1';
         }
 
         $factor = DB::table('catalog_seasons as s')
@@ -199,13 +203,13 @@ final class ReservationReschedule
             ->orderByDesc('s.priority')
             ->value('s.factor');
 
-        return $factor && (float) $factor > 0 ? (float) $factor : 1.0;
+        return $factor !== null && Decimal::of($factor)->isPositive() ? (string) $factor : '1';
     }
 
     private function open(string $code, User $actor, bool $lock = false): object
     {
         $query = Portfolio::scope(DB::table('booking_reservations')->whereNull('deleted_at'), $actor, 'owner_id')->where('code', $code);
-        $reservation = ($lock ? $query->lockForUpdate() : $query)->first() ?? throw ApiException::notFound('La reserva no existe.');
+        $reservation = ($lock ? $query->lockForUpdate() : $query)->first() ?? throw Portfolio::missing($actor, 'booking_reservations', $code, 'La reserva no existe.', 'Esta reserva');
 
         if (in_array($reservation->status, ReservationWorkflow::CLOSED, true)) {
             throw ApiException::conflict('RESERVATION_CLOSED', 'La reserva ya está cerrada y no se puede reprogramar.');

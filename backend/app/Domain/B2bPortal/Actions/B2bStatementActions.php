@@ -12,11 +12,15 @@ use App\Domain\Finance\Support\PaymentMethods;
 use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
+use App\Domain\Shared\Sequences\SequenceService;
+use Brick\Math\BigDecimal;
 use Illuminate\Support\Facades\DB;
 
 final class B2bStatementActions
 {
     public function __construct(
+        private readonly SequenceService $sequences,
         private readonly PaymentMethods $methods,
         private readonly Consolidation $money,
         private readonly CodeSequence $sequence,
@@ -28,15 +32,15 @@ final class B2bStatementActions
         return DB::transaction(function () use ($account, $receivableCode, $data): string {
             $receivable = $account->receivable($receivableCode);
             DB::table('fin_receivables')->where('id', $receivable->id)->lockForUpdate()->first(['id']);
-            $reported = (float) DB::table('fin_payments')->where('receivable_id', $receivable->id)->where('status', 'pendiente')->sum('amount');
-            $balance = round((float) $receivable->amount - (float) $receivable->paid_amount - $reported, 2);
-            $amount = round((float) $data['amount'], 2);
+            $reported = Decimal::of(DB::table('fin_payments')->where('receivable_id', $receivable->id)->where('status', 'pendiente')->sum('amount'));
+            $balance = ReceivableLedger::balance($receivable)->minus($reported);
+            $amount = Decimal::money($data['amount']);
 
-            if ($receivable->status === 'pagada' || $balance <= ReceivableLedger::TOLERANCE) {
-                throw ApiException::unprocessable('B2B-BR-14', $reported > 0 ? 'Ya informaste el saldo de esta cuota. Finanzas lo está validando.' : 'Esta cuota ya está pagada.');
+            if ($receivable->status === 'pagada' || ! $balance->isPositive()) {
+                throw ApiException::unprocessable('B2B-BR-14', $reported->isPositive() ? 'Ya informaste el saldo de esta cuota. Finanzas lo está validando.' : 'Esta cuota ya está pagada.');
             }
 
-            if ($amount - $balance > ReceivableLedger::TOLERANCE) {
+            if ($amount->isGreaterThan($balance)) {
                 throw ApiException::unprocessable('B2B-BR-14', 'El monto no puede superar el saldo pendiente de la cuota.');
             }
 
@@ -45,7 +49,7 @@ final class B2bStatementActions
                 throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige un medio de pago válido.');
             }
 
-            $code = $this->sequence->next('fin_payments', 'PAG-', 5);
+            $code = $this->sequences->next('payment');
             $user = $account->user;
             $id = (string) DB::table('fin_payments')->insertGetId([
                 'code' => $code,
@@ -54,7 +58,7 @@ final class B2bStatementActions
                 'kind' => 'cobro',
                 'source' => 'b2b',
                 'method' => $method->code,
-                'amount' => $amount,
+                'amount' => (string) $amount,
                 'currency' => $receivable->currency,
                 'fx_rate' => $this->money->fxFor($receivable->currency, $receivable->fx_rate),
                 'paid_on' => $data['paid_on'] ?? $this->money->today(),
@@ -86,7 +90,7 @@ final class B2bStatementActions
             }
 
             $fx = $this->money->usdRate();
-            $total = round($commissions->sum(fn (object $row): float => $this->money->pen($row->amount, $row->currency, $row->fx_rate ?? $fx)), 2);
+            $total = (string) $commissions->reduce(fn (BigDecimal $sum, object $row): BigDecimal => $sum->plus($this->money->penExact($row->amount, $row->currency, $row->fx_rate ?? $fx)), BigDecimal::zero()->toScale(2));
             $code = $this->sequence->next('channel_b2b_settlement_requests', 'LIQ-'.substr($this->money->today(), 0, 4).'-', 5);
             $id = (string) DB::table('channel_b2b_settlement_requests')->insertGetId([
                 'code' => $code,

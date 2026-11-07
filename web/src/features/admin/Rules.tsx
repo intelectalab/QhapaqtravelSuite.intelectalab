@@ -59,7 +59,7 @@ function RuleSwitch({ rule, manage }: { rule: BookingRule; manage: boolean }) {
           start(async () => {
             setEnabled(next);
             setError(null);
-            const result = await toggleRule(rule.code, next);
+            const result = await toggleRule(rule.code, next, rule.lock_version);
             if (!result.done) setError(result.message);
           })
         }
@@ -111,6 +111,7 @@ function RuleRowActions({ rule }: { rule: BookingRule }) {
           {() => (
             <>
               <input type="hidden" name="code" value={rule.code} />
+              <input type="hidden" name="lock_version" value={rule.lock_version} />
               {rule.params.filter((param) => param.type === "bool").map((param) => <input key={param.key} type="hidden" name="bool_keys" value={param.key} />)}
               {rule.params.map((param) => <ParamField key={param.key} param={param} />)}
             </>
@@ -122,6 +123,7 @@ function RuleRowActions({ rule }: { rule: BookingRule }) {
           {() => (
             <>
               <input type="hidden" name="code" value={rule.code} />
+              <input type="hidden" name="lock_version" value={rule.lock_version} />
               <RuleFields rule={rule} />
             </>
           )}
@@ -139,7 +141,12 @@ function RuleRowActions({ rule }: { rule: BookingRule }) {
       )}
       {rule.custom && !rule.enabled && (
         <PanelAction<AdminActionState> label="Eliminar" variant="ghost" size="sm" formId={`rule-delete-${rule.code}`} trigger={(open) => <RowIcon tone="delete" label="Eliminar regla" icon={<Trash2 size={15} />} onClick={open} />} title="Eliminar regla personalizada" description={`${rule.name} se elimina. Las reglas estándar no se eliminan: se desactivan.`} submitLabel="Eliminar" action={deleteRule} initial={ADMIN_INITIAL}>
-          {() => <input type="hidden" name="code" value={rule.code} />}
+          {() => (
+            <>
+              <input type="hidden" name="code" value={rule.code} />
+              <input type="hidden" name="lock_version" value={rule.lock_version} />
+            </>
+          )}
         </PanelAction>
       )}
     </RowActions>

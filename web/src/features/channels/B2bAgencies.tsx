@@ -48,7 +48,12 @@ export function AgencyFormAction({ agency, catalogs, iconOnly = false }: { agenc
     >
       {() => (
         <>
-          {agency && <input type="hidden" name="code" value={agency.code} />}
+          {agency && (
+            <>
+              <input type="hidden" name="code" value={agency.code} />
+              <input type="hidden" name="lock_version" value={agency.lock_version} />
+            </>
+          )}
           <PanelSection title="Empresa">
             <TextField label="Razón social" name="legal_name" required defaultValue={agency?.legal_name} icon={<Building2 size={17} />} />
             <div className="grid grid-cols-2 gap-3">
@@ -103,6 +108,7 @@ export function AgencyStatusAction({ agency, target }: { agency: B2bAgency; targ
       {() => (
         <>
           <input type="hidden" name="code" value={agency.code} />
+          <input type="hidden" name="lock_version" value={agency.lock_version} />
           <input type="hidden" name="status" value={copy.status} />
           <TextArea label={target === "bloquear" ? "Motivo" : "Motivo (opcional)"} name="reason" rows={3} maxLength={200} required={target === "bloquear"} placeholder={target === "bloquear" ? "Por ejemplo: pagos vencidos por más de 30 días." : undefined} />
         </>

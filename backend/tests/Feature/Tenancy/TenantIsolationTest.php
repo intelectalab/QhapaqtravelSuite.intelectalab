@@ -72,7 +72,7 @@ it('X-02 / T-02: X-Tenant-Id de otro tenant se ignora y se responden datos del t
     foreach ($leadsA as $code) {
         expect($json)->not->toContain('"'.$code.'"');
     }
-})->skip('X-02 / T-02 (00 SEC-BR-02): X-Tenant-Id o ?tenant de otro tenant deben ignorarse y responder con datos del token; hoy ResolveTenant::rejectClientSuppliedTenant responde 403 en cualquier ruta.');
+});
 
 it('X-02 / T-02: una ruta que intenta fijar otro tenant responde 403 TENANT_SCOPE_VIOLATION', function () {
     requireRoute('GET', '/api/v1/me/tenant');

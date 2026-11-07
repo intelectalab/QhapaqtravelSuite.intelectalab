@@ -41,6 +41,7 @@ function RoomForm({ list, room, roomTypes }: { list: RoomingList; room?: Rooming
     <OpsStep
       step="room_save"
       target={room ? `${list.id}/rooms/${room.id}` : `${list.id}/rooms`}
+      version={room ? undefined : list.lock_version}
       formKey={room?.id ?? `${list.id}-room`}
       label="Agregar habitación"
       icon={<Plus size={15} />}
@@ -109,11 +110,11 @@ function ListActions({ list }: { list: RoomingList }) {
           </OpsStep>
         )}
         {list.status !== "confirmada" && list.status !== "enviada" && (
-          <Button size="sm" variant="secondary" icon={<CircleCheck size={15} />} disabled={pending} onClick={() => run({ step: "rooming_confirm", target: list.id })}>
+          <Button size="sm" variant="secondary" icon={<CircleCheck size={15} />} disabled={pending} onClick={() => run({ step: "rooming_confirm", target: list.id, lock_version: String(list.lock_version) })}>
             Confirmar
           </Button>
         )}
-        <Button size="sm" variant="primary" icon={<Send size={15} />} disabled={pending || !canSend} title={canSend ? undefined : "Confirma la lista antes de enviarla"} onClick={() => run({ step: "rooming_send", target: list.id })}>
+        <Button size="sm" variant="primary" icon={<Send size={15} />} disabled={pending || !canSend} title={canSend ? undefined : "Confirma la lista antes de enviarla"} onClick={() => run({ step: "rooming_send", target: list.id, lock_version: String(list.lock_version) })}>
           {list.status === "enviada" ? "Reenviar al hotel" : "Enviar al hotel"}
         </Button>
       </div>

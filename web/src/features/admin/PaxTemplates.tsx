@@ -194,7 +194,12 @@ function TemplateRowActions({ template, data }: { template: PaxTemplate; data: P
             action={togglePaxTemplate}
             initial={ADMIN_INITIAL}
           >
-            {() => <input type="hidden" name="code" value={template.code} />}
+            {() => (
+              <>
+                <input type="hidden" name="code" value={template.code} />
+                <input type="hidden" name="active" value={template.active ? "0" : "1"} />
+              </>
+            )}
           </PanelAction>
           {template.sent === 0 && (
             <PanelAction<AdminActionState> label="Eliminar" variant="ghost" size="sm" formId={`pax-delete-${template.code}`} trigger={(open) => <RowIcon tone="delete" label="Eliminar plantilla" icon={<Trash2 size={15} />} onClick={open} />} title="Eliminar plantilla" description={`${template.name} no tiene mensajes enviados, así que se puede eliminar.`} submitLabel="Eliminar" action={deletePaxTemplate} initial={ADMIN_INITIAL}>

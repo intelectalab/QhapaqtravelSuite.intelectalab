@@ -188,7 +188,7 @@ final class ActivityWorkflow
 
     private function activity(string $code, User $actor): object
     {
-        return $this->directory->scoped($actor)->where('a.code', $code)->first(['a.*']) ?? throw ApiException::notFound('La actividad no existe.');
+        return $this->directory->scoped($actor)->where('a.code', $code)->first(['a.*']) ?? throw Portfolio::missing($actor, 'crm_activities', $code, 'La actividad no existe.', 'Esta actividad');
     }
 
     private function dueAt(string $value): Carbon

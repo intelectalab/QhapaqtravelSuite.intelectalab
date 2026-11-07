@@ -76,6 +76,7 @@ final class OwnReviewDirectory
                 'photos' => count(json_decode((string) $row->photos, true) ?: []),
                 'published_at' => $row->published_at,
                 'created_at' => $row->created_at,
+                'lock_version' => (int) $row->lock_version,
                 'log' => $this->log($log->get($row->id, [])),
             ])->values(),
             'requests' => $requests->map(fn (object $row): array => [

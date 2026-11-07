@@ -20,6 +20,7 @@ export function Tabs({ tabs, initial }: { tabs: TabItem[]; initial?: string }) {
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            data-testid={`tab:${tab.id}`}
             type="button"
             role="tab"
             aria-selected={tab.id === current.id}

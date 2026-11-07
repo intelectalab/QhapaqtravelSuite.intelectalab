@@ -93,6 +93,7 @@ export function LeadAssignAction({ lead, advisors }: { lead: LeadDetail; advisor
       {() => (
         <>
           <input type="hidden" name="code" value={lead.code} />
+          <input type="hidden" name="lock_version" value={lead.lock_version} />
           <SelectField label="Asesor" name="owner_id" options={choices.map((advisor) => ({ value: advisor.id, label: advisor.name }))} placeholder="Elegir" />
           <SwitchField label="Programar el primer contacto en 2 horas" hint="Crea una llamada para el asesor elegido." name="schedule_first_contact" checked={firstContact} onCheckedChange={setFirstContact} />
           <TextArea label="Motivo (opcional)" name="reason" rows={2} maxLength={300} placeholder="Por ejemplo: habla inglés, o vacaciones del asesor." />

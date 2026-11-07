@@ -8,7 +8,7 @@ import { Consent, FieldError, FormAlert } from "./FormBits";
 import { useSite } from "./SiteContext";
 
 export function Newsletter() {
-  const { agencia, name } = useSite();
+  const { agencia, name, t } = useSite();
   const [state, action, pending] = useActionState(sendNewsletter.bind(null, agencia), IDLE);
   const done = state.status === "done";
   const existing = done && state.data?.status === "existente";
@@ -22,14 +22,14 @@ export function Newsletter() {
           <span className="inline-grid h-11 w-11 place-items-center rounded-2xl bg-white/10">
             <Mail size={20} className="text-t2" />
           </span>
-          <h2 className="mt-4 text-[26px] font-bold leading-tight tracking-tight">Ideas de viaje y salidas con cupos, una vez al mes</h2>
-          <p className="mt-2 max-w-[46ch] text-[14px] leading-relaxed text-white/70">Te escribimos solo con novedades útiles: temporadas, nuevas rutas y ofertas vigentes. Puedes darte de baja cuando quieras.</p>
+          <h2 className="mt-4 text-[26px] font-bold leading-tight tracking-tight">{t.newsletter.title}</h2>
+          <p className="mt-2 max-w-[46ch] text-[14px] leading-relaxed text-white/70">{t.newsletter.body}</p>
         </div>
         {done ? (
           <div className="flex items-start gap-3 rounded-2xl bg-white/10 p-5 animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]">
             <CheckCircle2 size={22} className="flex-none text-ok" />
             <p className="text-[14px] leading-relaxed">
-              {existing ? "Ese correo ya está suscrito. Seguirás recibiendo nuestras novedades." : "Listo. Te enviamos un correo para confirmar la suscripción."}
+              {existing ? t.newsletter.existing : t.newsletter.done}
             </p>
           </div>
         ) : (
@@ -37,12 +37,12 @@ export function Newsletter() {
             <div className="flex flex-col gap-2 sm:flex-row">
               <label className="flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-control border border-line px-3.5 focus-within:border-accent">
                 <Mail size={16} className="text-fg-3" />
-                <span className="sr-only">Correo electrónico</span>
-                <input name="email" type="email" required placeholder="tu@correo.com" className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-fg-3" />
+                <span className="sr-only">{t.newsletter.email}</span>
+                <input name="email" type="email" required placeholder={t.newsletter.placeholder} className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-fg-3" />
               </label>
               <button type="submit" disabled={pending} className="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-brand px-5 text-[14px] font-semibold text-brand-fg transition hover:brightness-110 disabled:opacity-60">
                 <Send size={15} />
-                {pending ? "Enviando…" : "Suscribirme"}
+                {pending ? t.newsletter.sending : t.newsletter.subscribe}
               </button>
             </div>
             <FieldError message={state.errors?.email} />

@@ -4,17 +4,19 @@ declare(strict_types=1);
 
 namespace App\Domain\Finance\Actions;
 
-use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Finance\Support\CommissionDirectory;
 use App\Domain\Finance\Support\FinanceHistory;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
+use App\Domain\Shared\Sequences\SequenceService;
+use Brick\Math\RoundingMode;
 use Illuminate\Support\Facades\DB;
 
 final class CommissionWorkflow
 {
-    public function __construct(private readonly CodeSequence $sequence, private readonly AuditLogger $audit, private readonly CommissionDirectory $directory) {}
+    public function __construct(private readonly SequenceService $sequences, private readonly AuditLogger $audit, private readonly CommissionDirectory $directory) {}
 
     public function calculate(User $actor): int
     {
@@ -25,7 +27,7 @@ final class CommissionWorkflow
             $created = 0;
 
             foreach ($reservations as $reservation) {
-                $total = (float) $reservation->total_amount;
+                $total = Decimal::money($reservation->total_amount);
                 $isAgency = $reservation->channel === 'B2B' && $reservation->agency_id !== null;
                 if (! $isAgency && $reservation->owner_id === null) {
                     continue;
@@ -33,10 +35,10 @@ final class CommissionWorkflow
 
                 $corporate = in_array($reservation->channel, ['Corporativo', 'Grupos'], true) || $reservation->segment_code === 'Corporativo';
                 $rule = $rules->get($isAgency ? 'b2b_convenio' : ($corporate ? 'corporativo_grupos' : 'directo_ecommerce'));
-                $pct = $isAgency ? (float) $reservation->commission_pct : (float) ($rule->pct ?? ($corporate ? 2.5 : 3));
-                $base = $isAgency || $reservation->currency === 'USD' ? $total : round($total / 1.18, 2);
+                $pct = Decimal::of($isAgency ? $reservation->commission_pct : ($rule->pct ?? ($corporate ? '2.5' : '3')))->stripTrailingZeros();
+                $base = $isAgency || $reservation->currency === 'USD' ? $total : Decimal::withoutIgv($total);
                 $description = $isAgency ? "Convenio B2B: {$pct} % sobre el total de la reserva" : ($corporate ? 'Vendedor corporativo o grupos' : 'Vendedor venta directa').": {$pct} % sobre ".($reservation->currency === 'USD' ? 'el total (exportación, sin IGV)' : 'la venta neta sin IGV');
-                $code = $this->sequence->next('fin_commissions', 'COM-', 4);
+                $code = $this->sequences->next('commission');
 
                 $id = (string) DB::table('fin_commissions')->insertGetId([
                     'code' => $code,
@@ -46,9 +48,9 @@ final class CommissionWorkflow
                     'beneficiary_agency_id' => $isAgency ? $reservation->agency_id : null,
                     'rule_id' => $rule->id ?? null,
                     'rule_description' => $description,
-                    'base_amount' => $base,
-                    'pct' => $pct,
-                    'amount' => round($base * $pct / 100, 2),
+                    'base_amount' => (string) $base,
+                    'pct' => (string) $pct,
+                    'amount' => (string) $base->multipliedBy($pct)->dividedBy(100, 2, RoundingMode::HALF_UP),
                     'currency' => $reservation->currency,
                     'fx_rate' => $reservation->currency === 'USD' ? $reservation->fx_rate : null,
                     'status' => 'calculada',

@@ -39,6 +39,7 @@ function ApprovePanel({ quote, clientName }: { quote: PortalQuote; clientName: s
             <ShieldCheck size={17} className="mt-0.5 flex-none text-[var(--tint)]" />
             Guardamos la fecha, la hora y la versión que apruebas como constancia. Tu asesor confirmará los servicios y te enviará el detalle de pagos.
           </p>
+          <input type="hidden" name="lock_version" value={quote.lock_version} />
           <TextField label="Nombre de quien aprueba" name="name" defaultValue={clientName} required maxLength={150} />
           <SwitchField label="Acepto las condiciones de la propuesta" name="accept" checked={accepted} onCheckedChange={setAccepted} hint={`Versión ${quote.version ?? 1}, válida hasta el ${quote.valid_until ? formatDate(quote.valid_until) : "—"}.`} />
           <TextArea label="Comentario para tu asesor" name="comment" rows={3} maxLength={500} placeholder="Opcional" />
@@ -53,6 +54,7 @@ function RejectPanel({ quote }: { quote: PortalQuote }) {
     <PanelAction label="No me interesa" icon={<X size={16} />} title="Responder a la propuesta" description="Tu respuesta ayuda a tu asesor a preparar una mejor opción." submitLabel="Enviar respuesta" action={rejectQuote.bind(null, quote.code)} initial={initial}>
       {() => (
         <>
+          <input type="hidden" name="lock_version" value={quote.lock_version} />
           <SelectField label="Motivo" name="reason" placeholder="Elige un motivo" options={REJECT_REASONS.map((reason) => ({ value: reason, label: reason }))} />
           <TextArea label="Cuéntanos un poco más" name="comment" rows={4} required minLength={3} maxLength={500} />
         </>

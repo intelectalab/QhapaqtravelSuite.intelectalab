@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Finance\Support;
 
+use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Tenancy\TenantContext;
+use Brick\Math\BigDecimal;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -36,13 +38,18 @@ final class Consolidation
 
     public function pen(float|string|null $amount, ?string $currency, float|string|null $fx = null): float
     {
-        $value = (float) $amount;
+        return $this->penExact($amount, $currency, $fx)->toFloat();
+    }
+
+    public function penExact(BigDecimal|float|string|null $amount, ?string $currency, float|string|null $fx = null): BigDecimal
+    {
+        $value = Decimal::of($amount);
 
         if ($currency === null || $currency === 'PEN') {
-            return round($value, 2);
+            return Decimal::round2($value);
         }
 
-        return round($value * ((float) $fx ?: $this->usdRate()), 2);
+        return Decimal::round2($value->multipliedBy(Decimal::of((float) $fx > 0 ? $fx : $this->usdRate())));
     }
 
     public function fxFor(string $currency, mixed $given = null): ?float

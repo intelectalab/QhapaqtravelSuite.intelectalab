@@ -8,7 +8,7 @@ import { getResource } from "@/lib/server/resource";
 export const metadata: Metadata = { title: "Reseñas de clientes" };
 
 export default async function OwnReviewsPage() {
-  const overview = await getResource<OwnReviewsOverview>("/channels/own-reviews", "No pudimos cargar las reseñas.");
+  const overview = await getResource<OwnReviewsOverview>("/reviews", "No pudimos cargar las reseñas.");
 
   if (!overview) {
     return <PageHeader title="Reseñas de clientes" subtitle="Tu rol no tiene acceso a esta sección." />;

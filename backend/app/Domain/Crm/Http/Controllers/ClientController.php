@@ -11,7 +11,6 @@ use App\Domain\Crm\Support\ClientDirectory;
 use App\Domain\Crm\Support\CrmCatalog;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
-use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -26,7 +25,7 @@ final class ClientController
 
     public function show(Request $request, string $code): JsonResponse
     {
-        $client = $this->directory->find($this->user($request), $code) ?? throw ApiException::notFound('El cliente no existe.');
+        $client = $this->directory->find($this->user($request), $code) ?? throw Portfolio::missing($this->user($request), 'crm_clients', $code, 'El cliente no existe.', 'Este cliente');
 
         return response()->json(['data' => $client, 'meta' => ['today' => $this->directory->today()]]);
     }

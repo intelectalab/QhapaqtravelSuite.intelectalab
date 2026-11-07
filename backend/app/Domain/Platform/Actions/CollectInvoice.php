@@ -151,7 +151,24 @@ final class CollectInvoice
         $this->db()->table('subscriptions')->where('id', $invoice->subscription_id)->update(['status' => 'suspended', 'updated_by' => $actor->getKey(), 'updated_at' => now(), 'lock_version' => DB::raw('lock_version + 1')]);
     }
 
-    public function runDunning(PlatformUser $actor): array
+    public function collect(string $id, ?PlatformUser $actor = null): array
+    {
+        $invoice = $this->lock($id);
+        $charge = $this->attempt($invoice, 'initial');
+        $number = $this->number($invoice);
+
+        if ($charge['result'] === 'succeeded') {
+            $this->markPaid($invoice, $charge['method'] ?? 'Tarjeta', $actor);
+            $this->session->log(self::ENTITY, $number, 'cobro_exitoso', 'open', 'paid · cobro automático', $actor);
+        } else {
+            $this->startDunning($invoice);
+            $this->session->log(self::ENTITY, $number, 'cobro_rechazado', 'open', "failed · {$charge['message']}", $actor);
+        }
+
+        return $charge;
+    }
+
+    public function runDunning(?PlatformUser $actor = null): array
     {
         $policy = $this->settings->dunning();
         $due = $this->db()->table('platform_invoices')->where('status', 'failed')->where('dunning_next_retry_at', '<=', now())->pluck('id');
@@ -220,20 +237,20 @@ final class CollectInvoice
         return $charge;
     }
 
-    private function markPaid(object $invoice, string $reference, PlatformUser $actor, ?Carbon $paidAt = null): void
+    private function markPaid(object $invoice, string $reference, ?PlatformUser $actor, ?Carbon $paidAt = null): void
     {
         $this->db()->table('platform_invoices')->where('id', $invoice->id)->update([
             'status' => 'paid',
             'paid_at' => $paidAt ?? now(),
             'payment_ref' => $reference,
             'dunning_next_retry_at' => null,
-            'updated_by' => $actor->getKey(),
+            'updated_by' => $actor?->getKey(),
             'updated_at' => now(),
         ]);
         $this->settle($invoice, $actor, "Pago de la factura {$this->number($invoice)}");
     }
 
-    private function settle(object $invoice, PlatformUser $actor, string $reason): void
+    private function settle(object $invoice, ?PlatformUser $actor, string $reason): void
     {
         $debt = $this->db()->table('platform_invoices')->where('tenant_id', $invoice->tenant_id)->whereIn('status', ['failed', 'uncollectible'])->exists();
 
@@ -242,7 +259,7 @@ final class CollectInvoice
         }
 
         $this->db()->table('subscriptions')->where('id', $invoice->subscription_id)->whereIn('status', ['past_due', 'suspended'])
-            ->update(['status' => 'active', 'updated_by' => $actor->getKey(), 'updated_at' => now(), 'lock_version' => DB::raw('lock_version + 1')]);
+            ->update(['status' => 'active', 'updated_by' => $actor?->getKey(), 'updated_at' => now(), 'lock_version' => DB::raw('lock_version + 1')]);
         $tenant = Tenant::on(self::CONNECTION)->find($invoice->tenant_id);
 
         if ($tenant?->isSuspended()) {

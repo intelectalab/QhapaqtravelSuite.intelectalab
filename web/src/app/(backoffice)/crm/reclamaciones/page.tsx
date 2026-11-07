@@ -13,7 +13,7 @@ import { getResource } from "@/lib/server/resource";
 export const metadata: Metadata = { title: "Libro de reclamaciones" };
 
 export default async function ReclamacionesPage() {
-  const overview = await getResource<ClaimsOverview>("/crm/claims", "No pudimos cargar el libro de reclamaciones.");
+  const overview = await getResource<ClaimsOverview>("/crm/claim-book", "No pudimos cargar el libro de reclamaciones.");
 
   if (!overview) {
     return <PageHeader title="Libro de reclamaciones" subtitle="Tu rol no tiene acceso a esta sección." />;

@@ -90,7 +90,7 @@ export function QuoteBuilderForm({ options, quote, opportunityCode }: { options:
   const submit = () => {
     setMessage(null);
     startSaving(async () => {
-      const result = await saveQuote(quote?.code ?? null, payload);
+      const result = await saveQuote(quote?.code ?? null, payload, quote?.version);
       if (result.message) {
         setMessage(result.message);
         return;
@@ -155,7 +155,7 @@ export function QuoteBuilderForm({ options, quote, opportunityCode }: { options:
                   </div>
                   {result && (
                     <p className="mt-2 flex justify-end gap-3 text-[12.5px]">
-                      {result.margin_pct !== null && <span className={cn("font-semibold", result.margin_pct < 15 ? "text-warn" : "text-ok")}>{result.margin_pct} % margen</span>}
+                      {result.margin_pct !== null && <span className={cn("font-semibold", Number(result.margin_pct) < 15 ? "text-warn" : "text-ok")}>{result.margin_pct} % margen</span>}
                       <b className="font-mono">{formatMoney(result.total, currency)}</b>
                     </p>
                   )}
@@ -188,7 +188,7 @@ export function QuoteBuilderForm({ options, quote, opportunityCode }: { options:
               <dt className="text-fg-3">Subtotal</dt>
               <dd className="font-mono">{formatMoney(totals?.sale_total ?? 0, currency)}</dd>
             </div>
-            {(totals?.discount_total ?? 0) > 0 && (
+            {Number(totals?.discount_total ?? 0) > 0 && (
               <div className="flex justify-between">
                 <dt className="text-fg-3">Descuento</dt>
                 <dd className="font-mono text-bad">− {formatMoney(totals?.discount_total ?? 0, currency)}</dd>
@@ -205,7 +205,7 @@ export function QuoteBuilderForm({ options, quote, opportunityCode }: { options:
             {totals?.margin_pct !== null && totals?.margin_pct !== undefined && (
               <div className="flex justify-between text-[12.5px]">
                 <dt className="text-fg-3">Margen</dt>
-                <dd className={cn("font-semibold", totals.margin_pct < 15 ? "text-warn" : "text-ok")}>{totals.margin_pct} %</dd>
+                <dd className={cn("font-semibold", Number(totals.margin_pct) < 15 ? "text-warn" : "text-ok")}>{totals.margin_pct} %</dd>
               </div>
             )}
           </dl>

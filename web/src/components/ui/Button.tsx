@@ -15,6 +15,7 @@ interface CommonProps {
   label?: string;
   children?: ReactNode;
   className?: string;
+  "data-testid"?: string;
 }
 
 type ButtonProps = CommonProps & Omit<ComponentProps<"button">, "children"> & { href?: undefined };
@@ -54,7 +55,7 @@ export function Button(props: ButtonProps | LinkProps) {
 
   if (props.href !== undefined) {
     return (
-      <Link href={props.href} target={props.target} className={classes(props)} aria-label={accessibleLabel} title={accessibleLabel}>
+      <Link href={props.href} target={props.target} data-testid={props["data-testid"]} className={classes(props)} aria-label={accessibleLabel} title={accessibleLabel}>
         {content}
       </Link>
     );

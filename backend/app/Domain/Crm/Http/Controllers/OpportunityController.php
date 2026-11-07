@@ -10,7 +10,6 @@ use App\Domain\Crm\Support\Advisors;
 use App\Domain\Crm\Support\OpportunityDirectory;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
-use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +25,7 @@ final class OpportunityController
 
     public function show(Request $request, string $code): JsonResponse
     {
-        return response()->json(['data' => $this->directory->find($this->user($request), $code) ?? throw ApiException::notFound('La oportunidad no existe.')]);
+        return response()->json(['data' => $this->directory->find($this->user($request), $code) ?? throw Portfolio::missing($this->user($request), 'crm_opportunities', $code, 'La oportunidad no existe.', 'Esta oportunidad')]);
     }
 
     public function stage(Request $request, string $code, OpportunityWorkflow $workflow): JsonResponse

@@ -34,7 +34,8 @@ final class SettingsController
             $data['price_with_tax'] = $request->boolean('price_with_tax');
         }
 
-        $result = $update->section($section, $data, $this->user($request));
+        $expected = $request->input('lock_version');
+        $result = $update->section($section, $data, $this->user($request), is_numeric($expected) ? (int) $expected : null);
 
         $version = $section === 'agency' ? null : DB::table('sys_settings')->where('section', $section)->value('lock_version');
 

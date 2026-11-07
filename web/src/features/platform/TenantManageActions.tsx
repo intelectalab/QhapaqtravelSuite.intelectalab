@@ -36,6 +36,7 @@ export function TenantPlanAction({ tenant, plans }: { tenant: TenantDetail; plan
       {() => (
         <>
           <input type="hidden" name="tenant" value={tenant.code} />
+          <input type="hidden" name="lock_version" value={tenant.lock_version} />
           <SelectField label="Nuevo plan" name="plan" options={options} placeholder="Elegir" />
           <TextArea label="Motivo (opcional)" name="reason" rows={3} maxLength={500} placeholder="Por ejemplo: crecimiento del equipo comercial." hint="Queda registrado en el historial de la agencia." />
         </>
@@ -63,6 +64,7 @@ export function TenantEditAction({ tenant, defaultOpen = false }: { tenant: Tena
       {() => (
         <>
           <input type="hidden" name="tenant" value={tenant.code} />
+          <input type="hidden" name="lock_version" value={tenant.lock_version} />
           <TextField label="Nombre comercial" name="commercial_name" required defaultValue={tenant.name} icon={<Building2 size={17} />} />
           <TextField label="Razón social" name="legal_name" required defaultValue={tenant.legal_name} />
           <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-3">

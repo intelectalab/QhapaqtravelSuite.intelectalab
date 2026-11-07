@@ -33,6 +33,7 @@ export interface TripItem {
 
 export interface CaseItem {
   code: string;
+  lock_version: number;
   type_code: string;
   type: string;
   priority: string;

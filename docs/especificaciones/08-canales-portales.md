@@ -887,6 +887,28 @@ Desviaciones temporales de la implementación respecto al kit, detectadas en la 
 - Portal del cliente en `/portal`, portal B2B en `/agencia` y extranet de proveedores en `/proveedor` (en lugar de `/portal/client/*`, `/portal/b2b/*`, `/supplier/*` del contrato). Los endpoints `/api/v1/portal/*`, `/b2b/*` y `/supplier/*` no coinciden aún con el contrato.
 - La extranet autoriza hoy por nombre de rol (H-08): pasa a permisos `supplier.*` en la fase A.
 
+### v3.0 — Portales con las rutas del contrato (06/11/2026)
+
+**Portal del cliente:** usa `/portal/client/…`:
+- `home`, `reservations` y `reservations/{code}`;
+- `quotes` con `approve` y `reject`;
+- `receivables` con `{code}/payments`;
+- `tickets` (los mensajes).
+
+`session` y `profile` siguen siendo propias.
+
+**Portal B2B:** la sesión pasa a `GET /b2b/me`.
+
+**Desviaciones:**
+- el pasajero usa el mismo portal que el cliente, en lugar de `/portal/passenger/…`;
+- faltan `view`, `update-request` y `pdf` de propuestas, el itinerario en PDF, `documents`, `payments` y `notifications`;
+- en B2B faltan las salidas del catálogo, el voucher en PDF y el login propio;
+- el cuerpo de las respuestas sigue siendo el propio.
+
+### v3.0 — Rutas propias de la API (06/11/2026)
+
+Este módulo expone 17 rutas que no están en el contrato: 9 lectura de pantalla, 8 editar, borrar o cambiar estado. El detalle, con el equivalente en el contrato o el motivo de cada una, está en `docs/RUTAS-PROPIAS.md` (sección «Canales y portales»).
+
 ## 12. Supuestos y puntos a validar con negocio
 
 | # | Punto | Propuesta / supuesto |

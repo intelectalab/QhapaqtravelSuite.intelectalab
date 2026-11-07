@@ -16,7 +16,7 @@ final class ChangeTenantStatus
 
     public function __construct(private readonly PlatformSession $session) {}
 
-    public function suspend(Tenant $tenant, string $reason, PlatformUser $actor): void
+    public function suspend(Tenant $tenant, string $reason, ?PlatformUser $actor = null): void
     {
         if ($tenant->isSuspended()) {
             throw ApiException::conflict('TEN-BR-08', 'La agencia ya está suspendida.');
@@ -24,13 +24,13 @@ final class ChangeTenantStatus
 
         DB::connection(self::CONNECTION)->transaction(function () use ($tenant, $reason, $actor): void {
             $before = $tenant->status;
-            $tenant->forceFill(['status' => 'suspendido', 'suspend_reason' => $reason, 'suspended_at' => now(), 'updated_by' => $actor->getKey()])->save();
+            $tenant->forceFill(['status' => 'suspendido', 'suspend_reason' => $reason, 'suspended_at' => now(), 'updated_by' => $actor?->getKey()])->save();
             DB::connection(self::CONNECTION)->table('personal_access_tokens')->where('tenant_id', $tenant->getKey())->delete();
             $this->session->log('Tenant', $tenant->code, 'suspender', $before, "suspendido · {$reason}", $actor);
         });
     }
 
-    public function reactivate(Tenant $tenant, string $reason, PlatformUser $actor): void
+    public function reactivate(Tenant $tenant, string $reason, ?PlatformUser $actor = null): void
     {
         if (! $tenant->isSuspended()) {
             throw ApiException::conflict('TEN-BR-08', 'La agencia no está suspendida.');
@@ -43,7 +43,7 @@ final class ChangeTenantStatus
                 'suspend_reason' => null,
                 'suspended_at' => null,
                 'mrr' => (float) $tenant->mrr > 0 ? $tenant->mrr : $price,
-                'updated_by' => $actor->getKey(),
+                'updated_by' => $actor?->getKey(),
             ])->save();
             $this->session->log('Tenant', $tenant->code, 'reactivar', 'suspendido', "activo · {$reason}", $actor);
         });

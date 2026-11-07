@@ -98,6 +98,7 @@ final class CampaignDirectory
 
         return [
             'code' => $row->code,
+            'lock_version' => (int) $row->lock_version,
             'name' => $row->name,
             'channel' => $row->channel,
             'channel_label' => self::CHANNELS[$row->channel] ?? $row->channel,

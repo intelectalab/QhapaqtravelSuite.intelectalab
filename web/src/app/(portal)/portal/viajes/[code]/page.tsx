@@ -7,6 +7,6 @@ export const metadata: Metadata = { title: "Mi viaje" };
 
 export default async function PortalTripPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const [session, trip] = await Promise.all([portalSession(), portalData<PortalTrip>(`/trips/${encodeURIComponent(code)}`, "No pudimos cargar tu viaje.")]);
+  const [session, trip] = await Promise.all([portalSession(), portalData<PortalTrip>(`/reservations/${encodeURIComponent(code)}`, "No pudimos cargar tu viaje.")]);
   return <PortalTripDetail trip={trip} passenger={session?.role === "passenger"} />;
 }

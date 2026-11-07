@@ -46,6 +46,7 @@ final class RoomingDirectory
 
                 return [
                     'id' => $list->id,
+                    'lock_version' => (int) $list->lock_version,
                     'reservation' => ['code' => $list->reservation_code, 'title' => $list->reservation_title, 'status' => $list->reservation_status],
                     'hotel' => $list->hotel ?? $list->hotel_name,
                     'city' => $list->city,

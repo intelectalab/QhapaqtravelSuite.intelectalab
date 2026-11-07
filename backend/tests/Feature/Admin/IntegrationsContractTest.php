@@ -1,7 +1,13 @@
 <?php
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+
+beforeEach(function () {
+    lockScheduledJobs();
+    Queue::fake();
+});
 
 it('integrations, jobs e integration-errors responden listas con cursor', function () {
     actingAsSeed('U01');

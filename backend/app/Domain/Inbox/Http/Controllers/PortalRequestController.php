@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Inbox\Http\Controllers;
 
-use App\Domain\Catalog\Actions\ProviderRateReview;
-use App\Domain\Finance\Actions\SettlementRequestWorkflow;
 use App\Domain\Finance\Actions\SupplierInvoiceReview;
 use App\Domain\Iam\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -13,34 +11,6 @@ use Illuminate\Http\Request;
 
 final class PortalRequestController
 {
-    public function approveSettlement(Request $request, string $code, SettlementRequestWorkflow $workflow): JsonResponse
-    {
-        $approved = $workflow->approve($code, $this->note($request, false), $this->user($request));
-
-        return response()->json(['data' => ['code' => $code, 'status' => 'aprobada', 'commissions' => $approved]]);
-    }
-
-    public function rejectSettlement(Request $request, string $code, SettlementRequestWorkflow $workflow): JsonResponse
-    {
-        $workflow->reject($code, (string) $this->note($request, true), $this->user($request));
-
-        return response()->json(['data' => ['code' => $code, 'status' => 'rechazada']]);
-    }
-
-    public function approveRate(Request $request, string $code, ProviderRateReview $review): JsonResponse
-    {
-        $effect = $review->approve($code, $this->note($request, false), $this->user($request));
-
-        return response()->json(['data' => ['code' => $code, 'status' => 'aprobada', 'effect' => $effect]]);
-    }
-
-    public function rejectRate(Request $request, string $code, ProviderRateReview $review): JsonResponse
-    {
-        $review->reject($code, (string) $this->note($request, true), $this->user($request));
-
-        return response()->json(['data' => ['code' => $code, 'status' => 'rechazada']]);
-    }
-
     public function validateInvoice(Request $request, string $code, SupplierInvoiceReview $review): JsonResponse
     {
         $review->validate($code, $this->note($request, false), $this->user($request));

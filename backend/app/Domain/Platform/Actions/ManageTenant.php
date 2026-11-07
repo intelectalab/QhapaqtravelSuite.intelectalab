@@ -7,6 +7,7 @@ namespace App\Domain\Platform\Actions;
 use App\Domain\Platform\Models\Plan;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Platform\Support\DowngradeValidator;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -17,7 +18,7 @@ final class ManageTenant
 
     private const FIELDS = ['commercial_name' => 'Nombre comercial', 'legal_name' => 'Razón social', 'ruc' => 'RUC', 'fiscal_address' => 'Domicilio fiscal', 'business_type' => 'Tipo de negocio', 'subdomain' => 'Subdominio'];
 
-    public function __construct(private readonly PlatformSession $session) {}
+    public function __construct(private readonly PlatformSession $session, private readonly DowngradeValidator $downgrades) {}
 
     public function changePlan(Tenant $tenant, string $planCode, ?string $reason, PlatformUser $actor): void
     {
@@ -28,19 +29,11 @@ final class ManageTenant
             throw ApiException::conflict('SAME_PLAN', "La agencia ya está en el plan {$plan->name}. No hubo cambios.");
         }
 
-        $db = DB::connection(self::CONNECTION);
-        $limits = $db->table('plan_limits')->where('plan_id', $plan->getKey())->pluck('value', 'metric');
-        $users = $db->table('iam_users')->where('tenant_id', $tenant->getKey())->whereNull('deleted_at')->whereIn('status', ['activo', 'pendiente'])->count();
-        $sedes = $db->table('iam_sedes')->where('tenant_id', $tenant->getKey())->whereNull('deleted_at')->where('status', 'activa')->count();
-        $blockers = array_filter([
-            isset($limits['users']) && $users > (int) $limits['users'] ? "tiene {$users} usuarios y el plan {$plan->name} permite {$limits['users']}; desactiva usuarios antes del cambio" : null,
-            isset($limits['sedes']) && $sedes > (int) $limits['sedes'] ? "tiene {$sedes} sedes activas y el plan permite {$limits['sedes']}" : null,
-            isset($limits['storage_gb']) && (int) $tenant->storage_used_bytes > (int) $limits['storage_gb'] * 1024 ** 3 ? 'usa más almacenamiento del que permite el plan' : null,
-        ]);
-
-        if ($blockers !== []) {
-            throw ApiException::conflict('PLAN_LIMIT_EXCEEDED', 'No se puede pasar al plan '.$plan->name.': '.implode('; ', $blockers).'.');
+        if ($this->downgrades->isDowngrade($current?->getKey(), (string) $plan->getKey())) {
+            $this->downgrades->assert((string) $tenant->getKey(), $plan);
         }
+
+        $db = DB::connection(self::CONNECTION);
 
         $db->transaction(function () use ($tenant, $plan, $current, $reason, $actor): void {
             $tenant->forceFill([

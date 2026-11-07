@@ -12,6 +12,7 @@ const initial: OpsState = { message: null, done: false };
 interface OpsStepProps {
   step: string;
   target?: string;
+  version?: number;
   label: string;
   icon?: ReactNode;
   variant?: "primary" | "secondary" | "ghost";
@@ -25,7 +26,7 @@ interface OpsStepProps {
   children?: ReactNode;
 }
 
-export function OpsStep({ step, target = "", label, icon, variant = "secondary", size, title, description, submitLabel, trigger, defaultOpen, formKey, children }: OpsStepProps) {
+export function OpsStep({ step, target = "", version, label, icon, variant = "secondary", size, title, description, submitLabel, trigger, defaultOpen, formKey, children }: OpsStepProps) {
   const router = useRouter();
   return (
     <PanelAction<OpsState>
@@ -47,6 +48,7 @@ export function OpsStep({ step, target = "", label, icon, variant = "secondary",
         <>
           <input type="hidden" name="step" value={step} />
           <input type="hidden" name="target" value={target} />
+          {version !== undefined && <input type="hidden" name="lock_version" value={version} />}
           {children}
         </>
       )}

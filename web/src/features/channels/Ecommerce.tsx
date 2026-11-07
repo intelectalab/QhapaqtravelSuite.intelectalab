@@ -69,6 +69,7 @@ function CancelOrderAction({ order }: { order: EcomOrder }) {
       {() => (
         <>
           <input type="hidden" name="code" value={order.code} />
+          <input type="hidden" name="lock_version" value={order.lock_version} />
           <TextArea label="Motivo" name="reason" rows={3} required minLength={3} maxLength={200} placeholder="Por ejemplo: el cliente pidió cambiar de fecha." />
         </>
       )}

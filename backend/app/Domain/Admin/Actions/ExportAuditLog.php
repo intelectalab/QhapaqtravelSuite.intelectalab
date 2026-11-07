@@ -7,6 +7,7 @@ namespace App\Domain\Admin\Actions;
 use App\Domain\Admin\Support\AuditDirectory;
 use App\Domain\Admin\Support\NotificationLog;
 use App\Domain\Iam\Models\User;
+use App\Domain\Reports\Support\ReportExports;
 use App\Domain\Shared\Audit\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -28,8 +29,7 @@ final class ExportAuditLog
     {
         return DB::transaction(function () use ($filters, $actor, $idempotencyKey): array {
             $id = (string) Str::uuid7();
-            $next = (int) DB::table('report_exports')->whereNotNull('code')->selectRaw("coalesce(max(nullif(substring(code from '(\\d+)$'), '')::int), 0) as last")->value('last') + 1;
-            $code = 'EXP-'.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+            $code = ReportExports::nextCode();
             DB::table('report_exports')->insert([
                 'id' => $id,
                 'code' => $code,

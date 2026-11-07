@@ -8,7 +8,7 @@ import { getResource } from "@/lib/server/resource";
 export const metadata: Metadata = { title: "Integración web y CMS" };
 
 export default async function IntegracionWebPage() {
-  const overview = await getResource<WebOverview>("/channels/web", "No pudimos cargar la integración web.");
+  const overview = await getResource<WebOverview>("/channels/widget", "No pudimos cargar la integración web.");
 
   if (!overview) {
     return <PageHeader title="Integración web y CMS" subtitle="Tu rol no tiene acceso a esta sección." />;

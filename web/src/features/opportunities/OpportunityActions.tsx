@@ -13,10 +13,11 @@ import { OPEN_STAGES, type OpportunityDetail } from "@/lib/opportunities";
 
 const initial: StageState = { message: null, done: false };
 
-function Code({ code, stage }: { code: string; stage?: string }) {
+function Code({ code, stage, version }: { code: string; stage?: string; version?: number }) {
   return (
     <>
       <input type="hidden" name="code" value={code} />
+      {version !== undefined && <input type="hidden" name="lock_version" value={version} />}
       {stage && <input type="hidden" name="stage" value={stage} />}
     </>
   );
@@ -28,7 +29,7 @@ function ReopenFields({ opportunity }: { opportunity: OpportunityDetail }) {
   const options = opportunity.stages.filter((stage) => OPEN_STAGES.includes(stage.code)).map((stage) => ({ value: stage.code, label: stage.name }));
   return (
     <>
-      <Code code={opportunity.code} />
+      <Code code={opportunity.code} version={opportunity.lock_version} />
       <ChoiceGroup label="Volver a la etapa" name="stage" options={options} defaultValue={target} />
       <SwitchField label="Sí, quiero reabrirla" hint="Queda registrado en el historial." name="confirm_reopen" checked={confirmed} onCheckedChange={setConfirmed} />
     </>
@@ -53,7 +54,7 @@ export function OpportunityActions({ opportunity, lostReasons }: { opportunity: 
             <PanelAction label="Mover" icon={<ArrowRightLeft size={16} />} title="Mover de etapa" description="La probabilidad se ajusta sola según la etapa." submitLabel="Mover" action={changeStage} initial={initial} onDone={remember}>
               {() => (
                 <>
-                  <Code code={opportunity.code} />
+                  <Code code={opportunity.code} version={opportunity.lock_version} />
                   <ChoiceGroup label="Etapa" name="stage" options={openOptions} defaultValue={opportunity.stage} />
                 </>
               )}
@@ -61,7 +62,7 @@ export function OpportunityActions({ opportunity, lostReasons }: { opportunity: 
             <PanelAction label="Perder" icon={<CircleX size={16} />} variant="ghost" title="Marcar como perdida" description="Saber por qué se pierde ayuda a vender mejor." submitLabel="Marcar como perdida" action={changeStage} initial={initial} onDone={remember}>
               {() => (
                 <>
-                  <Code code={opportunity.code} stage="perdida" />
+                  <Code code={opportunity.code} version={opportunity.lock_version} stage="perdida" />
                   <SelectField label="Motivo" name="lost_reason" options={lostReasons.map((item) => ({ value: item.code, label: item.label }))} placeholder="Elegir" />
                   <TextArea label="Detalle" name="lost_detail" rows={3} hint="Obligatorio si eliges Otro." />
                 </>
@@ -70,7 +71,7 @@ export function OpportunityActions({ opportunity, lostReasons }: { opportunity: 
             <PanelAction label="Ganar" icon={<Trophy size={16} />} variant="primary" title="Marcar como ganada" description="La probabilidad pasa a 100 % y se registra la fecha de cierre." submitLabel="Marcar como ganada" action={changeStage} initial={initial} onDone={remember}>
               {() => (
                 <>
-                  <Code code={opportunity.code} stage="ganada" />
+                  <Code code={opportunity.code} version={opportunity.lock_version} stage="ganada" />
                   <p className="text-[13.5px] text-fg-2">
                     Confirma que <b className="text-fg">{opportunity.client.name}</b> aceptó la propuesta. La reserva se crea desde la cotización aprobada.
                   </p>

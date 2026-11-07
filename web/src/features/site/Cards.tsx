@@ -1,3 +1,5 @@
+"use client";
+
 import { ArrowUpRight, CalendarDays, Clock, Flame, Languages, MapPin, Mountain, Quote, ShieldCheck, Users } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
@@ -5,10 +7,12 @@ import { formatDate, formatMoney } from "@/lib/format";
 import { siteHref, type Departure, type DestinationCard as Destination, type ProductCard as Product, type Review } from "@/lib/site";
 import { Chip, Occupancy, PriceTag, RatingLine, Stars } from "./Bits";
 import { Scenery } from "./Scenery";
+import { useSite } from "./SiteContext";
 
 const RISE = "animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]";
 
 export function ProductCard({ product, base, index = 0, className }: { product: Product; base: string; index?: number; className?: string }) {
+  const { t, dateLocale } = useSite();
   const tagTone = { offer: "brand", guaranteed: "ok", last: "warn", featured: "t2" } as const;
   return (
     <Link
@@ -57,17 +61,17 @@ export function ProductCard({ product, base, index = 0, className }: { product: 
           )}
         </ul>
         <div className="mt-auto flex items-end justify-between gap-3 pt-4">
-          <PriceTag from={product.from} list={product.list} label={product.on_date ? `El ${formatDate(product.on_date.date)}` : "Desde"} unit={product.kind === "traslados" ? "por vehículo" : "por persona"} />
+          <PriceTag from={product.from} list={product.list} label={product.on_date ? t.cards.onDate(formatDate(product.on_date.date, "short", dateLocale)) : t.common.from} unit={product.kind === "traslados" ? t.cards.perVehicle : t.cards.perPerson} />
           <span className="text-right text-[11.5px] leading-tight text-fg-3">
             {product.next_departure ? (
               <>
-                Próxima salida
-                <b className="block text-[12px] font-semibold text-fg-2">{formatDate(product.next_departure.date)}</b>
+                {t.cards.nextDeparture}
+                <b className="block text-[12px] font-semibold text-fg-2">{formatDate(product.next_departure.date, "short", dateLocale)}</b>
               </>
             ) : product.daily ? (
               <>
-                Todos los días
-                <b className="block text-[12px] font-semibold text-fg-2">Confirmación en 24 h</b>
+                {t.cards.daily}
+                <b className="block text-[12px] font-semibold text-fg-2">{t.cards.confirmation}</b>
               </>
             ) : null}
           </span>
@@ -78,6 +82,7 @@ export function ProductCard({ product, base, index = 0, className }: { product: 
 }
 
 export function DestinationTile({ destination, base, index = 0, large = false }: { destination: Destination; base: string; index?: number; large?: boolean }) {
+  const { t } = useSite();
   return (
     <Link href={siteHref(base, `/destinos/${destination.slug}`)} className={cn("lift group relative block overflow-hidden rounded-card", RISE, large ? "min-h-[300px] sm:row-span-2 sm:min-h-[420px]" : "min-h-[200px]")} style={{ animationDelay: `${index * 70}ms` }}>
       <div className="absolute inset-0">
@@ -94,8 +99,8 @@ export function DestinationTile({ destination, base, index = 0, large = false }:
         <h3 className={cn("font-bold tracking-tight", large ? "text-[30px]" : "text-[21px]")}>{destination.name}</h3>
         {destination.tagline && <p className="mt-0.5 text-[13px] text-white/80">{destination.tagline}</p>}
         <div className="mt-3 flex items-center justify-between gap-2 text-[12.5px]">
-          <span className="font-semibold">{destination.count === 1 ? "1 experiencia" : `${destination.count} experiencias`}</span>
-          {destination.from && <span className="text-white/80">Desde {formatMoney(destination.from.amount, destination.from.currency)}</span>}
+          <span className="font-semibold">{t.cards.experiences(destination.count)}</span>
+          {destination.from && <span className="text-white/80">{t.common.fromPrice(formatMoney(destination.from.amount, destination.from.currency))}</span>}
         </div>
       </div>
     </Link>
@@ -103,10 +108,11 @@ export function DestinationTile({ destination, base, index = 0, large = false }:
 }
 
 export function DepartureCard({ departure, base, index = 0 }: { departure: Departure; base: string; index?: number }) {
+  const { t, dateLocale } = useSite();
   const date = new Date(`${departure.date}T12:00:00`);
-  const day = new Intl.DateTimeFormat("es-PE", { day: "2-digit", timeZone: "America/Lima" }).format(date);
-  const month = new Intl.DateTimeFormat("es-PE", { month: "short", timeZone: "America/Lima" }).format(date).replace(".", "");
-  const weekday = new Intl.DateTimeFormat("es-PE", { weekday: "long", timeZone: "America/Lima" }).format(date);
+  const day = new Intl.DateTimeFormat(dateLocale, { day: "2-digit", timeZone: "America/Lima" }).format(date);
+  const month = new Intl.DateTimeFormat(dateLocale, { month: "short", timeZone: "America/Lima" }).format(date).replace(".", "");
+  const weekday = new Intl.DateTimeFormat(dateLocale, { weekday: "long", timeZone: "America/Lima" }).format(date);
   return (
     <Link
       href={siteHref(base, `/tours/${departure.product?.slug ?? ""}?fecha=${departure.date}`)}
@@ -123,7 +129,7 @@ export function DepartureCard({ departure, base, index = 0 }: { departure: Depar
           {departure.guaranteed && (
             <Chip tone="ok" className="flex-none">
               <ShieldCheck size={12} />
-              Garantizada
+              {t.cards.guaranteed}
             </Chip>
           )}
         </span>
@@ -132,7 +138,7 @@ export function DepartureCard({ departure, base, index = 0 }: { departure: Depar
             <CalendarDays size={12} />
             {weekday} · {departure.time}
           </span>
-          {departure.price && <span className="normal-case">Desde {formatMoney(departure.price.amount, departure.price.currency)}</span>}
+          {departure.price && <span className="normal-case">{t.common.fromPrice(formatMoney(departure.price.amount, departure.price.currency))}</span>}
         </span>
         <span className="mt-2.5 block">
           <Occupancy sold={departure.sold} capacity={departure.capacity} spots={departure.spots} />
@@ -143,6 +149,7 @@ export function DepartureCard({ departure, base, index = 0 }: { departure: Depar
 }
 
 export function ReviewCard({ review, base, index = 0 }: { review: Review; base: string; index?: number }) {
+  const { t, dateLocale } = useSite();
   return (
     <article className={cn("lift flex h-full flex-col rounded-card border border-line bg-surface p-5 shadow-card", RISE)} style={{ animationDelay: `${index * 60}ms` }}>
       <div className="flex items-center justify-between gap-3">
@@ -154,14 +161,14 @@ export function ReviewCard({ review, base, index = 0 }: { review: Review; base: 
       {review.body && <p className="mt-1.5 line-clamp-5 text-[13.5px] leading-relaxed text-fg-2">{review.body}</p>}
       {review.reply && (
         <p className="mt-3 rounded-xl bg-surface-2 px-3 py-2 text-[12.5px] leading-relaxed text-fg-2">
-          <b className="font-semibold text-fg">Respuesta de la agencia: </b>
+          <b className="font-semibold text-fg">{t.cards.agencyReply}</b>
           {review.reply}
         </p>
       )}
       <footer className="mt-auto flex flex-wrap items-end justify-between gap-2 pt-4 text-[12px] text-fg-3">
         <span>
           <b className="block text-[13px] font-semibold text-fg">{review.author}</b>
-          {[review.country, formatDate(review.date)].filter(Boolean).join(" · ")}
+          {[review.country, formatDate(review.date, "short", dateLocale)].filter(Boolean).join(" · ")}
         </span>
         {review.product && (
           <Link href={siteHref(base, `/tours/${review.product.slug}`)} className="max-w-[60%] truncate font-semibold text-accent hover:underline">

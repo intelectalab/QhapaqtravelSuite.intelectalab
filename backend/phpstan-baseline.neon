@@ -103,18 +103,6 @@ parameters:
 			path: app/Domain/Shared/Audit/AuditLogger.php
 
 		-
-			message: '#^Trait App\\Domain\\Shared\\Http\\Resources\\RevealsSensitiveAmounts is used zero times and is not analysed\.$#'
-			identifier: trait.unused
-			count: 1
-			path: app/Domain/Shared/Http/Resources/RevealsSensitiveAmounts.php
-
-		-
-			message: '#^Trait App\\Domain\\Shared\\Tenancy\\Jobs\\TenantAware is used zero times and is not analysed\.$#'
-			identifier: trait.unused
-			count: 1
-			path: app/Domain/Shared/Tenancy/Jobs/TenantAware.php
-
-		-
 			message: '#^Using nullsafe method call on non\-nullable type Illuminate\\Auth\\Access\\Response\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1

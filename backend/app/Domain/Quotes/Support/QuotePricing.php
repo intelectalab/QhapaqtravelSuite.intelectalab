@@ -4,35 +4,52 @@ declare(strict_types=1);
 
 namespace App\Domain\Quotes\Support;
 
+use App\Domain\Shared\Money\Decimal;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
+
 final class QuotePricing
 {
-    public const MAX_DISCOUNT = 10.0;
+    public const MAX_DISCOUNT = '10';
 
-    public static function totals(array $items, float $discountPct, float $taxPct): array
+    public static function lineTotal(BigDecimal|string $unit, int $qty, int $pax): BigDecimal
     {
-        $cost = 0.0;
-        $sale = 0.0;
+        return Decimal::round2(BigDecimal::of((string) $unit)->multipliedBy($qty)->multipliedBy($pax));
+    }
+
+    public static function lineMargin(BigDecimal|string $unitPrice, BigDecimal|string $unitCost): ?string
+    {
+        $price = BigDecimal::of((string) $unitPrice);
+
+        return $price->isPositive()
+            ? (string) $price->minus((string) $unitCost)->multipliedBy(100)->dividedBy($price, 1, RoundingMode::HALF_UP)
+            : null;
+    }
+
+    public static function totals(array $items, BigDecimal|string $discountPct, BigDecimal|string $taxPct): array
+    {
+        $cost = BigDecimal::zero();
+        $sale = BigDecimal::zero();
 
         foreach ($items as $item) {
-            $units = (float) $item['qty'] * (float) $item['pax'];
-            $cost += round((float) $item['unit_cost'] * $units, 2);
-            $sale += round((float) $item['unit_price'] * $units, 2);
+            $cost = $cost->plus(self::lineTotal((string) $item['unit_cost'], (int) $item['qty'], (int) $item['pax']));
+            $sale = $sale->plus(self::lineTotal((string) $item['unit_price'], (int) $item['qty'], (int) $item['pax']));
         }
 
-        $discount = round($sale * $discountPct / 100, 2);
-        $net = round($sale - $discount, 2);
-        $tax = round($net * $taxPct / 100, 2);
-        $profit = round($net - $cost, 2);
+        $discount = Decimal::round2($sale->multipliedBy((string) $discountPct)->dividedBy(100, 6, RoundingMode::HALF_UP));
+        $net = $sale->minus($discount);
+        $tax = Decimal::round2($net->multipliedBy((string) $taxPct)->dividedBy(100, 6, RoundingMode::HALF_UP));
+        $profit = $net->minus($cost);
 
         return [
-            'cost_total' => round($cost, 2),
-            'sale_total' => round($sale, 2),
-            'discount_total' => $discount,
-            'net_total' => $net,
-            'tax_total' => $tax,
-            'grand_total' => round($net + $tax, 2),
-            'profit_total' => $profit,
-            'margin_pct' => $net > 0 ? round($profit / $net * 100, 2) : 0.0,
+            'cost_total' => (string) Decimal::round2($cost),
+            'sale_total' => (string) Decimal::round2($sale),
+            'discount_total' => (string) $discount,
+            'net_total' => (string) Decimal::round2($net),
+            'tax_total' => (string) $tax,
+            'grand_total' => (string) Decimal::round2($net->plus($tax)),
+            'profit_total' => (string) Decimal::round2($profit),
+            'margin_pct' => $net->isPositive() ? (string) $profit->multipliedBy(100)->dividedBy($net, 2, RoundingMode::HALF_UP) : '0.00',
         ];
     }
 }

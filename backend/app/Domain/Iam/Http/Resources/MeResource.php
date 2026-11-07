@@ -31,6 +31,7 @@ final class MeResource extends JsonResource
             'experience' => $access['experience'],
             'home' => $access['home'],
             'mfa_enabled' => $user->mfa_enabled,
+            'mfa_required' => $user->mfaMandatory(),
             'sede' => ['id' => $user->sede?->getKey(), 'name' => $user->sede?->name],
             'tenant' => [
                 'id' => $tenant->getKey(),

@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cartCookie, orderCookie, type CalendarMonth, type Quote, type SiteFormState } from "@/lib/site";
-import { readSite, sendSite, siteBase } from "@/lib/server/site";
+import { parseSiteLocale, SITE_LOCALE_COOKIE } from "@/lib/site-i18n";
+import { cartHeaders, readSite, sendSite, siteBase } from "@/lib/server/site";
 
 function text(form: FormData, key: string): string | undefined {
   const value = form.get(key);
@@ -104,7 +105,7 @@ export async function loadMonth(agencia: string, slug: string, month: string, pa
 }
 
 export async function quoteProduct(agencia: string, slug: string, input: { date: string; adults: number; children: number; infants: number; promo?: string }): Promise<{ quote: Quote | null; error: string | null }> {
-  const result = await sendSite<Quote>(agencia, `/products/${encodeURIComponent(slug)}/quote`, input);
+  const result = await sendSite<Quote>(agencia, "/price-quote", { product: slug, ...input });
   return result.ok ? { quote: result.data, error: null } : { quote: null, error: result.error?.message ?? "No pudimos calcular el precio." };
 }
 
@@ -116,7 +117,7 @@ async function cartToken(agencia: string): Promise<string | undefined> {
 
 export async function addToCart(agencia: string, input: { product: string; date: string; adults: number; children: number; infants: number; promo?: string }): Promise<{ ok: boolean; message: string | null }> {
   const token = await cartToken(agencia);
-  const result = await sendSite<{ token: string }>(agencia, "/cart/items", input, token ? { "X-Cart-Token": token } : {});
+  const result = await sendSite<{ token: string }>(agencia, "/carts/current/items", input, cartHeaders(token));
   if (!result.ok || !result.data) return { ok: false, message: result.error?.message ?? "No pudimos agregar el producto al carrito." };
   (await cookies()).set(cartCookie(agencia), result.data.token, { httpOnly: true, sameSite: "lax", path: "/", maxAge: CART_DAYS * 86_400 });
   return { ok: true, message: null };
@@ -124,14 +125,14 @@ export async function addToCart(agencia: string, input: { product: string; date:
 
 export async function removeCartLine(agencia: string, line: number): Promise<string | null> {
   const token = await cartToken(agencia);
-  const result = await sendSite(agencia, `/cart/items/${line}`, {}, token ? { "X-Cart-Token": token } : {}, "DELETE");
+  const result = await sendSite(agencia, `/carts/current/items/${line}`, {}, cartHeaders(token), "DELETE");
   revalidatePath(`/sitio/${agencia}/carrito`);
   return result.ok ? null : result.status === 404 ? "Tu carrito expiró o esa línea ya no existe." : (result.error?.message ?? "No pudimos quitar la línea.");
 }
 
 export async function reholdCartLine(agencia: string, line: number): Promise<string | null> {
   const token = await cartToken(agencia);
-  const result = await sendSite(agencia, `/cart/items/${line}/hold`, {}, token ? { "X-Cart-Token": token } : {});
+  const result = await sendSite(agencia, `/carts/current/items/${line}/hold`, {}, cartHeaders(token));
   revalidatePath(`/sitio/${agencia}/carrito`);
   return result.ok ? null : result.status === 404 ? "Tu carrito expiró o esa línea ya no existe." : (result.error?.message ?? "No pudimos volver a bloquear los cupos.");
 }
@@ -141,7 +142,7 @@ export async function placeOrder(agencia: string, _state: SiteFormState, form: F
   if (!token) return { status: "error", message: "Tu carrito expiró. Vuelve a elegir tus fechas." };
   const result = await sendSite<{ code: string; token: string }>(
     agencia,
-    "/checkout",
+    "/checkout/orders",
     {
       name: text(form, "name"),
       email: text(form, "email"),
@@ -157,7 +158,7 @@ export async function placeOrder(agencia: string, _state: SiteFormState, form: F
       privacy: flag(form, "privacy"),
       marketing: flag(form, "marketing"),
     },
-    { "X-Cart-Token": token },
+    cartHeaders(token),
   );
   if (!result.ok || !result.data) {
     const errors = Object.fromEntries(Object.entries(result.error?.errors ?? {}).map(([key, messages]) => [key, messages[0]]));
@@ -171,7 +172,11 @@ export async function placeOrder(agencia: string, _state: SiteFormState, form: F
 
 export async function payOrder(agencia: string, code: string): Promise<string | null> {
   const token = (await cookies()).get(orderCookie(code))?.value;
-  const result = await sendSite(agencia, `/orders/${encodeURIComponent(code)}/pay`, {}, token ? { "X-Order-Token": token } : {});
+  const result = await sendSite(agencia, `/orders/${encodeURIComponent(code)}/payments`, {}, token ? { "X-Order-Token": token } : {});
   revalidatePath(`/sitio/${agencia}/confirmacion/${code}`);
   return result.ok ? null : result.status === 404 ? "No encontramos el pedido en este navegador." : (result.error?.message ?? "No pudimos registrar el pago simulado.");
+}
+
+export async function setSiteLocale(locale: string): Promise<void> {
+  (await cookies()).set(SITE_LOCALE_COOKIE, parseSiteLocale(locale), { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
 }

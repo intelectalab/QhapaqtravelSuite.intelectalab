@@ -19,7 +19,7 @@ export async function changeStage(_state: StageState, form: FormData): Promise<S
   const result = await apiFetch<{ data: unknown; meta: { warnings: string[] } }>(`/crm/opportunities/${encodeURIComponent(code)}/stage`, {
     method: "POST",
     raw: true,
-    body: { stage: value("stage"), lost_reason: value("lost_reason"), lost_detail: value("lost_detail"), confirm_reopen: form.get("confirm_reopen") === "on" },
+    body: { stage: value("stage"), lost_reason: value("lost_reason"), lost_detail: value("lost_detail"), confirm_reopen: form.get("confirm_reopen") === "on", lock_version: numeric(form, "lock_version") },
   });
 
   if (!result.ok) {

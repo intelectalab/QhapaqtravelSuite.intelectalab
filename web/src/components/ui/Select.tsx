@@ -24,6 +24,7 @@ interface SelectProps {
   addLabel?: string;
   ariaLabel?: string;
   className?: string;
+  testId?: string;
 }
 
 export function Select({
@@ -38,6 +39,7 @@ export function Select({
   addLabel = "Crear nuevo",
   ariaLabel,
   className,
+  testId,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -57,6 +59,8 @@ export function Select({
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger
         aria-label={ariaLabel}
+        data-testid={testId}
+        data-value={value}
         className={cn(
           "inline-flex items-center gap-1.5 text-left transition",
           variant === "chip"
@@ -84,10 +88,10 @@ export function Select({
           )}
           <div className="scroll-thin max-h-64 overflow-y-auto">
             {clearable && (
-              <OptionRow label={placeholder} selected={!value} muted onSelect={() => choose("")} />
+              <OptionRow value="" label={placeholder} selected={!value} muted onSelect={() => choose("")} />
             )}
             {visible.map((option) => (
-              <OptionRow key={option.value} label={option.label} hint={option.hint} selected={option.value === value} onSelect={() => choose(option.value)} />
+              <OptionRow key={option.value} value={option.value} label={option.label} hint={option.hint} selected={option.value === value} onSelect={() => choose(option.value)} />
             ))}
             {visible.length === 0 && <p className="px-3 py-2.5 text-[13px] text-fg-3">Sin coincidencias</p>}
           </div>
@@ -110,11 +114,12 @@ export function Select({
   );
 }
 
-function OptionRow({ label, hint, selected, muted, onSelect }: { label: string; hint?: string; selected: boolean; muted?: boolean; onSelect: () => void }) {
+function OptionRow({ value, label, hint, selected, muted, onSelect }: { value: string; label: string; hint?: string; selected: boolean; muted?: boolean; onSelect: () => void }) {
   return (
     <button
       type="button"
       onClick={onSelect}
+      data-testid={`option:${value}`}
       className={cn("flex w-full items-center gap-2 rounded-[10px] px-2.5 py-2 text-left text-[13.5px] hover:bg-surface-2", selected && "font-semibold text-accent", muted && !selected && "text-fg-3")}
     >
       <span className="min-w-0 flex-1">

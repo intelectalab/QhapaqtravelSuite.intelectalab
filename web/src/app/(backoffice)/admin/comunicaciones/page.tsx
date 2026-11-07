@@ -13,7 +13,7 @@ import { getResource } from "@/lib/server/resource";
 export const metadata: Metadata = { title: "Mensajes al pasajero" };
 
 export default async function ComunicacionesPage() {
-  const data = await getResource<PaxTemplatesOverview>("/admin/pax-templates", "No pudimos cargar las plantillas.");
+  const data = await getResource<PaxTemplatesOverview>("/notifications/pax-templates", "No pudimos cargar las plantillas.");
   if (!data) return <NoAccess home="/dashboard" />;
   const active = data.templates.filter((template) => template.active).length;
 

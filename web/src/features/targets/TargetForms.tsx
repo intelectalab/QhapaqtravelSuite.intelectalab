@@ -97,6 +97,7 @@ export function TargetVoidAction({ target }: { target: SalesTarget }) {
       {() => (
         <>
           <input type="hidden" name="code" value={target.code} />
+          <input type="hidden" name="lock_version" value={target.lock_version} />
           <input type="hidden" name="step" value="void" />
           <TextArea label="Motivo" name="reason" rows={2} required minLength={5} maxLength={500} />
         </>
@@ -122,6 +123,7 @@ export function TargetDetailAction({ target, manage }: { target: SalesTarget; ma
       {() => (
         <>
           <input type="hidden" name="code" value={target.code} />
+          <input type="hidden" name="lock_version" value={target.lock_version} />
           {step && <input type="hidden" name="step" value={step} />}
           <div className="flex flex-wrap gap-2">
             <StatusBadge status={target.status} />

@@ -8,20 +8,21 @@ use App\Domain\Admin\Http\Controllers\IntegrationController;
 use App\Domain\Admin\Http\Controllers\SubscriptionController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('admin')->name('admin.')->group(function (): void {
+Route::name('admin.')->group(function (): void {
     Route::middleware('permission:admin.billing.manage')->group(function (): void {
-        Route::get('subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
-        Route::patch('subscription/billing', [SubscriptionController::class, 'billing'])->name('subscription.billing');
+        Route::get('billing/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+        Route::patch('billing/subscription', [SubscriptionController::class, 'billing'])->name('subscription.billing');
     });
 
     Route::middleware('permission:admin.api.manage')->group(function (): void {
-        Route::get('api', [ApiAccessController::class, 'index'])->name('api.index');
-        Route::post('api/keys', [ApiAccessController::class, 'storeKey'])->name('api.keys.store');
-        Route::post('api/keys/{code}/revoke', [ApiAccessController::class, 'revokeKey'])->name('api.keys.revoke');
-        Route::post('api/webhooks', [ApiAccessController::class, 'storeWebhook'])->name('api.webhooks.store');
-        Route::patch('api/webhooks/{code}', [ApiAccessController::class, 'updateWebhook'])->name('api.webhooks.update');
-        Route::delete('api/webhooks/{code}', [ApiAccessController::class, 'destroyWebhook'])->name('api.webhooks.destroy');
-        Route::post('api/webhooks/{code}/{mode}', [ApiAccessController::class, 'webhookStatus'])->whereIn('mode', ['pause', 'resume'])->name('api.webhooks.status');
+        Route::get('admin/api', [ApiAccessController::class, 'index'])->name('api.index');
+        Route::get('integrations/api-keys', [ApiAccessController::class, 'keys'])->name('api.keys.index');
+        Route::post('integrations/api-keys', [ApiAccessController::class, 'storeKey'])->name('api.keys.store');
+        Route::delete('integrations/api-keys/{code}', [ApiAccessController::class, 'revokeKey'])->name('api.keys.revoke');
+        Route::get('integrations/webhooks', [ApiAccessController::class, 'webhooks'])->name('api.webhooks.index');
+        Route::post('integrations/webhooks', [ApiAccessController::class, 'storeWebhook'])->name('api.webhooks.store');
+        Route::patch('integrations/webhooks/{code}', [ApiAccessController::class, 'updateWebhook'])->name('api.webhooks.update');
+        Route::delete('integrations/webhooks/{code}', [ApiAccessController::class, 'destroyWebhook'])->name('api.webhooks.destroy');
     });
 });
 

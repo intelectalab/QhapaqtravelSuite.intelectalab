@@ -19,6 +19,11 @@ class ApiException extends RuntimeException
         parent::__construct($message);
     }
 
+    public static function unauthorized(string $code, string $message): self
+    {
+        return new self(401, 'UNAUTHENTICATED', $code, $message);
+    }
+
     public static function forbidden(?string $code, string $message, array $requiredPermissions = []): self
     {
         return new self(403, 'FORBIDDEN', $code, $message, $requiredPermissions);
@@ -37,5 +42,10 @@ class ApiException extends RuntimeException
     public static function unprocessable(string $code, string $message, array $details = []): self
     {
         return new self(422, 'BUSINESS_RULE', $code, $message, [], $details);
+    }
+
+    public static function preconditionRequired(string $code, string $message): self
+    {
+        return new self(428, 'PRECONDITION_REQUIRED', $code, $message);
     }
 }

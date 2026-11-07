@@ -1,28 +1,7 @@
 <?php
 
-use App\Domain\Iam\Models\AccessToken;
 use App\Domain\Platform\Actions\PlatformSession;
 use Illuminate\Support\Facades\DB;
-
-function actingAsPlatform(): void
-{
-    $platform = platformUser();
-    $plain = DB::connection('pgsql_platform')->transaction(function () use ($platform) {
-        $token = AccessToken::query()->forceCreate([
-            'tokenable_type' => $platform->getMorphClass(),
-            'tokenable_id' => $platform->getKey(),
-            'name' => 'pest',
-            'token' => hash('sha256', $secret = 'pest-platform-'.bin2hex(random_bytes(16))),
-            'abilities' => ['*'],
-            'experience' => 'platform',
-            'expires_at' => now()->addHour(),
-            'mfa_verified_at' => now(),
-        ]);
-
-        return $token->getKey().'|'.$secret;
-    });
-    useToken($plain);
-}
 
 it('platform/tenants/health resume la salud de cada tenant', function () {
     actingAsPlatform();

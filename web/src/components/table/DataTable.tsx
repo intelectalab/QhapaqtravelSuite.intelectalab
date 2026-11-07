@@ -99,6 +99,7 @@ export function DataTable<T>({
               value={rows.filter(metric.matches).length}
               active={query.metric === metric.id}
               onClick={() => update({ metric: metric.id })}
+              testId={`kpi:${metric.id || "all"}`}
             />
           ))}
         </MetricCardRow>
@@ -144,6 +145,7 @@ export function DataTable<T>({
                   value={query.filters[filter.id] ?? ""}
                   onChange={(value) => update({ filters: { ...query.filters, [filter.id]: value } })}
                   options={filter.options}
+                  testId={`filter:${filter.id}`}
                 />
               </Chip>
             ))}
@@ -180,7 +182,9 @@ export function DataTable<T>({
         )}
 
         {visible.length === 0 ? (
-          <EmptyState icon={<SearchX size={22} />} title={emptyTitle} description="Prueba con otra búsqueda o quita algún filtro." />
+          <div data-testid="table-empty">
+            <EmptyState icon={<SearchX size={22} />} title={emptyTitle} description="Prueba con otra búsqueda o quita algún filtro." />
+          </div>
         ) : (
           <>
             <div className="scroll-thin overflow-x-auto max-md:hidden">
@@ -204,7 +208,7 @@ export function DataTable<T>({
                     const key = getKey(row);
                     const isSelected = selected.has(key);
                     return (
-                      <tr key={key} className={cn("border-b border-line-2 last:border-0", isSelected && "bg-accent/5")}>
+                      <tr key={key} data-testid={`table-row:${key}`} className={cn("border-b border-line-2 last:border-0", isSelected && "bg-accent/5")}>
                         {selectable && (
                           <td className="px-3.5 py-2.5">
                             <CheckBox state={isSelected ? "on" : "off"} onClick={() => toggleRow(key)} label="Seleccionar fila" />

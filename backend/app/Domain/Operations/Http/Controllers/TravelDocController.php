@@ -25,23 +25,21 @@ final class TravelDocController
         return response()->json(['data' => $this->directory->find($this->user($request), $code) ?? throw ApiException::notFound('La reserva no tiene checklist documental.')]);
     }
 
-    public function validateItem(Request $request, string $item, TravelDocWorkflow $workflow): JsonResponse
+    public function validateItem(Request $request, string $code, string $passenger, string $type, TravelDocWorkflow $workflow): JsonResponse
     {
         $data = $request->validate([
             'doc_number' => ['nullable', 'string', 'max:40'],
             'expiry_date' => ['nullable', 'date'],
         ], ['doc_number.*' => 'Revisa el número del documento.', 'expiry_date.*' => 'Revisa la fecha de vencimiento.']);
-        $workflow->validate($item, $data, $this->user($request));
 
-        return response()->json(['data' => ['id' => $item]]);
+        return response()->json(['data' => ['id' => $workflow->validate($code, $passenger, $type, $data, $this->user($request))]]);
     }
 
-    public function observe(Request $request, string $item, TravelDocWorkflow $workflow): JsonResponse
+    public function observe(Request $request, string $code, string $passenger, string $type, TravelDocWorkflow $workflow): JsonResponse
     {
         $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:500']], ['reason.*' => 'Explica qué falta o qué debe corregirse (mínimo 5 caracteres).']);
-        $workflow->observe($item, $data['reason'], $this->user($request));
 
-        return response()->json(['data' => ['id' => $item]]);
+        return response()->json(['data' => ['id' => $workflow->observe($code, $passenger, $type, $data['reason'], $this->user($request))]]);
     }
 
     private function user(Request $request): User

@@ -5,6 +5,7 @@ use App\Domain\Iam\Models\AccessToken;
 use App\Domain\Iam\Models\User;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Shared\Sequences\DefaultSequences;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -132,7 +133,7 @@ function approvedQuote(string $code, ?Tenant $tenant = null): object
     $tenant ??= tenantA();
 
     withinTenant($tenant, function () use ($code) {
-        $quote = DB::table('quote_quotes')->where('code', $code)->first();
+        $quote = DB::table('quote_quotes')->where('code', $code)->lockForUpdate()->first();
         DB::table('quote_versions')->where('id', $quote->current_version_id)->update(['status' => 'aprobada']);
         DB::table('quote_quotes')->where('id', $quote->id)->update([
             'status' => 'aprobada',
@@ -187,4 +188,107 @@ function requireRoute(string $method, string $uri): void
 function loginAs(string $email): TestResponse
 {
     return test()->postJson('/api/v1/auth/login', ['email' => $email, 'password' => (string) config('demo.password')]);
+}
+
+function lockScheduledJobs(): void
+{
+    DB::select('select pg_advisory_xact_lock(7410301)');
+}
+
+function sendBody(): array
+{
+    return ['channels' => ['email'], 'channel' => 'Email', 'recipient' => 'cliente@example.com', 'message' => 'Propuesta de viaje'];
+}
+
+function quoteUpdatePayload(string $code): array
+{
+    $detail = test()->getJson("/api/v1/quotes/{$code}")->assertOk()->json('data');
+    $version = collect($detail['versions'])->sortByDesc('number')->first();
+
+    return [
+        'client_code' => $detail['client']['code'],
+        'title' => $detail['title'].' (ajuste)',
+        'travel_from' => $detail['travel_from'],
+        'travel_to' => $detail['travel_to'],
+        'valid_until' => $detail['valid_until'],
+        'currency' => $detail['currency'],
+        'pax_adt' => $detail['pax']['adt'],
+        'pax_chd' => $detail['pax']['chd'],
+        'pax_inf' => $detail['pax']['inf'],
+        'discount_pct' => $version['discount_pct'],
+        'tax_pct' => $version['tax_pct'],
+        'items' => collect($version['items'])->map(fn (array $item) => [
+            'product_code' => $item['product']['code'],
+            'date' => $item['date'],
+            'qty' => $item['qty'],
+            'pax' => $item['pax'],
+            'segment' => $item['segment'],
+            'unit_price' => $item['unit_price'],
+        ])->all(),
+        'lock_version' => $detail['lock_version'],
+    ];
+}
+
+function decideInternally(string $code, string $decision, string $note = 'Aprobado')
+{
+    $quote = rowOf('quote_quotes', $code);
+
+    return test()->postJson("/api/v1/quotes/{$code}/versions/{$quote->current_version_no}/internal-approval", ['decision' => $decision, 'note' => $note], critical((int) $quote->lock_version));
+}
+
+function reservationRow(string $code): object
+{
+    return rowOf('booking_reservations', $code);
+}
+
+function reservationLock(string $code): int
+{
+    return (int) reservationRow($code)->lock_version;
+}
+
+function serviceRow(string $code): object
+{
+    return rowOf('booking_reservation_services', $code);
+}
+
+function departureRow(string $ref): object
+{
+    return rowOf('catalog_product_departures', $ref, column: 'ref');
+}
+
+function sequenceOf(string $docType, ?int $year = null): object
+{
+    $year ??= CarbonImmutable::now('America/Lima')->year;
+    $series = DefaultSequences::SERIES[$docType]['year_reset'] ? (string) $year : 'default';
+
+    return withinTenant(tenantA(), function () use ($docType, $series, $year) {
+        app(DefaultSequences::class)->ensure((string) tenantA()->getKey(), $docType, $series, $year);
+
+        return DB::table('sys_sequences')->where('doc_type', $docType)->where('series', $series)->first(['prefix', 'pad_width', 'next_number']);
+    });
+}
+
+function actingAsPlatform(): void
+{
+    $platform = platformUser();
+    $plain = DB::connection('pgsql_platform')->transaction(function () use ($platform) {
+        $token = AccessToken::query()->forceCreate([
+            'tokenable_type' => $platform->getMorphClass(),
+            'tokenable_id' => $platform->getKey(),
+            'name' => 'pest',
+            'token' => hash('sha256', $secret = 'pest-platform-'.bin2hex(random_bytes(16))),
+            'abilities' => ['*'],
+            'experience' => 'platform',
+            'expires_at' => now()->addHour(),
+            'mfa_verified_at' => now(),
+        ]);
+
+        return $token->getKey().'|'.$secret;
+    });
+    useToken($plain);
+}
+
+function siteOf(string $subdomain = 'andes', array $extra = []): array
+{
+    return ['X-Forwarded-Host' => $subdomain.'.'.config('sites.domain'), ...$extra];
 }

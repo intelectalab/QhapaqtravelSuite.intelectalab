@@ -2,15 +2,10 @@
 
 use Illuminate\Support\Facades\DB;
 
-function sendBody(): array
-{
-    return ['channels' => ['email'], 'channel' => 'Email', 'recipient' => 'cliente@example.com', 'message' => 'Propuesta de viaje'];
-}
-
 function setCurrentVersion(string $code, array $values): object
 {
     withinTenant(tenantA(), function () use ($code, $values) {
-        $versionId = DB::table('quote_quotes')->where('code', $code)->value('current_version_id');
+        $versionId = DB::table('quote_quotes')->where('code', $code)->lockForUpdate()->value('current_version_id');
         DB::table('quote_versions')->where('id', $versionId)->update($values);
     });
 
@@ -20,35 +15,6 @@ function setCurrentVersion(string $code, array $values): object
 function quoteStatus(string $code): string
 {
     return (string) rowOf('quote_quotes', $code)->status;
-}
-
-function quoteUpdatePayload(string $code): array
-{
-    $detail = test()->getJson("/api/v1/quotes/{$code}")->assertOk()->json('data');
-    $version = collect($detail['versions'])->sortByDesc('number')->first();
-
-    return [
-        'client_code' => $detail['client']['code'],
-        'title' => $detail['title'].' (ajuste)',
-        'travel_from' => $detail['travel_from'],
-        'travel_to' => $detail['travel_to'],
-        'valid_until' => $detail['valid_until'],
-        'currency' => $detail['currency'],
-        'pax_adt' => $detail['pax']['adt'],
-        'pax_chd' => $detail['pax']['chd'],
-        'pax_inf' => $detail['pax']['inf'],
-        'discount_pct' => $version['discount_pct'],
-        'tax_pct' => $version['tax_pct'],
-        'items' => collect($version['items'])->map(fn (array $item) => [
-            'product_code' => $item['product']['code'],
-            'date' => $item['date'],
-            'qty' => $item['qty'],
-            'pax' => $item['pax'],
-            'segment' => $item['segment'],
-            'unit_price' => $item['unit_price'],
-        ])->all(),
-        'lock_version' => $detail['lock_version'],
-    ];
 }
 
 it('QTE-BR-12: no se envía con la aprobación interna pendiente', function () {
@@ -69,7 +35,7 @@ it('T-Q07: margen menor a 15 % bloquea el envío hasta que Gerencia aprueba', fu
     expect($this->getJson('/api/v1/quotes/COT-2026-00189')->assertOk()->json('data.internal'))->toMatchArray(['required' => true, 'status' => 'pendiente']);
 
     actingAsSeed('U02');
-    $this->postJson('/api/v1/quotes/COT-2026-00189/internal-approval', ['approve' => true, 'note' => 'Aprobado'], critical())->assertSuccessful();
+    decideInternally('COT-2026-00189', 'approve')->assertSuccessful();
 
     actingAsSeed('U03');
     $this->postJson('/api/v1/quotes/COT-2026-00189/send', sendBody(), critical((int) rowOf('quote_quotes', 'COT-2026-00189')->lock_version))->assertSuccessful();
@@ -79,11 +45,11 @@ it('T-Q07: margen menor a 15 % bloquea el envío hasta que Gerencia aprueba', fu
 
 it('QTE-BR-10: editar el borrador anula la aprobación interna y vuelve a bloquear el envío', function () {
     actingAsSeed('U02');
-    $this->postJson('/api/v1/quotes/COT-2026-00189/internal-approval', ['approve' => true, 'note' => 'Aprobado'], critical())->assertSuccessful();
+    decideInternally('COT-2026-00189', 'approve')->assertSuccessful();
 
     actingAsSeed('U03');
     $payload = quoteUpdatePayload('COT-2026-00189');
-    $this->putJson('/api/v1/quotes/COT-2026-00189', $payload, critical((int) $payload['lock_version']))->assertSuccessful();
+    $this->putJson('/api/v1/quotes/COT-2026-00189/versions/'.rowOf('quote_quotes', 'COT-2026-00189')->current_version_no, $payload, critical((int) $payload['lock_version']))->assertSuccessful();
 
     expect($this->getJson('/api/v1/quotes/COT-2026-00189')->assertOk()->json('data.internal.status'))->not->toBe('aprobada');
     expect($this->postJson('/api/v1/quotes/COT-2026-00189/send', sendBody(), critical((int) rowOf('quote_quotes', 'COT-2026-00189')->lock_version)))
@@ -121,7 +87,7 @@ it('H-04 en la ruta actual del portal: el cliente no aprueba con la aprobación 
     setCurrentVersion('COT-2026-00188', ['discount_pct' => 12]);
     actingAsSeed('U14');
 
-    $response = $this->postJson('/api/v1/portal/quotes/COT-2026-00188/approve', ['name' => 'Gabriela Ríos Montoya', 'accept' => true], critical((int) rowOf('quote_quotes', 'COT-2026-00188')->lock_version));
+    $response = $this->postJson('/api/v1/portal/client/quotes/COT-2026-00188/approve', ['name' => 'Gabriela Ríos Montoya', 'accept' => true], critical((int) rowOf('quote_quotes', 'COT-2026-00188')->lock_version));
 
     expect($response)->toBeApiError(409);
     expect($response->json('code'))->toBeIn(['QTE-BR-13', 'H-04']);
@@ -173,5 +139,3 @@ it('rechaza por API las transiciones fuera del grafo de 03 §4.1', function (str
     'nueva versión de una convertida' => ['U01', 'COT-2026-00183', 'versions', [], 'QTE-BR-18'],
     'enviar una convertida' => ['U01', 'COT-2026-00183', 'send', sendBody(), 'QTE-BR-23'],
 ]);
-
-it('JOB-02 vence cotizaciones con validez pasada y audita como Sistema', function () {})->todo('Fase B: no existe App\Domain\Quotes\Jobs\ExpireQuotes (JOB-02, 03 §4.1). Hoy el estado vencida solo se calcula al leer.');

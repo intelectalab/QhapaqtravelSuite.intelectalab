@@ -28,7 +28,7 @@ export function PageHeader({ title, subtitle, actions, back, info, jump = true, 
           <div className="min-w-0">
             {!back && <SectionCrumb />}
             <div className="mt-0.5 flex min-w-0 items-center gap-1.5">
-              <h1 className="truncate text-[24px] font-bold leading-tight tracking-[-0.035em] sm:text-[30px]">{title}</h1>
+              <h1 data-testid="page-title" className="truncate text-[24px] font-bold leading-tight tracking-[-0.035em] sm:text-[30px]">{title}</h1>
               {info}
               {jump && <ScreenJump />}
             </div>

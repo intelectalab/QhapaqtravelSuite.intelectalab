@@ -34,6 +34,7 @@ final class SiteProfile
             ->orderByDesc('published_at')->first(['title', 'body']);
 
         return [
+            'locales' => SiteLocale::LOCALES,
             'agency' => [
                 'subdomain' => $tenant->subdomain,
                 'name' => $tenant->commercial_name,

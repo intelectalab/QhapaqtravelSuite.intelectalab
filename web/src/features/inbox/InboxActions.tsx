@@ -26,12 +26,21 @@ function fill(body: string, thread: ConversationThread, me: string) {
     .replaceAll("{{reserva}}", reservation?.code ?? "");
 }
 
-export function QuickStep({ code, step, label, icon }: { code: string; step: "resolve" | "reopen"; label: string; icon: React.ReactNode }) {
+function StepFields({ thread, step }: { thread: ConversationThread; step: string }) {
+  return (
+    <>
+      <input type="hidden" name="code" value={thread.code} />
+      <input type="hidden" name="step" value={step} />
+      <input type="hidden" name="lock_version" value={thread.lock_version} />
+    </>
+  );
+}
+
+export function QuickStep({ thread, step, label, icon }: { thread: ConversationThread; step: "resolve" | "reopen"; label: string; icon: React.ReactNode }) {
   const [state, run, pending] = useActionState(conversationStep, initial);
   return (
     <form action={run} className="flex items-center gap-2">
-      <input type="hidden" name="code" value={code} />
-      <input type="hidden" name="step" value={step} />
+      <StepFields thread={thread} step={step} />
       <Button type="submit" size="sm" variant="secondary" icon={icon} disabled={pending}>
         {pending ? "Un momento…" : label}
       </Button>
@@ -49,8 +58,7 @@ export function ThreadActions({ thread, agents, canReassign, canManage }: { thre
         <PanelAction<StepResult> label="Tomar" icon={<Hand size={15} />} size="sm" formId={`tomar-${thread.code}`} title="Tomar conversación" description="Quedará asignada a ti y la verás en tus pendientes." submitLabel="Tomarla" action={conversationStep} initial={initial}>
           {() => (
             <>
-              <input type="hidden" name="code" value={thread.code} />
-              <input type="hidden" name="step" value="assign" />
+              <StepFields thread={thread} step="assign" />
               <p className="text-[13.5px] text-fg-2">{thread.contact.name} · {thread.subject}</p>
             </>
           )}
@@ -60,8 +68,7 @@ export function ThreadActions({ thread, agents, canReassign, canManage }: { thre
         <PanelAction<StepResult> label="Asignar" icon={<UserRoundCog size={15} />} size="sm" formId={`asignar-${thread.code}`} title="Asignar conversación" description={thread.assignee ? `Hoy la atiende ${thread.assignee.name}.` : "Aún no tiene responsable."} submitLabel="Asignar" action={conversationStep} initial={initial}>
           {() => (
             <>
-              <input type="hidden" name="code" value={thread.code} />
-              <input type="hidden" name="step" value="assign" />
+              <StepFields thread={thread} step="assign" />
               <SelectField label="Responsable" name="assignee_id" options={agents.map((agent) => ({ value: agent.id, label: agent.name }))} defaultValue={thread.assignee?.id ?? ""} placeholder="Elegir persona" />
             </>
           )}
@@ -70,14 +77,13 @@ export function ThreadActions({ thread, agents, canReassign, canManage }: { thre
       <PanelAction<StepResult> label="Clasificar" icon={<Tags size={15} />} size="sm" formId={`clasificar-${thread.code}`} title="Prioridad y etiquetas" description={thread.subject} submitLabel="Guardar" action={conversationStep} initial={initial}>
         {() => (
           <>
-            <input type="hidden" name="code" value={thread.code} />
-            <input type="hidden" name="step" value="classify" />
+            <StepFields thread={thread} step="classify" />
             <SelectField label="Prioridad" name="priority" options={PRIORITY_OPTIONS} defaultValue={thread.priority} />
             <TextField label="Etiquetas" name="tags" defaultValue={thread.tags.join(", ")} hint="Sepáralas con comas. Máximo 8." />
           </>
         )}
       </PanelAction>
-      {resolved ? <QuickStep code={thread.code} step="reopen" label="Reabrir" icon={<RotateCcw size={15} />} /> : <QuickStep code={thread.code} step="resolve" label="Resolver" icon={<CheckCheck size={15} />} />}
+      {resolved ? <QuickStep thread={thread} step="reopen" label="Reabrir" icon={<RotateCcw size={15} />} /> : <QuickStep thread={thread} step="resolve" label="Resolver" icon={<CheckCheck size={15} />} />}
     </div>
   );
 }

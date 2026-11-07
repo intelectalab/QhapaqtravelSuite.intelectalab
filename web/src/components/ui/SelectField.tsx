@@ -33,6 +33,7 @@ export function SelectField({ label, name, options, defaultValue = "", placehold
         placeholder={placeholder}
         ariaLabel={label}
         className="h-12 w-full"
+        testId={`field:${name}`}
       />
       <input type="hidden" name={name} value={value} />
       {hint && <div className="mt-1.5 text-[12.5px] text-fg-3">{hint}</div>}

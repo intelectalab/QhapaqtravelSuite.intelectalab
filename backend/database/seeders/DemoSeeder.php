@@ -12,6 +12,8 @@ use App\Domain\Platform\Models\Plan;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Support\TenantBootstrap;
+use App\Domain\Shared\Jobs\DefaultScheduledJobs;
+use App\Domain\Shared\Sequences\DefaultSequences;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Database\Support\KitSeeds;
 use Illuminate\Database\Seeder;
@@ -51,7 +53,12 @@ final class DemoSeeder extends Seeder
                     $this->withinTenant($tenant, fn () => (new $class($tenant))->run());
                 }
             }
+
+            $this->withinTenant($tenant, fn () => app(DefaultSequences::class)->sync((string) $tenant->getKey(), Carbon::now($tenant->timezone ?: 'America/Lima')->year));
+            $this->withinTenant($tenant, fn () => app(DefaultScheduledJobs::class)->sync((string) $tenant->getKey()));
         }
+
+        app(DefaultScheduledJobs::class)->syncPlatform();
 
         app(TenantContext::class)->clear();
     }

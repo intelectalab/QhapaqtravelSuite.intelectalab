@@ -20,10 +20,30 @@ final class RecordJobRun
     public function handle(object $job, Closure $next): mixed
     {
         $tenantId = $this->tenantId ?? (property_exists($job, 'tenantId') ? $job->tenantId : null);
-        $attempt = method_exists($job, 'attempts') ? (int) $job->attempts() : 1;
+        $attempt = method_exists($job, 'attempts') ? max(1, (int) $job->attempts()) : 1;
+        $scheduledJobId = property_exists($job, 'scheduledJobId') ? $job->scheduledJobId : null;
+        $existing = property_exists($job, 'runId') && $attempt === 1 ? $job->runId : null;
 
-        $runId = $this->write($tenantId, fn () => DB::connection($this->connectionFor($tenantId))->table('sys_job_runs')->insertGetId([
+        $runId = $existing !== null ? $this->resume($tenantId, $existing) : $this->start($tenantId, $job, $attempt, $scheduledJobId);
+
+        try {
+            $result = $next($job);
+            $warning = property_exists($job, 'runWarning') ? $job->runWarning : null;
+            $summary = property_exists($job, 'runResult') ? $job->runResult : null;
+            $this->finish($tenantId, $runId, $job, $scheduledJobId, $warning === null ? 'ok' : 'advertencia', $warning ?? $summary);
+
+            return $result;
+        } catch (Throwable $e) {
+            $this->finish($tenantId, $runId, $job, $scheduledJobId, 'error', class_basename($e).': '.mb_substr($e->getMessage(), 0, 200));
+            throw $e;
+        }
+    }
+
+    private function start(?string $tenantId, object $job, int $attempt, ?string $scheduledJobId): string
+    {
+        return (string) $this->write($tenantId, fn () => DB::connection($this->connectionFor($tenantId))->table('sys_job_runs')->insertGetId([
             'tenant_id' => $tenantId,
+            'scheduled_job_id' => $scheduledJobId,
             'job_class' => mb_substr($job::class, 0, 150),
             'trigger' => $attempt > 1 ? 'retry' : $this->trigger,
             'status' => 'en_curso',
@@ -31,26 +51,30 @@ final class RecordJobRun
             'attempt' => $attempt,
             'correlation_id' => mb_substr(AssignCorrelationId::current(), 0, 40),
         ]));
-
-        try {
-            $result = $next($job);
-            $warning = property_exists($job, 'runWarning') ? $job->runWarning : null;
-            $this->finish($tenantId, (string) $runId, $warning === null ? 'ok' : 'advertencia', $warning);
-
-            return $result;
-        } catch (Throwable $e) {
-            $this->finish($tenantId, (string) $runId, 'error', class_basename($e).': '.mb_substr($e->getMessage(), 0, 200));
-            throw $e;
-        }
     }
 
-    private function finish(?string $tenantId, string $runId, string $status, ?string $result): void
+    private function resume(?string $tenantId, string $runId): string
     {
-        $this->write($tenantId, fn () => DB::connection($this->connectionFor($tenantId))->table('sys_job_runs')->where('id', $runId)->update([
-            'status' => $status,
-            'result' => $result === null ? null : mb_substr($result, 0, 250),
-            'finished_at' => now(),
-        ]));
+        $this->write($tenantId, fn () => DB::connection($this->connectionFor($tenantId))->table('sys_job_runs')->where('id', $runId)
+            ->update(['status' => 'en_curso', 'result' => null, 'started_at' => now(), 'finished_at' => null]));
+
+        return $runId;
+    }
+
+    private function finish(?string $tenantId, string $runId, object $job, ?string $scheduledJobId, string $status, ?string $result): void
+    {
+        $result = $result === null ? null : mb_substr($result, 0, 250);
+
+        $this->write($tenantId, function () use ($tenantId, $runId, $job, $scheduledJobId, $status, $result): void {
+            $db = DB::connection($this->connectionFor($tenantId));
+            $db->table('sys_job_runs')->where('id', $runId)->update(['status' => $status, 'result' => $result, 'finished_at' => now()]);
+
+            $scheduled = $db->table('sys_scheduled_jobs');
+            $scheduled = $scheduledJobId !== null
+                ? $scheduled->where('id', $scheduledJobId)
+                : $scheduled->where('job_class', $job::class)->when($tenantId === null, fn ($query) => $query->whereNull('tenant_id'), fn ($query) => $query->where('tenant_id', $tenantId));
+            $scheduled->update(['last_run_at' => now(), 'last_status' => $status, 'last_result' => $result, 'updated_at' => now()]);
+        });
     }
 
     private function connectionFor(?string $tenantId): string

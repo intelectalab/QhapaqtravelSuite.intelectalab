@@ -11,10 +11,11 @@ use App\Domain\Integrations\Contracts\MessagingChannel;
 use App\Domain\Integrations\Contracts\PaymentGateway;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Tenancy\TenantContext;
 use App\Http\Middleware\AssignCorrelationId;
+use App\Jobs\TenantJob;
 use Cron\CronExpression;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -22,7 +23,10 @@ final class ManageIntegrations
 {
     private const CONTRACTS = ['fiscal' => FiscalGateway::class, 'payments' => PaymentGateway::class, 'email' => MessagingChannel::class, 'messaging' => MessagingChannel::class];
 
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly TenantContext $context,
+    ) {}
 
     public function configure(string $code, array $data, User $actor): void
     {
@@ -54,7 +58,7 @@ final class ManageIntegrations
         });
     }
 
-    public function test(string $code, User $actor): array
+    public function test(string $code, ?User $actor = null): array
     {
         $adapter = $this->adapter($code);
 
@@ -75,7 +79,7 @@ final class ManageIntegrations
             }
         }
 
-        DB::table('integration_adapters')->where('id', $adapter->id)->update(['last_test_at' => now(), 'last_test_ok' => $ok, 'last_test_result' => $result, 'updated_by' => $actor->getKey()]);
+        DB::table('integration_adapters')->where('id', $adapter->id)->update(['last_test_at' => now(), 'last_test_ok' => $ok, 'last_test_result' => $result, 'updated_by' => $actor?->getKey()]);
         $this->audit->log('Integración', $adapter->code, 'probar_conexion', null, ($ok ? 'ok · ' : 'error · ').$result);
 
         return ['ok' => $ok, 'result' => $result];
@@ -129,7 +133,7 @@ final class ManageIntegrations
             DB::table('sys_scheduled_jobs')->where('id', $job->id)->update(['last_run_at' => now(), 'last_status' => $status, 'last_result' => $result, 'updated_at' => now()]);
 
             if ($available) {
-                $this->enqueue((string) $job->job_class, (string) $job->queue);
+                $this->enqueue((string) $job->job_class, (string) $job->queue, (string) $job->id, $runId);
             }
 
             $this->audit->log('Job', $job->code, 'ejecutar', null, $result);
@@ -192,14 +196,13 @@ final class ManageIntegrations
 
     private function available(string $class): bool
     {
-        return class_exists($class);
+        return class_exists($class) && is_subclass_of($class, TenantJob::class);
     }
 
-    private function enqueue(string $class, string $queue): void
+    private function enqueue(string $class, string $queue, string $scheduledJobId, string $runId): void
     {
-        DB::afterCommit(function () use ($class, $queue): void {
-            Queue::pushOn($queue, app()->make($class));
-        });
+        $job = (new $class)->forTenant($this->context->idOrFail())->scheduled($scheduledJobId, 'manual', $runId);
+        dispatch($job->onQueue($queue))->afterCommit();
     }
 
     private function driver(string $contract): object

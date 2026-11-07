@@ -8,6 +8,14 @@ final class OrderFlow
 {
     public const STEPS = ['planificada', 'pendiente_asignacion', 'asignada', 'confirmada', 'en_ejecucion', 'completada'];
 
+    public const ACTIONS = [
+        'to-assignment' => 'pendiente_asignacion',
+        'mark-assigned' => 'asignada',
+        'confirm' => 'confirmada',
+        'start' => 'en_ejecucion',
+        'close' => 'completada',
+    ];
+
     public const MANUAL = [
         'planificada' => ['pendiente_asignacion' => 'Pasar a asignación'],
         'pendiente_asignacion' => ['asignada' => 'Marcar como asignada'],

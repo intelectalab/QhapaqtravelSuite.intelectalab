@@ -9,12 +9,14 @@ export interface MetricCardProps {
   tone?: Tone;
   active?: boolean;
   onClick?: () => void;
+  testId?: string;
 }
 
-export function MetricCard({ label, value, icon, tone = "t1", active = false, onClick }: MetricCardProps) {
+export function MetricCard({ label, value, icon, tone = "t1", active = false, onClick, testId }: MetricCardProps) {
   return (
     <button
       type="button"
+      data-testid={testId}
       onClick={onClick}
       aria-pressed={active}
       style={toneStyle(tone)}

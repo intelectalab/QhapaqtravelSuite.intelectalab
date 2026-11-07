@@ -101,6 +101,7 @@ export interface ProductCard {
   tags: { key: string; label: string }[];
   on_date?: { date: string; spots: number | null; season: SeasonTag | null };
   promotion?: Promotion | null;
+  content_locale?: string;
 }
 
 export interface DestinationCard {
@@ -111,6 +112,7 @@ export interface DestinationCard {
   type: string;
   count: number;
   from: Money | null;
+  content_locale?: string;
 }
 
 export interface Review {
@@ -236,8 +238,8 @@ export interface QuoteLine {
   key: string;
   label: string;
   qty: number;
-  unit: number;
-  amount: number;
+  unit: string;
+  amount: string;
 }
 
 export interface Quote {
@@ -245,10 +247,10 @@ export interface Quote {
   currency: string;
   season: SeasonTag | null;
   lines: QuoteLine[];
-  subtotal: number;
-  discount: { label: string; amount: number; code: string | null } | null;
-  total: number;
-  list_total: number | null;
+  subtotal: string;
+  discount: { label: string; amount: string; code: string | null } | null;
+  total: string;
+  list_total: string | null;
   spots: number | null;
   departure: Departure | null;
   pax: { adults: number; children: number; infants: number };
@@ -339,7 +341,7 @@ export interface SiteCart {
   code: string | null;
   promo: string | null;
   items: CartLine[];
-  totals: { currency: string; subtotal: number; discount: number; total: number }[];
+  totals: { currency: string; subtotal: string; discount: string; total: string }[];
   hold_minutes: number;
   fx: number;
 }
@@ -349,8 +351,8 @@ export interface SiteOrder {
   status: string;
   ordered_at: string;
   customer: { name: string; email: string };
-  total: number;
-  discount: number;
+  total: string;
+  discount: string;
   currency: string;
   hold_expires_at: string | null;
   reservations: {
@@ -358,10 +360,10 @@ export interface SiteOrder {
     status: string;
     title: string;
     date: string;
-    total: number;
+    total: string;
     currency: string;
     services: { name: string; date: string; time: string | null; pax: number; status: string; confirmation: string | null }[];
-    receivables: { code: string; concept: string; amount: number; paid: number; currency: string; status: string; due_date: string }[];
+    receivables: { code: string; concept: string; amount: string; paid: string; currency: string; status: string; due_date: string }[];
   }[];
 }
 

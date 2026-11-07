@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Domain\Quotes\Actions;
 
-use App\Domain\Crm\Support\CodeSequence;
+use App\Domain\Booking\Support\TenantBookingEngine;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Quotes\Support\QuotePricing;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
+use App\Domain\Shared\Sequences\SequenceService;
 use App\Domain\Shared\Tenancy\TenantContext;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -20,13 +24,14 @@ final class QuoteBuilder
 {
     public const VALIDITY_DAYS = 10;
 
-    public const MAX_OVERRIDE = 50.0;
+    public const MAX_OVERRIDE = '50';
 
     public function __construct(
         private readonly AuditLogger $audit,
-        private readonly CodeSequence $codes,
+        private readonly SequenceService $sequences,
         private readonly TenantContext $context,
         private readonly QuoteLifecycle $lifecycle,
+        private readonly TenantBookingEngine $engines,
     ) {}
 
     public function options(User $actor): array
@@ -43,7 +48,7 @@ final class QuoteBuilder
             'opportunities' => $opportunities,
             'products' => DB::table('catalog_products')->whereNull('deleted_at')->where('status', 'ACTIVE')->where('is_quoteable', true)->orderBy('name')->get(['id', 'code', 'name', 'duration_value', 'duration_unit'])
                 ->map(fn (object $product): array => $this->productOption($product, collect($rates->get($product->id, [])))),
-            'defaults' => ['valid_until' => Carbon::parse($today)->addDays(self::VALIDITY_DAYS)->toDateString(), 'tax_pct' => 18, 'max_discount' => $actor->can('quotes.discount_override') ? self::MAX_OVERRIDE : QuotePricing::MAX_DISCOUNT],
+            'defaults' => ['valid_until' => Carbon::parse($today)->addDays(self::VALIDITY_DAYS)->toDateString(), 'tax_pct' => 18, 'max_discount' => (int) ($actor->can('quotes.discount_override') ? self::MAX_OVERRIDE : QuotePricing::MAX_DISCOUNT)],
         ];
     }
 
@@ -53,21 +58,26 @@ final class QuoteBuilder
             'code' => $product->code,
             'name' => $product->name,
             'duration' => rtrim(rtrim((string) $product->duration_value, '0'), '.').' '.$product->duration_unit,
-            'rates' => array_map(fn ($rate): array => ['segment' => $rate->segment, 'currency' => $rate->currency, 'price' => (float) $rate->price], $rates->values()->all()),
+            'rates' => array_map(fn ($rate): array => ['segment' => $rate->segment, 'currency' => $rate->currency, 'price' => (string) $rate->price], $rates->values()->all()),
         ];
     }
 
     public function preview(array $data, User $actor): array
     {
         $items = $this->items($data['items'] ?? [], $data['currency'] ?? 'PEN');
-        $discount = $this->discount((float) ($data['discount_pct'] ?? 0), $actor);
-        $totals = QuotePricing::totals($items->all(), $discount, (float) ($data['tax_pct'] ?? 18));
+        $discount = $this->discount((string) ($data['discount_pct'] ?? '0'), $actor);
+        $totals = QuotePricing::totals($items->all(), $discount, $this->taxPct($data));
         $seeMargin = $actor->can('finance.profitability') || $actor->can('catalog.products.view_profitability');
 
         return [
-            'lines' => $items->map(fn (array $item) => ['total' => round($item['unit_price'] * $item['qty'] * $item['pax'], 2), 'margin_pct' => $seeMargin && $item['unit_price'] > 0 ? round(($item['unit_price'] - $item['unit_cost']) / $item['unit_price'] * 100, 1) : null])->values(),
+            'lines' => $items->map(fn (array $item): array => [
+                'unit_price' => $item['unit_price'],
+                'price_source' => $item['price_source'],
+                'total' => (string) QuotePricing::lineTotal($item['unit_price'], $item['qty'], $item['pax']),
+                'margin_pct' => $seeMargin ? QuotePricing::lineMargin($item['unit_price'], $item['unit_cost']) : null,
+            ])->values(),
             'totals' => [...$totals, 'cost_total' => $seeMargin ? $totals['cost_total'] : null, 'profit_total' => $seeMargin ? $totals['profit_total'] : null, 'margin_pct' => $seeMargin ? $totals['margin_pct'] : null],
-            'needs_internal_approval' => $discount > 5 || $totals['margin_pct'] < 15,
+            'needs_internal_approval' => QuoteLifecycle::needsInternalApproval($discount, $totals['margin_pct']),
         ];
     }
 
@@ -77,7 +87,7 @@ final class QuoteBuilder
         $opportunity = ! empty($data['opportunity_code']) ? $this->opportunity($data['opportunity_code'], $client->id, $actor) : null;
 
         return DB::transaction(function () use ($data, $actor, $client, $opportunity): string {
-            $code = $this->codes->next('quote_quotes', 'COT-'.Carbon::parse($this->today())->year.'-', 5);
+            $code = $this->sequences->next('quote');
             $quoteId = (string) Str::uuid7();
             DB::table('quote_quotes')->insert([
                 'id' => $quoteId,
@@ -106,7 +116,7 @@ final class QuoteBuilder
 
     public function update(string $code, array $data, int $version, User $actor): void
     {
-        $quote = Portfolio::scope(DB::table('quote_quotes')->whereNull('deleted_at'), $actor, 'owner_id')->where('code', $code)->first() ?? throw ApiException::notFound('La cotización no existe.');
+        $quote = Portfolio::scope(DB::table('quote_quotes')->whereNull('deleted_at'), $actor, 'owner_id')->where('code', $code)->first() ?? throw Portfolio::missing($actor, 'quote_quotes', $code, 'La cotización no existe.', 'Esta cotización');
 
         if ($quote->status !== 'borrador') {
             throw ApiException::conflict('QTE-BR-10', 'Solo se edita una cotización en borrador. Crea una nueva versión para cambiarla.');
@@ -137,14 +147,14 @@ final class QuoteBuilder
             throw ApiException::unprocessable('QTE-BR-04', 'Agrega al menos un servicio.');
         }
 
-        $discount = $this->discount((float) ($data['discount_pct'] ?? 0), $actor);
-        $totals = QuotePricing::totals($items->all(), $discount, (float) ($data['tax_pct'] ?? 18));
+        $discount = $this->discount((string) ($data['discount_pct'] ?? '0'), $actor);
+        $totals = QuotePricing::totals($items->all(), $discount, $this->taxPct($data));
         $values = [
             'status' => 'borrador',
             'issued_on' => $this->today(),
             'author_id' => $actor->getKey(),
             'discount_pct' => $discount,
-            'tax_pct' => (float) ($data['tax_pct'] ?? 18),
+            'tax_pct' => $this->taxPct($data),
             'notes' => trim((string) ($data['notes'] ?? '')) ?: null,
             'snapshot_label' => $items->map(fn (array $item) => $item['product_code'])->unique()->implode(' / '),
             'catalog_snapshot' => json_encode($items->map(fn (array $item) => ['product_id' => $item['product_id'], 'name' => $item['product_name']])->values()->all(), JSON_UNESCAPED_UNICODE),
@@ -198,13 +208,13 @@ final class QuoteBuilder
             }
 
             $segment = $row['segment'] ?? 'Adulto';
-            $rate = DB::table('catalog_rates')->where('product_id', $product->id)->where('status', 'vigente')->where('rate_type', 'Venta')
-                ->where('valid_from', '<=', $row['date'])->where('valid_to', '>=', $row['date'])
-                ->orderByRaw('case when segment = ? then 0 else 1 end', [$segment])->orderByRaw('case when currency = ? then 0 else 1 end', [$currency])->first(['price', 'cost', 'currency']);
-            $factor = $rate && $rate->currency !== $currency ? ($currency === 'PEN' ? $this->fx('USD') : 1 / $this->fx('USD')) : 1;
-            $price = isset($row['unit_price']) && $row['unit_price'] !== '' ? (float) $row['unit_price'] : ($rate ? round((float) $rate->price * $factor, 2) : 0);
+            $engine = $this->engines->engine();
+            $rate = $engine->segmentPrice($this->engines->product((string) $product->id, (string) $row['date']), $segment, (string) $row['date'], $currency);
+            $ratePrice = $rate === null ? null : (string) $rate['price']->getAmount();
+            $manual = isset($row['unit_price']) && $row['unit_price'] !== '' && is_numeric($row['unit_price']) ? (string) Decimal::round2((string) $row['unit_price']) : null;
+            $price = $manual ?? $ratePrice ?? '0.00';
 
-            if ($price <= 0 || (int) $row['qty'] <= 0 || (int) $row['pax'] <= 0) {
+            if (! BigDecimal::of($price)->isPositive() || (int) $row['qty'] <= 0 || (int) $row['pax'] <= 0) {
                 throw ApiException::unprocessable('QTE-BR-07', "Revisa {$product->name}: precio, cantidad y pasajeros deben ser mayores que cero.");
             }
 
@@ -217,8 +227,8 @@ final class QuoteBuilder
                 'pax' => (int) $row['pax'],
                 'segment' => $segment,
                 'unit_price' => $price,
-                'unit_cost' => $rate ? round((float) $rate->cost * $factor, 2) : 0.0,
-                'price_source' => $rate && abs(round((float) $rate->price * $factor, 2) - $price) < 0.01 ? 'rate' : 'manual',
+                'unit_cost' => $rate === null ? '0.00' : (string) $rate['cost']->getAmount(),
+                'price_source' => $ratePrice !== null && BigDecimal::of($ratePrice)->isEqualTo($price) ? 'rate' : 'manual',
             ];
         });
     }
@@ -238,15 +248,23 @@ final class QuoteBuilder
         ];
     }
 
-    private function discount(float $discount, User $actor): float
+    private function discount(string $discount, User $actor): string
     {
         $limit = $actor->can('quotes.discount_override') ? self::MAX_OVERRIDE : QuotePricing::MAX_DISCOUNT;
+        $value = is_numeric($discount) ? BigDecimal::of($discount) : null;
 
-        if ($discount < 0 || $discount > $limit) {
+        if ($value === null || $value->isNegative() || $value->isGreaterThan($limit)) {
             throw ApiException::unprocessable('QTE-BR-08', "El descuento máximo que puedes aplicar es {$limit} %.");
         }
 
-        return $discount;
+        return (string) $value->toScale(2, RoundingMode::HALF_UP);
+    }
+
+    private function taxPct(array $data): string
+    {
+        $tax = (string) ($data['tax_pct'] ?? '18');
+
+        return is_numeric($tax) ? (string) BigDecimal::of($tax)->toScale(2, RoundingMode::HALF_UP) : '18.00';
     }
 
     private function client(string $code, User $actor): object
@@ -271,9 +289,14 @@ final class QuoteBuilder
         return $opportunity;
     }
 
-    private function fx(string $currency): float
+    private function fx(string $currency): string
     {
-        return $currency === 'USD' ? (float) (DB::table('fin_fx_rates')->where('currency_code', 'USD')->orderByDesc('rate_date')->value('rate_pen') ?? 3.75) : 1.0;
+        if ($currency === 'PEN') {
+            return '1';
+        }
+
+        return (string) (DB::table('fin_fx_rates')->where('currency_code', $currency)->orderByDesc('rate_date')->value('rate_pen')
+            ?? throw ApiException::unprocessable('CFG-FX', "No hay tipo de cambio registrado para {$currency}."));
     }
 
     private function today(): string

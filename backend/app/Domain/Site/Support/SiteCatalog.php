@@ -42,6 +42,7 @@ final class SiteCatalog
     public function __construct(
         private readonly SiteProfile $profile,
         private readonly SiteAvailability $availability,
+        private readonly SiteLocale $locale,
     ) {
         $this->pricing = $availability->pricing();
     }
@@ -49,6 +50,11 @@ final class SiteCatalog
     public function pricing(): SitePricing
     {
         return $this->pricing;
+    }
+
+    public function locale(): SiteLocale
+    {
+        return $this->locale;
     }
 
     public function availability(): SiteAvailability
@@ -93,8 +99,21 @@ final class SiteCatalog
         $external = DB::table('channel_external_reviews')->whereIn('product_id', $ids)
             ->groupBy('product_id')->selectRaw('product_id, avg(rating) as avg, count(*) as total')->get()->keyBy('product_id');
         $promos = $this->promotions($ids);
+        $locale = $this->locale->current();
+        $translations = $this->locale->translated()
+            ? DB::table('catalog_product_translations')->whereIn('product_id', $ids)->where('locale', $locale)->get()->keyBy('product_id')
+            : collect();
 
-        return $this->products = $rows->map(function (stdClass $row) use ($secondary, $own, $external, $promos): stdClass {
+        return $this->products = $rows->map(function (stdClass $row) use ($secondary, $own, $external, $promos, $translations, $locale): stdClass {
+            $row->translation = $translations->get($row->id);
+            $row->content_locale = $row->translation ? $locale : SiteLocale::BASE;
+            if ($row->translation) {
+                $row->name = $row->translation->name;
+                $row->short_description = $row->translation->short ?: $row->short_description;
+                $row->long_description = $row->translation->long ?: $row->long_description;
+                $row->seo_title = $row->translation->seo_title ?: $row->seo_title;
+                $row->seo_description = $row->translation->seo_description ?: $row->seo_description;
+            }
             $row->paths = [$row->destination_path, ...$secondary->where('product_id', $row->id)->pluck('path')->all()];
             $row->kind = $this->kindOf($row->type_name);
             $row->languages = array_values(array_filter(explode(',', trim((string) $row->guide_languages, '{}'))));
@@ -120,6 +139,13 @@ final class SiteCatalog
             ->whereNull('d.deleted_at')->where('dc.locale', 'es')
             ->get(['d.id', 'd.ref', 'd.name', 'd.type', 'd.path', 'd.lat', 'd.lng', 'dc.slug', 'dc.tagline', 'dc.description', 'dc.climate', 'dc.altitude_text', 'dc.faqs'])
             ->map(function (stdClass $row): stdClass {
+                $translation = $this->locale->translated() ? DB::table('catalog_destination_contents')->where('destination_id', $row->id)->where('locale', $this->locale->current())->first(['tagline', 'description', 'climate', 'altitude_text', 'faqs']) : null;
+                $row->content_locale = $translation ? $this->locale->current() : SiteLocale::BASE;
+                if ($translation) {
+                    foreach (['tagline', 'description', 'climate', 'altitude_text', 'faqs'] as $field) {
+                        $row->{$field} = $translation->{$field} ?? $row->{$field};
+                    }
+                }
                 $row->products = $this->products()->filter(fn (stdClass $product): bool => $this->belongs($product, $row->path))->values();
 
                 return $row;
@@ -163,6 +189,7 @@ final class SiteCatalog
             'slug' => $product->slug,
             'name' => $product->name,
             'summary' => $product->short_description,
+            'content_locale' => $product->content_locale,
             'type' => $product->type_name,
             'kind' => $product->kind,
             'category' => $product->category_name,
@@ -170,7 +197,7 @@ final class SiteCatalog
             'duration' => $this->durationLabel($product),
             'days' => $product->days,
             'modality' => $product->modality,
-            'difficulty' => $product->difficulty ? self::DIFFICULTIES[$product->difficulty] ?? null : null,
+            'difficulty' => $product->difficulty && isset(self::DIFFICULTIES[$product->difficulty]) ? $this->locale->label('difficulties', $product->difficulty, self::DIFFICULTIES[$product->difficulty]) : null,
             'languages' => $product->languages,
             'rating' => $product->rating,
             'from' => $from,
@@ -203,11 +230,7 @@ final class SiteCatalog
         $value = (float) $product->duration_value;
         $number = fmod($value, 1.0) === 0.0 ? (string) (int) $value : (string) $value;
 
-        return match ($product->duration_unit) {
-            'horas' => $number.' h',
-            'noches' => $number.($value === 1.0 ? ' noche' : ' noches'),
-            default => $value >= 2 ? $number.' días / '.((int) $value - 1).($value - 1 === 1.0 ? ' noche' : ' noches') : '1 día',
-        };
+        return $this->locale->duration((string) $product->duration_unit, $value, $number);
     }
 
     public function kindOf(string $type): string
@@ -249,19 +272,19 @@ final class SiteCatalog
         $tags = [];
 
         if ($product->promotions !== [] || $list !== null) {
-            $tags[] = ['key' => 'offer', 'label' => 'Oferta'];
+            $tags[] = ['key' => 'offer', 'label' => $this->locale->label('tags', 'offer', 'Oferta')];
         }
 
         if ($next && $next['guaranteed']) {
-            $tags[] = ['key' => 'guaranteed', 'label' => 'Salida garantizada'];
+            $tags[] = ['key' => 'guaranteed', 'label' => $this->locale->label('tags', 'guaranteed', 'Salida garantizada')];
         }
 
         if ($next && $next['spots'] > 0 && $next['spots'] <= 4) {
-            $tags[] = ['key' => 'last', 'label' => 'Últimos cupos'];
+            $tags[] = ['key' => 'last', 'label' => $this->locale->label('tags', 'last', 'Últimos cupos')];
         }
 
         if ($product->is_featured) {
-            $tags[] = ['key' => 'featured', 'label' => 'Recomendado'];
+            $tags[] = ['key' => 'featured', 'label' => $this->locale->label('tags', 'featured', 'Recomendado')];
         }
 
         return $tags;

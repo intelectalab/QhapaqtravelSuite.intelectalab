@@ -48,7 +48,7 @@ final class PayableDirectory
             ->leftJoin('booking_reservation_services as s', 's.id', '=', 'p.reservation_service_id')
             ->whereNull('p.deleted_at')
             ->orderBy('p.due_date')
-            ->get(['p.code', 'p.kind', 'p.cost_type', 'p.concept', 'p.amount', 'p.paid_amount', 'p.currency', 'p.fx_rate', 'p.due_date', 'p.status', 'p.approved_at', 'p.supplier_doc_number', 'p.evidence_note', 'p.observation', 'p.scheduled_date', 'v.ref as provider_ref', 'v.name as provider_name', 'v.status as provider_status', 'b.code as reservation_code', 'b.title as reservation_title', 's.name as service_name'])
+            ->get(['p.code', 'p.lock_version', 'p.kind', 'p.cost_type', 'p.concept', 'p.amount', 'p.paid_amount', 'p.currency', 'p.fx_rate', 'p.due_date', 'p.status', 'p.approved_at', 'p.supplier_doc_number', 'p.evidence_note', 'p.observation', 'p.scheduled_date', 'v.ref as provider_ref', 'v.name as provider_name', 'v.status as provider_status', 'b.code as reservation_code', 'b.title as reservation_title', 's.name as service_name'])
             ->map(function (object $row) use ($today): array {
                 $amount = (float) $row->amount;
                 $paid = (float) $row->paid_amount;
@@ -57,6 +57,7 @@ final class PayableDirectory
 
                 return [
                     'code' => $row->code,
+                    'lock_version' => (int) $row->lock_version,
                     'kind' => $row->kind,
                     'cost_type' => $row->cost_type,
                     'concept' => $row->concept,

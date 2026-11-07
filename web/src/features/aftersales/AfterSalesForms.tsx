@@ -157,6 +157,7 @@ export function CaseDetailAction({ item }: { item: CaseItem }) {
         <>
           <input type="hidden" name="code" value={item.code} />
           <input type="hidden" name="step" value={step} />
+          <input type="hidden" name="lock_version" value={item.lock_version} />
           <p className="whitespace-pre-line text-[13.5px] leading-relaxed">{item.description}</p>
           {item.resolution && (
             <div className="rounded-xl border border-ok/30 bg-[color-mix(in_srgb,var(--ok)_8%,var(--surface))] px-3.5 py-2.5 text-[13px]">

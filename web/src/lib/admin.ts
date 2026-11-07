@@ -50,6 +50,7 @@ interface SectionState<T> {
   values: T;
   updated_at: string | null;
   updated_by: string | null;
+  lock_version: number;
 }
 
 export interface GeneralSettings {
@@ -121,6 +122,7 @@ export interface SettingsOverview {
     business_type: string;
     subdomain: string;
     plan: string;
+    lock_version: number;
   };
   sections: {
     general: SectionState<GeneralSettings>;
@@ -194,6 +196,7 @@ export interface BookingRule {
   modified: boolean;
   updated_at: string;
   updated_by: string | null;
+  lock_version: number;
 }
 
 export interface RulesOverview {

@@ -107,7 +107,7 @@ final class AfterSalesWorkflow
             throw ApiException::conflict('CRM-CASE-CLOSED', 'El caso está cerrado; ya no se edita.');
         }
 
-        $values = ['priority' => $data['priority'], 'subject' => $data['subject'], 'description' => $data['description'], 'type_code' => $data['type'], 'updated_by' => $actor->getKey(), 'updated_at' => now()];
+        $values = ['priority' => $data['priority'], 'subject' => $data['subject'], 'description' => $data['description'], 'type_code' => $data['type'], 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()];
         if (! Portfolio::ownOnly($actor) && isset($data['owner_id'])) {
             $values['owner_id'] = $data['owner_id'];
         }
@@ -136,7 +136,7 @@ final class AfterSalesWorkflow
         }
 
         DB::transaction(function () use ($case, $step, $note, $actor, $target): void {
-            $values = ['status' => $target, 'updated_by' => $actor->getKey(), 'updated_at' => now()];
+            $values = ['status' => $target, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()];
             if ($step === 'resolve') {
                 $values += ['resolution' => $note, 'resolved_at' => now()];
             }

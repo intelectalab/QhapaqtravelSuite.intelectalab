@@ -26,14 +26,15 @@ final class PaxTemplateController
 
     public function update(Request $request, string $code, ManagePaxTemplates $templates): JsonResponse
     {
+        if ($request->has('active') && ! $request->has('name')) {
+            $request->validate(['active' => ['required', 'boolean']], ['active.*' => 'Indica si la plantilla queda activa.']);
+
+            return response()->json(['data' => ['code' => $code, 'active' => $templates->setActive($code, $request->boolean('active'), $this->user($request))]]);
+        }
+
         $templates->update($code, $this->validated($request), $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
-    }
-
-    public function toggle(Request $request, string $code, ManagePaxTemplates $templates): JsonResponse
-    {
-        return response()->json(['data' => ['code' => $code, 'active' => $templates->toggle($code, $this->user($request))]]);
     }
 
     public function destroy(string $code, ManagePaxTemplates $templates): JsonResponse

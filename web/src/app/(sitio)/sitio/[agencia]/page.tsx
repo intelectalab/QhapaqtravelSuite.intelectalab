@@ -8,23 +8,26 @@ import { NightBackdrop } from "@/features/site/Hero";
 import { Newsletter } from "@/features/site/Newsletter";
 import { ReviewsSection } from "@/features/site/Reviews";
 import { SearchBar } from "@/features/site/SearchBar";
-import { getSiteHome, getSiteProfile, siteBase } from "@/lib/server/site";
+import { getSiteHome, getSiteProfile, siteBase, siteLocale } from "@/lib/server/site";
 import { siteHref } from "@/lib/site";
+import { siteText } from "@/lib/site-i18n";
 
 export async function generateMetadata({ params }: PageProps<"/sitio/[agencia]">): Promise<Metadata> {
   const { agencia } = await params;
-  const profile = await getSiteProfile(agencia);
-  return { title: { absolute: `${profile.agency.name} · Tours, paquetes y experiencias en el Perú` } };
+  const [profile, locale] = await Promise.all([getSiteProfile(agencia), siteLocale()]);
+  return { title: { absolute: siteText(locale).home.metaTitle(profile.agency.name) } };
 }
 
 export default async function SiteHomePage({ params }: PageProps<"/sitio/[agencia]">) {
   const { agencia } = await params;
-  const [home, profile, base] = await Promise.all([getSiteHome(agencia), getSiteProfile(agencia), siteBase(agencia)]);
+  const [home, profile, base, locale] = await Promise.all([getSiteHome(agencia), getSiteProfile(agencia), siteBase(agencia), siteLocale()]);
+  const site = siteText(locale);
+  const t = site.home;
   const reasons = [
-    { icon: CalendarCheck2, title: "Precio por fecha, sin sorpresas", text: "El calendario muestra el precio de cada día según la temporada, calculado al momento." },
-    { icon: Headset, title: `Equipo local en ${profile.sedes.length === 1 ? "1 sede" : `${profile.sedes.length} sedes`}`, text: profile.sedes.map((sede) => sede.city ?? sede.name).join(", ") + ". Te acompañamos antes y durante el viaje." },
-    { icon: Landmark, title: "Agencia formal", text: [profile.agency.registry, `RUC ${profile.agency.ruc}`].filter(Boolean).join(" · ") },
-    { icon: BadgeCheck, title: "Opiniones reales", text: home.reviews.count > 0 ? `${home.reviews.average?.toFixed(1)} de 5 en ${home.reviews.count} opiniones publicadas.` : "Publicamos las opiniones de nuestros pasajeros." },
+    { icon: CalendarCheck2, title: t.priceTitle, text: t.priceText },
+    { icon: Headset, title: t.teamTitle(profile.sedes.length), text: t.teamText(profile.sedes.map((sede) => sede.city ?? sede.name).join(", ")) },
+    { icon: Landmark, title: t.formalTitle, text: [profile.agency.registry, t.ruc(profile.agency.ruc)].filter(Boolean).join(" · ") },
+    { icon: BadgeCheck, title: t.reviewsTitle, text: home.reviews.count > 0 ? t.reviewsText(home.reviews.average?.toFixed(1) ?? "", home.reviews.count) : t.reviewsEmpty },
   ];
 
   return (
@@ -35,17 +38,17 @@ export default async function SiteHomePage({ params }: PageProps<"/sitio/[agenci
           <div className="max-w-[760px] animate-[rise-in_520ms_cubic-bezier(0.22,1,0.36,1)_backwards]">
             <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-[12.5px] font-semibold text-white/85 backdrop-blur">
               <span className="weave-line h-[3px] w-5 rounded-full" />
-              {profile.agency.name} · Viajes por el Perú
+              {profile.agency.name} · {site.header.tagline}
             </span>
-            <h1 className="text-[36px] font-bold leading-[1.05] tracking-tight sm:text-[56px]">Descubre el Perú con {profile.agency.name}</h1>
-            <p className="mt-4 max-w-[58ch] text-[16px] leading-relaxed text-white/75">Elige destino, fecha y viajeros: te mostramos solo lo que está disponible, con el precio de ese día.</p>
+            <h1 className="text-[36px] font-bold leading-[1.05] tracking-tight sm:text-[56px]">{t.heroTitle(profile.agency.name)}</h1>
+            <p className="mt-4 max-w-[58ch] text-[16px] leading-relaxed text-white/75">{t.heroBody}</p>
           </div>
           <SearchBar destinations={home.search.destinations} className="mt-8 max-w-[980px] text-fg animate-[rise-in_620ms_cubic-bezier(0.22,1,0.36,1)_backwards]" />
           <ul className="mt-7 flex flex-wrap gap-2.5 text-[13px]">
             {[
-              `${home.stats.products} experiencias en línea`,
-              `${home.stats.destinations} destinos`,
-              `${home.stats.departures} salidas con cupos en los próximos 60 días`,
+              t.statProducts(home.stats.products),
+              t.statDestinations(home.stats.destinations),
+              t.statDepartures(home.stats.departures),
             ].map((item, index) => (
               <li key={item} className="rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-white/80 animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]" style={{ animationDelay: `${300 + index * 80}ms` }}>
                 {item}
@@ -58,7 +61,7 @@ export default async function SiteHomePage({ params }: PageProps<"/sitio/[agenci
       <div className="mx-auto max-w-[1240px] space-y-20 px-5 pt-16 sm:px-8">
         {home.destinations.length > 0 && (
           <section>
-            <SectionHeading eyebrow="Destinos" title="A dónde viajar este año" description="Cada destino reúne sus tours, la mejor época y las preguntas frecuentes." action={<MoreLink href={siteHref(base, "/destinos")} label="Ver todos los destinos" />} />
+            <SectionHeading eyebrow={t.destinations.eyebrow} title={t.destinations.title} description={t.destinations.description} action={<MoreLink href={siteHref(base, "/destinos")} label={t.destinations.more} />} />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {home.destinations.map((destination, index) => (
                 <DestinationTile key={destination.slug} destination={destination} base={base} index={index} large={index === 0} />
@@ -68,7 +71,7 @@ export default async function SiteHomePage({ params }: PageProps<"/sitio/[agenci
         )}
 
         <section>
-          <SectionHeading eyebrow="Recomendados" title="Tours y paquetes destacados" description="Los programas que más recomendamos, con salidas confirmadas y guías locales." action={<MoreLink href={siteHref(base, "/tours")} label="Ver todo el catálogo" />} />
+          <SectionHeading eyebrow={t.featured.eyebrow} title={t.featured.title} description={t.featured.description} action={<MoreLink href={siteHref(base, "/tours")} label={t.featured.more} />} />
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {home.featured.map((product, index) => (
               <ProductCard key={product.slug} product={product} base={base} index={index} />
@@ -78,7 +81,7 @@ export default async function SiteHomePage({ params }: PageProps<"/sitio/[agenci
 
         {home.offers.length > 0 && (
           <section>
-            <SectionHeading eyebrow="Ofertas vigentes" title="Promociones con fecha de cierre" description="Descuentos activos para compras en línea. El precio final se calcula al elegir la fecha." />
+            <SectionHeading eyebrow={t.offers.eyebrow} title={t.offers.title} description={t.offers.description} />
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               {home.offers.map((offer, index) => (
                 <div key={offer.slug} className="flex flex-col gap-2">
@@ -87,7 +90,7 @@ export default async function SiteHomePage({ params }: PageProps<"/sitio/[agenci
                       <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-fg">
                         <Tag size={14} className="text-brand" />
                         {offer.promotion.name} · {offer.promotion.percent ? `${offer.promotion.value} %` : `S/ ${offer.promotion.value}`}
-                        {offer.promotion.code ? <Chip tone="brand">Código {offer.promotion.code}</Chip> : offer.promotion.min_pax ? <Chip tone="t4">Desde {offer.promotion.min_pax} viajeros</Chip> : null}
+                        {offer.promotion.code ? <Chip tone="brand">{t.promoCode(offer.promotion.code)}</Chip> : offer.promotion.min_pax ? <Chip tone="t4">{t.minPax(offer.promotion.min_pax)}</Chip> : null}
                       </span>
                       <Countdown until={offer.promotion.ends_at} />
                     </div>
@@ -101,7 +104,7 @@ export default async function SiteHomePage({ params }: PageProps<"/sitio/[agenci
 
         {home.departures.length > 0 && (
           <section>
-            <SectionHeading eyebrow="Salidas grupales" title="Próximas salidas con cupos" description="Grupos ya formados: reserva tu lugar antes de que se completen." action={<MoreLink href={siteHref(base, "/buscar")} label="Buscar por fecha" />} />
+            <SectionHeading eyebrow={t.departures.eyebrow} title={t.departures.title} description={t.departures.description} action={<MoreLink href={siteHref(base, "/buscar")} label={t.departures.more} />} />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {home.departures.map((departure, index) => (
                 <DepartureCard key={departure.ref} departure={departure} base={base} index={index} />
@@ -123,7 +126,7 @@ export default async function SiteHomePage({ params }: PageProps<"/sitio/[agenci
         </section>
 
         <section>
-          <SectionHeading eyebrow="Opiniones" title="Lo que cuentan nuestros viajeros" description="Reseñas de pasajeros con viaje verificado y de las plataformas donde publicamos." />
+          <SectionHeading eyebrow={t.reviews.eyebrow} title={t.reviews.title} description={t.reviews.description} />
           <ReviewsSection reviews={home.reviews} base={base} />
         </section>
 

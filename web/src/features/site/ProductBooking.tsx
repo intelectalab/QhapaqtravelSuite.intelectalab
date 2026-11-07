@@ -7,7 +7,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, useTra
 import { addToCart, loadMonth, quoteProduct } from "@/app/(sitio)/sitio/[agencia]/actions";
 import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatMoney, monthName } from "@/lib/format";
-import { listingQuery, SEASON_LABEL, type CalendarDay, type CalendarMonth, type ProductDetail, type Quote } from "@/lib/site";
+import { listingQuery, type CalendarDay, type CalendarMonth, type ProductDetail, type Quote } from "@/lib/site";
 import { Stepper } from "./SearchBar";
 import { useSite } from "./SiteContext";
 
@@ -67,7 +67,7 @@ export function BookingProvider({ detail, initialDate, children }: { detail: Pro
 }
 
 export function AvailabilityCalendar() {
-  const { agencia } = useSite();
+  const { agencia, t } = useSite();
   const { slug, date, setDate, pax, months, setMonths } = useBooking();
   const [index, setIndex] = useState(0);
   const [loading, startLoading] = useTransition();
@@ -104,14 +104,14 @@ export function AvailabilityCalendar() {
     <div className="rounded-card border border-line bg-surface p-4 shadow-card sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <p className="text-[13px] text-fg-2">
-          Precio por adulto para <b className="text-fg">{seats === 1 ? "1 viajero" : `${seats} viajeros`}</b>
+          {t.booking.pricePerAdult} <b className="text-fg">{t.booking.travelers(seats)}</b>
         </p>
         <div className="flex items-center gap-1">
           {loading && <Loader2 size={16} className="animate-spin text-fg-3" />}
-          <button type="button" onClick={() => go(-1)} disabled={index === 0 || loading} aria-label="Mes anterior" className="grid h-9 w-9 place-items-center rounded-xl border border-line text-fg-2 transition hover:border-accent hover:text-accent disabled:opacity-40">
+          <button type="button" onClick={() => go(-1)} disabled={index === 0 || loading} aria-label={t.booking.prevMonth} className="grid h-9 w-9 place-items-center rounded-xl border border-line text-fg-2 transition hover:border-accent hover:text-accent disabled:opacity-40">
             <ChevronLeft size={17} />
           </button>
-          <button type="button" onClick={() => go(1)} disabled={loading || index >= 10} aria-label="Mes siguiente" className="grid h-9 w-9 place-items-center rounded-xl border border-line text-fg-2 transition hover:border-accent hover:text-accent disabled:opacity-40">
+          <button type="button" onClick={() => go(1)} disabled={loading || index >= 10} aria-label={t.booking.nextMonth} className="grid h-9 w-9 place-items-center rounded-xl border border-line text-fg-2 transition hover:border-accent hover:text-accent disabled:opacity-40">
             <ChevronRight size={17} />
           </button>
         </div>
@@ -124,16 +124,16 @@ export function AvailabilityCalendar() {
       <ul className="mt-5 flex flex-wrap gap-x-4 gap-y-2 border-t border-line pt-4 text-[11.5px] text-fg-3">
         {(["baja", "media", "alta", "especial"] as const).map((level) => (
           <li key={level} className={cn("relative inline-flex items-center pl-3.5 before:absolute before:left-0 before:top-1/2 before:h-2 before:w-2 before:-translate-y-1/2 before:rounded-full", LEVEL_RING[level])}>
-            {SEASON_LABEL[level]}
+            {t.seasons[level]}
           </li>
         ))}
         <li className="inline-flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-warn" />
-          Últimos cupos
+          {t.booking.lastSpots}
         </li>
         <li className="inline-flex items-center gap-1.5">
           <span className="h-2 w-4 rounded-full bg-surface-2" />
-          No disponible
+          {t.booking.unavailable}
         </li>
       </ul>
     </div>
@@ -142,17 +142,18 @@ export function AvailabilityCalendar() {
 
 function MonthGrid({ month, selected, onSelect }: { month: CalendarMonth; selected: string | null; onSelect: (date: string) => void }) {
   const first = new Date(`${month.month}-01T12:00:00`);
+  const { t, dateLocale } = useSite();
   const offset = (first.getDay() + 6) % 7;
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between">
         <b className="text-[14.5px] font-semibold text-fg">
-          {capitalize(monthName(month.month))} {month.month.slice(0, 4)}
+          {capitalize(monthName(month.month, dateLocale))} {month.month.slice(0, 4)}
         </b>
-        {month.min !== null && <span className="text-[11.5px] text-fg-3">desde {formatMoney(month.min, month.currency ?? "PEN")}</span>}
+        {month.min !== null && <span className="text-[11.5px] text-fg-3">{t.booking.monthFrom(formatMoney(month.min, month.currency ?? "PEN"))}</span>}
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-[10.5px] font-semibold text-fg-3">
-        {["L", "M", "M", "J", "V", "S", "D"].map((day, i) => (
+        {t.booking.weekdays.map((day, i) => (
           <span key={`${day}-${i}`} className="py-1">
             {day}
           </span>
@@ -169,7 +170,7 @@ function MonthGrid({ month, selected, onSelect }: { month: CalendarMonth; select
               type="button"
               disabled={!day.sellable}
               onClick={() => onSelect(day.date)}
-              title={day.sellable ? `${formatDate(day.date, "long")} · ${day.season?.name ?? ""}${day.spots !== null ? ` · ${day.spots} cupos` : ""}` : `${day.label}${day.note ? ` · ${day.note}` : ""}`}
+              title={day.sellable ? `${formatDate(day.date, "long", dateLocale)} · ${day.season?.name ?? ""}${day.spots !== null ? t.booking.daySpots(day.spots) : ""}` : `${day.label}${day.note ? ` · ${day.note}` : ""}`}
               className={cn(
                 "relative flex h-[50px] flex-col items-center justify-center rounded-xl border text-[12.5px] transition",
                 "before:absolute before:left-1/2 before:top-1 before:h-1 before:w-1 before:-translate-x-1/2 before:rounded-full",
@@ -189,7 +190,7 @@ function MonthGrid({ month, selected, onSelect }: { month: CalendarMonth; select
 }
 
 export function BookingPanel({ promoHint }: { promoHint?: string | null }) {
-  const { agencia, href } = useSite();
+  const { agencia, href, t, dateLocale } = useSite();
   const router = useRouter();
   const { slug, product, date, pax, setPax, days } = useBooking();
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -228,28 +229,28 @@ export function BookingPanel({ promoHint }: { promoHint?: string | null }) {
     <div id="reservar" className="rounded-card border border-line bg-surface p-5 shadow-[0_24px_50px_-30px_rgb(14_17_32/0.45)]">
       <div className="flex items-baseline justify-between gap-2">
         <span>
-          <span className="block text-[11.5px] font-medium text-fg-3">{day?.sellable ? "Precio por adulto ese día" : "Desde"}</span>
+          <span className="block text-[11.5px] font-medium text-fg-3">{day?.sellable ? t.booking.dayPrice : t.common.from}</span>
           <b className="text-[26px] font-bold tracking-tight text-fg">{day?.sellable && day.price !== null ? formatMoney(day.price, day.currency ?? "PEN") : product.from ? formatMoney(product.from.amount, product.from.currency) : "—"}</b>
         </span>
-        {day?.season && <span className="rounded-full bg-surface-2 px-2.5 py-1 text-[11.5px] font-semibold text-fg-2">{SEASON_LABEL[day.season.level]}</span>}
+        {day?.season && <span className="rounded-full bg-surface-2 px-2.5 py-1 text-[11.5px] font-semibold text-fg-2">{t.seasons[day.season.level]}</span>}
       </div>
 
       <a href="#calendario" className="mt-4 flex h-12 items-center gap-3 rounded-control border border-line px-3.5 transition hover:border-accent">
         <CalendarDays size={17} className="text-brand" />
         <span className="min-w-0 flex-1">
-          <span className="block text-[11px] font-semibold text-fg-3">Fecha</span>
-          <span className={cn("block truncate text-[14px]", date ? "font-semibold text-fg" : "text-fg-3")}>{date ? capitalize(formatDate(date, "long")) : "Elige un día en el calendario"}</span>
+          <span className="block text-[11px] font-semibold text-fg-3">{t.booking.date}</span>
+          <span className={cn("block truncate text-[14px]", date ? "font-semibold text-fg" : "text-fg-3")}>{date ? capitalize(formatDate(date, "long", dateLocale)) : t.booking.pickDay}</span>
         </span>
         {day?.time && <span className="text-[12px] text-fg-3">{day.time} h</span>}
       </a>
 
       <div className="mt-3 divide-y divide-line rounded-control border border-line">
-        <PaxRow label="Adultos" hint="12 años o más" value={pax.adults} min={1} max={Math.max(1, max - pax.children)} onChange={(adults) => setPax({ ...pax, adults, infants: Math.min(pax.infants, adults) })} />
-        {product.ages.children && <PaxRow label="Niños" hint={`${Math.max(2, product.ages.min)} a 11 años`} value={pax.children} min={0} max={Math.max(0, max - pax.adults)} onChange={(children) => setPax({ ...pax, children })} />}
-        {product.ages.infants && <PaxRow label="Infantes" hint="Menores de 2 años, sin costo" value={pax.infants} min={0} max={pax.adults} onChange={(infants) => setPax({ ...pax, infants })} />}
+        <PaxRow label={t.booking.adults} hint={t.booking.adultsHint} value={pax.adults} min={1} max={Math.max(1, max - pax.children)} onChange={(adults) => setPax({ ...pax, adults, infants: Math.min(pax.infants, adults) })} />
+        {product.ages.children && <PaxRow label={t.booking.children} hint={t.booking.childrenHint(Math.max(2, product.ages.min))} value={pax.children} min={0} max={Math.max(0, max - pax.adults)} onChange={(children) => setPax({ ...pax, children })} />}
+        {product.ages.infants && <PaxRow label={t.booking.infants} hint={t.booking.infantsHint} value={pax.infants} min={0} max={pax.adults} onChange={(infants) => setPax({ ...pax, infants })} />}
       </div>
       <p className="mt-2 text-[11.5px] text-fg-3">
-        Grupo de {product.group.min} a {product.group.max} viajeros{product.ages.min > 0 ? ` · edad mínima ${product.ages.min} años` : ""}.
+        {t.booking.group(product.group.min, product.group.max)}{product.ages.min > 0 ? t.booking.minAge(product.ages.min) : ""}.
       </p>
 
       <form
@@ -261,20 +262,20 @@ export function BookingPanel({ promoHint }: { promoHint?: string | null }) {
       >
         <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-control border border-line px-3 focus-within:border-accent">
           <TicketPercent size={15} className="text-fg-3" />
-          <span className="sr-only">Código promocional</span>
-          <input value={promo} onChange={(event) => setPromo(event.target.value)} placeholder={promoHint ? `Código, p. ej. ${promoHint}` : "Código promocional"} className="h-full min-w-0 flex-1 bg-transparent text-[13px] uppercase outline-none placeholder:normal-case placeholder:text-fg-3" />
+          <span className="sr-only">{t.booking.promo}</span>
+          <input value={promo} onChange={(event) => setPromo(event.target.value)} placeholder={promoHint ? t.booking.promoExample(promoHint) : t.booking.promo} className="h-full min-w-0 flex-1 bg-transparent text-[13px] uppercase outline-none placeholder:normal-case placeholder:text-fg-3" />
         </label>
         <button type="submit" className="h-10 rounded-control bg-surface-2 px-3 text-[12.5px] font-semibold text-fg-2 transition hover:bg-accent hover:text-white">
-          Aplicar
+          {t.common.apply}
         </button>
       </form>
 
       <div className="mt-4 min-h-[76px]">
-        {!date && <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[13px] text-fg-2">Elige una fecha disponible para ver el total. El precio lo calcula el sistema según la temporada del día.</p>}
+        {!date && <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[13px] text-fg-2">{t.booking.pickDate}</p>}
         {date && quoting && !current && (
           <p className="flex items-center gap-2 text-[13px] text-fg-3">
             <Loader2 size={15} className="animate-spin" />
-            Calculando el total…
+            {t.booking.calculating}
           </p>
         )}
         {date && error && <p className="rounded-xl bg-[color-mix(in_srgb,var(--bad)_8%,transparent)] px-3.5 py-3 text-[13px] text-bad">{error}</p>}
@@ -284,9 +285,9 @@ export function BookingPanel({ promoHint }: { promoHint?: string | null }) {
               <div key={line.key} className="flex justify-between gap-3 text-fg-2">
                 <dt>
                   {line.label}
-                  {line.unit > 0 && line.qty > 1 && <span className="text-fg-3"> × {formatMoney(line.unit, current.currency)}</span>}
+                  {Number(line.unit) > 0 && line.qty > 1 && <span className="text-fg-3"> × {formatMoney(line.unit, current.currency)}</span>}
                 </dt>
-                <dd className="tabular-nums">{line.amount > 0 ? formatMoney(line.amount, current.currency) : "Gratis"}</dd>
+                <dd className="tabular-nums">{Number(line.amount) > 0 ? formatMoney(line.amount, current.currency) : t.booking.free}</dd>
               </div>
             ))}
             {current.discount && (
@@ -299,43 +300,45 @@ export function BookingPanel({ promoHint }: { promoHint?: string | null }) {
               </div>
             )}
             <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-line pt-2.5">
-              <dt className="font-semibold text-fg">Total</dt>
+              <dt className="font-semibold text-fg">{t.common.total}</dt>
               <dd className="text-right">
                 {current.list_total !== null && <s className="mr-2 text-[12px] text-fg-3">{formatMoney(current.list_total, current.currency)}</s>}
                 <b className="text-[20px] font-bold tabular-nums text-fg">{formatMoney(current.total, current.currency)}</b>
               </dd>
             </div>
-            {appliedPromo && !current.discount && <p className="text-[12px] text-warn">El código {appliedPromo} no aplica a este producto o ya no está vigente.</p>}
+            {appliedPromo && !current.discount && <p className="text-[12px] text-warn">{t.booking.promoInvalid(appliedPromo)}</p>}
           </dl>
         )}
       </div>
 
       <button type="button" onClick={reserve} disabled={!current || Boolean(error) || adding} className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-control bg-brand text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:pointer-events-none disabled:opacity-50">
         {adding ? <Loader2 size={17} className="animate-spin" /> : <ShoppingBag size={17} />}
-        Reservar ahora
+        {t.booking.reserve}
       </button>
       <Link href={tailorHref} className="mt-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-control border border-line text-[14px] font-semibold text-fg transition hover:bg-surface-2">
         <MessageSquareText size={16} />
-        Cotizar a medida
+        {t.common.tailor}
       </Link>
-      <p className="mt-3 text-center text-[11.5px] text-fg-3">Al reservar bloqueamos tus cupos por unos minutos mientras completas tus datos.</p>
+      <p className="mt-3 text-center text-[11.5px] text-fg-3">{t.booking.holdNote}</p>
     </div>
   );
 }
 
 function PaxRow({ label, hint, value, min, max, onChange }: { label: string; hint: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
+  const { t } = useSite();
   return (
     <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
       <span>
         <b className="block text-[13.5px] font-semibold text-fg">{label}</b>
         <span className="text-[11.5px] text-fg-3">{hint}</span>
       </span>
-      <Stepper value={value} min={min} max={max} onChange={onChange} label={label.toLowerCase()} />
+      <Stepper value={value} min={min} max={max} onChange={onChange} label={label.toLowerCase()} removeLabel={t.common.remove(label.toLowerCase())} addLabel={t.common.add(label.toLowerCase())} />
     </div>
   );
 }
 
 export function MobileBookingBar() {
+  const { t, dateLocale } = useSite();
   const { product, date, days } = useBooking();
   const day = date ? days.get(date) : undefined;
   const price = day?.sellable && day.price !== null ? formatMoney(day.price, day.currency ?? "PEN") : product.from ? formatMoney(product.from.amount, product.from.currency) : null;
@@ -343,11 +346,11 @@ export function MobileBookingBar() {
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 px-4 py-3 backdrop-blur lg:hidden">
       <div className="mx-auto flex max-w-[640px] items-center justify-between gap-3">
         <span className="leading-tight">
-          <span className="block text-[11px] text-fg-3">{day?.sellable ? formatDate(day.date) : "Desde"}</span>
+          <span className="block text-[11px] text-fg-3">{day?.sellable ? formatDate(day.date, "short", dateLocale) : t.common.from}</span>
           <b className="text-[17px] font-bold text-fg">{price ?? "—"}</b>
         </span>
         <a href="#reservar" className="inline-flex h-11 items-center rounded-control bg-brand px-5 text-[14px] font-semibold text-brand-fg">
-          {date ? "Ver total" : "Elegir fecha"}
+          {date ? t.booking.viewTotal : t.booking.chooseDate}
         </a>
       </div>
     </div>

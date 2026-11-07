@@ -86,6 +86,7 @@ final class ClaimBookDirectory
         return [
             'code' => $row->code,
             'book_number' => $row->book_number,
+            'lock_version' => (int) $row->lock_version,
             'type_code' => $row->type_code,
             'type' => self::TYPES[$row->type_code] ?? ucfirst((string) $row->type_code),
             'priority' => $row->priority,

@@ -27,11 +27,11 @@ final class UpdateSettings
         private readonly AuditLogger $audit,
     ) {}
 
-    public function section(string $section, array $data, User $actor): array
+    public function section(string $section, array $data, User $actor, ?int $expected = null): array
     {
-        return DB::transaction(function () use ($section, $data, $actor): array {
+        return DB::transaction(function () use ($section, $data, $actor, $expected): array {
             if ($section === 'agency') {
-                return $this->agency($data);
+                return $this->agency($data, $expected);
             }
 
             $before = $this->settings->section($section);
@@ -137,9 +137,10 @@ final class UpdateSettings
         return true;
     }
 
-    private function agency(array $data): array
+    private function agency(array $data, ?int $expected): array
     {
         $tenant = $this->context->tenant();
+        $tenant->assertLockVersion($expected);
         $after = collect(self::AGENCY_FIELDS)->filter(fn (string $field): bool => array_key_exists($field, $data))->mapWithKeys(fn (string $field): array => [$field => $field === 'logo_initials' ? mb_strtoupper(trim((string) $data[$field])) : $data[$field]])->all();
         $before = collect(self::AGENCY_FIELDS)->mapWithKeys(fn (string $field): array => [$field => $tenant->getAttribute($field)])->all();
         $changed = TenantSettings::changes($before, $after);
@@ -148,7 +149,7 @@ final class UpdateSettings
             throw ApiException::unprocessable('CFG-BR-01', 'No hay cambios que guardar.');
         }
 
-        DB::table('tenants')->where('id', $tenant->getKey())->update([...array_map(fn (array $pair): mixed => $pair[1], $changed), 'updated_at' => now()]);
+        DB::table('tenants')->where('id', $tenant->getKey())->update([...array_map(fn (array $pair): mixed => $pair[1], $changed), 'lock_version' => DB::raw('lock_version + 1'), 'updated_at' => now()]);
         $tenant->refresh();
 
         foreach ($changed as $key => [$old, $new]) {

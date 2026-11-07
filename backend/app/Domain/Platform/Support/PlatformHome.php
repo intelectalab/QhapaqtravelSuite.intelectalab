@@ -50,7 +50,7 @@ final class PlatformHome
         ];
     }
 
-    private function alerts(): Collection
+    public function alerts(): Collection
     {
         $today = Carbon::today('America/Lima');
         $alerts = collect();

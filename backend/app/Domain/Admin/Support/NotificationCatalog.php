@@ -28,6 +28,13 @@ final class NotificationCatalog
         'usuario.invitado' => 'Usuario invitado',
         'seguridad.mfa_reset' => 'Verificación en dos pasos reiniciada',
         'exportacion.lista' => 'Exportación lista',
+        'reporte.programado' => 'Reporte programado enviado',
+        'actividad.vencida' => 'Actividades vencidas',
+        'documentos.recordatorio' => 'Recordatorio de documentos de viaje',
+        'proveedor.contrato_vencido' => 'Contrato de proveedor vencido',
+        'reclamacion.por_vencer' => 'Reclamo por vencer',
+        'reclamacion.vencida' => 'Reclamo fuera de plazo',
+        'incidencia.sla_vencido' => 'SLA de incidencia vencido',
     ];
 
     public const CHANNELS = ['email' => 'Correo', 'whatsapp' => 'WhatsApp', 'push' => 'Push', 'portal' => 'Portal'];
@@ -64,6 +71,9 @@ final class NotificationCatalog
         'voucher.emitido' => 'Ya está disponible el voucher de {{servicio}} para la reserva {{reserva}}: {{enlace}}',
         'servicio.inicio' => '{{servicio}} comienza el {{fecha_viaje}} a las {{hora}}. Te esperamos.',
         'viaje.cierre' => 'Gracias por viajar con {{agencia}}. Cuéntanos cómo te fue: {{enlace}}',
+        'pago.recordatorio' => 'Te recordamos el pago pendiente de {{monto}} de tu reserva {{reserva}}. Tu viaje empieza el {{fecha_viaje}}.',
+        'documentos.recordatorio' => 'Para tu viaje del {{fecha_viaje}} (reserva {{reserva}}) aún faltan documentos de los pasajeros. Complétalos aquí: {{enlace}}',
+        'viaje.proximo' => 'Tu viaje de la reserva {{reserva}} comienza el {{fecha_viaje}}. Revisa tus documentos y el punto de encuentro.',
     ];
 
     public static function exists(string $code): bool

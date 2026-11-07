@@ -871,6 +871,16 @@ Desviaciones temporales de la implementación respecto al kit, detectadas en la 
 - Copias de hallazgos a corregir: H-01 (extranjero = exportación), H-11 (margen sobre total con IGV en rentabilidad).
 - Montos manejados con float en varios cálculos: migración a decimales exactos en la fase B.
 
+### v3.0 — Fase C, facturación electrónica (06/11/2026)
+- Emisión: `IssueInvoice` valida con `InvoiceRules` (FIN-BR-39, 40, 42, 43, 46 y 48), numera con `fin_document_series` bloqueada, guarda en `pendiente_envio` y escribe `InvoiceRequested` en `sys_outbox`; `SendInvoiceToFiscalProvider` (cola `integrations`, `ShouldBeUnique` por comprobante, 5 intentos con backoff) llama a `FiscalGateway::issue` y registra cada intento en `fin_fiscal_events` (FIN-BR-49).
+- La NC se emite por `POST /finance/invoices` con `doc_type = 07` y anula el comprobante original cuando el OSE la acepta, no al emitirla.
+- `status-check` consulta `FiscalGateway::status`; `deliver` solo sobre aceptados (FIN-BR-47); `resend` solo sobre observados, con `If-Match` (P-03 por validar).
+- El adaptador es `FakeFiscalGateway` mientras no se elija el OSE/PSE. Pendientes: UBL 2.1, PDF, XML, CDR, baja, `PollFiscalStatus` y webhook.
+
+### v3.0 — Rutas propias de la API (06/11/2026)
+
+Este módulo expone 7 rutas que no están en el contrato: 5 editar, borrar o cambiar estado, 2 acción propia. El detalle, con el equivalente en el contrato o el motivo de cada una, está en `docs/RUTAS-PROPIAS.md` (sección «Finanzas»).
+
 ## 12. Supuestos y puntos a validar con negocio
 
 | ID | Punto | Impacto | Propuesta |

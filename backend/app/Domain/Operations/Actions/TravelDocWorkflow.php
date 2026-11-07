@@ -15,9 +15,9 @@ final class TravelDocWorkflow
 {
     public function __construct(private readonly AuditLogger $audit) {}
 
-    public function validate(string $id, array $data, User $actor): void
+    public function validate(string $reservation, string $passenger, string $type, array $data, User $actor): string
     {
-        $item = $this->item($id);
+        $item = $this->item($reservation, $passenger, $type);
 
         if ($item->doc_type === 'id_doc' && blank($data['doc_number'] ?? $item->doc_number)) {
             throw ApiException::unprocessable('DOC-BR-001', 'Registra el número del documento antes de validarlo.');
@@ -38,22 +38,27 @@ final class TravelDocWorkflow
             'updated_at' => now(),
         ]);
         $this->audit->log('Documento de viaje', "{$item->reservation_code} · {$item->full_name}", 'validar', $item->status, TravelDocDirectory::LABELS[$item->doc_type] ?? $item->doc_type);
+
+        return (string) $item->id;
     }
 
-    public function observe(string $id, string $reason, User $actor): void
+    public function observe(string $reservation, string $passenger, string $type, string $reason, User $actor): string
     {
-        $item = $this->item($id);
+        $item = $this->item($reservation, $passenger, $type);
         DB::table('ops_travel_doc_items')->where('id', $item->id)->update(['status' => 'observado', 'observation' => $reason, 'validated_by' => null, 'validated_at' => null, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         $this->audit->log('Documento de viaje', "{$item->reservation_code} · {$item->full_name}", 'observar', $item->status, $reason);
+
+        return (string) $item->id;
     }
 
-    private function item(string $id): object
+    private function item(string $reservation, string $passenger, string $type): object
     {
-        if (! Str::isUuid($id)) {
+        if (! Str::isUuid($passenger)) {
             throw ApiException::notFound('El documento no existe.');
         }
 
         return DB::table('ops_travel_doc_items as i')->join('booking_reservations as r', 'r.id', '=', 'i.reservation_id')->join('booking_passengers as p', 'p.id', '=', 'i.passenger_id')
-            ->where('i.id', $id)->first(['i.*', 'r.code as reservation_code', 'r.travel_to', 'p.full_name']) ?? throw ApiException::notFound('El documento no existe.');
+            ->where('r.code', $reservation)->where('i.passenger_id', $passenger)->where('i.doc_type', $type)
+            ->first(['i.*', 'r.code as reservation_code', 'r.travel_to', 'p.full_name']) ?? throw ApiException::notFound('El documento no existe.');
     }
 }

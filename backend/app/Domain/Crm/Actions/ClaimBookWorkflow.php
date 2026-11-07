@@ -93,6 +93,7 @@ final class ClaimBookWorkflow
             'detail' => $data['detail'],
             'description' => $data['detail'],
             'request' => $data['request'],
+            'lock_version' => DB::raw('lock_version + 1'),
             'updated_by' => $actor->getKey(),
             'updated_at' => now(),
         ]);
@@ -109,7 +110,7 @@ final class ClaimBookWorkflow
         }
 
         DB::transaction(function () use ($claim, $actor): void {
-            DB::table('crm_cases')->where('id', $claim->id)->update(['book_status' => 'in_review', 'status' => 'en_proceso', 'owner_id' => $actor->getKey(), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            DB::table('crm_cases')->where('id', $claim->id)->update(['book_status' => 'in_review', 'status' => 'en_proceso', 'owner_id' => $actor->getKey(), 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             $this->log($claim->id, 'estado', $claim->status, 'en_proceso', 'En evaluación', $actor);
             $this->audit->log('Libro de reclamaciones', $claim->book_number, 'evaluar', 'received', 'in_review');
         });
@@ -142,6 +143,7 @@ final class ClaimBookWorkflow
                     'sent_at' => $now->toIso8601String(),
                     'sent_to' => $consumer['email'] ?? null,
                 ], JSON_UNESCAPED_UNICODE),
+                'lock_version' => DB::raw('lock_version + 1'),
                 'updated_by' => $actor->getKey(),
                 'updated_at' => now(),
             ]);
@@ -159,7 +161,7 @@ final class ClaimBookWorkflow
         }
 
         DB::transaction(function () use ($claim, $note, $actor): void {
-            DB::table('crm_cases')->where('id', $claim->id)->update(['book_status' => 'closed', 'status' => 'cerrada', 'close_note' => $note, 'closed_at' => now(), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            DB::table('crm_cases')->where('id', $claim->id)->update(['book_status' => 'closed', 'status' => 'cerrada', 'close_note' => $note, 'closed_at' => now(), 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             $this->log($claim->id, 'estado', $claim->status, 'cerrada', "Hoja cerrada · {$note}", $actor);
             $this->audit->log('Libro de reclamaciones', $claim->book_number, 'cerrar', 'answered', 'closed');
         });

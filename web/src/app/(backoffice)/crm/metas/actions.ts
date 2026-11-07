@@ -23,5 +23,5 @@ export async function targetStep(_state: StepResult, form: FormData): Promise<St
   const code = encodeURIComponent(text(form, "code"));
   const step = text(form, "step");
   if (!["activate", "void", "close"].includes(step)) return { message: "Acción no disponible.", done: false };
-  return refresh(await sendStep(`/crm/sales-targets/${code}/${step}`, "POST", formValues(form, ["reason"]), "No pudimos actualizar la meta."));
+  return refresh(await sendStep(`/crm/sales-targets/${code}/${step}`, "POST", formValues(form, ["reason", "lock_version"]), "No pudimos actualizar la meta."));
 }

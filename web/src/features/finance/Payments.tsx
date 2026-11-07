@@ -55,6 +55,7 @@ export function ConfirmPaymentAction({ row }: { row: PaymentRow }) {
 function ReasonStep({ row, step, label, title, description, submitLabel, icon, tone }: { row: PaymentRow; step: string; label: string; title: string; description: string; submitLabel: string; icon: ReactNode; tone: "delete" | "neutral" }) {
   return (
     <FinanceStep step={step} itemKey={row.code} label={label} title={title} description={description} submitLabel={submitLabel} trigger={(open) => <RowIcon tone={tone} label={label} icon={icon} onClick={open} />}>
+      <input type="hidden" name="lock_version" value={row.lock_version} />
       <SummaryBox rows={paymentSummary(row)} />
       <TextArea label="Motivo" name="reason" rows={4} required minLength={5} maxLength={500} />
     </FinanceStep>

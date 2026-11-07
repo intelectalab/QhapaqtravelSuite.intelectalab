@@ -32,13 +32,10 @@ final class CmsController
         return response()->json(['data' => ['code' => $code]]);
     }
 
-    public function transition(Request $request, string $code, ManageCmsContent $manage): JsonResponse
+    public function transition(Request $request, string $code, string $action, ManageCmsContent $manage): JsonResponse
     {
-        $data = $request->validate([
-            'to' => ['required', Rule::in(CmsDirectory::STATUSES)],
-            'reason' => ['nullable', 'string', 'max:300'],
-        ], ['to.*' => 'Elige el nuevo estado.', 'reason.*' => 'El motivo admite hasta 300 caracteres.']);
-        $manage->transition($code, $data['to'], $data['reason'] ?? null, $this->user($request));
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:300']], ['reason.*' => 'El motivo admite hasta 300 caracteres.']);
+        $manage->transition($code, CmsDirectory::ACTIONS[$action], $data['reason'] ?? null, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
     }

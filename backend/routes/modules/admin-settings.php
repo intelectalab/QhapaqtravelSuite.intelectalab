@@ -13,19 +13,18 @@ Route::middleware('permission:admin.settings.manage')->prefix('admin')->name('ad
     Route::put('branding', [SettingsController::class, 'saveBranding'])->name('branding.save');
     Route::post('branding/reset', [SettingsController::class, 'resetBranding'])->name('branding.reset');
 
-    Route::get('rules', [RuleController::class, 'index'])->name('rules.index');
-    Route::post('rules', [RuleController::class, 'store'])->name('rules.store');
-    Route::patch('rules/{code}', [RuleController::class, 'update'])->name('rules.update');
-    Route::delete('rules/{code}', [RuleController::class, 'destroy'])->name('rules.destroy');
-    Route::post('rules/{code}/toggle', [RuleController::class, 'toggle'])->name('rules.toggle');
-    Route::patch('rules/{code}/params', [RuleController::class, 'params'])->name('rules.params');
-    Route::post('rules/{code}/reset', [RuleController::class, 'reset'])->name('rules.reset');
+    Route::get('booking-rules', [RuleController::class, 'index'])->name('rules.index');
+    Route::post('booking-rules', [RuleController::class, 'store'])->name('rules.store');
+    Route::post('booking-rules/reset', [RuleController::class, 'reset'])->name('rules.reset');
+    Route::patch('booking-rules/{code}', [RuleController::class, 'update'])->name('rules.update');
+    Route::delete('booking-rules/{code}', [RuleController::class, 'destroy'])->name('rules.destroy');
+});
 
-    Route::get('pax-templates', [PaxTemplateController::class, 'index'])->name('pax-templates.index');
-    Route::post('pax-templates', [PaxTemplateController::class, 'store'])->name('pax-templates.store');
-    Route::patch('pax-templates/{code}', [PaxTemplateController::class, 'update'])->name('pax-templates.update');
-    Route::post('pax-templates/{code}/toggle', [PaxTemplateController::class, 'toggle'])->name('pax-templates.toggle');
-    Route::delete('pax-templates/{code}', [PaxTemplateController::class, 'destroy'])->name('pax-templates.destroy');
+Route::middleware('permission:admin.settings.manage')->name('admin.')->group(function (): void {
+    Route::get('notifications/pax-templates', [PaxTemplateController::class, 'index'])->name('pax-templates.index');
+    Route::post('notifications/pax-templates', [PaxTemplateController::class, 'store'])->name('pax-templates.store');
+    Route::patch('notifications/pax-templates/{code}', [PaxTemplateController::class, 'update'])->name('pax-templates.update');
+    Route::delete('notifications/pax-templates/{code}', [PaxTemplateController::class, 'destroy'])->name('pax-templates.destroy');
 });
 
 Route::get('settings/fx-rates', [SettingsController::class, 'fxRates'])->middleware('permission:admin.settings.manage|finance.treasury')->name('settings.fx-rates.index');

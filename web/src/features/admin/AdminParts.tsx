@@ -18,10 +18,10 @@ export function KpiGrid({ children, columns = 4 }: { children: ReactNode; column
   return <section className={cn("mb-5 grid grid-cols-2 gap-3", columns === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3")}>{children}</section>;
 }
 
-export function AuditTrail({ entries, title = "Últimos cambios", empty = "Aún no hay cambios registrados." }: { entries: AuditEntry[]; title?: string; empty?: string }) {
+export function AuditTrail({ entries, title = "Últimos cambios", empty = "Aún no hay cambios registrados.", href = "/admin/auditoria" }: { entries: AuditEntry[]; title?: string; empty?: string; href?: string }) {
   return (
     <Card>
-      <TintCardTitle icon={History} title={title} aside={entries.length > 0 ? <Link href="/admin/auditoria" className="text-accent hover:underline">Ver auditoría</Link> : undefined} />
+      <TintCardTitle icon={History} title={title} aside={entries.length > 0 ? <Link href={href} className="text-accent hover:underline">Ver auditoría</Link> : undefined} />
       {entries.length === 0 ? (
         <p className="text-[13px] text-fg-3">{empty}</p>
       ) : (

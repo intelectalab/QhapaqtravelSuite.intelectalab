@@ -53,6 +53,7 @@ final class B2bDirectory
                 'status' => $row->status,
                 'effective_status' => $row->status === 'activa' && $row->valid_to < $today ? 'vencida' : $row->status,
                 'block_reason' => $row->block_reason,
+                'lock_version' => (int) $row->lock_version,
                 'sales' => $total,
                 'commission' => round($total * (float) $row->commission_pct / 100, 2),
                 'reservations' => $own->map(fn (object $sale): array => ['code' => $sale->code, 'title' => $sale->title, 'status' => $sale->status, 'travel_from' => $sale->travel_from, 'total' => ChannelKit::money($sale->total_amount), 'currency' => $sale->currency])->all(),

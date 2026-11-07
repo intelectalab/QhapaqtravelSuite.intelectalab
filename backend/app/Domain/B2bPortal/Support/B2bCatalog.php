@@ -6,7 +6,10 @@ namespace App\Domain\B2bPortal\Support;
 
 use App\Domain\Finance\Support\Consolidation;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
 use App\Domain\Site\Support\SiteAvailability;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -79,7 +82,7 @@ final class B2bCatalog
         }
 
         $pvp = $next ? $this->pvp($next, (string) $row->currency) : null;
-        $net = $row->net !== null ? round((float) $row->net, 2) : null;
+        $net = $row->net !== null ? Decimal::round2((string) $row->net) : null;
 
         return [
             'code' => $row->code,
@@ -96,10 +99,10 @@ final class B2bCatalog
             'bookable' => $row->reason === null,
             'reason' => $row->reason,
             'currency' => $row->currency,
-            'net' => $net,
-            'pvp' => $pvp['adult'] ?? null,
+            'net' => $net === null ? null : (string) $net,
+            'pvp' => isset($pvp['adult']) ? (string) $pvp['adult'] : null,
             'commission_pct' => $row->commission_pct !== null ? (float) $row->commission_pct : null,
-            'commission' => $net !== null ? round($net * (float) $row->commission_pct / 100, 2) : null,
+            'commission' => $net !== null ? (string) self::percent($net, (string) ($row->commission_pct ?? '0')) : null,
             'credit' => (bool) $row->is_credit && $account->creditBlock() === null,
             'rate_valid_to' => $row->rate_valid_to,
             'next_date' => $next['date'] ?? null,
@@ -128,7 +131,7 @@ final class B2bCatalog
                 'label' => SiteAvailability::LABELS[$day['status']] ?? $day['status'],
                 'spots' => $day['spots'],
                 'note' => $day['note'],
-                'pvp' => $pvp['adult'] ?? null,
+                'pvp' => isset($pvp['adult']) ? (string) $pvp['adult'] : null,
                 'sellable' => $this->availability->sellable($day),
             ];
         }
@@ -176,17 +179,18 @@ final class B2bCatalog
         }
 
         $currency = (string) ($row->currency ?? 'USD');
-        $net = round((float) $row->net, 2);
-        $netTotal = round($net * $seats, 2);
+        $net = Decimal::round2((string) ($row->net ?? '0'));
+        $netTotal = $net->multipliedBy($seats);
         $pct = (float) $row->commission_pct;
         $pvp = $this->pvp($day, $currency);
-        $pvpTotal = $pvp && $row->net !== null ? round($pvp['adult'] * $adults + $pvp['child'] * $children, 2) : null;
+        $pvpTotal = $pvp && $row->net !== null ? $pvp['adult']->multipliedBy($adults)->plus($pvp['child']->multipliedBy($children)) : null;
         $creditCurrency = (string) $account->agency->credit_currency;
         $inCredit = $this->convert($netTotal, $currency, $creditCurrency);
+        $available = BigDecimal::max(BigDecimal::zero(), BigDecimal::of((string) $account->agency->credit_limit)->minus((string) $account->agency->credit_used))->toScale(2);
         $creditReason = match (true) {
             ! (bool) $row->is_credit => 'Este producto se vende solo con prepago.',
             $account->creditBlock() !== null => $account->creditBlock(),
-            $inCredit - $account->available() > 0.004 => 'Crédito insuficiente: la reserva suma '.number_format($inCredit, 2).' '.$creditCurrency.' y tu disponible es '.number_format($account->available(), 2).' '.$creditCurrency.'. Cambia a prepago.',
+            $inCredit->isGreaterThan($available) => 'Crédito insuficiente: la reserva suma '.number_format($inCredit->toFloat(), 2).' '.$creditCurrency.' y tu disponible es '.number_format($available->toFloat(), 2).' '.$creditCurrency.'. Cambia a prepago.',
             default => null,
         };
         $departure = $day['departure'] ?? null;
@@ -200,18 +204,18 @@ final class B2bCatalog
             'children' => $children,
             'seats' => $seats,
             'currency' => $currency,
-            'net_unit' => $net,
-            'net_total' => $netTotal,
+            'net_unit' => (string) $net,
+            'net_total' => (string) $netTotal,
             'commission_pct' => $pct,
-            'commission' => round($netTotal * $pct / 100, 2),
-            'pvp_total' => $pvpTotal,
-            'margin' => $pvpTotal !== null ? round($pvpTotal - $netTotal, 2) : null,
+            'commission' => (string) self::percent($netTotal, (string) ($row->commission_pct ?? '0')),
+            'pvp_total' => $pvpTotal === null ? null : (string) $pvpTotal,
+            'margin' => $pvpTotal !== null ? (string) $pvpTotal->minus($netTotal) : null,
             'fx' => $this->money->usdRate(),
             'credit' => [
                 'currency' => $creditCurrency,
-                'amount' => $inCredit,
-                'available' => $account->available(),
-                'after' => round($account->available() - $inCredit, 2),
+                'amount' => (string) $inCredit,
+                'available' => (string) $available,
+                'after' => (string) $available->minus($inCredit),
                 'allowed' => $creditReason === null,
                 'reason' => $creditReason,
             ],
@@ -230,15 +234,14 @@ final class B2bCatalog
         ];
     }
 
-    public function convert(float $amount, string $from, string $to): float
+    public function convert(BigDecimal|string $amount, string $from, string $to): BigDecimal
     {
-        if ($from === $to) {
-            return round($amount, 2);
-        }
+        return Decimal::round2(Decimal::convert($amount, $from, $to, number_format($this->money->usdRate(), 6, '.', '')));
+    }
 
-        $fx = $this->money->usdRate();
-
-        return round($from === 'USD' ? $amount * $fx : $amount / $fx, 2);
+    private static function percent(BigDecimal $amount, string $pct): BigDecimal
+    {
+        return Decimal::round2($amount->multipliedBy($pct)->dividedBy(100, 6, RoundingMode::HALF_UP));
     }
 
     private function day(stdClass $row, string $date, int $seats, Carbon $today): array
@@ -268,9 +271,9 @@ final class B2bCatalog
             return null;
         }
 
-        $adult = $this->convert((float) ($price['list'] ?? $price['adult']), (string) $price['currency'], $currency);
+        $adult = $this->convert(number_format((float) ($price['list'] ?? $price['adult']), 2, '.', ''), (string) $price['currency'], $currency);
 
-        return ['adult' => $adult, 'child' => $this->convert((float) $price['child'], (string) $price['currency'], $currency)];
+        return ['adult' => $adult, 'child' => $this->convert(number_format((float) $price['child'], 2, '.', ''), (string) $price['currency'], $currency)];
     }
 
     private function reason(stdClass $row, B2bAccount $account): ?string

@@ -106,6 +106,14 @@ it('me/notifications trae las del usuario con unread_count y read-all las marca'
     expect($this->getJson('/api/v1/me/notifications')->json('meta.unread_count'))->toBe(0);
 });
 
+it('GET me informa si el rol exige la verificación en dos pasos (mfa_required)', function () {
+    actingAsSeed('U01');
+    expect($this->getJson('/api/v1/me')->assertOk()->json('data.mfa_required'))->toBeTrue();
+
+    actingAsSeed('U03');
+    expect($this->getJson('/api/v1/me')->assertOk()->json('data.mfa_required'))->toBeFalse();
+});
+
 it('DELETE me/mfa: el rol que exige MFA no la desactiva; un rol opcional sí', function () {
     actingAsSeed('U01');
     expect($this->deleteJson('/api/v1/me/mfa'))->toBeApiError(422, 'SEC-BR-08');

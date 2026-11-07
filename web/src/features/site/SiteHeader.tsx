@@ -2,9 +2,11 @@
 
 import { Menu, MessageSquareText, Moon, ShoppingBag, Sun, X } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { setSiteLocale } from "@/app/(sitio)/sitio/[agencia]/actions";
 import { cn } from "@/lib/cn";
+import { LOCALE_NAME, SITE_LOCALES } from "@/lib/site-i18n";
 import { applyTheme, parseTheme, THEME_STORAGE_KEY, type Theme } from "@/lib/theme";
 import { useStoredValue } from "@/lib/useStoredValue";
 import { useSite } from "./SiteContext";
@@ -12,33 +14,64 @@ import { useSite } from "./SiteContext";
 const keepTheme = (theme: Theme) => theme;
 
 const LINKS = [
-  { path: "/destinos", label: "Destinos" },
-  { path: "/tours?tipo=tours", label: "Tours" },
-  { path: "/tours?tipo=paquetes", label: "Paquetes" },
-  { path: "/tours?tipo=experiencias", label: "Experiencias" },
-  { path: "/viajes-a-medida", label: "Viajes a medida" },
-  { path: "/contacto", label: "Contacto" },
-];
+  { path: "/destinos", key: "destinations" },
+  { path: "/tours?tipo=tours", key: "tours" },
+  { path: "/tours?tipo=paquetes", key: "packages" },
+  { path: "/tours?tipo=experiencias", key: "experiences" },
+  { path: "/viajes-a-medida", key: "tailored" },
+  { path: "/contacto", key: "contact" },
+] as const;
+
+function LocaleSwitch() {
+  const { locale, t } = useSite();
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  return (
+    <div role="group" aria-label={t.header.language} className={cn("flex h-10 items-center rounded-xl border border-line p-0.5 transition-opacity", pending && "opacity-60")}>
+      {SITE_LOCALES.map((option) => (
+        <button
+          key={option}
+          type="button"
+          lang={option}
+          aria-pressed={locale === option}
+          title={LOCALE_NAME[option]}
+          data-testid={`site-locale:${option}`}
+          onClick={() => {
+            if (option === locale) return;
+            start(async () => {
+              await setSiteLocale(option);
+              router.refresh();
+            });
+          }}
+          className={cn("h-full rounded-[9px] px-2.5 text-[12px] font-bold uppercase tracking-wide transition", locale === option ? "bg-brand text-brand-fg" : "text-fg-3 hover:text-fg")}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function AgencyMark({ name, initials, logo, inverted = false }: { name: string; initials: string; logo: string | null; inverted?: boolean }) {
-  const { href } = useSite();
+  const { href, t } = useSite();
   return (
-    <Link href={href()} className="group flex min-w-0 items-center gap-2.5" aria-label={`${name}, inicio`}>
+    <Link href={href()} className="group flex min-w-0 items-center gap-2.5" aria-label={t.header.home(name)}>
       <span className="relative grid h-10 w-10 flex-none place-items-center overflow-hidden rounded-xl bg-brand text-[13px] font-bold tracking-wide text-brand-fg shadow-[0_8px_18px_-10px_var(--brand)] transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105">
         {logo ? <span aria-hidden className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${logo})` }} /> : initials}
         <span aria-hidden className="weave-band absolute inset-x-0 bottom-0 h-[3px] opacity-80" />
       </span>
       <span className="min-w-0 leading-tight">
         <b className={cn("block truncate text-[16px] font-bold tracking-tight", inverted ? "text-white" : "text-fg")}>{name}</b>
-        <span className={cn("text-[10.5px] font-medium tracking-[0.14em]", inverted ? "text-white/60" : "text-fg-3")}>Viajes por el Perú</span>
+        <span className={cn("text-[10.5px] font-medium tracking-[0.14em]", inverted ? "text-white/60" : "text-fg-3")}>{t.header.tagline}</span>
       </span>
     </Link>
   );
 }
 
 function ThemeSwitch() {
+  const { t } = useSite();
   const [theme, storeTheme] = useStoredValue(THEME_STORAGE_KEY, parseTheme, keepTheme);
-  const label = theme === "dark" ? "Usar tema claro" : "Usar tema oscuro";
+  const label = theme === "dark" ? t.header.lightTheme : t.header.darkTheme;
   return (
     <button
       type="button"
@@ -57,7 +90,7 @@ function ThemeSwitch() {
 }
 
 export function SiteHeader({ name, initials, logo }: { name: string; initials: string; logo: string | null }) {
-  const { href } = useSite();
+  const { href, t } = useSite();
   const pathname = usePathname();
   const search = useSearchParams();
   const [open, setOpen] = useState(false);
@@ -82,45 +115,46 @@ export function SiteHeader({ name, initials, logo }: { name: string; initials: s
     <header className={cn("sticky top-0 z-40 transition-[background-color,box-shadow,border-color] duration-300", scrolled || open ? "border-b border-line bg-surface/90 shadow-[0_10px_30px_-24px_rgb(14_17_32/0.5)] backdrop-blur-md" : "border-b border-transparent bg-bg/60 backdrop-blur-sm")}>
       <div className="mx-auto flex h-[68px] max-w-[1240px] items-center gap-3 px-4 sm:px-8">
         <AgencyMark name={name} initials={initials} logo={logo} />
-        <nav aria-label="Secciones del sitio" className="ml-4 hidden items-center gap-0.5 xl:flex">
+        <nav aria-label={t.header.sections} className="ml-4 hidden items-center gap-0.5 xl:flex">
           {LINKS.map((link) => {
             const active = isActive(link.path);
             return (
               <Link key={link.path} href={href(link.path)} className={cn("group relative rounded-lg px-3 py-2 text-[13.5px] font-semibold transition-colors", active ? "text-fg" : "text-fg-2 hover:text-fg")}>
-                {link.label}
+                {t.header.links[link.key]}
                 <span aria-hidden className={cn("weave-line absolute inset-x-3 -bottom-0.5 h-[3px] origin-left rounded-full transition-transform duration-300", active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100")} />
               </Link>
             );
           })}
         </nav>
         <div className="ml-auto flex items-center gap-1.5">
+          <LocaleSwitch />
           <ThemeSwitch />
-          <Link href={href("/carrito")} aria-label="Ver carrito" title="Carrito" className="grid h-10 w-10 flex-none place-items-center rounded-xl text-fg-2 transition hover:-translate-y-0.5 hover:bg-surface-2 hover:text-fg">
+          <Link href={href("/carrito")} aria-label={t.header.cart} title={t.header.cartTitle} className="grid h-10 w-10 flex-none place-items-center rounded-xl text-fg-2 transition hover:-translate-y-0.5 hover:bg-surface-2 hover:text-fg">
             <ShoppingBag size={18} />
           </Link>
           <Link href={href("/viajes-a-medida")} className="hidden h-10 items-center gap-2 rounded-control bg-brand px-4 text-[13.5px] font-semibold text-brand-fg shadow-[0_6px_16px_-8px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 sm:inline-flex">
             <MessageSquareText size={16} />
-            Cotizar viaje
+            {t.header.quote}
           </Link>
-          <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={open ? "Cerrar menú" : "Abrir menú"} className="grid h-10 w-10 place-items-center rounded-xl text-fg-2 transition hover:bg-surface-2 hover:text-fg xl:hidden">
+          <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={open ? t.header.closeMenu : t.header.openMenu} className="grid h-10 w-10 place-items-center rounded-xl text-fg-2 transition hover:bg-surface-2 hover:text-fg xl:hidden">
             {open ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
       </div>
       {open && (
-        <nav aria-label="Menú móvil" className="border-t border-line bg-surface px-4 pb-5 pt-3 xl:hidden">
+        <nav aria-label={t.header.mobileMenu} className="border-t border-line bg-surface px-4 pb-5 pt-3 xl:hidden">
           <ul className="grid gap-1">
             {LINKS.map((link, index) => (
               <li key={link.path} className="animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]" style={{ animationDelay: `${index * 40}ms` }}>
                 <Link href={href(link.path)} onClick={() => setOpen(false)} className={cn("flex h-11 items-center rounded-xl px-3 text-[15px] font-semibold transition", isActive(link.path) ? "bg-surface-2 text-fg" : "text-fg-2 hover:bg-surface-2 hover:text-fg")}>
-                  {link.label}
+                  {t.header.links[link.key]}
                 </Link>
               </li>
             ))}
           </ul>
           <Link href={href("/viajes-a-medida")} onClick={() => setOpen(false)} className="mt-3 flex h-11 items-center justify-center gap-2 rounded-control bg-brand text-[14px] font-semibold text-brand-fg">
             <MessageSquareText size={16} />
-            Cotizar viaje
+            {t.header.quote}
           </Link>
         </nav>
       )}

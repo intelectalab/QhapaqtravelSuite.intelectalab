@@ -15,13 +15,13 @@ import { ConfirmNote, OpsStep } from "./OpsStep";
 
 const href = (code: string) => `/operaciones/documentos-viaje/${code}`;
 
-export function DocumentActions({ document, passenger }: { document: TravelDocument; passenger: string }) {
+export function DocumentActions({ document, passenger, target }: { document: TravelDocument; passenger: string; target: string }) {
   return (
     <RowActions>
       {document.status === "completo" ? (
         <RowIcon tone="edit" label="Validar" icon={<BadgeCheck size={15} />} disabledHint="Ya está validado" />
       ) : (
-        <OpsStep step="doc_validate" target={document.id} formKey={`${document.id}-ok`} label="Validar" title={`Validar ${document.label.toLowerCase()}`} description={passenger} submitLabel="Validar documento" trigger={(open) => <RowIcon tone="edit" label="Validar" icon={<BadgeCheck size={15} />} onClick={open} />}>
+        <OpsStep step="doc_validate" target={target} formKey={`${document.id}-ok`} label="Validar" title={`Validar ${document.label.toLowerCase()}`} description={passenger} submitLabel="Validar documento" trigger={(open) => <RowIcon tone="edit" label="Validar" icon={<BadgeCheck size={15} />} onClick={open} />}>
           {document.file ? <ConfirmNote>Archivo recibido: <b>{document.file}</b></ConfirmNote> : <ConfirmNote tone="warn">No hay archivo cargado. Valida solo si revisaste el documento por otro medio.</ConfirmNote>}
           <div className="grid grid-cols-2 gap-3">
             <TextField label="Número" name="doc_number" maxLength={40} defaultValue={document.number ?? ""} />
@@ -29,7 +29,7 @@ export function DocumentActions({ document, passenger }: { document: TravelDocum
           </div>
         </OpsStep>
       )}
-      <OpsStep step="doc_observe" target={document.id} formKey={`${document.id}-obs`} label="Observar" title={`Observar ${document.label.toLowerCase()}`} description={passenger} submitLabel="Registrar observación" trigger={(open) => <RowIcon tone="delete" label="Observar" icon={<FileWarning size={15} />} onClick={open} />}>
+      <OpsStep step="doc_observe" target={target} formKey={`${document.id}-obs`} label="Observar" title={`Observar ${document.label.toLowerCase()}`} description={passenger} submitLabel="Registrar observación" trigger={(open) => <RowIcon tone="delete" label="Observar" icon={<FileWarning size={15} />} onClick={open} />}>
         <ConfirmNote>El documento vuelve a quedar pendiente de corrección y se informa al cliente en el próximo recordatorio.</ConfirmNote>
         <TextArea label="Qué falta o qué corregir" name="reason" rows={3} required minLength={5} maxLength={500} defaultValue={document.observation ?? ""} placeholder="La foto del pasaporte está cortada; enviar la página completa." />
       </OpsStep>

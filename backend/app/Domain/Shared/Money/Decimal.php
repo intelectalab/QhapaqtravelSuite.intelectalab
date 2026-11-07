@@ -9,6 +9,33 @@ use Brick\Math\RoundingMode;
 
 final class Decimal
 {
+    public const IGV_FACTOR = '1.18';
+
+    public static function of(mixed $value): BigDecimal
+    {
+        if ($value instanceof BigDecimal) {
+            return $value;
+        }
+
+        if (is_float($value)) {
+            return BigDecimal::of(sprintf('%.10F', $value));
+        }
+
+        $text = trim((string) ($value ?? ''));
+
+        return BigDecimal::of($text === '' ? '0' : $text);
+    }
+
+    public static function money(mixed $value): BigDecimal
+    {
+        return self::round2(self::of($value));
+    }
+
+    public static function withoutIgv(BigDecimal|string $total): BigDecimal
+    {
+        return BigDecimal::of($total)->dividedBy(self::IGV_FACTOR, 2, RoundingMode::HALF_UP);
+    }
+
     public static function round2(BigDecimal|string|int $value): BigDecimal
     {
         return BigDecimal::of($value)->toScale(2, RoundingMode::HALF_UP);
@@ -17,6 +44,16 @@ final class Decimal
     public static function toApi(BigDecimal|string|int|null $value): ?string
     {
         return $value === null ? null : (string) self::round2($value);
+    }
+
+    public static function display(BigDecimal|string|int $value, string $currency): string
+    {
+        $amount = self::round2($value);
+        [$integer, $fraction] = explode('.', (string) $amount->abs());
+        $grouped = ltrim(strrev(implode(' ', str_split(strrev($integer), 3))));
+        $symbol = ['PEN' => 'S/', 'USD' => 'US$', 'EUR' => '€'][$currency] ?? $currency;
+
+        return ($amount->isNegative() ? '−' : '').$symbol.' '.$grouped.'.'.$fraction;
     }
 
     public static function allocate(BigDecimal|string $total, array $weights): array

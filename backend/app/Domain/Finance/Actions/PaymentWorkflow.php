@@ -10,6 +10,7 @@ use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
 use Illuminate\Support\Facades\DB;
 
 final class PaymentWorkflow
@@ -82,7 +83,7 @@ final class PaymentWorkflow
             throw ApiException::unprocessable('RT-09', 'Regla transversal 9: aplica el pago a una cuota de la misma reserva y moneda.');
         }
 
-        if (in_array($receivable->status, ['pagada', 'cancelada'], true) || (float) $payment->amount - ((float) $receivable->amount - (float) $receivable->paid_amount) > ReceivableLedger::TOLERANCE) {
+        if (in_array($receivable->status, ['pagada', 'cancelada'], true) || Decimal::of($payment->amount)->isGreaterThan(ReceivableLedger::balance($receivable))) {
             throw ApiException::unprocessable('FIN-BR-14', 'El monto del pago supera el saldo de la cuota elegida.');
         }
 

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Portal\Actions;
 
-use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Finance\Support\Consolidation;
 use App\Domain\Finance\Support\FinanceHistory;
 use App\Domain\Finance\Support\PaymentMethods;
@@ -12,14 +11,16 @@ use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Portal\Support\PortalAccount;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
+use App\Domain\Shared\Sequences\SequenceService;
 use Illuminate\Support\Facades\DB;
 
 final class ReportPortalPayment
 {
     public function __construct(
+        private readonly SequenceService $sequences,
         private readonly PaymentMethods $methods,
         private readonly Consolidation $money,
-        private readonly CodeSequence $sequence,
         private readonly AuditLogger $audit,
     ) {}
 
@@ -28,15 +29,15 @@ final class ReportPortalPayment
         return DB::transaction(function () use ($account, $receivableCode, $data): string {
             $receivable = $account->receivable($receivableCode);
             DB::table('fin_receivables')->where('id', $receivable->id)->lockForUpdate()->first(['id']);
-            $reported = (float) DB::table('fin_payments')->where('receivable_id', $receivable->id)->where('status', 'pendiente')->sum('amount');
-            $balance = round((float) $receivable->amount - (float) $receivable->paid_amount - $reported, 2);
-            $amount = round((float) $data['amount'], 2);
+            $reported = Decimal::of(DB::table('fin_payments')->where('receivable_id', $receivable->id)->where('status', 'pendiente')->sum('amount'));
+            $balance = ReceivableLedger::balance($receivable)->minus($reported);
+            $amount = Decimal::money($data['amount']);
 
-            if ($receivable->status === 'pagada' || $balance <= ReceivableLedger::TOLERANCE) {
-                throw ApiException::unprocessable('RT-09', $reported > 0 ? 'Ya reportaste el saldo de esta cuota. La agencia lo está validando.' : 'Esta cuota ya está pagada.');
+            if ($receivable->status === 'pagada' || ! $balance->isPositive()) {
+                throw ApiException::unprocessable('RT-09', $reported->isPositive() ? 'Ya reportaste el saldo de esta cuota. La agencia lo está validando.' : 'Esta cuota ya está pagada.');
             }
 
-            if ($amount - $balance > ReceivableLedger::TOLERANCE) {
+            if ($amount->isGreaterThan($balance)) {
                 throw ApiException::unprocessable('FIN-BR-07', 'El monto no puede superar el saldo pendiente de la cuota.');
             }
 
@@ -49,7 +50,7 @@ final class ReportPortalPayment
                 throw ApiException::unprocessable('FIN-BR-08', 'Indica el número de operación del pago.');
             }
 
-            $code = $this->sequence->next('fin_payments', 'PAG-', 5);
+            $code = $this->sequences->next('payment');
             $user = $account->user;
             $id = (string) DB::table('fin_payments')->insertGetId([
                 'code' => $code,
@@ -58,7 +59,7 @@ final class ReportPortalPayment
                 'kind' => 'cobro',
                 'source' => 'portal_cliente',
                 'method' => $method->code,
-                'amount' => $amount,
+                'amount' => (string) $amount,
                 'currency' => $receivable->currency,
                 'fx_rate' => $this->money->fxFor($receivable->currency, $receivable->fx_rate),
                 'paid_on' => $data['paid_on'] ?? $this->money->today(),

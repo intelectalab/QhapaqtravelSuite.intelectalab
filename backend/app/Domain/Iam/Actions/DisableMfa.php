@@ -16,9 +16,7 @@ final class DisableMfa
 
     public function __invoke(User $user): void
     {
-        $role = (string) $user->getRoleNames()->first();
-
-        if ($user->mfa_required || in_array($role, config('access.mfa_roles', []), true)) {
+        if ($user->mfaMandatory()) {
             throw ApiException::unprocessable('SEC-BR-08', 'Tu rol exige la verificación en dos pasos: no se puede desactivar.');
         }
 

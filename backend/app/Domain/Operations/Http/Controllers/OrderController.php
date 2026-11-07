@@ -46,12 +46,12 @@ final class OrderController
         return response()->json(['data' => ['code' => $code]]);
     }
 
-    public function status(Request $request, string $code): JsonResponse
+    public function advance(Request $request, string $code, string $action): JsonResponse
     {
-        $data = $request->validate(['status' => ['required', 'in:'.implode(',', OrderFlow::STEPS)]], ['status.*' => 'Elige el siguiente estado.']);
-        $this->workflow->advance($code, $data['status'], $this->user($request));
+        $status = OrderFlow::ACTIONS[$action];
+        $this->workflow->advance($code, $status, $this->user($request));
 
-        return response()->json(['data' => ['code' => $code, 'status' => $data['status']]]);
+        return response()->json(['data' => ['code' => $code, 'status' => $status]]);
     }
 
     public function cancel(Request $request, string $code): JsonResponse

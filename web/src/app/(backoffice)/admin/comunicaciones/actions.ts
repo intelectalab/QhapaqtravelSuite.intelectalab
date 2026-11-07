@@ -15,17 +15,17 @@ const body = (form: FormData) => ({
 const code = (form: FormData) => encodeURIComponent(text(form, "code") ?? "");
 
 export async function createPaxTemplate(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
-  return sendAdmin("/admin/pax-templates", "POST", body(form), PATH, "No pudimos crear la plantilla.");
+  return sendAdmin("/notifications/pax-templates", "POST", body(form), PATH, "No pudimos crear la plantilla.");
 }
 
 export async function updatePaxTemplate(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
-  return sendAdmin(`/admin/pax-templates/${code(form)}`, "PATCH", body(form), PATH, "No pudimos guardar la plantilla.");
+  return sendAdmin(`/notifications/pax-templates/${code(form)}`, "PATCH", body(form), PATH, "No pudimos guardar la plantilla.");
 }
 
 export async function togglePaxTemplate(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
-  return sendAdmin(`/admin/pax-templates/${code(form)}/toggle`, "POST", {}, PATH);
+  return sendAdmin(`/notifications/pax-templates/${code(form)}`, "PATCH", { active: text(form, "active") === "1" }, PATH);
 }
 
 export async function deletePaxTemplate(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
-  return sendAdmin(`/admin/pax-templates/${code(form)}`, "DELETE", {}, PATH, "No pudimos eliminar la plantilla.");
+  return sendAdmin(`/notifications/pax-templates/${code(form)}`, "DELETE", {}, PATH, "No pudimos eliminar la plantilla.");
 }

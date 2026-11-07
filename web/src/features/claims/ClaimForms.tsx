@@ -91,6 +91,7 @@ export function ClaimDetailAction({ sheet, canManage }: { sheet: ClaimSheet; can
         <>
           <input type="hidden" name="code" value={sheet.code} />
           <input type="hidden" name="step" value={step ?? "view"} />
+          <input type="hidden" name="lock_version" value={sheet.lock_version} />
           <div className="flex flex-wrap gap-2">
             <Badge tone={BOOK_STATUS_TONE[sheet.book_status]}>{sheet.book_status_label}</Badge>
             <Badge tone={deadline.tone} dot={false}>
@@ -161,6 +162,7 @@ export function ClaimCloseAction({ sheet }: { sheet: ClaimSheet }) {
         <>
           <input type="hidden" name="code" value={sheet.code} />
           <input type="hidden" name="step" value="close" />
+          <input type="hidden" name="lock_version" value={sheet.lock_version} />
           <TextArea label="Motivo del cierre" name="note" rows={3} required minLength={5} maxLength={1000} placeholder="Por ejemplo: extorno realizado y confirmado por el consumidor." />
         </>
       )}

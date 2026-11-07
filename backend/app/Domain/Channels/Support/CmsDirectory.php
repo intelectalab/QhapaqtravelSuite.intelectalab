@@ -23,6 +23,14 @@ final class CmsDirectory
         'despublicado' => ['en_revision'],
     ];
 
+    public const ACTIONS = [
+        'submit' => 'en_revision',
+        'return' => 'borrador',
+        'approve' => 'aprobado',
+        'publish' => 'publicado',
+        'unpublish' => 'despublicado',
+    ];
+
     public function overview(User $viewer): array
     {
         $rows = DB::table('cms_contents as c')

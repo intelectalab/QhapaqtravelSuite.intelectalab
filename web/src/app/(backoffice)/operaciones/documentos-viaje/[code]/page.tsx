@@ -14,7 +14,7 @@ import type { TravelDocDetail } from "@/lib/operations";
 import { PAX_TYPE } from "@/lib/reservations";
 import { getResource } from "@/lib/server/resource";
 
-const getChecklist = cache(async (code: string) => (await getResource<TravelDocDetail>(`/ops/travel-docs/${encodeURIComponent(code)}`, "No pudimos cargar el checklist.")) ?? notFound());
+const getChecklist = cache(async (code: string) => (await getResource<TravelDocDetail>(`/reservations/${encodeURIComponent(code)}/travel-docs`, "No pudimos cargar el checklist.")) ?? notFound());
 
 export async function generateMetadata({ params }: PageProps<"/operaciones/documentos-viaje/[code]">): Promise<Metadata> {
   const { code } = await params;
@@ -83,7 +83,7 @@ export default async function DocumentosReservaPage({ params }: PageProps<"/oper
                       {(document.observation || document.note) && <span className="mt-0.5 block text-xs text-fg-2">{document.observation ?? document.note}</span>}
                     </span>
                     <StatusBadge status={document.status} />
-                    {data.can.manage && <DocumentActions document={document} passenger={passenger.name} />}
+                    {data.can.manage && <DocumentActions document={document} passenger={passenger.name} target={`${encodeURIComponent(data.code)}/travel-docs/${passenger.id}/${document.type}`} />}
                   </li>
                 ))}
               </ul>

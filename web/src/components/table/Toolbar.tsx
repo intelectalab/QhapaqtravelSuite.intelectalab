@@ -34,7 +34,7 @@ export function SearchBox({ value, onChange, placeholder = "Buscar" }: { value: 
   return (
     <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-line bg-surface px-3 text-fg-3 focus-within:border-accent/50 sm:max-w-[300px]">
       <Search size={16} className="flex-none text-accent" />
-      <input ref={input} value={text} onChange={(event) => setText(event.target.value)} placeholder={placeholder} className="w-full min-w-0 bg-transparent text-[13px] text-fg outline-none placeholder:text-fg-3" />
+      <input ref={input} data-testid="filter:search" value={text} onChange={(event) => setText(event.target.value)} placeholder={placeholder} className="w-full min-w-0 bg-transparent text-[13px] text-fg outline-none placeholder:text-fg-3" />
       {text && (
         <button type="button" aria-label="Borrar búsqueda" onClick={() => { setText(""); onChange(""); }} className="text-fg-3 hover:text-fg">
           <X size={14} />

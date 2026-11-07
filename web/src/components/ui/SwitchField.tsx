@@ -19,6 +19,7 @@ export function SwitchField({ label, name, checked, onCheckedChange, disabled = 
     <div className={cn("flex items-start gap-3", disabled && "opacity-60")}>
       <Switch.Root
         id={id}
+        data-testid={`field:${name}`}
         checked={checked}
         onCheckedChange={onCheckedChange}
         disabled={disabled}

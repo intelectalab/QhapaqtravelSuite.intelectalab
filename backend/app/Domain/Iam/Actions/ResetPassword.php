@@ -8,14 +8,13 @@ use App\Domain\Iam\Models\User;
 use App\Domain\Platform\Support\TenantResolver;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Mail\QueuedMail;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-use Throwable;
 
 final class ResetPassword
 {
@@ -94,11 +93,7 @@ final class ResetPassword
         $link = rtrim((string) config('app.frontend_url'), '/').'/restablecer/'.$token.'?email='.rawurlencode((string) $user->email);
         $body = "Hola {$user->name}:\n\nRecibimos un pedido para restablecer tu contraseña de {$user->agency} en Qhapaq Travel Suite.\n\nDefine una nueva aquí (el enlace vence en ".self::MINUTES." minutos y solo sirve una vez):\n{$link}\n\nSi no lo pediste, ignora este correo: tu contraseña actual sigue vigente.";
 
-        try {
-            Mail::raw($body, fn ($message) => $message->to((string) $user->email, (string) $user->name)->subject("Restablece tu contraseña · {$user->agency}"));
-        } catch (Throwable $e) {
-            report($e);
-        }
+        app(QueuedMail::class)->send((string) $user->email, (string) $user->name, "Restablece tu contraseña · {$user->agency}", $body);
     }
 
     private function log(object $user, string $action, ?string $before, ?string $after): void

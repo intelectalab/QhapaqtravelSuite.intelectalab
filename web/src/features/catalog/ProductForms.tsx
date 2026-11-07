@@ -180,7 +180,7 @@ export function ProductLifecycleActions({ product, options }: { product: Product
   );
 }
 
-export function ProductDeleteAction({ product, iconOnly = false }: { product: Pick<ProductDetail, "code" | "name">; iconOnly?: boolean }) {
+export function ProductDeleteAction({ product, iconOnly = false }: { product: Pick<ProductDetail, "code" | "name" | "lock_version">; iconOnly?: boolean }) {
   const router = useRouter();
   return (
     <PanelAction<ProductActionState>
@@ -199,6 +199,7 @@ export function ProductDeleteAction({ product, iconOnly = false }: { product: Pi
       {() => (
         <>
           <input type="hidden" name="code" value={product.code} />
+          <input type="hidden" name="lock_version" value={product.lock_version} />
           <TextArea label="Motivo" name="reason" rows={3} required minLength={3} maxLength={500} placeholder="Por ejemplo: se creó por error." />
         </>
       )}

@@ -56,6 +56,7 @@ export function ContentFormAction({ content, overview, iconOnly = false }: { con
       {() => (
         <>
           {content && <input type="hidden" name="code" value={content.code} />}
+          {content && <input type="hidden" name="lock_version" value={content.lock_version} />}
           <TextField label="Título" name="title" required minLength={3} maxLength={200} defaultValue={content?.title} />
           <div className="grid grid-cols-2 gap-3">
             <SelectField label="Tipo" name="type" options={overview.types.map((value) => ({ value, label: value }))} defaultValue={content?.type ?? overview.types[0]} />
@@ -100,6 +101,7 @@ function TransitionAction({ content, to }: { content: CmsContent; to: string }) 
       {() => (
         <>
           <input type="hidden" name="code" value={content.code} />
+          <input type="hidden" name="lock_version" value={content.lock_version} />
           <input type="hidden" name="to" value={to} />
           {meta.reason ? <TextArea label="Motivo" name="reason" rows={3} required maxLength={300} /> : <p className="text-[13px] text-fg-2">{to === "publicado" && !content.seo_title ? "Falta el título SEO: complétalo antes de publicar." : "Confirma para continuar."}</p>}
         </>

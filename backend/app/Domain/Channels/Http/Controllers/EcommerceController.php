@@ -19,8 +19,14 @@ final class EcommerceController
 
     public function publish(Request $request, string $code, ManageEcommerce $manage): JsonResponse
     {
-        $data = $request->validate(['published' => ['required', 'boolean']], ['published.*' => 'Indica si se publica o no.']);
-        $manage->publish($code, (bool) $data['published'], $this->user($request));
+        $manage->publish($code, true, $this->user($request));
+
+        return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function unpublish(Request $request, string $code, ManageEcommerce $manage): JsonResponse
+    {
+        $manage->publish($code, false, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
     }

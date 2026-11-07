@@ -5,6 +5,8 @@ import { formValues, sendStep, type StepResult } from "@/lib/server/resource";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
+const CASE_ACTIONS: Record<string, string> = { start: "start", followup: "follow-ups", resolve: "resolve", close: "close", reopen: "reopen" };
+
 function refresh(result: StepResult): StepResult {
   if (result.done) {
     revalidatePath("/crm/postventa");
@@ -27,5 +29,7 @@ export async function saveCase(_state: StepResult, form: FormData): Promise<Step
 }
 
 export async function moveCase(_state: StepResult, form: FormData): Promise<StepResult> {
-  return refresh(await sendStep(`/crm/cases/${encodeURIComponent(text(form, "code"))}/transition`, "POST", formValues(form, ["step", "note"]), "No pudimos actualizar el caso."));
+  const action = CASE_ACTIONS[text(form, "step")];
+  if (!action) return { message: "Elige qué paso registrar.", done: false };
+  return refresh(await sendStep(`/crm/cases/${encodeURIComponent(text(form, "code"))}/${action}`, "POST", formValues(form, ["note", "lock_version"]), "No pudimos actualizar el caso."));
 }

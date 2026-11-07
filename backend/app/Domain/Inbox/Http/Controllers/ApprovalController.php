@@ -6,6 +6,7 @@ namespace App\Domain\Inbox\Http\Controllers;
 
 use App\Domain\Iam\Models\User;
 use App\Domain\Inbox\Actions\ApprovalWorkflow;
+use App\Domain\Inbox\Actions\PortalRequestDecision;
 use App\Domain\Inbox\Support\ApprovalInbox;
 use App\Domain\Inbox\Support\ApprovalRules;
 use Illuminate\Http\JsonResponse;
@@ -40,18 +41,19 @@ final class ApprovalController
         return response()->json(['data' => ['code' => $code]]);
     }
 
-    public function approve(Request $request, string $code, ApprovalWorkflow $workflow): JsonResponse
+    public function approve(Request $request, string $code, ApprovalWorkflow $workflow, PortalRequestDecision $portal): JsonResponse
     {
         $data = $request->validate(['note' => ['nullable', 'string', 'max:500']]);
+        $note = trim((string) ($data['note'] ?? '')) ?: null;
 
-        return response()->json(['data' => ['code' => $code, 'status' => $workflow->decide($code, true, $data['note'] ?? null, $this->user($request))]]);
+        return response()->json(['data' => $portal->decide($code, true, $note, $this->user($request)) ?? ['code' => $code, 'status' => $workflow->decide($code, true, $note, $this->user($request))]]);
     }
 
-    public function reject(Request $request, string $code, ApprovalWorkflow $workflow): JsonResponse
+    public function reject(Request $request, string $code, ApprovalWorkflow $workflow, PortalRequestDecision $portal): JsonResponse
     {
         $data = $request->validate(['note' => ['required', 'string', 'min:3', 'max:500']], ['note.*' => 'Explica por qué se rechaza (APR-BR-07).']);
 
-        return response()->json(['data' => ['code' => $code, 'status' => $workflow->decide($code, false, $data['note'], $this->user($request))]]);
+        return response()->json(['data' => $portal->decide($code, false, $data['note'], $this->user($request)) ?? ['code' => $code, 'status' => $workflow->decide($code, false, $data['note'], $this->user($request))]]);
     }
 
     public function updateRule(Request $request, string $code, ApprovalWorkflow $workflow): JsonResponse

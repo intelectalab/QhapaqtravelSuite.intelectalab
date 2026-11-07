@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Site\Support;
 
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use stdClass;
@@ -53,6 +55,7 @@ final class SitePricing
             ->get(['id', 'name', 'type', 'date_from', 'date_to', 'priority', 'factor'])
             ->map(function (stdClass $season): stdClass {
                 $season->span = (strtotime($season->date_to) - strtotime($season->date_from)) / 86400;
+                $season->exact = (string) $season->factor;
                 $season->factor = (float) $season->factor;
 
                 return $season;
@@ -106,9 +109,13 @@ final class SitePricing
 
     private function apply(stdClass $rate, ?stdClass $season): float
     {
-        $base = $rate->season_id ? ($this->seasons()->firstWhere('id', $rate->season_id)->factor ?? 1.0) : 1.0;
-        $factor = $season ? $season->factor / ($base ?: 1.0) : 1.0;
+        $base = BigDecimal::of($rate->season_id ? ($this->seasons()->firstWhere('id', $rate->season_id)->exact ?? '1') : '1');
+        $price = BigDecimal::of((string) $rate->price);
 
-        return round(round((float) $rate->price * $factor * 10) / 10, 2);
+        if ($season !== null) {
+            $price = $price->multipliedBy($season->exact)->dividedBy($base->isZero() ? BigDecimal::one() : $base, 10, RoundingMode::HALF_UP);
+        }
+
+        return $price->toScale(1, RoundingMode::HALF_UP)->toFloat();
     }
 }

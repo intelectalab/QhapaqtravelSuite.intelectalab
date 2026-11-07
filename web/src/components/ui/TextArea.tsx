@@ -1,13 +1,16 @@
 "use client";
 
-import { useId, type ReactNode, type TextareaHTMLAttributes } from "react";
+import { useId, type ComponentProps, type ReactNode } from "react";
+import { cn } from "@/lib/cn";
+import { FieldError } from "./FieldError";
 
-interface TextAreaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "id"> {
+interface TextAreaProps extends Omit<ComponentProps<"textarea">, "id"> {
   label: string;
   hint?: ReactNode;
+  error?: string | null;
 }
 
-export function TextArea({ label, hint, className, rows = 4, ...textarea }: TextAreaProps) {
+export function TextArea({ label, hint, error, className, rows = 4, ...textarea }: TextAreaProps) {
   const id = useId();
   return (
     <div className={className}>
@@ -17,10 +20,16 @@ export function TextArea({ label, hint, className, rows = 4, ...textarea }: Text
       <textarea
         id={id}
         rows={rows}
+        data-testid={textarea.name ? `field:${textarea.name}` : undefined}
+        aria-invalid={error ? true : undefined}
         {...textarea}
-        className="w-full resize-none rounded-control border border-line bg-surface px-3.5 py-3 text-[14.5px] text-fg outline-none transition placeholder:text-fg-3 focus:border-accent focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent)]"
+        className={cn(
+          "w-full resize-none rounded-control border bg-surface px-3.5 py-3 text-[14.5px] text-fg outline-none transition placeholder:text-fg-3 focus:border-accent focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent)]",
+          error ? "border-bad" : "border-line",
+        )}
       />
-      {hint && <div className="mt-1.5 text-[12.5px] text-fg-3">{hint}</div>}
+      <FieldError name={textarea.name} message={error} />
+      {hint && !error && <div className="mt-1.5 text-[12.5px] text-fg-3">{hint}</div>}
     </div>
   );
 }

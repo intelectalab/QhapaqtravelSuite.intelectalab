@@ -9,6 +9,7 @@ export interface CampaignAudience {
 
 export interface Campaign {
   code: string;
+  lock_version: number;
   name: string;
   channel: "email" | "whatsapp";
   channel_label: string;

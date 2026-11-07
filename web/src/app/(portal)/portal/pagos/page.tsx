@@ -6,6 +6,6 @@ import { portalData } from "@/lib/server/portal";
 export const metadata: Metadata = { title: "Pagos" };
 
 export default async function PortalPaymentsPage() {
-  const billing = await portalData<PortalBilling>("/billing", "No pudimos cargar tus pagos.");
+  const billing = await portalData<PortalBilling>("/receivables", "No pudimos cargar tus pagos.");
   return <PortalPayments billing={billing} />;
 }

@@ -1,12 +1,16 @@
+"use client";
+
 import { BadgeCheck, Star } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
 import type { Money, Rating } from "@/lib/site";
+import { useSite } from "./SiteContext";
 
 export function Stars({ value, size = 14, className }: { value: number; size?: number; className?: string }) {
+  const { t } = useSite();
   return (
-    <span className={cn("inline-flex items-center gap-0.5", className)} aria-label={`${value.toFixed(1)} de 5`}>
+    <span className={cn("inline-flex items-center gap-0.5", className)} aria-label={t.cards.rating(value.toFixed(1))}>
       {[1, 2, 3, 4, 5].map((n) => (
         <Star key={n} size={size} strokeWidth={1.6} className={n <= Math.round(value) ? "fill-t2 text-t2" : "text-fg-3/40"} />
       ))}
@@ -15,32 +19,34 @@ export function Stars({ value, size = 14, className }: { value: number; size?: n
 }
 
 export function RatingLine({ rating, compact = false }: { rating: Rating | null; compact?: boolean }) {
-  if (!rating) return <span className="text-[12px] text-fg-3">Aún sin reseñas</span>;
+  const { t } = useSite();
+  if (!rating) return <span className="text-[12px] text-fg-3">{t.cards.noReviews}</span>;
   return (
     <span className="inline-flex items-center gap-1.5 text-[12.5px] text-fg-2">
       <Stars value={rating.avg} size={compact ? 12 : 14} />
       <b className="font-semibold text-fg">{rating.avg.toFixed(1)}</b>
       <span className="text-fg-3">({rating.count})</span>
       {rating.verified && (
-        <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-ok" title="Opiniones de pasajeros con reserva completada">
+        <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-ok" title={t.cards.verifiedTitle}>
           <BadgeCheck size={13} />
-          {!compact && "Viaje verificado"}
+          {!compact && t.cards.verified}
         </span>
       )}
     </span>
   );
 }
 
-export function PriceTag({ from, list, label = "Desde", size = "md", unit = "por persona" }: { from: Money | null; list?: number | null; label?: string; size?: "md" | "lg"; unit?: string }) {
-  if (!from) return <span className="text-[13px] font-semibold text-fg-3">Tarifa por publicar</span>;
+export function PriceTag({ from, list, label, size = "md", unit }: { from: Money | null; list?: number | null; label?: string; size?: "md" | "lg"; unit?: string }) {
+  const { t } = useSite();
+  if (!from) return <span className="text-[13px] font-semibold text-fg-3">{t.cards.noPrice}</span>;
   return (
     <span className="leading-tight">
-      <span className="block text-[11.5px] font-medium text-fg-3">{label}</span>
+      <span className="block text-[11.5px] font-medium text-fg-3">{label ?? t.common.from}</span>
       <span className="flex flex-wrap items-baseline gap-x-2">
         <b className={cn("font-bold tracking-tight text-fg", size === "lg" ? "text-[26px]" : "text-[18px]")}>{formatMoney(from.amount, from.currency)}</b>
         {list != null && <s className="text-[12.5px] text-fg-3">{formatMoney(list, from.currency)}</s>}
       </span>
-      <span className="block text-[11px] text-fg-3">{unit}</span>
+      <span className="block text-[11px] text-fg-3">{unit ?? t.cards.perPerson}</span>
     </span>
   );
 }
@@ -76,6 +82,7 @@ export function Chip({ children, tone = "mute", className }: { children: ReactNo
 }
 
 export function Occupancy({ sold, capacity, spots }: { sold: number; capacity: number; spots: number }) {
+  const { t } = useSite();
   const pct = Math.min(100, Math.round((sold / Math.max(1, capacity)) * 100));
   return (
     <div>
@@ -83,10 +90,8 @@ export function Occupancy({ sold, capacity, spots }: { sold: number; capacity: n
         <div className={cn("h-full origin-left animate-[fill-x_900ms_cubic-bezier(0.22,1,0.36,1)_backwards] rounded-full", spots <= 4 ? "bg-warn" : "bg-t4")} style={{ width: `${pct}%` }} />
       </div>
       <div className="mt-1.5 flex justify-between text-[11.5px] text-fg-3">
-        <span>
-          {sold} de {capacity} reservados
-        </span>
-        <b className={cn("font-semibold", spots <= 4 ? "text-warn" : "text-fg-2")}>{spots === 1 ? "Queda 1 cupo" : `Quedan ${spots} cupos`}</b>
+        <span>{t.cards.booked(sold, capacity)}</span>
+        <b className={cn("font-semibold", spots <= 4 ? "text-warn" : "text-fg-2")}>{t.cards.spotsLeft(spots)}</b>
       </div>
     </div>
   );

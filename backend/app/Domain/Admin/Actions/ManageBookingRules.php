@@ -36,7 +36,7 @@ final class ManageBookingRules
                 throw ApiException::unprocessable('CR-05', "Primero activa la regla {$rule->depends_on}, de la que depende.");
             }
 
-            DB::table('sys_booking_rules')->where('id', $rule->id)->update(['enabled' => $enabled, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            DB::table('sys_booking_rules')->where('id', $rule->id)->update(['enabled' => $enabled, 'updated_by' => $actor->getKey(), 'updated_at' => now(), 'lock_version' => DB::raw('lock_version + 1')]);
             $this->audit->log('Regla de reserva', $code, $enabled ? 'activar' : 'desactivar', $enabled ? 'inactiva' : 'activa', $enabled ? 'activa' : 'inactiva');
         });
     }
@@ -57,30 +57,42 @@ final class ManageBookingRules
                 throw ApiException::unprocessable('CFG-BR-01', 'No hay cambios que guardar.');
             }
 
-            DB::table('sys_booking_rules')->where('id', $rule->id)->update(['params' => json_encode($clean), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            DB::table('sys_booking_rules')->where('id', $rule->id)->update(['params' => json_encode($clean), 'updated_by' => $actor->getKey(), 'updated_at' => now(), 'lock_version' => DB::raw('lock_version + 1')]);
             $this->audit->log('Regla de reserva', $code, 'editar_parametros', json_encode($current, JSON_UNESCAPED_UNICODE) ?: null, json_encode($clean, JSON_UNESCAPED_UNICODE) ?: null);
         });
     }
 
-    public function reset(string $code, string $reason, User $actor): void
+    public function reset(?string $code, string $reason, User $actor): array
     {
-        DB::transaction(function () use ($code, $reason, $actor): void {
-            $rule = $this->find($code);
-            $catalog = DB::table('sys_booking_rule_catalog')->where('code', $code)->first(['default_enabled', 'default_params']);
+        return DB::transaction(function () use ($code, $reason, $actor): array {
+            $codes = $code !== null ? [$code] : DB::table('sys_booking_rules')->where('is_custom', false)->whereIn('code', DB::table('sys_booking_rule_catalog')->select('code'))->orderBy('sort_order')->pluck('code')->all();
 
-            if ($catalog === null) {
-                throw ApiException::unprocessable('CR-04', 'Las reglas personalizadas no tienen valores de fábrica.');
+            foreach ($codes as $current) {
+                $this->resetOne($current, $reason, $actor);
             }
 
-            $params = (array) json_decode((string) $catalog->default_params, true);
-            DB::table('sys_booking_rules')->where('id', $rule->id)->update([
-                'enabled' => (bool) $catalog->default_enabled,
-                'params' => json_encode((object) $params),
-                'updated_by' => $actor->getKey(),
-                'updated_at' => now(),
-            ]);
-            $this->audit->log('Regla de reserva', $code, 'restablecer', (string) $rule->params, $reason);
+            return $codes;
         });
+    }
+
+    private function resetOne(string $code, string $reason, User $actor): void
+    {
+        $rule = $this->find($code);
+        $catalog = DB::table('sys_booking_rule_catalog')->where('code', $code)->first(['default_enabled', 'default_params']);
+
+        if ($catalog === null) {
+            throw ApiException::unprocessable('CR-04', 'Las reglas personalizadas no tienen valores de fábrica.');
+        }
+
+        $params = (array) json_decode((string) $catalog->default_params, true);
+        DB::table('sys_booking_rules')->where('id', $rule->id)->update([
+            'enabled' => (bool) $catalog->default_enabled,
+            'params' => json_encode((object) $params),
+            'updated_by' => $actor->getKey(),
+            'updated_at' => now(),
+            'lock_version' => DB::raw('lock_version + 1'),
+        ]);
+        $this->audit->log('Regla de reserva', $code, 'restablecer', (string) $rule->params, $reason);
     }
 
     public function create(array $data, User $actor): string
@@ -124,7 +136,7 @@ final class ManageBookingRules
             throw ApiException::unprocessable('CR-04', 'Solo las reglas personalizadas cambian de nombre o descripción.');
         }
 
-        DB::table('sys_booking_rules')->where('id', $rule->id)->update(['name' => $data['name'], 'description' => $data['description'], 'rule_group' => $data['group'], 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+        DB::table('sys_booking_rules')->where('id', $rule->id)->update(['name' => $data['name'], 'description' => $data['description'], 'rule_group' => $data['group'], 'updated_by' => $actor->getKey(), 'updated_at' => now(), 'lock_version' => DB::raw('lock_version + 1')]);
         $this->audit->log('Regla de reserva', $code, 'editar', "{$rule->name} · {$rule->rule_group}", "{$data['name']} · {$data['group']}");
     }
 

@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use App\Domain\Shared\Concurrency\IfMatch;
 use App\Domain\Shared\Errors\ApiException;
 use Closure;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -21,12 +22,13 @@ final class EnsureLockVersion
         $expected = $this->expected($request);
 
         if ($expected === null) {
-            return $next($request);
+            IfMatch::from($request, required: true);
         }
 
         $request->merge(['lock_version' => $expected]);
-        $value = (string) ($parameter !== null ? $request->route($parameter) : (array_values($request->route()?->parameters() ?? [])[0] ?? ''));
-        $current = $value === '' ? null : $this->current($table, explode('|', $columns), $value);
+        $bound = $parameter !== null ? $request->route($parameter) : (array_values($request->route()?->parameters() ?? [])[0] ?? '');
+        [$value, $lookup] = $bound instanceof Model ? [(string) $bound->getKey(), ['id']] : [(string) $bound, explode('|', $columns)];
+        $current = $value === '' ? null : $this->current($table, $lookup, $value);
 
         if ($current !== null) {
             IfMatch::assertMatches($expected, $current);

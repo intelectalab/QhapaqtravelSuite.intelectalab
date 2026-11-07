@@ -4,11 +4,13 @@ import Link from "next/link";
 import { SectionHeading } from "@/features/site/Bits";
 import { ProductCard } from "@/features/site/Cards";
 import { Faq, LocationMap, SeasonStrip } from "@/features/site/Content";
+import { ContentLocaleNotice } from "@/features/site/ContentLocaleNotice";
 import { Breadcrumbs, PageHero } from "@/features/site/Hero";
 import { ReviewsSection } from "@/features/site/Reviews";
 import { formatMoney } from "@/lib/format";
-import { getSiteDestination, siteBase } from "@/lib/server/site";
+import { getSiteDestination, siteBase, siteLocale } from "@/lib/server/site";
 import { siteHref } from "@/lib/site";
+import { siteText } from "@/lib/site-i18n";
 
 export async function generateMetadata({ params }: PageProps<"/sitio/[agencia]/destinos/[slug]">): Promise<Metadata> {
   const { agencia, slug } = await params;
@@ -18,18 +20,20 @@ export async function generateMetadata({ params }: PageProps<"/sitio/[agencia]/d
 
 export default async function DestinationPage({ params }: PageProps<"/sitio/[agencia]/destinos/[slug]">) {
   const { agencia, slug } = await params;
-  const [data, base] = await Promise.all([getSiteDestination(agencia, slug), siteBase(agencia)]);
+  const [data, base, locale] = await Promise.all([getSiteDestination(agencia, slug), siteBase(agencia), siteLocale()]);
+  const site = siteText(locale);
+  const t = site.destinations;
   const { destination } = data;
   const facts = [
-    destination.altitude && { icon: Mountain, label: "Altitud", value: destination.altitude },
-    { icon: Compass, label: "Experiencias", value: destination.count === 1 ? "1 en línea" : `${destination.count} en línea` },
-    destination.from && { icon: Sparkles, label: "Desde", value: formatMoney(destination.from.amount, destination.from.currency) },
+    destination.altitude && { icon: Mountain, label: t.altitude, value: destination.altitude },
+    { icon: Compass, label: t.experiences, value: t.online(destination.count) },
+    destination.from && { icon: Sparkles, label: site.common.from, value: formatMoney(destination.from.amount, destination.from.currency) },
   ].filter((fact): fact is { icon: typeof Mountain; label: string; value: string } => Boolean(fact));
 
   return (
     <>
       <PageHero
-        eyebrow={destination.region || "Destino"}
+        eyebrow={destination.region || t.fallbackEyebrow}
         title={destination.name}
         description={destination.tagline}
         aside={
@@ -45,24 +49,25 @@ export default async function DestinationPage({ params }: PageProps<"/sitio/[age
             </ul>
             <div className="flex flex-wrap gap-2">
               <Link href={siteHref(base, `/tours?destino=${destination.slug}`)} className="inline-flex h-10 flex-1 items-center justify-center rounded-control bg-white px-4 text-[13.5px] font-semibold text-menu transition hover:-translate-y-0.5">
-                Ver tours
+                {t.viewTours}
               </Link>
               <Link href={siteHref(base, `/viajes-a-medida?destino=${destination.slug}`)} className="inline-flex h-10 flex-1 items-center justify-center rounded-control bg-brand px-4 text-[13.5px] font-semibold text-brand-fg transition hover:-translate-y-0.5 hover:brightness-110">
-                Cotizar a medida
+                {site.common.tailor}
               </Link>
             </div>
           </div>
         }
       >
         <div className="mt-5">
-          <Breadcrumbs items={[{ label: "Inicio", href: siteHref(base) }, { label: "Destinos", href: siteHref(base, "/destinos") }, { label: destination.name }]} />
+          <Breadcrumbs items={[{ label: site.common.home, href: siteHref(base) }, { label: site.common.destinations, href: siteHref(base, "/destinos") }, { label: destination.name }]} />
         </div>
       </PageHero>
 
       <div className="mx-auto max-w-[1240px] space-y-16 px-5 pt-12 sm:px-8">
+        <ContentLocaleNotice contentLocale={destination.content_locale} />
         <section className="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
           <div>
-            <SectionHeading eyebrow="Sobre el destino" title={`Conoce ${destination.name}`} className="mb-4" />
+            <SectionHeading eyebrow={t.about.eyebrow} title={t.about.title(destination.name)} className="mb-4" />
             {destination.description && <p className="text-[15.5px] leading-relaxed text-fg-2">{destination.description}</p>}
             {destination.climate && (
               <div className="mt-6 flex gap-3 rounded-card border border-line bg-surface p-4 shadow-card">
@@ -70,7 +75,7 @@ export default async function DestinationPage({ params }: PageProps<"/sitio/[age
                   <Thermometer size={18} />
                 </span>
                 <p className="text-[14px] leading-relaxed text-fg-2">
-                  <b className="block font-semibold text-fg">Clima</b>
+                  <b className="block font-semibold text-fg">{t.climate}</b>
                   {destination.climate}
                 </p>
               </div>
@@ -80,12 +85,12 @@ export default async function DestinationPage({ params }: PageProps<"/sitio/[age
         </section>
 
         <section>
-          <SectionHeading eyebrow="Mejor época" title="Temporadas de los próximos 12 meses" description="Los precios por fecha siguen estas temporadas: alta y fechas especiales suben; baja tiene mejores tarifas." />
+          <SectionHeading eyebrow={t.seasons.eyebrow} title={t.seasons.title} description={t.seasons.description} />
           <SeasonStrip months={data.months} special={data.special} />
         </section>
 
         <section>
-          <SectionHeading eyebrow="Qué hacer" title={`Tours y paquetes en ${destination.name}`} />
+          <SectionHeading eyebrow={t.todo.eyebrow} title={t.todo.title(destination.name)} />
           {data.products.length > 0 ? (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {data.products.map((product, index) => (
@@ -94,9 +99,9 @@ export default async function DestinationPage({ params }: PageProps<"/sitio/[age
             </div>
           ) : (
             <div className="flex flex-wrap items-center justify-between gap-4 rounded-card border border-dashed border-line p-6">
-              <p className="text-[14px] text-fg-2">Todavía no publicamos salidas en línea para este destino, pero lo organizamos a tu medida.</p>
+              <p className="text-[14px] text-fg-2">{t.noProducts}</p>
               <Link href={siteHref(base, `/viajes-a-medida?destino=${destination.slug}`)} className="inline-flex h-10 items-center rounded-control bg-brand px-4 text-[13.5px] font-semibold text-brand-fg transition hover:-translate-y-0.5">
-                Diseñar mi viaje
+                {t.design}
               </Link>
             </div>
           )}
@@ -104,14 +109,14 @@ export default async function DestinationPage({ params }: PageProps<"/sitio/[age
 
         {destination.faqs.length > 0 && (
           <section className="grid gap-6 lg:grid-cols-[1fr_1.6fr]">
-            <SectionHeading eyebrow="Preguntas frecuentes" title={`Antes de viajar a ${destination.name}`} description="¿Otra duda? Escríbenos y te respondemos en horario de oficina." />
+            <SectionHeading eyebrow={t.faq.eyebrow} title={t.faq.title(destination.name)} description={t.faq.description} />
             <Faq items={destination.faqs} />
           </section>
         )}
 
         {data.reviews.count > 0 && (
           <section>
-            <SectionHeading eyebrow="Opiniones" title={`Viajeros en ${destination.name}`} />
+            <SectionHeading eyebrow={t.reviews.eyebrow} title={t.reviews.title(destination.name)} />
             <ReviewsSection reviews={data.reviews} base={base} columns={2} />
           </section>
         )}

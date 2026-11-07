@@ -19,6 +19,7 @@ export interface ConversationSummary {
   preview_inbound: boolean;
   sla: { due_at: string; responded_at: string | null; state: "met" | "late" | "breached" | "warning" | "running" };
   window_open: boolean;
+  lock_version: number;
 }
 
 export interface ConversationMessage {

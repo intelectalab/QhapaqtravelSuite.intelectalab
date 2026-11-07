@@ -48,6 +48,7 @@ export interface B2bAgency {
   status: "activa" | "bloqueada" | "inactiva";
   effective_status: string;
   block_reason: string | null;
+  lock_version: number;
   sales: number;
   commission: number;
   reservations: { code: string; title: string; status: string; travel_from: string; total: number; currency: string }[];
@@ -77,6 +78,7 @@ export interface EcomOrder {
   reservation: string | null;
   cancel_reason: string | null;
   can_cancel: boolean;
+  lock_version: number;
 }
 
 export interface EcomProduct {
@@ -221,6 +223,7 @@ export interface OwnReview {
   photos: number;
   published_at: string | null;
   created_at: string;
+  lock_version: number;
   log: { action: string; note: string | null; at: string; user: string }[];
 }
 

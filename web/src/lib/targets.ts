@@ -9,6 +9,7 @@ export interface TargetGoals {
 
 export interface SalesTarget {
   code: string;
+  lock_version: number;
   scope_type: "asesor" | "sede" | "equipo";
   scope_label: string;
   scope: { id: string; name: string };

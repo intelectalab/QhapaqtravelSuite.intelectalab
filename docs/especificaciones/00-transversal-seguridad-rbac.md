@@ -615,6 +615,10 @@ Desviaciones temporales de la implementación respecto al kit, detectadas en la 
 - Roles externos (customer, passenger, b2b, provider): sin permisos del back-office; sus portales usan endpoints propios con alcance por dueño. En revisión contra la matriz `rolePerms` del kit (fase A).
 - Idempotency-Key e If-Match: el middleware existe; se conecta a las operaciones del contrato en la fase A.
 
+### v3.0 — Rutas propias de la API (06/11/2026)
+
+Este módulo expone 1 rutas que no están en el contrato: 1 lectura de pantalla. El detalle, con el equivalente en el contrato o el motivo de cada una, está en `docs/RUTAS-PROPIAS.md` (sección «Seguridad y sesión»).
+
 ## 12. Supuestos y puntos a validar con negocio
 
 | # | Punto | Propuesta |

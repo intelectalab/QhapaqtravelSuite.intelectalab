@@ -1029,6 +1029,10 @@ Tokens inválidos (receipts `DeviceNotRegistered`) → se anula `expo_push_token
 
 ---
 
+### v3.0 — Rutas propias de la API (06/11/2026)
+
+Este módulo expone 11 rutas que no están en el contrato: 2 lectura de pantalla, 8 editar, borrar o cambiar estado, 1 acción propia. El detalle, con el equivalente en el contrato o el motivo de cada una, está en `docs/RUTAS-PROPIAS.md` (sección «Operaciones y móvil»).
+
 ## 12. Supuestos y puntos a validar con negocio
 
 | # | Punto | Propuesta por defecto |

@@ -39,7 +39,10 @@ export interface ApprovalItem {
   decision_note: string | null;
   href: string | null;
   target: string;
+  lock_version: number | null;
+  version_no?: number;
   change_id?: string;
+  cancel_id?: string;
   cancel_reason?: string;
   source?: "settlement" | "rate" | "invoice";
   approve_label?: string;

@@ -3,8 +3,10 @@
 import { Megaphone, X } from "lucide-react";
 import { useState } from "react";
 import { InfoTip } from "@/components/ui/InfoTip";
+import { useSite } from "./SiteContext";
 
 export function SiteBanner({ title, body }: { title: string; body: string }) {
+  const { t } = useSite();
   const [hidden, setHidden] = useState(false);
   if (hidden) return null;
 
@@ -16,10 +18,10 @@ export function SiteBanner({ title, body }: { title: string; body: string }) {
           <b className="font-semibold">{title}</b>
           <span className="hidden text-white/65 md:inline"> · {body}</span>
         </span>
-        <InfoTip label="Detalle del aviso" className="md:hidden">
+        <InfoTip label={t.common.bannerDetail} className="md:hidden">
           {body}
         </InfoTip>
-        <button type="button" onClick={() => setHidden(true)} aria-label="Ocultar aviso" className="grid h-7 w-7 flex-none place-items-center rounded-lg text-white/60 transition hover:bg-white/10 hover:text-white">
+        <button type="button" onClick={() => setHidden(true)} aria-label={t.common.bannerHide} className="grid h-7 w-7 flex-none place-items-center rounded-lg text-white/60 transition hover:bg-white/10 hover:text-white">
           <X size={15} />
         </button>
       </div>

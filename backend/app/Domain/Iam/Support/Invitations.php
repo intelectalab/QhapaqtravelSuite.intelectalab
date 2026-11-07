@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Iam\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Mail\QueuedMail;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-use Throwable;
 
 final class Invitations
 {
@@ -37,10 +36,6 @@ final class Invitations
         $role = $isAdmin ? 'Se creó la cuenta de '.$agency.' en Qhapaq Travel Suite y eres su administrador.' : $agency.' te invitó a Qhapaq Travel Suite.';
         $body = "Hola {$name}:\n\n{$role}\n\nDefine tu contraseña aquí (el enlace vence en ".self::HOURS." horas):\n{$link}\n\nNunca te enviaremos tu contraseña por correo.";
 
-        try {
-            Mail::raw($body, fn ($message) => $message->to($email, $name)->subject("Invitación a Qhapaq Travel Suite · {$agency}"));
-        } catch (Throwable $e) {
-            report($e);
-        }
+        app(QueuedMail::class)->send($email, $name, "Invitación a Qhapaq Travel Suite · {$agency}", $body);
     }
 }

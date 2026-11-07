@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace App\Domain\Operations\Actions;
 
-use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Iam\Models\User;
 use App\Domain\Operations\Support\OpsCommon;
 use App\Domain\Operations\Support\VoucherToken;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Sequences\SequenceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class VoucherWorkflow
 {
-    public function __construct(private readonly CodeSequence $sequence, private readonly AuditLogger $audit) {}
+    public function __construct(private readonly SequenceService $sequences, private readonly AuditLogger $audit) {}
 
     public function issue(string $serviceCode, ?string $providerId, ?string $note, User $actor): string
     {
@@ -51,7 +51,7 @@ final class VoucherWorkflow
             }
 
             $pax = DB::table('booking_passengers')->where('reservation_id', $service->reservation_id)->count();
-            $code = $this->sequence->next('ops_vouchers', 'VOU-'.substr($service->service_date, 0, 4).'-', 5);
+            $code = $this->sequences->next('voucher', year: (int) substr((string) $service->service_date, 0, 4));
             $voucherId = (string) Str::uuid7();
             DB::table('ops_vouchers')->insert([
                 'id' => $voucherId,

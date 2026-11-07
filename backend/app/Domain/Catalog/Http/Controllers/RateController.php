@@ -7,6 +7,7 @@ namespace App\Domain\Catalog\Http\Controllers;
 use App\Domain\Catalog\Actions\RateRegistry;
 use App\Domain\Catalog\Actions\SeasonRegistry;
 use App\Domain\Catalog\Http\Controllers\Concerns\ResolvesActor;
+use App\Domain\Catalog\Http\Controllers\Concerns\ResolvesProduct;
 use App\Domain\Catalog\Support\CatalogAccess;
 use App\Domain\Catalog\Support\RateDirectory;
 use Illuminate\Http\JsonResponse;
@@ -16,6 +17,7 @@ use Illuminate\Validation\Rule;
 final class RateController
 {
     use ResolvesActor;
+    use ResolvesProduct;
 
     public function __construct(private readonly RateRegistry $rates, private readonly SeasonRegistry $seasons) {}
 
@@ -24,29 +26,32 @@ final class RateController
         return response()->json(['data' => $directory->overview($this->actor($request))]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, string $product): JsonResponse
     {
-        $data = $this->validateRate($request, true);
+        $data = [...$this->validateRate($request, true), 'product_id' => $this->productId($product)];
 
         return response()->json(['data' => $this->rates->create($data, $this->actor($request))], 201);
     }
 
-    public function update(Request $request, string $ref): JsonResponse
+    public function update(Request $request, string $product, string $ref): JsonResponse
     {
+        $this->ownedRate($product, $ref);
         $data = $this->validateRate($request, false);
 
         return response()->json(['data' => $this->rates->update($ref, $data, (int) $request->input('lock_version'), $this->actor($request))]);
     }
 
-    public function activate(Request $request, string $ref): JsonResponse
+    public function activate(Request $request, string $product, string $ref): JsonResponse
     {
+        $this->ownedRate($product, $ref);
         $this->rates->setActive($ref, true, null, $this->actor($request));
 
         return response()->json(['data' => ['ref' => $ref]]);
     }
 
-    public function deactivate(Request $request, string $ref): JsonResponse
+    public function deactivate(Request $request, string $product, string $ref): JsonResponse
     {
+        $this->ownedRate($product, $ref);
         $request->validate(['reason' => ['required', 'string', 'min:3', 'max:300']], ['reason.*' => 'Escribe el motivo.']);
         $this->rates->setActive($ref, false, (string) $request->input('reason'), $this->actor($request));
 
@@ -77,10 +82,14 @@ final class RateController
         return response()->json(['data' => ['ref' => $ref]]);
     }
 
+    private function ownedRate(string $product, string $ref): void
+    {
+        $this->ensureOwnedBy($product, 'catalog_rates', 'ref', $ref, 'La tarifa no existe.');
+    }
+
     private function validateRate(Request $request, bool $creating): array
     {
         return $request->validate([
-            'product_id' => [Rule::requiredIf($creating), 'uuid'],
             'rate_type' => ['required', Rule::in(RateDirectory::TYPES)],
             'segment' => ['required', Rule::in(RateDirectory::SEGMENTS)],
             'channel' => ['required', Rule::in(RateDirectory::CHANNELS)],
@@ -97,7 +106,6 @@ final class RateController
             'reason' => ['nullable', 'string', 'max:300'],
             'lock_version' => [Rule::requiredIf(! $creating), 'integer'],
         ], [
-            'product_id.*' => 'Elige el producto.',
             'rate_type.*' => 'Elige el tipo de tarifa.',
             'segment.*' => 'Elige el segmento.',
             'channel.*' => 'Elige el canal.',

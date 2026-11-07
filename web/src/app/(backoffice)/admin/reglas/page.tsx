@@ -11,7 +11,7 @@ import { getResource } from "@/lib/server/resource";
 export const metadata: Metadata = { title: "Reglas de reserva" };
 
 export default async function ReglasPage() {
-  const data = await getResource<RulesOverview>("/admin/rules", "No pudimos cargar las reglas.");
+  const data = await getResource<RulesOverview>("/admin/booking-rules", "No pudimos cargar las reglas.");
   if (!data) return <NoAccess home="/dashboard" />;
   const active = data.rules.filter((rule) => rule.enabled).length;
   const updated = latest(data.rules.map((rule) => rule.updated_at));

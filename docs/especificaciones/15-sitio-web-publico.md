@@ -622,6 +622,29 @@ Desviaciones temporales de la implementación respecto al kit, detectadas en la 
 - Sitio por ruta `/sitio/{agencia}` en desarrollo; en producción, por subdominio. El tenant se resuelve con `public.site` desde la ruta, no aún con `app_resolve_tenant_by_host()`.
 - Faltan: i18n ES/EN y selector de moneda, blog, nosotros, ofertas, paquetes, experiencias, «Mi cuenta» y páginas legales. Pago simulado.
 
+### v3.0 — Fase C, i18n (06/11/2026)
+- Idioma por petición con `SiteLocale` (`X-Site-Locale` o `?locale=`, `es` por defecto). Productos y destinos usan `catalog_product_translations` y `catalog_destination_contents` con respaldo al español y la marca `content_locale` (SIT-BR-28). Las etiquetas de filtros, orden, duración, dificultad, idiomas, tarjetas y líneas del precio se traducen en el backend.
+- Web: cookie `qts_site_locale` con selector ES/EN y diccionario propio (`lib/site-i18n.ts`) en lugar de `next-intl`, que no está instalado. Sin prefijo `/en` ni `hreflang` por ahora. Checkout, confirmación y formularios en español, como el prototipo (§11.5).
+- Editor de traducción al inglés del producto en el back-office (rutas propias `GET/PUT/DELETE catalog/products/{code}/translations[/{locale}]`). Pendientes: editor de destinos y de itinerario, FAQ y requisitos, y selector de moneda.
+
+### v3.0 — Rutas del contrato en el sitio (06/11/2026)
+
+El sitio público usa las rutas del contrato: `/public/site`, `/public/destinations`, `/public/products` (con `{slug}` y `/calendar`), `/public/price-quote`, `/public/carts/current` (con `items`, `items/{line}` y `items/{line}/hold`), `/public/checkout/orders`, `/public/orders/{code}` (con `/payments`), `/public/leads`, `/public/contact`, `/public/newsletter` y `/public/claims`. La agencia ya no va en la URL:
+
+- **Widgets externos:** la identifica `X-Qhapaq-Key`, la clave pública de `channel_widget_config`. Si llega `Origin`, debe ser un dominio verificado de la agencia; si no, responde 403 `WIDGET_ORIGIN_NOT_ALLOWED`. Una clave inválida responde 401 `WIDGET_KEY_INVALID`.
+- **Sitio alojado:** la identifica el dominio: `{subdominio}.SITES_DOMAIN`, el dominio propio de la agencia o un dominio verificado del widget. El servidor de Next envía `X-Forwarded-Host`.
+
+El carrito viaja en la cookie `ah_cart`, como en el contrato. El pedido sigue con `X-Order-Token`.
+
+**Desviaciones que se mantienen:**
+- `GET /public/home` y `GET /public/form-options`: lecturas de pantalla.
+- Agregar una línea crea el carrito si no existe, en lugar de exigir `POST /public/carts` antes.
+- El cuerpo de las respuestas aún no sigue los esquemas del contrato (`from_price`, cursor): se alinea cuando se trabaje el catálogo público.
+
+### v3.0 — Rutas propias de la API (06/11/2026)
+
+Este módulo expone 2 rutas que no están en el contrato: 2 lectura de pantalla. El detalle, con el equivalente en el contrato o el motivo de cada una, está en `docs/RUTAS-PROPIAS.md` (sección «Sitio web público»).
+
 ## 12. Supuestos y puntos a validar con negocio
 
 1. **Porcentajes y plazos del anticipo** (30 % ≥ 30 días; 40 % 15–29 días; saldo −15 días; solo total < 15 días) y penalidad si no se paga el saldo.

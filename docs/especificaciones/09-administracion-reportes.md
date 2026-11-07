@@ -802,6 +802,12 @@ Desviaciones temporales de la implementación respecto al kit, detectadas en la 
 
 - Personalización por agencia (colores y diseño de tarjeta) guardada en `tenants.settings.branding` y aplicada en todo el back-office. Agregado.
 - Monedas y tipo de cambio sobre `fin_fx_rates` (solo inserción), con USD, EUR y GBP.
+- Fase B (06/11/2026), jobs: `jobs:run-due` (scheduler cada minuto) encola los procesos de `sys_scheduled_jobs` según el cron y la zona horaria de la agencia, sin los pausados. «Ejecutar ahora» encola la clase real, y el estado y el resultado los escribe el job (`RecordJobRun`). El catálogo `JobCatalog` agrega JOB-12 (CxC y CxP vencidas, `fin:mark-overdue` de la spec 07), JOB-13 (publicación de `sys_outbox`) y PLT-09 (particiones mensuales), y se crea en el alta de cada agencia. JOB-06 y JOB-09 solo alertan (regla de la spec 05 §12 por definir). JOB-08 sigue sin clase.
+- Notificaciones automáticas por correo en la cola `notifications`, con historial en `notif_messages` (`pendiente → enviado | fallido`, 5 reintentos). Respetan la regla del evento y la plantilla vigente de la agencia. Eventos de sistema agregados: `actividad.vencida` y `documentos.recordatorio`.
+
+### v3.0 — Rutas propias de la API (06/11/2026)
+
+Este módulo expone 10 rutas que no están en el contrato: 7 lectura de pantalla, 3 editar, borrar o cambiar estado. El detalle, con el equivalente en el contrato o el motivo de cada una, está en `docs/RUTAS-PROPIAS.md` (sección «Administración y reportes»).
 
 ## 12. Supuestos y puntos a validar con negocio
 

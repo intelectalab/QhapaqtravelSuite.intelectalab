@@ -17,7 +17,7 @@ final class EcommerceDirectory
             ->leftJoin('catalog_products as p', 'p.id', '=', 'o.product_id')
             ->leftJoin('booking_reservations as r', 'r.id', '=', 'o.reservation_id')
             ->orderByDesc('o.ordered_at')
-            ->get(['o.code', 'o.ordered_at', 'o.customer_name', 'o.customer_email', 'o.customer_country', 'o.pax_total', 'o.total', 'o.currency', 'o.status', 'o.promo_code', 'o.discount_amount', 'o.cancel_reason', 'o.product_id', 'p.code as product_code', 'p.name as product_name', 'r.code as reservation_code']);
+            ->get(['o.code', 'o.ordered_at', 'o.customer_name', 'o.customer_email', 'o.customer_country', 'o.pax_total', 'o.total', 'o.currency', 'o.status', 'o.promo_code', 'o.discount_amount', 'o.cancel_reason', 'o.lock_version', 'o.product_id', 'p.code as product_code', 'p.name as product_name', 'r.code as reservation_code']);
 
         $products = DB::table('catalog_products as p')
             ->leftJoin('catalog_product_channels as c', fn ($join) => $join->on('c.product_id', '=', 'p.id')->where('c.channel', 'ecommerce'))
@@ -61,6 +61,7 @@ final class EcommerceDirectory
                 'reservation' => $row->reservation_code,
                 'cancel_reason' => $row->cancel_reason,
                 'can_cancel' => in_array($row->status, self::OPEN_STATUSES, true),
+                'lock_version' => (int) $row->lock_version,
             ])->values(),
             'products' => $products->map(fn (object $row): array => [
                 'code' => $row->code,

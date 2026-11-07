@@ -141,6 +141,7 @@ export interface PortalTrip {
 
 export interface PortalQuote {
   code: string;
+  lock_version: number;
   title: string;
   status: string;
   valid_until: string | null;

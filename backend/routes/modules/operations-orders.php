@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Domain\Operations\Http\Controllers\OrderController;
 use App\Domain\Operations\Http\Controllers\ResourceController;
+use App\Domain\Operations\Support\OrderFlow;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('permission:operations.view')->prefix('ops')->group(function (): void {
@@ -14,7 +15,9 @@ Route::middleware('permission:operations.view')->prefix('ops')->group(function (
     Route::middleware('permission:operations.assign')->group(function (): void {
         Route::post('orders', [OrderController::class, 'store'])->name('ops.orders.store');
         Route::patch('orders/{code}', [OrderController::class, 'update'])->name('ops.orders.update');
-        Route::post('orders/{code}/status', [OrderController::class, 'status'])->name('ops.orders.status');
+        foreach (array_keys(OrderFlow::ACTIONS) as $action) {
+            Route::post("orders/{code}/{$action}", [OrderController::class, 'advance'])->defaults('action', $action)->name("ops.orders.{$action}");
+        }
         Route::post('orders/{code}/cancel', [OrderController::class, 'cancel'])->name('ops.orders.cancel');
         Route::post('orders/{code}/tasks', [OrderController::class, 'addTask'])->name('ops.orders.tasks.store');
         Route::patch('order-tasks/{task}', [OrderController::class, 'updateTask'])->name('ops.tasks.update');

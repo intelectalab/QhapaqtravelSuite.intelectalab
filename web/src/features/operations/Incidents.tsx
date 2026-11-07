@@ -59,24 +59,24 @@ export function IncidentFlowActions({ incident }: { incident: IncidentDetail }) 
     <>
       {open && <IncidentEditAction incident={incident} />}
       {incident.status === "abierta" && (
-        <OpsStep step="incident_take" target={incident.code} label="Pasar a en proceso" icon={<Hand size={16} />} title="Pasar a en proceso" description={incident.title} submitLabel="Pasar a en proceso">
+        <OpsStep step="incident_take" target={incident.code} version={incident.lock_version} label="Pasar a en proceso" icon={<Hand size={16} />} title="Pasar a en proceso" description={incident.title} submitLabel="Pasar a en proceso">
           <ConfirmNote>{incident.assignee ? `${incident.assignee.name} sigue como responsable.` : "Quedarás como responsable."}</ConfirmNote>
         </OpsStep>
       )}
       {open && (
-        <OpsStep step="incident_resolve" target={incident.code} label="Registrar resolución" icon={<Wrench size={16} />} title="Registrar resolución" description={incident.title} submitLabel="Marcar resuelta">
+        <OpsStep step="incident_resolve" target={incident.code} version={incident.lock_version} label="Registrar resolución" icon={<Wrench size={16} />} title="Registrar resolución" description={incident.title} submitLabel="Marcar resuelta">
           <TextArea label="Cómo se resolvió" name="resolution" rows={4} required minLength={5} maxLength={2000} placeholder="Se reprogramó la salida a las 03:00 y se informó a los pasajeros." />
         </OpsStep>
       )}
       {incident.status !== "cerrada" && (
-        <OpsStep step="incident_close" target={incident.code} label="Cerrar" icon={<Lock size={16} />} variant="primary" title="Cerrar incidencia" description={incident.title} submitLabel="Cerrar incidencia">
+        <OpsStep step="incident_close" target={incident.code} version={incident.lock_version} label="Cerrar" icon={<Lock size={16} />} variant="primary" title="Cerrar incidencia" description={incident.title} submitLabel="Cerrar incidencia">
           {needsResolution && <ConfirmNote tone="warn">Las incidencias altas y críticas necesitan su resolución registrada antes de cerrarse.</ConfirmNote>}
           {incident.severity === "critica" && incident.evidence_files.length === 0 && <ConfirmNote tone="warn">Una incidencia crítica necesita al menos una evidencia.</ConfirmNote>}
           <TextArea label={incident.resolution ? "Comentario de cierre (opcional)" : "Comentario de cierre"} name="comment" rows={3} maxLength={1000} placeholder="Sin impacto en el servicio." />
         </OpsStep>
       )}
       {["resuelta", "cerrada"].includes(incident.status) && (
-        <OpsStep step="incident_reopen" target={incident.code} label="Reabrir" icon={<RotateCcw size={16} />} title="Reabrir incidencia" description={incident.title} submitLabel="Reabrir">
+        <OpsStep step="incident_reopen" target={incident.code} version={incident.lock_version} label="Reabrir" icon={<RotateCcw size={16} />} title="Reabrir incidencia" description={incident.title} submitLabel="Reabrir">
           <TextArea label="Motivo" name="reason" rows={3} required minLength={5} maxLength={500} placeholder="El pasajero volvió a presentar síntomas." />
         </OpsStep>
       )}

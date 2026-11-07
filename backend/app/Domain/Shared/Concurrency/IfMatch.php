@@ -17,7 +17,7 @@ final class IfMatch
 
         if ($raw === '') {
             if ($required) {
-                throw ApiException::unprocessable('IF_MATCH_REQUIRED', 'Esta operación requiere el header If-Match con la versión del registro.');
+                throw ApiException::preconditionRequired('IF_MATCH_REQUIRED', 'Esta operación requiere la versión del registro (If-Match). Recarga la página e intenta de nuevo.');
             }
 
             return null;

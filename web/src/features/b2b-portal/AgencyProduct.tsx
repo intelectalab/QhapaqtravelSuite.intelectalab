@@ -339,7 +339,7 @@ export function AgencyProductView({ data, initialDate }: { data: AgencyProduct; 
                       <QuoteLine label={`Neto ${formatMoney(quote.net_unit, quote.currency)} × ${quote.seats}`} value={formatMoney(quote.net_total, quote.currency)} strong />
                       <QuoteLine label={`Tu comisión ${quote.commission_pct} %`} value={formatMoney(quote.commission, quote.currency)} tone="violet" />
                       {quote.pvp_total !== null && <QuoteLine label="PVP sugerido" value={formatMoney(quote.pvp_total, quote.currency)} />}
-                      {quote.margin !== null && quote.margin > 0 && <QuoteLine label="Margen al PVP" value={formatMoney(quote.margin, quote.currency)} tone="ok" />}
+                      {quote.margin !== null && Number(quote.margin) > 0 && <QuoteLine label="Margen al PVP" value={formatMoney(quote.margin, quote.currency)} tone="ok" />}
                     </div>
                     <div style={toneStyle(AVAILABILITY_TONES[quote.availability.status] ?? "mute")} className="flex items-center gap-2 rounded-tile border border-[color-mix(in_srgb,var(--tint)_28%,transparent)] px-3 py-2 text-[12.5px]">
                       <Ticket size={14} className="text-[var(--tint)]" />

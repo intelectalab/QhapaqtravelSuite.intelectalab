@@ -9,6 +9,8 @@ export async function platformVerifyMfa(_state: FormState, form: FormData): Prom
   return confirmMfa("platform", form);
 }
 
+const lockVersion = (form: FormData) => String(form.get("lock_version") ?? "").trim() || undefined;
+
 export interface StatusState {
   message: string | null;
   done: boolean;
@@ -25,7 +27,7 @@ export async function changeTenantStatus(_state: StatusState, form: FormData): P
   if (!parsed.success) return { message: parsed.error.issues[0].message, done: false };
 
   const { tenant, mode, reason } = parsed.data;
-  const result = await apiFetch(`/platform/tenants/${encodeURIComponent(tenant)}/${mode}`, { method: "POST", body: { reason }, realm: "platform" });
+  const result = await apiFetch(`/platform/tenants/${encodeURIComponent(tenant)}/${mode}`, { method: "POST", body: { reason, lock_version: lockVersion(form) }, realm: "platform" });
   if (!result.ok) return { message: result.error?.message ?? "No pudimos cambiar el estado de la agencia.", done: false };
 
   revalidatePath("/plataforma", "layout");
@@ -107,11 +109,11 @@ export async function changeTenantPlan(_state: ProvisionState, form: FormData): 
   const tenant = String(form.get("tenant") ?? "");
   const plan = String(form.get("plan") ?? "").trim();
   if (!plan) return { message: "Elige el nuevo plan.", done: false };
-  return tenantRequest(`/platform/tenants/${encodeURIComponent(tenant)}/change-plan`, "POST", { plan, reason: String(form.get("reason") ?? "").trim() || undefined });
+  return tenantRequest(`/platform/tenants/${encodeURIComponent(tenant)}/change-plan`, "POST", { plan, reason: String(form.get("reason") ?? "").trim() || undefined, lock_version: lockVersion(form) });
 }
 
 export async function updateTenant(_state: ProvisionState, form: FormData): Promise<ProvisionState> {
   const tenant = String(form.get("tenant") ?? "");
   const body = Object.fromEntries(TENANT_FIELDS.map((field) => [field, String(form.get(field) ?? "").trim()]));
-  return tenantRequest(`/platform/tenants/${encodeURIComponent(tenant)}`, "PATCH", body);
+  return tenantRequest(`/platform/tenants/${encodeURIComponent(tenant)}`, "PATCH", { ...body, lock_version: lockVersion(form) });
 }

@@ -10,13 +10,13 @@ function refresh(...paths: string[]) {
 }
 
 export async function confirmRequest(code: string, _state: StepResult, form: FormData): Promise<StepResult> {
-  const result = await sendStep(`/supplier/requests/${encodeURIComponent(code)}/confirm`, "POST", formValues(form, ["confirmation_code", "service_time", "confirmed_by_name", "note"]), "No pudimos registrar la confirmación.");
+  const result = await sendStep(`/supplier/requests/${encodeURIComponent(code)}/confirm`, "POST", formValues(form, ["confirmation_code", "service_time", "confirmed_by_name", "note", "lock_version"]), "No pudimos registrar la confirmación.");
   if (result.done) refresh("/proveedor/solicitudes", `/proveedor/solicitudes/${code}`, "/proveedor/calendario");
   return result;
 }
 
 export async function rejectRequest(code: string, _state: StepResult, form: FormData): Promise<StepResult> {
-  const result = await sendStep(`/supplier/requests/${encodeURIComponent(code)}/reject`, "POST", formValues(form, ["reason", "note", "alt_date"]), "No pudimos registrar el rechazo.");
+  const result = await sendStep(`/supplier/requests/${encodeURIComponent(code)}/reject`, "POST", formValues(form, ["reason", "note", "alt_date", "lock_version"]), "No pudimos registrar el rechazo.");
   if (result.done) refresh("/proveedor/solicitudes", `/proveedor/solicitudes/${code}`);
   return result;
 }

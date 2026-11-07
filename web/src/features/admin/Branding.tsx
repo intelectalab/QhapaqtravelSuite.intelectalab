@@ -139,9 +139,9 @@ function Preview({ values, agency }: { values: BrandingValues; agency: BrandingO
   );
 }
 
-export function BrandingStudio({ data }: { data: BrandingOverview }) {
+export function BrandingStudio({ data, save = saveBranding, reset = resetBranding, audience = "tu equipo" }: { data: BrandingOverview; save?: (state: AdminActionState, form: FormData) => Promise<AdminActionState>; reset?: (state: AdminActionState, form: FormData) => Promise<AdminActionState>; audience?: string }) {
   const [values, setValues] = useState<BrandingValues>(data.branding);
-  const [state, run, pending] = useActionState<AdminActionState, FormData>(saveBranding, ADMIN_INITIAL);
+  const [state, run, pending] = useActionState<AdminActionState, FormData>(save, ADMIN_INITIAL);
   const manage = data.can_manage;
   const dirty = useMemo(() => (Object.keys(values) as (keyof BrandingValues)[]).some((key) => values[key].toLowerCase() !== data.branding[key].toLowerCase()), [values, data.branding]);
   const invalid = [values.brand, values.accent, values.menu].some((value) => !HEX.test(value));
@@ -199,7 +199,7 @@ export function BrandingStudio({ data }: { data: BrandingOverview }) {
       </div>
       <div className="flex flex-col gap-4 xl:sticky xl:top-4 xl:self-start">
         <Card>
-          <TintCardTitle icon={Sparkles} title="Vista previa" aside="Así lo verá tu equipo" />
+          <TintCardTitle icon={Sparkles} title="Vista previa" aside={`Así lo verá ${audience}`} />
           <Preview values={values} agency={data.agency} />
           <FormError message={state.done ? null : state.message} />
           {state.done && !dirty && <p className="mt-3 text-[12.5px] font-semibold text-ok">Apariencia guardada.</p>}
@@ -219,7 +219,7 @@ export function BrandingStudio({ data }: { data: BrandingOverview }) {
                   title="Restablecer la apariencia"
                   description="Vuelven los colores y el diseño de tarjeta predeterminados de Qhapaq Travel Suite."
                   submitLabel="Restablecer"
-                  action={resetBranding}
+                  action={reset}
                   initial={ADMIN_INITIAL}
                   onDone={() => setValues(data.defaults)}
                 >

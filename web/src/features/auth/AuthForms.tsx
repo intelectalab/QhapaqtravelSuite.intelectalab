@@ -11,19 +11,19 @@ type FormAction = (state: FormState, form: FormData) => Promise<FormState>;
 
 const initial: FormState = { message: null };
 
-export function FormError({ message }: { message: string | null }) {
+export function FormError({ message, testId = "form-error" }: { message: string | null; testId?: string }) {
   if (!message) return null;
   return (
-    <p role="alert" className="flex items-start gap-2.5 rounded-xl bg-bad/[0.08] px-3.5 py-3 text-[13.5px] text-bad">
+    <p role="alert" data-testid={testId} className="flex items-start gap-2.5 rounded-xl bg-bad/[0.08] px-3.5 py-3 text-[13.5px] text-bad">
       <CircleAlert size={17} className="mt-px flex-none" />
       {message}
     </p>
   );
 }
 
-function SubmitButton({ pending, children }: { pending: boolean; children: string }) {
+function SubmitButton({ pending, children, testId }: { pending: boolean; children: string; testId?: string }) {
   return (
-    <Button type="submit" variant="primary" disabled={pending} className="h-12 w-full text-[15px]">
+    <Button type="submit" variant="primary" disabled={pending} data-testid={testId} className="h-12 w-full text-[15px]">
       {pending ? "Un momento…" : children}
     </Button>
   );
@@ -47,11 +47,11 @@ export function LoginForm({ action: submit, next, title = "Inicia sesión", desc
         <h2 className="text-[28px] font-bold tracking-[-0.035em]">{title}</h2>
         <p className="mt-1.5 text-fg-3">{description}</p>
       </div>
-      <FormError message={state.message} />
+      <FormError message={state.message} testId="login-error" />
       <input type="hidden" name="next" value={next ?? ""} />
       <TextField label="Correo" name="email" type="email" autoComplete="email" required autoFocus defaultValue={state.fields?.email} placeholder={placeholder} icon={<Mail size={17} />} data-testid="login-email" />
       <TextField label="Contraseña" name="password" revealable autoComplete="current-password" required icon={<Lock size={17} />} data-testid="login-password" />
-      <SubmitButton pending={pending}>Ingresar</SubmitButton>
+      <SubmitButton pending={pending} testId="login-submit">Ingresar</SubmitButton>
       {recoverHref && (
         <Link href={recoverHref} prefetch={false} className="text-center text-[13px] font-semibold text-fg-3 hover:text-fg">
           ¿Olvidaste tu contraseña?
@@ -73,10 +73,10 @@ export function MfaForm({ action: submit, next, switchHref }: { action: FormActi
         <h2 className="text-[28px] font-bold tracking-[-0.035em]">Verificación en dos pasos</h2>
         <p className="mt-1.5 text-fg-3">Escribe el código de 6 dígitos que muestra tu aplicación de autenticación.</p>
       </div>
-      <FormError message={state.message} />
+      <FormError message={state.message} testId="mfa-error" />
       <input type="hidden" name="next" value={next ?? ""} />
       <TextField label="Código" hint="Si no tienes tu teléfono, usa uno de tus códigos de recuperación." name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={9} required autoFocus placeholder="000 000" icon={<KeyRound size={17} />} data-testid="mfa-code" />
-      <SubmitButton pending={pending}>Verificar</SubmitButton>
+      <SubmitButton pending={pending} testId="mfa-submit">Verificar</SubmitButton>
       <Link href={switchHref} prefetch={false} className="text-center text-[13px] font-semibold text-fg-3 hover:text-fg">
         Entrar con otra cuenta
       </Link>

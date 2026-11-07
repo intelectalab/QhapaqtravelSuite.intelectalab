@@ -89,7 +89,7 @@ final class ApprovalInbox
             ->when(! $canDecide, fn ($query) => $query->where('a.requested_by', $viewer->getKey()))
             ->orderByDesc('a.created_at')
             ->limit(120)
-            ->get(['a.id', 'a.status', 'a.reasons', 'a.over_cap', 'a.requested_by', 'a.requested_at', 'a.request_note', 'a.decided_by', 'a.decided_at', 'a.decision_note', 'a.created_at', 'q.code', 'q.title', 'q.current_version_id', 'v.id as version_id', 'v.version_no', 'v.grand_total', 'v.currency', 'v.fx_rate', 'v.discount_pct', 'v.margin_pct', 'c.name as client'])
+            ->get(['a.id', 'a.status', 'a.reasons', 'a.over_cap', 'a.requested_by', 'a.requested_at', 'a.request_note', 'a.decided_by', 'a.decided_at', 'a.decision_note', 'a.created_at', 'q.code', 'q.lock_version', 'q.title', 'q.current_version_id', 'v.id as version_id', 'v.version_no', 'v.grand_total', 'v.currency', 'v.fx_rate', 'v.discount_pct', 'v.margin_pct', 'c.name as client'])
             ->map(function (object $row) use ($viewer, $canDecide, $sla): array {
                 $created = $row->requested_at ?? $row->created_at;
                 $reasons = json_decode((string) $row->reasons, true) ?: [];
@@ -115,6 +115,8 @@ final class ApprovalInbox
                     'decision_note' => $row->decision_note,
                     'href' => "/cotizaciones/{$row->code}",
                     'target' => $row->code,
+                    'version_no' => (int) $row->version_no,
+                    'lock_version' => (int) $row->lock_version,
                     'can_decide' => $canDecide && $row->requested_by !== $viewer->getKey() && $row->version_id === $row->current_version_id,
                 ], $viewer);
             });
@@ -131,7 +133,7 @@ final class ApprovalInbox
             ->when(! $canDecide, fn ($query) => $query->where('b.requested_by', $viewer->getKey()))
             ->orderByDesc('b.requested_at')
             ->limit(120)
-            ->get(['b.id', 'b.type', 'b.description', 'b.delta_amount', 'b.status', 'b.requested_by', 'b.requested_at', 'b.decided_by', 'b.decided_at', 'r.code', 'r.title', 'r.currency', 'r.fx_rate', 'c.name as client'])
+            ->get(['b.id', 'b.type', 'b.description', 'b.delta_amount', 'b.status', 'b.requested_by', 'b.requested_at', 'b.decided_by', 'b.decided_at', 'r.code', 'r.lock_version', 'r.title', 'r.currency', 'r.fx_rate', 'c.name as client'])
             ->map(fn (object $row): array => $this->item([
                 'key' => "change:{$row->id}",
                 'type' => 'change',
@@ -154,6 +156,7 @@ final class ApprovalInbox
                 'href' => "/reservas/{$row->code}",
                 'target' => $row->code,
                 'change_id' => $row->id,
+                'lock_version' => (int) $row->lock_version,
                 'can_decide' => $canDecide && $row->requested_by !== $viewer->getKey(),
             ], $viewer));
     }
@@ -171,7 +174,7 @@ final class ApprovalInbox
             ->when(! $canDecide, fn ($query) => $query->where('b.requested_by', $viewer->getKey()))
             ->orderByDesc('b.requested_at')
             ->limit(120)
-            ->get(['b.id', 'b.reason', 'b.status', 'b.requested_by', 'b.requested_at', 'b.decided_by', 'b.decided_at', 'b.decision_note', 'r.code', 'r.title', 'r.status as reservation_status', 'r.total_amount', 'r.currency', 'r.fx_rate', 'r.b2b_terms', 'c.name as client', 'g.code as agency_code', 'g.legal_name as agency'])
+            ->get(['b.id', 'b.reason', 'b.status', 'b.requested_by', 'b.requested_at', 'b.decided_by', 'b.decided_at', 'b.decision_note', 'r.code', 'r.lock_version', 'r.title', 'r.status as reservation_status', 'r.total_amount', 'r.currency', 'r.fx_rate', 'r.b2b_terms', 'c.name as client', 'g.code as agency_code', 'g.legal_name as agency'])
             ->map(function (object $row) use ($viewer, $canDecide, $sla): array {
                 [$reason, $detail] = $this->splitReason((string) $row->reason);
                 $terms = json_decode((string) $row->b2b_terms, true) ?: [];
@@ -200,6 +203,8 @@ final class ApprovalInbox
                     'href' => "/reservas/{$row->code}",
                     'target' => $row->code,
                     'cancel_reason' => $reason,
+                    'cancel_id' => $row->id,
+                    'lock_version' => (int) $row->lock_version,
                     'can_decide' => $canDecide && $row->requested_by !== $viewer->getKey() && ! in_array($row->reservation_status, ['cancelada', 'completada'], true),
                 ], $viewer);
             });
@@ -252,6 +257,7 @@ final class ApprovalInbox
                     'href' => '/finanzas/comisiones',
                     'target' => $row->code,
                     'approve_label' => 'Aprobar comisiones',
+                    'lock_version' => 0,
                     'can_decide' => $open && $commissions->isNotEmpty(),
                 ], $viewer);
             });
@@ -310,6 +316,7 @@ final class ApprovalInbox
                     'href' => '/catalogo/servicios',
                     'target' => $row->code,
                     'approve_label' => 'Aprobar tarifa',
+                    'lock_version' => 0,
                     'can_decide' => $open,
                 ], $viewer);
             });
@@ -421,6 +428,7 @@ final class ApprovalInbox
                 'decision_note' => $row->decision_note,
                 'href' => null,
                 'target' => $row->code,
+                'lock_version' => (int) $row->lock_version,
                 'is_generic' => (bool) $row->is_generic,
                 'permission' => $levelPermission,
                 'can_decide' => $open && $levelPermission !== null && $viewer->can($levelPermission) && ! $mine && ! $own->contains('decided_by', $viewer->getKey()),
@@ -460,6 +468,7 @@ final class ApprovalInbox
             'steps' => [],
             'events' => [],
             'can_edit' => $item['can_edit'] ?? false,
+            'lock_version' => $item['lock_version'] ?? null,
         ];
     }
 

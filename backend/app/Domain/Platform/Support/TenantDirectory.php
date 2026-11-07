@@ -52,7 +52,6 @@ final class TenantDirectory
             'locations' => $sedes,
             'admins' => $admins,
             'history' => $this->history($tenant),
-            'lock_version' => $tenant->lock_version,
         ];
     }
 
@@ -102,6 +101,7 @@ final class TenantDirectory
             'suspend_reason' => $tenant->suspend_reason,
             'suspended_at' => $tenant->suspended_at?->toIso8601String(),
             'created_at' => $tenant->created_at?->toIso8601String(),
+            'lock_version' => (int) $tenant->lock_version,
         ];
     }
 }

@@ -28,13 +28,14 @@ interface RowIconProps {
   onClick?: () => void;
   disabledHint?: string;
   icon?: ReactNode;
+  testId?: string;
 }
 
-export function RowIcon({ tone, label, href, onClick, disabledHint, icon }: RowIconProps) {
+export function RowIcon({ tone, label, href, onClick, disabledHint, icon, testId }: RowIconProps) {
   const glyph = icon ?? ICONS[tone];
   if (disabledHint) {
     return (
-      <span title={disabledHint} aria-label={disabledHint} className={cn(BASE, "cursor-not-allowed bg-surface-2 text-fg-3 opacity-60")}>
+      <span title={disabledHint} aria-label={disabledHint} data-testid={testId} className={cn(BASE, "cursor-not-allowed bg-surface-2 text-fg-3 opacity-60")}>
         {glyph}
       </span>
     );
@@ -42,13 +43,13 @@ export function RowIcon({ tone, label, href, onClick, disabledHint, icon }: RowI
   const className = cn(BASE, TONES[tone], "hover:-translate-y-0.5 hover:scale-110");
   if (href) {
     return (
-      <Link href={href} aria-label={label} title={label} className={className}>
+      <Link href={href} aria-label={label} title={label} data-testid={testId} className={className}>
         {glyph}
       </Link>
     );
   }
   return (
-    <button type="button" onClick={onClick} aria-label={label} title={label} className={className}>
+    <button type="button" onClick={onClick} aria-label={label} title={label} data-testid={testId} className={className}>
       {glyph}
     </button>
   );

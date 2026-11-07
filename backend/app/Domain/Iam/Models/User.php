@@ -67,4 +67,9 @@ final class User extends Authenticatable
     {
         return $this->mfa_required || $this->mfa_enabled;
     }
+
+    public function mfaMandatory(): bool
+    {
+        return (bool) $this->mfa_required || in_array((string) $this->getRoleNames()->first(), (array) config('access.mfa_roles', []), true);
+    }
 }

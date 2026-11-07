@@ -400,6 +400,10 @@ Todas con actor = usuario del proveedor, `provider_id`, IP y correlación.
 
 ---
 
+### v3.0 — Rutas propias de la API (06/11/2026)
+
+Este módulo expone 9 rutas que no están en el contrato: 4 lectura de pantalla, 4 editar, borrar o cambiar estado, 1 acción propia. El detalle, con el equivalente en el contrato o el motivo de cada una, está en `docs/RUTAS-PROPIAS.md` (sección «Extranet de proveedores»).
+
 ## 12. Supuestos y puntos a validar con negocio
 
 | # | Punto | Propuesta por defecto |

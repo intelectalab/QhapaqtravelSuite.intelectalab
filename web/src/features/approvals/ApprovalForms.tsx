@@ -73,8 +73,11 @@ export function ApprovalDetailAction({ item }: { item: ApprovalItem }) {
         <>
           <input type="hidden" name="type" value={item.type} />
           <input type="hidden" name="target" value={item.target} />
+          {item.lock_version !== null && <input type="hidden" name="lock_version" value={item.lock_version} />}
+          {item.version_no !== undefined && <input type="hidden" name="version_no" value={item.version_no} />}
           {item.change_id && <input type="hidden" name="change_id" value={item.change_id} />}
-          {item.cancel_reason && <input type="hidden" name="cancel_reason" value={item.cancel_reason} />}
+          {item.cancel_id && <input type="hidden" name="cancel_id" value={item.cancel_id} />}
+          {item.cancel_reason &&<input type="hidden" name="cancel_reason" value={item.cancel_reason} />}
           {item.source && <input type="hidden" name="source" value={item.source} />}
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={TYPE_TONES[item.type] ?? "mute"}>{item.type_label}</Badge>
@@ -180,6 +183,7 @@ export function ApprovalWithdrawAction({ item }: { item: ApprovalItem }) {
       {() => (
         <>
           <input type="hidden" name="code" value={item.code} />
+          {item.lock_version !== null && <input type="hidden" name="lock_version" value={item.lock_version} />}
           <TextArea label="Motivo (opcional)" name="note" rows={2} maxLength={500} />
         </>
       )}

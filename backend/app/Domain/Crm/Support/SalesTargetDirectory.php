@@ -128,6 +128,7 @@ final class SalesTargetDirectory
 
         return [
             'code' => $row->code,
+            'lock_version' => (int) $row->lock_version,
             'scope_type' => $row->scope_type,
             'scope_label' => self::SCOPES[$row->scope_type] ?? $row->scope_type,
             'scope' => ['id' => $row->scope_id, 'name' => $names[$row->scope_type][$row->scope_id] ?? 'Sin nombre'],

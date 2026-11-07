@@ -18,6 +18,7 @@ export interface RangeRow {
 
 export interface HoldRow {
   ref: string;
+  lock_version: number;
   departure: { ref: string; date: string; time: string } | null;
   product: { code: string | null; name: string | null };
   quantity: number;

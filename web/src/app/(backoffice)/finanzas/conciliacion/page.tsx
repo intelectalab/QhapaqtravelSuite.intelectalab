@@ -12,7 +12,7 @@ import { getResource } from "@/lib/server/resource";
 export const metadata: Metadata = { title: "Conciliación bancaria" };
 
 export default async function ConciliacionPage() {
-  const data = await getResource<ReconciliationOverview>("/finance/reconciliation", "No pudimos cargar la conciliación.");
+  const data = await getResource<ReconciliationOverview>("/finance/bank-lines", "No pudimos cargar la conciliación.");
 
   if (!data) {
     return <PageHeader title="Conciliación bancaria" subtitle="Tu rol no tiene acceso a esta sección." />;

@@ -29,16 +29,27 @@ interface StepPanelProps {
   compact?: boolean;
   onDone?: () => void;
   children?: ReactNode;
+  lockVersion?: number;
+  version?: number;
 }
 
-function StepPanel({ code, step, label, icon, variant = "secondary", title, description, submitLabel, trigger, compact = false, onDone, children }: StepPanelProps) {
-  const compactTrigger = compact ? (open: () => void) => <Button iconOnly icon={icon} label={label} variant={variant} onClick={open} className="transition-transform duration-300 hover:-translate-y-0.5" /> : undefined;
+const STEP_TEST_IDS: Record<string, string> = {
+  send: "quote-send",
+  approve: "quote-register-client-approval",
+  request: "quote-request-internal-approval",
+  decide: "quote-internal-approve",
+};
+
+function StepPanel({ code, step, label, icon, variant = "secondary", title, description, submitLabel, trigger, compact = false, onDone, children, lockVersion, version }: StepPanelProps) {
+  const compactTrigger = compact ? (open: () => void) => <Button iconOnly icon={icon} label={label} variant={variant} onClick={open} data-testid={STEP_TEST_IDS[step]} className="transition-transform duration-300 hover:-translate-y-0.5" /> : undefined;
   return (
-    <PanelAction<QuoteStepState> label={label} icon={icon} variant={variant} formId={`quote-${step}-${code}`} title={title} description={description} submitLabel={submitLabel} action={quoteStep} initial={initial} trigger={trigger ?? compactTrigger} onDone={onDone}>
+    <PanelAction<QuoteStepState> label={label} icon={icon} variant={variant} formId={`quote-${step}-${code}`} title={title} description={description} submitLabel={submitLabel} action={quoteStep} initial={initial} trigger={trigger ?? compactTrigger} onDone={onDone} testId={STEP_TEST_IDS[step]}>
       {() => (
         <>
           <input type="hidden" name="code" value={code} />
           <input type="hidden" name="step" value={step} />
+          {lockVersion !== undefined && <input type="hidden" name="lock_version" value={lockVersion} />}
+          {version !== undefined && <input type="hidden" name="version" value={version} />}
           {children}
         </>
       )}
@@ -111,7 +122,7 @@ export function QuoteLifecycleActions({ quote }: { quote: QuoteDetail }) {
 
   if (status === "borrador" && blockedInternal && internal?.status !== "pendiente" && can.edit) {
     actions.push(
-      <StepPanel key="request" code={code} step="request" label="Pedir aprobación" icon={<ShieldQuestion size={16} />} title="Pedir aprobación a Gerencia" description={`El descuento o el margen de esta versión necesita visto bueno antes de enviarla. Total: ${formatMoney(quote.total, quote.currency)}.`} submitLabel="Enviar solicitud">
+      <StepPanel key="request" code={code} lockVersion={quote.lock_version} step="request" label="Pedir aprobación" icon={<ShieldQuestion size={16} />} title="Pedir aprobación a Gerencia" description={`El descuento o el margen de esta versión necesita visto bueno antes de enviarla. Total: ${formatMoney(quote.total, quote.currency)}.`} submitLabel="Enviar solicitud">
         <TextArea label="Por qué se necesita" name="note" rows={3} required minLength={5} maxLength={500} placeholder="Por ejemplo: cliente frecuente que viaja con un grupo grande." />
       </StepPanel>,
     );
@@ -119,8 +130,8 @@ export function QuoteLifecycleActions({ quote }: { quote: QuoteDetail }) {
 
   if (blockedInternal && can.approve_internal && (status === "borrador" || live)) {
     actions.push(
-      <StepPanel key="decide" code={code} step="decide" label="Decidir aprobación" icon={<ShieldCheck size={16} />} title="Aprobación interna" description={internal?.note ? `Pedido: ${internal.note}` : "Revisa el descuento y el margen antes de decidir."} submitLabel="Guardar decisión">
-        <ChoiceGroup label="Decisión" name="approve" options={[{ value: "1", label: "Aprobar" }, { value: "0", label: "No aprobar" }]} defaultValue="1" />
+      <StepPanel key="decide" code={code} lockVersion={quote.lock_version} version={quote.version} step="decide" label="Decidir aprobación" icon={<ShieldCheck size={16} />} title="Aprobación interna" description={internal?.note ? `Pedido: ${internal.note}` : "Revisa el descuento y el margen antes de decidir."} submitLabel="Guardar decisión">
+        <ChoiceGroup label="Decisión" name="decision" options={[{ value: "approve", label: "Aprobar" }, { value: "reject", label: "No aprobar" }]} defaultValue="approve" />
         <TextArea label="Nota" name="note" rows={3} maxLength={500} hint="Obligatoria si no se aprueba." />
       </StepPanel>,
     );
@@ -128,7 +139,7 @@ export function QuoteLifecycleActions({ quote }: { quote: QuoteDetail }) {
 
   if ((status === "borrador" && !blockedInternal && can.send) || (live && can.send)) {
     actions.push(
-      <StepPanel key="send" code={code} step="send" label={status === "borrador" ? "Enviar al cliente" : "Reenviar"} icon={<Send size={16} />} variant={status === "borrador" ? "primary" : "secondary"} compact={status !== "borrador"} title={status === "borrador" ? "Enviar al cliente" : "Reenviar la cotización"} description={status === "borrador" ? "La versión queda congelada: para cambiarla después se crea una nueva versión." : `Se reenvía la versión ${quote.version}.`} submitLabel="Enviar">
+      <StepPanel key="send" code={code} lockVersion={quote.lock_version} step="send" label={status === "borrador" ? "Enviar al cliente" : "Reenviar"} icon={<Send size={16} />} variant={status === "borrador" ? "primary" : "secondary"} compact={status !== "borrador"} title={status === "borrador" ? "Enviar al cliente" : "Reenviar la cotización"} description={status === "borrador" ? "La versión queda congelada: para cambiarla después se crea una nueva versión." : `Se reenvía la versión ${quote.version}.`} submitLabel="Enviar">
         <SendFields contact={quote.contact} />
       </StepPanel>,
     );
@@ -136,7 +147,7 @@ export function QuoteLifecycleActions({ quote }: { quote: QuoteDetail }) {
 
   if (live && can.send) {
     actions.push(
-      <StepPanel key="negotiate" code={code} step="negotiate" label="Registrar negociación" icon={<MessagesSquare size={16} />} compact title="Registrar negociación" description="Anota lo que pidió el cliente. La oportunidad pasa a negociación." submitLabel="Registrar">
+      <StepPanel key="negotiate" code={code} lockVersion={quote.lock_version} step="negotiate" label="Registrar negociación" icon={<MessagesSquare size={16} />} compact title="Registrar negociación" description="Anota lo que pidió el cliente. La oportunidad pasa a negociación." submitLabel="Registrar">
         <ChoiceGroup label="Canal" name="channel" options={[{ value: "Llamada", label: "Llamada" }, { value: "Reunión", label: "Reunión" }, { value: "WhatsApp", label: "WhatsApp" }, { value: "Email", label: "Correo" }]} defaultValue="Llamada" />
         <TextArea label="Qué pidió" name="note" rows={4} required minLength={3} maxLength={1000} placeholder="Por ejemplo: quiere hotel 4 estrellas en Cusco y bajar el total." />
       </StepPanel>,
@@ -145,7 +156,7 @@ export function QuoteLifecycleActions({ quote }: { quote: QuoteDetail }) {
 
   if ((live || status === "vencida") && can.send) {
     actions.push(
-      <StepPanel key="reject" code={code} step="reject" label="El cliente la rechazó" icon={<Ban size={16} />} compact title="El cliente la rechazó" description="La cotización se cierra. Si el cliente vuelve, crea una nueva versión." submitLabel="Marcar como rechazada">
+      <StepPanel key="reject" code={code} lockVersion={quote.lock_version} step="reject" label="El cliente la rechazó" icon={<Ban size={16} />} compact title="El cliente la rechazó" description="La cotización se cierra. Si el cliente vuelve, crea una nueva versión." submitLabel="Marcar como rechazada">
         <TextArea label="Motivo" name="reason" rows={3} required minLength={3} maxLength={500} placeholder="Por ejemplo: eligió otra fecha o otra agencia." />
       </StepPanel>,
     );
@@ -153,7 +164,7 @@ export function QuoteLifecycleActions({ quote }: { quote: QuoteDetail }) {
 
   if (status !== "borrador" && status !== "convertida" && can.edit) {
     actions.push(
-      <StepPanel key="version" code={code} step="version" label="Nueva versión" icon={<CopyPlus size={16} />} compact title="Crear una nueva versión" description={`Se copia la versión ${quote.version} como borrador para ajustarla. La actual queda como reemplazada y la vigencia se renueva.`} submitLabel="Crear versión" />,
+      <StepPanel key="version" code={code} lockVersion={quote.lock_version} step="version" label="Nueva versión" icon={<CopyPlus size={16} />} compact title="Crear una nueva versión" description={`Se copia la versión ${quote.version} como borrador para ajustarla. La actual queda como reemplazada y la vigencia se renueva.`} submitLabel="Crear versión" />,
     );
   }
 
@@ -163,7 +174,7 @@ export function QuoteLifecycleActions({ quote }: { quote: QuoteDetail }) {
 
   if (live && can.register_approval) {
     actions.push(
-      <StepPanel key="approve" code={code} step="approve" label="Cliente aprobó" icon={<ThumbsUp size={16} />} variant="primary" title="Registrar aprobación del cliente" description={`Versión ${quote.version} · ${formatMoney(quote.total, quote.currency)}. Queda como evidencia con fecha y huella.`} submitLabel="Registrar aprobación">
+      <StepPanel key="approve" code={code} lockVersion={quote.lock_version} step="approve" label="Cliente aprobó" icon={<ThumbsUp size={16} />} variant="primary" title="Registrar aprobación del cliente" description={`Versión ${quote.version} · ${formatMoney(quote.total, quote.currency)}. Queda como evidencia con fecha y huella.`} submitLabel="Registrar aprobación">
         <ApproveFields quote={quote} />
       </StepPanel>,
     );

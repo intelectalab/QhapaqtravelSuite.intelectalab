@@ -42,6 +42,7 @@ export interface JourneyStep {
   label: string;
   at: string | null;
   done: boolean;
+  status?: string;
 }
 
 export function Journey({ steps, formatAt }: { steps: JourneyStep[]; formatAt: (iso: string) => string }) {
@@ -54,7 +55,7 @@ export function Journey({ steps, formatAt }: { steps: JourneyStep[]; formatAt: (
         const next = steps[index + 1];
         const isCurrent = index === current;
         return (
-          <li key={step.label} className="group/step relative flex cursor-default flex-col items-center gap-1.5 text-center">
+          <li key={step.label} data-testid={step.status ? `status-step:${step.status}` : undefined} data-state={step.done ? "done" : isCurrent ? "current" : "todo"} className="group/step relative flex cursor-default flex-col items-center gap-1.5 text-center">
             {next && (
               <span aria-hidden className="absolute left-1/2 top-[15px] h-[3px] w-full overflow-hidden rounded-full bg-line">
                 {next.done && <span className="block h-full w-full origin-left rounded-full bg-[var(--tint)] motion-safe:animate-[fill-x_520ms_cubic-bezier(0.4,0,0.2,1)_backwards]" style={delay(index, 180)} />}

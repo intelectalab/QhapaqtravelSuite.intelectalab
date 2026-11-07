@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Actions;
 
+use App\Domain\Booking\Enums\ReservationStatus;
+use App\Domain\Booking\Models\Reservation;
+use App\Domain\Booking\StateMachines\ReservationStateMachine;
 use App\Domain\Channels\Support\B2bCredit;
-use App\Domain\Crm\Support\Advisors;
-use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
+use App\Domain\Shared\Sequences\SequenceService;
 use App\Domain\Shared\Tenancy\TenantContext;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -24,40 +29,25 @@ final class ReservationWorkflow
 
     public function __construct(
         private readonly TenantContext $context,
-        private readonly CodeSequence $sequence,
+        private readonly SequenceService $sequences,
         private readonly AuditLogger $audit,
-        private readonly Advisors $advisors,
         private readonly ReservationMailer $mailer,
         private readonly B2bCredit $credit,
+        private readonly ReservationStateMachine $states,
     ) {}
 
-    public function update(string $code, array $data, User $actor): void
+    public function update(string $code, ?string $notes, User $actor): void
     {
         $reservation = $this->open($code, $actor);
-        $values = ['notes' => $data['notes'] ?? null];
-
-        if (! empty($data['owner_id']) && $data['owner_id'] !== $reservation->owner_id) {
-            if (! $actor->can('crm.records.reassign')) {
-                throw ApiException::forbidden('FORBIDDEN', 'Solo Gerencia reasigna reservas.', ['crm.records.reassign']);
-            }
-
-            if (! $this->advisors->has($data['owner_id'])) {
-                throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige un asesor activo.');
-            }
-
-            $values['owner_id'] = $data['owner_id'];
-            $this->audit->log('Reserva', $reservation->code, 'reasignar', $reservation->owner_id, $data['owner_id']);
-        }
-
-        DB::table('booking_reservations')->where('id', $reservation->id)->update([...$values, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
-        $this->audit->log('Reserva', $reservation->code, 'editar', null, $values['notes']);
+        DB::table('booking_reservations')->where('id', $reservation->id)->update(['notes' => $notes, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+        $this->audit->log('Reserva', $reservation->code, 'editar', null, $notes);
     }
 
-    public function savePassenger(string $code, ?string $passengerId, array $data, User $actor): void
+    public function savePassenger(string $code, ?string $passengerId, array $data, User $actor): object
     {
         $reservation = $this->open($code, $actor);
 
-        DB::transaction(function () use ($reservation, $passengerId, $data, $actor): void {
+        $id = DB::transaction(function () use ($reservation, $passengerId, $data, $actor): string {
             $values = [
                 'full_name' => $data['full_name'],
                 'doc_type' => $data['doc_type'] ?? null,
@@ -86,22 +76,29 @@ final class ReservationWorkflow
                     throw ApiException::notFound('El pasajero no existe.');
                 }
                 $this->audit->log('Reserva', $reservation->code, 'editar_pasajero', null, $data['full_name']);
+                $this->touch($reservation->id, $actor);
 
-                return;
+                return $passengerId;
             }
 
             $seq = (int) DB::table('booking_passengers')->where('reservation_id', $reservation->id)->max('seq') + 1;
             $first = ! DB::table('booking_passengers')->where('reservation_id', $reservation->id)->exists();
-            DB::table('booking_passengers')->insert([...$values, 'reservation_id' => $reservation->id, 'seq' => $seq, 'is_lead' => $values['is_lead'] ?? $first, 'created_by' => $actor->getKey()]);
+            $id = (string) DB::table('booking_passengers')->insertGetId([...$values, 'reservation_id' => $reservation->id, 'seq' => $seq, 'is_lead' => $values['is_lead'] ?? $first, 'created_by' => $actor->getKey()]);
             $this->audit->log('Reserva', $reservation->code, 'agregar_pasajero', null, $data['full_name']);
+            $this->touch($reservation->id, $actor);
+
+            return $id;
         });
+
+        return DB::table('booking_passengers')->where('id', $id)
+            ->first(['id', 'reservation_id', 'seq', 'full_name', 'doc_type', 'doc_number', 'pax_type', 'nationality', 'birth_date', 'age', 'phone', 'email', 'diet_notes', 'relationship', 'is_lead', 'is_placeholder']);
     }
 
     public function deletePassenger(string $code, string $passengerId, User $actor): void
     {
         $reservation = $this->open($code, $actor);
 
-        DB::transaction(function () use ($reservation, $passengerId): void {
+        DB::transaction(function () use ($reservation, $passengerId, $actor): void {
             $passengers = DB::table('booking_passengers')->where('reservation_id', $reservation->id)->orderBy('seq')->get(['id', 'full_name', 'is_lead']);
             $passenger = $passengers->firstWhere('id', $passengerId) ?? throw ApiException::notFound('El pasajero no existe.');
 
@@ -116,6 +113,7 @@ final class ReservationWorkflow
             }
 
             $this->audit->log('Reserva', $reservation->code, 'quitar_pasajero', $passenger->full_name);
+            $this->touch($reservation->id, $actor);
         });
     }
 
@@ -154,31 +152,33 @@ final class ReservationWorkflow
             }
 
             $penaltyReceivable = null;
-            if ($calc['owed'] > 0) {
-                $penaltyCode = $this->sequence->next('fin_receivables', 'CXC-', 5);
+            if (BigDecimal::of($calc['owed'])->isPositive()) {
+                $penaltyCode = $this->sequences->next('receivable');
                 $penaltyReceivable = (string) DB::table('fin_receivables')->insertGetId(['code' => $penaltyCode, 'reservation_id' => $reservation->id, 'client_id' => $reservation->client_id, 'kind' => 'penalidad', 'concept' => mb_substr("Penalidad por cancelación — {$reservation->code}", 0, 255), 'amount' => $calc['owed'], 'currency' => $reservation->currency, 'fx_rate' => $reservation->fx_rate, 'due_date' => $this->today()->addDays(7)->toDateString(), 'status' => 'abierta', 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
                 $this->audit->log('Cuenta por cobrar', $penaltyCode, 'crear', null, "{$reservation->currency} {$calc['owed']}");
             }
 
             $refundPayment = null;
-            if ($calc['refund'] > 0) {
-                $paymentCode = $this->sequence->next('fin_payments', 'PAG-', 5);
+            if (BigDecimal::of($calc['refund'])->isPositive()) {
+                $paymentCode = $this->sequences->next('payment');
                 $refundPayment = (string) DB::table('fin_payments')->insertGetId(['code' => $paymentCode, 'reservation_id' => $reservation->id, 'kind' => 'reembolso', 'source' => 'reserva', 'method' => 'Reembolso (mismo medio de pago)', 'amount' => $calc['refund'], 'currency' => $reservation->currency, 'fx_rate' => $reservation->fx_rate, 'paid_on' => $this->today()->toDateString(), 'reference' => 'Reembolso por cancelación · 7 a 15 días hábiles', 'status' => 'pendiente', 'registered_by' => $actor->getKey(), 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
                 $this->audit->log('Pago', $paymentCode, 'crear_reembolso', null, "{$reservation->currency} {$calc['refund']}");
             }
 
             DB::table('ops_orders')->where('reservation_id', $reservation->id)->whereNotIn('status', ['completada', 'cancelada'])->update(['status' => 'cancelada', 'cancelled_at' => $now, 'cancel_reason' => 'Reserva cancelada']);
 
-            DB::table('booking_reservations')->where('id', $reservation->id)->update(['status' => 'cancelada', 'cancel_reason' => $full, 'cancelled_at' => $now, 'penalty_amount' => $calc['penalty'], 'refund_amount' => $calc['refund'], 'updated_by' => $actor->getKey(), 'updated_at' => $now]);
+            $model = Reservation::query()->whereKey($reservation->id)->firstOrFail();
+            $this->states->transition($model, ReservationStatus::Cancelada);
+            $model->forceFill(['cancel_reason' => $full, 'cancelled_at' => $now, 'penalty_amount' => $calc['penalty'], 'refund_amount' => $calc['refund'], 'updated_by' => $actor->getKey()])->save();
             DB::table('booking_cancellations')->insert(['reservation_id' => $reservation->id, 'total_at_cancel' => $calc['total'], 'paid_at_cancel' => $calc['paid'], 'penalty_services' => $calc['penalty_services'], 'consumed_amount' => $calc['consumed'], 'factor_k' => $calc['factor_k'], 'penalty_amount' => $calc['penalty'], 'refund_amount' => $calc['refund'], 'owed_amount' => $calc['owed'], 'currency' => $reservation->currency, 'lines' => json_encode($calc['lines'], JSON_UNESCAPED_UNICODE), 'refund_payment_id' => $refundPayment, 'penalty_receivable_id' => $penaltyReceivable, 'reason' => $full, 'cancelled_by' => $actor->getKey(), 'cancelled_at' => $now, 'created_by' => $actor->getKey()]);
             DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->where('status', 'pendiente')->update(['status' => 'aprobada', 'decided_by' => $actor->getKey(), 'decided_at' => $now, 'decision_note' => 'Cancelación procesada']);
 
-            $this->mailer->send($reservation->id, 'Tu reserva fue cancelada', "Cancelamos tu viaje {$reservation->title}.".($calc['refund'] > 0 ? " Te reembolsaremos {$reservation->currency} {$calc['refund']} en 7 a 15 días hábiles." : ''));
+            $this->mailer->send($reservation->id, 'Tu reserva fue cancelada', "Cancelamos tu viaje {$reservation->title}.".(BigDecimal::of($calc['refund'])->isPositive() ? " Te reembolsaremos {$reservation->currency} {$calc['refund']} en 7 a 15 días hábiles." : ''));
             $this->audit->log('Reserva', $reservation->code, 'cancelar', $reservation->status, "cancelada · penalidad {$reservation->currency} {$calc['penalty']} · reembolso {$calc['refund']}");
         });
     }
 
-    public function requestCancel(string $code, string $reason, string $detail, User $actor): void
+    public function requestCancel(string $code, string $reason, string $detail, User $actor): object
     {
         $reservation = $this->open($code, $actor);
 
@@ -190,20 +190,24 @@ final class ReservationWorkflow
             throw ApiException::conflict('CANCEL_REQUEST_PENDING', 'Ya hay una solicitud de anulación pendiente.');
         }
 
-        DB::table('booking_cancel_requests')->insert(['reservation_id' => $reservation->id, 'reason' => "{$reason}: {$detail}", 'requested_by' => $actor->getKey(), 'requested_at' => now(), 'status' => 'pendiente', 'created_by' => $actor->getKey()]);
+        $id = (string) DB::table('booking_cancel_requests')->insertGetId(['reservation_id' => $reservation->id, 'reason' => "{$reason}: {$detail}", 'requested_by' => $actor->getKey(), 'requested_at' => now(), 'status' => 'pendiente', 'created_by' => $actor->getKey()]);
         $this->audit->log('Reserva', $reservation->code, 'solicitar_anulacion', null, "{$reason}: {$detail}");
+
+        return DB::table('booking_cancel_requests')->where('id', $id)->first(['id', 'reservation_id', 'reason', 'requested_by', 'requested_at', 'status']);
     }
 
-    public function rejectCancelRequest(string $code, string $note, User $actor): void
+    public function rejectCancelRequest(string $code, string $requestId, string $note, User $actor): object
     {
         $reservation = $this->open($code, $actor);
-        $updated = DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->where('status', 'pendiente')->update(['status' => 'rechazada', 'decided_by' => $actor->getKey(), 'decided_at' => now(), 'decision_note' => $note, 'updated_at' => now()]);
+        $updated = DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->where('id', $requestId)->where('status', 'pendiente')->update(['status' => 'rechazada', 'decided_by' => $actor->getKey(), 'decided_at' => now(), 'decision_note' => $note, 'updated_at' => now()]);
 
         if ($updated === 0) {
             throw ApiException::notFound('No hay una solicitud de anulación pendiente.');
         }
 
         $this->audit->log('Reserva', $reservation->code, 'rechazar_anulacion', null, $note);
+
+        return DB::table('booking_cancel_requests')->where('id', $requestId)->first(['id', 'reservation_id', 'reason', 'requested_by', 'requested_at', 'status', 'decided_by', 'decided_at', 'decision_note']);
     }
 
     private function penalty(object $reservation): array
@@ -218,38 +222,43 @@ final class ReservationWorkflow
         $active = $services->whereNotIn('status', ['cancelado', 'completado', 'rechazado']);
         $used = $services->where('status', 'completado');
         $lines = [];
-        $penaltyServices = 0.0;
+        $penaltyServices = BigDecimal::zero()->toScale(2);
 
         foreach ($active as $service) {
             $policy = (string) ($snapshot[$service->product_code]['cancel'] ?? $snapshot[$service->product_code]['cancellation'] ?? $policies[$service->product_id] ?? '');
             $days = (int) $today->diffInDays(CarbonImmutable::parse($service->service_date, $today->getTimezone()), false);
             $pct = $this->penaltyPct($this->tiers($policy), $days);
-            $amount = round((float) $service->price_amount * $pct / 100, 2);
-            $penaltyServices += $amount;
-            $lines[] = ['code' => $service->code, 'name' => $service->name, 'date' => $service->service_date, 'days' => $days, 'policy' => $policy ?: 'Política estándar', 'pct' => $pct, 'price' => (float) $service->price_amount, 'penalty' => $amount];
+            $amount = Decimal::round2(BigDecimal::of((string) $service->price_amount)->multipliedBy($pct)->dividedBy(100, 6, RoundingMode::HALF_UP));
+            $penaltyServices = $penaltyServices->plus($amount);
+            $lines[] = ['code' => $service->code, 'name' => $service->name, 'date' => $service->service_date, 'days' => $days, 'policy' => $policy ?: 'Política estándar', 'pct' => $pct, 'price' => (string) Decimal::round2((string) $service->price_amount), 'penalty' => (string) $amount];
         }
 
-        $consumed = round($used->sum(fn (object $service): float => (float) $service->price_amount), 2);
-        $allTotal = $active->merge($used)->sum(fn (object $service): float => (float) $service->price_amount) ?: 1.0;
-        $total = (float) $reservation->total_amount;
-        $factor = $total / $allTotal;
+        $sum = fn (Collection $items): BigDecimal => $items->reduce(fn (BigDecimal $total, object $service): BigDecimal => $total->plus((string) $service->price_amount), BigDecimal::zero()->toScale(2));
+        $consumed = $sum($used);
+        $allTotal = $sum($active->merge($used));
+        $total = Decimal::round2((string) $reservation->total_amount);
+        $factor = $allTotal->isPositive() ? $total->dividedBy($allTotal, 6, RoundingMode::HALF_UP) : BigDecimal::one()->toScale(6);
         $paid = $this->paid($reservation);
-        $penalty = round(min($total, ($penaltyServices + $consumed) * $factor), 2);
+        $base = $penaltyServices->plus($consumed);
+        $penalty = BigDecimal::min($total, $allTotal->isPositive() ? Decimal::round2($base->multipliedBy($total)->dividedBy($allTotal, 6, RoundingMode::HALF_UP)) : $base);
+        $refund = $paid->minus($penalty);
+        $owed = $penalty->minus($paid);
 
         return [
             'code' => $reservation->code,
             'currency' => $reservation->currency,
-            'total' => $total,
-            'paid' => $paid,
-            'penalty_services' => round($penaltyServices, 2),
-            'consumed' => $consumed,
-            'factor_k' => round($factor, 6),
-            'penalty' => $penalty,
-            'refund' => round(max(0, $paid - $penalty), 2),
-            'owed' => round(max(0, $penalty - $paid), 2),
+            'total' => (string) $total,
+            'paid' => (string) $paid,
+            'penalty_services' => (string) $penaltyServices,
+            'consumed' => (string) $consumed,
+            'factor_k' => (string) $factor,
+            'penalty' => (string) $penalty,
+            'refund' => (string) ($refund->isPositive() ? $refund : BigDecimal::zero()->toScale(2)),
+            'owed' => (string) ($owed->isPositive() ? $owed : BigDecimal::zero()->toScale(2)),
             'lines' => $lines,
             'reasons' => self::CANCEL_REASONS,
             'request' => DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->where('status', 'pendiente')->value('reason'),
+            'request_id' => DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->where('status', 'pendiente')->value('id'),
         ];
     }
 
@@ -276,19 +285,12 @@ final class ReservationWorkflow
         return 100;
     }
 
-    private function paid(object $reservation): float
+    private function paid(object $reservation): BigDecimal
     {
-        return round(DB::table('fin_payments')->where('reservation_id', $reservation->id)->where('kind', 'cobro')->whereIn('status', ['aplicado', 'confirmado'])->get(['amount', 'currency'])
-            ->sum(fn (object $payment): float => $this->convert((float) $payment->amount, (string) $payment->currency, (string) $reservation->currency, (float) $reservation->fx_rate)), 2);
-    }
+        $fx = (string) ($reservation->fx_rate ?: '1');
 
-    private function convert(float $amount, string $from, string $to, float $fx): float
-    {
-        if ($from === $to || $fx <= 0) {
-            return $amount;
-        }
-
-        return $from === 'USD' ? $amount * $fx : $amount / $fx;
+        return DB::table('fin_payments')->where('reservation_id', $reservation->id)->where('kind', 'cobro')->whereIn('status', ['aplicado', 'confirmado'])->get(['amount', 'currency'])
+            ->reduce(fn (BigDecimal $sum, object $payment): BigDecimal => $sum->plus(Decimal::round2(Decimal::convert((string) $payment->amount, (string) $payment->currency, (string) $reservation->currency, $fx))), BigDecimal::zero()->toScale(2));
     }
 
     private function releaseSeats(string $reservationId, User $actor): void
@@ -316,13 +318,18 @@ final class ReservationWorkflow
     private function open(string $code, User $actor, bool $lock = false): object
     {
         $query = Portfolio::scope(DB::table('booking_reservations')->whereNull('deleted_at'), $actor, 'owner_id')->where('code', $code);
-        $reservation = ($lock ? $query->lockForUpdate() : $query)->first() ?? throw ApiException::notFound('La reserva no existe.');
+        $reservation = ($lock ? $query->lockForUpdate() : $query)->first() ?? throw Portfolio::missing($actor, 'booking_reservations', $code, 'La reserva no existe.', 'Esta reserva');
 
         if (in_array($reservation->status, self::CLOSED, true)) {
             throw ApiException::conflict('RESERVATION_CLOSED', 'La reserva ya está '.($reservation->status === 'cancelada' ? 'cancelada' : 'completada').' y no admite cambios.');
         }
 
         return $reservation;
+    }
+
+    private function touch(string $reservationId, User $actor): void
+    {
+        DB::table('booking_reservations')->where('id', $reservationId)->update(['lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
     }
 
     private function today(): CarbonImmutable

@@ -10,10 +10,10 @@ use App\Domain\Admin\Support\NotificationTemplates;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Tenancy\TenantContext;
+use App\Jobs\SendNotificationEmail;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-use Throwable;
 
 final class ManageNotifications
 {
@@ -23,6 +23,7 @@ final class ManageNotifications
         private readonly AuditLogger $audit,
         private readonly NotificationLog $log,
         private readonly NotificationTemplates $templates,
+        private readonly TenantContext $context,
     ) {}
 
     public function rule(string $event, array $data, User $actor): void
@@ -213,9 +214,10 @@ final class ManageNotifications
                 'audience' => $message->audience,
                 'is_fallback' => true,
                 'fallback_of_id' => $message->id,
+                'status' => 'pendiente',
                 'created_by' => $actor->getKey(),
             ]);
-            $this->mail($email, (string) $message->subject, (string) ($message->body_rendered ?? $message->subject));
+            $this->queueEmail((string) $copy->id);
             $this->audit->log('Notificación', (string) $message->code, 'reenviar_correo', $message->channel, (string) $copy->code);
 
             return (string) $copy->id;
@@ -239,13 +241,13 @@ final class ManageNotifications
             'body_rendered' => $body,
             'template_id' => $templateId,
             'source_type' => 'Prueba',
-            'status' => $missing ? 'fallido' : 'enviado',
+            'status' => $missing ? 'fallido' : ($channel === 'email' && $address !== null ? 'pendiente' : 'enviado'),
             'last_error' => $missing ? 'Tu usuario no tiene un teléfono registrado para WhatsApp.' : null,
             'created_by' => $actor->getKey(),
         ]);
 
         if ($channel === 'email' && $address !== null) {
-            $this->mail((string) $address, '[Prueba] '.$subject, $body);
+            $this->queueEmail((string) $message->id);
         }
 
         return $message;
@@ -273,13 +275,9 @@ final class ManageNotifications
         return $email === null ? null : (string) $email;
     }
 
-    private function mail(string $to, string $subject, string $body): void
+    private function queueEmail(string $messageId): void
     {
-        try {
-            Mail::raw($body, fn ($mail) => $mail->to($to)->subject($subject));
-        } catch (Throwable $e) {
-            report($e);
-        }
+        dispatch((new SendNotificationEmail($messageId))->forTenant($this->context->idOrFail()))->afterCommit();
     }
 
     private function message(string $id): object

@@ -36,6 +36,7 @@ final class VoucherDirectory
             ],
             'items' => $vouchers->map(fn (object $voucher): array => [
                 'code' => $voucher->code,
+                'lock_version' => (int) $voucher->lock_version,
                 'status' => $voucher->status,
                 'version' => (int) $voucher->version,
                 'reservation' => ['code' => $voucher->reservation_code, 'title' => $voucher->reservation_title],

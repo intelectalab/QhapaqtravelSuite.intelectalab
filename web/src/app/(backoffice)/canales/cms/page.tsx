@@ -8,7 +8,7 @@ import { getResource } from "@/lib/server/resource";
 export const metadata: Metadata = { title: "CMS" };
 
 export default async function CmsPage() {
-  const overview = await getResource<CmsOverview>("/channels/cms", "No pudimos cargar los contenidos.");
+  const overview = await getResource<CmsOverview>("/cms/contents", "No pudimos cargar los contenidos.");
 
   if (!overview) {
     return <PageHeader title="CMS" subtitle="Tu rol no tiene acceso a esta sección." />;

@@ -60,10 +60,10 @@ export interface CatalogCard {
   bookable: boolean;
   reason: string | null;
   currency: string | null;
-  net: number | null;
-  pvp: number | null;
+  net: string | null;
+  pvp: string | null;
   commission_pct: number | null;
-  commission: number | null;
+  commission: string | null;
   credit: boolean;
   rate_valid_to: string | null;
   next_date: string | null;
@@ -110,7 +110,7 @@ export interface CalendarDay {
   label: string;
   spots: number | null;
   note: string | null;
-  pvp: number | null;
+  pvp: string | null;
   sellable: boolean;
 }
 
@@ -141,14 +141,14 @@ export interface PriceQuote {
   children: number;
   seats: number;
   currency: string;
-  net_unit: number;
-  net_total: number;
+  net_unit: string;
+  net_total: string;
   commission_pct: number;
-  commission: number;
-  pvp_total: number | null;
-  margin: number | null;
+  commission: string;
+  pvp_total: string | null;
+  margin: string | null;
   fx: number;
-  credit: { currency: string; amount: number; available: number; after: number; allowed: boolean; reason: string | null };
+  credit: { currency: string; amount: string; available: string; after: string; allowed: boolean; reason: string | null };
   availability: { status: string; label: string; spots: number | null; departure: { ref: string; time: string; meeting_point: string | null } | null };
   outcome: Record<PayMode, string>;
   errors: string[];

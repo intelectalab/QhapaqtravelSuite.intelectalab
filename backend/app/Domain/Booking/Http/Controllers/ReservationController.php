@@ -4,15 +4,27 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Http\Controllers;
 
-use App\Domain\Booking\Actions\ConvertQuote;
+use App\Domain\Booking\Actions\CreateDirectReservation;
+use App\Domain\Booking\Actions\ProviderServiceResponse;
 use App\Domain\Booking\Actions\ReservationChanges;
+use App\Domain\Booking\Actions\ReservationLifecycle;
 use App\Domain\Booking\Actions\ReservationReschedule;
+use App\Domain\Booking\Actions\ReservationServiceRequests;
 use App\Domain\Booking\Actions\ReservationWorkflow;
+use App\Domain\Booking\Http\Resources\ReservationResource;
+use App\Domain\Booking\Models\Reservation;
+use App\Domain\Booking\Support\DirectBookingPlan;
 use App\Domain\Booking\Support\ReservationDirectory;
+use App\Domain\Crm\Support\Advisors;
+use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
+use App\Domain\Operations\Actions\OrderWorkflow;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 final class ReservationController
 {
@@ -20,33 +32,105 @@ final class ReservationController
 
     public function index(Request $request): JsonResponse
     {
-        return response()->json(['data' => $this->directory->list($this->user($request))]);
+        return response()->json($this->directory->list($this->user($request), $request));
+    }
+
+    public function formOptions(Request $request, Advisors $advisors): JsonResponse
+    {
+        $user = $this->user($request);
+
+        return response()->json(['data' => [
+            'clients' => Portfolio::scope(DB::table('crm_clients')->whereNull('deleted_at'), $user, 'owner_id')->orderBy('name')->get(['code', 'name']),
+            'advisors' => Portfolio::ownOnly($user) ? [] : $advisors->all(),
+            'channels' => DirectBookingPlan::CHANNELS,
+            'products' => DB::table('catalog_products')->whereNull('deleted_at')->where('status', 'ACTIVE')->where('is_bookable', true)->orderBy('name')
+                ->get(['code', 'name', 'availability_model', 'duration_value', 'duration_unit', 'booking_advance_min_days', 'maximum_passengers'])
+                ->map(fn (object $product): array => [
+                    'code' => $product->code,
+                    'name' => $product->name,
+                    'model' => $product->availability_model,
+                    'duration' => rtrim(rtrim((string) $product->duration_value, '0'), '.').' '.$product->duration_unit,
+                    'advance_min_days' => (int) $product->booking_advance_min_days,
+                    'max_pax' => $product->maximum_passengers === null ? null : (int) $product->maximum_passengers,
+                ]),
+            'owner_id' => (string) $user->getKey(),
+            'today' => app(DirectBookingPlan::class)->today()->toDateString(),
+        ]]);
+    }
+
+    public function availabilityCheck(Request $request, DirectBookingPlan $plans): JsonResponse
+    {
+        $data = $this->directData($request, false);
+
+        return response()->json(['data' => $plans->view($plans->build($data, $this->user($request), false), $this->user($request))]);
+    }
+
+    public function store(Request $request, CreateDirectReservation $action): JsonResponse
+    {
+        $reservation = $action->handle($this->directData($request, true), $this->user($request));
+
+        return ReservationResource::make($reservation->refresh())->response()->setStatusCode(201);
+    }
+
+    public function kpis(Request $request): JsonResponse
+    {
+        return response()->json(['data' => $this->directory->kpisFor($this->user($request), $request)]);
     }
 
     public function show(Request $request, string $code): JsonResponse
     {
-        return response()->json(['data' => $this->directory->find($this->user($request), $code) ?? throw ApiException::notFound('La reserva no existe.')]);
+        return response()->json(['data' => $this->directory->find($this->user($request), $code) ?? throw $this->missing($request, $code)]);
     }
 
-    public function conversion(Request $request, string $code, ConvertQuote $convert): JsonResponse
+    public function history(Request $request, string $code): JsonResponse
     {
-        return response()->json(['data' => $convert->preview($code, $this->user($request))]);
-    }
-
-    public function convert(Request $request, string $code, ConvertQuote $convert): JsonResponse
-    {
-        $data = $request->validate(['lock_version' => ['nullable', 'integer'], 'notes' => ['nullable', 'string', 'max:1000']]);
-        $result = $convert->handle($code, isset($data['lock_version']) ? (int) $data['lock_version'] : null, $data['notes'] ?? null, $request->header('Idempotency-Key'), $this->user($request));
-
-        return response()->json(['data' => $result], $result['created'] ? 201 : 200);
+        return response()->json($this->directory->history($this->user($request), $request, $code) ?? throw $this->missing($request, $code));
     }
 
     public function update(Request $request, string $code, ReservationWorkflow $workflow): JsonResponse
     {
-        $data = $request->validate(['notes' => ['nullable', 'string', 'max:2000'], 'owner_id' => ['nullable', 'string']]);
-        $workflow->update($code, $data, $this->user($request));
+        $data = $request->validate(['notes' => ['nullable', 'string', 'max:2000']]);
+        $workflow->update($code, $data['notes'] ?? null, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function confirm(Request $request, string $code, ReservationLifecycle $lifecycle): JsonResponse
+    {
+        return $this->resource($lifecycle->confirm($code, $this->user($request)));
+    }
+
+    public function startOperation(Request $request, string $code, ReservationLifecycle $lifecycle): JsonResponse
+    {
+        return $this->resource($lifecycle->startOperation($code, $this->user($request)));
+    }
+
+    public function complete(Request $request, string $code, ReservationLifecycle $lifecycle): JsonResponse
+    {
+        return $this->resource($lifecycle->complete($code, $this->user($request)));
+    }
+
+    public function reassign(Request $request, string $code, ReservationLifecycle $lifecycle): JsonResponse
+    {
+        $data = $request->validate([
+            'owner_id' => ['required', 'uuid'],
+            'note' => ['nullable', 'string', 'max:300'],
+        ], ['owner_id.*' => 'Elige el nuevo asesor.']);
+
+        return $this->resource($lifecycle->reassign($code, $data['owner_id'], $data['note'] ?? null, $this->user($request)));
+    }
+
+    public function generateReceivables(Request $request, string $code, ReservationLifecycle $lifecycle): JsonResponse
+    {
+        return response()->json(['data' => ['code' => $code, 'receivables' => $lifecycle->generateReceivables($code, $this->user($request))]]);
+    }
+
+    public function operationOrder(Request $request, string $code, ReservationLifecycle $lifecycle, OrderWorkflow $orders): JsonResponse
+    {
+        $data = $request->validate(['coordinator_id' => ['nullable', 'uuid']], ['coordinator_id.*' => 'Elige un responsable de Operaciones.']);
+        $order = $lifecycle->operationOrder($code, $data['coordinator_id'] ?? null, $this->user($request), $orders);
+
+        return $this->resource(Reservation::query()->where('code', $code)->firstOrFail(), ['order_code' => $order]);
     }
 
     public function savePassenger(Request $request, string $code, ReservationWorkflow $workflow, ?string $passenger = null): JsonResponse
@@ -64,19 +148,53 @@ final class ReservationController
             'relationship' => ['nullable', 'in:Titular,Cónyuge / pareja,Hijo/a,Padre / madre,Hermano/a,Amigo/a,Otro'],
             'is_lead' => ['nullable', 'boolean'],
         ], ['full_name.*' => 'Escribe el nombre completo.', 'email.email' => 'Revisa el correo.', 'birth_date.before' => 'La fecha de nacimiento debe ser anterior a hoy.']);
-        $workflow->savePassenger($code, $passenger, $data, $this->user($request));
 
-        return response()->json(['data' => ['code' => $code]], $passenger ? 200 : 201);
+        return response()->json(['data' => $workflow->savePassenger($code, $passenger, $data, $this->user($request))], $passenger ? 200 : 201);
     }
 
-    public function deletePassenger(Request $request, string $code, string $passenger, ReservationWorkflow $workflow): JsonResponse
+    public function deletePassenger(Request $request, string $code, string $passenger, ReservationWorkflow $workflow): Response
     {
         $workflow->deletePassenger($code, $passenger, $this->user($request));
 
-        return response()->json(['data' => ['code' => $code]]);
+        return response()->noContent();
     }
 
-    public function cancellation(Request $request, string $code, ReservationWorkflow $workflow): JsonResponse
+    public function requestService(Request $request, string $code, string $service, ReservationServiceRequests $requests): JsonResponse
+    {
+        $data = $request->validate(['note' => ['nullable', 'string', 'max:500']]);
+
+        return response()->json(['data' => $requests->request($code, $service, $data['note'] ?? null, $this->user($request))]);
+    }
+
+    public function requestPendingServices(Request $request, string $code, ReservationServiceRequests $requests): JsonResponse
+    {
+        return response()->json(['data' => $requests->requestPending($code, $this->user($request))]);
+    }
+
+    public function confirmService(Request $request, string $code, string $service, ReservationServiceRequests $requests): JsonResponse
+    {
+        $data = $request->validate([
+            'confirmation_code' => ['required', 'string', 'min:4', 'max:40'],
+            'time' => ['nullable', 'date_format:H:i'],
+            'confirmed_by' => ['nullable', 'string', 'max:120'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ], ['confirmation_code.*' => 'Escribe el código de confirmación del proveedor (al menos 4 caracteres).', 'time.*' => 'Revisa la hora.']);
+
+        return response()->json(['data' => $requests->confirm($code, $service, $data, $this->user($request))]);
+    }
+
+    public function rejectService(Request $request, string $code, string $service, ReservationServiceRequests $requests): JsonResponse
+    {
+        $data = $request->validate([
+            'reason' => ['required', Rule::in(ProviderServiceResponse::REJECT_REASONS)],
+            'detail' => ['required', 'string', 'min:3', 'max:500'],
+            'alternative_date' => ['nullable', 'date', 'after_or_equal:today'],
+        ], ['reason.*' => 'Elige el motivo del rechazo.', 'detail.*' => 'Cuenta el detalle del rechazo.', 'alternative_date.*' => 'La fecha alternativa no puede ser pasada.']);
+
+        return response()->json(['data' => $requests->reject($code, $service, $data, $this->user($request))]);
+    }
+
+    public function cancellationPreview(Request $request, string $code, ReservationWorkflow $workflow): JsonResponse
     {
         return response()->json(['data' => $workflow->cancellationPreview($code, $this->user($request))]);
     }
@@ -86,23 +204,21 @@ final class ReservationController
         $data = $this->cancelData($request);
         $workflow->cancel($code, $data['reason'], $data['detail'], $this->user($request));
 
-        return response()->json(['data' => ['code' => $code]]);
+        return $this->resource(Reservation::query()->where('code', $code)->firstOrFail());
     }
 
     public function requestCancel(Request $request, string $code, ReservationWorkflow $workflow): JsonResponse
     {
         $data = $this->cancelData($request);
-        $workflow->requestCancel($code, $data['reason'], $data['detail'], $this->user($request));
 
-        return response()->json(['data' => ['code' => $code]], 201);
+        return response()->json(['data' => $workflow->requestCancel($code, $data['reason'], $data['detail'], $this->user($request))], 201);
     }
 
-    public function rejectCancelRequest(Request $request, string $code, ReservationWorkflow $workflow): JsonResponse
+    public function rejectCancelRequest(Request $request, string $code, string $cancelRequest, ReservationWorkflow $workflow): JsonResponse
     {
         $data = $request->validate(['note' => ['required', 'string', 'min:3', 'max:500']], ['note.*' => 'Explica por qué no se anula.']);
-        $workflow->rejectCancelRequest($code, $data['note'], $this->user($request));
 
-        return response()->json(['data' => ['code' => $code]]);
+        return response()->json(['data' => $workflow->rejectCancelRequest($code, $cancelRequest, $data['note'], $this->user($request))]);
     }
 
     public function changeOptions(Request $request, string $code, ReservationChanges $changes): JsonResponse
@@ -153,7 +269,12 @@ final class ReservationController
         ], ['new_start.required' => 'Elige la nueva fecha de inicio.', 'new_start.after_or_equal' => 'La nueva fecha no puede ser pasada.', 'reason.*' => 'Explica por qué cambia la fecha.']);
         $reschedule->apply($code, $data['new_start'], $data['reason'], $this->user($request));
 
-        return response()->json(['data' => ['code' => $code]]);
+        return $this->resource(Reservation::query()->where('code', $code)->firstOrFail());
+    }
+
+    private function resource(Reservation $reservation, array $meta = []): JsonResponse
+    {
+        return ReservationResource::make($reservation->refresh())->additional($meta === [] ? [] : ['meta' => $meta])->response();
     }
 
     private function changeData(Request $request, bool $full): array
@@ -176,12 +297,42 @@ final class ReservationController
         ]);
     }
 
+    private function directData(Request $request, bool $store): array
+    {
+        return $request->validate([
+            'client_id' => [$store ? 'required' : 'nullable', 'string', 'max:60'],
+            'product_id' => ['required', 'string', 'max:60'],
+            'channel' => ['nullable', Rule::in(DirectBookingPlan::CHANNELS)],
+            'owner_id' => ['nullable', 'uuid'],
+            'departure_id' => ['nullable', 'uuid'],
+            'date' => ['nullable', 'date'],
+            'adt' => ['required', 'integer', 'min:0', 'max:99'],
+            'chd' => ['nullable', 'integer', 'min:0', 'max:99'],
+            'inf' => ['nullable', 'integer', 'min:0', 'max:99'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'confirm' => ['nullable', 'boolean'],
+        ], [
+            'client_id.*' => 'Elige un cliente.',
+            'product_id.*' => 'Elige un producto.',
+            'channel.*' => 'Elige un canal válido.',
+            'adt.*' => 'Indica cuántos adultos viajan.',
+            'chd.*' => 'Revisa el número de niños.',
+            'inf.*' => 'Revisa el número de infantes.',
+            'date.*' => 'Revisa la fecha.',
+        ]);
+    }
+
     private function cancelData(Request $request): array
     {
         return $request->validate([
             'reason' => ['required', 'in:'.implode(',', ReservationWorkflow::CANCEL_REASONS)],
             'detail' => ['required', 'string', 'min:3', 'max:500'],
         ], ['reason.*' => 'Elige un motivo.', 'detail.*' => 'Cuenta el detalle.']);
+    }
+
+    private function missing(Request $request, string $code): ApiException
+    {
+        return Portfolio::missing($this->user($request), 'booking_reservations', $code, 'La reserva no existe.', 'Esta reserva');
     }
 
     private function user(Request $request): User

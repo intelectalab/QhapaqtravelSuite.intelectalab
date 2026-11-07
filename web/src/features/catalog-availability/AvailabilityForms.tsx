@@ -71,7 +71,7 @@ export function RangeEditAction({ overview, range }: { overview: AvailabilityOve
     >
       {() => (
         <>
-          <HiddenFields values={{ code: range.code }} />
+          <HiddenFields values={{ product: range.product.code, code: range.code }} />
           <RangeFields overview={overview} range={range} />
         </>
       )}
@@ -88,7 +88,7 @@ export function RangeDeleteAction({ range }: { range: RangeRow }) {
       description={`${range.product.name} · ${formatDate(range.date_from)} – ${formatDate(range.date_to)} deja de regir. Queda en el historial.`}
       submitLabel="Eliminar rango"
       action={deleteRange}
-      hidden={{ code: range.code }}
+      hidden={{ product: range.product.code, code: range.code }}
       reason="Por ejemplo: se cargó con fechas equivocadas."
     />
   );
@@ -159,7 +159,7 @@ export function HoldActions({ hold }: { hold: HoldRow }) {
           description={hold.expired ? `${label}. El bloqueo ya venció: no se puede confirmar, crea uno nuevo.` : `${label}. Pasan a vendidos en la salida ${hold.departure?.ref ?? ""}.`}
           submitLabel="Confirmar"
           action={changeHold}
-          hidden={{ ref: hold.ref, action: "confirm" }}
+          hidden={{ ref: hold.ref, action: "confirm", lock_version: hold.lock_version }}
         />
       ) : (
         <ConfirmAction
@@ -171,7 +171,7 @@ export function HoldActions({ hold }: { hold: HoldRow }) {
           description={`${label}. El servicio ya se prestó; los cupos siguen contados como vendidos.`}
           submitLabel="Marcar usado"
           action={changeHold}
-          hidden={{ ref: hold.ref, action: "consume" }}
+          hidden={{ ref: hold.ref, action: "consume", lock_version: hold.lock_version }}
         />
       )}
       <ConfirmAction
@@ -182,7 +182,7 @@ export function HoldActions({ hold }: { hold: HoldRow }) {
         description={hold.status === "confirmada" ? `${label}. Se descuentan de vendidos y la salida vuelve a tener ese cupo.` : `${label}. Vuelven a quedar libres en la salida.`}
         submitLabel="Liberar"
         action={changeHold}
-        hidden={{ ref: hold.ref, action: "release" }}
+        hidden={{ ref: hold.ref, action: "release", lock_version: hold.lock_version }}
         reason="Por ejemplo: el cliente cambió de fecha."
       />
     </>

@@ -98,7 +98,7 @@ export function RateEditAction({ overview, rate }: { overview: RatesOverview; ra
     >
       {() => (
         <>
-          <HiddenFields values={{ ref: rate.ref, lock_version: rate.lock_version }} />
+          <HiddenFields values={{ product: rate.product.code, ref: rate.ref, lock_version: rate.lock_version }} />
           <RateFields overview={overview} rate={rate} />
           <TextArea label="Motivo del cambio" name="reason" rows={2} maxLength={300} hint="Obligatorio si cambias el costo o el precio. Queda en el historial." />
         </>
@@ -120,7 +120,7 @@ export function RateToggleAction({ rate }: { rate: RateRow }) {
       description={activate ? `${rate.product.name} · ${rate.type} ${rate.segment.toLowerCase()} vuelve a ofrecerse en cotizaciones y reservas.` : `${rate.product.name} · ${rate.type} ${rate.segment.toLowerCase()} deja de ofrecerse. Las cotizaciones y reservas que ya la usan no cambian.`}
       submitLabel={activate ? "Activar" : "Inactivar"}
       action={toggleRate}
-      hidden={{ ref: rate.ref, action: activate ? "activate" : "deactivate" }}
+      hidden={{ product: rate.product.code, ref: rate.ref, action: activate ? "activate" : "deactivate" }}
       reason={activate ? undefined : "Por ejemplo: el proveedor cambió su tarifario."}
     />
   );

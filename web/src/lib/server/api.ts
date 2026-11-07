@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { headers as requestHeaders } from "next/headers";
+import type { ApiErrorBody } from "@/lib/api/types";
 import type { Realm } from "@/lib/realms";
 import { sessionToken } from "./session";
 
@@ -8,13 +9,13 @@ const API_URL = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL 
 
 const IDEMPOTENCY_WINDOW_MS = 120_000;
 
-const SUBJECT_HEADERS = ["x-cart-token", "x-order-token", "x-session-token"];
+const SUBJECT_HEADERS = ["cookie", "x-order-token", "x-session-token"];
 
 export interface ApiResult<T> {
   ok: boolean;
   status: number;
   data: T | null;
-  error: { code?: string; message: string; errors?: Record<string, string[]>; details?: Record<string, unknown> } | null;
+  error: (Partial<ApiErrorBody> & Pick<ApiErrorBody, "message">) | null;
 }
 
 function headerValue(headers: Record<string, string>, name: string): string | undefined {

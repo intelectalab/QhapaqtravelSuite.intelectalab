@@ -24,6 +24,8 @@ final class PlatformAudit
         'Sesión de plataforma' => 'sesiones',
         'Acceso' => 'sesiones',
         'Solicitud comercial' => 'agencias',
+        'Configuración de plataforma' => 'configuracion',
+        'Personalización de plataforma' => 'configuracion',
     ];
 
     private const CONNECTION = 'pgsql_platform';
@@ -53,6 +55,27 @@ final class PlatformAudit
                 'after' => $event->after_value,
                 'ip' => $event->ip,
             ]);
+    }
+
+    public function entries(array $entities, int $limit = 8): array
+    {
+        return DB::connection(self::CONNECTION)->table('audit_events as a')->leftJoin('platform_users as u', 'u.id', '=', 'a.actor_id')->whereNull('a.tenant_id')
+            ->whereIn('a.entity', $entities)->orderByDesc('a.occurred_at')->limit($limit)
+            ->get(['a.code', 'a.occurred_at', 'a.entity', 'a.entity_id', 'a.action', 'a.before_value', 'a.after_value', 'a.is_critical', 'a.actor_type', 'a.ip', 'u.name as actor'])
+            ->map(fn (object $event): array => [
+                'code' => (int) $event->code,
+                'at' => Carbon::parse($event->occurred_at)->toIso8601String(),
+                'entity' => $event->entity,
+                'entity_id' => $event->entity_id,
+                'action' => $event->action,
+                'before' => $event->before_value,
+                'after' => $event->after_value,
+                'critical' => (bool) $event->is_critical,
+                'actor' => $event->actor ?? ($event->actor_type === 'system' ? 'Sistema' : 'Plataforma'),
+                'actor_code' => null,
+                'role' => 'Super Admin',
+                'ip' => $event->ip,
+            ])->values()->all();
     }
 
     public function page(Request $request): array

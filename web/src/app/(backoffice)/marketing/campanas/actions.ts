@@ -21,8 +21,8 @@ export async function campaignStep(_state: StepResult, form: FormData): Promise<
   const step = text(form, "intent") || text(form, "step");
   const failure = "No pudimos actualizar la campaña.";
   if (step === "test") return refresh(await sendStep(`/marketing/campaigns/${code}/test-send`, "POST", {}, failure));
-  if (step === "schedule") return refresh(await sendStep(`/marketing/campaigns/${code}/schedule`, "POST", formValues(form, ["scheduled_at"]), failure));
-  if (step === "unschedule") return refresh(await sendStep(`/marketing/campaigns/${code}/unschedule`, "POST", {}, failure));
-  if (step === "cancel") return refresh(await sendStep(`/marketing/campaigns/${code}/cancel`, "POST", formValues(form, ["reason"]), failure));
+  if (step === "schedule") return refresh(await sendStep(`/marketing/campaigns/${code}/schedule`, "POST", formValues(form, ["scheduled_at", "lock_version"]), failure));
+  if (step === "unschedule") return refresh(await sendStep(`/marketing/campaigns/${code}/unschedule`, "POST", formValues(form, ["lock_version"]), failure));
+  if (step === "cancel") return refresh(await sendStep(`/marketing/campaigns/${code}/cancel`, "POST", formValues(form, ["reason", "lock_version"]), failure));
   return { message: null, done: true };
 }

@@ -11,6 +11,7 @@ export interface SupplierSession {
 
 export interface SupplierRequest {
   code: string;
+  lock_version: number;
   reservation: string;
   holder: string;
   service: string;

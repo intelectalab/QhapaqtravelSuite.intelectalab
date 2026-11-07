@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Finance\Actions;
 
-use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Finance\Support\Consolidation;
 use App\Domain\Finance\Support\FinanceHistory;
 use App\Domain\Finance\Support\PayableDirectory;
@@ -12,11 +11,13 @@ use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
+use App\Domain\Shared\Sequences\SequenceService;
 use Illuminate\Support\Facades\DB;
 
 final class PayableWorkflow
 {
-    public function __construct(private readonly Consolidation $money, private readonly CodeSequence $sequence, private readonly AuditLogger $audit) {}
+    public function __construct(private readonly SequenceService $sequences, private readonly Consolidation $money, private readonly AuditLogger $audit) {}
 
     public function createCost(array $data, User $actor): string
     {
@@ -27,7 +28,7 @@ final class PayableWorkflow
             }
 
             $provider = $this->activeProvider($data['provider']);
-            $code = $this->sequence->next('fin_payables', 'CXP-', 5);
+            $code = $this->sequences->next('payable');
             DB::table('fin_payables')->insert([
                 'code' => $code,
                 'provider_id' => $provider->id,
@@ -35,7 +36,7 @@ final class PayableWorkflow
                 'kind' => 'costo_adicional',
                 'cost_type' => $data['cost_type'],
                 'concept' => $data['concept'],
-                'amount' => round((float) $data['amount'], 2),
+                'amount' => (string) Decimal::money($data['amount']),
                 'currency' => $data['currency'],
                 'fx_rate' => $this->money->fxFor($data['currency'], $data['fx_rate'] ?? null),
                 'due_date' => $data['due_date'] ?? $this->money->now()->addDays(15)->toDateString(),
@@ -63,11 +64,11 @@ final class PayableWorkflow
                 'evidence_note' => $data['evidence'] ?? null,
             ];
 
-            if (isset($data['amount']) && round((float) $data['amount'], 2) !== round((float) $payable->amount, 2)) {
-                if ($payable->approved_at !== null || (float) $payable->paid_amount > 0) {
+            if (isset($data['amount']) && ! Decimal::money($data['amount'])->isEqualTo(Decimal::money($payable->amount))) {
+                if ($payable->approved_at !== null || Decimal::of($payable->paid_amount)->isPositive()) {
                     throw ApiException::conflict('FIN-BR-19', 'El importe solo se corrige antes de aprobar la obligación.');
                 }
-                $values['amount'] = round((float) $data['amount'], 2);
+                $values['amount'] = (string) Decimal::money($data['amount']);
             }
 
             DB::table('fin_payables')->where('id', $payable->id)->update([...$values, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
@@ -108,18 +109,18 @@ final class PayableWorkflow
                 throw ApiException::unprocessable('FIN-BR-19', 'PROC-046: aprueba la obligación antes de pagarla.');
             }
 
-            $balance = round((float) $payable->amount - (float) $payable->paid_amount, 2);
-            $amount = round((float) $data['amount'], 2);
-            if ($amount - $balance > ReceivableLedger::TOLERANCE) {
+            $balance = ReceivableLedger::balance($payable);
+            $amount = Decimal::money($data['amount']);
+            if ($amount->isGreaterThan($balance)) {
                 throw ApiException::unprocessable('FIN-BR-22', 'El pago no puede exceder el saldo de la obligación.');
             }
 
-            $payoutCode = $this->sequence->next('fin_payable_payouts', 'PPR-', 4);
+            $payoutCode = $this->sequences->next('payout');
             DB::table('fin_payable_payouts')->insert([
                 'code' => $payoutCode,
                 'payable_id' => $payable->id,
                 'paid_on' => $data['paid_on'],
-                'amount' => $amount,
+                'amount' => (string) $amount,
                 'fx_rate' => $this->money->fxFor($payable->currency, $data['fx_rate'] ?? $payable->fx_rate),
                 'method' => $data['method'],
                 'operation_ref' => $data['operation_ref'],
@@ -127,10 +128,10 @@ final class PayableWorkflow
                 'updated_by' => $actor->getKey(),
             ]);
 
-            $paid = round((float) $payable->paid_amount + $amount, 2);
-            $settled = (float) $payable->amount - $paid <= ReceivableLedger::TOLERANCE;
+            $paid = Decimal::of($payable->paid_amount)->plus($amount);
+            $settled = $paid->isGreaterThanOrEqualTo(Decimal::of($payable->amount));
             DB::table('fin_payables')->where('id', $payable->id)->update([
-                'paid_amount' => min($paid, (float) $payable->amount),
+                'paid_amount' => (string) Decimal::round2($settled ? Decimal::of($payable->amount) : $paid),
                 'status' => $settled ? 'pagada' : 'parcial',
                 'scheduled_date' => $settled ? null : $payable->scheduled_date,
                 'scheduled_bank_account_id' => $settled ? null : $payable->scheduled_bank_account_id,
@@ -139,7 +140,7 @@ final class PayableWorkflow
                 'updated_at' => now(),
             ]);
             FinanceHistory::record('payable', $payable->id, $settled ? 'pagada' : 'parcial', "{$payoutCode} · {$data['operation_ref']}", $actor);
-            $this->audit->log('Cuenta por pagar', $payable->code, 'pagar', (string) $balance, (string) round($balance - $amount, 2));
+            $this->audit->log('Cuenta por pagar', $payable->code, 'pagar', (string) Decimal::round2($balance), (string) Decimal::round2($balance->minus($amount)));
 
             return $payoutCode;
         });
@@ -151,7 +152,7 @@ final class PayableWorkflow
             $payable = $this->open($code);
             $this->ensureActive($payable);
 
-            if ((float) $payable->paid_amount > 0) {
+            if (Decimal::of($payable->paid_amount)->isPositive()) {
                 throw ApiException::conflict('FIN-BR-18', 'La obligación ya tiene pagos registrados; no se puede anular.');
             }
 
@@ -174,7 +175,7 @@ final class PayableWorkflow
 
     private function ensureActive(object $payable): void
     {
-        if ($payable->status === 'cancelada' || (float) $payable->amount - (float) $payable->paid_amount <= ReceivableLedger::TOLERANCE) {
+        if ($payable->status === 'cancelada' || ! ReceivableLedger::balance($payable)->isPositive()) {
             throw ApiException::conflict('FIN-BR-18', $payable->status === 'cancelada' ? 'La obligación está anulada.' : 'La obligación ya está pagada.');
         }
     }

@@ -12,7 +12,10 @@ use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Support\TenantBootstrap;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Jobs\DefaultScheduledJobs;
+use App\Domain\Shared\Sequences\DefaultSequences;
 use App\Domain\Shared\Tenancy\TenantContext;
+use Carbon\CarbonImmutable;
 use Database\Seeders\CrmCatalogSeeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -27,6 +30,8 @@ final class ProvisionTenant
         private readonly TenantBootstrap $bootstrap,
         private readonly TenantContext $context,
         private readonly Invitations $invitations,
+        private readonly DefaultSequences $sequences,
+        private readonly DefaultScheduledJobs $jobs,
     ) {}
 
     public function validate(array $data): void
@@ -87,6 +92,8 @@ final class ProvisionTenant
                     'is_main' => true,
                 ]);
                 (new CrmCatalogSeeder)->run($tenant);
+                $this->sequences->sync((string) $tenant->getKey(), CarbonImmutable::now($tenant->timezone ?: 'America/Lima')->year);
+                $this->jobs->sync((string) $tenant->getKey());
                 $roles = $this->bootstrap->roles($tenant);
 
                 $admin = User::query()->create([

@@ -97,6 +97,7 @@ export function CampaignCancelAction({ campaign }: { campaign: Campaign }) {
       {() => (
         <>
           <input type="hidden" name="code" value={campaign.code} />
+          <input type="hidden" name="lock_version" value={campaign.lock_version} />
           <input type="hidden" name="step" value="cancel" />
           <TextArea label="Motivo" name="reason" rows={2} required minLength={5} maxLength={500} />
         </>
@@ -141,6 +142,7 @@ export function CampaignDetailAction({ campaign, canManage }: { campaign: Campai
       {() => (
         <>
           <input type="hidden" name="code" value={campaign.code} />
+          <input type="hidden" name="lock_version" value={campaign.lock_version} />
           <input type="hidden" name="step" value={draft ? "schedule" : scheduled ? "unschedule" : "view"} />
           <div className="flex flex-wrap gap-2">
             <StatusBadge status={campaign.status} label={campaign.status_label} />

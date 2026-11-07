@@ -115,5 +115,6 @@ export async function assignLead(_state: LeadActionState, form: FormData): Promi
     owner_id: text(form, "owner_id"),
     schedule_first_contact: form.get("schedule_first_contact") === "on",
     reason: text(form, "reason"),
+    lock_version: number(form, "lock_version"),
   });
 }

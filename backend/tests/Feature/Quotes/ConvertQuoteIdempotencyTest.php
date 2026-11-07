@@ -40,7 +40,7 @@ it('T-R01: la respuesta de la conversión es la BookingReservation del contrato'
         ->and($data['status'] ?? null)->toBe('confirmada')
         ->and($data['quote_id'] ?? null)->toBe($this->quote->id)
         ->and($data['total_amount'] ?? null)->toBe(bcadd((string) $reservation->total_amount, '0', 2));
-})->skip('Contrato quotesConvert: data debe ser BookingReservation (id, status, quote_id, total_amount); hoy devuelve solo {code, created}. Cambio en app/Domain/Booking/Http/Controllers/ReservationController::convert.');
+});
 
 it('T-R01: los servicios de la reserva suman el total vendido de la versión aprobada', function () {
     $code = convert($this->quote, idem('conv'))->assertCreated()->json('data.code');
@@ -110,7 +110,7 @@ it('sin If-Match responde 428 o 409 y no crea nada (CONVENCIONES §3)', function
 
     expect($response->status())->toBeIn([409, 428])
         ->and(reservationsOf($this->quote))->toBe(0);
-})->skip('CODIGOS-DE-ERROR: falta If-Match en una ruta que lo exige está Por definir (se sugiere 428). Hoy EnsureLockVersion deja pasar la solicitud sin versión y la conversión se crea.');
+});
 
 it('T-R02: 10 solicitudes concurrentes con keys distintas crean una sola reserva', function () {})->todo('Requiere procesos paralelos fuera de la transacción de la prueba (lock Redis + FOR UPDATE + UNIQUE parcial). Ver informe: se cubre en fase B con un comando de carga o Concurrency::run sobre una base comprometida.');
 
@@ -131,7 +131,7 @@ it('SEC-BR-09: Ventas no convierte cotizaciones ajenas (403)', function () {
 
     expect(convert($this->quote, idem('conv')))->toBeApiError(403, 'SEC-BR-09');
     expect(reservationsOf($this->quote))->toBe(0);
-})->skip('SEC-BR-09 / X-08: una cotización de otra cartera debe responder 403 SEC-BR-09; hoy Portfolio::scope la oculta y responde 404.');
+});
 
 it('Operaciones no tiene reservations.create y no convierte', function () {
     actingAsSeed('U05');

@@ -159,6 +159,7 @@ final class PortalDirectory
 
         return [
             'code' => $quote->code,
+            'lock_version' => (int) $quote->lock_version,
             'title' => $quote->title,
             'status' => $expired ? 'vencida' : $quote->status,
             'valid_until' => $quote->valid_until,

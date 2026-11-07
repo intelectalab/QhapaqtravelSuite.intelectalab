@@ -2,46 +2,72 @@
 
 declare(strict_types=1);
 
-namespace App\Domain\Booking\Support;
+namespace App\Domain\Booking\Actions\Support;
 
+use App\Domain\Shared\Money\Decimal;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Illuminate\Support\Facades\DB;
 
-final class ServicesFromItem
+final class ServicesFromQuoteItem
 {
-    public function build(object $item, object $version, ?string $departureId, ?string $mainProvider): array
+    public function build(object $item, string $discountPct, string $currency, string $fxRate, ?string $departureId, ?string $mainProviderId): array
     {
-        $pax = (int) $item->pax;
         $qty = (int) $item->qty;
+        $pax = (int) $item->pax;
         $costTotal = BigDecimal::of((string) $item->unit_cost)->multipliedBy($qty)->multipliedBy($pax);
-        $saleTotal = BigDecimal::of((string) $item->unit_price)->multipliedBy($qty)->multipliedBy($pax)->multipliedBy(BigDecimal::of(100)->minus((string) $version->discount_pct))->dividedBy(100, 6, RoundingMode::HALF_UP);
-        $base = ['product_id' => $item->product_id, 'quote_item_id' => $item->id, 'departure_id' => $departureId, 'service_date' => $item->service_date, 'pax' => $pax, 'status' => 'pendiente', 'currency' => $version->currency, 'fx_rate' => $version->fx_rate];
+        $saleTotal = BigDecimal::of((string) $item->unit_price)->multipliedBy($qty)->multipliedBy($pax)
+            ->multipliedBy(BigDecimal::of(100)->minus($discountPct))->dividedBy(100, 6, RoundingMode::HALF_UP);
 
         $components = DB::table('catalog_product_items as i')
             ->join('catalog_services as s', 's.id', '=', 'i.service_id')
             ->where('i.product_id', $item->product_id)
             ->where('i.is_included', true)
+            ->whereNotNull('i.service_id')
             ->orderBy('i.sort_order')
             ->get(['i.quantity', 'i.is_required', 'i.notes', 's.id as service_id', 's.name', 's.type', 's.unit', 's.cost', 's.currency', 's.provider_id']);
 
-        if ($components->isEmpty()) {
-            $name = DB::table('catalog_products')->where('id', $item->product_id)->value('name');
+        $base = [
+            'product_id' => $item->product_id,
+            'quote_item_id' => $item->id,
+            'departure_id' => $departureId,
+            'service_date' => $item->service_date,
+            'pax' => $pax,
+            'status' => 'pendiente',
+            'currency' => $currency,
+            'fx_rate' => $fxRate,
+        ];
 
-            return [[...$base, 'catalog_service_id' => null, 'provider_id' => $mainProvider, 'name' => mb_substr("{$name} ({$pax} pax)", 0, 200), 'service_time' => null, 'cost_amount' => (string) $costTotal->toScale(2, RoundingMode::HALF_UP), 'price_amount' => (string) $saleTotal->toScale(2, RoundingMode::HALF_UP), 'is_required' => true, 'service_kind' => 'libre', 'requires_assignment' => false]];
+        if ($components->isEmpty()) {
+            $name = (string) DB::table('catalog_products')->where('id', $item->product_id)->value('name');
+
+            return [[
+                ...$base,
+                'catalog_service_id' => null,
+                'provider_id' => $mainProviderId,
+                'name' => mb_substr("{$name} ({$pax} pax)", 0, 200),
+                'service_time' => null,
+                'cost_amount' => (string) Decimal::round2($costTotal),
+                'price_amount' => (string) Decimal::round2($saleTotal),
+                'is_required' => true,
+                'service_kind' => 'libre',
+                'requires_assignment' => false,
+            ]];
         }
 
-        $weights = $components->map(fn (object $component): BigDecimal => $this->convertMoney((string) $component->cost, (string) $component->currency, (string) $version->currency, (string) $version->fx_rate)
-            ->multipliedBy((string) ((float) $component->quantity > 0 ? $component->quantity : 1))
+        $weights = $components->map(fn (object $component): BigDecimal => Decimal::convert((string) $component->cost, (string) $component->currency, $currency, $fxRate)
+            ->multipliedBy($this->quantity($component))
             ->multipliedBy($component->unit === 'pax' ? $pax : 1))->all();
-        $costs = $this->allocate($costTotal, $weights);
-        $prices = $this->allocate($saleTotal, $weights);
+        $costs = Decimal::allocate($costTotal, $weights);
+        $prices = Decimal::allocate($saleTotal, $weights);
         $firstTime = $this->firstItineraryTime((string) $item->product_id);
         $rows = [];
 
         foreach ($components->values() as $index => $component) {
             [$kind, $assign] = $this->kindFor((string) $component->type);
-            $times = (float) $component->quantity > 1 ? ' ×'.rtrim(rtrim((string) $component->quantity, '0'), '.') : '';
+            $quantity = $this->quantity($component);
+            $times = $quantity->isGreaterThan(1) ? ' ×'.$quantity->stripTrailingZeros() : '';
+
             $rows[] = [
                 ...$base,
                 'catalog_service_id' => $component->service_id,
@@ -59,34 +85,11 @@ final class ServicesFromItem
         return $rows;
     }
 
-    private function allocate(BigDecimal $total, array $weights): array
+    private function quantity(object $component): BigDecimal
     {
-        $sum = array_reduce($weights, fn (BigDecimal $carry, BigDecimal $weight): BigDecimal => $carry->plus($weight), BigDecimal::zero());
-        $target = $total->toScale(2, RoundingMode::HALF_UP);
-        $parts = [];
-        $assigned = BigDecimal::zero();
-        $last = count($weights) - 1;
+        $quantity = BigDecimal::of((string) ($component->quantity ?: 1));
 
-        foreach ($weights as $index => $weight) {
-            $part = $index === $last
-                ? $target->minus($assigned)
-                : ($sum->isZero() ? BigDecimal::zero()->toScale(2) : $target->multipliedBy($weight)->dividedBy($sum, 2, RoundingMode::HALF_UP));
-            $assigned = $assigned->plus($part);
-            $parts[] = $part;
-        }
-
-        return $parts;
-    }
-
-    private function convertMoney(string $amount, string $from, string $to, string $fx): BigDecimal
-    {
-        $value = BigDecimal::of($amount);
-
-        if ($from === $to) {
-            return $value;
-        }
-
-        return $from === 'USD' ? $value->multipliedBy($fx) : $value->dividedBy($fx, 6, RoundingMode::HALF_UP);
+        return $quantity->isPositive() ? $quantity : BigDecimal::one();
     }
 
     private function timeFromNotes(?string $notes): ?string

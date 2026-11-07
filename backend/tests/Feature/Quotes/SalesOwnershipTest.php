@@ -19,7 +19,7 @@ it('GET /quotes responde la lista del contrato: data[] con meta de cursor', func
 
     expect(array_is_list($json['data']))->toBeTrue()
         ->and($json)->toHaveKey('meta');
-})->skip('Contrato quotes index: data[] con meta/links de cursor; hoy devuelve data.items, data.kpis y data.can.');
+});
 
 it('X-08: la lista de cotizaciones de Ventas solo trae su cartera', function () {
     actingAsSeed('U03');
@@ -44,7 +44,7 @@ it('X-08 / SEC-BR-09: detalle de una cotización ajena responde 403 con mensaje 
 
     expect($response)->toBeApiError(403, 'SEC-BR-09');
     expect($response->json('message'))->toContain('cartera de otro asesor');
-})->skip('SEC-BR-09 / X-08: la cotización de otra cartera debe responder 403 SEC-BR-09 con mensaje de cartera; hoy QuoteController::show responde 404.');
+});
 
 it('detalle de una cotización propia responde 200', function () {
     actingAsSeed('U03');
@@ -57,7 +57,7 @@ it('SEC-BR-09: detalle de una reserva ajena responde 403 y la propia 200', funct
 
     $this->getJson('/api/v1/reservations/RES-2026-000350')->assertForbidden();
     $this->getJson('/api/v1/reservations/RES-2026-000347')->assertOk();
-})->skip('SEC-BR-09 / T-R13: la reserva de otra cartera debe responder 403; hoy ReservationController::show responde 404.');
+});
 
 it('los KPIs de Ventas se calculan con el mismo alcance que la lista', function () {
     actingAsSeed('U03');
@@ -67,7 +67,7 @@ it('los KPIs de Ventas se calculan con el mismo alcance que la lista', function 
     $all = $this->getJson('/api/v1/quotes/kpis')->assertOk()->json('data');
 
     expect($mine['count'] ?? $mine['total'])->toBeLessThan($all['count'] ?? $all['total']);
-})->skip('Contrato GET /quotes/kpis: la ruta no existe y hoy la captura quotes/{code} (404).');
+});
 
 it('QTE-BR-26: la búsqueda global de Ventas no devuelve registros ajenos', function () {
     requireRoute('GET', '/api/v1/search');
@@ -94,7 +94,7 @@ it('Manager y Tenant Admin ven todas las cotizaciones y pueden filtrar por aseso
     $u04 = seedUser('U04');
 
     expect(quoteCodes($this->getJson("/api/v1/quotes?filter[owner]={$u04->id}&page[size]=100")))->toBe(U04_QUOTES);
-})->with(['U01', 'U02'])->skip('Contrato quotes index: filter[owner] no está implementado; Manager y Tenant Admin reciben todas las cotizaciones.');
+})->with(['U01', 'U02']);
 
 it('la respuesta de Ventas no expone costos de proveedor desglosados', function () {
     actingAsSeed('U03');
@@ -120,7 +120,7 @@ it('X-09 / SEC-BR-13: Ventas ve el margen de su propia cotización', function ()
     actingAsSeed('U03');
 
     expect($this->getJson('/api/v1/quotes/COT-2026-00189')->assertOk()->json('data.margin_pct'))->not->toBeNull();
-})->skip('X-09 / SEC-BR-13: Ventas debe ver el margen de sus propias cotizaciones; hoy QuoteDirectory::seesMargin solo lo muestra con finance.profitability o catalog.products.view_profitability.');
+});
 
 it('X-09 / SEC-BR-13: Contabilidad no recibe costos de la cotización', function () {
     actingAsSeed('U08');

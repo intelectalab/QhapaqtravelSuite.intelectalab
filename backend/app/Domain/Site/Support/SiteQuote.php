@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Site\Support;
 
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use stdClass;
 
 final class SiteQuote
@@ -70,33 +73,43 @@ final class SiteQuote
         }
 
         $price = $day['price'];
+        $adultUnit = self::money($price['adult']);
+        $childUnit = self::money($price['child']);
         $perService = in_array($price['basis'], ['Precio fijo', 'Por grupo', 'Por unidad'], true) || $product->kind === 'traslados';
         $units = $perService ? (int) ceil(($adults + $children + $infants) / max(1, (int) $product->maximum_passengers)) : 0;
+        $en = $this->catalog->locale()->translated();
         $lines = $perService
-            ? [['key' => 'service', 'label' => $units > 1 ? "Servicio privado × {$units} vehículos" : 'Servicio privado', 'qty' => $units, 'unit' => $price['adult'], 'amount' => round($price['adult'] * $units, 2)]]
+            ? [['key' => 'service', 'label' => $en ? ($units > 1 ? "Private service × {$units} vehicles" : 'Private service') : ($units > 1 ? "Servicio privado × {$units} vehículos" : 'Servicio privado'), 'qty' => $units, 'unit' => (string) $adultUnit, 'amount' => (string) $adultUnit->multipliedBy($units)]]
             : array_values(array_filter([
-                ['key' => 'adults', 'label' => $adults === 1 ? '1 adulto' : "{$adults} adultos", 'qty' => $adults, 'unit' => $price['adult'], 'amount' => round($price['adult'] * $adults, 2)],
-                $children > 0 ? ['key' => 'children', 'label' => $children === 1 ? '1 niño' : "{$children} niños", 'qty' => $children, 'unit' => $price['child'], 'amount' => round($price['child'] * $children, 2)] : null,
-                $infants > 0 ? ['key' => 'infants', 'label' => $infants === 1 ? '1 infante' : "{$infants} infantes", 'qty' => $infants, 'unit' => 0.0, 'amount' => 0.0] : null,
+                ['key' => 'adults', 'label' => $en ? ($adults === 1 ? '1 adult' : "{$adults} adults") : ($adults === 1 ? '1 adulto' : "{$adults} adultos"), 'qty' => $adults, 'unit' => (string) $adultUnit, 'amount' => (string) $adultUnit->multipliedBy($adults)],
+                $children > 0 ? ['key' => 'children', 'label' => $en ? ($children === 1 ? '1 child' : "{$children} children") : ($children === 1 ? '1 niño' : "{$children} niños"), 'qty' => $children, 'unit' => (string) $childUnit, 'amount' => (string) $childUnit->multipliedBy($children)] : null,
+                $infants > 0 ? ['key' => 'infants', 'label' => $en ? ($infants === 1 ? '1 infant' : "{$infants} infants") : ($infants === 1 ? '1 infante' : "{$infants} infantes"), 'qty' => $infants, 'unit' => '0.00', 'amount' => '0.00'] : null,
             ]));
-        $subtotal = round(array_sum(array_column($lines, 'amount')), 2);
+        $subtotal = array_reduce($lines, fn (BigDecimal $sum, array $line): BigDecimal => $sum->plus($line['amount']), BigDecimal::zero())->toScale(2);
         $promotion = $this->bestPromotion($product, $adults + $children, $promoCode);
-        $discount = $promotion ? round($promotion['percent'] ? $subtotal * $promotion['value'] / 100 : min($subtotal, $promotion['value']), 2) : 0.0;
+        $discount = $promotion === null ? BigDecimal::zero()->toScale(2) : Decimal::round2($promotion['percent']
+            ? $subtotal->multipliedBy(self::money($promotion['value']))->dividedBy(100, 6, RoundingMode::HALF_UP)
+            : BigDecimal::min($subtotal, self::money($promotion['value'])));
 
         return [
             'date' => $date,
             'currency' => $price['currency'],
             'season' => $price['season'],
             'lines' => $lines,
-            'subtotal' => $subtotal,
-            'discount' => $discount > 0 ? ['label' => $promotion['name'], 'amount' => $discount, 'code' => $promotion['code']] : null,
-            'total' => round($subtotal - $discount, 2),
-            'list_total' => $price['list'] !== null && ! $perService && $children === 0 ? round($price['list'] * $adults, 2) : null,
+            'subtotal' => (string) $subtotal,
+            'discount' => $discount->isPositive() ? ['label' => $promotion['name'], 'amount' => (string) $discount, 'code' => $promotion['code']] : null,
+            'total' => (string) $subtotal->minus($discount),
+            'list_total' => $price['list'] !== null && ! $perService && $children === 0 ? (string) self::money($price['list'])->multipliedBy($adults) : null,
             'spots' => $day['spots'],
             'departure' => $day['departure'],
             'pax' => ['adults' => $adults, 'children' => $children, 'infants' => $infants],
             'rate_id' => $price['rate_id'],
         ];
+    }
+
+    public static function money(float|int|string|null $value): BigDecimal
+    {
+        return BigDecimal::of(is_string($value) ? $value : number_format((float) $value, 2, '.', ''))->toScale(2, RoundingMode::HALF_UP);
     }
 
     private function bestPromotion(stdClass $product, int $seats, ?string $code): ?array

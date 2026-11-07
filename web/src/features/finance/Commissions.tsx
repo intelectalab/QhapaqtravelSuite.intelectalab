@@ -38,6 +38,7 @@ export function CalculateCommissionsAction({ pending }: { pending: number }) {
 function ApproveCommissionAction({ row }: { row: CommissionRow }) {
   return (
     <FinanceStep step="commission_approve" itemKey={row.code} label="Aprobar" title="Aprobar comisión" description={row.rule} submitLabel="Aprobar" trigger={(open) => <RowIcon tone="neutral" label="Aprobar" icon={<Stamp size={15} />} onClick={open} />}>
+      <input type="hidden" name="lock_version" value={row.lock_version} />
       <SummaryBox rows={commissionSummary(row)} />
     </FinanceStep>
   );
@@ -46,6 +47,7 @@ function ApproveCommissionAction({ row }: { row: CommissionRow }) {
 function PayCommissionAction({ row }: { row: CommissionRow }) {
   return (
     <FinanceStep step="commission_pay" itemKey={row.code} label="Registrar pago" title="Registrar pago de comisión" submitLabel="Registrar pago" trigger={(open) => <RowIcon tone="edit" label="Registrar pago" icon={<HandCoins size={15} />} onClick={open} />}>
+      <input type="hidden" name="lock_version" value={row.lock_version} />
       <SummaryBox rows={commissionSummary(row)} />
       <SelectField label="Forma de pago" name="method" options={row.pay_methods.map((value) => ({ value, label: value }))} defaultValue={row.pay_methods[0]} />
       <TextField label="Referencia" name="reference" required maxLength={80} placeholder="Planilla 2026-10 u OP 00918273" />

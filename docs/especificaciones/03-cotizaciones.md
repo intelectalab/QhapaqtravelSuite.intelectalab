@@ -415,9 +415,18 @@ Entidad `Cotización` (antes → después): `crear`, `descuento_sobre_tope`, `ed
 ### v3.0 — Implementación (06/11/2026)
 Desviaciones temporales de la implementación respecto al kit, detectadas en la auditoría de cumplimiento del 06/11/2026 (`Documentación/Auditoria_de_cumplimiento_2026-11-06.md`). Se corrigen en las fases A (pruebas, idempotencia, permisos), B (flujo canónico según `docs/kit/ejemplos`) y C (módulo por módulo).
 
-- Ciclo de vida implementado (enviar, negociar, nueva versión, aprobación interna, aprobación del cliente, rechazo, eliminación lógica, conversión) con `QuoteLifecycle` y `ConvertQuote`, sin `QuoteStateMachine` ni Policy del kit (fase B).
-- QTE-BR-10 (editar el borrador anula la aprobación interna): en corrección en la fase A.
-- Umbrales de aprobación interna (5 % de descuento, 15 % de margen) fijos en el código (H-21): pasarán a la configuración del tenant.
+- Ciclo de vida implementado (enviar, negociar, nueva versión, aprobación interna, aprobación del cliente, rechazo, eliminación lógica, conversión).
+- Fase B (06/11/2026), conversión al patrón del kit: modelo `Quote` con `BelongsToTenant` y `HasLockVersion`, `QuoteStateMachine` (grafo de §4.1; `convertida` es terminal), `QuotePolicy` (cartera de Ventas, 403 `SEC-BR-09`), `ConvertQuoteRequest` y `QuoteConversionController`. Enviar, negociar, aprobar y rechazar siguen en `QuoteLifecycle` sin la máquina de estados (fase C).
+- `listQuotes` responde `data[]` con `meta` de cursor (`per_page`, `next_cursor`, `prev_cursor`, `kpis`, `can`, `today`) y `links`. Filtros en el servidor: `filter[status]` (incluye `vencida` calculada), `filter[internal_approval]=pend|req|ok`, `filter[owner]=me|<uuid>` (ignorado para Ventas) y `filter[q]`. Orden `sort` por `created_at`, `code`, `valid_until`, `travel_from` y `total`.
+- Dinero exacto: totales de la versión con `BigDecimal` (`QuotePricing`); la API devuelve los montos como decimales en texto.
+- Precio unitario del cotizador: lo calcula `BookingEngine::segmentPrice` (tarifa vigente del segmento y canal, factor de temporada si `R-SEASON` está activa y conversión de moneda del motor). El vendedor puede escribir otro precio (`price_source = manual`). Cambio de comportamiento: en fechas con temporada de factor distinto de 1 la tarifa sugerida ahora incluye el factor (H-13).
+- Correlativo `COT-` desde `sys_sequences` (`SequenceService`).
+- Umbrales de aprobación interna (5 % de descuento, 15 % de margen) en constantes de `QuoteLifecycle` (H-21): pasarán a `sys_settings` del tenant.
+- Fase C (06/11/2026): todo el ciclo usa `QuoteStateMachine` y `QuotePolicy`. Rutas del contrato: `quotes/kpis`, `versions`, `versions/{n}`, `versions/compare`, `activity`, `duplicate` y `reassign`. Editar es `PUT /quotes/{code}/versions/{n}` (409 `QTE-BR-10` si no es la vigente) y la decisión interna es `POST /quotes/{code}/versions/{n}/internal-approval` (409 `QTE-BR-15`). Duplicar crea un borrador a nombre de quien duplica, con `duplicated_from_id` y vigencia renovada. Reasignar usa `crm.records.reassign` mientras `quotes.reassign` no exista (punto 11 de la §12) y responde 409 `QTE-BR-27` si el asesor es el mismo. Siguen como rutas propias `DELETE /quotes/{code}` y `GET /quotes/form-options`. Pendientes: token y aprobación pública, vistas, PDF y el portal del cliente en `portal/client/quotes`.
+
+### v3.0 — Rutas propias de la API (06/11/2026)
+
+Este módulo expone 2 rutas que no están en el contrato: 1 lectura de pantalla, 1 editar, borrar o cambiar estado. El detalle, con el equivalente en el contrato o el motivo de cada una, está en `docs/RUTAS-PROPIAS.md` (sección «Cotizaciones»).
 
 ## 12. Supuestos y puntos a validar con negocio
 

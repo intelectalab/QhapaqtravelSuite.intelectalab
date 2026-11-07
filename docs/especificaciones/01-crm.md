@@ -726,6 +726,10 @@ Consultas de auditoría en UI: historial del lead (audit + actividades completad
 
 ---
 
+### v3.0 — Rutas propias de la API (06/11/2026)
+
+Este módulo expone 12 rutas que no están en el contrato: 5 lectura de pantalla, 6 editar, borrar o cambiar estado, 1 acción propia. El detalle, con el equivalente en el contrato o el motivo de cada una, está en `docs/RUTAS-PROPIAS.md` (sección «CRM»).
+
 ## 12. Supuestos y puntos a validar con negocio
 
 | # | Punto | Supuesto actual / propuesta |

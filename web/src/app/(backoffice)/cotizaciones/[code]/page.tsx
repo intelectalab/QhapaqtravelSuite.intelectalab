@@ -6,10 +6,13 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { HeroBand, HeroChip, HeroPanel, Journey, TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
 import { QuoteLifecycleActions } from "@/features/quotes/QuoteActions";
+import { QuoteCompare } from "@/features/quotes/QuoteCompare";
 import { QuoteConvertAction } from "@/features/quotes/QuoteConvertAction";
+import { QuoteDuplicateAction, QuoteReassignAction } from "@/features/quotes/QuoteCopyActions";
 import { QuoteVersions } from "@/features/quotes/QuoteVersions";
 import { formatDate, formatDateTime, formatMoney, shortName } from "@/lib/format";
 import { paxLabel, QUOTE_JOURNEY } from "@/lib/quotes";
+import { getAdvisors } from "@/lib/server/leads";
 import { getQuote, getQuoteConversion } from "@/lib/server/quotes";
 import { statusTone } from "@/lib/tone";
 
@@ -18,15 +21,16 @@ export async function generateMetadata({ params }: PageProps<"/cotizaciones/[cod
   return { title: (await getQuote(code)).title };
 }
 
-const ACTION_LABEL: Record<string, string> = { crear: "Creada", editar: "Editada", enviar: "Enviada", aprobar: "Aprobada", rechazar: "Rechazada", nueva_version: "Nueva versión", convertir: "Convertida en reserva", negociacion: "Negociación", solicitar_aprobacion: "Aprobación interna pedida", aprobar_interna: "Aprobada por Gerencia", rechazar_interna: "Gerencia no la aprobó" };
+const ACTION_LABEL: Record<string, string> = { crear: "Creada", editar: "Editada", enviar: "Enviada", aprobar: "Aprobada", rechazar: "Rechazada", nueva_version: "Nueva versión", convertir: "Convertida en reserva", negociacion: "Negociación", solicitar_aprobacion: "Aprobación interna pedida", aprobar_interna: "Aprobada por Gerencia", rechazar_interna: "Gerencia no la aprobó", duplicar: "Duplicada", reasignar: "Reasignada", vencer: "Venció", anular_aprobacion_interna: "Aprobación interna anulada" };
 
 export default async function CotizacionPage({ params }: PageProps<"/cotizaciones/[code]">) {
   const { code } = await params;
   const quote = await getQuote(code);
+  const advisors = quote.can.reassign ? await getAdvisors() : [];
   const conversion = quote.status === "aprobada" && quote.can.register_approval ? await getQuoteConversion(code) : null;
   const reached = Math.max(QUOTE_JOURNEY.findIndex((step) => step.status === quote.status), quote.status === "convertida" ? QUOTE_JOURNEY.length - 1 : -1);
   const closed = ["rechazada", "vencida"].includes(quote.status);
-  const steps = QUOTE_JOURNEY.map((step, index) => ({ label: step.label, at: null, done: !closed && index <= reached }));
+  const steps = QUOTE_JOURNEY.map((step, index) => ({ label: step.label, status: step.status, at: null, done: !closed && index <= reached }));
   const current = quote.versions[0];
 
   return (
@@ -42,7 +46,7 @@ export default async function CotizacionPage({ params }: PageProps<"/cotizacione
         title={quote.title}
         info={
           <span className="ml-2 flex-none">
-            <StatusBadge status={quote.status} />
+            <StatusBadge status={quote.status} primary />
           </span>
         }
         subtitle={`${quote.code} · versión ${quote.version}`}
@@ -55,6 +59,8 @@ export default async function CotizacionPage({ params }: PageProps<"/cotizacione
               </Link>
             )}
             <QuoteLifecycleActions quote={quote} />
+            {quote.can.duplicate && <QuoteDuplicateAction quote={quote} />}
+            {quote.can.reassign && quote.status !== "convertida" && <QuoteReassignAction quote={quote} advisors={advisors} />}
             {conversion && <QuoteConvertAction conversion={conversion} lockVersion={quote.lock_version} />}
           </div>
         }
@@ -91,7 +97,7 @@ export default async function CotizacionPage({ params }: PageProps<"/cotizacione
           icon={quote.reservation ? Route : CalendarDays}
           tone="sun"
           label={quote.reservation ? "Reserva" : "Vigencia"}
-          value={quote.reservation ? <Link href={`/reservas/${quote.reservation.code}`} className="text-[16px] hover:underline">{quote.reservation.code}</Link> : <span className="text-[16px]">{quote.days_left === null ? formatDate(quote.valid_until) : quote.days_left < 0 ? "Vencida" : quote.days_left === 0 ? "Vence hoy" : `${quote.days_left} días`}</span>}
+          value={quote.reservation ? <Link href={`/reservas/${quote.reservation.code}`} data-testid="quote-reservation-link" className="text-[16px] hover:underline">{quote.reservation.code}</Link> : <span className="text-[16px]">{quote.days_left === null ? formatDate(quote.valid_until) : quote.days_left < 0 ? "Vencida" : quote.days_left === 0 ? "Vence hoy" : `${quote.days_left} días`}</span>}
           note={quote.reservation ? "Generada desde esta cotización" : `Hasta el ${formatDate(quote.valid_until)}`}
         />
         <TintTile icon={Wallet} tone="t4" label="Margen" value={quote.margin_pct === null ? <span className="text-[14px] text-fg-3">Solo Finanzas y Gerencia</span> : `${quote.margin_pct} %`} note={`Responsable: ${shortName(quote.owner.name)}`} />
@@ -99,7 +105,16 @@ export default async function CotizacionPage({ params }: PageProps<"/cotizacione
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <Card>
-          <TintCardTitle icon={ClipboardList} title="Servicios cotizados" aside={current ? `${current.items.length} ${current.items.length === 1 ? "servicio" : "servicios"}` : undefined} />
+          <TintCardTitle
+            icon={ClipboardList}
+            title="Servicios cotizados"
+            aside={
+              <span className="flex items-center gap-2">
+                <QuoteCompare code={quote.code} versions={quote.versions.map((version) => version.number)} currency={quote.currency} />
+                {current ? `${current.items.length} ${current.items.length === 1 ? "servicio" : "servicios"}` : null}
+              </span>
+            }
+          />
           <QuoteVersions versions={quote.versions} currency={quote.currency} seeMargin={quote.see_margin} />
         </Card>
         <Card>

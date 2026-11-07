@@ -17,27 +17,15 @@ final class RuleController
         return response()->json(['data' => $directory->list($this->user($request))]);
     }
 
-    public function toggle(Request $request, string $code, ManageBookingRules $rules): JsonResponse
+    public function reset(Request $request, ManageBookingRules $rules): JsonResponse
     {
-        $request->validate(['enabled' => ['required', 'boolean']], ['enabled.*' => 'Indica si la regla queda activa.']);
-        $rules->toggle($code, $request->boolean('enabled'), $this->user($request));
+        $data = $request->validate([
+            'reason' => ['required', 'string', 'min:3', 'max:200'],
+            'code' => ['nullable', 'string', 'max:40'],
+        ], ['reason.*' => 'Cuéntanos por qué restableces la regla.', 'code.*' => 'Elige una regla de la lista.']);
+        $codes = $rules->reset($data['code'] ?? null, $data['reason'], $this->user($request));
 
-        return response()->json(['data' => ['code' => $code]]);
-    }
-
-    public function params(Request $request, string $code, ManageBookingRules $rules): JsonResponse
-    {
-        $rules->params($code, (array) $request->input('params', []), $this->user($request));
-
-        return response()->json(['data' => ['code' => $code]]);
-    }
-
-    public function reset(Request $request, string $code, ManageBookingRules $rules): JsonResponse
-    {
-        $data = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:200']], ['reason.*' => 'Cuéntanos por qué restableces la regla.']);
-        $rules->reset($code, $data['reason'], $this->user($request));
-
-        return response()->json(['data' => ['code' => $code]]);
+        return response()->json(['data' => ['code' => $data['code'] ?? null, 'codes' => $codes]]);
     }
 
     public function store(Request $request, ManageBookingRules $rules): JsonResponse
@@ -49,7 +37,17 @@ final class RuleController
 
     public function update(Request $request, string $code, ManageBookingRules $rules): JsonResponse
     {
-        $rules->update($code, $this->validated($request), $this->user($request));
+        $user = $this->user($request);
+
+        if ($request->has('enabled')) {
+            $request->validate(['enabled' => ['required', 'boolean']], ['enabled.*' => 'Indica si la regla queda activa.']);
+            $rules->toggle($code, $request->boolean('enabled'), $user);
+        } elseif ($request->has('params')) {
+            $request->validate(['params' => ['present', 'array']], ['params.*' => 'Envía los parámetros de la regla.']);
+            $rules->params($code, (array) $request->input('params', []), $user);
+        } else {
+            $rules->update($code, $this->validated($request), $user);
+        }
 
         return response()->json(['data' => ['code' => $code]]);
     }

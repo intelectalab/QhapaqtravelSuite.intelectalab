@@ -46,6 +46,7 @@ final class AvailabilityDirectory
             ->get(['h.*', 'd.ref as departure_ref', 'd.departure_date', 'd.departure_time', 'p.code as product_code', 'p.name as product_name', 'u.name as user_name'])
             ->map(fn (object $hold) => [
                 'ref' => $hold->ref,
+                'lock_version' => (int) $hold->lock_version,
                 'departure' => $hold->departure_ref ? ['ref' => $hold->departure_ref, 'date' => $hold->departure_date, 'time' => substr((string) $hold->departure_time, 0, 5)] : null,
                 'product' => ['code' => $hold->product_code, 'name' => $hold->product_name],
                 'quantity' => (int) $hold->quantity,

@@ -54,7 +54,7 @@ export function QuoteVersions({ versions, currency, seeMargin }: { versions: Quo
               </span>
               <span className="text-right">
                 <b className="block font-mono text-[13.5px]">{formatMoney(item.total, currency)}</b>
-                {item.margin_pct !== null && <span className={cn("text-[11.5px] font-medium", item.margin_pct < 15 ? "text-warn" : "text-ok")}>{item.margin_pct} % margen</span>}
+                {item.margin_pct !== null && <span className={cn("text-[11.5px] font-medium", Number(item.margin_pct) < 15 ? "text-warn" : "text-ok")}>{item.margin_pct} % margen</span>}
               </span>
             </li>
           ))}
@@ -65,7 +65,7 @@ export function QuoteVersions({ versions, currency, seeMargin }: { versions: Quo
             <dt className="text-fg-3">Subtotal</dt>
             <dd className="font-mono">{formatMoney(version.totals.sale, currency)}</dd>
           </div>
-          {version.totals.discount > 0 && (
+          {Number(version.totals.discount) > 0 && (
             <div className="flex justify-between">
               <dt className="text-fg-3">Descuento ({version.discount_pct} %)</dt>
               <dd className="font-mono text-bad">− {formatMoney(version.totals.discount, currency)}</dd>
@@ -82,7 +82,7 @@ export function QuoteVersions({ versions, currency, seeMargin }: { versions: Quo
           {seeMargin && version.totals.margin_pct !== null && (
             <div className="flex justify-between text-[12.5px]">
               <dt className="text-fg-3">Utilidad</dt>
-              <dd className={cn("font-mono font-semibold", version.totals.margin_pct < 15 ? "text-warn" : "text-ok")}>
+              <dd className={cn("font-mono font-semibold", Number(version.totals.margin_pct) < 15 ? "text-warn" : "text-ok")}>
                 {formatMoney(version.totals.profit ?? 0, currency)} · {version.totals.margin_pct} %
               </dd>
             </div>

@@ -82,18 +82,18 @@ function VoucherRowActions({ voucher, canIssue }: { voucher: Voucher; canIssue: 
     <RowActions>
       <VoucherPanel voucher={voucher} />
       {canIssue && (active ? (
-        <OpsStep step="voucher_version" target={voucher.code} formKey={`${voucher.code}-version`} label="Nueva versión" title="Nueva versión" description={`${voucher.code} · versión ${voucher.version + 1}`} submitLabel="Emitir versión" trigger={(open) => <RowIcon tone="edit" label="Nueva versión" icon={<CopyPlus size={15} />} onClick={open} />}>
+        <OpsStep step="voucher_version" target={voucher.code} version={voucher.lock_version} formKey={`${voucher.code}-version`} label="Nueva versión" title="Nueva versión" description={`${voucher.code} · versión ${voucher.version + 1}`} submitLabel="Emitir versión" trigger={(open) => <RowIcon tone="edit" label="Nueva versión" icon={<CopyPlus size={15} />} onClick={open} />}>
           <ConfirmNote>Se conserva el código del voucher y se reemplaza la versión vigente con los datos actuales del servicio.</ConfirmNote>
           <TextArea label="Qué cambia" name="reason" rows={3} required minLength={5} maxLength={500} placeholder="Cambio de hora de recojo a las 04:00" />
         </OpsStep>
       ) : <RowIcon tone="edit" label="Nueva versión" icon={<CopyPlus size={15} />} disabledHint={hint} />)}
       {canIssue && (active ? (
-        <OpsStep step="voucher_redeem" target={voucher.code} formKey={`${voucher.code}-redeem`} label="Marcar utilizado" title="Marcar como utilizado" description={`${voucher.code} · ${voucher.service.label}`} submitLabel="Marcar utilizado" trigger={(open) => <RowIcon tone="neutral" label="Marcar utilizado" icon={<CheckCheck size={15} />} onClick={open} />}>
+        <OpsStep step="voucher_redeem" target={voucher.code} version={voucher.lock_version} formKey={`${voucher.code}-redeem`} label="Marcar utilizado" title="Marcar como utilizado" description={`${voucher.code} · ${voucher.service.label}`} submitLabel="Marcar utilizado" trigger={(open) => <RowIcon tone="neutral" label="Marcar utilizado" icon={<CheckCheck size={15} />} onClick={open} />}>
           <ConfirmNote>Úsalo cuando el proveedor confirma que prestó el servicio y el voucher no se validó por la extranet.</ConfirmNote>
         </OpsStep>
       ) : <RowIcon tone="neutral" label="Marcar utilizado" icon={<CheckCheck size={15} />} disabledHint={hint} />)}
       {canIssue && (active ? (
-        <OpsStep step="voucher_void" target={voucher.code} formKey={`${voucher.code}-void`} label="Anular" title="Anular voucher" description={`${voucher.code} · ${voucher.service.label}`} submitLabel="Anular voucher" trigger={(open) => <RowIcon tone="delete" label="Anular" icon={<Ban size={15} />} onClick={open} />}>
+        <OpsStep step="voucher_void" target={voucher.code} version={voucher.lock_version} formKey={`${voucher.code}-void`} label="Anular" title="Anular voucher" description={`${voucher.code} · ${voucher.service.label}`} submitLabel="Anular voucher" trigger={(open) => <RowIcon tone="delete" label="Anular" icon={<Ban size={15} />} onClick={open} />}>
           <ConfirmNote tone="warn">El voucher queda en el historial como anulado, deja de verse en la app del pasajero y se avisa al proveedor.</ConfirmNote>
           <TextArea label="Motivo" name="reason" rows={3} required minLength={5} maxLength={500} placeholder="Servicio reprogramado por el cliente" />
         </OpsStep>

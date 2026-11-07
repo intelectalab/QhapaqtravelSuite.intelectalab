@@ -7,6 +7,7 @@ namespace App\Domain\SupplierPortal\Actions;
 use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Tenancy\TenantContext;
 use App\Domain\SupplierPortal\Support\SupplierAccount;
 use Illuminate\Support\Facades\DB;
@@ -41,9 +42,9 @@ final class SupplierInvoices
             return DB::transaction(function () use ($account, $payableCode, $data, $bytes, $extension, $number, &$path): array {
                 $payable = $account->payable($payableCode);
                 DB::table('fin_payables')->where('id', $payable->id)->lockForUpdate()->first(['id']);
-                $balance = round((float) $payable->amount - (float) $payable->paid_amount, 2);
+                $balance = ReceivableLedger::balance($payable);
 
-                if ($payable->status === 'pagada' || $balance <= ReceivableLedger::TOLERANCE) {
+                if ($payable->status === 'pagada' || ! $balance->isPositive()) {
                     throw ApiException::conflict('SUP-BR-42', 'Este documento ya está pagado; no necesita factura.');
                 }
 
@@ -71,12 +72,12 @@ final class SupplierInvoices
                     'sha256' => hash('sha256', $bytes),
                     'created_by' => $account->user->getKey(),
                 ], 'id');
-                $amount = round((float) $data['amount'], 2);
-                $difference = round($amount - $balance, 2);
+                $amount = Decimal::money($data['amount']);
+                $difference = (string) $amount->minus($balance);
                 $values = [
                     'payable_id' => $payable->id,
                     'issue_date' => $data['issue_date'],
-                    'amount' => $amount,
+                    'amount' => (string) $amount,
                     'currency' => $payable->currency,
                     'amount_difference' => $difference,
                     'document_id' => $documentId,
@@ -97,7 +98,7 @@ final class SupplierInvoices
                 DB::table('fin_payables')->where('id', $payable->id)->update(['supplier_doc_number' => $number, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $account->user->getKey(), 'updated_at' => now()]);
                 $this->audit->log('Cuenta por pagar', $payable->code, 'factura_proveedor', $payable->supplier_doc_number, "{$number} ({$data['file_name']})");
 
-                return ['number' => $number, 'difference' => abs($difference) > 0.01 ? $difference : 0.0];
+                return ['number' => $number, 'difference' => Decimal::of($difference)->abs()->isGreaterThan('0.01') ? (float) $difference : 0.0];
             });
         } catch (\Throwable $exception) {
             if ($path !== null) {

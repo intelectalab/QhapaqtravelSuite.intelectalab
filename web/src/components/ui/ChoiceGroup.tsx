@@ -19,12 +19,13 @@ export function ChoiceGroup({ label, name, options, defaultValue, hint, onChange
     <fieldset>
       <legend className="mb-1.5 text-[13px] font-semibold text-fg">{label}</legend>
       {hint && <p className="-mt-1 mb-2 text-[12.5px] text-fg-3">{hint}</p>}
-      <div role="radiogroup" aria-label={label} className="grid gap-1.5 rounded-control bg-surface-2 p-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+      <div role="radiogroup" aria-label={label} data-testid={`field:${name}`} data-value={value} className="grid gap-1.5 rounded-control bg-surface-2 p-1" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
         {options.map((option) => (
           <button
             key={option.value}
             type="button"
             role="radio"
+            data-testid={`option:${option.value}`}
             aria-checked={value === option.value}
             onClick={() => {
               setValue(option.value);

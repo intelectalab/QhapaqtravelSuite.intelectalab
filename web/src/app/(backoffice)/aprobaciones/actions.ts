@@ -6,9 +6,7 @@ import { formValues, sendStep, type StepResult } from "@/lib/server/resource";
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
 const PORTAL_SOURCES: Record<string, { path: string; approve: string; reject: string }> = {
-  settlement: { path: "settlements", approve: "approve", reject: "reject" },
-  rate: { path: "provider-rates", approve: "approve", reject: "reject" },
-  invoice: { path: "supplier-invoices", approve: "validate", reject: "observe" },
+  invoice: { path: "/finance/supplier-invoices", approve: "validate", reject: "observe" },
 };
 
 function refresh(result: StepResult): StepResult {
@@ -26,24 +24,25 @@ export async function decideApproval(_state: StepResult, form: FormData): Promis
   const note = text(form, "note") || null;
   const failure = "No pudimos registrar la decisión.";
   const source = PORTAL_SOURCES[text(form, "source")];
+  const lock = formValues(form, ["lock_version"]);
 
   if (source) {
-    return refresh(await sendStep(`/approvals/${source.path}/${target}/${approve ? source.approve : source.reject}`, "POST", { note }, failure));
+    return refresh(await sendStep(`${source.path}/${target}/${approve ? source.approve : source.reject}`, "POST", { note }, failure));
   }
 
-  if (type === "quote") return refresh(await sendStep(`/quotes/${target}/internal-approval`, "POST", { approve, note }, failure));
+  if (type === "quote") return refresh(await sendStep(`/quotes/${target}/versions/${encodeURIComponent(text(form, "version_no"))}/internal-approval`, "POST", { decision: approve ? "approve" : "reject", note, ...lock }, failure));
   if (type === "change") {
     const change = encodeURIComponent(text(form, "change_id"));
-    return refresh(await sendStep(`/reservations/${target}/changes/${change}/${approve ? "approve" : "reject"}`, "POST", approve ? {} : { note }, failure));
+    return refresh(await sendStep(`/reservations/${target}/changes/${change}/${approve ? "approve" : "reject"}`, "POST", approve ? lock : { note, ...lock }, failure));
   }
   if (type === "cancel") {
     return refresh(
       approve
-        ? await sendStep(`/reservations/${target}/cancel`, "POST", { reason: text(form, "cancel_reason") || "Otro", detail: note ?? "Anulación aprobada desde la bandeja de aprobaciones." }, failure)
-        : await sendStep(`/reservations/${target}/cancel-requests/reject`, "POST", { note }, failure),
+        ? await sendStep(`/reservations/${target}/cancel`, "POST", { reason: text(form, "cancel_reason") || "Otro", detail: note ?? "Anulación aprobada desde la bandeja de aprobaciones.", ...lock }, failure)
+        : await sendStep(`/reservations/${target}/cancel-requests/${encodeURIComponent(text(form, "cancel_id"))}/reject`, "POST", { note }, failure),
     );
   }
-  return refresh(await sendStep(`/approvals/${target}/${approve ? "approve" : "reject"}`, "POST", { note }, failure));
+  return refresh(await sendStep(`/approvals/${target}/${approve ? "approve" : "reject"}`, "POST", { note, ...lock }, failure));
 }
 
 export async function saveApproval(_state: StepResult, form: FormData): Promise<StepResult> {
@@ -53,7 +52,7 @@ export async function saveApproval(_state: StepResult, form: FormData): Promise<
 }
 
 export async function withdrawApproval(_state: StepResult, form: FormData): Promise<StepResult> {
-  return refresh(await sendStep(`/approvals/${encodeURIComponent(text(form, "code"))}/withdraw`, "POST", formValues(form, ["note"]), "No pudimos retirar la solicitud."));
+  return refresh(await sendStep(`/approvals/${encodeURIComponent(text(form, "code"))}/withdraw`, "POST", formValues(form, ["note", "lock_version"]), "No pudimos retirar la solicitud."));
 }
 
 export async function saveApprovalRule(_state: StepResult, form: FormData): Promise<StepResult> {

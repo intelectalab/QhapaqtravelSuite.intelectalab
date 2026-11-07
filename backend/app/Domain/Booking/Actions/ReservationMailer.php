@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Actions;
 
+use App\Domain\Shared\Mail\QueuedMail;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
-use Throwable;
 
 final class ReservationMailer
 {
@@ -24,12 +23,6 @@ final class ReservationMailer
         $agency = $this->context->tenant()->commercial_name;
         $body = "Hola, {$row->name}:\n\n{$message}\n\nReserva {$row->code}\n{$agency}";
 
-        DB::afterCommit(function () use ($row, $subject, $agency, $body): void {
-            try {
-                Mail::raw($body, fn ($mail) => $mail->to($row->email)->subject("{$subject} · {$agency}"));
-            } catch (Throwable $e) {
-                report($e);
-            }
-        });
+        app(QueuedMail::class)->send((string) $row->email, (string) $row->name, "{$subject} · {$agency}", $body);
     }
 }

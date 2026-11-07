@@ -3,12 +3,14 @@ import type { Metadata } from "next";
 import { Chip, RatingLine, SectionHeading } from "@/features/site/Bits";
 import { DepartureCard, ProductCard } from "@/features/site/Cards";
 import { Faq } from "@/features/site/Content";
+import { ContentLocaleNotice } from "@/features/site/ContentLocaleNotice";
 import { Breadcrumbs } from "@/features/site/Hero";
 import { AvailabilityCalendar, BookingPanel, BookingProvider, MobileBookingBar } from "@/features/site/ProductBooking";
 import { ReviewsSection } from "@/features/site/Reviews";
 import { Scenery } from "@/features/site/Scenery";
-import { getSiteProduct, siteBase } from "@/lib/server/site";
-import { LANGUAGE_LABEL, siteHref } from "@/lib/site";
+import { getSiteProduct, siteBase, siteLocale } from "@/lib/server/site";
+import { siteHref } from "@/lib/site";
+import { siteText } from "@/lib/site-i18n";
 
 export async function generateMetadata({ params }: PageProps<"/sitio/[agencia]/tours/[slug]">): Promise<Metadata> {
   const { agencia, slug } = await params;
@@ -19,15 +21,17 @@ export async function generateMetadata({ params }: PageProps<"/sitio/[agencia]/t
 export default async function ProductPage({ params, searchParams }: PageProps<"/sitio/[agencia]/tours/[slug]">) {
   const [{ agencia, slug }, search] = await Promise.all([params, searchParams]);
   const fecha = typeof search.fecha === "string" ? search.fecha : undefined;
-  const [detail, base] = await Promise.all([getSiteProduct(agencia, slug), siteBase(agencia)]);
+  const [detail, base, locale] = await Promise.all([getSiteProduct(agencia, slug), siteBase(agencia), siteLocale()]);
+  const site = siteText(locale);
+  const t = site.product;
   const { product } = detail;
   const facts = [
-    { icon: Clock, label: "Duración", value: product.duration },
-    { icon: Users, label: "Grupo", value: `${product.group.min} a ${product.group.max} viajeros · ${product.modality}` },
-    { icon: Languages, label: "Idioma del guía", value: product.languages.map((code) => LANGUAGE_LABEL[code] ?? code).join(", ") || "Español" },
-    { icon: Dumbbell, label: "Condición física", value: product.difficulty ?? "Sin exigencia especial" },
-    { icon: MapPin, label: "Recojo", value: product.pickup ?? product.next_departure?.meeting_point ?? "Según programa" },
-    { icon: ShieldCheck, label: "Reserva", value: product.advance_days > 0 ? `Con ${product.advance_days} ${product.advance_days === 1 ? "día" : "días"} de anticipación` : "Hasta el día anterior" },
+    { icon: Clock, label: t.duration, value: product.duration },
+    { icon: Users, label: t.group, value: t.groupValue(product.group.min, product.group.max, product.modality) },
+    { icon: Languages, label: t.language, value: product.languages.map((code) => site.languages[code] ?? code).join(", ") || site.languages.ES },
+    { icon: Dumbbell, label: t.difficulty, value: product.difficulty ?? t.noDifficulty },
+    { icon: MapPin, label: t.pickup, value: product.pickup ?? product.next_departure?.meeting_point ?? t.pickupDefault },
+    { icon: ShieldCheck, label: t.booking, value: product.advance_days > 0 ? t.advance(product.advance_days) : t.dayBefore },
   ];
   const promoCode = product.promotions.find((promotion) => promotion.code)?.code ?? null;
 
@@ -39,8 +43,8 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
           <div className="relative mx-auto flex h-full max-w-[1240px] flex-col justify-end px-5 pb-8 text-white sm:px-8">
             <Breadcrumbs
               items={[
-                { label: "Inicio", href: siteHref(base) },
-                { label: "Destinos", href: siteHref(base, "/destinos") },
+                { label: site.common.home, href: siteHref(base) },
+                { label: site.common.destinations, href: siteHref(base, "/destinos") },
                 ...product.breadcrumbs.map((crumb) => ({ label: crumb.name, href: siteHref(base, `/destinos/${crumb.slug}`) })),
                 { label: product.name },
               ]}
@@ -70,6 +74,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
       <div className="mx-auto grid max-w-[1240px] gap-10 px-5 pb-24 pt-10 sm:px-8 lg:grid-cols-[1fr_380px] lg:pb-0">
         <div className="min-w-0 space-y-14">
           <section>
+            <ContentLocaleNotice contentLocale={product.content_locale} className="mb-5" />
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {facts.map(({ icon: Icon, label, value }, index) => (
                 <li key={label} className="lift flex gap-3 rounded-2xl border border-line bg-surface p-3.5 animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]" style={{ animationDelay: `${index * 40}ms` }}>
@@ -88,7 +93,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
 
           {detail.itinerary.length > 0 && (
             <section>
-              <SectionHeading eyebrow="Itinerario" title="Día a día" className="mb-5" />
+              <SectionHeading eyebrow={t.itinerary.eyebrow} title={t.itinerary.title} className="mb-5" />
               <ol className="space-y-6">
                 {detail.itinerary.map((day) => (
                   <li key={day.day} className="rounded-card border border-line bg-surface p-5 shadow-card">
@@ -118,14 +123,14 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
 
           {(detail.inclusions.length > 0 || detail.exclusions.length > 0) && (
             <section className="grid gap-4 md:grid-cols-2">
-              <List title="Incluye" items={detail.inclusions} icon={<CheckCircle2 size={16} className="text-ok" />} />
-              <List title="No incluye" items={detail.exclusions} icon={<XCircle size={16} className="text-fg-3" />} />
+              <List title={t.includes} items={detail.inclusions} icon={<CheckCircle2 size={16} className="text-ok" />} />
+              <List title={t.excludes} items={detail.exclusions} icon={<XCircle size={16} className="text-fg-3" />} />
             </section>
           )}
 
           {detail.requirements.length > 0 && (
             <section>
-              <SectionHeading eyebrow="Antes de reservar" title="Requisitos y recomendaciones" className="mb-4" />
+              <SectionHeading eyebrow={t.requirements.eyebrow} title={t.requirements.title} className="mb-4" />
               <ul className="grid gap-2 sm:grid-cols-2">
                 {detail.requirements.map((item) => (
                   <li key={item.text} className="flex gap-2.5 rounded-xl bg-surface-2 px-3.5 py-3 text-[13.5px] text-fg-2">
@@ -136,7 +141,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
                 {product.ages.min > 0 && (
                   <li className="flex gap-2.5 rounded-xl bg-surface-2 px-3.5 py-3 text-[13.5px] text-fg-2">
                     <Sparkles size={15} className="mt-0.5 flex-none text-t2" />
-                    Edad mínima: {product.ages.min} años.
+                    {t.minAge(product.ages.min)}
                   </li>
                 )}
               </ul>
@@ -144,16 +149,16 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
           )}
 
           <section id="calendario" className="scroll-mt-24">
-            <SectionHeading eyebrow="Disponibilidad" title="Elige tu fecha" description="Cada día muestra el precio por adulto según su temporada. Los días sin cupo o fuera de plazo aparecen desactivados." className="mb-5" />
+            <SectionHeading eyebrow={t.availability.eyebrow} title={t.availability.title} description={t.availability.description} className="mb-5" />
             <AvailabilityCalendar />
           </section>
 
           {detail.departures.length > 0 && (
             <section>
-              <SectionHeading eyebrow="Salidas programadas" title="Próximas salidas con cupos" className="mb-5" />
+              <SectionHeading eyebrow={t.departures.eyebrow} title={t.departures.title} className="mb-5" />
               <div className="grid gap-4 md:grid-cols-2">
                 {detail.departures.map((departure, index) => (
-                  <DepartureCard key={departure.ref} departure={{ ...departure, product: { slug: product.slug, name: `Encuentro: ${departure.meeting_point}`, destination: product.destination.name } }} base={base} index={index} />
+                  <DepartureCard key={departure.ref} departure={{ ...departure, product: { slug: product.slug, name: t.meeting(departure.meeting_point), destination: product.destination.name } }} base={base} index={index} />
                 ))}
               </div>
             </section>
@@ -161,11 +166,11 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
 
           {Object.keys(detail.policies).length > 0 && (
             <section>
-              <SectionHeading eyebrow="Condiciones" title="Políticas de la reserva" className="mb-4" />
+              <SectionHeading eyebrow={t.policies.eyebrow} title={t.policies.title} className="mb-4" />
               <dl className="divide-y divide-line rounded-card border border-line bg-surface shadow-card">
                 {Object.entries(detail.policies).map(([label, text]) => (
                   <div key={label} className="grid gap-1 px-5 py-4 sm:grid-cols-[180px_1fr]">
-                    <dt className="text-[13.5px] font-semibold text-fg">{label}</dt>
+                    <dt className="text-[13.5px] font-semibold text-fg">{t.policyLabels[label] ?? label}</dt>
                     <dd className="text-[13.5px] leading-relaxed text-fg-2">{text}</dd>
                   </div>
                 ))}
@@ -175,13 +180,13 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
 
           {detail.faqs.length > 0 && (
             <section>
-              <SectionHeading eyebrow="Preguntas frecuentes" title="Lo que más nos preguntan" className="mb-4" />
+              <SectionHeading eyebrow={t.faq.eyebrow} title={t.faq.title} className="mb-4" />
               <Faq items={detail.faqs} />
             </section>
           )}
 
           <section>
-            <SectionHeading eyebrow="Opiniones" title="Reseñas de este viaje" className="mb-5" />
+            <SectionHeading eyebrow={t.reviews.eyebrow} title={t.reviews.title} className="mb-5" />
             <ReviewsSection reviews={detail.reviews} base={base} columns={2} />
           </section>
         </div>
@@ -195,7 +200,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
 
       {detail.related.length > 0 && (
         <section className="mx-auto max-w-[1240px] px-5 pt-16 sm:px-8">
-          <SectionHeading eyebrow="También te puede interesar" title="Combínalo con" />
+          <SectionHeading eyebrow={t.related.eyebrow} title={t.related.title} />
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {detail.related.map((item, index) => (
               <ProductCard key={item.slug} product={item} base={base} index={index} />

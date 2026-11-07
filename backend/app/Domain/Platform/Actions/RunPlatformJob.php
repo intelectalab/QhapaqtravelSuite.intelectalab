@@ -5,28 +5,23 @@ declare(strict_types=1);
 namespace App\Domain\Platform\Actions;
 
 use App\Domain\Platform\Models\PlatformUser;
-use App\Domain\Platform\Support\BillingMetrics;
-use App\Domain\Platform\Support\PlatformOperations;
 use App\Domain\Shared\Errors\ApiException;
+use App\Jobs\PlatformJob;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Throwable;
 
 final class RunPlatformJob
 {
     private const CONNECTION = 'pgsql_platform';
 
-    public function __construct(
-        private readonly CollectInvoice $collect,
-        private readonly BillingMetrics $metrics,
-        private readonly PlatformSession $session,
-    ) {}
+    public function __construct(private readonly PlatformSession $session) {}
 
     public function run(string $code, PlatformUser $actor): string
     {
         $job = $this->job($code);
 
-        if (! in_array($job->code, PlatformOperations::RUNNABLE, true)) {
+        if (! class_exists((string) $job->job_class) || ! is_subclass_of((string) $job->job_class, PlatformJob::class)) {
             throw ApiException::conflict('JOB_NOT_RUNNABLE', 'Esta tarea solo corre en su horario programado.');
         }
 
@@ -34,29 +29,16 @@ final class RunPlatformJob
             throw ApiException::conflict('JOB_PAUSED', 'La tarea está pausada. Reanúdala antes de ejecutarla.');
         }
 
-        $started = now();
-        [$status, $result] = match ($job->code) {
-            'PLT-02' => $this->dunning($actor),
-            default => $this->snapshot(),
-        };
+        $class = (string) $job->job_class;
 
-        $this->db()->transaction(function () use ($job, $status, $result, $started, $actor): void {
-            $this->db()->table('sys_job_runs')->insert([
-                'id' => (string) Str::uuid7(),
-                'tenant_id' => null,
-                'scheduled_job_id' => $job->id,
-                'job_class' => $job->job_class,
-                'trigger' => 'manual',
-                'status' => $status,
-                'result' => $result,
-                'started_at' => $started,
-                'finished_at' => now(),
-                'attempt' => 1,
-                'correlation_id' => (string) Str::uuid7(),
-            ]);
-            $this->db()->table('sys_scheduled_jobs')->where('id', $job->id)->update(['last_run_at' => $started, 'last_status' => $status, 'last_result' => $result, 'updated_at' => now()]);
-            $this->session->log('Job', $job->job_class, 'ejecutar', null, $result, $actor);
-        });
+        try {
+            dispatch_sync((new $class)->scheduled((string) $job->id, 'manual'));
+        } catch (Throwable $e) {
+            report($e);
+        }
+
+        $result = (string) $this->db()->table('sys_scheduled_jobs')->where('id', $job->id)->value('last_result');
+        $this->session->log('Job', $class, 'ejecutar', null, $result, $actor);
 
         return $result;
     }
@@ -73,31 +55,6 @@ final class RunPlatformJob
             $this->db()->table('sys_scheduled_jobs')->where('id', $job->id)->update(['paused' => $paused, 'updated_at' => now()]);
             $this->session->log('Job', $job->job_class, $paused ? 'pausar' : 'reanudar', $paused ? 'activa' : 'pausada', $paused ? 'pausada' : 'activa', $actor);
         });
-    }
-
-    private function dunning(PlatformUser $actor): array
-    {
-        $summary = $this->collect->runDunning($actor);
-
-        if ($summary['processed'] === 0) {
-            return ['ok', 'Sin facturas con reintento pendiente'];
-        }
-
-        $parts = array_filter([
-            $summary['paid'] ? "{$summary['paid']} cobrada".($summary['paid'] === 1 ? '' : 's') : null,
-            $summary['declined'] ? "{$summary['declined']} rechazada".($summary['declined'] === 1 ? '' : 's') : null,
-            $summary['suspended'] ? "{$summary['suspended']} agencia suspendida" : null,
-        ]);
-
-        return [$summary['declined'] > 0 ? 'advertencia' : 'ok', "{$summary['processed']} reintento".($summary['processed'] === 1 ? '' : 's').' · '.implode(', ', $parts)];
-    }
-
-    private function snapshot(): array
-    {
-        $snapshot = $this->metrics->snapshot();
-        $this->metrics->storeSnapshot($snapshot);
-
-        return ['ok', 'MRR S/ '.number_format($snapshot['mrr'], 0, '.', ' ')." · {$snapshot['active_tenants']} agencias que pagan"];
     }
 
     private function job(string $code): object

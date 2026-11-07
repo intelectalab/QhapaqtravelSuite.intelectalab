@@ -99,6 +99,7 @@ final class IncidentDirectory
 
         return [
             'code' => $row->code,
+            'lock_version' => (int) $row->lock_version,
             'title' => $row->title,
             'type' => $row->type,
             'severity' => $row->severity,

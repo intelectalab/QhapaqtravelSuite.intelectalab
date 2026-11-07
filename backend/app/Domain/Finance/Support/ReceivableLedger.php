@@ -6,6 +6,8 @@ namespace App\Domain\Finance\Support;
 
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
+use App\Domain\Shared\Money\Decimal;
+use Brick\Math\BigDecimal;
 use Illuminate\Support\Facades\DB;
 
 final class ReceivableLedger
@@ -14,13 +16,20 @@ final class ReceivableLedger
 
     public function __construct(private readonly Consolidation $money, private readonly AuditLogger $audit) {}
 
-    public static function status(string $stored, float $amount, float $paid, string $due, string $today): string
+    public static function balance(object $row): BigDecimal
     {
+        return Decimal::of($row->amount)->minus(Decimal::of($row->paid_amount));
+    }
+
+    public static function status(string $stored, BigDecimal|string|float $amount, BigDecimal|string|float $paid, string $due, string $today): string
+    {
+        $paid = Decimal::of($paid);
+
         return match (true) {
             $stored === 'cancelada' => 'cancelada',
-            $amount - $paid <= self::TOLERANCE => 'pagada',
+            ! Decimal::of($amount)->minus($paid)->isPositive() => 'pagada',
             $due < $today => 'vencida',
-            $paid > 0 => 'parcial',
+            $paid->isPositive() => 'parcial',
             default => 'abierta',
         };
     }
@@ -28,17 +37,18 @@ final class ReceivableLedger
     public function recalculate(string $receivableId, User $actor): object
     {
         $receivable = DB::table('fin_receivables')->where('id', $receivableId)->lockForUpdate()->first();
-        $paid = (float) DB::table('fin_payment_applications as a')
+        $paid = Decimal::of(DB::table('fin_payment_applications as a')
             ->join('fin_payments as p', 'p.id', '=', 'a.payment_id')
             ->where('a.receivable_id', $receivableId)
             ->whereNull('a.reversed_at')
             ->where('p.status', 'aplicado')
-            ->sum('a.amount');
-        $paid = min($paid, (float) $receivable->amount);
-        $status = self::status($receivable->status, (float) $receivable->amount, $paid, $receivable->due_date, $this->money->today());
+            ->sum('a.amount'));
+        $amount = Decimal::of($receivable->amount);
+        $paid = $paid->isGreaterThan($amount) ? $amount : $paid;
+        $status = self::status($receivable->status, $amount, $paid, $receivable->due_date, $this->money->today());
 
         DB::table('fin_receivables')->where('id', $receivableId)->update([
-            'paid_amount' => $paid,
+            'paid_amount' => (string) Decimal::round2($paid),
             'status' => $status,
             'lock_version' => DB::raw('lock_version + 1'),
             'updated_by' => $actor->getKey(),
@@ -47,7 +57,7 @@ final class ReceivableLedger
 
         $this->syncReservation($receivable->reservation_id);
 
-        return (object) ['code' => $receivable->code, 'before' => (float) $receivable->amount - (float) $receivable->paid_amount, 'after' => (float) $receivable->amount - $paid, 'status' => $status];
+        return (object) ['code' => $receivable->code, 'before' => (string) Decimal::round2(self::balance($receivable)), 'after' => (string) Decimal::round2($amount->minus($paid)), 'status' => $status];
     }
 
     private function syncReservation(string $reservationId): void

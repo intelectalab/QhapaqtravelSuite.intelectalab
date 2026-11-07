@@ -27,14 +27,14 @@ it('PATCH settings/{section} guarda solo lo cambiado y respeta If-Match', functi
     $response = $this->patchJson('/api/v1/settings/policies', $body, ['If-Match' => (string) $version])->assertOk();
     expect($response->json('data.changed'))->toBe(['quote_validity_days'])
         ->and($response->json('data.lock_version'))->toBeGreaterThan($version);
-    expect($this->patchJson('/api/v1/settings/policies', $body))->toBeApiError(422, 'CFG-BR-01');
+    expect($this->patchJson('/api/v1/settings/policies', $body, ['If-Match' => (string) settingsVersion('policies')]))->toBeApiError(422, 'CFG-BR-01');
 });
 
 it('T-16: la moneda base no cambia si ya hay reservas o pagos', function () {
     actingAsSeed('U01');
     $currency = $this->getJson('/api/v1/settings')->json('data.sections.currency.values');
 
-    expect($this->patchJson('/api/v1/settings/currency', [...$currency, 'base_currency' => ($currency['base_currency'] ?? 'PEN') === 'PEN' ? 'USD' : 'PEN']))->toBeApiError(409, 'CFG-BR-05');
+    expect($this->patchJson('/api/v1/settings/currency', [...$currency, 'base_currency' => ($currency['base_currency'] ?? 'PEN') === 'PEN' ? 'USD' : 'PEN'], ['If-Match' => (string) settingsVersion('currency')]))->toBeApiError(409, 'CFG-BR-05');
 });
 
 it('settings/sequences lista las series con el próximo documento', function () {

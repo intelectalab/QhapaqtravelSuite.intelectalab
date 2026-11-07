@@ -112,6 +112,7 @@ final class ProductDirectory
         return [
             'code' => $row->code,
             'name' => $row->name,
+            'lock_version' => (int) $row->lock_version,
             'type' => $row->type_name,
             'category' => $row->category_name,
             'subcategory' => $row->subcategory_name,

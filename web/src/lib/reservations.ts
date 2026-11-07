@@ -24,11 +24,53 @@ export interface ReservationView {
   price: boolean;
 }
 
-export interface ReservationList {
+export interface ReservationKpis {
+  confirmed: number;
+  in_operation: number;
+  pending: number;
+  traveling_pax: number;
+  total: number;
+}
+
+export interface ReservationListMeta {
   today: string;
-  can: { modify: boolean; cancel: boolean };
+  can: { modify: boolean; cancel: boolean; create: boolean };
   view: ReservationView;
+  kpis: ReservationKpis;
+}
+
+export interface ReservationList extends ReservationListMeta {
   items: ReservationRow[];
+}
+
+export interface ReservationService {
+  code: string;
+  name: string;
+  date: string;
+  time: string | null;
+  kind: string;
+  status: string;
+  confirmation: string | null;
+  reject_reason: string | null;
+  replaced: boolean;
+  provider: { name: string; active: boolean } | null;
+  price?: string;
+  cost?: string;
+  currency: string;
+}
+
+export interface ReservationCan {
+  modify: boolean;
+  cancel: boolean;
+  request_cancel: boolean;
+  reassign: boolean;
+  approve_changes: boolean;
+  confirm: boolean;
+  start_operation: boolean;
+  complete: boolean;
+  services: boolean;
+  generate_receivables: boolean;
+  operation_order: boolean;
 }
 
 export interface ReservationDetail extends Omit<ReservationRow, "passengers" | "balance_pen" | "open_incidents"> {
@@ -41,13 +83,17 @@ export interface ReservationDetail extends Omit<ReservationRow, "passengers" | "
   margin_pct?: number | null;
   passengers: ReservationPassenger[];
   owner_id: string;
-  can: { modify: boolean; cancel: boolean; request_cancel: boolean; reassign: boolean; approve_changes: boolean };
+  lock_version: number;
+  order: string | null;
+  can: ReservationCan;
+  reject_reasons: string[];
   changes: ReservationChange[];
-  cancel_request: { reason: string; requested_at: string } | null;
+  cancel_request: { id: string; reason: string; requested_at: string } | null;
   cancellation: { penalty_amount?: string; refund_amount?: string; owed_amount?: string; cancelled_at: string } | null;
-  services: { code: string; name: string; date: string; time: string | null; kind: string; status: string; confirmation: string | null; price?: string; cost?: string; currency: string }[];
-  receivables?: { code: string; concept: string; amount: string; paid_amount: string; currency: string; due_date: string; status: string }[];
+  services: ReservationService[];
+  receivables?: { code: string; kind: string; concept: string; amount: string; paid_amount: string; currency: string; due_date: string; status: string }[];
   incidents: { code: string; title: string; type: string; severity: string; status: string; created_at: string }[];
+  history: { action: string; before_value: string | null; after_value: string | null; occurred_at: string }[];
 }
 
 export const SERVICE_KIND: Record<string, { label: string; icon: LucideIcon }> = {
@@ -81,17 +127,18 @@ export interface ReservationPassenger {
 export interface ReservationCancellation {
   code: string;
   currency: string;
-  total: number;
-  paid: number;
-  penalty_services: number;
-  consumed: number;
-  factor_k: number;
-  penalty: number;
-  refund: number;
-  owed: number;
-  lines: { code: string; name: string; date: string; days: number; policy: string; pct: number; price: number; penalty: number }[];
+  total: string;
+  paid: string;
+  penalty_services: string;
+  consumed: string;
+  factor_k: string;
+  penalty: string;
+  refund: string;
+  owed: string;
+  lines: { code: string; name: string; date: string; days: number; policy: string; pct: number; price: string; penalty: string }[];
   reasons: string[];
   request: string | null;
+  request_id: string | null;
 }
 
 export const CLOSED_RESERVATION = ["cancelada", "completada"];
@@ -119,10 +166,10 @@ export interface ChangeOptions {
 
 export interface ChangeImpact {
   pax: number;
-  unit_cost: number;
+  unit_cost: string;
   available: boolean;
   note: string | null;
-  suggested: number;
+  suggested: string;
 }
 
 export const CHANGE_TYPE: Record<string, string> = { pax: "Pasajeros", servicio: "Servicio", upgrade: "Mejora", otro: "Otro ajuste" };
@@ -136,7 +183,56 @@ export interface ReschedulePlan {
   new_from: string;
   new_to: string;
   shift: number;
-  diff: number;
+  diff: string;
   blocked: string | null;
-  lines: { id: string; code: string; name: string; date: string; new_date: string; pax: number; price: number; new_price: number; ok: boolean; note: string }[];
+  lines: { id: string; code: string; name: string; date: string; new_date: string; pax: number; price: string; new_price: string; ok: boolean; note: string }[];
+}
+
+export interface DirectFormOptions {
+  clients: { code: string; name: string }[];
+  advisors: { id: string; name: string }[];
+  channels: string[];
+  products: { code: string; name: string; model: string; duration: string; advance_min_days: number; max_pax: number | null }[];
+  owner_id: string;
+  today: string;
+}
+
+export interface DirectDeparture {
+  id: string;
+  ref: string;
+  date: string;
+  time: string | null;
+  free: number;
+}
+
+export interface DirectPlan {
+  product: { code: string; name: string; model: string; advance_min_days: number; max_pax: number | null };
+  departures: DirectDeparture[];
+  pax: { adt: number; chd: number; inf: number };
+  priced: boolean;
+  channel?: string;
+  date?: string;
+  travel_from?: string;
+  travel_to?: string;
+  departure?: { id: string; ref: string; time: string | null; free: number } | null;
+  currency?: string;
+  adult_price?: string;
+  child_price?: string | null;
+  total?: string;
+  cost?: string;
+  available?: boolean;
+  note?: string;
+}
+
+export interface DirectPayload {
+  client_id: string;
+  product_id: string;
+  channel: string;
+  owner_id: string;
+  departure_id: string;
+  date: string;
+  adt: number;
+  chd: number;
+  inf: number;
+  notes: string;
 }

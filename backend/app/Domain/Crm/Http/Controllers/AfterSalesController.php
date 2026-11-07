@@ -54,13 +54,10 @@ final class AfterSalesController
         return response()->json(['data' => ['code' => $code]]);
     }
 
-    public function transitionCase(Request $request, string $code, AfterSalesWorkflow $workflow): JsonResponse
+    public function transitionCase(Request $request, string $code, string $step, AfterSalesWorkflow $workflow): JsonResponse
     {
-        $data = $request->validate([
-            'step' => ['required', 'in:start,followup,resolve,close,reopen'],
-            'note' => ['nullable', 'string', 'max:2000'],
-        ], ['step.*' => 'Elige qué paso registrar.']);
-        $workflow->transition($code, $data['step'], $data['note'] ?? null, $this->user($request));
+        $data = $request->validate(['note' => ['nullable', 'string', 'max:2000']]);
+        $workflow->transition($code, $step, $data['note'] ?? null, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
     }

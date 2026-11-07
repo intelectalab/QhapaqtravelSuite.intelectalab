@@ -31,7 +31,7 @@ final class OpportunityWorkflow
     public function changeStage(string $code, array $data, User $actor): array
     {
         $opportunity = $this->directory->scoped($actor)->where('o.code', $code)->first(['o.*'])
-            ?? throw ApiException::notFound('La oportunidad no existe.');
+            ?? throw Portfolio::missing($actor, 'crm_opportunities', $code, 'La oportunidad no existe.', 'Esta oportunidad');
         $target = $data['stage'];
         $closed = in_array($opportunity->stage, ['ganada', 'perdida'], true);
         $warnings = [];
@@ -108,7 +108,7 @@ final class OpportunityWorkflow
 
     public function update(string $code, array $data, int $version, User $actor): void
     {
-        $opportunity = $this->directory->scoped($actor)->where('o.code', $code)->first(['o.*']) ?? throw ApiException::notFound('La oportunidad no existe.');
+        $opportunity = $this->directory->scoped($actor)->where('o.code', $code)->first(['o.*']) ?? throw Portfolio::missing($actor, 'crm_opportunities', $code, 'La oportunidad no existe.', 'Esta oportunidad');
         $closed = in_array($opportunity->stage, ['ganada', 'perdida'], true);
         $values = [
             'title' => trim($data['title']),

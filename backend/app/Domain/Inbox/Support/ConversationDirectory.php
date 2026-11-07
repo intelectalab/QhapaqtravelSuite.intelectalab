@@ -144,6 +144,7 @@ final class ConversationDirectory
                 },
             ],
             'window_open' => $row->channel !== 'whatsapp' || ($row->last_inbound_at !== null && Carbon::parse($row->last_inbound_at)->gt($now->copy()->subDay())),
+            'lock_version' => (int) $row->lock_version,
         ];
     }
 

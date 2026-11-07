@@ -6,7 +6,7 @@ use App\Domain\B2bPortal\Http\Controllers\B2bPortalController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('b2b')->name('b2b.')->controller(B2bPortalController::class)->group(function (): void {
-    Route::get('session', 'session')->name('session');
+    Route::get('me', 'session')->name('session');
     Route::get('home', 'home')->name('home');
     Route::get('catalog', 'catalog')->middleware('permission:catalog.products.view')->name('catalog.index');
     Route::get('catalog/{code}', 'product')->middleware('permission:catalog.products.view')->name('catalog.show');

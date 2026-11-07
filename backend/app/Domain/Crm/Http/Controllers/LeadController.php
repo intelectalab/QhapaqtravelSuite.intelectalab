@@ -13,8 +13,8 @@ use App\Domain\Crm\Http\Requests\LeadStoreRequest;
 use App\Domain\Crm\Support\Advisors;
 use App\Domain\Crm\Support\CrmCatalog;
 use App\Domain\Crm\Support\LeadDirectory;
+use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
-use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -102,7 +102,7 @@ final class LeadController
 
     public function show(Request $request, string $code): JsonResponse
     {
-        return response()->json(['data' => $this->directory->find($this->user($request), $code) ?? throw ApiException::notFound('El lead no existe.')]);
+        return response()->json(['data' => $this->directory->find($this->user($request), $code) ?? throw Portfolio::missing($this->user($request), 'crm_leads', $code, 'El lead no existe.', 'Este lead')]);
     }
 
     private function user(Request $request): User

@@ -9,15 +9,18 @@ export async function saveAgency(_state: StepResult, form: FormData): Promise<St
   const code = form.get("code");
   const body = formValues(form, FIELDS);
   const result = typeof code === "string" && code !== ""
-    ? await sendStep(`/channels/b2b/agencies/${encodeURIComponent(code)}`, "PATCH", body, "No pudimos guardar la agencia.")
+    ? await sendStep(`/channels/b2b/agencies/${encodeURIComponent(code)}`, "PATCH", { ...body, ...formValues(form, ["lock_version"]) }, "No pudimos guardar la agencia.")
     : await sendStep("/channels/b2b/agencies", "POST", body, "No pudimos registrar la agencia.");
   if (result.done) revalidatePath("/canales/b2b");
   return result;
 }
 
 export async function changeAgencyStatus(_state: StepResult, form: FormData): Promise<StepResult> {
-  const code = String(form.get("code") ?? "");
-  const result = await sendStep(`/channels/b2b/agencies/${encodeURIComponent(code)}/status`, "POST", formValues(form, ["status", "reason"]), "No pudimos cambiar el estado de la agencia.");
+  const path = `/channels/b2b/agencies/${encodeURIComponent(String(form.get("code") ?? ""))}`;
+  const status = String(form.get("status") ?? "");
+  const target = status === "bloqueada" ? { path: `${path}/block`, method: "POST" as const } : status === "activa" ? { path: `${path}/unblock`, method: "POST" as const } : status === "inactiva" ? { path, method: "DELETE" as const } : null;
+  if (!target) return { message: "Elige el nuevo estado.", done: false };
+  const result = await sendStep(target.path, target.method, formValues(form, ["reason", "lock_version"]), "No pudimos cambiar el estado de la agencia.");
   if (result.done) revalidatePath("/canales/b2b");
   return result;
 }

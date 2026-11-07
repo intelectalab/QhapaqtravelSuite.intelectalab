@@ -8,13 +8,15 @@ use App\Domain\Finance\Support\Consolidation;
 use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
+use Brick\Math\BigDecimal;
 use Illuminate\Support\Facades\DB;
 
 final class B2bCredit
 {
     public function __construct(private readonly Consolidation $money, private readonly AuditLogger $audit) {}
 
-    public function chargeReservation(string $agencyId, string $reservationId, string $code, float $amount, float $sourceAmount, string $sourceCurrency, ?float $fx, string $userId): float
+    public function chargeReservation(string $agencyId, string $reservationId, string $code, string|float $amount, string|float $sourceAmount, string $sourceCurrency, string|float|null $fx, string $userId): string
     {
         return $this->move($agencyId, 'cargo_reserva', $amount, [
             'reservation_id' => $reservationId,
@@ -40,13 +42,13 @@ final class B2bCredit
         $agency = $this->agency($reservation->agency_id);
         $outstanding = $this->outstanding($reservation->id);
 
-        if ($outstanding <= ReceivableLedger::TOLERANCE) {
+        if ($outstanding->isLessThanOrEqualTo(self::tolerance())) {
             return;
         }
 
-        $amount = min($outstanding, $this->toCredit((float) $payment->amount, (string) $payment->currency, $payment->fx_rate, (string) $agency->credit_currency));
+        $amount = BigDecimal::min($outstanding, $this->toCredit((string) $payment->amount, (string) $payment->currency, $payment->fx_rate, (string) $agency->credit_currency));
 
-        $this->move($agency->id, 'pago_aplicado', -$amount, [
+        $this->move($agency->id, 'pago_aplicado', $amount->negated(), [
             'reservation_id' => $reservation->id,
             'payment_id' => $payment->id,
             'source_amount' => $payment->amount,
@@ -56,7 +58,7 @@ final class B2bCredit
         ], $userId, 'liberar_credito');
     }
 
-    public function creditPayment(object $receivable, string $paymentId, string $paymentCode, float $amount, string $userId): void
+    public function creditPayment(object $receivable, string $paymentId, string $paymentCode, string|float $amount, string $userId): void
     {
         $reservation = $this->reservation($receivable->reservation_id);
         $agency = $reservation !== null
@@ -67,20 +69,21 @@ final class B2bCredit
             throw ApiException::unprocessable('FIN-BR-10', 'El crédito B2B solo aplica a agencias asociadas y activas.');
         }
 
-        if ($reservation !== null && $this->outstanding($reservation->id) > ReceivableLedger::TOLERANCE) {
+        if ($reservation !== null && $this->outstanding($reservation->id)->isGreaterThan(self::tolerance())) {
             return;
         }
 
-        $inCredit = $this->toCredit($amount, (string) $receivable->currency, $receivable->fx_rate, (string) $agency->credit_currency);
+        $inCredit = $this->toCredit(self::decimal($amount), (string) $receivable->currency, $receivable->fx_rate, (string) $agency->credit_currency);
+        $free = BigDecimal::of((string) $agency->credit_limit)->minus((string) $agency->credit_used);
 
-        if ($inCredit - ((float) $agency->credit_limit - (float) $agency->credit_used) > ReceivableLedger::TOLERANCE) {
+        if ($inCredit->minus($free)->isGreaterThan(self::tolerance())) {
             throw ApiException::unprocessable('FIN-BR-10', 'El monto supera la línea de crédito disponible de la agencia.');
         }
 
         $this->move($agency->id, 'cargo_reserva', $inCredit, [
             'reservation_id' => $receivable->reservation_id,
             'payment_id' => $paymentId,
-            'source_amount' => $amount,
+            'source_amount' => (string) self::decimal($amount),
             'source_currency' => $receivable->currency,
             'fx_rate' => $receivable->currency === $agency->credit_currency ? null : ($receivable->fx_rate ?: $this->money->usdRate()),
             'note' => "Pago {$paymentCode} con crédito B2B · {$receivable->code}",
@@ -90,20 +93,20 @@ final class B2bCredit
     public function paymentReverted(object $payment, string $userId): void
     {
         $moved = DB::table('channel_b2b_credit_movements')->where('payment_id', $payment->id)->get(['agency_id', 'amount', 'currency', 'reservation_id']);
-        $net = round((float) $moved->sum('amount'), 2);
+        $net = $moved->reduce(fn (BigDecimal $sum, object $row): BigDecimal => $sum->plus((string) $row->amount), BigDecimal::zero()->toScale(2));
 
-        if ($moved->isEmpty() || abs($net) <= ReceivableLedger::TOLERANCE) {
+        if ($moved->isEmpty() || $net->abs()->isLessThanOrEqualTo(self::tolerance())) {
             return;
         }
 
         $first = $moved->first();
-        $this->move((string) $first->agency_id, 'reversion_pago', -$net, [
+        $this->move((string) $first->agency_id, 'reversion_pago', $net->negated(), [
             'reservation_id' => $first->reservation_id,
             'payment_id' => $payment->id,
             'source_amount' => $payment->amount,
             'source_currency' => $payment->currency,
-            'note' => $net < 0 ? "Reversión del pago {$payment->code}" : "Reversión del pago con crédito {$payment->code}",
-        ], $userId, $net < 0 ? 'consumo_credito' : 'liberar_credito');
+            'note' => $net->isNegative() ? "Reversión del pago {$payment->code}" : "Reversión del pago con crédito {$payment->code}",
+        ], $userId, $net->isNegative() ? 'consumo_credito' : 'liberar_credito');
     }
 
     public function reservationCancelled(string $reservationId, string $code, string $userId): void
@@ -116,50 +119,50 @@ final class B2bCredit
 
         $outstanding = $this->outstanding($reservationId);
 
-        if ($outstanding <= ReceivableLedger::TOLERANCE) {
+        if ($outstanding->isLessThanOrEqualTo(self::tolerance())) {
             return;
         }
 
-        $this->move((string) $reservation->agency_id, 'anulacion_reserva', -$outstanding, ['reservation_id' => $reservationId, 'note' => "Anulación de {$code}"], $userId, 'liberar_credito');
+        $this->move((string) $reservation->agency_id, 'anulacion_reserva', $outstanding->negated(), ['reservation_id' => $reservationId, 'note' => "Anulación de {$code}"], $userId, 'liberar_credito');
     }
 
-    public function outstanding(string $reservationId): float
+    public function outstanding(string $reservationId): BigDecimal
     {
-        return round((float) DB::table('channel_b2b_credit_movements')->where('reservation_id', $reservationId)->sum('amount'), 2);
+        return Decimal::round2((string) (DB::table('channel_b2b_credit_movements')->where('reservation_id', $reservationId)->sum('amount')));
     }
 
-    private function move(string $agencyId, string $type, float $amount, array $context, string $userId, string $action): float
+    private function move(string $agencyId, string $type, BigDecimal|string|float $amount, array $context, string $userId, string $action): string
     {
         $agency = $this->agency($agencyId);
-        $before = round((float) $agency->credit_used, 2);
-        $balance = max(0.0, round($before + $amount, 2));
-        $amount = round($balance - $before, 2);
+        $before = Decimal::round2((string) $agency->credit_used);
+        $balance = BigDecimal::max(BigDecimal::zero(), Decimal::round2($before->plus(self::decimal($amount))))->toScale(2);
+        $amount = $balance->minus($before);
 
         DB::table('channel_b2b_credit_movements')->insert([
             ...$context,
             'agency_id' => $agency->id,
             'movement_type' => $type,
-            'amount' => $amount,
+            'amount' => (string) $amount,
             'currency' => $agency->credit_currency,
-            'balance_after' => $balance,
+            'balance_after' => (string) $balance,
             'created_by' => $userId,
         ]);
 
-        $values = ['credit_used' => $balance, 'lock_version' => DB::raw('lock_version + 1'), 'updated_at' => now()];
-        $unblock = $agency->status === 'bloqueada' && $agency->block_reason === 'credito_excedido' && $balance <= (float) $agency->credit_limit;
+        $values = ['credit_used' => (string) $balance, 'lock_version' => DB::raw('lock_version + 1'), 'updated_at' => now()];
+        $unblock = $agency->status === 'bloqueada' && $agency->block_reason === 'credito_excedido' && $balance->isLessThanOrEqualTo((string) $agency->credit_limit);
 
         if ($unblock) {
             $values = [...$values, 'status' => 'activa', 'block_reason' => null];
         }
 
         DB::table('channel_b2b_agencies')->where('id', $agency->id)->update($values);
-        $this->audit->log('Agencia B2B', (string) $agency->code, $action, number_format($before, 2, '.', ''), number_format($balance, 2, '.', '').' · '.($context['note'] ?? $type));
+        $this->audit->log('Agencia B2B', (string) $agency->code, $action, (string) $before, (string) $balance.' · '.($context['note'] ?? $type));
 
         if ($unblock) {
             $this->audit->log('Agencia B2B', (string) $agency->code, 'desbloquear', 'bloqueada', 'activa · crédito utilizado dentro de la línea');
         }
 
-        return $amount;
+        return (string) $amount;
     }
 
     private function reservation(?string $reservationId): ?object
@@ -182,14 +185,20 @@ final class B2bCredit
         return (bool) DB::table('fin_payment_methods')->where('code', $method)->value('is_b2b_credit');
     }
 
-    private function toCredit(float $amount, string $currency, mixed $fx, string $creditCurrency): float
+    private function toCredit(BigDecimal|string $amount, string $currency, mixed $fx, string $creditCurrency): BigDecimal
     {
-        if ($currency === $creditCurrency) {
-            return round($amount, 2);
-        }
+        $rate = is_numeric($fx) && (float) $fx > 0 ? (string) $fx : number_format($this->money->usdRate(), 6, '.', '');
 
-        $rate = (float) $fx ?: $this->money->usdRate();
+        return Decimal::round2(Decimal::convert($amount, $currency, $creditCurrency, $rate));
+    }
 
-        return round($currency === 'USD' ? $amount * $rate : $amount / $rate, 2);
+    private static function decimal(BigDecimal|string|float $value): BigDecimal
+    {
+        return $value instanceof BigDecimal ? $value : BigDecimal::of(is_string($value) ? $value : number_format($value, 2, '.', ''));
+    }
+
+    private static function tolerance(): BigDecimal
+    {
+        return BigDecimal::of((string) ReceivableLedger::TOLERANCE);
     }
 }

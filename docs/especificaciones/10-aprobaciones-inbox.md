@@ -386,6 +386,10 @@ Notificaciones (PROC-059): `aprobacion.solicitada`, `aprobacion.resultado`, `apr
 | Datos semilla | COT-2026-00189 v2 (8 % de descuento, solicitud de Lucía), anulación del borrador RES-2026-000349 (Emily consolida en COT-00188), reversión PAG-01921 (Yape en soles, BNK-2), 2 solicitudes de tarifa, 4 solicitudes genéricas (2 históricas), 7 conversaciones + 1 ticket coherentes con clientes, reservas e incidencias existentes. |
 | Contador en menú | El prototipo lo muestra en la vista (título y pestaña); en producción, `GET /approvals/counters` + Reverb alimentan el badge del menú. |
 
+### v3.0 — Rutas propias de la API (06/11/2026)
+
+Este módulo expone 1 rutas que no están en el contrato: 1 editar, borrar o cambiar estado. El detalle, con el equivalente en el contrato o el motivo de cada una, está en `docs/RUTAS-PROPIAS.md` (sección «Aprobaciones»).
+
 ## 12. Supuestos y puntos a validar con negocio
 
 1. Umbrales y SLA por defecto (tabla sección 11) y si el SLA debe contarse en horas hábiles (calendario laboral y feriados del tenant) en lugar de horas corridas.

@@ -15,7 +15,7 @@ import { getResource } from "@/lib/server/resource";
 export const metadata: Metadata = { title: "Suscripción y uso" };
 
 export default async function SuscripcionPage() {
-  const data = await getResource<SubscriptionOverview>("/admin/subscription", "No pudimos cargar la suscripción.");
+  const data = await getResource<SubscriptionOverview>("/billing/subscription", "No pudimos cargar la suscripción.");
   if (!data) return <NoAccess home="/dashboard" />;
   const { plan, subscription } = data;
   const addonsTotal = data.addons.reduce((sum, addon) => sum + addon.quantity * addon.unit_price, 0);

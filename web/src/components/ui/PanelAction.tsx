@@ -26,9 +26,11 @@ interface PanelActionProps<S extends PanelActionState> {
   footerExtra?: (state: S, pending: boolean) => ReactNode;
   trigger?: (open: () => void) => ReactNode;
   defaultOpen?: boolean;
+  testId?: string;
+  confirmTestId?: string;
 }
 
-export function PanelAction<S extends PanelActionState>({ label, icon, variant = "secondary", size = "md", formId: explicitFormId, title, description, submitLabel, action, initial, onDone, children, footerExtra, trigger, defaultOpen = false }: PanelActionProps<S>) {
+export function PanelAction<S extends PanelActionState>({ label, icon, variant = "secondary", size = "md", formId: explicitFormId, title, description, submitLabel, action, initial, onDone, children, footerExtra, trigger, defaultOpen = false, testId, confirmTestId = "dialog-confirm" }: PanelActionProps<S>) {
   const [open, setOpen] = useState(defaultOpen);
   const [formKey, setFormKey] = useState(0);
   useEffect(() => {
@@ -56,7 +58,7 @@ export function PanelAction<S extends PanelActionState>({ label, icon, variant =
       {trigger ? (
         trigger(() => setOpen(true))
       ) : (
-        <Button variant={variant} size={size} iconOnlyOnMobile icon={icon} onClick={() => setOpen(true)}>
+        <Button variant={variant} size={size} iconOnlyOnMobile icon={icon} onClick={() => setOpen(true)} data-testid={testId}>
           {label}
         </Button>
       )}
@@ -67,11 +69,11 @@ export function PanelAction<S extends PanelActionState>({ label, icon, variant =
         description={description}
         footer={
           <>
-            <Button variant="ghost" onClick={() => setOpen(false)}>
+            <Button variant="ghost" onClick={() => setOpen(false)} data-testid="dialog-cancel">
               Cancelar
             </Button>
             {footerExtra?.(state, pending)}
-            <Button type="submit" form={formId} variant="primary" disabled={pending}>
+            <Button type="submit" form={formId} variant="primary" disabled={pending} data-testid={confirmTestId}>
               {pending ? "Un momento…" : submitLabel}
             </Button>
           </>

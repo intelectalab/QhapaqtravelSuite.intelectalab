@@ -131,7 +131,7 @@ final class PlatformBillingController
     {
         $data = $request->validate(['coupon' => ['nullable', 'string', 'max:20']]);
 
-        return response()->json(['data' => ['invoice' => $trials->convert($tenant, $data['coupon'] ?? null, $this->user($request))]]);
+        return response()->json(['data' => ['invoice' => $trials->convert($tenant, $data['coupon'] ?? null, $this->user($request))['number']]]);
     }
 
     public function coupons(BillingDirectory $directory): JsonResponse

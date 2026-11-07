@@ -6,6 +6,7 @@ namespace App\Domain\Catalog\Http\Controllers;
 
 use App\Domain\Catalog\Actions\AvailabilityRegistry;
 use App\Domain\Catalog\Http\Controllers\Concerns\ResolvesActor;
+use App\Domain\Catalog\Http\Controllers\Concerns\ResolvesProduct;
 use App\Domain\Catalog\Support\AvailabilityDirectory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,6 +15,7 @@ use Illuminate\Validation\Rule;
 final class AvailabilityController
 {
     use ResolvesActor;
+    use ResolvesProduct;
 
     public function __construct(private readonly AvailabilityRegistry $registry) {}
 
@@ -22,18 +24,23 @@ final class AvailabilityController
         return response()->json(['data' => $directory->overview($this->actor($request))]);
     }
 
-    public function storeRange(Request $request): JsonResponse
+    public function storeRange(Request $request, string $product): JsonResponse
     {
-        return response()->json(['data' => ['code' => $this->registry->createRange($this->rangeData($request, true), $this->actor($request))]], 201);
+        $data = [...$this->rangeData($request), 'product_id' => $this->productId($product)];
+
+        return response()->json(['data' => ['code' => $this->registry->createRange($data, $this->actor($request))]], 201);
     }
 
-    public function updateRange(Request $request, string $code): JsonResponse
+    public function updateRange(Request $request, string $product, string $code): JsonResponse
     {
-        return response()->json(['data' => ['code' => $this->registry->updateRange($code, $this->rangeData($request, false), $this->actor($request))]]);
+        $this->ownedRange($product, $code);
+
+        return response()->json(['data' => ['code' => $this->registry->updateRange($code, $this->rangeData($request), $this->actor($request))]]);
     }
 
-    public function destroyRange(Request $request, string $code): JsonResponse
+    public function destroyRange(Request $request, string $product, string $code): JsonResponse
     {
+        $this->ownedRange($product, $code);
         $this->registry->deleteRange($code, $this->reason($request), $this->actor($request));
 
         return response()->json(['data' => ['code' => $code]]);
@@ -89,17 +96,20 @@ final class AvailabilityController
         return (string) $request->validate(['reason' => ['required', 'string', 'min:3', 'max:300']], ['reason.*' => 'Escribe el motivo.'])['reason'];
     }
 
-    private function rangeData(Request $request, bool $creating): array
+    private function ownedRange(string $product, string $code): void
+    {
+        $this->ensureOwnedBy($product, 'catalog_availability_ranges', 'code', $code, 'El rango no existe.');
+    }
+
+    private function rangeData(Request $request): array
     {
         return $request->validate([
-            'product_id' => [Rule::requiredIf($creating), 'uuid'],
             'date_from' => ['required', 'date'],
             'date_to' => ['required', 'date', 'after_or_equal:date_from'],
             'status' => ['required', Rule::in(AvailabilityDirectory::RANGE_STATUSES)],
             'capacity_per_day' => ['nullable', 'required_if:status,disponible', 'integer', 'between:1,500'],
             'note' => ['nullable', 'string', 'max:200'],
         ], [
-            'product_id.*' => 'Elige el producto.',
             'date_from.*' => 'Indica desde cuándo.',
             'date_to.after_or_equal' => 'El rango debe terminar después de empezar.',
             'date_to.*' => 'Indica hasta cuándo.',

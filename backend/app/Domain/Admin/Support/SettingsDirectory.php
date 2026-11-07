@@ -45,6 +45,7 @@ final class SettingsDirectory
                 'business_type' => $tenant->business_type,
                 'subdomain' => $tenant->subdomain,
                 'plan' => SettingsCatalog::PLAN_NAMES[$rank] ?? 'Starter',
+                'lock_version' => (int) $tenant->lock_version,
             ],
             'sections' => $sections,
             'main_sede' => $sedes->firstWhere('id', $general['main_sede_id'] ?? null)?->name,

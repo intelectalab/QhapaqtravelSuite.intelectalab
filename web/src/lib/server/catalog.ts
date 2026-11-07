@@ -1,7 +1,7 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
-import type { ProductDetail, ProductFormOptions, ProductRow } from "@/lib/catalog";
+import type { ProductDetail, ProductFormOptions, ProductRow, ProductTranslations } from "@/lib/catalog";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
 
@@ -20,3 +20,5 @@ export const listProducts = async (): Promise<ProductRow[]> => (await get<Produc
 export const getProduct = cache(async (code: string): Promise<ProductDetail> => (await get<ProductDetail>(`/catalog/products/${encodeURIComponent(code)}`)) ?? notFound());
 
 export const getProductFormOptions = cache(async (): Promise<ProductFormOptions | null> => get<ProductFormOptions>("/catalog/products/form-options"));
+
+export const getProductTranslations = async (code: string): Promise<ProductTranslations | null> => get<ProductTranslations>(`/catalog/products/${encodeURIComponent(code)}/translations`);

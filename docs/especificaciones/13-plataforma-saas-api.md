@@ -538,6 +538,22 @@ Desviaciones temporales de la implementación respecto al kit, detectadas en la 
 - Tablas nuevas fuera del esquema del kit: `platform_demo_requests` (solicitudes de demo desde la página comercial) y `platform_settings` (política de cobranza; `sys_settings` exige tenant). Pendiente incorporarlas a `docs/kit/database`.
 - Página comercial pública de Qhapaq (`/` y `/software/*`) con los planes reales. Agregado por decisión de producto.
 
+### v3.0 — Campana, Configuración y Personalización de la consola (07/11/2026)
+
+**Campana:** la de la consola muestra las alertas de la plataforma con estado de lectura por usuario. Las alertas son las mismas del inicio, más las solicitudes comerciales nuevas.
+
+**Grupo «Administración»:**
+- **Configuración:** emisor de las facturas, IGV y avisos a las agencias. Los avisos los leen PLT-03, PLT-05 y PLT-07.
+- **Personalización:** 3 colores y diseño de tarjetas de la consola.
+
+Los valores se guardan en `platform_settings` (claves `billing`, `branding` y `notif:{usuario}`), con auditoría bajo «Configuración de plataforma» y «Personalización de plataforma».
+
+**Desviación:** las rutas `/platform/notifications`, `/platform/settings` y `/platform/branding` son propias; el contrato no define la configuración de la consola.
+
+### v3.0 — Rutas propias de la API (06/11/2026)
+
+Este módulo expone 29 rutas que no están en el contrato: 15 lectura de pantalla, 11 editar, borrar o cambiar estado, 3 acción propia. El detalle, con el equivalente en el contrato o el motivo de cada una, está en `docs/RUTAS-PROPIAS.md` (sección «Plataforma SaaS y API»).
+
 ## 12. Supuestos y puntos a validar con negocio
 1. Pasarela de pagos (Cashier con Stripe o pasarela local) y OSE de la plataforma: por definir. El diseño las aísla tras interfaces.
 2. Precios del prototipo sin IGV. Confirmar si se publican con o sin IGV y si hay precios en USD para agencias exportadoras.

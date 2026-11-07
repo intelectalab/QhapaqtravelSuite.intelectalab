@@ -44,7 +44,7 @@ function engineFromSeeds(array $ruleOverrides = [], string $plan = 'Enterprise')
 function linesByKey($quote): array
 {
     return collect($quote->lines)->keyBy('key')->map(fn ($l) => [
-        'qty' => $l->qty, 'unit' => $l->unit->toString(), 'amount' => $l->amount->toString(), 'removable' => $l->removable,
+        'qty' => $l->qty, 'unit' => $l->unit->getAmount()->toString(), 'amount' => $l->amount->getAmount()->toString(), 'removable' => $l->removable,
     ])->all();
 }
 
@@ -60,13 +60,13 @@ describe('BookingEngine::quote · PRD-011 canónico (PEN)', function () {
         [$engine, $p] = engineFromSeeds();
         $q = $engine->quote($p, QuoteSelection::fromArray(prd011Selection()));
 
-        expect($q->subtotal->toString())->toBe(PRD011_EXPECTED_PEN['subtotal'])
-            ->and($q->total->toString())->toBe(PRD011_EXPECTED_PEN['total'])
+        expect($q->subtotal->getAmount()->toString())->toBe(PRD011_EXPECTED_PEN['subtotal'])
+            ->and($q->total->getAmount()->toString())->toBe(PRD011_EXPECTED_PEN['total'])
             ->and($q->paymentMode)->toBe('adelanto')
             ->and($q->modes)->toBe(PRD011_EXPECTED_PEN['modes'])
             ->and($q->depositPct)->toBe(30)
-            ->and($q->deposit->toString())->toBe(PRD011_EXPECTED_PEN['deposit'])
-            ->and($q->balance->toString())->toBe(PRD011_EXPECTED_PEN['balance'])
+            ->and($q->deposit->getAmount()->toString())->toBe(PRD011_EXPECTED_PEN['deposit'])
+            ->and($q->balance->getAmount()->toString())->toBe(PRD011_EXPECTED_PEN['balance'])
             ->and($q->balanceDue?->toDateString())->toBe(PRD011_EXPECTED_PEN['balance_due'])
             ->and($q->warnings)->toBe(PRD011_EXPECTED_PEN['warnings'])
             ->and($q->rooms)->toBe(8)
@@ -79,7 +79,7 @@ describe('BookingEngine::quote · PRD-011 canónico (PEN)', function () {
         [$engine, $p] = engineFromSeeds();
         $q = $engine->quote($p, QuoteSelection::fromArray(prd011Selection()));
 
-        expect($q->deposit->plus($q->balance)->toString())->toBe($q->total->toString());
+        expect($q->deposit->plus($q->balance)->getAmount()->toString())->toBe($q->total->getAmount()->toString());
     });
 
     it('el infante no paga ni ocupa asiento; el niño usa la tarifa Niño', function () {
@@ -96,9 +96,9 @@ describe('BookingEngine::quote · misma selección en USD', function () {
         $q = $engine->quote($p, QuoteSelection::fromArray(prd011Selection(['currency' => 'USD'])));
 
         expect($q->currency)->toBe('USD')
-            ->and($q->subtotal->toString())->toBe(PRD011_EXPECTED_USD['subtotal'])
-            ->and($q->deposit->toString())->toBe(PRD011_EXPECTED_USD['deposit'])
-            ->and($q->balance->toString())->toBe(PRD011_EXPECTED_USD['balance']);
+            ->and($q->subtotal->getAmount()->toString())->toBe(PRD011_EXPECTED_USD['subtotal'])
+            ->and($q->deposit->getAmount()->toString())->toBe(PRD011_EXPECTED_USD['deposit'])
+            ->and($q->balance->getAmount()->toString())->toBe(PRD011_EXPECTED_USD['balance']);
     });
 });
 
@@ -108,8 +108,8 @@ describe('Previsualización quitando ítems (R-PREVIEW-REMOVE)', function () {
         $v = PRD011_VARIANTS['removed_addon'];
         $q = $engine->quote($p, QuoteSelection::fromArray(prd011Selection(['removed' => $v['removed']])));
 
-        expect($q->total->toString())->toBe($v['total'])
-            ->and($q->deposit->toString())->toBe($v['deposit'])
+        expect($q->total->getAmount()->toString())->toBe($v['total'])
+            ->and($q->deposit->getAmount()->toString())->toBe($v['deposit'])
             ->and(collect($q->lines)->firstWhere('key', 'addon-ADD-1101')->removed)->toBeTrue();
     });
 
@@ -118,7 +118,7 @@ describe('Previsualización quitando ítems (R-PREVIEW-REMOVE)', function () {
         $v = PRD011_VARIANTS['removed_lima_usd'];
         $q = $engine->quote($p, QuoteSelection::fromArray(prd011Selection(['currency' => 'USD', 'removed' => $v['removed']])));
 
-        expect($q->total->toString())->toBe($v['total'])
+        expect($q->total->getAmount()->toString())->toBe($v['total'])
             ->and($q->rooms)->toBe(6)
             ->and($q->nights)->toBe(8);
     });
@@ -127,7 +127,7 @@ describe('Previsualización quitando ítems (R-PREVIEW-REMOVE)', function () {
         [$engine, $p] = engineFromSeeds();
         $q = $engine->quote($p, QuoteSelection::fromArray(prd011Selection(['removed' => ['base-adt']])));
 
-        expect($q->total->toString())->toBe(PRD011_EXPECTED_PEN['total']);
+        expect($q->total->getAmount()->toString())->toBe(PRD011_EXPECTED_PEN['total']);
     });
 });
 
@@ -137,7 +137,7 @@ describe('Reglas activables: regla apagada → sin efecto', function () {
         [$engine, $p] = engineFromSeeds(['R-LODGING' => false]);
         $q = $engine->quote($p, QuoteSelection::fromArray(prd011Selection()));
 
-        expect($q->total->toString())->toBe($v['total'])
+        expect($q->total->getAmount()->toString())->toBe($v['total'])
             ->and($q->rooms)->toBe(0)
             ->and(collect($q->lines)->where('kind', 'lodging'))->toBeEmpty();
     });
@@ -147,7 +147,7 @@ describe('Reglas activables: regla apagada → sin efecto', function () {
         [$engine, $p] = engineFromSeeds(['R-PREVIEW-REMOVE' => false]);
         $q = $engine->quote($p, QuoteSelection::fromArray(prd011Selection(['removed' => $v['removed']])));
 
-        expect($q->total->toString())->toBe($v['total'])
+        expect($q->total->getAmount()->toString())->toBe($v['total'])
             ->and(collect($q->lines)->contains(fn ($l) => $l->removable))->toBeFalse();
     });
 
@@ -158,8 +158,8 @@ describe('Reglas activables: regla apagada → sin efecto', function () {
 
         expect($q->paymentMode)->toBe('total')
             ->and($q->modes)->toBe(['total'])
-            ->and($q->deposit->toString())->toBe($v['deposit'])
-            ->and($q->balance->toString())->toBe('0.00')
+            ->and($q->deposit->getAmount()->toString())->toBe($v['deposit'])
+            ->and($q->balance->getAmount()->toString())->toBe('0.00')
             ->and($q->balanceDue)->toBeNull();
     });
 });
@@ -170,8 +170,8 @@ describe('Reglas por plan: plan sin la regla → sin efecto (PLN-R-01)', functio
         [$engine, $p] = engineFromSeeds(plan: 'Starter');
         $q = $engine->quote($p, QuoteSelection::fromArray(prd011Selection()));
 
-        expect($q->total->toString())->toBe($v['total'])
-            ->and($q->deposit->toString())->toBe($v['deposit'])
+        expect($q->total->getAmount()->toString())->toBe($v['total'])
+            ->and($q->deposit->getAmount()->toString())->toBe($v['deposit'])
             ->and($q->rooms)->toBe(0)
             ->and(collect($q->lines)->whereIn('kind', ['lodging', 'addon']))->toBeEmpty();
     });
@@ -180,7 +180,7 @@ describe('Reglas por plan: plan sin la regla → sin efecto (PLN-R-01)', functio
         [$engine, $p] = engineFromSeeds(plan: 'Professional');
         $q = $engine->quote($p, QuoteSelection::fromArray(prd011Selection()));
 
-        expect($q->total->toString())->toBe(PRD011_EXPECTED_PEN['total']);
+        expect($q->total->getAmount()->toString())->toBe(PRD011_EXPECTED_PEN['total']);
     });
 });
 

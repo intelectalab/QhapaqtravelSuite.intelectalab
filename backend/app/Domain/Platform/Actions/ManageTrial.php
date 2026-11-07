@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Platform\Actions;
 
 use App\Domain\Platform\Models\PlatformUser;
-use App\Domain\Platform\Support\BillingDirectory;
-use App\Domain\Platform\Support\PlatformSequence;
-use App\Domain\Platform\Support\PlatformSettings;
+use App\Domain\Platform\Support\PlatformInvoicer;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Carbon;
@@ -22,9 +20,7 @@ final class ManageTrial
 
     public function __construct(
         private readonly PlatformSession $session,
-        private readonly PlatformSequence $sequence,
-        private readonly PlatformSettings $settings,
-        private readonly BillingDirectory $directory,
+        private readonly PlatformInvoicer $invoicer,
     ) {}
 
     public function extend(string $tenantCode, int $days, PlatformUser $actor): void
@@ -51,15 +47,14 @@ final class ManageTrial
         });
     }
 
-    public function convert(string $tenantCode, ?string $couponCode, PlatformUser $actor): string
+    public function convert(string $tenantCode, ?string $couponCode, ?PlatformUser $actor = null): array
     {
-        return $this->db()->transaction(function () use ($tenantCode, $couponCode, $actor): string {
+        return $this->db()->transaction(function () use ($tenantCode, $couponCode, $actor): array {
             $subscription = $this->trial($tenantCode);
             $plan = $this->db()->table('plans')->where('id', $subscription->plan_id)->first();
             $coupon = $couponCode ? $this->coupon($couponCode, $subscription) : null;
             $today = Carbon::today('America/Lima');
-            $end = $today->copy()->addMonthNoOverflow()->subDay();
-            $price = $subscription->cycle === 'annual' ? (float) $plan->price_year : (float) $plan->price_month;
+            $end = ($subscription->cycle === 'annual' ? $today->copy()->addYearNoOverflow() : $today->copy()->addMonthNoOverflow())->subDay();
             $redemption = null;
 
             if ($coupon) {
@@ -77,56 +72,13 @@ final class ManageTrial
                 'updated_at' => now(),
                 'lock_version' => DB::raw('lock_version + 1'),
             ]);
-            $this->db()->table('tenants')->where('id', $subscription->tenant_id)->update(['status' => 'activo', 'mrr' => $plan->price_month, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            $this->db()->table('tenants')->where('id', $subscription->tenant_id)->update(['status' => 'activo', 'mrr' => $plan->price_month, 'updated_by' => $actor?->getKey(), 'updated_at' => now()]);
 
-            $number = $this->invoice($subscription, $plan, $price, $coupon, $today, $end);
-            $this->session->log('Tenant', $tenantCode, 'convertir_trial', 'prueba', trim("activo · {$plan->name}".($coupon ? " · cupón {$coupon->code}" : '')." · {$number}"), $actor);
+            $invoice = $this->invoicer->issue($subscription, $plan, (string) $subscription->cycle, $today, $end, $coupon);
+            $this->session->log('Tenant', $tenantCode, 'convertir_trial', 'prueba', trim("activo · {$plan->name}".($coupon ? " · cupón {$coupon->code}" : '')." · {$invoice['number']}"), $actor);
 
-            return $number;
+            return $invoice;
         });
-    }
-
-    private function invoice(object $subscription, object $plan, float $price, ?object $coupon, Carbon $from, Carbon $to): string
-    {
-        $lines = [['description' => "Suscripción plan {$plan->name} — periodo {$from->locale('es')->translatedFormat('d M Y')} al {$to->locale('es')->translatedFormat('d M Y')}", 'quantity' => 1, 'unit_price' => $price, 'amount' => $price, 'line_type' => 'plan']];
-
-        if ($coupon) {
-            $discount = round($coupon->type === 'percent' ? $price * (float) $coupon->value / 100 : min($price, (float) $coupon->value), 2);
-            $lines[] = ['description' => "Cupón {$coupon->code} · {$this->directory->couponLabel($coupon)}", 'quantity' => 1, 'unit_price' => -$discount, 'amount' => -$discount, 'line_type' => 'discount'];
-        }
-
-        $subtotal = round(array_sum(array_column($lines, 'amount')), 2);
-        $igv = round($subtotal * $this->settings->igv() / 100, 2);
-        $number = $this->sequence->next(PlatformSequence::INVOICE);
-        $id = (string) Str::uuid7();
-        $this->db()->table('platform_invoices')->insert([
-            'id' => $id,
-            'series' => 'FQ01',
-            'number' => $number,
-            'tenant_id' => $subscription->tenant_id,
-            'subscription_id' => $subscription->id,
-            'kind' => 'subscription',
-            'period_from' => $from->toDateString(),
-            'period_to' => $to->toDateString(),
-            'issue_date' => $from->toDateString(),
-            'due_date' => $from->copy()->addDays(7)->toDateString(),
-            'currency' => 'PEN',
-            'subtotal' => $subtotal,
-            'igv' => $igv,
-            'total' => round($subtotal + $igv, 2),
-            'igv_pct' => $this->settings->igv(),
-            'status' => 'open',
-            'bill_to' => json_encode(['name' => $subscription->billing_name, 'ruc' => $subscription->billing_ruc, 'address' => $subscription->billing_address, 'ubigeo' => $subscription->billing_ubigeo], JSON_UNESCAPED_UNICODE),
-            'sunat_status' => 'pending',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        foreach ($lines as $line) {
-            $this->db()->table('platform_invoice_lines')->insert(['invoice_id' => $id, ...$line]);
-        }
-
-        return PlatformSequence::format('FQ01', $number);
     }
 
     private function coupon(string $code, object $subscription): object

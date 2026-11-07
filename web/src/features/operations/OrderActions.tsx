@@ -42,7 +42,7 @@ export function QuickError({ message }: { message: string | null }) {
   return <p className="mt-2 animate-[rise-in_320ms_cubic-bezier(0.22,1,0.36,1)_backwards] rounded-xl bg-[color-mix(in_srgb,var(--bad)_10%,transparent)] px-3 py-2 text-[12.5px] text-bad">{message}</p>;
 }
 
-export function OrderAdvanceActions({ order, checks }: { order: Pick<OrderDetail, "code" | "title" | "transitions" | "can">; checks: CloseCheck[] }) {
+export function OrderAdvanceActions({ order, checks }: { order: Pick<OrderDetail, "code" | "lock_version" | "title" | "transitions" | "can">; checks: CloseCheck[] }) {
   return (
     <>
       {order.transitions.map((transition) => {
@@ -50,7 +50,7 @@ export function OrderAdvanceActions({ order, checks }: { order: Pick<OrderDetail
         if (closing && !order.can.close) return null;
         const blocked = closing && checks.some((check) => !check.ok);
         return (
-          <OpsStep key={transition.status} step="order_status" target={order.code} formKey={`${order.code}-${transition.status}`} label={transition.label} icon={closing ? <CircleCheckBig size={16} /> : <ArrowRight size={16} />} variant="primary" title={transition.label} description={`${order.title} · ${order.code}`} submitLabel={transition.label}>
+          <OpsStep key={transition.status} step="order_status" target={order.code} version={order.lock_version} formKey={`${order.code}-${transition.status}`} label={transition.label} icon={closing ? <CircleCheckBig size={16} /> : <ArrowRight size={16} />} variant="primary" title={transition.label} description={`${order.title} · ${order.code}`} submitLabel={transition.label}>
             <input type="hidden" name="status" value={transition.status} />
             <ConfirmNote tone={blocked ? "warn" : "neutral"}>{NEXT_NOTE[transition.status]}</ConfirmNote>
             {closing && (
@@ -78,6 +78,7 @@ export function AssignAction({ assignment, options, trigger }: { assignment: Ass
     <OpsStep
       step="assign"
       target={assignment.id}
+      version={assignment.lock_version}
       label={assignment.status === "pendiente" ? "Asignar" : "Reasignar"}
       icon={<Truck size={16} />}
       size="sm"
@@ -109,8 +110,8 @@ export function AssignmentQuickActions({ assignment }: { assignment: Assignment 
   return (
     <span className="flex flex-col items-end">
       <span className="flex gap-1.5">
-        {assignment.status === "asignada" && <RowIcon tone="neutral" label="Registrar confirmación del recurso" icon={<UserCheck size={15} />} onClick={() => run({ step: "assign_confirm", target: assignment.id })} disabledHint={pending ? "Un momento…" : undefined} />}
-        {["asignada", "confirmada"].includes(assignment.status) && <RowIcon tone="delete" label="Liberar recursos" icon={<UserMinus size={15} />} onClick={() => run({ step: "assign_release", target: assignment.id })} disabledHint={pending ? "Un momento…" : undefined} />}
+        {assignment.status === "asignada" && <RowIcon tone="neutral" label="Registrar confirmación del recurso" icon={<UserCheck size={15} />} onClick={() => run({ step: "assign_confirm", target: assignment.id, lock_version: String(assignment.lock_version) })} disabledHint={pending ? "Un momento…" : undefined} />}
+        {["asignada", "confirmada"].includes(assignment.status) && <RowIcon tone="delete" label="Liberar recursos" icon={<UserMinus size={15} />} onClick={() => run({ step: "assign_release", target: assignment.id, lock_version: String(assignment.lock_version) })} disabledHint={pending ? "Un momento…" : undefined} />}
       </span>
       <QuickError message={error} />
     </span>

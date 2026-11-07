@@ -23,7 +23,7 @@ final class SupplierDirectory
 
     private const SCHEDULED = ['confirmado', 'en_curso', 'completado'];
 
-    private const SERVICE_COLUMNS = ['s.id', 's.code', 's.name', 's.service_kind', 's.service_date', 's.service_time', 's.pax', 's.rooms', 's.nights', 's.status', 's.confirmation_code', 's.confirmed_by_name', 's.confirmed_at', 's.cost_amount', 's.currency', 's.requested_at', 's.reject_reason', 's.alt_of_id', 's.replaced_by_id', 's.reservation_id', 's.product_id', 's.departure_id', 'r.code as reservation_code', 'r.title as reservation_title'];
+    private const SERVICE_COLUMNS = ['s.id', 's.code', 's.lock_version', 's.name', 's.service_kind', 's.service_date', 's.service_time', 's.pax', 's.rooms', 's.nights', 's.status', 's.confirmation_code', 's.confirmed_by_name', 's.confirmed_at', 's.cost_amount', 's.currency', 's.requested_at', 's.reject_reason', 's.alt_of_id', 's.replaced_by_id', 's.reservation_id', 's.product_id', 's.departure_id', 'r.code as reservation_code', 'r.title as reservation_title'];
 
     public function __construct(private readonly TenantContext $context) {}
 
@@ -238,6 +238,7 @@ final class SupplierDirectory
 
             return [
                 'code' => $row->code,
+                'lock_version' => (int) $row->lock_version,
                 'reservation' => $row->reservation_code,
                 'holder' => $pax >= 6 ? 'Grupo: '.Str::before((string) $row->reservation_title, ' — ') : 'Titular: '.($leads[$row->reservation_id] ?? 'por confirmar'),
                 'service' => $row->name,

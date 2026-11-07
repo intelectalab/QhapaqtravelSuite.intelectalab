@@ -5,6 +5,7 @@ export type ProductStatus = "DRAFT" | "REVIEW" | "APPROVED" | "ACTIVE" | "SUSPEN
 export interface ProductRow {
   code: string;
   name: string;
+  lock_version: number;
   type: string;
   category: string;
   subcategory: string | null;
@@ -96,3 +97,19 @@ export const LIFECYCLE: { action: string; label: string; from: ProductStatus[]; 
   { action: "deactivate", label: "Inactivar", from: ["ACTIVE", "SUSPENDED"], reason: true, activate: true, description: "Deja de venderse hasta que alguien lo vuelva a activar." },
   { action: "archive", label: "Archivar", from: ["DRAFT", "REVIEW", "APPROVED", "ACTIVE", "SUSPENDED", "INACTIVE"], reason: true, activate: true, description: "Sale del catálogo de forma definitiva. Su historial se conserva." },
 ];
+
+export interface ProductTranslationText {
+  name: string | null;
+  short: string | null;
+  long: string | null;
+  inclusions: string[];
+  exclusions: string[];
+  seo_title: string | null;
+  seo_description: string | null;
+}
+
+export interface ProductTranslations {
+  code: string;
+  base: ProductTranslationText & { locale: string };
+  translations: (ProductTranslationText & { locale: string; exists: boolean; slug: string | null; updated_at: string | null })[];
+}

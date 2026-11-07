@@ -113,7 +113,7 @@ final class ResourceDirectory
         }
 
         $rows = $query->orderBy('a.service_date')->orderBy('a.service_time')->get([
-            'a.id', 'a.status', 'a.service_date', 'a.service_time', 'a.service_label', 'a.first_checkin_at', 'a.confirmed_at', 'a.warnings_ack',
+            'a.id', 'a.lock_version', 'a.status', 'a.service_date', 'a.service_time', 'a.service_label', 'a.first_checkin_at', 'a.confirmed_at', 'a.warnings_ack',
             'o.code as order_code', 'o.status as order_status', 'o.title as order_title', 'r.id as reservation_id', 'r.code as reservation_code',
             's.code as service_code', 's.service_kind', 's.status as service_status',
             'g.id as guide_id', 'g.full_name as guide_name', 'd.id as driver_id', 'd.full_name as driver_name', 'v.id as vehicle_id', 'v.plate as vehicle_plate', 'v.vehicle_type', 'v.capacity as vehicle_capacity',
@@ -122,6 +122,7 @@ final class ResourceDirectory
 
         return $rows->map(fn (object $row): array => [
             'id' => $row->id,
+            'lock_version' => (int) $row->lock_version,
             'status' => $row->status,
             'date' => $row->service_date,
             'time' => OpsCommon::time($row->service_time),

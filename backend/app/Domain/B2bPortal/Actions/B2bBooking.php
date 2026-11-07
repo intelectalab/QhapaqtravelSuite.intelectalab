@@ -6,12 +6,15 @@ namespace App\Domain\B2bPortal\Actions;
 
 use App\Domain\B2bPortal\Support\B2bAccount;
 use App\Domain\B2bPortal\Support\B2bCatalog;
-use App\Domain\Booking\Support\ServicesFromItem;
+use App\Domain\Booking\Actions\Support\ServicesFromQuoteItem;
 use App\Domain\Channels\Support\B2bCredit;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Operations\Actions\VoucherWorkflow;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
+use App\Domain\Shared\Sequences\SequenceService;
+use Brick\Math\BigDecimal;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -27,8 +30,9 @@ final class B2bBooking
 
     public function __construct(
         private readonly B2bCatalog $catalog,
-        private readonly ServicesFromItem $services,
+        private readonly ServicesFromQuoteItem $services,
         private readonly CodeSequence $sequence,
+        private readonly SequenceService $sequences,
         private readonly AuditLogger $audit,
         private readonly VoucherWorkflow $vouchers,
         private readonly B2bCredit $credit,
@@ -62,7 +66,7 @@ final class B2bBooking
                 $mode = $data['pay_mode'];
 
                 if ($mode === 'credito' && ! $quote['credit']['allowed']) {
-                    $denied = $quote['credit']['amount'] > $quote['credit']['available'] ? $quote : null;
+                    $denied = BigDecimal::of($quote['credit']['amount'])->isGreaterThan($quote['credit']['available']) ? $quote : null;
 
                     throw ApiException::unprocessable($denied ? 'B2B-BR-04' : 'B2B-BR-03', (string) $quote['credit']['reason']);
                 }
@@ -73,7 +77,7 @@ final class B2bBooking
             }, 3);
         } finally {
             if ($denied !== null) {
-                $this->audit->logOutsideTransaction('Agencia B2B', (string) $account->agency->code, 'credito_excedido', number_format((float) $denied['credit']['available'], 2, '.', ''), "{$denied['product']} · {$denied['credit']['currency']} {$denied['credit']['amount']}");
+                $this->audit->logOutsideTransaction('Agencia B2B', (string) $account->agency->code, 'credito_excedido', (string) $denied['credit']['available'], "{$denied['product']} · {$denied['credit']['currency']} {$denied['credit']['amount']}");
             }
         }
     }
@@ -89,7 +93,7 @@ final class B2bBooking
         $clientId = $this->client($account, $data['client'] ?? null);
         $owner = $this->owner($account);
         $sede = DB::table('iam_users')->where('id', $owner)->value('sede_id') ?? DB::table('iam_sedes')->whereNull('deleted_at')->orderByDesc('is_main')->value('id');
-        $code = $this->sequence->next('booking_reservations', 'RES-'.$today->year.'-', 6);
+        $code = $this->sequences->next('reservation');
         $reference = isset($data['agency_ref']) ? trim((string) $data['agency_ref']) : null;
         $terms = [
             'price_list' => DB::table('channel_b2b_price_lists')->where('id', $account->agency->price_list_id)->value('name'),
@@ -149,14 +153,14 @@ final class B2bBooking
 
     private function createServices(string $reservationId, string $code, stdClass $product, array $quote, ?string $departureId, bool $confirmed, string $userId): array
     {
-        $cost = $this->unitCost($product->id, $quote['currency'], (float) $quote['fx']);
+        $cost = $this->unitCost($product->id, $quote['currency'], (string) $quote['fx']);
         $item = (object) ['id' => null, 'product_id' => $product->id, 'service_date' => $quote['date'], 'pax' => $quote['seats'], 'qty' => 1, 'unit_cost' => (string) $cost, 'unit_price' => (string) $quote['net_unit']];
         $version = (object) ['discount_pct' => 0, 'currency' => $quote['currency'], 'fx_rate' => $quote['fx']];
         $reference = $departureId ? DB::table('catalog_product_departures')->where('id', $departureId)->value('ref') : null;
         $number = (int) substr($code, -6);
         $codes = [];
 
-        foreach ($this->services->build($item, $version, $departureId, $product->main_provider_id) as $index => $row) {
+        foreach ($this->services->build($item, (string) $version->discount_pct, (string) $version->currency, (string) $version->fx_rate, $departureId, $product->main_provider_id) as $index => $row) {
             $serviceCode = sprintf('RS-%d%02d', $number, $index + 1);
             $serviceId = (string) DB::table('booking_reservation_services')->insertGetId([
                 ...$row,
@@ -220,7 +224,7 @@ final class B2bBooking
 
     private function createReceivable(string $reservationId, B2bAccount $account, string $clientId, stdClass $product, array $quote, string $mode, Carbon $today, string $userId): void
     {
-        $code = $this->sequence->next('fin_receivables', 'CXC-', 5);
+        $code = $this->sequences->next('receivable');
         DB::table('fin_receivables')->insert([
             'code' => $code,
             'reservation_id' => $reservationId,
@@ -240,12 +244,12 @@ final class B2bBooking
 
     private function createCommission(string $reservationId, B2bAccount $account, array $quote, string $userId): void
     {
-        if ($quote['commission'] <= 0) {
+        if (! BigDecimal::of($quote['commission'])->isPositive()) {
             return;
         }
 
         DB::table('fin_commissions')->insert([
-            'code' => $this->sequence->next('fin_commissions', 'COM-', 4),
+            'code' => $this->sequences->next('commission'),
             'reservation_id' => $reservationId,
             'kind' => 'agencia_b2b',
             'beneficiary_agency_id' => $account->agency->id,
@@ -264,22 +268,20 @@ final class B2bBooking
 
     private function chargeCredit(B2bAccount $account, string $reservationId, string $code, array $quote, string $userId): void
     {
-        $fx = $quote['currency'] === $quote['credit']['currency'] ? null : (float) $quote['fx'];
-        $this->credit->chargeReservation((string) $account->agency->id, $reservationId, $code, (float) $quote['credit']['amount'], (float) $quote['net_total'], (string) $quote['currency'], $fx, $userId);
+        $fx = $quote['currency'] === $quote['credit']['currency'] ? null : (string) $quote['fx'];
+        $this->credit->chargeReservation((string) $account->agency->id, $reservationId, $code, (string) $quote['credit']['amount'], (string) $quote['net_total'], (string) $quote['currency'], $fx, $userId);
     }
 
-    private function unitCost(string $productId, string $currency, float $fx): float
+    private function unitCost(string $productId, string $currency, string $fx): string
     {
         $rate = DB::table('catalog_rates')->where('product_id', $productId)->where('status', 'vigente')->whereIn('segment', ['Adulto', 'Pasajero'])
             ->orderByRaw("case when channel = 'B2B' then 0 else 1 end")->first(['cost', 'currency']);
 
         if ($rate === null) {
-            return 0.0;
+            return '0.00';
         }
 
-        $cost = (float) $rate->cost;
-
-        return round($rate->currency === $currency ? $cost : ($rate->currency === 'USD' ? $cost * $fx : $cost / $fx), 2);
+        return (string) Decimal::round2(Decimal::convert((string) ($rate->cost ?? '0'), (string) $rate->currency, $currency, number_format((float) $fx, 6, '.', '')));
     }
 
     private function client(B2bAccount $account, ?array $data): string

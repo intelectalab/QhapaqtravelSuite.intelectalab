@@ -1,7 +1,7 @@
 "use client";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { ChevronDown, ChevronsUpDown, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronDown, ChevronsUpDown, LogOut, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { groupFor, isUnder, type NavGroup, type Screen } from "@/config/navigation";
@@ -29,9 +29,12 @@ interface SidebarProps {
   onToggle: () => void;
   onExpand?: () => void;
   onNavigate?: () => void;
+  tagged?: boolean;
 }
 
-export function Sidebar({ collapsed, onToggle, onExpand, onNavigate }: SidebarProps) {
+export const navKey = (href: string) => href.replace(/^\/+|\/+$/g, "").replaceAll("/", "-");
+
+export function Sidebar({ collapsed, onToggle, onExpand, onNavigate, tagged = true }: SidebarProps) {
   const pathname = usePathname();
   const { groups, account, navigation } = useWorkspace();
   const activeGroup = groupFor(pathname, groups);
@@ -93,21 +96,22 @@ export function Sidebar({ collapsed, onToggle, onExpand, onNavigate }: SidebarPr
               onToggle={() => toggleGroup(group.id)}
               pathname={pathname}
               onNavigate={onNavigate}
+              tagged={tagged}
             />
           ),
         )}
       </nav>
 
-      <UserMenu collapsed={collapsed} />
+      <UserMenu collapsed={collapsed} tagged={tagged} />
     </aside>
   );
 }
 
-function UserMenu({ collapsed }: { collapsed: boolean }) {
-  const { person, logoutHref } = useWorkspace();
+function UserMenu({ collapsed, tagged }: { collapsed: boolean; tagged: boolean }) {
+  const { person, logoutHref, navigation } = useWorkspace();
   return (
     <DropdownMenu.Root>
-      <DropdownMenu.Trigger className={cn("relative flex flex-none items-center gap-2.5 border-t border-white/[0.08] py-3.5 text-left outline-none transition hover:bg-white/[0.04]", collapsed ? "justify-center" : "px-[18px]")}>
+      <DropdownMenu.Trigger data-testid={tagged ? "user-menu" : undefined} className={cn("relative flex flex-none items-center gap-2.5 border-t border-white/[0.08] py-3.5 text-left outline-none transition hover:bg-white/[0.04]", collapsed ? "justify-center" : "px-[18px]")}>
         <span className="weave-pattern pointer-events-none absolute inset-0 opacity-[0.05]" />
         <span className="relative grid h-8 w-8 flex-none place-items-center rounded-full text-xs font-semibold text-white" style={{ background: person.color ?? "var(--t4)" }}>
           {initials(person.name)}
@@ -129,8 +133,16 @@ function UserMenu({ collapsed }: { collapsed: boolean }) {
             <span className="block truncate text-xs text-fg-3">{person.email}</span>
           </div>
           <DropdownMenu.Separator className="my-1 h-px bg-line" />
+          {navigation === "agency" && (
+            <DropdownMenu.Item asChild>
+              <Link href="/cuenta" data-testid="user-menu-account" className="flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13.5px] font-medium outline-none data-[highlighted]:bg-surface-2">
+                <UserRound size={16} className="text-fg-3" />
+                Mi cuenta y mi agencia
+              </Link>
+            </DropdownMenu.Item>
+          )}
           <DropdownMenu.Item asChild>
-            <Link href={logoutHref} prefetch={false} className="flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13.5px] font-medium outline-none data-[highlighted]:bg-surface-2">
+            <Link href={logoutHref} prefetch={false} data-testid="user-menu-logout" className="flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13.5px] font-medium outline-none data-[highlighted]:bg-surface-2">
               <LogOut size={16} className="text-fg-3" />
               Cerrar sesión
             </Link>
@@ -159,7 +171,7 @@ function RailItem({ group, active, onClick }: { group: NavGroup; active: boolean
   );
 }
 
-function GroupBlock({ group, open, onToggle, pathname, onNavigate }: { group: NavGroup; open: boolean; onToggle: () => void; pathname: string; onNavigate?: () => void }) {
+function GroupBlock({ group, open, onToggle, pathname, onNavigate, tagged }: { group: NavGroup; open: boolean; onToggle: () => void; pathname: string; onNavigate?: () => void; tagged: boolean }) {
   const count = groupCount(group, useWorkspace().counts);
   return (
     <div className="mb-0.5">
@@ -176,7 +188,7 @@ function GroupBlock({ group, open, onToggle, pathname, onNavigate }: { group: Na
       {open && (
         <div className="mb-2 flex flex-col gap-0.5 animate-in">
           {group.screens.map((screen) => (
-            <ScreenLink key={screen.href} screen={screen} active={isUnder(pathname, screen.href)} onNavigate={onNavigate} />
+            <ScreenLink key={screen.href} screen={screen} active={isUnder(pathname, screen.href)} onNavigate={onNavigate} tagged={tagged} />
           ))}
         </div>
       )}
@@ -184,7 +196,7 @@ function GroupBlock({ group, open, onToggle, pathname, onNavigate }: { group: Na
   );
 }
 
-function ScreenLink({ screen, active, onNavigate }: { screen: Screen; active: boolean; onNavigate?: () => void }) {
+function ScreenLink({ screen, active, onNavigate, tagged }: { screen: Screen; active: boolean; onNavigate?: () => void; tagged: boolean }) {
   const Icon = screen.icon;
   const { counts } = useWorkspace();
   const count = screen.countKey ? counts[screen.countKey] ?? 0 : 0;
@@ -192,6 +204,7 @@ function ScreenLink({ screen, active, onNavigate }: { screen: Screen; active: bo
     <Link
       href={screen.href}
       onClick={onNavigate}
+      data-testid={tagged ? `nav-item:${navKey(screen.href)}` : undefined}
       aria-current={active ? "page" : undefined}
       className={cn("relative flex items-center gap-3 rounded-[10px] px-3 py-[8px] text-[13.5px] font-medium transition", active ? "bg-white/10 text-white" : "hover:bg-white/[0.05] hover:text-white")}
     >

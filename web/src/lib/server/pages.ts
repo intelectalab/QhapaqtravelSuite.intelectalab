@@ -1,11 +1,14 @@
 import "server-only";
+import type { CursorLinks, CursorMeta as ContractCursorMeta } from "@/lib/api/types";
 import type { Realm } from "@/lib/realms";
 import { apiFetch, type ApiResult } from "./api";
 
-export interface CursorMeta {
-  per_page: number;
-  next_cursor: string | null;
-  prev_cursor: string | null;
+export type CursorMeta = Required<Pick<ContractCursorMeta, "per_page" | "next_cursor" | "prev_cursor">>;
+
+export interface CursorPage<T, M> {
+  data: T[];
+  meta: M & CursorMeta;
+  links?: CursorLinks;
 }
 
 export interface Collection<T, M> {
@@ -24,11 +27,11 @@ export async function fetchPages<T, M = Record<string, unknown>>(path: string, l
   do {
     const size = Math.min(PAGE_SIZE, limit - items.length);
     const query = `page[size]=${size}${cursor ? `&page[cursor]=${encodeURIComponent(cursor)}` : ""}`;
-    const result: ApiResult<{ data: T[]; meta: M & CursorMeta }> = await apiFetch(`${path}${path.includes("?") ? "&" : "?"}${query}`, { raw: true, realm });
+    const result: ApiResult<CursorPage<T, M>> = await apiFetch(`${path}${path.includes("?") ? "&" : "?"}${query}`, { raw: true, realm });
     if (!result.ok || !result.data) return { ...result, data: null };
     items.push(...result.data.data);
     meta ??= result.data.meta;
-    cursor = result.data.meta.next_cursor;
+    cursor = result.data.meta.next_cursor ?? null;
   } while (cursor && items.length < limit);
 
   return { ok: true, status: 200, error: null, data: { data: items, meta: meta as M & CursorMeta, more: cursor !== null } };

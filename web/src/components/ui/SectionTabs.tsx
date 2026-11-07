@@ -21,6 +21,7 @@ export function SectionTabs({ tabs }: { tabs: SectionTab[] }) {
           <Link
             key={tab.href}
             href={tab.href}
+            data-testid={`tab:${tab.href.split("?")[0].split("/").filter(Boolean).pop() ?? "inicio"}`}
             aria-current={active ? "page" : undefined}
             className={cn(
               "flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-[13px] font-semibold transition-[background-color,color,box-shadow] duration-300",

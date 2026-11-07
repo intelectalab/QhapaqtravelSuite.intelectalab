@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Finance\Support;
 
+use App\Domain\Shared\Money\Decimal;
+use Brick\Math\BigDecimal;
+
 final class AmountInWords
 {
     private const UNITS = ['', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE', 'DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE', 'VEINTE', 'VEINTIUNO', 'VEINTIDÓS', 'VEINTITRÉS', 'VEINTICUATRO', 'VEINTICINCO', 'VEINTISÉIS', 'VEINTISIETE', 'VEINTIOCHO', 'VEINTINUEVE'];
@@ -12,10 +15,11 @@ final class AmountInWords
 
     private const HUNDREDS = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
 
-    public static function of(float $amount, string $currency): string
+    public static function of(BigDecimal|string|float $amount, string $currency): string
     {
-        $integer = (int) floor(round($amount, 2));
-        $cents = (int) round(($amount - $integer) * 100);
+        [$whole, $fraction] = explode('.', (string) Decimal::money($amount)->abs());
+        $integer = (int) $whole;
+        $cents = (int) $fraction;
         $words = $integer === 0 ? 'CERO' : self::number($integer);
         $name = $currency === 'USD' ? 'DÓLARES AMERICANOS' : 'SOLES';
 

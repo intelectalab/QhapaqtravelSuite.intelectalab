@@ -19,15 +19,21 @@ final class ReviewController
         return response()->json(['data' => $directory->overview($this->user($request))]);
     }
 
-    public function moderate(Request $request, string $code, ModerateOwnReview $moderate): JsonResponse
+    public function publish(Request $request, string $code, ModerateOwnReview $moderate): JsonResponse
     {
-        $data = $request->validate([
-            'action' => ['required', 'in:publicar,ocultar,rechazar'],
-            'reason' => ['nullable', 'required_unless:action,publicar', 'string', 'max:300'],
-        ], ['action.*' => 'Elige qué hacer con la reseña.', 'reason.required_unless' => 'Indica el motivo.', 'reason.*' => 'El motivo admite hasta 300 caracteres.']);
-        $moderate->moderate($code, $data['action'], $data['reason'] ?? null, $this->user($request));
+        $moderate->moderate($code, 'publicar', null, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function reject(Request $request, string $code, ModerateOwnReview $moderate): JsonResponse
+    {
+        return $this->withReason($request, $code, 'rechazar', $moderate);
+    }
+
+    public function hide(Request $request, string $code, ModerateOwnReview $moderate): JsonResponse
+    {
+        return $this->withReason($request, $code, 'ocultar', $moderate);
     }
 
     public function reply(Request $request, string $code, ModerateOwnReview $moderate): JsonResponse
@@ -38,14 +44,16 @@ final class ReviewController
         return response()->json(['data' => ['code' => $code]]);
     }
 
-    public function requestAction(Request $request, string $code, ModerateOwnReview $moderate): JsonResponse
+    public function sendRequest(Request $request, string $code, ModerateOwnReview $moderate): JsonResponse
     {
-        $data = $request->validate(['action' => ['required', 'in:enviar,cancelar']], ['action.*' => 'Elige qué hacer con la solicitud.']);
-        if ($data['action'] === 'cancelar') {
-            $moderate->cancelRequest($code, $this->user($request));
-        } else {
-            $moderate->sendRequest($code, $this->user($request));
-        }
+        $moderate->sendRequest($code, $this->user($request));
+
+        return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function cancelRequest(Request $request, string $code, ModerateOwnReview $moderate): JsonResponse
+    {
+        $moderate->cancelRequest($code, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
     }
@@ -68,6 +76,14 @@ final class ReviewController
         $reply->markPublished($id, $this->user($request));
 
         return response()->json(['data' => ['id' => $id]]);
+    }
+
+    private function withReason(Request $request, string $code, string $action, ModerateOwnReview $moderate): JsonResponse
+    {
+        $data = $request->validate(['reason' => ['required', 'string', 'max:300']], ['reason.required' => 'Indica el motivo.', 'reason.*' => 'El motivo admite hasta 300 caracteres.']);
+        $moderate->moderate($code, $action, $data['reason'], $this->user($request));
+
+        return response()->json(['data' => ['code' => $code]]);
     }
 
     private function user(Request $request): User

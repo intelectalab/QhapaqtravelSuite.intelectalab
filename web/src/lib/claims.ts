@@ -4,6 +4,7 @@ export type Deadline = "en_plazo" | "por_vencer" | "vencido" | "respondido_en_pl
 
 export interface ClaimSheet {
   code: string;
+  lock_version: number;
   book_number: string;
   type_code: string;
   type: string;

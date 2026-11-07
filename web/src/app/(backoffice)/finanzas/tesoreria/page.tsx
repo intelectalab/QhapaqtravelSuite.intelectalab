@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Tesorería (caja y bancos)" };
 const time = (iso: string) => new Intl.DateTimeFormat("es-PE", { hour: "2-digit", minute: "2-digit", timeZone: TIME_ZONE }).format(new Date(iso));
 
 export default async function TesoreriaPage() {
-  const data = await getResource<TreasuryOverview>("/finance/treasury", "No pudimos cargar la tesorería.");
+  const data = await getResource<TreasuryOverview>("/treasury/accounts", "No pudimos cargar la tesorería.");
 
   if (!data) {
     return <PageHeader title="Tesorería (caja y bancos)" subtitle="Tu rol no tiene acceso a esta sección." />;

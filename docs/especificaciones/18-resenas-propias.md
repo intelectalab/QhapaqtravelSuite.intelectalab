@@ -181,6 +181,10 @@ Playwright (equivalente a `e2e_resenas.js`, 22 comprobaciones): U15 ve aviso y c
 - Moderación sin gating y consentimiento explícito para cumplir la Ley 29733 (datos personales) y las guías de Google para reseñas.
 - App del pasajero (React Native): usa los mismos endpoints `passenger/reviews`; en el prototipo el formulario está en el portal (la maqueta de la app en `operaciones.js` no se modificó en esta iteración).
 
+### v3.0 — Rutas propias de la API (06/11/2026)
+
+Este módulo expone 1 rutas que no están en el contrato: 1 editar, borrar o cambiar estado. El detalle, con el equivalente en el contrato o el motivo de cada una, está en `docs/RUTAS-PROPIAS.md` (sección «Reseñas»).
+
 ## 12. Supuestos y puntos a validar con negocio
 
 - ¿Quién puede reseñar en reservas grupales o B2B (solo titular o cada pasajero)? Prototipo: cualquier pasajero de la reserva con su nombre.

@@ -810,6 +810,10 @@ Desviaciones temporales de la implementación respecto al kit, detectadas en la 
 - Rutas propias para tarifas, temporadas, salidas, cupos, servicios, proveedores y destinos (`/api/v1/catalog/*`): parte no coincide con el contrato; se alinean en la fase C.
 - Precio por día del sitio público y del portal B2B: tarifa vigente del canal × factor de temporada, calculado en el backend; aún no existe el `BookingEngine` único (H-13), previsto en la fase B.
 
+### v3.0 — Rutas propias de la API (06/11/2026)
+
+Este módulo expone 10 rutas que no están en el contrato: 3 lectura de pantalla, 7 editar, borrar o cambiar estado. El detalle, con el equivalente en el contrato o el motivo de cada una, está en `docs/RUTAS-PROPIAS.md` (sección «Catálogo»).
+
 ## 12. Supuestos y puntos a validar con negocio
 
 | # | Punto | Estado actual del prototipo | Propuesta / pregunta |

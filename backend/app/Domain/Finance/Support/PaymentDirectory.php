@@ -28,12 +28,13 @@ final class PaymentDirectory
             ->leftJoin('iam_users as u', 'u.id', '=', 'p.registered_by')
             ->orderByDesc('p.paid_on')
             ->orderByDesc('p.created_at')
-            ->get(['p.id', 'p.code', 'p.kind', 'p.source', 'p.method', 'p.amount', 'p.currency', 'p.fx_rate', 'p.paid_on', 'p.reference', 'p.note', 'p.status', 'p.reject_reason', 'p.revert_reason', 'p.reverted_at', 'p.retries', 'p.reservation_id', 'b.code as reservation_code', 'b.title as reservation_title', 'c.name as client_name', 'r.code as receivable_code', 'u.name as registered_by'])
+            ->get(['p.id', 'p.code', 'p.lock_version', 'p.kind', 'p.source', 'p.method', 'p.amount', 'p.currency', 'p.fx_rate', 'p.paid_on', 'p.reference', 'p.note', 'p.status', 'p.reject_reason', 'p.revert_reason', 'p.reverted_at', 'p.retries', 'p.reservation_id', 'b.code as reservation_code', 'b.title as reservation_title', 'c.name as client_name', 'r.code as receivable_code', 'u.name as registered_by'])
             ->map(function (object $row) use ($labels, $open, $today, $lines): array {
                 $candidates = in_array($row->status, ['pendiente', 'confirmado'], true) ? $this->candidates($open->get($row->reservation_id.'|'.$row->currency)?->all() ?? [], (float) $row->amount, $today) : [];
 
                 return [
                     'code' => $row->code,
+                    'lock_version' => (int) $row->lock_version,
                     'kind' => $row->kind,
                     'source' => $row->source,
                     'method' => $labels[$row->method] ?? $row->method,

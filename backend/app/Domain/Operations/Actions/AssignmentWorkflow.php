@@ -106,7 +106,7 @@ final class AssignmentWorkflow
         };
 
         if ($next !== $order->status) {
-            DB::table('ops_orders')->where('id', $orderId)->update(['status' => $next, 'updated_at' => now()]);
+            DB::table('ops_orders')->where('id', $orderId)->update(['status' => $next, 'lock_version' => DB::raw('lock_version + 1'), 'updated_at' => now()]);
         }
     }
 

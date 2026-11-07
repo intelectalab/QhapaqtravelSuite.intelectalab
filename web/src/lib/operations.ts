@@ -8,6 +8,7 @@ export interface Person {
 
 export interface OrderRow {
   code: string;
+  lock_version: number;
   title: string;
   status: string;
   date_from: string;
@@ -43,6 +44,7 @@ export interface OrderList {
 
 export interface Assignment {
   id: string;
+  lock_version: number;
   status: string;
   date: string;
   time: string | null;
@@ -77,6 +79,7 @@ export interface CloseCheck {
 
 export interface OrderDetail {
   code: string;
+  lock_version: number;
   title: string;
   status: string;
   date_from: string;
@@ -192,6 +195,7 @@ export interface RoomingRoom {
 
 export interface RoomingList {
   id: string;
+  lock_version: number;
   reservation: { code: string; title: string; status: string };
   hotel: string;
   city: string | null;
@@ -220,6 +224,7 @@ export interface RoomingOverview {
 
 export interface Voucher {
   code: string;
+  lock_version: number;
   status: string;
   version: number;
   reservation: { code: string; title: string };
@@ -259,6 +264,7 @@ export interface VoucherOverview {
 
 export interface IncidentRow {
   code: string;
+  lock_version: number;
   title: string;
   type: string;
   severity: string;

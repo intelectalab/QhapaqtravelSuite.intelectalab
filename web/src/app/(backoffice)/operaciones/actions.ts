@@ -11,7 +11,7 @@ export interface OpsState {
 type Method = "POST" | "PATCH" | "PUT" | "DELETE";
 
 interface Step {
-  path: (id: string) => string;
+  path: (id: string, form: FormData) => string | null;
   method: Method;
   fields?: string[];
   lists?: string[];
@@ -21,10 +21,17 @@ interface Step {
 
 const id = (value: string) => encodeURIComponent(value);
 
+const ORDER_ACTIONS: Record<string, string> = { pendiente_asignacion: "to-assignment", asignada: "mark-assigned", confirmada: "confirm", en_ejecucion: "start", completada: "close" };
+
+const orderAction = (code: string, form: FormData) => {
+  const action = ORDER_ACTIONS[String(form.get("status") ?? "")];
+  return action ? `/ops/orders/${id(code)}/${action}` : null;
+};
+
 const STEPS: Record<string, Step> = {
   order_create: { path: () => "/ops/orders", method: "POST", fields: ["reservation_code", "coordinator_id"], failure: "No pudimos crear la orden." },
   order_update: { path: (code) => `/ops/orders/${id(code)}`, method: "PATCH", fields: ["coordinator_id"], failure: "No pudimos guardar el coordinador." },
-  order_status: { path: (code) => `/ops/orders/${id(code)}/status`, method: "POST", fields: ["status"], failure: "No pudimos cambiar el estado." },
+  order_status: { path: orderAction, method: "POST", failure: "No pudimos cambiar el estado." },
   order_cancel: { path: (code) => `/ops/orders/${id(code)}/cancel`, method: "POST", fields: ["reason"], failure: "No pudimos cancelar la orden." },
   task_add: { path: (code) => `/ops/orders/${id(code)}/tasks`, method: "POST", fields: ["title"], failure: "No pudimos agregar la tarea." },
   task_toggle: { path: (task) => `/ops/order-tasks/${id(task)}`, method: "PATCH", flags: ["done"], failure: "No pudimos actualizar la tarea." },
@@ -53,8 +60,8 @@ const STEPS: Record<string, Step> = {
   incident_close: { path: (code) => `/ops/incidents/${id(code)}/close`, method: "POST", fields: ["comment"], failure: "No pudimos cerrar la incidencia." },
   incident_reopen: { path: (code) => `/ops/incidents/${id(code)}/reopen`, method: "POST", fields: ["reason"], failure: "No pudimos reabrir la incidencia." },
   incident_comment: { path: (code) => `/ops/incidents/${id(code)}/comments`, method: "POST", fields: ["message"], failure: "No pudimos guardar el comentario." },
-  doc_validate: { path: (item) => `/ops/travel-docs/items/${id(item)}/validate`, method: "POST", fields: ["doc_number", "expiry_date"], failure: "No pudimos validar el documento." },
-  doc_observe: { path: (item) => `/ops/travel-docs/items/${id(item)}/observe`, method: "POST", fields: ["reason"], failure: "No pudimos registrar la observación." },
+  doc_validate: { path: (target) => `/reservations/${target}/validate`, method: "POST", fields: ["doc_number", "expiry_date"], failure: "No pudimos validar el documento." },
+  doc_observe: { path: (target) => `/reservations/${target}/observe`, method: "POST", fields: ["reason"], failure: "No pudimos registrar la observación." },
 };
 
 const UPDATE_STEPS = new Set(["guide_save", "driver_save", "vehicle_save"]);
@@ -64,6 +71,8 @@ export async function opsStep(_state: OpsState, form: FormData): Promise<OpsStat
   const step = STEPS[name];
   if (!step) return { message: "Acción no disponible.", done: false };
   const target = String(form.get("target") ?? "");
+  const path = step.path(target, form);
+  if (!path) return { message: "Acción no disponible.", done: false };
   const body: Record<string, unknown> = {};
   for (const field of step.fields ?? []) {
     const raw = form.get(field);
@@ -76,8 +85,10 @@ export async function opsStep(_state: OpsState, form: FormData): Promise<OpsStat
     const raw = form.get(flag);
     body[flag] = raw === "1" || raw === "on" || raw === "true";
   }
+  const version = form.get("lock_version");
+  if (typeof version === "string" && version !== "") body.lock_version = version;
   const method = UPDATE_STEPS.has(name) && target ? "PATCH" : name === "room_save" && form.get("room") ? "PUT" : step.method;
-  const result = await apiFetch(step.path(target), { method, body: method === "DELETE" && Object.keys(body).length === 0 ? undefined : body });
+  const result = await apiFetch(path, { method, body: method === "DELETE" && Object.keys(body).length === 0 ? undefined : body });
   if (!result.ok) {
     const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
     return { message: firstError ?? result.error?.message ?? step.failure, done: false };

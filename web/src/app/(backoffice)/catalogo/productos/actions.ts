@@ -70,5 +70,27 @@ export async function changeProductStatus(_state: ProductActionState, form: Form
 }
 
 export async function deleteProduct(_state: ProductActionState, form: FormData): Promise<ProductActionState> {
-  return send(`/catalog/products/${encodeURIComponent(text(form, "code") ?? "")}`, "DELETE", { reason: text(form, "reason") });
+  return send(`/catalog/products/${encodeURIComponent(text(form, "code") ?? "")}`, "DELETE", { reason: text(form, "reason"), lock_version: number(form, "lock_version") });
+}
+
+export async function saveProductTranslation(_state: ProductActionState, form: FormData): Promise<ProductActionState> {
+  const code = encodeURIComponent(text(form, "code") ?? "");
+  const locale = encodeURIComponent(text(form, "locale") ?? "en");
+  const result = await apiFetch(`/catalog/products/${code}/translations/${locale}`, {
+    method: "PUT",
+    body: { name: text(form, "name"), short: text(form, "short"), long: text(form, "long"), inclusions: text(form, "inclusions") ?? "", exclusions: text(form, "exclusions") ?? "", seo_title: text(form, "seo_title"), seo_description: text(form, "seo_description") },
+  });
+  if (!result.ok) {
+    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { message: firstError ?? result.error?.message ?? "No pudimos guardar la traducción.", done: false };
+  }
+  revalidatePath("/catalogo/productos", "layout");
+  return { message: null, done: true };
+}
+
+export async function removeProductTranslation(_state: ProductActionState, form: FormData): Promise<ProductActionState> {
+  const result = await apiFetch(`/catalog/products/${encodeURIComponent(text(form, "code") ?? "")}/translations/${encodeURIComponent(text(form, "locale") ?? "en")}`, { method: "DELETE" });
+  if (!result.ok) return { message: result.error?.message ?? "No pudimos quitar la traducción.", done: false };
+  revalidatePath("/catalogo/productos", "layout");
+  return { message: null, done: true };
 }

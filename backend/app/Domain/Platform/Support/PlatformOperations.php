@@ -22,8 +22,6 @@ final class PlatformOperations
         'PLT-08' => ['webhooks:purge', 'Depurar entregas de webhooks', 'Elimina las entregas con más de 30 días de antigüedad.', '45 0 * * *', 'diario 00:45', 'low'],
     ];
 
-    public const RUNNABLE = ['PLT-02', 'PLT-06'];
-
     public const QUEUES = [
         'critical' => 'Cobros y renovaciones',
         'default' => 'General',
@@ -56,7 +54,7 @@ final class PlatformOperations
                 'next_run_at' => $job->next_run_at ? Carbon::parse($job->next_run_at)->toIso8601String() : null,
                 'last_status' => $job->last_status,
                 'last_result' => $job->last_result,
-                'runnable' => in_array($job->code, self::RUNNABLE, true),
+                'runnable' => class_exists((string) $job->job_class),
                 'runs' => $this->runs($runs->get($job->id, collect())),
             ])->values(),
             'queues' => $this->queues(),

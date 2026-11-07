@@ -341,11 +341,11 @@ final class CrmDemoSeeder
                 'service_date' => $this->day($item['date']),
                 'qty' => (int) $item['qty'],
                 'pax' => (int) $item['pax'],
-                'unit_cost' => (float) $item['unitCost'],
-                'unit_price' => (float) $item['unitPrice'],
+                'unit_cost' => (string) $item['unitCost'],
+                'unit_price' => (string) $item['unitPrice'],
                 'segment' => $item['segment'] ?? 'Adulto',
             ]);
-            $totals = QuotePricing::totals($items->all(), (float) ($version['discountPct'] ?? 0), (float) ($version['taxPct'] ?? 18));
+            $totals = QuotePricing::totals($items->all(), (string) ($version['discountPct'] ?? 0), (string) ($version['taxPct'] ?? 18));
             $versionId = $this->insert('quote_versions', ['quote_id' => $quoteId, 'version_no' => $version['v']], [
                 'status' => $version['status'],
                 'issued_on' => $this->day($version['date']),
