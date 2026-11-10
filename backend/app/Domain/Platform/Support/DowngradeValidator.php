@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Platform\Support;
 
+use App\Domain\Iam\Support\StaffSeats;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
@@ -73,7 +74,7 @@ final class DowngradeValidator
         $db = $this->db();
 
         return [
-            'users' => $db->table('iam_users')->where('tenant_id', $tenantId)->whereNull('deleted_at')->whereIn('status', ['activo', 'pendiente'])->count(),
+            'users' => StaffSeats::count($db->table('iam_users')->where('tenant_id', $tenantId)),
             'sedes' => $db->table('iam_sedes')->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('status', 'activa')->count(),
             'storage_gb' => round((int) $db->table('tenants')->where('id', $tenantId)->value('storage_used_bytes') / 1024 ** 3, 2),
             'api_keys' => $db->table('integration_api_keys')->where('tenant_id', $tenantId)->where('status', 'active')->count(),

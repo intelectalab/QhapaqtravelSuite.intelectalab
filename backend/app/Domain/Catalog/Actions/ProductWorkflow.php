@@ -135,7 +135,7 @@ final class ProductWorkflow
         if ($action === 'activate') {
             $failed = $this->checklist->failed($product);
             if ($failed !== []) {
-                $this->audit->log('Producto', $product->code, 'activacion_rechazada', $product->status, implode(', ', array_column($failed, 'label')));
+                $this->audit->logOutsideTransaction('Producto', $product->code, 'activacion_rechazada', $product->status, implode(', ', array_column($failed, 'label')));
                 throw ApiException::unprocessable('PRD-ACT-CHECKLIST', 'Aún no se puede activar: faltan '.count($failed).' requisitos.', ['failed' => $failed]);
             }
         }

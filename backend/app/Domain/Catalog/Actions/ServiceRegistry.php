@@ -69,7 +69,7 @@ final class ServiceRegistry
 
     private function service(string $ref): object
     {
-        return DB::table('catalog_services')->where('ref', $ref)->whereNull('deleted_at')->lockForUpdate()->first() ?? throw ApiException::notFound('El servicio no existe.');
+        return DB::table('catalog_services')->where('ref', $ref)->whereNull('deleted_at')->lock('for no key update')->first() ?? throw ApiException::notFound('El servicio no existe.');
     }
 
     private function providerActive(string $providerId): bool

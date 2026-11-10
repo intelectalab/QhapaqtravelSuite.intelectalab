@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\Operations\Http\Controllers\EvidenceController;
 use App\Domain\Operations\Http\Controllers\IncidentController;
 use Illuminate\Support\Facades\Route;
 
@@ -17,5 +18,7 @@ Route::middleware('permission:operations.view')->prefix('ops')->group(function (
         Route::post('incidents/{code}/close', [IncidentController::class, 'close'])->name('ops.incidents.close');
         Route::post('incidents/{code}/reopen', [IncidentController::class, 'reopen'])->name('ops.incidents.reopen');
         Route::post('incidents/{code}/comments', [IncidentController::class, 'comment'])->name('ops.incidents.comments');
+        Route::post('incidents/{code}/evidences', [EvidenceController::class, 'storeForIncident'])->name('ops.incidents.evidences.store');
+        Route::post('incidents/{code}/evidences/upload', [EvidenceController::class, 'uploadForIncident'])->name('ops.incidents.evidences.upload');
     });
 });

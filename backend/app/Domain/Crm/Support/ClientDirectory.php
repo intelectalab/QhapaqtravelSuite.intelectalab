@@ -17,7 +17,7 @@ final class ClientDirectory
 
     private const DOC_LABELS = ['DNI' => 'DNI', 'RUC' => 'RUC', 'PASAPORTE' => 'Pasaporte', 'CE' => 'CE'];
 
-    public function __construct(private readonly TenantContext $context) {}
+    public function __construct(private readonly TenantContext $context, private readonly PortalAccessDirectory $portal) {}
 
     public function today(): string
     {
@@ -58,6 +58,7 @@ final class ClientDirectory
             'overdue_pen' => (int) round($pending->where('status', 'vencida')->sum($toPen)),
             'companions' => $this->companions($row->id, $row->name),
             'current_trip' => $current ? $this->currentTrip($current, $today) : null,
+            'portal_access' => $this->portal->forClient($row->id),
         ];
     }
 

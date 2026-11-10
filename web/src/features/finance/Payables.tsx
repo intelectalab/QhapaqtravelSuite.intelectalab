@@ -67,9 +67,11 @@ function EditPayableAction({ row }: { row: PayableRow }) {
     <FinanceStep step="payable_update" itemKey={row.code} label="Editar" title="Editar obligación" description={`${row.code} · ${row.provider.name}`} submitLabel="Guardar cambios" trigger={(open) => <RowIcon tone="edit" label="Editar" onClick={open} />}>
       <TextField label="Concepto" name="concept" required maxLength={255} defaultValue={row.concept} />
       <div className="grid grid-cols-2 gap-3">
-        <TextField label={`Importe (${row.currency})`} name="amount" type="number" step="0.01" min="0.01" defaultValue={row.amount.toFixed(2)} disabled={row.approved || row.paid > 0} hint={row.approved ? "Aprobada: el importe ya no cambia." : undefined} />
-        <TextField label="Vence" name="due_date" type="date" required defaultValue={row.due_date} />
+        <TextField label={`Importe (${row.currency})`} name="amount" type="number" step="0.01" min="0.01" defaultValue={row.amount.toFixed(2)} disabled={row.managed || row.approved || row.paid > 0} hint={row.managed ? "Sale del costo del servicio." : row.approved ? "Aprobada: el importe ya no cambia." : undefined} />
+        <TextField label="Vence" name="due_date" type="date" required defaultValue={row.due_date} disabled={row.managed} hint={row.managed ? "Sigue la condición de pago del proveedor." : undefined} />
       </div>
+      {row.managed && <input type="hidden" name="due_date" value={row.due_date} />}
+      {row.managed && <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[12.5px] text-fg-2">Esta obligación se genera desde el servicio {row.service?.code} y se ajusta sola mientras no esté aprobada. Para pagar en otra fecha, apruébala y programa el pago; una diferencia de precio se registra como costo adicional.</p>}
       <TextField label="Documento del proveedor" name="supplier_doc" maxLength={30} defaultValue={row.supplier_doc ?? ""} placeholder="F001-000123" />
       <TextArea label="Sustento" name="evidence" rows={3} maxLength={1000} defaultValue={row.evidence ?? ""} />
     </FinanceStep>
@@ -125,6 +127,7 @@ export function PayablesTable({ data }: { data: PayablesOverview }) {
         <div className="min-w-0">
           <span className="font-semibold">{row.concept}</span>
           {row.kind === "costo_adicional" && <Badge tone="violet" className="ml-2">Costo adicional</Badge>}
+          {row.managed && row.service?.status === "cancelado" && row.status !== "cancelada" && <Badge tone="warn" className="ml-2">Servicio cancelado</Badge>}
           <small className="block text-xs text-fg-3">
             {row.code} · {row.provider.name}
           </small>
@@ -138,7 +141,7 @@ export function PayablesTable({ data }: { data: PayablesOverview }) {
         row.reservation ? (
           <Link href={`/reservas/${row.reservation.code}`} className="text-[13px] hover:underline">
             {row.reservation.code}
-            <span className="block max-w-[200px] truncate text-xs text-fg-3">{row.reservation.title}</span>
+            <span className="block max-w-[200px] truncate text-xs text-fg-3">{row.service ? `${row.service.code} · servicio del ${formatDate(row.service.date)}` : row.reservation.title}</span>
           </Link>
         ) : (
           <span className="text-[13px] text-fg-3">Gasto general</span>
@@ -209,7 +212,7 @@ export function PayablesTable({ data }: { data: PayablesOverview }) {
       columns={columns}
       getKey={(row) => row.code}
       entityLabel="obligaciones"
-      searchText={(row) => `${row.code} ${row.concept} ${row.provider.name} ${row.reservation?.code ?? ""}`}
+      searchText={(row) => `${row.code} ${row.concept} ${row.provider.name} ${row.reservation?.code ?? ""} ${row.service?.code ?? ""}`}
       searchPlaceholder="Buscar obligación, proveedor o reserva"
       metrics={metrics}
       filters={filters}

@@ -4,6 +4,7 @@ import { CalendarDays, Check, CheckCircle2, ListChecks, MessageSquareText, Scrol
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { DownloadButton } from "@/components/ui/DownloadButton";
 import { HeroBand, HeroChip, HeroPanel, ToneScope } from "@/components/ui/Tinted";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
@@ -96,8 +97,9 @@ export function PortalQuoteDetail({ quote, clientName }: { quote: PortalQuote; c
               <p className="text-[12.5px] font-semibold text-fg-3">Total de la propuesta</p>
               <p className="mt-1 text-[30px] font-bold leading-none tracking-tight text-[var(--tint)]">{quote.total !== null ? formatMoney(quote.total, quote.currency) : "—"}</p>
               <p className="mt-1.5 text-[12.5px] text-fg-2">{quote.tax ? `Incluye impuestos por ${formatMoney(quote.tax, quote.currency)}` : "Impuestos incluidos"}</p>
-              <div className="mt-3">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <PortalBadge status={quote.status} />
+                <DownloadButton href={`/portal/propuestas/${quote.code}/pdf`} label="Descargar PDF" size="sm" />
               </div>
             </HeroPanel>
           </div>

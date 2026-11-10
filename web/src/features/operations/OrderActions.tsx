@@ -6,6 +6,7 @@ import { useState, useTransition, type ReactNode } from "react";
 import { opsStep } from "@/app/(backoffice)/operaciones/actions";
 import { RowIcon } from "@/components/table/RowActions";
 import { Button } from "@/components/ui/Button";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextField } from "@/components/ui/TextField";
@@ -42,28 +43,80 @@ export function QuickError({ message }: { message: string | null }) {
   return <p className="mt-2 animate-[rise-in_320ms_cubic-bezier(0.22,1,0.36,1)_backwards] rounded-xl bg-[color-mix(in_srgb,var(--bad)_10%,transparent)] px-3 py-2 text-[12.5px] text-bad">{message}</p>;
 }
 
+export const CLOSE_REMEDY: Record<string, string> = {
+  services: "Marca como completado cada servicio en «Proveedores y costos» cuando ya se prestó.",
+  incidents: "Resuelve o cierra las incidencias abiertas o en proceso.",
+  evidence: "Sube al menos una evidencia de la orden; cada incidencia alta o crítica necesita la suya.",
+  costs: "Carga el costo de proveedor de cada servicio en la reserva.",
+};
+
+export function CloseChecklist({ checks, detailed = false }: { checks: CloseCheck[]; detailed?: boolean }) {
+  return (
+    <ul className="flex flex-col gap-1.5">
+      {checks.map((check) => (
+        <li key={check.id} className={cn("flex items-start gap-2.5 rounded-xl px-3 py-2.5 text-[13px]", check.ok ? "bg-[color-mix(in_srgb,var(--ok)_9%,transparent)]" : "bg-[color-mix(in_srgb,var(--bad)_8%,transparent)]")}>
+          <span className={cn("grid h-6 w-6 flex-none place-items-center rounded-full text-white", check.ok ? "bg-ok" : "bg-bad")}>{check.ok ? <Check size={13} strokeWidth={3} /> : "!"}</span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center justify-between gap-2">
+              <b className="font-medium">{check.label}</b>
+              <span className="text-xs text-fg-3">{check.detail}</span>
+            </span>
+            {detailed && !check.ok && CLOSE_REMEDY[check.id] && <span className="mt-0.5 block text-[12.5px] text-fg-2">{CLOSE_REMEDY[check.id]}</span>}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function OrderAdvanceActions({ order, checks }: { order: Pick<OrderDetail, "code" | "lock_version" | "title" | "transitions" | "can">; checks: CloseCheck[] }) {
   return (
     <>
       {order.transitions.map((transition) => {
         const closing = transition.status === "completada";
         if (closing && !order.can.close) return null;
-        const blocked = closing && checks.some((check) => !check.ok);
+        const missing = closing ? checks.filter((check) => !check.ok) : [];
+        const blocked = missing.length > 0;
+        const icon = closing ? <CircleCheckBig size={16} /> : <ArrowRight size={16} />;
         return (
-          <OpsStep key={transition.status} step="order_status" target={order.code} version={order.lock_version} formKey={`${order.code}-${transition.status}`} label={transition.label} icon={closing ? <CircleCheckBig size={16} /> : <ArrowRight size={16} />} variant="primary" title={transition.label} description={`${order.title} · ${order.code}`} submitLabel={transition.label}>
+          <OpsStep
+            key={transition.status}
+            step="order_status"
+            target={order.code}
+            version={order.lock_version}
+            formKey={`${order.code}-${transition.status}`}
+            label={transition.label}
+            icon={icon}
+            variant="primary"
+            title={transition.label}
+            description={`${order.title} · ${order.code}`}
+            submitLabel={transition.label}
+            trigger={
+              blocked
+                ? (open) => (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Button variant="secondary" icon={icon} iconOnlyOnMobile onClick={open}>
+                        {transition.label}
+                        <span className="ml-1 rounded-full bg-[color-mix(in_srgb,var(--bad)_12%,transparent)] px-2 py-0.5 text-[11.5px] font-semibold text-bad">{missing.length === 1 ? "Falta 1 condición" : `Faltan ${missing.length} condiciones`}</span>
+                      </Button>
+                      <InfoTip label="Qué falta para cerrar">
+                        <b className="mb-1.5 block text-fg">Para cerrar la operación falta:</b>
+                        <ul className="grid gap-1.5">
+                          {missing.map((check) => (
+                            <li key={check.id}>
+                              <b className="font-semibold text-fg">{check.label}</b> ({check.detail}). {CLOSE_REMEDY[check.id]}
+                            </li>
+                          ))}
+                        </ul>
+                      </InfoTip>
+                    </span>
+                  )
+                : undefined
+            }
+          >
             <input type="hidden" name="status" value={transition.status} />
-            <ConfirmNote tone={blocked ? "warn" : "neutral"}>{NEXT_NOTE[transition.status]}</ConfirmNote>
-            {closing && (
-              <ul className="flex flex-col gap-1.5">
-                {checks.map((check) => (
-                  <li key={check.id} className={cn("flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px]", check.ok ? "bg-[color-mix(in_srgb,var(--ok)_9%,transparent)]" : "bg-[color-mix(in_srgb,var(--bad)_8%,transparent)]")}>
-                    <span className={cn("grid h-6 w-6 flex-none place-items-center rounded-full text-white", check.ok ? "bg-ok" : "bg-bad")}>{check.ok ? <Check size={13} strokeWidth={3} /> : "!"}</span>
-                    <span className="flex-1 font-medium">{check.label}</span>
-                    <span className="text-xs text-fg-3">{check.detail}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <ConfirmNote tone={blocked ? "warn" : "neutral"}>{blocked ? "Todavía no se cumplen todas las condiciones de cierre. Resuelve lo que está en rojo y vuelve a intentarlo." : NEXT_NOTE[transition.status]}</ConfirmNote>
+            {closing && <CloseChecklist checks={checks} detailed />}
           </OpsStep>
         );
       })}

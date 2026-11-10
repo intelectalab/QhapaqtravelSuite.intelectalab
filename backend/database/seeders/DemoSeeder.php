@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\MfaFactor;
 use App\Domain\Iam\Models\Permission;
 use App\Domain\Iam\Models\Sede;
@@ -15,9 +16,11 @@ use App\Domain\Platform\Support\TenantBootstrap;
 use App\Domain\Shared\Jobs\DefaultScheduledJobs;
 use App\Domain\Shared\Sequences\DefaultSequences;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\Shared\Tenancy\TenantDatabase;
 use Database\Support\KitSeeds;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -52,6 +55,15 @@ final class DemoSeeder extends Seeder
                 foreach ($this->moduleSeeders() as $class) {
                     $this->withinTenant($tenant, fn () => (new $class($tenant))->run());
                 }
+
+                $this->withinTenant($tenant, function () use ($tenant): void {
+                    $database = app(TenantDatabase::class);
+                    $tenantId = (string) $tenant->getKey();
+                    $reservations = $database->run($tenantId, fn (): array => DB::table('booking_reservations')->whereNull('deleted_at')->whereIn('status', SyncServicePayables::GENERATING)->orderBy('code')->pluck('id')->map(fn ($id): string => (string) $id)->all());
+                    foreach ($reservations as $reservationId) {
+                        $database->run($tenantId, fn (): array => app(SyncServicePayables::class)->handle($reservationId));
+                    }
+                });
             }
 
             $this->withinTenant($tenant, fn () => app(DefaultSequences::class)->sync((string) $tenant->getKey(), Carbon::now($tenant->timezone ?: 'America/Lima')->year));

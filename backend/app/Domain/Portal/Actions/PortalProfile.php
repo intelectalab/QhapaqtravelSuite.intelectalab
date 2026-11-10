@@ -24,8 +24,8 @@ final class PortalProfile
         }
 
         $client = $account->client;
-        $email = trim((string) ($data['email'] ?? '')) ?: null;
-        $phone = trim((string) ($data['phone'] ?? '')) ?: null;
+        $email = array_key_exists('email', $data) ? (trim((string) $data['email']) ?: null) : $client->email;
+        $phone = array_key_exists('phone', $data) ? (trim((string) $data['phone']) ?: null) : $client->phone;
         $phoneNorm = ClientDocument::phoneNorm($phone);
 
         $taken = DB::table('crm_clients')->whereNull('deleted_at')->where('id', '<>', $client->id)
@@ -43,7 +43,7 @@ final class PortalProfile
             throw ApiException::conflict('CRM-BR-17', 'Ese correo o teléfono ya figura en otra cuenta. Escríbenos y lo revisamos.');
         }
 
-        $values = ['email' => $email, 'phone' => $phone, 'phone_norm' => $phoneNorm, 'city' => trim((string) ($data['city'] ?? '')) ?: null, 'country' => $data['country'] ?? $client->country];
+        $values = ['email' => $email, 'phone' => $phone, 'phone_norm' => $phoneNorm, 'city' => array_key_exists('city', $data) ? (trim((string) $data['city']) ?: null) : $client->city, 'country' => $data['country'] ?? $client->country];
         $before = collect((array) $client)->only(array_keys($values))->except('phone_norm')->all();
 
         DB::transaction(function () use ($account, $client, $values, $before, $data): void {

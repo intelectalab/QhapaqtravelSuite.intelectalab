@@ -4,7 +4,7 @@ import { Menu, Moon, Sun } from "lucide-react";
 import type { ReactNode } from "react";
 import { GlobalSearch } from "@/features/account/GlobalSearch";
 import { NotificationBell } from "@/features/account/NotificationBell";
-import { loadPlatformNotifications, readPlatformNotifications, searchPlatform } from "@/app/plataforma/(consola)/configuracion/actions";
+import { readPlatformNotifications, searchPlatform } from "@/app/plataforma/(consola)/configuracion/actions";
 import { PLATFORM_NAV_GROUPS } from "@/config/platformNavigation";
 import { applyTheme, parseTheme, THEME_STORAGE_KEY, type Theme } from "@/lib/theme";
 import { useStoredValue } from "@/lib/useStoredValue";
@@ -51,7 +51,7 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
       )}
       <div className="ml-auto flex items-center gap-1">
         <ThemeToggle />
-        {agency ? <NotificationBell /> : <NotificationBell load={loadPlatformNotifications} readAll={readPlatformNotifications} logHref="/plataforma/auditoria" emptyHint="Aquí aparecerán los cobros fallidos, pruebas por vencer, alertas de uso y solicitudes nuevas." />}
+        {agency ? <NotificationBell /> : <NotificationBell feedUrl="/plataforma/configuracion/notificaciones" readAll={readPlatformNotifications} logHref="/plataforma/auditoria" emptyHint="Aquí aparecerán los cobros fallidos, pruebas por vencer, alertas de uso y solicitudes nuevas." />}
       </div>
     </header>
   );

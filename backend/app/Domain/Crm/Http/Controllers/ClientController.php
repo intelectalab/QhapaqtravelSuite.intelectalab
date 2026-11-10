@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Crm\Http\Controllers;
 
+use App\Domain\Crm\Actions\ClientPortalAccess;
 use App\Domain\Crm\Actions\ClientWorkflow;
 use App\Domain\Crm\Http\Requests\ClientSaveRequest;
 use App\Domain\Crm\Support\Advisors;
@@ -60,6 +61,23 @@ final class ClientController
         $this->workflow->archive($code, $request->input('reason'), $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function invitePortal(Request $request, string $code, ClientPortalAccess $access): JsonResponse
+    {
+        return response()->json(['data' => $access->invite($code, $this->user($request))], 201);
+    }
+
+    public function resendPortal(Request $request, string $code, ClientPortalAccess $access): JsonResponse
+    {
+        return response()->json(['data' => $access->resend($code, $this->user($request))]);
+    }
+
+    public function revokePortal(Request $request, string $code, ClientPortalAccess $access): JsonResponse
+    {
+        $request->validate(['reason' => ['nullable', 'string', 'max:300']]);
+
+        return response()->json(['data' => $access->revoke($code, $request->input('reason'), $this->user($request))]);
     }
 
     private function user(Request $request): User

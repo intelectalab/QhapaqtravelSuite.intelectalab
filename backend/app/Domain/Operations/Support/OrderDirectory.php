@@ -14,7 +14,7 @@ final class OrderDirectory
 
     public const OPEN_INCIDENT = ['abierta', 'en_proceso'];
 
-    public function __construct(private readonly OpsCommon $common, private readonly ResourceDirectory $resources) {}
+    public function __construct(private readonly OpsCommon $common, private readonly ResourceDirectory $resources, private readonly EvidenceStore $evidences) {}
 
     public function list(User $viewer): array
     {
@@ -105,7 +105,7 @@ final class OrderDirectory
         $assignments = $this->resources->assignments(['a.order_id' => $order->id]);
         $assigned = $assignments->pluck('service_code')->all();
         $services = DB::table('booking_reservation_services')->where('reservation_id', $order->reservation_id)->orderBy('service_date')->orderBy('service_time')
-            ->get(['code', 'name', 'service_date', 'service_time', 'service_kind', 'status', 'confirmation_code', 'cost_amount', 'currency']);
+            ->get(['id', 'code', 'lock_version', 'name', 'service_date', 'service_time', 'service_kind', 'status', 'confirmation_code', 'cost_amount', 'currency']);
         $incidents = DB::table('ops_incidents')->where('order_id', $order->id)->orderByDesc('created_at')->get(['code', 'title', 'type', 'severity', 'status', 'sla_due_at', 'created_at']);
         $evidences = DB::table('ops_evidences')->where('order_id', $order->id)->whereNull('removed_at')->count();
         $passengers = DB::table('booking_passengers')->where('reservation_id', $order->reservation_id)->orderBy('seq')->get(['id', 'full_name', 'pax_type', 'nationality', 'diet_notes', 'is_lead']);
@@ -129,7 +129,9 @@ final class OrderDirectory
                 ->map(fn (object $task): array => ['id' => $task->id, 'title' => $task->title, 'done' => (bool) $task->done, 'done_at' => $task->done_at, 'done_by' => $task->done_by ? ($names[$task->done_by] ?? null) : null])->values(),
             'assignments' => $assignments,
             'services' => $services->map(fn (object $service): array => [
+                'id' => $service->id,
                 'code' => $service->code,
+                'lock_version' => (int) $service->lock_version,
                 'name' => $service->name,
                 'date' => $service->service_date,
                 'time' => OpsCommon::time($service->service_time),
@@ -143,6 +145,8 @@ final class OrderDirectory
             'passengers' => $passengers,
             'incidents' => $incidents,
             'evidences' => $evidences,
+            'evidence_files' => $this->evidences->forOrder($order->id),
+            'evidence_rules' => ['max_bytes' => EvidenceStore::MAX_BYTES, 'mimes' => array_keys(EvidenceStore::MIME)],
             'checks' => $this->checks($order->id, $order->reservation_id),
             'transitions' => $canAssign ? OrderFlow::targets($order->status) : [],
             'can' => ['assign' => $canAssign, 'close' => $viewer->can('operations.close'), 'incidents' => $viewer->can('operations.incidents')],

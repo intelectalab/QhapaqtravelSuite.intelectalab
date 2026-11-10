@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { SEARCH_MIN, type NotificationFeed, type SearchHit, type SearchResult, type UserNotification } from "@/lib/account";
+import { SEARCH_MIN, type SearchHit, type SearchResult } from "@/lib/account";
 import type { AdminActionState } from "@/lib/admin";
 import { apiFetch } from "@/lib/server/api";
 
@@ -15,12 +15,6 @@ async function send(path: string, method: string, body: Record<string, unknown>,
   }
   revalidatePath("/plataforma", "layout");
   return { done: true, message: null };
-}
-
-export async function loadPlatformNotifications(): Promise<NotificationFeed | null> {
-  const result = await apiFetch<{ data: UserNotification[]; meta: { unread_count: number } }>("/platform/notifications", { raw: true, realm: "platform" });
-  if (!result.ok || !result.data) return null;
-  return { items: result.data.data, unread: result.data.meta.unread_count, canViewLog: false };
 }
 
 export async function readPlatformNotifications(): Promise<number | null> {

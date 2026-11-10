@@ -116,12 +116,12 @@ final class DestinationRegistry
             }
         }
 
-        $sibling = DB::table('catalog_destinations')->whereNull('deleted_at')->whereRaw('lower(name) = lower(?)', [trim($data['name'])])
+        $sibling = DB::table('catalog_destinations')->whereRaw('lower(name) = lower(?)', [trim($data['name'])])
             ->when($parent, fn ($query) => $query->where('parent_id', $parent->id), fn ($query) => $query->whereNull('parent_id'))
-            ->when($node, fn ($query) => $query->where('id', '<>', $node->id))->exists();
+            ->when($node, fn ($query) => $query->where('id', '<>', $node->id))->first(['deleted_at']);
 
         if ($sibling) {
-            throw ApiException::unprocessable('CAT-BR-39', 'Ya existe un destino con ese nombre en el mismo nivel.');
+            throw ApiException::unprocessable('CAT-BR-39', $sibling->deleted_at ? 'Ese nombre ya lo usó un destino eliminado en el mismo nivel. Elige otro.' : 'Ya existe un destino con ese nombre en el mismo nivel.');
         }
     }
 

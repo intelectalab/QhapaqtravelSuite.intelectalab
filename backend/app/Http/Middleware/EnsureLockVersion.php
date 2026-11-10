@@ -65,7 +65,7 @@ final class EnsureLockVersion
             }
 
             $query = $connection->table($table)->where($column, $value);
-            $version = $connection->transactionLevel() > 0 ? $query->lockForUpdate()->value('lock_version') : $query->value('lock_version');
+            $version = $connection->transactionLevel() > 0 ? $query->lock('for no key update')->value('lock_version') : $query->value('lock_version');
 
             if ($version !== null) {
                 return (int) $version;

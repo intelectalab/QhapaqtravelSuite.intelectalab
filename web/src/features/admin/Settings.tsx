@@ -333,7 +333,7 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
 
 export function SequencesTable({ rows, manage }: { rows: SettingsSequence[]; manage: boolean }) {
   const columns: Column<SettingsSequence>[] = [
-    { id: "doc", header: "Documento", mobile: "title", cell: (row) => <b className="text-[13.5px] font-semibold">{row.label}</b> },
+    { id: "doc", header: "Documento", mobile: "title", cell: (row) => <div><b className="text-[13.5px] font-semibold">{row.label}</b>{row.series !== "default" && <div className="text-[12px] text-fg-3">Serie {row.series}</div>}</div> },
     { id: "prefix", header: "Prefijo", cell: (row) => <span className="font-mono text-[13px]">{row.prefix}</span> },
     { id: "next", header: "Próximo documento", cell: (row) => <span className="rounded-md bg-accent/10 px-2 py-1 font-mono text-[12.5px] font-semibold text-accent">{row.preview}</span> },
     { id: "reset", header: "Reinicio anual", wideOnly: true, cell: (row) => <span className="text-[12.5px] text-fg-3">{row.year_reset ? "Cada año" : "Continuo"}</span> },
@@ -350,9 +350,9 @@ export function SequencesTable({ rows, manage }: { rows: SettingsSequence[]; man
               icon={<Pencil size={15} />}
               variant="ghost"
               size="sm"
-              formId={`sequence-${row.doc_type}`}
+              formId={`sequence-${row.doc_type}-${row.series}`}
               trigger={(open) => <RowIcon tone="edit" label={`Editar serie de ${row.label}`} onClick={open} />}
-              title={`Serie de ${row.label}`}
+              title={row.series === "default" ? `Serie de ${row.label}` : `Serie ${row.series} de ${row.label}`}
               description="Los correlativos no se reutilizan ni retroceden: solo puedes avanzarlos, por ejemplo al migrar desde otro sistema."
               submitLabel="Guardar serie"
               action={updateSequence}
@@ -361,6 +361,7 @@ export function SequencesTable({ rows, manage }: { rows: SettingsSequence[]; man
               {() => (
                 <>
                   <input type="hidden" name="doc_type" value={row.doc_type} />
+                  <input type="hidden" name="series" value={row.series} />
                   <TextField label="Prefijo" name="prefix" required defaultValue={row.prefix} icon={<Settings2 size={17} />} />
                   <TextField label="Próximo número" name="next_number" type="number" min={row.next} required defaultValue={row.next} hint={`No puede ser menor que ${row.next}.`} />
                 </>
@@ -370,5 +371,5 @@ export function SequencesTable({ rows, manage }: { rows: SettingsSequence[]; man
         ) : null,
     },
   ];
-  return <DataTable screen="admin-series" rows={rows} columns={columns} getKey={(row) => row.doc_type} entityLabel="series" searchText={(row) => `${row.label} ${row.prefix}`} searchPlaceholder="Buscar documento o prefijo" />;
+  return <DataTable screen="admin-series" rows={rows} columns={columns} getKey={(row) => `${row.doc_type}:${row.series}`} entityLabel="series" searchText={(row) => `${row.label} ${row.prefix}`} searchPlaceholder="Buscar documento o prefijo" />;
 }

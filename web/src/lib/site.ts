@@ -364,6 +364,7 @@ export interface SiteOrder {
     currency: string;
     services: { name: string; date: string; time: string | null; pax: number; status: string; confirmation: string | null }[];
     receivables: { code: string; concept: string; amount: string; paid: string; currency: string; status: string; due_date: string }[];
+    vouchers: { code: string; label: string; date: string; status: string }[];
   }[];
 }
 

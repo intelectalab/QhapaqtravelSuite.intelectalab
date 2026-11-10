@@ -11,6 +11,7 @@ use App\Domain\Booking\StateMachines\ReservationStateMachine;
 use App\Domain\Booking\Support\ReservationReceivables;
 use App\Domain\Crm\Support\Advisors;
 use App\Domain\Crm\Support\Portfolio;
+use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
 use App\Domain\Operations\Actions\OrderWorkflow;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -36,12 +37,13 @@ final class ReservationLifecycle
         private readonly TenantContext $context,
         private readonly Advisors $advisors,
         private readonly ReservationReceivables $receivables,
+        private readonly SyncServicePayables $payables,
         private readonly OutboxWriter $outbox,
     ) {}
 
     public function load(string $code, User $actor): Reservation
     {
-        $reservation = Reservation::query()->where('code', $code)->lockForUpdate()->first()
+        $reservation = Reservation::query()->where('code', $code)->lock('for no key update')->first()
             ?? throw Portfolio::missing($actor, 'booking_reservations', $code, 'La reserva no existe.', 'Esta reserva');
         Gate::forUser($actor)->authorize('view', $reservation);
 
@@ -101,6 +103,7 @@ final class ReservationLifecycle
                 $this->receivables->create($reservation, $actor);
             }
 
+            $this->payables->handle((string) $reservation->id, $actor);
             $this->audit->log('Reserva', $reservation->code, 'confirmar', $from, S::Confirmada->value, actor: $actor);
             $this->outbox->add('booking_reservation', (string) $reservation->id, 'ReservationConfirmed', ['reservation_id' => (string) $reservation->id, 'reservation_code' => $reservation->code]);
             ReservationConfirmed::dispatch($this->context->idOrFail(), (string) $reservation->id, $reservation->code, $reservation->quote_id, (string) $actor->getKey());
@@ -205,7 +208,7 @@ final class ReservationLifecycle
             return;
         }
 
-        $departures = DB::table('catalog_product_departures')->whereIn('id', $missing->keys()->all())->orderBy('id')->lockForUpdate()->get(['id', 'ref', 'capacity', 'sold'])->keyBy('id');
+        $departures = DB::table('catalog_product_departures')->whereIn('id', $missing->keys()->all())->orderBy('id')->lock('for no key update')->get(['id', 'ref', 'capacity', 'sold'])->keyBy('id');
 
         foreach ($missing as $departureId => $items) {
             $pax = (int) $items->max('pax');

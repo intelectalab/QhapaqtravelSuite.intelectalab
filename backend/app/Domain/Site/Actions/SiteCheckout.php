@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Site\Actions;
 
 use App\Domain\Crm\Support\CodeSequence;
+use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
@@ -31,6 +32,7 @@ final class SiteCheckout
         private readonly SiteQuote $quotes,
         private readonly SiteProfile $profile,
         private readonly SubscribeNewsletter $newsletter,
+        private readonly SyncServicePayables $payables,
     ) {}
 
     public function place(?string $token, array $data): array
@@ -167,6 +169,7 @@ final class SiteCheckout
         $reservations = DB::table('booking_reservations')->where('ecom_order_id', $order->id)->orderBy('travel_from')->get(['id', 'code', 'status', 'title', 'travel_from', 'currency', 'total_amount']);
         $services = DB::table('booking_reservation_services')->whereIn('reservation_id', $reservations->pluck('id'))->get(['reservation_id', 'name', 'service_date', 'service_time', 'pax', 'status', 'confirmation_code']);
         $receivables = DB::table('fin_receivables')->whereIn('reservation_id', $reservations->pluck('id'))->get(['reservation_id', 'code', 'concept', 'amount', 'paid_amount', 'currency', 'status', 'due_date']);
+        $vouchers = DB::table('ops_vouchers')->whereIn('reservation_id', $reservations->pluck('id'))->where('status', '<>', 'anulado')->orderBy('service_date')->get(['reservation_id', 'code', 'service_label', 'service_date', 'status']);
 
         return [
             'code' => $order->code,
@@ -186,6 +189,7 @@ final class SiteCheckout
                 'currency' => $r->currency,
                 'services' => $services->where('reservation_id', $r->id)->map(fn (stdClass $s): array => ['name' => $s->name, 'date' => $s->service_date, 'time' => $s->service_time ? substr((string) $s->service_time, 0, 5) : null, 'pax' => (int) $s->pax, 'status' => $s->status, 'confirmation' => $s->confirmation_code])->values()->all(),
                 'receivables' => $receivables->where('reservation_id', $r->id)->map(fn (stdClass $c): array => ['code' => $c->code, 'concept' => $c->concept, 'amount' => Decimal::toApi((string) $c->amount), 'paid' => Decimal::toApi((string) $c->paid_amount), 'currency' => $c->currency, 'status' => $c->status, 'due_date' => $c->due_date])->values()->all(),
+                'vouchers' => $vouchers->where('reservation_id', $r->id)->map(fn (stdClass $v): array => ['code' => $v->code, 'label' => $v->service_label, 'date' => $v->service_date, 'status' => $v->status])->values()->all(),
             ])->all(),
         ];
     }
@@ -238,11 +242,12 @@ final class SiteCheckout
 
             DB::table('booking_reservations')->where('id', $reservation->id)->update(['status' => $pending ? 'pendiente_proveedor' : 'confirmada', 'updated_at' => now()]);
             $this->audit->log('Reserva', $reservation->code, 'cambio_estado', 'pendiente_pago', $pending ? 'pendiente_proveedor' : 'confirmada');
+            $this->payables->handle((string) $reservation->id);
         }
 
         foreach (DB::table('catalog_availability_holds')->where('reference_id', $order->id)->where('status', 'hold')->get(['id', 'departure_id', 'quantity']) as $hold) {
             if ($hold->departure_id) {
-                $departure = DB::table('catalog_product_departures')->where('id', $hold->departure_id)->lockForUpdate()->first(['capacity', 'sold']);
+                $departure = DB::table('catalog_product_departures')->where('id', $hold->departure_id)->lock('for no key update')->first(['capacity', 'sold']);
                 $sold = min((int) $departure->capacity, (int) $departure->sold + (int) $hold->quantity);
                 DB::table('catalog_product_departures')->where('id', $hold->departure_id)->update(['sold' => $sold, 'status' => $sold >= (int) $departure->capacity ? 'completa' : 'abierta', 'updated_at' => now()]);
             }
@@ -422,7 +427,7 @@ final class SiteCheckout
         throw ApiException::conflict('ECOM_OWNER', 'La agencia aún no tiene un responsable de ventas en línea.');
     }
 
-    private function authorize(string $code, ?string $token, bool $lock = false): stdClass
+    public function authorize(string $code, ?string $token, bool $lock = false): stdClass
     {
         $query = DB::table('channel_ecom_orders')->where('code', $code);
         $order = ($lock ? $query->lockForUpdate() : $query)->first();

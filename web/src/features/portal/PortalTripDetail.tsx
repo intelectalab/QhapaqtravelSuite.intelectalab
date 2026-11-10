@@ -1,6 +1,7 @@
 import { BedDouble, Bus, CalendarDays, Coffee, FileCheck2, FileText, Megaphone, Mountain, ReceiptText, Ticket, TriangleAlert, Users, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
+import { DownloadButton } from "@/components/ui/DownloadButton";
 import { HeroBand, HeroChip, HeroPanel, ToneScope } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
@@ -147,6 +148,7 @@ export function PortalTripDetail({ trip, passenger }: { trip: PortalTrip; passen
               <span className="mt-3 block h-2 w-full overflow-hidden rounded-full bg-surface-2">
                 <span className="block h-full origin-left rounded-full bg-[var(--tint)] motion-safe:animate-[fill-x_900ms_cubic-bezier(0.22,1,0.36,1)_backwards]" style={{ width: `${Math.max(4, pct)}%` }} />
               </span>
+              {trip.status !== "cancelada" && <DownloadButton href={`/portal/viajes/${trip.code}/itinerario`} label="Itinerario PDF" size="sm" className="mt-3" />}
             </HeroPanel>
           </div>
         </HeroBand>

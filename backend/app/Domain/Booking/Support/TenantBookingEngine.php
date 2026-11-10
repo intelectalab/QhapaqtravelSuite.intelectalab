@@ -108,7 +108,7 @@ final class TenantBookingEngine
     {
         $currencies = [['code' => 'PEN', 'rate' => '1', 'active' => true]];
         $latest = DB::table('fin_fx_rates')->where('currency_code', '<>', 'PEN')
-            ->orderBy('currency_code')->orderByDesc('rate_date')->get(['currency_code', 'rate_pen'])->unique('currency_code');
+            ->orderBy('currency_code')->orderByDesc('rate_date')->orderByDesc('effective_at')->get(['currency_code', 'rate_pen'])->unique('currency_code');
 
         foreach ($latest as $row) {
             $currencies[] = ['code' => $row->currency_code, 'rate' => (string) $row->rate_pen, 'active' => true];

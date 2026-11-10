@@ -32,10 +32,21 @@ final class Invitations
 
     public function send(string $email, string $name, string $agency, string $token, bool $isAdmin = false): void
     {
-        $link = rtrim((string) config('app.frontend_url'), '/')."/invitacion/{$token}";
         $role = $isAdmin ? 'Se creó la cuenta de '.$agency.' en Qhapaq Travel Suite y eres su administrador.' : $agency.' te invitó a Qhapaq Travel Suite.';
-        $body = "Hola {$name}:\n\n{$role}\n\nDefine tu contraseña aquí (el enlace vence en ".self::HOURS." horas):\n{$link}\n\nNunca te enviaremos tu contraseña por correo.";
+        $body = "Hola {$name}:\n\n{$role}\n\nDefine tu contraseña aquí (el enlace vence en ".self::HOURS." horas):\n{$this->link($token)}\n\nNunca te enviaremos tu contraseña por correo.";
 
         app(QueuedMail::class)->send($email, $name, "Invitación a Qhapaq Travel Suite · {$agency}", $body);
+    }
+
+    public function sendPortal(string $email, string $name, string $agency, string $token): void
+    {
+        $body = "Hola {$name}:\n\n{$agency} te dio acceso a tu portal de cliente. Ahí verás tus propuestas, tus viajes, tus pagos y tus documentos.\n\nCrea tu contraseña aquí (el enlace vence en ".self::HOURS." horas):\n{$this->link($token)}\n\nNunca te enviaremos tu contraseña por correo.";
+
+        app(QueuedMail::class)->send($email, $name, "Tu portal de cliente · {$agency}", $body);
+    }
+
+    private function link(string $token): string
+    {
+        return rtrim((string) config('app.frontend_url'), '/')."/invitacion/{$token}";
     }
 }

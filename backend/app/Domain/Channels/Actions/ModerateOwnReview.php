@@ -26,7 +26,7 @@ final class ModerateOwnReview
         }
 
         if ($target === 'publicada' && ! $review->consent_publish) {
-            throw ApiException::conflict('RVW-05', 'El viajero no autorizó publicar esta reseña.');
+            throw ApiException::unprocessable('RVW-05', 'El viajero no autorizó publicar esta reseña.');
         }
 
         if ($target !== 'publicada' && blank($reason)) {

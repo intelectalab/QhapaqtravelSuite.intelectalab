@@ -4,7 +4,7 @@ import * as Popover from "@radix-ui/react-popover";
 import { Bell, CheckCheck, Inbox } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
-import { loadNotifications, readAllNotifications } from "@/app/(backoffice)/cuenta/actions";
+import { readAllNotifications } from "@/app/(backoffice)/cuenta/actions";
 import { cn } from "@/lib/cn";
 import type { NotificationFeed } from "@/lib/account";
 import { formatDateTime } from "@/lib/format";
@@ -20,25 +20,45 @@ function ItemBody({ href, onOpen, children }: { href?: string | null; onOpen: ()
   );
 }
 
-export function NotificationBell({ load = loadNotifications, readAll = readAllNotifications, logHref = "/admin/notificaciones", emptyHint = "Aquí aparecerán los avisos que te envíe el sistema." }: { load?: () => Promise<NotificationFeed | null>; readAll?: () => Promise<number | null>; logHref?: string; emptyHint?: string } = {}) {
+type FeedResult = { kind: "ok"; feed: NotificationFeed } | { kind: "expired" } | { kind: "unavailable" };
+
+async function fetchFeed(url: string): Promise<FeedResult> {
+  try {
+    const response = await fetch(url, { cache: "no-store", headers: { Accept: "application/json" } });
+    const json = (response.headers.get("content-type") ?? "").includes("application/json");
+    if (response.status === 401 || response.redirected || !json) return { kind: "expired" };
+    if (!response.ok) return { kind: "unavailable" };
+    return { kind: "ok", feed: (await response.json()) as NotificationFeed };
+  } catch {
+    return { kind: "unavailable" };
+  }
+}
+
+export function NotificationBell({ feedUrl = "/cuenta/notificaciones", readAll = readAllNotifications, logHref = "/admin/notificaciones", emptyHint = "Aquí aparecerán los avisos que te envíe el sistema." }: { feedUrl?: string; readAll?: () => Promise<number | null>; logHref?: string; emptyHint?: string } = {}) {
   const [feed, setFeed] = useState<NotificationFeed | null>(null);
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [expired, setExpired] = useState(false);
 
   const refresh = useCallback(() => {
     startTransition(async () => {
-      const next = await load();
-      if (next) setFeed(next);
+      const result = await fetchFeed(feedUrl);
+      if (result.kind === "ok") setFeed(result.feed);
+      if (result.kind === "expired") {
+        setExpired(true);
+        window.location.reload();
+      }
     });
-  }, [load]);
+  }, [feedUrl]);
 
   useEffect(() => {
+    if (expired) return;
     refresh();
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") refresh();
     }, REFRESH_MS);
     return () => window.clearInterval(timer);
-  }, [refresh]);
+  }, [refresh, expired]);
 
   const markAll = () => {
     startTransition(async () => {

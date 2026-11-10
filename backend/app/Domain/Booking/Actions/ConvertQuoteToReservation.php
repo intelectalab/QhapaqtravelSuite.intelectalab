@@ -12,6 +12,7 @@ use App\Domain\Booking\StateMachines\ReservationStateMachine;
 use App\Domain\Booking\Support\ConversionPlan;
 use App\Domain\Booking\Support\ReservationAssembler;
 use App\Domain\Booking\Support\ReservationReceivables;
+use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
 use App\Domain\Quotes\Enums\QuoteStatus;
 use App\Domain\Quotes\Events\QuoteConverted;
@@ -46,6 +47,7 @@ final class ConvertQuoteToReservation
         private readonly ReservationAssembler $assembler,
         private readonly ConversionPlan $plan,
         private readonly ReservationReceivables $receivables,
+        private readonly SyncServicePayables $payables,
         private readonly QuoteStateMachine $quoteStates,
         private readonly ReservationStateMachine $reservationStates,
     ) {}
@@ -120,6 +122,7 @@ final class ConvertQuoteToReservation
             $this->createServicesAndHolds($reservation, $items, $products, $departureByItem, $version, $actor);
             $this->assembler->placeholders($reservation, (int) $quote->pax_adt, (int) $quote->pax_chd, (int) $quote->pax_inf);
             $this->receivables->create($reservation, $actor, $grandTotal);
+            $this->payables->handle((string) $reservation->id, $actor);
 
             $before = $this->quoteStates->transition($quote, QuoteStatus::Convertida);
             $quote->forceFill(['reservation_id' => $reservation->id, 'converted_at' => now(), 'updated_by' => $actor->getKey()])->save();

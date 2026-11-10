@@ -73,10 +73,11 @@ jobs:
       - run: ./vendor/bin/phpstan analyse --memory-limit=1G
       - run: php artisan migrate --database=pgsql_owner --force
       - run: ./vendor/bin/pest --parallel
+      - run: php artisan qa:write-coverage
       - name: Contrato OpenAPI
         run: |
           pip install pyyaml
-          php artisan scramble:export --path=storage/openapi.generated.json
+          php -d memory_limit=2G artisan scramble:export --path=storage/openapi.generated.json
           python3 ../docs/kit/api/compare_contract.py storage/openapi.generated.json --phase "${{ vars.QHAPAQ_PHASE || '0' }}"
 
   database-kit:

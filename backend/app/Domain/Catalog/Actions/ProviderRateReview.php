@@ -21,7 +21,7 @@ final class ProviderRateReview
     {
         return DB::transaction(function () use ($code, $note, $actor): string {
             $request = $this->open($code);
-            $service = DB::table('catalog_services')->where('id', $request->service_id)->whereNull('deleted_at')->lockForUpdate()->first()
+            $service = DB::table('catalog_services')->where('id', $request->service_id)->whereNull('deleted_at')->lock('for no key update')->first()
                 ?? throw ApiException::conflict('APR-BR-08', 'El servicio de esta solicitud ya no existe.');
             $today = CatalogAccess::today();
             $from = (string) $request->effective_from;

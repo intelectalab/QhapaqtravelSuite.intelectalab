@@ -6,7 +6,8 @@ import { cache } from "react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
-import { HeroBand, HeroChip, HeroPanel, Journey, SOFT_TINT, TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
+import { HeroBand, HeroChip, HeroPanel, Journey, TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
+import { EvidenceSection } from "@/features/operations/Evidence";
 import { IncidentCommentAction, IncidentFlowActions, SeverityBadge } from "@/features/operations/Incidents";
 import { SlaBar } from "@/features/operations/OpsBits";
 import { cn } from "@/lib/cn";
@@ -103,20 +104,7 @@ export default async function IncidenciaPage({ params }: PageProps<"/operaciones
 
           <Card>
             <TintCardTitle icon={Camera} title="Evidencias" aside={String(incident.evidence_files.length)} />
-            {incident.evidence_files.length === 0 ? (
-              <p className="text-[13.5px] text-fg-3">Aún no hay fotos ni documentos de respaldo.</p>
-            ) : (
-              <ul className="grid gap-2 sm:grid-cols-2">
-                {incident.evidence_files.map((file) => (
-                  <li key={file.id} className={cn("lift rounded-[12px] px-3 py-2.5", SOFT_TINT)}>
-                    <b className="block truncate text-[13px] font-semibold">{file.name}</b>
-                    <span className="text-xs text-fg-3">
-                      {Math.round(file.size / 1024)} KB · {SOURCE_LABEL[file.source] ?? file.source} · {formatDateTime(file.at, false)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <EvidenceSection scope="incident" target={incident.code} files={incident.evidence_files} canUpload={incident.can.manage && incident.status !== "cerrada"} canRemove={false} emptyText="Aún no hay fotos ni documentos de respaldo." />
           </Card>
         </div>
 

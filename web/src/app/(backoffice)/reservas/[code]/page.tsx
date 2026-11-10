@@ -1,9 +1,10 @@
-import { CalendarDays, ClipboardList, FileText, History, MapPin, Receipt, Route, TriangleAlert, UserRound, Users, Wallet } from "lucide-react";
+import { CalendarDays, ClipboardList, FileText, History, MapPin, Receipt, Route, TicketCheck, TriangleAlert, UserRound, Users, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { LiveTag, StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { DownloadButton } from "@/components/ui/DownloadButton";
 import { HeroBand, HeroChip, HeroPanel, SOFT_TINT, TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
 import { amountAttr, formatDate, formatDateTime, formatMoney, shortName } from "@/lib/format";
@@ -56,6 +57,7 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
   const canCancel = !closed && (reservation.can.cancel || reservation.can.request_cancel);
   const [preview, advisors, changeOptions] = await Promise.all([canCancel ? getReservationCancellation(code) : null, reservation.can.reassign ? getAdvisors() : [], !closed && reservation.can.modify ? getChangeOptions(code) : null]);
   const editable = !closed && reservation.can.modify;
+  const printable = !["borrador", "cancelada"].includes(reservation.status);
   const receivables = reservation.receivables;
   const operationsView = reservation.view?.mode === "operations";
   const charged = (receivables ?? []).filter((item) => item.status !== "cancelada");
@@ -87,16 +89,21 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
         }
         subtitle={<span data-testid="reservation-code">{reservation.code}</span>}
         actions={
-          closed ? undefined : (
+          closed && !printable ? undefined : (
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <ReservationStateActions reservation={reservation} />
-              {reservation.can.modify && <ReservationEditAction reservation={reservation} defaultOpen={editar === "1"} />}
-              {reservation.can.reassign && advisors.length > 0 && <ReservationReassignAction reservation={reservation} advisors={advisors} />}
-              {reservation.can.operation_order && <ReservationOrderAction code={reservation.code} />}
-              {changeOptions && <ReservationModifyAction code={reservation.code} currency={reservation.currency} options={changeOptions} />}
-              {changeOptions && <ReservationRescheduleAction code={reservation.code} />}
-              {preview && reservation.can.cancel && <ReservationCancelAction reservation={reservation} preview={preview} defaultOpen={cancelar === "1"} />}
-              {preview && reservation.can.request_cancel && !reservation.cancel_request && <ReservationRequestCancelAction reservation={reservation} preview={preview} defaultOpen={cancelar === "1"} />}
+              {printable && <DownloadButton href={`/reservas/${reservation.code}/confirmacion`} label="Confirmación PDF" iconOnlyOnMobile />}
+              {!closed && (
+                <>
+                  <ReservationStateActions reservation={reservation} />
+                  {reservation.can.modify && <ReservationEditAction reservation={reservation} defaultOpen={editar === "1"} />}
+                  {reservation.can.reassign && advisors.length > 0 && <ReservationReassignAction reservation={reservation} advisors={advisors} />}
+                  {reservation.can.operation_order && <ReservationOrderAction code={reservation.code} />}
+                  {changeOptions && <ReservationModifyAction code={reservation.code} currency={reservation.currency} options={changeOptions} />}
+                  {changeOptions && <ReservationRescheduleAction code={reservation.code} />}
+                  {preview && reservation.can.cancel && <ReservationCancelAction reservation={reservation} preview={preview} defaultOpen={cancelar === "1"} />}
+                  {preview && reservation.can.request_cancel && !reservation.cancel_request && <ReservationRequestCancelAction reservation={reservation} preview={preview} defaultOpen={cancelar === "1"} />}
+                </>
+              )}
             </div>
           )
         }
@@ -276,6 +283,27 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
                   ))}
                 </ul>
               )}
+            </Card>
+          )}
+
+          {reservation.vouchers.length > 0 && (
+            <Card>
+              <TintCardTitle icon={TicketCheck} title="Vouchers" aside={String(reservation.vouchers.length)} />
+              <ul className="flex flex-col gap-2">
+                {reservation.vouchers.map((voucher) => (
+                  <li key={voucher.code} className="flex items-center gap-3 rounded-[12px] border border-line-2 px-3 py-2.5 text-[13px] transition-colors duration-300 hover:bg-surface-2">
+                    <span className="min-w-0 flex-1">
+                      <b className="block truncate font-semibold">{voucher.label}</b>
+                      <span className="text-xs text-fg-3">
+                        {voucher.code} · {formatDate(voucher.date)}
+                        {voucher.version > 1 && ` · versión ${voucher.version}`}
+                      </span>
+                    </span>
+                    <StatusBadge status={voucher.status} />
+                    <DownloadButton href={`/operaciones/vouchers/${voucher.code}/pdf`} label={`Descargar voucher ${voucher.code}`} size="sm" variant="ghost" iconOnly />
+                  </li>
+                ))}
+              </ul>
             </Card>
           )}
 

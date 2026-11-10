@@ -11,6 +11,8 @@ interface Invitation {
   name: string;
   email: string;
   agency: string;
+  portal?: boolean;
+  require_mfa?: boolean;
 }
 
 export default async function InvitacionPage({ params }: PageProps<"/invitacion/[token]">) {
@@ -32,5 +34,5 @@ export default async function InvitacionPage({ params }: PageProps<"/invitacion/
     );
   }
 
-  return <InvitationForm action={acceptInvitation} token={token} name={result.data.name} email={result.data.email} agency={result.data.agency} />;
+  return <InvitationForm action={acceptInvitation} token={token} name={result.data.name} email={result.data.email} agency={result.data.agency} portal={result.data.portal ?? false} requireMfa={result.data.require_mfa ?? true} />;
 }

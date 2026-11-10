@@ -98,7 +98,7 @@ export function DataTable<T>({
               tone={metric.tone}
               value={rows.filter(metric.matches).length}
               active={query.metric === metric.id}
-              onClick={() => update({ metric: metric.id })}
+              onClick={() => update({ metric: query.metric === metric.id ? "" : metric.id })}
               testId={`kpi:${metric.id || "all"}`}
             />
           ))}

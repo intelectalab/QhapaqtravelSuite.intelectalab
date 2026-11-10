@@ -6,6 +6,7 @@ namespace App\Domain\Booking\Actions;
 
 use App\Domain\Booking\Actions\Support\ServicesFromQuoteItem;
 use App\Domain\Crm\Support\Portfolio;
+use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -29,6 +30,7 @@ final class ReservationChanges
         private readonly AuditLogger $audit,
         private readonly ServicesFromQuoteItem $services,
         private readonly ReservationMailer $mailer,
+        private readonly SyncServicePayables $payables,
     ) {}
 
     public function options(string $code, User $actor): array
@@ -205,6 +207,7 @@ final class ReservationChanges
 
         DB::table('booking_reservations')->where('id', $reservation->id)->update(['total_amount' => DB::raw('total_amount + ('.$delta.')'), 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         DB::table('booking_changes')->where('id', $changeId)->update(['status' => 'aplicada', 'credit_amount' => $credit === null ? null : (string) $credit, 'decided_by' => $actor->getKey(), 'decided_at' => now(), 'applied_at' => now(), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+        $this->payables->handle((string) $reservation->id, $actor);
         $this->audit->log('Reserva', $reservation->code, 'modificar', null, "{$change->type} · {$reservation->currency} {$delta} · {$change->description}");
         $this->mailer->send($reservation->id, 'Tu reserva fue modificada', "Registramos este cambio en tu viaje {$reservation->title}: {$change->description}.".($delta->isPositive() ? " El nuevo cargo es {$reservation->currency} {$delta}." : ($delta->isNegative() ? ' Tienes un saldo a favor de '.$reservation->currency.' '.$delta->abs().'.' : '')));
     }
@@ -255,7 +258,7 @@ final class ReservationChanges
         }
 
         $departureId = $product->availability_model === 'POR_SALIDA'
-            ? DB::table('catalog_product_departures')->where('product_id', $product->id)->where('departure_date', $change->service_date)->whereNotIn('status', ['cerrada', 'cancelada'])->lockForUpdate()->value('id')
+            ? DB::table('catalog_product_departures')->where('product_id', $product->id)->where('departure_date', $change->service_date)->whereNotIn('status', ['cerrada', 'cancelada'])->lock('for no key update')->value('id')
             : null;
         $item = (object) ['id' => null, 'product_id' => $product->id, 'service_date' => $change->service_date, 'qty' => 1, 'pax' => $pax, 'unit_price' => (string) ($delta->isPositive() ? $delta->dividedBy(max(1, $pax), 6, RoundingMode::HALF_UP) : BigDecimal::zero()), 'unit_cost' => (string) $unitCost];
         $version = (object) ['discount_pct' => 0, 'currency' => $reservation->currency, 'fx_rate' => $reservation->fx_rate];
@@ -313,7 +316,7 @@ final class ReservationChanges
     {
         $ids = DB::table('booking_inventory_holds')->where('reservation_id', $reservationId)->whereIn('status', ['hold', 'confirmada'])->distinct()->pluck('departure_id')->sort()->values()->all();
 
-        return $ids ? DB::table('catalog_product_departures')->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get(['id', 'ref', 'capacity', 'sold']) : collect();
+        return $ids ? DB::table('catalog_product_departures')->whereIn('id', $ids)->orderBy('id')->lock('for no key update')->get(['id', 'ref', 'capacity', 'sold']) : collect();
     }
 
     private function paxCount(string $reservationId): int
@@ -333,7 +336,7 @@ final class ReservationChanges
     private function open(string $code, User $actor, bool $lock = false): object
     {
         $query = Portfolio::scope(DB::table('booking_reservations')->whereNull('deleted_at'), $actor, 'owner_id')->where('code', $code);
-        $reservation = ($lock ? $query->lockForUpdate() : $query)->first() ?? throw Portfolio::missing($actor, 'booking_reservations', $code, 'La reserva no existe.', 'Esta reserva');
+        $reservation = ($lock ? $query->lock('for no key update') : $query)->first() ?? throw Portfolio::missing($actor, 'booking_reservations', $code, 'La reserva no existe.', 'Esta reserva');
 
         if (in_array($reservation->status, ReservationWorkflow::CLOSED, true)) {
             throw ApiException::conflict('RESERVATION_CLOSED', 'La reserva ya está cerrada y no admite modificaciones.');

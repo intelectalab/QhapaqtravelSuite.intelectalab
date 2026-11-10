@@ -32,17 +32,16 @@ final class RoomingWorkflow
             throw ApiException::conflict('OPS-BR-36', 'Esta reserva ya tiene una rooming list en ese hotel.');
         }
 
-        $id = (string) Str::uuid7();
-        DB::table('ops_rooming_lists')->insert([
-            'id' => $id,
-            'reservation_id' => $reservation->id,
-            'hotel_provider_id' => $hotel->id,
-            'source' => 'manual',
-            'check_in' => $data['check_in'],
-            'check_out' => $data['check_out'],
-            'status' => 'borrador',
-            'created_by' => $actor->getKey(),
-        ]);
+        $values = ['source' => 'manual', 'check_in' => $data['check_in'], 'check_out' => $data['check_out'], 'status' => 'borrador'];
+        $archived = DB::table('ops_rooming_lists')->where('reservation_id', $reservation->id)->where('hotel_provider_id', $hotel->id)->whereNotNull('deleted_at')->value('id');
+
+        if ($archived !== null) {
+            $id = (string) $archived;
+            DB::table('ops_rooming_lists')->where('id', $id)->update([...$values, 'deleted_at' => null, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+        } else {
+            $id = (string) Str::uuid7();
+            DB::table('ops_rooming_lists')->insert(['id' => $id, 'reservation_id' => $reservation->id, 'hotel_provider_id' => $hotel->id, ...$values, 'created_by' => $actor->getKey()]);
+        }
         $this->audit->log('Rooming list', $reservation->code, 'crear', null, "{$hotel->name} · {$data['check_in']} al {$data['check_out']}");
 
         return $id;

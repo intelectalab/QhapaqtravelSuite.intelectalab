@@ -3,6 +3,7 @@
 import { Ban, BadgePercent, CalendarDays, CheckCircle2, FileCheck2, Hash, Pencil, ReceiptText, Undo2, UserRound, Users, Wallet } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/Badge";
+import { DownloadButton } from "@/components/ui/DownloadButton";
 import type { PanelActionState } from "@/components/ui/PanelAction";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
@@ -234,7 +235,10 @@ export function AgencyReservationDetail({ reservation, created, openCancel }: { 
                         {row.code} · v{row.version} · {formatDate(row.date)} · {row.pax} pax
                       </span>
                     </span>
-                    <AgencyBadge status={row.status} />
+                    <span className="flex flex-none items-center gap-2">
+                      <AgencyBadge status={row.status} />
+                      <DownloadButton href={`/agencia/vouchers/${row.code}/pdf`} label={`Descargar voucher ${row.code}`} size="sm" variant="ghost" iconOnly />
+                    </span>
                   </li>
                 ))}
               </ul>

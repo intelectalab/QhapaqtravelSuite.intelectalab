@@ -338,7 +338,7 @@ final class BookingEngine implements BookingEngineInterface
         }
         if ($season !== null && ! $factor->isEqualTo(1)) {
             $zero = Money::zero($currency);
-            $lines[] = new QuoteLine('season', 'info', 'Tarifa de '.$season->name.' (factor '.$factor->stripTrailingZeros().')', 0, $zero, $zero);
+            $lines[] = new QuoteLine('season', 'info', 'Tarifa de '.$season->name.' (factor '.$factor->strippedOfTrailingZeros().')', 0, $zero, $zero);
         }
 
         if ($this->rules->on('R-ADDONS', $p)) {

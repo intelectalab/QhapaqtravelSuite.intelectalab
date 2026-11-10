@@ -196,7 +196,7 @@ final class DirectBookingPlan
             return '1';
         }
 
-        $rate = DB::table('fin_fx_rates')->where('currency_code', $currency)->orderByDesc('rate_date')->value('rate_pen');
+        $rate = DB::table('fin_fx_rates')->where('currency_code', $currency)->orderByDesc('rate_date')->orderByDesc('effective_at')->value('rate_pen');
 
         if ($rate === null) {
             throw ApiException::unprocessable('FX_MISSING', "No hay tipo de cambio registrado para {$currency}.");

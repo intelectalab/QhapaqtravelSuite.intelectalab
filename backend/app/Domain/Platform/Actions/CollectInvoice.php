@@ -145,7 +145,12 @@ final class CollectInvoice
 
     public function suspendTenant(string $id, string $reason, PlatformUser $actor): void
     {
-        $invoice = $this->db()->table('platform_invoices')->where('id', $id)->first() ?? throw ApiException::notFound('La factura no existe.');
+        $invoice = (Str::isUuid($id) ? $this->db()->table('platform_invoices')->where('id', $id)->first() : null) ?? throw ApiException::notFound('La factura no existe.');
+
+        if (! in_array($invoice->status, ['failed', 'uncollectible'], true)) {
+            throw ApiException::conflict('DUNNING_INACTIVE', 'Solo se suspende por cobranza a una agencia con la factura en cobranza o incobrable.');
+        }
+
         $tenant = Tenant::on(self::CONNECTION)->findOrFail($invoice->tenant_id);
         $this->status->suspend($tenant, $reason, $actor);
         $this->db()->table('subscriptions')->where('id', $invoice->subscription_id)->update(['status' => 'suspended', 'updated_by' => $actor->getKey(), 'updated_at' => now(), 'lock_version' => DB::raw('lock_version + 1')]);

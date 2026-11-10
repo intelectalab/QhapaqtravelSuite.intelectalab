@@ -45,7 +45,7 @@ final class ReservationServiceRequests
         return DB::transaction(function () use ($code, $actor): array {
             $reservation = $this->lifecycle->open($code, $actor);
             $pending = DB::table('booking_reservation_services')->where('reservation_id', $reservation->id)->where('status', 'pendiente')
-                ->orderBy('service_date')->orderBy('code')->lockForUpdate()->get();
+                ->orderBy('service_date')->orderBy('code')->lock('for no key update')->get();
             $requested = [];
             $skipped = [];
 
@@ -104,7 +104,7 @@ final class ReservationServiceRequests
     {
         return DB::table('booking_reservation_services')->where('reservation_id', $reservation->id)
             ->where(fn ($query) => preg_match('/^[0-9a-f-]{36}$/i', $serviceCode) === 1 ? $query->where('id', $serviceCode) : $query->where('code', $serviceCode))
-            ->lockForUpdate()->first() ?? throw ApiException::notFound('El servicio no existe en esta reserva.');
+            ->lock('for no key update')->first() ?? throw ApiException::notFound('El servicio no existe en esta reserva.');
     }
 
     private function provider(object $service): object

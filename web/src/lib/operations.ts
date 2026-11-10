@@ -77,6 +77,27 @@ export interface CloseCheck {
   detail: string;
 }
 
+export interface EvidenceFile {
+  id: string;
+  name: string;
+  mime: string;
+  size: number;
+  source: string;
+  at: string;
+  by: string | null;
+  service?: { code: string; name: string } | null;
+  incident?: string | null;
+}
+
+export interface EvidenceRules {
+  max_bytes: number;
+  mimes: string[];
+}
+
+export const EVIDENCE_RULES: EvidenceRules = { max_bytes: 10 * 1024 * 1024, mimes: ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"] };
+
+export const COMPLETABLE_SERVICE = ["confirmado", "en_curso"];
+
 export interface OrderDetail {
   code: string;
   lock_version: number;
@@ -93,10 +114,12 @@ export interface OrderDetail {
   coordinator: Person;
   tasks: { id: string; title: string; done: boolean; done_at: string | null; done_by: string | null }[];
   assignments: Assignment[];
-  services: { code: string; name: string; date: string; time: string | null; kind: string; status: string; confirmation: string | null; cost: string; currency: string; assigned: boolean }[];
+  services: { id: string; code: string; lock_version: number; name: string; date: string; time: string | null; kind: string; status: string; confirmation: string | null; cost: string; currency: string; assigned: boolean }[];
   passengers: { id: string; full_name: string; pax_type: string; nationality: string | null; diet_notes: string | null; is_lead: boolean }[];
   incidents: { code: string; title: string; type: string; severity: string; status: string; sla_due_at: string; created_at: string }[];
   evidences: number;
+  evidence_files: EvidenceFile[];
+  evidence_rules: EvidenceRules;
   checks: CloseCheck[];
   transitions: { status: string; label: string }[];
   can: { assign: boolean; close: boolean; incidents: boolean };
@@ -299,7 +322,7 @@ export interface IncidentDetail extends IncidentRow {
   closed_at: string | null;
   assignee_id: string | null;
   logs: { id: string; user: string; kind: string; message: string; at: string }[];
-  evidence_files: { id: string; name: string; mime: string; size: number; source: string; at: string; by: string | null }[];
+  evidence_files: EvidenceFile[];
   can: { manage: boolean };
   types: string[];
   assignees: Person[];

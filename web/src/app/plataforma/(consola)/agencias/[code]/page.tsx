@@ -141,11 +141,11 @@ export default async function AgenciaPage({ params, searchParams }: PageProps<"/
           <p className="text-[13.5px] text-fg-3">Sin cambios de estado desde el alta.</p>
         ) : (
           <ol className="relative flex flex-col gap-1 before:absolute before:bottom-3 before:left-[15px] before:top-3 before:w-px before:bg-line">
-            {tenant.history.map((event) => {
+            {tenant.history.map((event, index) => {
               const action = ACTIONS[event.action] ?? { label: capitalize(event.action.replace(/_/g, " ")), tone: "t1" as const, icon: History };
               const Icon = action.icon;
               return (
-                <li key={`${event.occurred_at}-${event.action}`} className="relative grid grid-cols-[32px_minmax(0,1fr)_auto] items-start gap-x-3 py-2">
+                <li key={`${event.occurred_at}-${event.action}-${index}`} className="relative grid grid-cols-[32px_minmax(0,1fr)_auto] items-start gap-x-3 py-2">
                   <ToneScope tone={action.tone}>
                     <span className="relative grid h-8 w-8 place-items-center rounded-full bg-[var(--tint)] text-white ring-4 ring-surface">
                       <Icon size={15} />

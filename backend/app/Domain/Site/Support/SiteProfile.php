@@ -30,6 +30,7 @@ final class SiteProfile
         $branding = $this->branding->current();
         $fx = DB::table('fin_fx_rates')->where('currency_code', 'USD')->orderByDesc('rate_date')->orderByDesc('effective_at')->first(['rate_pen', 'rate_date']);
         $banner = DB::table('cms_contents')->whereNull('deleted_at')->where('type', 'Banner')->where('status', 'publicado')->where('channel', 'like', '%Web%')
+            ->where(fn ($q) => $q->whereNull('valid_from')->orWhere('valid_from', '<=', $this->today()->toDateString()))
             ->where(fn ($q) => $q->whereNull('valid_to')->orWhere('valid_to', '>=', $this->today()->toDateString()))
             ->orderByDesc('published_at')->first(['title', 'body']);
 

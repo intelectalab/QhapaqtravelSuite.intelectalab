@@ -13,11 +13,13 @@ interface InvitationFormProps {
   name: string;
   email: string;
   agency: string;
+  portal?: boolean;
+  requireMfa?: boolean;
 }
 
 const initial: FormState = { message: null };
 
-export function InvitationForm({ action: submit, token, name, email, agency }: InvitationFormProps) {
+export function InvitationForm({ action: submit, token, name, email, agency, portal = false, requireMfa = true }: InvitationFormProps) {
   const [state, action, pending] = useActionState(submit, initial);
 
   return (
@@ -28,7 +30,15 @@ export function InvitationForm({ action: submit, token, name, email, agency }: I
       <div className="mb-2">
         <h2 className="text-[28px] font-bold tracking-[-0.035em]">Hola, {name.split(" ")[0]}</h2>
         <p className="mt-1.5 text-fg-3">
-          Eres el administrador de <b className="text-fg">{agency}</b>. Crea tu contraseña para entrar con <b className="text-fg">{email}</b>.
+          {portal ? (
+            <>
+              <b className="text-fg">{agency}</b> te dio acceso a tu portal de cliente. Crea tu contraseña para entrar con <b className="text-fg">{email}</b>.
+            </>
+          ) : (
+            <>
+              Eres el administrador de <b className="text-fg">{agency}</b>. Crea tu contraseña para entrar con <b className="text-fg">{email}</b>.
+            </>
+          )}
         </p>
       </div>
       <FormError message={state.message} />
@@ -36,9 +46,13 @@ export function InvitationForm({ action: submit, token, name, email, agency }: I
       <TextField label="Contraseña" name="password" revealable autoComplete="new-password" required minLength={10} autoFocus hint="Al menos 10 caracteres, con letras y números." icon={<Lock size={17} />} />
       <TextField label="Repite la contraseña" name="password_confirmation" revealable autoComplete="new-password" required minLength={10} icon={<Lock size={17} />} />
       <Button type="submit" variant="primary" disabled={pending} className="h-12 w-full text-[15px]">
-        {pending ? "Un momento…" : "Activar mi cuenta"}
+        {pending ? "Un momento…" : portal ? "Activar mi portal" : "Activar mi cuenta"}
       </Button>
-      <p className="text-center text-[12.5px] text-fg-3">Después te pediremos configurar la verificación en dos pasos.</p>
+      {requireMfa ? (
+        <p className="text-center text-[12.5px] text-fg-3">Después te pediremos configurar la verificación en dos pasos.</p>
+      ) : portal ? (
+        <p className="text-center text-[12.5px] text-fg-3">Después inicias sesión con tu correo y esta contraseña, y entras directo a tu portal.</p>
+      ) : null}
     </form>
   );
 }

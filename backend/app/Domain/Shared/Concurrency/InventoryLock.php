@@ -49,7 +49,7 @@ final class InventoryLock
             ->where('tenant_id', $this->context->idOrFail())
             ->whereIn('id', $ids)
             ->orderBy('id')
-            ->lockForUpdate()
+            ->lock('for no key update')
             ->get()
             ->keyBy('id')
             ->all();

@@ -384,7 +384,7 @@ final class ApprovalInbox
 
     private function usdRate(): float
     {
-        return $this->usd ??= (float) (DB::table('fin_fx_rates')->where('currency_code', 'USD')->orderByDesc('rate_date')->value('rate_pen') ?? 1);
+        return $this->usd ??= (float) (DB::table('fin_fx_rates')->where('currency_code', 'USD')->orderByDesc('rate_date')->orderByDesc('effective_at')->value('rate_pen') ?? 1);
     }
 
     private function requests(User $viewer): Collection

@@ -9,6 +9,7 @@ use App\Domain\Booking\Models\Reservation;
 use App\Domain\Booking\StateMachines\ReservationStateMachine;
 use App\Domain\Channels\Support\B2bCredit;
 use App\Domain\Crm\Support\Portfolio;
+use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -34,6 +35,7 @@ final class ReservationWorkflow
         private readonly ReservationMailer $mailer,
         private readonly B2bCredit $credit,
         private readonly ReservationStateMachine $states,
+        private readonly SyncServicePayables $payables,
     ) {}
 
     public function update(string $code, ?string $notes, User $actor): void
@@ -55,7 +57,7 @@ final class ReservationWorkflow
                 'pax_type' => $data['pax_type'],
                 'nationality' => $data['nationality'] ?? null,
                 'birth_date' => $data['birth_date'] ?? null,
-                'age' => isset($data['birth_date']) ? CarbonImmutable::parse($data['birth_date'])->age : null,
+                'age' => isset($data['birth_date']) ? (int) CarbonImmutable::parse($data['birth_date'])->diffInYears(CarbonImmutable::parse((string) $reservation->travel_from)) : null,
                 'phone' => $data['phone'] ?? null,
                 'email' => $data['email'] ?? null,
                 'diet_notes' => $data['diet_notes'] ?? null,
@@ -172,6 +174,7 @@ final class ReservationWorkflow
             $model->forceFill(['cancel_reason' => $full, 'cancelled_at' => $now, 'penalty_amount' => $calc['penalty'], 'refund_amount' => $calc['refund'], 'updated_by' => $actor->getKey()])->save();
             DB::table('booking_cancellations')->insert(['reservation_id' => $reservation->id, 'total_at_cancel' => $calc['total'], 'paid_at_cancel' => $calc['paid'], 'penalty_services' => $calc['penalty_services'], 'consumed_amount' => $calc['consumed'], 'factor_k' => $calc['factor_k'], 'penalty_amount' => $calc['penalty'], 'refund_amount' => $calc['refund'], 'owed_amount' => $calc['owed'], 'currency' => $reservation->currency, 'lines' => json_encode($calc['lines'], JSON_UNESCAPED_UNICODE), 'refund_payment_id' => $refundPayment, 'penalty_receivable_id' => $penaltyReceivable, 'reason' => $full, 'cancelled_by' => $actor->getKey(), 'cancelled_at' => $now, 'created_by' => $actor->getKey()]);
             DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->where('status', 'pendiente')->update(['status' => 'aprobada', 'decided_by' => $actor->getKey(), 'decided_at' => $now, 'decision_note' => 'Cancelación procesada']);
+            $this->payables->handle((string) $reservation->id, $actor);
 
             $this->mailer->send($reservation->id, 'Tu reserva fue cancelada', "Cancelamos tu viaje {$reservation->title}.".(BigDecimal::of($calc['refund'])->isPositive() ? " Te reembolsaremos {$reservation->currency} {$calc['refund']} en 7 a 15 días hábiles." : ''));
             $this->audit->log('Reserva', $reservation->code, 'cancelar', $reservation->status, "cancelada · penalidad {$reservation->currency} {$calc['penalty']} · reembolso {$calc['refund']}");
@@ -300,7 +303,7 @@ final class ReservationWorkflow
         $ids = $byDeparture->keys()->sort()->values()->all();
 
         if ($ids) {
-            DB::table('catalog_product_departures')->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get(['id']);
+            DB::table('catalog_product_departures')->whereIn('id', $ids)->orderBy('id')->lock('for no key update')->get(['id']);
         }
 
         foreach ($byDeparture as $departureId => $pax) {
@@ -318,7 +321,7 @@ final class ReservationWorkflow
     private function open(string $code, User $actor, bool $lock = false): object
     {
         $query = Portfolio::scope(DB::table('booking_reservations')->whereNull('deleted_at'), $actor, 'owner_id')->where('code', $code);
-        $reservation = ($lock ? $query->lockForUpdate() : $query)->first() ?? throw Portfolio::missing($actor, 'booking_reservations', $code, 'La reserva no existe.', 'Esta reserva');
+        $reservation = ($lock ? $query->lock('for no key update') : $query)->first() ?? throw Portfolio::missing($actor, 'booking_reservations', $code, 'La reserva no existe.', 'Esta reserva');
 
         if (in_array($reservation->status, self::CLOSED, true)) {
             throw ApiException::conflict('RESERVATION_CLOSED', 'La reserva ya está '.($reservation->status === 'cancelada' ? 'cancelada' : 'completada').' y no admite cambios.');

@@ -87,7 +87,7 @@ final class AssignmentWorkflow
 
     public function recompute(string $orderId): void
     {
-        $order = DB::table('ops_orders')->where('id', $orderId)->first(['status']);
+        $order = DB::table('ops_orders')->where('id', $orderId)->first(['status', 'reservation_id']);
 
         if ($order === null || in_array($order->status, ['en_ejecucion', 'completada', 'cancelada'], true)) {
             return;
@@ -101,7 +101,8 @@ final class AssignmentWorkflow
 
         $next = match (true) {
             $statuses->contains('pendiente') => 'pendiente_asignacion',
-            $statuses->every(fn (string $status) => in_array($status, ['confirmada', 'en_curso', 'completada'], true)) => 'confirmada',
+            $statuses->every(fn (string $status) => in_array($status, ['confirmada', 'en_curso', 'completada'], true))
+                && ! DB::table('booking_reservation_services')->where('reservation_id', $order->reservation_id)->whereIn('status', ['pendiente', 'solicitado'])->exists() => 'confirmada',
             default => 'asignada',
         };
 

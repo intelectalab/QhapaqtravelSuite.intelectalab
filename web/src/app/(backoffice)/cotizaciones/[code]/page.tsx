@@ -4,6 +4,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { DownloadButton } from "@/components/ui/DownloadButton";
 import { HeroBand, HeroChip, HeroPanel, Journey, TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
 import { QuoteLifecycleActions } from "@/features/quotes/QuoteActions";
 import { QuoteCompare } from "@/features/quotes/QuoteCompare";
@@ -58,6 +59,7 @@ export default async function CotizacionPage({ params }: PageProps<"/cotizacione
                 Editar
               </Link>
             )}
+            <DownloadButton href={`/cotizaciones/${quote.code}/pdf/${quote.version}`} label="Propuesta PDF" iconOnlyOnMobile />
             <QuoteLifecycleActions quote={quote} />
             {quote.can.duplicate && <QuoteDuplicateAction quote={quote} />}
             {quote.can.reassign && quote.status !== "convertida" && <QuoteReassignAction quote={quote} advisors={advisors} />}
@@ -115,7 +117,7 @@ export default async function CotizacionPage({ params }: PageProps<"/cotizacione
               </span>
             }
           />
-          <QuoteVersions versions={quote.versions} currency={quote.currency} seeMargin={quote.see_margin} />
+          <QuoteVersions code={quote.code} versions={quote.versions} currency={quote.currency} seeMargin={quote.see_margin} />
         </Card>
         <Card>
           <TintCardTitle icon={History} title="Historial" />

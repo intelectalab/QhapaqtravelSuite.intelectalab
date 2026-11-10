@@ -174,7 +174,7 @@ final class SiteCart
         $this->release($item, 'Renovación del bloqueo del carrito');
 
         if ($item->departure_id) {
-            DB::table('catalog_product_departures')->where('id', $item->departure_id)->lockForUpdate()->first();
+            DB::table('catalog_product_departures')->where('id', $item->departure_id)->lock('for no key update')->first();
         }
 
         $live = DB::table('catalog_availability_holds')->where('status', 'hold')->where('expires_at', '>', now())

@@ -43,7 +43,46 @@ export interface TripDay {
   state: "done" | "today" | "risk" | "upcoming";
 }
 
+export type PortalAccessStatus = "sin_acceso" | "invitado" | "activo" | "revocado";
+
+export interface PortalAccess {
+  status: PortalAccessStatus;
+  email: string | null;
+  invitedAt: string | null;
+  invitationExpiresAt: string | null;
+  invitationExpired: boolean;
+  lastLoginAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface ApiPortalAccess {
+  status: PortalAccessStatus;
+  email: string | null;
+  user: string | null;
+  invited_at: string | null;
+  invitation_expires_at: string | null;
+  invitation_expired: boolean;
+  last_login_at: string | null;
+  revoked_at: string | null;
+}
+
+export const NO_PORTAL_ACCESS: PortalAccess = { status: "sin_acceso", email: null, invitedAt: null, invitationExpiresAt: null, invitationExpired: false, lastLoginAt: null, revokedAt: null };
+
+export function toPortalAccess(access: ApiPortalAccess | null | undefined): PortalAccess {
+  if (!access) return NO_PORTAL_ACCESS;
+  return {
+    status: access.status,
+    email: access.email,
+    invitedAt: access.invited_at,
+    invitationExpiresAt: access.invitation_expires_at,
+    invitationExpired: access.invitation_expired,
+    lastLoginAt: access.last_login_at,
+    revokedAt: access.revoked_at,
+  };
+}
+
 export interface ClientDetail extends ClientRow {
+  portalAccess: PortalAccess;
   tags: string[];
   birth: string | null;
   rawKind: "persona" | "empresa";
@@ -100,6 +139,7 @@ export interface ApiClientDetail extends ApiClient {
   overdue_pen: number;
   companions: { name: string; document: string; diet: string }[];
   current_trip: { trip: ApiTrip; days: TripDay[]; day_number: number; incident: { code: string; title: string } | null } | null;
+  portal_access?: ApiPortalAccess | null;
 }
 
 const SEGMENT_LABEL: Record<string, string> = {
@@ -157,6 +197,7 @@ export function toClientDetail(client: ApiClientDetail, today: string): ClientDe
     balancePen: client.balance_pen,
     overduePen: client.overdue_pen,
     companions: client.companions,
+    portalAccess: toPortalAccess(client.portal_access),
     currentTrip: current
       ? { trip: toTrip(current.trip), days: current.days, dayNumber: current.day_number, incident: current.incident ? { id: current.incident.code, title: current.incident.title } : null }
       : null,

@@ -33,16 +33,19 @@ services:
 
   queue:
     <<: *php
+    user: "1000:1000"
     command: php artisan horizon
     restart: unless-stopped
 
   scheduler:
     <<: *php
+    user: "1000:1000"
     command: php artisan schedule:work
     restart: unless-stopped
 
   reverb:
     <<: *php
+    user: "1000:1000"
     command: php artisan reverb:start --host=0.0.0.0 --port=8080
     ports: [ "8080:8080" ]
     restart: unless-stopped

@@ -18,7 +18,7 @@ const SEGMENTS: Record<string, SegmentInfo> = {
   "Operador turístico": { icon: Compass, tone: "t4", pitch: "Programa salidas, controla cupos y asigna guías y movilidad con la lista de pasajeros siempre actualizada.", screens: ["/catalogo/salidas", "/catalogo/cupos", "/operaciones/asignaciones", "/operaciones/vouchers"] },
   "DMC / receptivo": { icon: Globe2, tone: "t1", pitch: "Recibe pedidos de agencias del exterior, cotiza en varias monedas y coordina proveedores en cada destino.", screens: ["/canales/b2b", "/catalogo/tarifas", "/operaciones/ordenes", "/admin/monedas"] },
   "Agencia corporativa": { icon: Briefcase, tone: "violet", pitch: "Gestiona viajes de empresas con aprobaciones internas, documentos de viaje y facturación por cliente corporativo.", screens: ["/aprobaciones", "/operaciones/documentos-viaje", "/finanzas/facturacion", "/reportes"] },
-  Mayorista: { icon: Building2, tone: "t2", pitch: "Distribuye tu producto a agencias aliadas con tarifas netas, comisiones y conciliación de lo vendido.", screens: ["/canales/b2b", "/finanzas/comisiones", "/catalogo/productos", "/finanzas/conciliacion"] },
+  "Agencia mayorista": { icon: Building2, tone: "t2", pitch: "Distribuye tu producto a agencias aliadas con tarifas netas, comisiones y conciliación de lo vendido.", screens: ["/canales/b2b", "/finanzas/comisiones", "/catalogo/productos", "/finanzas/conciliacion"] },
 };
 
 const SCREENS = new Map(screensOf(NAV_GROUPS).map((screen) => [screen.href, screen]));

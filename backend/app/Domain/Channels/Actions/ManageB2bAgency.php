@@ -8,6 +8,7 @@ use App\Domain\Channels\Support\ChannelKit;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
 use Illuminate\Support\Facades\DB;
 
 final class ManageB2bAgency
@@ -38,7 +39,9 @@ final class ManageB2bAgency
         $row = $this->kit->row('channel_b2b_agencies', $code);
         $this->assertUniqueRuc($data['ruc'], $row->id);
 
-        if ((float) $data['credit_limit'] > 0 && (float) $data['credit_limit'] < (float) $row->credit_used) {
+        $limit = Decimal::money($data['credit_limit'] ?? 0);
+
+        if ($limit->isPositive() && $limit->isLessThan(Decimal::money($row->credit_used))) {
             throw ApiException::unprocessable('B2B-BR-03', 'La línea de crédito no puede quedar por debajo del crédito ya utilizado.');
         }
 
@@ -49,7 +52,7 @@ final class ManageB2bAgency
             'updated_at' => now(),
         ]);
 
-        $this->audit->log('Agencia B2B', $code, 'editar', "{$row->commission_pct} % · {$row->credit_limit}", "{$data['commission_pct']} % · {$data['credit_limit']}");
+        $this->audit->log('Agencia B2B', $code, 'editar', "{$row->commission_pct} % · {$row->credit_limit}", "{$data['commission_pct']} % · {$limit}");
     }
 
     public function setStatus(string $code, string $status, ?string $reason, User $actor): void

@@ -9,6 +9,8 @@ use App\Domain\Iam\Models\User;
 use App\Domain\Iam\Support\UserDirectory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Exists;
 
 final class UserController
 {
@@ -31,7 +33,7 @@ final class UserController
             'email' => ['required', 'regex:/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/', 'max:190'],
             'phone' => ['nullable', 'string', 'max:30'],
             'role' => ['required', 'string', 'max:40'],
-            'sede_id' => ['required', 'uuid'],
+            'sede_id' => ['required', 'uuid', $this->activeSede()],
             'require_mfa' => ['nullable', 'boolean'],
         ], $this->messages());
 
@@ -44,7 +46,7 @@ final class UserController
             'name' => ['required', 'string', 'max:150'],
             'phone' => ['nullable', 'string', 'max:30'],
             'role' => ['required', 'string', 'max:40'],
-            'sede_id' => ['required', 'uuid'],
+            'sede_id' => ['required', 'uuid', $this->activeSede()],
             'email' => ['prohibited'],
         ], [...$this->messages(), 'email.prohibited' => 'El correo no se cambia después de invitar.']);
         $this->admin->update($code, $data, $this->user($request));
@@ -89,7 +91,13 @@ final class UserController
             'email.regex' => 'Escribe un correo válido.',
             'role.required' => 'Elige el rol.',
             'sede_id.required' => 'Elige la sede.',
+            'sede_id.exists' => 'Elige una sede activa de la lista.',
         ];
+    }
+
+    private function activeSede(): Exists
+    {
+        return Rule::exists('iam_sedes', 'id')->whereNull('deleted_at')->where('status', 'activa');
     }
 
     private function user(Request $request): User

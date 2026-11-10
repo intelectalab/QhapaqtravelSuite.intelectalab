@@ -171,7 +171,7 @@ final class ClientWorkflow
         return '{'.$tags->map(fn (string $tag) => '"'.$tag.'"')->implode(',').'}';
     }
 
-    private function client(string $code, User $actor): object
+    public function client(string $code, User $actor): object
     {
         $client = DB::table('crm_clients')->where('code', $code)->whereNull('deleted_at')->first() ?? throw ApiException::notFound('El cliente no existe.');
 

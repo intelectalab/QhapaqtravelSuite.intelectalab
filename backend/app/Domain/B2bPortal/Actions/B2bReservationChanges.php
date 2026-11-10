@@ -29,7 +29,7 @@ final class B2bReservationChanges
             'doc_number' => $doc ?: null,
             'nationality' => $data['nationality'] ?? null,
             'birth_date' => $data['birth_date'] ?? null,
-            'age' => isset($data['birth_date']) ? Carbon::parse($data['birth_date'])->age : null,
+            'age' => isset($data['birth_date']) ? (int) Carbon::parse($data['birth_date'])->diffInYears(Carbon::parse((string) ($reservation->travel_from ?? now()->toDateString()))) : null,
             'is_placeholder' => false,
             'pending' => ! $doc,
             'updated_by' => $account->user->getKey(),

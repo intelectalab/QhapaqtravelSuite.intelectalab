@@ -162,6 +162,9 @@ final class ReservationDirectory
             ...($view['price'] ? ['receivables' => $receivables] : []),
             'incidents' => DB::table('ops_incidents')->where('reservation_id', $row->id)->orderByDesc('created_at')
                 ->get(['code', 'title', 'type', 'severity', 'status', 'created_at']),
+            'vouchers' => $viewer->can('operations.view')
+                ? DB::table('ops_vouchers')->where('reservation_id', $row->id)->where('status', '<>', 'anulado')->orderBy('service_date')->get(['code', 'service_label as label', 'service_date as date', 'status', 'version'])
+                : [],
             'history' => DB::table('audit_events')->where('entity', 'Reserva')->where('entity_id', $row->code)->orderByDesc('occurred_at')->limit(20)->get(['action', 'before_value', 'after_value', 'occurred_at']),
         ];
     }

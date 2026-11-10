@@ -7,7 +7,8 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { HeroBand, HeroChip, HeroPanel, Journey, SOFT_TINT, TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
-import { AssignmentControls, OrderAdvanceActions, TaskList } from "@/features/operations/OrderActions";
+import { EvidenceSection, ServiceCompleteAction } from "@/features/operations/Evidence";
+import { AssignmentControls, CloseChecklist, OrderAdvanceActions, TaskList } from "@/features/operations/OrderActions";
 import { Notice, TimeSlot } from "@/features/operations/OpsBits";
 import { OrderCancelAction, OrderEditAction } from "@/features/operations/Orders";
 import { cn } from "@/lib/cn";
@@ -103,7 +104,7 @@ export default async function OrdenPage({ params }: PageProps<"/operaciones/orde
         <TintTile icon={Truck} tone="t1" label="Con recursos" value={`${assigned} de ${order.assignments.length}`} note="Tours y traslados" />
         <TintTile icon={ShieldCheck} tone="ok" label="Confirmados por proveedor" value={`${confirmedSuppliers} de ${order.services.length}`} />
         <TintTile icon={Siren} tone="bad" label="Incidencias abiertas" value={openIncidents.length} note={`${order.incidents.length} en total`} />
-        <TintTile icon={Camera} tone="violet" label="Evidencias" value={order.evidences} />
+        <TintTile icon={Camera} tone="violet" label="Evidencias" value={order.evidence_files.length} />
       </section>
 
       {order.reservation.notes && (
@@ -151,16 +152,8 @@ export default async function OrdenPage({ params }: PageProps<"/operaciones/orde
           </Card>
 
           <Card>
-            <TintCardTitle icon={ClipboardCheck} title="Cierre operativo" />
-            <ul className="flex flex-col gap-1.5">
-              {order.checks.map((check) => (
-                <li key={check.id} className="flex items-center gap-2.5 text-[13px]">
-                  <span className={cn("h-2.5 w-2.5 flex-none rounded-full", check.ok ? "bg-ok" : "bg-warn")} />
-                  <span className="flex-1">{check.label}</span>
-                  <span className="text-xs text-fg-3">{check.detail}</span>
-                </li>
-              ))}
-            </ul>
+            <TintCardTitle icon={ClipboardCheck} title="Cierre operativo" aside={`${order.checks.filter((check) => check.ok).length} de ${order.checks.length}`} />
+            <CloseChecklist checks={order.checks} detailed={!closed} />
             {order.closed_at && <p className="mt-3 text-[12.5px] text-fg-3">Cerrada el {formatDateTime(order.closed_at)}</p>}
           </Card>
 
@@ -205,6 +198,7 @@ export default async function OrdenPage({ params }: PageProps<"/operaciones/orde
                 </span>
                 <span className="font-mono text-[12.5px]">{formatMoney(service.cost, service.currency)}</span>
                 <StatusBadge status={service.status} />
+                {editable && <ServiceCompleteAction service={service} today={order.today} orderCode={order.code} />}
               </li>
             ))}
           </ul>
@@ -226,6 +220,22 @@ export default async function OrdenPage({ params }: PageProps<"/operaciones/orde
             ))}
           </ul>
         </Card>
+
+        <ToneScope tone="violet" className="xl:col-span-2">
+          <Card>
+            <TintCardTitle icon={Camera} title="Evidencias" aside={String(order.evidence_files.length)} />
+            <EvidenceSection
+              scope="order"
+              target={order.code}
+              files={order.evidence_files}
+              canUpload={editable}
+              canRemove={editable}
+              services={order.services}
+              rules={order.evidence_rules}
+              emptyText={editable ? "Aún no hay evidencias. Sube al menos una foto o acta de la operación para poder cerrarla." : "La orden no tiene evidencias registradas."}
+            />
+          </Card>
+        </ToneScope>
       </div>
     </ToneScope>
   );

@@ -77,7 +77,9 @@ return [
         'finance.treasury.movements.store',
         'crm.claims.store',
         'crm.claims.respond',
+        'crm.clients.portal-access.store',
         'ops.orders.close',
+        'ops.orders.evidences.store',
     ],
 
     'if_match' => [
@@ -191,6 +193,7 @@ return [
         'ops.orders.confirm' => 'ops_orders,code,code',
         'ops.orders.start' => 'ops_orders,code,code',
         'ops.orders.close' => 'ops_orders,code,code',
+        'ops.reservation-services.complete' => 'booking_reservation_services,id|code,service',
         'portal.quotes.approve' => 'quote_quotes,code,code',
         'portal.quotes.reject' => 'quote_quotes,code,code',
     ],

@@ -295,7 +295,7 @@ final class QuoteBuilder
             return '1';
         }
 
-        return (string) (DB::table('fin_fx_rates')->where('currency_code', $currency)->orderByDesc('rate_date')->value('rate_pen')
+        return (string) (DB::table('fin_fx_rates')->where('currency_code', $currency)->orderByDesc('rate_date')->orderByDesc('effective_at')->value('rate_pen')
             ?? throw ApiException::unprocessable('CFG-FX', "No hay tipo de cambio registrado para {$currency}."));
     }
 

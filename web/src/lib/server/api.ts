@@ -1,5 +1,5 @@
 import "server-only";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { headers as requestHeaders } from "next/headers";
 import type { ApiErrorBody } from "@/lib/api/types";
 import type { Realm } from "@/lib/realms";
@@ -47,7 +47,7 @@ async function writeHeaders(method: string, path: string, body: unknown, token: 
   return result;
 }
 
-export async function apiFetch<T>(path: string, init: { method?: string; body?: unknown; token?: string | null; auth?: boolean; realm?: Realm; raw?: boolean; headers?: Record<string, string> } = {}): Promise<ApiResult<T>> {
+export async function apiFetch<T>(path: string, init: { method?: string; body?: unknown; form?: FormData; token?: string | null; auth?: boolean; realm?: Realm; raw?: boolean; headers?: Record<string, string> } = {}): Promise<ApiResult<T>> {
   const token = init.token !== undefined ? init.token : init.auth === false ? null : await sessionToken(init.realm);
   const method = (init.method ?? "GET").toUpperCase();
   const extra = Object.fromEntries(Object.entries(init.headers ?? {}).filter(([, value]) => value !== ""));
@@ -55,12 +55,12 @@ export async function apiFetch<T>(path: string, init: { method?: string; body?: 
     method,
     headers: {
       Accept: "application/json",
-      ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
+      ...(init.body !== undefined && init.form === undefined ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(await writeHeaders(method, path, init.body, token, extra)),
+      ...(init.form !== undefined ? { "Idempotency-Key": randomUUID() } : await writeHeaders(method, path, init.body, token, extra)),
       ...extra,
     },
-    body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+    body: init.form ?? (init.body !== undefined ? JSON.stringify(init.body) : undefined),
     cache: "no-store",
   });
 
@@ -78,6 +78,11 @@ export async function apiFetch<T>(path: string, init: { method?: string; body?: 
       details: payload?.details,
     },
   };
+}
+
+export async function apiFile(path: string, realm?: Realm): Promise<Response> {
+  const token = await sessionToken(realm);
+  return fetch(`${API_URL}${path}`, { headers: { Accept: "*/*", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, cache: "no-store" });
 }
 
 export function tenantSlugFrom(host: string | null): string | undefined {

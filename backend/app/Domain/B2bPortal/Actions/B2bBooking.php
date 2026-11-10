@@ -9,6 +9,7 @@ use App\Domain\B2bPortal\Support\B2bCatalog;
 use App\Domain\Booking\Actions\Support\ServicesFromQuoteItem;
 use App\Domain\Channels\Support\B2bCredit;
 use App\Domain\Crm\Support\CodeSequence;
+use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Operations\Actions\VoucherWorkflow;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -36,6 +37,7 @@ final class B2bBooking
         private readonly AuditLogger $audit,
         private readonly VoucherWorkflow $vouchers,
         private readonly B2bCredit $credit,
+        private readonly SyncServicePayables $payables,
     ) {}
 
     public function simulate(B2bAccount $account, array $data): array
@@ -146,6 +148,7 @@ final class B2bBooking
             }
         }
 
+        $this->payables->handle($reservationId, $user);
         $this->audit->log('Reserva', $code, 'crear_b2b', null, "{$status} · {$account->agency->code} · {$currency} {$quote['net_total']} · {$mode}");
 
         return $code;

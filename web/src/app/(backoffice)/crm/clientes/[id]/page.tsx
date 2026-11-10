@@ -13,6 +13,7 @@ import { OpportunityCreateAction } from "@/features/opportunities/OpportunityFor
 import { ClientArchiveAction, ClientEditAction } from "@/features/clients/ClientForms";
 import { FieldList, SectionTitle, StatCard } from "@/components/ui/Details";
 import { CurrentTrip, QuoteList, TripList } from "@/features/clients/ClientSections";
+import { ClientPortalAccessCard } from "@/features/clients/ClientPortalAccess";
 
 export async function generateMetadata({ params }: PageProps<"/crm/clientes/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -113,6 +114,7 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
               ]}
             />
           </Card>
+          <ClientPortalAccessCard client={client} canManage={options.canManage} />
           {(client.tags.length > 0 || client.companions.length > 0) && (
             <Card>
               {client.tags.length > 0 && (

@@ -46,16 +46,24 @@ export function ClaimFormAction({ overview, sheet }: { overview: ClaimsOverview;
           {!sheet && <SelectField label="Sede" name="sede_id" options={overview.options.sedes} defaultValue={overview.options.sedes[0]?.value} />}
           <ChoiceGroup label="Tipo" name="type" options={[{ value: "reclamo", label: "Reclamo" }, { value: "queja", label: "Queja" }]} defaultValue={sheet?.type_code ?? "reclamo"} hint="Reclamo: disconformidad con el servicio. Queja: malestar con la atención." />
           <p className="text-[12.5px] font-semibold text-fg-3">Consumidor</p>
-          <TextField label="Nombre completo" name="consumer_name" required minLength={3} defaultValue={sheet?.consumer.name} icon={<UserRound size={17} />} />
+          {sheet && <p className="text-[12.5px] text-fg-3">Los datos del consumidor, el detalle y el pedido quedan tal como se registraron en la hoja: no se modifican.</p>}
+          <TextField label="Nombre completo" name="consumer_name" required minLength={3} defaultValue={sheet?.consumer.name} readOnly={Boolean(sheet)} icon={<UserRound size={17} />} />
           <div className="grid grid-cols-[150px_1fr] gap-3">
-            <SelectField label="Documento" name="consumer_doc_type" options={DOC_TYPES} defaultValue={sheet?.consumer.doc_type ?? "DNI"} />
-            <TextField label="Número" name="consumer_doc_number" required defaultValue={sheet?.consumer.doc_number ?? undefined} />
+            {sheet ? (
+              <>
+                <input type="hidden" name="consumer_doc_type" value={sheet.consumer.doc_type ?? ""} />
+                <TextField label="Documento" defaultValue={DOC_TYPES.find((option) => option.value === sheet.consumer.doc_type)?.label ?? sheet.consumer.doc_type ?? ""} readOnly />
+              </>
+            ) : (
+              <SelectField label="Documento" name="consumer_doc_type" options={DOC_TYPES} defaultValue="DNI" />
+            )}
+            <TextField label="Número" name="consumer_doc_number" required defaultValue={sheet?.consumer.doc_number ?? undefined} readOnly={Boolean(sheet)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <TextField label="Correo" name="consumer_email" type="email" defaultValue={sheet?.consumer.email ?? undefined} hint="Ahí se envía la constancia y la respuesta." />
-            <TextField label="Teléfono" name="consumer_phone" defaultValue={sheet?.consumer.phone ?? undefined} />
+            <TextField label="Correo" name="consumer_email" type="email" defaultValue={sheet?.consumer.email ?? undefined} readOnly={Boolean(sheet)} hint={sheet ? undefined : "Ahí se envía la constancia y la respuesta."} />
+            <TextField label="Teléfono" name="consumer_phone" defaultValue={sheet?.consumer.phone ?? undefined} readOnly={Boolean(sheet)} />
           </div>
-          <TextField label="Dirección" name="consumer_address" defaultValue={sheet?.consumer.address ?? undefined} />
+          <TextField label="Dirección" name="consumer_address" defaultValue={sheet?.consumer.address ?? undefined} readOnly={Boolean(sheet)} />
           <p className="text-[12.5px] font-semibold text-fg-3">Bien contratado</p>
           <ChoiceGroup label="Tipo de bien" name="good_kind" options={[{ value: "Servicio", label: "Servicio" }, { value: "Producto", label: "Producto" }]} defaultValue={sheet?.good?.kind ?? "Servicio"} />
           <TextField label="Descripción" name="good_description" required defaultValue={sheet?.good?.description} />
@@ -63,8 +71,8 @@ export function ClaimFormAction({ overview, sheet }: { overview: ClaimsOverview;
             <TextField label="Monto reclamado" name="good_amount" type="number" step="0.01" min="0" defaultValue={sheet?.good ? String(sheet.good.amount) : undefined} />
             <ChoiceGroup label="Moneda" name="good_currency" options={[{ value: "PEN", label: "S/" }, { value: "USD", label: "US$" }]} defaultValue={sheet?.good?.currency ?? "PEN"} />
           </div>
-          <TextArea label="Detalle" name="detail" rows={4} required minLength={10} defaultValue={sheet?.detail} />
-          <TextArea label="Pedido del consumidor" name="request" rows={2} required minLength={5} defaultValue={sheet?.request ?? undefined} />
+          <TextArea label="Detalle" name="detail" rows={4} required minLength={10} defaultValue={sheet?.detail} readOnly={Boolean(sheet)} />
+          <TextArea label="Pedido del consumidor" name="request" rows={2} required minLength={5} defaultValue={sheet?.request ?? undefined} readOnly={Boolean(sheet)} />
           <SelectField label="Cliente (opcional)" name="client" options={overview.options.clients} defaultValue={sheet?.client?.code ?? ""} placeholder="Vincular a un cliente" />
           <SelectField label="Reserva (opcional)" name="reservation" options={overview.options.reservations} defaultValue={sheet?.reservation ?? ""} placeholder="Vincular a una reserva" />
         </>

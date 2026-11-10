@@ -37,7 +37,7 @@ final class OrderWorkflow
         $this->common->ensureCoordinator($coordinatorId);
 
         return DB::transaction(function () use ($reservationCode, $coordinatorId, $actor): string {
-            $reservation = DB::table('booking_reservations')->whereNull('deleted_at')->where('code', $reservationCode)->lockForUpdate()->first(['id', 'code', 'title', 'status', 'travel_from', 'travel_to']);
+            $reservation = DB::table('booking_reservations')->whereNull('deleted_at')->where('code', $reservationCode)->lock('for no key update')->first(['id', 'code', 'title', 'status', 'travel_from', 'travel_to']);
 
             if ($reservation === null) {
                 throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige una reserva.');

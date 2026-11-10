@@ -57,6 +57,11 @@ final class PayableWorkflow
         DB::transaction(function () use ($code, $data, $actor): void {
             $payable = $this->open($code);
             $this->ensureActive($payable);
+            $managed = $payable->kind === 'servicio' && $payable->reservation_service_id !== null;
+            if ($managed && ((isset($data['amount']) && ! Decimal::money($data['amount'])->isEqualTo(Decimal::money($payable->amount))) || $data['due_date'] !== (string) $payable->due_date)) {
+                throw ApiException::conflict('FIN-BR-18', 'El importe y el vencimiento de esta obligación salen del servicio de la reserva y de la condición de pago del proveedor. Programa el pago para fijar otra fecha o registra un costo adicional por la diferencia.');
+            }
+
             $values = [
                 'concept' => $data['concept'],
                 'due_date' => $data['due_date'],

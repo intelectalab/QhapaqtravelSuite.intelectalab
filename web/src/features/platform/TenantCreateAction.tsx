@@ -10,7 +10,7 @@ import { TextField } from "@/components/ui/TextField";
 import { formatMoney } from "@/lib/format";
 import type { PlanSummary } from "@/lib/platform";
 
-const BUSINESS_TYPES = ["Agencia de viajes minorista", "Operador turístico", "DMC / receptivo", "Agencia corporativa", "Mayorista"];
+const BUSINESS_TYPES = ["Agencia de viajes minorista", "Operador turístico", "DMC / receptivo", "Agencia corporativa", "Agencia mayorista"];
 
 const initial: ProvisionState = { message: null, done: false };
 

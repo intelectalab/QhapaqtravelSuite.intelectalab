@@ -132,7 +132,8 @@ export interface PayableRow {
   scheduled_date: string | null;
   provider: { ref: string; name: string; status: string };
   reservation: { code: string; title: string } | null;
-  service: string | null;
+  service: { code: string; name: string; date: string; status: string } | null;
+  managed: boolean;
 }
 
 export interface NamedAmount {

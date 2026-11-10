@@ -1,7 +1,8 @@
-import { CalendarDays, CheckCircle2, CircleDashed, Clock3, Receipt } from "lucide-react";
+import { CalendarDays, CheckCircle2, CircleDashed, Clock3, Receipt, Ticket } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { StatusBadge } from "@/components/ui/Badge";
+import { DownloadButton } from "@/components/ui/DownloadButton";
 import { HoldTimer } from "@/features/site/Cart";
 import { PageHero } from "@/features/site/Hero";
 import { PayButton } from "@/features/site/PayButton";
@@ -20,7 +21,7 @@ export default async function ConfirmationPage({ params }: PageProps<"/sitio/[ag
     { label: "Pedido creado", done: true },
     { label: "Pago registrado", done: paid },
     { label: "Servicios confirmados por operaciones", done: paid && order.reservations.every((r) => r.status === "confirmada") },
-    { label: "Vouchers enviados a tu correo", done: false },
+    { label: "Vouchers listos para descargar", done: order.reservations.some((r) => r.vouchers.length > 0) },
   ];
 
   return (
@@ -90,6 +91,27 @@ export default async function ConfirmationPage({ params }: PageProps<"/sitio/[ag
                   </li>
                 ))}
               </ul>
+              {reservation.vouchers.length > 0 && (
+                <div className="mt-4 border-t border-line pt-4">
+                  <h3 className="text-[13.5px] font-semibold text-fg">Tus vouchers</h3>
+                  <ul className="mt-2 grid gap-2">
+                    {reservation.vouchers.map((voucher) => (
+                      <li key={voucher.code} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line px-3.5 py-2.5 text-[13px] transition-colors hover:bg-surface-2">
+                        <span className="inline-flex min-w-0 items-center gap-2">
+                          <Ticket size={15} className="flex-none text-fg-3" />
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium text-fg">{voucher.label}</span>
+                            <span className="text-[12px] text-fg-3">
+                              {voucher.code} · {formatDate(voucher.date)}
+                            </span>
+                          </span>
+                        </span>
+                        <DownloadButton href={`/sitio/${agencia}/confirmacion/${order.code}/vouchers/${voucher.code}`} label="Descargar" size="sm" />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </article>
           ))}
         </div>

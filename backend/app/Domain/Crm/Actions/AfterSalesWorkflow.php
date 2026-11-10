@@ -9,12 +9,19 @@ use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Tenancy\TenantContext;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class AfterSalesWorkflow
 {
-    public function __construct(private readonly CodeSequence $codes, private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly CodeSequence $codes,
+        private readonly AuditLogger $audit,
+        private readonly ActivityWorkflow $activities,
+        private readonly TenantContext $context,
+    ) {}
 
     public function recordSurvey(array $data, User $actor): string
     {
@@ -47,7 +54,7 @@ final class AfterSalesWorkflow
             $this->audit->log('Cliente', $client->code, 'actualizar_nps', $client->nps_last === null ? null : (string) $client->nps_last, (string) $score);
 
             if ($score <= 6) {
-                $this->openCase([
+                $case = $this->openCase([
                     'client_id' => $client->id,
                     'reservation_id' => $reservation?->id,
                     'survey_id' => $id,
@@ -55,9 +62,17 @@ final class AfterSalesWorkflow
                     'type_code' => 'reclamo',
                     'priority' => $score <= 3 ? 'alta' : 'media',
                     'subject' => "Detractor NPS {$score} — ".($reservation->code ?? $client->name),
-                    'description' => $data['comment'] ?: 'Encuesta con puntaje de detractor. Contactar al cliente para entender qué falló.',
+                    'description' => ($data['comment'] ?? null) ?: 'Encuesta con puntaje de detractor. Contactar al cliente para entender qué falló.',
                     'owner_id' => $client->owner_id,
                 ], $actor, 'Caso creado automáticamente por NPS de detractor');
+                $activity = $this->activities->create([
+                    'type' => 'postventa',
+                    'subject' => Str::limit("Resolver {$case} — contactar a {$client->name}", 200, ''),
+                    'related_type' => 'client',
+                    'related_code' => $client->code,
+                    'due_at' => Carbon::now($this->context->timezone())->addDay()->setTime(10, 0)->toIso8601String(),
+                ], $actor);
+                DB::table('crm_activities')->where('code', $activity)->update(['owner_id' => $client->owner_id]);
             }
 
             return $code;

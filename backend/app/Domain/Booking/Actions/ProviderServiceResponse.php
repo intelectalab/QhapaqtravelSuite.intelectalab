@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Booking\Actions;
 
 use App\Domain\Crm\Support\CodeSequence;
+use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -23,7 +24,7 @@ final class ProviderServiceResponse
 
     private const COPIED = ['reservation_id', 'product_id', 'catalog_service_id', 'quote_item_id', 'provider_id', 'name', 'service_time', 'pax', 'currency', 'fx_rate', 'cost_amount', 'price_amount', 'is_required', 'requires_assignment', 'service_kind', 'pax_detail', 'kind', 'addon_id', 'rooms', 'nights'];
 
-    public function __construct(private readonly CodeSequence $codes, private readonly AuditLogger $audit) {}
+    public function __construct(private readonly CodeSequence $codes, private readonly AuditLogger $audit, private readonly SyncServicePayables $payables) {}
 
     public function confirm(string $serviceId, array $data, User $actor, string $source): object
     {
@@ -62,6 +63,7 @@ final class ProviderServiceResponse
             'updated_at' => now(),
         ]);
         $this->settleReservation($service->reservation_id);
+        $this->payables->handle((string) $service->reservation_id, $actor);
 
         return (object) ['service' => $service, 'request_id' => $request, 'code' => $code, 'alternative' => null];
     }
@@ -107,13 +109,16 @@ final class ProviderServiceResponse
             $this->audit->log('Reserva', $reservation->code, 'cambio_estado', 'confirmada', 'pendiente_proveedor');
         }
 
+        $this->payables->handle((string) $service->reservation_id, $actor);
+
         return (object) ['service' => $service, 'request_id' => $request, 'code' => null, 'alternative' => $alternative];
     }
 
     private function lockOpen(string $serviceId): object
     {
-        $service = DB::table('booking_reservation_services')->where('id', $serviceId)->lockForUpdate()->first() ?? throw ApiException::notFound();
-        $reservationStatus = DB::table('booking_reservations')->where('id', $service->reservation_id)->value('status');
+        $reservationId = DB::table('booking_reservation_services')->where('id', $serviceId)->value('reservation_id') ?? throw ApiException::notFound();
+        $reservationStatus = DB::table('booking_reservations')->where('id', $reservationId)->lock('for no key update')->value('status');
+        $service = DB::table('booking_reservation_services')->where('id', $serviceId)->lock('for no key update')->first() ?? throw ApiException::notFound();
 
         if (! in_array($service->status, self::OPEN, true) || in_array($reservationStatus, self::CLOSED_RESERVATIONS, true)) {
             throw ApiException::conflict('SUP-BR-04', 'La solicitud ya fue respondida ('.str_replace('_', ' ', (string) $service->status).'). Para cambios contacte a Operaciones.');

@@ -48,7 +48,7 @@ final class PayableDirectory
             ->leftJoin('booking_reservation_services as s', 's.id', '=', 'p.reservation_service_id')
             ->whereNull('p.deleted_at')
             ->orderBy('p.due_date')
-            ->get(['p.code', 'p.lock_version', 'p.kind', 'p.cost_type', 'p.concept', 'p.amount', 'p.paid_amount', 'p.currency', 'p.fx_rate', 'p.due_date', 'p.status', 'p.approved_at', 'p.supplier_doc_number', 'p.evidence_note', 'p.observation', 'p.scheduled_date', 'v.ref as provider_ref', 'v.name as provider_name', 'v.status as provider_status', 'b.code as reservation_code', 'b.title as reservation_title', 's.name as service_name'])
+            ->get(['p.code', 'p.lock_version', 'p.kind', 'p.cost_type', 'p.concept', 'p.amount', 'p.paid_amount', 'p.currency', 'p.fx_rate', 'p.due_date', 'p.status', 'p.approved_at', 'p.supplier_doc_number', 'p.evidence_note', 'p.observation', 'p.scheduled_date', 'v.ref as provider_ref', 'v.name as provider_name', 'v.status as provider_status', 'b.code as reservation_code', 'b.title as reservation_title', 's.name as service_name', 's.code as service_code', 's.service_date', 's.status as service_status'])
             ->map(function (object $row) use ($today): array {
                 $amount = (float) $row->amount;
                 $paid = (float) $row->paid_amount;
@@ -77,7 +77,8 @@ final class PayableDirectory
                     'scheduled_date' => $row->scheduled_date,
                     'provider' => ['ref' => $row->provider_ref, 'name' => $row->provider_name, 'status' => $row->provider_status],
                     'reservation' => $row->reservation_code ? ['code' => $row->reservation_code, 'title' => $row->reservation_title] : null,
-                    'service' => $row->service_name,
+                    'service' => $row->service_code ? ['code' => $row->service_code, 'name' => $row->service_name, 'date' => $row->service_date, 'status' => $row->service_status] : null,
+                    'managed' => $row->kind === 'servicio' && $row->service_code !== null,
                 ];
             })->values();
 

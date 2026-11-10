@@ -7,6 +7,7 @@ namespace App\Domain\Operations\Http\Controllers;
 use App\Domain\Iam\Models\User;
 use App\Domain\Operations\Actions\AssignmentWorkflow;
 use App\Domain\Operations\Actions\OrderWorkflow;
+use App\Domain\Operations\Actions\ServiceCompletion;
 use App\Domain\Operations\Support\OrderDirectory;
 use App\Domain\Operations\Support\OrderFlow;
 use App\Domain\Shared\Errors\ApiException;
@@ -109,6 +110,13 @@ final class OrderController
         $assignments->release($assignment, $this->user($request));
 
         return response()->json(['data' => ['id' => $assignment]]);
+    }
+
+    public function completeService(Request $request, string $service, ServiceCompletion $completion): JsonResponse
+    {
+        $data = $request->validate(['note' => ['nullable', 'string', 'max:500']], ['note.*' => 'La observación admite hasta 500 caracteres.']);
+
+        return response()->json(['data' => $completion->complete($service, $data['note'] ?? null, $this->user($request))]);
     }
 
     private function user(Request $request): User

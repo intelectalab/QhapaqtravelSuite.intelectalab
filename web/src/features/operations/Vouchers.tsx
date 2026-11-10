@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, CheckCheck, CircleCheck, CopyPlus, FileClock, Ticket, TicketCheck, TicketX } from "lucide-react";
+import { Ban, CheckCheck, CircleCheck, CopyPlus, Download, FileClock, Ticket, TicketCheck, TicketX } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { DataTable } from "@/components/table/DataTable";
@@ -9,6 +9,7 @@ import type { Column, FilterConfig, MetricFilter, SortOption } from "@/component
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { DownloadButton } from "@/components/ui/DownloadButton";
 import { SelectField } from "@/components/ui/SelectField";
 import { SidePanel } from "@/components/ui/SidePanel";
 import { TextArea } from "@/components/ui/TextArea";
@@ -81,6 +82,7 @@ function VoucherRowActions({ voucher, canIssue }: { voucher: Voucher; canIssue: 
   return (
     <RowActions>
       <VoucherPanel voucher={voucher} />
+      {voucher.status === "anulado" ? <RowIcon tone="neutral" label="Descargar PDF" icon={<Download size={15} />} disabledHint="Un voucher anulado no tiene PDF vigente" /> : <DownloadButton href={`/operaciones/vouchers/${voucher.code}/pdf`} label={`Descargar ${voucher.code}`} size="sm" variant="ghost" iconOnly className="[&_button]:bg-accent/10 [&_button]:text-accent" />}
       {canIssue && (active ? (
         <OpsStep step="voucher_version" target={voucher.code} version={voucher.lock_version} formKey={`${voucher.code}-version`} label="Nueva versión" title="Nueva versión" description={`${voucher.code} · versión ${voucher.version + 1}`} submitLabel="Emitir versión" trigger={(open) => <RowIcon tone="edit" label="Nueva versión" icon={<CopyPlus size={15} />} onClick={open} />}>
           <ConfirmNote>Se conserva el código del voucher y se reemplaza la versión vigente con los datos actuales del servicio.</ConfirmNote>

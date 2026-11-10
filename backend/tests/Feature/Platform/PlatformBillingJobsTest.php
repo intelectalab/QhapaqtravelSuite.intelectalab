@@ -10,6 +10,8 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
+beforeEach(fn () => lockPlatformBilling());
+
 function platformDb(): ConnectionInterface
 {
     return DB::connection('pgsql_platform');

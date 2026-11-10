@@ -1,14 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { type AccessRequestState, type NotificationFeed, SEARCH_MIN, type SearchHit, type SearchResult, type UserNotification } from "@/lib/account";
+import { type AccessRequestState, SEARCH_MIN, type SearchHit, type SearchResult } from "@/lib/account";
 import { apiFetch } from "@/lib/server/api";
-
-export async function loadNotifications(): Promise<NotificationFeed | null> {
-  const result = await apiFetch<{ data: UserNotification[]; meta: { unread_count: number; can_view_log: boolean } }>("/me/notifications", { raw: true });
-  if (!result.ok || !result.data) return null;
-  return { items: result.data.data, unread: result.data.meta.unread_count, canViewLog: result.data.meta.can_view_log };
-}
 
 export async function readAllNotifications(): Promise<number | null> {
   const result = await apiFetch<{ marked: number }>("/me/notifications/read-all", { method: "POST", body: {} });

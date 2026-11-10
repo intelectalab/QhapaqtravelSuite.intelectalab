@@ -227,7 +227,7 @@ final class SalesTargetDirectory
             return $amount;
         }
 
-        $this->usd ??= (float) (DB::table('fin_fx_rates')->where('currency_code', 'USD')->orderByDesc('rate_date')->value('rate_pen') ?? 3.75);
+        $this->usd ??= (float) (DB::table('fin_fx_rates')->where('currency_code', 'USD')->orderByDesc('rate_date')->orderByDesc('effective_at')->value('rate_pen') ?? 3.75);
 
         return $amount * $this->usd;
     }

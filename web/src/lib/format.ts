@@ -21,6 +21,11 @@ export function formatNumber(value: number): string {
   return new Intl.NumberFormat(LOCALE).format(value).replace(/,/g, " ");
 }
 
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1 }).format(bytes / (1024 * 1024))} MB`;
+}
+
 export function formatPercent(value: number, digits = 1): string {
   return `${new Intl.NumberFormat(LOCALE, { maximumFractionDigits: digits, minimumFractionDigits: digits }).format(value)} %`;
 }

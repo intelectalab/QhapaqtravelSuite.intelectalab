@@ -107,6 +107,10 @@ final class AvailabilityRegistry
 
             $departure = $this->departureFor($hold);
 
+            if (DB::table('catalog_products')->where('id', $departure->product_id)->value('status') !== 'ACTIVE') {
+                throw ApiException::unprocessable('PRD-BR-002', 'El producto no está activo: no se pueden confirmar sus cupos.');
+            }
+
             if ($departure->sold + $hold->quantity > $departure->capacity) {
                 throw ApiException::conflict('PRD-BR-012', 'Confirmar este hold excede la capacidad de la salida.');
             }
@@ -167,7 +171,7 @@ final class AvailabilityRegistry
 
     private function departureFor(object $hold): object
     {
-        return DB::table('catalog_product_departures')->where('id', $hold->departure_id)->lockForUpdate()->first() ?? throw ApiException::conflict('CAT-BR-22', 'El bloqueo no está asociado a una salida.');
+        return DB::table('catalog_product_departures')->where('id', $hold->departure_id)->lock('for no key update')->first() ?? throw ApiException::conflict('CAT-BR-22', 'El bloqueo no está asociado a una salida.');
     }
 
     private function moveSold(object $departure, int $delta, User $actor): void

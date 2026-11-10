@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Finance\Support;
 
+use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Money\Decimal;
@@ -14,7 +15,7 @@ final class ReceivableLedger
 {
     public const TOLERANCE = 0.005;
 
-    public function __construct(private readonly Consolidation $money, private readonly AuditLogger $audit) {}
+    public function __construct(private readonly Consolidation $money, private readonly AuditLogger $audit, private readonly SyncServicePayables $payables) {}
 
     public static function balance(object $row): BigDecimal
     {
@@ -55,12 +56,12 @@ final class ReceivableLedger
             'updated_at' => now(),
         ]);
 
-        $this->syncReservation($receivable->reservation_id);
+        $this->syncReservation($receivable->reservation_id, $actor);
 
         return (object) ['code' => $receivable->code, 'before' => (string) Decimal::round2(self::balance($receivable)), 'after' => (string) Decimal::round2($amount->minus($paid)), 'status' => $status];
     }
 
-    private function syncReservation(string $reservationId): void
+    private function syncReservation(string $reservationId, User $actor): void
     {
         $reservation = DB::table('booking_reservations')->where('id', $reservationId)->first(['code', 'status']);
         if ($reservation === null || $reservation->status !== 'pendiente_pago') {
@@ -74,5 +75,6 @@ final class ReceivableLedger
 
         DB::table('booking_reservations')->where('id', $reservationId)->update(['status' => 'confirmada', 'updated_at' => now()]);
         $this->audit->log('Reserva', $reservation->code, 'confirmar', 'pendiente_pago', 'confirmada (obligaciones pagadas)');
+        $this->payables->handle($reservationId, $actor);
     }
 }

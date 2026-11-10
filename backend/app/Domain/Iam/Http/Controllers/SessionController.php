@@ -90,7 +90,7 @@ final class SessionController
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
 
-        return response()->json(['data' => ['email' => $invitations->accept($token, $data['password'])]]);
+        return response()->json(['data' => $invitations->accept($token, $data['password'])]);
     }
 
     private function token(Request $request): AccessToken

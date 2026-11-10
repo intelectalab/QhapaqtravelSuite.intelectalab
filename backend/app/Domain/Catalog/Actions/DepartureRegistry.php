@@ -102,7 +102,7 @@ final class DepartureRegistry
 
     private function departure(string $ref): object
     {
-        return DB::table('catalog_product_departures')->where('ref', $ref)->lockForUpdate()->first() ?? throw ApiException::notFound('La salida no existe.');
+        return DB::table('catalog_product_departures')->where('ref', $ref)->lock('for no key update')->first() ?? throw ApiException::notFound('La salida no existe.');
     }
 
     private function values(array $data): array

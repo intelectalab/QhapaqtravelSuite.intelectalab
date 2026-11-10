@@ -100,6 +100,7 @@ export interface SettingsChannel {
 
 export interface SettingsSequence {
   doc_type: string;
+  series: string;
   label: string;
   prefix: string;
   pad: number;

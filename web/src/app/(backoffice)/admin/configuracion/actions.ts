@@ -19,5 +19,5 @@ export async function updateSettings(_state: AdminActionState, form: FormData): 
 }
 
 export async function updateSequence(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
-  return sendAdmin("/settings/sequences", "PATCH", { doc_type: text(form, "doc_type"), prefix: text(form, "prefix")?.toUpperCase(), next_number: text(form, "next_number") }, PATH);
+  return sendAdmin("/settings/sequences", "PATCH", { doc_type: text(form, "doc_type"), series: text(form, "series"), prefix: text(form, "prefix")?.toUpperCase(), next_number: text(form, "next_number") }, PATH);
 }

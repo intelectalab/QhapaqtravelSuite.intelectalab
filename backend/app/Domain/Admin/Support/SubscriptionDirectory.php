@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Admin\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Iam\Support\StaffSeats;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Carbon;
@@ -43,7 +44,7 @@ final class SubscriptionDirectory
         $current = $metered->filter(fn (object $row): bool => Carbon::parse($row->month)->isSameMonth($month))->pluck('value', 'metric');
         $whatsappExtra = (int) $items->where('addon_code', 'whatsapp_pack')->sum('quantity') * 1000;
         $used = [
-            'users' => DB::table('iam_users')->whereNull('deleted_at')->whereIn('status', ['activo', 'pendiente'])->count(),
+            'users' => StaffSeats::count(DB::table('iam_users')),
             'sedes' => DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->count(),
             'reservations_month' => DB::table('booking_reservations')->whereNull('deleted_at')->where('created_at', '>=', $month)->count(),
             'storage_gb' => round(((int) $tenant->storage_used_bytes) / 1024 ** 3, 1),

@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { StatusBadge } from "@/components/ui/Badge";
+import { DownloadButton } from "@/components/ui/DownloadButton";
 import { SOFT_TINT } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { QuoteVersion } from "@/lib/quotes";
 
-export function QuoteVersions({ versions, currency, seeMargin }: { versions: QuoteVersion[]; currency: string; seeMargin: boolean }) {
+export function QuoteVersions({ code, versions, currency, seeMargin }: { code: string; versions: QuoteVersion[]; currency: string; seeMargin: boolean }) {
   const [selected, setSelected] = useState(versions[0]?.number);
   const version = versions.find((item) => item.number === selected) ?? versions[0];
 
@@ -38,6 +39,7 @@ export function QuoteVersions({ versions, currency, seeMargin }: { versions: Quo
           <span>
             Emitida el {formatDate(version.issued_on)} por {version.author}
           </span>
+          <DownloadButton href={`/cotizaciones/${code}/pdf/${version.number}`} label={`PDF de la versión ${version.number}`} size="sm" variant="ghost" className="ml-auto" />
         </p>
         {version.notes && <p className={cn("mb-3 rounded-[12px] px-3.5 py-2.5 text-[13px] text-fg-2", SOFT_TINT)}>{version.notes}</p>}
 

@@ -66,7 +66,7 @@ final class ServicesFromQuoteItem
         foreach ($components->values() as $index => $component) {
             [$kind, $assign] = $this->kindFor((string) $component->type);
             $quantity = $this->quantity($component);
-            $times = $quantity->isGreaterThan(1) ? ' ×'.$quantity->stripTrailingZeros() : '';
+            $times = $quantity->isGreaterThan(1) ? ' ×'.$quantity->strippedOfTrailingZeros() : '';
 
             $rows[] = [
                 ...$base,

@@ -233,13 +233,23 @@ final class LeadWorkflow
         }
 
         $steps = ['nuevo' => 2, 'contactado' => 4, 'calificado' => 6];
-        $this->save($lead, $version, [
-            'status' => 'descartado',
-            'discard_reason_code' => $reason,
-            'discard_detail' => $detail,
-            'discarded_at' => now(),
-            'discarded_at_step' => $steps[$lead->status] ?? 0,
-        ], $actor);
+        DB::transaction(function () use ($lead, $version, $reason, $detail, $steps, $actor): void {
+            $this->save($lead, $version, [
+                'status' => 'descartado',
+                'discard_reason_code' => $reason,
+                'discard_detail' => $detail,
+                'discarded_at' => now(),
+                'discarded_at_step' => $steps[$lead->status] ?? 0,
+            ], $actor);
+            DB::table('crm_activities')->where('related_type', 'lead')->where('related_id', $lead->id)->whereIn('status', ['pendiente', 'vencida'])->update([
+                'status' => 'completada',
+                'result' => 'Cerrada automáticamente: lead descartado',
+                'auto_closed' => true,
+                'completed_at' => now(),
+                'updated_by' => $actor->getKey(),
+                'updated_at' => now(),
+            ]);
+        });
         $this->audit->log('Lead', $code, 'descartar', $lead->status, $this->catalog->label('discard_reason', $reason));
     }
 

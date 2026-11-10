@@ -7,8 +7,11 @@ namespace App\Domain\Iam\Actions;
 use App\Domain\Iam\Models\Role;
 use App\Domain\Iam\Models\User;
 use App\Domain\Iam\Support\Invitations;
+use App\Domain\Iam\Support\StaffSeats;
+use App\Domain\Iam\Support\UserCodes;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Mail\QueuedMail;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -21,6 +24,8 @@ final class UserAdmin
         private readonly AuditLogger $audit,
         private readonly Invitations $invitations,
         private readonly TenantContext $context,
+        private readonly UserCodes $codes,
+        private readonly QueuedMail $mail,
     ) {}
 
     public function invite(array $data, User $actor): string
@@ -41,7 +46,7 @@ final class UserAdmin
 
         [$user, $token] = DB::transaction(function () use ($data, $email, $role, $actor): array {
             $user = User::query()->create([
-                'code' => $this->nextCode(),
+                'code' => $this->codes->next(),
                 'name' => trim($data['name']),
                 'email' => $email,
                 'phone' => trim((string) ($data['phone'] ?? '')) ?: null,
@@ -158,6 +163,8 @@ final class UserAdmin
             DB::table('personal_access_tokens')->where('tokenable_id', $user->getKey())->delete();
             $this->audit->log('Usuario', $user->code, 'resetear_mfa', after: $reason);
         });
+
+        $this->mail->send($user->email, $user->name, 'Se reinició tu verificación en dos pasos', "Hola {$user->name}:\n\nEl administrador de {$this->context->tenant()->commercial_name} reinició la verificación en dos pasos de tu cuenta. La próxima vez que entres tendrás que configurarla de nuevo con tu aplicación de autenticación.\n\nSi no lo solicitaste, comunícate con el administrador de tu agencia.");
     }
 
     public function resendInvitation(string $code, User $actor): void
@@ -183,7 +190,7 @@ final class UserAdmin
     {
         $tenant = $this->context->tenant();
         $limit = DB::connection('pgsql_platform')->table('plan_limits')->where('plan_id', $tenant->plan_id)->where('metric', 'users')->value('value');
-        $used = DB::table('iam_users')->whereNull('deleted_at')->whereIn('status', ['activo', 'pendiente'])->count();
+        $used = StaffSeats::count(DB::table('iam_users'));
 
         if ($limit !== null && $used >= (int) $limit) {
             throw ApiException::conflict('USR-BR-02', "Tu plan permite {$limit} usuarios y ya tienes {$used}. Desactiva a alguien o mejora el plan.");
@@ -209,13 +216,5 @@ final class UserAdmin
     private function user(string $code): User
     {
         return User::query()->where('code', $code)->whereNull('deleted_at')->first() ?? throw ApiException::notFound('El usuario no existe.');
-    }
-
-    private function nextCode(): string
-    {
-        DB::select('select pg_advisory_xact_lock(hashtext(?))', ["{$this->context->idOrFail()}:iam_users"]);
-        $numbers = DB::table('iam_users')->where('code', 'like', 'U%')->pluck('code')->map(fn (string $code) => (int) Str::after($code, 'U'));
-
-        return 'U'.str_pad((string) (($numbers->max() ?? 0) + 1), 2, '0', STR_PAD_LEFT);
     }
 }

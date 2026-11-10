@@ -14,6 +14,7 @@ use App\Domain\Booking\Support\ReservationAssembler;
 use App\Domain\Booking\Support\ReservationReceivables;
 use App\Domain\Crm\Support\Advisors;
 use App\Domain\Crm\Support\Portfolio;
+use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Concurrency\InventoryLock;
@@ -35,6 +36,7 @@ final class CreateDirectReservation
         private readonly DirectBookingPlan $plans,
         private readonly ReservationAssembler $assembler,
         private readonly ReservationReceivables $receivables,
+        private readonly SyncServicePayables $payables,
         private readonly SequenceService $sequences,
         private readonly ReservationStateMachine $states,
         private readonly AuditLogger $audit,
@@ -119,6 +121,7 @@ final class CreateDirectReservation
         $this->assembler->addServices($reservation, $item, $plan['departure']['id'] ?? null, '0', $plan['currency'], $plan['fx_rate'], $plan['main_provider_id'], 0, $actor, $available);
         $this->assembler->placeholders($reservation, (int) $plan['pax']['adt'], (int) $plan['pax']['chd'], (int) $plan['pax']['inf']);
         $this->receivables->create($reservation, $actor, BigDecimal::of($plan['total']));
+        $this->payables->handle((string) $reservation->id, $actor);
 
         $this->audit->log('Reserva', $reservation->code, 'crear_directa', null, "{$status->value} · {$plan['currency']} {$plan['total']} · {$seats} pax", actor: $actor);
         $this->publish($reservation, $status, $actor);

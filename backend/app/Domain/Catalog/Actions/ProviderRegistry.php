@@ -77,7 +77,7 @@ final class ProviderRegistry
 
     private function provider(string $ref): object
     {
-        return DB::table('catalog_providers')->where('ref', $ref)->whereNull('deleted_at')->lockForUpdate()->first() ?? throw ApiException::notFound('El proveedor no existe.');
+        return DB::table('catalog_providers')->where('ref', $ref)->whereNull('deleted_at')->lock('for no key update')->first() ?? throw ApiException::notFound('El proveedor no existe.');
     }
 
     private function assertUniqueRuc(string $ruc, ?string $exceptId): void

@@ -41,10 +41,10 @@ final class RegisterFxRate
             'previous_rate' => $previous?->rate_pen,
             'rate_date' => $date,
             'source' => $data['source'],
-            'effective_at' => now(),
+            'effective_at' => now()->format('Y-m-d H:i:s.uP'),
             'created_by' => $actor->getKey(),
         ]);
 
-        $this->audit->log('Tipo de cambio', $code, 'registrar', $previous ? (string) $previous->rate_pen : null, "{$rate->stripTrailingZeros()} · {$date} · {$data['source']}");
+        $this->audit->log('Tipo de cambio', $code, 'registrar', $previous ? (string) $previous->rate_pen : null, "{$rate->strippedOfTrailingZeros()} · {$date} · {$data['source']}");
     }
 }

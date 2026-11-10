@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Channels\Actions;
 
-use App\Domain\Channels\Support\ChannelKit;
 use App\Domain\Channels\Support\EcommerceDirectory;
+use App\Domain\Channels\Support\EcommerceOrderRelease;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 final class ManageEcommerce
 {
-    public function __construct(private readonly AuditLogger $audit, private readonly ChannelKit $kit) {}
+    public function __construct(private readonly AuditLogger $audit, private readonly EcommerceOrderRelease $release) {}
 
     public function publish(string $productCode, bool $published, User $actor): void
     {
@@ -41,20 +41,24 @@ final class ManageEcommerce
 
     public function cancel(string $code, string $reason, User $actor): void
     {
-        $order = $this->kit->row('channel_ecom_orders', $code, ['id', 'status', 'lock_version']);
+        DB::transaction(function () use ($code, $reason, $actor): void {
+            $order = DB::table('channel_ecom_orders')->where('code', $code)->lockForUpdate()->first(['id', 'status', 'lock_version']) ?? throw ApiException::notFound();
 
-        if (! in_array($order->status, EcommerceDirectory::OPEN_STATUSES, true)) {
-            throw ApiException::conflict('ECO-BR-04', 'Solo se anulan pedidos con el pago pendiente o rechazado.');
-        }
+            if (! in_array($order->status, EcommerceDirectory::OPEN_STATUSES, true)) {
+                throw ApiException::conflict('ECO-BR-04', 'Solo se anulan pedidos con el pago pendiente o rechazado.');
+            }
 
-        DB::table('channel_ecom_orders')->where('id', $order->id)->update([
-            'status' => 'cancelado',
-            'cancel_reason' => $reason,
-            'lock_version' => $order->lock_version + 1,
-            'updated_by' => $actor->getKey(),
-            'updated_at' => now(),
-        ]);
+            $this->release->release((string) $order->id, 'liberada', "Pedido web anulado: {$reason}", 'pedido web anulado');
 
-        $this->audit->log('Pedido web', $code, 'anular', $order->status, "cancelado · {$reason}");
+            DB::table('channel_ecom_orders')->where('id', $order->id)->update([
+                'status' => 'cancelado',
+                'cancel_reason' => $reason,
+                'lock_version' => $order->lock_version + 1,
+                'updated_by' => $actor->getKey(),
+                'updated_at' => now(),
+            ]);
+
+            $this->audit->log('Pedido web', $code, 'anular', $order->status, "cancelado · {$reason}");
+        });
     }
 }

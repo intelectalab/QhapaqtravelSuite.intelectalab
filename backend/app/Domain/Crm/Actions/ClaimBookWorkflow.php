@@ -83,16 +83,22 @@ final class ClaimBookWorkflow
             throw ApiException::conflict('LR-STATE', 'La hoja ya fue respondida; no se edita.');
         }
 
+        $stored = json_decode((string) $claim->consumer, true) ?: [];
+        $consumer = $this->consumer($data);
+        $changed = collect(['name', 'docType', 'docNumber', 'address', 'email', 'phone'])->contains(fn (string $key): bool => (string) ($stored[$key] ?? '') !== (string) ($consumer[$key] ?? ''))
+            || (string) $claim->detail !== (string) $data['detail']
+            || (string) $claim->request !== (string) $data['request'];
+
+        if ($changed) {
+            throw ApiException::unprocessable('LR-BR-08', 'Los datos del consumidor, el detalle y el pedido de la hoja no se modifican.');
+        }
+
         [$clientId, $reservationId] = $this->links($data);
         DB::table('crm_cases')->where('id', $claim->id)->update([
             'client_id' => $clientId,
             'reservation_id' => $reservationId,
             'type_code' => $data['type'],
-            'consumer' => json_encode($this->consumer($data), JSON_UNESCAPED_UNICODE),
             'good' => json_encode(['kind' => $data['good_kind'], 'description' => $data['good_description'], 'amount' => (float) ($data['good_amount'] ?? 0), 'currency' => $data['good_currency'] ?? 'PEN'], JSON_UNESCAPED_UNICODE),
-            'detail' => $data['detail'],
-            'description' => $data['detail'],
-            'request' => $data['request'],
             'lock_version' => DB::raw('lock_version + 1'),
             'updated_by' => $actor->getKey(),
             'updated_at' => now(),

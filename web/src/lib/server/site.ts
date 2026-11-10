@@ -25,6 +25,8 @@ async function siteHeaders(agencia: string, extra: Record<string, string> = {}):
   return { "X-Forwarded-Host": `${agencia}.${SITES_DOMAIN}`, "X-Site-Locale": await siteLocale(), ...extra };
 }
 
+export const siteRequestHeaders = siteHeaders;
+
 async function read<T>(agencia: string, path: string, extra: Record<string, string> = {}): Promise<T> {
   const result = await apiFetch<T>(sitePath(path), { auth: false, headers: await siteHeaders(agencia, extra) });
   if (result.status === 404) notFound();

@@ -93,6 +93,7 @@ export interface ReservationDetail extends Omit<ReservationRow, "passengers" | "
   services: ReservationService[];
   receivables?: { code: string; kind: string; concept: string; amount: string; paid_amount: string; currency: string; due_date: string; status: string }[];
   incidents: { code: string; title: string; type: string; severity: string; status: string; created_at: string }[];
+  vouchers: { code: string; label: string; date: string; status: string; version: number }[];
   history: { action: string; before_value: string | null; after_value: string | null; occurred_at: string }[];
 }
 

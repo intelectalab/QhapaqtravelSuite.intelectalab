@@ -1,10 +1,20 @@
 <?php
 
+use App\Domain\Operations\Support\EvidenceStore;
+use App\Domain\Shared\Tenancy\TenantContext;
+use App\Http\Middleware\IdempotencyMiddleware;
 use App\Jobs\SendInvoiceToFiscalProvider;
+use App\Jobs\SendPlainMail;
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
+    $this->withoutMiddleware(ThrottleRequests::class);
     Queue::fake();
     freezeBusinessToday();
 });
@@ -93,9 +103,9 @@ function flujoCotizacion(array $flow): array
     test()->postJson("/api/v1/quotes/{$code}/send", sendBody(), critical((int) rowOf('quote_quotes', $code)->lock_version))->assertOk();
     expect(rowOf('quote_quotes', $code)->status)->toBe('enviada');
 
-    withinTenant(tenantA(), fn () => DB::table('iam_users')->where('code', 'U14')->update(['client_id' => idOf('crm_clients', $flow['client'])]));
+    $portalToken = flujoAccesoPortal($flow['client']);
 
-    actingAsSeed('U14');
+    useToken($portalToken);
     $portal = test()->getJson("/api/v1/portal/client/quotes/{$code}")->assertOk()->json('data');
     expect($portal['status'])->toBe('vista')
         ->and($portal['can_decide'])->toBeTrue();
@@ -105,7 +115,33 @@ function flujoCotizacion(array $flow): array
     expect($quote->status)->toBe('aprobada')
         ->and($quote->approval_channel)->toBe('Portal');
 
-    return [...$flow, 'quote' => $code];
+    return [...$flow, 'quote' => $code, 'portal_token' => $portalToken];
+}
+
+function flujoAccesoPortal(string $client): string
+{
+    actingAsSeed('U03');
+    $email = (string) rowOf('crm_clients', $client)->email;
+    test()->postJson("/api/v1/crm/clients/{$client}/portal-access", [], critical())->assertCreated()->assertJsonPath('data.status', 'invitado');
+
+    $mail = Queue::pushed(SendPlainMail::class, fn (SendPlainMail $job) => $job->to === $email)->last();
+    preg_match('#/invitacion/(\S+)#', (string) $mail?->body, $match);
+    $password = 'ValeriaPortal2026';
+
+    test()->withoutMiddleware(IdempotencyMiddleware::class);
+    app(TenantContext::class)->clear();
+    withPlatformSeeingTenant(fn () => test()->postJson("/api/v1/auth/invitations/{$match[1]}/accept", ['password' => $password, 'password_confirmation' => $password])
+        ->assertOk()->assertJsonPath('data.home', '/portal'));
+    app()->forgetInstance(IdempotencyMiddleware::class);
+
+    app('auth')->forgetGuards();
+    $session = test()->postJson('/api/v1/auth/login', ['email' => $email, 'password' => $password, 'tenant_slug' => tenantA()->subdomain])
+        ->assertOk()->assertJsonPath('data.home', '/portal')->json('data');
+
+    actingAsSeed('U03');
+    expect(test()->getJson("/api/v1/crm/clients/{$client}")->assertOk()->json('data.portal_access.status'))->toBe('activo');
+
+    return (string) $session['token'];
 }
 
 function flujoReserva(array $flow): array
@@ -186,7 +222,7 @@ function flujoCobros(array $flow): array
     expect(bcadd((string) $anticipo->amount, (string) $saldo->amount, 2))->toBe(bcadd((string) reservationRow($flow['reservation'])->total_amount, '0', 2))
         ->and($anticipo->status)->toBe('abierta');
 
-    actingAsSeed('U14');
+    useToken($flow['portal_token']);
     $billing = test()->getJson('/api/v1/portal/client/receivables')->assertOk()->json('data');
     expect(collect($billing['installments'])->pluck('code'))->toContain($anticipo->code);
     $payment = test()->postJson("/api/v1/portal/client/receivables/{$anticipo->code}/payments", [
@@ -318,23 +354,28 @@ function flujoOperaciones(array $flow): array
 
     expect(test()->postJson("/api/v1/ops/orders/{$order}/close", [], critical((int) rowOf('ops_orders', $order)->lock_version)))->toBeApiError(422, 'OPS-BR-80');
 
-    withinTenant(tenantA(), function () use ($flow, $order, $coordinator): void {
-        $reservationId = reservationRow($flow['reservation'])->id;
-        DB::table('booking_reservation_services')->where('reservation_id', $reservationId)->where('status', 'confirmado')->update(['status' => 'completado']);
-        DB::table('ops_evidences')->insert([
-            'tenant_id' => tenantA()->getKey(),
-            'order_id' => rowOf('ops_orders', $order)->id,
-            'file_name' => 'cierre.jpg',
-            'storage_path' => 'evidences/cierre.jpg',
-            'mime_type' => 'image/jpeg',
-            'size_bytes' => 2048,
-            'sha256' => str_repeat('a', 64),
-            'captured_at' => now(),
-            'uploaded_by' => $coordinator->id,
-        ]);
-    });
+    $pending = collect(flujoOrden($order)['services'])->where('status', 'confirmado');
+    expect(test()->postJson("/api/v1/ops/reservation-services/{$pending->first()['code']}/complete", [], critical($pending->first()['lock_version'])))->toBeApiError(422, 'OPS-BR-13');
+
+    Storage::fake(EvidenceStore::diskName());
+    $afterTrip = CarbonImmutable::parse('2026-10-05 09:00:00', 'America/Lima');
+    Carbon::setTestNow($afterTrip);
+    CarbonImmutable::setTestNow($afterTrip);
+    $coordinator = actingAsSeed('U05');
+
+    foreach (collect(flujoOrden($order)['services'])->where('status', 'confirmado') as $service) {
+        test()->postJson("/api/v1/ops/reservation-services/{$service['code']}/complete", ['note' => 'Servicio prestado sin novedades.'], critical($service['lock_version']))->assertOk()->assertJsonPath('data.status', 'completado');
+    }
+    expect(test()->postJson("/api/v1/ops/orders/{$order}/close", [], critical((int) rowOf('ops_orders', $order)->lock_version)))->toBeApiError(422, 'OPS-BR-80');
+
+    $evidence = test()->withHeaders(['Accept' => 'application/json'])->post("/api/v1/ops/orders/{$order}/evidences/upload", [
+        'file' => UploadedFile::fake()->createWithContent('cierre.jpg', "\xFF\xD8\xFF\xE0\x00\x10JFIF\x00".str_repeat('q', 1024)."\xFF\xD9"),
+    ])->assertCreated()->json('data');
+    expect(rowOf('ops_evidences', $evidence['id'], column: 'id')->uploaded_by)->toBe($coordinator->id);
 
     test()->postJson("/api/v1/ops/orders/{$order}/close", [], critical((int) rowOf('ops_orders', $order)->lock_version))->assertOk()->assertJsonPath('data.status', 'completada');
+    freezeBusinessToday();
+    actingAsSeed('U05');
     expect(reservationRow($flow['reservation'])->status)->toBe('completada')
         ->and(collect(flujoOrden($order)['checks'])->every(fn (array $check) => $check['ok']))->toBeTrue();
 
@@ -344,34 +385,51 @@ function flujoOperaciones(array $flow): array
     return [...$flow, 'order' => $order, 'voucher' => $voucher, 'incident' => $incident];
 }
 
+function flujoCxpServicio(string $reservation): array
+{
+    return withinTenant(tenantA(), function () use ($reservation): array {
+        $id = reservationRow($reservation)->id;
+
+        return [
+            DB::table('booking_reservation_services')->where('reservation_id', $id)->whereNotNull('provider_id')->where('cost_amount', '>', 0)->count(),
+            DB::table('fin_payables')->where('reservation_id', $id)->where('kind', 'servicio')->whereNotNull('reservation_service_id')->pluck('status'),
+        ];
+    });
+}
+
 function flujoProveedores(array $flow): array
 {
     $reservationId = reservationRow($flow['reservation'])->id;
-    expect(withinTenant(tenantA(), fn () => DB::table('fin_payables')->where('reservation_id', $reservationId)->count()))->toBe(0);
+    [$services, $payables] = withinTenant(tenantA(), fn () => [
+        DB::table('booking_reservation_services as s')->join('catalog_providers as p', 'p.id', '=', 's.provider_id')->where('s.reservation_id', $reservationId)->where('s.cost_amount', '>', 0)->get(['s.id', 's.cost_amount', 's.currency', 'p.ref as provider']),
+        DB::table('fin_payables')->where('reservation_id', $reservationId)->get()->keyBy('reservation_service_id'),
+    ]);
+    expect($services)->not->toBeEmpty()
+        ->and($payables)->toHaveCount($services->count())
+        ->and($payables->pluck('kind')->unique()->all())->toBe(['servicio']);
+    foreach ($services as $service) {
+        expect(bcadd((string) $payables->get($service->id)->amount, '0', 2))->toBe(bcadd((string) $service->cost_amount, '0', 2))
+            ->and($payables->get($service->id)->currency)->toBe($service->currency);
+    }
 
-    actingAsSeed('U07');
-    $payable = test()->postJson('/api/v1/finance/payables', [
-        'reservation' => $flow['reservation'],
-        'provider' => 'PRV-001',
-        'cost_type' => 'gasto_operativo_destino',
-        'concept' => 'Late check-out por el retraso del vuelo de llegada',
-        'amount' => '45.00',
-        'currency' => 'USD',
-        'fx_rate' => '3.75',
-        'supplier_doc' => 'F001-000981',
-    ])->assertCreated()->json('data.code');
+    $hotel = $payables->get($services->firstWhere('provider', 'PRV-001')->id);
+    $payable = (string) $hotel->code;
+    $amount = bcadd((string) $hotel->amount, '0', 2);
     expect(rowOf('fin_payables', $payable)->status)->toBe('abierta');
 
     actingAsSeed('U17');
     expect(collect(test()->getJson('/api/v1/supplier/payables')->assertOk()->json('data.rows'))->pluck('code'))->toContain($payable);
 
     actingAsSeed('U07');
-    expect(test()->postJson("/api/v1/finance/payables/{$payable}/payouts", ['method' => 'transferencia', 'amount' => '45.00', 'paid_on' => BUSINESS_TODAY, 'operation_ref' => 'TRF-1'], critical((int) rowOf('fin_payables', $payable)->lock_version)))->toBeApiError(422, 'FIN-BR-19');
+    $listed = collect(test()->getJson('/api/v1/finance/payables')->assertOk()->json('data.rows'))->firstWhere('code', $payable);
+    expect($listed['reservation']['code'])->toBe($flow['reservation'])
+        ->and($listed['service']['code'])->not->toBeEmpty();
+    expect(test()->postJson("/api/v1/finance/payables/{$payable}/payouts", ['method' => 'transferencia', 'amount' => $amount, 'paid_on' => BUSINESS_TODAY, 'operation_ref' => 'TRF-1'], critical((int) rowOf('fin_payables', $payable)->lock_version)))->toBeApiError(422, 'FIN-BR-19');
     test()->postJson("/api/v1/finance/payables/{$payable}/approve", [], critical((int) rowOf('fin_payables', $payable)->lock_version))->assertOk();
     expect(rowOf('fin_payables', $payable)->status)->toBe('aprobada');
-    test()->postJson("/api/v1/finance/payables/{$payable}/payouts", ['method' => 'transferencia', 'amount' => '45.00', 'paid_on' => BUSINESS_TODAY, 'operation_ref' => 'TRF-55120', 'fx_rate' => '3.75'], critical((int) rowOf('fin_payables', $payable)->lock_version))->assertCreated();
+    test()->postJson("/api/v1/finance/payables/{$payable}/payouts", ['method' => 'transferencia', 'amount' => $amount, 'paid_on' => BUSINESS_TODAY, 'operation_ref' => 'TRF-55120', 'fx_rate' => '3.75'], critical((int) rowOf('fin_payables', $payable)->lock_version))->assertCreated();
     expect(rowOf('fin_payables', $payable)->status)->toBe('pagada')
-        ->and(bcadd((string) rowOf('fin_payables', $payable)->paid_amount, '0', 2))->toBe('45.00');
+        ->and(bcadd((string) rowOf('fin_payables', $payable)->paid_amount, '0', 2))->toBe($amount);
 
     test()->postJson('/api/v1/finance/commissions/calculate', [], critical())->assertCreated();
     $commission = withinTenant(tenantA(), fn () => DB::table('fin_commissions')->where('reservation_id', $reservationId)->whereNull('deleted_at')->first());
@@ -440,7 +498,8 @@ function flujoCancelacion(array $flow): array
         ->and($receivables['saldo']->status)->toBe('cancelada')
         ->and((int) departureRow('SAL-0105')->sold)->toBe($sold)
         ->and(withinTenant(tenantA(), fn () => DB::table('booking_cancel_requests')->where('id', $request['id'])->value('status')))->toBe('aprobada')
-        ->and(withinTenant(tenantA(), fn () => DB::table('booking_reservation_services')->where('reservation_id', reservationRow($code)->id)->where('status', '<>', 'cancelado')->count()))->toBe(0);
+        ->and(withinTenant(tenantA(), fn () => DB::table('booking_reservation_services')->where('reservation_id', reservationRow($code)->id)->where('status', '<>', 'cancelado')->count()))->toBe(0)
+        ->and(flujoCxpServicio($code)[1]->unique()->all())->toBe(['cancelada']);
 
     if (bccomp($preview['owed'], '0', 2) === 1) {
         expect(bcadd((string) $receivables['penalidad']->amount, '0', 2))->toBe($preview['owed']);
@@ -487,6 +546,9 @@ function flujoSitio(): array
         ->and(reservationRow($reservation)->channel)->toBe('E-commerce')
         ->and((int) departureRow('SAL-0404')->sold)->toBe($sold + 2)
         ->and(withinTenant(tenantA(), fn () => DB::table('fin_receivables')->where('reservation_id', reservationRow($reservation)->id)->where('status', '<>', 'pagada')->count()))->toBe(0);
+    [$billable, $payables] = flujoCxpServicio($reservation);
+    expect($billable)->toBeGreaterThan(0)
+        ->and($payables)->toHaveCount($billable);
 
     return ['order' => $order['code'], 'reservation' => $reservation];
 }
@@ -518,6 +580,11 @@ function flujoB2b(): array
         ->and(bcadd((string) $agency()->credit_used, '0', 2))->toBe(bcadd($creditBefore, $price['credit']['amount'], 2))
         ->and(withinTenant(tenantA(), fn () => DB::table('ops_vouchers as v')->join('booking_reservation_services as s', 's.id', '=', 'v.reservation_service_id')->where('s.reservation_id', $reservation->id)->where('v.status', 'emitido')->count()))->toBeGreaterThan(0);
 
+    [$billable, $payables] = flujoCxpServicio($code);
+    expect($billable)->toBeGreaterThan(0)
+        ->and($payables)->toHaveCount($billable)
+        ->and($payables->unique()->all())->toBe(['abierta']);
+
     test()->postJson("/api/v1/b2b/reservations/{$code}/cancel-request", ['reason' => 'Cambio de planes', 'detail' => 'El grupo pospone el viaje para noviembre.'])->assertSuccessful();
     expect(test()->postJson("/api/v1/b2b/reservations/{$code}/cancel-request", ['reason' => 'Cambio de planes', 'detail' => 'Otra vez la misma solicitud.']))->toBeApiError(409, 'CANCEL_REQUEST_PENDING');
 
@@ -528,7 +595,8 @@ function flujoB2b(): array
 
     expect(withinTenant(tenantA(), fn () => DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->value('status')))->toBe('aprobada')
         ->and(bcadd((string) $agency()->credit_used, '0', 2))->toBe($creditBefore)
-        ->and(withinTenant(tenantA(), fn () => DB::table('ops_vouchers as v')->join('booking_reservation_services as s', 's.id', '=', 'v.reservation_service_id')->where('s.reservation_id', $reservation->id)->where('v.status', 'emitido')->count()))->toBe(0);
+        ->and(withinTenant(tenantA(), fn () => DB::table('ops_vouchers as v')->join('booking_reservation_services as s', 's.id', '=', 'v.reservation_service_id')->where('s.reservation_id', $reservation->id)->where('v.status', 'emitido')->count()))->toBe(0)
+        ->and(flujoCxpServicio($code)[1]->unique()->all())->toBe(['cancelada']);
 
     return ['reservation' => $code];
 }
@@ -610,7 +678,7 @@ describe('Flujo de negocio completo de la agencia', function () {
         expect(rowOf('ops_orders', $flow['order'])->status)->toBe('completada');
     });
 
-    it('Finanzas, lado proveedor: registra la cuenta por pagar, la aprueba y la paga; calcula, aprueba y paga la comisión', function () {
+    it('Finanzas, lado proveedor: la cuenta por pagar del hotel nace con la reserva, se aprueba y se paga; calcula, aprueba y paga la comisión', function () {
         $flow = flujoProveedores(flujoOperaciones(flujoCobros(flujoReserva(flujoCotizacion(flujoLead())))));
 
         expect(rowOf('fin_commissions', $flow['commission'])->payment_ref)->toBe('PLANILLA-2026-09');

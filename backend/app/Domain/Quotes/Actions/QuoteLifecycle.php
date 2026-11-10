@@ -283,8 +283,11 @@ final class QuoteLifecycle
                 $quote->forceFill(['updated_by' => $actor->getKey()])->save();
             }
 
-            if ($quote->opportunity_id) {
-                DB::table('crm_opportunities')->where('id', $quote->opportunity_id)->whereNotIn('stage', ['ganada', 'perdida', 'negociacion'])->update(['stage' => 'negociacion', 'probability' => 70, 'updated_at' => now()]);
+            $opportunity = $quote->opportunity_id ? DB::table('crm_opportunities')->where('id', $quote->opportunity_id)->whereNotIn('stage', ['ganada', 'perdida', 'negociacion'])->first(['id', 'code', 'stage']) : null;
+
+            if ($opportunity) {
+                DB::table('crm_opportunities')->where('id', $opportunity->id)->update(['stage' => 'negociacion', 'probability' => 70, 'updated_at' => now()]);
+                $this->audit->log('Oportunidad', (string) $opportunity->code, 'cambio_etapa', (string) $opportunity->stage, 'negociacion');
             }
 
             $this->audit->log('Cotización', (string) $quote->code, 'negociacion', $before, "{$channel} · {$note}");

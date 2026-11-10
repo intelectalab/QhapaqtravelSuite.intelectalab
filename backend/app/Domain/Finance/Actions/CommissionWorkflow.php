@@ -35,7 +35,7 @@ final class CommissionWorkflow
 
                 $corporate = in_array($reservation->channel, ['Corporativo', 'Grupos'], true) || $reservation->segment_code === 'Corporativo';
                 $rule = $rules->get($isAgency ? 'b2b_convenio' : ($corporate ? 'corporativo_grupos' : 'directo_ecommerce'));
-                $pct = Decimal::of($isAgency ? $reservation->commission_pct : ($rule->pct ?? ($corporate ? '2.5' : '3')))->stripTrailingZeros();
+                $pct = Decimal::of($isAgency ? $reservation->commission_pct : ($rule->pct ?? ($corporate ? '2.5' : '3')))->strippedOfTrailingZeros();
                 $base = $isAgency || $reservation->currency === 'USD' ? $total : Decimal::withoutIgv($total);
                 $description = $isAgency ? "Convenio B2B: {$pct} % sobre el total de la reserva" : ($corporate ? 'Vendedor corporativo o grupos' : 'Vendedor venta directa').": {$pct} % sobre ".($reservation->currency === 'USD' ? 'el total (exportación, sin IGV)' : 'la venta neta sin IGV');
                 $code = $this->sequences->next('commission');

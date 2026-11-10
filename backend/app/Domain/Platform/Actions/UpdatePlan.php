@@ -22,7 +22,7 @@ final class UpdatePlan
         $year = (float) $data['price_year'];
 
         if ($year > $month * 12) {
-            throw ApiException::unprocessable('PLN-BR-02', 'El precio anual no puede superar 12 mensualidades.');
+            throw ApiException::unprocessable('PLN-BR-01', 'El precio anual no puede superar 12 mensualidades.');
         }
 
         $neighbors = Plan::on(self::CONNECTION)->whereIn('rank', [$plan->rank - 1, $plan->rank + 1])->get()->keyBy('rank');

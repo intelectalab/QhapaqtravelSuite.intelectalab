@@ -281,8 +281,8 @@ final class QuoteDirectory
             'author' => $version->author,
             'notes' => $version->notes,
             'snapshot' => $version->snapshot_label,
-            'discount_pct' => (string) BigDecimal::of((string) $version->discount_pct)->stripTrailingZeros(),
-            'tax_pct' => (string) BigDecimal::of((string) $version->tax_pct)->stripTrailingZeros(),
+            'discount_pct' => (string) BigDecimal::of((string) $version->discount_pct)->strippedOfTrailingZeros(),
+            'tax_pct' => (string) BigDecimal::of((string) $version->tax_pct)->strippedOfTrailingZeros(),
             'totals' => [
                 'sale' => Decimal::toApi((string) $version->sale_total),
                 'discount' => Decimal::toApi((string) $version->discount_total),

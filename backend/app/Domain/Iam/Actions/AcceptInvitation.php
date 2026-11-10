@@ -14,6 +14,10 @@ final class AcceptInvitation
 {
     private const CONNECTION = 'pgsql_platform';
 
+    private const PORTAL_HOME = '/portal';
+
+    private const BACKOFFICE_HOME = '/dashboard';
+
     public function __construct(private readonly AuditLogger $audit, private readonly TenantContext $context) {}
 
     public function show(string $token): array
@@ -25,10 +29,12 @@ final class AcceptInvitation
             'email' => $invitation->email,
             'agency' => $invitation->agency,
             'expires_at' => $invitation->expires_at,
+            'portal' => $this->portal($invitation),
+            'require_mfa' => (bool) $invitation->require_mfa,
         ];
     }
 
-    public function accept(string $token, string $password): string
+    public function accept(string $token, string $password): array
     {
         $invitation = $this->invitation($token);
 
@@ -45,7 +51,22 @@ final class AcceptInvitation
             $this->context->clear();
         });
 
-        return $invitation->email;
+        return ['email' => $invitation->email, 'home' => $this->access($invitation)['home']];
+    }
+
+    private function portal(object $invitation): bool
+    {
+        return $this->access($invitation)['experience'] === 'portal';
+    }
+
+    private function access(object $invitation): array
+    {
+        $role = DB::connection(self::CONNECTION)->table('model_has_roles as m')->join('roles as r', 'r.id', '=', 'm.role_id')
+            ->where('m.model_id', $invitation->user_id)->where('m.tenant_id', $invitation->tenant_id)->first(['r.name', 'r.experience']);
+        $config = config('access.roles.'.($role->name ?? 'sales'), ['experience' => 'backoffice', 'home' => self::BACKOFFICE_HOME]);
+        $experience = ($role->experience ?? null) ?: $config['experience'];
+
+        return ['experience' => $experience, 'home' => $experience === 'portal' ? self::PORTAL_HOME : ($config['home'] ?? self::BACKOFFICE_HOME)];
     }
 
     private function invitation(string $token): object
@@ -54,7 +75,7 @@ final class AcceptInvitation
             ->join('iam_users as u', 'u.id', '=', 'i.user_id')
             ->join('tenants as t', 't.id', '=', 'i.tenant_id')
             ->where('i.token_hash', hash('sha256', $token))
-            ->first(['i.id', 'i.tenant_id', 'i.user_id', 'i.expires_at', 'i.accepted_at', 'u.name', 'u.email', 't.commercial_name as agency', 't.status as tenant_status']);
+            ->first(['i.id', 'i.tenant_id', 'i.user_id', 'i.expires_at', 'i.accepted_at', 'i.require_mfa', 'u.name', 'u.email', 't.commercial_name as agency', 't.status as tenant_status']);
 
         if ($invitation === null) {
             throw ApiException::notFound('Este enlace de invitación no existe.');
@@ -64,7 +85,7 @@ final class AcceptInvitation
             throw ApiException::conflict('INVITATION_USED', 'Esta invitación ya se usó. Inicia sesión con tu correo y contraseña.');
         }
 
-        if (now()->greaterThan($invitation->expires_at)) {
+        if (now()->greaterThanOrEqualTo($invitation->expires_at)) {
             throw ApiException::conflict('INVITATION_EXPIRED', 'Esta invitación venció. Pide a la plataforma que te envíe una nueva.');
         }
 

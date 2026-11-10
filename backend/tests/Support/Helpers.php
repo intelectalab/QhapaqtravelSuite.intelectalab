@@ -195,6 +195,11 @@ function lockScheduledJobs(): void
     DB::select('select pg_advisory_xact_lock(7410301)');
 }
 
+function lockPlatformBilling(): void
+{
+    DB::connection('pgsql_platform')->select('select pg_advisory_xact_lock(7410302)');
+}
+
 function sendBody(): array
 {
     return ['channels' => ['email'], 'channel' => 'Email', 'recipient' => 'cliente@example.com', 'message' => 'Propuesta de viaje'];
@@ -286,6 +291,28 @@ function actingAsPlatform(): void
         return $token->getKey().'|'.$secret;
     });
     useToken($plain);
+}
+
+function withPlatformSeeingTenant(Closure $fn, ?Tenant $tenant = null): mixed
+{
+    $platform = DB::connection('pgsql_platform');
+    $tenantConnection = DB::connection('pgsql');
+    $original = $platform->getPdo();
+    $level = $platform->transactionLevel();
+    $setLevel = Closure::bind(function (int $count): void {
+        $this->transactions = $count;
+    }, $platform, $platform::class);
+
+    $platform->setPdo($tenantConnection->getPdo());
+    $setLevel($tenantConnection->transactionLevel());
+    $tenantConnection->select('select app_set_tenant(?::uuid)', [($tenant ?? tenantA())->getKey()]);
+
+    try {
+        return $fn();
+    } finally {
+        $platform->setPdo($original);
+        $setLevel($level);
+    }
 }
 
 function siteOf(string $subdomain = 'andes', array $extra = []): array

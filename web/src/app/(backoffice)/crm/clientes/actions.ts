@@ -51,6 +51,20 @@ export async function updateClient(_state: ClientActionState, form: FormData): P
   return send(`/crm/clients/${encodeURIComponent(text(form, "code") ?? "")}`, "PATCH", payload(form));
 }
 
+const portalPath = (form: FormData, action = "") => `/crm/clients/${encodeURIComponent(text(form, "code") ?? "")}/portal-access${action}`;
+
+export async function invitePortal(_state: ClientActionState, form: FormData): Promise<ClientActionState> {
+  return send(portalPath(form), "POST", {});
+}
+
+export async function resendPortalInvitation(_state: ClientActionState, form: FormData): Promise<ClientActionState> {
+  return send(portalPath(form, "/resend"), "POST", {});
+}
+
+export async function revokePortal(_state: ClientActionState, form: FormData): Promise<ClientActionState> {
+  return send(portalPath(form, "/revoke"), "POST", { reason: text(form, "reason") });
+}
+
 export async function archiveClient(_state: ClientActionState, form: FormData): Promise<ClientActionState> {
   return send(`/crm/clients/${encodeURIComponent(text(form, "code") ?? "")}/archive`, "POST", { reason: text(form, "reason") });
 }

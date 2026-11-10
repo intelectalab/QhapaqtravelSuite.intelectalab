@@ -60,9 +60,37 @@ const STEPS: Record<string, Step> = {
   incident_close: { path: (code) => `/ops/incidents/${id(code)}/close`, method: "POST", fields: ["comment"], failure: "No pudimos cerrar la incidencia." },
   incident_reopen: { path: (code) => `/ops/incidents/${id(code)}/reopen`, method: "POST", fields: ["reason"], failure: "No pudimos reabrir la incidencia." },
   incident_comment: { path: (code) => `/ops/incidents/${id(code)}/comments`, method: "POST", fields: ["message"], failure: "No pudimos guardar el comentario." },
-  doc_validate: { path: (target) => `/reservations/${target}/validate`, method: "POST", fields: ["doc_number", "expiry_date"], failure: "No pudimos validar el documento." },
+  service_complete: { path: (service) => `/ops/reservation-services/${id(service)}/complete`, method: "POST", fields: ["note"], failure: "No pudimos marcar el servicio como completado." },
+  evidence_remove: { path: (evidence) => `/ops/evidences/${id(evidence)}`, method: "DELETE", fields: ["reason"], failure: "No pudimos retirar la evidencia." },
+  doc_validate:{ path: (target) => `/reservations/${target}/validate`, method: "POST", fields: ["doc_number", "expiry_date"], failure: "No pudimos validar el documento." },
   doc_observe: { path: (target) => `/reservations/${target}/observe`, method: "POST", fields: ["reason"], failure: "No pudimos registrar la observación." },
 };
+
+const EVIDENCE_TARGETS: Record<string, (code: string) => string> = {
+  order: (code) => `/ops/orders/${id(code)}/evidences/upload`,
+  incident: (code) => `/ops/incidents/${id(code)}/evidences/upload`,
+};
+
+const EVIDENCE_MAX_BYTES = 10 * 1024 * 1024;
+
+export async function uploadEvidence(scope: string, target: string, form: FormData): Promise<OpsState> {
+  const path = EVIDENCE_TARGETS[scope]?.(target);
+  const file = form.get("file");
+  if (!path) return { message: "Acción no disponible.", done: false };
+  if (!(file instanceof File) || file.size === 0) return { message: "Elige el archivo de la evidencia.", done: false };
+  if (file.size > EVIDENCE_MAX_BYTES) return { message: `${file.name} pesa más de 10 MB.`, done: false };
+  const payload = new FormData();
+  payload.set("file", file, file.name);
+  const service = form.get("reservation_service_id");
+  if (scope === "order" && typeof service === "string" && service !== "") payload.set("reservation_service_id", service);
+  const result = await apiFetch(path, { method: "POST", form: payload });
+  if (!result.ok) {
+    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { message: firstError ?? result.error?.message ?? "No pudimos subir la evidencia.", done: false };
+  }
+  revalidatePath("/operaciones", "layout");
+  return { message: null, done: true };
+}
 
 const UPDATE_STEPS = new Set(["guide_save", "driver_save", "vehicle_save"]);
 

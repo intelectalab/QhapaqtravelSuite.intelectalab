@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Booking\Actions;
 
 use App\Domain\Crm\Support\Portfolio;
+use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -24,6 +25,7 @@ final class ReservationReschedule
         private readonly SequenceService $sequences,
         private readonly AuditLogger $audit,
         private readonly ReservationMailer $mailer,
+        private readonly SyncServicePayables $payables,
     ) {}
 
     public function preview(string $code, ?string $newStart, User $actor): array
@@ -50,7 +52,7 @@ final class ReservationReschedule
             $lockIds = $release->keys()->merge($targets)->unique()->sort()->values()->all();
 
             if ($lockIds) {
-                DB::table('catalog_product_departures')->whereIn('id', $lockIds)->orderBy('id')->lockForUpdate()->get(['id']);
+                DB::table('catalog_product_departures')->whereIn('id', $lockIds)->orderBy('id')->lock('for no key update')->get(['id']);
             }
 
             foreach ($release as $departureId => $pax) {
@@ -97,6 +99,7 @@ final class ReservationReschedule
                 $this->audit->log('Cuenta por cobrar', $code, 'crear', null, "{$reservation->currency} {$diff}");
             }
 
+            $this->payables->handle((string) $reservation->id, $actor);
             $this->audit->log('Reserva', $reservation->code, 'reprogramar', "{$reservation->travel_from} → {$reservation->travel_to}", "{$plan['new_from']} → {$plan['new_to']} · {$reason}");
             $this->mailer->send($reservation->id, 'Tu viaje cambió de fecha', "Tu viaje {$reservation->title} ahora es del {$plan['new_from']} al {$plan['new_to']}.".($diff->isPositive() ? " La diferencia de tarifa es {$reservation->currency} {$diff}." : ''));
         });
@@ -209,7 +212,7 @@ final class ReservationReschedule
     private function open(string $code, User $actor, bool $lock = false): object
     {
         $query = Portfolio::scope(DB::table('booking_reservations')->whereNull('deleted_at'), $actor, 'owner_id')->where('code', $code);
-        $reservation = ($lock ? $query->lockForUpdate() : $query)->first() ?? throw Portfolio::missing($actor, 'booking_reservations', $code, 'La reserva no existe.', 'Esta reserva');
+        $reservation = ($lock ? $query->lock('for no key update') : $query)->first() ?? throw Portfolio::missing($actor, 'booking_reservations', $code, 'La reserva no existe.', 'Esta reserva');
 
         if (in_array($reservation->status, ReservationWorkflow::CLOSED, true)) {
             throw ApiException::conflict('RESERVATION_CLOSED', 'La reserva ya está cerrada y no se puede reprogramar.');

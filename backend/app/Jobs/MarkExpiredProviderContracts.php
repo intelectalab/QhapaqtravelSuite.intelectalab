@@ -16,7 +16,7 @@ final class MarkExpiredProviderContracts extends TenantJob
     {
         $today = $this->today()->toDateString();
         $providers = DB::table('catalog_providers')->whereNull('deleted_at')->where('status', 'activo')
-            ->where('contract_end', '<', $today)->orderBy('id')->lockForUpdate()->get(['id', 'ref', 'name', 'contract_end']);
+            ->where('contract_end', '<', $today)->orderBy('id')->lock('for no key update')->get(['id', 'ref', 'name', 'contract_end']);
 
         if ($providers->isEmpty()) {
             return 'Sin contratos de proveedores vencidos';

@@ -206,7 +206,7 @@ export function LifecycleFeed({ events }: { events: LifecycleEvent[] }) {
           );
           const className = "group relative grid grid-cols-[32px_minmax(0,1fr)_auto] items-start gap-x-3 rounded-[12px] px-1 py-2 transition-colors duration-200 hover:bg-surface-2 animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]";
           return (
-            <li key={`${event.at}-${event.kind}-${event.tenant}`} style={event.code ? undefined : { animationDelay: `${index * 50}ms` }} className={event.code ? undefined : className}>
+            <li key={`${event.at}-${event.kind}-${event.tenant}-${index}`} style={event.code ? undefined : { animationDelay: `${index * 50}ms` }} className={event.code ? undefined : className}>
               {event.code ? (
                 <Link href={`/plataforma/agencias/${event.code}`} className={className} style={{ animationDelay: `${index * 50}ms` }}>
                   {body}

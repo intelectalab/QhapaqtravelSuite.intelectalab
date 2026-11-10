@@ -8,7 +8,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 final class TenantProvisionRequest extends FormRequest
 {
-    public const BUSINESS_TYPES = ['Agencia de viajes minorista', 'Operador turístico', 'DMC / receptivo', 'Agencia corporativa', 'Mayorista'];
+    public const BUSINESS_TYPES = ['Agencia de viajes minorista', 'Operador turístico', 'DMC / receptivo', 'Agencia corporativa', 'Agencia mayorista'];
 
     public function rules(): array
     {

@@ -204,7 +204,7 @@ final class ApprovalWorkflow
 
     private function fx(string $currency): float
     {
-        return $currency === 'PEN' ? 1.0 : (float) (DB::table('fin_fx_rates')->where('currency_code', $currency)->orderByDesc('rate_date')->value('rate_pen') ?? 1);
+        return $currency === 'PEN' ? 1.0 : (float) (DB::table('fin_fx_rates')->where('currency_code', $currency)->orderByDesc('rate_date')->orderByDesc('effective_at')->value('rate_pen') ?? 1);
     }
 
     private function event(string $requestId, string $event, User $actor, ?string $note): void

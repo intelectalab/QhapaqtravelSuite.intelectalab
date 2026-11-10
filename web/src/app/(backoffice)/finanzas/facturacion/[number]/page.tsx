@@ -4,6 +4,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { DownloadButton } from "@/components/ui/DownloadButton";
 import { TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
 import { InvoiceRowActions } from "@/features/finance/Invoices";
 import { cn } from "@/lib/cn";
@@ -13,6 +14,8 @@ import { getResource } from "@/lib/server/resource";
 import { statusLabel, statusTone } from "@/lib/tone";
 
 type InvoicePage = InvoiceDetail & { reasons: FinanceOption[]; can: { issue: boolean } };
+
+const PRINTABLE = ["aceptado", "observado", "anulado"];
 
 const ACTION_LABEL: Record<string, string> = { send: "Envío al OSE", status: "Consulta de estado", resend: "Corrección y reenvío", void: "Comunicación de baja" };
 
@@ -59,7 +62,12 @@ export default async function ComprobantePage({ params }: PageProps<"/finanzas/f
           </span>
         }
         subtitle={invoice.ref_number ? `Modifica ${invoice.ref_number}` : invoice.description}
-        actions={invoice.can.issue ? <div className="flex flex-wrap items-center justify-end gap-2" data-testid="invoice-actions"><InvoiceRowActions row={invoice} reasons={invoice.reasons} /></div> : undefined}
+        actions={
+          <div className="flex flex-wrap items-center justify-end gap-2" data-testid="invoice-actions">
+            {PRINTABLE.includes(invoice.status) && <DownloadButton href={`/finanzas/facturacion/${invoice.number}/pdf`} label="Representación impresa" iconOnlyOnMobile />}
+            {invoice.can.issue && <InvoiceRowActions row={invoice} reasons={invoice.reasons} />}
+          </div>
+        }
       />
 
       {invoice.ose_message && (

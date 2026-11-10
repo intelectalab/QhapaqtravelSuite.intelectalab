@@ -125,8 +125,8 @@ export default async function OportunidadPage({ params }: PageProps<"/crm/oportu
             <p className="text-[13.5px] text-fg-3">Sin cambios desde que se creó.</p>
           ) : (
             <ol className="flex flex-col">
-              {opportunity.history.map((event) => (
-                <li key={`${event.occurred_at}-${event.action}`} className="flex items-center gap-3 border-t border-line-2 py-2.5 text-[13px] first:border-t-0">
+              {opportunity.history.map((event, index) => (
+                <li key={`${event.occurred_at}-${event.action}-${index}`} className="flex items-center gap-3 border-t border-line-2 py-2.5 text-[13px] first:border-t-0">
                   <span className="min-w-0 flex-1">
                     {event.action === "crear" ? "Se creó" : event.action === "reabrir" ? "Se reabrió" : "Pasó"}
                     {event.before_value && event.action !== "crear" ? ` de ${stageName(event.before_value).toLowerCase()}` : ""}
