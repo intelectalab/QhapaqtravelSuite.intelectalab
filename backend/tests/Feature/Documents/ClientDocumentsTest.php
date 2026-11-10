@@ -254,7 +254,8 @@ it('el sitio público entrega el voucher del pedido solo con su token', function
     expectPdf($this->get('/api/v1/public/orders/WEB-10432/vouchers/VOU-2026-01201.pdf', siteOf('andes', pdfAccept(['X-Order-Token' => 'token-del-pedido']))), 'VOU-2026-01201-v1.pdf');
     $this->get('/api/v1/public/orders/WEB-10432/vouchers/VOU-2026-01201.pdf', siteOf('andes', pdfAccept(['X-Order-Token' => 'otro'])))->assertNotFound();
     $this->get('/api/v1/public/orders/WEB-10432/vouchers/VOU-2026-01204.pdf', siteOf('andes', pdfAccept(['X-Order-Token' => 'token-del-pedido'])))->assertNotFound();
-    $this->get('/api/v1/public/orders/WEB-10432/vouchers/VOU-2026-01201.pdf', siteOf('selva', pdfAccept(['X-Order-Token' => 'token-del-pedido'])))->assertNotFound();
+    $this->get('/api/v1/public/orders/WEB-10432/vouchers/VOU-2026-01201.pdf', siteOf('altiplano', pdfAccept(['X-Order-Token' => 'token-del-pedido'])))->assertNotFound();
+    expect($this->get('/api/v1/public/orders/WEB-10432/vouchers/VOU-2026-01201.pdf', siteOf('selva', pdfAccept(['X-Order-Token' => 'token-del-pedido']))))->toBeApiError(403, 'FEATURE_NOT_IN_PLAN');
 });
 
 it('otro tenant no alcanza los documentos de la agencia', function () {

@@ -7,13 +7,25 @@ namespace App\Domain\Admin\Http\Controllers;
 use App\Domain\Admin\Support\SubscriptionDirectory;
 use App\Domain\Admin\Support\TenantSettings;
 use App\Domain\Iam\Models\User;
+use App\Domain\Platform\Support\Entitlements;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 final class SubscriptionController
 {
+    public function entitlements(TenantContext $context, Entitlements $entitlements): JsonResponse
+    {
+        $features = $entitlements->for($context->idOrFail());
+
+        return response()->json([
+            'data' => $features,
+            'meta' => ['enabled' => array_keys(array_filter($features, fn (array $feature): bool => $feature['enabled'])), 'total' => count($features)],
+        ]);
+    }
+
     public function index(Request $request, SubscriptionDirectory $directory): JsonResponse
     {
         $user = $request->user();

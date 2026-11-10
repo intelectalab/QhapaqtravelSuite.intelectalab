@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Platform\Actions;
 
 use App\Domain\Platform\Models\PlatformUser;
+use App\Domain\Platform\Support\Entitlements;
 use App\Domain\Platform\Support\PlatformSettings;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Database\ConnectionInterface;
@@ -44,6 +45,8 @@ final class ManageEntitlements
             $this->db()->table('plans')->where('id', $plan->id)->update(['module_count' => $modules, 'updated_at' => now()]);
             $this->session->log('Feature flag', "{$feature->key}@{$plan->code}", 'plan_entitlement', $current ?? 'no incluido', ($value ?? 'no incluido')." · {$feature->label} en {$plan->name}", $actor);
         });
+
+        Entitlements::flush();
     }
 
     public function createOverride(array $data, PlatformUser $actor): void
@@ -72,6 +75,8 @@ final class ManageEntitlements
 
             $this->session->log('Feature flag', "{$feature->key}@{$tenant->code}", 'override', $existing ? ($existing->value ? 'habilitado' : 'bloqueado') : null, ($data['value'] ? 'habilitado' : 'bloqueado')." hasta {$until->format('d/m/Y')} · {$tenant->commercial_name} · {$data['reason']}", $actor);
         });
+
+        Entitlements::flush();
     }
 
     public function deleteOverride(string $id, PlatformUser $actor): void
@@ -87,6 +92,8 @@ final class ManageEntitlements
             $this->db()->table('feature_overrides')->where('id', $override->id)->delete();
             $this->session->log('Feature flag', "{$override->feature_key}@{$override->code}", 'quitar_override', $override->value ? 'habilitado' : 'bloqueado', "rige el plan · {$override->commercial_name}", $actor);
         });
+
+        Entitlements::flush();
     }
 
     public function updateDunningPolicy(array $data, PlatformUser $actor): void

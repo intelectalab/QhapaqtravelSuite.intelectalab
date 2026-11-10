@@ -8,6 +8,7 @@ use App\Domain\Platform\Models\Plan;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Support\DowngradeValidator;
+use App\Domain\Platform\Support\Entitlements;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -43,6 +44,8 @@ final class ManageTenant
             ])->save();
             $this->session->log('Tenant', $tenant->code, 'cambio_plan', $current?->name, trim($plan->name.($reason ? " · {$reason}" : '')), $actor);
         });
+
+        Entitlements::flush();
     }
 
     public function update(Tenant $tenant, array $data, PlatformUser $actor): void

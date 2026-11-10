@@ -1,7 +1,7 @@
 "use client";
 
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { ChevronDown, ChevronsUpDown, LogOut, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
+import { ChevronDown, ChevronsUpDown, Lock, LogOut, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { groupFor, isUnder, type NavGroup, type Screen } from "@/config/navigation";
@@ -198,8 +198,9 @@ function GroupBlock({ group, open, onToggle, pathname, onNavigate, tagged }: { g
 
 function ScreenLink({ screen, active, onNavigate, tagged }: { screen: Screen; active: boolean; onNavigate?: () => void; tagged: boolean }) {
   const Icon = screen.icon;
-  const { counts } = useWorkspace();
-  const count = screen.countKey ? counts[screen.countKey] ?? 0 : 0;
+  const { counts, lockedFor } = useWorkspace();
+  const locked = lockedFor(screen.href);
+  const count = !locked && screen.countKey ? counts[screen.countKey] ?? 0 : 0;
   return (
     <Link
       href={screen.href}
@@ -210,7 +211,12 @@ function ScreenLink({ screen, active, onNavigate, tagged }: { screen: Screen; ac
     >
       {active && <span className="absolute -left-2.5 bottom-2 top-2 w-[3px] rounded-r bg-t2" />}
       <Icon size={17} strokeWidth={1.8} className={cn("flex-none", active ? "text-t2" : "text-white/50")} />
-      <span className="truncate">{screen.label}</span>
+      <span className={cn("truncate", locked && "text-white/45")}>{screen.label}</span>
+      {locked && (
+        <span className="ml-auto flex-none text-white/40" title={`${locked.label} no está incluido en tu plan`} aria-label="No incluido en tu plan">
+          <Lock size={13} strokeWidth={2} />
+        </span>
+      )}
       {count > 0 && <span className="ml-auto grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1.5 text-[11px] font-semibold text-brand-fg">{count}</span>}
     </Link>
   );

@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Platform\Support\Entitlements;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\TestDatabase;
 use Tests\TestCase;
@@ -13,6 +14,7 @@ uses(TestCase::class)
         $this->beforeApplicationDestroyed(fn () => TestDatabase::rollBack($this->app));
         TestDatabase::flushCache();
         TestDatabase::isolatePermissionCache();
+        Entitlements::flush();
         freezeBusinessToday();
     })
     ->in('Feature');

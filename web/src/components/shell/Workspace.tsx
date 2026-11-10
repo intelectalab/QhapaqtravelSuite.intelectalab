@@ -3,7 +3,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { NAV_GROUPS, type NavGroup } from "@/config/navigation";
 import { PLATFORM_NAV_GROUPS } from "@/config/platformNavigation";
-import { isAllowed } from "@/lib/access";
+import { isAllowed, lockedFeature, type LockedFeature } from "@/lib/access";
 import type { NavCounts } from "@/lib/dashboard";
 
 export type NavigationId = "agency" | "platform";
@@ -16,12 +16,14 @@ export interface WorkspaceInfo {
   logoutHref: string;
   counts: NavCounts;
   screens: Record<string, boolean> | null;
+  locked?: Record<string, LockedFeature> | null;
 }
 
 export interface Workspace extends WorkspaceInfo {
   groups: NavGroup[];
   searchHint: string;
   allows: (path: string) => boolean;
+  lockedFor: (path: string) => LockedFeature | null;
 }
 
 const NAVIGATIONS: Record<NavigationId, { groups: NavGroup[]; searchHint: string }> = {
@@ -38,7 +40,8 @@ export function WorkspaceProvider({ value, children }: { value: WorkspaceInfo; c
     const groups = base.groups
       .map((group) => ({ ...group, screens: group.screens.filter((screen) => allows(screen.href)) }))
       .filter((group) => group.screens.length > 0);
-    return { ...value, ...base, groups, allows };
+    const lockedFor = (path: string) => lockedFeature(value.locked, path);
+    return { ...value, ...base, groups, allows, lockedFor };
   }, [value]);
   return <WorkspaceContext.Provider value={workspace}>{children}</WorkspaceContext.Provider>;
 }

@@ -9,6 +9,7 @@ use App\Domain\Platform\Actions\CollectInvoice;
 use App\Domain\Platform\Actions\PlatformSession;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Support\DowngradeValidator;
+use App\Domain\Platform\Support\Entitlements;
 use App\Domain\Platform\Support\PlatformInvoicer;
 use App\Domain\Platform\Support\TenantNotice;
 use Illuminate\Support\Carbon;
@@ -103,6 +104,7 @@ final class RenewSubscriptions extends PlatformJob
         if ($change !== null) {
             $db->table('subscription_changes')->where('id', $change->id)->update(['status' => 'applied', 'invoice_id' => $invoice['id']]);
             $db->table('tenants')->where('id', $subscription->tenant_id)->update(['plan_id' => $planId, 'mrr' => $plan->price_month, 'updated_at' => now()]);
+            Entitlements::flush();
         }
 
         $db->table('subscriptions')->where('id', $id)->update([

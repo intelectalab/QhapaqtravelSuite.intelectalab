@@ -21,6 +21,7 @@ export default async function BackofficeLayout({ children }: LayoutProps<"/">) {
     logoutHref: "/salir",
     counts,
     screens: access?.screens ?? null,
+    locked: access?.locked ?? null,
   };
 
   return (

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Exceptions\ApiExceptionRenderer;
 use App\Http\Middleware\AssignCorrelationId;
 use App\Http\Middleware\EnsureExperience;
+use App\Http\Middleware\EnsureFeature;
 use App\Http\Middleware\EnsureLockVersion;
 use App\Http\Middleware\EnsureMfaVerified;
 use App\Http\Middleware\EnsurePlatformUser;
@@ -42,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.db' => SetPostgresTenant::class,
             'public.site' => ResolvePublicSite::class,
             'tenant.active' => EnsureTenantActive::class,
+            'feature' => EnsureFeature::class,
             'mfa' => EnsureMfaVerified::class,
             'platform.user' => EnsurePlatformUser::class,
             'permissions.team' => SetPermissionsTeam::class,
@@ -63,6 +65,7 @@ return Application::configure(basePath: dirname(__DIR__))
             SetPermissionsTeam::class,
             EnsureMfaVerified::class,
             EnsureExperience::class,
+            EnsureFeature::class,
             EnsurePlatformUser::class,
             SubstituteBindings::class,
             IdempotencyMiddleware::class,

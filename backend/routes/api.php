@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('health', HealthController::class)->name('health');
 
-Route::prefix('public')->middleware('throttle:public')->name('public.')->group(function (): void {
+Route::prefix('public')->middleware(['throttle:public', 'feature'])->name('public.')->group(function (): void {
     foreach (glob(__DIR__.'/public/*.php') ?: [] as $publicRoutes) {
         require $publicRoutes;
     }
@@ -44,7 +44,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
     Route::post('me/mfa/confirm', [SessionController::class, 'confirmMfa'])->middleware(['ability:mfa:verify', 'throttle:login'])->name('me.mfa.confirm');
     Route::delete('me/mfa', [MeController::class, 'disableMfa'])->middleware('mfa')->name('me.mfa.destroy');
 
-    Route::middleware(['mfa', 'experience'])->group(function (): void {
+    Route::middleware(['mfa', 'experience', 'feature'])->group(function (): void {
         Route::get('me', [SessionController::class, 'me'])->name('me');
         Route::get('me/access', [SessionController::class, 'access'])->name('me.access');
         Route::get('me/counts', [DashboardController::class, 'counts'])->name('me.counts');

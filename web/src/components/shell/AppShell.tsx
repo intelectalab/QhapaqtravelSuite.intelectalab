@@ -6,6 +6,7 @@ import { screenFor } from "@/config/navigation";
 import { cn } from "@/lib/cn";
 import { rememberScreen } from "@/lib/recentScreens";
 import { useStoredValue } from "@/lib/useStoredValue";
+import { FeatureLocked } from "./FeatureLocked";
 import { NoAccess } from "./NoAccess";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
@@ -16,7 +17,9 @@ const serializeCollapsed = (value: boolean) => (value ? "1" : "0");
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { userId, groups, allows, navigation } = useWorkspace();
+  const { userId, groups, allows, lockedFor, navigation } = useWorkspace();
+  const home = groups[0]?.screens[0]?.href ?? "/";
+  const locked = lockedFor(pathname);
   const [collapsed, setCollapsed] = useStoredValue("qhapaq-menu-collapsed", parseCollapsed, serializeCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -41,7 +44,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="relative flex min-w-0 flex-1 flex-col overflow-y-auto">
         <div className="ambient-glow pointer-events-none absolute inset-x-0 top-0 h-[420px]" />
         <Topbar onOpenMenu={() => setMobileOpen(true)} />
-        <main className="relative w-full flex-1 px-4 pb-12 sm:px-6 xl:px-8">{allows(pathname) ? children : <NoAccess home={groups[0]?.screens[0]?.href ?? "/"} path={pathname} requestable={navigation === "agency"} />}</main>
+        <main className="relative w-full flex-1 px-4 pb-12 sm:px-6 xl:px-8">
+          {!allows(pathname) ? <NoAccess home={home} path={pathname} requestable={navigation === "agency"} /> : locked ? <FeatureLocked feature={locked} home={home} canManagePlan={allows("/admin/suscripcion")} /> : children}
+        </main>
       </div>
     </div>
   );

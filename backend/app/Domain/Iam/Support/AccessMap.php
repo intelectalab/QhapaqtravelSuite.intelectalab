@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Iam\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Platform\Support\Entitlements;
 use Illuminate\Support\Facades\DB;
 
 final class AccessMap
@@ -21,7 +22,18 @@ final class AccessMap
             'home' => $experience['home'],
             'routes' => $screens->filter()->keys()->values(),
             'screens' => $screens,
+            'locked' => $this->locked((string) $user->tenant_id),
         ];
+    }
+
+    private function locked(string $tenantId): array
+    {
+        $features = app(Entitlements::class)->for($tenantId);
+
+        return collect((array) config('entitlements.screens'))
+            ->reject(fn (array $paths, string $feature): bool => (bool) ($features[$feature]['enabled'] ?? true))
+            ->flatMap(fn (array $paths, string $feature): array => collect($paths)->mapWithKeys(fn (string $path): array => [$path => ['feature' => $feature, 'label' => (string) ($features[$feature]['label'] ?? $feature)]])->all())
+            ->all();
     }
 
     public function allows(User $user, string $path): bool

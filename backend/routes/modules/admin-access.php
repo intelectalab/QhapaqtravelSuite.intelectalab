@@ -9,6 +9,8 @@ use App\Domain\Admin\Http\Controllers\SubscriptionController;
 use Illuminate\Support\Facades\Route;
 
 Route::name('admin.')->group(function (): void {
+    Route::get('billing/entitlements', [SubscriptionController::class, 'entitlements'])->name('subscription.entitlements');
+
     Route::middleware('permission:admin.billing.manage')->group(function (): void {
         Route::get('billing/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
         Route::patch('billing/subscription', [SubscriptionController::class, 'billing'])->name('subscription.billing');
