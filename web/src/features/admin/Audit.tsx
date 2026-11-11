@@ -26,7 +26,7 @@ export function AuditChange({ before, after, compact = false }: { before: string
   );
 }
 
-export function AuditTable({ data }: { data: AuditOverview }) {
+export function AuditTable({ data, initialSearch }: { data: AuditOverview; initialSearch?: string }) {
   const columns: Column<AuditEntry>[] = [
     {
       id: "event",
@@ -87,7 +87,7 @@ export function AuditTable({ data }: { data: AuditOverview }) {
     { id: "at", label: "Fecha", type: "date", value: (event) => event.at },
     { id: "actor", label: "Usuario", value: (event) => event.actor },
   ];
-  return <DataTable screen="admin-auditoria" rows={data.events} columns={columns} getKey={(event) => String(event.code)} entityLabel="eventos" searchText={(event) => `${event.entity} ${event.entity_id} ${event.action} ${event.actor} ${event.before ?? ""} ${event.after ?? ""} ${event.ip ?? ""}`} searchPlaceholder="Buscar documento, usuario o valor" metrics={metrics} filters={filters} sorts={sorts} />;
+  return <DataTable screen="admin-auditoria" initialSearch={initialSearch} rows={data.events} columns={columns} getKey={(event) => String(event.code)} entityLabel="eventos" searchText={(event) => `${event.entity} ${event.entity_id} ${event.action} ${event.actor} ${event.before ?? ""} ${event.after ?? ""} ${event.ip ?? ""}`} searchPlaceholder="Buscar documento, usuario o valor" metrics={metrics} filters={filters} sorts={sorts} />;
 }
 
 export function AuditActivity({ daily }: { daily: AuditOverview["daily"] }) {

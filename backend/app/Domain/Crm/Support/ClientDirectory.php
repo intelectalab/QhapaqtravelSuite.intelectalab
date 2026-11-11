@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Crm\Support;
 
+use App\Domain\Crm\Actions\ArcoRequests;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Database\Query\Builder;
@@ -59,7 +60,19 @@ final class ClientDirectory
             'companions' => $this->companions($row->id, $row->name),
             'current_trip' => $current ? $this->currentTrip($current, $today) : null,
             'portal_access' => $this->portal->forClient($row->id),
+            'contacts' => app(ClientTabs::class)->contacts($row->id),
+            'source_lead' => DB::table('crm_clients as c')->join('crm_leads as l', 'l.id', '=', 'c.source_lead_id')->where('c.id', $row->id)->first(['l.code', 'l.full_name', 'l.source_code']),
+            ...app(ClientTabs::class)->summary($row),
+            'arco_requests' => DB::table('crm_cases')->where('client_id', $row->id)->where('type_code', ArcoRequests::CASE_TYPE)->whereIn('status', ['abierta', 'en_proceso'])->orderBy('due_date')
+                ->get(['code', 'subject', 'due_date']),
         ];
+    }
+
+    public function record(User $viewer, string $code): ?object
+    {
+        $row = $this->rows($viewer)->where('c.code', $code)->first();
+
+        return $row === null ? null : DB::table('crm_clients')->where('id', $row->id)->first(['id', 'code', 'name', 'kind', 'email', 'phone', 'owner_id', 'created_at']);
     }
 
     private function rows(User $viewer): Builder

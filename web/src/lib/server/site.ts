@@ -1,10 +1,12 @@
 import "server-only";
 import { cookies, headers } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
-import type { DestinationCard, DestinationDetail, FormOptions, HomeData, ListingData, ListingKey, ProductDetail, SiteProfile } from "@/lib/site";
-import { cartCookie, listingQuery, orderCookie, type SiteCart, type SiteOrder } from "@/lib/site";
-import { parseSiteLocale, SITE_LOCALE_COOKIE, type SiteLocale } from "@/lib/site-i18n";
+import type { AboutData, CheckoutTerms, DestinationCard, DestinationDetail, FormOptions, HomeData, ListingData, ListingKey, OffersData, PostDetail, PostSummary, ProductDetail, SitePage, SiteProfile } from "@/lib/site";
+import { accountCookie, cartCookie, listingQuery, orderCookie, siteHref, type SiteCart, type SiteOrder } from "@/lib/site";
+import { REALMS } from "@/lib/realms";
+import { PREVIEW_COOKIE, withTextOverrides, type SitePreview } from "@/lib/site-design";
+import { parseSiteLocale, SITE_LOCALE_COOKIE, siteText, type SiteLocale, type SiteText } from "@/lib/site-i18n";
 import { apiFetch, tenantSlugFrom } from "./api";
 
 const SITES_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN ?? "localhost";
@@ -39,9 +41,34 @@ export const siteBase = cache(async (agencia: string): Promise<string> => {
   return tenantSlugFrom(host) === agencia ? "" : `/sitio/${agencia}`;
 });
 
-export const getSiteProfile = cache((agencia: string) => read<SiteProfile>(agencia, "/site"));
+export const getSitePreview = cache(async (agencia: string): Promise<SitePreview | null> => {
+  const store = await cookies();
+  if (store.get(PREVIEW_COOKIE)?.value !== agencia || !store.has(REALMS.agency.session)) return null;
+  const result = await apiFetch<SitePreview>("/admin/site-design/preview");
+  return result.ok && result.data && result.data.subdomain === agencia ? result.data : null;
+});
+
+export const getSiteProfile = cache(async (agencia: string): Promise<SiteProfile> => {
+  const [profile, preview] = await Promise.all([read<SiteProfile>(agencia, "/site"), getSitePreview(agencia)]);
+  return preview ? { ...profile, design: preview.design, branding: preview.branding, banner: preview.banner, preview: true } : profile;
+});
+
+export const getSiteText = cache(async (agencia: string): Promise<SiteText> => {
+  const [profile, locale] = await Promise.all([getSiteProfile(agencia), siteLocale()]);
+  return withTextOverrides(siteText(locale), profile.design.texts[locale], profile.agency.name);
+});
 
 export const getSiteHome = cache((agencia: string) => read<HomeData>(agencia, "/home"));
+
+export const getSiteOffers = cache((agencia: string) => read<OffersData>(agencia, "/offers"));
+
+export const getSitePosts = cache((agencia: string) => read<PostSummary[]>(agencia, "/posts"));
+
+export const getSitePost = cache((agencia: string, slug: string) => read<PostDetail>(agencia, `/posts/${encodeURIComponent(slug)}`));
+
+export const getSitePage = cache((agencia: string, slug: string) => read<SitePage>(agencia, `/pages/${encodeURIComponent(slug)}`));
+
+export const getSiteAbout = cache((agencia: string) => read<AboutData>(agencia, "/pages/nosotros"));
 
 export const getSiteDestinations = cache((agencia: string) => read<{ items: DestinationCard[] }>(agencia, "/destinations"));
 
@@ -72,8 +99,35 @@ export async function getSiteCart(agencia: string): Promise<SiteCart> {
   return result.ok && result.data ? result.data : { code: null, promo: null, items: [], totals: [], hold_minutes: 30, fx: 0 };
 }
 
+export async function getCheckoutTerms(agencia: string): Promise<CheckoutTerms | null> {
+  const token = (await cookies()).get(cartCookie(agencia))?.value;
+  if (!token) return null;
+  const result = await sendSite<{ terms: CheckoutTerms }>(agencia, "/checkout/validate", {}, cartHeaders(token));
+  return result.ok && result.data ? result.data.terms : null;
+}
+
 export async function getSiteOrder(agencia: string, code: string): Promise<SiteOrder> {
   const token = (await cookies()).get(orderCookie(code))?.value;
   if (!token) notFound();
   return read<SiteOrder>(agencia, `/orders/${encodeURIComponent(code)}`, { "X-Order-Token": token });
+}
+
+export async function accountToken(agencia: string): Promise<string | null> {
+  return (await cookies()).get(accountCookie(agencia))?.value ?? null;
+}
+
+export async function accountFetch<T>(agencia: string, path: string, init: { method?: string; body?: unknown } = {}) {
+  const token = await accountToken(agencia);
+  return apiFetch<T>(sitePath(path), { ...init, token, headers: await siteHeaders(agencia) });
+}
+
+export async function requireAccount<T>(agencia: string, path: string): Promise<T> {
+  const token = await accountToken(agencia);
+  const base = await siteBase(agencia);
+  if (!token) redirect(siteHref(base, "/cuenta/ingresar"));
+  const result = await apiFetch<T>(sitePath(path), { token, headers: await siteHeaders(agencia) });
+  if (result.status === 401 || result.status === 403) redirect(siteHref(base, "/cuenta/ingresar?vencida=1"));
+  if (result.status === 404) notFound();
+  if (!result.ok || result.data === null) throw new Error(result.error?.message ?? "No pudimos cargar tu cuenta.");
+  return result.data;
 }

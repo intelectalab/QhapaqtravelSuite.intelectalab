@@ -9,6 +9,7 @@ use App\Domain\Booking\Actions\ReservationChanges;
 use App\Domain\Booking\Actions\ReservationLifecycle;
 use App\Domain\Booking\Enums\ReservationStatus;
 use App\Domain\Crm\Support\Portfolio;
+use App\Domain\Finance\Support\NetSales;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Http\CursorPage;
@@ -105,7 +106,7 @@ final class ReservationDirectory
         $services = DB::table('booking_reservation_services as s')->leftJoin('catalog_providers as p', 'p.id', '=', 's.provider_id')
             ->where('s.reservation_id', $row->id)->orderBy('s.service_date')->orderBy('s.service_time')
             ->get(['s.code', 's.name', 's.service_date', 's.service_time', 's.service_kind', 's.status', 's.confirmation_code', 's.reject_reason', 's.replaced_by_id', 's.cost_amount', 's.price_amount', 's.currency', 's.fx_rate', 'p.name as provider_name', 'p.status as provider_status']);
-        $price = $services->where('status', '<>', 'cancelado')->sum(fn (object $service) => (float) $service->price_amount);
+        $price = $services->where('status', '<>', 'cancelado')->sum(fn (object $service) => (float) (string) NetSales::of($service->price_amount, $service->currency));
         $cost = $services->where('status', '<>', 'cancelado')->sum(fn (object $service) => (float) $service->cost_amount);
         $receivables = DB::table('fin_receivables')->where('reservation_id', $row->id)->whereNull('deleted_at')->orderBy('due_date')
             ->get(['code', 'kind', 'concept', 'amount', 'paid_amount', 'currency', 'due_date', 'status']);
@@ -122,7 +123,7 @@ final class ReservationDirectory
             'sede' => $row->sede_name,
             'quote' => $row->quote_id ? DB::table('quote_quotes')->where('id', $row->quote_id)->first(['code', 'title']) : null,
             'cancel_reason' => $row->cancel_reason,
-            ...($view['margin'] ? ['margin_pct' => $price > 0 ? round(($price - $cost) / $price * 100, 1) : null] : []),
+            ...($view['margin'] ? ['margin_pct' => $price > 0 ? round(($price - $cost) / $price * 100, 1) : null, 'economics' => ['sale_net' => round($price, 2), 'cost' => round($cost, 2), 'profit' => round($price - $cost, 2)]] : []),
             'passengers' => DB::table('booking_passengers')->where('reservation_id', $row->id)->orderBy('seq')
                 ->get(['id', 'full_name', 'doc_type', 'doc_number', 'pax_type', 'nationality', 'birth_date', 'age', 'phone', 'email', 'diet_notes', 'relationship', 'is_lead', 'is_placeholder']),
             'owner_id' => $row->owner_id,
@@ -166,7 +167,26 @@ final class ReservationDirectory
                 ? DB::table('ops_vouchers')->where('reservation_id', $row->id)->where('status', '<>', 'anulado')->orderBy('service_date')->get(['code', 'service_label as label', 'service_date as date', 'status', 'version'])
                 : [],
             'history' => DB::table('audit_events')->where('entity', 'Reserva')->where('entity_id', $row->code)->orderByDesc('occurred_at')->limit(20)->get(['action', 'before_value', 'after_value', 'occurred_at']),
+            ...app(ReservationSections::class)->extras($row, $view, $viewer),
         ];
+    }
+
+    public function section(User $viewer, string $code, string $section): ?array
+    {
+        $row = $this->rows($viewer)->where('r.code', $code)->first(['r.id', 'r.owner_id']);
+
+        if ($row === null) {
+            return null;
+        }
+
+        $sections = app(ReservationSections::class);
+
+        return ['data' => match ($section) {
+            'web-snapshot' => $sections->webSnapshot($row->id, $this->view($viewer, $row->owner_id)),
+            'pax-feedback' => $sections->paxFeedback($row->id),
+            'pax-messages' => $sections->paxMessages($row->id),
+            default => null,
+        }];
     }
 
     public function view(User $viewer, ?string $ownerId): array

@@ -21,7 +21,7 @@ export function QuoteDuplicateAction({ quote }: { quote: Pick<QuoteDetail, "code
       icon={<Copy size={16} />}
       formId={`quote-duplicate-${quote.code}`}
       title="Duplicar cotización"
-      description={`Se crea una cotización nueva en borrador a tu nombre, con los servicios de la versión ${quote.version} y la vigencia renovada. La original no cambia.`}
+      description={`Se crea una cotización nueva en borrador a tu nombre, con los ítems de la versión ${quote.version} y la vigencia renovada. La original no cambia.`}
       submitLabel="Duplicar"
       action={duplicateQuote}
       initial={DUPLICATE_INITIAL}

@@ -6,6 +6,7 @@ namespace App\Domain\Site\Actions;
 
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Shared\Audit\AuditLogger;
+use App\Domain\Shared\Mail\QueuedMail;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -81,7 +82,18 @@ final class SubscribeNewsletter
             'ip' => Request::ip(),
         ]);
         $this->audit->log('Suscriptor', $email, $subscriber ? 'reactivar' : 'crear', after: 'otorgado');
+        $this->sendConfirmation((string) DB::table('mkt_contacts_subscribers')->where('id', $subscriberId)->value('code'), $email, $name);
 
         return ['status' => $subscriber ? 'reactivado' : 'creado'];
+    }
+
+    private function sendConfirmation(string $code, string $email, ?string $name): void
+    {
+        $tenant = $this->context->tenant();
+        $token = NewsletterLifecycle::token($code, $email);
+        $base = rtrim((string) config('app.frontend_url'), '/').'/sitio/'.$tenant->subdomain.'/boletin';
+        $body = 'Hola'.($name ? " {$name}" : '').":\n\nConfirma que quieres recibir ofertas y novedades de {$tenant->commercial_name}:\n{$base}/confirmar?token={$token}\n\nSi no fuiste tú, ignora este correo. Puedes darte de baja cuando quieras:\n{$base}/baja?token={$token}";
+
+        app(QueuedMail::class)->send($email, $name, "Confirma tu suscripción · {$tenant->commercial_name}", $body);
     }
 }

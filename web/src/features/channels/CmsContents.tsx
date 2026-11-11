@@ -7,6 +7,7 @@ import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { FieldList } from "@/components/ui/Details";
 import { PanelAction } from "@/components/ui/PanelAction";
+import { RichText } from "@/components/ui/RichText";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
@@ -129,15 +130,7 @@ function ArchiveAction({ content }: { content: CmsContent }) {
 }
 
 function Markdown({ body }: { body: string }) {
-  return (
-    <div className="flex flex-col gap-1.5 rounded-tile border border-line bg-surface-2/50 p-4 text-[13.5px] leading-relaxed">
-      {body.split("\n").map((line, index) => {
-        if (line.startsWith("## ")) return <h4 key={index} className="mt-1 text-[15px] font-semibold">{line.slice(3)}</h4>;
-        if (line.startsWith("- ")) return <p key={index} className="pl-3 before:mr-2 before:text-accent before:content-['•']">{line.slice(2)}</p>;
-        return line.trim() === "" ? null : <p key={index} className="text-fg-2">{line}</p>;
-      })}
-    </div>
-  );
+  return <RichText body={body} size="sm" className="rounded-tile border border-line bg-surface-2/50 p-4" />;
 }
 
 function ContentDetail({ content }: { content: CmsContent }) {

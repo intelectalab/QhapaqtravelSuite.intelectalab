@@ -10,6 +10,8 @@ Route::prefix('b2b')->name('b2b.')->controller(B2bPortalController::class)->grou
     Route::get('home', 'home')->name('home');
     Route::get('catalog', 'catalog')->middleware('permission:catalog.products.view')->name('catalog.index');
     Route::get('catalog/{code}', 'product')->middleware('permission:catalog.products.view')->name('catalog.show');
+    Route::get('catalog/{code}/departures', 'departures')->middleware('permission:catalog.products.view')->name('catalog.departures');
+    Route::post('auth/logout', 'logout')->name('auth.logout');
     Route::post('reservations/quote-price', 'simulate')->middleware('permission:quotes.create')->name('reservations.simulate');
     Route::post('reservations', 'store')->middleware('permission:reservations.create')->name('reservations.store');
     Route::get('reservations', 'reservations')->middleware('permission:reservations.view')->name('reservations.index');

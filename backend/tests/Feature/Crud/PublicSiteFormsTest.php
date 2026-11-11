@@ -55,6 +55,7 @@ function sitioPedido(string $token): object
         'billing_type' => 'Boleta',
         'terms' => true,
         'privacy' => true,
+        'passengers' => webTravelers(2),
     ], siteOf(extra: critical()))->assertCreated()->json('data');
 }
 
@@ -192,7 +193,7 @@ it('pagar el pedido confirma la reserva, salda las cuotas, convierte los bloqueo
         ->and(bccomp((string) $payments->sum('amount'), (string) $receivables->sum('amount'), 2))->toBe(0)
         ->and((int) departureRow('SAL-0404')->sold)->toBe($sold + 2)
         ->and(sitioVivos('SAL-0404'))->toHaveCount(0)
-        ->and(withinTenant(tenantA(), fn () => DB::table('audit_events')->where('entity_id', $order->code)->where('action', 'pago_simulado')->exists()))->toBeTrue();
+        ->and(withinTenant(tenantA(), fn () => DB::table('audit_events')->where('entity_id', $order->code)->where('action', 'pago_aprobado')->exists()))->toBeTrue();
 });
 
 it('un pedido ya pagado no se cobra dos veces y sin el token del pedido no se paga', function () {

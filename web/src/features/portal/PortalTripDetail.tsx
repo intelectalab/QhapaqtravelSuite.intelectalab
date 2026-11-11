@@ -175,7 +175,10 @@ export function PortalTripDetail({ trip, passenger }: { trip: PortalTrip; passen
           <SectionCard icon={Users} title="Pasajeros" aside={trip.passengers.length}>
             {missing > 0 && (
               <p style={toneStyle("warn")} className="mb-3 flex items-center gap-2 rounded-tile bg-[color-mix(in_srgb,var(--tint)_10%,var(--surface))] px-3 py-2 text-[12.5px] font-medium text-[var(--tint)]">
-                <TriangleAlert size={15} /> Faltan datos de {missing} {missing === 1 ? "pasajero" : "pasajeros"}. Envíalos a tu asesor para emitir los documentos.
+                <TriangleAlert size={15} /> Faltan datos de {missing} {missing === 1 ? "pasajero" : "pasajeros"}.{" "}
+                <Link href={`/portal/viajeros?trip=${trip.code}`} className="font-semibold underline">
+                  Completarlos
+                </Link>
               </p>
             )}
             <ul className="grid gap-2 sm:grid-cols-2">

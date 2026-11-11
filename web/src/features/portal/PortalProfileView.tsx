@@ -1,17 +1,18 @@
 "use client";
 
-import { BookOpenCheck, Languages, Pencil, ShieldCheck, UserRound } from "lucide-react";
+import { BookOpenCheck, FileLock2, Languages, Pencil, ShieldCheck, UserRound } from "lucide-react";
 import { useState, useTransition } from "react";
 import { FieldList } from "@/components/ui/Details";
 import { PanelAction, type PanelActionState } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
+import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
-import { setConsent, updateProfile } from "@/app/(portal)/portal/actions";
+import { requestDataRights, setConsent, updateProfile } from "@/app/(portal)/portal/actions";
 import { FormError } from "@/features/auth/AuthForms";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format";
-import { CONSENT_CHANNELS, LOCALES, type PortalProfile } from "@/lib/portal";
+import { ARCO_RIGHTS, CONSENT_CHANNELS, LOCALES, type PortalProfile } from "@/lib/portal";
 import { EmptyLine, PortalBadge, PortalTitle, RISE, rise, SectionCard } from "./PortalUi";
 
 const initial: PanelActionState = { message: null, done: false };
@@ -29,6 +30,19 @@ function EditProfile({ profile }: { profile: PortalProfile }) {
             <TextField label="País" name="country" defaultValue={client.country ?? ""} maxLength={60} />
           </div>
           <SelectField label="Idioma preferido" name="locale" defaultValue={profile.locale} options={LOCALES} />
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+function DataRightsRequest() {
+  return (
+    <PanelAction label="Solicitar" icon={<FileLock2 size={15} />} size="sm" title="Ejercer mis derechos" description="La agencia responde en 10 días hábiles, o en 20 si pides acceso a tus datos. Te avisaremos por este portal." submitLabel="Enviar solicitud" action={requestDataRights} initial={initial} testId="arco-request">
+      {() => (
+        <>
+          <SelectField label="¿Qué necesitas?" name="type" defaultValue="acceso" options={ARCO_RIGHTS} />
+          <TextArea label="Cuéntanos tu pedido" name="detail" rows={5} minLength={10} maxLength={2000} required hint="Por ejemplo, qué dato corregir o para qué no quieres que se usen tus datos." />
         </>
       )}
     </PanelAction>
@@ -105,6 +119,32 @@ export function PortalProfileView({ profile }: { profile: PortalProfile }) {
               ))}
             </div>
           </SectionCard>
+          {profile.editable && (
+            <SectionCard icon={FileLock2} title="Tus derechos sobre tus datos" aside={<DataRightsRequest />}>
+              <p className="mb-3 text-[13px] text-fg-2">Puedes pedir acceso a tus datos, corregirlos, que los eliminemos o que dejemos de usarlos para algo. Lo que exige la ley, como tus comprobantes de pago, se conserva.</p>
+              {profile.arco_requests.length === 0 ? (
+                <EmptyLine>No has enviado solicitudes.</EmptyLine>
+              ) : (
+                <ul className="flex flex-col gap-2">
+                  {profile.arco_requests.map((request, index) => (
+                    <li key={request.code} style={rise(index)} className={cn("lift rounded-tile border border-line bg-surface px-3.5 py-3", RISE)}>
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="min-w-0">
+                          <b className="block text-[13.5px] font-semibold">{request.subject.replace("Solicitud ARCO · ", "")}</b>
+                          <span className="text-[12px] text-fg-3">
+                            Enviada el {formatDate(request.created_at)}
+                            {request.due_date && request.status !== "resuelta" && request.status !== "cerrada" ? ` · respuesta hasta el ${formatDate(request.due_date)}` : ""}
+                          </span>
+                        </span>
+                        <PortalBadge status={request.status} scope="message" />
+                      </div>
+                      {request.resolution && <p className="mt-1.5 text-[12.5px] text-fg-2">{request.resolution}</p>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </SectionCard>
+          )}
           {profile.editable && (
             <SectionCard icon={BookOpenCheck} title="Libro de reclamaciones" aside={profile.claims.length || undefined}>
               {profile.claims.length === 0 ? (

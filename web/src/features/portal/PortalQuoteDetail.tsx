@@ -11,7 +11,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
-import { approveQuote, rejectQuote } from "@/app/(portal)/portal/actions";
+import { approveQuote, rejectQuote, requestQuoteChanges } from "@/app/(portal)/portal/actions";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { REJECT_REASONS, type PortalQuote } from "@/lib/portal";
@@ -60,6 +60,14 @@ function RejectPanel({ quote }: { quote: PortalQuote }) {
           <TextArea label="Cuéntanos un poco más" name="comment" rows={4} required minLength={3} maxLength={500} />
         </>
       )}
+    </PanelAction>
+  );
+}
+
+function ChangesPanel({ quote }: { quote: PortalQuote }) {
+  return (
+    <PanelAction label="Pedir cambios" icon={<MessageSquareText size={16} />} title="Pedir cambios a la propuesta" description="Tu asesor recibe tu pedido como un mensaje y te envía una versión actualizada." submitLabel="Enviar pedido" action={requestQuoteChanges.bind(null, quote.code)} initial={initial}>
+      {() => <TextArea label="¿Qué te gustaría cambiar?" name="message" rows={5} required minLength={5} maxLength={2000} placeholder="Por ejemplo: otro hotel en Cusco, sumar un día en el Valle Sagrado o cambiar la fecha de salida." />}
     </PanelAction>
   );
 }
@@ -113,6 +121,7 @@ export function PortalQuoteDetail({ quote, clientName }: { quote: PortalQuote; c
           </p>
           <div className="flex flex-wrap gap-2">
             <RejectPanel quote={quote} />
+            <ChangesPanel quote={quote} />
             <ApprovePanel quote={quote} clientName={clientName} />
           </div>
         </div>

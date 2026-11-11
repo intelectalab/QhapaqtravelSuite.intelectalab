@@ -81,6 +81,7 @@ export interface ReservationDetail extends Omit<ReservationRow, "passengers" | "
   cancel_reason: string | null;
   view: ReservationView;
   margin_pct?: number | null;
+  economics?: { sale_net: number; cost: number; profit: number };
   passengers: ReservationPassenger[];
   owner_id: string;
   lock_version: number;
@@ -95,7 +96,135 @@ export interface ReservationDetail extends Omit<ReservationRow, "passengers" | "
   incidents: { code: string; title: string; type: string; severity: string; status: string; created_at: string }[];
   vouchers: { code: string; label: string; date: string; status: string; version: number }[];
   history: { action: string; before_value: string | null; after_value: string | null; occurred_at: string }[];
+  created_at: string;
+  snapshot_label: string | null;
+  policies: { source: "snapshot" | "product" | "none"; items: ReservationPolicy[] };
+  change_log: ReservationChangeLog[];
+  operation: ReservationOperation | null;
+  counts: { web: number; feedback: number; unread_feedback: number };
+  payments?: ReservationPayment[];
+  invoices?: ReservationInvoice[];
 }
+
+export interface ReservationPolicy {
+  product: string;
+  cancellation: string | null;
+  modification: string | null;
+  no_show: string | null;
+  refund: string | null;
+}
+
+export interface ReservationChangeLog {
+  type: string;
+  description: string;
+  extra_pax: number | null;
+  service_date: string | null;
+  delta_amount?: string | null;
+  status: string;
+  requested_at: string;
+  decided_at: string | null;
+  applied_at: string | null;
+  requested_by: string | null;
+  decided_by: string | null;
+}
+
+export interface ReservationOperation {
+  code: string;
+  status: string;
+  date_from: string;
+  date_to: string;
+  coordinator: string | null;
+  tasks: { title: string; done: boolean; done_at: string | null }[];
+  assignments: { service_date: string; service_time: string | null; service_label: string; status: string; guide: string | null; driver: string | null; vehicle: string | null; vehicle_type: string | null }[];
+}
+
+export interface ReservationPayment {
+  code: string;
+  paid_on: string;
+  method: string;
+  reference: string | null;
+  amount: string;
+  currency: string;
+  status: string;
+  reject_reason: string | null;
+  receivable_code: string | null;
+  receivable_concept: string | null;
+}
+
+export interface ReservationInvoice {
+  number: string;
+  doc_type: string;
+  issue_date: string;
+  total_amount: string;
+  currency: string;
+  status: string;
+  description: string | null;
+}
+
+export interface ReservationWebSnapshot {
+  product: { code: string; name: string } | null;
+  service_date: string;
+  pax: { adt: number; chd: number; inf: number };
+  source: string | null;
+  order_code: string | null;
+  currency_display: string;
+  charge_currency: string;
+  fx_rate: string;
+  lines?: { label?: string; name?: string; amount?: string | number; qty?: number }[];
+  adjustments?: { label?: string; reason?: string; amount?: string | number }[];
+  total?: string;
+  total_display?: string;
+  payment?: { mode: string | null; deposit_pct: string | null; deposit: string | null; balance: string | null; balance_due: string | null };
+  lodging: { city: string; hotel_name: string | null; room_type: string | null; rooms: number; nights: number }[];
+  addons: { name: string; qty: number; amount?: string }[];
+  pickup: { point: string | null; address: string | null; flight: string | null; arrival: string | null };
+  comments: string | null;
+  companions: { pending: boolean; due: string | null };
+  rules_applied: string[];
+}
+
+export interface ReservationFeedback {
+  code: string;
+  passenger_name: string | null;
+  type: string;
+  rating: number | null;
+  text: string;
+  status: string;
+  reply: string | null;
+  replied_at: string | null;
+  channel: string | null;
+  created_at: string;
+  service_name: string | null;
+  incident_code: string | null;
+  replied_by: string | null;
+}
+
+export interface ReservationPaxMessage {
+  code: string;
+  channel: string;
+  recipient: string | null;
+  subject: string | null;
+  status: string;
+  direction: string;
+  origin: string | null;
+  scheduled_at: string | null;
+  sent_at: string | null;
+  read_at: string | null;
+  error: string | null;
+}
+
+export interface ReservationHistoryEvent {
+  id: string;
+  entity: string;
+  entity_id: string;
+  action: string;
+  before: string | null;
+  after: string | null;
+  actor: string | null;
+  occurred_at: string;
+}
+
+export const DOC_TYPE: Record<string, string> = { "01": "Factura", "03": "Boleta", "07": "Nota de crédito", "08": "Nota de débito" };
 
 export const SERVICE_KIND: Record<string, { label: string; icon: LucideIcon }> = {
   tour: { label: "Tour", icon: MapIcon },
@@ -136,7 +265,7 @@ export interface ReservationCancellation {
   penalty: string;
   refund: string;
   owed: string;
-  lines: { code: string; name: string; date: string; days: number; policy: string; pct: number; price: string; penalty: string }[];
+  lines: { code: string; name: string; date: string; days: number; policy: string; tiers: string; tiers_source: "tramos" | "texto"; pct: number; price: string; penalty: string }[];
   reasons: string[];
   request: string | null;
   request_id: string | null;
@@ -188,6 +317,8 @@ export interface ReschedulePlan {
   blocked: string | null;
   lines: { id: string; code: string; name: string; date: string; new_date: string; pax: number; price: string; new_price: string; ok: boolean; note: string }[];
 }
+
+export const DIRECT_STEPS = ["Cliente y canal", "Producto, fecha y pasajeros", "Disponibilidad y precio"] as const;
 
 export interface DirectFormOptions {
   clients: { code: string; name: string }[];

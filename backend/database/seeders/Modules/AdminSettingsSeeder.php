@@ -6,6 +6,7 @@ namespace Database\Seeders\Modules;
 
 use App\Domain\Admin\Support\PgArray;
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Quotes\Support\QuoteApprovalPolicy;
 use Database\Support\KitSeeds;
 use Database\Support\SeedsTenant;
 use Illuminate\Support\Facades\DB;
@@ -67,6 +68,8 @@ final class AdminSettingsSeeder
             'hold_minutes' => $seed['holdMinutes'],
             'markup_pct' => $policies['markupPct'],
             'max_discount_pct' => $policies['maxDiscountPct'],
+            'approval_margin_pct' => (int) QuoteApprovalPolicy::DEFAULTS['margin_floor'],
+            'discount_cap_pct' => (int) QuoteApprovalPolicy::DEFAULTS['max_discount'],
             'advance_pct' => $policies['advancePct'],
             'balance_days_before' => $policies['balanceDaysBefore'],
             'cancel_text' => $policies['cancel'],

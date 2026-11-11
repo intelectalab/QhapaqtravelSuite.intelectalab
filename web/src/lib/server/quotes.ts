@@ -1,7 +1,7 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
-import type { QuoteConversion, QuoteDetail, QuoteFormOptions, QuoteListMeta, QuoteRow } from "@/lib/quotes";
+import type { QuoteAuditEvent, QuoteConversion, QuoteDetail, QuoteFormOptions, QuoteListMeta, QuoteRow } from "@/lib/quotes";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
 import { type Collection, fetchPages } from "./pages";
@@ -30,3 +30,8 @@ export const getQuote = cache(async (code: string): Promise<QuoteDetail> => (awa
 export const getQuoteConversion = async (code: string): Promise<QuoteConversion | null> => get<QuoteConversion>(`/quotes/${encodeURIComponent(code)}/conversion-preview`);
 
 export const getQuoteFormOptions = cache(async (): Promise<QuoteFormOptions | null> => get<QuoteFormOptions>("/quotes/form-options"));
+
+export async function getQuoteActivity(code: string): Promise<QuoteAuditEvent[]> {
+  const result = await fetchPages<QuoteAuditEvent>(`/quotes/${encodeURIComponent(code)}/activity`, 500);
+  return result.ok && result.data ? result.data.data : [];
+}

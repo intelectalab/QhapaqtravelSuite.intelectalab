@@ -36,7 +36,7 @@ export default async function TarifasPage() {
         actions={
           overview.can.manage ? (
             <>
-              <SeasonCreateAction overview={overview} />
+              <SeasonCreateAction seasonTypes={overview.options.season_types} />
               <RateCreateAction overview={overview} />
             </>
           ) : undefined

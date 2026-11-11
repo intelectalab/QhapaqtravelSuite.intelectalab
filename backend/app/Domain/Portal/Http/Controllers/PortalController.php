@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Portal\Http\Controllers;
 
+use App\Domain\Crm\Actions\ArcoRequests;
 use App\Domain\Iam\Models\User;
 use App\Domain\Portal\Actions\PortalMessages;
 use App\Domain\Portal\Actions\PortalProfile;
@@ -52,6 +53,36 @@ final class PortalController
         $decision->markViewed($account, $code);
 
         return $this->json($this->directory->quote($account, $code));
+    }
+
+    public function view(Request $request, string $code, PortalQuoteDecision $decision): JsonResponse
+    {
+        $account = $this->customer($request);
+        $decision->markViewed($account, $code);
+
+        return $this->json(['code' => $code, 'status' => $account->quote($code)->status]);
+    }
+
+    public function requestUpdate(Request $request, string $code, PortalQuoteDecision $decision, PortalMessages $messages): JsonResponse
+    {
+        $data = $request->validate(['message' => ['required', 'string', 'min:5', 'max:2000']], ['message.*' => 'Cuéntanos qué quieres cambiar.']);
+
+        return $this->json($decision->requestUpdate($this->customer($request), $code, $data['message'], $messages));
+    }
+
+    public function documents(Request $request): JsonResponse
+    {
+        return $this->json($this->directory->documents($this->account($request)));
+    }
+
+    public function payments(Request $request): JsonResponse
+    {
+        return $this->json($this->directory->paymentHistory($this->customer($request)));
+    }
+
+    public function notifications(Request $request): JsonResponse
+    {
+        return $this->json($this->directory->notifications($this->account($request)));
     }
 
     public function approve(Request $request, string $code, PortalQuoteDecision $decision): JsonResponse
@@ -160,6 +191,19 @@ final class PortalController
         ], ['body.*' => 'Escribe tu mensaje.']);
 
         return $this->json(['code' => $messages->send($this->account($request), $data)]);
+    }
+
+    public function arcoRequest(Request $request, ArcoRequests $requests): JsonResponse
+    {
+        $data = $request->validate([
+            'type' => ['required', Rule::in(array_keys(ArcoRequests::TYPES))],
+            'detail' => ['required', 'string', 'min:10', 'max:2000'],
+        ], [
+            'type.*' => 'Elige qué derecho quieres ejercer.',
+            'detail.*' => 'Cuéntanos tu pedido en al menos 10 caracteres.',
+        ]);
+
+        return $this->json($requests->request($this->customer($request), (string) $data['type'], (string) $data['detail']));
     }
 
     private function account(Request $request): PortalAccount

@@ -1,6 +1,7 @@
 "use server";
 
 import { apiFetch } from "@/lib/server/api";
+import { captchaHeaders } from "@/lib/server/captcha";
 import { formValues } from "@/lib/server/resource";
 import type { DemoFormState } from "@/lib/software";
 
@@ -8,7 +9,7 @@ const FIELDS = ["kind", "plan", "billing_cycle", "full_name", "email", "phone", 
 
 export async function requestDemo(_state: DemoFormState, form: FormData): Promise<DemoFormState> {
   const body = { ...formValues(form, FIELDS), consent: form.get("consent") === "on" };
-  const result = await apiFetch<{ code: string | null; repeated: boolean; message: string }>("/public/software/demo-requests", { method: "POST", body, auth: false });
+  const result = await apiFetch<{ code: string | null; repeated: boolean; message: string }>("/public/software/demo-requests", { method: "POST", body, auth: false, headers: captchaHeaders(form) });
 
   if (!result.ok || !result.data) {
     const errors = Object.fromEntries(Object.entries(result.error?.errors ?? {}).map(([field, messages]) => [field, messages[0] ?? ""]));

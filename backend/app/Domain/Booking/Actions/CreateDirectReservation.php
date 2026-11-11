@@ -44,13 +44,19 @@ final class CreateDirectReservation
         private readonly Advisors $advisors,
     ) {}
 
-    public function handle(array $data, User $actor): Reservation
+    public function parties(array $data, User $actor): array
     {
         $client = Portfolio::scope(DB::table('crm_clients')->whereNull('deleted_at'), $actor, 'owner_id')
             ->where(preg_match('/^[0-9a-f-]{36}$/i', (string) $data['client_id']) === 1 ? 'id' : 'code', $data['client_id'])
             ->first(['id', 'code', 'name'])
             ?? throw ApiException::unprocessable('RES-BR-04', 'Elige un cliente de tu cartera.', ['client_id' => ['Elige un cliente de tu cartera.']]);
-        $ownerId = $this->owner($data, $actor);
+
+        return [$client, $this->owner($data, $actor)];
+    }
+
+    public function handle(array $data, User $actor): Reservation
+    {
+        [$client, $ownerId] = $this->parties($data, $actor);
         $plan = $this->plans->build([...$data, 'client_id' => $client->id], $actor, true);
         $departureIds = $plan['departure'] ? [(string) $plan['departure']['id']] : [];
 
@@ -78,7 +84,7 @@ final class CreateDirectReservation
 
         $status = $confirm ? ReservationStatus::Confirmada : ($available ? ReservationStatus::Borrador : ReservationStatus::PendienteDisponibilidad);
         $product = DB::table('catalog_products')->where('id', $plan['product_id'])->first(['id', 'code', 'name']);
-        $policies = (array) (DB::table('catalog_product_policies')->where('product_id', $product->id)->first(['cancellation', 'modification', 'no_show', 'refund']) ?? []);
+        $policies = (array) (DB::table('catalog_product_policies')->where('product_id', $product->id)->first(['cancellation', 'modification', 'no_show', 'refund', 'penalty_tiers']) ?? []);
         $version = DB::table('catalog_product_versions')->where('product_id', $product->id)->orderByDesc('created_at')->value('version');
 
         $reservation = new Reservation;

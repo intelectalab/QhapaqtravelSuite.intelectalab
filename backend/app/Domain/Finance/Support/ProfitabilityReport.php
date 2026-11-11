@@ -41,7 +41,7 @@ final class ProfitabilityReport
         $servicesBy = $services->groupBy('reservation_id');
 
         $rows = $reservations->map(function (object $reservation) use ($servicesBy, $extraCosts, $commissions): array {
-            $income = $this->money->pen($reservation->total_amount, $reservation->currency, $reservation->fx_rate);
+            $income = $this->money->pen((string) NetSales::of($reservation->total_amount, $reservation->currency), $reservation->currency, $reservation->fx_rate);
             $serviceCost = ($servicesBy->get($reservation->id) ?? collect())->sum(fn (object $row): float => $this->money->pen($row->cost_amount, $row->currency, $row->fx_rate ?? $reservation->fx_rate));
             $extra = ($extraCosts->get($reservation->id) ?? collect())->sum(fn (object $row): float => $this->money->pen($row->amount, $row->currency, $row->fx_rate));
             $commission = ($commissions->get($reservation->id) ?? collect())->sum(fn (object $row): float => $this->money->pen($row->amount, $row->currency, $row->fx_rate));
@@ -98,7 +98,7 @@ final class ProfitabilityReport
         return $services->groupBy(fn (object $row): string => $row->product_name ?? (self::KINDS[$row->service_kind] ?? 'Otros servicios'))
             ->map(function (Collection $items, string $name) use ($reservations): array {
                 $fx = fn (object $row): mixed => $row->fx_rate ?? $reservations->get($row->reservation_id)?->fx_rate;
-                $price = $items->sum(fn (object $row): float => $this->money->pen($row->price_amount, $row->currency, $fx($row)));
+                $price = $items->sum(fn (object $row): float => $this->money->pen((string) NetSales::of($row->price_amount, $row->currency), $row->currency, $fx($row)));
                 $cost = $items->sum(fn (object $row): float => $this->money->pen($row->cost_amount, $row->currency, $fx($row)));
 
                 return ['name' => $name, 'income_pen' => round($price, 2), 'margin_pen' => round($price - $cost, 2), 'margin_pct' => $price > 0 ? round(($price - $cost) / $price * 100, 1) : 0.0, 'count' => $items->count()];

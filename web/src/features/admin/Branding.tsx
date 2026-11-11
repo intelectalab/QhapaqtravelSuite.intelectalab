@@ -13,9 +13,16 @@ import { ADMIN_INITIAL, type AdminActionState, type BrandingOverview, type Brand
 import { cn } from "@/lib/cn";
 import { RISE } from "./AdminParts";
 
-type Role = "brand" | "accent" | "menu";
+export type ColorRoleKey = "brand" | "accent" | "menu";
 
-const ROLES: { key: Role; label: string; hint: string; presets: string[] }[] = [
+export interface ColorRoleSpec {
+  key: ColorRoleKey;
+  label: string;
+  hint: string;
+  presets: string[];
+}
+
+const ROLES: ColorRoleSpec[] = [
   { key: "brand", label: "Color principal", hint: "Botones principales, menú y pestaña activos, interruptores, banda de correos y cabecera de PDF.", presets: ["#b3263e", "#9f1d4f", "#c2410c", "#0f766e", "#1d4ed8", "#6d28d9", "#1f2937"] },
   { key: "accent", label: "Color de acento", hint: "Enlaces, iconos y etiquetas. Los fondos suaves se calculan solos.", presets: ["#26357a", "#1e40af", "#0e7490", "#2c7a66", "#7a5af8", "#b45309", "#be185d"] },
   { key: "menu", label: "Color del menú", hint: "Fondo del menú lateral. El texto se ajusta claro u oscuro.", presets: ["#141a33", "#0f172a", "#1c1917", "#14281f", "#2a1430", "#f4f5f8", "#ffffff"] },
@@ -46,7 +53,7 @@ function suggestion(hex: string): string | null {
   return "#1f2937";
 }
 
-function ColorRole({ role, value, onChange, disabled }: { role: (typeof ROLES)[number]; value: string; onChange: (value: string) => void; disabled: boolean }) {
+export function ColorRole({ role, value, onChange, disabled }: { role: ColorRoleSpec; value: string; onChange: (value: string) => void; disabled: boolean }) {
   const valid = HEX.test(value);
   const fix = role.key === "menu" ? null : suggestion(value);
   const ratio = valid ? contrast(value, role.key === "menu" ? (luminance(value) > 0.45 ? "#141a33" : "#ffffff") : "#ffffff") : 0;

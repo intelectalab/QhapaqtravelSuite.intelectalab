@@ -1,7 +1,11 @@
 import { normalize } from "@/lib/format";
 import type { FilterConfig, MetricFilter, SortDirection, SortOption, SortType } from "./types";
 
-export const ROW_OPTIONS = [8, 16, 25, 50, 100];
+export const ROW_OPTIONS = [8, 16, 25, 50, 100, 500];
+
+export const MAX_ROWS = 1000;
+
+export const LONG_PAGE = 12;
 export const DEFAULT_ROWS = 8;
 
 export const SORT_DIRECTIONS: Record<SortType, { first: SortDirection; asc: string; desc: string }> = {
@@ -63,5 +67,5 @@ export function countActiveFilters(values: Record<string, string>): number {
 
 export function parseRows(raw: string | null): number {
   const saved = Number(raw);
-  return ROW_OPTIONS.includes(saved) ? saved : DEFAULT_ROWS;
+  return Number.isInteger(saved) && saved >= 1 && saved <= MAX_ROWS ? saved : DEFAULT_ROWS;
 }

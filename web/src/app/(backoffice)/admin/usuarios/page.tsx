@@ -10,7 +10,8 @@ import { listTeam } from "@/lib/server/users";
 
 export const metadata: Metadata = { title: "Usuarios" };
 
-export default async function UsuariosPage() {
+export default async function UsuariosPage({ searchParams }: PageProps<"/admin/usuarios">) {
+  const { q } = await searchParams;
   const [team, me] = await Promise.all([listTeam(), currentUser()]);
   if (!team) return <NoAccess home="/dashboard" />;
   const active = team.users.filter((user) => user.status === "activo").length;
@@ -29,7 +30,7 @@ export default async function UsuariosPage() {
           { href: "/admin/usuarios/sedes", label: "Sedes", count: team.options.sedes.length },
         ]}
       />
-      <UsersTable users={team.users} options={team.options} viewerId={me.id} />
+      <UsersTable users={team.users} options={team.options} viewerId={me.id} initialSearch={typeof q === "string" ? q : undefined} />
     </>
   );
 }

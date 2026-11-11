@@ -7,6 +7,7 @@ namespace App\Domain\Iam\Actions;
 use App\Domain\Iam\Models\AccessToken;
 use App\Domain\Iam\Models\MfaFactor;
 use App\Domain\Iam\Models\User;
+use App\Domain\Iam\Support\LoginLockout;
 use App\Domain\Iam\Support\SessionPayload;
 use App\Domain\Iam\Support\TotpVerifier;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -21,32 +22,49 @@ final class VerifyMfa
         private readonly IssueAccessToken $issueToken,
         private readonly RecordLogin $recordLogin,
         private readonly AuditLogger $audit,
+        private readonly LoginLockout $lockout,
     ) {}
 
     public function __invoke(User $user, AccessToken $token, string $code): array
     {
         $factor = $user->mfaFactor ?? throw ApiException::unprocessable('MFA_NOT_ENROLLED', 'Tu cuenta aún no tiene configurada la verificación en dos pasos.');
+        $lockKey = LoginLockout::agencyKey((string) $user->tenant_id, (string) $user->email);
+        $this->lockout->ensureOpen($lockKey);
 
         if ($this->isRecoveryCode($code)) {
-            $this->useRecoveryCode($factor, $user, $code);
+            $this->guarded($user, $lockKey, fn () => $this->useRecoveryCode($factor, $user, $code));
             $this->issueToken->completeMfa($token);
+            $this->lockout->clear($lockKey);
             ($this->recordLogin)($user, 'Código de recuperación');
 
             return SessionPayload::make($user, null, mfaPending: false);
         }
 
-        try {
-            $step = $this->totp->verify($factor->secret, $code, $factor->last_used_step);
-        } catch (ApiException $invalid) {
-            $this->audit->logOutsideTransaction('Sesión', (string) $user->code, 'login_fallido', after: 'MFA');
-            throw $invalid;
-        }
+        $step = $this->guarded($user, $lockKey, function () use ($factor, $user, $code): int {
+            try {
+                return $this->totp->verify($factor->secret, $code, $factor->last_used_step);
+            } catch (ApiException $invalid) {
+                $this->audit->logOutsideTransaction('Sesión', (string) $user->code, 'login_fallido', after: 'MFA');
+                throw $invalid;
+            }
+        });
 
         $factor->forceFill(['last_used_step' => $step])->save();
         $this->issueToken->completeMfa($token);
+        $this->lockout->clear($lockKey);
         ($this->recordLogin)($user, 'MFA OK');
 
         return SessionPayload::make($user, null, mfaPending: false);
+    }
+
+    private function guarded(User $user, string $lockKey, callable $check): mixed
+    {
+        try {
+            return $check();
+        } catch (ApiException $invalid) {
+            $this->lockout->fail($lockKey, fn () => $this->audit->logOutsideTransaction('Sesión', (string) $user->code, 'cuenta_bloqueada', after: $this->lockout->minutes().' min'));
+            throw $invalid;
+        }
     }
 
     private function isRecoveryCode(string $code): bool

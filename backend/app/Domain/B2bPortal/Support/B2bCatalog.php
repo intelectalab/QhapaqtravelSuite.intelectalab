@@ -116,6 +116,30 @@ final class B2bCatalog
         ];
     }
 
+    public function departures(B2bAccount $account, stdClass $row): array
+    {
+        $today = Carbon::parse($account->today);
+        $earliest = $today->copy()->addDays((int) $row->booking_advance_min_days)->toDateString();
+        $items = [];
+
+        foreach ($this->availability->departures($row->id) as $departure) {
+            if ($departure->departure_date < $today->toDateString() || $departure->status === 'cancelada') {
+                continue;
+            }
+
+            $items[] = [
+                'date' => $departure->departure_date,
+                'status' => $departure->status,
+                'spots' => $this->availability->free($departure),
+                'guaranteed' => (int) $departure->sold >= max(2, (int) $row->minimum_passengers),
+                'outside_advance' => $departure->departure_date < $earliest,
+                'bookable' => $row->reason === null && $departure->status === 'abierta' && $departure->departure_date >= $earliest && $this->availability->free($departure) > 0,
+            ];
+        }
+
+        return ['product' => $row->code ?? null, 'advance_days' => (int) $row->booking_advance_min_days, 'earliest' => $earliest, 'uses_departures' => $this->availability->usesDepartures($row->id), 'items' => $items];
+    }
+
     public function detail(B2bAccount $account, stdClass $row, string $month, int $seats): array
     {
         $today = Carbon::parse($account->today);

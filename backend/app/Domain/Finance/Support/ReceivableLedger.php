@@ -8,6 +8,7 @@ use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Money\Decimal;
+use App\Domain\Site\Support\WebOrderSettlement;
 use Brick\Math\BigDecimal;
 use Illuminate\Support\Facades\DB;
 
@@ -15,7 +16,7 @@ final class ReceivableLedger
 {
     public const TOLERANCE = 0.005;
 
-    public function __construct(private readonly Consolidation $money, private readonly AuditLogger $audit, private readonly SyncServicePayables $payables) {}
+    public function __construct(private readonly Consolidation $money, private readonly AuditLogger $audit, private readonly SyncServicePayables $payables, private readonly WebOrderSettlement $web) {}
 
     public static function balance(object $row): BigDecimal
     {
@@ -35,7 +36,7 @@ final class ReceivableLedger
         };
     }
 
-    public function recalculate(string $receivableId, User $actor): object
+    public function recalculate(string $receivableId, ?User $actor): object
     {
         $receivable = DB::table('fin_receivables')->where('id', $receivableId)->lockForUpdate()->first();
         $paid = Decimal::of(DB::table('fin_payment_applications as a')
@@ -52,7 +53,7 @@ final class ReceivableLedger
             'paid_amount' => (string) Decimal::round2($paid),
             'status' => $status,
             'lock_version' => DB::raw('lock_version + 1'),
-            'updated_by' => $actor->getKey(),
+            'updated_by' => $actor?->getKey(),
             'updated_at' => now(),
         ]);
 
@@ -61,10 +62,16 @@ final class ReceivableLedger
         return (object) ['code' => $receivable->code, 'before' => (string) Decimal::round2(self::balance($receivable)), 'after' => (string) Decimal::round2($amount->minus($paid)), 'status' => $status];
     }
 
-    private function syncReservation(string $reservationId, User $actor): void
+    private function syncReservation(string $reservationId, ?User $actor): void
     {
-        $reservation = DB::table('booking_reservations')->where('id', $reservationId)->first(['code', 'status']);
+        $reservation = DB::table('booking_reservations')->where('id', $reservationId)->first(['code', 'status', 'ecom_order_id']);
         if ($reservation === null || $reservation->status !== 'pendiente_pago') {
+            return;
+        }
+
+        if ($reservation->ecom_order_id !== null) {
+            $this->web->confirm($reservationId, $actor);
+
             return;
         }
 

@@ -79,7 +79,7 @@ export function QuotesTable({ rows, canManage }: { rows: QuoteRow[]; canManage: 
           <RowIcon tone="view" label="Ver cotización" href={href(row)} />
           {canManage && (
             <>
-              <RowIcon tone="edit" label="Editar" href={`${href(row)}/editar`} disabledHint={row.status === "borrador" ? undefined : "Ya se envió: crea una nueva versión desde la ficha"} />
+              <RowIcon tone="edit" label="Editar" href={`${href(row)}?editar=1`} disabledHint={row.status === "borrador" ? undefined : "Ya se envió: crea una nueva versión desde la ficha"} />
               {["aprobada", "convertida"].includes(row.status) ? <RowIcon tone="delete" label="Eliminar" disabledHint="Aprobada o en reserva: no se elimina" /> : <QuoteDeleteAction code={row.code} title={row.title} iconOnly />}
             </>
           )}

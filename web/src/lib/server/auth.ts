@@ -30,6 +30,11 @@ const mfaSchema = z.object({
   code: z.string().trim().regex(/^(\d{3}\s?\d{3}|[A-Za-z0-9]{4}-?[A-Za-z0-9]{4})$/, "Escribe los 6 dígitos de tu aplicación o un código de recuperación."),
 });
 
+function failureMessage(result: { status: number; error: { code?: string; message: string } | null }, fallback: string): string {
+  if (result.status === 429 && result.error?.code !== "ACCOUNT_LOCKED") return "Hiciste varios intentos seguidos. Espera un minuto y vuelve a intentarlo.";
+  return result.error?.message ?? fallback;
+}
+
 function safeNext(value: FormDataEntryValue | null, realm: Realm, fallback: string): string {
   const next = typeof value === "string" ? value : "";
   const inside = realm === "platform" ? next.startsWith(`${REALMS.platform.path}/`) : !next.startsWith(`${REALMS.platform.path}`);
@@ -43,7 +48,7 @@ export async function signIn(form: FormData, extra: Record<string, unknown> = {}
   const result = await apiFetch<SessionData>("/auth/login", { method: "POST", auth: false, body: { ...parsed.data, ...extra, device_name: "web" } });
 
   if (!result.ok || !result.data?.token) {
-    const message = result.status === 429 ? "Hiciste varios intentos seguidos. Espera un minuto y vuelve a intentarlo." : result.error?.message ?? "No pudimos iniciar tu sesión.";
+    const message = failureMessage(result, "No pudimos iniciar tu sesión.");
     return { message, fields: { email: parsed.data.email } };
   }
 
@@ -61,7 +66,7 @@ export async function confirmMfa(realm: Realm, form: FormData): Promise<FormStat
   const result = await apiFetch<SessionData>(`${API_PREFIX[realm]}/auth/mfa/verify`, { method: "POST", body: parsed.data, realm });
   if (!result.ok || !result.data) {
     if (result.status === 401) redirect(REALMS[realm].logout);
-    const message = result.status === 429 ? "Hiciste varios intentos seguidos. Espera un minuto y vuelve a intentarlo." : result.error?.message ?? "No pudimos verificar el código.";
+    const message = failureMessage(result, "No pudimos verificar el código.");
     return { message };
   }
 
@@ -95,7 +100,7 @@ export async function confirmMfaSetup(state: MfaSetupState, form: FormData): Pro
 
   const result = await apiFetch<SessionData>("/me/mfa/confirm", { method: "POST", body: { code: parsed.data } });
   if (result.status === 401) redirect(REALMS.agency.logout);
-  if (!result.ok || !result.data) return { ...state, message: result.status === 429 ? "Hiciste varios intentos seguidos. Espera un minuto y vuelve a intentarlo." : result.error?.message ?? "No pudimos confirmar el código." };
+  if (!result.ok || !result.data) return { ...state, message: failureMessage(result, "No pudimos confirmar el código.") };
 
   await completeMfa("agency");
   return { message: null, codes: result.data.recovery_codes ?? [], next: safeNext(form.get("next"), "agency", result.data.home) };

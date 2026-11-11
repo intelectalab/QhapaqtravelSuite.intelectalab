@@ -102,6 +102,32 @@ final class SiteCart
         return $this->present($cart);
     }
 
+    public function promo(?string $token, ?string $code): array
+    {
+        $cart = $this->find($token) ?? throw ApiException::notFound('Tu carrito expiró o ya fue procesado.');
+        $code = $code === null ? null : strtoupper(trim($code));
+
+        if ($code !== null) {
+            $today = Carbon::now($this->context->timezone())->toDateString();
+            $valid = DB::table('catalog_product_promotions')->where('promo_code', $code)->whereNull('deleted_at')->where('status', 'activa')
+                ->whereIn('channel', ['Todos', 'E-commerce'])->where('date_from', '<=', $today)->where('date_to', '>=', $today)
+                ->whereIn('product_id', DB::table('channel_web_cart_items')->where('cart_id', $cart->id)->select('product_id'))
+                ->exists();
+
+            if (! $valid) {
+                throw ApiException::unprocessable('SIT-BR-08', 'Ese código no aplica a los tours de tu carrito o ya no está vigente.', ['code' => ['Ese código no aplica a los tours de tu carrito o ya no está vigente.']]);
+            }
+
+            DB::table('channel_web_carts')->where('id', $cart->id)->update(['promo_code' => $code, 'last_activity_at' => now()]);
+            $cart->promo_code = $code;
+        } else {
+            DB::table('channel_web_carts')->where('id', $cart->id)->update(['promo_code' => null, 'last_activity_at' => now()]);
+            $cart->promo_code = null;
+        }
+
+        return $this->present($cart);
+    }
+
     public function rehold(?string $token, int $line): array
     {
         $cart = $this->find($token) ?? throw ApiException::notFound('Tu carrito expiró o ya fue procesado.');

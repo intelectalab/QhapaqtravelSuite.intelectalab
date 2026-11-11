@@ -13,8 +13,6 @@ use Illuminate\Support\Facades\DB;
 
 final class SubscriptionDirectory
 {
-    public const ADDONS = ['whatsapp_pack' => 'Paquete WhatsApp +1 000 mensajes al mes', 'custom_domain' => 'Dominio propio con certificado SSL'];
-
     private const METRICS = [
         'users' => ['label' => 'Usuarios', 'unit' => 'usuarios'],
         'sedes' => ['label' => 'Sedes activas', 'unit' => 'sedes'],
@@ -35,10 +33,17 @@ final class SubscriptionDirectory
     {
         $tenant = $this->context->tenant();
         $platform = $this->platform();
-        $plan = $platform->table('plans')->where('id', $tenant->plan_id)->first(['code', 'name', 'rank', 'price_month', 'price_year', 'currency', 'support_level', 'module_count']);
-        $limits = $platform->table('plan_limits')->where('plan_id', $tenant->plan_id)->get(['metric', 'value', 'hard'])->keyBy('metric');
         $subscription = $platform->table('subscriptions')->where('tenant_id', $tenant->getKey())->where('status', '<>', 'canceled')->first();
-        $items = $platform->table('subscription_items')->where('subscription_id', $subscription->id ?? null)->whereNull('ends_at')->get(['addon_code', 'quantity', 'unit_price', 'starts_at', 'meta']);
+        $planId = $subscription->plan_id ?? $tenant->plan_id;
+        $plan = $platform->table('plans')->where('id', $planId)->first(['code', 'name', 'rank', 'price_month', 'price_year', 'currency', 'support_level', 'module_count']);
+        $limits = $platform->table('plan_limits')->where('plan_id', $planId)->get(['metric', 'value', 'hard'])->keyBy('metric');
+        $today = Carbon::today('America/Lima')->toDateString();
+        $items = $platform->table('subscription_items')->where('subscription_id', $subscription->id ?? null)->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $today))->get(['addon_code', 'quantity', 'unit_price', 'starts_at', 'ends_at', 'meta']);
+        $catalog = $platform->table('addons')->orderBy('price_month')->get();
+        $labels = $catalog->pluck('label', 'code');
+        $prices = $platform->table('addon_prices')->where('plan_id', $planId)->pluck('price', 'addon_code');
+        $scheduled = $subscription ? $platform->table('subscription_changes as c')->leftJoin('plans as p', 'p.id', '=', 'c.to_plan_id')->where('c.subscription_id', $subscription->id)->where('c.status', 'scheduled')->first(['c.kind', 'c.to_cycle', 'c.effective_at', 'p.name as plan']) : null;
+        $coupon = $subscription && $subscription->coupon_redemption_id ? $platform->table('coupon_redemptions as r')->join('coupons as c', 'c.id', '=', 'r.coupon_id')->where('r.id', $subscription->coupon_redemption_id)->where('r.remaining_cycles', '>', 0)->first(['c.code', 'c.type', 'c.value', 'r.remaining_cycles']) : null;
         $month = Carbon::today()->startOfMonth();
         $metered = $platform->table('usage_monthly')->where('tenant_id', $tenant->getKey())->where('month', '>=', $month->copy()->subMonths(5)->toDateString())->get(['metric', 'month', 'value']);
         $current = $metered->filter(fn (object $row): bool => Carbon::parse($row->month)->isSameMonth($month))->pluck('value', 'metric');
@@ -77,6 +82,10 @@ final class SubscriptionDirectory
                 'auto_renew' => (bool) $subscription->auto_renew,
                 'cancel_at' => $subscription->cancel_at,
                 'credit_balance' => (float) $subscription->credit_balance,
+                'lock_version' => (int) $subscription->lock_version,
+                'trial_ends_at' => $subscription->trial_ends_at,
+                'scheduled' => $scheduled ? ['kind' => $scheduled->kind, 'plan' => $scheduled->plan, 'cycle' => $scheduled->to_cycle, 'effective_at' => $scheduled->effective_at] : null,
+                'coupon' => $coupon ? ['code' => $coupon->code, 'label' => $coupon->type === 'percent' ? rtrim(rtrim((string) $coupon->value, '0'), '.').' %' : 'S/ '.$coupon->value, 'remaining_cycles' => (int) $coupon->remaining_cycles] : null,
                 'customer_since' => $subscription->created_at,
                 'billing' => [
                     'ruc' => $subscription->billing_ruc,
@@ -88,11 +97,21 @@ final class SubscriptionDirectory
             ] : null,
             'addons' => $items->map(fn (object $item): array => [
                 'code' => $item->addon_code,
-                'label' => self::ADDONS[$item->addon_code] ?? $item->addon_code,
+                'label' => $labels[$item->addon_code] ?? $item->addon_code,
                 'quantity' => (int) $item->quantity,
                 'unit_price' => (float) $item->unit_price,
                 'since' => $item->starts_at,
+                'ends_at' => $item->ends_at,
                 'detail' => self::domain($item->meta),
+            ])->values(),
+            'addon_catalog' => $catalog->map(fn (object $addon): array => [
+                'code' => $addon->code,
+                'label' => $addon->label,
+                'unit' => $addon->unit,
+                'quantity_allowed' => (bool) $addon->quantity_allowed,
+                'price' => (float) ($prices[$addon->code] ?? $addon->price_month ?? 0),
+                'included' => in_array((string) $planId, self::uuids($addon->included_plans), true),
+                'available' => in_array((string) $planId, self::uuids($addon->available_plans), true),
             ])->values(),
             'usage' => collect(self::METRICS)->map(function (array $meta, string $metric) use ($limits, $used, $whatsappExtra): array {
                 $limit = isset($limits[$metric]) && $limits[$metric]->value !== null ? (int) $limits[$metric]->value : null;
@@ -151,6 +170,39 @@ final class SubscriptionDirectory
         }
 
         return $changed;
+    }
+
+    public function invoice(object $row): array
+    {
+        $platform = $this->platform();
+        $lines = $platform->table('platform_invoice_lines')->where('invoice_id', $row->id)->get(['description', 'quantity', 'unit_price', 'amount', 'line_type']);
+        $attempts = $platform->table('payment_attempts')->where('invoice_id', $row->id)->orderBy('attempt_no')->get(['attempt_no', 'source', 'result', 'message', 'created_at']);
+
+        return [
+            'number' => $row->series.'-'.str_pad((string) $row->number, 8, '0', STR_PAD_LEFT),
+            'kind' => $row->kind,
+            'period_from' => $row->period_from,
+            'period_to' => $row->period_to,
+            'issue_date' => $row->issue_date,
+            'due_date' => $row->due_date,
+            'currency' => $row->currency,
+            'subtotal' => (float) $row->subtotal,
+            'igv' => (float) $row->igv,
+            'total' => (float) $row->total,
+            'status' => $row->status,
+            'paid_at' => $row->paid_at,
+            'method' => $row->payment_ref,
+            'sunat' => $row->sunat_status,
+            'bill_to' => $row->bill_to ? json_decode((string) $row->bill_to, true) : null,
+            'next_retry_at' => $row->dunning_next_retry_at,
+            'lines' => $lines->map(fn (object $line): array => ['description' => $line->description, 'quantity' => (float) $line->quantity, 'unit_price' => (float) $line->unit_price, 'amount' => (float) $line->amount, 'type' => $line->line_type])->values()->all(),
+            'attempts' => $attempts->map(fn (object $attempt): array => ['number' => (int) $attempt->attempt_no, 'source' => $attempt->source, 'result' => $attempt->result, 'message' => $attempt->message, 'at' => $attempt->created_at])->values()->all(),
+        ];
+    }
+
+    private static function uuids(?string $value): array
+    {
+        return $value ? array_values(array_filter(explode(',', trim($value, '{}')))) : [];
     }
 
     private static function domain(?string $meta): ?string

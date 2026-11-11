@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Domain\Catalog\Support\CancellationTiers;
 use App\Domain\Platform\Models\Tenant;
 use Database\Support\KitSeeds;
 use Illuminate\Support\Facades\DB;
@@ -143,6 +144,7 @@ final class CatalogDemoSeeder
             $this->seedItinerary($productId, $seed['itinerary'] ?? []);
             $this->seedTexts($productId, $seed);
             $this->seedRates($productId, $seed['rates'] ?? []);
+            self::seedBooking($productId, (string) $this->tenant->getKey(), $seed);
         }
     }
 
@@ -193,6 +195,7 @@ final class CatalogDemoSeeder
                 'refund' => $policies['refund'] ?? 'Por el mismo medio de pago.',
                 'advance_min' => $policies['advanceMin'] ?? null,
                 'advance_max' => $policies['advanceMax'] ?? null,
+                'penalty_tiers' => json_encode(CancellationTiers::fromText($policies['cancel'] ?? null)),
             ]);
         }
     }
@@ -233,6 +236,46 @@ final class CatalogDemoSeeder
         }
 
         return $this->insert($table, [...$key, ...$values]);
+    }
+
+    public static function seedBooking(string $productId, string $tenantId, array $seed, ?string $connection = null): void
+    {
+        $db = DB::connection($connection);
+        $db->table('catalog_payment_policies')->where('product_id', $productId)->delete();
+        $payment = $seed['payment'] ?? null;
+        if (is_array($payment) && ($payment['modes'] ?? []) !== []) {
+            $modes = array_values(array_intersect($payment['modes'], ['total', 'adelanto']));
+            $pct = (int) ($payment['depositPct'] ?? 0);
+            $db->table('catalog_payment_policies')->insert([
+                'id' => (string) Str::uuid7(),
+                'tenant_id' => $tenantId,
+                'product_id' => $productId,
+                'modes' => '{'.implode(',', $modes ?: ['total']).'}',
+                'deposit_pct' => $pct >= 1 && $pct <= 99 ? $pct : null,
+                'balance_due_days' => isset($payment['balanceDueDays']) ? max(0, min(180, (int) $payment['balanceDueDays'])) : null,
+                'note' => $payment['note'] ?? null,
+            ]);
+        }
+
+        $db->table('catalog_pickup_points')->where('product_id', $productId)->delete();
+        foreach (array_values((array) ($seed['pickup']['points'] ?? [])) as $index => $label) {
+            $text = mb_strtolower((string) $label);
+            $db->table('catalog_pickup_points')->insert([
+                'id' => (string) Str::uuid7(),
+                'tenant_id' => $tenantId,
+                'product_id' => $productId,
+                'sequence' => $index + 1,
+                'label' => Str::limit((string) $label, 145),
+                'kind' => match (true) {
+                    str_contains($text, 'aeropuerto') => 'aeropuerto',
+                    str_contains($text, 'hotel') => 'hotel',
+                    str_contains($text, 'terminal') => 'terminal',
+                    str_contains($text, 'cuenta') => 'por_cuenta',
+                    default => 'punto_encuentro',
+                },
+                'requires_address' => str_contains($text, 'hotel'),
+            ]);
+        }
     }
 
     private function insert(string $table, array $values): string

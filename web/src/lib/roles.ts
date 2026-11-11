@@ -89,3 +89,37 @@ export const PERMISSION_LABEL: Record<string, string> = {
   "supplier.rates.request": "Solicitar cambios de tarifa",
   "supplier.users.manage": "Gestionar contactos de la empresa",
 };
+
+export interface AccessMapRole {
+  role: string;
+  name: string;
+  scope: RoleScope;
+  custom: boolean;
+  experience: string;
+  screens: Record<string, boolean>;
+  allowed: number;
+}
+
+export interface AccessMapData {
+  screens: { path: string; permissions: string[] }[];
+  roles: AccessMapRole[];
+}
+
+export interface PermissionMatrixData {
+  roles: { code: string; name: string; scope: RoleScope; custom: boolean; users: number }[];
+  modules: PermissionModule[];
+  matrix: Record<string, Record<string, boolean>>;
+}
+
+export const EXPERIENCE_LABEL: Record<string, string> = { backoffice: "Back-office", portal: "Portal externo", mobile: "App móvil" };
+
+export interface RoleDetail {
+  code: string;
+  name: string;
+  scope: RoleScope;
+  custom: boolean;
+  experience: string;
+  screens: { allowed: number; total: number };
+  users: { code: string | null; name: string; email: string; status: string; sede: string | null; last_login_at: string | null }[];
+  audit: { at: string; action: string; permission: string | null; before: string | null; after: string | null; actor: string; correlation: string | null }[];
+}

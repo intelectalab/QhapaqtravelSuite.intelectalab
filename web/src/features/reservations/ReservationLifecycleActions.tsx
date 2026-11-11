@@ -20,7 +20,7 @@ export function ReservationStateActions({ reservation }: { reservation: Pick<Res
   return (
     <>
       {can.confirm && (
-        <Step code={code} step="confirm" label="Confirmar reserva" icon={<CircleCheck size={16} />} variant="primary" title="Confirmar reserva" description="Se verifica que haya pasajeros y cupo en las salidas. Si la reserva no tiene cuotas, se crean el anticipo del 40 % y el saldo del 60 %." submitLabel="Confirmar" testId="action:confirm" />
+        <Step code={code} step="confirm" label="Confirmar reserva" icon={<CircleCheck size={16} />} variant="primary" title="Confirmar reserva" description="Se verifica que haya pasajeros y cupo en las salidas. Si la reserva no tiene cuotas, se crean el anticipo y el saldo según las políticas comerciales." submitLabel="Confirmar" testId="action:confirm" />
       )}
       {can.start_operation && (
         <Step code={code} step="start_operation" label="Iniciar operación" icon={<PlaneTakeoff size={16} />} variant="primary" title="Iniciar operación" description={`El viaje empieza el ${formatDate(reservation.travel_from)}. La reserva pasa a En operación y Operaciones la sigue día a día.`} submitLabel="Iniciar operación" testId="action:start-operation" />
@@ -74,7 +74,7 @@ export function ReservationReceivablesAction({ code }: { code: string }) {
       label="Generar cuotas"
       icon={<Receipt size={15} />}
       title="Generar cuotas"
-      description="Se crean el anticipo del 40 %, que vence en 3 días, y el saldo del 60 %, que vence 15 días antes del viaje."
+      description="Se crean el anticipo, que vence en 3 días, y el saldo, con el porcentaje y el plazo de las políticas comerciales."
       submitLabel="Generar cuotas"
       trigger={(open) => (
         <Button size="sm" variant="ghost" icon={<Receipt size={15} />} onClick={open} data-testid="action:generate-receivables">

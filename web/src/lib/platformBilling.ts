@@ -345,6 +345,7 @@ export const invoicePeriod = (invoice: Pick<InvoiceSummary, "period_from" | "per
 export const AUDIT_ACTIONS: Record<string, { label: string; tone: Tone }> = {
   login: { label: "Inicio de sesión", tone: "info" },
   login_fallido: { label: "Ingreso fallido", tone: "warn" },
+  cuenta_bloqueada: { label: "Cuenta bloqueada", tone: "bad" },
   logout: { label: "Cierre de sesión", tone: "mute" },
   alta: { label: "Alta", tone: "ok" },
   editar: { label: "Edición", tone: "violet" },

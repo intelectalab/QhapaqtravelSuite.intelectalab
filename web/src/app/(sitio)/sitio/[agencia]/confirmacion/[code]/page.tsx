@@ -5,18 +5,21 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { DownloadButton } from "@/components/ui/DownloadButton";
 import { HoldTimer } from "@/features/site/Cart";
 import { PageHero } from "@/features/site/Hero";
-import { PayButton } from "@/features/site/PayButton";
+import { OrderPayment } from "@/features/site/PayButton";
 import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatDateTime, formatMoney } from "@/lib/format";
-import { getSiteOrder, siteBase } from "@/lib/server/site";
+import { getSiteOrder, getSiteProfile, siteBase } from "@/lib/server/site";
 import { siteHref } from "@/lib/site";
 
 export const metadata: Metadata = { title: "Confirmación de tu pedido", robots: { index: false, follow: false } };
 
 export default async function ConfirmationPage({ params }: PageProps<"/sitio/[agencia]/confirmacion/[code]">) {
   const { agencia, code } = await params;
-  const [order, base] = await Promise.all([getSiteOrder(agencia, code), siteBase(agencia)]);
+  const [order, base, profile] = await Promise.all([getSiteOrder(agencia, code), siteBase(agencia), getSiteProfile(agencia)]);
   const paid = order.status === "confirmado";
+  const rejected = order.status === "pago_rechazado";
+  const balance = paid && Number(order.due) > 0;
+  const canPay = Number(order.due) > 0 && ["pago_pendiente", "pago_rechazado", "confirmado"].includes(order.status);
   const steps = [
     { label: "Pedido creado", done: true },
     { label: "Pago registrado", done: paid },
@@ -37,15 +40,28 @@ export default async function ConfirmationPage({ params }: PageProps<"/sitio/[ag
       />
       <div className="mx-auto grid max-w-[1240px] gap-6 px-5 pt-10 sm:px-8 lg:grid-cols-[1fr_340px]">
         <div className="grid gap-5">
-          {!paid && order.status === "pago_pendiente" && (
-            <section className="rounded-card border border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-[color-mix(in_srgb,var(--warn)_8%,var(--surface))] p-5">
+          {order.status === "pago_por_validar" && (
+            <section className="rounded-card border border-[color-mix(in_srgb,var(--info)_35%,transparent)] bg-[color-mix(in_srgb,var(--info)_8%,var(--surface))] p-5">
+              <h2 className="text-[16px] font-semibold text-fg">Estamos validando tu pago</h2>
+              <p className="mt-1.5 text-[13.5px] leading-relaxed text-fg-2">Recibimos tu número de operación. Lo validamos en un plazo de 4 horas hábiles y te avisamos por correo. Tus cupos ya están reservados.</p>
+            </section>
+          )}
+
+          {canPay && (
+            <section className={cn("rounded-card border p-5", rejected ? "border-[color-mix(in_srgb,var(--bad)_35%,transparent)] bg-[color-mix(in_srgb,var(--bad)_6%,var(--surface))]" : "border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-[color-mix(in_srgb,var(--warn)_8%,var(--surface))]")}>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-[16px] font-semibold text-fg">Pago simulado</h2>
-                {order.hold_expires_at && <HoldTimer until={order.hold_expires_at} />}
+                <h2 className="text-[16px] font-semibold text-fg">{balance ? "Paga el saldo de tu viaje" : rejected ? "Tu pago fue rechazado" : "Completa el pago"}</h2>
+                {!balance && order.hold_expires_at && <HoldTimer until={order.hold_expires_at} />}
               </div>
-              <p className="mt-1.5 text-[13.5px] leading-relaxed text-fg-2">Demostración sin pasarela real: no se solicita ni se cobra a ninguna tarjeta. Al simular el pago se registra el cobro, se consumen los cupos y la reserva pasa a confirmación.</p>
+              <p className="mt-1.5 text-[13.5px] leading-relaxed text-fg-2">
+                {balance
+                  ? `Te queda un saldo de ${formatMoney(order.due, order.currency)}${order.balance_due_date ? ` que vence el ${formatDate(order.balance_due_date)}` : ""}.`
+                  : rejected
+                    ? `${order.attempts[0]?.message ?? "El banco rechazó el cobro."} Tus cupos siguen bloqueados; puedes intentar con otra tarjeta u otro medio.`
+                    : `Pendiente de pago: ${formatMoney(order.due, order.currency)}${order.pay_mode === "anticipo" ? " (adelanto)" : ""}.`}
+              </p>
               <div className="mt-4">
-                <PayButton code={order.code} label={`Simular pago de ${formatMoney(order.total, order.currency)}`} />
+                <OrderPayment code={order.code} label={`Pagar ${formatMoney(order.due, order.currency)}`} methods={order.methods} accounts={order.bank_accounts} walletPhone={profile.agency.phone} />
               </div>
             </section>
           )}
@@ -128,6 +144,22 @@ export default async function ConfirmationPage({ params }: PageProps<"/sitio/[ag
               ))}
             </ol>
           </div>
+          {order.attempts.length > 0 && (
+            <div className="rounded-card border border-line bg-surface p-5 shadow-card">
+              <h2 className="text-[15px] font-semibold text-fg">Pagos</h2>
+              <ul className="mt-3 grid gap-2">
+                {order.attempts.map((attempt) => (
+                  <li key={attempt.at} className="rounded-xl bg-surface-2 px-3 py-2 text-[12.5px]">
+                    <span className="flex items-center justify-between gap-2">
+                      <b className="font-semibold text-fg">{attempt.method}{attempt.card ? ` ${attempt.card}` : ""}</b>
+                      <span className={cn("font-semibold", attempt.result === "aprobado" ? "text-ok" : attempt.result === "rechazado" ? "text-bad" : "text-warn")}>{attempt.result === "aprobado" ? "Aprobado" : attempt.result === "rechazado" ? "Rechazado" : "Por validar"}</span>
+                    </span>
+                    <span className="text-fg-3">{formatDateTime(attempt.at)}{attempt.amount ? ` · ${formatMoney(attempt.amount, attempt.currency ?? order.currency)}` : ""}{attempt.operation ? ` · op. ${attempt.operation}` : ""}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="rounded-card border border-line bg-surface p-5 text-[13px] shadow-card">
             <div className="flex justify-between text-fg-2">
               <span>Total del pedido</span>

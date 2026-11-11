@@ -122,7 +122,7 @@ final class B2bBooking
             'total_amount' => $quote['net_total'],
             'snapshot_label' => Str::limit("Portal B2B {$account->agency->code} · {$product->name} · {$quote['date']}", 295),
             'catalog_snapshot' => json_encode(['product' => $product->code, 'net_unit' => $quote['net_unit'], 'seats' => $quote['seats'], 'adults' => $quote['adults'], 'children' => $quote['children']], JSON_UNESCAPED_UNICODE),
-            'policies_snapshot' => json_encode((array) (DB::table('catalog_product_policies')->where('product_id', $product->id)->first(['cancellation', 'modification', 'no_show', 'refund']) ?? []), JSON_UNESCAPED_UNICODE),
+            'policies_snapshot' => json_encode((array) (DB::table('catalog_product_policies')->where('product_id', $product->id)->first(['cancellation', 'modification', 'no_show', 'refund', 'penalty_tiers']) ?? []), JSON_UNESCAPED_UNICODE),
             'notes' => trim("Reserva creada desde el portal B2B por {$user->name}.".($reference ? " Referencia de la agencia: {$reference}." : '').(empty($data['notes']) ? '' : ' '.trim((string) $data['notes']))),
             'b2b_terms' => json_encode($terms, JSON_UNESCAPED_UNICODE),
             'created_by' => $user->getKey(),

@@ -3,6 +3,7 @@
 import { ArrowRight, Building2, CalendarCheck, Check, LoaderCircle, Mail, MapPin, MonitorPlay, Phone, User } from "lucide-react";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { Captcha } from "@/components/ui/Captcha";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
@@ -141,6 +142,7 @@ export function DemoForm({ options, action, initialKind, initialPlan, initialCyc
         <SwitchField label="Acepto que Qhapaq me contacte por esta solicitud" hint={errors.consent ?? "Usamos tus datos solo para responder a esta solicitud."} name="consent" checked={consent} onCheckedChange={setConsent} />
       </div>
 
+      <Captcha />
       {state.message && !state.done && <p className="rounded-[12px] bg-[color-mix(in_srgb,var(--bad)_10%,transparent)] px-4 py-3 text-[13.5px] font-medium text-bad animate-[rise-in_320ms_cubic-bezier(0.22,1,0.36,1)_backwards]">{state.message}</p>}
 
       <Button type="submit" variant="primary" disabled={pending} icon={pending ? <LoaderCircle size={17} className="animate-spin" /> : <ArrowRight size={17} />} className="site-sheen relative h-12 w-full overflow-hidden text-[15px]">

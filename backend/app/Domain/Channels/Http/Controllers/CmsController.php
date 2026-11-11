@@ -7,6 +7,7 @@ namespace App\Domain\Channels\Http\Controllers;
 use App\Domain\Channels\Actions\ManageCmsContent;
 use App\Domain\Channels\Support\CmsDirectory;
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -16,6 +17,26 @@ final class CmsController
     public function index(Request $request, CmsDirectory $directory): JsonResponse
     {
         return response()->json(['data' => $directory->overview($this->user($request))]);
+    }
+
+    public function show(Request $request, string $code, CmsDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->show($code, $this->user($request))]);
+    }
+
+    public function preview(Request $request, string $code, CmsDirectory $directory, TenantContext $context): JsonResponse
+    {
+        $saved = $directory->show($code, $this->user($request));
+        $data = $request->validate([
+            'title' => ['nullable', 'string', 'max:200'],
+            'body' => ['nullable', 'string', 'max:50000'],
+            'slug' => ['nullable', 'string', 'max:160'],
+            'type' => ['nullable', 'string', 'max:40'],
+            'seo_title' => ['nullable', 'string', 'max:200'],
+            'seo_description' => ['nullable', 'string', 'max:400'],
+        ]);
+
+        return response()->json(['data' => $directory->preview([...$saved, ...array_filter($data, fn (mixed $value): bool => $value !== null)], (string) $context->tenant()->subdomain)]);
     }
 
     public function store(Request $request, ManageCmsContent $manage): JsonResponse

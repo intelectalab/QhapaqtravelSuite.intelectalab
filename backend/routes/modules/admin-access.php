@@ -14,6 +14,20 @@ Route::name('admin.')->group(function (): void {
     Route::middleware('permission:admin.billing.manage')->group(function (): void {
         Route::get('billing/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
         Route::patch('billing/subscription', [SubscriptionController::class, 'billing'])->name('subscription.billing');
+        Route::post('billing/subscription/preview-change', [SubscriptionController::class, 'preview'])->name('subscription.preview');
+        Route::post('billing/subscription/change', [SubscriptionController::class, 'change'])->name('subscription.change');
+        Route::delete('billing/subscription/scheduled-change', [SubscriptionController::class, 'voidScheduled'])->name('subscription.scheduled.destroy');
+        Route::post('billing/subscription/cancel', [SubscriptionController::class, 'cancel'])->name('subscription.cancel');
+        Route::post('billing/subscription/resume', [SubscriptionController::class, 'resume'])->name('subscription.resume');
+        Route::post('billing/addons/{code}', [SubscriptionController::class, 'addAddon'])->name('subscription.addons.store');
+        Route::patch('billing/addons/{code}', [SubscriptionController::class, 'updateAddon'])->name('subscription.addons.update');
+        Route::delete('billing/addons/{code}', [SubscriptionController::class, 'removeAddon'])->name('subscription.addons.destroy');
+        Route::post('billing/coupon', [SubscriptionController::class, 'coupon'])->name('subscription.coupon');
+        Route::get('billing/usage', [SubscriptionController::class, 'usage'])->name('subscription.usage');
+        Route::get('billing/invoices', [SubscriptionController::class, 'invoices'])->name('subscription.invoices.index');
+        Route::get('billing/invoices/{number}', [SubscriptionController::class, 'invoice'])->name('subscription.invoices.show');
+        Route::post('billing/invoices/{number}/pay', [SubscriptionController::class, 'pay'])->name('subscription.invoices.pay');
+        Route::get('billing/plan-rules', [SubscriptionController::class, 'planRules'])->name('subscription.plan-rules');
     });
 
     Route::middleware('permission:admin.api.manage')->group(function (): void {

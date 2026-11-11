@@ -79,6 +79,8 @@ export interface PolicySettings {
   hold_minutes?: number;
   markup_pct?: number;
   max_discount_pct?: number;
+  approval_margin_pct?: number;
+  discount_cap_pct?: number;
   advance_pct?: number;
   balance_days_before?: number;
   cancel_text?: string;
@@ -340,6 +342,51 @@ export interface PlatformInvoice {
   lines: { description: string; quantity: number; amount: number }[];
 }
 
+export interface AddonOffer {
+  code: string;
+  label: string;
+  unit: string;
+  quantity_allowed: boolean;
+  price: number;
+  included: boolean;
+  available: boolean;
+}
+
+export type BillingCycle = "monthly" | "annual";
+
+export interface PlanOption {
+  code: string;
+  name: string;
+  rank: number;
+  price_month: number;
+  price_year: number;
+  currency: string;
+  saving_percent: number;
+  modules: number;
+  highlights: string[];
+  rules_included: number;
+  rules_total: number;
+}
+
+export interface PlanRules {
+  current: string;
+  plans: PlanOption[];
+  rules: { group: string; rules: { code: string; name: string; description: string | null; from: string | null; rank: number }[] }[];
+}
+
+export interface PlanChangePreview {
+  kind: "upgrade" | "downgrade" | "cycle";
+  immediate: boolean;
+  effective_at: string;
+  from: { code: string; name: string; cycle: BillingCycle };
+  plan: { code: string; name: string };
+  cycle: BillingCycle;
+  price: string;
+  proration: { days_left: number; period_days: number; charge: string; credit: string; net: string } | null;
+  blockers: string[];
+  rules: { gained: string[]; lost: string[] };
+}
+
 export interface SubscriptionOverview {
   plan: { code: string; name: string; price_month: number; price_year: number; currency: string; support: string | null; modules: number } | null;
   subscription: {
@@ -353,9 +400,14 @@ export interface SubscriptionOverview {
     cancel_at: string | null;
     credit_balance: number;
     customer_since: string;
+    lock_version: number;
+    trial_ends_at: string | null;
+    scheduled: { kind: string; plan: string | null; cycle: "monthly" | "annual" | null; effective_at: string } | null;
+    coupon: { code: string; label: string; remaining_cycles: number } | null;
     billing: { ruc: string; name: string; address: string; ubigeo: string | null; email: string };
   } | null;
-  addons: { code: string; label: string; quantity: number; unit_price: number; since: string; detail: string | null }[];
+  addons: { code: string; label: string; quantity: number; unit_price: number; since: string; ends_at: string | null; detail: string | null }[];
+  addon_catalog: AddonOffer[];
   usage: UsageMetric[];
   history: Record<string, { month: string; value: number }[]>;
   invoices: PlatformInvoice[];

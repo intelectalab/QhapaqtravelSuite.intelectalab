@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('permission:channels.cms.publish')->group(function (): void {
     Route::get('cms/contents', [CmsController::class, 'index'])->name('channels.cms.index');
     Route::post('cms/contents', [CmsController::class, 'store'])->name('channels.cms.store');
+    Route::get('cms/contents/{code}', [CmsController::class, 'show'])->name('channels.cms.show');
+    Route::post('cms/contents/{code}/preview', [CmsController::class, 'preview'])->name('channels.cms.preview');
     Route::patch('cms/contents/{code}', [CmsController::class, 'update'])->name('channels.cms.update');
     Route::delete('cms/contents/{code}', [CmsController::class, 'destroy'])->name('channels.cms.destroy');
 

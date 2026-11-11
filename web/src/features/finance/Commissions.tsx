@@ -115,7 +115,7 @@ export function CommissionsTable({ data }: { data: CommissionsOverview }) {
       align: "right",
       cell: (row) => (
         <RowActions>
-          {row.reservation ? <RowIcon tone="view" label="Ver reserva" href={`/reservas/${row.reservation.code}`} /> : <RowIcon tone="view" label="Ver reserva" disabledHint="Bono por meta, sin reserva" />}
+          <RowIcon tone="view" label="Ver comisión" href={`/finanzas/comisiones/${row.code}`} />
           {can.approve && row.status === "calculada" && <ApproveCommissionAction row={row} />}
           {can.operate && row.status === "aprobada" && <PayCommissionAction row={row} />}
           {can.approve && (row.status === "calculada" ? <AnnulCommissionAction row={row} /> : <RowIcon tone="delete" label="Anular" icon={<Ban size={15} />} disabledHint={`Una comisión ${statusLabel(row.status).toLowerCase()} se ajusta en el siguiente periodo`} />)}

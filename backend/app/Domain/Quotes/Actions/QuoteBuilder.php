@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Quotes\Actions;
 
 use App\Domain\Booking\Support\TenantBookingEngine;
+use App\Domain\Catalog\Support\RateDirectory;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Quotes\Support\QuotePricing;
@@ -48,7 +49,7 @@ final class QuoteBuilder
             'opportunities' => $opportunities,
             'products' => DB::table('catalog_products')->whereNull('deleted_at')->where('status', 'ACTIVE')->where('is_quoteable', true)->orderBy('name')->get(['id', 'code', 'name', 'duration_value', 'duration_unit'])
                 ->map(fn (object $product): array => $this->productOption($product, collect($rates->get($product->id, [])))),
-            'defaults' => ['valid_until' => Carbon::parse($today)->addDays(self::VALIDITY_DAYS)->toDateString(), 'tax_pct' => 18, 'max_discount' => (int) ($actor->can('quotes.discount_override') ? self::MAX_OVERRIDE : QuotePricing::MAX_DISCOUNT)],
+            'defaults' => ['valid_until' => Carbon::parse($today)->addDays(self::VALIDITY_DAYS)->toDateString(), 'tax_pct' => 18, 'max_discount' => (int) ($actor->can('quotes.discount_override') ? self::MAX_OVERRIDE : QuoteLifecycle::currentLimits()['max_discount'])],
         ];
     }
 
@@ -58,26 +59,54 @@ final class QuoteBuilder
             'code' => $product->code,
             'name' => $product->name,
             'duration' => rtrim(rtrim((string) $product->duration_value, '0'), '.').' '.$product->duration_unit,
-            'rates' => array_map(fn ($rate): array => ['segment' => $rate->segment, 'currency' => $rate->currency, 'price' => (string) $rate->price], $rates->values()->all()),
+            'segments' => $this->segments((string) $product->id, $rates),
         ];
     }
 
-    public function preview(array $data, User $actor): array
+    private function segments(string $productId, Collection $rates): array
     {
-        $items = $this->items($data['items'] ?? [], $data['currency'] ?? 'PEN');
-        $discount = $this->discount((string) ($data['discount_pct'] ?? '0'), $actor);
+        $segments = [];
+
+        foreach (RateDirectory::SEGMENTS as $segment) {
+            $rate = $rates->firstWhere('segment', $segment);
+
+            if ($rate !== null) {
+                $segments[] = ['value' => $segment, 'price' => (string) $rate->price, 'currency' => trim((string) $rate->currency), 'pct' => null];
+            } elseif ($segment === 'Niño' && $rates->whereIn('segment', ['Adulto', 'Pasajero'])->isNotEmpty()) {
+                $paxRules = $this->engines->paxRulesFor($productId);
+
+                if ($paxRules['childPays'] ?? true) {
+                    $segments[] = ['value' => 'Niño', 'price' => null, 'currency' => null, 'pct' => rtrim(rtrim((string) ($paxRules['childPricePct'] ?? 100), '0'), '.')];
+                }
+            }
+        }
+
+        return $segments;
+    }
+
+    public function preview(array $data, User $actor, ?int $step = null): array
+    {
+        if ($step !== null) {
+            $client = $this->atStep(1, 'client_code', fn (): object => $this->client((string) $data['client_code'], $actor));
+            $this->atStep(1, 'opportunity_code', fn (): ?object => empty($data['opportunity_code']) ? null : $this->opportunity((string) $data['opportunity_code'], (string) $client->id, $actor));
+            $this->atStep(1, 'currency', fn (): string => $this->fx((string) $data['currency']));
+        }
+
+        $items = $step !== null && $step < 3 ? collect() : $this->atStep(3, null, fn (): Collection => $this->items($data['items'] ?? [], $data['currency'] ?? 'PEN'));
+        $discount = $step !== null && $step < 4 ? '0.00' : $this->atStep(4, 'discount_pct', fn (): string => $this->discount((string) ($data['discount_pct'] ?? '0'), $actor));
         $totals = QuotePricing::totals($items->all(), $discount, $this->taxPct($data));
         $seeMargin = $actor->can('finance.profitability') || $actor->can('catalog.products.view_profitability');
 
         return [
             'lines' => $items->map(fn (array $item): array => [
                 'unit_price' => $item['unit_price'],
+                'rate_price' => $item['rate_price'],
                 'price_source' => $item['price_source'],
                 'total' => (string) QuotePricing::lineTotal($item['unit_price'], $item['qty'], $item['pax']),
                 'margin_pct' => $seeMargin ? QuotePricing::lineMargin($item['unit_price'], $item['unit_cost']) : null,
             ])->values(),
             'totals' => [...$totals, 'cost_total' => $seeMargin ? $totals['cost_total'] : null, 'profit_total' => $seeMargin ? $totals['profit_total'] : null, 'margin_pct' => $seeMargin ? $totals['margin_pct'] : null],
-            'needs_internal_approval' => QuoteLifecycle::needsInternalApproval($discount, $totals['margin_pct']),
+            'needs_internal_approval' => QuoteLifecycle::needsInternalApproval($discount, $totals['margin_pct'], QuoteLifecycle::currentLimits()),
         ];
     }
 
@@ -144,7 +173,7 @@ final class QuoteBuilder
         $items = $this->items($data['items'], $data['currency']);
 
         if ($items->isEmpty()) {
-            throw ApiException::unprocessable('QTE-BR-04', 'Agrega al menos un servicio.');
+            throw ApiException::unprocessable('QTE-BR-04', 'Agrega al menos un producto del catálogo.');
         }
 
         $discount = $this->discount((string) ($data['discount_pct'] ?? '0'), $actor);
@@ -158,7 +187,7 @@ final class QuoteBuilder
             'notes' => trim((string) ($data['notes'] ?? '')) ?: null,
             'snapshot_label' => $items->map(fn (array $item) => $item['product_code'])->unique()->implode(' / '),
             'catalog_snapshot' => json_encode($items->map(fn (array $item) => ['product_id' => $item['product_id'], 'name' => $item['product_name']])->values()->all(), JSON_UNESCAPED_UNICODE),
-            'policies_snapshot' => json_encode(DB::table('catalog_product_policies')->whereIn('product_id', $items->pluck('product_id'))->get(['product_id', 'cancellation', 'modification', 'no_show', 'refund'])->all(), JSON_UNESCAPED_UNICODE),
+            'policies_snapshot' => json_encode(DB::table('catalog_product_policies')->whereIn('product_id', $items->pluck('product_id'))->get(['product_id', 'cancellation', 'modification', 'no_show', 'refund', 'penalty_tiers'])->all(), JSON_UNESCAPED_UNICODE),
             'fx_rate' => $this->fx($data['currency']),
             'currency' => $data['currency'],
             ...$totals,
@@ -200,11 +229,12 @@ final class QuoteBuilder
         $codes = collect($rows)->pluck('product_code')->filter()->unique();
         $products = DB::table('catalog_products')->whereIn('code', $codes)->whereNull('deleted_at')->get(['id', 'code', 'name', 'status', 'is_quoteable'])->keyBy('code');
 
-        return collect($rows)->map(function (array $row) use ($products, $currency): array {
-            $product = $products[$row['product_code']] ?? throw ApiException::unprocessable('QTE-BR-05', 'Uno de los servicios no existe en el catálogo.');
+        return collect($rows)->map(function (array $row, int $index) use ($products, $currency): array {
+            $field = ['field' => "items.{$index}.product_code"];
+            $product = $products[$row['product_code']] ?? throw ApiException::unprocessable('QTE-BR-05', 'Uno de los productos no existe en el catálogo.', $field);
 
             if ($product->status !== 'ACTIVE' || ! $product->is_quoteable) {
-                throw ApiException::unprocessable('QTE-BR-05', "{$product->name} no está activo para cotizar.");
+                throw ApiException::unprocessable('QTE-BR-05', "{$product->name} no está activo para cotizar.", $field);
             }
 
             $segment = $row['segment'] ?? 'Adulto';
@@ -215,7 +245,7 @@ final class QuoteBuilder
             $price = $manual ?? $ratePrice ?? '0.00';
 
             if (! BigDecimal::of($price)->isPositive() || (int) $row['qty'] <= 0 || (int) $row['pax'] <= 0) {
-                throw ApiException::unprocessable('QTE-BR-07', "Revisa {$product->name}: precio, cantidad y pasajeros deben ser mayores que cero.");
+                throw ApiException::unprocessable('QTE-BR-07', "Revisa {$product->name}: precio, cantidad y pasajeros deben ser mayores que cero.", ['field' => "items.{$index}.unit_price"]);
             }
 
             return [
@@ -227,10 +257,20 @@ final class QuoteBuilder
                 'pax' => (int) $row['pax'],
                 'segment' => $segment,
                 'unit_price' => $price,
+                'rate_price' => $ratePrice,
                 'unit_cost' => $rate === null ? '0.00' : (string) $rate['cost']->getAmount(),
                 'price_source' => $ratePrice !== null && BigDecimal::of($ratePrice)->isEqualTo($price) ? 'rate' : 'manual',
             ];
         });
+    }
+
+    private function atStep(int $step, ?string $field, callable $check): mixed
+    {
+        try {
+            return $check();
+        } catch (ApiException $error) {
+            throw new ApiException($error->status, $error->error, $error->ruleCode, $error->getMessage(), $error->requiredPermissions, [...($field === null ? [] : ['field' => $field]), ...$error->details, 'step' => $step]);
+        }
     }
 
     private function header(array $data): array
@@ -250,7 +290,7 @@ final class QuoteBuilder
 
     private function discount(string $discount, User $actor): string
     {
-        $limit = $actor->can('quotes.discount_override') ? self::MAX_OVERRIDE : QuotePricing::MAX_DISCOUNT;
+        $limit = $actor->can('quotes.discount_override') ? self::MAX_OVERRIDE : QuoteLifecycle::currentLimits()['max_discount'];
         $value = is_numeric($discount) ? BigDecimal::of($discount) : null;
 
         if ($value === null || $value->isNegative() || $value->isGreaterThan($limit)) {

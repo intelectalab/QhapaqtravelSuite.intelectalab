@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\SupplierPortal\Actions;
 
 use App\Domain\Finance\Support\ReceivableLedger;
+use App\Domain\Integrations\Support\AttachmentGuard;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
@@ -20,7 +21,7 @@ final class SupplierInvoices
 
     public const MIME = ['pdf' => 'application/pdf', 'xml' => 'application/xml', 'zip' => 'application/zip'];
 
-    public function __construct(private readonly AuditLogger $audit, private readonly TenantContext $context) {}
+    public function __construct(private readonly AuditLogger $audit, private readonly TenantContext $context, private readonly AttachmentGuard $guard) {}
 
     public function register(SupplierAccount $account, string $payableCode, array $data): array
     {
@@ -34,6 +35,7 @@ final class SupplierInvoices
             throw ApiException::unprocessable('SUP-BR-40', 'El archivo supera los 700 KB. Adjunte el XML o un PDF más liviano.');
         }
 
+        $this->guard->ensureClean($bytes, (string) $data['file_name'], 'Factura de proveedor', $payableCode);
         $extension = Str::lower(pathinfo((string) $data['file_name'], PATHINFO_EXTENSION));
         $number = Str::upper(trim((string) $data['number']));
         $path = null;

@@ -58,11 +58,21 @@ final class ReservationController
         ]]);
     }
 
-    public function availabilityCheck(Request $request, DirectBookingPlan $plans): JsonResponse
+    public function availabilityCheck(Request $request, DirectBookingPlan $plans, CreateDirectReservation $action): JsonResponse
     {
-        $data = $this->directData($request, false);
+        $step = $request->filled('step') ? max(1, min(2, (int) $request->input('step'))) : null;
+        $data = $this->directData($request, false, $step);
+        $user = $this->user($request);
 
-        return response()->json(['data' => $plans->view($plans->build($data, $this->user($request), false), $this->user($request))]);
+        if ($step !== null) {
+            $action->parties($data, $user);
+        }
+
+        if ($step === 1) {
+            return response()->json(['data' => ['step' => 1, 'ready' => true]]);
+        }
+
+        return response()->json(['data' => $plans->view($plans->build($data, $user, $step === 2), $user)]);
     }
 
     public function store(Request $request, CreateDirectReservation $action): JsonResponse
@@ -85,6 +95,21 @@ final class ReservationController
     public function history(Request $request, string $code): JsonResponse
     {
         return response()->json($this->directory->history($this->user($request), $request, $code) ?? throw $this->missing($request, $code));
+    }
+
+    public function webSnapshot(Request $request, string $code): JsonResponse
+    {
+        return response()->json($this->directory->section($this->user($request), $code, 'web-snapshot') ?? throw $this->missing($request, $code));
+    }
+
+    public function paxFeedback(Request $request, string $code): JsonResponse
+    {
+        return response()->json($this->directory->section($this->user($request), $code, 'pax-feedback') ?? throw $this->missing($request, $code));
+    }
+
+    public function paxMessages(Request $request, string $code): JsonResponse
+    {
+        return response()->json($this->directory->section($this->user($request), $code, 'pax-messages') ?? throw $this->missing($request, $code));
     }
 
     public function update(Request $request, string $code, ReservationWorkflow $workflow): JsonResponse
@@ -297,16 +322,17 @@ final class ReservationController
         ]);
     }
 
-    private function directData(Request $request, bool $store): array
+    private function directData(Request $request, bool $store, ?int $step = null): array
     {
         return $request->validate([
-            'client_id' => [$store ? 'required' : 'nullable', 'string', 'max:60'],
-            'product_id' => ['required', 'string', 'max:60'],
+            'step' => ['nullable', 'integer', 'min:1', 'max:2'],
+            'client_id' => [$store || $step !== null ? 'required' : 'nullable', 'string', 'max:60'],
+            'product_id' => [$step === 1 ? 'nullable' : 'required', 'string', 'max:60'],
             'channel' => ['nullable', Rule::in(DirectBookingPlan::CHANNELS)],
             'owner_id' => ['nullable', 'uuid'],
             'departure_id' => ['nullable', 'uuid'],
             'date' => ['nullable', 'date'],
-            'adt' => ['required', 'integer', 'min:0', 'max:99'],
+            'adt' => [$step === 1 ? 'nullable' : 'required', 'integer', 'min:0', 'max:99'],
             'chd' => ['nullable', 'integer', 'min:0', 'max:99'],
             'inf' => ['nullable', 'integer', 'min:0', 'max:99'],
             'notes' => ['nullable', 'string', 'max:2000'],

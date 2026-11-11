@@ -2,6 +2,7 @@
 
 import { CalendarRange, CirclePlay, CircleStop, Pencil, Plus, Tag } from "lucide-react";
 import { useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 import { createRate, createSeason, toggleRate, toggleSeason, updateRate, updateSeason } from "@/app/(backoffice)/catalogo/tarifas/actions";
 import { RowIcon } from "@/components/table/RowActions";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
@@ -126,11 +127,11 @@ export function RateToggleAction({ rate }: { rate: RateRow }) {
   );
 }
 
-function SeasonFields({ overview, season }: { overview: RatesOverview; season?: SeasonRow }) {
+function SeasonFields({ seasonTypes, season }: { seasonTypes: string[]; season?: SeasonRow }) {
   return (
     <>
       <TextField label="Nombre" name="name" required minLength={3} maxLength={120} defaultValue={season?.name} placeholder="Por ejemplo: Semana Santa 2027" icon={<CalendarRange size={17} />} />
-      <SelectField label="Tipo" name="type" options={list(overview.options.season_types)} defaultValue={season?.type ?? "Alta"} />
+      <SelectField label="Tipo" name="type" options={list(seasonTypes)} defaultValue={season?.type ?? "Alta"} />
       <div className="grid grid-cols-2 gap-3">
         <TextField label="Desde" name="date_from" type="date" required defaultValue={season?.date_from} />
         <TextField label="Hasta" name="date_to" type="date" required defaultValue={season?.date_to} />
@@ -142,13 +143,14 @@ function SeasonFields({ overview, season }: { overview: RatesOverview; season?: 
   );
 }
 
-export function SeasonCreateAction({ overview }: { overview: RatesOverview }) {
+export function SeasonCreateAction({ seasonTypes, trigger }: { seasonTypes: string[]; trigger?: (open: () => void) => ReactNode }) {
   const router = useRouter();
   return (
     <PanelAction<StepResult>
       label="Nueva temporada"
       icon={<Tag size={16} />}
       formId="season-create"
+      trigger={trigger}
       title="Nueva temporada"
       description="Dos temporadas activas pueden cruzarse solo si tienen distinta prioridad; manda la de número menor."
       submitLabel="Crear temporada"
@@ -156,7 +158,7 @@ export function SeasonCreateAction({ overview }: { overview: RatesOverview }) {
       initial={STEP_INITIAL}
       onDone={() => router.refresh()}
     >
-      {() => <SeasonFields overview={overview} />}
+      {() => <SeasonFields seasonTypes={seasonTypes} />}
     </PanelAction>
   );
 }
@@ -178,7 +180,7 @@ export function SeasonEditAction({ overview, season }: { overview: RatesOverview
       {() => (
         <>
           <HiddenFields values={{ ref: season.ref }} />
-          <SeasonFields overview={overview} season={season} />
+          <SeasonFields seasonTypes={overview.options.season_types} season={season} />
         </>
       )}
     </PanelAction>

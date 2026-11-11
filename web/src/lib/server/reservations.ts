@@ -1,7 +1,7 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
-import type { ChangeOptions, DirectFormOptions, ReservationCancellation, ReservationDetail, ReservationList, ReservationListMeta, ReservationRow } from "@/lib/reservations";
+import type { ChangeOptions, DirectFormOptions, ReservationCancellation, ReservationDetail, ReservationFeedback, ReservationHistoryEvent, ReservationList, ReservationListMeta, ReservationPaxMessage, ReservationRow, ReservationWebSnapshot } from "@/lib/reservations";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
 import { fetchPages } from "./pages";
@@ -33,5 +33,18 @@ export const getReservation = cache(async (code: string): Promise<ReservationDet
 export const getReservationCancellation = async (code: string): Promise<ReservationCancellation | null> => get<ReservationCancellation>(`/reservations/${encodeURIComponent(code)}/cancellation/preview`, "POST");
 
 export const getChangeOptions = async (code: string): Promise<ChangeOptions | null> => get<ChangeOptions>(`/reservations/${encodeURIComponent(code)}/changes/options`);
+
+const section = <T,>(code: string, path: string) => get<T>(`/reservations/${encodeURIComponent(code)}/${path}`);
+
+export const getReservationWebSnapshot = (code: string) => section<ReservationWebSnapshot | null>(code, "web-snapshot");
+
+export const getReservationFeedback = (code: string) => section<ReservationFeedback[]>(code, "pax-feedback");
+
+export const getReservationPaxMessages = (code: string) => section<ReservationPaxMessage[]>(code, "pax-messages");
+
+export async function getReservationHistory(code: string): Promise<ReservationHistoryEvent[]> {
+  const result = await fetchPages<ReservationHistoryEvent, unknown>(`/reservations/${encodeURIComponent(code)}/history`, 500);
+  return result.ok && result.data ? result.data.data : [];
+}
 
 export const getDirectFormOptions = async (): Promise<DirectFormOptions | null> => get<DirectFormOptions>("/reservations/form-options");

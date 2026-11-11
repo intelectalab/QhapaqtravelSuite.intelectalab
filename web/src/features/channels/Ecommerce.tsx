@@ -1,7 +1,7 @@
 "use client";
 
-import { CircleCheck, CircleX, Clock3, Eye, EyeOff, Gauge, Globe, ShoppingBag, ShoppingCart, Star, Wallet } from "lucide-react";
-import { cancelOrder, togglePublication } from "@/app/(backoffice)/canales/ecommerce/actions";
+import { CircleCheck, CircleX, Clock3, Eye, EyeOff, Gauge, Globe, Send, ShoppingBag, ShoppingCart, Star, Wallet } from "lucide-react";
+import { cancelOrder, sendPaymentLink, togglePublication } from "@/app/(backoffice)/canales/ecommerce/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -11,11 +11,12 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { Tabs } from "@/components/ui/Tabs";
 import { TextArea } from "@/components/ui/TextArea";
 import { TintTile } from "@/components/ui/Tinted";
-import { channelStatus, type EcommerceOverview, type EcomOrder, type EcomProduct } from "@/lib/channels";
+import { channelStatus, type EcommerceOverview, type EcomOrder, type EcomProduct, type PromotionCatalog } from "@/lib/channels";
 import { formatDateTime, formatMoney, formatNumber, formatPercent } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { toneStyle, type Tone } from "@/lib/tone";
 import { ChannelBadge, DetailPanel, MoneyLines, PanelSection, Stars, TileGrid } from "./ChannelUi";
+import { PromotionsTable } from "./Promotions";
 
 const initial: StepResult = { message: null, done: false };
 
@@ -77,6 +78,58 @@ function CancelOrderAction({ order }: { order: EcomOrder }) {
   );
 }
 
+const METHOD_LABEL: Record<string, string> = { tarjeta: "Tarjeta", transferencia: "Transferencia", yape: "Yape", plin: "Plin" };
+
+const ATTEMPT_TONE: Record<string, Tone> = { aprobado: "ok", rechazado: "bad", por_validar: "info" };
+
+const ATTEMPT_LABEL: Record<string, string> = { aprobado: "Aprobado", rechazado: "Rechazado", por_validar: "Por validar" };
+
+function SendLinkAction({ order }: { order: EcomOrder }) {
+  return (
+    <PanelAction<StepResult>
+      label="Enviar enlace de pago"
+      formId={`order-link-${order.code}`}
+      title="Enviar enlace de pago"
+      description={`${order.code} · se envía a ${order.email}. Vence en 3 días y abre el pedido para pagar con tarjeta, transferencia, Yape o Plin.`}
+      submitLabel="Enviar enlace"
+      action={sendPaymentLink}
+      initial={initial}
+      trigger={(open) => <RowIcon tone="view" label="Enviar enlace de pago" icon={<Send size={15} />} onClick={open} />}
+    >
+      {() => (
+        <>
+          <input type="hidden" name="code" value={order.code} />
+          <TextArea label="Nota para el cliente" name="note" rows={3} maxLength={300} hint="Opcional. Va en el correo antes del enlace." placeholder="Por ejemplo: tu tarjeta fue rechazada; puedes intentar con otra o con Yape." />
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+function AttemptList({ order }: { order: EcomOrder }) {
+  if (order.attempts.length === 0) return <p className="text-[13px] text-fg-3">El cliente aún no intentó pagar.</p>;
+  return (
+    <ol className="grid gap-2">
+      {order.attempts.map((attempt, index) => (
+        <li key={`${attempt.at}-${index}`} style={toneStyle(ATTEMPT_TONE[attempt.result] ?? "mute")} className="rounded-tile border border-[color-mix(in_srgb,var(--tint)_25%,transparent)] bg-[color-mix(in_srgb,var(--tint)_6%,var(--surface))] px-3 py-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[13px]">
+            <b className="font-semibold text-[var(--tint)]">{ATTEMPT_LABEL[attempt.result] ?? attempt.result}</b>
+            <span className="text-[12px] text-fg-3">{formatDateTime(attempt.at)}</span>
+          </div>
+          <p className="mt-0.5 text-[12.5px] text-fg-2">
+            {METHOD_LABEL[attempt.method] ?? attempt.method}
+            {attempt.card ? ` ${attempt.card}` : ""}
+            {attempt.operation ? ` · operación ${attempt.operation}` : ""}
+            {attempt.amount !== null ? ` · ${formatMoney(attempt.amount, attempt.currency ?? order.currency)}` : ""}
+            {attempt.code && attempt.result === "rechazado" ? ` · código ${attempt.code}` : ""}
+          </p>
+          {attempt.message && attempt.result !== "aprobado" && <p className="mt-0.5 text-[12px] text-fg-3">{attempt.message}</p>}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function OrderDetail({ order }: { order: EcomOrder }) {
   return (
     <DetailPanel label="Ver pedido" title={order.code} description={`${order.customer} · ${formatDateTime(order.ordered_at)}`}>
@@ -95,6 +148,20 @@ function OrderDetail({ order }: { order: EcomOrder }) {
       <PanelSection title="Comprador">
         <FieldList fields={[{ label: "Correo", value: order.email }, { label: "País", value: order.country ?? "—" }]} />
       </PanelSection>
+      <PanelSection title={`Intentos de pago (${order.attempts.length})`}>
+        <AttemptList order={order} />
+      </PanelSection>
+      {order.links.length > 0 && (
+        <PanelSection title="Enlaces de pago enviados">
+          <ul className="grid gap-1 text-[12.5px] text-fg-2">
+            {order.links.map((link) => (
+              <li key={link.at}>
+                {formatDateTime(link.at)} · {link.detail}
+              </li>
+            ))}
+          </ul>
+        </PanelSection>
+      )}
       {order.cancel_reason && (
         <PanelSection title="Anulación">
           <p className="text-[13px] text-fg-2">{order.cancel_reason}</p>
@@ -127,6 +194,7 @@ function OrdersTable({ rows, canManage }: { rows: EcomOrder[]; canManage: boolea
       cell: (row) => (
         <RowActions>
           <OrderDetail order={row} />
+          {canManage && (row.can_send_link ? <SendLinkAction order={row} /> : <RowIcon tone="view" label="Enviar enlace de pago" icon={<Send size={15} />} disabledHint="Solo para pedidos con pago pendiente o rechazado" />)}
           {canManage && (row.can_cancel ? <CancelOrderAction order={row} /> : <RowIcon tone="delete" label="Anular" icon={<CircleX size={15} />} disabledHint="Solo se anulan pedidos con pago pendiente o rechazado" />)}
         </RowActions>
       ),
@@ -203,13 +271,14 @@ function ProductsTable({ rows, canManage }: { rows: EcomProduct[]; canManage: bo
   return <DataTable screen="canales-ecommerce-productos" rows={rows} columns={columns} getKey={(row) => row.code} entityLabel="productos" searchText={(row) => `${row.code} ${row.name}`} searchPlaceholder="Buscar producto" metrics={metrics} sorts={sorts} />;
 }
 
-export function EcommerceWorkspace({ overview }: { overview: EcommerceOverview }) {
+export function EcommerceWorkspace({ overview, promotions }: { overview: EcommerceOverview; promotions: PromotionCatalog | null }) {
   return (
     <Card padded={false}>
       <Tabs
         tabs={[
           { id: "orders", label: "Pedidos web", count: overview.orders.length, content: <OrdersTable rows={overview.orders} canManage={overview.can_manage} /> },
           { id: "products", label: "Productos en la tienda", count: overview.products.length, content: <ProductsTable rows={overview.products} canManage={overview.can_manage} /> },
+          ...(promotions ? [{ id: "promotions", label: "Promociones y códigos", count: promotions.rows.filter((row) => row.state === "vigente").length, content: <PromotionsTable catalog={promotions} canManage={overview.can_manage} screen="canales-ecommerce-promociones" /> }] : []),
         ]}
       />
     </Card>

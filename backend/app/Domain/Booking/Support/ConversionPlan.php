@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Support;
 
+use App\Domain\Admin\Support\TenantSettings;
 use App\Domain\Quotes\Models\Quote;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
@@ -16,9 +18,11 @@ use Illuminate\Support\Facades\DB;
 
 final class ConversionPlan
 {
-    public const DEPOSIT_PCT = '0.40';
+    public const DEFAULT_ADVANCE_PCT = 40;
 
-    public function __construct(private readonly TenantContext $context) {}
+    public const DEFAULT_BALANCE_DAYS = 15;
+
+    public function __construct(private readonly TenantContext $context, private readonly TenantSettings $settings) {}
 
     public function today(): CarbonImmutable
     {
@@ -110,12 +114,34 @@ final class ConversionPlan
 
     public function receivables(BigDecimal $total, DateTimeInterface $travelFrom, CarbonImmutable $today): array
     {
-        $deposit = Decimal::round2($total->multipliedBy(self::DEPOSIT_PCT));
+        [$pct, $days] = $this->terms();
         $from = CarbonImmutable::parse($travelFrom->format('Y-m-d'), $today->getTimezone())->startOfDay();
+        $soon = $today->addDays(3)->min($from->max($today));
+        $balanceDue = $from->subDays($days)->max($today);
+
+        if ($pct >= 100) {
+            return [['kind' => 'total', 'concept' => 'Pago total', 'amount' => $total, 'due' => $soon]];
+        }
+
+        if ($pct <= 0) {
+            return [['kind' => 'saldo', 'concept' => 'Saldo 100%', 'amount' => $total, 'due' => $balanceDue]];
+        }
+
+        $deposit = Decimal::round2($total->multipliedBy($pct)->dividedBy(100, 6, RoundingMode::HALF_UP));
 
         return [
-            ['kind' => 'anticipo', 'concept' => 'Anticipo 40%', 'amount' => $deposit, 'due' => $today->addDays(3)->min($from->max($today))],
-            ['kind' => 'saldo', 'concept' => 'Saldo 60%', 'amount' => $total->minus($deposit), 'due' => $from->subDays(15)->max($today)],
+            ['kind' => 'anticipo', 'concept' => "Anticipo {$pct}%", 'amount' => $deposit, 'due' => $soon],
+            ['kind' => 'saldo', 'concept' => 'Saldo '.(100 - $pct).'%', 'amount' => $total->minus($deposit), 'due' => $balanceDue],
+        ];
+    }
+
+    public function terms(): array
+    {
+        $policies = $this->settings->section('policies');
+
+        return [
+            (int) ($policies['advance_pct'] ?? self::DEFAULT_ADVANCE_PCT),
+            (int) ($policies['balance_days_before'] ?? self::DEFAULT_BALANCE_DAYS),
         ];
     }
 

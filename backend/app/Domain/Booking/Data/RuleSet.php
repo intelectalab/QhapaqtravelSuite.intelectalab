@@ -66,6 +66,18 @@ final readonly class RuleSet
         return new self($this->rules, $plan, $this->planOrder);
     }
 
+    public function active(): array
+    {
+        $out = [];
+        foreach ($this->rules as $code => $r) {
+            if ($this->on($code)) {
+                $out[] = ['id' => $code, 'params' => $r['params'], 'product_override' => $r['product_override']];
+            }
+        }
+
+        return $out;
+    }
+
     public function summary(): array
     {
         $out = [];

@@ -16,7 +16,7 @@ final class CrmAfterSalesSeeder
 
     public const SURVEY_CHANNELS = ['llamada' => 'Llamada', 'whatsapp' => 'WhatsApp', 'email' => 'Email', 'encuesta_web' => 'Encuesta web', 'portal_del_cliente' => 'Portal del cliente'];
 
-    public const CASE_TYPES = ['reclamo' => 'Reclamo', 'queja' => 'Queja', 'sugerencia' => 'Sugerencia', 'felicitacion' => 'Felicitación'];
+    public const CASE_TYPES = ['reclamo' => 'Reclamo', 'queja' => 'Queja', 'sugerencia' => 'Sugerencia', 'felicitacion' => 'Felicitación', 'arco' => 'Solicitud ARCO (datos personales)'];
 
     private const BOOK_CHANNELS = ['Portal del pasajero' => 'passenger_portal', 'Portal del cliente' => 'customer_portal', 'Sitio web' => 'web', 'Presencial' => 'in_person'];
 

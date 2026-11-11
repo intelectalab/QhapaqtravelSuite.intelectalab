@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { OwnReviewSummary, OwnReviewTiles, OwnReviewsWorkspace } from "@/features/channels/OwnReviews";
-import type { OwnReviewsOverview } from "@/lib/channels";
+import type { OwnReviewSettings, OwnReviewsOverview } from "@/lib/channels";
 import { getResource } from "@/lib/server/resource";
 
 export const metadata: Metadata = { title: "Reseñas de clientes" };
 
 export default async function OwnReviewsPage() {
-  const overview = await getResource<OwnReviewsOverview>("/reviews", "No pudimos cargar las reseñas.");
+  const [overview, settings] = await Promise.all([getResource<OwnReviewsOverview>("/reviews", "No pudimos cargar las reseñas."), getResource<OwnReviewSettings>("/settings/own-reviews", "No pudimos cargar los ajustes.")]);
 
   if (!overview) {
     return <PageHeader title="Reseñas de clientes" subtitle="Tu rol no tiene acceso a esta sección." />;
@@ -23,7 +23,7 @@ export default async function OwnReviewsPage() {
       />
       <OwnReviewTiles kpis={overview.kpis} />
       <OwnReviewSummary overview={overview} />
-      <OwnReviewsWorkspace overview={overview} />
+      <OwnReviewsWorkspace overview={overview} settings={overview.can_moderate ? settings : null} />
     </>
   );
 }

@@ -6,6 +6,7 @@ namespace App\Domain\Portal\Support;
 
 use App\Domain\Channels\Support\ChannelKit;
 use App\Domain\Channels\Support\CustomerPortalPreview;
+use App\Domain\Crm\Actions\ArcoRequests;
 use App\Domain\Finance\Support\PaymentMethods;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
@@ -38,6 +39,32 @@ final class PortalDirectory
             'trip' => $account->isPassenger() ? $account->reservations()->first()?->code : null,
             'counts' => ['quotes' => $awaiting, 'trips' => $account->reservations()->count()],
         ];
+    }
+
+    public function documents(PortalAccount $account): array
+    {
+        return ['items' => $this->base($account, $this->kit->today())['documents']];
+    }
+
+    public function paymentHistory(PortalAccount $account): array
+    {
+        return ['items' => $this->billing($account)['payments']];
+    }
+
+    public function notifications(PortalAccount $account): array
+    {
+        $rows = DB::table('notif_messages')
+            ->where(fn ($query) => $query->where('recipient_user_id', $account->user->getKey())->orWhere(fn ($inner) => $inner->where('client_id', $account->client->id)->whereIn('audience', ['client', 'passenger'])))
+            ->where('status', '<>', 'fallido')
+            ->orderByDesc('created_at')->limit(50)
+            ->get(['id', 'event_code', 'channel', 'subject', 'body_rendered', 'created_at']);
+        $items = [];
+
+        foreach ($rows as $row) {
+            $items[] = ['id' => $row->id, 'event' => $row->event_code, 'channel' => $row->channel, 'subject' => $row->subject, 'body' => $row->body_rendered, 'at' => $row->created_at];
+        }
+
+        return ['items' => $items];
     }
 
     public function home(PortalAccount $account): array
@@ -113,7 +140,7 @@ final class PortalDirectory
                     'time' => $row->service_time ? substr((string) $row->service_time, 0, 5) : null,
                     'kind' => $row->service_kind,
                     'status' => $row->status,
-                    'state' => $this->serviceState($row, $today, (string) $reservation->travel_to),
+                    'state' => self::serviceState($row, $today, (string) $reservation->travel_to),
                     'pax' => (int) $row->pax,
                     'nights' => $row->nights !== null ? (int) $row->nights : null,
                     'confirmation' => $row->confirmation_code,
@@ -209,6 +236,8 @@ final class PortalDirectory
         $consents = DB::table('mkt_consents')->where('subject_type', 'client')->where('subject_id', $client->id)->get(['channel', 'status', 'granted_at', 'revoked_at', 'source', 'policy_version'])->keyBy('channel');
         $claims = DB::table('crm_cases as c')->leftJoin('booking_reservations as r', 'r.id', '=', 'c.reservation_id')->where('c.client_id', $client->id)->where('c.is_book', true)->orderByDesc('c.received_at')
             ->get(['c.code', 'c.book_number', 'c.type_code', 'c.status', 'c.book_status', 'c.received_at', 'c.due_date', 'c.subject', 'r.code as reservation']);
+        $arco = DB::table('crm_cases')->where('client_id', $client->id)->where('type_code', ArcoRequests::CASE_TYPE)->when($account->isPassenger(), fn ($query) => $query->whereRaw('false'))
+            ->orderByDesc('created_at')->limit(10)->get(['code', 'subject', 'status', 'due_date', 'created_at', 'resolution']);
 
         return [
             'client' => [
@@ -241,6 +270,14 @@ final class PortalDirectory
                 'due_date' => $row->due_date,
                 'subject' => $row->subject,
                 'reservation' => $row->reservation,
+            ])->values(),
+            'arco_requests' => $arco->map(fn (object $row): array => [
+                'code' => $row->code,
+                'subject' => $row->subject,
+                'status' => $row->status,
+                'due_date' => $row->due_date,
+                'created_at' => $row->created_at,
+                'resolution' => $row->resolution,
             ])->values(),
         ];
     }
@@ -396,7 +433,7 @@ final class PortalDirectory
         return (bool) $row->is_placeholder || (bool) $row->pending || ! $row->doc_number;
     }
 
-    private function serviceState(object $row, string $today, string $tripEnd): string
+    public static function serviceState(object $row, string $today, string $tripEnd): string
     {
         $date = (string) $row->service_date;
         $until = match (true) {

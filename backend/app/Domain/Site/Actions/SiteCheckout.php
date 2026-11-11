@@ -5,23 +5,28 @@ declare(strict_types=1);
 namespace App\Domain\Site\Actions;
 
 use App\Domain\Crm\Support\CodeSequence;
-use App\Domain\Finance\Actions\SyncServicePayables;
+use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Sequences\SequenceService;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\Site\Support\CheckoutRules;
+use App\Domain\Site\Support\CheckoutTerms;
 use App\Domain\Site\Support\SiteProfile;
 use App\Domain\Site\Support\SiteQuote;
+use App\Domain\Site\Support\WebClients;
 use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use stdClass;
 
 final class SiteCheckout
 {
-    private const DOC_TYPES = ['DNI' => 'DNI', 'CE' => 'CE', 'Pasaporte' => 'PASAPORTE'];
+    private const GATEWAY = ['51' => 'Fondos insuficientes. Prueba con otra tarjeta u otro medio de pago.', '14' => 'La tarjeta no es válida. Revisa el número o usa otro medio de pago.'];
 
     public function __construct(
         private readonly TenantContext $context,
@@ -32,135 +37,168 @@ final class SiteCheckout
         private readonly SiteQuote $quotes,
         private readonly SiteProfile $profile,
         private readonly SubscribeNewsletter $newsletter,
-        private readonly SyncServicePayables $payables,
+        private readonly ReceivableLedger $ledger,
+        private readonly CheckoutTerms $terms,
+        private readonly WebClients $clients,
     ) {}
+
+    public function options(?string $token): array
+    {
+        [, $lines] = $this->cartLines($token, false);
+
+        return $this->terms->build($lines, $this->today(), $this->rate());
+    }
+
+    public function validate(?string $token, string $step, array $data): array
+    {
+        $terms = $this->options($token);
+
+        match ($step) {
+            'comprador' => CheckoutRules::buyer($data),
+            'pasajeros' => CheckoutRules::passengers($data, $terms),
+            'recojo' => CheckoutRules::lines($data, $terms),
+            'pago' => CheckoutRules::payment($data, $terms),
+            default => null,
+        };
+
+        return ['step' => $step, 'valid' => true, 'terms' => $terms];
+    }
 
     public function place(?string $token, array $data): array
     {
-        $cart = $this->carts->find($token) ?? throw ApiException::notFound('Tu carrito expiró o ya fue procesado.');
-        DB::table('channel_web_carts')->where('id', $cart->id)->lockForUpdate()->first();
-        $items = DB::table('channel_web_cart_items')->where('cart_id', $cart->id)->orderBy('line_no')->get();
+        $buyer = CheckoutRules::buyer($data);
 
-        if ($items->isEmpty()) {
-            throw ApiException::unprocessable('CART_EMPTY', 'Tu carrito está vacío.');
-        }
+        return DB::transaction(function () use ($token, $data, $buyer): array {
+            [$cart, $lines] = $this->cartLines($token, true);
+            $today = $this->today();
+            $rate = $this->rate();
+            $terms = $this->terms->build($lines, $today, $rate);
+            $passengers = CheckoutRules::passengers($data, $terms);
+            $extras = CheckoutRules::lines($data, $terms);
+            $payment = CheckoutRules::payment($data, $terms);
+            $deposit = $payment['pay_mode'] === 'adelanto';
+            $mode = collect($terms['modes'])->firstWhere('value', $payment['pay_mode']);
+            $now = Carbon::now($this->context->timezone());
+            $owner = $this->clients->owner();
+            $sede = DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->orderByDesc('is_main')->value('id');
+            $currency = $terms['currency'];
+            $convert = fn (string $amount, string $from): BigDecimal => Decimal::round2(Decimal::convert($amount, $from, $currency, $rate));
+            $discount = (string) $lines->reduce(fn (BigDecimal $sum, array $l): BigDecimal => $sum->plus($convert($l['quote']['discount']['amount'] ?? '0', $l['quote']['currency'])), BigDecimal::zero()->toScale(2));
+            $clientId = $this->clients->resolve($buyer, $owner, (bool) ($payment['marketing'] ?? false));
+            $orderId = (string) Str::uuid7();
+            $orderCode = $this->sequences->next('web_order');
+            $accessToken = Str::random(48);
+            $billing = $buyer['billing_type'] === 'Factura'
+                ? ['type' => 'Factura', 'doc_type' => 'RUC', 'doc_number' => $buyer['ruc'], 'name' => $buyer['business_name'], 'fiscal_address' => $buyer['fiscal_address']]
+                : ['type' => 'Boleta', 'doc_type' => $buyer['doc_type'], 'doc_number' => Str::upper($buyer['doc_number']), 'name' => trim($buyer['name'])];
+            $first = $lines->first();
 
-        $now = Carbon::now($this->context->timezone());
-        $today = $now->toDateString();
-        $fx = $this->profile->usdRate();
-        $owner = $this->owner();
-        $sede = DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->orderByDesc('is_main')->value('id');
-        $lines = $items->map(function (stdClass $item) use ($cart): array {
-            $product = $this->quotes->product((string) DB::table('catalog_products')->where('id', $item->product_id)->value('slug'));
-            $quote = $this->quotes->quote($product, $item->service_date, (int) $item->pax_adults, (int) $item->pax_children, (int) $item->pax_infants, $cart->promo_code);
-            $hold = $item->hold_id ? DB::table('catalog_availability_holds')->where('id', $item->hold_id)->first(['status', 'expires_at']) : null;
+            DB::table('channel_ecom_orders')->insert([
+                'id' => $orderId,
+                'tenant_id' => $this->context->idOrFail(),
+                'code' => $orderCode,
+                'ordered_at' => $now,
+                'crm_client_id' => $clientId,
+                'customer_name' => trim($buyer['name']),
+                'customer_email' => Str::lower(trim($buyer['email'])),
+                'customer_phone' => $buyer['phone'],
+                'customer_country' => $buyer['country'],
+                'product_id' => $lines->count() === 1 ? $first['product']->id : null,
+                'departure_id' => $lines->count() === 1 ? $first['item']->departure_id : null,
+                'service_date' => $lines->count() === 1 ? $first['item']->service_date : null,
+                'pax_adults' => $lines->count() === 1 ? (int) $first['item']->pax_adults : null,
+                'pax_children' => $lines->count() === 1 ? (int) $first['item']->pax_children : 0,
+                'config_snapshot' => json_encode($extras, JSON_UNESCAPED_UNICODE),
+                'price_snapshot' => json_encode($lines->map(fn (array $l): array => ['product' => $l['product']->name, 'date' => $l['item']->service_date, 'lines' => $l['quote']['lines'], 'total' => $l['quote']['total'], 'currency' => $l['quote']['currency'], 'season' => $l['quote']['season']])->all(), JSON_UNESCAPED_UNICODE),
+                'promo_code' => $cart->promo_code,
+                'discount_amount' => $discount,
+                'total' => $terms['total'],
+                'currency' => $currency,
+                'fx_rate' => $rate,
+                'status' => 'pago_pendiente',
+                'hold_expires_at' => $lines->map(fn (array $l): ?string => $l['item']->hold_expires_at)->filter()->min(),
+                'buyer_snapshot' => json_encode(collect($buyer)->only(['name', 'email', 'phone', 'country', 'doc_type', 'doc_number', 'birth_date', 'nationality', 'diet'])->all(), JSON_UNESCAPED_UNICODE),
+                'cart_id' => $cart->id,
+                'sales_channel' => 'sitio_web',
+                'locale' => 'es',
+                'pay_mode' => $deposit ? 'anticipo' : 'total',
+                'deposit_pct' => $deposit ? $mode['pct'] : 100,
+                'amount_due_now' => $mode['amount'],
+                'balance_due_date' => $deposit ? $mode['balance_due'] : null,
+                'billing' => json_encode($billing, JSON_UNESCAPED_UNICODE),
+                'consents' => json_encode(['terms_at' => $now->toIso8601String(), 'cancellation_at' => $now->toIso8601String(), 'privacy_at' => $now->toIso8601String(), 'marketing_at' => ($payment['marketing'] ?? false) ? $now->toIso8601String() : null, 'policy_version' => CaptureWebLead::POLICY_VERSION], JSON_UNESCAPED_UNICODE),
+                'access_token_hash' => hash('sha256', $accessToken),
+            ]);
 
-            if ($item->hold_id && ($hold === null || $hold->status !== 'hold' || Carbon::parse($hold->expires_at)->isPast())) {
-                $this->carts->hold($cart, $item);
-                $item = DB::table('channel_web_cart_items')->where('id', $item->id)->first();
+            foreach ($passengers as $index => $passenger) {
+                DB::table('channel_ecom_passengers')->insert([
+                    'order_id' => $orderId,
+                    'position' => $index + 1,
+                    'first_name' => trim($passenger['first_name']),
+                    'last_name' => trim($passenger['last_name']),
+                    'doc_type' => $passenger['doc_type'] ?? 'Pendiente',
+                    'doc_number' => Str::upper((string) ($passenger['doc_number'] ?? 'Pendiente')),
+                    'pax_type' => $passenger['pax_type'],
+                    'birth_date' => $passenger['birth_date'],
+                    'nationality' => $passenger['nationality'],
+                    'diet' => $passenger['diet'] ?? null,
+                ]);
             }
 
-            return ['item' => $item, 'product' => $product, 'quote' => $quote];
+            $reservations = [];
+            $receivables = [];
+
+            foreach ($lines->values() as $index => $line) {
+                $termsLine = $terms['items'][$index];
+                [$reservationId, $receivableId, $serviceId] = $this->reservation($line, $termsLine, $extras[$index], $orderId, $orderCode, $clientId, $owner, $sede, $buyer, $passengers, $deposit, $rate, $today, $currency);
+                $reservations[] = $reservationId;
+                $receivables[] = $receivableId;
+                $quote = $line['quote'];
+                $rateRow = DB::table('catalog_rates')->where('id', $quote['rate_id'])->first(['cost', 'season_id']);
+                $seats = (int) $line['item']->pax_adults + (int) $line['item']->pax_children;
+
+                DB::table('channel_ecom_order_lines')->insert([
+                    'id' => (string) Str::uuid7(),
+                    'tenant_id' => $this->context->idOrFail(),
+                    'order_id' => $orderId,
+                    'line_no' => $index + 1,
+                    'product_id' => $line['product']->id,
+                    'product_version' => (string) (DB::table('catalog_product_versions')->where('product_id', $line['product']->id)->orderByDesc('created_at')->value('version') ?? '1'),
+                    'service_date' => $line['item']->service_date,
+                    'departure_id' => $line['item']->departure_id,
+                    'pax_adults' => (int) $line['item']->pax_adults,
+                    'pax_children' => (int) $line['item']->pax_children,
+                    'pax_infants' => (int) $line['item']->pax_infants,
+                    'rate_id' => $quote['rate_id'],
+                    'season_id' => $rateRow?->season_id,
+                    'season_factor' => $quote['season']['factor'] ?? 1,
+                    'unit_adult' => collect($quote['lines'])->firstWhere('key', 'adults')['unit'] ?? $quote['lines'][0]['unit'],
+                    'unit_child' => collect($quote['lines'])->firstWhere('key', 'children')['unit'] ?? '0',
+                    'units' => collect($quote['lines'])->firstWhere('key', 'service')['qty'] ?? null,
+                    'subtotal' => $quote['subtotal'],
+                    'discount' => $quote['discount']['amount'] ?? '0',
+                    'total' => $quote['total'],
+                    'currency' => $quote['currency'],
+                    'cost_total' => (string) Decimal::round2(BigDecimal::of((string) ($rateRow->cost ?? '0'))->multipliedBy($seats)),
+                    'hold_id' => $line['item']->hold_id,
+                    'reservation_service_id' => $serviceId,
+                ]);
+            }
+
+            DB::table('channel_ecom_orders')->where('id', $orderId)->update(['reservation_id' => $reservations[0], 'reservation_ids' => '{'.implode(',', $reservations).'}', 'receivable_id' => $receivables[0], 'cost_total' => DB::table('channel_ecom_order_lines')->where('order_id', $orderId)->sum('cost_total')]);
+            DB::table('channel_web_carts')->where('id', $cart->id)->update(['status' => 'convertido', 'order_id' => $orderId, 'crm_client_id' => $clientId, 'last_activity_at' => now()]);
+            DB::table('catalog_availability_holds')->whereIn('id', $lines->pluck('item.hold_id')->filter()->all())->update(['reference' => $orderCode, 'reference_type' => 'order', 'reference_id' => $orderId, 'updated_at' => now()]);
+
+            if ($payment['marketing'] ?? false) {
+                $this->newsletter->handle($buyer['email'], $buyer['name']);
+            }
+
+            $this->audit->log('Pedido web', $orderCode, 'crear', after: "pago_pendiente · {$currency} {$terms['total']} · ".($deposit ? "adelanto {$mode['amount']}" : 'pago total'));
+            $order = DB::table('channel_ecom_orders')->where('id', $orderId)->first();
+            $attempt = empty($payment['method']) ? null : $this->charge($order, $payment);
+
+            return ['code' => $orderCode, 'token' => $accessToken, 'payment' => $attempt];
         });
-        $currency = $lines->first()['quote']['currency'];
-        $rate = number_format($fx, 6, '.', '');
-        $convert = fn (string $amount, string $from): BigDecimal => Decimal::round2(Decimal::convert($amount, $from, $currency, $rate));
-        $orderTotal = (string) $lines->reduce(fn (BigDecimal $sum, array $l): BigDecimal => $sum->plus($convert($l['quote']['total'], $l['quote']['currency'])), BigDecimal::zero()->toScale(2));
-        $discount = (string) $lines->reduce(fn (BigDecimal $sum, array $l): BigDecimal => $sum->plus($convert($l['quote']['discount']['amount'] ?? '0', $l['quote']['currency'])), BigDecimal::zero()->toScale(2));
-        $clientId = $this->client($data, $owner);
-        $orderId = (string) Str::uuid7();
-        $orderCode = $this->sequences->next('web_order');
-        $accessToken = Str::random(48);
-        $billing = ($data['billing_type'] ?? 'Boleta') === 'Factura'
-            ? ['type' => 'Factura', 'doc_type' => 'RUC', 'doc_number' => $data['ruc'], 'name' => $data['business_name'], 'fiscal_address' => $data['fiscal_address']]
-            : ['type' => 'Boleta', 'doc_type' => $data['doc_type'], 'doc_number' => Str::upper($data['doc_number']), 'name' => trim($data['name'])];
-        $first = $lines->first();
-
-        DB::table('channel_ecom_orders')->insert([
-            'id' => $orderId,
-            'tenant_id' => $this->context->idOrFail(),
-            'code' => $orderCode,
-            'ordered_at' => $now,
-            'crm_client_id' => $clientId,
-            'customer_name' => trim($data['name']),
-            'customer_email' => Str::lower(trim($data['email'])),
-            'customer_phone' => $data['phone'],
-            'customer_country' => $data['country'] ?? 'Perú',
-            'product_id' => $lines->count() === 1 ? $first['product']->id : null,
-            'departure_id' => $lines->count() === 1 ? $first['item']->departure_id : null,
-            'service_date' => $lines->count() === 1 ? $first['item']->service_date : null,
-            'pax_adults' => $lines->count() === 1 ? (int) $first['item']->pax_adults : null,
-            'pax_children' => $lines->count() === 1 ? (int) $first['item']->pax_children : 0,
-            'price_snapshot' => json_encode($lines->map(fn (array $l): array => ['product' => $l['product']->name, 'date' => $l['item']->service_date, 'lines' => $l['quote']['lines'], 'total' => $l['quote']['total'], 'currency' => $l['quote']['currency'], 'season' => $l['quote']['season']])->all(), JSON_UNESCAPED_UNICODE),
-            'promo_code' => $cart->promo_code,
-            'discount_amount' => $discount,
-            'total' => $orderTotal,
-            'currency' => $currency,
-            'fx_rate' => $fx,
-            'status' => 'pago_pendiente',
-            'hold_expires_at' => $lines->map(fn (array $l): ?string => $l['item']->hold_expires_at)->filter()->min(),
-            'buyer_snapshot' => json_encode(['name' => trim($data['name']), 'email' => $data['email'], 'phone' => $data['phone'], 'country' => $data['country'] ?? 'Perú', 'doc_type' => $data['doc_type'], 'doc_number' => Str::upper($data['doc_number'])], JSON_UNESCAPED_UNICODE),
-            'cart_id' => $cart->id,
-            'sales_channel' => 'sitio_web',
-            'locale' => 'es',
-            'pay_mode' => 'total',
-            'deposit_pct' => 100,
-            'amount_due_now' => $orderTotal,
-            'billing' => json_encode($billing, JSON_UNESCAPED_UNICODE),
-            'consents' => json_encode(['terms_at' => $now->toIso8601String(), 'cancellation_at' => $now->toIso8601String(), 'privacy_at' => $now->toIso8601String(), 'marketing_at' => ($data['marketing'] ?? false) ? $now->toIso8601String() : null, 'policy_version' => CaptureWebLead::POLICY_VERSION], JSON_UNESCAPED_UNICODE),
-            'access_token_hash' => hash('sha256', $accessToken),
-        ]);
-
-        $reservations = [];
-        $receivables = [];
-
-        foreach ($lines->values() as $index => $line) {
-            [$reservationId, $receivableId, $serviceId] = $this->reservation($line, $orderId, $orderCode, $clientId, $owner, $sede, $data, $fx, $today);
-            $reservations[] = $reservationId;
-            $receivables[] = $receivableId;
-            $quote = $line['quote'];
-            $rate = DB::table('catalog_rates')->where('id', $quote['rate_id'])->first(['cost', 'season_id']);
-            $seats = (int) $line['item']->pax_adults + (int) $line['item']->pax_children;
-
-            DB::table('channel_ecom_order_lines')->insert([
-                'id' => (string) Str::uuid7(),
-                'tenant_id' => $this->context->idOrFail(),
-                'order_id' => $orderId,
-                'line_no' => $index + 1,
-                'product_id' => $line['product']->id,
-                'product_version' => (string) (DB::table('catalog_product_versions')->where('product_id', $line['product']->id)->orderByDesc('created_at')->value('version') ?? '1'),
-                'service_date' => $line['item']->service_date,
-                'departure_id' => $line['item']->departure_id,
-                'pax_adults' => (int) $line['item']->pax_adults,
-                'pax_children' => (int) $line['item']->pax_children,
-                'pax_infants' => (int) $line['item']->pax_infants,
-                'rate_id' => $quote['rate_id'],
-                'season_id' => $rate?->season_id,
-                'season_factor' => $quote['season']['factor'] ?? 1,
-                'unit_adult' => collect($quote['lines'])->firstWhere('key', 'adults')['unit'] ?? $quote['lines'][0]['unit'],
-                'unit_child' => collect($quote['lines'])->firstWhere('key', 'children')['unit'] ?? '0',
-                'units' => collect($quote['lines'])->firstWhere('key', 'service')['qty'] ?? null,
-                'subtotal' => $quote['subtotal'],
-                'discount' => $quote['discount']['amount'] ?? '0',
-                'total' => $quote['total'],
-                'currency' => $quote['currency'],
-                'cost_total' => (string) Decimal::round2(BigDecimal::of((string) ($rate->cost ?? '0'))->multipliedBy($seats)),
-                'hold_id' => $line['item']->hold_id,
-                'reservation_service_id' => $serviceId,
-            ]);
-        }
-
-        DB::table('channel_ecom_orders')->where('id', $orderId)->update(['reservation_id' => $reservations[0], 'reservation_ids' => '{'.implode(',', $reservations).'}', 'receivable_id' => $receivables[0], 'cost_total' => DB::table('channel_ecom_order_lines')->where('order_id', $orderId)->sum('cost_total')]);
-        DB::table('channel_web_carts')->where('id', $cart->id)->update(['status' => 'convertido', 'order_id' => $orderId, 'crm_client_id' => $clientId, 'last_activity_at' => now()]);
-        DB::table('catalog_availability_holds')->whereIn('id', $lines->pluck('item.hold_id')->filter()->all())->update(['reference' => $orderCode, 'reference_type' => 'order', 'reference_id' => $orderId, 'updated_at' => now()]);
-
-        if ($data['marketing'] ?? false) {
-            $this->newsletter->handle($data['email'], $data['name']);
-        }
-
-        $this->audit->log('Pedido web', $orderCode, 'crear', after: "pago_pendiente · {$currency} {$orderTotal}");
-
-        return ['code' => $orderCode, 'token' => $accessToken];
     }
 
     public function order(string $code, ?string $token): array
@@ -168,7 +206,7 @@ final class SiteCheckout
         $order = $this->authorize($code, $token);
         $reservations = DB::table('booking_reservations')->where('ecom_order_id', $order->id)->orderBy('travel_from')->get(['id', 'code', 'status', 'title', 'travel_from', 'currency', 'total_amount']);
         $services = DB::table('booking_reservation_services')->whereIn('reservation_id', $reservations->pluck('id'))->get(['reservation_id', 'name', 'service_date', 'service_time', 'pax', 'status', 'confirmation_code']);
-        $receivables = DB::table('fin_receivables')->whereIn('reservation_id', $reservations->pluck('id'))->get(['reservation_id', 'code', 'concept', 'amount', 'paid_amount', 'currency', 'status', 'due_date']);
+        $receivables = DB::table('fin_receivables')->whereIn('reservation_id', $reservations->pluck('id'))->get(['reservation_id', 'code', 'kind', 'concept', 'amount', 'paid_amount', 'currency', 'status', 'due_date']);
         $vouchers = DB::table('ops_vouchers')->whereIn('reservation_id', $reservations->pluck('id'))->where('status', '<>', 'anulado')->orderBy('service_date')->get(['reservation_id', 'code', 'service_label', 'service_date', 'status']);
 
         return [
@@ -180,6 +218,16 @@ final class SiteCheckout
             'discount' => Decimal::toApi((string) $order->discount_amount),
             'currency' => $order->currency,
             'hold_expires_at' => $order->hold_expires_at ? Carbon::parse($order->hold_expires_at)->toIso8601String() : null,
+            'pay_mode' => $order->pay_mode,
+            'deposit_pct' => (float) $order->deposit_pct,
+            'amount_due_now' => Decimal::toApi((string) $order->amount_due_now),
+            'balance_due_date' => $order->balance_due_date,
+            'due' => $this->dueAmount($order),
+            'methods' => collect(CheckoutTerms::METHODS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values()->all(),
+            'bank_accounts' => CheckoutTerms::bankAccounts(),
+            'passengers' => DB::table('channel_ecom_passengers')->where('order_id', $order->id)->orderBy('position')->get(['full_name', 'pax_type'])->map(fn (stdClass $p): array => ['name' => $p->full_name, 'type' => $p->pax_type])->all(),
+            'attempts' => DB::table('channel_ecom_payment_attempts')->where('order_id', $order->id)->orderByDesc('attempted_at')->get(['attempted_at', 'method', 'card_masked', 'operation_ref', 'result', 'gateway_code', 'message', 'amount', 'currency'])
+                ->map(fn (stdClass $a): array => ['at' => Carbon::parse($a->attempted_at)->toIso8601String(), 'method' => CheckoutTerms::METHODS[$a->method] ?? $a->method, 'card' => $a->card_masked, 'operation' => $a->operation_ref, 'result' => $a->result, 'code' => $a->gateway_code, 'message' => $a->message, 'amount' => $a->amount === null ? null : Decimal::toApi((string) $a->amount), 'currency' => $a->currency])->all(),
             'reservations' => $reservations->map(fn (stdClass $r): array => [
                 'code' => $r->code,
                 'status' => $r->status,
@@ -188,63 +236,174 @@ final class SiteCheckout
                 'total' => Decimal::toApi((string) $r->total_amount),
                 'currency' => $r->currency,
                 'services' => $services->where('reservation_id', $r->id)->map(fn (stdClass $s): array => ['name' => $s->name, 'date' => $s->service_date, 'time' => $s->service_time ? substr((string) $s->service_time, 0, 5) : null, 'pax' => (int) $s->pax, 'status' => $s->status, 'confirmation' => $s->confirmation_code])->values()->all(),
-                'receivables' => $receivables->where('reservation_id', $r->id)->map(fn (stdClass $c): array => ['code' => $c->code, 'concept' => $c->concept, 'amount' => Decimal::toApi((string) $c->amount), 'paid' => Decimal::toApi((string) $c->paid_amount), 'currency' => $c->currency, 'status' => $c->status, 'due_date' => $c->due_date])->values()->all(),
+                'receivables' => $receivables->where('reservation_id', $r->id)->map(fn (stdClass $c): array => ['code' => $c->code, 'kind' => $c->kind, 'concept' => $c->concept, 'amount' => Decimal::toApi((string) $c->amount), 'paid' => Decimal::toApi((string) $c->paid_amount), 'currency' => $c->currency, 'status' => $c->status, 'due_date' => $c->due_date])->values()->all(),
                 'vouchers' => $vouchers->where('reservation_id', $r->id)->map(fn (stdClass $v): array => ['code' => $v->code, 'label' => $v->service_label, 'date' => $v->service_date, 'status' => $v->status])->values()->all(),
             ])->all(),
         ];
     }
 
-    public function simulatePayment(string $code, ?string $token): array
+    public function pay(string $code, ?string $token, array $data): array
     {
-        $order = $this->authorize($code, $token, true);
+        $payment = CheckoutRules::retry($data === [] ? ['method' => 'tarjeta', 'card_token' => 'tok_ok_1111', 'card_holder' => 'Pago de demostración'] : $data);
 
-        if ($order->status !== 'pago_pendiente') {
-            throw ApiException::conflict('ORDER_STATE', 'Este pedido ya no tiene un pago pendiente.');
+        return DB::transaction(function () use ($code, $token, $payment): array {
+            $order = $this->authorize($code, $token, true);
+            if (in_array($order->status, ['cancelado', 'expirado', 'pago_por_validar'], true)) {
+                throw ApiException::conflict('ORDER_STATE', $order->status === 'pago_por_validar' ? 'Tu pago está en validación; te avisaremos por correo.' : 'Este pedido ya no admite pagos.');
+            }
+
+            if ($this->dueReceivables($order)->isEmpty()) {
+                throw ApiException::conflict('ORDER_STATE', 'Este pedido no tiene pagos pendientes.');
+            }
+
+            $attempt = $this->charge($order, $payment);
+
+            return [...$this->order($code, $token), 'payment' => $attempt];
+        });
+    }
+
+    public function authorize(string $code, ?string $token, bool $lock = false): stdClass
+    {
+        $query = DB::table('channel_ecom_orders')->where('code', $code);
+        $order = ($lock ? $query->lockForUpdate() : $query)->first();
+
+        if ($order === null || $token === null || ! (hash_equals((string) $order->access_token_hash, hash('sha256', $token)) || hash_equals(self::grant($order), $token) || self::validLink($order, $token))) {
+            throw ApiException::notFound('No encontramos ese pedido.');
         }
 
-        $now = Carbon::now($this->context->timezone());
-        $reservations = DB::table('booking_reservations')->where('ecom_order_id', $order->id)->get(['id', 'code', 'currency', 'fx_rate']);
+        return $order;
+    }
 
-        foreach ($reservations as $reservation) {
-            foreach (DB::table('fin_receivables')->where('reservation_id', $reservation->id)->whereIn('status', ['abierta', 'parcial', 'vencida'])->get() as $receivable) {
+    public static function paymentLink(stdClass $order, string $until): string
+    {
+        return 'p.'.$until.'.'.hash_hmac('sha256', 'pay|'.$order->id.'|'.Str::lower((string) $order->customer_email).'|'.$until, (string) config('app.key'));
+    }
+
+    private static function validLink(stdClass $order, string $token): bool
+    {
+        $parts = explode('.', $token);
+
+        return count($parts) === 3 && $parts[0] === 'p' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $parts[1]) === 1 && $parts[1] >= Carbon::today()->toDateString()
+            && hash_equals(self::paymentLink($order, $parts[1]), $token);
+    }
+
+    public static function grant(stdClass $order): string
+    {
+        return 'g.'.hash_hmac('sha256', $order->id.'|'.Str::lower((string) $order->customer_email).'|'.Carbon::today()->toDateString(), (string) config('app.key'));
+    }
+
+    private function charge(stdClass $order, array $payment): array
+    {
+        $now = Carbon::now($this->context->timezone());
+        $due = $this->dueReceivables($order);
+        $balanceOnly = $due->every(fn (stdClass $r): bool => $r->kind === 'saldo');
+        $amount = $this->dueAmount($order);
+        $method = $payment['method'];
+        $card = $method === 'tarjeta' ? self::cardResult((string) ($payment['card_token'] ?? 'tok_14_0000')) : null;
+        $result = $method === 'tarjeta' ? ($card['approved'] ? 'aprobado' : 'rechazado') : 'por_validar';
+        $txn = $result === 'aprobado' ? 'SBX-'.Str::upper(Str::random(10)) : null;
+        $paymentIds = [];
+
+        if ($result !== 'rechazado') {
+            foreach ($due as $receivable) {
+                $id = (string) Str::uuid7();
+                $open = BigDecimal::of((string) $receivable->amount)->minus((string) $receivable->paid_amount);
                 DB::table('fin_payments')->insert([
-                    'id' => (string) Str::uuid7(),
+                    'id' => $id,
                     'tenant_id' => $this->context->idOrFail(),
                     'code' => $this->sequences->next('payment'),
-                    'reservation_id' => $reservation->id,
+                    'reservation_id' => $receivable->reservation_id,
                     'receivable_id' => $receivable->id,
                     'kind' => 'cobro',
                     'source' => 'ecommerce',
-                    'method' => 'tarjeta',
-                    'amount' => (string) BigDecimal::of((string) $receivable->amount)->minus((string) $receivable->paid_amount),
+                    'method' => $method === 'tarjeta' ? 'tarjeta_e_commerce' : $method,
+                    'amount' => (string) $open,
                     'currency' => $receivable->currency,
-                    'fx_rate' => $receivable->currency === 'USD' ? $reservation->fx_rate : null,
+                    'fx_rate' => $receivable->currency === 'USD' ? $order->fx_rate : null,
                     'paid_on' => $now->toDateString(),
-                    'reference' => 'SIMULADO-'.$order->code,
-                    'note' => 'Pago simulado desde el sitio web (demostración, sin pasarela real).',
-                    'status' => 'aplicado',
+                    'reference' => $result === 'aprobado' ? $txn : $payment['operation_ref'],
+                    'note' => $result === 'aprobado' ? "Cobro en línea del pedido {$order->code} (pasarela de prueba)." : "Pago informado en el sitio web, pedido {$order->code}. Por validar.",
+                    'status' => $result === 'aprobado' ? 'aplicado' : 'pendiente',
                 ]);
-                DB::table('fin_receivables')->where('id', $receivable->id)->update(['paid_amount' => $receivable->amount, 'status' => 'pagada', 'updated_at' => now()]);
-            }
+                $paymentIds[] = $id;
 
-            $services = DB::table('booking_reservation_services')->where('reservation_id', $reservation->id)->get(['id', 'departure_id']);
-            $pending = false;
-
-            foreach ($services as $service) {
-                $ref = $service->departure_id ? DB::table('catalog_product_departures')->where('id', $service->departure_id)->value('ref') : null;
-
-                if ($ref) {
-                    DB::table('booking_reservation_services')->where('id', $service->id)->update(['status' => 'confirmado', 'confirmation_code' => $ref, 'confirmed_by_name' => 'Cupo propio (salida programada)', 'confirmed_at' => now(), 'updated_at' => now()]);
-                } else {
-                    $pending = true;
+                if ($result === 'aprobado') {
+                    DB::table('fin_payment_applications')->insert(['payment_id' => $id, 'receivable_id' => $receivable->id, 'amount' => (string) $open, 'applied_at' => now()]);
                 }
             }
-
-            DB::table('booking_reservations')->where('id', $reservation->id)->update(['status' => $pending ? 'pendiente_proveedor' : 'confirmada', 'updated_at' => now()]);
-            $this->audit->log('Reserva', $reservation->code, 'cambio_estado', 'pendiente_pago', $pending ? 'pendiente_proveedor' : 'confirmada');
-            $this->payables->handle((string) $reservation->id);
         }
 
+        DB::table('channel_ecom_payment_attempts')->insert([
+            'order_id' => $order->id,
+            'attempted_at' => $now,
+            'method' => $method,
+            'card_masked' => $card['masked'] ?? null,
+            'operation_ref' => $method === 'tarjeta' ? null : $payment['operation_ref'],
+            'result' => $result,
+            'gateway_code' => $card['code'] ?? null,
+            'message' => $card['message'] ?? 'Pago informado; lo validamos en un plazo de 4 horas hábiles.',
+            'gateway_txn_id' => $txn,
+            'amount' => $amount,
+            'currency' => $order->currency,
+            'payment_id' => $paymentIds[0] ?? null,
+        ]);
+
+        if ($result === 'rechazado') {
+            if ($order->status === 'pago_pendiente') {
+                DB::table('channel_ecom_orders')->where('id', $order->id)->update(['status' => 'pago_rechazado', 'updated_at' => now()]);
+            }
+            $this->audit->log('Pedido web', $order->code, 'pago_rechazado', $order->status, "código {$card['code']}");
+
+            return ['result' => 'rechazado', 'message' => $card['message']];
+        }
+
+        if ($result === 'aprobado') {
+            foreach ($due as $receivable) {
+                $this->ledger->recalculate((string) $receivable->id, null);
+            }
+        }
+
+        if (! $balanceOnly) {
+            $this->consumeHolds($order);
+            DB::table('channel_ecom_orders')->where('id', $order->id)->update(['status' => $result === 'aprobado' ? 'confirmado' : 'pago_por_validar', 'updated_at' => now()]);
+        }
+
+        $this->audit->log('Pedido web', $order->code, $result === 'aprobado' ? 'pago_aprobado' : 'pago_por_validar', $order->status, ($balanceOnly ? 'saldo · ' : '').CheckoutTerms::METHODS[$method]." · {$order->currency} {$amount}");
+
+        return ['result' => $result, 'message' => $result === 'aprobado' ? 'Pago aprobado.' : 'Recibimos tu número de operación. Validamos el pago en un plazo de 4 horas hábiles.'];
+    }
+
+    public static function cardResult(string $token): array
+    {
+        [, $code, $last4] = explode('_', $token);
+
+        return [
+            'approved' => $code === 'ok',
+            'code' => $code === 'ok' ? '00' : $code,
+            'masked' => "•••• {$last4}",
+            'message' => $code === 'ok' ? 'Aprobado' : (self::GATEWAY[$code] ?? self::GATEWAY['14']),
+        ];
+    }
+
+    private function dueReceivables(stdClass $order): Collection
+    {
+        $open = DB::table('fin_receivables')->whereIn('reservation_id', DB::table('booking_reservations')->where('ecom_order_id', $order->id)->pluck('id'))->whereIn('status', ['abierta', 'parcial', 'vencida'])->orderBy('due_date')->get();
+        $now = $open->where('kind', '<>', 'saldo');
+        $hasPending = DB::table('fin_payments')->whereIn('receivable_id', $open->pluck('id'))->where('status', 'pendiente')->exists();
+
+        return $hasPending ? collect() : ($now->isNotEmpty() ? $now->values() : $open->values());
+    }
+
+    private function dueAmount(stdClass $order): string
+    {
+        $rate = (string) $order->fx_rate;
+        $sum = $this->dueReceivables($order)->reduce(fn (BigDecimal $total, stdClass $r): BigDecimal => $total->plus(Decimal::round2(Decimal::convert((string) BigDecimal::of((string) $r->amount)->minus((string) $r->paid_amount), (string) $r->currency, (string) $order->currency, $rate))), BigDecimal::zero()->toScale(2));
+
+        return (string) $sum;
+    }
+
+    private function consumeHolds(stdClass $order): void
+    {
         foreach (DB::table('catalog_availability_holds')->where('reference_id', $order->id)->where('status', 'hold')->get(['id', 'departure_id', 'quantity']) as $hold) {
             if ($hold->departure_id) {
                 $departure = DB::table('catalog_product_departures')->where('id', $hold->departure_id)->lock('for no key update')->first(['capacity', 'sold']);
@@ -254,24 +413,48 @@ final class SiteCheckout
 
             DB::table('catalog_availability_holds')->where('id', $hold->id)->update(['status' => 'confirmada', 'updated_at' => now()]);
         }
-
-        DB::table('channel_ecom_orders')->where('id', $order->id)->update(['status' => 'confirmado', 'updated_at' => now()]);
-        $this->audit->log('Pedido web', $order->code, 'pago_simulado', 'pago_pendiente', 'confirmado');
-
-        return $this->order($code, $token);
     }
 
-    private function reservation(array $line, string $orderId, string $orderCode, string $clientId, string $owner, ?string $sede, array $data, float $fx, string $today): array
+    private function cartLines(?string $token, bool $lock): array
+    {
+        $cart = $this->carts->find($token) ?? throw ApiException::notFound('Tu carrito expiró o ya fue procesado.');
+        if ($lock) {
+            DB::table('channel_web_carts')->where('id', $cart->id)->lockForUpdate()->first();
+        }
+        $items = DB::table('channel_web_cart_items')->where('cart_id', $cart->id)->orderBy('line_no')->get();
+
+        if ($items->isEmpty()) {
+            throw ApiException::unprocessable('CART_EMPTY', 'Tu carrito está vacío.');
+        }
+
+        $lines = $items->map(function (stdClass $item) use ($cart, $lock): array {
+            $product = $this->quotes->product((string) DB::table('catalog_products')->where('id', $item->product_id)->value('slug'));
+            $quote = $this->quotes->quote($product, $item->service_date, (int) $item->pax_adults, (int) $item->pax_children, (int) $item->pax_infants, $cart->promo_code);
+            $hold = $item->hold_id ? DB::table('catalog_availability_holds')->where('id', $item->hold_id)->first(['status', 'expires_at']) : null;
+
+            if ($lock && $item->hold_id && ($hold === null || $hold->status !== 'hold' || Carbon::parse($hold->expires_at)->isPast())) {
+                $this->carts->hold($cart, $item);
+                $item = DB::table('channel_web_cart_items')->where('id', $item->id)->first();
+            }
+
+            return ['item' => $item, 'product' => $product, 'quote' => $quote];
+        })->values();
+
+        return [$cart, $lines];
+    }
+
+    private function reservation(array $line, array $termsLine, array $extra, string $orderId, string $orderCode, string $clientId, string $owner, ?string $sede, array $buyer, array $passengers, bool $deposit, string $rate, string $today, string $currency): array
     {
         $item = $line['item'];
         $product = $line['product'];
         $quote = $line['quote'];
-        $year = Carbon::parse($today)->year;
         $reservationId = (string) Str::uuid7();
         $code = $this->sequences->next('reservation');
         $days = max(1, (int) ceil((float) $product->days));
         $seats = (int) $item->pax_adults + (int) $item->pax_children;
-        $rate = DB::table('catalog_rates')->where('id', $quote['rate_id'])->first(['cost']);
+        $rateRow = DB::table('catalog_rates')->where('id', $quote['rate_id'])->first(['cost']);
+        $total = BigDecimal::of((string) $quote['total']);
+        $depositAmount = Decimal::round2($total->multipliedBy($termsLine['deposit_pct'])->dividedBy(100, 6, RoundingMode::HALF_UP));
 
         DB::table('booking_reservations')->insert([
             'id' => $reservationId,
@@ -286,12 +469,12 @@ final class SiteCheckout
             'travel_from' => $item->service_date,
             'travel_to' => Carbon::parse($item->service_date)->addDays($days - 1)->toDateString(),
             'currency' => $quote['currency'],
-            'fx_rate' => $fx,
+            'fx_rate' => $rate,
             'total_amount' => $quote['total'],
             'snapshot_label' => Str::limit("Pedido web {$orderCode} · {$product->name} · {$item->service_date}", 295),
             'catalog_snapshot' => json_encode(['product' => $product->code, 'lines' => $quote['lines'], 'season' => $quote['season'], 'discount' => $quote['discount']], JSON_UNESCAPED_UNICODE),
-            'policies_snapshot' => json_encode((array) (DB::table('catalog_product_policies')->where('product_id', $product->id)->first(['cancellation', 'modification', 'no_show', 'refund']) ?? []), JSON_UNESCAPED_UNICODE),
-            'notes' => "Reserva creada desde el sitio web (pedido {$orderCode}).",
+            'policies_snapshot' => json_encode([$product->code => (array) (DB::table('catalog_product_policies')->where('product_id', $product->id)->first(['cancellation', 'modification', 'no_show', 'refund', 'penalty_tiers']) ?? [])], JSON_UNESCAPED_UNICODE),
+            'notes' => trim("Reserva creada desde el sitio web (pedido {$orderCode}).".($extra['comments'] ? " Comentarios del cliente: {$extra['comments']}" : '')),
             'ecom_order_id' => $orderId,
         ]);
 
@@ -311,131 +494,119 @@ final class SiteCheckout
             'pax_detail' => json_encode(['adt' => (int) $item->pax_adults, 'chd' => (int) $item->pax_children, 'inf' => (int) $item->pax_infants]),
             'status' => 'solicitado',
             'currency' => $quote['currency'],
-            'fx_rate' => $fx,
-            'cost_amount' => (string) Decimal::round2(BigDecimal::of((string) ($rate->cost ?? '0'))->multipliedBy($seats)),
+            'fx_rate' => $rate,
+            'cost_amount' => (string) Decimal::round2(BigDecimal::of((string) ($rateRow->cost ?? '0'))->multipliedBy($seats)),
             'price_amount' => $quote['total'],
             'service_kind' => $product->kind === 'traslados' ? 'traslado' : 'tour',
             'requested_at' => now(),
         ]);
 
-        $this->passengers($reservationId, $item, $data);
-        $receivableId = (string) Str::uuid7();
-        DB::table('fin_receivables')->insert([
-            'id' => $receivableId,
-            'tenant_id' => $this->context->idOrFail(),
-            'code' => $this->sequences->next('receivable'),
+        $this->passengers($reservationId, $item, $buyer, $passengers);
+
+        $receivables = $deposit
+            ? [['adelanto', "Adelanto {$termsLine['deposit_pct']} % — pedido web {$orderCode} · {$product->name}", $depositAmount, $today], ['saldo', 'Saldo '.(100 - $termsLine['deposit_pct'])." % — pedido web {$orderCode} · {$product->name}", $total->minus($depositAmount), $termsLine['balance_due']]]
+            : [['total', "Pago total — pedido web {$orderCode} · {$product->name}", $total, $today]];
+        $firstReceivable = null;
+
+        foreach ($receivables as [$kind, $concept, $amount, $due]) {
+            $id = (string) Str::uuid7();
+            $firstReceivable ??= $id;
+            DB::table('fin_receivables')->insert([
+                'id' => $id,
+                'tenant_id' => $this->context->idOrFail(),
+                'code' => $this->sequences->next('receivable'),
+                'reservation_id' => $reservationId,
+                'client_id' => $clientId,
+                'kind' => $kind,
+                'concept' => Str::limit($concept, 250),
+                'amount' => (string) Decimal::round2($amount),
+                'currency' => $quote['currency'],
+                'fx_rate' => $rate,
+                'due_date' => $due,
+                'status' => 'abierta',
+            ]);
+        }
+
+        DB::table('booking_reservation_web_snapshots')->insert([
             'reservation_id' => $reservationId,
-            'client_id' => $clientId,
-            'kind' => 'total',
-            'concept' => Str::limit("Pago total — pedido web {$orderCode} · {$product->name}", 250),
-            'amount' => $quote['total'],
-            'currency' => $quote['currency'],
-            'fx_rate' => $fx,
-            'due_date' => $today,
-            'status' => 'abierta',
+            'product_id' => $product->id,
+            'service_date' => $item->service_date,
+            'pax_adt' => (int) $item->pax_adults,
+            'pax_chd' => (int) $item->pax_children,
+            'pax_inf' => (int) $item->pax_infants,
+            'currency_display' => $currency,
+            'charge_currency' => $quote['currency'],
+            'fx_rate' => $rate,
+            'lines' => json_encode($quote['lines'], JSON_UNESCAPED_UNICODE),
+            'adjustments' => json_encode($quote['discount'] ? [$quote['discount']] : [], JSON_UNESCAPED_UNICODE),
+            'total' => $quote['total'],
+            'pickup_point' => $extra['pickup_point'],
+            'pickup_address' => $extra['pickup_address'],
+            'pickup_flight' => $extra['pickup_flight'],
+            'pickup_arrival' => $extra['pickup_arrival'],
+            'comments' => $extra['comments'],
+            'payment_mode' => $deposit ? 'adelanto' : 'total',
+            'deposit_pct' => $deposit ? $termsLine['deposit_pct'] : 100,
+            'deposit' => (string) ($deposit ? $depositAmount : $total),
+            'balance' => (string) ($deposit ? Decimal::round2($total->minus($depositAmount)) : BigDecimal::zero()->toScale(2)),
+            'balance_due' => $deposit ? $termsLine['balance_due'] : null,
+            'companions_pending' => $passengers === [],
+            'rules_applied' => '{'.implode(',', array_keys(array_filter(['R-DEPOSIT' => $deposit, 'R-PICKUP' => $termsLine['pickup'] !== null, 'R-COMMENTS' => $termsLine['comments'] !== null]))).'}',
+            'source' => 'sitio_web',
+            'order_code' => $orderCode,
         ]);
         $this->audit->log('Reserva', $code, 'crear_ecommerce', after: "pendiente_pago · {$quote['currency']} {$quote['total']}");
 
-        return [$reservationId, $receivableId, $serviceId];
+        return [$reservationId, $firstReceivable, $serviceId];
     }
 
-    private function passengers(string $reservationId, stdClass $item, array $data): void
+    private function passengers(string $reservationId, stdClass $item, array $buyer, array $passengers): void
     {
-        $rows = [['ADT', trim($data['name']), true]];
-
-        for ($i = 2; $i <= (int) $item->pax_adults; $i++) {
-            $rows[] = ['ADT', "Adulto {$i} (por completar)", false];
+        $byType = ['ADT' => [], 'CHD' => [], 'INF' => []];
+        foreach ($passengers as $passenger) {
+            $byType[$passenger['pax_type']][] = $passenger;
         }
 
-        for ($i = 1; $i <= (int) $item->pax_children; $i++) {
-            $rows[] = ['CHD', "Niño {$i} (por completar)", false];
+        $rows = [];
+        foreach (['ADT' => (int) $item->pax_adults, 'CHD' => (int) $item->pax_children, 'INF' => (int) $item->pax_infants] as $type => $count) {
+            for ($i = 0; $i < $count; $i++) {
+                $rows[] = [$type, $byType[$type][$i] ?? null];
+            }
         }
 
-        for ($i = 1; $i <= (int) $item->pax_infants; $i++) {
-            $rows[] = ['INF', "Infante {$i} (por completar)", false];
-        }
-
-        foreach ($rows as $index => [$type, $name, $lead]) {
+        foreach ($rows as $index => [$type, $passenger]) {
+            $lead = $index === 0;
+            $label = ['ADT' => 'Adulto', 'CHD' => 'Niño', 'INF' => 'Infante'][$type].' '.($index + 1).' (por completar)';
+            $name = $passenger ? trim($passenger['first_name'].' '.$passenger['last_name']) : ($lead ? trim($buyer['name']) : $label);
             DB::table('booking_passengers')->insert([
                 'id' => (string) Str::uuid7(),
                 'tenant_id' => $this->context->idOrFail(),
                 'reservation_id' => $reservationId,
                 'seq' => $index + 1,
                 'full_name' => Str::limit($name, 145),
-                'doc_type' => $lead ? ($data['doc_type'] === 'Pasaporte' ? 'Pasaporte' : $data['doc_type']) : null,
-                'doc_number' => $lead ? Str::upper($data['doc_number']) : null,
+                'doc_type' => $passenger['doc_type'] ?? ($lead ? $buyer['doc_type'] : null),
+                'doc_number' => isset($passenger['doc_number']) ? Str::upper((string) $passenger['doc_number']) : ($lead ? Str::upper($buyer['doc_number']) : null),
                 'pax_type' => $type,
-                'nationality' => $lead ? ($data['country'] ?? 'Perú') : null,
-                'phone' => $lead ? $data['phone'] : null,
-                'email' => $lead ? Str::lower($data['email']) : null,
+                'nationality' => $passenger['nationality'] ?? ($lead ? ($buyer['nationality'] ?? $buyer['country']) : null),
+                'birth_date' => $passenger['birth_date'] ?? ($lead ? ($buyer['birth_date'] ?? null) : null),
+                'diet_notes' => $passenger['diet'] ?? ($lead ? ($buyer['diet'] ?? null) : null),
+                'phone' => $lead ? $buyer['phone'] : null,
+                'email' => $lead ? Str::lower($buyer['email']) : null,
                 'relationship' => $lead ? 'Titular' : null,
                 'is_lead' => $lead,
-                'is_placeholder' => ! $lead,
-                'pending' => ! $lead,
+                'is_placeholder' => $passenger === null && ! $lead,
+                'pending' => $passenger === null && ! $lead,
             ]);
         }
     }
 
-    private function client(array $data, string $owner): string
+    private function today(): string
     {
-        $email = Str::lower(trim($data['email']));
-        $existing = DB::table('crm_clients')->whereNull('deleted_at')->where('email_norm', $email)->value('id');
-
-        if ($existing) {
-            return (string) $existing;
-        }
-
-        $id = (string) Str::uuid7();
-        $code = $this->codes->next('crm_clients', 'CLI-');
-        DB::table('crm_clients')->insert([
-            'id' => $id,
-            'tenant_id' => $this->context->idOrFail(),
-            'code' => $code,
-            'kind' => 'persona',
-            'name' => trim($data['name']),
-            'doc_type' => self::DOC_TYPES[$data['doc_type']] ?? 'DNI',
-            'doc_number' => Str::upper(preg_replace('/\s+/', '', $data['doc_number'])),
-            'email' => $email,
-            'phone' => $data['phone'],
-            'phone_norm' => substr((string) preg_replace('/\D/', '', $data['phone']), -9) ?: null,
-            'country' => $data['country'] ?? 'Perú',
-            'segment_code' => 'Retail',
-            'owner_id' => $owner,
-            'tags' => '{Web}',
-            'consents' => json_encode(['privacy' => true, 'marketing' => (bool) ($data['marketing'] ?? false), 'policy_version' => CaptureWebLead::POLICY_VERSION], JSON_UNESCAPED_UNICODE),
-        ]);
-        $this->audit->log('Cliente', $code, 'crear_desde_sitio_web', after: 'Retail · Web');
-
-        return $id;
+        return Carbon::now($this->context->timezone())->toDateString();
     }
 
-    private function owner(): string
+    private function rate(): string
     {
-        foreach (['channels.ecommerce.manage', 'reservations.create'] as $permission) {
-            $id = DB::table('iam_users as u')
-                ->join('model_has_roles as mr', 'mr.model_id', '=', 'u.id')
-                ->join('role_has_permissions as rp', 'rp.role_id', '=', 'mr.role_id')
-                ->join('permissions as p', 'p.id', '=', 'rp.permission_id')
-                ->whereNull('u.deleted_at')->where('u.status', 'activo')->whereNull('u.client_id')->where('p.name', $permission)
-                ->orderBy('u.code')->value('u.id');
-
-            if ($id) {
-                return (string) $id;
-            }
-        }
-
-        throw ApiException::conflict('ECOM_OWNER', 'La agencia aún no tiene un responsable de ventas en línea.');
-    }
-
-    public function authorize(string $code, ?string $token, bool $lock = false): stdClass
-    {
-        $query = DB::table('channel_ecom_orders')->where('code', $code);
-        $order = ($lock ? $query->lockForUpdate() : $query)->first();
-
-        if ($order === null || $token === null || ! hash_equals((string) $order->access_token_hash, hash('sha256', $token))) {
-            throw ApiException::notFound('No encontramos ese pedido.');
-        }
-
-        return $order;
+        return number_format($this->profile->usdRate(), 6, '.', '');
     }
 }

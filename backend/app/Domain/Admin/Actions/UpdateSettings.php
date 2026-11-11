@@ -18,7 +18,7 @@ final class UpdateSettings
 {
     private const AGENCY_FIELDS = ['legal_name', 'commercial_name', 'logo_initials', 'timezone', 'fiscal_address', 'legal_rep'];
 
-    private const INTEGERS = ['tax_pct', 'quote_validity_days', 'hold_minutes', 'markup_pct', 'max_discount_pct', 'advance_pct', 'balance_days_before'];
+    private const INTEGERS = ['tax_pct', 'quote_validity_days', 'hold_minutes', 'markup_pct', 'max_discount_pct', 'approval_margin_pct', 'discount_cap_pct', 'advance_pct', 'balance_days_before'];
 
     public function __construct(
         private readonly TenantSettings $settings,

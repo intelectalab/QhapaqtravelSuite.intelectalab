@@ -3,6 +3,8 @@
 use App\Domain\Platform\Support\PlanCatalog;
 use Illuminate\Support\Facades\DB;
 
+beforeEach(fn () => lockPlatformBilling());
+
 function platPlan(string $code): object
 {
     return DB::connection('pgsql_platform')->table('plans')->where('code', $code)->first();

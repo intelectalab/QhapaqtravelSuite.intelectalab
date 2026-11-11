@@ -529,6 +529,7 @@ function flujoSitio(): array
         'billing_type' => 'Boleta',
         'terms' => true,
         'privacy' => true,
+        'passengers' => webTravelers(2),
     ], siteOf(extra: critical()))->assertCreated()->json('data');
 
     $access = siteOf(extra: ['X-Order-Token' => $order['token']]);
@@ -603,6 +604,7 @@ function flujoB2b(): array
 
 function flujoPlataforma(): array
 {
+    lockPlatformBilling();
     actingAsPlatform();
     $code = (string) test()->postJson('/api/v1/platform/tenants', [
         'commercial_name' => 'Sumaq Rutas',

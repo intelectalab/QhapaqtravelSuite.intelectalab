@@ -16,6 +16,8 @@ export interface PlatformSettingsOverview {
     taxes: { igv_pct: number; currency: string };
     notices: { trial_days: number[]; usage_warn_pct: number; api_key_days: number };
     dunning: { retry_days: number[]; suspend_after_last: boolean };
+    form_protection: { provider: string; enabled: boolean; site_key: string; secret_set: boolean; secret_hint: string | null; verified_at: string | null; status: "activa" | "incompleta" | "apagada" };
+    antivirus: { driver: string; simulated: boolean; ok: boolean; message: string | null };
   };
   lock_version: number;
   updated_at: string | null;

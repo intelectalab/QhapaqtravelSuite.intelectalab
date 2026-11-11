@@ -26,16 +26,22 @@ return [
 
     'mfa_roles' => ['tenant_admin', 'manager', 'finance', 'accounting'],
 
+    'lockout' => [
+        'attempts' => (int) env('LOGIN_LOCKOUT_ATTEMPTS', 5),
+        'minutes' => (int) env('LOGIN_LOCKOUT_MINUTES', 15),
+    ],
+
     'platform_permissions' => ['admin.tenant.manage', 'admin.audit.view'],
 
     'experience_routes' => [
         'shared' => ['me', 'me.access', 'me.counts', 'me.permissions', 'me.notifications.index', 'me.notifications.read-all'],
-        'portal' => ['b2b.', 'supplier.', 'portal.'],
+        'portal' => ['b2b.', 'supplier.', 'portal.', 'public.me.'],
     ],
 
     'routes' => [
         '/dashboard' => ['*'],
         '/flujo' => ['*'],
+        '/ayuda' => ['*'],
         '/aprobaciones' => ['approvals.view'],
         '/inbox' => ['inbox.view'],
         '/crm' => ['crm.leads.view'],

@@ -49,9 +49,65 @@ export interface QuoteVersion {
   tax_pct: string;
   totals: { sale: string; discount: string; net: string; tax: string; grand: string; cost: string | null; profit: string | null; margin_pct: string | null };
   items: QuoteItem[];
+  conditions?: string | null;
+  markup_pct?: string | null;
+  fx_rate?: string | null;
+  frozen_at?: string | null;
+  internal_status?: string | null;
+  item_count?: number;
+  seasons?: Record<number, string | null>;
+}
+
+export interface QuoteTimelineEvent {
+  kind: "envio" | "vista" | "negociacion" | "aprobacion" | "rechazo";
+  at: string;
+  channel: string | null;
+  detail: string | null;
+  note: string | null;
+  version: number | null;
+  actor: string | null;
+}
+
+export interface QuoteInternalDetail {
+  status: string;
+  reasons: string[];
+  over_cap: boolean;
+  requested_by: string | null;
+  requested_at: string | null;
+  request_note: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  decision_note: string | null;
+}
+
+export interface QuoteActivityItem {
+  code: string;
+  type: string;
+  subject: string;
+  status: string;
+  due_at: string | null;
+  completed_at: string | null;
+  related_type: string;
+  owner: string | null;
+}
+
+export interface QuoteAuditEvent {
+  id: string;
+  action: string;
+  before: string | null;
+  after: string | null;
+  actor: string | null;
+  at: string;
 }
 
 export interface QuoteDetail extends QuoteRow {
+  approval: { at: string; by: string | null; channel: string | null; reference: string | null; version: number | null } | null;
+  rejected_at: string | null;
+  internal_detail: QuoteInternalDetail | null;
+  timeline: QuoteTimelineEvent[];
+  activities: QuoteActivityItem[];
+  itinerary: { product: { code: string; name: string }; start: string; days: { day: number; title: string }[] }[];
+  approval_rules: { discount_limit: string; margin_floor: string; max_discount: string };
   opportunity: { code: string; title: string } | null;
   reservation: { code: string } | null;
   approved_at: string | null;
@@ -71,6 +127,8 @@ export const paxLabel = (pax: QuoteRow["pax"]) =>
 
 export const OPEN_QUOTE = ["borrador", "enviada", "vista", "negociacion"];
 
+export const QUOTE_STEPS = ["Datos generales", "Viaje y pasajeros", "Ítems de la cotización", "Resumen económico"] as const;
+
 export const QUOTE_JOURNEY = [
   { status: "borrador", label: "Borrador" },
   { status: "enviada", label: "Enviada" },
@@ -80,10 +138,17 @@ export const QUOTE_JOURNEY = [
   { status: "convertida", label: "Reserva" },
 ];
 
+export interface QuoteSegmentOption {
+  value: string;
+  price: string | null;
+  currency: string | null;
+  pct: string | null;
+}
+
 export interface QuoteFormOptions {
   clients: { code: string; name: string }[];
   opportunities: { code: string; title: string; currency: string; pax: number; client_code: string }[];
-  products: { code: string; name: string; duration: string; rates: { segment: string; currency: string; price: string }[] }[];
+  products: { code: string; name: string; duration: string; segments: QuoteSegmentOption[] }[];
   defaults: { valid_until: string; tax_pct: number; max_discount: number };
 }
 
@@ -98,7 +163,7 @@ export interface QuoteLineInput {
 }
 
 export interface QuotePreview {
-  lines: { unit_price: string; price_source: "rate" | "manual"; total: string; margin_pct: string | null }[];
+  lines: { unit_price: string; rate_price: string | null; price_source: "rate" | "manual"; total: string; margin_pct: string | null }[];
   totals: { sale_total: string; discount_total: string; net_total: string; tax_total: string; grand_total: string; cost_total: string | null; profit_total: string | null; margin_pct: string | null };
   needs_internal_approval: boolean;
 }

@@ -165,3 +165,12 @@ export function IncidentsTable({ data }: { data: IncidentList }) {
 
   return <DataTable screen="operaciones-incidencias" rows={data.items} columns={columns} getKey={(row) => row.code} entityLabel="incidencias" searchText={(row) => `${row.code} ${row.title} ${row.type} ${row.order?.code ?? ""} ${row.reservation?.code ?? ""}`} searchPlaceholder="Buscar incidencia, orden o reserva" metrics={metrics} filters={filters} sorts={sorts} />;
 }
+
+export function OrderIncidentCreateAction({ orderCode, types, assignees }: { orderCode: string; types: string[]; assignees: Person[] }) {
+  return (
+    <OpsStep step="incident_create" formKey={`${orderCode}-incident`} label="Nueva incidencia" icon={<Plus size={16} strokeWidth={2.4} />} size="sm" title="Registrar incidencia" description={`Orden ${orderCode}. Las críticas alertan a gerencia al instante.`} submitLabel="Registrar">
+      <input type="hidden" name="order_code" value={orderCode} />
+      <IncidentFields types={types} assignees={assignees} />
+    </OpsStep>
+  );
+}

@@ -9,7 +9,7 @@ use App\Domain\Iam\Models\User;
 use App\Domain\Quotes\Enums\QuoteStatus;
 use App\Domain\Quotes\Models\Quote;
 use App\Domain\Quotes\StateMachines\QuoteStateMachine;
-use App\Domain\Quotes\Support\QuotePricing;
+use App\Domain\Quotes\Support\QuoteApprovalPolicy;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Mail\QueuedMail;
@@ -37,24 +37,29 @@ final class QuoteLifecycle
         private readonly SequenceService $sequences,
     ) {}
 
-    public static function discountNeedsApproval(BigDecimal|string|int $discountPct): bool
+    public static function discountNeedsApproval(BigDecimal|string|int $discountPct, ?string $limit = null): bool
     {
-        return BigDecimal::of((string) $discountPct)->isGreaterThan(self::DISCOUNT_LIMIT);
+        return BigDecimal::of((string) $discountPct)->isGreaterThan($limit ?? self::DISCOUNT_LIMIT);
     }
 
-    public static function marginNeedsApproval(BigDecimal|string|int $marginPct): bool
+    public static function marginNeedsApproval(BigDecimal|string|int $marginPct, ?string $floor = null): bool
     {
-        return BigDecimal::of((string) $marginPct)->isLessThan(self::MARGIN_FLOOR);
+        return BigDecimal::of((string) $marginPct)->isLessThan($floor ?? self::MARGIN_FLOOR);
     }
 
-    public static function needsInternalApproval(BigDecimal|string|int $discountPct, BigDecimal|string|int $marginPct): bool
+    public static function needsInternalApproval(BigDecimal|string|int $discountPct, BigDecimal|string|int $marginPct, ?array $limits = null): bool
     {
-        return self::discountNeedsApproval($discountPct) || self::marginNeedsApproval($marginPct);
+        return self::discountNeedsApproval($discountPct, $limits['discount_limit'] ?? null) || self::marginNeedsApproval($marginPct, $limits['margin_floor'] ?? null);
+    }
+
+    public static function currentLimits(): array
+    {
+        return app(QuoteApprovalPolicy::class)->limits();
     }
 
     public function internalState(object $version): array
     {
-        $required = self::needsInternalApproval((string) $version->discount_pct, (string) $version->margin_pct);
+        $required = self::needsInternalApproval((string) $version->discount_pct, (string) $version->margin_pct, self::currentLimits());
         $last = DB::table('quote_internal_approvals')->where('quote_version_id', $version->id)->orderByDesc('created_at')->first(['status', 'request_note', 'decision_note']);
 
         return ['required' => $required, 'status' => $last?->status, 'note' => $last->decision_note ?? $last?->request_note];
@@ -266,6 +271,27 @@ final class QuoteLifecycle
         }
     }
 
+    public function recordView(string $code, ?string $note, User $actor): void
+    {
+        DB::transaction(function () use ($code, $note, $actor): void {
+            [$quote] = $this->load($code, $actor);
+
+            if (! in_array($this->effectiveStatus($quote), self::LIVE, true)) {
+                throw ApiException::conflict('QTE-BR-16', 'Solo se registra la vista de una cotización enviada y vigente.');
+            }
+
+            DB::table('quote_views')->insert(['id' => (string) Str::uuid7(), 'tenant_id' => $this->context->idOrFail(), 'quote_id' => $quote->id, 'version_no' => $quote->current_version_no, 'viewed_at' => now(), 'source' => 'manual', 'ip' => request()->ip(), 'user_agent' => request()->userAgent(), 'recorded_by' => $actor->getKey()]);
+            $before = (string) $quote->status;
+
+            if ($quote->status === QuoteStatus::Enviada->value) {
+                $this->states->transition($quote, QuoteStatus::Vista);
+            }
+
+            $quote->forceFill(['viewed_at' => $quote->viewed_at ?? now(), 'updated_by' => $actor->getKey()])->save();
+            $this->audit->log('Cotización', (string) $quote->code, 'registrar_vista', $before, $note ?: 'Vista registrada manualmente');
+        });
+    }
+
     public function negotiate(string $code, string $channel, string $note, User $actor): void
     {
         DB::transaction(function () use ($code, $channel, $note, $actor): void {
@@ -398,15 +424,23 @@ final class QuoteLifecycle
 
     private function reasons(object $version): array
     {
-        return array_values(array_filter([
-            self::discountNeedsApproval((string) $version->discount_pct) ? "Descuento de {$version->discount_pct} %" : null,
-            self::marginNeedsApproval((string) $version->margin_pct) ? "Margen de {$version->margin_pct} %" : null,
-        ]));
+        $limits = self::currentLimits();
+        $reasons = [];
+
+        if (self::discountNeedsApproval((string) $version->discount_pct, $limits['discount_limit'])) {
+            $reasons[] = "Descuento de {$version->discount_pct} %";
+        }
+
+        if (self::marginNeedsApproval((string) $version->margin_pct, $limits['margin_floor'])) {
+            $reasons[] = "Margen de {$version->margin_pct} %";
+        }
+
+        return $reasons;
     }
 
     private function overCap(object $version): bool
     {
-        return BigDecimal::of((string) $version->discount_pct)->isGreaterThan(QuotePricing::MAX_DISCOUNT);
+        return BigDecimal::of((string) $version->discount_pct)->isGreaterThan(self::currentLimits()['max_discount']);
     }
 
     private function effectiveStatus(Quote $quote): string

@@ -5,13 +5,16 @@ import { Card } from "@/components/ui/Card";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TintCardTitle } from "@/components/ui/Tinted";
 import { EcommerceFunnel, EcommerceTiles, EcommerceWorkspace } from "@/features/channels/Ecommerce";
-import type { EcommerceOverview } from "@/lib/channels";
+import type { EcommerceOverview, PromotionCatalog } from "@/lib/channels";
 import { getResource } from "@/lib/server/resource";
 
 export const metadata: Metadata = { title: "E-commerce" };
 
 export default async function EcommercePage() {
-  const overview = await getResource<EcommerceOverview>("/channels/ecommerce", "No pudimos cargar el canal e-commerce.");
+  const [overview, promotions] = await Promise.all([
+    getResource<EcommerceOverview>("/channels/ecommerce", "No pudimos cargar el canal e-commerce."),
+    getResource<PromotionCatalog>("/channels/ecommerce/promotions", "No pudimos cargar las promociones."),
+  ]);
 
   if (!overview) {
     return <PageHeader title="E-commerce" subtitle="Tu rol no tiene acceso a esta sección." />;
@@ -29,7 +32,7 @@ export default async function EcommercePage() {
         <TintCardTitle icon={Filter} title="Embudo de conversión" aside={<InfoTip>Sesiones y vistas salen de los eventos del sitio y del widget; pedidos y pagos, de los pedidos web.</InfoTip>} />
         <EcommerceFunnel steps={overview.funnel} />
       </Card>
-      <EcommerceWorkspace overview={overview} />
+      <EcommerceWorkspace overview={overview} promotions={promotions} />
     </>
   );
 }

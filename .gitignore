@@ -25,6 +25,7 @@ AGENTS.md
 vendor/
 node_modules/
 .next/
+.next-e2e/
 out/
 dist/
 build/
@@ -63,3 +64,9 @@ Documentación/Manual de uso/*
 *.bak
 *.tmp
 *.zip
+
+# Pruebas de pantalla (Playwright)
+docs/kit/tests/e2e/.auth/
+docs/kit/tests/e2e/playwright-report/
+docs/kit/tests/e2e/test-results/
+docs/kit/tests/e2e/results/

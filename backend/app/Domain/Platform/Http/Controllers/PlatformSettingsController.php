@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Platform\Http\Controllers;
 
 use App\Domain\Admin\Support\Branding;
+use App\Domain\Platform\Actions\UpdateFormProtection;
 use App\Domain\Platform\Actions\UpdatePlatformSettings;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Support\PlatformBranding;
@@ -61,6 +62,21 @@ final class PlatformSettingsController
         $branding->reset($data['reason'], $this->user($request));
 
         return response()->json(['data' => ['reset' => true]]);
+    }
+
+    public function updateFormProtection(Request $request, UpdateFormProtection $forms): JsonResponse
+    {
+        $data = $request->validate([
+            'enabled' => ['required', 'boolean'],
+            'site_key' => ['nullable', 'string', 'max:120', 'regex:/^[A-Za-z0-9_-]*$/'],
+            'secret' => ['nullable', 'string', 'max:200', 'regex:/^[A-Za-z0-9_-]*$/'],
+        ], [
+            'enabled.*' => 'Indica si la protección queda activa.',
+            'site_key.*' => 'Pega la clave del sitio tal como la muestra Cloudflare.',
+            'secret.*' => 'Pega la clave secreta tal como la muestra Cloudflare.',
+        ]);
+
+        return response()->json(['data' => $forms->update((bool) $data['enabled'], (string) ($data['site_key'] ?? ''), $data['secret'] ?? null, $this->user($request))]);
     }
 
     public function settings(UpdatePlatformSettings $settings): JsonResponse

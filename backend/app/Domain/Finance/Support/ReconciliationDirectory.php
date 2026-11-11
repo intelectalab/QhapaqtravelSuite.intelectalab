@@ -11,6 +11,8 @@ final class ReconciliationDirectory
 {
     public const RESOLUTIONS = ['match' => 'Coincidencia confirmada', 'asignado' => 'Asignado manualmente', 'otro_ingreso' => 'Otro ingreso', 'gasto_bancario' => 'Gasto o comisión bancaria'];
 
+    public const BANKS = ['BCP', 'Interbank', 'BBVA', 'Scotiabank', 'BanBif', 'Banco de la Nación'];
+
     public function __construct(private readonly Consolidation $money) {}
 
     public function overview(User $viewer): array
@@ -79,7 +81,11 @@ final class ReconciliationDirectory
                 'debits_pen' => round(abs($open->where('amount', '<', 0)->sum('amount')), 2),
                 'progress' => $open->count() > 0 ? round($open->where('status', 'conciliado')->count() / $open->count() * 100) : 100,
             ],
-            'closures' => DB::table('fin_reconciliation_closures')->orderByDesc('closed_at')->get(['code', 'period', 'closed_at', 'lines_count', 'credits', 'debits', 'net']),
+            'closures' => DB::table('fin_reconciliation_closures as c')->leftJoin('iam_users as u', 'u.id', '=', 'c.closed_by')->orderByDesc('c.closed_at')
+                ->get(['c.code', 'c.period', 'c.closed_at', 'c.lines_count', 'c.credits', 'c.debits', 'c.net', 'c.matched_count', 'c.others_count', 'u.name as closed_by']),
+            'last_import' => DB::table('fin_bank_statements as s')->leftJoin('iam_users as u', 'u.id', '=', 's.imported_by')->orderByDesc('s.imported_at')->first(['s.bank', 's.filename', 's.lines_count', 's.imported_at', 'u.name as imported_by']),
+            'accounts' => DB::table('fin_treasury_accounts')->where('kind', 'bank')->where('status', 'active')->orderBy('code')->get(['code', 'name', 'bank', 'currency']),
+            'banks' => self::BANKS,
             'can' => ['operate' => $viewer->can('finance.payments.register')],
         ];
     }

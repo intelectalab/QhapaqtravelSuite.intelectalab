@@ -27,10 +27,15 @@ final class IdempotencyMiddleware
 
     public function __construct(private readonly TenantContext $context) {}
 
-    public function handle(Request $request, Closure $next): Response
+    public const OPTIONAL = 'optional';
+
+    public function handle(Request $request, Closure $next, ?string $mode = null): Response
     {
         $key = trim((string) $request->header(self::HEADER, ''));
 
+        if ($key === '' && $mode === self::OPTIONAL) {
+            return $next($request);
+        }
         if ($key === '') {
             throw ApiException::unprocessable('IDEMPOTENCY_KEY_REQUIRED', 'Esta operación requiere el header Idempotency-Key.');
         }

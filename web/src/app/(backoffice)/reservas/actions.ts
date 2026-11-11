@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { ChangeImpact, DirectPayload, DirectPlan, ReschedulePlan } from "@/lib/reservations";
 import { apiFetch } from "@/lib/server/api";
+import { stepByField, wizardFailure, type WizardResult } from "@/lib/wizard";
 
 export interface ReservationState {
   message: string | null;
@@ -91,13 +92,18 @@ export async function checkDirectAvailability(payload: DirectPayload): Promise<{
   return { plan: result.data ?? null, message: null };
 }
 
-export async function createDirectReservation(payload: DirectPayload, confirm: boolean): Promise<{ code: string | null; message: string | null }> {
+const directStepOf = stepByField({ client_id: 1, channel: 1, owner_id: 1, notes: 1 }, 2);
+
+export async function checkDirectStep(payload: DirectPayload, step: number): Promise<WizardResult<DirectPlan | null>> {
+  const result = await apiFetch<DirectPlan | { ready: boolean }>("/reservations/availability-check", { method: "POST", body: { ...directBody(payload), step } });
+  if (!result.ok || !result.data) return wizardFailure(result, "No pudimos revisar este paso.", directStepOf);
+  return { ok: true, data: "priced" in result.data ? result.data : null };
+}
+
+export async function createDirectReservation(payload: DirectPayload, confirm: boolean): Promise<WizardResult<{ code: string }>> {
   const result = await apiFetch<{ code: string }>("/reservations", { method: "POST", body: { ...directBody(payload), confirm } });
-  if (!result.ok) {
-    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
-    return { code: null, message: result.error?.message ?? firstError ?? "No pudimos crear la reserva." };
-  }
+  if (!result.ok || !result.data) return wizardFailure(result, "No pudimos crear la reserva.", directStepOf);
   revalidatePath("/reservas", "layout");
   revalidatePath("/dashboard");
-  return { code: result.data?.code ?? null, message: null };
+  return { ok: true, data: { code: result.data.code } };
 }

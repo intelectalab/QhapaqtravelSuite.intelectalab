@@ -1,9 +1,10 @@
 "use client";
 
-import { BookOpenText, Mail, MapPin, Phone } from "lucide-react";
+import { BookOpenText, Mail, MapPin, MessageCircle, Phone, Share2 } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/format";
 import { siteHref, type SiteProfile } from "@/lib/site";
+import type { SiteSocial } from "@/lib/site-design";
 import { useSite } from "./SiteContext";
 import { AgencyMark } from "./SiteHeader";
 
@@ -16,14 +17,23 @@ const EXPLORE = [
 ] as const;
 
 const HELP = [
+  { path: "/nosotros", key: "about" },
+  { path: "/blog", key: "blog" },
   { path: "/viajes-a-medida", key: "tailored" },
   { path: "/contacto", key: "contact" },
   { path: "/libro-reclamaciones", key: "claims" },
 ] as const;
 
+const LEGAL = ["terminos", "privacidad", "cookies", "cancelacion"] as const;
+
+const SOCIAL_LABELS: Record<SiteSocial, string> = { facebook: "Facebook", instagram: "Instagram", tiktok: "TikTok", youtube: "YouTube", whatsapp: "WhatsApp" };
+
 export function SiteFooter({ profile, base }: { profile: SiteProfile; base: string }) {
   const { agency, sedes, fx } = profile;
-  const { t, dateLocale } = useSite();
+  const { t, dateLocale, design } = useSite();
+  const showSedes = design?.footer.show_sedes ?? true;
+  const showFx = design?.footer.show_fx ?? true;
+  const social = (Object.entries(design?.footer.social ?? {}) as [SiteSocial, string][]).filter(([, url]) => url !== "");
   return (
     <footer className="relative mt-20 overflow-hidden bg-menu text-white">
       <div className="weave-band h-2" />
@@ -32,6 +42,18 @@ export function SiteFooter({ profile, base }: { profile: SiteProfile; base: stri
         <div>
           <AgencyMark name={agency.name} initials={agency.initials} logo={agency.logo} inverted />
           <p className="mt-4 max-w-[34ch] text-[13.5px] leading-relaxed text-white/65">{t.footer.about}</p>
+          {social.length > 0 && (
+            <ul className="mt-4 flex flex-wrap gap-2" aria-label="Redes sociales">
+              {social.map(([network, url]) => (
+                <li key={network}>
+                  <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 text-[12px] font-semibold text-white/80 transition hover:-translate-y-0.5 hover:border-white/30 hover:text-white">
+                    {network === "whatsapp" ? <MessageCircle size={13} className="text-t2" /> : <Share2 size={13} className="text-t2" />}
+                    {SOCIAL_LABELS[network]}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
           <Link href={siteHref(base, "/libro-reclamaciones")} className="group mt-6 inline-flex items-center gap-3 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 transition hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/10">
             <BookOpenText size={22} className="text-t2 transition-transform group-hover:-rotate-6" />
             <span className="leading-tight">
@@ -59,7 +81,7 @@ export function SiteFooter({ profile, base }: { profile: SiteProfile; base: stri
                 </a>
               </li>
             )}
-            {sedes.map((sede) => (
+            {showSedes && sedes.map((sede) => (
               <li key={sede.id} className="flex gap-2.5">
                 <MapPin size={15} className="mt-0.5 flex-none text-t2" />
                 <span>
@@ -77,7 +99,12 @@ export function SiteFooter({ profile, base }: { profile: SiteProfile; base: stri
             {agency.legal_name} · RUC {agency.ruc}
           </span>
           {agency.registry && <span>{agency.registry}</span>}
-          {fx && (
+          {LEGAL.map((key) => (
+            <Link key={key} href={siteHref(base, `/legal/${key}`)} className="transition hover:text-white">
+              {t.legal.links[key]}
+            </Link>
+          ))}
+          {fx && showFx && (
             <span className="sm:ml-auto">
               {t.footer.fx(fx.rate.toFixed(3), formatDate(fx.date, "short", dateLocale))}
             </span>

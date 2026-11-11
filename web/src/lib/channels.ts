@@ -52,6 +52,26 @@ export interface B2bAgency {
   sales: number;
   commission: number;
   reservations: { code: string; title: string; status: string; travel_from: string; total: number; currency: string }[];
+  rates: B2bRate[];
+}
+
+export interface B2bRate {
+  product: { code: string; name: string };
+  agency: { code: string; name: string; status: string };
+  net_price: number;
+  currency: string;
+  commission_pct: number;
+  credit_allowed: boolean;
+  valid_to: string | null;
+  expired: boolean;
+  price_list: string | null;
+  conditions: string | null;
+  restrictions: string | null;
+}
+
+export interface B2bProductRates {
+  products: { code: string; name: string; status: string; public: { price: number; currency: string } | null; general: { price: number; currency: string } | null; assignments: B2bRate[] }[];
+  agencies: { code: string; name: string; status: string; commission_pct: number; credit: boolean; currency: string; valid_to: string; price_list: string }[];
 }
 
 export interface B2bOverview {
@@ -78,6 +98,9 @@ export interface EcomOrder {
   reservation: string | null;
   cancel_reason: string | null;
   can_cancel: boolean;
+  can_send_link: boolean;
+  attempts: { at: string; method: string; card: string | null; operation: string | null; result: "aprobado" | "rechazado" | "por_validar"; code: string | null; message: string | null; amount: number | null; currency: string | null }[];
+  links: { at: string; detail: string | null }[];
   lock_version: number;
 }
 
@@ -100,6 +123,34 @@ export interface EcommerceOverview {
   orders: EcomOrder[];
   products: EcomProduct[];
   can_manage: boolean;
+}
+
+export interface Promotion {
+  ref: string;
+  name: string;
+  kind: string;
+  value: number;
+  percent: boolean;
+  label: string;
+  channel: string;
+  promo_code: string | null;
+  min_pax: number | null;
+  valid_from: string;
+  valid_to: string;
+  status: "activa" | "inactiva";
+  state: "vigente" | "programada" | "pausada" | "vencida";
+  uses: number | null;
+  product: { code: string; name: string; status: string };
+}
+
+export interface PromotionCatalog {
+  rows: Promotion[];
+  products: { code: string; name: string; status: string }[];
+  kinds: string[];
+  percent_kinds: string[];
+  channels: string[];
+  max_percent: number;
+  today: string;
 }
 
 export interface CmsLogEntry {
@@ -373,3 +424,22 @@ export const FEEDBACK_TYPES: Record<string, string> = {
 export const MESSAGE_CHANNELS: Record<string, string> = { email: "Correo", whatsapp: "WhatsApp", portal: "Portal", push: "Notificación push" };
 
 export const SERVICE_KINDS: Record<string, string> = { tour: "Tour", traslado: "Traslado", tren_entrada: "Tren o entrada", alojamiento: "Alojamiento", libre: "Día libre" };
+
+export interface OwnReviewSettingsValues {
+  auto_publish: boolean;
+  banned_words: string[];
+  personal_data: "retener" | "enmascarar";
+  active_subratings: string[];
+  show_on_site: boolean;
+  show_on_widget: boolean;
+  invite: { channel: "email" | "whatsapp"; reminder_days: number; expire_days: number; subject: string; body: string };
+  last_export: { at: string; by: string; count: number } | null;
+}
+
+export interface OwnReviewSettings {
+  values: OwnReviewSettingsValues;
+  updated_at: string | null;
+  updated_by: string | null;
+  lock_version: number;
+  options: { subratings: { value: string; label: string }[]; personal_data: { value: string; label: string }[]; channels: { value: string; label: string }[]; placeholders: string[] };
+}

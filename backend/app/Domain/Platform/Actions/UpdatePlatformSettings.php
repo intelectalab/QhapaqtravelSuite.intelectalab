@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\Platform\Actions;
 
+use App\Domain\Integrations\Contracts\MalwareScanner;
 use App\Domain\Platform\Models\PlatformUser;
+use App\Domain\Platform\Support\FormProtection;
 use App\Domain\Platform\Support\PlatformAudit;
 use App\Domain\Platform\Support\PlatformSettings;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 final class UpdatePlatformSettings
 {
@@ -26,7 +29,7 @@ final class UpdatePlatformSettings
         'notices.api_key_days' => 'Aviso de llaves de API',
     ];
 
-    public function __construct(private readonly PlatformSettings $settings, private readonly PlatformSession $session, private readonly PlatformAudit $audit) {}
+    public function __construct(private readonly PlatformSettings $settings, private readonly PlatformSession $session, private readonly PlatformAudit $audit, private readonly FormProtection $forms) {}
 
     public function overview(): array
     {
@@ -36,6 +39,8 @@ final class UpdatePlatformSettings
                 'taxes' => ['igv_pct' => $this->settings->igv(), 'currency' => (string) $this->settings->all()['currency']],
                 'notices' => $this->settings->notices(),
                 'dunning' => $this->settings->dunning(),
+                'form_protection' => $this->forms->summary(),
+                'antivirus' => $this->antivirus(),
             ],
             'lock_version' => $this->settings->version(),
             'updated_at' => $this->settings->updatedAt(),
@@ -72,6 +77,22 @@ final class UpdatePlatformSettings
 
             return array_values($changed);
         });
+    }
+
+    private function antivirus(): array
+    {
+        $driver = (string) config('integrations.drivers.antivirus', 'fake');
+
+        try {
+            $health = app(MalwareScanner::class)->healthcheck();
+            $ok = $health->ok;
+            $message = $health->message;
+        } catch (Throwable $exception) {
+            $ok = false;
+            $message = $exception->getMessage();
+        }
+
+        return ['driver' => $driver, 'simulated' => $driver === 'fake', 'ok' => $ok, 'message' => $message];
     }
 
     private function text(mixed $value): ?string

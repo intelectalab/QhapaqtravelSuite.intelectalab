@@ -344,6 +344,7 @@ export interface CashSession {
   code: string;
   date: string;
   account: string;
+  account_code: string;
   opened_by: string | null;
   opened_at: string;
   closed_at: string | null;
@@ -356,12 +357,63 @@ export interface TreasuryOverview {
   accounts: TreasuryAccount[];
   movements: TreasuryMovement[];
   sessions: CashSession[];
-  replenishments: { code: string; amount: number; status: string; status_label: string; requested_at: string; note: string | null; account: string; requested_by: string | null }[];
+  replenishments: { code: string; amount: number; status: string; status_label: string; requested_at: string; note: string | null; reject_reason: string | null; account: string; account_code: string; requested_by: string | null; requested_by_id: string }[];
   kpis: { bank_pen: number; cash_pen: number; gateway_pen: number; total_pen: number; in_month_pen: number; out_month_pen: number; open_sessions: number };
   categories: string[];
   usd_rate: number;
   today: string;
   can: { manage: boolean };
+  counts: CashCount[];
+  alerts: { tone: "warn" | "bad" | "info"; text: string }[];
+  options: { sedes: { value: string; label: string }[]; custodians: { value: string; label: string }[]; denominations: string[]; gateway_fee_pct: string | null; max_petty_expense: string | null };
+  viewer_id: string;
+}
+
+export interface CashCount {
+  code: string;
+  kind: "closing" | "surprise";
+  at: string;
+  counted: string;
+  expected: string;
+  difference: string;
+  result: string;
+  status: string;
+  status_label: string;
+  note: string | null;
+  signed_by_id: string;
+  signed_by: string | null;
+  witness: string | null;
+  account: { code: string; name: string };
+}
+
+export interface TreasuryLedger {
+  code: string;
+  kind: TreasuryAccount["kind"];
+  kind_label: string;
+  name: string;
+  bank: string | null;
+  number: string | null;
+  cci: string | null;
+  currency: string;
+  sede: string | null;
+  custodian: string | null;
+  fund: string | null;
+  settle_to: { code: string; name: string } | null;
+  opening_balance: string;
+  opening_date: string;
+  active: boolean;
+  balance: string;
+  month_in: string;
+  month_out: string;
+  open_session: { code: string; opened_at: string; opening_amount: string } | null;
+  movements: { code: string; date: string; direction: "in" | "out"; type: string; type_label: string; amount: string; category: string | null; description: string; reference: string | null; counterparty: string | null; manual: boolean; status: string; balance: string; user: string }[];
+}
+
+export interface CashFlowProjection {
+  opening_pen: number;
+  horizons: { label: string; in: number; out: number; net: number; closing: number }[];
+  items: { kind: "in" | "out"; source: string; code: string | null; concept: string; date: string; overdue: boolean; pen: number }[];
+  risk: { label: string; closing: number } | null;
 }
 
 export interface BankLineRow {
@@ -383,8 +435,23 @@ export interface BankLineRow {
 export interface ReconciliationOverview {
   rows: BankLineRow[];
   kpis: { pending: number; suggested: number; exceptions: number; reconciled: number; credits_pen: number; debits_pen: number; progress: number };
-  closures: { code: string; period: string; closed_at: string; lines_count: number; credits: number; debits: number; net: number }[];
+  closures: { code: string; period: string; closed_at: string; lines_count: number; credits: number; debits: number; net: number; matched_count: number; others_count: number; closed_by: string | null }[];
+  last_import: { bank: string; filename: string; lines_count: number; imported_at: string; imported_by: string | null } | null;
+  accounts: { code: string; name: string; bank: string | null; currency: string }[];
+  banks: string[];
   can: { operate: boolean };
+}
+
+export interface LineCandidate {
+  kind: "payment" | "payable";
+  code: string;
+  label: string;
+  amount: number;
+  currency: string;
+  pen: number;
+  status: string | null;
+  reference_hit: boolean;
+  difference: number;
 }
 
 export interface InvoiceDetail extends InvoiceRow {
@@ -395,4 +462,119 @@ export interface InvoiceDetail extends InvoiceRow {
   credit_notes: { number: string; status: string; total_amount: string; credit_note_reason: string | null }[];
   ose_ticket: string | null;
   hash: string | null;
+}
+
+type Audit = { id: string; action: string; before: string | null; after: string | null; occurred_at: string; actor: string | null }[];
+type History = { status: string; note: string | null; created_at: string; user: string | null }[];
+
+export interface ReceivableDetail {
+  code: string;
+  kind: string;
+  concept: string;
+  status: string;
+  currency: string;
+  fx_rate: string;
+  amount: string;
+  paid: string;
+  balance: string;
+  due_date: string;
+  cancel_reason: string | null;
+  created_at: string;
+  last_reminder_at: string | null;
+  reservation: { code: string; title: string; status: string };
+  client: { code: string; name: string; email: string | null };
+  payments: { code: string; paid_on: string; method: string; reference: string | null; status: string; amount: string; applied_at: string; reversed_at: string | null }[];
+  invoices: { number: string; doc_type: string; issue_date: string; total_amount: string; currency: string; status: string }[];
+  reminders: { channels: string | null; sent_at: string; balance_at_send: string | null; sent_by: string | null }[];
+  notifications: { code: string; channel: string; recipient_address: string | null; subject: string | null; status: string; sent_at: string | null; created_at: string }[];
+  audit: Audit;
+}
+
+export interface PaymentDetail {
+  code: string;
+  kind: string;
+  source: string | null;
+  method: string;
+  amount: string;
+  currency: string;
+  fx_rate: string;
+  pen: string;
+  paid_on: string;
+  reference: string | null;
+  note: string | null;
+  status: string;
+  reject_reason: string | null;
+  reverted_at: string | null;
+  revert_reason: string | null;
+  reported_by_agency: boolean;
+  registered_by: string | null;
+  created_at: string;
+  reservation: { code: string; title: string } | null;
+  client: { code: string; name: string } | null;
+  applications: { code: string; concept: string; due_date: string; amount: string; applied_at: string; reversed_at: string | null }[];
+  bank_line: { code: string; value_date: string; description: string; amount: string; status: string } | null;
+  history: History;
+  audit: Audit;
+}
+
+export interface PayableDetail {
+  code: string;
+  kind: string;
+  cost_type: string | null;
+  concept: string;
+  status: string;
+  currency: string;
+  fx_rate: string;
+  amount: string;
+  paid: string;
+  balance: string;
+  due_date: string;
+  scheduled_date: string | null;
+  supplier_doc: string | null;
+  evidence: string | null;
+  observation: string | null;
+  approved_at: string | null;
+  approved_by: string | null;
+  created_at: string;
+  provider: { ref: string; name: string; ruc: string | null; terms: string | null } | null;
+  reservation: { code: string; title: string; service: string | null } | null;
+  payouts: { code: string; paid_on: string; amount: string; method: string; operation_ref: string | null; account: string | null }[];
+  history: History;
+  audit: Audit;
+}
+
+export interface CommissionDetail {
+  code: string;
+  kind: string;
+  status: string;
+  currency: string;
+  fx_rate: string;
+  base: string;
+  pct: string;
+  amount: string;
+  rule: string | null;
+  beneficiary: string | null;
+  beneficiary_kind: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  paid_at: string | null;
+  payment_method: string | null;
+  payment_ref: string | null;
+  observation: string | null;
+  reservation: { code: string; title: string } | null;
+  current_rule: { pct: string; active: boolean; condition: string | null; expected: string; difference: string } | null;
+  history: History;
+  audit: Audit;
+}
+
+export interface SettlementDetail {
+  reservation: { code: string; title: string; status: string; client: string; currency: string };
+  statement: { income: string; cost: string; commissions: string; net: string; margin_pct: string | null };
+  cash: { collected: string; paid_out: string; position: string };
+  receivables: { code: string; concept: string; amount: string; paid_amount: string; status: string; due_date: string }[];
+  payables: { code: string; concept: string; amount: string; paid_amount: string; currency: string; status: string; provider: string | null }[];
+  commissions: { code: string; kind: string; amount: string; currency: string; status: string }[];
+  checks: { key: string; label: string; ok: boolean; detail: string }[];
+  can_close: boolean;
+  closed: { closed_at: string; closed_by: string | null; net_pen: string; gross_margin_pct: string | null } | null;
 }

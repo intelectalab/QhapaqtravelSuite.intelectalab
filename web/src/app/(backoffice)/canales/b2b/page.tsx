@@ -1,17 +1,23 @@
 import { ShieldAlert } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { Card } from "@/components/ui/Card";
 import { InfoTip } from "@/components/ui/InfoTip";
+import { Tabs } from "@/components/ui/Tabs";
 import { ToneScope } from "@/components/ui/Tinted";
 import { AgencyFormAction, B2bAgenciesTable, B2bTiles } from "@/features/channels/B2bAgencies";
-import type { B2bOverview } from "@/lib/channels";
+import { B2bPriceListsTable } from "@/features/channels/B2bPriceLists";
+import type { B2bOverview, B2bProductRates } from "@/lib/channels";
 import { formatDate, formatMoney } from "@/lib/format";
 import { getResource } from "@/lib/server/resource";
 
 export const metadata: Metadata = { title: "B2B agencias" };
 
 export default async function B2bPage() {
-  const overview = await getResource<B2bOverview>("/channels/b2b", "No pudimos cargar las agencias.");
+  const [overview, rates] = await Promise.all([
+    getResource<B2bOverview>("/channels/b2b", "No pudimos cargar las agencias."),
+    getResource<B2bProductRates>("/channels/b2b/product-rates", "No pudimos cargar las listas de precios."),
+  ]);
 
   if (!overview) {
     return <PageHeader title="B2B agencias" subtitle="Tu rol no tiene acceso a esta sección." />;
@@ -49,7 +55,14 @@ export default async function B2bPage() {
           </div>
         </ToneScope>
       )}
-      <B2bAgenciesTable rows={overview.items} catalogs={catalogs} canManage={overview.can_manage} />
+      <Card padded={false}>
+        <Tabs
+          tabs={[
+            { id: "agencies", label: "Agencias", count: overview.items.length, content: <B2bAgenciesTable rows={overview.items} catalogs={catalogs} canManage={overview.can_manage} /> },
+            ...(rates ? [{ id: "prices", label: "Listas de precios", count: rates.products.length, content: <B2bPriceListsTable data={rates} canManage={overview.can_manage} /> }] : []),
+          ]}
+        />
+      </Card>
     </>
   );
 }

@@ -297,3 +297,14 @@ it('la sede del usuario debe existir y estar activa', function (string $case) {
     $this->patchJson('/api/v1/iam/users/U03', ['name' => 'Lucía Paredes', 'role' => 'sales', 'sede_id' => $sede])->assertStatus(422)->assertJsonValidationErrors('sede_id');
     expect(iamUserRow('U03')->sede_id)->toBe(idOf('iam_sedes', 'SED-03'));
 })->with(['inexistente', 'inactiva']);
+
+it('las opciones marcan qué roles exigen dos pasos y la invitación puede exigirlos a cualquier rol', function () {
+    Queue::fake();
+    actingAsSeed('U01');
+
+    $roles = collect($this->getJson('/api/v1/iam/users')->assertOk()->json('meta.roles'))->keyBy('code');
+    expect($roles['tenant_admin']['mfa'])->toBeTrue()->and($roles['sales']['mfa'])->toBeFalse();
+
+    iamInvite(['require_mfa' => true])->assertCreated();
+    expect((bool) iamUserByEmail('rccori@andeshorizonte.pe')->mfa_required)->toBeTrue();
+});

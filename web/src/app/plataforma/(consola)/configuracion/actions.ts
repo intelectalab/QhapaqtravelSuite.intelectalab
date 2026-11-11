@@ -38,6 +38,10 @@ export async function savePlatformSettings(_state: AdminActionState, form: FormD
   return send(`/settings/${encodeURIComponent(section)}`, "PATCH", { ...body, lock_version }, "No pudimos guardar la configuración.");
 }
 
+export async function saveFormProtection(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
+  return send("/settings/form-protection", "PUT", { enabled: form.get("enabled") === "on", site_key: text(form, "site_key"), secret: text(form, "secret") }, "No pudimos guardar la protección de formularios.");
+}
+
 export async function savePlatformBranding(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
   return send("/branding", "PUT", { brand: text(form, "brand"), accent: text(form, "accent"), menu: text(form, "menu"), tile_variant: text(form, "tile_variant") }, "No pudimos guardar la apariencia.");
 }

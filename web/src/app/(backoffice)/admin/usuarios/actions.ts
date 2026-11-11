@@ -27,7 +27,7 @@ async function send(path: string, method: "POST" | "PATCH" | "DELETE", body: Rec
 const code = (form: FormData) => encodeURIComponent(text(form, "code") ?? "");
 
 export async function inviteUser(_state: UserActionState, form: FormData): Promise<UserActionState> {
-  return send("/iam/users", "POST", { name: text(form, "name"), email: text(form, "email"), phone: text(form, "phone"), role: text(form, "role"), sede_id: text(form, "sede_id") });
+  return send("/iam/users", "POST", { name: text(form, "name"), email: text(form, "email"), phone: text(form, "phone"), role: text(form, "role"), sede_id: text(form, "sede_id"), require_mfa: form.get("require_mfa") === "on" });
 }
 
 export async function updateUser(_state: UserActionState, form: FormData): Promise<UserActionState> {

@@ -82,7 +82,9 @@ export function EditSection({ section, version, title, description, children, ac
 
 const numberField = (name: string, label: string, value: number | undefined, min: number, max: number, hint?: string) => <TextField label={label} name={name} type="number" inputMode="numeric" min={min} max={max} required defaultValue={value} hint={hint} />;
 
-export function SettingsSections({ data }: { data: SettingsOverview }) {
+export type SettingsView = "agencia" | "moneda" | "politicas" | "operacion" | "canales";
+
+export function SettingsSections({ data, show }: { data: SettingsOverview; show: SettingsView }) {
   const { agency, sections, options, can_manage: manage } = data;
   const general = sections.general.values;
   const currency = sections.currency.values;
@@ -91,7 +93,8 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
   const label = (list: { value: string; label: string }[], value?: string) => list.find((item) => item.value === value)?.label ?? value ?? "—";
 
   return (
-    <div className="grid gap-5 lg:grid-cols-2">
+    <div className={cn("grid items-start gap-5", show === "agencia" && "xl:grid-cols-2")}>
+      {show === "agencia" && (
       <SectionCard
         index={0}
         icon={Building2}
@@ -128,7 +131,9 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
           ]}
         />
       </SectionCard>
+      )}
 
+      {show === "agencia" && (
       <SectionCard
         index={1}
         icon={Mail}
@@ -165,7 +170,9 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
           ]}
         />
       </SectionCard>
+      )}
 
+      {show === "moneda" && (
       <SectionCard
         index={2}
         icon={Coins}
@@ -208,7 +215,9 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
           ]}
         />
       </SectionCard>
+      )}
 
+      {show === "politicas" && (
       <SectionCard
         index={3}
         icon={ScrollText}
@@ -222,9 +231,11 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
                 {numberField("quote_validity_days", "Validez de cotización (días)", policies.quote_validity_days, 1, 60, "De 1 a 60 días")}
                 {numberField("hold_minutes", "Retención de cupos (min)", policies.hold_minutes, 5, 1440, "De 5 a 1 440 min")}
                 {numberField("markup_pct", "Margen sugerido (%)", policies.markup_pct, 0, 300)}
-                {numberField("max_discount_pct", "Descuento sin aprobación (%)", policies.max_discount_pct, 0, 30, "Máximo 30 %")}
-                {numberField("advance_pct", "Adelanto (%)", policies.advance_pct, 0, 100)}
-                {numberField("balance_days_before", "Saldo vence (días antes)", policies.balance_days_before, 0, 365)}
+                {numberField("max_discount_pct", "Descuento sin aprobación (%)", policies.max_discount_pct, 0, 30, "Más que esto pide aprobación de Gerencia")}
+                {numberField("approval_margin_pct", "Margen mínimo sin aprobación (%)", policies.approval_margin_pct, 0, 80, "Menos que esto pide aprobación de Gerencia")}
+                {numberField("discount_cap_pct", "Tope de descuento (%)", policies.discount_cap_pct, 0, 50, "Ni con aprobación se supera")}
+                {numberField("advance_pct", "Anticipo (%)", policies.advance_pct, 0, 100, "Se cobra al convertir una cotización o confirmar una reserva. La web usa la regla de adelanto de cada producto")}
+                {numberField("balance_days_before", "Saldo vence (días antes)", policies.balance_days_before, 0, 365, "Días antes del inicio del viaje")}
               </div>
               <TextArea label="Política de cancelación" name="cancel_text" rows={3} required defaultValue={policies.cancel_text} />
               <TextArea label="Cambios" name="modify_text" rows={2} defaultValue={policies.modify_text} />
@@ -238,7 +249,7 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
           {[
             { label: "Validez", value: `${policies.quote_validity_days ?? "—"} días`, icon: CalendarClock },
             { label: "Retención", value: `${policies.hold_minutes ?? "—"} min`, icon: Timer },
-            { label: "Descuento máx.", value: `${policies.max_discount_pct ?? "—"} %`, icon: Hash },
+            { label: "Descuento sin aprobación", value: `${policies.max_discount_pct ?? "—"} %`, icon: Hash },
           ].map((item) => (
             <span key={item.label} className="group rounded-[12px] bg-[color-mix(in_srgb,var(--t3)_8%,var(--surface))] px-3 py-2 transition-transform duration-300 hover:-translate-y-0.5">
               <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-t3">
@@ -251,7 +262,8 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
         </div>
         <FieldList
           fields={[
-            { label: "Margen y adelanto", value: `${policies.markup_pct ?? "—"} % de margen · ${policies.advance_pct ?? "—"} % de adelanto` },
+            { label: "Aprobación interna", value: `También si el margen baja de ${policies.approval_margin_pct ?? 15} % · tope de descuento ${policies.discount_cap_pct ?? 10} %` },
+            { label: "Margen y anticipo", value: `${policies.markup_pct ?? "—"} % de margen · ${policies.advance_pct ?? "—"} % de anticipo` },
             { label: "Saldo", value: `Vence ${policies.balance_days_before ?? "—"} días antes del viaje` },
             {
               label: "Cancelación",
@@ -271,7 +283,9 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
           ]}
         />
       </SectionCard>
+      )}
 
+      {show === "operacion" && (
       <SectionCard
         index={4}
         icon={Wrench}
@@ -301,7 +315,9 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
           ))}
         </ul>
       </SectionCard>
+      )}
 
+      {show === "canales" && (
       <SectionCard
         index={5}
         icon={Radio}
@@ -327,6 +343,7 @@ export function SettingsSections({ data }: { data: SettingsOverview }) {
           ))}
         </ul>
       </SectionCard>
+      )}
     </div>
   );
 }

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Domain\Finance\Http\Controllers;
 
 use App\Domain\Finance\Actions\TreasuryMovementWorkflow;
+use App\Domain\Finance\Actions\TreasuryOperations;
 use App\Domain\Finance\Http\Controllers\Concerns\ResolvesActor;
 use App\Domain\Finance\Support\TreasuryDirectory;
+use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -42,6 +44,171 @@ final class TreasuryController
         ]);
 
         return response()->json(['data' => ['code' => $workflow->record($data, $this->actor($request))]], 201);
+    }
+
+    public function ledger(string $code, TreasuryDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->ledger($code) ?? throw ApiException::notFound('La cuenta no existe.')]);
+    }
+
+    public function cashFlow(Request $request, TreasuryDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->cashFlow($this->actor($request))]);
+    }
+
+    public function storeAccount(Request $request, TreasuryOperations $operations): JsonResponse
+    {
+        $data = $request->validate([
+            'kind' => ['required', 'in:bank,petty_cash,gateway'],
+            'name' => ['required', 'string', 'min:3', 'max:120'],
+            'currency' => ['required', 'in:PEN,USD'],
+            'opening_balance' => ['nullable', 'numeric', 'gte:0'],
+            'opening_date' => ['nullable', 'date', 'before_or_equal:today'],
+            ...$this->accountRules(),
+            'fund_amount' => ['required_if:kind,petty_cash', 'nullable', 'numeric', 'gt:0'],
+            'custodian_id' => ['required_if:kind,petty_cash', 'nullable', 'uuid'],
+            'settle_to' => ['required_if:kind,gateway', 'nullable', 'string', 'max:20'],
+        ], $this->accountMessages());
+
+        return response()->json(['data' => ['code' => $operations->saveAccount(null, $data, $this->actor($request))]], 201);
+    }
+
+    public function updateAccount(Request $request, string $code, TreasuryOperations $operations): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['sometimes', 'string', 'min:3', 'max:120'],
+            ...$this->accountRules(),
+            'fund_amount' => ['nullable', 'numeric', 'gt:0'],
+            'custodian_id' => ['nullable', 'uuid'],
+            'settle_to' => ['nullable', 'string', 'max:20'],
+            'active' => ['sometimes', 'boolean'],
+        ], $this->accountMessages());
+
+        return response()->json(['data' => ['code' => $operations->saveAccount($code, $data, $this->actor($request))]]);
+    }
+
+    public function transfer(Request $request, TreasuryOperations $operations): JsonResponse
+    {
+        $data = $request->validate([
+            'from' => ['required', 'string', 'max:20'],
+            'to' => ['required', 'string', 'max:20', 'different:from'],
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'deal_rate' => ['nullable', 'numeric', 'gt:0', 'lt:20'],
+            'date' => ['required', 'date', 'before_or_equal:today'],
+            'reference' => ['required', 'string', 'max:80'],
+            'description' => ['required', 'string', 'min:3', 'max:255'],
+        ], ['to.different' => 'Elige cuentas distintas.', 'amount.*' => 'El importe debe ser mayor que cero.', 'reference.*' => 'Escribe el número de operación.', 'description.*' => 'Describe la transferencia.', 'date.*' => 'Indica una fecha válida, no futura.']);
+
+        return response()->json(['data' => ['code' => $operations->transfer($data, $this->actor($request))]], 201);
+    }
+
+    public function settle(Request $request, string $account, TreasuryOperations $operations): JsonResponse
+    {
+        $data = $request->validate([
+            'gross' => ['required', 'numeric', 'gt:0'],
+            'fee_pct' => ['nullable', 'numeric', 'gte:0', 'lt:20'],
+            'date' => ['required', 'date', 'before_or_equal:today'],
+            'batch' => ['required', 'string', 'max:80'],
+        ], ['gross.*' => 'Indica el monto bruto del lote.', 'batch.*' => 'Escribe el número de lote de la pasarela.']);
+
+        return response()->json(['data' => ['code' => $operations->settleGateway($account, $data, $this->actor($request))]], 201);
+    }
+
+    public function openSession(Request $request, string $account, TreasuryOperations $operations): JsonResponse
+    {
+        $data = $request->validate(['counted' => ['required', 'numeric', 'gte:0'], 'note' => ['nullable', 'string', 'max:300']], ['counted.*' => 'Indica el efectivo contado al abrir.']);
+
+        return response()->json(['data' => ['code' => $operations->openSession($account, $data, $this->actor($request))]], 201);
+    }
+
+    public function expense(Request $request, string $account, TreasuryOperations $operations): JsonResponse
+    {
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'date' => ['nullable', 'date', 'before_or_equal:today'],
+            'category' => ['required', 'string', 'max:60'],
+            'description' => ['required', 'string', 'min:3', 'max:255'],
+            'receipt_type' => ['required', 'in:invoice,sales_receipt,ticket,fee_receipt,mobility_sheet,sworn_statement'],
+            'series_number' => ['required_unless:receipt_type,mobility_sheet,sworn_statement', 'nullable', 'string', 'max:30'],
+            'issuer_ruc' => ['required_if:receipt_type,invoice,fee_receipt', 'nullable', 'digits:11'],
+            'supplier' => ['required', 'string', 'max:160'],
+            'reservation' => ['nullable', 'string', 'max:30'],
+        ], ['amount.*' => 'El importe debe ser mayor que cero.', 'series_number.*' => 'Escribe la serie y el número del comprobante.', 'issuer_ruc.*' => 'El RUC del emisor debe tener 11 dígitos.', 'supplier.*' => 'Escribe a quién se le pagó.', 'description.*' => 'Describe el gasto.', 'category.*' => 'Elige la categoría.']);
+
+        return response()->json(['data' => ['code' => $operations->expense($account, $data, $this->actor($request))]], 201);
+    }
+
+    public function count(Request $request, string $account, TreasuryOperations $operations): JsonResponse
+    {
+        $data = $request->validate([
+            'kind' => ['required', 'in:closing,surprise'],
+            'denominations' => ['required', 'array'],
+            'denominations.*' => ['integer', 'min:0', 'max:100000'],
+            'note' => ['nullable', 'string', 'max:500'],
+            'witness_id' => ['nullable', 'uuid'],
+        ], ['denominations.*' => 'Revisa las cantidades por denominación.']);
+
+        return response()->json(['data' => ['code' => $operations->count($account, $data, $this->actor($request))]], 201);
+    }
+
+    public function approveCount(Request $request, string $code, TreasuryOperations $operations): JsonResponse
+    {
+        $data = $request->validate(['note' => ['nullable', 'string', 'max:500']]);
+        $operations->approveCount($code, $data['note'] ?? null, $this->actor($request));
+
+        return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function validateCount(Request $request, string $code, TreasuryOperations $operations): JsonResponse
+    {
+        $operations->validateCount($code, $this->actor($request));
+
+        return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function requestReplenishment(Request $request, string $account, TreasuryOperations $operations): JsonResponse
+    {
+        $data = $request->validate(['amount' => ['nullable', 'numeric', 'gt:0'], 'note' => ['nullable', 'string', 'max:500']]);
+
+        return response()->json(['data' => ['code' => $operations->requestReplenishment($account, $data, $this->actor($request))]], 201);
+    }
+
+    public function approveReplenishment(Request $request, string $code, TreasuryOperations $operations): JsonResponse
+    {
+        $data = $request->validate(['note' => ['nullable', 'string', 'max:500']]);
+        $operations->decideReplenishment($code, 'approve', $data['note'] ?? null, $this->actor($request));
+
+        return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function rejectReplenishment(Request $request, string $code, TreasuryOperations $operations): JsonResponse
+    {
+        $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:500']], ['reason.*' => 'Explica por qué se rechaza (mínimo 5 caracteres).']);
+        $operations->decideReplenishment($code, 'reject', $data['reason'], $this->actor($request));
+
+        return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function payReplenishment(Request $request, string $code, TreasuryOperations $operations): JsonResponse
+    {
+        $data = $request->validate(['from' => ['required', 'string', 'max:20'], 'date' => ['required', 'date', 'before_or_equal:today'], 'reference' => ['required', 'string', 'max:80']], ['from.*' => 'Elige la cuenta bancaria de origen.', 'reference.*' => 'Escribe el número de operación.']);
+
+        return response()->json(['data' => ['code' => $operations->payReplenishment($code, $data, $this->actor($request))]], 201);
+    }
+
+    private function accountRules(): array
+    {
+        return [
+            'bank' => ['nullable', 'string', 'max:80'],
+            'account_number' => ['nullable', 'string', 'max:40'],
+            'cci' => ['nullable', 'digits:20'],
+            'sede_id' => ['nullable', 'uuid'],
+        ];
+    }
+
+    private function accountMessages(): array
+    {
+        return ['name.*' => 'Escribe el nombre de la cuenta.', 'fund_amount.*' => 'Indica el fondo fijo de la caja.', 'custodian_id.*' => 'Elige quién custodia la caja.', 'settle_to.*' => 'Elige la cuenta bancaria donde liquida la pasarela.', 'cci.*' => 'El CCI tiene 20 dígitos.'];
     }
 
     public function void(Request $request, string $code, TreasuryMovementWorkflow $workflow): JsonResponse

@@ -3,6 +3,7 @@
 import { CheckCircle2, Mail, Send } from "lucide-react";
 import { useActionState } from "react";
 import { sendNewsletter } from "@/app/(sitio)/sitio/[agencia]/actions";
+import { Captcha } from "@/components/ui/Captcha";
 import { IDLE } from "@/lib/site";
 import { Consent, FieldError, FormAlert } from "./FormBits";
 import { useSite } from "./SiteContext";
@@ -40,6 +41,7 @@ export function Newsletter() {
                 <span className="sr-only">{t.newsletter.email}</span>
                 <input name="email" type="email" required placeholder={t.newsletter.placeholder} className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-fg-3" />
               </label>
+              <Captcha />
               <button type="submit" disabled={pending} className="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-brand px-5 text-[14px] font-semibold text-brand-fg transition hover:brightness-110 disabled:opacity-60">
                 <Send size={15} />
                 {pending ? t.newsletter.sending : t.newsletter.subscribe}

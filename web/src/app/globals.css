@@ -227,6 +227,33 @@
     color: var(--tint);
   }
 
+  .rows-open > tr {
+    transition: background-color 160ms ease;
+  }
+
+  .rows-open > tr:hover {
+    background-color: color-mix(in srgb, var(--accent) 6%, transparent);
+  }
+
+  .rows-open > tr:hover > td:first-child {
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  .rows-open > li {
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease;
+  }
+
+  .rows-open > li:has([data-row-open], [data-row-title] a[href]):hover {
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+    background-color: color-mix(in srgb, var(--accent) 4%, var(--surface));
+  }
+
+  .rows-open > :is(tr, li):has([data-row-open], [data-row-title] a[href], > td:first-child a[href]) {
+    cursor: pointer;
+  }
+
   .scroll-thin {
     scrollbar-width: thin;
     scrollbar-color: transparent transparent;

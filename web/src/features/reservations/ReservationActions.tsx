@@ -141,11 +141,14 @@ function CancelSummary({ preview }: { preview: ReservationCancellation }) {
               <span className="text-fg-3">
                 {formatDate(line.date)} · {line.days < 0 ? "ya pasó" : line.days === 0 ? "es hoy" : `faltan ${line.days} días`}
               </span>
+              <span className="block text-[12px] text-fg-3" title={line.tiers_source === "texto" ? `Deducido del texto: ${line.policy}` : line.policy}>
+                {line.tiers}
+                {line.tiers_source === "texto" && " (deducido del texto de la política)"}
+              </span>
             </span>
             <span className={cn("flex-none rounded-full px-2 py-0.5 text-[12px] font-semibold", line.pct === 0 ? "bg-[color-mix(in_srgb,var(--ok)_14%,transparent)] text-ok" : "bg-[color-mix(in_srgb,var(--bad)_12%,transparent)] text-bad")}>{line.pct} %</span>
           </div>
         ))}
-        {preview.lines[0] && <p className="text-[12px] text-fg-3">Política: {preview.lines[0].policy}</p>}
       </section>
       <div className="grid grid-cols-3 gap-2">
         {[

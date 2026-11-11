@@ -2,6 +2,7 @@ import { Eye, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { opensRow } from "./rowOpen";
 
 type Tone = "view" | "edit" | "delete" | "neutral";
 
@@ -29,10 +30,12 @@ interface RowIconProps {
   disabledHint?: string;
   icon?: ReactNode;
   testId?: string;
+  opensRow?: boolean;
 }
 
-export function RowIcon({ tone, label, href, onClick, disabledHint, icon, testId }: RowIconProps) {
+export function RowIcon({ tone, label, href, onClick, disabledHint, icon, testId, opensRow: explicit }: RowIconProps) {
   const glyph = icon ?? ICONS[tone];
+  const rowOpen = (explicit ?? opensRow(tone, label)) ? "" : undefined;
   if (disabledHint) {
     return (
       <span title={disabledHint} aria-label={disabledHint} data-testid={testId} className={cn(BASE, "cursor-not-allowed bg-surface-2 text-fg-3 opacity-60")}>
@@ -43,13 +46,13 @@ export function RowIcon({ tone, label, href, onClick, disabledHint, icon, testId
   const className = cn(BASE, TONES[tone], "hover:-translate-y-0.5 hover:scale-110");
   if (href) {
     return (
-      <Link href={href} aria-label={label} title={label} data-testid={testId} className={className}>
+      <Link href={href} aria-label={label} title={label} data-testid={testId} data-row-open={rowOpen} className={className}>
         {glyph}
       </Link>
     );
   }
   return (
-    <button type="button" onClick={onClick} aria-label={label} title={label} data-testid={testId} className={className}>
+    <button type="button" onClick={onClick} aria-label={label} title={label} data-testid={testId} data-row-open={rowOpen} className={className}>
       {glyph}
     </button>
   );

@@ -13,8 +13,12 @@ it('iam/users/{id} devuelve detalle, permisos efectivos y actividad por id o có
     expect($byId['email'])->toBe('lparedes@andeshorizonte.pe')
         ->and($byId['permissions'])->toContain('quotes.view')
         ->and($byId['activity'])->toBeArray()
-        ->and(count($byId['activity']))->toBeLessThanOrEqual(8)
+        ->and(count($byId['activity']))->toBeLessThanOrEqual(15)
+        ->and($byId['workload'])->toHaveKeys(['opportunities', 'activities', 'clients'])
+        ->and(collect($byId['permission_modules'])->pluck('permissions')->flatten()->sort()->values()->all())->toBe(collect($byId['permissions'])->sort()->values()->all())
         ->and($byCode['id'])->toBe($byId['id']);
+    $owned = DB::table('crm_opportunities')->where('owner_id', $user->id)->whereNull('deleted_at')->whereNotIn('stage', ['ganada', 'perdida'])->count();
+    expect($byId['workload']['opportunities'])->toBe($owned);
     expect($this->getJson('/api/v1/iam/users/U99'))->toBeApiError(404);
 });
 

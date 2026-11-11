@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Site\Support;
 
+use App\Domain\Channels\Support\OwnReviewSettings;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -94,7 +95,7 @@ final class SiteCatalog
         $this->availability->load($ids, $today, $this->today()->addDays(400)->toDateString());
         $secondary = DB::table('catalog_product_destinations as pd')->join('catalog_destinations as d', 'd.id', '=', 'pd.destination_id')
             ->whereIn('pd.product_id', $ids)->get(['pd.product_id', 'd.path']);
-        $own = DB::table('crm_own_reviews')->whereNull('deleted_at')->where('status', 'publicada')->whereIn('product_id', $ids)
+        $own = DB::table('crm_own_reviews')->whereNull('deleted_at')->where('status', 'publicada')->whereIn('product_id', OwnReviewSettings::showOnSite() ? $ids : [])
             ->groupBy('product_id')->selectRaw('product_id, avg(stars) as avg, count(*) as total')->get()->keyBy('product_id');
         $external = DB::table('channel_external_reviews')->whereIn('product_id', $ids)
             ->groupBy('product_id')->selectRaw('product_id, avg(rating) as avg, count(*) as total')->get()->keyBy('product_id');

@@ -96,3 +96,17 @@ it('listQuotes: los montos van como decimales exactos en texto', function () {
     expect($row['total'])->toBeString()->toMatch('/^\d+\.\d{2}$/')
         ->and($row['total_pen'])->toBeString()->toMatch('/^\d+\.\d{2}$/');
 });
+
+it('D-04: el anticipo y el plazo del saldo salen de las políticas comerciales de la agencia', function () {
+    $quote = approvedQuote('COT-2026-00188');
+    actingAsSeed('U03');
+
+    expect($this->getJson("/api/v1/quotes/{$quote->code}/conversion-preview")->json('data.receivables.0.concept'))->toBe('Anticipo 40%');
+
+    withinTenant(tenantA(), fn () => DB::table('sys_settings')->where('section', 'policies')->update(['values' => DB::raw("values || '{\"advance_pct\": 30, \"balance_days_before\": 20}'::jsonb")]));
+
+    $data = $this->getJson("/api/v1/quotes/{$quote->code}/conversion-preview")->json('data');
+    expect(array_column($data['receivables'], 'concept'))->toBe(['Anticipo 30%', 'Saldo 70%'])
+        ->and($data['receivables'][0]['amount'])->toBe(number_format(round((float) $data['total'] * 0.30, 2), 2, '.', ''))
+        ->and(bcadd($data['receivables'][0]['amount'], $data['receivables'][1]['amount'], 2))->toBe($data['total']);
+});

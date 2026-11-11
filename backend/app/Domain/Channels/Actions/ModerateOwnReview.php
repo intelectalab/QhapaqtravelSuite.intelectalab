@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Channels\Actions;
 
 use App\Domain\Channels\Support\ChannelKit;
+use App\Domain\Channels\Support\OwnReviewSettings;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -78,7 +79,7 @@ final class ModerateOwnReview
         DB::table('crm_review_requests')->where('id', $request->id)->update([
             'status' => 'enviada',
             'sent_at' => now(),
-            'expires_at' => now()->addDays(30),
+            'expires_at' => now()->addDays((int) OwnReviewSettings::read()['invite']['expire_days']),
             'reminded_at' => $request->status === 'programada' ? null : now(),
             'updated_by' => $actor->getKey(),
             'updated_at' => now(),

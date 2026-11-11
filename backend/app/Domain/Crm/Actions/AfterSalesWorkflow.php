@@ -182,7 +182,7 @@ final class AfterSalesWorkflow
         });
     }
 
-    private function openCase(array $values, User $actor, string $message): string
+    public function openCase(array $values, User $actor, string $message): string
     {
         $code = $this->codes->next('crm_cases', 'REC-');
         $id = (string) Str::uuid7();

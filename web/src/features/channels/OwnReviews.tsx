@@ -1,7 +1,7 @@
 "use client";
 
-import { BadgeCheck, CircleCheck, Clock3, EyeOff, Inbox, MessageSquareReply, Send, Star, ThumbsUp, TriangleAlert, XCircle } from "lucide-react";
-import { moderateReview, replyReview, reviewRequestAction } from "@/app/(backoffice)/canales/resenas-propias/actions";
+import { BadgeCheck, CalendarClock, CircleCheck, Clock3, EyeOff, Inbox, MessageSquareReply, Send, Star, ThumbsUp, TriangleAlert, XCircle } from "lucide-react";
+import { moderateReview, replyReview, reviewRequestAction, scheduleInvitations } from "@/app/(backoffice)/canales/resenas-propias/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -12,10 +12,12 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { Tabs } from "@/components/ui/Tabs";
 import { TextArea } from "@/components/ui/TextArea";
 import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
-import { channelStatus, type OwnReview, type OwnReviewsOverview, type ReviewRequest } from "@/lib/channels";
+import { channelStatus, type OwnReview, type OwnReviewSettings, type OwnReviewsOverview, type ReviewRequest } from "@/lib/channels";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { ChannelBadge, DetailPanel, PanelSection, Stars, TileGrid, Timeline, UsageBar } from "./ChannelUi";
+import { OwnReviewSettingsForm } from "./OwnReviewSettingsForm";
+import { ReviewToolbarAction } from "./ReviewToolbarAction";
 
 const initial: StepResult = { message: null, done: false };
 
@@ -308,7 +310,7 @@ function RequestsTable({ rows, canModerate }: { rows: ReviewRequest[]; canModera
   return <DataTable screen="canales-resenas-solicitudes" rows={rows} columns={columns} getKey={(row) => row.code} entityLabel="solicitudes" searchText={(row) => `${row.client} ${row.reservation} ${row.to}`} searchPlaceholder="Buscar viajero o reserva" emptyTitle="Sin solicitudes" />;
 }
 
-export function OwnReviewsWorkspace({ overview }: { overview: OwnReviewsOverview }) {
+export function OwnReviewsWorkspace({ overview, settings }: { overview: OwnReviewsOverview; settings?: OwnReviewSettings | null }) {
   const pending = overview.items.filter((review) => review.status === "pendiente");
   return (
     <Card padded={false}>
@@ -317,7 +319,22 @@ export function OwnReviewsWorkspace({ overview }: { overview: OwnReviewsOverview
         tabs={[
           { id: "inbox", label: "Por moderar", count: pending.length, content: <ModerationInbox rows={pending} canModerate={overview.can_moderate} /> },
           { id: "all", label: "Todas las reseñas", count: overview.items.length, content: <ReviewsTable rows={overview.items} canModerate={overview.can_moderate} /> },
-          { id: "requests", label: "Invitaciones", count: overview.requests.length, content: <RequestsTable rows={overview.requests} canModerate={overview.can_moderate} /> },
+          {
+            id: "requests",
+            label: "Invitaciones",
+            count: overview.requests.length,
+            content: (
+              <>
+                {overview.can_moderate && (
+                  <div className="border-b border-line px-5 py-3">
+                    <ReviewToolbarAction label="Programar invitaciones pendientes" icon={<CalendarClock size={16} />} hint="Crea una invitación por cada viaje terminado que aún no la tiene, con el canal y los plazos de los ajustes." run={scheduleInvitations} />
+                  </div>
+                )}
+                <RequestsTable rows={overview.requests} canModerate={overview.can_moderate} />
+              </>
+            ),
+          },
+          ...(settings ? [{ id: "settings", label: "Ajustes", content: <OwnReviewSettingsForm key={settings.lock_version} settings={settings} canEdit={overview.can_moderate} /> }] : []),
         ]}
       />
     </Card>

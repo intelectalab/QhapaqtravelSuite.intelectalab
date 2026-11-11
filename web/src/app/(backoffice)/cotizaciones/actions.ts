@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { ConvertQuoteResponse } from "@/lib/api/types";
 import type { QuoteComparison, QuotePreview } from "@/lib/quotes";
 import { apiFetch } from "@/lib/server/api";
+import { stepByField, wizardFailure, type WizardResult } from "@/lib/wizard";
 
 export interface QuotePayload {
   client_code: string;
@@ -32,16 +33,20 @@ export async function previewQuote(payload: QuotePayload): Promise<{ preview: Qu
   return { preview: result.data ?? null, message: null };
 }
 
-export async function saveQuote(code: string | null, payload: QuotePayload, version?: number): Promise<{ code: string | null; message: string | null }> {
+const quoteStepOf = stepByField({ client_code: 1, opportunity_code: 1, title: 1, valid_until: 1, currency: 1, travel_from: 2, travel_to: 2, pax_adt: 2, pax_chd: 2, pax_inf: 2, items: 3, discount_pct: 4, tax_pct: 4, notes: 4 }, 1);
+
+export async function checkQuoteStep(payload: QuotePayload, step: number): Promise<WizardResult<QuotePreview>> {
+  const result = await apiFetch<QuotePreview>("/quotes/pricing/preview", { method: "POST", body: { ...payload, step } });
+  return result.ok && result.data ? { ok: true, data: result.data } : wizardFailure(result, "No pudimos revisar este paso.", quoteStepOf);
+}
+
+export async function saveQuote(code: string | null, payload: QuotePayload, version?: number): Promise<WizardResult<{ code: string }>> {
   const path = code ? `/quotes/${encodeURIComponent(code)}/versions/${version ?? 1}` : "/quotes";
   const result = await apiFetch<{ code: string }>(path, { method: code ? "PUT" : "POST", body: payload });
-  if (!result.ok) {
-    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
-    return { code: null, message: firstError ?? result.error?.message ?? "No pudimos guardar la cotización." };
-  }
+  if (!result.ok || !result.data) return wizardFailure(result, "No pudimos guardar la cotización.", quoteStepOf);
   revalidatePath("/cotizaciones", "layout");
   revalidatePath("/crm/oportunidades", "layout");
-  return { code: result.data?.code ?? code, message: null };
+  return { ok: true, data: { code: result.data.code ?? code ?? "" } };
 }
 
 export interface QuoteStepState {
@@ -52,6 +57,7 @@ export interface QuoteStepState {
 const STEPS: Record<string, { path: string; method: "POST" | "DELETE"; fields: string[]; flags?: string[] }> = {
   send: { path: "send", method: "POST", fields: ["channel", "recipient", "message"] },
   negotiate: { path: "negotiations", method: "POST", fields: ["channel", "note"] },
+  view: { path: "views", method: "POST", fields: ["note"] },
   version: { path: "versions", method: "POST", fields: [] },
   request: { path: "internal-approval-requests", method: "POST", fields: ["note"] },
   decide: { path: "versions/{version}/internal-approval", method: "POST", fields: ["decision", "note"] },

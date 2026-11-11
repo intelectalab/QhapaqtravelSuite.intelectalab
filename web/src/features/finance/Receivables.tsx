@@ -150,7 +150,7 @@ export function ReceivablesTable({ data }: { data: ReceivablesOverview }) {
       align: "right",
       cell: (row) => (
         <RowActions>
-          <RowIcon tone="view" label="Ver reserva" href={`/reservas/${row.reservation.code}`} />
+          <RowIcon tone="view" label="Ver cuota" href={`/finanzas/cobros/${row.code}`} />
           {can.register && (closed(row) ? <RowIcon tone="edit" label="Registrar pago" icon={<Wallet size={15} />} disabledHint={row.status === "pagada" ? "La cuota ya está pagada" : "La cuota está anulada"} /> : <RegisterPaymentAction row={row} methods={methods} today={today} usdRate={usdRate} />)}
           {can.cancel && (closed(row) ? <RowIcon tone="delete" label="Anular cuota" icon={<Ban size={15} />} disabledHint={row.status === "pagada" ? "Una cuota pagada no se anula" : "Ya está anulada"} /> : <CancelReceivableAction row={row} />)}
         </RowActions>

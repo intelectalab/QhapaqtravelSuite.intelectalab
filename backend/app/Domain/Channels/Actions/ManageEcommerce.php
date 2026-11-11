@@ -9,11 +9,37 @@ use App\Domain\Channels\Support\EcommerceOrderRelease;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Mail\QueuedMail;
+use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\Site\Actions\SiteCheckout;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 final class ManageEcommerce
 {
-    public function __construct(private readonly AuditLogger $audit, private readonly EcommerceOrderRelease $release) {}
+    public const LINKABLE = ['pago_pendiente', 'pago_rechazado'];
+
+    private const LINK_DAYS = 3;
+
+    public function __construct(private readonly AuditLogger $audit, private readonly EcommerceOrderRelease $release, private readonly TenantContext $context) {}
+
+    public function sendPaymentLink(string $code, ?string $note, User $actor): array
+    {
+        $order = DB::table('channel_ecom_orders')->where('code', $code)->first() ?? throw ApiException::notFound('El pedido no existe.');
+
+        if (! in_array($order->status, self::LINKABLE, true)) {
+            throw ApiException::conflict('ECO-BR-14', 'El enlace de pago solo se envía a pedidos con el pago pendiente o rechazado.');
+        }
+
+        $tenant = $this->context->tenant();
+        $until = Carbon::now($tenant->timezone ?: 'America/Lima')->addDays(self::LINK_DAYS)->toDateString();
+        $link = rtrim((string) config('app.frontend_url'), '/').'/sitio/'.$tenant->subdomain.'/confirmacion/'.$order->code.'/acceso?token='.SiteCheckout::paymentLink($order, $until);
+        $body = "Hola {$order->customer_name}:\n\nTu pedido {$order->code} con {$tenant->commercial_name} está listo para el pago.".($note ? "\n\n{$note}" : '')."\n\nPaga aquí con tarjeta, transferencia, Yape o Plin:\n{$link}\n\nEl enlace vence el ".Carbon::parse($until)->format('d/m/Y').'.';
+        app(QueuedMail::class)->send((string) $order->customer_email, (string) $order->customer_name, "Completa el pago de tu pedido {$order->code} · {$tenant->commercial_name}", $body);
+        $this->audit->log('Pedido web', $code, 'enviar_enlace_pago', $order->status, "{$order->customer_email} · vence {$until}", actor: $actor);
+
+        return ['code' => $order->code, 'sent_to' => $order->customer_email, 'expires_on' => $until];
+    }
 
     public function publish(string $productCode, bool $published, User $actor): void
     {

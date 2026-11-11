@@ -23,8 +23,8 @@ const PERIODS = [
   { days: 0, label: "Todo" },
 ];
 
-export default async function AuditoriaPage({ searchParams }: { searchParams: Promise<{ periodo?: string }> }) {
-  const { periodo } = await searchParams;
+export default async function AuditoriaPage({ searchParams }: { searchParams: Promise<{ periodo?: string; q?: string }> }) {
+  const { periodo, q } = await searchParams;
   const days = PERIODS.find((period) => String(period.days) === periodo)?.days ?? 30;
   const page = await getCollection<AuditEntry, AuditMeta>(`/audit-events?filter[days]=${days}`, "No pudimos cargar la auditoría.", 1500);
   if (!page) return <NoAccess home="/dashboard" />;
@@ -64,7 +64,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
         </Card>
       </div>
       {data.truncated && <p className="mb-3 text-[12.5px] text-fg-3">Se muestran los {formatNumber(data.events.length)} eventos más recientes del periodo. Acota el periodo para ver el resto.</p>}
-      <AuditTable data={data} />
+      <AuditTable data={data} initialSearch={q} />
     </>
   );
 }

@@ -65,6 +65,40 @@ export async function revokePortal(_state: ClientActionState, form: FormData): P
   return send(portalPath(form, "/revoke"), "POST", { reason: text(form, "reason") });
 }
 
+export async function anonymizeClient(_state: ClientActionState, form: FormData): Promise<ClientActionState> {
+  return send(`/crm/clients/${encodeURIComponent(text(form, "code") ?? "")}/anonymize`, "POST", { reason: text(form, "reason"), case: text(form, "case"), confirm: form.get("confirm") === "on" });
+}
+
 export async function archiveClient(_state: ClientActionState, form: FormData): Promise<ClientActionState> {
   return send(`/crm/clients/${encodeURIComponent(text(form, "code") ?? "")}/archive`, "POST", { reason: text(form, "reason") });
+}
+
+async function contactCall(path: string, method: "POST" | "PATCH" | "DELETE", body?: Record<string, unknown>): Promise<ClientActionState> {
+  const result = await apiFetch(path, { method, body });
+  if (!result.ok) {
+    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { message: firstError ?? result.error?.message ?? "No pudimos completar la acción.", done: false };
+  }
+  revalidatePath("/crm/clientes", "layout");
+  return { message: null, done: true };
+}
+
+const contactsPath = (form: FormData, suffix = "") => `/crm/clients/${encodeURIComponent(text(form, "code") ?? "")}/contacts${suffix}`;
+const contactPayload = (form: FormData) => ({ name: text(form, "name"), role: text(form, "role"), email: text(form, "email"), phone: text(form, "phone") });
+
+export async function saveClientContact(_state: ClientActionState, form: FormData): Promise<ClientActionState> {
+  const id = text(form, "contact_id");
+  return id ? contactCall(contactsPath(form, `/${encodeURIComponent(id)}`), "PATCH", contactPayload(form)) : contactCall(contactsPath(form), "POST", { ...contactPayload(form), is_primary: form.get("is_primary") === "1" || form.get("is_primary") === "on" });
+}
+
+export async function makeClientContactPrimary(_state: ClientActionState, form: FormData): Promise<ClientActionState> {
+  return contactCall(contactsPath(form, `/${encodeURIComponent(text(form, "contact_id") ?? "")}/make-primary`), "POST", {});
+}
+
+export async function removeClientContact(_state: ClientActionState, form: FormData): Promise<ClientActionState> {
+  return contactCall(contactsPath(form, `/${encodeURIComponent(text(form, "contact_id") ?? "")}`), "DELETE");
+}
+
+export async function sendClientCommunication(_state: ClientActionState, form: FormData): Promise<ClientActionState> {
+  return contactCall(`/crm/clients/${encodeURIComponent(text(form, "code") ?? "")}/communications`, "POST", { recipient: text(form, "recipient"), subject: text(form, "subject"), body: text(form, "body") });
 }

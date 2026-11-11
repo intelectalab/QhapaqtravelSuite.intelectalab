@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Operations\Actions;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Integrations\Support\AttachmentGuard;
 use App\Domain\Operations\Support\EvidenceStore;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -18,7 +19,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class EvidenceWorkflow
 {
-    public function __construct(private readonly AuditLogger $audit, private readonly TenantContext $context) {}
+    public function __construct(private readonly AuditLogger $audit, private readonly TenantContext $context, private readonly AttachmentGuard $guard) {}
 
     public function presign(array $data, User $actor): array
     {
@@ -145,6 +146,17 @@ final class EvidenceWorkflow
             throw ApiException::unprocessable('OPS-BR-70', "El archivo {$pending['file_name']} todavía no se terminó de subir.");
         }
 
+        try {
+            $this->guard->ensureClean((string) $disk->get($pending['path']), (string) $pending['file_name'], 'Evidencia', $entityCode);
+        } catch (ApiException $blocked) {
+            if ($blocked->ruleCode === 'FILE_INFECTED') {
+                $disk->delete($pending['path']);
+                Cache::forget($key);
+            }
+
+            throw $blocked;
+        }
+
         $evidence = $this->insert($owner, $pending['path'], $pending['file_name'], $pending['mime'], $pending['size'], $pending['sha256'], $source, $actor, $entityCode, $incidentId);
         Cache::forget($key);
 
@@ -162,6 +174,7 @@ final class EvidenceWorkflow
         $path = EvidenceStore::path($this->context->idOrFail(), $id, $mime);
         $disk = EvidenceStore::disk();
         $name = Str::limit($file->getClientOriginalName() ?: basename($path), 200, '');
+        $this->guard->ensureCleanFile((string) $file->getRealPath(), $name, 'Evidencia', $entityCode);
 
         if ($disk->putFileAs(dirname($path), $file, basename($path)) === false) {
             throw ApiException::conflict('OPS-BR-70', 'No pudimos guardar el archivo. Inténtalo de nuevo en unos segundos.');

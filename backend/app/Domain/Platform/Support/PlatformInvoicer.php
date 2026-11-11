@@ -51,6 +51,23 @@ final class PlatformInvoicer
             $lines[] = $this->line("Cupón {$coupon->code} · {$this->directory->couponLabel($coupon)}", 1, $discount->negated(), 'discount');
         }
 
+        return $this->store($subscription, 'subscription', $from, $to, $lines);
+    }
+
+    public function charge(object $subscription, string $kind, Carbon $from, Carbon $to, array $items): array
+    {
+        $lines = [];
+
+        foreach ($items as [$description, $quantity, $unit, $type]) {
+            $lines[] = $this->line($description, $quantity, $unit, $type);
+        }
+
+        return $this->store($subscription, $kind, $from, $to, $lines);
+    }
+
+    private function store(object $subscription, string $kind, Carbon $from, Carbon $to, array $lines): array
+    {
+        $issued = Carbon::today('America/Lima');
         $subtotal = array_reduce($lines, fn (BigDecimal $sum, array $line): BigDecimal => $sum->plus($line['amount']), BigDecimal::zero()->toScale(2));
         $igvPct = Decimal::of($this->settings->igv());
         $igv = $subtotal->multipliedBy($igvPct)->dividedBy(100, 2, RoundingMode::HALF_UP);
@@ -63,11 +80,11 @@ final class PlatformInvoicer
             'number' => $number,
             'tenant_id' => $subscription->tenant_id,
             'subscription_id' => $subscription->id,
-            'kind' => 'subscription',
+            'kind' => $kind,
             'period_from' => $from->toDateString(),
             'period_to' => $to->toDateString(),
-            'issue_date' => $from->toDateString(),
-            'due_date' => $from->copy()->addDays(7)->toDateString(),
+            'issue_date' => $kind === 'subscription' ? $from->toDateString() : $issued->toDateString(),
+            'due_date' => ($kind === 'subscription' ? $from->copy() : $issued->copy())->addDays(7)->toDateString(),
             'currency' => 'PEN',
             'subtotal' => (string) $subtotal,
             'igv' => (string) $igv,

@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowDownLeft, ArrowUpRight, Ban, Banknote, CreditCard, Landmark, Plus, Wallet } from "lucide-react";
+import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -25,7 +26,7 @@ const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.local
 
 export function AccountCards({ accounts }: { accounts: TreasuryAccount[] }) {
   return (
-    <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <section className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
       {accounts.map((account, index) => {
         const { tone, icon: Icon } = KIND[account.kind];
         const low = account.fund !== null && account.balance < account.fund * 0.4;
@@ -33,7 +34,7 @@ export function AccountCards({ accounts }: { accounts: TreasuryAccount[] }) {
           <article
             key={account.code}
             style={{ ...toneStyle(tone), animationDelay: `${index * 50}ms` }}
-            className="lift group animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] bg-[color-mix(in_srgb,var(--tint)_7%,var(--surface))] p-4 hover:border-[color-mix(in_srgb,var(--tint)_45%,transparent)]"
+            className="lift group relative animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] bg-[color-mix(in_srgb,var(--tint)_7%,var(--surface))] p-4 hover:border-[color-mix(in_srgb,var(--tint)_45%,transparent)]"
             title={account.number ?? undefined}
           >
             <div className="flex items-start justify-between gap-3">
@@ -42,7 +43,7 @@ export function AccountCards({ accounts }: { accounts: TreasuryAccount[] }) {
                   <Icon size={17} />
                 </span>
                 <span className="min-w-0">
-                  <b className="block truncate text-[13.5px] font-semibold">{account.name}</b>
+                  <Link href={`/finanzas/tesoreria/cuentas/${encodeURIComponent(account.code)}`} className="block truncate text-[13.5px] font-semibold after:absolute after:inset-0 hover:underline">{account.name}</Link>
                   <span className="text-[12px] text-fg-3">
                     {account.kind_label}
                     {account.sede ? ` · ${account.sede.split(" — ")[0]}` : ""}

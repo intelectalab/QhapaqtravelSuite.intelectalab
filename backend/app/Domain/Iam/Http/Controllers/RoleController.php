@@ -20,6 +20,11 @@ final class RoleController
         return response()->json(['data' => $this->roles->list(), 'meta' => ['catalog' => $this->roles->catalog()]]);
     }
 
+    public function show(string $code, AccessMap $access): JsonResponse
+    {
+        return response()->json(['data' => $this->roles->detail($code, $access)]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([

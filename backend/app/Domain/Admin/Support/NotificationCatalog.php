@@ -27,6 +27,7 @@ final class NotificationCatalog
         'integracion.fallo' => 'Falla de integración',
         'usuario.invitado' => 'Usuario invitado',
         'seguridad.mfa_reset' => 'Verificación en dos pasos reiniciada',
+        'arco.solicitud' => 'Solicitud de datos personales (ARCO)',
         'exportacion.lista' => 'Exportación lista',
         'reporte.programado' => 'Reporte programado enviado',
         'actividad.vencida' => 'Actividades vencidas',

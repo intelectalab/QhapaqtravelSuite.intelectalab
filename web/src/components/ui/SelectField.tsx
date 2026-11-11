@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { cn } from "@/lib/cn";
 import { Select, type SelectOption } from "./Select";
 
 interface SelectFieldProps {
@@ -8,15 +9,20 @@ interface SelectFieldProps {
   name: string;
   options: SelectOption[];
   defaultValue?: string;
+  value?: string;
   placeholder?: string;
   hint?: string;
+  error?: string | null;
+  clearable?: boolean;
+  searchable?: boolean;
   className?: string;
   onChange?: (value: string) => void;
 }
 
-export function SelectField({ label, name, options, defaultValue = "", placeholder, hint, className, onChange }: SelectFieldProps) {
+export function SelectField({ label, name, options, defaultValue = "", value, placeholder, hint, error, clearable, searchable, className, onChange }: SelectFieldProps) {
   const id = useId();
-  const [value, setValue] = useState(defaultValue);
+  const [inner, setInner] = useState(defaultValue);
+  const current = value ?? inner;
 
   return (
     <div className={className}>
@@ -24,19 +30,21 @@ export function SelectField({ label, name, options, defaultValue = "", placehold
         {label}
       </span>
       <Select
-        value={value}
+        value={current}
         onChange={(next) => {
-          setValue(next);
+          setInner(next);
           onChange?.(next);
         }}
         options={options}
         placeholder={placeholder}
+        clearable={clearable}
+        searchable={searchable}
         ariaLabel={label}
-        className="h-12 w-full"
+        className={cn("h-12 w-full", error && "border-bad")}
         testId={`field:${name}`}
       />
-      <input type="hidden" name={name} value={value} />
-      {hint && <div className="mt-1.5 text-[12.5px] text-fg-3">{hint}</div>}
+      <input type="hidden" name={name} value={current} />
+      {error ? <div className="mt-1.5 text-[12.5px] font-medium text-bad">{error}</div> : hint && <div className="mt-1.5 text-[12.5px] text-fg-3">{hint}</div>}
     </div>
   );
 }

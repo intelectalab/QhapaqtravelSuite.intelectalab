@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\DB;
 
+beforeEach(fn () => lockPlatformBilling());
+
 function platFeatureValue(string $feature, string $plan): ?string
 {
     $db = DB::connection('pgsql_platform');

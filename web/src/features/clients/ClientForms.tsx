@@ -1,17 +1,22 @@
 "use client";
 
-import { Archive, AtSign, Building2, CalendarDays, MapPin, Pencil, Phone, Plus, Tag, TriangleAlert, User } from "lucide-react";
+import { Archive, AtSign, Building2, CalendarDays, FileLock2, MapPin, Pencil, Phone, Plus, Tag, TriangleAlert, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { archiveClient, createClient, updateClient, type ClientActionState } from "@/app/(backoffice)/crm/clientes/actions";
+import { anonymizeClient, archiveClient, createClient, updateClient, type ClientActionState } from "@/app/(backoffice)/crm/clientes/actions";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { RowIcon } from "@/components/table/RowActions";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { SwitchField } from "@/components/ui/SwitchField";
 import { TextField } from "@/components/ui/TextField";
 import { DOC_TYPES, segmentLabel, type ClientDetail, type ClientFormOptions } from "@/lib/clients";
+import { formatDate } from "@/lib/format";
 
 const initial: ClientActionState = { message: null, done: false };
 
@@ -149,6 +154,78 @@ export function ClientEditAction({ client, options, defaultOpen = false }: { cli
         </>
       )}
     </PanelAction>
+  );
+}
+
+export function ClientAnonymizeAction({ client }: { client: Pick<ClientDetail, "id" | "name" | "arcoRequests"> }) {
+  const router = useRouter();
+  const [confirmed, setConfirmed] = useState(false);
+  return (
+    <PanelAction<ClientActionState>
+      label="Suprimir datos"
+      icon={<FileLock2 size={16} />}
+      variant="ghost"
+      formId={`client-anonymize-${client.id}`}
+      title="Suprimir datos personales"
+      description={`Derecho de cancelación (Ley 29733). Se borran el nombre, el documento, el correo y el teléfono de ${client.name}, de sus contactos y de los pasajeros de sus reservas. Además se revocan sus autorizaciones y se cierra su acceso al portal.`}
+      submitLabel="Suprimir datos"
+      action={anonymizeClient}
+      initial={initial}
+      testId="client-anonymize"
+      onDone={() => router.push("/crm/clientes")}
+    >
+      {() => (
+        <>
+          <input type="hidden" name="code" value={client.id} />
+          <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[13px] text-fg-2">Se conservan las reservas, los pagos y los comprobantes que exige la ley, ya sin datos personales. Solo se puede hacer si el cliente no tiene viajes vigentes ni saldos por cobrar.</p>
+          {client.arcoRequests.length > 0 && (
+            <SelectField
+              label="Solicitud que atiende"
+              name="case"
+              defaultValue={client.arcoRequests[0].code}
+              options={client.arcoRequests.map((request) => ({ value: request.code, label: `${request.code} · ${request.subject.replace("Solicitud ARCO · ", "")}${request.dueDate ? ` · vence ${formatDate(request.dueDate)}` : ""}` }))}
+              hint="Al suprimir, la solicitud queda resuelta."
+            />
+          )}
+          <TextArea label="Motivo" name="reason" rows={3} minLength={10} maxLength={500} required placeholder="Por ejemplo: solicitud de cancelación del titular recibida por correo." />
+          <SwitchField label="Entiendo que esto no se puede deshacer" name="confirm" checked={confirmed} onCheckedChange={setConfirmed} />
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+export function ClientDataRightsCard({ client, canErase }: { client: Pick<ClientDetail, "id" | "name" | "arcoRequests">; canErase: boolean }) {
+  const pending = client.arcoRequests;
+  return (
+    <Card>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h3 className="flex items-center gap-1.5 text-[15px] font-semibold">
+          Datos personales
+          <InfoTip label="Derechos ARCO">
+            Por la Ley 29733, el cliente puede pedir acceso a sus datos, corregirlos, que se eliminen o que no se usen para algo. Desde su portal envía la solicitud y la agencia tiene 10 días hábiles para responder, o 20 si pide acceso.
+          </InfoTip>
+        </h3>
+        {pending.length > 0 && <Badge tone="warn">{pending.length === 1 ? "1 solicitud" : `${pending.length} solicitudes`}</Badge>}
+      </div>
+      {pending.length === 0 ? (
+        <p className="text-[13px] text-fg-2">Sin solicitudes pendientes sobre sus datos.</p>
+      ) : (
+        <ul className="flex flex-col gap-1.5">
+          {pending.map((request) => (
+            <li key={request.code} className="text-[13px] text-fg-2">
+              <b className="font-semibold text-fg">{request.subject.replace("Solicitud ARCO · ", "")}</b> · {request.code}
+              {request.dueDate && <span className="text-fg-3"> · responder hasta el {formatDate(request.dueDate)}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {canErase && (
+        <div className="mt-3 border-t border-line-2 pt-3">
+          <ClientAnonymizeAction client={client} />
+        </div>
+      )}
+    </Card>
   );
 }
 

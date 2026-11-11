@@ -5,11 +5,32 @@ declare(strict_types=1);
 namespace App\Domain\Channels\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Facades\DB;
 
 final class EcommerceDirectory
 {
     public const OPEN_STATUSES = ['pago_pendiente', 'pago_por_validar', 'pago_rechazado'];
+
+    public function order(string $code, User $viewer): array
+    {
+        $order = collect($this->overview($viewer)['orders'])->firstWhere('code', $code) ?? throw ApiException::notFound('El pedido no existe.');
+        $id = DB::table('channel_ecom_orders')->where('code', $code)->value('id');
+        $reservations = DB::table('booking_reservations')->where('ecom_order_id', $id)->get(['id', 'code', 'status', 'title', 'travel_from']);
+
+        return [
+            ...$order,
+            'passengers' => DB::table('channel_ecom_passengers')->where('order_id', $id)->orderBy('position')->get(['full_name', 'pax_type'])->map(fn (object $p): array => ['name' => $p->full_name, 'type' => $p->pax_type])->all(),
+            'reservations' => $reservations->map(fn (object $r): array => [
+                'code' => $r->code,
+                'status' => $r->status,
+                'title' => $r->title,
+                'date' => $r->travel_from,
+                'receivables' => DB::table('fin_receivables')->where('reservation_id', $r->id)->whereNull('deleted_at')->orderBy('due_date')->get(['code', 'kind', 'amount', 'paid_amount', 'currency', 'status', 'due_date'])
+                    ->map(fn (object $c): array => ['code' => $c->code, 'kind' => $c->kind, 'amount' => ChannelKit::money($c->amount), 'paid' => ChannelKit::money($c->paid_amount), 'currency' => $c->currency, 'status' => $c->status, 'due_date' => $c->due_date])->all(),
+            ])->all(),
+        ];
+    }
 
     public function overview(User $viewer): array
     {
@@ -17,7 +38,7 @@ final class EcommerceDirectory
             ->leftJoin('catalog_products as p', 'p.id', '=', 'o.product_id')
             ->leftJoin('booking_reservations as r', 'r.id', '=', 'o.reservation_id')
             ->orderByDesc('o.ordered_at')
-            ->get(['o.code', 'o.ordered_at', 'o.customer_name', 'o.customer_email', 'o.customer_country', 'o.pax_total', 'o.total', 'o.currency', 'o.status', 'o.promo_code', 'o.discount_amount', 'o.cancel_reason', 'o.lock_version', 'o.product_id', 'p.code as product_code', 'p.name as product_name', 'r.code as reservation_code']);
+            ->get(['o.id', 'o.code', 'o.ordered_at', 'o.customer_name', 'o.customer_email', 'o.customer_country', 'o.pax_total', 'o.total', 'o.currency', 'o.status', 'o.promo_code', 'o.discount_amount', 'o.cancel_reason', 'o.lock_version', 'o.product_id', 'p.code as product_code', 'p.name as product_name', 'r.code as reservation_code']);
 
         $products = DB::table('catalog_products as p')
             ->leftJoin('catalog_product_channels as c', fn ($join) => $join->on('c.product_id', '=', 'p.id')->where('c.channel', 'ecommerce'))
@@ -26,6 +47,26 @@ final class EcommerceDirectory
             ->orderBy('p.name')
             ->get(['p.id', 'p.code', 'p.name', 'p.status', 'p.is_featured', 'p.rating_avg', 'p.rating_count', 'c.is_published', 'c.published_at']);
 
+        $attempts = [];
+        foreach (DB::table('channel_ecom_payment_attempts')->whereIn('order_id', $orders->pluck('id'))->orderByDesc('attempted_at')
+            ->get(['order_id', 'attempted_at', 'method', 'card_masked', 'operation_ref', 'result', 'gateway_code', 'message', 'amount', 'currency']) as $a) {
+            $attempts[(string) $a->order_id][] = [
+                'at' => $a->attempted_at,
+                'method' => $a->method,
+                'card' => $a->card_masked,
+                'operation' => $a->operation_ref,
+                'result' => $a->result,
+                'code' => $a->gateway_code,
+                'message' => $a->message,
+                'amount' => $a->amount === null ? null : ChannelKit::money($a->amount),
+                'currency' => $a->currency,
+            ];
+        }
+        $links = [];
+        foreach (DB::table('audit_events')->where('entity', 'Pedido web')->where('action', 'enviar_enlace_pago')->whereIn('entity_id', $orders->pluck('code'))
+            ->orderByDesc('occurred_at')->get(['entity_id', 'occurred_at', 'after_value']) as $l) {
+            $links[(string) $l->entity_id][] = ['at' => $l->occurred_at, 'detail' => $l->after_value];
+        }
         $sessions = DB::table('channel_web_events')->distinct()->count('session_id');
         $events = DB::table('channel_web_events')->selectRaw('event, count(*) as total')->groupBy('event')->pluck('total', 'event');
         $confirmed = $orders->where('status', 'confirmado');
@@ -61,6 +102,9 @@ final class EcommerceDirectory
                 'reservation' => $row->reservation_code,
                 'cancel_reason' => $row->cancel_reason,
                 'can_cancel' => in_array($row->status, self::OPEN_STATUSES, true),
+                'can_send_link' => in_array($row->status, ['pago_pendiente', 'pago_rechazado'], true),
+                'attempts' => $attempts[(string) $row->id] ?? [],
+                'links' => $links[(string) $row->code] ?? [],
                 'lock_version' => (int) $row->lock_version,
             ])->values(),
             'products' => $products->map(fn (object $row): array => [

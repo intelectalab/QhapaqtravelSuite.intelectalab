@@ -6,7 +6,7 @@ import { Info } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
-const BUBBLE = "z-50 max-w-[300px] rounded-[12px] border border-line bg-surface px-3.5 py-3 text-[13px] leading-relaxed text-fg-2 shadow-[0_18px_40px_-16px_rgb(14_17_32/0.35)]";
+export const BUBBLE = "z-50 max-w-[300px] rounded-[12px] border border-line bg-surface px-3.5 py-3 text-[13px] leading-relaxed text-fg-2 shadow-[0_18px_40px_-16px_rgb(14_17_32/0.35)]";
 
 export function InfoTip({ children, label = "Más información", className }: { children: ReactNode; label?: string; className?: string }) {
   return (

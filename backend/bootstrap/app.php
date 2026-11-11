@@ -13,13 +13,17 @@ use App\Http\Middleware\EnsureTenantActive;
 use App\Http\Middleware\IdempotencyMiddleware;
 use App\Http\Middleware\ResolvePublicSite;
 use App\Http\Middleware\ResolveTenant;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetPermissionsTeam;
 use App\Http\Middleware\SetPostgresTenant;
+use App\Http\Middleware\TrustConfiguredProxies;
+use App\Http\Middleware\VerifyCaptcha;
 use App\Http\Routing\ContractMiddleware;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Routing\Router;
 use Laravel\Sanctum\Http\Middleware\CheckForAnyAbility;
@@ -36,6 +40,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prependToGroup('api', AssignCorrelationId::class);
+        $middleware->append(SecurityHeaders::class);
+        $middleware->replace(TrustProxies::class, TrustConfiguredProxies::class);
         $middleware->redirectGuestsTo(fn () => null);
 
         $middleware->alias([
@@ -49,6 +55,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'permissions.team' => SetPermissionsTeam::class,
             'ability' => CheckForAnyAbility::class,
             'idempotent' => IdempotencyMiddleware::class,
+            'captcha' => VerifyCaptcha::class,
             'if-match' => EnsureLockVersion::class,
             'experience' => EnsureExperience::class,
             'permission' => PermissionMiddleware::class,
@@ -69,6 +76,7 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsurePlatformUser::class,
             SubstituteBindings::class,
             IdempotencyMiddleware::class,
+            VerifyCaptcha::class,
             EnsureLockVersion::class,
         ]);
     })

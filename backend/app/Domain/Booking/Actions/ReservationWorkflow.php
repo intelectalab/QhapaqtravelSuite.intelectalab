@@ -7,6 +7,7 @@ namespace App\Domain\Booking\Actions;
 use App\Domain\Booking\Enums\ReservationStatus;
 use App\Domain\Booking\Models\Reservation;
 use App\Domain\Booking\StateMachines\ReservationStateMachine;
+use App\Domain\Catalog\Support\CancellationTiers;
 use App\Domain\Channels\Support\B2bCredit;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Finance\Actions\SyncServicePayables;
@@ -221,19 +222,23 @@ final class ReservationWorkflow
             ->where('s.reservation_id', $reservation->id)
             ->get(['s.code', 's.name', 's.status', 's.service_date', 's.price_amount', 's.product_id', 'p.code as product_code']);
         $snapshot = json_decode((string) $reservation->policies_snapshot, true) ?: [];
-        $policies = DB::table('catalog_product_policies')->whereIn('product_id', $services->pluck('product_id')->filter()->unique()->values()->all())->pluck('cancellation', 'product_id');
+        $policies = DB::table('catalog_product_policies')->whereIn('product_id', $services->pluck('product_id')->filter()->unique()->values()->all())->get(['product_id', 'cancellation', 'penalty_tiers'])->keyBy('product_id');
         $active = $services->whereNotIn('status', ['cancelado', 'completado', 'rechazado']);
         $used = $services->where('status', 'completado');
         $lines = [];
         $penaltyServices = BigDecimal::zero()->toScale(2);
 
         foreach ($active as $service) {
-            $policy = (string) ($snapshot[$service->product_code]['cancel'] ?? $snapshot[$service->product_code]['cancellation'] ?? $policies[$service->product_id] ?? '');
+            $frozen = self::frozenPolicy($snapshot, $service->product_id, $service->product_code);
+            $live = $policies[$service->product_id] ?? null;
+            $policy = (string) ($frozen['cancel'] ?? $frozen['cancellation'] ?? $live->cancellation ?? '');
+            $structured = CancellationTiers::normalize($frozen['penalty_tiers'] ?? null) ?: CancellationTiers::normalize($live->penalty_tiers ?? null);
+            $tiers = $structured ?: CancellationTiers::fromText($policy);
             $days = (int) $today->diffInDays(CarbonImmutable::parse($service->service_date, $today->getTimezone()), false);
-            $pct = $this->penaltyPct($this->tiers($policy), $days);
+            $pct = CancellationTiers::pct($tiers, $days);
             $amount = Decimal::round2(BigDecimal::of((string) $service->price_amount)->multipliedBy($pct)->dividedBy(100, 6, RoundingMode::HALF_UP));
             $penaltyServices = $penaltyServices->plus($amount);
-            $lines[] = ['code' => $service->code, 'name' => $service->name, 'date' => $service->service_date, 'days' => $days, 'policy' => $policy ?: 'Política estándar', 'pct' => $pct, 'price' => (string) Decimal::round2((string) $service->price_amount), 'penalty' => (string) $amount];
+            $lines[] = ['code' => $service->code, 'name' => $service->name, 'date' => $service->service_date, 'days' => $days, 'policy' => $policy ?: 'Política estándar', 'tiers' => CancellationTiers::describe($tiers), 'tiers_source' => $structured !== [] ? 'tramos' : 'texto', 'pct' => $pct, 'price' => (string) Decimal::round2((string) $service->price_amount), 'penalty' => (string) $amount];
         }
 
         $sum = fn (Collection $items): BigDecimal => $items->reduce(fn (BigDecimal $total, object $service): BigDecimal => $total->plus((string) $service->price_amount), BigDecimal::zero()->toScale(2));
@@ -265,27 +270,23 @@ final class ReservationWorkflow
         ];
     }
 
-    private function tiers(string $policy): array
+    private static function frozenPolicy(array $snapshot, ?string $productId, ?string $productCode): array
     {
-        $text = mb_strtolower($policy);
-
-        return match (true) {
-            str_contains($text, '48 h') && str_contains($text, 'sin penalidad') => [[2, 0], [0, 100]],
-            str_contains($text, '24 h') && str_contains($text, 'sin penalidad') => [[1, 0], [0, 100]],
-            str_contains($text, 'tren:') => [[15, 0], [7, 50], [2, 50], [0, 100]],
-            default => [[15, 0], [7, 50], [0, 100]],
-        };
-    }
-
-    private function penaltyPct(array $tiers, int $days): int
-    {
-        foreach ($tiers as [$min, $pct]) {
-            if ($days >= $min) {
-                return $pct;
-            }
+        if ($productCode !== null && is_array($snapshot[$productCode] ?? null)) {
+            return $snapshot[$productCode];
         }
 
-        return 100;
+        if (array_is_list($snapshot)) {
+            foreach ($snapshot as $row) {
+                if (is_array($row) && ($row['product_id'] ?? null) === $productId) {
+                    return $row;
+                }
+            }
+
+            return [];
+        }
+
+        return isset($snapshot['cancellation']) || isset($snapshot['penalty_tiers']) ? $snapshot : [];
     }
 
     private function paid(object $reservation): BigDecimal

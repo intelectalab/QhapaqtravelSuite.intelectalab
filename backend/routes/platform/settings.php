@@ -11,6 +11,7 @@ Route::controller(PlatformSettingsController::class)->group(function (): void {
     Route::post('notifications/read-all', 'readNotifications')->name('notifications.read-all');
     Route::get('settings', 'settings')->name('settings.show');
     Route::patch('settings/{section}', 'updateSettings')->whereIn('section', ['issuer', 'taxes', 'notices'])->name('settings.update');
+    Route::put('settings/form-protection', 'updateFormProtection')->name('settings.form-protection');
     Route::get('branding', 'branding')->name('branding.show');
     Route::put('branding', 'saveBranding')->name('branding.update');
     Route::post('branding/reset', 'resetBranding')->name('branding.reset');

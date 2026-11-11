@@ -9,6 +9,7 @@ return [
         'messaging' => env('MESSAGING_CHANNEL', 'fake'),
         'reviews' => env('REVIEWS_PROVIDER', 'fake'),
         'fx' => env('FX_RATE_PROVIDER', 'fake'),
+        'antivirus' => env('ANTIVIRUS_PROVIDER', 'fake'),
     ],
 
     'retry' => [

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Operations\Support;
 
+use App\Domain\Booking\Actions\ProviderServiceResponse;
+use App\Domain\Booking\Support\ReservationSections;
+use App\Domain\Finance\Support\NetSales;
 use App\Domain\Iam\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -104,11 +107,13 @@ final class OrderDirectory
         $names = $this->common->userNames();
         $assignments = $this->resources->assignments(['a.order_id' => $order->id]);
         $assigned = $assignments->pluck('service_code')->all();
-        $services = DB::table('booking_reservation_services')->where('reservation_id', $order->reservation_id)->orderBy('service_date')->orderBy('service_time')
-            ->get(['id', 'code', 'lock_version', 'name', 'service_date', 'service_time', 'service_kind', 'status', 'confirmation_code', 'cost_amount', 'currency']);
+        $services = DB::table('booking_reservation_services as s')->leftJoin('catalog_providers as p', 'p.id', '=', 's.provider_id')->leftJoin('catalog_products as pr', 'pr.id', '=', 's.product_id')
+            ->where('s.reservation_id', $order->reservation_id)->orderBy('s.service_date')->orderBy('s.service_time')
+            ->get(['s.id', 's.code', 's.lock_version', 's.name', 's.service_date', 's.service_time', 's.service_kind', 's.status', 's.confirmation_code', 's.cost_amount', 's.price_amount', 's.currency', 's.reject_reason', 's.replaced_by_id', 'p.ref as provider_ref', 'p.name as provider_name', 'p.status as provider_status', 'pr.code as product_code']);
+        $seesMargin = $viewer->can('finance.profitability');
         $incidents = DB::table('ops_incidents')->where('order_id', $order->id)->orderByDesc('created_at')->get(['code', 'title', 'type', 'severity', 'status', 'sla_due_at', 'created_at']);
         $evidences = DB::table('ops_evidences')->where('order_id', $order->id)->whereNull('removed_at')->count();
-        $passengers = DB::table('booking_passengers')->where('reservation_id', $order->reservation_id)->orderBy('seq')->get(['id', 'full_name', 'pax_type', 'nationality', 'diet_notes', 'is_lead']);
+        $passengers = DB::table('booking_passengers')->where('reservation_id', $order->reservation_id)->orderBy('seq')->get(['id', 'full_name', 'pax_type', 'nationality', 'diet_notes', 'is_lead', 'relationship', 'doc_type', 'doc_number', 'age', 'birth_date', 'phone']);
         $canAssign = $viewer->can('operations.assign');
 
         return [
@@ -141,7 +146,25 @@ final class OrderDirectory
                 'cost' => $service->cost_amount,
                 'currency' => $service->currency,
                 'assigned' => in_array($service->code, $assigned, true),
+                'reject_reason' => $service->reject_reason,
+                'replaced' => $service->replaced_by_id !== null,
+                'provider' => $service->provider_name ? ['ref' => $service->provider_ref, 'name' => $service->provider_name, 'active' => $service->provider_status === 'activo'] : null,
+                'product' => $service->product_code,
+                ...($seesMargin ? ['price' => $service->price_amount] : []),
             ])->values(),
+            'web' => app(ReservationSections::class)->webSnapshot($order->reservation_id, ['price' => false]),
+            'rooming' => DB::table('ops_rooming_lists as l')->leftJoin('catalog_providers as h', 'h.id', '=', 'l.hotel_provider_id')->where('l.reservation_id', $order->reservation_id)->whereNull('l.deleted_at')->orderBy('l.check_in')
+                ->selectSub(DB::table('ops_rooming_rooms as rr')->whereColumn('rr.rooming_list_id', 'l.id')->selectRaw('count(*)'), 'rooms')
+                ->selectSub(DB::table('ops_rooming_guests as rg')->whereColumn('rg.rooming_list_id', 'l.id')->selectRaw('count(*)'), 'guests')
+                ->addSelect(['l.id', 'l.city', 'l.hotel_name', 'h.name as hotel', 'l.check_in', 'l.check_out', 'l.status', 'l.sent_at', 'l.hotel_confirmed_at'])->get(),
+            'vouchers' => DB::table('ops_vouchers as v')->leftJoin('catalog_providers as p', 'p.id', '=', 'v.provider_id')->where('v.reservation_id', $order->reservation_id)->orderBy('v.service_date')
+                ->get(['v.code', 'v.service_label', 'v.service_date', 'v.pax', 'v.status', 'v.version', 'p.name as provider']),
+            'economics' => $seesMargin ? [
+                'sale' => (string) round($services->where('status', '<>', 'cancelado')->sum(fn (object $service) => (float) (string) NetSales::of($service->price_amount, $service->currency)), 2),
+                'cost' => (string) $services->where('status', '<>', 'cancelado')->sum(fn (object $service) => (float) $service->cost_amount),
+                'currency' => $services->first()->currency ?? 'PEN',
+            ] : null,
+            'reject_reasons' => $viewer->can('reservations.modify') ? ProviderServiceResponse::REJECT_REASONS : [],
             'passengers' => $passengers,
             'incidents' => $incidents,
             'evidences' => $evidences,
@@ -149,7 +172,7 @@ final class OrderDirectory
             'evidence_rules' => ['max_bytes' => EvidenceStore::MAX_BYTES, 'mimes' => array_keys(EvidenceStore::MIME)],
             'checks' => $this->checks($order->id, $order->reservation_id),
             'transitions' => $canAssign ? OrderFlow::targets($order->status) : [],
-            'can' => ['assign' => $canAssign, 'close' => $viewer->can('operations.close'), 'incidents' => $viewer->can('operations.incidents')],
+            'can' => ['assign' => $canAssign, 'close' => $viewer->can('operations.close'), 'incidents' => $viewer->can('operations.incidents'), 'services' => $viewer->can('reservations.modify'), 'vouchers' => $viewer->can('operations.vouchers')],
             'coordinators' => $canAssign ? $this->common->coordinators() : [],
             'options' => $canAssign ? $this->resources->options() : null,
         ];

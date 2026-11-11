@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, CopyPlus, Handshake, MessagesSquare, Send, ShieldCheck, ShieldQuestion, ThumbsUp, Trash2 } from "lucide-react";
+import { Ban, CopyPlus, Eye, Handshake, MessagesSquare, Send, ShieldCheck, ShieldQuestion, ThumbsUp, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { quoteStep, type QuoteStepState } from "@/app/(backoffice)/cotizaciones/actions";
@@ -190,4 +190,12 @@ export function QuoteLifecycleActions({ quote }: { quote: QuoteDetail }) {
   }
 
   return <div className="flex flex-wrap items-center justify-end gap-2">{actions}</div>;
+}
+
+export function QuoteRecordViewAction({ code }: { code: string }) {
+  return (
+    <StepPanel code={code} step="view" label="Registrar vista" icon={<Eye size={16} />} title="Registrar que el cliente la vio" description="Úsalo cuando el cliente confirma por otro medio que revisó la propuesta. Si estaba enviada, pasa a vista." submitLabel="Registrar vista">
+      <TextArea label="Cómo lo supiste (opcional)" name="note" rows={3} maxLength={300} placeholder="Ejemplo: lo confirmó por teléfono y pidió revisar el hotel en Cusco." />
+    </StepPanel>
+  );
 }

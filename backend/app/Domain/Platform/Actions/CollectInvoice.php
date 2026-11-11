@@ -29,16 +29,16 @@ final class CollectInvoice
         private readonly ChangeTenantStatus $status,
     ) {}
 
-    public function retry(string $id, PlatformUser $actor): array
+    public function retry(string $id, ?PlatformUser $actor, string $source = 'manual_retry'): array
     {
-        return $this->db()->transaction(function () use ($id, $actor): array {
+        return $this->db()->transaction(function () use ($id, $actor, $source): array {
             $invoice = $this->lock($id);
 
             if (! in_array($invoice->status, ['failed', 'open', 'uncollectible'], true)) {
                 throw ApiException::conflict('INVOICE_NOT_COLLECTIBLE', 'Solo se puede reintentar el cobro de una factura pendiente o fallida.');
             }
 
-            $charge = $this->attempt($invoice, 'manual_retry');
+            $charge = $this->attempt($invoice, $source);
             $number = $this->number($invoice);
 
             if ($charge['result'] === 'succeeded') {

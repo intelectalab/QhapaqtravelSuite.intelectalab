@@ -20,7 +20,7 @@ async function send(path: string, method: "POST" | "PATCH" | "DELETE", body: Rec
     const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
     return { message: firstError ?? result.error?.message ?? "No pudimos guardar el rol.", done: false };
   }
-  revalidatePath("/admin/roles");
+  revalidatePath("/admin/roles", "layout");
   return { message: null, done: true, code: result.data?.code };
 }
 
@@ -39,6 +39,6 @@ export async function deleteRole(_state: RoleActionState, form: FormData): Promi
 export async function setRolePermissions(code: string, permissions: string[], grant: boolean): Promise<{ ok: boolean; message: string | null; blocked: { permission: string; reason: string }[] }> {
   const result = await apiFetch<{ applied: string[]; blocked: { permission: string; reason: string }[] }>(`/iam/roles/${encodeURIComponent(code)}/permissions/bulk`, { method: "POST", body: { permissions, grant } });
   if (!result.ok) return { ok: false, message: result.error?.message ?? "No pudimos cambiar el permiso.", blocked: [] };
-  revalidatePath("/admin/roles");
+  revalidatePath("/admin/roles", "layout");
   return { ok: true, message: null, blocked: result.data?.blocked ?? [] };
 }

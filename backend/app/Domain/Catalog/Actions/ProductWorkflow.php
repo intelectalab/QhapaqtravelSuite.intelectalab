@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog\Actions;
 
+use App\Domain\Catalog\Support\CancellationTiers;
+use App\Domain\Catalog\Support\CatalogAccess;
 use App\Domain\Catalog\Support\ProductChecklist;
+use App\Domain\Catalog\Support\ProductReview;
+use App\Domain\Catalog\Support\ProductSectionRules;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -32,6 +36,7 @@ final class ProductWorkflow
         'minimum_passengers' => 'Pasajeros mínimos', 'maximum_passengers' => 'Pasajeros máximos', 'minimum_age' => 'Edad mínima', 'maximum_age' => 'Edad máxima',
         'booking_advance_min_days' => 'Anticipación mínima', 'booking_advance_max_days' => 'Anticipación máxima', 'is_b2b' => 'Agencias B2B',
         'is_ecommerce' => 'Tienda en línea', 'is_featured' => 'Destacado', 'markup_pct' => 'Margen', 'availability_model' => 'Disponibilidad',
+        'is_bookable' => 'Permite reserva', 'is_quoteable' => 'Permite cotización',
     ];
 
     private const DEFAULT_POLICIES = [
@@ -50,11 +55,43 @@ final class ProductWorkflow
         private readonly CodeSequence $codes,
         private readonly ProductChecklist $checklist,
         private readonly TenantContext $context,
+        private readonly ProductSections $sections,
+        private readonly RateRegistry $rates,
+        private readonly ProductReview $review,
     ) {}
+
+    public static function defaultPolicies(): array
+    {
+        return [...self::DEFAULT_POLICIES, 'penalty_tiers' => CancellationTiers::STANDARD];
+    }
+
+    public function preview(array $data, int $step, User $actor): array
+    {
+        if ($step < 3) {
+            $this->values([...$data, 'type_id' => $data['type_id'] ?? null, 'category_id' => $data['category_id'] ?? null, 'destination_id' => $data['destination_id'] ?? null], null, $step);
+
+            return ['review' => null];
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $code = $this->create($data, $actor);
+            $product = DB::table('catalog_products')->where('code', $code)->first();
+
+            return ['review' => $this->review->build($product, $actor)];
+        } finally {
+            DB::rollBack();
+        }
+    }
 
     public function create(array $data, User $actor): string
     {
         return DB::transaction(function () use ($data, $actor): string {
+            if (! empty($data['rates']) && ! $actor->can('catalog.products.manage_rates')) {
+                throw ApiException::forbidden('FORBIDDEN', 'Tu rol no puede cargar tarifas.', ['catalog.products.manage_rates']);
+            }
+
             $values = $this->values($data, null);
             $id = (string) Str::uuid7();
             $tenantId = $this->context->idOrFail();
@@ -67,7 +104,7 @@ final class ProductWorkflow
                 'slug' => Str::slug($values['name'].' '.$values['code']),
                 'created_by' => $actor->getKey(),
             ]);
-            DB::table('catalog_product_policies')->insert([...self::DEFAULT_POLICIES, 'id' => (string) Str::uuid7(), 'tenant_id' => $tenantId, 'product_id' => $id, 'created_by' => $actor->getKey()]);
+            DB::table('catalog_product_policies')->insert([...self::DEFAULT_POLICIES, ...array_filter($data['policies'] ?? [], fn ($text, $field) => $field !== 'penalty_tiers' && trim((string) $text) !== '', ARRAY_FILTER_USE_BOTH), 'penalty_tiers' => json_encode(CancellationTiers::normalize($data['policies']['penalty_tiers'] ?? null) ?: CancellationTiers::STANDARD), 'id' => (string) Str::uuid7(), 'tenant_id' => $tenantId, 'product_id' => $id, 'created_by' => $actor->getKey()]);
             DB::table('catalog_product_channels')->insert(['id' => (string) Str::uuid7(), 'tenant_id' => $tenantId, 'product_id' => $id, 'channel' => 'erp', 'is_published' => true, 'published_at' => now(), 'published_by' => $actor->getKey(), 'created_by' => $actor->getKey()]);
             $versionId = (string) Str::uuid7();
             DB::table('catalog_product_versions')->insert([
@@ -76,9 +113,37 @@ final class ProductWorkflow
             ]);
             DB::table('catalog_products')->where('id', $id)->update(['current_version_id' => $versionId]);
             $this->audit->log('Producto', $values['code'], 'crear', after: $values['name']);
+            $this->applySections($id, $data, $actor);
 
             return $values['code'];
         });
+    }
+
+    private function applySections(string $id, array $data, User $actor): void
+    {
+        $product = fn (): object => DB::table('catalog_products')->where('id', $id)->first();
+        $steps = [
+            'secondary_destination_ids' => fn () => $this->sections->secondaryDestinations($product(), $data['secondary_destination_ids'], $actor),
+            'components' => fn () => $this->sections->components($product(), $data['components'], $actor),
+            'itinerary' => fn () => $this->sections->itinerary($product(), $data['itinerary'], $actor),
+            'rates' => fn () => array_map(fn (array $rate) => $this->rates->create([...$rate, 'product_id' => $id], $actor), $data['rates']),
+            'season_ids' => fn () => $this->sections->seasons($product(), $data['season_ids'], $actor),
+            'availability' => fn () => $this->sections->availability($product(), $data['availability'], $actor),
+            'content' => fn () => $this->sections->content($product(), $data['content'], $actor),
+            'channels' => fn () => $this->sections->channels($product(), $data['channels'], $actor),
+        ];
+
+        foreach ($steps as $key => $apply) {
+            if (! array_key_exists($key, $data) || $data[$key] === null) {
+                continue;
+            }
+
+            try {
+                $apply();
+            } catch (ApiException $error) {
+                throw new ApiException($error->status, $error->error, $error->ruleCode, $error->getMessage(), $error->requiredPermissions, [...$error->details, 'step' => ProductSectionRules::STEPS[$key]]);
+            }
+        }
     }
 
     public function update(string $code, array $data, int $version, User $actor): string
@@ -92,6 +157,16 @@ final class ProductWorkflow
 
             $values = $this->values($data, $product);
             $changed = array_filter(self::FIELDS, fn (string $label, string $field) => array_key_exists($field, $values) && $this->differs($values[$field], $product->{$field}), ARRAY_FILTER_USE_BOTH);
+
+            if (array_key_exists('secondary_destination_ids', $data) && is_array($data['secondary_destination_ids'])) {
+                $before = DB::table('catalog_product_destinations')->where('product_id', $product->id)->pluck('destination_id')->sort()->values()->all();
+                $this->sections->secondaryDestinations((object) [...(array) $product, 'primary_destination_id' => $values['primary_destination_id']], $data['secondary_destination_ids'], $actor);
+                $after = DB::table('catalog_product_destinations')->where('product_id', $product->id)->pluck('destination_id')->sort()->values()->all();
+
+                if ($before !== $after) {
+                    $changed['secondary_destinations'] = 'Destinos secundarios';
+                }
+            }
 
             if ($changed === []) {
                 return $product->code;
@@ -187,30 +262,30 @@ final class ProductWorkflow
         $this->audit->log('Producto', $product->code, 'eliminar', $product->name, $reason);
     }
 
-    private function values(array $data, ?object $current): array
+    private function values(array $data, ?object $current, int $step = 10): array
     {
         $code = strtoupper(trim((string) $data['code']));
         $twin = DB::table('catalog_products')->whereRaw('upper(code) = ?', [$code])
             ->when($current, fn ($query) => $query->where('id', '<>', $current->id))->first(['deleted_at']);
 
         if ($twin) {
-            throw ApiException::unprocessable('CAT-BR-01', $twin->deleted_at ? 'Ese código ya lo usó un producto eliminado. Elige otro.' : 'Ya hay otro producto con ese código.');
+            throw ApiException::unprocessable('CAT-BR-01', $twin->deleted_at ? 'Ese código ya lo usó un producto eliminado. Elige otro.' : 'Ya hay otro producto con ese código.', ['step' => 1, 'field' => 'code']);
         }
 
         foreach ([['minimum_passengers', 'maximum_passengers', 'pasajeros'], ['minimum_age', 'maximum_age', 'edades'], ['booking_advance_min_days', 'booking_advance_max_days', 'días de anticipación']] as [$min, $max, $label]) {
             if ((int) $data[$min] > (int) $data[$max]) {
-                throw ApiException::unprocessable('CAT-BR-02', "El mínimo de {$label} no puede ser mayor que el máximo.");
+                throw ApiException::unprocessable('CAT-BR-02', "El mínimo de {$label} no puede ser mayor que el máximo.", ['step' => 1, 'field' => $max]);
             }
         }
 
         $subcategory = $data['subcategory_id'] ?? null;
-        if ($subcategory && ! DB::table('catalog_product_subcategories')->where('id', $subcategory)->where('category_id', $data['category_id'])->exists()) {
-            throw ApiException::unprocessable('CAT-BR-03', 'La subcategoría no pertenece a esa categoría.');
+        if ($step >= 2 && $subcategory && ! DB::table('catalog_product_subcategories')->where('id', $subcategory)->where('category_id', $data['category_id'])->exists()) {
+            throw ApiException::unprocessable('CAT-BR-03', 'La subcategoría no pertenece a esa categoría.', ['step' => 2, 'field' => 'subcategory_id']);
         }
 
         $provider = $data['provider_id'] ?? null;
-        if ($provider && ! DB::table('catalog_providers')->where('id', $provider)->where('status', 'activo')->whereNull('deleted_at')->exists()) {
-            throw ApiException::unprocessable('CAT-BR-11', 'Elige un proveedor activo.');
+        if ($provider && $provider !== $current?->main_provider_id && ! DB::table('catalog_providers')->where('id', $provider)->where('status', 'activo')->where('contract_end', '>=', CatalogAccess::today())->whereNull('deleted_at')->exists()) {
+            throw ApiException::unprocessable('PRD-BR-007', 'Elige un proveedor activo y con contrato vigente.', ['step' => 4, 'field' => 'provider_id']);
         }
 
         $sku = strtoupper(trim((string) ($data['sku'] ?? '')));
@@ -236,6 +311,8 @@ final class ProductWorkflow
             'maximum_age' => (int) $data['maximum_age'],
             'booking_advance_min_days' => (int) $data['booking_advance_min_days'],
             'booking_advance_max_days' => (int) $data['booking_advance_max_days'],
+            'is_bookable' => (bool) ($data['is_bookable'] ?? ($current->is_bookable ?? true)),
+            'is_quoteable' => (bool) ($data['is_quoteable'] ?? ($current->is_quoteable ?? true)),
             'is_b2b' => (bool) ($data['is_b2b'] ?? false),
             'is_ecommerce' => (bool) ($data['is_ecommerce'] ?? false),
             'is_featured' => (bool) ($data['is_featured'] ?? false),

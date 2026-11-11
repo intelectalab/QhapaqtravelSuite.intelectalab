@@ -4,6 +4,7 @@ import { CheckCircle2, Loader2, Send } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState, type ReactNode } from "react";
 import { sendClaim, sendContact, sendLead } from "@/app/(sitio)/sitio/[agencia]/actions";
+import { Captcha } from "@/components/ui/Captcha";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
@@ -27,14 +28,17 @@ function Field({ children, error }: { children: ReactNode; error?: string }) {
 
 function Submit({ pending, label }: { pending: boolean; label: string }) {
   return (
-    <button type="submit" disabled={pending} className="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-brand px-6 text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60">
-      {pending ? <Loader2 size={17} className="animate-spin" /> : <Send size={16} />}
-      {pending ? "Enviando…" : label}
-    </button>
+    <>
+      <Captcha />
+      <button type="submit" disabled={pending} className="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-brand px-6 text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60">
+        {pending ? <Loader2 size={17} className="animate-spin" /> : <Send size={16} />}
+        {pending ? "Enviando…" : label}
+      </button>
+    </>
   );
 }
 
-function Done({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
+export function Done({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
     <div className="rounded-card border border-[color-mix(in_srgb,var(--ok)_30%,transparent)] bg-[color-mix(in_srgb,var(--ok)_7%,var(--surface))] p-6 animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]">
       <CheckCircle2 size={28} className="text-ok" />
@@ -45,7 +49,7 @@ function Done({ title, children, action }: { title: string; children: ReactNode;
   );
 }
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+export function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
     <section className="rounded-card border border-line bg-surface p-5 shadow-card">
       <h2 className="text-[16px] font-semibold text-fg">{title}</h2>

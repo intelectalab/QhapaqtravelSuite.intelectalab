@@ -28,7 +28,7 @@ export default async function DestinosPage() {
         title="Destinos"
         subtitle="Dónde ocurren tus productos, del país a la atracción."
         info={<InfoTip>Al filtrar productos por un destino se incluyen sus subdestinos. Un destino con subdestinos o productos no se puede eliminar.</InfoTip>}
-        actions={overview.can.manage ? <DestinationCreateAction overview={overview} /> : undefined}
+        actions={overview.can.manage ? <DestinationCreateAction destinations={overview.destinations} types={overview.options.types} /> : undefined}
       />
       <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <TintTile icon={Globe2} tone="t1" label="Destinos" value={nodes.length} note={`${nodes.filter((node) => node.depth <= 1).length} países y regiones`} />

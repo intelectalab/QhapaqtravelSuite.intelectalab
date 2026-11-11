@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, MessageSquareText, Moon, ShoppingBag, Sun, X } from "lucide-react";
+import { Menu, MessageSquareText, Moon, ShoppingBag, Sun, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -9,18 +9,22 @@ import { cn } from "@/lib/cn";
 import { LOCALE_NAME, SITE_LOCALES } from "@/lib/site-i18n";
 import { applyTheme, parseTheme, THEME_STORAGE_KEY, type Theme } from "@/lib/theme";
 import { useStoredValue } from "@/lib/useStoredValue";
+import type { SiteNavLinkId } from "@/lib/site-design";
 import { useSite } from "./SiteContext";
 
 const keepTheme = (theme: Theme) => theme;
 
-const LINKS = [
-  { path: "/destinos", key: "destinations" },
-  { path: "/tours?tipo=tours", key: "tours" },
-  { path: "/tours?tipo=paquetes", key: "packages" },
-  { path: "/tours?tipo=experiencias", key: "experiences" },
-  { path: "/viajes-a-medida", key: "tailored" },
-  { path: "/contacto", key: "contact" },
-] as const;
+const LINK_PATHS: Record<SiteNavLinkId, string> = {
+  destinations: "/destinos",
+  tours: "/tours?tipo=tours",
+  packages: "/tours?tipo=paquetes",
+  experiences: "/tours?tipo=experiencias",
+  offers: "/ofertas",
+  tailored: "/viajes-a-medida",
+  contact: "/contacto",
+};
+
+const DEFAULT_LINKS = (Object.keys(LINK_PATHS) as SiteNavLinkId[]).map((id) => ({ id, visible: true }));
 
 function LocaleSwitch() {
   const { locale, t } = useSite();
@@ -90,7 +94,9 @@ function ThemeSwitch() {
 }
 
 export function SiteHeader({ name, initials, logo }: { name: string; initials: string; logo: string | null }) {
-  const { href, t } = useSite();
+  const { href, t, design } = useSite();
+  const nav = design?.nav;
+  const links = (nav?.links ?? DEFAULT_LINKS).filter((link) => link.visible).map((link) => ({ path: LINK_PATHS[link.id], key: link.id }));
   const pathname = usePathname();
   const search = useSearchParams();
   const [open, setOpen] = useState(false);
@@ -116,7 +122,7 @@ export function SiteHeader({ name, initials, logo }: { name: string; initials: s
       <div className="mx-auto flex h-[68px] max-w-[1240px] items-center gap-3 px-4 sm:px-8">
         <AgencyMark name={name} initials={initials} logo={logo} />
         <nav aria-label={t.header.sections} className="ml-4 hidden items-center gap-0.5 xl:flex">
-          {LINKS.map((link) => {
+          {links.map((link) => {
             const active = isActive(link.path);
             return (
               <Link key={link.path} href={href(link.path)} className={cn("group relative rounded-lg px-3 py-2 text-[13.5px] font-semibold transition-colors", active ? "text-fg" : "text-fg-2 hover:text-fg")}>
@@ -127,15 +133,22 @@ export function SiteHeader({ name, initials, logo }: { name: string; initials: s
           })}
         </nav>
         <div className="ml-auto flex items-center gap-1.5">
-          <LocaleSwitch />
-          <ThemeSwitch />
+          {(nav?.show_locale ?? true) && <LocaleSwitch />}
+          {(nav?.show_theme ?? true) && <ThemeSwitch />}
+          <Link href={href("/cuenta")} aria-label={t.header.account} title={t.header.account} className={cn("grid h-10 w-10 flex-none place-items-center rounded-xl transition hover:-translate-y-0.5 hover:bg-surface-2 hover:text-fg", pathname.startsWith(href("/cuenta")) ? "bg-surface-2 text-fg" : "text-fg-2")}>
+            <UserRound size={18} />
+          </Link>
+          {(nav?.show_cart ?? true) && (
           <Link href={href("/carrito")} aria-label={t.header.cart} title={t.header.cartTitle} className="grid h-10 w-10 flex-none place-items-center rounded-xl text-fg-2 transition hover:-translate-y-0.5 hover:bg-surface-2 hover:text-fg">
             <ShoppingBag size={18} />
           </Link>
+          )}
+          {(nav?.show_quote ?? true) && (
           <Link href={href("/viajes-a-medida")} className="hidden h-10 items-center gap-2 rounded-control bg-brand px-4 text-[13.5px] font-semibold text-brand-fg shadow-[0_6px_16px_-8px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 sm:inline-flex">
             <MessageSquareText size={16} />
             {t.header.quote}
           </Link>
+          )}
           <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={open ? t.header.closeMenu : t.header.openMenu} className="grid h-10 w-10 place-items-center rounded-xl text-fg-2 transition hover:bg-surface-2 hover:text-fg xl:hidden">
             {open ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -144,7 +157,7 @@ export function SiteHeader({ name, initials, logo }: { name: string; initials: s
       {open && (
         <nav aria-label={t.header.mobileMenu} className="border-t border-line bg-surface px-4 pb-5 pt-3 xl:hidden">
           <ul className="grid gap-1">
-            {LINKS.map((link, index) => (
+            {links.map((link, index) => (
               <li key={link.path} className="animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]" style={{ animationDelay: `${index * 40}ms` }}>
                 <Link href={href(link.path)} onClick={() => setOpen(false)} className={cn("flex h-11 items-center rounded-xl px-3 text-[15px] font-semibold transition", isActive(link.path) ? "bg-surface-2 text-fg" : "text-fg-2 hover:bg-surface-2 hover:text-fg")}>
                   {t.header.links[link.key]}
@@ -152,10 +165,12 @@ export function SiteHeader({ name, initials, logo }: { name: string; initials: s
               </li>
             ))}
           </ul>
+          {(nav?.show_quote ?? true) && (
           <Link href={href("/viajes-a-medida")} onClick={() => setOpen(false)} className="mt-3 flex h-11 items-center justify-center gap-2 rounded-control bg-brand text-[14px] font-semibold text-brand-fg">
             <MessageSquareText size={16} />
             {t.header.quote}
           </Link>
+          )}
         </nav>
       )}
     </header>

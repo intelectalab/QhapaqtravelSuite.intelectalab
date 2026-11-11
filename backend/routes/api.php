@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\B2bPortal\Http\Controllers\B2bPortalController;
 use App\Domain\Booking\Http\Controllers\ReservationController;
 use App\Domain\Catalog\Actions\ProductWorkflow;
 use App\Domain\Catalog\Http\Controllers\ProductController;
@@ -10,6 +11,7 @@ use App\Domain\Crm\Http\Controllers\ActivityController;
 use App\Domain\Crm\Http\Controllers\ClientController;
 use App\Domain\Crm\Http\Controllers\LeadController;
 use App\Domain\Crm\Http\Controllers\OpportunityController;
+use App\Domain\Crm\Support\ClientTabs;
 use App\Domain\Iam\Http\Controllers\MeController;
 use App\Domain\Iam\Http\Controllers\PasswordController;
 use App\Domain\Iam\Http\Controllers\RoleController;
@@ -17,10 +19,13 @@ use App\Domain\Iam\Http\Controllers\SedeController;
 use App\Domain\Iam\Http\Controllers\SessionController;
 use App\Domain\Iam\Http\Controllers\UserController;
 use App\Domain\Platform\Http\Controllers\PlatformController;
+use App\Domain\Portal\Http\Controllers\PassengerPortalController;
 use App\Domain\Quotes\Http\Controllers\QuoteController;
 use App\Domain\Quotes\Http\Controllers\QuoteConversionController;
 use App\Domain\Reports\Http\Controllers\DashboardController;
 use App\Domain\Shared\Http\Controllers\HealthController;
+use App\Domain\Site\Http\Middleware\ScopeSiteTenant;
+use App\Http\Middleware\EnsurePreviewReadOnly;
 use Illuminate\Support\Facades\Route;
 
 Route::get('health', HealthController::class)->name('health');
@@ -37,7 +42,14 @@ Route::post('auth/invitations/{token}/accept', [SessionController::class, 'accep
 Route::post('auth/password/forgot', [PasswordController::class, 'forgot'])->middleware('throttle:login')->name('auth.password.forgot');
 Route::post('auth/password/reset', [PasswordController::class, 'reset'])->middleware('throttle:login')->name('auth.password.reset');
 
-Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'permissions.team'])->group(function (): void {
+Route::post('b2b/auth/login', [B2bPortalController::class, 'login'])->middleware('throttle:login')->name('b2b.auth.login');
+
+Route::prefix('portal/passenger/auth')->middleware(['throttle:public', 'public.site', ScopeSiteTenant::class])->name('portal.passenger.auth.')->controller(PassengerPortalController::class)->group(function (): void {
+    Route::post('link', 'link')->middleware('throttle:5,1')->name('link');
+    Route::post('verify', 'verify')->middleware('throttle:10,1')->name('verify');
+});
+
+Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'permissions.team', EnsurePreviewReadOnly::class])->group(function (): void {
     Route::post('auth/mfa/verify', [SessionController::class, 'verifyMfa'])->middleware(['ability:mfa:verify', 'throttle:login'])->name('auth.mfa.verify');
     Route::post('auth/logout', [SessionController::class, 'logout'])->name('auth.logout');
     Route::post('me/mfa/enroll', [SessionController::class, 'enrollMfa'])->middleware(['ability:mfa:verify', 'throttle:login'])->name('me.mfa.enroll');
@@ -82,6 +94,9 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
             Route::post('reservations', [ReservationController::class, 'store'])->middleware('permission:reservations.create')->name('reservations.store');
             Route::get('reservations/{code}', [ReservationController::class, 'show'])->name('reservations.show');
             Route::get('reservations/{code}/history', [ReservationController::class, 'history'])->name('reservations.history');
+            Route::get('reservations/{code}/web-snapshot', [ReservationController::class, 'webSnapshot'])->name('reservations.web-snapshot');
+            Route::get('reservations/{code}/pax-feedback', [ReservationController::class, 'paxFeedback'])->name('reservations.pax-feedback');
+            Route::get('reservations/{code}/pax-messages', [ReservationController::class, 'paxMessages'])->name('reservations.pax-messages');
             Route::patch('reservations/{code}', [ReservationController::class, 'update'])->middleware('permission:reservations.modify')->name('reservations.update');
             Route::post('reservations/{code}/confirm', [ReservationController::class, 'confirm'])->middleware('permission:reservations.modify')->name('reservations.confirm');
             Route::post('reservations/{code}/start-operation', [ReservationController::class, 'startOperation'])->middleware('permission:reservations.modify')->name('reservations.start-operation');
@@ -165,6 +180,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
             Route::post('quotes/{code}/internal-approval-requests', [QuoteController::class, 'requestInternal'])->middleware('permission:quotes.create|quotes.send')->name('quotes.internal.request');
             Route::post('quotes/{code}/versions/{version}/internal-approval', [QuoteController::class, 'decideVersion'])->whereNumber('version')->middleware('permission:quotes.approve_internal')->name('quotes.internal.decide');
             Route::post('quotes/{code}/send', [QuoteController::class, 'send'])->middleware('permission:quotes.send')->name('quotes.send');
+            Route::post('quotes/{code}/views', [QuoteController::class, 'recordView'])->middleware('permission:quotes.send')->name('quotes.views.store');
             Route::post('quotes/{code}/negotiations', [QuoteController::class, 'negotiate'])->middleware('permission:quotes.send')->name('quotes.negotiations');
             Route::post('quotes/{code}/approve', [QuoteController::class, 'approve'])->middleware('permission:reservations.create')->name('quotes.approve');
             Route::delete('quotes/{code}', [QuoteController::class, 'destroy'])->middleware('permission:quotes.create')->name('quotes.destroy');
@@ -176,6 +192,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
         Route::middleware('permission:admin.roles.manage')->group(function (): void {
             Route::get('iam/roles', [RoleController::class, 'index'])->name('iam.roles.index');
             Route::post('iam/roles', [RoleController::class, 'store'])->name('iam.roles.store');
+            Route::get('iam/roles/{code}', [RoleController::class, 'show'])->name('iam.roles.show');
             Route::patch('iam/roles/{code}', [RoleController::class, 'update'])->name('iam.roles.update');
             Route::delete('iam/roles/{code}', [RoleController::class, 'destroy'])->name('iam.roles.destroy');
             Route::post('iam/roles/{code}/permissions/bulk', [RoleController::class, 'permissions'])->name('iam.roles.permissions');
@@ -207,8 +224,14 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
             Route::get('crm/clients', [ClientController::class, 'index'])->name('crm.clients.index');
             Route::get('crm/clients/form-options', [ClientController::class, 'formOptions'])->name('crm.clients.options');
             Route::get('crm/clients/{code}', [ClientController::class, 'show'])->name('crm.clients.show');
+            Route::get('crm/clients/{code}/{tab}', [ClientController::class, 'tab'])->whereIn('tab', ClientTabs::TABS)->name('crm.clients.tab');
 
             Route::middleware('permission:crm.clients.manage')->group(function (): void {
+                Route::post('crm/clients/{code}/contacts', [ClientController::class, 'addContact'])->name('crm.clients.contacts.store');
+                Route::patch('crm/clients/{code}/contacts/{contact}', [ClientController::class, 'updateContact'])->whereUuid('contact')->name('crm.clients.contacts.update');
+                Route::post('crm/clients/{code}/contacts/{contact}/make-primary', [ClientController::class, 'makePrimaryContact'])->whereUuid('contact')->name('crm.clients.contacts.primary');
+                Route::delete('crm/clients/{code}/contacts/{contact}', [ClientController::class, 'removeContact'])->whereUuid('contact')->name('crm.clients.contacts.destroy');
+                Route::post('crm/clients/{code}/communications', [ClientController::class, 'communicate'])->name('crm.clients.communications.store');
                 Route::post('crm/clients', [ClientController::class, 'store'])->name('crm.clients.store');
                 Route::patch('crm/clients/{code}', [ClientController::class, 'update'])->name('crm.clients.update');
                 Route::post('crm/clients/{code}/archive', [ClientController::class, 'archive'])->name('crm.clients.archive');

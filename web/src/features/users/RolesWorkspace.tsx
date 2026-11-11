@@ -1,7 +1,7 @@
 "use client";
 
 import * as Switch from "@radix-ui/react-switch";
-import { CircleAlert, KeyRound, Pencil, Plus, ShieldCheck, Smartphone, Trash2, Users } from "lucide-react";
+import { CircleAlert, Copy, KeyRound, Pencil, Plus, ShieldCheck, Smartphone, Trash2, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useOptimistic, useState, useTransition } from "react";
 import { createRole, deleteRole, setRolePermissions, updateRole, type RoleActionState } from "@/app/(backoffice)/admin/roles/actions";
@@ -12,8 +12,9 @@ import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { ToneScope } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
-import { PERMISSION_LABEL, SCOPE_LABEL, type PermissionModule, type RoleScope, type TeamRole } from "@/lib/roles";
+import { PERMISSION_LABEL, SCOPE_LABEL, type PermissionModule, type RoleDetail, type RoleScope, type TeamRole } from "@/lib/roles";
 import type { Tone } from "@/lib/tone";
+import { RoleDetailPanels } from "./RoleDetailPanels";
 
 const initial: RoleActionState = { message: null, done: false };
 
@@ -48,11 +49,28 @@ export function RoleCreateAction({ roles }: { roles: TeamRole[] }) {
   );
 }
 
+function RoleDuplicateAction({ role }: { role: TeamRole }) {
+  const router = useRouter();
+  return (
+    <PanelAction<RoleActionState> label="Duplicar" icon={<Copy size={15} />} variant="ghost" size="sm" formId="role-duplicate" title="Duplicar rol" description={`Crea un rol propio con los ${role.permissions.length} permisos de ${role.name}. Luego puedes ajustarlos.`} submitLabel="Duplicar rol" action={createRole} initial={initial} onDone={(state) => state.code && router.push(`/admin/roles?rol=${state.code}`)}>
+      {() => (
+        <>
+          <input type="hidden" name="copy_from" value={role.code} />
+          <input type="hidden" name="scope" value={role.scope} />
+          <TextField label="Nombre" name="name" required maxLength={120} defaultValue={`${role.name} (copia)`} />
+          <TextArea label="Para qué sirve" name="description" rows={2} required maxLength={250} defaultValue={role.description ?? undefined} />
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
 function RoleEditActions({ role }: { role: TeamRole }) {
   const router = useRouter();
-  if (!role.custom) return null;
+  if (!role.custom) return <RoleDuplicateAction role={role} />;
   return (
     <div className="flex gap-1.5">
+      <RoleDuplicateAction role={role} />
       <PanelAction<RoleActionState> label="Editar" icon={<Pencil size={15} />} variant="ghost" size="sm" formId="role-edit" title="Editar rol" description={`Alcance: ${SCOPE_LABEL[role.scope]}`} submitLabel="Guardar cambios" action={updateRole} initial={initial} onDone={() => router.refresh()}>
         {() => (
           <>
@@ -83,7 +101,7 @@ function PermissionSwitch({ checked, onChange, disabled, label, code }: { checke
   );
 }
 
-export function RolesWorkspace({ roles, catalog, initial: initialCode }: { roles: TeamRole[]; catalog: PermissionModule[]; initial?: string }) {
+export function RolesWorkspace({ roles, catalog, initial: initialCode, detail }: { roles: TeamRole[]; catalog: PermissionModule[]; initial?: string; detail?: RoleDetail | null }) {
   const router = useRouter();
   const [selected, setSelected] = useState(initialCode && roles.some((role) => role.code === initialCode) ? initialCode : roles[0]?.code);
   const role = roles.find((item) => item.code === selected) ?? roles[0];
@@ -122,6 +140,7 @@ export function RolesWorkspace({ roles, catalog, initial: initialCode }: { roles
                       onClick={() => {
                         setSelected(item.code);
                         setNotice(null);
+                        router.replace(`/admin/roles?rol=${item.code}`, { scroll: false });
                       }}
                       className={cn(
                         "group/role flex w-full items-center gap-3 rounded-tile border px-3 py-2.5 text-left transition-[background-color,border-color,transform,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
@@ -198,6 +217,7 @@ export function RolesWorkspace({ roles, catalog, initial: initialCode }: { roles
               );
             })}
           </div>
+          {detail && detail.code === role.code && <RoleDetailPanels detail={detail} catalog={catalog} granted={granted} />}
         </section>
       </ToneScope>
     </div>

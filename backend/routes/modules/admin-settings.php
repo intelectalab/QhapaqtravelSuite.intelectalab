@@ -34,7 +34,7 @@ Route::middleware('permission:admin.settings.manage')->group(function (): void {
     Route::get('settings/sequences', [SettingsController::class, 'sequences'])->name('settings.sequences.index');
     Route::post('settings/sequences', [SettingsController::class, 'storeSequence'])->name('settings.sequences.store');
     Route::patch('settings/sequences', [SettingsController::class, 'updateSequences'])->name('settings.sequences.update');
-    Route::patch('settings/{section}', [SettingsController::class, 'update'])->name('settings.update');
+    Route::patch('settings/{section}', [SettingsController::class, 'update'])->where('section', '(?!own-reviews$)[A-Za-z0-9_-]+')->name('settings.update');
 
     Route::get('notifications/rules', [NotificationController::class, 'rules'])->name('notifications.rules.index');
     Route::patch('notifications/rules/{event}', [NotificationController::class, 'rule'])->name('notifications.rules.update');

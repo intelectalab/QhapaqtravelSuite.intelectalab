@@ -1,8 +1,9 @@
 "use client";
 
-import { CircleCheck, CircleOff, Eye, Hourglass, Infinity as InfinityIcon, Ticket } from "lucide-react";
+import { CircleCheck, CircleOff, Hourglass, Infinity as InfinityIcon, Ticket } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
+import { RowIcon } from "@/components/table/RowActions";
 import type { Column, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { formatMoney } from "@/lib/format";
@@ -77,9 +78,7 @@ const columns: Column<PlanSummary>[] = [
     mobile: "hidden",
     align: "right",
     cell: (plan) => (
-      <Link href={planHref(plan)} aria-label={`Ver el plan ${plan.name}`} title="Ver detalle" className="ml-auto grid h-8 w-8 place-items-center rounded-[9px] bg-accent/10 text-accent">
-        <Eye size={16} />
-      </Link>
+      <RowIcon tone="view" label={`Ver el plan ${plan.name}`} href={planHref(plan)} />
     ),
   },
 ];

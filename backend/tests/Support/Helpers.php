@@ -315,6 +315,20 @@ function withPlatformSeeingTenant(Closure $fn, ?Tenant $tenant = null): mixed
     }
 }
 
+function webTravelers(int $adults, int $children = 0, int $infants = 0): array
+{
+    $rows = [];
+    $types = [['ADT', $adults, 30], ['CHD', $children, 8], ['INF', $infants, 1]];
+    foreach ($types as [$type, $count, $age]) {
+        for ($i = 1; $i <= $count; $i++) {
+            $n = count($rows) + 1;
+            $rows[] = ['first_name' => "Viajero{$n}", 'last_name' => "Prueba {$type}", 'birth_date' => now()->subYears($age)->subMonths(2)->toDateString(), 'doc_type' => 'Pasaporte', 'doc_number' => sprintf('PX%07d', 1000 + $n), 'nationality' => 'Perú'];
+        }
+    }
+
+    return $rows;
+}
+
 function siteOf(string $subdomain = 'andes', array $extra = []): array
 {
     return ['X-Forwarded-Host' => $subdomain.'.'.config('sites.domain'), ...$extra];

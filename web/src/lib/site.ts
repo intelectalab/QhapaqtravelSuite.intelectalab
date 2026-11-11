@@ -1,3 +1,5 @@
+import type { SiteBannerData, SiteDesign } from "@/lib/site-design";
+
 export interface Money {
   amount: number;
   currency: string;
@@ -33,9 +35,11 @@ export interface SiteProfile {
     registry: string | null;
   };
   branding: { brand: string; accent: string; menu: string };
+  design: SiteDesign;
+  preview?: boolean;
   sedes: SiteSede[];
   fx: { rate: number; date: string } | null;
-  banner: { title: string; body: string } | null;
+  banner: SiteBannerData | null;
   policies: { cancel: string | null; modify: string | null; refund: string | null; hold_minutes: number };
   claims_days: number;
 }
@@ -145,6 +149,43 @@ export interface HomeData {
   departures: Departure[];
   reviews: ReviewBlock;
   stats: { products: number; destinations: number; departures: number };
+}
+
+export interface PostSummary {
+  slug: string;
+  title: string;
+  excerpt: string;
+  published_at: string | null;
+  author: string | null;
+  minutes: number;
+}
+
+export interface PostDetail extends PostSummary {
+  body: string;
+  seo: { title: string | null; description: string | null };
+  related: PostSummary[];
+}
+
+export interface SitePage {
+  slug: string;
+  title: string;
+  type: string;
+  body: string;
+  source: "cms" | "agency";
+  updated_at: string | null;
+  seo: { title: string | null; description: string | null };
+}
+
+export interface AboutData {
+  slug: "nosotros";
+  body: string | null;
+  stats: { products: number; destinations: number; trips: number; rating: { avg: number; count: number } | null };
+}
+
+export interface OffersData {
+  offers: ProductCard[];
+  codes: { code: string; name: string; value: number; percent: boolean; ends_at: string; product: { slug: string; name: string } }[];
+  departures: Departure[];
 }
 
 export interface DestinationDetail {
@@ -346,6 +387,51 @@ export interface SiteCart {
   fx: number;
 }
 
+export interface CheckoutTerms {
+  currency: string;
+  total: string;
+  modes: { value: "total" | "adelanto"; label: string; amount: string; balance?: string; balance_due?: string; pct?: number }[];
+  adelanto_unavailable: string | null;
+  methods: { value: string; label: string }[];
+  bank_accounts: { bank: string | null; name: string; currency: string; account_number: string; cci: string | null }[];
+  group: { adt: number; chd: number; inf: number };
+  first_date: string;
+  companions: { when: string; require_document: boolean };
+  items: {
+    line: number;
+    product: { id: string; slug: string; name: string; min_age: number };
+    date: string;
+    pax: { adt: number; chd: number; inf: number };
+    total: string;
+    deposit_pct: number;
+    deposit: string;
+    balance_due: string;
+    payment_note: string | null;
+    pickup: { points: { label: string; kind: string; requires_address: boolean }[]; ask_flight: boolean; text: string | null } | null;
+    comments: number | null;
+    cancellation: { text: string; tiers: string } | null;
+  }[];
+}
+
+export const TEST_CARDS: Record<string, "ok" | "51"> = { "4111111111111111": "ok", "5555555555554444": "ok", "378282246310005": "ok", "36227206271667": "ok", "4000000000000002": "51" };
+
+export function tokenizeCard(raw: string): { token: string; masked: string; valid: boolean } {
+  const digits = raw.replace(/\D/g, "");
+  let sum = 0;
+  for (let i = 0; i < digits.length; i++) {
+    let digit = Number(digits[digits.length - 1 - i]);
+    if (i % 2 === 1) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    sum += digit;
+  }
+  const valid = digits.length >= 13 && digits.length <= 19 && sum % 10 === 0;
+  const last4 = digits.slice(-4).padStart(4, "0");
+  const code = TEST_CARDS[digits] ?? "14";
+  return { token: `tok_${code}_${last4}`, masked: `•••• ${last4}`, valid };
+}
+
 export interface SiteOrder {
   code: string;
   status: string;
@@ -355,6 +441,15 @@ export interface SiteOrder {
   discount: string;
   currency: string;
   hold_expires_at: string | null;
+  pay_mode: "total" | "anticipo";
+  deposit_pct: number;
+  amount_due_now: string;
+  balance_due_date: string | null;
+  due: string;
+  methods: { value: string; label: string }[];
+  bank_accounts: CheckoutTerms["bank_accounts"];
+  passengers: { name: string; type: string }[];
+  attempts: { at: string; method: string; card: string | null; operation: string | null; result: "aprobado" | "rechazado" | "por_validar"; code: string | null; message: string | null; amount: string | null; currency: string | null }[];
   reservations: {
     code: string;
     status: string;
@@ -363,7 +458,7 @@ export interface SiteOrder {
     total: string;
     currency: string;
     services: { name: string; date: string; time: string | null; pax: number; status: string; confirmation: string | null }[];
-    receivables: { code: string; concept: string; amount: string; paid: string; currency: string; status: string; due_date: string }[];
+    receivables: { code: string; kind: string; concept: string; amount: string; paid: string; currency: string; status: string; due_date: string }[];
     vouchers: { code: string; label: string; date: string; status: string }[];
   }[];
 }
@@ -374,4 +469,98 @@ export function cartCookie(agencia: string): string {
 
 export function orderCookie(code: string): string {
   return `qhapaq_order_${code}`;
+}
+
+export const SITE_COUNTRIES = ["Perú", "Argentina", "Bolivia", "Brasil", "Chile", "Colombia", "Ecuador", "México", "Estados Unidos", "Canadá", "España", "Francia", "Alemania", "Reino Unido", "Italia", "Otro"].map((value) => ({ value, label: value }));
+
+export const SITE_DOC_TYPES = [{ value: "DNI", label: "DNI" }, { value: "CE", label: "Carné ext." }, { value: "Pasaporte", label: "Pasaporte" }];
+
+export const WISHLIST_STORAGE_KEY = "qts_site_wishlist";
+
+export function accountCookie(agencia: string): string {
+  return `qhapaq_account_${agencia}`;
+}
+
+export interface AccountMoney {
+  currency: string;
+  amount: string;
+}
+
+export interface AccountMe {
+  code: string;
+  name: string;
+  email: string | null;
+  login_email: string;
+  phone: string | null;
+  country: string | null;
+  city: string | null;
+  document: string | null;
+  birth_date: string | null;
+  locale: string;
+  verified: boolean;
+  newsletter: boolean;
+  passenger: boolean;
+  arco_types: { value: string; label: string; days: number }[];
+  arco_requests: { code: string; subject: string; status: string; due_date: string | null; created_at: string; resolution: string | null }[];
+  portal_url: string;
+}
+
+export interface AccountReservation {
+  code: string;
+  title: string;
+  status: string;
+  from: string;
+  to: string;
+  total: string;
+  currency: string;
+  balance: AccountMoney[];
+  vouchers: number;
+  order: string | null;
+}
+
+export interface AccountReceivable {
+  code: string;
+  kind: string;
+  concept: string;
+  reservation: string;
+  reservation_title: string;
+  amount: string;
+  paid: string;
+  pending: string;
+  payable: string;
+  currency: string;
+  due_date: string;
+  status: string;
+  can_pay: boolean;
+}
+
+export interface AccountVoucher {
+  code: string;
+  label: string;
+  date: string;
+  status: string;
+  reservation: string;
+}
+
+export interface AccountReservationDetail {
+  code: string;
+  title: string;
+  status: string;
+  from: string;
+  to: string;
+  total: string;
+  currency: string;
+  order: string | null;
+  services: { name: string; date: string; time: string | null; pax: number; status: string; confirmation: string | null }[];
+  passengers: { name: string; type: string; pending: boolean; lead: boolean }[];
+  receivables: AccountReceivable[];
+  vouchers: AccountVoucher[];
+  payments: { code: string; method: string; amount: string; currency: string; status: string; date: string }[];
+}
+
+export interface AccountReceivables {
+  items: AccountReceivable[];
+  totals: { payable: AccountMoney[]; pending: AccountMoney[] };
+  methods: { value: string; label: string }[];
+  bank_accounts: CheckoutTerms["bank_accounts"];
 }

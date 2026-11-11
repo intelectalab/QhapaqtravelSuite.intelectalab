@@ -121,7 +121,8 @@ final class QuoteDirectory
     {
         $last = '(select a.status from quote_internal_approvals a where a.quote_version_id = v.id order by a.created_at desc limit 1)';
         $required = '(v.discount_pct > ? or v.margin_pct < ?)';
-        $limits = [QuoteLifecycle::DISCOUNT_LIMIT, QuoteLifecycle::MARGIN_FLOOR];
+        $policy = QuoteLifecycle::currentLimits();
+        $limits = [$policy['discount_limit'], $policy['margin_floor']];
 
         match ($state) {
             'pend' => $query->whereRaw("{$last} = 'pendiente'"),
@@ -246,6 +247,10 @@ final class QuoteDirectory
         $items = DB::table('quote_items as i')->join('catalog_products as p', 'p.id', '=', 'i.product_id')->whereIn('i.quote_version_id', $versions->pluck('id'))->orderBy('i.line_no')
             ->get(['i.quote_version_id', 'i.line_no', 'i.service_date', 'i.qty', 'i.pax', 'i.segment', 'i.unit_cost', 'i.unit_price', 'i.cost_total', 'i.sale_total', 'p.code as product_code', 'p.name as product_name'])
             ->groupBy('quote_version_id');
+        $sections = app(QuoteSections::class);
+        $extras = $sections->versionExtras($versions);
+        $seasons = DB::table('quote_items')->whereIn('quote_version_id', $versions->pluck('id'))->get(['quote_version_id', 'line_no', 'season_factor'])
+            ->keyBy(fn (object $item): string => $item->quote_version_id.'#'.$item->line_no);
 
         return [
             ...$this->summary($row, $this->today(), $viewer),
@@ -267,8 +272,18 @@ final class QuoteDirectory
                 'register_approval' => $viewer->can('reservations.create'),
             ],
             'contact' => DB::table('crm_clients')->where('id', $row->client_id)->first(['email', 'phone']),
-            'versions' => $versions->map(fn (object $version): array => $this->version($version, collect($items->get($version->id, [])), $seeMargin))->values(),
+            'versions' => $versions->map(fn (object $version): array => [
+                ...$this->version($version, collect($items->get($version->id, [])), $seeMargin),
+                'conditions' => $extras[$version->id]->conditions ?? null,
+                'markup_pct' => $seeMargin && isset($extras[$version->id]) ? (string) $extras[$version->id]->markup_pct : null,
+                'fx_rate' => isset($extras[$version->id]) ? (string) $extras[$version->id]->fx_rate : null,
+                'frozen_at' => $extras[$version->id]->frozen_at ?? null,
+                'internal_status' => $extras[$version->id]->internal_status ?? null,
+                'item_count' => collect($items->get($version->id, []))->count(),
+                'seasons' => collect($items->get($version->id, []))->mapWithKeys(fn (object $item): array => [(int) $item->line_no => isset($seasons[$version->id.'#'.$item->line_no]) && $seasons[$version->id.'#'.$item->line_no]->season_factor !== null ? (string) $seasons[$version->id.'#'.$item->line_no]->season_factor : null])->all(),
+            ])->values(),
             'history' => DB::table('audit_events')->where('entity', 'Cotización')->where('entity_id', $row->code)->orderByDesc('occurred_at')->limit(20)->get(['action', 'before_value', 'after_value', 'occurred_at']),
+            ...$sections->extras($row),
         ];
     }
 

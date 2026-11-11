@@ -18,6 +18,7 @@ function ecoPendingOrder(): string
         'billing_type' => 'Boleta',
         'terms' => true,
         'privacy' => true,
+        'passengers' => webTravelers(2),
     ], siteOf(extra: critical()))->assertCreated()->json('data.code');
 }
 

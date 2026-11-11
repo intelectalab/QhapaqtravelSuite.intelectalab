@@ -1,14 +1,15 @@
 "use client";
 
 import { Check, Minus, SearchX, X } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MetricCard, MetricCardRow } from "@/components/ui/MetricCard";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import { useStoredValue } from "@/lib/useStoredValue";
 import { Pager } from "./Pager";
-import { applyQuery, countActiveFilters, parseRows, SORT_DIRECTIONS, type TableQuery } from "./query";
+import { openRow, ROWS_OPEN } from "./rowOpen";
+import { applyQuery, countActiveFilters, LONG_PAGE, parseRows, SORT_DIRECTIONS, type TableQuery } from "./query";
 import { Chip, DrawerBar, FilterIcon, SearchBox, SortIcon, ToggleButton } from "./Toolbar";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "./types";
 
@@ -19,6 +20,7 @@ interface DataTableProps<T> {
   getKey: (row: T) => string;
   entityLabel: string;
   searchText?: (row: T) => string;
+  initialSearch?: string;
   searchPlaceholder?: string;
   metrics?: MetricFilter<T>[];
   filters?: FilterConfig<T>[];
@@ -37,6 +39,7 @@ export function DataTable<T>({
   getKey,
   entityLabel,
   searchText,
+  initialSearch,
   searchPlaceholder,
   metrics = [],
   filters = [],
@@ -45,11 +48,12 @@ export function DataTable<T>({
   toolbarEnd,
   emptyTitle = "No hay coincidencias",
 }: DataTableProps<T>) {
-  const [query, setQuery] = useState<TableQuery>(EMPTY_QUERY);
+  const [query, setQuery] = useState<TableQuery>(() => ({ ...EMPTY_QUERY, search: initialSearch ?? "" }));
   const [open, setOpen] = useState<"filters" | "sort" | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useStoredValue(`table-rows:${screen}`, parseRows, String);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const card = useRef<HTMLDivElement>(null);
 
   const update = (patch: Partial<TableQuery>) => {
     setQuery((current) => ({ ...current, ...patch }));
@@ -78,6 +82,11 @@ export function DataTable<T>({
     setPageSize(value);
     setPage(1);
   };
+  const goPage = (next: number) => {
+    setPage(next);
+    const box = card.current;
+    if (box && box.getBoundingClientRect().top < 0) box.scrollIntoView({ block: "start", behavior: "smooth" });
+  };
   const chooseSort = (id: string) => {
     const option = sorts.find((sort) => sort.id === id);
     update({ sortId: id, sortDir: option ? SORT_DIRECTIONS[option.type ?? "text"].first : "asc" });
@@ -105,22 +114,25 @@ export function DataTable<T>({
         </MetricCardRow>
       )}
 
-      <div className="relative rounded-card border border-line bg-surface shadow-card max-md:border-0 max-md:bg-transparent max-md:shadow-none">
-        <div className="flex items-center gap-2 border-b border-line px-3.5 py-3 max-md:border-0 max-md:px-0">
+      <div ref={card} className="relative scroll-mt-20 rounded-card border border-line bg-surface shadow-card max-md:border-0 max-md:bg-transparent max-md:shadow-none">
+        <div className="sticky top-16 z-20 flex items-center gap-2 rounded-t-card border-b border-line bg-surface/95 px-3.5 py-3 backdrop-blur-md max-md:border-0 max-md:bg-bg/95 max-md:px-0">
           <SearchBox value={query.search} onChange={(search) => update({ search })} placeholder={searchPlaceholder} />
-          {filters.length > 0 && (
-            <ToggleButton active={open === "filters"} onClick={() => setOpen(open === "filters" ? null : "filters")} icon={FilterIcon} label="Filtro" badge={activeFilters} collapseLabel />
-          )}
-          {sorts.length > 0 && (
-            <ToggleButton
-              active={open === "sort"}
-              onClick={() => setOpen(open === "sort" ? null : "sort")}
-              icon={SortIcon}
-              label={activeSort ? `Orden: ${activeSort.label}` : "Ordenar por"}
-              collapseLabel
-            />
-          )}
-          <div className="ml-auto hidden items-center gap-2 md:flex">{toolbarEnd}</div>
+          {visible.length > 0 && <Pager placement="top" page={currentPage} pages={pages} total={visible.length} rows={pageSize} onPage={goPage} onRows={chooseRows} entityLabel={entityLabel} />}
+          <div className="ml-auto flex flex-none items-center gap-2">
+            {toolbarEnd && <div className="hidden items-center gap-2 md:flex">{toolbarEnd}</div>}
+            {filters.length > 0 && (
+              <ToggleButton active={open === "filters"} onClick={() => setOpen(open === "filters" ? null : "filters")} icon={FilterIcon} label="Filtro" badge={activeFilters} collapseLabel />
+            )}
+            {sorts.length > 0 && (
+              <ToggleButton
+                active={open === "sort"}
+                onClick={() => setOpen(open === "sort" ? null : "sort")}
+                icon={SortIcon}
+                label={activeSort ? `Orden: ${activeSort.label}` : "Ordenar por"}
+                collapseLabel
+              />
+            )}
+          </div>
         </div>
 
         {open === "filters" && (
@@ -203,7 +215,7 @@ export function DataTable<T>({
                     ))}
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className={ROWS_OPEN} onClick={openRow}>
                   {pageRows.map((row) => {
                     const key = getKey(row);
                     const isSelected = selected.has(key);
@@ -215,7 +227,7 @@ export function DataTable<T>({
                           </td>
                         )}
                         {columns.map((column) => (
-                          <td key={column.id} className={cn("whitespace-nowrap px-3 py-2.5 align-middle", column.align === "right" && "text-right", column.wideOnly && "max-[1600px]:hidden", column.className)}>
+                          <td key={column.id} data-row-title={column === titleColumn ? "" : undefined} className={cn("whitespace-nowrap px-3 py-2.5 align-middle", column.align === "right" && "text-right", column.wideOnly && "max-[1600px]:hidden", column.className)}>
                             {column.cell(row)}
                           </td>
                         ))}
@@ -226,10 +238,12 @@ export function DataTable<T>({
               </table>
             </div>
 
-            <ul className="flex flex-col gap-2.5 md:hidden">
+            <ul className={cn(ROWS_OPEN, "flex flex-col gap-2.5 md:hidden")} onClick={openRow}>
               {pageRows.map((row) => (
                 <li key={getKey(row)} className="rounded-tile border border-line bg-surface p-3.5">
-                  <div className="mb-2.5">{titleColumn.cell(row)}</div>
+                  <div className="mb-2.5" data-row-title="">
+                    {titleColumn.cell(row)}
+                  </div>
                   <dl className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-line-2 pt-2.5">
                     {detailColumns.map((column) => (
                       <div key={column.id} className="min-w-0">
@@ -244,7 +258,7 @@ export function DataTable<T>({
           </>
         )}
 
-        <Pager page={currentPage} pages={pages} total={visible.length} rows={pageSize} onPage={setPage} onRows={chooseRows} entityLabel={entityLabel} />
+        {(visible.length === 0 || pageRows.length > LONG_PAGE) && <Pager page={currentPage} pages={pages} total={visible.length} rows={pageSize} onPage={goPage} onRows={chooseRows} entityLabel={entityLabel} />}
 
         {selectionActions && selectedRows.length > 0 && (
           <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-2xl bg-fg py-2 pl-4 pr-2 text-[13.5px] text-surface shadow-[0_18px_40px_-12px_rgb(22_24_42/0.45)]">

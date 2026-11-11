@@ -7,6 +7,7 @@ namespace Database\Seeders\Modules;
 use App\Domain\Platform\Models\Tenant;
 use Database\Support\KitSeeds;
 use Database\Support\SeedsTenant;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 final class ChannelsEcommerceSeeder
@@ -100,6 +101,40 @@ final class ChannelsEcommerceSeeder
                 'created_at' => $this->moment($seed['date']),
                 'updated_at' => $this->moment($seed['date']),
             ]);
+            $this->attempt($seed);
         }
+    }
+
+    private function attempt(array $seed): void
+    {
+        $result = ['confirmado' => 'aprobado', 'pago_rechazado' => 'rechazado', 'pago_por_validar' => 'por_validar'][$seed['status']] ?? null;
+        $order = DB::table('channel_ecom_orders')->where('code', $seed['id'])->first(['id', 'ordered_at']);
+
+        if ($result === null || $order === null || DB::table('channel_ecom_payment_attempts')->where('order_id', $order->id)->exists()) {
+            return;
+        }
+
+        DB::table('channel_ecom_payment_attempts')->insert([
+            'tenant_id' => $this->tenant->getKey(),
+            'order_id' => $order->id,
+            'attempted_at' => Carbon::parse($order->ordered_at)->addMinutes(4),
+            'method' => $result === 'por_validar' ? 'transferencia' : 'tarjeta',
+            'card_masked' => $result === 'por_validar' ? null : ($result === 'aprobado' ? '•••• 4242' : '•••• 0002'),
+            'operation_ref' => $result === 'por_validar' ? 'OP-'.substr($seed['id'], -5) : null,
+            'result' => $result,
+            'gateway_code' => match ($result) {
+                'aprobado' => '00',
+                'rechazado' => '51',
+                default => null,
+            },
+            'message' => match ($result) {
+                'aprobado' => 'Aprobado',
+                'rechazado' => 'Fondos insuficientes. Prueba con otra tarjeta u otro medio de pago.',
+                default => 'Pago informado; lo validamos en un plazo de 4 horas hábiles.',
+            },
+            'gateway_txn_id' => $result === 'aprobado' ? 'SBX-'.substr($seed['id'], -5) : null,
+            'amount' => $seed['total'],
+            'currency' => $seed['currency'],
+        ]);
     }
 }

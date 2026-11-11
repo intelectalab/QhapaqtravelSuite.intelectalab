@@ -77,7 +77,7 @@ export function DestinationsExplorer({ overview }: { overview: DestinationsOverv
               </div>
               {overview.can.manage && (
                 <div className="flex flex-wrap gap-1.5">
-                  {!["Atracción", "Ruta"].includes(selected.type) && <DestinationCreateAction overview={overview} parent={selected} />}
+                  {!["Atracción", "Ruta"].includes(selected.type) && <DestinationCreateAction destinations={overview.destinations} types={overview.options.types} parent={selected} />}
                   <DestinationEditAction overview={overview} node={selected} />
                   <DestinationDeleteAction node={selected} onDeleted={() => setSelectedRef(selected.parent?.ref ?? nodes[0]?.ref ?? "")} />
                 </div>

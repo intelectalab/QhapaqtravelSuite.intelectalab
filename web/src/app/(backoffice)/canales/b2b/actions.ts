@@ -15,6 +15,21 @@ export async function saveAgency(_state: StepResult, form: FormData): Promise<St
   return result;
 }
 
+export async function b2bRateStep(_state: StepResult, form: FormData): Promise<StepResult> {
+  const product = encodeURIComponent(String(form.get("product") ?? ""));
+  const agency = encodeURIComponent(String(form.get("agency") ?? ""));
+  const path = `/catalog/products/${product}/b2b-rates/${agency}`;
+  const result =
+    form.get("step") === "remove"
+      ? await sendStep(path, "DELETE", {}, "No pudimos quitar la tarifa.")
+      : await sendStep(path, "PUT", { ...formValues(form, ["net_price", "currency", "commission_pct", "valid_to", "conditions", "restrictions"]), credit_allowed: form.get("credit_allowed") === "on" }, "No pudimos guardar la tarifa.");
+  if (result.done) {
+    revalidatePath("/canales/b2b");
+    revalidatePath("/catalogo/productos", "layout");
+  }
+  return result;
+}
+
 export async function changeAgencyStatus(_state: StepResult, form: FormData): Promise<StepResult> {
   const path = `/channels/b2b/agencies/${encodeURIComponent(String(form.get("code") ?? ""))}`;
   const status = String(form.get("status") ?? "");

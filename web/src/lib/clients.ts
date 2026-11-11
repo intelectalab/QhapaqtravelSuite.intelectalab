@@ -96,6 +96,43 @@ export interface ClientDetail extends ClientRow {
   overduePen: number;
   companions: { name: string; document: string; diet: string }[];
   currentTrip: { trip: ClientTrip; days: TripDay[]; dayNumber: number; incident: { id: string; title: string } | null } | null;
+  arcoRequests: { code: string; subject: string; dueDate: string | null }[];
+  contacts: ClientContact[];
+  sourceLead: { code: string; full_name: string; source_code: string | null } | null;
+  openOpportunities: { code: string; title: string; stage: string; amount: string | null; currency: string; expected_close_date: string | null }[];
+  nextActivities: { code: string; type: string; subject: string; status: string; due_at: string | null; owner: string | null }[];
+  satisfactionDetail: { last: number; average: number; count: number; comment: string | null } | null;
+  destinations: string[];
+  openCases: { code: string; subject: string; priority: string | null; status: string }[];
+  cancelledTrips: number;
+}
+
+export interface ClientContact {
+  id: string;
+  name: string;
+  role: string | null;
+  email: string | null;
+  phone: string | null;
+  is_primary: boolean;
+}
+
+export const CLIENT_TABS = ["leads", "opportunities", "quotes", "reservations", "passengers", "receivables", "payments", "invoices", "vouchers", "communications", "activities", "timeline", "audit"] as const;
+export type ClientTab = (typeof CLIENT_TABS)[number];
+
+export interface ClientTabData {
+  leads: { code: string; full_name: string; source_code: string | null; interest_code: string | null; destination_label: string | null; score: number | null; status: string; created_at: string }[];
+  opportunities: { code: string; title: string; stage: string; amount: string | null; currency: string; probability: number | null; expected_close_date: string | null; closed_at: string | null; owner: string | null }[];
+  quotes: { code: string; title: string; status: string; version: number; valid_until: string; currency: string; total: string | null; created_at: string }[];
+  reservations: { code: string; title: string; status: string; channel: string; travel_from: string; travel_to: string; total: string; currency: string; pax: number; paid: string }[];
+  passengers: { name: string; document: string | null; pax_type: string; nationality: string | null; birth_date: string | null; notes: string | null; relationship: string | null; reservations: string[] }[];
+  receivables: { code: string; concept: string; amount: string; paid_amount: string; currency: string; due_date: string; status: string; reservation: string }[];
+  payments: { code: string; paid_on: string; method: string; reference: string | null; amount: string; currency: string; status: string; reservation: string }[];
+  invoices: { number: string; doc_type: string; issue_date: string; total_amount: string; currency: string; status: string; reservation: string | null }[];
+  vouchers: { code: string; service_label: string; service_date: string; pax: number; status: string; version: number; provider: string | null; reservation: string }[];
+  communications: { code: string; event_code: string | null; channel: string; recipient_address: string | null; subject: string | null; status: string; last_error: string | null; sent_at: string | null; created_at: string }[];
+  activities: { code: string; type: string; subject: string; status: string; due_at: string | null; completed_at: string | null; related_type: string; owner: string | null }[];
+  timeline: { kind: string; at: string; title: string; code: string; href: string | null }[];
+  audit: { id: string; entity: string; entity_id: string; action: string; before: string | null; after: string | null; actor_type: string; occurred_at: string; actor: string | null }[];
 }
 
 export interface ApiClient {
@@ -140,6 +177,15 @@ export interface ApiClientDetail extends ApiClient {
   companions: { name: string; document: string; diet: string }[];
   current_trip: { trip: ApiTrip; days: TripDay[]; day_number: number; incident: { code: string; title: string } | null } | null;
   portal_access?: ApiPortalAccess | null;
+  arco_requests?: { code: string; subject: string; due_date: string | null }[];
+  contacts?: ClientContact[];
+  source_lead?: ClientDetail["sourceLead"];
+  open_opportunities?: ClientDetail["openOpportunities"];
+  next_activities?: ClientDetail["nextActivities"];
+  satisfaction_detail?: ClientDetail["satisfactionDetail"];
+  destinations?: string[];
+  open_cases?: ClientDetail["openCases"];
+  cancelled_trips?: number;
 }
 
 const SEGMENT_LABEL: Record<string, string> = {
@@ -198,6 +244,15 @@ export function toClientDetail(client: ApiClientDetail, today: string): ClientDe
     overduePen: client.overdue_pen,
     companions: client.companions,
     portalAccess: toPortalAccess(client.portal_access),
+    arcoRequests: (client.arco_requests ?? []).map((request) => ({ code: request.code, subject: request.subject, dueDate: request.due_date })),
+    contacts: client.contacts ?? [],
+    sourceLead: client.source_lead ?? null,
+    openOpportunities: client.open_opportunities ?? [],
+    nextActivities: client.next_activities ?? [],
+    satisfactionDetail: client.satisfaction_detail ?? null,
+    destinations: client.destinations ?? [],
+    openCases: client.open_cases ?? [],
+    cancelledTrips: client.cancelled_trips ?? 0,
     currentTrip: current
       ? { trip: toTrip(current.trip), days: current.days, dayNumber: current.day_number, incident: current.incident ? { id: current.incident.code, title: current.incident.title } : null }
       : null,

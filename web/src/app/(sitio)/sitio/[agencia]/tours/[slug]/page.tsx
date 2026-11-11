@@ -8,7 +8,8 @@ import { Breadcrumbs } from "@/features/site/Hero";
 import { AvailabilityCalendar, BookingPanel, BookingProvider, MobileBookingBar } from "@/features/site/ProductBooking";
 import { ReviewsSection } from "@/features/site/Reviews";
 import { Scenery } from "@/features/site/Scenery";
-import { getSiteProduct, siteBase, siteLocale } from "@/lib/server/site";
+import { WishButton } from "@/features/site/Account";
+import { accountFetch, accountToken, getSiteProduct, siteBase, siteLocale } from "@/lib/server/site";
 import { siteHref } from "@/lib/site";
 import { siteText } from "@/lib/site-i18n";
 
@@ -21,7 +22,9 @@ export async function generateMetadata({ params }: PageProps<"/sitio/[agencia]/t
 export default async function ProductPage({ params, searchParams }: PageProps<"/sitio/[agencia]/tours/[slug]">) {
   const [{ agencia, slug }, search] = await Promise.all([params, searchParams]);
   const fecha = typeof search.fecha === "string" ? search.fecha : undefined;
-  const [detail, base, locale] = await Promise.all([getSiteProduct(agencia, slug), siteBase(agencia), siteLocale()]);
+  const [detail, base, locale, token] = await Promise.all([getSiteProduct(agencia, slug), siteBase(agencia), siteLocale(), accountToken(agencia)]);
+  const wishlist = token ? await accountFetch<{ items: { slug: string }[] }>(agencia, "/me/wishlist") : null;
+  const signedIn = wishlist?.ok === true;
   const site = siteText(locale);
   const t = site.product;
   const { product } = detail;
@@ -66,6 +69,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
               <span className="[&_*]:text-white/90">
                 <RatingLine rating={product.rating} />
               </span>
+              <WishButton slug={product.slug} signedIn={signedIn} initial={wishlist?.data?.items.some((item) => item.slug === product.slug) ?? false} className="h-9 border-white/25 bg-white/10 text-white backdrop-blur hover:text-white" />
             </div>
           </div>
         </Scenery>

@@ -37,8 +37,45 @@ export async function setConsent(channel: string, granted: boolean): Promise<Ste
   return result;
 }
 
+export async function requestDataRights(_state: StepResult, form: FormData): Promise<StepResult> {
+  const result = await sendStep("/public/me/arco-requests", "POST", formValues(form, ["type", "detail"]), "No pudimos enviar tu solicitud.");
+  if (result.done) refresh("/portal/datos");
+  return result;
+}
+
+export async function sendFeedback(_state: StepResult, form: FormData): Promise<StepResult> {
+  const result = await sendStep("/portal/passenger/feedback", "POST", formValues(form, ["trip", "type", "rating", "service", "text"]), "No pudimos enviar tu comentario.");
+  if (result.done) refresh("/portal/comentarios", "/portal/mensajes");
+  return result;
+}
+
+export async function sendReview(_state: StepResult, form: FormData): Promise<StepResult> {
+  const subratings = Object.fromEntries([...form.entries()].filter(([key, value]) => key.startsWith("sub_") && typeof value === "string" && value !== "").map(([key, value]) => [key.slice(4), Number(value)]));
+  const result = await sendStep("/portal/passenger/reviews", "POST", { ...formValues(form, ["trip", "product", "stars", "title", "body", "lang", "country"]), subratings, consent_publish: form.get("consent_publish") === "on" }, "No pudimos enviar tu reseña.");
+  if (result.done) refresh("/portal/califica");
+  return result;
+}
+
 export async function sendMessage(_state: StepResult, form: FormData): Promise<StepResult> {
   const result = await sendStep("/portal/client/tickets", "POST", formValues(form, ["body", "subject", "conversation", "trip", "topic"]), "No pudimos enviar tu mensaje.");
   if (result.done) refresh("/portal/mensajes");
+  return result;
+}
+
+export async function ackAlert(code: string): Promise<StepResult> {
+  const result = await sendStep(`/portal/passenger/alerts/${encodeURIComponent(code)}/ack`, "POST", {}, "No pudimos confirmar la lectura.");
+  if (result.done) refresh("/portal/avisos");
+  return result;
+}
+
+export async function saveCompanions(trip: string, version: number, payload: Record<string, unknown>): Promise<StepResult> {
+  const result = await sendStep("/portal/passenger/companions", "PUT", { trip, lock_version: version, ...payload }, "No pudimos guardar los datos de los viajeros.");
+  if (result.done) refresh("/portal/viajeros", `/portal/viajes/${trip}`);
+  return result;
+}
+
+export async function requestQuoteChanges(code: string, _state: StepResult, form: FormData): Promise<StepResult> {
+  const result = await sendStep(`/portal/client/quotes/${encodeURIComponent(code)}/update-request`, "POST", formValues(form, ["message"]), "No pudimos enviar tu pedido.");
+  if (result.done) refresh("/portal/propuestas", `/portal/propuestas/${code}`, "/portal/mensajes");
   return result;
 }

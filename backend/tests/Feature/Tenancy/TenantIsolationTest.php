@@ -1,7 +1,9 @@
 <?php
 
+use App\Domain\Quotes\Support\QuoteDirectory;
 use App\Domain\Shared\Tenancy\Jobs\RestoreTenantContext;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Jobs\ExpireQuotes;
 use Database\Support\KitSchema;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -14,12 +16,22 @@ dataset('recursos_de_negocio', [
     'producto' => ['catalog_products', '/api/v1/catalog/products', 'CUS-PKG-5D4N'],
     'cuenta por cobrar' => ['fin_receivables', '/api/v1/finance/receivables', 'CXC-00716'],
     'orden operativa' => ['ops_orders', '/api/v1/ops/orders', 'OP-2026-0413'],
+    'oportunidad' => ['crm_opportunities', '/api/v1/crm/opportunities', 'OPP-0112'],
+    'comprobante' => ['fin_invoices', '/api/v1/finance/invoices', null, 'number'],
+    'incidencia' => ['ops_incidents', '/api/v1/ops/incidents', null],
+    'conversación' => ['collab_conversations', '/api/v1/inbox/conversations', null],
 ]);
 
 const PLATFORM_TABLES_WITHOUT_RLS = ['personal_access_tokens'];
 
-it('X-01 / T-01: un usuario de B recibe 404 RESOURCE_NOT_FOUND al pedir un recurso de A y queda auditado', function (string $table, string $route, string $code) {
-    expect(rowOf($table, $code))->not->toBeNull();
+function isolationCode(string $table, ?string $code, string $column): string
+{
+    return $code ?? (string) withinTenant(tenantA(), fn () => DB::table($table)->orderBy($column)->value($column));
+}
+
+it('X-01 / T-01: un usuario de B recibe 404 RESOURCE_NOT_FOUND al pedir un recurso de A y queda auditado', function (string $table, string $route, ?string $code, string $column = 'code') {
+    $code = isolationCode($table, $code, $column);
+    expect(withinTenant(tenantA(), fn () => DB::table($table)->where($column, $code)->exists()))->toBeTrue();
     actingAsTenantBAdmin();
 
     $this->getJson("{$route}/{$code}")
@@ -29,8 +41,8 @@ it('X-01 / T-01: un usuario de B recibe 404 RESOURCE_NOT_FOUND al pedir un recur
     expect(auditExists(['action' => 'acceso_denegado', 'entity_id' => "{$route}/{$code}"], tenantB()))->toBeTrue();
 })->with('recursos_de_negocio');
 
-it('X-01 / T-01: los listados de B no contienen filas de A', function (string $table, string $route) {
-    $rowsA = withinTenant(tenantA(), fn () => DB::table($table)->pluck('code', 'id')->all());
+it('X-01 / T-01: los listados de B no contienen filas de A', function (string $table, string $route, ?string $code = null, string $column = 'code') {
+    $rowsA = withinTenant(tenantA(), fn () => DB::table($table)->pluck($column, 'id')->all());
     expect($rowsA)->not->toBeEmpty();
     actingAsTenantBAdmin();
 
@@ -162,7 +174,18 @@ it('X-04: un job con tenant serializado corre con app.tenant_id de su tenant y l
         ->and(app(TenantContext::class)->has())->toBeFalse();
 });
 
-it('JOB-02 restaura el tenant antes de vencer cotizaciones', function () {})->todo('Fase B: no existe App\Domain\Quotes\Jobs\ExpireQuotes; cuando exista debe usar TenantAware (RestoreTenantContext).');
+it('JOB-02 restaura el tenant antes de vencer cotizaciones y no toca las de otra agencia', function () {
+    $job = new ExpireQuotes;
+    $job->tenantId = tenantB()->getKey();
+    $pendingA = fn () => withinTenant(tenantA(), fn () => DB::table('quote_quotes')->whereIn('status', QuoteDirectory::OPEN)->where('valid_until', '<', today()->toDateString())->count());
+    $before = $pendingA();
+
+    (new RestoreTenantContext)->handle($job, fn (ExpireQuotes $queued) => $queued->handle());
+
+    expect(collect($job->middleware())->contains(fn ($middleware) => $middleware instanceof RestoreTenantContext))->toBeTrue()
+        ->and($job->runResult)->toBe('Sin cotizaciones por vencer')
+        ->and($pendingA())->toBe($before);
+});
 
 it('cache y locks usan el prefijo t:{tenant_id}: del tenant del contexto', function () {
     app(TenantContext::class)->set(tenantA());
@@ -176,4 +199,57 @@ it('la caché de permisos de un tenant no deja sin permisos a otro tenant', func
 
     actingAsTenantBAdmin();
     $this->getJson('/api/v1/crm/leads')->assertOk();
+});
+
+function tenantACodesUnknownToB(): array
+{
+    $tables = DB::table('information_schema.columns as c')->join('information_schema.columns as t', fn ($join) => $join->on('t.table_name', '=', 'c.table_name')->on('t.table_schema', '=', 'c.table_schema'))
+        ->where('c.table_schema', 'public')->where('c.column_name', 'code')->where('t.column_name', 'tenant_id')->distinct()->pluck('c.table_name');
+
+    return $tables->flatMap(function (string $table) {
+        if (withinTenant(tenantB(), fn () => DB::table($table)->exists())) {
+            return [];
+        }
+
+        return withinTenant(tenantA(), fn () => DB::table($table)->limit(40)->pluck('code'))
+            ->filter(fn ($code) => is_string($code) && strlen($code) >= 6 && preg_match('/^[A-Z][A-Z0-9]*-[A-Z0-9-]+$/', $code) === 1 && preg_match('/-0*1$/', $code) !== 1)
+            ->map(fn (string $code) => [$code, $table]);
+    })->unique(0)->values()->all();
+}
+
+it('X-01: barrido de todos los listados del back-office; el admin de B nunca recibe códigos de A ni un error 500', function () {
+    $codes = tenantACodesUnknownToB();
+    expect(count($codes))->toBeGreaterThan(100);
+
+    $routes = collect(app('router')->getRoutes()->getRoutes())
+        ->filter(fn ($route) => in_array('GET', $route->methods(), true) && str_starts_with($route->uri(), 'api/v1/') && ! str_contains($route->uri(), '{'))
+        ->reject(fn ($route) => preg_match('#^api/v1/(public|platform|portal|supplier|b2b|auth|health)(/|$)#', $route->uri()) === 1 || str_contains($route->uri(), 'export'))
+        ->map(fn ($route) => '/'.$route->uri())->unique()->values();
+    expect($routes->count())->toBeGreaterThan(80);
+
+    actingAsTenantBAdmin();
+    $failures = [];
+    $checked = 0;
+
+    foreach ($routes as $uri) {
+        $response = $this->getJson($uri);
+        if ($response->getStatusCode() >= 500) {
+            $failures[] = "{$uri} respondió {$response->getStatusCode()}";
+
+            continue;
+        }
+        if ($response->getStatusCode() !== 200 || ! str_contains((string) $response->headers->get('Content-Type'), 'json')) {
+            continue;
+        }
+        $checked++;
+        $body = (string) $response->getContent();
+        foreach ($codes as [$code, $table]) {
+            if (str_contains($body, '"'.$code.'"')) {
+                $failures[] = "{$uri} devolvió {$code} de {$table}";
+            }
+        }
+    }
+
+    expect($failures)->toBe([])
+        ->and($checked)->toBeGreaterThan(70);
 });

@@ -6,7 +6,9 @@ return [
 
     'env' => env('APP_ENV', 'production'),
 
-    'debug' => (bool) env('APP_DEBUG', false),
+    'debug' => env('APP_ENV', 'production') !== 'production' && (bool) env('APP_DEBUG', false),
+
+    'trusted_proxies' => env('TRUSTED_PROXIES', ''),
 
     'url' => env('APP_URL', 'http://localhost'),
 

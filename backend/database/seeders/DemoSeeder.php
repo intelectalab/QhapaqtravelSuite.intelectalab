@@ -39,6 +39,7 @@ final class DemoSeeder extends Seeder
     {
         $plans = $this->seedPlans();
         $permissions = $this->seedPermissions();
+        (new HelpArticleSeeder)->run();
         $this->seedPlatformUsers();
 
         foreach (KitSeeds::read('tenants') as $tenantSeed) {
@@ -208,6 +209,7 @@ final class DemoSeeder extends Seeder
             'mfa_enabled' => (bool) $seed['mfa'],
             'mfa_required' => in_array($seed['role'], config('access.mfa_roles'), true),
             'avatar_color' => $seed['color'] ?? null,
+            'email_verified_at' => $seed['status'] === 'activo' ? now() : null,
         ]);
 
         $user->syncRoles([$roles[$seed['role']]]);

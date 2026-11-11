@@ -7,6 +7,7 @@ namespace App\Domain\Iam\Actions;
 use App\Domain\Iam\Models\Permission;
 use App\Domain\Iam\Models\Role;
 use App\Domain\Iam\Models\User;
+use App\Domain\Iam\Support\AccessMap;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
@@ -40,6 +41,44 @@ final class RoleAdmin
                 'users' => (int) ($users[$role->id] ?? 0),
                 'permissions' => ($permissions[$role->id] ?? collect())->pluck('name')->values(),
             ]);
+    }
+
+    public function detail(string $code, AccessMap $access): array
+    {
+        $role = DB::table('roles')->where('name', $code)->where('name', '<>', 'super_admin')->first(['id', 'name', 'display_name', 'scope', 'is_custom', 'experience'])
+            ?? throw ApiException::notFound('El rol no existe.');
+        $users = DB::table('model_has_roles as m')->join('iam_users as u', 'u.id', '=', 'm.model_id')->leftJoin('iam_sedes as s', 's.id', '=', 'u.sede_id')
+            ->where('m.role_id', $role->id)->whereNull('u.deleted_at')->orderBy('u.name')
+            ->get(['u.code', 'u.name', 'u.email', 'u.status', 'u.last_login_at', 's.name as sede']);
+        $map = collect($access->matrix()['roles'])->firstWhere('role', $role->name);
+        $events = DB::table('audit_events as a')->leftJoin('iam_users as u', 'u.id', '=', 'a.actor_id')
+            ->where(fn ($query) => $query->where(fn ($inner) => $inner->where('a.entity', 'Rol')->where('a.entity_id', $role->name))->orWhere(fn ($inner) => $inner->where('a.entity', 'Permiso')->where('a.entity_id', 'like', $role->name.':%')))
+            ->orderByDesc('a.occurred_at')->limit(30)
+            ->get(['a.occurred_at', 'a.action', 'a.entity_id', 'a.before_value', 'a.after_value', 'a.correlation_id', 'u.name as actor']);
+        $items = [];
+
+        foreach ($events as $event) {
+            $items[] = [
+                'at' => $event->occurred_at,
+                'action' => $event->action,
+                'permission' => str_contains((string) $event->entity_id, ':') ? substr((string) $event->entity_id, strlen($role->name) + 1) : null,
+                'before' => $event->before_value,
+                'after' => $event->after_value,
+                'actor' => $event->actor ?? 'Sistema',
+                'correlation' => $event->correlation_id,
+            ];
+        }
+
+        return [
+            'code' => $role->name,
+            'name' => $role->display_name,
+            'scope' => $role->scope,
+            'custom' => (bool) $role->is_custom,
+            'experience' => $map['experience'] ?? $role->experience ?? 'backoffice',
+            'screens' => ['allowed' => (int) ($map['allowed'] ?? 0), 'total' => count(config('access.routes'))],
+            'users' => $users->map(fn (object $user): array => ['code' => $user->code, 'name' => $user->name, 'email' => $user->email, 'status' => $user->status, 'sede' => $user->sede, 'last_login_at' => $user->last_login_at])->values()->all(),
+            'audit' => $items,
+        ];
     }
 
     public function catalog(): Collection

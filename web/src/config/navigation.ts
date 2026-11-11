@@ -58,6 +58,7 @@ import {
   Radio,
   Brain,
   Building,
+  LifeBuoy,
 } from "lucide-react";
 
 export interface Screen {
@@ -88,6 +89,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/flujo", label: "Mapa de procesos", icon: Route },
       { href: "/aprobaciones", label: "Bandeja de aprobaciones", icon: CircleCheck },
       { href: "/inbox", label: "Bandeja omnicanal", icon: MessagesSquare },
+      { href: "/ayuda", label: "Centro de ayuda", icon: LifeBuoy },
     ],
   },
   {

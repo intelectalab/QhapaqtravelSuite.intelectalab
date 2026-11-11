@@ -1,13 +1,13 @@
 "use client";
 
-import { AlarmClock, BadgeCheck, FileUp, Hash, ReceiptText, Upload, Wallet, XCircle } from "lucide-react";
+import { AlarmClock, BadgeCheck, Hash, ReceiptText, Upload, Wallet, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { annulInvoice, registerInvoice } from "@/app/(proveedor)/proveedor/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { FieldList } from "@/components/ui/Details";
+import { FilePicker } from "@/components/ui/FilePicker";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
@@ -19,26 +19,6 @@ import { formatDate, formatMoney } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { dayDistance, supplierStatus, type SupplierPayable, type SupplierPayables } from "@/lib/supplier-portal";
 import { SupplierBadge } from "./SupplierUi";
-
-function FilePicker({ maxKb }: { maxKb: number }) {
-  const [file, setFile] = useState<File | null>(null);
-  const tooBig = file !== null && file.size > maxKb * 1024;
-  return (
-    <div>
-      <span className="mb-1.5 block text-[13px] font-semibold text-fg">Archivo de la factura</span>
-      <label className={cn("group flex cursor-pointer items-center gap-3 rounded-tile border border-dashed px-4 py-4 transition hover:-translate-y-0.5 hover:border-t1 hover:bg-[color-mix(in_srgb,var(--t1)_5%,var(--surface))]", tooBig ? "border-bad" : "border-line")}>
-        <span className="grid h-10 w-10 flex-none place-items-center rounded-[11px] bg-[color-mix(in_srgb,var(--t1)_12%,var(--surface))] text-t1 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110">
-          <FileUp size={18} />
-        </span>
-        <span className="min-w-0 flex-1 text-[13px]">
-          <b className="block truncate font-semibold">{file ? file.name : "Elegir archivo"}</b>
-          <span className={cn("block text-[12px]", tooBig ? "text-bad" : "text-fg-3")}>{file ? `${Math.ceil(file.size / 1024)} KB${tooBig ? ` · supera ${maxKb} KB` : ""}` : `PDF, XML o ZIP de hasta ${maxKb} KB`}</span>
-        </span>
-        <input type="file" name="file" accept=".pdf,.xml,.zip" required className="sr-only" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
-      </label>
-    </div>
-  );
-}
 
 function InvoicePanel({ row, today, maxKb }: { row: SupplierPayable; today: string; maxKb: number }) {
   const router = useRouter();
@@ -61,7 +41,7 @@ function InvoicePanel({ row, today, maxKb }: { row: SupplierPayable; today: stri
             <TextField label="Fecha de emisión" name="issue_date" type="date" max={today} defaultValue={today} required />
             <TextField label={`Importe (${row.currency})`} name="amount" type="number" step="0.01" min="0.01" defaultValue={row.balance.toFixed(2)} required />
           </div>
-          <FilePicker maxKb={maxKb} />
+          <FilePicker label="Archivo de la factura" accept=".pdf,.xml,.zip" formats="PDF, XML o ZIP" maxKb={maxKb} />
         </>
       )}
     </PanelAction>

@@ -35,7 +35,7 @@ final class ProductDirectory
         $days = $itinerary ? DB::table('catalog_itinerary_days')->where('itinerary_id', $itinerary)->orderBy('day_number')->get(['id', 'day_number', 'title']) : collect();
         $items = DB::table('catalog_itinerary_items')->whereIn('day_id', $days->pluck('id'))->orderBy('start_time')->get(['day_id', 'start_time', 'activity', 'item_type', 'location'])->groupBy('day_id');
         $texts = DB::table('catalog_product_inclusions')->where('product_id', $row->id)->orderBy('sort_order')->get(['kind', 'text']);
-        $policy = DB::table('catalog_product_policies')->where('product_id', $row->id)->first(['cancellation', 'modification', 'no_show', 'refund', 'penalties', 'advance_min', 'advance_max']);
+        $policy = DB::table('catalog_product_policies')->where('product_id', $row->id)->first(['cancellation', 'modification', 'no_show', 'refund', 'penalties', 'advance_min', 'advance_max', 'penalty_tiers']);
 
         return [
             ...$this->summary($row),
@@ -75,7 +75,7 @@ final class ProductDirectory
             'includes' => $texts->where('kind', 'include')->pluck('text')->values(),
             'excludes' => $texts->where('kind', 'exclude')->pluck('text')->values(),
             'requirements' => DB::table('catalog_product_requirements')->where('product_id', $row->id)->pluck('text'),
-            'policies' => $policy,
+            'policies' => $policy === null ? null : [...(array) $policy, 'penalty_tiers' => CancellationTiers::resolve($policy->penalty_tiers, $policy->cancellation)],
             'rates' => DB::table('catalog_rates')->where('product_id', $row->id)->orderBy('status', 'desc')->orderBy('rate_type')->orderBy('segment')
                 ->get(['ref', 'rate_type', 'segment', 'channel', 'currency', 'price_basis', 'cost', 'price', 'valid_from', 'valid_to', 'status'])
                 ->map(fn (object $rate) => [

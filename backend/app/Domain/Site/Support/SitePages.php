@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Site\Support;
 
+use App\Domain\Channels\Support\OwnReviewSettings;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -219,6 +220,91 @@ final class SitePages
         return $this->month($this->catalog->product($slug), $month, $pax);
     }
 
+    public function availability(string $slug, string $month, int $pax): array
+    {
+        $product = $this->catalog->product($slug);
+        $calendar = $this->month($product, $month, $pax);
+        $today = $this->catalog->today();
+        $next = null;
+
+        for ($i = 0; $i <= 180 && $next === null; $i++) {
+            $date = $today->copy()->addDays($i)->toDateString();
+            $day = $this->availability->day($product, $date, $pax, $today);
+            $next = $this->availability->sellable($day) ? $date : null;
+        }
+
+        return [...$calendar, 'next_available' => $next];
+    }
+
+    public function check(string $slug, string $date, int $pax): array
+    {
+        $product = $this->catalog->product($slug);
+        $day = $this->availability->day($product, $date, $pax, $this->catalog->today());
+        $sellable = $this->availability->sellable($day);
+
+        return [
+            'product' => $product->slug,
+            'date' => $date,
+            'pax' => $pax,
+            'sellable' => $sellable,
+            'status' => $day['status'],
+            'label' => SiteAvailability::LABELS[$day['status']] ?? $day['status'],
+            'spots' => $day['spots'],
+            'reason' => $sellable ? null : ($day['note'] ?? (SiteAvailability::LABELS[$day['status']] ?? 'No disponible para esta fecha.')),
+            'price' => $day['price'] ? ['adult' => $day['price']['adult'], 'child' => $day['price']['child'], 'currency' => $day['price']['currency']] : null,
+        ];
+    }
+
+    public function productDepartures(string $slug, ?string $from, ?string $to): array
+    {
+        $product = $this->catalog->product($slug);
+        $today = $this->catalog->today();
+        $from = $from && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) ? $from : $today->toDateString();
+        $to = $to && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to) ? $to : $today->copy()->addDays(365)->toDateString();
+        $items = [];
+
+        foreach ($this->availability->departures($product->id) as $departure) {
+            if ($departure->departure_date < $from || $departure->departure_date > $to || $departure->status === 'cancelada') {
+                continue;
+            }
+
+            $day = $this->availability->day($product, $departure->departure_date, 1, $today);
+            $items[] = $this->availability->departure($departure, $product) + [
+                'price' => $day['price'] ? ['amount' => $day['price']['adult'], 'currency' => $day['price']['currency']] : null,
+                'bookable' => $this->availability->sellable($day),
+            ];
+        }
+
+        return ['product' => ['slug' => $product->slug, 'name' => $product->name], 'from' => $from, 'to' => $to, 'items' => $items];
+    }
+
+    public function guaranteedDepartures(int $limit): array
+    {
+        return array_slice(array_values(array_filter($this->upcomingDepartures(180, 200), fn (array $departure): bool => (bool) ($departure['guaranteed'] ?? false))), 0, $limit);
+    }
+
+    public function publicReviews(?string $slug, ?int $stars, int $limit): array
+    {
+        $productIds = $slug ? [$this->catalog->product($slug)->id] : null;
+        $data = $this->reviews($productIds, 500);
+        $own = array_values(array_filter($data['items'], fn (array $item): bool => $item['verified']));
+        $filtered = array_values(array_filter($own, fn (array $item): bool => $stars === null || $item['stars'] === $stars));
+        $total = count($own);
+        $sum = array_sum(array_column($own, 'stars'));
+        $distribution = [];
+
+        foreach ([5, 4, 3, 2, 1] as $value) {
+            $distribution[$value] = count(array_filter($own, fn (array $item): bool => $item['stars'] === $value));
+        }
+
+        return [
+            'average' => $total > 0 ? round($sum / $total, 1) : null,
+            'count' => $total,
+            'distribution' => $distribution,
+            'items' => array_slice($filtered, 0, $limit),
+        ];
+    }
+
     public function searchOptions(): array
     {
         return [
@@ -297,6 +383,25 @@ final class SitePages
         ])->all();
     }
 
+    public function offersPage(): array
+    {
+        $offers = $this->offers();
+        $codes = [];
+        foreach ($this->catalog->products() as $product) {
+            foreach ($product->promotions as $promotion) {
+                if ($promotion['code'] !== null) {
+                    $codes[] = ['code' => $promotion['code'], 'name' => $promotion['name'], 'value' => $promotion['value'], 'percent' => $promotion['percent'], 'ends_at' => $promotion['ends_at'], 'product' => ['slug' => $product->slug, 'name' => $product->name]];
+                }
+            }
+        }
+
+        return [
+            'offers' => $offers,
+            'codes' => $codes,
+            'departures' => array_values(array_filter($this->upcomingDepartures(90, 12), fn (array $departure): bool => (bool) ($departure['guaranteed'] ?? false))),
+        ];
+    }
+
     private function offers(): array
     {
         return $this->catalog->products()
@@ -337,6 +442,7 @@ final class SitePages
         $public = $this->catalog->products()->pluck('slug')->all();
         $own = DB::table('crm_own_reviews as r')->join('catalog_products as p', 'p.id', '=', 'r.product_id')
             ->whereNull('r.deleted_at')->where('r.status', 'publicada')
+            ->when(! OwnReviewSettings::showOnSite(), fn ($q) => $q->whereRaw('false'))
             ->when($productIds !== null, fn ($q) => $q->whereIn('r.product_id', $productIds))
             ->orderByDesc('r.published_at')
             ->get(['r.author_display', 'r.country', 'r.travel_date', 'r.stars', 'r.title', 'r.body', 'r.reply_text', 'r.lang', 'r.is_demo', 'r.published_at', 'p.name as product', 'p.slug']);

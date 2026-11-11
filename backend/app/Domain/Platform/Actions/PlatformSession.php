@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Platform\Actions;
 
 use App\Domain\Iam\Models\AccessToken;
+use App\Domain\Iam\Support\LoginLockout;
 use App\Domain\Iam\Support\TotpVerifier;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -23,6 +24,7 @@ final class PlatformSession
     public function __construct(
         private readonly TotpVerifier $totp,
         private readonly AuditLogger $audit,
+        private readonly LoginLockout $lockout,
     ) {}
 
     public function owns(string $email): bool
@@ -32,10 +34,13 @@ final class PlatformSession
 
     public function login(string $email, string $password): array
     {
+        $lockKey = LoginLockout::platformKey($email);
+        $this->lockout->ensureOpen($lockKey);
         $user = $this->find($email);
 
         if ($user === null || ! Hash::check($password, (string) $user->password) || ! $user->isActive()) {
             $this->log('Sesión de plataforma', Str::lower($email), 'login_fallido');
+            $this->recordFailure($lockKey, Str::lower($email));
             throw new ApiException(401, 'UNAUTHENTICATED', null, 'El correo o la contraseña no son correctos.');
         }
 
@@ -56,21 +61,30 @@ final class PlatformSession
     public function verifyMfa(PlatformUser $user, AccessToken $token, string $code): array
     {
         $key = "mfa:platform:{$user->getKey()}:last_step";
+        $lockKey = LoginLockout::platformKey((string) $user->email);
+        $this->lockout->ensureOpen($lockKey);
 
         try {
             $last = Cache::get($key);
             $step = $this->totp->verify((string) $user->mfa_secret, $code, $last === null ? null : (int) $last);
         } catch (ApiException $invalid) {
             $this->log('Sesión de plataforma', $user->email, 'login_fallido', after: 'MFA', actor: $user);
+            $this->recordFailure($lockKey, (string) $user->email, $user);
             throw $invalid;
         }
 
+        $this->lockout->clear($lockKey);
         Cache::put($key, $step, now()->addMinutes(10));
         $token->forceFill(['abilities' => ['*'], 'mfa_verified_at' => now()])->save();
         $user->forceFill(['last_login_at' => now()])->save();
         $this->log('Sesión de plataforma', $user->email, 'login', after: 'MFA OK', actor: $user);
 
         return ['mfa_required' => false, 'home' => self::HOME];
+    }
+
+    private function recordFailure(string $lockKey, string $email, ?PlatformUser $actor = null): void
+    {
+        $this->lockout->fail($lockKey, fn () => $this->log('Sesión de plataforma', $email, 'cuenta_bloqueada', after: $this->lockout->minutes().' min', actor: $actor));
     }
 
     public function logout(PlatformUser $user, AccessToken $token): void

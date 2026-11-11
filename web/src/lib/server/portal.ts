@@ -12,4 +12,8 @@ export async function portalData<T>(path: string, failure: string): Promise<T> {
   return data;
 }
 
+export async function passengerData<T>(path: string, failure: string): Promise<T | null> {
+  return getResource<T>(`/portal/passenger${path}`, failure);
+}
+
 export const portalSession = cache(async (): Promise<PortalSession | null> => getResource<PortalSession>("/portal/client/session", "No pudimos abrir tu portal."));

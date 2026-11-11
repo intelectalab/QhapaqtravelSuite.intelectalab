@@ -8,10 +8,15 @@ use App\Domain\B2bPortal\Actions\B2bBooking;
 use App\Domain\B2bPortal\Actions\B2bReservationChanges;
 use App\Domain\B2bPortal\Actions\B2bStatementActions;
 use App\Domain\B2bPortal\Support\B2bAccount;
+use App\Domain\B2bPortal\Support\B2bCatalog;
 use App\Domain\B2bPortal\Support\B2bPortalDirectory;
 use App\Domain\Booking\Actions\ReservationWorkflow;
 use App\Domain\Channels\Support\ChannelKit;
+use App\Domain\Iam\Actions\AuthenticateUser;
+use App\Domain\Iam\Models\AccessToken;
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Audit\AuditLogger;
+use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -42,6 +47,37 @@ final class B2bPortalController
     public function product(Request $request, string $code): JsonResponse
     {
         return $this->json($this->directory->product($this->account($request), $code, $request->query('month'), (int) $request->query('pax', '2')));
+    }
+
+    public function departures(Request $request, string $code, B2bCatalog $catalog): JsonResponse
+    {
+        $account = $this->account($request);
+
+        return $this->json($catalog->departures($account, $catalog->product($account, $code)));
+    }
+
+    public function login(Request $request, AuthenticateUser $authenticate): JsonResponse
+    {
+        $request->validate(['email' => ['required', 'string', 'email:rfc', 'max:190'], 'password' => ['required', 'string', 'max:72']], ['email.*' => 'Escribe tu correo.', 'password.*' => 'Escribe tu contraseña.']);
+        $session = $authenticate($request);
+
+        if (($session['home'] ?? null) !== '/agencia') {
+            AccessToken::query()->whereKey(explode('|', (string) ($session['token'] ?? ''))[0])->delete();
+
+            throw new ApiException(401, 'UNAUTHENTICATED', null, 'El correo o la contraseña no son correctos.');
+        }
+
+        return $this->json([...$session, 'realm' => 'agency']);
+    }
+
+    public function logout(Request $request, AuditLogger $audit): JsonResponse
+    {
+        $user = $request->user();
+        assert($user instanceof User);
+        $user->currentAccessToken()->delete();
+        $audit->log('Sesión', (string) $user->code, 'logout');
+
+        return $this->json(['message' => 'Cerraste sesión.']);
     }
 
     public function simulate(Request $request, B2bBooking $booking): JsonResponse

@@ -4,6 +4,7 @@ Formato: fecha · versión · cambio. Mantener actualizado en cada entrega. Desd
 
 | Fecha | Versión | Cambio |
 | --- | --- | --- |
+| 10/11/2026 | 3.0-dev | Entorno local para la suite Playwright del kit: servicios `api-e2e`, `web-e2e` y `e2e` (imagen oficial de Playwright) en el perfil `e2e` de Docker, base propia `qhapaq_e2e` con `E2ESeeder` y script `docker/e2e/run.sh`. La base de desarrollo no se toca. |
 | 10/11/2026 | 3.0-dev | Funcionalidades por plan aplicadas (spec 13 §7, ENT-BR-01): `Entitlements` resuelve excepción > adicional > plan con caché; el middleware `feature` responde 403 `FEATURE_NOT_IN_PLAN` en la API y en la compra del sitio; `GET /billing/entitlements`; `me/access.locked` alimenta el candado del menú y la pantalla «no incluido en tu plan». Mapa de rutas en `config/entitlements.php`. |
 | 10/11/2026 | 3.0-dev | Pruebas de todas las escrituras: 373 de 373 operaciones de escritura con prueba (antes 151) y 1 197 pruebas en total. Comando `php artisan qa:write-coverage` (también en el CI). 25 correcciones encontradas por las pruebas en catálogo, CRM, operaciones, ventas, portal, usuarios, plataforma, finanzas y canales; bloqueos del catálogo en `FOR NO KEY UPDATE`. |
 | 10/11/2026 | 3.0-dev | Tarjetas-filtro de las tablas: pulsar otra vez la tarjeta activa quita el filtro y vuelve a «Todos» (`DataTable`, las 54 tablas con tarjetas). |

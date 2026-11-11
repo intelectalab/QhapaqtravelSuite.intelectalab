@@ -17,6 +17,38 @@ final class EcommerceController
         return response()->json(['data' => $directory->overview($this->user($request))]);
     }
 
+    public function summary(Request $request, EcommerceDirectory $directory): JsonResponse
+    {
+        $overview = $directory->overview($this->user($request));
+
+        return response()->json(['data' => ['kpis' => $overview['kpis'], 'funnel' => $overview['funnel']]]);
+    }
+
+    public function orders(Request $request, EcommerceDirectory $directory): JsonResponse
+    {
+        $status = $request->query('status');
+        $orders = collect($directory->overview($this->user($request))['orders'])->when(is_string($status) && $status !== '', fn ($rows) => $rows->where('status', $status))->values();
+
+        return response()->json(['data' => $orders]);
+    }
+
+    public function order(Request $request, string $code, EcommerceDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->order($code, $this->user($request))]);
+    }
+
+    public function products(Request $request, EcommerceDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->overview($this->user($request))['products']]);
+    }
+
+    public function paymentLink(Request $request, string $code, ManageEcommerce $manage): JsonResponse
+    {
+        $data = $request->validate(['note' => ['nullable', 'string', 'max:300']], ['note.*' => 'La nota admite hasta 300 caracteres.']);
+
+        return response()->json(['data' => $manage->sendPaymentLink($code, $data['note'] ?? null, $this->user($request))]);
+    }
+
     public function publish(Request $request, string $code, ManageEcommerce $manage): JsonResponse
     {
         $manage->publish($code, true, $this->user($request));

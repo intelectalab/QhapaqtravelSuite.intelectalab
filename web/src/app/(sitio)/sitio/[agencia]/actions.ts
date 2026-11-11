@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { cartCookie, orderCookie, type CalendarMonth, type Quote, type SiteFormState } from "@/lib/site";
+import { accountCookie, cartCookie, orderCookie, siteHref, type AccountMe, type CalendarMonth, type Quote, type SiteFormState } from "@/lib/site";
 import { parseSiteLocale, SITE_LOCALE_COOKIE } from "@/lib/site-i18n";
-import { cartHeaders, readSite, sendSite, siteBase } from "@/lib/server/site";
+import { captchaHeaders } from "@/lib/server/captcha";
+import { apiFetch } from "@/lib/server/api";
+import { accountFetch, accountToken, cartHeaders, readSite, sendSite, siteBase, siteRequestHeaders } from "@/lib/server/site";
 
 function text(form: FormData, key: string): string | undefined {
   const value = form.get(key);
@@ -20,15 +22,15 @@ function flag(form: FormData, key: string): boolean {
   return form.get(key) === "on" || form.get(key) === "1" || form.get(key) === "true";
 }
 
-async function submit(agencia: string, path: string, body: Record<string, unknown>, failure: string): Promise<SiteFormState> {
-  const result = await sendSite<Record<string, unknown>>(agencia, path, body);
+async function submit(agencia: string, path: string, body: Record<string, unknown>, failure: string, form: FormData): Promise<SiteFormState> {
+  const result = await sendSite<Record<string, unknown>>(agencia, path, body, captchaHeaders(form));
   if (result.ok) return { status: "done", data: result.data ?? {} };
   const errors = Object.fromEntries(Object.entries(result.error?.errors ?? {}).map(([key, messages]) => [key.split(".")[0], messages[0]]));
   return { status: "error", message: result.status === 429 ? "Recibimos muchos envíos seguidos. Intenta de nuevo en un minuto." : result.status === 422 && Object.keys(errors).length > 0 ? "Revisa los datos marcados." : (result.error?.message ?? failure), errors };
 }
 
 export async function sendNewsletter(agencia: string, _state: SiteFormState, form: FormData): Promise<SiteFormState> {
-  return submit(agencia, "/newsletter", { email: text(form, "email"), name: text(form, "name"), consent: flag(form, "consent") }, "No pudimos registrar tu suscripción.");
+  return submit(agencia, "/newsletter", { email: text(form, "email"), name: text(form, "name"), consent: flag(form, "consent") }, "No pudimos registrar tu suscripción.", form);
 }
 
 export async function sendLead(agencia: string, _state: SiteFormState, form: FormData): Promise<SiteFormState> {
@@ -58,6 +60,7 @@ export async function sendLead(agencia: string, _state: SiteFormState, form: For
       consent: flag(form, "consent"),
     },
     "No pudimos enviar tu solicitud.",
+    form,
   );
 }
 
@@ -67,6 +70,7 @@ export async function sendContact(agencia: string, _state: SiteFormState, form: 
     "/contact",
     { name: text(form, "name"), email: text(form, "email"), phone: text(form, "phone"), reason: text(form, "reason"), reservation: text(form, "reservation"), message: text(form, "message"), consent: flag(form, "consent") },
     "No pudimos enviar tu mensaje.",
+    form,
   );
 }
 
@@ -96,6 +100,7 @@ export async function sendClaim(agencia: string, _state: SiteFormState, form: Fo
       declaration: flag(form, "declaration"),
     },
     "No pudimos registrar la hoja de reclamación.",
+    form,
   );
 }
 
@@ -137,31 +142,31 @@ export async function reholdCartLine(agencia: string, line: number): Promise<str
   return result.ok ? null : result.status === 404 ? "Tu carrito expiró o esa línea ya no existe." : (result.error?.message ?? "No pudimos volver a bloquear los cupos.");
 }
 
+function fieldErrors(errors: Record<string, string[]> | undefined): Record<string, string> {
+  return Object.fromEntries(Object.entries(errors ?? {}).map(([key, messages]) => [key, messages[0]]));
+}
+
+export async function validateCheckoutStep(agencia: string, step: string, payload: Record<string, unknown>): Promise<SiteFormState> {
+  const token = await cartToken(agencia);
+  if (!token) return { status: "error", message: "Tu carrito expiró. Vuelve a elegir tus fechas." };
+  const result = await sendSite(agencia, "/checkout/validate", { ...payload, step }, cartHeaders(token));
+  if (result.ok) return { status: "done" };
+  const errors = fieldErrors(result.error?.errors);
+  return { status: "error", message: Object.keys(errors).length > 0 ? "Revisa los datos marcados." : (result.error?.message ?? "No pudimos validar este paso."), errors };
+}
+
 export async function placeOrder(agencia: string, _state: SiteFormState, form: FormData): Promise<SiteFormState> {
   const token = await cartToken(agencia);
   if (!token) return { status: "error", message: "Tu carrito expiró. Vuelve a elegir tus fechas." };
-  const result = await sendSite<{ code: string; token: string }>(
-    agencia,
-    "/checkout/orders",
-    {
-      name: text(form, "name"),
-      email: text(form, "email"),
-      phone: text(form, "phone"),
-      country: text(form, "country"),
-      doc_type: text(form, "doc_type"),
-      doc_number: text(form, "doc_number"),
-      billing_type: text(form, "billing_type") ?? "Boleta",
-      ruc: text(form, "ruc"),
-      business_name: text(form, "business_name"),
-      fiscal_address: text(form, "fiscal_address"),
-      terms: flag(form, "terms"),
-      privacy: flag(form, "privacy"),
-      marketing: flag(form, "marketing"),
-    },
-    cartHeaders(token),
-  );
+  let payload: Record<string, unknown> = {};
+  try {
+    payload = JSON.parse(String(form.get("payload") ?? "{}"));
+  } catch {
+    return { status: "error", message: "No pudimos leer tus datos. Vuelve a intentarlo." };
+  }
+  const result = await sendSite<{ code: string; token: string; payment: { result: string; message: string } | null }>(agencia, "/checkout/orders", payload, { ...cartHeaders(token), ...captchaHeaders(form) });
   if (!result.ok || !result.data) {
-    const errors = Object.fromEntries(Object.entries(result.error?.errors ?? {}).map(([key, messages]) => [key, messages[0]]));
+    const errors = fieldErrors(result.error?.errors);
     return { status: "error", message: Object.keys(errors).length > 0 ? "Revisa los datos marcados." : (result.status === 404 ? "Tu carrito expiró. Vuelve a elegir tus fechas." : (result.error?.message ?? "No pudimos crear tu pedido.")), errors };
   }
   const store = await cookies();
@@ -170,13 +175,136 @@ export async function placeOrder(agencia: string, _state: SiteFormState, form: F
   redirect(`${await siteBase(agencia)}/confirmacion/${result.data.code}`);
 }
 
-export async function payOrder(agencia: string, code: string): Promise<string | null> {
+export async function payOrder(agencia: string, code: string, payment: Record<string, string>): Promise<{ ok: boolean; message: string | null }> {
   const token = (await cookies()).get(orderCookie(code))?.value;
-  const result = await sendSite(agencia, `/orders/${encodeURIComponent(code)}/payments`, {}, token ? { "X-Order-Token": token } : {});
+  const result = await sendSite<{ payment: { result: string; message: string } }>(agencia, `/orders/${encodeURIComponent(code)}/payments`, payment, token ? { "X-Order-Token": token } : {});
   revalidatePath(`/sitio/${agencia}/confirmacion/${code}`);
-  return result.ok ? null : result.status === 404 ? "No encontramos el pedido en este navegador." : (result.error?.message ?? "No pudimos registrar el pago simulado.");
+  if (!result.ok || !result.data) {
+    const errors = fieldErrors(result.error?.errors);
+    return { ok: false, message: Object.values(errors)[0] ?? (result.status === 404 ? "No encontramos el pedido en este navegador." : (result.error?.message ?? "No pudimos registrar el pago.")) };
+  }
+  return { ok: result.data.payment.result !== "rechazado", message: result.data.payment.message };
 }
 
 export async function setSiteLocale(locale: string): Promise<void> {
   (await cookies()).set(SITE_LOCALE_COOKIE, parseSiteLocale(locale), { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+}
+
+const ACCOUNT_DAYS = 30;
+
+function wishlistOf(form: FormData): string[] {
+  try {
+    const parsed = JSON.parse(String(form.get("wishlist") ?? "[]"));
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string").slice(0, 50) : [];
+  } catch {
+    return [];
+  }
+}
+
+function accountFailure(status: number, error: { message?: string; errors?: Record<string, string[]> } | null, fallback: string): SiteFormState {
+  const errors = fieldErrors(error?.errors);
+  if (status === 429) return { status: "error", message: "Hiciste varios intentos seguidos. Espera un minuto y vuelve a intentarlo." };
+  return { status: "error", message: Object.keys(errors).length > 0 ? "Revisa los datos marcados." : (error?.message ?? fallback), errors };
+}
+
+async function openAccount(agencia: string, token: string): Promise<void> {
+  (await cookies()).set(accountCookie(agencia), token, { httpOnly: true, sameSite: "lax", path: "/", maxAge: ACCOUNT_DAYS * 86_400, secure: process.env.NODE_ENV === "production" });
+}
+
+function safeNext(value: string | undefined): string {
+  return value && value.startsWith("/cuenta") && !value.startsWith("//") ? value : "/cuenta";
+}
+
+export async function registerAccount(agencia: string, _state: SiteFormState, form: FormData): Promise<SiteFormState> {
+  const body = {
+    name: text(form, "name"),
+    email: text(form, "email"),
+    phone: text(form, "phone"),
+    country: text(form, "country"),
+    doc_type: text(form, "doc_type"),
+    doc_number: text(form, "doc_number"),
+    password: String(form.get("password") ?? ""),
+    password_confirmation: String(form.get("password_confirmation") ?? ""),
+    accept: flag(form, "accept"),
+    newsletter: flag(form, "newsletter"),
+    wishlist: wishlistOf(form),
+  };
+  const result = await sendSite<{ token: string }>(agencia, "/auth/register", body, cartHeaders(await cartToken(agencia)));
+  if (!result.ok || !result.data) return accountFailure(result.status, result.error, "No pudimos crear tu cuenta.");
+  await openAccount(agencia, result.data.token);
+  redirect(siteHref(await siteBase(agencia), "/cuenta?bienvenida=1"));
+}
+
+export async function loginAccount(agencia: string, _state: SiteFormState, form: FormData): Promise<SiteFormState> {
+  const result = await sendSite<{ token: string }>(agencia, "/auth/login", { email: text(form, "email"), password: String(form.get("password") ?? ""), wishlist: wishlistOf(form) }, cartHeaders(await cartToken(agencia)));
+  if (!result.ok || !result.data) return accountFailure(result.status, result.error, "No pudimos iniciar tu sesión.");
+  await openAccount(agencia, result.data.token);
+  redirect(siteHref(await siteBase(agencia), safeNext(text(form, "next"))));
+}
+
+export async function forgotAccount(agencia: string, _state: SiteFormState, form: FormData): Promise<SiteFormState> {
+  const result = await sendSite<{ message: string }>(agencia, "/auth/password/forgot", { email: text(form, "email") });
+  if (!result.ok || !result.data) return accountFailure(result.status, result.error, "No pudimos enviar el enlace.");
+  return { status: "done", message: result.data.message };
+}
+
+export async function lookupOrder(agencia: string, _state: SiteFormState, form: FormData): Promise<SiteFormState> {
+  const result = await sendSite<{ code: string; token: string }>(agencia, "/orders/lookup", { email: text(form, "email"), code: text(form, "code") });
+  if (!result.ok || !result.data) return accountFailure(result.status, result.error, "No encontramos tu compra.");
+  (await cookies()).set(orderCookie(result.data.code), result.data.token, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 86_400 });
+  redirect(siteHref(await siteBase(agencia), `/confirmacion/${result.data.code}`));
+}
+
+export async function logoutAccount(agencia: string): Promise<void> {
+  if (await accountToken(agencia)) await accountFetch(agencia, "/auth/logout", { method: "POST", body: {} });
+  (await cookies()).delete({ name: accountCookie(agencia), path: "/" });
+  redirect(siteHref(await siteBase(agencia), "/cuenta/ingresar?salida=1"));
+}
+
+export async function resendVerification(agencia: string): Promise<{ ok: boolean; message: string }> {
+  const result = await accountFetch<{ message: string }>(agencia, "/auth/email/resend", { method: "POST", body: {} });
+  return { ok: result.ok, message: result.data?.message ?? result.error?.message ?? "No pudimos enviar el enlace." };
+}
+
+export async function updateAccount(agencia: string, _state: SiteFormState, form: FormData): Promise<SiteFormState> {
+  const result = await accountFetch<AccountMe>(agencia, "/me", { method: "PATCH", body: { email: text(form, "email") ?? null, phone: text(form, "phone") ?? null, city: text(form, "city") ?? null, country: text(form, "country") ?? null, locale: text(form, "locale") ?? "es", newsletter: flag(form, "newsletter") } });
+  if (!result.ok) return accountFailure(result.status, result.error, "No pudimos guardar tus datos.");
+  revalidatePath(`/sitio/${agencia}/cuenta/datos`);
+  return { status: "done", message: "Guardamos tus datos." };
+}
+
+export async function sendArcoRequest(agencia: string, _state: SiteFormState, form: FormData): Promise<SiteFormState> {
+  const result = await accountFetch<{ code: string }>(agencia, "/me/arco-requests", { method: "POST", body: { type: text(form, "type"), detail: text(form, "detail") } });
+  if (!result.ok) return accountFailure(result.status, result.error, "No pudimos registrar tu solicitud.");
+  revalidatePath(`/sitio/${agencia}/cuenta/datos`);
+  return { status: "done", message: "Registramos tu solicitud. Te responderemos dentro del plazo legal." };
+}
+
+export async function payReceivable(agencia: string, code: string, payment: Record<string, string>): Promise<{ ok: boolean; message: string | null }> {
+  const result = await accountFetch<{ result: string; message: string }>(agencia, `/me/receivables/${encodeURIComponent(code)}/payments`, { method: "POST", body: payment });
+  revalidatePath(`/sitio/${agencia}/cuenta/pagos`);
+  if (!result.ok || !result.data) {
+    const errors = fieldErrors(result.error?.errors);
+    return { ok: false, message: Object.values(errors)[0] ?? result.error?.message ?? "No pudimos registrar el pago." };
+  }
+  return { ok: result.data.result !== "rechazado", message: result.data.message };
+}
+
+export async function toggleWish(agencia: string, slug: string, on: boolean): Promise<{ ok: boolean; signedIn: boolean }> {
+  if (!(await accountToken(agencia))) return { ok: false, signedIn: false };
+  const result = await accountFetch(agencia, `/me/wishlist/${encodeURIComponent(slug)}`, { method: on ? "PUT" : "DELETE", body: {} });
+  revalidatePath(`/sitio/${agencia}/cuenta/deseos`);
+  return { ok: result.ok, signedIn: result.status !== 401 };
+}
+
+export async function requestTripLink(agencia: string, _state: SiteFormState, form: FormData): Promise<SiteFormState> {
+  const result = await apiFetch<{ message: string }>("/portal/passenger/auth/link", { method: "POST", auth: false, body: { email: text(form, "email"), code: text(form, "code") }, headers: await siteRequestHeaders(agencia) });
+  if (!result.ok || !result.data) return accountFailure(result.status, result.error, "No pudimos enviar el enlace.");
+  return { status: "done", message: result.data.message };
+}
+
+export async function unsubscribeNewsletter(agencia: string, token: string): Promise<SiteFormState> {
+  const result = await sendSite<{ email: string }>(agencia, "/newsletter/unsubscribe", { token });
+  if (!result.ok || !result.data) return accountFailure(result.status, result.error, "No pudimos procesar la baja.");
+  return { status: "done", message: `Listo: ${result.data.email} ya no recibirá el boletín.` };
 }

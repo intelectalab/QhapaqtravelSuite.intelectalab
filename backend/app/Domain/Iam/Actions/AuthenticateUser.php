@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Iam\Actions;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Iam\Support\LoginLockout;
 use App\Domain\Iam\Support\SessionPayload;
 use App\Domain\Platform\Support\TenantResolver;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -23,30 +24,42 @@ final class AuthenticateUser
         private readonly AuditLogger $audit,
         private readonly IssueAccessToken $issueToken,
         private readonly RecordLogin $recordLogin,
+        private readonly LoginLockout $lockout,
     ) {}
 
     public function __invoke(Request $request): array
     {
-        $tenant = $this->tenants->forLogin($request) ?? throw $this->invalidCredentials();
+        $email = Str::lower(trim((string) $request->input('email')));
+        $tenant = $this->tenants->forLogin($request);
+
+        if ($tenant === null) {
+            $lockKey = LoginLockout::agencyKey('sin-agencia', $email);
+            $this->lockout->ensureOpen($lockKey);
+            $this->lockout->fail($lockKey);
+            throw $this->invalidCredentials();
+        }
 
         if ($tenant->status === 'suspendido') {
             throw ApiException::forbidden('TENANT_SUSPENDED', 'El acceso de tu empresa está suspendido. Comunícate con tu proveedor del sistema.');
         }
 
-        $email = Str::lower(trim((string) $request->input('email')));
+        $lockKey = LoginLockout::agencyKey((string) $tenant->tenant_id, $email);
 
-        return $this->database->run($tenant->tenant_id, function () use ($request, $email, $tenant): array {
+        return $this->database->run($tenant->tenant_id, function () use ($request, $email, $tenant, $lockKey): array {
+            $this->lockout->ensureOpen($lockKey);
             app(PermissionRegistrar::class)->setPermissionsTeamId($tenant->tenant_id);
             $user = User::query()->with('roles')->whereRaw('lower(email) = ?', [$email])->first();
 
             if ($user === null || ! Hash::check((string) $request->input('password'), (string) $user->password) || ! $user->isActive()) {
                 $this->audit->logOutsideTransaction('Sesión', $email, 'login_fallido');
+                $this->lockout->fail($lockKey, fn () => $this->audit->logOutsideTransaction('Sesión', $email, 'cuenta_bloqueada', after: $this->lockout->minutes().' min'));
                 throw $this->invalidCredentials();
             }
 
             $token = ($this->issueToken)($user, $request->input('device_name'));
 
             if (! $user->needsMfa()) {
+                $this->lockout->clear($lockKey);
                 ($this->recordLogin)($user, 'OK');
             }
 

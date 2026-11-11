@@ -50,8 +50,15 @@ final class UserDirectory
         $activity = DB::table('audit_events')
             ->where(fn ($query) => $query->where('actor_id', $user->getKey())->orWhere(fn ($own) => $own->where('entity', 'Usuario')->whereIn('entity_id', array_filter([$user->code, $user->email]))))
             ->orderByDesc('occurred_at')
-            ->limit(8)
+            ->limit(15)
             ->get(['id', 'code', 'entity', 'entity_id', 'action', 'before_value', 'after_value', 'is_critical', 'occurred_at']);
+        $permissions = $user->getAllPermissions()->pluck('name')->sort()->values()->all();
+        $modules = DB::table('permissions')->whereIn('name', $permissions)->where('guard_name', 'api')->orderBy('module')->orderBy('name')->get(['name', 'module'])->groupBy('module');
+        $grouped = [];
+
+        foreach ($modules as $module => $items) {
+            $grouped[] = ['module' => (string) $module, 'permissions' => $items->pluck('name')->values()->all()];
+        }
 
         return [
             'id' => $user->getKey(),
@@ -75,7 +82,13 @@ final class UserDirectory
             'role' => $role ? ['code' => $role->name, 'name' => $role->display_name, 'scope' => $role->scope] : null,
             'sede' => $user->sede ? ['id' => $user->sede->getKey(), 'name' => $user->sede->name] : null,
             'invitation_expires_at' => $pending,
-            'permissions' => $user->getAllPermissions()->pluck('name')->sort()->values()->all(),
+            'permissions' => $permissions,
+            'permission_modules' => $grouped,
+            'workload' => [
+                'opportunities' => DB::table('crm_opportunities')->where('owner_id', $user->getKey())->whereNull('deleted_at')->whereNotIn('stage', ['ganada', 'perdida'])->count(),
+                'activities' => DB::table('crm_activities')->where('owner_id', $user->getKey())->whereIn('status', ['pendiente', 'vencida'])->count(),
+                'clients' => DB::table('crm_clients')->where('owner_id', $user->getKey())->whereNull('deleted_at')->count(),
+            ],
             'activity' => $activity->map(fn (object $event): array => [
                 'id' => $event->id,
                 'code' => (string) $event->code,
@@ -93,7 +106,8 @@ final class UserDirectory
     public function options(): array
     {
         return [
-            'roles' => DB::table('roles')->whereIn('scope', self::STAFF_SCOPES)->where('name', '<>', 'super_admin')->orderBy('display_name')->get(['name as code', 'display_name as name', 'description']),
+            'roles' => DB::table('roles')->whereIn('scope', self::STAFF_SCOPES)->where('name', '<>', 'super_admin')->orderBy('display_name')->get(['name as code', 'display_name as name', 'description'])
+                ->map(fn (object $role): array => ['code' => $role->code, 'name' => $role->name, 'description' => $role->description, 'mfa' => in_array($role->code, config('access.mfa_roles'), true)])->values(),
             'sedes' => DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->orderByDesc('is_main')->orderBy('name')->get(['id', 'name']),
         ];
     }

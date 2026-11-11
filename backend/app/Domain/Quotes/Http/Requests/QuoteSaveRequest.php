@@ -9,17 +9,25 @@ use Illuminate\Validation\Validator;
 
 final class QuoteSaveRequest extends FormRequest
 {
+    public const STEPS = 4;
+
+    public function step(): ?int
+    {
+        return $this->routeIs('quotes.preview') && $this->filled('step') ? max(1, min(self::STEPS, (int) $this->input('step'))) : null;
+    }
+
     public function rules(): array
     {
         $preview = $this->routeIs('quotes.preview');
-        $required = $preview ? 'nullable' : 'required';
+        $step = $this->step() ?? 0;
+        $required = fn (int $from): string => ! $preview || $step >= $from ? 'required' : 'nullable';
 
         return [
-            'client_code' => [$required, 'string', 'max:30'],
+            'client_code' => [$required(1), 'string', 'max:30'],
             'opportunity_code' => ['nullable', 'string', 'max:30'],
-            'title' => [$required, 'string', 'max:200'],
-            'travel_from' => [$required, 'date'],
-            'travel_to' => [$required, 'date', 'after_or_equal:travel_from'],
+            'title' => [$required(1), 'string', 'max:200'],
+            'travel_from' => [$required(2), 'date'],
+            'travel_to' => [$required(2), 'date', 'after_or_equal:travel_from'],
             'valid_until' => ['nullable', 'date'],
             'currency' => ['required', 'in:PEN,USD'],
             'pax_adt' => ['nullable', 'integer', 'min:0', 'max:999'],
@@ -28,7 +36,7 @@ final class QuoteSaveRequest extends FormRequest
             'discount_pct' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'tax_pct' => ['nullable', 'numeric', 'in:0,18'],
             'notes' => ['nullable', 'string', 'max:2000'],
-            'items' => [$preview ? 'nullable' : 'required', 'array', $preview ? 'min:0' : 'min:1', 'max:60'],
+            'items' => [$required(3), 'array', ! $preview || $step >= 3 ? 'min:1' : 'min:0', 'max:60'],
             'items.*.product_code' => ['required', 'string', 'max:30'],
             'items.*.date' => ['required', 'date'],
             'items.*.qty' => ['required', 'integer', 'min:1', 'max:999'],
@@ -36,6 +44,7 @@ final class QuoteSaveRequest extends FormRequest
             'items.*.segment' => ['nullable', 'in:Adulto,Niño,Infante,Grupo,Pasajero'],
             'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'lock_version' => ['nullable', 'integer'],
+            'step' => ['nullable', 'integer', 'min:1', 'max:'.self::STEPS],
         ];
     }
 
@@ -43,7 +52,7 @@ final class QuoteSaveRequest extends FormRequest
     {
         return [
             function (Validator $validator): void {
-                if ($this->routeIs('quotes.preview')) {
+                if ($this->routeIs('quotes.preview') && ($this->step() ?? 0) < 2) {
                     return;
                 }
                 if ((int) $this->input('pax_adt') + (int) $this->input('pax_chd') + (int) $this->input('pax_inf') <= 0) {
@@ -61,10 +70,10 @@ final class QuoteSaveRequest extends FormRequest
             'travel_from.required' => 'Elige la fecha de inicio del viaje.',
             'travel_to.required' => 'Elige la fecha de fin del viaje.',
             'travel_to.after_or_equal' => 'La fecha de fin del viaje no puede ser anterior al inicio.',
-            'items.required' => 'Agrega al menos un servicio.',
-            'items.min' => 'Agrega al menos un servicio.',
-            'items.*.date.required' => 'Cada servicio necesita su fecha.',
-            'items.*.pax.min' => 'Cada servicio necesita al menos un pasajero.',
+            'items.required' => 'Agrega al menos un producto del catálogo.',
+            'items.min' => 'Agrega al menos un producto del catálogo.',
+            'items.*.date.required' => 'Cada ítem necesita su fecha.',
+            'items.*.pax.min' => 'Cada ítem necesita al menos un pasajero.',
             'items.*.qty.min' => 'La cantidad debe ser al menos 1.',
         ];
     }

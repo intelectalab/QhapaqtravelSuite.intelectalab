@@ -12,13 +12,13 @@ import { HiddenFields, STEP_INITIAL } from "@/features/catalog-shared/CatalogPan
 import type { DestinationNode, DestinationsOverview } from "@/lib/catalog-destinations";
 import type { StepResult } from "@/lib/server/resource";
 
-function DestinationFields({ overview, node, parentId }: { overview: DestinationsOverview; node?: DestinationNode; parentId?: string }) {
-  const candidates = overview.destinations.filter((item) => !node || (item.id !== node.id && !item.path.startsWith(`${node.path} / `)));
+function DestinationFields({ destinations, types, node, parentId }: { destinations: Pick<DestinationNode, "id" | "name" | "path">[]; types: string[]; node?: DestinationNode; parentId?: string }) {
+  const candidates = destinations.filter((item) => !node || (item.id !== node.id && !item.path.startsWith(`${node.path} / `)));
   return (
     <>
       <TextField label="Nombre" name="name" required minLength={2} maxLength={120} defaultValue={node?.name} icon={<MapPin size={16} />} />
       <div className="grid grid-cols-2 gap-3">
-        <SelectField label="Tipo" name="type" options={overview.options.types.map((type) => ({ value: type, label: type }))} defaultValue={node?.type ?? "Ciudad"} />
+        <SelectField label="Tipo" name="type" options={types.map((type) => ({ value: type, label: type }))} defaultValue={node?.type ?? "Ciudad"} />
         <SelectField label="Dentro de" name="parent_id" options={candidates.map((item) => ({ value: item.id, label: item.name, hint: item.path }))} defaultValue={node ? (node.parent?.id ?? "") : (parentId ?? "")} placeholder="Ninguno (país)" />
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -30,7 +30,7 @@ function DestinationFields({ overview, node, parentId }: { overview: Destination
   );
 }
 
-export function DestinationCreateAction({ overview, parent, trigger }: { overview: DestinationsOverview; parent?: DestinationNode; trigger?: (open: () => void) => ReactNode }) {
+export function DestinationCreateAction({ destinations, types, parent, trigger }: { destinations: Pick<DestinationNode, "id" | "name" | "path">[]; types: string[]; parent?: Pick<DestinationNode, "id" | "ref" | "name">; trigger?: (open: () => void) => ReactNode }) {
   const router = useRouter();
   return (
     <PanelAction<StepResult>
@@ -47,7 +47,7 @@ export function DestinationCreateAction({ overview, parent, trigger }: { overvie
       initial={STEP_INITIAL}
       onDone={() => router.refresh()}
     >
-      {() => <DestinationFields overview={overview} parentId={parent?.id} />}
+      {() => <DestinationFields destinations={destinations} types={types} parentId={parent?.id} />}
     </PanelAction>
   );
 }
@@ -70,7 +70,7 @@ export function DestinationEditAction({ overview, node }: { overview: Destinatio
       {() => (
         <>
           <HiddenFields values={{ ref: node.ref }} />
-          <DestinationFields overview={overview} node={node} />
+          <DestinationFields destinations={overview.destinations} types={overview.options.types} node={node} />
         </>
       )}
     </PanelAction>

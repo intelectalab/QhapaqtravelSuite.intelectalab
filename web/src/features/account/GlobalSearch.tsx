@@ -12,6 +12,8 @@ const DEBOUNCE_MS = 250;
 
 const EMPTY: SearchResult = { items: [], scope: "tenant", message: null };
 
+const NO_SCREENS: SearchScreen[] = [];
+
 export interface SearchScreen {
   href: string;
   label: string;
@@ -25,7 +27,7 @@ function screenHits(screens: SearchScreen[], term: string): SearchHit[] {
   return screens.filter((screen) => normalize(`${screen.label} ${screen.group}`).includes(wanted)).slice(0, 5).map((screen) => ({ type: "screen", type_label: "Pantallas", code: screen.group, title: screen.label, subtitle: null, href: screen.href }));
 }
 
-export function GlobalSearch({ hint, search = searchEverything, screens = [], title = "Buscar en la agencia", description = "Busca clientes, leads, oportunidades, cotizaciones, reservas, productos, proveedores y órdenes por código o nombre.", placeholder = "Código, nombre, correo o documento" }: { hint: string; search?: (term: string) => Promise<SearchResult>; screens?: SearchScreen[]; title?: string; description?: string; placeholder?: string }) {
+export function GlobalSearch({ hint, search = searchEverything, screens = NO_SCREENS, title = "Buscar en la agencia", description = "Busca pantallas del menú, clientes, leads, oportunidades, cotizaciones, reservas, productos, proveedores y órdenes por código o nombre.", placeholder = "Código, nombre, correo o documento" }: { hint: string; search?: (term: string) => Promise<SearchResult>; screens?: SearchScreen[]; title?: string; description?: string; placeholder?: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -143,7 +145,7 @@ export function GlobalSearch({ hint, search = searchEverything, screens = [], ti
                   <h3 className="px-3 pb-1 pt-2 text-[11.5px] font-semibold text-fg-3">{group.label}</h3>
                   {group.items.map(({ hit, index }) => (
                     <button
-                      key={`${hit.type}:${hit.code}`}
+                      key={`${hit.type}:${hit.code}:${hit.href}`}
                       type="button"
                       onMouseEnter={() => setActive(index)}
                       onClick={() => go(hit.href)}

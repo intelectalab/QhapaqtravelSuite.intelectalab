@@ -43,6 +43,7 @@ final class AcceptInvitation
             $db->table('iam_users')->where('id', $invitation->user_id)->update([
                 'password' => Hash::make($password),
                 'status' => 'activo',
+                'email_verified_at' => DB::raw('coalesce(email_verified_at, now())'),
                 'updated_at' => now(),
             ]);
             $db->table('iam_user_invitations')->where('id', $invitation->id)->update(['accepted_at' => now()]);

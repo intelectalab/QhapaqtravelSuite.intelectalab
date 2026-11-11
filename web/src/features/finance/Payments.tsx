@@ -124,7 +124,7 @@ export function PaymentsTable({ data }: { data: PaymentsOverview }) {
         const revertible = row.status === "confirmado" || row.status === "aplicado";
         return (
           <RowActions>
-            <RowIcon tone="view" label="Ver reserva" href={`/reservas/${row.reservation.code}`} />
+            <RowIcon tone="view" label="Ver pago" href={`/finanzas/pagos/${row.code}`} />
             {can.validate && (validable ? <ConfirmPaymentAction row={row} /> : <RowIcon tone="edit" label="Validar" icon={<CircleCheck size={15} />} disabledHint="Solo se validan pagos pendientes" />)}
             {can.validate && row.status === "pendiente" && <ReasonStep row={row} step="payment_reject" label="Rechazar" title="Rechazar pago" description="La cuota se mantiene con su saldo y el pago queda como rechazado." submitLabel="Rechazar pago" icon={<CircleX size={15} />} tone="delete" />}
             {can.revert && (revertible ? <ReasonStep row={row} step="payment_revert" label="Revertir" title="Revertir pago" description="Se desaplica de la cuota y su saldo vuelve a quedar pendiente. Es definitivo." submitLabel="Revertir pago" icon={<Undo2 size={15} />} tone="delete" /> : row.status !== "pendiente" && <RowIcon tone="delete" label="Revertir" icon={<Undo2 size={15} />} disabledHint={`Un pago ${statusLabel(row.status).toLowerCase()} no se revierte`} />)}

@@ -35,7 +35,7 @@ final class QuoteController
 
     public function preview(QuoteSaveRequest $request, QuoteBuilder $builder): JsonResponse
     {
-        return response()->json(['data' => $builder->preview($request->validated(), $this->user($request))]);
+        return response()->json(['data' => $builder->preview($request->validated(), $this->user($request), $request->step())]);
     }
 
     public function store(QuoteSaveRequest $request, QuoteBuilder $builder): JsonResponse
@@ -141,6 +141,14 @@ final class QuoteController
         $lifecycle->send($code, $data['channel'], $data['recipient'], $data['message'] ?? null, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function recordView(Request $request, string $code, QuoteLifecycle $lifecycle): JsonResponse
+    {
+        $data = $request->validate(['note' => ['nullable', 'string', 'max:300']]);
+        $lifecycle->recordView($code, $data['note'] ?? null, $this->user($request));
+
+        return response()->json(['data' => ['code' => $code]], 201);
     }
 
     public function negotiate(Request $request, string $code, QuoteLifecycle $lifecycle): JsonResponse

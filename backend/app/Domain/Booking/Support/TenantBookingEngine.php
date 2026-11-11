@@ -73,6 +73,27 @@ final class TenantBookingEngine
         );
     }
 
+    public function paxRulesFor(string $productId): array
+    {
+        $paxRules = DB::table('catalog_pax_rules')->where('product_id', $productId)->first();
+        [$overrides, $params] = $this->rules->productOverrides($productId);
+
+        return $this->engine()->paxRules(new ProductData(
+            id: $productId,
+            code: $productId,
+            maxPax: null,
+            ranges: [],
+            departures: [],
+            hasAvailabilityConfig: false,
+            operatingWeekdays: null,
+            cutoffHours: null,
+            advanceMinDays: 0,
+            paxRules: $paxRules === null ? [] : $this->paxRules($paxRules),
+            ruleOverrides: $overrides,
+            ruleParams: $params,
+        ));
+    }
+
     private function rates(string $productId, string $date): array
     {
         return DB::table('catalog_rates')

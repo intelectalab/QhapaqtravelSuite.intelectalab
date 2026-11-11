@@ -1,4 +1,4 @@
-import { Building2, Layers, LayoutDashboard, Palette, Plug, ReceiptText, Settings2, ShieldCheck } from "lucide-react";
+import { Building2, Layers, LayoutDashboard, LifeBuoy, Palette, Plug, ReceiptText, Settings2, ShieldCheck } from "lucide-react";
 import type { NavGroup } from "./navigation";
 
 export const PLATFORM_NAV_GROUPS: NavGroup[] = [
@@ -32,6 +32,7 @@ export const PLATFORM_NAV_GROUPS: NavGroup[] = [
     screens: [
       { href: "/plataforma/configuracion", label: "Configuración", icon: Settings2 },
       { href: "/plataforma/personalizacion", label: "Personalización", icon: Palette },
+      { href: "/plataforma/ayuda", label: "Centro de ayuda", icon: LifeBuoy },
     ],
   },
 ];

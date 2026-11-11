@@ -11,11 +11,12 @@ use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
+use App\Domain\Site\Support\WebOrderSettlement;
 use Illuminate\Support\Facades\DB;
 
 final class PaymentWorkflow
 {
-    public function __construct(private readonly ReceivableLedger $ledger, private readonly B2bCredit $credit, private readonly AuditLogger $audit) {}
+    public function __construct(private readonly ReceivableLedger $ledger, private readonly B2bCredit $credit, private readonly AuditLogger $audit, private readonly WebOrderSettlement $web) {}
 
     public function confirm(string $code, ?string $receivableCode, User $actor): void
     {
@@ -31,8 +32,10 @@ final class PaymentWorkflow
                 $this->audit->log('Pago', $payment->code, 'validar', 'pendiente', 'confirmado');
             }
 
+            $receivableCode ??= $payment->receivable_id ? DB::table('fin_receivables')->where('id', $payment->receivable_id)->value('code') : null;
+
             if ($receivableCode !== null) {
-                $this->apply($payment, $receivableCode, $actor);
+                $this->apply($payment, (string) $receivableCode, $actor);
             }
         });
     }
@@ -48,6 +51,7 @@ final class PaymentWorkflow
 
             $this->transition($payment, 'rechazado', $reason, $actor, ['reject_reason' => $reason]);
             $this->audit->log('Pago', $payment->code, 'rechazar', 'pendiente', $reason);
+            $this->web->rejected($payment, $reason);
         });
     }
 

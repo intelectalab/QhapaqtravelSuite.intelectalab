@@ -116,3 +116,24 @@ it('anular exige motivo y Ventas no puede anular', function () {
     expect($this->postJson('/api/v1/finance/payables/CXP-00405/cancel', ['reason' => 'Servicio no prestado'], critical()))->toBeApiError(403);
     expect(rowOf('fin_payables', 'CXP-00405')->status)->toBe('abierta');
 });
+
+it('un doble envío con la misma Idempotency-Key registra un solo costo adicional y repite la respuesta', function () {
+    actingAsSeed('U07');
+    $key = idem();
+    $count = fn () => withinTenant(tenantA(), fn () => DB::table('fin_payables')->where('concept', 'Movilidad adicional por cierre de vía')->count());
+    $before = $count();
+
+    $first = $this->postJson('/api/v1/finance/payables', finCxpBody(), critical(null, $key))->assertCreated();
+    $again = $this->postJson('/api/v1/finance/payables', finCxpBody(), critical(null, $key))->assertCreated();
+
+    expect($again->headers->get('Idempotent-Replayed'))->toBe('true')
+        ->and($again->json('data.code'))->toBe($first->json('data.code'))
+        ->and($count())->toBe($before + 1)
+        ->and($this->postJson('/api/v1/finance/payables', finCxpBody(['amount' => '99.00']), critical(null, $key)))->toBeApiError(422, 'IDEMPOTENCY_KEY_REUSED');
+});
+
+it('sin Idempotency-Key el costo adicional se registra igual, porque el contrato no la exige', function () {
+    actingAsSeed('U07');
+
+    $this->postJson('/api/v1/finance/payables', finCxpBody())->assertCreated();
+});

@@ -44,7 +44,7 @@ export function QuickError({ message }: { message: string | null }) {
 }
 
 export const CLOSE_REMEDY: Record<string, string> = {
-  services: "Marca como completado cada servicio en «Proveedores y costos» cuando ya se prestó.",
+  services: "Marca como completado cada servicio en «Servicios y proveedores» cuando ya se prestó.",
   incidents: "Resuelve o cierra las incidencias abiertas o en proceso.",
   evidence: "Sube al menos una evidencia de la orden; cada incidencia alta o crítica necesita la suya.",
   costs: "Carga el costo de proveedor de cada servicio en la reserva.",

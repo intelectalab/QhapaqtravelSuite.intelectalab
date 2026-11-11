@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\Integrations\Adapters\ClamAvMalwareScanner;
+use App\Domain\Integrations\Contracts\CaptchaVerifier;
 use App\Domain\Integrations\Contracts\FiscalGateway;
 use App\Domain\Integrations\Contracts\FxRateProvider;
+use App\Domain\Integrations\Contracts\MalwareScanner;
 use App\Domain\Integrations\Contracts\MessagingChannel;
 use App\Domain\Integrations\Contracts\PaymentGateway;
 use App\Domain\Integrations\Contracts\ReviewsProvider;
 use App\Domain\Integrations\Fake\FakeFiscalGateway;
 use App\Domain\Integrations\Fake\FakeFxRateProvider;
+use App\Domain\Integrations\Fake\FakeMalwareScanner;
 use App\Domain\Integrations\Fake\FakeMessagingChannel;
 use App\Domain\Integrations\Fake\FakePaymentGateway;
 use App\Domain\Integrations\Fake\FakeReviewsProvider;
+use App\Domain\Integrations\Support\ConfiguredCaptchaVerifier;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
@@ -26,13 +31,15 @@ final class IntegrationServiceProvider extends ServiceProvider
         MessagingChannel::class => ['config' => 'integrations.drivers.messaging', 'drivers' => ['fake' => FakeMessagingChannel::class]],
         ReviewsProvider::class => ['config' => 'integrations.drivers.reviews', 'drivers' => ['fake' => FakeReviewsProvider::class]],
         FxRateProvider::class => ['config' => 'integrations.drivers.fx', 'drivers' => ['fake' => FakeFxRateProvider::class]],
+        MalwareScanner::class => ['config' => 'integrations.drivers.antivirus', 'drivers' => ['fake' => FakeMalwareScanner::class, 'clamav' => ClamAvMalwareScanner::class]],
     ];
 
-    private const REAL_REQUIRED_IN_PRODUCTION = [FiscalGateway::class, PaymentGateway::class];
+    private const REAL_REQUIRED_IN_PRODUCTION = [FiscalGateway::class, PaymentGateway::class, MalwareScanner::class];
 
     public function register(): void
     {
         $this->mergeConfigFrom(config_path('integrations.php'), 'integrations');
+        $this->app->bind(CaptchaVerifier::class, ConfiguredCaptchaVerifier::class);
 
         foreach (self::DRIVERS as $contract => $definition) {
             $this->app->singleton($contract, function (Application $app) use ($contract, $definition) {

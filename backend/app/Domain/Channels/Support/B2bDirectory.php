@@ -4,12 +4,80 @@ declare(strict_types=1);
 
 namespace App\Domain\Channels\Support;
 
+use App\Domain\Catalog\Support\B2bRateDirectory;
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Facades\DB;
 
 final class B2bDirectory
 {
-    public function __construct(private readonly ChannelKit $kit) {}
+    public function __construct(private readonly ChannelKit $kit, private readonly B2bRateDirectory $rates) {}
+
+    public function agency(string $code, User $viewer): array
+    {
+        return collect($this->overview($viewer)['items'])->firstWhere('code', $code) ?? throw ApiException::notFound('La agencia no existe.');
+    }
+
+    public function movements(string $code): array
+    {
+        $agency = DB::table('channel_b2b_agencies')->where('code', $code)->whereNull('deleted_at')->first(['id', 'code', 'credit_limit', 'credit_used', 'credit_currency'])
+            ?? throw ApiException::notFound('La agencia no existe.');
+        $rows = DB::table('channel_b2b_credit_movements as m')
+            ->leftJoin('booking_reservations as r', 'r.id', '=', 'm.reservation_id')
+            ->leftJoin('fin_payments as p', 'p.id', '=', 'm.payment_id')
+            ->leftJoin('iam_users as u', 'u.id', '=', 'm.created_by')
+            ->where('m.agency_id', $agency->id)->orderByDesc('m.created_at')
+            ->get(['m.movement_type', 'm.amount', 'm.currency', 'm.source_amount', 'm.source_currency', 'm.fx_rate', 'm.balance_after', 'm.note', 'm.created_at', 'r.code as reservation', 'p.code as payment', 'u.name as user']);
+        $items = [];
+
+        foreach ($rows as $row) {
+            $items[] = [
+                'type' => $row->movement_type,
+                'amount' => ChannelKit::money($row->amount),
+                'currency' => $row->currency,
+                'source' => $row->source_amount !== null ? ['amount' => ChannelKit::money($row->source_amount), 'currency' => $row->source_currency, 'fx_rate' => $row->fx_rate !== null ? (float) $row->fx_rate : null] : null,
+                'balance_after' => ChannelKit::money($row->balance_after),
+                'reservation' => $row->reservation,
+                'payment' => $row->payment,
+                'note' => $row->note,
+                'user' => $row->user ?? 'Sistema',
+                'at' => $row->created_at,
+            ];
+        }
+
+        return [
+            'agency' => $agency->code,
+            'currency' => $agency->credit_currency,
+            'credit_limit' => ChannelKit::money($agency->credit_limit),
+            'credit_used' => ChannelKit::money($agency->credit_used),
+            'items' => $items,
+        ];
+    }
+
+    public function settlements(?string $status): array
+    {
+        $rows = DB::table('channel_b2b_settlement_requests as s')->join('channel_b2b_agencies as a', 'a.id', '=', 's.agency_id')->leftJoin('iam_users as u', 'u.id', '=', 's.requested_by')
+            ->when($status !== null && $status !== '', fn ($query) => $query->where('s.status', $status))
+            ->orderByDesc('s.created_at')
+            ->get(['s.code', 's.amount_pen', 's.fx_rate', 's.commission_ids', 's.status', 's.created_at', 's.updated_at', 'a.code as agency_code', 'a.legal_name', 'u.name as requested_by']);
+        $items = [];
+
+        foreach ($rows as $row) {
+            $items[] = [
+                'code' => $row->code,
+                'agency' => ['code' => $row->agency_code, 'name' => $row->legal_name],
+                'amount_pen' => ChannelKit::money($row->amount_pen),
+                'fx_rate' => (float) $row->fx_rate,
+                'commissions' => count(array_filter(explode(',', trim((string) $row->commission_ids, '{}')))),
+                'status' => $row->status,
+                'requested_by' => $row->requested_by,
+                'requested_at' => $row->created_at,
+                'updated_at' => $row->updated_at,
+            ];
+        }
+
+        return $items;
+    }
 
     public function overview(User $viewer): array
     {
@@ -56,6 +124,7 @@ final class B2bDirectory
                 'lock_version' => (int) $row->lock_version,
                 'sales' => $total,
                 'commission' => round($total * (float) $row->commission_pct / 100, 2),
+                'rates' => $this->rates->forAgency((string) $row->id),
                 'reservations' => $own->map(fn (object $sale): array => ['code' => $sale->code, 'title' => $sale->title, 'status' => $sale->status, 'travel_from' => $sale->travel_from, 'total' => ChannelKit::money($sale->total_amount), 'currency' => $sale->currency])->all(),
             ];
         })->values();

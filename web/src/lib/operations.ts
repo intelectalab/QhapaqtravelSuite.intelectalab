@@ -1,4 +1,5 @@
 import type { SelectOption } from "@/components/ui/Select";
+import type { ReservationWebSnapshot } from "@/lib/reservations";
 
 export interface Person {
   id: string;
@@ -114,15 +115,20 @@ export interface OrderDetail {
   coordinator: Person;
   tasks: { id: string; title: string; done: boolean; done_at: string | null; done_by: string | null }[];
   assignments: Assignment[];
-  services: { id: string; code: string; lock_version: number; name: string; date: string; time: string | null; kind: string; status: string; confirmation: string | null; cost: string; currency: string; assigned: boolean }[];
-  passengers: { id: string; full_name: string; pax_type: string; nationality: string | null; diet_notes: string | null; is_lead: boolean }[];
+  services: { id: string; code: string; lock_version: number; name: string; date: string; time: string | null; kind: string; status: string; confirmation: string | null; cost: string; currency: string; assigned: boolean; reject_reason: string | null; replaced: boolean; provider: { ref: string; name: string; active: boolean } | null; product: string | null; price?: string }[];
+  passengers: { id: string; full_name: string; pax_type: string; nationality: string | null; diet_notes: string | null; is_lead: boolean; relationship: string | null; doc_type: string | null; doc_number: string | null; age: number | null; birth_date: string | null; phone: string | null }[];
+  web: ReservationWebSnapshot | null;
+  rooming: { id: string; city: string | null; hotel_name: string | null; hotel: string | null; check_in: string; check_out: string; status: string; sent_at: string | null; hotel_confirmed_at: string | null; rooms: number; guests: number }[];
+  vouchers: { code: string; service_label: string; service_date: string; pax: number; status: string; version: number; provider: string | null }[];
+  economics: { sale: string; cost: string; currency: string } | null;
+  reject_reasons: string[];
   incidents: { code: string; title: string; type: string; severity: string; status: string; sla_due_at: string; created_at: string }[];
   evidences: number;
   evidence_files: EvidenceFile[];
   evidence_rules: EvidenceRules;
   checks: CloseCheck[];
   transitions: { status: string; label: string }[];
-  can: { assign: boolean; close: boolean; incidents: boolean };
+  can: { assign: boolean; close: boolean; incidents: boolean; services: boolean; vouchers: boolean };
   coordinators: Person[];
   options: ResourceOptions | null;
 }

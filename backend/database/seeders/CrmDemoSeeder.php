@@ -255,6 +255,7 @@ final class CrmDemoSeeder
     private function seedServices(string $reservationId, array $seed): void
     {
         $providers = DB::table('catalog_providers')->where('tenant_id', $this->tenant->getKey())->pluck('id', 'ref')->all();
+        $products = DB::table('catalog_products')->where('tenant_id', $this->tenant->getKey())->whereNotNull('ref')->pluck('id', 'ref')->all();
 
         foreach ($seed['services'] ?? [] as $service) {
             $status = $service['status'];
@@ -263,6 +264,7 @@ final class CrmDemoSeeder
             $this->insert('booking_reservation_services', ['code' => $service['id']], [
                 'reservation_id' => $reservationId,
                 'provider_id' => $providers[$service['providerId'] ?? ''] ?? null,
+                'product_id' => $products[$service['productId'] ?? ''] ?? null,
                 'requires_assignment' => in_array($kind, ['tour', 'traslado'], true),
                 'name' => Str::limit($service['name'], 195),
                 'service_date' => $this->day($service['date']),
@@ -326,6 +328,38 @@ final class CrmDemoSeeder
             }
 
             $this->seedQuoteVersions($quoteId, $seed);
+            $this->seedQuoteTracking($quoteId, $seed);
+        }
+    }
+
+    private function seedQuoteTracking(string $quoteId, array $seed): void
+    {
+        foreach (['quote_sends', 'quote_views', 'quote_negotiations'] as $table) {
+            DB::table($table)->where('quote_id', $quoteId)->delete();
+        }
+
+        if ($seed['status'] === 'borrador') {
+            return;
+        }
+
+        $base = ['tenant_id' => $this->tenant->getKey(), 'quote_id' => $quoteId];
+        $owner = $this->user($seed['owner']);
+        $current = collect($seed['versions'] ?? [])->firstWhere('v', $seed['currentVersion'] ?? 1) ?? collect($seed['versions'] ?? [])->last();
+        $sentAt = $this->date(($current['date'] ?? null) ? $current['date'].' 10:00' : $seed['createdAt']);
+        $email = DB::table('crm_clients')->where('id', $this->clients[$seed['clientId']])->value('email');
+
+        DB::table('quote_sends')->insert([...$base, 'id' => (string) Str::uuid7(), 'version_no' => $seed['currentVersion'] ?? 1, 'channel' => $email ? 'Email' : 'WhatsApp', 'recipient' => $email ?? 'Cliente', 'message' => null, 'sent_by' => $owner, 'sent_at' => $sentAt, 'created_by' => $owner, 'created_at' => $sentAt]);
+
+        if ($seed['viewedAt'] ?? null) {
+            DB::table('quote_views')->insert([...$base, 'id' => (string) Str::uuid7(), 'version_no' => $seed['currentVersion'] ?? 1, 'viewed_at' => $this->date($seed['viewedAt']), 'source' => 'portal']);
+        }
+
+        if ($seed['status'] === 'negociacion' && ($current['notes'] ?? null)) {
+            DB::table('quote_negotiations')->insert([...$base, 'id' => (string) Str::uuid7(), 'channel' => 'Reunión', 'note' => $this->text($current['notes']), 'created_version_no' => $seed['currentVersion'] ?? null, 'recorded_by' => $owner, 'recorded_at' => $sentAt, 'created_by' => $owner, 'created_at' => $sentAt]);
+        }
+
+        if ($seed['approvedAt'] ?? null) {
+            DB::table('quote_quotes')->where('id', $quoteId)->update(['approved_at' => $this->date($seed['approvedAt']), 'approved_by_name' => trim((string) preg_replace('/\s*\(cliente\)$/i', '', (string) ($seed['approvedBy'] ?? ''))) ?: null, 'approval_channel' => 'Portal', 'approval_version_no' => $seed['currentVersion'] ?? 1]);
         }
     }
 

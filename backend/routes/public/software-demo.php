@@ -7,5 +7,5 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('software')->name('software.')->group(function (): void {
     Route::get('demo-requests/options', [PublicSoftwareController::class, 'demoOptions'])->name('demo-requests.options');
-    Route::post('demo-requests', [PublicSoftwareController::class, 'requestDemo'])->name('demo-requests.store');
+    Route::post('demo-requests', [PublicSoftwareController::class, 'requestDemo'])->middleware('captcha')->name('demo-requests.store');
 });

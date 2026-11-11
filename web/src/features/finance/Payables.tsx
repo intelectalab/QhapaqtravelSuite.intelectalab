@@ -176,7 +176,7 @@ export function PayablesTable({ data }: { data: PayablesOverview }) {
       align: "right",
       cell: (row) => (
         <RowActions>
-          {row.reservation ? <RowIcon tone="view" label="Ver reserva" href={`/reservas/${row.reservation.code}`} /> : <RowIcon tone="view" label="Ver reserva" disabledHint="Gasto sin reserva" />}
+          <RowIcon tone="view" label="Ver obligación" href={`/finanzas/proveedores/${row.code}`} />
           {can.manage && (closed(row) ? <RowIcon tone="edit" label="Editar" disabledHint={`La obligación está ${statusLabel(row.status).toLowerCase()}`} /> : <EditPayableAction row={row} />)}
           {can.manage && !closed(row) && !row.approved && <ApprovePayableAction row={row} />}
           {can.operate && !closed(row) && row.approved && <PayPayableAction row={row} methods={options.payout_methods} today={today} usdRate={usdRate} />}

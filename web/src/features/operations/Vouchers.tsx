@@ -27,7 +27,7 @@ const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.local
 
 const VIA: Record<string, string> = { web: "la web", extranet: "la extranet del proveedor", app_operador: "la app del operador" };
 
-function IssueAction({ service, providers }: { service: PendingVoucher; providers: VoucherOverview["providers"] }) {
+export function IssueAction({ service, providers }: { service: PendingVoucher; providers: VoucherOverview["providers"] }) {
   return (
     <OpsStep step="voucher_issue" formKey={service.code} label="Emitir" icon={<Ticket size={15} />} size="sm" title="Emitir voucher" description={`${service.name} · ${service.reservation.code}`} submitLabel="Emitir y publicar" trigger={(open) => <Button size="sm" variant="secondary" icon={<Ticket size={15} />} onClick={open}>Emitir</Button>}>
       <input type="hidden" name="service_code" value={service.code} />

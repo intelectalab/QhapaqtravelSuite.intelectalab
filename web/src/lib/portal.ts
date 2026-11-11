@@ -177,6 +177,7 @@ export interface PortalProfile {
   editable: boolean;
   consents: { channel: "email" | "whatsapp"; granted: boolean; since: string | null; source: string | null; policy: string | null }[];
   claims: { code: string; number: string | null; type: string; status: string; received_at: string | null; due_date: string | null; subject: string; reservation: string | null }[];
+  arco_requests: { code: string; subject: string; status: string; due_date: string | null; created_at: string; resolution: string | null }[];
 }
 
 export interface PortalConversation {
@@ -258,6 +259,13 @@ export const LOCALES = [
   { value: "pt", label: "Português" },
 ];
 
+export const ARCO_RIGHTS = [
+  { value: "acceso", label: "Acceso: saber qué datos míos guardan" },
+  { value: "rectificacion", label: "Rectificación: corregir un dato que no está bien" },
+  { value: "cancelacion", label: "Cancelación: que eliminen mis datos personales" },
+  { value: "oposicion", label: "Oposición: que dejen de usar mis datos para algo" },
+];
+
 export const CONSENT_CHANNELS: Record<string, { label: string; hint: string }> = {
   email: { label: "Novedades por correo", hint: "Ofertas y novedades de viaje en tu correo." },
   whatsapp: { label: "Novedades por WhatsApp", hint: "Promociones y recordatorios en tu WhatsApp." },
@@ -276,4 +284,55 @@ export function countdownLabel(days: number): string {
   if (days === 1) return "Sales mañana";
   if (days === 0) return "Sales hoy";
   return "En viaje";
+}
+
+export interface PaxFeedbackOverview {
+  trip: { code: string; title: string };
+  claims_book: string;
+  types: { value: string; label: string }[];
+  services: { code: string; name: string; date: string }[];
+  history: { code: string; type: string; type_label: string; rating: number | null; text: string; status: string; reply: string | null; replied_at: string | null; created_at: string; service: string | null }[];
+}
+
+export interface PaxReviewOverview {
+  trip: { code: string; title: string; status: string };
+  subratings: { key: string; label: string }[];
+  items: { product: { id: string; code: string; name: string }; date: string; eligible: boolean; reason: string | null; review: { code: string; stars: number; title: string; status: string } | null }[];
+}
+
+export const FEEDBACK_STATUS: Record<string, { label: string; tone: Tone }> = {
+  nuevo: { label: "Enviado", tone: "info" },
+  leido: { label: "Leído por la agencia", tone: "t1" },
+  respondido: { label: "Respondido", tone: "ok" },
+  derivado: { label: "En atención", tone: "warn" },
+};
+
+export const REVIEW_STATUS: Record<string, { label: string; tone: Tone }> = {
+  pendiente: { label: "En revisión", tone: "warn" },
+  publicada: { label: "Publicada", tone: "ok" },
+  oculta: { label: "Solo para la agencia", tone: "mute" },
+  rechazada: { label: "No publicada", tone: "mute" },
+};
+
+export interface PaxAlerts {
+  code: string;
+  alerts: { id: string; code: string; type: string; severity: string; title: string; message: string | null; at: string; acked: boolean }[];
+  notices: { code: string; subject: string; body: string; at: string; channel: string }[];
+}
+
+export interface PaxContacts {
+  code: string;
+  emergency: { label: string; phone: string | null; office: { name: string; phone: string | null; address: string | null } | null };
+  coordinator: { name: string; phone: string | null; email: string | null } | null;
+  advisor: { name: string; email: string | null; phone: string | null } | null;
+  guide: { name: string; phone: string | null; service: string; date: string } | null;
+}
+
+export interface PaxCompanions {
+  code: string;
+  lock_version: number;
+  editable: boolean;
+  when: string;
+  passengers: { seq: number; name: string; type: "ADT" | "CHD" | "INF"; doc_type: string | null; document: string | null; nationality: string | null; birth_date: string | null; diet: string | null; lead: boolean; pending: boolean }[];
+  pickup: { point: string | null; address: string | null; flight: string | null; arrival: string | null } | null;
 }

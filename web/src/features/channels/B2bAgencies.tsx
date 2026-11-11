@@ -129,7 +129,7 @@ function AgencyDetail({ agency }: { agency: B2bAgency }) {
           fields={[
             { label: "Contacto", value: agency.contact_name },
             { label: "Correo", value: agency.booking_email ?? "—" },
-            { label: "Cliente CRM", value: agency.client?.name ?? "Sin vincular" },
+            { label: "Cliente CRM", value: agency.client ? <a href={`/crm/clientes/${agency.client.code}`} className="font-semibold hover:text-accent">{agency.client.name}</a> : "Sin vincular" },
             { label: "Lista", value: agency.price_list.name },
             { label: "Comisión", value: formatPercent(agency.commission_pct, 0) },
             { label: "Vigencia", value: `${formatDate(agency.valid_from)} – ${formatDate(agency.valid_to)}` },
@@ -144,6 +144,26 @@ function AgencyDetail({ agency }: { agency: B2bAgency }) {
               Usado {formatMoney(agency.credit_used, agency.currency)} · disponible {formatMoney(agency.credit_available, agency.currency)}
             </p>
           </>
+        )}
+      </PanelSection>
+      <PanelSection title="Tarifas B2B asignadas" aside={`${agency.rates.length}`}>
+        {agency.rates.length === 0 ? (
+          <p className="text-[13px] text-fg-3">Sin tarifas: la agencia todavía no puede reservar ningún producto. Asígnalas en «Listas de precios».</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {agency.rates.map((rate) => (
+              <li key={rate.product.code} className="lift flex items-center justify-between gap-3 rounded-tile border border-line px-3 py-2.5">
+                <span className="min-w-0">
+                  <a href={`/catalogo/productos/${rate.product.code}?seccion=b2b`} className="block truncate text-[13.5px] font-semibold hover:text-accent">{rate.product.name}</a>
+                  <span className="text-[12px] text-fg-3">{rate.price_list ?? "Sin lista"} · comisión {formatPercent(rate.commission_pct, 0)} · {rate.credit_allowed ? "con crédito" : "solo prepago"}</span>
+                </span>
+                <span className="flex flex-col items-end gap-1">
+                  <b className="text-[13px]">{formatMoney(rate.net_price, rate.currency)}</b>
+                  {rate.expired ? <ChannelBadge status="vencida" /> : rate.valid_to ? <span className="text-[11.5px] text-fg-3">hasta {formatDate(rate.valid_to)}</span> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
       </PanelSection>
       <PanelSection title="Reservas" aside={`${agency.reservations.length}`}>

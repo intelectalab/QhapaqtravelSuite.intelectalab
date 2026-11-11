@@ -15,6 +15,7 @@ uses(TestCase::class)
         TestDatabase::flushCache();
         TestDatabase::isolatePermissionCache();
         Entitlements::flush();
+        config(['access.lockout.attempts' => 1000]);
         freezeBusinessToday();
     })
     ->in('Feature');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Channels\Http\Controllers;
 
+use App\Domain\Channels\Actions\B2bPortalPreview;
 use App\Domain\Channels\Actions\ManageB2bAgency;
 use App\Domain\Channels\Support\B2bDirectory;
 use App\Domain\Iam\Models\User;
@@ -15,6 +16,47 @@ final class B2bAgencyController
     public function index(Request $request, B2bDirectory $directory): JsonResponse
     {
         return response()->json(['data' => $directory->overview($this->user($request))]);
+    }
+
+    public function summary(Request $request, B2bDirectory $directory): JsonResponse
+    {
+        $overview = $directory->overview($this->user($request));
+
+        return response()->json(['data' => ['today' => $overview['today'], 'kpis' => $overview['kpis']]]);
+    }
+
+    public function agencies(Request $request, B2bDirectory $directory): JsonResponse
+    {
+        $status = $request->query('status');
+        $query = $request->query('q');
+        $items = collect($directory->overview($this->user($request))['items'])
+            ->when(is_string($status) && $status !== '', fn ($rows) => $rows->where('effective_status', $status))
+            ->when(is_string($query) && $query !== '', fn ($rows) => $rows->filter(fn (array $row): bool => str_contains(mb_strtolower($row['code'].' '.$row['legal_name'].' '.$row['ruc']), mb_strtolower((string) $query))))
+            ->values();
+
+        return response()->json(['data' => $items]);
+    }
+
+    public function show(Request $request, string $code, B2bDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->agency($code, $this->user($request))]);
+    }
+
+    public function movements(string $code, B2bDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->movements($code)]);
+    }
+
+    public function settlements(Request $request, B2bDirectory $directory): JsonResponse
+    {
+        $status = $request->query('status');
+
+        return response()->json(['data' => $directory->settlements(is_string($status) ? $status : null)]);
+    }
+
+    public function impersonate(Request $request, string $code, B2bPortalPreview $preview): JsonResponse
+    {
+        return response()->json(['data' => $preview->start($code, $this->user($request))]);
     }
 
     public function store(Request $request, ManageB2bAgency $manage): JsonResponse

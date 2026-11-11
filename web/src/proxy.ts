@@ -1,7 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { REALMS, realmFor } from "@/lib/realms";
+import { FRAMEABLE_PREFIX, NONCE_HEADER, contentSecurityPolicy, createNonce } from "@/lib/security-headers";
 
 export function proxy(request: NextRequest) {
+  const nonce = createNonce();
+  const policy = contentSecurityPolicy(nonce, request.nextUrl.pathname.startsWith(FRAMEABLE_PREFIX));
+  const response = route(request, nonce, policy);
+  response.headers.set("Content-Security-Policy", policy);
+  return response;
+}
+
+function route(request: NextRequest, nonce: string, policy: string) {
   const { pathname, search } = request.nextUrl;
   const realm = REALMS[realmFor(pathname)];
   const hasSession = request.cookies.has(realm.session);
@@ -23,7 +32,10 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(realm.home, request.url));
   }
 
-  return NextResponse.next();
+  const headers = new Headers(request.headers);
+  headers.set(NONCE_HEADER, nonce);
+  headers.set("Content-Security-Policy", policy);
+  return NextResponse.next({ request: { headers } });
 }
 
 export const config = {

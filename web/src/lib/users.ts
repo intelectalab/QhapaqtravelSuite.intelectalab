@@ -16,8 +16,33 @@ export interface TeamUser {
   invitation_expires_at: string | null;
 }
 
+export interface UserDetail {
+  id: string;
+  code: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  status: UserStatus;
+  mfa_enabled: boolean;
+  mfa_required: boolean;
+  last_login_at: string | null;
+  last_login_ip: string | null;
+  invited_at: string | null;
+  deactivated_at: string | null;
+  deactivated_reason: string | null;
+  locale: string | null;
+  created_at: string | null;
+  role: { code: string; name: string; scope: string } | null;
+  sede: { id: string; name: string } | null;
+  invitation_expires_at: string | null;
+  permissions: string[];
+  permission_modules: { module: string; permissions: string[] }[];
+  workload: { opportunities: number; activities: number; clients: number };
+  activity: { id: string; code: string; entity: string; entity_id: string; action: string; before: string | null; after: string | null; critical: boolean; at: string }[];
+}
+
 export interface TeamOptions {
-  roles: { code: string; name: string; description: string | null }[];
+  roles: { code: string; name: string; description: string | null; mfa: boolean }[];
   sedes: { id: string; name: string }[];
 }
 
