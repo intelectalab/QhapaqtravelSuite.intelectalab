@@ -6,10 +6,12 @@ namespace App\Domain\Operations\Actions;
 
 use App\Domain\Iam\Models\User;
 use App\Domain\Operations\Support\OpsCommon;
+use App\Domain\Operations\Support\OpsNotices;
 use App\Domain\Operations\Support\ResourceDirectory;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -23,12 +25,75 @@ final class AssignmentWorkflow
         private readonly OpsCommon $common,
         private readonly ResourceDirectory $resources,
         private readonly AuditLogger $audit,
+        private readonly OpsNotices $notices,
     ) {}
+
+    public function preview(string $id, array $data): array
+    {
+        $assignment = $this->assignment($id);
+        $resources = $this->resourcesOf($data);
+        $result = array_filter($resources) === [] ? ['blocks' => [], 'warnings' => []] : $this->validate($assignment, $resources);
+        $languages = $this->requiredLanguages($assignment->reservation_id);
+
+        return [
+            ...$result,
+            'ready' => array_filter($resources) !== [] && $result['blocks'] === [],
+            'context' => [
+                'passengers' => DB::table('booking_passengers')->where('reservation_id', $assignment->reservation_id)->count(),
+                'languages' => array_map(fn (string $code) => ResourceDirectory::LANGUAGES[$code] ?? $code, $languages),
+                'provider' => DB::table('booking_reservation_services as s')->leftJoin('catalog_providers as p', 'p.id', '=', 's.provider_id')->where('s.id', $assignment->reservation_service_id)->value('p.name'),
+                'recipients' => $this->recipients($resources)->count(),
+            ],
+        ];
+    }
+
+    public function checkins(string $id, array $passengerIds, User $actor): array
+    {
+        $assignment = $this->assignment($id);
+
+        if (! in_array($assignment->status, ['asignada', 'confirmada', 'en_curso', 'completada'], true)) {
+            throw ApiException::conflict('OPS-BR-50', 'Asigna los recursos antes de registrar el check-in.');
+        }
+
+        if ($assignment->service_date > $this->common->today()) {
+            throw ApiException::conflict('OPS-BR-50', 'El check-in se registra el día del servicio.');
+        }
+
+        $roster = DB::table('booking_passengers')->where('reservation_id', $assignment->reservation_id)->pluck('id')->map(fn (mixed $value): string => (string) $value);
+        $wanted = collect($passengerIds)->map(fn (mixed $value): string => (string) $value)->unique()->values();
+
+        if ($wanted->diff($roster)->isNotEmpty()) {
+            throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige pasajeros de esta reserva.');
+        }
+
+        return DB::transaction(function () use ($assignment, $wanted, $actor): array {
+            $current = DB::table('ops_assignment_checkins')->where('assignment_id', $assignment->id)->whereNull('undone_at')->lockForUpdate()->pluck('passenger_id')->map(fn (mixed $value): string => (string) $value);
+            $added = $wanted->diff($current)->values();
+            $removed = $current->diff($wanted)->values();
+
+            foreach ($added as $passengerId) {
+                DB::table('ops_assignment_checkins')->insert(['assignment_id' => $assignment->id, 'passenger_id' => $passengerId, 'checked_at' => now(), 'source' => 'web', 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
+            }
+
+            if ($removed->isNotEmpty()) {
+                DB::table('ops_assignment_checkins')->where('assignment_id', $assignment->id)->whereIn('passenger_id', $removed)->whereNull('undone_at')->update(['undone_at' => now(), 'undone_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
+            }
+
+            $first = DB::table('ops_assignment_checkins')->where('assignment_id', $assignment->id)->whereNull('undone_at')->min('checked_at');
+            DB::table('ops_assignments')->where('id', $assignment->id)->update(['first_checkin_at' => $first, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+
+            if ($added->isNotEmpty() || $removed->isNotEmpty()) {
+                $this->audit->log('Asignación', $assignment->order_code.' · '.$assignment->service_label, 'check_in', null, "{$wanted->count()} presentes · +{$added->count()} / -{$removed->count()}");
+            }
+
+            return ['present' => $wanted->count(), 'added' => $added->count(), 'removed' => $removed->count()];
+        });
+    }
 
     public function assign(string $id, array $data, User $actor): array
     {
         $assignment = $this->assignment($id);
-        $resources = ['guide_id' => $data['guide_id'] ?? null, 'driver_id' => $data['driver_id'] ?? null, 'vehicle_id' => $data['vehicle_id'] ?? null];
+        $resources = $this->resourcesOf($data);
 
         if (array_filter($resources) === []) {
             throw ApiException::unprocessable('OPS-BR-20', 'Elige al menos un guía, conductor o vehículo.');
@@ -55,8 +120,35 @@ final class AssignmentWorkflow
         ]);
         $this->recompute($assignment->order_id);
         $this->audit->log('Asignación', $assignment->order_code.' · '.$assignment->service_label, 'asignar', $assignment->status, 'asignada'.($warnings === [] ? '' : ' · '.count($warnings).' advertencias'));
+        $channels = array_values(array_intersect(OpsNotices::CHANNELS, (array) ($data['notify'] ?? [])));
+        $notified = $channels === [] ? 0 : $this->notify($assignment, $this->recipients($resources));
 
-        return ['warnings' => $warnings];
+        return ['warnings' => $warnings, 'notified' => $notified, 'channels' => $channels, 'delivery' => $channels === [] ? null : 'portal'];
+    }
+
+    private function notify(object $assignment, Collection $recipients): int
+    {
+        $time = OpsCommon::time($assignment->service_time);
+        $date = CarbonImmutable::parse($assignment->service_date)->format('d/m/Y');
+        $body = "Tienes un servicio asignado: {$assignment->service_label} el {$date}".($time ? " a las {$time}" : '')." ({$assignment->order_code}).";
+
+        return $this->notices->toUsers($recipients, 'asignacion.creada', "Servicio asignado: {$assignment->service_label}", $body, 'ops_assignment', $assignment->id, $assignment->reservation_id);
+    }
+
+    private function recipients(array $resources): Collection
+    {
+        if (! $resources['guide_id'] && ! $resources['driver_id']) {
+            return collect();
+        }
+
+        return DB::table('iam_users')->whereNull('deleted_at')->where('status', 'activo')
+            ->where(fn ($query) => $query->when($resources['guide_id'], fn ($inner) => $inner->orWhere('guide_id', $resources['guide_id']))->when($resources['driver_id'], fn ($inner) => $inner->orWhere('driver_id', $resources['driver_id'])))
+            ->pluck('id');
+    }
+
+    private function resourcesOf(array $data): array
+    {
+        return ['guide_id' => $data['guide_id'] ?? null, 'driver_id' => $data['driver_id'] ?? null, 'vehicle_id' => $data['vehicle_id'] ?? null];
     }
 
     public function confirm(string $id, User $actor): void

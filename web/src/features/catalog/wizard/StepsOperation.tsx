@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, CircleOff, Lock, Plus, Trash2 } from "lucide-react";
+import { CircleCheck, CircleOff, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -155,6 +155,7 @@ function RateForm({ options, suggestedCost, error, onAdd }: { options: StepProps
         <TextField label="Vigente desde" name="valid_from" type="date" value={rate.valid_from} error={error("valid_from")} onChange={(event) => patch({ valid_from: event.target.value })} />
         <TextField label="Vigente hasta" name="valid_to" type="date" min={rate.valid_from} value={rate.valid_to} error={error("valid_to")} onChange={(event) => patch({ valid_to: event.target.value })} />
         <SelectField label="Temporada" name="season_id" value={rate.season_id ?? ""} clearable placeholder="Sin temporada" options={options.seasons.filter((season) => season.status === "activa").map((season) => ({ value: season.id, label: season.name, hint: `${formatDate(season.date_from)} al ${formatDate(season.date_to)}` }))} onChange={(value) => patch({ season_id: value || null })} />
+        <RateLimitsFields rate={rate} error={error} patch={patch} />
       </div>
       <div className="mt-3 flex justify-end">
         <Button
@@ -178,6 +179,79 @@ function RateForm({ options, suggestedCost, error, onAdd }: { options: StepProps
   );
 }
 
+function RateLimitsFields({ rate, error, patch }: { rate: ProductRateDraft; error: (field: string) => string | undefined; patch: (value: Partial<ProductRateDraft>) => void }) {
+  return (
+    <>
+      <TextField label="Precio mínimo" name="min_price" type="number" min={0} step="0.01" value={rate.min_price ?? ""} error={error("min_price")} hint="Opcional: piso al negociar." onChange={(event) => patch({ min_price: event.target.value })} />
+      <TextField label="Precio máximo" name="max_price" type="number" min={0} step="0.01" value={rate.max_price ?? ""} error={error("max_price")} hint="Opcional: techo al negociar." onChange={(event) => patch({ max_price: event.target.value })} />
+      <div className="sm:col-span-2 lg:col-span-2 xl:col-span-3">
+        <TextField label="Condiciones" name="conditions" maxLength={300} value={rate.conditions ?? ""} error={error("conditions")} placeholder="Por ejemplo: mínimo 2 pasajeros, no reembolsable" onChange={(event) => patch({ conditions: event.target.value })} />
+      </div>
+    </>
+  );
+}
+
+function RateEditForm({ initial, options, error, onSave, onCancel }: { initial: ProductRateDraft; options: StepProps["options"]; error: (field: string) => string | undefined; onSave: (rate: ProductRateDraft, reason: string | null) => Promise<boolean>; onCancel: () => void }) {
+  const [rate, setRate] = useState<ProductRateDraft>(initial);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const patch = (value: Partial<ProductRateDraft>) => setRate((current) => ({ ...current, ...value }));
+  const priceChanged = Number(rate.price) !== Number(initial.price) || Number(rate.cost ?? 0) !== Number(initial.cost ?? 0);
+
+  return (
+    <div className="col-span-full mt-3 rounded-[14px] border border-accent/30 bg-accent/[0.03] p-4">
+      <p className="mb-3 text-[13px] font-semibold">Editar {initial.ref}</p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+        {options.sees_cost && <TextField label="Costo" name="edit_cost" type="number" min={0} step="0.01" value={rate.cost ?? ""} error={error("cost")} onChange={(event) => patch({ cost: event.target.value })} />}
+        <TextField label="Precio de venta" name="edit_price" type="number" min={0} step="0.01" value={rate.price} error={error("price")} onChange={(event) => patch({ price: event.target.value })} />
+        <TextField label="Vigente desde" name="edit_valid_from" type="date" value={rate.valid_from} error={error("valid_from")} onChange={(event) => patch({ valid_from: event.target.value })} />
+        <TextField label="Vigente hasta" name="edit_valid_to" type="date" min={rate.valid_from} value={rate.valid_to} error={error("valid_to")} onChange={(event) => patch({ valid_to: event.target.value })} />
+        <RateLimitsFields rate={rate} error={error} patch={patch} />
+        {priceChanged && (
+          <div className="sm:col-span-2 lg:col-span-4 xl:col-span-5">
+            <TextField label="Motivo del cambio de precio" name="edit_reason" required maxLength={300} value={reason} error={error("reason")} placeholder="Por ejemplo: subió el costo del tren" hint="Obligatorio cuando cambia el precio o el costo (CAT-BR-14)." onChange={(event) => setReason(event.target.value)} />
+          </div>
+        )}
+      </div>
+      <div className="mt-3 flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            if (await onSave(rate, reason.trim() || null)) onCancel();
+            setBusy(false);
+          }}
+        >
+          {busy ? "Guardando…" : "Guardar tarifa"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function RateRemoveButton({ label, onConfirm }: { label: string; onConfirm: () => void }) {
+  const [asking, setAsking] = useState(false);
+  if (asking) {
+    return (
+      <span className="flex items-center gap-1 rounded-lg bg-bad/10 px-2 py-1 text-[12px] font-semibold text-bad">
+        ¿Quitar?
+        <button type="button" onClick={onConfirm} className="rounded-md px-1.5 py-0.5 hover:bg-bad/15">Sí</button>
+        <button type="button" onClick={() => setAsking(false)} className="rounded-md px-1.5 py-0.5 text-fg-3 hover:bg-surface-2">No</button>
+      </span>
+    );
+  }
+  return (
+    <button type="button" title="Quitar" aria-label={label} onClick={() => setAsking(true)} className="grid h-8 w-8 place-items-center rounded-lg text-fg-3 transition hover:bg-bad/10 hover:text-bad">
+      <Trash2 size={15} />
+    </button>
+  );
+}
+
 const RATE_STATE: Record<string, { label: string; tone: "ok" | "mute" | "bad" | "info" }> = {
   vigente: { label: "Vigente", tone: "ok" },
   programada: { label: "Programada", tone: "info" },
@@ -185,9 +259,10 @@ const RATE_STATE: Record<string, { label: string; tone: "ok" | "mute" | "bad" | 
   inactiva: { label: "Inactiva", tone: "mute" },
 };
 
-export function RatesStep({ draft, set, options, errors, review, saved, onAdd, onToggle }: StepProps & { review: ProductReview | null; saved: ProductRateDraft[] | null; onAdd: (rate: ProductRateDraft) => Promise<boolean>; onToggle: (ref: string, active: boolean) => void }) {
+export function RatesStep({ draft, set, options, errors, review, saved, onAdd, onToggle, onUpdate, onRemove }: StepProps & { review: ProductReview | null; saved: ProductRateDraft[] | null; onAdd: (rate: ProductRateDraft) => Promise<boolean>; onToggle: (ref: string, active: boolean) => void; onUpdate: (rate: ProductRateDraft, reason: string | null) => Promise<boolean>; onRemove: (ref: string) => void }) {
   const rows = saved ?? draft.rates;
   const editing = saved !== null;
+  const [editingRef, setEditingRef] = useState<string | null>(null);
 
   return (
     <div className="flex flex-col gap-5">
@@ -213,7 +288,9 @@ export function RatesStep({ draft, set, options, errors, review, saved, onAdd, o
                   <span className="text-[12px] text-fg-3">
                     {rate.price_basis} · {formatDate(rate.valid_from)} al {rate.valid_to ? formatDate(rate.valid_to) : "sin fecha"}
                     {rate.season_id && ` · ${options.seasons.find((season) => season.id === rate.season_id)?.name ?? "temporada"}`}
+                    {(rate.min_price || rate.max_price) && ` · rango ${rate.min_price ? formatMoney(rate.min_price, rate.currency || "PEN") : "—"} a ${rate.max_price ? formatMoney(rate.max_price, rate.currency || "PEN") : "—"}`}
                   </span>
+                  {rate.conditions && <span className="block text-[12px] text-fg-2">{rate.conditions}</span>}
                 </span>
                 <span className="text-right">
                   <b className="block font-mono text-[13.5px]">{rate.currency ? formatMoney(rate.price || 0, rate.currency) : rate.price}</b>
@@ -221,17 +298,24 @@ export function RatesStep({ draft, set, options, errors, review, saved, onAdd, o
                 </span>
                 <span className="flex items-center gap-1.5">
                   {state && <Badge tone={state.tone}>{state.label}</Badge>}
+                  {editing && rate.ref && options.can_manage_rates && options.sees_cost && (rate.state === "vigente" || rate.state === "programada") && (
+                    <button type="button" title="Editar" aria-label={`Editar ${rate.ref}`} onClick={() => setEditingRef(editingRef === rate.ref ? null : (rate.ref as string))} className="grid h-8 w-8 place-items-center rounded-lg text-fg-3 transition hover:bg-surface-2 hover:text-fg">
+                      <Pencil size={15} />
+                    </button>
+                  )}
                   {editing && rate.ref && options.can_manage_rates && rate.state !== "vencida" && (
                     <button type="button" title={rate.state === "inactiva" ? "Activar" : "Desactivar"} aria-label={rate.state === "inactiva" ? `Activar ${rate.ref}` : `Desactivar ${rate.ref}`} onClick={() => onToggle(rate.ref as string, rate.state === "inactiva")} className="grid h-8 w-8 place-items-center rounded-lg text-fg-3 transition hover:bg-surface-2 hover:text-fg">
                       {rate.state === "inactiva" ? <CircleCheck size={16} /> : <CircleOff size={16} />}
                     </button>
                   )}
+                  {editing && rate.ref && options.can_manage_rates && <RateRemoveButton label={`Quitar ${rate.ref}`} onConfirm={() => onRemove(rate.ref as string)} />}
                   {!editing && (
                     <button type="button" title="Quitar" aria-label={`Quitar tarifa ${index + 1}`} onClick={() => set({ rates: draft.rates.filter((_, position) => position !== index) })} className="grid h-8 w-8 place-items-center rounded-lg text-fg-3 transition hover:bg-bad/10 hover:text-bad">
                       <Trash2 size={15} />
                     </button>
                   )}
                 </span>
+                {editing && rate.ref && editingRef === rate.ref && <RateEditForm key={`${rate.ref}-${rate.lock_version}`} initial={rate} options={options} error={(field) => errors[`rates.0.${field}`]} onSave={onUpdate} onCancel={() => setEditingRef(null)} />}
               </li>
             );
           })}

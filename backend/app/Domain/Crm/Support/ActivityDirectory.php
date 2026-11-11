@@ -21,7 +21,11 @@ final class ActivityDirectory
         'reservation' => ['table' => 'booking_reservations', 'name' => 'title', 'path' => '/reservas/'],
     ];
 
-    public function __construct(private readonly TenantContext $context) {}
+    public const OWNED = ['lead', 'opportunity', 'client', 'quote'];
+
+    private const OPEN_QUOTES = ['borrador', 'enviada', 'vista', 'negociacion', 'aprobada'];
+
+    public function __construct(private readonly TenantContext $context, private readonly RecordHistory $history) {}
 
     public function agenda(User $viewer): array
     {
@@ -44,6 +48,60 @@ final class ActivityDirectory
         ];
     }
 
+    public function related(User $viewer, array $relations): Collection
+    {
+        $relations = array_filter(array_map(fn (array $ids) => array_values(array_filter($ids)), $relations));
+
+        if ($relations === []) {
+            return collect();
+        }
+
+        $rows = $this->scoped($viewer)->join('iam_users as u', 'u.id', '=', 'a.owner_id')
+            ->where(function (Builder $where) use ($relations): void {
+                foreach ($relations as $type => $ids) {
+                    $where->orWhere(fn (Builder $one) => $one->where('a.related_type', $type)->whereIn('a.related_id', $ids));
+                }
+            })
+            ->select(['a.*', 'u.name as owner_name', 'u.avatar_color as owner_color'])
+            ->orderByRaw("case when a.status = 'completada' then 1 else 0 end")->orderBy('a.due_at')->get();
+        $related = $this->relatedLabels($rows);
+        $now = Carbon::now($this->timezone());
+
+        return $rows->map(fn (object $row) => [...$this->summary($row, $related, $now), 'merged' => $row->merged_from_lead_id !== null])->values();
+    }
+
+    public function find(User $viewer, string $code): ?array
+    {
+        $row = $this->scoped($viewer)
+            ->join('iam_users as u', 'u.id', '=', 'a.owner_id')
+            ->leftJoin('iam_users as c', 'c.id', '=', 'a.created_by')
+            ->leftJoin('iam_users as d', 'd.id', '=', 'a.completed_by')
+            ->where('a.code', $code)
+            ->select(['a.*', 'u.name as owner_name', 'u.avatar_color as owner_color', 'c.name as creator_name', 'd.name as completer_name'])
+            ->first();
+
+        if ($row === null) {
+            return null;
+        }
+
+        $now = Carbon::now($this->timezone());
+        $previous = $row->previous_activity_id ? DB::table('crm_activities')->where('id', $row->previous_activity_id)->first(['code', 'subject']) : null;
+        $next = DB::table('crm_activities')->where('previous_activity_id', $row->id)->first(['code', 'subject']);
+        $merged = $row->merged_from_lead_id ? DB::table('crm_leads')->where('id', $row->merged_from_lead_id)->first(['code', 'full_name']) : null;
+
+        return [
+            ...$this->summary($row, $this->relatedLabels(collect([$row])), $now),
+            'created_at' => Carbon::parse($row->created_at)->toIso8601String(),
+            'created_by' => $row->creator_name,
+            'completed_by' => $row->completer_name,
+            'auto_closed' => (bool) $row->auto_closed,
+            'previous' => $previous ? ['code' => $previous->code, 'subject' => $previous->subject] : null,
+            'next' => $next ? ['code' => $next->code, 'subject' => $next->subject] : null,
+            'merged_from' => $merged ? ['code' => $merged->code, 'name' => $merged->full_name] : null,
+            'history' => $this->history->for([$row->code]),
+        ];
+    }
+
     public function scoped(User $viewer): Builder
     {
         return Portfolio::scope(DB::table('crm_activities as a'), $viewer, 'a.owner_id');
@@ -57,6 +115,7 @@ final class ActivityDirectory
             'lead' => $own(DB::table('crm_leads')->whereNull('deleted_at')->whereIn('status', ['nuevo', 'contactado', 'calificado']), 'owner_id')->orderBy('full_name')->get(['code', 'full_name as name']),
             'opportunity' => $own(DB::table('crm_opportunities')->whereNull('deleted_at')->whereNotIn('stage', ['ganada', 'perdida']), 'owner_id')->orderBy('title')->get(['code', 'title as name']),
             'client' => $own(DB::table('crm_clients')->whereNull('deleted_at'), 'owner_id')->orderBy('name')->get(['code', 'name']),
+            'quote' => $own(DB::table('quote_quotes')->whereNull('deleted_at')->whereIn('status', self::OPEN_QUOTES), 'owner_id')->orderBy('title')->get(['code', 'title as name']),
             'owners' => Portfolio::ownOnly($viewer) ? [] : (new Advisors)->all([...Advisors::ROLES, 'operations'])->values(),
         ];
     }
@@ -97,6 +156,7 @@ final class ActivityDirectory
             'due_at' => $due->toIso8601String(),
             'result' => $row->result,
             'completed_at' => $row->completed_at ? Carbon::parse($row->completed_at)->toIso8601String() : null,
+            'lock_version' => (int) $row->lock_version,
             'owner' => ['id' => $row->owner_id, 'name' => $row->owner_name, 'color' => $row->owner_color],
             'related' => $link ? [
                 'type' => $row->related_type,

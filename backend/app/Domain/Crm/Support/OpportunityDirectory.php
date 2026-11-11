@@ -17,7 +17,13 @@ final class OpportunityDirectory
 
     private ?float $fx = null;
 
-    public function __construct(private readonly CrmCatalog $catalog, private readonly TenantContext $context) {}
+    public function __construct(
+        private readonly CrmCatalog $catalog,
+        private readonly TenantContext $context,
+        private readonly CatalogInterest $interest,
+        private readonly ActivityDirectory $activities,
+        private readonly RecordHistory $history,
+    ) {}
 
     public function stages(): Collection
     {
@@ -27,7 +33,9 @@ final class OpportunityDirectory
 
     public function board(User $viewer): array
     {
-        $items = $this->rows($viewer)->orderBy('o.expected_close_date')->get()->map(fn (object $row) => $this->summary($row));
+        $rows = $this->rows($viewer)->orderBy('o.expected_close_date')->get();
+        $quotes = DB::table('quote_quotes')->whereIn('opportunity_id', $rows->pluck('id'))->whereNull('deleted_at')->groupBy('opportunity_id')->selectRaw('opportunity_id, count(*) as total')->pluck('total', 'opportunity_id');
+        $items = $rows->map(fn (object $row) => [...$this->summary($row), 'quotes_count' => (int) ($quotes[$row->id] ?? 0)]);
         $open = $items->whereIn('stage', self::OPEN);
         $month = Carbon::now($this->timezone())->format('Y-m');
         $closed = $items->whereIn('stage', ['ganada', 'perdida']);
@@ -53,7 +61,13 @@ final class OpportunityDirectory
             return null;
         }
 
-        $lead = $row->lead_id ? DB::table('crm_leads')->where('id', $row->lead_id)->first(['code', 'full_name']) : null;
+        $lead = $row->lead_id ? DB::table('crm_leads')->where('id', $row->lead_id)->first(['id', 'code', 'full_name']) : null;
+        $quotes = DB::table('quote_quotes as q')->leftJoin('quote_versions as v', 'v.id', '=', 'q.current_version_id')
+            ->where('q.opportunity_id', $row->id)->whereNull('q.deleted_at')->orderByDesc('q.created_at')
+            ->get(['q.id', 'q.code', 'q.title', 'q.status', 'q.valid_until', 'q.current_version_no', 'q.currency', 'v.grand_total']);
+        $client = DB::table('crm_clients')->where('id', $row->client_id)->first(['kind', 'doc_type', 'doc_number', 'email', 'phone', 'segment_code']);
+        $contact = DB::table('crm_client_contacts')->where('client_id', $row->client_id)->where('is_primary', true)->first(['name', 'role', 'email', 'phone']);
+        $activities = $this->activities->related($viewer, ['opportunity' => [$row->id], 'lead' => $lead ? [$lead->id] : [], 'quote' => $quotes->pluck('id')->all()]);
 
         return [
             ...$this->summary($row),
@@ -61,13 +75,32 @@ final class OpportunityDirectory
             'lock_version' => (int) $row->lock_version,
             'owner_id' => $row->owner_id,
             'origin' => $row->origin,
+            'product' => $this->interest->label($row->product_id),
             'lost_reason' => $this->catalog->label('lost_reason', $row->lost_reason_code),
             'lost_detail' => $row->lost_detail,
             'lost_at_stage' => $row->lost_at_stage,
             'lead' => $lead ? ['code' => $lead->code, 'name' => $lead->full_name] : null,
-            'quotes' => DB::table('quote_quotes')->where('opportunity_id', $row->id)->whereNull('deleted_at')->orderByDesc('created_at')->get(['code', 'title', 'status', 'valid_until']),
-            'history' => DB::table('audit_events')->where('entity', 'Oportunidad')->where('entity_id', $row->code)->orderByDesc('occurred_at')->limit(20)
-                ->get(['action', 'before_value', 'after_value', 'occurred_at']),
+            'client_card' => [
+                'kind' => $client?->kind,
+                'document' => $client && $client->doc_number ? trim("{$client->doc_type} {$client->doc_number}") : null,
+                'email' => $client?->email,
+                'phone' => $client?->phone,
+                'segment' => $client?->segment_code,
+                'contact' => $contact ? ['name' => $contact->name, 'role' => $contact->role, 'email' => $contact->email, 'phone' => $contact->phone] : null,
+            ],
+            'quotes' => $quotes->map(fn (object $quote) => [
+                'code' => $quote->code,
+                'title' => $quote->title,
+                'status' => $quote->status,
+                'valid_until' => $quote->valid_until,
+                'version' => (int) $quote->current_version_no,
+                'currency' => $quote->currency,
+                'total' => $quote->grand_total,
+            ])->values(),
+            'activities' => $activities,
+            'pending_activities' => $activities->where('status', '!=', 'completada')->count(),
+            'close_overdue' => in_array($row->stage, self::OPEN, true) && $row->expected_close_date < Carbon::now($this->timezone())->toDateString(),
+            'history' => $this->history->for([$row->code, $lead?->code, ...$quotes->pluck('code')->all()]),
             'stages' => $this->stages(),
         ];
     }
@@ -102,6 +135,7 @@ final class OpportunityDirectory
             'currency' => $row->currency,
             'amount_pen' => round($row->currency === 'USD' ? $amount * $this->fx() : $amount, 2),
             'probability' => (int) $row->probability,
+            'lock_version' => (int) $row->lock_version,
             'expected_close_date' => $row->expected_close_date,
             'closed_at' => $row->closed_at,
             'destination' => $row->destination_label,

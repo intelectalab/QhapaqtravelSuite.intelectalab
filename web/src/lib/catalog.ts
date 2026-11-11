@@ -141,6 +141,9 @@ export interface ProductRateDraft {
   price_basis: string;
   cost: string | null;
   price: string;
+  min_price?: string | null;
+  max_price?: string | null;
+  conditions?: string | null;
   margin_pct?: number | null;
   valid_from: string;
   valid_to: string;

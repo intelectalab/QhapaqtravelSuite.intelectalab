@@ -12,7 +12,7 @@ export default function PlatformAccessLayout({ children }: { children: ReactNode
         </>
       }
       description="Agencias, planes, facturación de la plataforma y auditoría de seguridad. Los datos comerciales de cada agencia quedan fuera de esta consola."
-      footnote="Acceso exclusivo para la administración de Qhapaq Travel Suite."
+      footnote="Acceso exclusivo para la administración de KipuControl."
     >
       {children}
     </AuthFrame>

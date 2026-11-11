@@ -16,7 +16,7 @@ function webWidgetFrom(string $domain)
 {
     $key = (string) withinTenant(tenantA(), fn () => DB::table('channel_widget_config')->value('public_key'));
 
-    return withPlatformSeeingTenant(fn () => test()->getJson('/api/v1/public/products', ['X-Qhapaq-Key' => $key, 'Origin' => "https://{$domain}"]));
+    return withPlatformSeeingTenant(fn () => test()->getJson('/api/v1/public/products', ['X-KipuControl-Key' => $key, 'Origin' => "https://{$domain}"]));
 }
 
 function webWidgetAudit(string $entity, string $id, string $action): bool
@@ -60,7 +60,7 @@ it('un dominio nuevo queda pendiente con su token y el widget no responde desde 
     expect($domain)->not->toBeNull()
         ->and($domain->status)->toBe('pendiente')
         ->and($domain->cms)->toBe('WordPress')
-        ->and($domain->verify_token)->toStartWith('qhapaq-verify=')
+        ->and($domain->verify_token)->toStartWith('kipucontrol-verify=')
         ->and(webWidgetAudit('Dominio del widget', 'reservas.wayraviajes.pe', 'crear'))->toBeTrue()
         ->and(webWidgetFrom('reservas.wayraviajes.pe'))->toBeApiError(403, 'WIDGET_ORIGIN_NOT_ALLOWED');
 });

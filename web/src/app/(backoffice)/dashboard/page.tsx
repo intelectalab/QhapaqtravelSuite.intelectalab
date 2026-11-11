@@ -1,137 +1,94 @@
-import { ArrowRight, Clock, FileText, TriangleAlert } from "lucide-react";
+import { BarChart3, CalendarDays, Compass, FilePlus2, Landmark, ReceiptText, Scale, Truck, Users, Wallet } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import type { ReactNode } from "react";
-import { ActionList, type ActionListItem } from "@/components/ui/ActionList";
-import { StatusBadge } from "@/components/ui/Badge";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { BarChart } from "@/components/ui/Charts";
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { KpiTile } from "@/components/ui/KpiTile";
-import type { AttentionKind, HomeDashboard } from "@/lib/dashboard";
-import { capitalize, formatDate, formatMoney, formatPercent } from "@/lib/format";
-import { getHomeDashboard } from "@/lib/server/dashboard";
+import { AccountingPanel } from "@/features/dashboard/AccountingPanel";
+import type { CanOpen } from "@/features/dashboard/DashboardBlocks";
+import { ExecutivePanel } from "@/features/dashboard/ExecutivePanel";
+import { FinancePanel } from "@/features/dashboard/FinancePanel";
+import { OperationsPanel } from "@/features/dashboard/OperationsPanel";
+import { SalesPanel } from "@/features/dashboard/SalesPanel";
+import { isAllowed } from "@/lib/access";
+import type { HomePanel, PanelName } from "@/lib/dashboard";
+import { capitalize, formatDate } from "@/lib/format";
+import { getAccess, getHomeDashboard } from "@/lib/server/dashboard";
 import { currentUser } from "@/lib/server/me";
-import type { Tone } from "@/lib/tone";
 
 export const metadata: Metadata = { title: "Panel de control" };
 
-const ATTENTION_LOOK: Record<AttentionKind, { tone: Tone; icon: ReactNode }> = {
-  incident: { tone: "bad", icon: <TriangleAlert size={17} strokeWidth={2} /> },
-  collection: { tone: "warn", icon: <Clock size={17} strokeWidth={2} /> },
-  quote: { tone: "accent", icon: <FileText size={17} strokeWidth={2} /> },
+interface PanelLook {
+  name: string;
+  scope: string;
+  actions: { href: string; label: string; icon: ReactNode; primary?: boolean }[];
+}
+
+const LOOK: Record<PanelName, PanelLook> = {
+  executive: { name: "Panel ejecutivo", scope: "Resumen comercial y operativo de la agencia, en soles.", actions: [{ href: "/reportes", label: "Reportes", icon: <BarChart3 size={16} /> }, { href: "/cotizaciones/nueva", label: "Nueva cotización", icon: <FilePlus2 size={16} />, primary: true }] },
+  manager: { name: "Panel de gerencia", scope: "Resumen de la agencia, aprobaciones y desempeño del equipo, en soles.", actions: [{ href: "/reportes", label: "Reportes", icon: <BarChart3 size={16} /> }, { href: "/cotizaciones/nueva", label: "Nueva cotización", icon: <FilePlus2 size={16} />, primary: true }] },
+  sales: { name: "Panel de ventas", scope: "Solo tu cartera: tus leads, oportunidades, cotizaciones y actividades.", actions: [{ href: "/crm/leads", label: "Leads", icon: <Users size={16} /> }, { href: "/cotizaciones/nueva", label: "Nueva cotización", icon: <FilePlus2 size={16} />, primary: true }] },
+  operations: { name: "Panel de operaciones", scope: "Servicios, proveedores, asignaciones y vouchers. Sin montos de venta ni márgenes.", actions: [{ href: "/operaciones/calendario", label: "Calendario", icon: <CalendarDays size={16} /> }, { href: "/operaciones/asignaciones", label: "Asignaciones", icon: <Truck size={16} />, primary: true }] },
+  finance: { name: "Panel de finanzas", scope: "Caja, cuentas por cobrar y por pagar, comisiones y margen, en soles.", actions: [{ href: "/finanzas/conciliacion", label: "Conciliación", icon: <Scale size={16} /> }, { href: "/finanzas/pagos", label: "Pagos", icon: <Wallet size={16} />, primary: true }] },
+  accounting: { name: "Panel de contabilidad", scope: "Comprobantes electrónicos, cobranza documentada y cierre del periodo.", actions: [{ href: "/finanzas/cobros", label: "Cobros", icon: <Landmark size={16} /> }, { href: "/finanzas/facturacion", label: "Facturación", icon: <ReceiptText size={16} />, primary: true }] },
+  general: { name: "Inicio", scope: "Tu rol todavía no tiene un panel con datos.", actions: [] },
 };
 
-function LinkArrow({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <Link href={href} className="inline-flex items-center gap-1 text-[13px] font-semibold text-accent">
-      {children}
-      <ArrowRight size={14} strokeWidth={2.2} />
-    </Link>
-  );
+function greeting(): string {
+  const hour = Number(new Intl.DateTimeFormat("es-PE", { hour: "numeric", hourCycle: "h23", timeZone: "America/Lima" }).format(new Date()));
+  return hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
 }
 
-function salesNote(kpis: HomeDashboard["kpis"]): string {
-  if (!kpis.previous_month) return "Primer mes con ventas";
-  if (kpis.sales_previous === 0) return `Sin ventas en ${kpis.previous_month.toLowerCase()}`;
-  const delta = ((kpis.sales - kpis.sales_previous) / kpis.sales_previous) * 100;
-  return `${delta >= 0 ? "+" : "−"}${formatPercent(Math.abs(delta))} frente a ${kpis.previous_month.toLowerCase()}`;
-}
-
-function marginNote(kpis: HomeDashboard["kpis"]): string {
-  if (kpis.margin_previous === null) return "Sin mes anterior para comparar";
-  return `${formatPercent(kpis.margin_previous)} en ${kpis.previous_month?.toLowerCase() ?? "el mes anterior"}`;
-}
-
-function attentionTitle(item: HomeDashboard["attention"][number]): string {
-  return item.amount ? `${item.title} por ${formatMoney(item.amount)}` : item.title;
+function PanelBody({ home, can }: { home: HomePanel; can: CanOpen }) {
+  switch (home.panel) {
+    case "executive":
+    case "manager":
+      return <ExecutivePanel data={home.data} can={can} />;
+    case "sales":
+      return <SalesPanel data={home.data} can={can} />;
+    case "operations":
+      return <OperationsPanel data={home.data} can={can} />;
+    case "finance":
+      return <FinancePanel data={home.data} can={can} />;
+    case "accounting":
+      return <AccountingPanel data={home.data} can={can} />;
+    default:
+      return <EmptyState icon={<Compass size={20} />} title="Aún no hay un panel para tu rol" description="Usa el menú para entrar a los módulos que tienes habilitados. Si necesitas un panel, pídeselo al administrador de la agencia." />;
+  }
 }
 
 export default async function InicioPage() {
-  const [me, home] = await Promise.all([currentUser(), getHomeDashboard()]);
-  const { kpis } = home;
-  const attention: ActionListItem[] = home.attention.map((item, index) => ({ id: `${item.kind}-${index}`, ...ATTENTION_LOOK[item.kind], ...item, title: attentionTitle(item) }));
-  const firstName = me.name.split(" ")[0];
-  const pending = attention.length;
-  const hasSales = home.months.some((month) => month.sales > 0);
+  const [me, home, access] = await Promise.all([currentUser(), getHomeDashboard(), getAccess()]);
+  const can: CanOpen = (href) => isAllowed(access?.screens ?? null, href);
+  const look = LOOK[home.panel];
+  const today = home.data?.today ?? new Date().toISOString().slice(0, 10);
 
   return (
     <>
-      <div className="mb-5 mt-6 flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-[32px] font-bold leading-[1.08] tracking-[-0.04em] sm:text-[38px]">
-          Hola, {firstName}
-          <span className="text-brand">.</span>
-          <br />
-          <span className="font-semibold text-fg-3">{pending === 0 ? "Todo está al día." : `Tienes ${pending} ${pending === 1 ? "cosa" : "cosas"} por resolver hoy.`}</span>
-        </h1>
-        <p className="text-right text-[13px] text-fg-3">
-          <b className="mb-0.5 block font-mono text-[13px] font-semibold tracking-wide text-fg">{capitalize(formatDate(home.today, "long"))}</b>
-          {me.tenant.name}
-        </p>
+      <div className="mb-5 mt-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-[30px] font-bold leading-[1.08] tracking-[-0.04em] sm:text-[36px]">
+            {greeting()}, {me.name.split(" ")[0]}
+            <span className="text-brand">.</span>
+          </h1>
+          <p className="mt-1.5 text-[13.5px] text-fg-3">
+            <b className="font-semibold text-fg-2">{look.name}</b> · {look.scope}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <p className="mr-2 text-right text-[13px] text-fg-3">
+            <b className="mb-0.5 block font-mono text-[13px] font-semibold tracking-wide text-fg">{capitalize(formatDate(today, "long"))}</b>
+            {me.tenant.name}
+          </p>
+          {look.actions
+            .filter((action) => can(action.href))
+            .map((action) => (
+              <Button key={action.href} href={action.href} icon={action.icon} variant={action.primary ? "primary" : "secondary"}>
+                {action.label}
+              </Button>
+            ))}
+        </div>
       </div>
-
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiTile tone="t1" label="Ventas del mes" value={formatMoney(kpis.sales, "PEN", { compact: true })} note={salesNote(kpis)} trend={hasSales ? home.months.map((month) => month.sales) : undefined} trendLabels={home.months.map((month) => `${capitalize(month.label)} · ${formatMoney(month.sales, "PEN", { compact: true })}`)} />
-        <KpiTile tone="t2" label="Margen bruto" value={kpis.margin === null ? "—" : formatPercent(kpis.margin)} note={marginNote(kpis)} trend={hasSales ? home.months.map((month) => month.sales - month.cost) : undefined} trendLabels={home.months.map((month) => `${capitalize(month.label)} · ${formatMoney(month.sales - month.cost, "PEN", { compact: true })}`)} />
-        <KpiTile tone="t3" label="Por cobrar" value={formatMoney(kpis.receivable, "PEN", { compact: true })} note={kpis.overdue > 0 ? `${formatMoney(kpis.overdue)} vencidos` : "Nada vencido"} />
-        <KpiTile tone="t4" label="Reservas activas" value={kpis.active_reservations} note={`${kpis.passengers} ${kpis.passengers === 1 ? "pasajero" : "pasajeros"}`} />
-      </div>
-
-      <div className="mt-3.5 grid grid-cols-1 gap-3.5 lg:grid-cols-12">
-        <Card className="lg:col-span-7">
-          <CardHeader title="Por resolver" action={<span className="rounded-full bg-surface-2 px-2 py-0.5 font-mono text-[11px] font-semibold text-fg-2">{pending}</span>} />
-          {pending === 0 ? <p className="py-6 text-center text-[13px] text-fg-3">No hay incidencias, cobros vencidos ni cotizaciones por vencer.</p> : <ActionList items={attention} />}
-        </Card>
-
-        <Card className="lg:col-span-5">
-          <CardHeader title="Próximas salidas" action={<LinkArrow href="/reservas">Ver reservas</LinkArrow>} />
-          {home.departures.length === 0 ? (
-            <p className="py-6 text-center text-[13px] text-fg-3">No hay salidas programadas.</p>
-          ) : (
-            <ul>
-              {home.departures.map((departure) => (
-                <li key={departure.code} className="grid grid-cols-[64px_1fr_auto] items-center gap-3 border-t border-line py-2.5 first:border-t-0">
-                  <span className="font-mono text-[13px] font-semibold uppercase">{formatDate(departure.date).replace(/ \d{4}$/, "")}</span>
-                  <span className="min-w-0">
-                    <Link href={`/reservas/${departure.code}`} className="block truncate text-[13.5px] font-semibold hover:underline">
-                      {departure.title}
-                    </Link>
-                    <span className="text-xs text-fg-3">
-                      {departure.code} · {departure.passengers} {departure.passengers === 1 ? "pasajero" : "pasajeros"}
-                    </span>
-                  </span>
-                  <StatusBadge status={departure.status} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-
-        <Card className="lg:col-span-12">
-          <div className="grid items-end gap-7 md:grid-cols-[230px_1fr]">
-            <div>
-              <h2 className="text-[15px] font-semibold">Ventas de los últimos 6 meses</h2>
-              <p className="mt-1 text-[12.5px] text-fg-3">En miles de soles · el mes actual en curso</p>
-              <div className="mt-2.5">
-                <LinkArrow href="/reportes">Ver reportes</LinkArrow>
-              </div>
-            </div>
-            {hasSales ? (
-              <BarChart
-                data={home.months.map((month, index, all) => ({
-                  label: month.label,
-                  value: month.sales,
-                  caption: month.sales > 0 ? String(Math.round(month.sales / 1000)) : "0",
-                  detail: `${formatMoney(month.sales)}${index === all.length - 1 ? " · en curso" : ""}`,
-                  highlight: index === all.length - 1,
-                }))}
-              />
-            ) : (
-              <EmptyState icon={<FileText size={20} />} title="Aún no hay ventas" description="Cuando se confirmen reservas, verás aquí cómo van las ventas de cada mes." />
-            )}
-          </div>
-        </Card>
-      </div>
+      <PanelBody home={home} can={can} />
     </>
   );
 }

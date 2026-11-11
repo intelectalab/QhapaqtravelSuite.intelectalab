@@ -1,7 +1,7 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
-import type { PlanDetail, PlanSummary, PlatformMe, TenantDetail, TenantSummary } from "@/lib/platform";
+import type { PlanDetail, PlanSummary, ProvisionOptions, PlatformMe, TenantDetail, TenantSummary } from "@/lib/platform";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
 
@@ -20,5 +20,7 @@ export const listTenants = () => platformGet<TenantSummary[]>("/tenants");
 export const getTenant = (code: string) => platformGet<TenantDetail>(`/tenants/${encodeURIComponent(code)}`);
 
 export const listPlans = () => platformGet<PlanSummary[]>("/plans");
+
+export const getProvisionOptions = () => platformGet<ProvisionOptions>("/tenants/provision-options");
 
 export const getPlan = cache((code: string) => platformGet<PlanDetail>(`/plans/${encodeURIComponent(code)}`));

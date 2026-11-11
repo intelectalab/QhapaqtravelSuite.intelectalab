@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Crm\Support;
 
+use App\Domain\Crm\Actions\ClaimBookWorkflow;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
@@ -56,6 +57,7 @@ final class ClaimBookDirectory
             'by_type' => $this->group($claims, 'type'),
             'by_sede' => $this->group($claims, 'sede'),
             'claims' => $claims->values(),
+            'sequences' => $this->sequences($today),
             'options' => [
                 'sedes' => DB::table('iam_sedes')->orderBy('code')->get(['id', 'name'])->map(fn (object $row): array => ['value' => $row->id, 'label' => $row->name])->values(),
                 'clients' => DB::table('crm_clients')->whereNull('deleted_at')->orderBy('name')->get(['code', 'name'])->map(fn (object $row): array => ['value' => $row->code, 'label' => $row->name])->values(),
@@ -99,15 +101,7 @@ final class ClaimBookDirectory
             'channel_label' => self::CHANNELS[$row->channel] ?? $row->channel,
             'book_status' => $row->book_status,
             'book_status_label' => self::BOOK_STATUS[$row->book_status] ?? $row->book_status,
-            'consumer' => [
-                'name' => $consumer['name'] ?? 'Consumidor',
-                'doc_type' => $consumer['docType'] ?? $consumer['doc_type'] ?? null,
-                'doc_number' => $consumer['docNumber'] ?? $consumer['doc_number'] ?? null,
-                'email' => $consumer['email'] ?? null,
-                'phone' => $consumer['phone'] ?? null,
-                'address' => $consumer['address'] ?? null,
-                'minor' => (bool) ($consumer['minor'] ?? $consumer['is_minor'] ?? false),
-            ],
+            'consumer' => ClaimConsumer::read($consumer),
             'good' => $good ? ['kind' => $good['kind'] ?? 'Servicio', 'description' => $good['description'] ?? '', 'amount' => (float) ($good['amount'] ?? 0), 'currency' => $good['currency'] ?? 'PEN'] : null,
             'received_at' => $row->received_at,
             'received_on' => $received->toDateString(),
@@ -130,6 +124,22 @@ final class ClaimBookDirectory
             'owner' => $row->owner,
             'log' => $events->map(fn ($event): array => ['message' => $event->message, 'at' => $event->created_at, 'by' => $event->name ?? 'Consumidor'])->values(),
         ];
+    }
+
+    private function sequences(Carbon $today): array
+    {
+        return DB::table('iam_sedes')->orderBy('code')->get(['id', 'name'])->map(function (object $sede) use ($today): array {
+            $prefix = 'LR-'.ClaimBookWorkflow::sedePrefix($sede->name).'-'.$today->year.'-';
+            $numbers = DB::table('crm_cases')->where('is_book', true)->where('book_number', 'like', $prefix.'%')->pluck('book_number');
+            $last = $numbers->map(fn (string $number): int => (int) substr($number, strlen($prefix)))->max();
+
+            return [
+                'sede' => $sede->name,
+                'year_count' => $numbers->count(),
+                'last' => $last ? $prefix.str_pad((string) $last, 6, '0', STR_PAD_LEFT) : null,
+                'next' => $prefix.str_pad((string) (((int) $last) + 1), 6, '0', STR_PAD_LEFT),
+            ];
+        })->values()->all();
     }
 
     private function group(Collection $claims, string $field): array

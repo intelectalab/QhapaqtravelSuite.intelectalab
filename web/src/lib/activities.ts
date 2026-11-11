@@ -1,4 +1,5 @@
 import { CalendarCheck, Mail, MessageCircle, Phone, Repeat, Users, type LucideIcon } from "lucide-react";
+import type { RecordEvent } from "./history";
 import type { Tone } from "./tone";
 
 export type ActivityType = "llamada" | "email" | "whatsapp" | "reunion" | "tarea" | "postventa";
@@ -16,6 +17,19 @@ export interface ActivityItem {
   completed_at: string | null;
   owner: { id: string; name: string; color: string | null };
   related: { type: string; code: string; name: string; href: string } | null;
+  lock_version: number;
+  merged?: boolean;
+}
+
+export interface ActivityDetail extends ActivityItem {
+  created_at: string;
+  created_by: string | null;
+  completed_by: string | null;
+  auto_closed: boolean;
+  previous: { code: string; subject: string } | null;
+  next: { code: string; subject: string } | null;
+  merged_from: { code: string; name: string } | null;
+  history: RecordEvent[];
 }
 
 export interface Agenda {
@@ -28,8 +42,13 @@ export interface RelatedOptions {
   lead: { code: string; name: string }[];
   opportunity: { code: string; name: string }[];
   client: { code: string; name: string }[];
+  quote: { code: string; name: string }[];
   owners: { id: string; name: string; color: string | null }[];
 }
+
+export type RelationType = "lead" | "opportunity" | "client" | "quote";
+
+export const RELATION_TYPES: RelationType[] = ["lead", "opportunity", "client", "quote"];
 
 export const ACTIVITY_TYPES: Record<ActivityType, { label: string; icon: LucideIcon; tone: Tone }> = {
   llamada: { label: "Llamada", icon: Phone, tone: "t1" },

@@ -77,6 +77,21 @@ final class RateRegistry
         });
     }
 
+    public function delete(string $ref, User $actor): void
+    {
+        DB::transaction(function () use ($ref): void {
+            $rate = $this->rate($ref);
+            $used = DB::table('quote_items')->where('rate_id', $rate->id)->exists() || DB::table('channel_ecom_order_lines')->where('rate_id', $rate->id)->exists();
+
+            if ($used) {
+                throw ApiException::conflict('CAT-RATE-IN-USE', 'Esta tarifa ya se usó en cotizaciones o pedidos: desactívala en lugar de quitarla.');
+            }
+
+            DB::table('catalog_rates')->where('id', $rate->id)->delete();
+            $this->audit->log('Tarifa', $ref, 'eliminar', "{$rate->rate_type} {$rate->segment} {$rate->channel} · {$rate->currency} {$rate->price}", null);
+        });
+    }
+
     public function setActive(string $ref, bool $active, ?string $reason, User $actor): void
     {
         DB::transaction(function () use ($ref, $active, $reason, $actor): void {

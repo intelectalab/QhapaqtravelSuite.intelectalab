@@ -36,6 +36,7 @@ return [
     'experience_routes' => [
         'shared' => ['me', 'me.access', 'me.counts', 'me.permissions', 'me.notifications.index', 'me.notifications.read-all'],
         'portal' => ['b2b.', 'supplier.', 'portal.', 'public.me.'],
+        'mobile' => ['mobile.operator.', 'mobile.devices.'],
     ],
 
     'routes' => [
@@ -66,6 +67,7 @@ return [
         '/finanzas/cobros' => ['finance.receivables'],
         '/finanzas/pagos' => ['finance.payments.register', 'finance.receivables'],
         '/finanzas/proveedores' => ['finance.payables'],
+        '/finanzas/cierre' => ['finance.invoicing'],
         '/finanzas/comisiones' => ['finance.commissions'],
         '/finanzas/rentabilidad' => ['finance.profitability'],
         '/finanzas/facturacion' => ['finance.invoicing', 'finance.profitability'],
@@ -83,10 +85,12 @@ return [
         '/reportes' => ['reports.view'],
         '/admin' => ['admin.users.manage', 'admin.tenant.manage'],
         '/admin/usuarios' => ['admin.users.manage'],
+        '/admin/sedes' => ['admin.users.manage'],
         '/admin/roles' => ['admin.roles.manage'],
         '/admin/configuracion' => ['admin.settings.manage'],
         '/admin/personalizacion' => ['admin.settings.manage'],
         '/admin/reglas' => ['admin.settings.manage'],
+        '/admin/reglas/simulador' => ['admin.settings.manage'],
         '/admin/comunicaciones' => ['admin.settings.manage', 'operations.assign'],
         '/admin/monedas' => ['admin.settings.manage', 'finance.treasury'],
         '/admin/notificaciones' => ['admin.settings.manage'],

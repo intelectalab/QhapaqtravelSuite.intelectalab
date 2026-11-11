@@ -40,7 +40,7 @@ it('el Tenant Admin no entra a la consola de plataforma y el Super Admin no oper
     expect($this->getJson('/api/v1/platform/metrics'))->toBeApiError(403);
 
     // Super Admin vive en `platform_users` con guard `platform` (F0-14)
-    $sa = \App\Domain\Platform\Models\PlatformUser::query()->where('email', 'ops@qhapaq.cloud')->firstOrFail();
+    $sa = \App\Domain\Platform\Models\PlatformUser::query()->where('email', 'ops@kipucontrol.com')->firstOrFail();
     $this->actingAs($sa, 'platform');
     $this->getJson('/api/v1/crm/leads')->assertStatus(403);
     $this->getJson('/api/v1/billing/subscription')->assertStatus(403);

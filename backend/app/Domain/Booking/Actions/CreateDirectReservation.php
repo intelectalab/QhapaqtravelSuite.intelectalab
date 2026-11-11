@@ -102,7 +102,7 @@ final class CreateDirectReservation
             'fx_rate' => $plan['fx_rate'],
             'total_amount' => $plan['total'],
             'snapshot_label' => $product->code.($version ? " v{$version}" : ''),
-            'catalog_snapshot' => ['product' => $product->code, 'name' => $product->name, 'adult_price' => $plan['adult_price'], 'child_price' => $plan['child_price'], 'pax' => $plan['pax']],
+            'catalog_snapshot' => ['product' => $product->code, 'name' => $product->name, 'adult_price' => $plan['adult_price'], 'child_price' => $plan['child_price'], 'pax' => $plan['pax'], 'rate' => $plan['rate_snapshot']],
             'policies_snapshot' => [$product->code => $policies],
             'notes' => trim('Reserva directa. '.(string) ($data['notes'] ?? '')),
             'created_by' => $actor->getKey(),

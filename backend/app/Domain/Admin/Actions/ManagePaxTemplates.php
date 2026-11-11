@@ -9,6 +9,7 @@ use App\Domain\Admin\Support\PgArray;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Jobs\SchedulePaxMessages;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -25,6 +26,7 @@ final class ManagePaxTemplates
             $code = 'PMT-'.str_pad((string) ($last + 1), 3, '0', STR_PAD_LEFT);
             DB::table('notif_pax_message_templates')->insert([...$this->values($data), 'code' => $code, 'active' => true, 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
             $this->audit->log('Plantilla de mensaje', $code, 'crear', null, "{$data['name']} · ".implode(', ', $data['channels']));
+            $this->reschedule();
 
             return $code;
         });
@@ -49,6 +51,7 @@ final class ManagePaxTemplates
 
             DB::table('notif_pax_message_templates')->where('id', $row->id)->update([...$values, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             $this->audit->log('Plantilla de mensaje', $code, 'editar', $changed->implode(', '), $data['name']);
+            $this->reschedule();
         });
     }
 
@@ -63,6 +66,7 @@ final class ManagePaxTemplates
 
             DB::table('notif_pax_message_templates')->where('id', $row->id)->update(['active' => $active, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             $this->audit->log('Plantilla de mensaje', $code, $active ? 'activar' : 'desactivar', $active ? 'inactiva' : 'activa', $active ? 'activa' : 'inactiva');
+            $this->reschedule();
 
             return $active;
         });
@@ -73,13 +77,21 @@ final class ManagePaxTemplates
         DB::transaction(function () use ($code): void {
             $row = $this->find($code);
 
-            if (DB::table('notif_pax_messages')->where('template_id', $row->id)->exists()) {
+            $pending = fn () => DB::table('notif_pax_messages')->where('template_id', $row->id)->where('origin', 'auto')->where('status', 'programado');
+
+            if (DB::table('notif_pax_messages')->where('template_id', $row->id)->whereNotIn('id', $pending()->select('id'))->exists()) {
                 throw ApiException::conflict('MSG-04', 'Esta plantilla ya tiene mensajes enviados: desactívala para conservar el historial.');
             }
 
+            $pending()->delete();
             DB::table('notif_pax_message_templates')->where('id', $row->id)->delete();
             $this->audit->log('Plantilla de mensaje', $code, 'eliminar', $row->name, null);
         });
+    }
+
+    private function reschedule(): void
+    {
+        dispatch((new SchedulePaxMessages)->captureTenant())->afterCommit();
     }
 
     private function check(array $data): void
@@ -116,8 +128,8 @@ final class ManagePaxTemplates
             'body' => $data['body'],
             'lang' => $data['lang'],
             'conditions' => json_encode([
-                'products' => [],
-                'channels' => [],
+                'products' => array_values(array_unique($data['products'] ?? [])),
+                'channels' => array_values(array_unique($data['sales_channels'] ?? [])),
                 'requiresRule' => $data['requires_rule'] ?? null,
                 'onlyIfBalance' => (bool) ($data['only_if_balance'] ?? false),
                 'onlyIfMissingDocs' => (bool) ($data['only_if_missing_docs'] ?? false),

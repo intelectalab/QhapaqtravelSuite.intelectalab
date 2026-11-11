@@ -60,7 +60,7 @@ it('QTE-BR-13: no se registra la aprobación del cliente con la aprobación inte
     setCurrentVersion('COT-2026-00188', ['discount_pct' => 12]);
     actingAsSeed('U03');
 
-    $response = $this->postJson('/api/v1/quotes/COT-2026-00188/approve', ['approved_by_name' => 'Gabriela Ríos', 'channel' => 'email'], critical((int) rowOf('quote_quotes', 'COT-2026-00188')->lock_version));
+    $response = $this->postJson('/api/v1/quotes/COT-2026-00188/approve', ['approved_by_name' => 'Gabriela Ríos', 'channel' => 'Correo electrónico del cliente', 'ref' => 'Correo del cliente del 10/11'], critical((int) rowOf('quote_quotes', 'COT-2026-00188')->lock_version));
 
     expect($response)->toBeApiError(409, 'QTE-BR-13');
     expect(quoteStatus('COT-2026-00188'))->toBe('enviada');
@@ -97,7 +97,7 @@ it('H-04 en la ruta actual del portal: el cliente no aprueba con la aprobación 
 it('QTE-BR-16: no se aprueba una cotización vencida', function (string $code) {
     actingAsSeed('U02');
 
-    expect($this->postJson("/api/v1/quotes/{$code}/approve", ['approved_by_name' => 'X', 'channel' => 'email'], critical((int) rowOf('quote_quotes', $code)->lock_version)))
+    expect($this->postJson("/api/v1/quotes/{$code}/approve", ['approved_by_name' => 'X', 'channel' => 'Correo electrónico del cliente', 'ref' => 'Correo del cliente del 10/11'], critical((int) rowOf('quote_quotes', $code)->lock_version)))
         ->toBeApiError(409, 'QTE-BR-16');
 })->with([
     'estado vencida' => 'COT-2026-00182',
@@ -133,9 +133,9 @@ it('rechaza por API las transiciones fuera del grafo de 03 §4.1', function (str
     expect($this->postJson("/api/v1/quotes/{$code}/{$action}", $body, critical((int) rowOf('quote_quotes', $code)->lock_version)))
         ->toBeApiError(409, $rule);
 })->with([
-    'aprobar un borrador' => ['U01', 'COT-2026-00189', 'approve', ['approved_by_name' => 'X', 'channel' => 'email'], 'QTE-BR-21'],
+    'aprobar un borrador' => ['U01', 'COT-2026-00189', 'approve', ['approved_by_name' => 'X', 'channel' => 'Correo electrónico del cliente', 'ref' => 'Correo del cliente del 10/11'], 'QTE-BR-21'],
     'rechazar un borrador' => ['U01', 'COT-2026-00189', 'reject', ['reason' => 'Sin interés'], 'QTE-BR-17'],
-    'aprobar una rechazada' => ['U01', 'COT-2026-00184', 'approve', ['approved_by_name' => 'X', 'channel' => 'email'], 'QTE-BR-21'],
+    'aprobar una rechazada' => ['U01', 'COT-2026-00184', 'approve', ['approved_by_name' => 'X', 'channel' => 'Correo electrónico del cliente', 'ref' => 'Correo del cliente del 10/11'], 'QTE-BR-21'],
     'nueva versión de una convertida' => ['U01', 'COT-2026-00183', 'versions', [], 'QTE-BR-18'],
     'enviar una convertida' => ['U01', 'COT-2026-00183', 'send', sendBody(), 'QTE-BR-23'],
 ]);

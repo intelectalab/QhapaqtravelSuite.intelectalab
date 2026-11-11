@@ -224,7 +224,7 @@ export function BrandingStudio({ data, save = saveBranding, reset = resetBrandin
                   variant="secondary"
                   formId="branding-reset"
                   title="Restablecer la apariencia"
-                  description="Vuelven los colores y el diseño de tarjeta predeterminados de Qhapaq Travel Suite."
+                  description="Vuelven los colores y el diseño de tarjeta predeterminados de KipuControl."
                   submitLabel="Restablecer"
                   action={reset}
                   initial={ADMIN_INITIAL}

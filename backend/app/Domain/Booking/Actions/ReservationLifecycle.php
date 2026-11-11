@@ -9,6 +9,7 @@ use App\Domain\Booking\Events\ReservationConfirmed;
 use App\Domain\Booking\Models\Reservation;
 use App\Domain\Booking\StateMachines\ReservationStateMachine;
 use App\Domain\Booking\Support\ReservationReceivables;
+use App\Domain\Catalog\Listeners\ConsumeAllotmentOnServiceChange;
 use App\Domain\Crm\Support\Advisors;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Finance\Actions\SyncServicePayables;
@@ -104,12 +105,77 @@ final class ReservationLifecycle
             }
 
             $this->payables->handle((string) $reservation->id, $actor);
+            app(ConsumeAllotmentOnServiceChange::class)->syncReservation((string) $reservation->id);
             $this->audit->log('Reserva', $reservation->code, 'confirmar', $from, S::Confirmada->value, actor: $actor);
             $this->outbox->add('booking_reservation', (string) $reservation->id, 'ReservationConfirmed', ['reservation_id' => (string) $reservation->id, 'reservation_code' => $reservation->code]);
             ReservationConfirmed::dispatch($this->context->idOrFail(), (string) $reservation->id, $reservation->code, $reservation->quote_id, (string) $actor->getKey());
 
             return $reservation;
         });
+    }
+
+    public function confirmPreview(string $code, User $actor): array
+    {
+        $reservation = Reservation::query()->where('code', $code)->first()
+            ?? throw Portfolio::missing($actor, 'booking_reservations', $code, 'La reserva no existe.', 'Esta reserva');
+        Gate::forUser($actor)->authorize('view', $reservation);
+        $held = DB::table('booking_inventory_holds')->where('reservation_id', $reservation->id)->whereIn('status', ['hold', 'confirmada'])->pluck('departure_id')->all();
+        $services = DB::table('booking_reservation_services as s')->leftJoin('catalog_product_departures as d', 'd.id', '=', 's.departure_id')->leftJoin('catalog_providers as p', 'p.id', '=', 's.provider_id')
+            ->where('s.reservation_id', $reservation->id)->where('s.is_required', true)->where('s.status', '<>', 'cancelado')->orderBy('s.service_date')->orderBy('s.code')
+            ->get(['s.code', 's.name', 's.service_date', 's.status', 's.replaced_by_id', 's.departure_id', 's.product_id', 's.pax', 's.confirmation_code', 'd.ref as departure_ref', 'd.capacity', 'd.sold', 'p.name as provider_name']);
+        $items = $services->map(fn (object $service): array => $this->availabilityOf($service, $held))->values();
+        $passengers = DB::table('booking_passengers')->where('reservation_id', $reservation->id)->count();
+        $blocked = $items->contains(fn (array $item): bool => ! $item['ok']) || $passengers === 0;
+        $status = (string) $reservation->status;
+
+        return [
+            'code' => $reservation->code,
+            'status' => $status,
+            'confirmable' => in_array($status, self::CONFIRMABLE, true),
+            'services' => $items,
+            'passengers' => ['ok' => $passengers > 0, 'count' => $passengers],
+            'blocked' => $blocked,
+            'reschedule' => $blocked && $items->contains(fn (array $item): bool => ! $item['ok'] && $item['kind'] === 'cupo'),
+            'waiting' => $items->contains(fn (array $item): bool => $item['ok'] && in_array($item['status'], ['pendiente', 'solicitado'], true)),
+        ];
+    }
+
+    private function availabilityOf(object $service, array $held): array
+    {
+        $base = ['code' => $service->code, 'name' => $service->name, 'date' => $service->service_date, 'status' => $service->status, 'provider' => $service->provider_name, 'alternatives' => []];
+
+        if ($service->status === 'rechazado' && $service->replaced_by_id === null) {
+            return [...$base, 'ok' => false, 'kind' => 'rechazo', 'message' => 'El proveedor lo rechazó y no tiene alternativa.'];
+        }
+
+        if ($service->status === 'rechazado') {
+            return [...$base, 'ok' => true, 'kind' => 'reemplazado', 'message' => 'Rechazado y reemplazado por una alternativa.'];
+        }
+
+        if ($service->departure_id !== null && ! in_array($service->departure_id, $held, true)) {
+            $free = max(0, (int) $service->capacity - (int) $service->sold);
+
+            if ($free < (int) $service->pax) {
+                return [...$base, 'ok' => false, 'kind' => 'cupo', 'message' => "La salida {$service->departure_ref} tiene {$free} cupos y se necesitan {$service->pax}.", 'alternatives' => $this->otherDepartures((string) $service->product_id, (string) $service->departure_id, (int) $service->pax)];
+            }
+
+            return [...$base, 'ok' => true, 'kind' => 'cupo', 'message' => "Salida {$service->departure_ref}: quedan {$free} cupos; se retienen {$service->pax}."];
+        }
+
+        return [...$base, 'ok' => true, 'kind' => 'proveedor', 'message' => match ($service->status) {
+            'confirmado', 'en_curso', 'completado' => 'Confirmado por el proveedor'.($service->confirmation_code ? " ({$service->confirmation_code})." : '.'),
+            'solicitado' => 'Solicitado al proveedor: la reserva queda pendiente de su respuesta.',
+            default => 'Pendiente de solicitar al proveedor.',
+        }];
+    }
+
+    private function otherDepartures(string $productId, string $departureId, int $pax): array
+    {
+        return DB::table('catalog_product_departures')->where('product_id', $productId)->where('id', '<>', $departureId)
+            ->where('departure_date', '>=', $this->today()->toDateString())->whereNotIn('status', ['cerrada', 'cancelada'])
+            ->whereRaw('capacity - sold >= ?', [$pax])->orderBy('departure_date')->limit(3)
+            ->get(['ref', 'departure_date', 'capacity', 'sold'])
+            ->map(fn (object $row): array => ['ref' => $row->ref, 'date' => $row->departure_date, 'free' => (int) $row->capacity - (int) $row->sold])->all();
     }
 
     public function startOperation(string $code, User $actor): Reservation

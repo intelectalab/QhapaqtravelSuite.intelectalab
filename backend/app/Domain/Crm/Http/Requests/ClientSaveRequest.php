@@ -27,6 +27,10 @@ final class ClientSaveRequest extends FormRequest
             'owner_id' => ['nullable', 'uuid'],
             'tags' => ['nullable', 'string', 'max:400'],
             'confirm_duplicate' => ['nullable', 'boolean'],
+            'contact_name' => ['nullable', 'string', 'max:160'],
+            'contact_role' => ['nullable', 'string', 'max:120'],
+            'contact_email' => ['nullable', 'regex:/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/', 'max:190'],
+            'contact_phone' => ['nullable', 'string', 'max:40'],
         ];
     }
 
@@ -50,6 +54,7 @@ final class ClientSaveRequest extends FormRequest
             'doc_type.required' => 'Elige el tipo de documento.',
             'doc_number.required' => 'Escribe el número de documento.',
             'email.regex' => 'Escribe un correo válido.',
+            'contact_email.regex' => 'Escribe un correo válido para el contacto.',
             'birth_date.before' => 'La fecha de nacimiento debe ser anterior a hoy.',
         ];
     }

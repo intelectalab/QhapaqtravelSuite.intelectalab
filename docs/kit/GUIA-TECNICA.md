@@ -1,4 +1,4 @@
-# Guía técnica de arranque — Qhapaq Travel Suite
+# Guía técnica de arranque — KipuControl
 
 Guía para el programador que empieza a construir el SaaS con el kit. Explica **cómo encajan** las piezas (backend Laravel 12, PostgreSQL 17 con RLS, Redis 8, Next.js, Expo) y remite a los archivos que ya resuelven cada tema. No repite las especificaciones: las enlaza.
 
@@ -144,16 +144,16 @@ Doble barrera: Eloquent filtra por tenant **y** PostgreSQL vuelve a filtrar con 
 | 6 | Scheduler multi-tenant | Un job coordinador con la conexión `pgsql_platform` recorre `tenants` y despacha **un job por tenant**. | 02-ARQUITECTURA §4 |
 | 7 | Caché, locks, contadores | Prefijo `t:{tenant_id}:` (`TenantContext::key()`). | `TenantContext.php` |
 | 8 | Migraciones | La RLS va en la **misma** migración que la tabla: `select app_enable_tenant_rls('tabla', 'strict')`. | `ejemplos/backend/database/migrations/*` |
-| 9 | Pruebas | Conectar como `qhapaq_app` (sin `BYPASSRLS`); el superusuario ignora RLS y no prueba nada. Plantilla obligatoria por módulo: `TenantIsolationTest`. | [`tests/pest/Feature/Tenancy`](tests/pest/Feature/Tenancy/TenantIsolationTest.php) |
+| 9 | Pruebas | Conectar como `kipucontrol_app` (sin `BYPASSRLS`); el superusuario ignora RLS y no prueba nada. Plantilla obligatoria por módulo: `TenantIsolationTest`. | [`tests/pest/Feature/Tenancy`](tests/pest/Feature/Tenancy/TenantIsolationTest.php) |
 
 Conexiones de base de datos ([`infra/README.md`](infra/README.md)):
 
 | Conexión Laravel | Usuario | Rol PostgreSQL | Uso |
 |---|---|---|---|
-| `pgsql` | `qhapaq_app` | `app_role` | API, colas, Reverb. Siempre con `app.tenant_id`. |
-| `pgsql_platform` | `qhapaq_platform` | `platform_role` | Super Admin, facturación SaaS, scheduler coordinador, eventos de plataforma (`tenant_id` NULL). |
-| `pgsql_owner` | `qhapaq_owner` | dueño del esquema | Solo `php artisan migrate --database=pgsql_owner`. |
-| `pgsql_audit` (supuesto) | `qhapaq_app` | `app_role` | Segunda conexión para auditar `acceso_denegado` y registrar `sys_job_runs` fuera de la transacción que hace rollback. |
+| `pgsql` | `kipucontrol_app` | `app_role` | API, colas, Reverb. Siempre con `app.tenant_id`. |
+| `pgsql_platform` | `kipucontrol_platform` | `platform_role` | Super Admin, facturación SaaS, scheduler coordinador, eventos de plataforma (`tenant_id` NULL). |
+| `pgsql_owner` | `kipucontrol_owner` | dueño del esquema | Solo `php artisan migrate --database=pgsql_owner`. |
+| `pgsql_audit` (supuesto) | `kipucontrol_app` | `app_role` | Segunda conexión para auditar `acceso_denegado` y registrar `sys_job_runs` fuera de la transacción que hace rollback. |
 
 Tablas con `tenant_id` NULL = filas globales (`roles` plantilla, `notif_templates`, `integration_adapters`, `sys_holidays`): modo RLS `shared`, el tenant lee las globales y escribe solo las suyas.
 
@@ -281,7 +281,7 @@ Reglas que no se negocian:
 
 | Tema | Regla |
 |---|---|
-| Almacenamiento | Disk `s3` (MinIO en local; buckets `qhapaq-private` y `qhapaq-public`). Ruta `tenants/{tenant_id}/{dominio}/{uuid}.{ext}`: el prefijo de tenant permite políticas y borrados por tenant. |
+| Almacenamiento | Disk `s3` (MinIO en local; buckets `kipucontrol-private` y `kipucontrol-public`). Ruta `tenants/{tenant_id}/{dominio}/{uuid}.{ext}`: el prefijo de tenant permite políticas y borrados por tenant. |
 | Acceso | Siempre URL **firmada temporal** tras pasar la Policy del recurso; nunca URLs públicas para documentos con datos personales. |
 | Subidas | Directas a S3 con URL prefirmada (`POST /api/v1/ops/evidences/presign`), luego se asocian por API con `sha256` (deduplicación). Validar tipo MIME y tamaño en servidor. |
 | PDF | Job en cola `documents` (Browsershot/Chromium incluido en la imagen PHP, o DomPDF), versionado en `sys_documents` con `sha256` (columnas supuestas, C-12). El PDF se genera desde datos congelados (snapshot de la versión), no desde el estado actual. |
@@ -396,7 +396,7 @@ Antes de cerrar cada historia: comando `/revisar-seguridad` y subagente `revisor
 
 ## 16. Rendimiento
 
-- **Índices**: el SQL ya trae los de toda FK, `(tenant_id, status)`, `(tenant_id, owner_id)`, `(tenant_id, created_at desc)`, parciales, GIN (trigram, arrays) y GiST. Cada consulta nueva de listado debe empezar por `tenant_id` (las políticas RLS agregan `tenant_id = …` y el planificador lo aprovecha). Revisar con `EXPLAIN (ANALYZE, BUFFERS)` conectado como `qhapaq_app` con `app.tenant_id` fijado.
+- **Índices**: el SQL ya trae los de toda FK, `(tenant_id, status)`, `(tenant_id, owner_id)`, `(tenant_id, created_at desc)`, parciales, GIN (trigram, arrays) y GiST. Cada consulta nueva de listado debe empezar por `tenant_id` (las políticas RLS agregan `tenant_id = …` y el planificador lo aprovecha). Revisar con `EXPLAIN (ANALYZE, BUFFERS)` conectado como `kipucontrol_app` con `app.tenant_id` fijado.
 - **N+1**: `Model::shouldBeStrict()` en desarrollo y pruebas (lanza excepción en carga perezosa); `with()` / `load()` explícitos; `include` del contrato mapeado a relaciones.
 - **Paginación por cursor** (`page[cursor]`), nunca `OFFSET` en listados grandes; máximo `page[size]=100`.
 - **Caché por tenant**: claves `t:{tenant}:…` con versión (`…:v{n}` + `INCR` para invalidar); reglas 1 h, disponibilidad 10 min; nunca cachear respuestas con datos sensibles sin incluir permisos en la clave.
@@ -414,7 +414,7 @@ Antes de cerrar cada historia: comando `/revisar-seguridad` y subagente `revisor
 | Procesos | Contenedores separados para API (php-fpm u Octane), Horizon, scheduler (una sola instancia), Reverb, Next.js. Sitio público separable si necesita escalar. |
 | Migraciones | Con `pgsql_owner`, reversibles, RLS en la misma migración; después de cada fase se puede reejecutar `90_rls.sql` (idempotente) para verificar que ninguna tabla con `tenant_id` quedó sin RLS. Desplegar migraciones compatibles hacia atrás antes del código que las usa. |
 | Configuración | Variables por entorno; secretos en gestor de secretos; `fake` prohibido en producción para fiscal y pagos (falla al arrancar). |
-| CI/CD | [`infra/github/workflows/ci.yml`](infra/github/workflows/ci.yml): Pint, Larastan, Pest con PostgreSQL y Redis reales, contrato por fase (`QHAPAQ_PHASE`), lint/tsc/Vitest/build web, Playwright en pull requests. |
+| CI/CD | [`infra/github/workflows/ci.yml`](infra/github/workflows/ci.yml): Pint, Larastan, Pest con PostgreSQL y Redis reales, contrato por fase (`KIPUCONTROL_PHASE`), lint/tsc/Vitest/build web, Playwright en pull requests. |
 | Backups | PostgreSQL con PITR (WAL continuo) y retención según contrato; S3 con versionado; **prueba de restauración trimestral** documentada; Redis no es fuente de verdad (idempotencia y colas se recuperan desde PostgreSQL y `sys_outbox`). |
 | Operación SaaS | Suspensión de tenant (403 `TENANT_SUSPENDED`), revocación de tokens, exportación de datos del tenant, creación de particiones y purgas programadas. |
 
@@ -428,7 +428,7 @@ Antes de cerrar cada historia: comando `/revisar-seguridad` y subagente `revisor
 
 **Mi consulta devuelve vacío en un job o en tinker.** Falta `app.tenant_id`: use `TenantAware` en jobs y `TenantDatabase::run($tenantId, fn () => …)` en tinker y seeders (con `FORCE ROW LEVEL SECURITY` hasta el dueño ve cero filas).
 
-**¿Cómo pruebo que un usuario de B no ve datos de A?** Copie el dataset de `TenantIsolationTest` y agregue la ruta del recurso nuevo; corra con el usuario `qhapaq_app`.
+**¿Cómo pruebo que un usuario de B no ve datos de A?** Copie el dataset de `TenantIsolationTest` y agregue la ruta del recurso nuevo; corra con el usuario `kipucontrol_app`.
 
 **¿Qué código HTTP devuelvo?** 403 sin permiso o fuera de alcance; 404 recurso inexistente u otro tenant; 409 conflicto de estado, cupo, `lock_version` o idempotencia en curso; 422 validación o regla de negocio con `code`. Catálogo completo: [`referencia/CODIGOS-DE-ERROR.md`](referencia/CODIGOS-DE-ERROR.md).
 

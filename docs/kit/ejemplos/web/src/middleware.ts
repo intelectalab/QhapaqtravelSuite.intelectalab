@@ -5,7 +5,7 @@
  *  - Usuario externo (cliente, pasajero, B2B, proveedor, guía/conductor) fuera de sus prefijos → su home.
  *  - Rol interno que entra a un árbol externo → /403 (las vistas previas internas de portales van por otra ruta, H-05).
  *  - `/` → home de la experiencia.
- * Es UX: lee la cookie `qhapaq_ux` ({role, experience}) que fija el BFF al iniciar sesión con datos de /me/access.
+ * Es UX: lee la cookie `kipucontrol_ux` ({role, experience}) que fija el BFF al iniciar sesión con datos de /me/access.
  * Manipularla no da acceso a nada: la API valida token, permisos y alcance en cada solicitud.
  * Permiso por pantalla (ACCESS) se resuelve en el layout del back-office con /me/access → <Forbidden/> (403).
  */

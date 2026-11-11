@@ -1,4 +1,4 @@
-QHAPAQ TRAVEL SUITE — Prototipo funcional
+KIPUCONTROL — Prototipo funcional
 SaaS multi-tenant de gestión integral para agencias de viajes y operadores turísticos
 Basado en: DOC-PROC-001 v1.0 (Flujo de Procesos) y Especificación Funcional PRD (Productos Turísticos)
 

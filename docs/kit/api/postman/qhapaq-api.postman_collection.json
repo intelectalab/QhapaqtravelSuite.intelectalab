@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "Qhapaq Travel Suite API · Postman",
+    "name": "KipuControl API · Postman",
     "_postman_id": "6f1c1e1a-5b7a-4c39-9d1e-0000000000a1",
     "description": "Colección generada por `kit-ia/api/postman/build_postman.py` desde `kit-ia/api/openapi.json` (OpenAPI 3.1.0, versión 1.0.0). 1006 requests organizadas por fase y módulo. No editar a mano: regenerar.\n\nVariables de entorno: `baseUrl`, `email`, `password`, `tenantSlug`, `totpCode`, `token` (lo llena el login), `platformToken`, `widgetKey`, `siteOrigin`, `apiKey`, `cartToken`, `orderToken`, `providerSignature`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
@@ -15395,7 +15395,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -15438,7 +15438,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -15500,7 +15500,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -25183,7 +25183,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -32461,7 +32461,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -32529,7 +32529,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -32573,7 +32573,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -32622,7 +32622,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -32671,7 +32671,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -32725,7 +32725,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -32793,7 +32793,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -33394,7 +33394,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -33438,7 +33438,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -39284,7 +39284,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -39337,7 +39337,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -39372,7 +39372,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -39439,7 +39439,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -39482,7 +39482,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -39613,7 +39613,7 @@
                     }
                   ]
                 },
-                "description": "Listado con from_price, list_price, etiquetas (best_seller, offer, free_cancellation, instant_confirmation), próxima salida, rating\n\n**Idempotencia / lock (spec):** cache por query 5 min\n\n**También en 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6:** Catálogo\n\n- **Permiso (x-permission):** `público | X-Qhapaq-Key + Origin verificado`\n- **Fase (x-phase):** 2\n- **Especificación (x-spec):** 15-sitio-web-publico.md §6.1 Catálogo y contenido (GET, cache)\n- **También en:** 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6\n- **Tabla (x-resource):** `catalog_products`\n- **Seguridad:** widgetKey\n- **operationId:** `listPublicProducts` · `GET /api/v1/public/products`"
+                "description": "Listado con from_price, list_price, etiquetas (best_seller, offer, free_cancellation, instant_confirmation), próxima salida, rating\n\n**Idempotencia / lock (spec):** cache por query 5 min\n\n**También en 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6:** Catálogo\n\n- **Permiso (x-permission):** `público | X-KipuControl-Key + Origin verificado`\n- **Fase (x-phase):** 2\n- **Especificación (x-spec):** 15-sitio-web-publico.md §6.1 Catálogo y contenido (GET, cache)\n- **También en:** 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6\n- **Tabla (x-resource):** `catalog_products`\n- **Seguridad:** widgetKey\n- **operationId:** `listPublicProducts` · `GET /api/v1/public/products`"
               },
               "response": []
             },
@@ -39627,7 +39627,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -39656,7 +39656,7 @@
                     }
                   ]
                 },
-                "description": "Ficha completa traducida (media, itinerario, incluye, requisitos, políticas, FAQ, config, relacionados, punto de encuentro, JSON-LD)\n\n**Idempotencia / lock (spec):** ISR/cache\n\n**También en 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6:** Catálogo\n\n- **Permiso (x-permission):** `público | X-Qhapaq-Key + Origin verificado`\n- **Fase (x-phase):** 2\n- **Especificación (x-spec):** 15-sitio-web-publico.md §6.1 Catálogo y contenido (GET, cache)\n- **También en:** 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6\n- **Tabla (x-resource):** `catalog_products`\n- **Seguridad:** widgetKey\n- **operationId:** `showPublicProducts` · `GET /api/v1/public/products/{slug}`"
+                "description": "Ficha completa traducida (media, itinerario, incluye, requisitos, políticas, FAQ, config, relacionados, punto de encuentro, JSON-LD)\n\n**Idempotencia / lock (spec):** ISR/cache\n\n**También en 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6:** Catálogo\n\n- **Permiso (x-permission):** `público | X-KipuControl-Key + Origin verificado`\n- **Fase (x-phase):** 2\n- **Especificación (x-spec):** 15-sitio-web-publico.md §6.1 Catálogo y contenido (GET, cache)\n- **También en:** 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6\n- **Tabla (x-resource):** `catalog_products`\n- **Seguridad:** widgetKey\n- **operationId:** `showPublicProducts` · `GET /api/v1/public/products/{slug}`"
               },
               "response": []
             },
@@ -39670,7 +39670,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -39734,7 +39734,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -39822,7 +39822,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -39866,7 +39866,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -39901,7 +39901,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -39936,7 +39936,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -39979,7 +39979,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40022,7 +40022,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40070,7 +40070,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40118,7 +40118,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40148,7 +40148,7 @@
                     "carts"
                   ]
                 },
-                "description": "Crea carrito; devuelve cookie/token\n\n**Idempotencia / lock (spec):** Idempotency-Key\n\n**También en 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6:** Traspaso al checkout → checkout_url\n\n- **Permiso (x-permission):** `público | X-Qhapaq-Key + Origin verificado`\n- **Fase (x-phase):** 2\n- **Especificación (x-spec):** 15-sitio-web-publico.md §6.2 Precio, disponibilidad, carrito\n- **También en:** 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6\n- **Tabla (x-resource):** `channel_web_carts`\n- **Idempotencia (x-idempotency):** required — spec\n- **Seguridad:** widgetKey\n- **operationId:** `createPublicCarts` · `POST /api/v1/public/carts`",
+                "description": "Crea carrito; devuelve cookie/token\n\n**Idempotencia / lock (spec):** Idempotency-Key\n\n**También en 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6:** Traspaso al checkout → checkout_url\n\n- **Permiso (x-permission):** `público | X-KipuControl-Key + Origin verificado`\n- **Fase (x-phase):** 2\n- **Especificación (x-spec):** 15-sitio-web-publico.md §6.2 Precio, disponibilidad, carrito\n- **También en:** 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6\n- **Tabla (x-resource):** `channel_web_carts`\n- **Idempotencia (x-idempotency):** required — spec\n- **Seguridad:** widgetKey\n- **operationId:** `createPublicCarts` · `POST /api/v1/public/carts`",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"crm_client_id\": \"{{crm_client_id}}\",\n  \"promo_code\": \"DEMO-001\",\n  \"currency\": \"USD\",\n  \"locale\": \"es\",\n  \"status\": \"activo\",\n  \"order_id\": \"{{order_id}}\",\n  \"utm\": {},\n  \"last_activity_at\": \"2026-10-15T09:00:00-05:00\"\n}",
@@ -40171,7 +40171,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40212,7 +40212,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40272,7 +40272,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40335,7 +40335,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40385,7 +40385,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40449,7 +40449,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40504,7 +40504,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40546,7 +40546,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40601,7 +40601,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40655,7 +40655,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40719,7 +40719,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40786,7 +40786,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40853,7 +40853,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40901,7 +40901,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -40956,7 +40956,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -41005,7 +41005,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -41058,7 +41058,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -41107,7 +41107,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -41165,7 +41165,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -41218,7 +41218,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -41262,7 +41262,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -41316,7 +41316,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -41369,7 +41369,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -41418,7 +41418,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -41467,7 +41467,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -41580,7 +41580,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -41630,7 +41630,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -42264,7 +42264,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -42331,7 +42331,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -42366,7 +42366,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -42428,7 +42428,7 @@
                     }
                   ]
                 },
-                "description": "BE.month + rangesSummary + nextAvailable\n\n**Idempotencia / lock (spec):** cache 60 s\n\n**También en 16-motor-de-reservas-y-reglas.md §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key* del tenant + rate limit Redis:** Días [{date, status, label, note, left}] (máx. 92 días por llamada), legend (texto de segmentos), next_available, rules_applied\n\n**También en 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6:** BE.month\n\n- **Permiso (x-permission):** `público | pública | X-Qhapaq-Key + Origin verificado`\n- **Fase (x-phase):** 2\n- **Especificación (x-spec):** 15-sitio-web-publico.md §6.6 v2.1 — Motor de reservas público\n- **También en:** 16-motor-de-reservas-y-reglas.md §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key* del tenant + rate limit Redis, 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6\n- **Tabla (x-resource):** `catalog_products`\n- **Seguridad:** widgetKey\n- **operationId:** `getPublicProductsAvailability` · `GET /api/v1/public/products/{slug}/availability`"
+                "description": "BE.month + rangesSummary + nextAvailable\n\n**Idempotencia / lock (spec):** cache 60 s\n\n**También en 16-motor-de-reservas-y-reglas.md §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key* del tenant + rate limit Redis:** Días [{date, status, label, note, left}] (máx. 92 días por llamada), legend (texto de segmentos), next_available, rules_applied\n\n**También en 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6:** BE.month\n\n- **Permiso (x-permission):** `público | pública | X-KipuControl-Key + Origin verificado`\n- **Fase (x-phase):** 2\n- **Especificación (x-spec):** 15-sitio-web-publico.md §6.6 v2.1 — Motor de reservas público\n- **También en:** 16-motor-de-reservas-y-reglas.md §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key* del tenant + rate limit Redis, 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6\n- **Tabla (x-resource):** `catalog_products`\n- **Seguridad:** widgetKey\n- **operationId:** `getPublicProductsAvailability` · `GET /api/v1/public/products/{slug}/availability`"
               },
               "response": []
             },
@@ -42442,7 +42442,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -42467,7 +42467,7 @@
                     "quote"
                   ]
                 },
-                "description": "sel completo (date, pax, addons[], lodging[], options[], removed[], currency, paymentMode, paymentMethod, promo) → BE.quote\n\n**Idempotencia / lock (spec):** rate limit 60/min\n\n**También en 16-motor-de-reservas-y-reglas.md §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key* del tenant + rate limit Redis:** Cuerpo = sel (product_id, date, pax{adt,chd,inf}, addons[{id,qty}], lodging[{leg_id, hotel_id, rooms[{type,qty}]}], options[], currency, payment_mode, payment_method, promo_code, removed[], channel). Respuesta = contrato quote (lines, adjustments, subtotal, total, modes, deposit_pct, deposit, balance, balance_due, hold_hours, rooms, nights, warnings, ok, currency, fx_rate) + quote_token firmado (TTL 30 min)\n\n**También en 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6:** BE.quote (referencial)\n\n- **Permiso (x-permission):** `público | pública | X-Qhapaq-Key + Origin verificado`\n- **Fase (x-phase):** 2\n- **Especificación (x-spec):** 15-sitio-web-publico.md §6.6 v2.1 — Motor de reservas público\n- **También en:** 16-motor-de-reservas-y-reglas.md §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key* del tenant + rate limit Redis, 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6\n- **Seguridad:** widgetKey\n- **operationId:** `publicQuote` · `POST /api/v1/public/quote`",
+                "description": "sel completo (date, pax, addons[], lodging[], options[], removed[], currency, paymentMode, paymentMethod, promo) → BE.quote\n\n**Idempotencia / lock (spec):** rate limit 60/min\n\n**También en 16-motor-de-reservas-y-reglas.md §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key* del tenant + rate limit Redis:** Cuerpo = sel (product_id, date, pax{adt,chd,inf}, addons[{id,qty}], lodging[{leg_id, hotel_id, rooms[{type,qty}]}], options[], currency, payment_mode, payment_method, promo_code, removed[], channel). Respuesta = contrato quote (lines, adjustments, subtotal, total, modes, deposit_pct, deposit, balance, balance_due, hold_hours, rooms, nights, warnings, ok, currency, fx_rate) + quote_token firmado (TTL 30 min)\n\n**También en 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6:** BE.quote (referencial)\n\n- **Permiso (x-permission):** `público | pública | X-KipuControl-Key + Origin verificado`\n- **Fase (x-phase):** 2\n- **Especificación (x-spec):** 15-sitio-web-publico.md §6.6 v2.1 — Motor de reservas público\n- **También en:** 16-motor-de-reservas-y-reglas.md §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key* del tenant + rate limit Redis, 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6\n- **Seguridad:** widgetKey\n- **operationId:** `publicQuote` · `POST /api/v1/public/quote`",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"adt\": \"Ejemplo adt\",\n  \"chd\": \"Ejemplo chd\",\n  \"inf\": \"Ejemplo inf\"\n}",
@@ -42490,7 +42490,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -42565,7 +42565,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -45624,7 +45624,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -45654,7 +45654,7 @@
                     "widget-handoffs"
                   ]
                 },
-                "description": "Traspaso al checkout → checkout_url\n\n**Idempotencia / lock (spec):** Idempotency-Key\n\n- **Permiso (x-permission):** `X-Qhapaq-Key + Origin verificado`\n- **Fase (x-phase):** 2\n- **Especificación (x-spec):** 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6\n- **Idempotencia (x-idempotency):** required — spec\n- **Seguridad:** widgetKey\n- **operationId:** `publicWidgetHandoffs` · `POST /api/v1/public/widget-handoffs`",
+                "description": "Traspaso al checkout → checkout_url\n\n**Idempotencia / lock (spec):** Idempotency-Key\n\n- **Permiso (x-permission):** `X-KipuControl-Key + Origin verificado`\n- **Fase (x-phase):** 2\n- **Especificación (x-spec):** 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6\n- **Idempotencia (x-idempotency):** required — spec\n- **Seguridad:** widgetKey\n- **operationId:** `publicWidgetHandoffs` · `POST /api/v1/public/widget-handoffs`",
                 "body": {
                   "mode": "raw",
                   "raw": "{}",
@@ -50157,7 +50157,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -50200,7 +50200,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -51374,7 +51374,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },
@@ -51463,7 +51463,7 @@
                     }
                   ]
                 },
-                "description": "Reseñas verificadas\n\n**Idempotencia / lock (spec):** cache 1 h\n\n**También en 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6:** Widget de reseñas (con atribución)\n\n**También en 18-resenas-propias.md §6:** Publicadas + agregado (cache 10 min, invalidada al moderar)\n\n- **Permiso (x-permission):** `público | X-Qhapaq-Key + Origin verificado`\n- **Fase (x-phase):** 3\n- **Especificación (x-spec):** 15-sitio-web-publico.md §6.1 Catálogo y contenido (GET, cache)\n- **También en:** 15-sitio-web-publico.md §6.7 v2.2 — Reseñas públicas, 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6, 18-resenas-propias.md §6\n- **Tabla (x-resource):** `crm_own_reviews`\n- **Seguridad:** widgetKey\n- **operationId:** `listPublicReviews` · `GET /api/v1/public/reviews`"
+                "description": "Reseñas verificadas\n\n**Idempotencia / lock (spec):** cache 1 h\n\n**También en 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6:** Widget de reseñas (con atribución)\n\n**También en 18-resenas-propias.md §6:** Publicadas + agregado (cache 10 min, invalidada al moderar)\n\n- **Permiso (x-permission):** `público | X-KipuControl-Key + Origin verificado`\n- **Fase (x-phase):** 3\n- **Especificación (x-spec):** 15-sitio-web-publico.md §6.1 Catálogo y contenido (GET, cache)\n- **También en:** 15-sitio-web-publico.md §6.7 v2.2 — Reseñas públicas, 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6, 18-resenas-propias.md §6\n- **Tabla (x-resource):** `crm_own_reviews`\n- **Seguridad:** widgetKey\n- **operationId:** `listPublicReviews` · `GET /api/v1/public/reviews`"
               },
               "response": []
             },
@@ -51477,7 +51477,7 @@
                     "value": "application/json"
                   },
                   {
-                    "key": "X-Qhapaq-Key",
+                    "key": "X-KipuControl-Key",
                     "value": "{{widgetKey}}",
                     "description": "Publishable key del tenant (validada con Origin)."
                   },

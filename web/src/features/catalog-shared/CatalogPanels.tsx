@@ -35,15 +35,17 @@ interface ConfirmActionProps {
   icon?: ReactNode;
   reason?: string;
   children?: ReactNode;
+  button?: boolean;
 }
 
-export function ConfirmAction({ id, label, title, description, submitLabel, action, hidden, tone = "delete", icon, reason, children }: ConfirmActionProps) {
+export function ConfirmAction({ id, label, title, description, submitLabel, action, hidden, tone = "delete", icon, reason, children, button = false }: ConfirmActionProps) {
   const router = useRouter();
   return (
     <PanelAction<StepResult>
       label={label}
       formId={`confirm-${id}`}
-      trigger={(open) => <RowIcon tone={tone} label={label} icon={icon} onClick={open} />}
+      icon={icon}
+      trigger={button ? undefined : (open) => <RowIcon tone={tone} label={label} icon={icon} onClick={open} />}
       title={title}
       description={description}
       submitLabel={submitLabel}

@@ -18,12 +18,12 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_DB: qhapaq_test
-          POSTGRES_USER: qhapaq_owner
+          POSTGRES_DB: kipucontrol_test
+          POSTGRES_USER: kipucontrol_owner
           POSTGRES_PASSWORD: owner_ci
         ports: [ "5432:5432" ]
         options: >-
-          --health-cmd "pg_isready -U qhapaq_owner -d qhapaq_test"
+          --health-cmd "pg_isready -U kipucontrol_owner -d kipucontrol_test"
           --health-interval 5s --health-retries 10
       redis:
         image: redis:8
@@ -35,12 +35,12 @@ jobs:
     env:
       DB_CONNECTION: pgsql
       DB_HOST: 127.0.0.1
-      DB_DATABASE: qhapaq_test
-      DB_USERNAME: qhapaq_app
+      DB_DATABASE: kipucontrol_test
+      DB_USERNAME: kipucontrol_app
       DB_PASSWORD: app_ci
-      DB_PLATFORM_USERNAME: qhapaq_platform
+      DB_PLATFORM_USERNAME: kipucontrol_platform
       DB_PLATFORM_PASSWORD: platform_ci
-      DB_OWNER_USERNAME: qhapaq_owner
+      DB_OWNER_USERNAME: kipucontrol_owner
       DB_OWNER_PASSWORD: owner_ci
       REDIS_HOST: 127.0.0.1
       CACHE_STORE: redis
@@ -61,11 +61,11 @@ jobs:
       - name: Roles de conexión (sin BYPASSRLS)
         env: { PGPASSWORD: owner_ci }
         run: |
-          psql -h 127.0.0.1 -U qhapaq_owner -d qhapaq_test -v ON_ERROR_STOP=1 <<'SQL'
+          psql -h 127.0.0.1 -U kipucontrol_owner -d kipucontrol_test -v ON_ERROR_STOP=1 <<'SQL'
           create role app_role nologin nobypassrls;
           create role platform_role nologin nobypassrls;
-          create role qhapaq_app login password 'app_ci' in role app_role;
-          create role qhapaq_platform login password 'platform_ci' in role platform_role;
+          create role kipucontrol_app login password 'app_ci' in role app_role;
+          create role kipucontrol_platform login password 'platform_ci' in role platform_role;
           SQL
       - run: composer install --no-interaction --prefer-dist
       - run: cp .env.example .env && php artisan key:generate
@@ -77,7 +77,7 @@ jobs:
         run: |
           pip install pyyaml
           php artisan scramble:export --path=storage/openapi.generated.json
-          python3 ../docs/kit/api/compare_contract.py storage/openapi.generated.json --phase "${{ vars.QHAPAQ_PHASE || '0' }}"
+          python3 ../docs/kit/api/compare_contract.py storage/openapi.generated.json --phase "${{ vars.KIPUCONTROL_PHASE || '0' }}"
 
   database-kit:
     runs-on: ubuntu-latest

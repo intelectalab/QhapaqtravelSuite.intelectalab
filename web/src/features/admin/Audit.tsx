@@ -7,7 +7,7 @@ import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
-import { BarChart } from "@/components/ui/Charts";
+import { Sparkline } from "@/components/ui/Charts";
 import { actionLabel, type AuditEntry, type AuditOverview } from "@/lib/admin";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, TIME_ZONE } from "@/lib/format";
@@ -93,16 +93,13 @@ export function AuditTable({ data, initialSearch }: { data: AuditOverview; initi
 export function AuditActivity({ daily }: { daily: AuditOverview["daily"] }) {
   const last = daily.slice(-14);
   return (
-    <BarChart
-      height={110}
-      data={last.map((day, index) => ({
-        label: formatDate(day.date).split(" ")[0],
-        value: day.total,
-        caption: String(day.total),
-        detail: `${formatDate(day.date)}: ${day.total} eventos`,
-        highlight: index === last.length - 1,
-      }))}
-    />
+    <div>
+      <Sparkline values={last.map((day) => day.total)} labels={last.map((day) => `${formatDate(day.date)}: ${day.total} eventos`)} className="h-14 text-t1" />
+      <div className="mt-1.5 flex justify-between font-mono text-[11px] text-fg-3">
+        <span>{last[0] ? formatDate(last[0].date) : ""}</span>
+        <span>{last.at(-1) ? formatDate(last.at(-1)!.date) : ""}</span>
+      </div>
+    </div>
   );
 }
 

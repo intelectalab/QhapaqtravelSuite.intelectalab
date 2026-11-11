@@ -8,10 +8,13 @@ use App\Jobs\AlertClaimDeadlines;
 use App\Jobs\CloseTrials;
 use App\Jobs\ConsolidateUsage;
 use App\Jobs\DetectPendingSupplierServices;
+use App\Jobs\DispatchScheduledCampaigns;
 use App\Jobs\ExpireApiKeys;
 use App\Jobs\ExpireAvailabilityHolds;
 use App\Jobs\ExpireQuotes;
+use App\Jobs\ExpireSupplierAlternativeHolds;
 use App\Jobs\ExpireUnconfirmedAssignments;
+use App\Jobs\ExpireWidgetHandoffs;
 use App\Jobs\MaintainMonthlyPartitions;
 use App\Jobs\MarkExpiredProviderContracts;
 use App\Jobs\MarkOverdueReceivables;
@@ -20,10 +23,13 @@ use App\Jobs\NotifyUpcomingTrips;
 use App\Jobs\PurgeWebhookDeliveries;
 use App\Jobs\RelayOutbox;
 use App\Jobs\ReleaseAllotments;
+use App\Jobs\ReleasePayLaterHolds;
 use App\Jobs\RemindCrmActivities;
 use App\Jobs\RemindTravelDocuments;
 use App\Jobs\RenewSubscriptions;
 use App\Jobs\RetryFailedCharges;
+use App\Jobs\SchedulePaxMessages;
+use App\Jobs\SendDueReviewRequests;
 use App\Jobs\SendPaymentReminders;
 use App\Jobs\SendScheduledReports;
 use App\Jobs\SnapshotPlatformMetrics;
@@ -49,6 +55,12 @@ final class JobCatalog
         'JOB-14' => ['class' => MarkExpiredProviderContracts::class, 'name' => 'Vencer contratos de proveedores', 'cron' => '10 0 * * *', 'label' => 'diario 00:10', 'queue' => 'default'],
         'JOB-15' => ['class' => AlertClaimDeadlines::class, 'name' => 'Plazos del Libro de Reclamaciones', 'cron' => '0 8 * * *', 'label' => 'diario 08:00', 'queue' => 'notifications'],
         'JOB-16' => ['class' => MonitorIncidentSla::class, 'name' => 'SLA de incidencias', 'cron' => '*/5 * * * *', 'label' => 'cada 5 min', 'queue' => 'critical'],
+        'JOB-17' => ['class' => ExpireSupplierAlternativeHolds::class, 'name' => 'Vencer alternativas de proveedores', 'cron' => '20 0 * * *', 'label' => 'diario 00:20', 'queue' => 'default'],
+        'JOB-18' => ['class' => SchedulePaxMessages::class, 'name' => 'Programar y enviar mensajes al pasajero', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'notifications'],
+        'JOB-19' => ['class' => ReleasePayLaterHolds::class, 'name' => 'Liberar reservas de pagar después', 'cron' => '*/5 * * * *', 'label' => 'cada 5 min', 'queue' => 'critical'],
+        'JOB-20' => ['class' => SendDueReviewRequests::class, 'name' => 'Enviar invitaciones a reseñar', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'notifications'],
+        'JOB-21' => ['class' => ExpireWidgetHandoffs::class, 'name' => 'Vencer traspasos del widget', 'cron' => '0 * * * *', 'label' => 'cada hora', 'queue' => 'low'],
+        'JOB-22' => ['class' => DispatchScheduledCampaigns::class, 'name' => 'Enviar campañas programadas', 'cron' => '* * * * *', 'label' => 'cada minuto', 'queue' => 'default'],
     ];
 
     public const PLATFORM = [

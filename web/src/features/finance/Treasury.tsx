@@ -1,7 +1,8 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, Ban, Banknote, CreditCard, Landmark, Plus, Wallet } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Ban, Banknote, CreditCard, FileText, Landmark, Plus, Wallet } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -14,6 +15,8 @@ import { cn } from "@/lib/cn";
 import type { TreasuryAccount, TreasuryMovement, TreasuryOverview } from "@/lib/finance";
 import { formatDate, formatMoney } from "@/lib/format";
 import { toneStyle, type Tone } from "@/lib/tone";
+import { DetailPanel, PanelSection } from "@/features/channels/ChannelUi";
+import { FieldList } from "@/components/ui/Details";
 import { FinanceStep, SummaryBox } from "./FinanceStep";
 
 const KIND: Record<TreasuryAccount["kind"], { tone: Tone; icon: typeof Landmark }> = {
@@ -74,25 +77,22 @@ export function AccountCards({ accounts }: { accounts: TreasuryAccount[] }) {
 }
 
 function MovementFields({ data }: { data: TreasuryOverview }) {
-  const accounts = data.accounts.filter((account) => account.active).map((account) => ({ value: account.code, label: `${account.name} · ${formatMoney(account.balance, account.currency)}` }));
+  const [direction, setDirection] = useState<"in" | "out">("out");
+  const accounts = data.accounts.filter((account) => account.active && account.kind === "bank").map((account) => ({ value: account.code, label: `${account.name} · ${formatMoney(account.balance, account.currency)}` }));
+  const categories = data.categories[direction].map((value) => ({ value, label: value }));
   return (
     <>
-      <ChoiceGroup label="Tipo" name="direction" options={[{ value: "out", label: "Egreso" }, { value: "in", label: "Ingreso" }]} defaultValue="out" />
-      <SelectField label="Cuenta" name="account" options={accounts} placeholder="Elige la cuenta" hint="El monto se registra en la moneda de la cuenta." />
+      <ChoiceGroup label="Tipo" name="direction" options={[{ value: "out", label: "Egreso" }, { value: "in", label: "Ingreso" }]} defaultValue="out" onChange={(value) => setDirection(value === "in" ? "in" : "out")} />
+      <SelectField label="Cuenta bancaria" name="account" options={accounts} placeholder="Elige la cuenta" hint="Las cajas chicas registran gastos y las pasarelas su liquidación." />
       <div className="grid grid-cols-2 gap-3">
         <TextField label="Importe" name="amount" type="number" step="0.01" min="0.01" required />
         <TextField label="Fecha" name="date" type="date" required max={data.today} defaultValue={data.today} />
       </div>
-      <TextField label="Categoría" name="category" required maxLength={60} list="treasury-categories" placeholder="Alquileres, tributos, servicios…" />
-      <datalist id="treasury-categories">
-        {data.categories.map((category) => (
-          <option key={category} value={category} />
-        ))}
-      </datalist>
+      <SelectField key={direction} label="Categoría" name="category" options={categories} defaultValue={categories[0]?.value} />
       <TextField label="Descripción" name="description" required maxLength={255} placeholder="Ejemplo: alquiler de oficina Cusco — noviembre" />
       <div className="grid grid-cols-2 gap-3">
-        <TextField label="Referencia" name="reference" maxLength={80} placeholder="OP 00887120" />
-        <TextField label="Contraparte" name="counterparty" maxLength={160} />
+        <TextField label="Número de operación" name="reference" required maxLength={80} placeholder="OP 00887120" />
+        <TextField label="Contraparte (opcional)" name="counterparty" maxLength={160} />
       </div>
     </>
   );
@@ -121,6 +121,58 @@ function VoidMovementAction({ row }: { row: TreasuryMovement }) {
   );
 }
 
+function MovementDetail({ row }: { row: TreasuryMovement }) {
+  const signed = `${row.direction === "in" ? "+" : "−"}${formatMoney(row.amount, row.currency)}`;
+  return (
+    <DetailPanel label="Ver movimiento" title={row.description} description={`${row.code} · ${row.type_label} · ${formatDate(row.date)}`}>
+      <div className={cn("rounded-tile px-4 py-3.5", row.direction === "in" ? "bg-[color-mix(in_srgb,var(--ok)_9%,transparent)]" : "bg-[color-mix(in_srgb,var(--bad)_7%,transparent)]")}>
+        <p className="text-[12.5px] text-fg-3">{row.direction === "in" ? "Ingreso" : "Egreso"} en {row.account.name}</p>
+        <p className={cn("font-mono text-[24px] font-bold", row.status === "voided" && "line-through opacity-60")}>{signed}</p>
+        {row.currency !== "PEN" && <p className="text-[12px] text-fg-3">{formatMoney(row.pen)} al tipo de cambio {row.fx_rate ?? "del día"}</p>}
+      </div>
+      {row.status === "voided" && (
+        <p className="rounded-xl border border-[color-mix(in_srgb,var(--bad)_30%,transparent)] bg-[color-mix(in_srgb,var(--bad)_7%,transparent)] px-3.5 py-2.5 text-[13px]">
+          <b className="font-semibold">Anulado</b>
+          {row.voided?.by ? ` por ${row.voided.by}` : ""}
+          {row.voided?.at ? ` el ${formatDate(row.voided.at)}` : ""}. {row.void_reason}
+        </p>
+      )}
+      <PanelSection title="Datos">
+        <FieldList
+          fields={[
+            { label: "Categoría", value: row.category ?? "—" },
+            { label: "Número de operación", value: row.reference ?? "—" },
+            { label: "Contraparte", value: row.counterparty ?? "—" },
+            { label: "Origen", value: row.origin ? row.origin.href ? <Link href={row.origin.href} className="hover:underline">{`${row.origin.label}${row.origin.code ? ` ${row.origin.code}` : ""}`}</Link> : `${row.origin.label}${row.origin.code ? ` ${row.origin.code}` : ""}` : "Registro manual" },
+            ...(row.reservation ? [{ label: "Reserva", value: <Link href={`/reservas/${row.reservation}`} className="hover:underline">{row.reservation}</Link> }] : []),
+            { label: "Registró", value: `${row.user} · ${formatDate(row.created_at)}` },
+          ]}
+        />
+      </PanelSection>
+      {row.receipt && (
+        <PanelSection title="Comprobante" aside={row.receipt.type}>
+          <FieldList
+            fields={[
+              { label: "Serie y número", value: row.receipt.number ?? "No aplica" },
+              { label: "RUC del emisor", value: row.receipt.ruc ?? "—" },
+              { label: "Pagado a", value: row.receipt.supplier },
+            ]}
+          />
+          {row.receipt.file ? (
+            <a href={`/finanzas/tesoreria/movimientos/${encodeURIComponent(row.code)}/comprobante`} target="_blank" rel="noreferrer" className="lift inline-flex items-center gap-2 self-start rounded-xl border border-line px-3.5 py-2 text-[13px] font-semibold hover:bg-surface-2">
+              <FileText size={15} />
+              Ver archivo del comprobante
+            </a>
+          ) : (
+            <p className="text-[12.5px] text-fg-3">Sin archivo adjunto.</p>
+          )}
+        </PanelSection>
+      )}
+      {!row.manual && row.status === "posted" && <p className="text-[12.5px] text-fg-3">No se anula aquí: se corrige desde su origen.</p>}
+    </DetailPanel>
+  );
+}
+
 export function MovementsTable({ data }: { data: TreasuryOverview }) {
   const { movements: rows, can } = data;
 
@@ -138,7 +190,7 @@ export function MovementsTable({ data }: { data: TreasuryOverview }) {
             <span className={cn("block truncate font-semibold", row.status === "voided" && "line-through")}>{row.description}</span>
             <small className="block truncate text-xs text-fg-3">
               {row.code} · {row.type_label}
-              {row.counterparty ? ` · ${row.counterparty}` : ""}
+              {row.category ? ` · ${row.category}` : ""}
             </small>
           </span>
         </div>
@@ -147,17 +199,28 @@ export function MovementsTable({ data }: { data: TreasuryOverview }) {
     { id: "account", header: "Cuenta", cell: (row) => <span className="text-[13px]">{row.account.name}</span> },
     { id: "date", header: "Fecha", cell: (row) => <span className="text-[13px]">{formatDate(row.date)}</span> },
     {
-      id: "amount",
-      header: "Importe",
-      align: "right",
-      cell: (row) => (
-        <span className={cn("font-mono text-[13px] font-semibold", row.direction === "in" ? "text-ok" : "text-fg")} title={row.reference ?? undefined}>
-          {row.direction === "in" ? "+" : "−"}
-          {formatMoney(row.amount, row.currency)}
-        </span>
-      ),
+      id: "origin",
+      header: "Origen",
+      wideOnly: true,
+      cell: (row) =>
+        row.origin ? (
+          row.origin.href ? (
+            <Link href={row.origin.href} className="text-[13px] hover:underline">
+              {row.origin.label}
+              {row.origin.code && <span className="block text-xs text-fg-3">{row.origin.code}</span>}
+            </Link>
+          ) : (
+            <span className="text-[13px]">
+              {row.origin.label}
+              {row.origin.code && <span className="block text-xs text-fg-3">{row.origin.code}</span>}
+            </span>
+          )
+        ) : (
+          <span className="text-[13px] text-fg-3">Manual</span>
+        ),
     },
-    { id: "category", header: "Categoría", wideOnly: true, cell: (row) => <span className="text-[13px] text-fg-2">{row.category ?? "—"}</span> },
+    { id: "in", header: "Ingreso", align: "right", cell: (row) => (row.direction === "in" ? <span className="font-mono text-[13px] font-semibold text-ok" title={row.currency === "PEN" ? undefined : formatMoney(row.pen)}>+{formatMoney(row.amount, row.currency)}</span> : <span className="text-fg-3">—</span>) },
+    { id: "out", header: "Egreso", align: "right", cell: (row) => (row.direction === "out" ? <span className="font-mono text-[13px] font-semibold" title={row.currency === "PEN" ? undefined : formatMoney(row.pen)}>−{formatMoney(row.amount, row.currency)}</span> : <span className="text-fg-3">—</span>) },
     {
       id: "actions",
       header: "",
@@ -165,6 +228,7 @@ export function MovementsTable({ data }: { data: TreasuryOverview }) {
       align: "right",
       cell: (row) => (
         <RowActions>
+          <MovementDetail row={row} />
           {row.status === "voided" ? <Badge tone="bad">Anulado</Badge> : can.manage && (row.manual ? <VoidMovementAction row={row} /> : <RowIcon tone="delete" label="Anular" icon={<Ban size={15} />} disabledHint="Se corrige desde su origen (cobro, pago o caja)" />)}
         </RowActions>
       ),
@@ -172,15 +236,17 @@ export function MovementsTable({ data }: { data: TreasuryOverview }) {
   ];
 
   const metrics: MetricFilter<TreasuryMovement>[] = [
-    { id: "in", label: "Ingresos", tone: "ok", icon: <ArrowDownLeft size={19} />, matches: (row) => row.direction === "in" && row.status === "posted" },
-    { id: "out", label: "Egresos", tone: "bad", icon: <ArrowUpRight size={19} />, matches: (row) => row.direction === "out" && row.status === "posted" },
-    { id: "petty", label: "Gastos de caja chica", tone: "sun", icon: <Banknote size={19} />, matches: (row) => row.type === "petty_expense" },
+    { id: "manual", label: "Manuales", tone: "t1", icon: <Landmark size={19} />, matches: (row) => row.manual && row.status === "posted" },
+    { id: "petty", label: "Gastos de caja chica", tone: "sun", icon: <Banknote size={19} />, matches: (row) => row.type === "petty_expense" && row.status === "posted" },
+    { id: "gateway", label: "Pasarelas", tone: "violet", icon: <CreditCard size={19} />, matches: (row) => row.type.startsWith("gateway") && row.status === "posted" },
+    { id: "voided", label: "Anulados", tone: "bad", icon: <Wallet size={19} />, matches: (row) => row.status === "voided" },
   ];
 
   const filters: FilterConfig<TreasuryMovement>[] = [
     { id: "account", label: "Cuenta", options: unique(rows.map((row) => row.account.name)).map((value) => ({ value, label: value })), value: (row) => row.account.name },
     { id: "type", label: "Tipo", options: unique(rows.map((row) => row.type_label)).map((value) => ({ value, label: value })), value: (row) => row.type_label },
-    { id: "category", label: "Categoría", options: unique(rows.map((row) => row.category ?? "")).filter(Boolean).map((value) => ({ value, label: value })), value: (row) => row.category ?? "" },
+    { id: "direction", label: "Sentido", options: [{ value: "in", label: "Ingreso" }, { value: "out", label: "Egreso" }], value: (row) => row.direction },
+    { id: "status", label: "Estado", options: [{ value: "posted", label: "Vigente" }, { value: "voided", label: "Anulado" }], value: (row) => row.status },
   ];
 
   const sorts: SortOption<TreasuryMovement>[] = [
@@ -195,7 +261,7 @@ export function MovementsTable({ data }: { data: TreasuryOverview }) {
       columns={columns}
       getKey={(row) => row.code}
       entityLabel="movimientos"
-      searchText={(row) => `${row.code} ${row.description} ${row.reference ?? ""} ${row.counterparty ?? ""} ${row.account.name}`}
+      searchText={(row) => `${row.code} ${row.description} ${row.reference ?? ""} ${row.counterparty ?? ""} ${row.account.name} ${row.origin?.code ?? ""}`}
       searchPlaceholder="Buscar movimiento, referencia o contraparte"
       metrics={metrics}
       filters={filters}

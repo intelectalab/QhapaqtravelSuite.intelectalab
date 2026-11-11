@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
+import { RolesLayout } from "@/features/users/TeamSections";
 import { NoAccess } from "@/components/shell/NoAccess";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { RoleCreateAction, RolesWorkspace } from "@/features/users/RolesWorkspace";
-import { RolesTabs } from "@/features/users/RolesTabs";
 import { getRoleDetail, listRoles } from "@/lib/server/users";
 
 export const metadata: Metadata = { title: "Roles y permisos" };
@@ -23,8 +23,9 @@ export default async function RolesPage({ searchParams }: PageProps<"/admin/role
         info={<InfoTip>Los roles base no se renombran ni se eliminan, pero puedes ajustar sus permisos. Algunos permisos están protegidos: el administrador siempre conserva la gestión de usuarios y roles, y los roles móviles o externos no ven finanzas.</InfoTip>}
         actions={<RoleCreateAction roles={data.roles} />}
       />
-      <RolesTabs />
-      <RolesWorkspace roles={data.roles} catalog={data.catalog} initial={selected} detail={detail} />
+      <RolesLayout>
+        <RolesWorkspace key={selected} roles={data.roles} catalog={data.catalog} initial={selected} detail={detail} />
+      </RolesLayout>
     </>
   );
 }

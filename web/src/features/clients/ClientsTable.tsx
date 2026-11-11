@@ -1,14 +1,15 @@
 "use client";
 
-import { Building2, Plane, Send, Sprout, Star, Tag, UserPlus } from "lucide-react";
+import { Building2, Plane, Sprout, Star } from "lucide-react";
 import Link from "next/link";
-import { BulkAction, DataTable } from "@/components/table/DataTable";
+import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import { ClientArchiveAction } from "./ClientForms";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, LiveTag } from "@/components/ui/Badge";
 import type { ClientRow } from "@/lib/clients";
+import type { CsvExport } from "@/lib/csv";
 import { formatDate, formatMoney, shortName } from "@/lib/format";
 import type { Tone } from "@/lib/tone";
 
@@ -52,7 +53,14 @@ const buildColumns = (canManage: boolean): Column<ClientRow>[] => [
       </span>
     ),
   },
+  { id: "reservations", header: "Reservas", align: "right", wideOnly: true, cell: (client) => <span className="font-mono text-[13px]">{client.reservations}</span> },
   { id: "total", header: "Total comprado", align: "right", cell: (client) => <span className="font-mono text-[13px]">{formatMoney(client.totalPen)}</span> },
+  {
+    id: "balance",
+    header: "Saldo",
+    align: "right",
+    cell: (client) => (client.balancePen > 0 ? <span className="font-mono text-[13px] font-semibold text-warn">{formatMoney(client.balancePen)}</span> : <span className="text-[13px] text-fg-3">Al día</span>),
+  },
   {
     id: "satisfaction",
     header: "Satisfacción",
@@ -70,14 +78,9 @@ const buildColumns = (canManage: boolean): Column<ClientRow>[] => [
       ),
   },
   {
-    id: "trip",
-    header: "Viaje",
-    cell: (client) => {
-      if (client.onTrip) return <span className="font-semibold text-t4">En curso</span>;
-      if (!client.lastTripFrom) return <span className="text-fg-3">Aún no viaja</span>;
-      if (client.upcomingTrip) return <span>Viaja el {formatDate(client.lastTripFrom)}</span>;
-      return <span className="text-fg-2">Viajó el {formatDate(client.lastTripFrom)}</span>;
-    },
+    id: "purchase",
+    header: "Última compra",
+    cell: (client) => (client.lastPurchase ? <span className="text-[13px] text-fg-2">{formatDate(client.lastPurchase)}</span> : <span className="text-[13px] text-fg-3">Sin compras</span>),
   },
   {
     id: "owner",
@@ -118,9 +121,32 @@ const metrics: MetricFilter<ClientRow>[] = [
 const sorts: SortOption<ClientRow>[] = [
   { id: "name", label: "Nombre", type: "text", value: (client) => client.name },
   { id: "total", label: "Total comprado", type: "number", value: (client) => client.totalPen },
+  { id: "balance", label: "Saldo", type: "number", value: (client) => client.balancePen },
+  { id: "purchase", label: "Última compra", type: "date", value: (client) => client.lastPurchase },
   { id: "trip", label: "Fecha de viaje", type: "date", value: (client) => client.lastTripFrom },
   { id: "since", label: "Cliente desde", type: "date", value: (client) => client.createdAt },
 ];
+
+const csv: CsvExport<ClientRow> = {
+  fileName: "clientes",
+  columns: [
+    { header: "Código", value: (client) => client.id },
+    { header: "Cliente", value: (client) => client.name },
+    { header: "Tipo", value: (client) => client.kind },
+    { header: "Documento", value: (client) => client.document },
+    { header: "Correo", value: (client) => client.email },
+    { header: "Teléfono", value: (client) => client.phone },
+    { header: "Ciudad", value: (client) => client.city },
+    { header: "País", value: (client) => client.country },
+    { header: "Segmento", value: (client) => client.segment },
+    { header: "Reservas", value: (client) => client.reservations },
+    { header: "Total comprado (S/)", value: (client) => client.totalPen },
+    { header: "Saldo (S/)", value: (client) => client.balancePen },
+    { header: "Satisfacción", value: (client) => client.satisfaction },
+    { header: "Última compra", value: (client) => client.lastPurchase },
+    { header: "Asesor", value: (client) => client.ownerName },
+  ],
+};
 
 export function ClientsTable({ clients, canManage }: { clients: ClientRow[]; canManage: boolean }) {
   const filters: FilterConfig<ClientRow>[] = [
@@ -137,18 +163,12 @@ export function ClientsTable({ clients, canManage }: { clients: ClientRow[]; can
       columns={buildColumns(canManage)}
       getKey={(client) => client.id}
       entityLabel="clientes"
-      searchText={(client) => `${client.name} ${client.document} ${client.email} ${client.id}`}
+      searchText={(client) => `${client.name} ${client.document} ${client.email} ${client.phone} ${client.city} ${client.id}`}
       searchPlaceholder="Buscar cliente o documento"
       metrics={metrics}
       filters={filters}
       sorts={sorts}
-      selectionActions={() => (
-        <>
-          <BulkAction icon={<UserPlus size={16} />}>Asignar asesor</BulkAction>
-          <BulkAction icon={<Send size={16} />}>Enviar mensaje</BulkAction>
-          <BulkAction icon={<Tag size={16} />}>Cambiar segmento</BulkAction>
-        </>
-      )}
+      csv={csv}
     />
   );
 }

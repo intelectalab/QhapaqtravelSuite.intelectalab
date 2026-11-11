@@ -33,21 +33,37 @@ async function send(path: string, body: Record<string, unknown>, method: "POST" 
   return { message: null, done: true, result: result.data ?? undefined };
 }
 
+const leadBody = (form: FormData) => ({
+  name: text(form, "name"),
+  company: text(form, "company"),
+  email: text(form, "email"),
+  phone: text(form, "phone"),
+  channel: text(form, "channel"),
+  source: text(form, "source"),
+  interest: text(form, "interest"),
+  destination: text(form, "destination"),
+  destination_id: text(form, "destination_id"),
+  product_id: text(form, "product_id"),
+  owner_id: text(form, "owner_id"),
+  travel_date: text(form, "travel_date"),
+  pax: number(form, "pax"),
+  notes: text(form, "notes"),
+});
+
+const resolution = (form: FormData) => {
+  const chosen = form.getAll("duplicate_resolution");
+  return chosen.includes("merge") ? "merge" : chosen.includes("mark_duplicate") ? "mark_duplicate" : text(form, "duplicate_resolution");
+};
+
 export async function createLead(_state: LeadActionState, form: FormData): Promise<LeadActionState> {
-  return send("/crm/leads", {
-    name: text(form, "name"),
-    company: text(form, "company"),
-    email: text(form, "email"),
-    phone: text(form, "phone"),
-    channel: text(form, "channel"),
-    source: text(form, "source"),
-    interest: text(form, "interest"),
-    destination: text(form, "destination"),
-    travel_date: text(form, "travel_date"),
-    pax: number(form, "pax"),
-    notes: text(form, "notes"),
-    duplicate_resolution: form.getAll("duplicate_resolution").includes("mark_duplicate") ? "mark_duplicate" : text(form, "duplicate_resolution"),
-  });
+  const chosen = resolution(form);
+  return send("/crm/leads", { ...leadBody(form), duplicate_resolution: chosen, merge_into: chosen === "merge" ? text(form, "merge_into") : undefined });
+}
+
+export async function createLeadFromConversation(_state: LeadActionState, form: FormData): Promise<LeadActionState> {
+  const state = await send(`/inbox/conversations/${encodeURIComponent(text(form, "conversation") ?? "")}/lead`, { ...leadBody(form), duplicate_resolution: resolution(form), lock_version: number(form, "lock_version") });
+  if (state.done) revalidatePath("/inbox", "layout");
+  return state;
 }
 
 export async function takeLead(code: string): Promise<LeadActionState> {
@@ -55,7 +71,7 @@ export async function takeLead(code: string): Promise<LeadActionState> {
 }
 
 export async function changeLeadStatus(_state: LeadActionState, form: FormData): Promise<LeadActionState> {
-  return send(`/crm/leads/${encodeURIComponent(text(form, "code") ?? "")}/status`, { status: text(form, "status"), lock_version: number(form, "lock_version") });
+  return send(`/crm/leads/${encodeURIComponent(text(form, "code") ?? "")}/status`, { status: text(form, "status"), note: text(form, "note"), lock_version: number(form, "lock_version") });
 }
 
 export async function qualifyLead(_state: LeadActionState, form: FormData): Promise<LeadActionState> {
@@ -77,14 +93,24 @@ export async function discardLead(_state: LeadActionState, form: FormData): Prom
 }
 
 export async function convertLead(_state: LeadActionState, form: FormData): Promise<LeadActionState> {
+  const existing = text(form, "client_mode") === "existing";
   return send(`/crm/leads/${encodeURIComponent(text(form, "code") ?? "")}/convert`, {
-    doc_type: text(form, "doc_type"),
-    doc_number: text(form, "doc_number"),
-    city: text(form, "city"),
+    client_mode: existing ? "existing" : "new",
+    client_code: existing ? text(form, "client_code") : undefined,
+    kind: existing ? undefined : text(form, "kind"),
+    name: existing ? undefined : text(form, "client_name"),
+    segment: existing ? undefined : text(form, "segment"),
+    doc_type: existing ? undefined : text(form, "doc_type"),
+    doc_number: existing ? undefined : text(form, "doc_number"),
+    city: existing ? undefined : text(form, "city"),
+    country: existing ? undefined : text(form, "country"),
     opportunity_title: text(form, "opportunity_title"),
+    stage: text(form, "stage"),
+    owner_id: text(form, "owner_id"),
     amount: number(form, "amount"),
     currency: text(form, "currency") ?? "PEN",
     expected_close_date: text(form, "expected_close_date"),
+    schedule_discovery_meeting: form.get("schedule_discovery_meeting") === "on",
     lock_version: number(form, "lock_version"),
   });
 }
@@ -92,20 +118,7 @@ export async function convertLead(_state: LeadActionState, form: FormData): Prom
 export async function updateLead(_state: LeadActionState, form: FormData): Promise<LeadActionState> {
   return send(
     `/crm/leads/${encodeURIComponent(text(form, "code") ?? "")}`,
-    {
-      name: text(form, "name"),
-      company: text(form, "company"),
-      email: text(form, "email"),
-      phone: text(form, "phone"),
-      channel: text(form, "channel"),
-      source: text(form, "source"),
-      interest: text(form, "interest"),
-      destination: text(form, "destination"),
-      travel_date: text(form, "travel_date"),
-      pax: number(form, "pax"),
-      notes: text(form, "notes"),
-      lock_version: number(form, "lock_version"),
-    },
+    { ...leadBody(form), lock_version: number(form, "lock_version") },
     "PATCH",
   );
 }
@@ -117,4 +130,20 @@ export async function assignLead(_state: LeadActionState, form: FormData): Promi
     reason: text(form, "reason"),
     lock_version: number(form, "lock_version"),
   });
+}
+
+export async function reopenLead(_state: LeadActionState, form: FormData): Promise<LeadActionState> {
+  return send(`/crm/leads/${encodeURIComponent(text(form, "code") ?? "")}/reopen`, { lock_version: number(form, "lock_version") });
+}
+
+export async function markLeadDuplicate(_state: LeadActionState, form: FormData): Promise<LeadActionState> {
+  return send(`/crm/leads/${encodeURIComponent(text(form, "code") ?? "")}/mark-duplicate`, {
+    duplicate_of_type: text(form, "duplicate_of_type"),
+    duplicate_of_id: text(form, "duplicate_of_id"),
+    lock_version: number(form, "lock_version"),
+  });
+}
+
+export async function mergeLead(_state: LeadActionState, form: FormData): Promise<LeadActionState> {
+  return send(`/crm/leads/${encodeURIComponent(text(form, "code") ?? "")}/merge`, { source_lead_id: text(form, "source_lead_id") });
 }

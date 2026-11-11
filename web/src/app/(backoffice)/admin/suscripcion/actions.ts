@@ -7,7 +7,7 @@ import { apiFetch } from "@/lib/server/api";
 const PATH = "/admin/suscripcion";
 
 export async function updateBilling(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
-  return sendAdmin("/billing/subscription", "PATCH", fields(form, ["ruc", "name", "address", "ubigeo", "email"]), PATH, "No pudimos guardar los datos de facturación.");
+  return sendAdmin("/billing/subscription", "PATCH", fields(form, ["ruc", "name", "address", "ubigeo", "email", "contact", "doc_type"]), PATH, "No pudimos guardar los datos de facturación.");
 }
 
 export async function previewPlanChange(plan: string, cycle: string): Promise<{ preview: PlanChangePreview | null; message: string | null }> {
@@ -61,4 +61,17 @@ export async function redeemCoupon(_state: AdminActionState, form: FormData): Pr
 
 export async function payInvoice(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
   return sendAdmin(`/billing/invoices/${text(form, "number")}/pay`, "POST", {}, PATH, "No pudimos cobrar la factura.");
+}
+
+export async function openCardSession(): Promise<{ session: string | null; message: string | null }> {
+  const result = await apiFetch<{ session: string }>("/billing/payment-methods/setup-intent", { method: "POST", body: {} });
+  return result.ok && result.data ? { session: result.data.session, message: null } : { session: null, message: result.error?.message ?? "No pudimos abrir la pasarela." };
+}
+
+export async function saveCard(card: { session: string; token: string; brand: string; last4: string; exp_month: number; exp_year: number; holder: string }): Promise<AdminActionState> {
+  return sendAdmin("/billing/payment-methods/default", "PUT", card, PATH, "No pudimos guardar la tarjeta.");
+}
+
+export async function sendInvoice(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
+  return sendAdmin(`/billing/invoices/${text(form, "number")}/send`, "POST", {}, PATH, "No pudimos reenviar la factura.");
 }

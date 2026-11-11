@@ -26,6 +26,8 @@ Route::middleware('permission:operations.view')->prefix('ops')->group(function (
         Route::put('assignments/{assignment}/resources', [OrderController::class, 'assign'])->name('ops.assignments.resources');
         Route::post('assignments/{assignment}/confirm', [OrderController::class, 'confirmAssignment'])->name('ops.assignments.confirm');
         Route::post('assignments/{assignment}/release', [OrderController::class, 'releaseAssignment'])->name('ops.assignments.release');
+        Route::post('assignments/{assignment}/validate', [OrderController::class, 'validateAssignment'])->name('ops.assignments.validate');
+        Route::put('assignments/{assignment}/checkins', [OrderController::class, 'checkins'])->name('ops.assignments.checkins');
         Route::post('reservation-services/{service}/complete', [OrderController::class, 'completeService'])->name('ops.reservation-services.complete');
         Route::post('orders/{code}/evidences', [EvidenceController::class, 'store'])->name('ops.orders.evidences.store');
         Route::post('orders/{code}/evidences/upload', [EvidenceController::class, 'upload'])->name('ops.orders.evidences.upload');

@@ -1,4 +1,4 @@
-# Máquinas de estado · Qhapaq Travel Suite
+# Máquinas de estado · KipuControl
 
 _Generado por `tools/build_state_machines.py`: valores tomados del catálogo de PostgreSQL (CHECK de cada columna de estado) y transiciones de la §4 de `proto/docs/especificaciones/00…18-*.md` (tablas «Desde | Hacia» leídas automáticamente y prosa transcrita en `tools/estados_fuentes.py`), más los endpoints de escritura de `api/openapi.yaml` por tabla (`x-resource`). No editar a mano: corregir la fuente o `estados_fuentes.py` y regenerar con `python3 kit-ia/referencia/tools/build_state_machines.py` (requiere PostgreSQL 16/17; Node + Playwright + mermaid para validar los diagramas, o `--no-check`)._
 
@@ -137,7 +137,7 @@ Convenciones de las tablas: «— (alta)» = creación del registro (estado inic
 | 104 | [Medios de pago del tenant para la suscripción (solo token)](#m-payment-methods-status) | `payment_methods.status` | Plataforma | 3 | Por definir | — |
 | 105 | [Planes comerciales (Starter/Professional/Enterprise)](#m-plans-status) | `plans.status` | Plataforma | 3 | Por definir | — |
 | 106 | [Notas de crédito de plataforma (serie NQ01)](#m-platform-credit-notes-sunat-status) | `platform_credit_notes.sunat_status` | Plataforma | 4 | Por definir | — |
-| 107 | [Facturas de plataforma (emisor Qhapaq Cloud)](#m-platform-invoices-sunat-status) | `platform_invoices.sunat_status` | Plataforma | 4 | Por definir | — |
+| 107 | [Facturas de plataforma (emisor KipuControl Cloud)](#m-platform-invoices-sunat-status) | `platform_invoices.sunat_status` | Plataforma | 4 | Por definir | — |
 | 108 | [Usuarios de plataforma (Super Admin)](#m-platform-users-status) | `platform_users.status` | Plataforma | 2 | Por definir | — |
 
 ## Máquinas por entidad
@@ -4745,7 +4745,7 @@ stateDiagram-v2
 
 | Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
 |---|---|---|---|---|
-| POST | `/api/v1/public/carts` | público \| X-Qhapaq-Key + Origin verificado | 15-sitio-web-publico.md §6.2 Precio, disponibilidad, carrito | sí |
+| POST | `/api/v1/public/carts` | público \| X-KipuControl-Key + Origin verificado | 15-sitio-web-publico.md §6.2 Precio, disponibilidad, carrito | sí |
 
 </details>
 
@@ -5553,7 +5553,7 @@ stateDiagram-v2
 ```
 
 <a id="m-platform-invoices-sunat-status"></a>
-### 107. Facturas de plataforma (emisor Qhapaq Cloud) — `platform_invoices.sunat_status`
+### 107. Facturas de plataforma (emisor KipuControl Cloud) — `platform_invoices.sunat_status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|

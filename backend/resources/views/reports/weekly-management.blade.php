@@ -73,7 +73,7 @@
     <div class="rule"><span></span></div>
 </header>
 <footer>
-    <table class="band"><tr><td>{{ $report['agency']['name'] }} · Confidencial, uso interno de gerencia · Qhapaq Travel Suite</td></tr></table>
+    <table class="band"><tr><td>{{ $report['agency']['name'] }} · Confidencial, uso interno de gerencia · KipuControl</td></tr></table>
 </footer>
 
 <h1>Resumen de la semana</h1>

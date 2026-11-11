@@ -1,4 +1,4 @@
-# Referencia de base de datos · Qhapaq Travel Suite
+# Referencia de base de datos · KipuControl
 
 Material de consulta generado **desde el catálogo de PostgreSQL** después de ejecutar `00`→`90`. No reemplaza a los `.sql` de `kit-ia/database/`: ellos son la fuente de verdad y todo lo de esta carpeta se regenera a partir de ellos. No edite a mano los archivos generados.
 

@@ -1,9 +1,9 @@
 "use client";
 
-import { CheckCircle2, Clock, KeyRound, UserRound, XCircle } from "lucide-react";
+import { CalendarClock, CheckCircle2, Clock, KeyRound, Repeat2, UserRound, Wallet, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { confirmRequest, rejectRequest } from "@/app/(proveedor)/proveedor/actions";
+import { confirmRequest, proposeAlternative, rejectRequest } from "@/app/(proveedor)/proveedor/actions";
 import { RowIcon } from "@/components/table/RowActions";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
@@ -50,6 +50,41 @@ export function ConfirmPanel({ row, contact, size = "md", asIcon = false }: { ro
           <TextField label="Hora del servicio" name="service_time" type="time" defaultValue={row.time ?? ""} icon={<Clock size={17} />} hint="Ajústela si difiere de la solicitada." />
           <TextField label="Confirmado por" name="confirmed_by_name" maxLength={120} defaultValue={contact} icon={<UserRound size={17} />} />
           <TextArea label="Observación" name="note" rows={3} maxLength={500} placeholder="Opcional" />
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+export function AlternativePanel({ row, kinds, catalog, today, size = "md", asIcon = false }: { row: SupplierRequest; kinds: string[]; catalog: { value: string; label: string; hint?: string }[]; today: string; size?: "md" | "sm"; asIcon?: boolean }) {
+  const router = useRouter();
+  const [kind, setKind] = useState(kinds[0] ?? "");
+  return (
+    <PanelAction<StepResult>
+      label="Proponer alternativa"
+      icon={<Repeat2 size={16} />}
+      variant="secondary"
+      size={size}
+      formId={`alternativa-${row.code}`}
+      trigger={asIcon ? (open) => <RowIcon tone="neutral" label="Proponer alternativa" icon={<Repeat2 size={15} />} onClick={open} /> : undefined}
+      title="Proponer alternativa"
+      description="La solicitud sigue abierta. Operaciones de la agencia revisa la propuesta y la acepta o la rechaza."
+      submitLabel="Enviar alternativa"
+      action={proposeAlternative.bind(null, row.code)}
+      initial={initial}
+      onDone={() => router.refresh()}
+    >
+      {() => (
+        <>
+          <Summary row={row} />
+          <SelectField label="Tipo de alternativa" name="alt_kind" options={kinds.map((value) => ({ value, label: value }))} defaultValue={kind} onChange={setKind} />
+          {(kind === "Otra fecha" || kind === "Otro") && <TextField label="Fecha propuesta" name="alt_date" type="date" min={today} required={kind === "Otra fecha"} icon={<CalendarClock size={17} />} />}
+          {catalog.length > 0 && <SelectField label="Servicio o tarifa propuesta" name="alt_service" options={catalog} placeholder="El mismo servicio" searchable clearable hint="Solo servicios activos de su catálogo." />}
+          <div className="grid grid-cols-2 gap-3">
+            <TextField label={`Tarifa neta (${row.currency})`} name="alt_net_cost" type="number" step="0.01" min="0.01" icon={<Wallet size={16} />} placeholder={String(row.net_cost)} hint="Déjela vacía si no cambia." />
+            <TextField label="Mantener bloqueo hasta" name="hold_until" type="date" min={today} hint="Después vence sola." />
+          </div>
+          <TextArea label="Detalle" name="note" rows={3} required minLength={5} maxLength={1000} placeholder="Describa la alternativa: horario, tipo de habitación, condiciones." />
         </>
       )}
     </PanelAction>

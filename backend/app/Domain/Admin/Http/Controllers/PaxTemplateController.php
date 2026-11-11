@@ -17,6 +17,11 @@ final class PaxTemplateController
         return response()->json(['data' => $directory->list($this->user($request))]);
     }
 
+    public function messages(Request $request, PaxTemplateDirectory $directory): JsonResponse
+    {
+        return response()->json($directory->messagesPage($request));
+    }
+
     public function store(Request $request, ManagePaxTemplates $templates): JsonResponse
     {
         $code = $templates->create($this->validated($request), $this->user($request));
@@ -56,6 +61,10 @@ final class PaxTemplateController
             'body' => ['required', 'string', 'min:10', 'max:4000'],
             'lang' => ['required', 'in:ES,EN'],
             'requires_rule' => ['nullable', 'string', 'exists:sys_booking_rules,code'],
+            'products' => ['nullable', 'array', 'max:50'],
+            'products.*' => ['uuid', 'exists:catalog_products,id'],
+            'sales_channels' => ['nullable', 'array'],
+            'sales_channels.*' => ['in:'.implode(',', array_keys(PaxTemplateDirectory::SALES_CHANNELS))],
         ], [
             'name.*' => 'Escribe un nombre de al menos 3 caracteres.',
             'event.*' => 'Elige el momento del viaje.',
@@ -66,6 +75,8 @@ final class PaxTemplateController
             'body.*' => 'Escribe el mensaje (mínimo 10 caracteres).',
             'lang.*' => 'Elige el idioma.',
             'requires_rule.*' => 'Elige una regla existente.',
+            'products.*' => 'Elige productos del catálogo.',
+            'sales_channels.*' => 'Elige canales de venta de la lista.',
         ]);
 
         return [...$data, 'only_if_balance' => $request->boolean('only_if_balance'), 'only_if_missing_docs' => $request->boolean('only_if_missing_docs')];

@@ -42,6 +42,13 @@ final class WebIntegrationController
         return response()->json(['data' => ['saved' => true]]);
     }
 
+    public function rotateKey(Request $request, ManageWebIntegration $manage): JsonResponse
+    {
+        $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:300']], ['reason.*' => 'Escribe el motivo del cambio de clave (al menos 5 caracteres).']);
+
+        return response()->json(['data' => $manage->rotateKey(trim($data['reason']), $this->user($request))]);
+    }
+
     public function storeDomain(Request $request, ManageWebIntegration $manage): JsonResponse
     {
         $data = $request->validate([

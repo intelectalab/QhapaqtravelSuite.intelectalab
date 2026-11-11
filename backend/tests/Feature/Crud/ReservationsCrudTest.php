@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
+    lockSeededBookings();
     Queue::fake();
     freezeBusinessToday();
 });
@@ -98,6 +99,7 @@ it('editar un pasajero cambia su ficha en la reserva, en la ficha de documentos 
         'doc_type' => 'Pasaporte',
         'doc_number' => 'C9X11223',
         'nationality' => 'Alemana',
+        'birth_date' => '1991-06-14',
         'diet_notes' => 'Vegetariana',
     ], critical($lock))->assertOk();
 
@@ -124,6 +126,9 @@ it('editar un pasajero calcula su edad a la fecha del viaje y lo puede marcar co
     $this->patchJson("/api/v1/reservations/RES-2026-000344/passengers/{$target->id}", [
         'full_name' => 'Mateo Torres Quispe',
         'pax_type' => 'CHD',
+        'doc_type' => 'DNI',
+        'doc_number' => '81234567',
+        'nationality' => 'Peruana',
         'birth_date' => '2016-10-05',
         'is_lead' => true,
     ], critical(reservationLock('RES-2026-000344')))->assertOk();
@@ -149,8 +154,8 @@ it('editar un pasajero de otra reserva responde 404 y una reserva cerrada respon
     $foreign = ventasPrimerPasajero('RES-2026-000348');
     $closed = ventasPrimerPasajero('RES-2026-000346');
 
-    expect($this->patchJson("/api/v1/reservations/RES-2026-000344/passengers/{$foreign->id}", ['full_name' => 'Otra Persona', 'pax_type' => 'ADT'], critical(reservationLock('RES-2026-000344'))))->toBeApiError(404);
-    expect($this->patchJson("/api/v1/reservations/RES-2026-000346/passengers/{$closed->id}", ['full_name' => 'Otra Persona', 'pax_type' => 'ADT'], critical(reservationLock('RES-2026-000346'))))->toBeApiError(409, 'RESERVATION_CLOSED');
+    expect($this->patchJson("/api/v1/reservations/RES-2026-000344/passengers/{$foreign->id}", ['full_name' => 'Otra Persona', 'pax_type' => 'ADT', 'doc_type' => 'DNI', 'doc_number' => '45781200', 'nationality' => 'Peruana', 'birth_date' => '1985-02-03'], critical(reservationLock('RES-2026-000344'))))->toBeApiError(404);
+    expect($this->patchJson("/api/v1/reservations/RES-2026-000346/passengers/{$closed->id}", ['full_name' => 'Otra Persona', 'pax_type' => 'ADT', 'doc_type' => 'DNI', 'doc_number' => '45781200', 'nationality' => 'Peruana', 'birth_date' => '1985-02-03'], critical(reservationLock('RES-2026-000346'))))->toBeApiError(409, 'RESERVATION_CLOSED');
     expect(ventasPrimerPasajero('RES-2026-000348')->full_name)->toBe($foreign->full_name);
 });
 

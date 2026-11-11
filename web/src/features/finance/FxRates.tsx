@@ -1,15 +1,17 @@
 "use client";
 
-import { ArrowDownRight, ArrowUpRight, Banknote, Minus, Plus } from "lucide-react";
-import { registerFxRate } from "@/app/(backoffice)/admin/monedas/actions";
+import { ArrowDownRight, ArrowUpRight, Banknote, CircleCheck, CircleOff, Coins, Minus, Percent, Plus, Power, PowerOff, Wallet } from "lucide-react";
+import { registerFxRate, saveFxSettings, updateCurrency } from "@/app/(backoffice)/admin/monedas/actions";
 import { DataTable } from "@/components/table/DataTable";
-import type { Column, FilterConfig, SortOption } from "@/components/table/types";
+import { RowActions, RowIcon } from "@/components/table/RowActions";
+import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { Sparkline } from "@/components/ui/Charts";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextField } from "@/components/ui/TextField";
+import type { CurrenciesOverview, CurrencyRow } from "@/lib/admin";
 import { cn } from "@/lib/cn";
 import { FX_SOURCES, type FxCurrency, type FxEntry } from "@/lib/finance";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -123,4 +125,109 @@ export function FxHistoryTable({ rows }: { rows: FxEntry[] }) {
     { id: "rate", label: "Tipo de cambio", type: "number", value: (row) => row.rate },
   ];
   return <DataTable screen="monedas" rows={rows} columns={columns} getKey={(row) => row.id} entityLabel="registros" searchText={(row) => `${row.currency} ${row.source} ${row.user}`} searchPlaceholder="Buscar moneda o fuente" filters={filters} sorts={sorts} />;
+}
+
+function CurrencyToggle({ row, field }: { row: CurrencyRow; field: "active" | "is_charge" }) {
+  const on = field === "active" ? row.active : row.is_charge;
+  const label = field === "active" ? (on ? "Desactivar" : "Activar") : on ? "Quitar de cobro" : "Cobrar en esta moneda";
+  const icon = field === "active" ? (on ? <PowerOff size={15} /> : <Power size={15} />) : <Wallet size={15} />;
+  const blocked = row.is_base ? "La moneda base siempre está activa y es de cobro" : field === "active" && on && row.is_charge ? "Primero quítala de las monedas de cobro" : field === "is_charge" && !row.active ? "Actívala antes de cobrar en ella" : undefined;
+  if (blocked) return <RowIcon tone="neutral" label={label} icon={icon} disabledHint={blocked} />;
+  return (
+    <PanelAction<StepResult>
+      label={label}
+      formId={`moneda-${field}-${row.code}`}
+      title={`${label} · ${row.code}`}
+      description={field === "active" ? (on ? "Deja de mostrarse en el sitio, el widget y las cotizaciones." : "Vuelve a mostrarse como moneda de referencia.") : on ? "Se sigue mostrando, pero los cobros se hacen en otra moneda de cobro." : "El sitio y el checkout podrán cobrar en esta moneda."}
+      submitLabel={label}
+      action={updateCurrency}
+      initial={{ message: null, done: false }}
+      trigger={(open) => <RowIcon tone="neutral" label={label} icon={icon} onClick={open} />}
+    >
+      {() => (
+        <>
+          <input type="hidden" name="code" value={row.code} />
+          <input type="hidden" name="field" value={field} />
+          <input type="hidden" name="value" value={on ? "0" : "1"} />
+          <p className="text-[13px] text-fg-2">El cambio queda en la auditoría.</p>
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+export function CurrenciesTable({ data }: { data: CurrenciesOverview }) {
+  const columns: Column<CurrencyRow>[] = [
+    {
+      id: "currency",
+      header: "Moneda",
+      mobile: "title",
+      cell: (row) => (
+        <span className="flex items-center gap-2.5">
+          <span className="grid h-8 w-11 place-items-center rounded-lg bg-surface-2 font-mono text-[12px] font-bold">{row.code}</span>
+          <span>
+            <b className="block text-[13.5px] font-semibold">{row.name}</b>
+            <span className="text-[12px] text-fg-3">{row.symbol}{row.is_base ? " · moneda base" : ""}</span>
+          </span>
+        </span>
+      ),
+    },
+    { id: "rate", header: "Tipo de cambio", align: "right", cell: (row) => <span className="font-mono text-[13px]">{row.rate === null ? "Sin registro" : row.is_base ? "1" : `S/ ${fx(row.rate)}`}</span> },
+    { id: "client", header: "TC al cliente", align: "right", cell: (row) => <span className="font-mono text-[13px] text-fg-2">{row.client_rate === null || row.is_base ? "—" : `S/ ${fx(row.client_rate)}`}</span> },
+    {
+      id: "status",
+      header: "Estado",
+      cell: (row) => (
+        <span className="flex flex-wrap gap-1.5">
+          <Badge tone={row.active ? "ok" : "mute"}>{row.active ? "Activa" : "Inactiva"}</Badge>
+          {row.is_charge && <Badge tone="t1" dot={false}>De cobro</Badge>}
+        </span>
+      ),
+    },
+    {
+      id: "actions",
+      header: "",
+      align: "right",
+      mobile: "detail",
+      cell: (row) =>
+        data.can_manage ? (
+          <RowActions>
+            <CurrencyToggle row={row} field="is_charge" />
+            <CurrencyToggle row={row} field="active" />
+          </RowActions>
+        ) : (
+          <RowActions>
+            <RowIcon tone="neutral" label="Editar" disabledHint="Solo el administrador cambia las monedas" />
+          </RowActions>
+        ),
+    },
+  ];
+  const metrics: MetricFilter<CurrencyRow>[] = [
+    { id: "charge", label: "De cobro", tone: "t1", icon: <Coins size={19} />, matches: (row) => row.is_charge },
+    { id: "active", label: "Activas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.active },
+    { id: "inactive", label: "Inactivas", tone: "mute", icon: <CircleOff size={19} />, matches: (row) => !row.active },
+  ];
+  return <DataTable screen="admin-monedas" rows={data.currencies} columns={columns} getKey={(row) => row.code} entityLabel="monedas" searchText={(row) => `${row.code} ${row.name}`} searchPlaceholder="Buscar moneda" metrics={metrics} />;
+}
+
+export function FxSettingsAction({ settings }: { settings: CurrenciesOverview["settings"] }) {
+  return (
+    <PanelAction<StepResult>
+      label="Margen y alerta"
+      icon={<Percent size={15} />}
+      formId="fx-settings"
+      title="Margen de conversión y alerta"
+      description="El tipo de cambio al cliente es el del día menos el margen. La alerta avisa cuando el tipo de cambio varía más que el umbral en un día."
+      submitLabel="Guardar"
+      action={saveFxSettings}
+      initial={{ message: null, done: false }}
+    >
+      {() => (
+        <div className="grid grid-cols-2 gap-3">
+          <TextField label="Margen (%)" name="margin_pct" type="number" step="0.1" min={0} max={15} required defaultValue={String(settings.margin_pct)} hint="De 0 a 15 %." />
+          <TextField label="Alerta de variación (%)" name="alert_pct" type="number" step="0.1" min={0.1} max={20} required defaultValue={String(settings.alert_pct)} hint="De 0,1 a 20 %." />
+        </div>
+      )}
+    </PanelAction>
+  );
 }

@@ -5,6 +5,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 
+beforeEach(fn () => lockTreasury());
+
 function reconImport(object $test, string $content, string $name = 'extracto.csv', array $extra = []): TestResponse
 {
     return $test->withHeaders([...critical(), 'Accept' => 'application/json'])

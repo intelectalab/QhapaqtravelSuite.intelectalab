@@ -85,11 +85,11 @@ function PassengerFields({ passenger }: { passenger?: ReservationPassenger }) {
       <ChoiceGroup label="Tipo" name="pax_type" options={Object.entries(PAX_TYPE).map(([value, label]) => ({ value, label }))} defaultValue={passenger?.pax_type ?? "ADT"} />
       <div className="grid grid-cols-[0.8fr_1.2fr] gap-3">
         <SelectField label="Documento" name="doc_type" options={[{ value: "DNI", label: "DNI" }, { value: "Pasaporte", label: "Pasaporte" }, { value: "CE", label: "Carné de extranjería" }]} defaultValue={passenger?.doc_type ?? ""} placeholder="Elegir" />
-        <TextField label="Número" name="doc_number" maxLength={30} defaultValue={passenger?.doc_number ?? ""} />
+        <TextField label="Número" name="doc_number" required maxLength={30} defaultValue={passenger?.doc_number ?? ""} />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <TextField label="Nacimiento" name="birth_date" type="date" defaultValue={passenger?.birth_date ?? ""} />
-        <TextField label="Nacionalidad" name="nationality" maxLength={60} defaultValue={passenger?.nationality ?? ""} placeholder="Peruana" />
+        <TextField label="Nacimiento" name="birth_date" type="date" required defaultValue={passenger?.birth_date ?? ""} tip="La edad a la fecha del viaje define el tipo según las reglas del producto." />
+        <TextField label="Nacionalidad" name="nationality" required maxLength={60} defaultValue={passenger?.nationality ?? ""} placeholder="Peruana" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <TextField label="Teléfono" name="phone" maxLength={30} defaultValue={passenger?.phone ?? ""} />

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { CalendarCheck, CalendarOff, CircleCheck, Hourglass, TimerOff, Undo2 } from "lucide-react";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions } from "@/components/table/RowActions";
@@ -35,7 +36,7 @@ function WindowBar({ range, today }: { range: RangeRow; today: string }) {
   );
 }
 
-export function RangesTable({ overview }: { overview: AvailabilityOverview }) {
+export function RangesTable({ overview, toolbarEnd }: { overview: AvailabilityOverview; toolbarEnd?: ReactNode }) {
   const columns: Column<RangeRow>[] = [
     {
       id: "product",
@@ -77,7 +78,7 @@ export function RangesTable({ overview }: { overview: AvailabilityOverview }) {
     { id: "product", label: "Producto", options: unique(overview.ranges.map((range) => range.product.name)), value: (range) => range.product.name },
     { id: "status", label: "Estado", options: Object.entries(RANGE_STATUS).map(([value, item]) => ({ value, label: item.label })), value: (range) => range.status },
   ];
-  return <DataTable screen="cupos-rangos" rows={overview.ranges} columns={columns} getKey={(range) => range.code} entityLabel="rangos" searchText={(range) => `${range.code} ${range.product.name} ${range.note ?? ""}`} searchPlaceholder="Buscar producto o nota" metrics={metrics} filters={filters} />;
+  return <DataTable screen="cupos-rangos" rows={overview.ranges} columns={columns} getKey={(range) => range.code} entityLabel="rangos" searchText={(range) => `${range.code} ${range.product.name} ${range.note ?? ""}`} searchPlaceholder="Buscar producto o nota" metrics={metrics} filters={filters} toolbarEnd={toolbarEnd} />;
 }
 
 export function HoldsTable({ overview }: { overview: AvailabilityOverview }) {
@@ -134,5 +135,19 @@ export function HoldsTable({ overview }: { overview: AvailabilityOverview }) {
     { id: "released", label: "Liberados", tone: "mute", icon: <Undo2 size={19} />, matches: (hold) => hold.status === "liberada" },
   ];
   const filters: FilterConfig<HoldRow>[] = [{ id: "status", label: "Estado", options: Object.entries(HOLD_STATUS).map(([value, item]) => ({ value, label: item.label })), value: (hold) => hold.status }];
-  return <DataTable screen="cupos-holds" rows={overview.holds} columns={columns} getKey={(hold) => hold.ref} entityLabel="bloqueos" searchText={(hold) => `${hold.ref} ${hold.reference} ${hold.product.name ?? ""} ${hold.departure?.ref ?? ""}`} searchPlaceholder="Buscar referencia o salida" metrics={metrics} filters={filters} />;
+  return <DataTable screen="cupos-holds" rows={overview.holds} columns={columns} getKey={(hold) => hold.ref} entityLabel="bloqueos" searchText={(hold) => `${hold.ref} ${hold.reference} ${hold.product.name ?? ""} ${hold.departure?.ref ?? ""}`} searchPlaceholder="Buscar referencia o salida" metrics={metrics} filters={filters} csv={{
+    fileName: "holds",
+    columns: [
+      { header: "Hold", value: (hold) => hold.ref },
+      { header: "Referencia", value: (hold) => hold.reference },
+      { header: "Producto", value: (hold) => hold.product.name },
+      { header: "Salida", value: (hold) => hold.departure?.ref },
+      { header: "Fecha", value: (hold) => hold.departure?.date },
+      { header: "Cupos", value: (hold) => hold.quantity },
+      { header: "Vence", value: (hold) => (hold.status === "hold" ? hold.expires_at : null) },
+      { header: "Usuario", value: (hold) => hold.user },
+      { header: "Estado", value: (hold) => (hold.expired ? "Vencido" : HOLD_STATUS[hold.status].label) },
+      { header: "Motivo", value: (hold) => hold.released_reason },
+    ],
+  }} />;
 }

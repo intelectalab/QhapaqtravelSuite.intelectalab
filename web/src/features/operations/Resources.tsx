@@ -1,6 +1,6 @@
 "use client";
 
-import { Bus, CalendarCheck, CircleCheck, Clock3, IdCard, Phone, Plus, ShieldAlert, Star, Truck, UserRound, UserRoundX } from "lucide-react";
+import { Bus, CalendarCheck, CircleCheck, Clock3, IdCard, Phone, Plus, ShieldAlert, Smartphone, Star, Truck, UserRound, UserRoundX } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { DataTable } from "@/components/table/DataTable";
@@ -15,8 +15,9 @@ import { Tabs } from "@/components/ui/Tabs";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { formatDate, initials } from "@/lib/format";
-import { DOCUMENT_STATE, LICENSE_CLASSES, PERSON_STATUS, VEHICLE_STATUS, type Assignment, type Driver, type Guide, type ResourceOverview, type Vehicle } from "@/lib/operations";
+import { DOCUMENT_STATE, LICENSE_CLASSES, PERSON_STATUS, VEHICLE_STATUS, type Assignment, type Driver, type Guide, type LinkableUser, type LinkedUser, type ResourceAvailability, type ResourceOverview, type Vehicle } from "@/lib/operations";
 import { statusLabel, toneStyle, type Tone } from "@/lib/tone";
+import { AvailabilityMatrix } from "./AvailabilityMatrix";
 import { AssignAction, AssignmentQuickActions } from "./OrderActions";
 import { TimeSlot } from "./OpsBits";
 import { ConfirmNote, OpsStep, ToggleChips } from "./OpsStep";
@@ -84,7 +85,23 @@ function StatusChoice({ value, options }: { value: string; options: string[] }) 
   return <ChoiceGroup label="Estado" name="status" options={options.map((status) => ({ value: status, label: statusLabel(status) }))} defaultValue={value} />;
 }
 
-export function GuideForm({ guide, languages, trigger }: { guide?: Guide; languages: ResourceOverview["languages"]; trigger?: (open: () => void) => ReactNode }) {
+function UserLink({ users, current, resourceId, role }: { users: LinkableUser[] | undefined; current: string | null; resourceId?: string; role: string }) {
+  if (!users) return null;
+  const options = users.filter((user) => user.resource_id === null || user.resource_id === resourceId).map((user) => ({ value: user.value, label: user.label, hint: user.hint }));
+  return <SelectField label="Usuario de la app" name="user_id" options={options} defaultValue={current ?? ""} placeholder="Sin usuario vinculado" searchable clearable hint={`Solo usuarios activos con el rol ${role} que no estén vinculados a otro recurso. Con el vínculo, ve sus servicios en la app del operador.`} />;
+}
+
+function AppAccess({ user }: { user: LinkedUser | null }) {
+  if (!user) return <span className="text-[12.5px] text-fg-3">Sin usuario</span>;
+  return (
+    <span className="flex min-w-0 items-center gap-1.5 text-[12.5px]" title={user.email}>
+      <Smartphone size={14} className="flex-none text-ok" />
+      <span className="truncate">{user.name}</span>
+    </span>
+  );
+}
+
+export function GuideForm({ guide, languages, users, trigger }: { guide?: Guide; languages: ResourceOverview["languages"]; users?: LinkableUser[]; trigger?: (open: () => void) => ReactNode }) {
   return (
     <OpsStep step="guide_save" target={guide?.id ?? ""} formKey={guide?.id ?? "guide-new"} label="Nuevo guía" icon={<Plus size={16} strokeWidth={2.4} />} variant="primary" title={guide ? "Editar guía" : "Nuevo guía"} description={guide ? `${guide.name} · ${guide.code}` : "Queda disponible para asignar desde hoy."} submitLabel={guide ? "Guardar cambios" : "Registrar guía"} trigger={trigger}>
       <TextField label="Nombre completo" name="full_name" required minLength={3} maxLength={150} defaultValue={guide?.name ?? ""} icon={<UserRound size={17} />} />
@@ -94,12 +111,13 @@ export function GuideForm({ guide, languages, trigger }: { guide?: Guide; langua
         <TextField label="Calificación" name="rating" type="number" step="0.1" min="0" max="5" defaultValue={guide?.rating ?? ""} icon={<Star size={16} />} />
       </div>
       <TextField label="Teléfono" name="phone" maxLength={30} defaultValue={guide?.phone ?? ""} icon={<Phone size={16} />} />
+      <UserLink users={users} current={guide?.user?.id ?? null} resourceId={guide?.id} role="Guía" />
       <StatusChoice value={guide?.status ?? "disponible"} options={PERSON_STATUS} />
     </OpsStep>
   );
 }
 
-export function DriverForm({ driver, trigger }: { driver?: Driver; trigger?: (open: () => void) => ReactNode }) {
+export function DriverForm({ driver, users, trigger }: { driver?: Driver; users?: LinkableUser[]; trigger?: (open: () => void) => ReactNode }) {
   return (
     <OpsStep step="driver_save" target={driver?.id ?? ""} formKey={driver?.id ?? "driver-new"} label="Nuevo conductor" icon={<Plus size={16} strokeWidth={2.4} />} variant="primary" title={driver ? "Editar conductor" : "Nuevo conductor"} description={driver ? `${driver.name} · ${driver.code}` : "La licencia se valida contra la fecha de cada servicio."} submitLabel={driver ? "Guardar cambios" : "Registrar conductor"} trigger={trigger}>
       <TextField label="Nombre completo" name="full_name" required minLength={3} maxLength={150} defaultValue={driver?.name ?? ""} icon={<UserRound size={17} />} />
@@ -109,6 +127,7 @@ export function DriverForm({ driver, trigger }: { driver?: Driver; trigger?: (op
       </div>
       <TextField label="Vence" name="license_expires_on" type="date" required defaultValue={driver?.expires_on ?? ""} />
       <TextField label="Teléfono" name="phone" maxLength={30} defaultValue={driver?.phone ?? ""} icon={<Phone size={16} />} />
+      <UserLink users={users} current={driver?.user?.id ?? null} resourceId={driver?.id} role="Conductor" />
       <StatusChoice value={driver?.status ?? "disponible"} options={PERSON_STATUS} />
     </OpsStep>
   );
@@ -156,25 +175,27 @@ function personMetrics<T extends { status: string; upcoming: number }>(extra: Me
   ];
 }
 
-export function ResourcesBoard({ data }: { data: ResourceOverview }) {
+export function ResourcesBoard({ data, availability }: { data: ResourceOverview; availability: ResourceAvailability | null }) {
   const can = data.can.assign;
   const agenda = (key: "guide" | "driver" | "vehicle", id: string) => data.assignments.filter((item) => item[key]?.id === id && item.date >= data.today && item.status !== "completada");
 
   const guideColumns: Column<Guide>[] = [
     { id: "name", header: "Guía", mobile: "title", cell: (row) => (<span className="group flex items-center gap-3"><Avatar name={row.name} tone="t1" /><span className="min-w-0"><b className="block truncate text-[13.5px] font-semibold">{row.name}</b><span className="text-xs text-fg-3">{row.code} · {row.license}</span></span></span>) },
     { id: "languages", header: "Idiomas", cell: (row) => <span className="flex flex-wrap gap-1">{row.languages.map((code) => <span key={code} className="rounded-md bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-fg-2">{code}</span>)}</span> },
+    { id: "app", header: "App del operador", wideOnly: true, cell: (row) => <AppAccess user={row.user} /> },
     { id: "rating", header: "Calificación", wideOnly: true, cell: (row) => (row.rating === null ? <span className="text-fg-3">—</span> : <span className="inline-flex items-center gap-1 text-[13px] font-semibold"><Star size={13} className="fill-current text-warn" />{row.rating.toFixed(1)}</span>) },
     { id: "next", header: "Próximo servicio", cell: (row) => <NextService next={row.next} upcoming={row.upcoming} /> },
     { id: "status", header: "Estado", cell: (row) => <StatusBadge status={row.status} /> },
-    { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => (<RowActions><AgendaPanel title={row.name} subtitle={`Agenda desde hoy · ${row.phone ?? "sin teléfono"}`} assignments={agenda("guide", row.id)} />{can && <GuideForm guide={row} languages={data.languages} trigger={(open) => <RowIcon tone="edit" label="Editar" onClick={open} />} />}{can && <ArchiveAction kind="guide" id={row.id} name={row.name} upcoming={row.upcoming} />}</RowActions>) },
+    { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => (<RowActions><AgendaPanel title={row.name} subtitle={`Agenda desde hoy · ${row.phone ?? "sin teléfono"}`} assignments={agenda("guide", row.id)} />{can && <GuideForm guide={row} languages={data.languages} users={data.users?.guide} trigger={(open) => <RowIcon tone="edit" label="Editar" onClick={open} />} />}{can && <ArchiveAction kind="guide" id={row.id} name={row.name} upcoming={row.upcoming} />}</RowActions>) },
   ];
 
   const driverColumns: Column<Driver>[] = [
     { id: "name", header: "Conductor", mobile: "title", cell: (row) => (<span className="group flex items-center gap-3"><Avatar name={row.name} tone="t4" /><span className="min-w-0"><b className="block truncate text-[13.5px] font-semibold">{row.name}</b><span className="text-xs text-fg-3">{row.code} · {row.license_class ?? ""} {row.license}</span></span></span>) },
     { id: "license", header: "Licencia", cell: (row) => <DocBadge state={row.document} date={row.expires_on} /> },
+    { id: "app", header: "App del operador", wideOnly: true, cell: (row) => <AppAccess user={row.user} /> },
     { id: "next", header: "Próximo servicio", cell: (row) => <NextService next={row.next} upcoming={row.upcoming} /> },
     { id: "status", header: "Estado", cell: (row) => <StatusBadge status={row.status} /> },
-    { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => (<RowActions><AgendaPanel title={row.name} subtitle={`Agenda desde hoy · ${row.phone ?? "sin teléfono"}`} assignments={agenda("driver", row.id)} />{can && <DriverForm driver={row} trigger={(open) => <RowIcon tone="edit" label="Editar" onClick={open} />} />}{can && <ArchiveAction kind="driver" id={row.id} name={row.name} upcoming={row.upcoming} />}</RowActions>) },
+    { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => (<RowActions><AgendaPanel title={row.name} subtitle={`Agenda desde hoy · ${row.phone ?? "sin teléfono"}`} assignments={agenda("driver", row.id)} />{can && <DriverForm driver={row} users={data.users?.driver} trigger={(open) => <RowIcon tone="edit" label="Editar" onClick={open} />} />}{can && <ArchiveAction kind="driver" id={row.id} name={row.name} upcoming={row.upcoming} />}</RowActions>) },
   ];
 
   const vehicleColumns: Column<Vehicle>[] = [
@@ -226,6 +247,7 @@ export function ResourcesBoard({ data }: { data: ResourceOverview }) {
           ))}
         </section>
       )}
+      {availability && <AvailabilityMatrix data={availability} />}
       <Card padded={false}>
         <Tabs
           tabs={[
@@ -259,7 +281,7 @@ export function ResourcesBoard({ data }: { data: ResourceOverview }) {
               count: data.guides.length,
               content: (
                 <>
-                  {can && <div className={cn("mb-4 flex justify-end")}><GuideForm languages={data.languages} /></div>}
+                  {can && <div className={cn("mb-4 flex justify-end")}><GuideForm languages={data.languages} users={data.users?.guide} /></div>}
                   <DataTable screen="operaciones-guias" rows={data.guides} columns={guideColumns} getKey={(row) => row.id} entityLabel="guías" searchText={(row) => `${row.name} ${row.code} ${row.license} ${row.languages.join(" ")}`} searchPlaceholder="Buscar guía o idioma" metrics={personMetrics<Guide>()} filters={[{ id: "language", label: "Idioma", options: data.languages, value: (row) => row.languages }, { id: "status", label: "Estado", options: PERSON_STATUS.map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status }] satisfies FilterConfig<Guide>[]} sorts={[{ id: "rating", label: "Calificación", type: "number", value: (row) => row.rating }, { id: "upcoming", label: "Servicios próximos", type: "number", value: (row) => row.upcoming }]} />
                 </>
               ),
@@ -270,7 +292,7 @@ export function ResourcesBoard({ data }: { data: ResourceOverview }) {
               count: data.drivers.length,
               content: (
                 <>
-                  {can && <div className="mb-4 flex justify-end"><DriverForm /></div>}
+                  {can && <div className="mb-4 flex justify-end"><DriverForm users={data.users?.driver} /></div>}
                   <DataTable screen="operaciones-conductores" rows={data.drivers} columns={driverColumns} getKey={(row) => row.id} entityLabel="conductores" searchText={(row) => `${row.name} ${row.code} ${row.license}`} searchPlaceholder="Buscar conductor o licencia" metrics={personMetrics<Driver>([{ id: "license", label: "Licencia por vencer", tone: "bad", icon: <IdCard size={19} />, matches: (row) => row.document !== "vigente" }])} filters={[{ id: "status", label: "Estado", options: PERSON_STATUS.map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status }]} sorts={[{ id: "expires", label: "Vencimiento de licencia", type: "date", value: (row) => row.expires_on }]} />
                 </>
               ),

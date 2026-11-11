@@ -27,12 +27,12 @@ final class AuditController
     {
         $request->validate([
             'filters' => ['nullable', 'array'],
-            'format' => ['nullable', 'in:CSV'],
-        ], ['format.in' => 'La bitácora se exporta en CSV.']);
+            'format' => ['nullable', 'in:'.implode(',', ExportAuditLog::FORMATS)],
+        ], ['format.in' => 'La bitácora se exporta en CSV, XLSX o PDF.']);
         $scoped = $request->duplicate(['filter' => $request->input('filters', []), 'days' => $request->input('filters.days', '30')]);
         $user = $this->user($request);
 
-        return response()->json(['data' => $export($directory->filters($scoped, $user), $user, $request->header(IdempotencyMiddleware::HEADER))], 202);
+        return response()->json(['data' => $export($directory->filters($scoped, $user), $user, $request->header(IdempotencyMiddleware::HEADER), (string) $request->input('format', 'CSV'))], 202);
     }
 
     private function user(Request $request): User

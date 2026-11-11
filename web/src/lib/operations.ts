@@ -63,6 +63,14 @@ export interface Assignment {
   guide: { id: string; name: string } | null;
   driver: { id: string; name: string } | null;
   vehicle: { id: string; name: string; capacity: number } | null;
+  checked_in?: string[];
+}
+
+export interface AssignmentPreview {
+  blocks: string[];
+  warnings: string[];
+  ready: boolean;
+  context: { passengers: number; languages: string[]; provider: string | null; recipients: number };
 }
 
 export interface ResourceOptions {
@@ -88,6 +96,7 @@ export interface EvidenceFile {
   by: string | null;
   service?: { code: string; name: string } | null;
   incident?: string | null;
+  incident_title?: string | null;
 }
 
 export interface EvidenceRules {
@@ -116,10 +125,11 @@ export interface OrderDetail {
   tasks: { id: string; title: string; done: boolean; done_at: string | null; done_by: string | null }[];
   assignments: Assignment[];
   services: { id: string; code: string; lock_version: number; name: string; date: string; time: string | null; kind: string; status: string; confirmation: string | null; cost: string; currency: string; assigned: boolean; reject_reason: string | null; replaced: boolean; provider: { ref: string; name: string; active: boolean } | null; product: string | null; price?: string }[];
-  passengers: { id: string; full_name: string; pax_type: string; nationality: string | null; diet_notes: string | null; is_lead: boolean; relationship: string | null; doc_type: string | null; doc_number: string | null; age: number | null; birth_date: string | null; phone: string | null }[];
+  passengers: { id: string; full_name: string; pax_type: string; nationality: string | null; diet_notes: string | null; is_lead: boolean; relationship: string | null; doc_type: string | null; doc_number: string | null; age: number | null; birth_date: string | null; phone: string | null; checkins: number; last_checkin_at: string | null }[];
+  lodging_pending: { city: string; hotel: string; check_in: string; check_out: string; rooms: number }[];
   web: ReservationWebSnapshot | null;
   rooming: { id: string; city: string | null; hotel_name: string | null; hotel: string | null; check_in: string; check_out: string; status: string; sent_at: string | null; hotel_confirmed_at: string | null; rooms: number; guests: number }[];
-  vouchers: { code: string; service_label: string; service_date: string; pax: number; status: string; version: number; provider: string | null }[];
+  vouchers: { code: string; service_label: string; service_date: string; pax: number; status: string; version: number; provider: string | null; service_code: string | null }[];
   economics: { sale: string; cost: string; currency: string } | null;
   reject_reasons: string[];
   incidents: { code: string; title: string; type: string; severity: string; status: string; sla_due_at: string; created_at: string }[];
@@ -128,12 +138,26 @@ export interface OrderDetail {
   evidence_rules: EvidenceRules;
   checks: CloseCheck[];
   transitions: { status: string; label: string }[];
-  can: { assign: boolean; close: boolean; incidents: boolean; services: boolean; vouchers: boolean };
+  can: { assign: boolean; close: boolean; incidents: boolean; services: boolean; vouchers: boolean; rooming: boolean };
   coordinators: Person[];
   options: ResourceOptions | null;
 }
 
+export interface CalendarDeparture {
+  ref: string;
+  product: { code: string; name: string };
+  capacity: number;
+  sold: number;
+  guide: string | null;
+  vehicle: string | null;
+  meeting_point: string;
+  return_point: string | null;
+  notes: string | null;
+}
+
 export interface CalendarEvent {
+  id: string;
+  source: "service" | "departure";
   code: string;
   name: string;
   date: string;
@@ -141,10 +165,13 @@ export interface CalendarEvent {
   kind: string;
   status: string;
   confirmation: string | null;
-  provider: string | null;
-  reservation: { code: string; title: string; status: string };
+  provider: { code: string; name: string } | null;
+  reservation: { code: string; title: string; status: string } | null;
+  client: { code: string; name: string } | null;
+  passengers: number;
   order: { code: string; status: string } | null;
-  assignment: string | null;
+  assignment: Assignment | null;
+  departure: CalendarDeparture | null;
   resources: string[];
   pending: boolean;
   pending_reason: string | null;
@@ -155,9 +182,83 @@ export interface CalendarMonth {
   month: string;
   previous: string;
   next: string;
-  can: { assign: boolean };
-  kpis: { services: number; pending: number; reservations: number; busy_days: number };
+  can: { assign: boolean; departures: boolean };
+  kpis: { services: number; departures: number; pending: number; today: number };
   events: CalendarEvent[];
+  options: ResourceOptions | null;
+}
+
+export interface AvailabilityItem {
+  date: string;
+  time: string | null;
+  label: string;
+  ref: string;
+  source: "order" | "departure";
+  done: boolean;
+}
+
+export interface AvailabilityCell {
+  date: string;
+  state: "libre" | "ocupado" | "descanso" | "vacaciones" | "mantenimiento" | "documento_vencido";
+  document: "vencido" | "vence_hoy" | null;
+  items: AvailabilityItem[];
+}
+
+export interface AvailabilityRow {
+  id: string;
+  kind: "guide" | "driver" | "vehicle";
+  name: string;
+  sub: string;
+  status: string;
+  busy: number;
+  days: AvailabilityCell[];
+}
+
+export interface ResourceAvailability {
+  today: string;
+  from: string;
+  previous: string;
+  next: string;
+  days: string[];
+  groups: { kind: "guide" | "driver" | "vehicle"; label: string; rows: AvailabilityRow[] }[];
+}
+
+export interface SupplierAlternative {
+  id: string;
+  kind: string;
+  review_status: string;
+  review_note: string | null;
+  responded_at: string;
+  reviewed_at: string | null;
+  responded_by: string | null;
+  reviewed_by: string | null;
+  note: string;
+  hold_until: string | null;
+  hold_expired: boolean;
+  proposal: { date: string | null; service: { ref: string; name: string } | null; net_cost: number | null; currency: string };
+  current: { date: string; name: string; net_cost: number; pax: number };
+  service: { code: string; status: string; open: boolean };
+  reservation: { code: string; title: string };
+  order: string | null;
+  provider: { ref: string; name: string };
+}
+
+export interface SupplierAlternativeList {
+  today: string;
+  can: { review: boolean };
+  rows: SupplierAlternative[];
+}
+
+export interface LinkableUser extends SelectOption {
+  resource_id: string | null;
+  resource_name: string | null;
+}
+
+export interface LinkedUser {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
 }
 
 interface ResourceBase {
@@ -176,6 +277,7 @@ export interface Guide extends ResourceBase {
   rating: number | null;
   phone: string | null;
   linked: boolean;
+  user: LinkedUser | null;
 }
 
 export interface Driver extends ResourceBase {
@@ -187,6 +289,7 @@ export interface Driver extends ResourceBase {
   document: DocumentState;
   phone: string | null;
   linked: boolean;
+  user: LinkedUser | null;
 }
 
 export interface Vehicle extends ResourceBase {
@@ -210,6 +313,7 @@ export interface ResourceOverview {
   languages: SelectOption[];
   carriers: { id: string; name: string }[];
   options: ResourceOptions | null;
+  users: { guide: LinkableUser[]; driver: LinkableUser[] } | null;
 }
 
 export interface RoomingRoom {
@@ -249,6 +353,7 @@ export interface RoomingOverview {
   items: RoomingList[];
   candidates: (SelectOption & { from: string; to: string })[];
   hotels: SelectOption[];
+  prefill: { reservation: string; title: string; legs: { city: string; hotel: string; rooms: number }[] }[];
 }
 
 export interface Voucher {
@@ -302,6 +407,7 @@ export interface IncidentRow {
   order: { code: string; title: string } | null;
   reservation: { code: string; title: string } | null;
   assignee: { name: string; color: string | null } | null;
+  on_time?: boolean | null;
   reporter: string | null;
   created_at: string;
   sla_hours: number;
@@ -349,6 +455,24 @@ export interface TravelDocRow {
   attention: number;
   last_reminder: string | null;
   days_to_travel: number;
+  mapi: { services: { code: string; name: string; date: string; pax: number | null }[]; used: boolean; blocked: boolean; missing: { name: string; documents: string[] }[] } | null;
+}
+
+export interface TravelDocPassenger {
+  id: string;
+  name: string;
+  pax_type: string;
+  minor: boolean;
+  nationality: string | null;
+  is_lead: boolean;
+  doc: string | null;
+  identity: { status: string; expiry: string | null } | null;
+  missing: { label: string; status: string }[];
+  attention: boolean;
+  status: string;
+  reservation: string;
+  reservation_title: string;
+  travel_from: string;
 }
 
 export interface TravelDocList {
@@ -356,21 +480,53 @@ export interface TravelDocList {
   can: { manage: boolean };
   kpis: { ready: number; to_review: number; observed: number; soon: number };
   items: TravelDocRow[];
+  passengers: TravelDocPassenger[];
+}
+
+export interface TravelDocSettings {
+  reminder_days: number[];
+  channels: string[];
+  passport_months: number;
+  visa_nationalities: string[];
+  insurance_trekking: boolean;
+}
+
+export interface TravelDocRules extends TravelDocSettings {
+  job: { id: string; name: string; schedule: string | null; paused: boolean; last_run_at: string | null; next_run_at: string | null; last_status: string | null; last_result: string | null } | null;
+  rules: { code: string; text: string }[];
 }
 
 export interface TravelDocument {
   id: string;
   type: string;
+  kind: "file" | "contact" | "attention";
   label: string;
   status: string;
+  lock_version: number;
   number: string | null;
   expiry: string | null;
+  min_expiry: string | null;
   expires_before_return: boolean;
   file: string | null;
+  has_file: boolean;
   observation: string | null;
   note: string | null;
   validated_by: string | null;
   validated_at: string | null;
+}
+
+export interface TravelDocDetailPassenger {
+  id: string;
+  name: string;
+  pax_type: string;
+  nationality: string | null;
+  foreign: boolean;
+  minor: boolean;
+  is_lead: boolean;
+  documents: TravelDocument[];
+  not_applicable: string[];
+  contact: { name: string; phone: string; relation: string } | null;
+  attention: { flag: boolean; note: string | null } | null;
 }
 
 export interface TravelDocDetail {
@@ -382,9 +538,12 @@ export interface TravelDocDetail {
   client: string;
   owner: string;
   today: string;
-  can: { manage: boolean };
-  passengers: { id: string; name: string; pax_type: string; nationality: string | null; is_lead: boolean; documents: TravelDocument[]; contact: { name: string; phone: string; relation: string } | null; attention: { flag: boolean; note: string | null } | null }[];
-  reminders: { at: string; channel: string; to: string; trigger: string; days_before: number | null; by: string | null }[];
+  can: { manage: boolean; request: boolean };
+  settings: TravelDocSettings;
+  relations: string[];
+  request: { email: string | null; phone: string | null; channels: string[]; pending: number };
+  passengers: TravelDocDetailPassenger[];
+  reminders: { at: string; channel: string; to: string; trigger: string; days_before: number | null; items: number; by: string | null }[];
 }
 
 export const SEVERITY_LABEL: Record<string, string> = { baja: "Baja", media: "Media", alta: "Alta", critica: "Crítica" };

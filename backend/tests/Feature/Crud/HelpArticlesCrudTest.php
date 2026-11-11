@@ -141,7 +141,7 @@ it('ventas no puede crear, editar, archivar ni restaurar artículos', function (
         ->and($this->deleteJson('/api/v1/help/articles/crm-clientes/adaptation', [], critical()))->toBeApiError(403);
 });
 
-it('editar un artículo de Qhapaq crea la versión de la agencia sin tocar la original y exige la versión', function () {
+it('editar un artículo de KipuControl crea la versión de la agencia sin tocar la original y exige la versión', function () {
     $global = helpSeeded('crm-clientes');
     actingAsSeed('U01');
     $body = helpBody(['title' => 'Clientes en nuestra agencia', 'screen' => '/crm/clientes', 'module' => 'Comercial · CRM']);
@@ -168,7 +168,7 @@ it('editar un artículo de Qhapaq crea la versión de la agencia sin tocar la or
     expect($this->getJson('/api/v1/help/articles/crm-clientes')->assertOk()->json('data.title'))->toBe($global->title);
 });
 
-it('archivar oculta el artículo, reactivar lo devuelve y la versión de Qhapaq se puede restaurar', function () {
+it('archivar oculta el artículo, reactivar lo devuelve y la versión de KipuControl se puede restaurar', function () {
     $global = helpSeeded('crm-leads');
     actingAsSeed('U01');
 
@@ -192,13 +192,13 @@ it('archivar oculta el artículo, reactivar lo devuelve y la versión de Qhapaq 
         ->and($this->postJson('/api/v1/help/articles/crm-leads/restore', [], critical($restored['lock_version'])))->toBeApiError(409, 'HLP-BR-03');
 
     $original = $this->deleteJson('/api/v1/help/articles/crm-leads/adaptation', [], critical())->assertOk()->json('data');
-    expect($original['origin'])->toBe('qhapaq')
+    expect($original['origin'])->toBe('kipucontrol')
         ->and(helpOwn('crm-leads'))->toBeNull()
         ->and(helpAudit('crm-leads', 'restaurar_original'))->toBeTrue()
         ->and($this->deleteJson('/api/v1/help/articles/crm-leads/adaptation', [], critical()))->toBeApiError(409, 'HLP-BR-04');
 });
 
-it('un artículo propio no tiene versión de Qhapaq que restaurar y uno inexistente responde 404', function () {
+it('un artículo propio no tiene versión de KipuControl que restaurar y uno inexistente responde 404', function () {
     actingAsSeed('U01');
     $slug = $this->postJson('/api/v1/help/articles', helpBody(), critical())->assertCreated()->json('data.slug');
 
@@ -207,7 +207,7 @@ it('un artículo propio no tiene versión de Qhapaq que restaurar y uno inexiste
         ->and($this->postJson('/api/v1/help/articles/no-existe/archive', [], critical(0)))->toBeApiError(404);
 });
 
-it('la plataforma crea, edita, archiva y reactiva los artículos de Qhapaq', function () {
+it('la plataforma crea, edita, archiva y reactiva los artículos de KipuControl', function () {
     actingAsPlatform();
 
     $created = $this->postJson('/api/v1/platform/help/articles', [...helpBody(['title' => 'Cómo leer el panel de control', 'screen' => '/dashboard', 'module' => 'General']), 'audience' => 'agency'], critical())->assertCreated()->json('data');

@@ -30,14 +30,9 @@ function OpportunityFields({ options, opportunity, clientCode }: { options: Oppo
   return (
     <>
       <Section title="Qué se está vendiendo">
-        {opportunity ? (
-          <p className="rounded-xl bg-surface-2 px-3.5 py-2.5 text-[13px] text-fg-2">
-            Cliente: <b className="text-fg">{opportunity.client.name}</b> · {opportunity.client.code}
-          </p>
-        ) : (
-          <SelectField label="Cliente" name="client_code" options={options.clients.map((client) => ({ value: client.code, label: `${client.name} · ${client.code}` }))} defaultValue={clientCode ?? ""} placeholder="Elegir" />
-        )}
+        <SelectField label="Cliente" name="client_code" options={options.clients.map((client) => ({ value: client.code, label: client.name, hint: client.code }))} defaultValue={opportunity?.client.code ?? clientCode ?? ""} placeholder="Elegir" searchable />
         <TextField label="Título" name="title" required maxLength={200} defaultValue={opportunity?.title} placeholder="Por ejemplo: Luna de miel en Cusco" />
+        <SelectField label="Producto (opcional)" name="product_id" options={options.products.map((product) => ({ value: product.id, label: product.name, hint: product.code }))} defaultValue={opportunity?.product?.id ?? ""} placeholder="Elegir un producto activo" searchable clearable />
         <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-3">
           <TextField label="Monto estimado" name="amount" type="number" min={1} step="0.01" required defaultValue={opportunity ? Number(opportunity.amount) : undefined} />
           <ChoiceGroup label="Moneda" name="currency" defaultValue={opportunity?.currency ?? "USD"} options={[{ value: "USD", label: "Dólares" }, { value: "PEN", label: "Soles" }]} />
@@ -46,8 +41,10 @@ function OpportunityFields({ options, opportunity, clientCode }: { options: Oppo
       <Section title="Cuándo y para quiénes">
         <div className="grid grid-cols-2 gap-3">
           <TextField label="Cierre esperado" name="expected_close_date" type="date" required min={opportunity ? undefined : today()} defaultValue={opportunity?.expected_close_date} icon={<CalendarDays size={17} />} />
-          {opportunity && (
+          {opportunity ? (
             <TextField label="Probabilidad (%)" name="probability" type="number" min={0} max={100} required disabled={closed} defaultValue={opportunity.probability} hint={closed ? "Se fija al cerrar." : "Al cambiar de etapa vuelve a la de la etapa."} />
+          ) : (
+            <SelectField label="Etapa inicial" name="stage" options={options.stages.map((stage) => ({ value: stage.code, label: stage.name, hint: `${stage.probability} %` }))} defaultValue="descubrimiento" hint="Fija la probabilidad de la etapa." />
           )}
         </div>
         {closed && <input type="hidden" name="probability" value={opportunity?.probability} />}
@@ -76,7 +73,7 @@ export function OpportunityCreateAction({ options, clientCode, size = "md", vari
       size={size}
       formId="opportunity-create"
       title="Nueva oportunidad"
-      description="Entra al embudo en la etapa de descubrimiento con su probabilidad por defecto."
+      description="Entra al embudo en la etapa que elijas, con su probabilidad por defecto."
       submitLabel="Crear oportunidad"
       action={createOpportunity}
       initial={initial}

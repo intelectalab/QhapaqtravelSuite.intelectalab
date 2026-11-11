@@ -53,13 +53,22 @@ final class SubscriptionController
             'address' => ['required', 'string', 'max:200'],
             'ubigeo' => ['nullable', 'digits:6'],
             'email' => ['required', 'email', 'max:150'],
+            'contact' => ['nullable', 'string', 'max:150'],
+            'doc_type' => ['nullable', 'in:Factura,Boleta'],
         ], [
             'ruc.*' => 'El RUC debe tener 11 dígitos y empezar con 10, 15, 17 o 20 (SUB-BR-09).',
             'name.*' => 'Escribe la razón social.',
             'address.*' => 'Escribe la dirección fiscal.',
             'ubigeo.*' => 'El ubigeo tiene 6 dígitos.',
             'email.*' => 'Escribe un correo válido para recibir las facturas.',
+            'contact.*' => 'El contacto de facturación tiene hasta 150 caracteres.',
+            'doc_type.*' => 'El comprobante es factura o boleta.',
         ]);
+
+        if (($data['doc_type'] ?? 'Factura') === 'Boleta' && str_starts_with($data['ruc'], '20')) {
+            throw ApiException::unprocessable('SUB-BR-09', 'Las empresas con RUC 20 reciben factura electrónica.');
+        }
+
         $changed = $directory->updateBilling($data);
 
         if ($changed === []) {
@@ -153,6 +162,39 @@ final class SubscriptionController
         return response()->json(['data' => $manage->redeem($data['code'], (string) $this->user($request)->getKey())]);
     }
 
+    public function setupIntent(ManageSubscription $manage): JsonResponse
+    {
+        return response()->json(['data' => $manage->setupIntent()]);
+    }
+
+    public function saveCard(Request $request, ManageSubscription $manage): JsonResponse
+    {
+        $data = $request->validate([
+            'session' => ['required', 'string', 'max:80'],
+            'token' => ['required', 'string', 'regex:/^pm_[A-Za-z0-9_]{8,60}$/'],
+            'brand' => ['required', 'in:Visa,Mastercard,American Express,Diners Club'],
+            'last4' => ['required', 'digits:4'],
+            'exp_month' => ['required', 'integer', 'between:1,12'],
+            'exp_year' => ['required', 'integer', 'between:2020,2100'],
+            'holder' => ['required', 'string', 'max:120'],
+        ], [
+            'session.*' => 'La sesión de la pasarela venció. Vuelve a abrir el formulario.',
+            'token.*' => 'La pasarela no devolvió un token válido.',
+            'brand.*' => 'La marca de la tarjeta no es válida.',
+            'last4.*' => 'Faltan los últimos 4 dígitos de la tarjeta.',
+            'exp_month.*' => 'Revisa el mes de vencimiento.',
+            'exp_year.*' => 'Revisa el año de vencimiento.',
+            'holder.*' => 'Escribe el nombre del titular.',
+        ]);
+
+        return response()->json(['data' => $manage->saveCard($data, (string) $this->user($request)->getKey())]);
+    }
+
+    public function sendInvoice(string $number, ManageSubscription $manage): JsonResponse
+    {
+        return response()->json(['data' => ['sent_to' => $manage->sendInvoice($number)]]);
+    }
+
     public function usage(Request $request, SubscriptionDirectory $directory): JsonResponse
     {
         $overview = $directory->overview($this->user($request));
@@ -181,7 +223,7 @@ final class SubscriptionController
         $planId = DB::connection('pgsql_platform')->table('subscriptions')->where('tenant_id', $context->idOrFail())->where('status', '<>', 'canceled')->value('plan_id') ?? $context->tenant()->plan_id;
         $current = (string) DB::connection('pgsql_platform')->table('plans')->where('id', $planId)->value('code');
 
-        return response()->json(['data' => ['current' => $current, 'plans' => $catalog['plans'], 'rules' => $catalog['rules']]]);
+        return response()->json(['data' => [...$catalog, 'current' => $current]]);
     }
 
     private function planData(Request $request): array

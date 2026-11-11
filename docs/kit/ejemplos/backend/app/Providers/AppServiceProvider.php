@@ -45,6 +45,6 @@ final class AppServiceProvider extends ServiceProvider
 
         // API pública / widget: por clave pública + IP (spec 16 §6.1). Valor propuesto.
         RateLimiter::for('public', fn (Request $r) => Limit::perMinute(60)
-            ->by((string) $r->header('X-Qhapaq-Key').'|'.$r->ip()));
+            ->by((string) $r->header('X-KipuControl-Key').'|'.$r->ip()));
     }
 }

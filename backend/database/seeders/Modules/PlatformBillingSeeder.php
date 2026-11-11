@@ -43,7 +43,7 @@ final class PlatformBillingSeeder
     {
         $this->tenants = DB::table('tenants')->get()->keyBy('code');
         $this->plans = DB::table('plans')->get()->keyBy('name');
-        $this->operator = DB::table('platform_users')->where('email', 'ops@qhapaq.cloud')->value('id');
+        $this->operator = DB::table('platform_users')->where('email', 'ops@kipucontrol.com')->value('id');
         $config = KitSeeds::read('platformConfig');
 
         $this->settings($config);

@@ -13,5 +13,6 @@ Route::middleware('permission:catalog.products.view')->group(function (): void {
         Route::patch('catalog/departures/{ref}', [DepartureController::class, 'update'])->name('catalog.departures.update');
         Route::post('catalog/departures/{ref}/close', [DepartureController::class, 'close'])->name('catalog.departures.close');
         Route::post('catalog/departures/{ref}/cancel', [DepartureController::class, 'cancel'])->name('catalog.departures.cancel');
+        Route::post('catalog/departures/{ref}/confirm-seats', [DepartureController::class, 'confirmSeats'])->name('catalog.departures.confirm-seats');
     });
 });

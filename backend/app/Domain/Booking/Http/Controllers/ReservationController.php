@@ -125,6 +125,18 @@ final class ReservationController
         return $this->resource($lifecycle->confirm($code, $this->user($request)));
     }
 
+    public function occupancy(Request $request): JsonResponse
+    {
+        $data = $request->validate(['month' => ['nullable', 'date_format:Y-m']], ['month.*' => 'El mes va como AAAA-MM.']);
+
+        return response()->json(['data' => $this->directory->occupancy($this->user($request), $data['month'] ?? null)]);
+    }
+
+    public function confirmPreview(Request $request, string $code, ReservationLifecycle $lifecycle): JsonResponse
+    {
+        return response()->json(['data' => $lifecycle->confirmPreview($code, $this->user($request))]);
+    }
+
     public function startOperation(Request $request, string $code, ReservationLifecycle $lifecycle): JsonResponse
     {
         return $this->resource($lifecycle->startOperation($code, $this->user($request)));
@@ -164,15 +176,15 @@ final class ReservationController
             'full_name' => ['required', 'string', 'min:3', 'max:150'],
             'pax_type' => ['required', 'in:ADT,CHD,INF'],
             'doc_type' => ['nullable', 'in:DNI,Pasaporte,CE'],
-            'doc_number' => ['nullable', 'string', 'max:30'],
-            'nationality' => ['nullable', 'string', 'max:60'],
-            'birth_date' => ['nullable', 'date', 'before:today'],
+            'doc_number' => ['required', 'string', 'max:30'],
+            'nationality' => ['required', 'string', 'max:60'],
+            'birth_date' => ['required', 'date', 'before:today'],
             'phone' => ['nullable', 'string', 'max:30'],
             'email' => ['nullable', 'email', 'max:150'],
             'diet_notes' => ['nullable', 'string', 'max:200'],
             'relationship' => ['nullable', 'in:Titular,Cónyuge / pareja,Hijo/a,Padre / madre,Hermano/a,Amigo/a,Otro'],
             'is_lead' => ['nullable', 'boolean'],
-        ], ['full_name.*' => 'Escribe el nombre completo.', 'email.email' => 'Revisa el correo.', 'birth_date.before' => 'La fecha de nacimiento debe ser anterior a hoy.']);
+        ], ['full_name.*' => 'Escribe el nombre completo.', 'email.email' => 'Revisa el correo.', 'birth_date.before' => 'La fecha de nacimiento debe ser anterior a hoy.', 'birth_date.required' => 'Indica la fecha de nacimiento (RES-BR-09).', 'doc_number.required' => 'Indica el número de documento (RES-BR-09).', 'nationality.required' => 'Indica la nacionalidad (RES-BR-09).']);
 
         return response()->json(['data' => $workflow->savePassenger($code, $passenger, $data, $this->user($request))], $passenger ? 200 : 201);
     }
@@ -214,6 +226,7 @@ final class ReservationController
             'reason' => ['required', Rule::in(ProviderServiceResponse::REJECT_REASONS)],
             'detail' => ['required', 'string', 'min:3', 'max:500'],
             'alternative_date' => ['nullable', 'date', 'after_or_equal:today'],
+            'alternative_provider_id' => ['nullable', 'uuid'],
         ], ['reason.*' => 'Elige el motivo del rechazo.', 'detail.*' => 'Cuenta el detalle del rechazo.', 'alternative_date.*' => 'La fecha alternativa no puede ser pasada.']);
 
         return response()->json(['data' => $requests->reject($code, $service, $data, $this->user($request))]);
@@ -331,6 +344,7 @@ final class ReservationController
             'channel' => ['nullable', Rule::in(DirectBookingPlan::CHANNELS)],
             'owner_id' => ['nullable', 'uuid'],
             'departure_id' => ['nullable', 'uuid'],
+            'rate_id' => ['nullable', 'uuid'],
             'date' => ['nullable', 'date'],
             'adt' => [$step === 1 ? 'nullable' : 'required', 'integer', 'min:0', 'max:99'],
             'chd' => ['nullable', 'integer', 'min:0', 'max:99'],

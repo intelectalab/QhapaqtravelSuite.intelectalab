@@ -1,10 +1,9 @@
 "use client";
 
-import { Ban, CalendarCheck2, Lock, PlayCircle, Plus, Target, Trophy } from "lucide-react";
+import { Ban, CalendarCheck2, Lock, Pencil, PlayCircle, Plus, Target, Trophy } from "lucide-react";
 import { useState } from "react";
 import { saveTarget, targetStep } from "@/app/(backoffice)/crm/metas/actions";
 import { RowIcon } from "@/components/table/RowActions";
-import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
@@ -13,7 +12,7 @@ import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
-import { HEALTH, type SalesTarget, type TargetsOverview } from "@/lib/targets";
+import type { SalesTarget, TargetsOverview } from "@/lib/targets";
 
 const initial: StepResult = { message: null, done: false };
 
@@ -50,9 +49,10 @@ export function TargetCreateAction({ options }: { options: NonNullable<TargetsOv
   );
 }
 
-export function TargetAdjustAction({ target, lockPct, canReduceLate }: { target: SalesTarget; lockPct: number; canReduceLate: boolean }) {
+export function TargetAdjustAction({ target, lockPct, canReduceLate, asButton = false }: { target: SalesTarget; lockPct: number; canReduceLate: boolean; asButton?: boolean }) {
   const locked = target.status === "vigente" && target.elapsed_pct > lockPct && !canReduceLate;
   const editable = target.status === "borrador" || target.status === "vigente";
+  if (asButton && !editable) return null;
   return (
     <PanelAction<StepResult>
       label="Ajustar"
@@ -62,7 +62,8 @@ export function TargetAdjustAction({ target, lockPct, canReduceLate }: { target:
       submitLabel="Guardar ajuste"
       action={saveTarget}
       initial={initial}
-      trigger={(open) => <RowIcon tone="edit" label="Ajustar meta" onClick={open} disabledHint={editable ? undefined : "Solo se ajustan metas en borrador o vigentes"} />}
+      icon={<Pencil size={15} />}
+      trigger={asButton ? undefined : (open) => <RowIcon tone="edit" label="Ajustar meta" onClick={open} disabledHint={editable ? undefined : "Solo se ajustan metas en borrador o vigentes"} />}
     >
       {() => (
         <>
@@ -81,8 +82,10 @@ export function TargetAdjustAction({ target, lockPct, canReduceLate }: { target:
   );
 }
 
-export function TargetVoidAction({ target }: { target: SalesTarget }) {
-  const allowed = target.status === "borrador" || target.status === "vigente";
+export function TargetVoidAction({ target, asButton = false }: { target: SalesTarget; asButton?: boolean }) {
+  const allowed = target.status === "borrador";
+  const hint = target.status === "vigente" ? "Solo se anulan borradores: una meta vigente se ajusta o se cierra" : "Esta meta ya no se puede anular";
+  if (asButton && !allowed) return null;
   return (
     <PanelAction<StepResult>
       label="Anular"
@@ -92,7 +95,8 @@ export function TargetVoidAction({ target }: { target: SalesTarget }) {
       submitLabel="Anular"
       action={targetStep}
       initial={initial}
-      trigger={(open) => <RowIcon tone="delete" label="Anular meta" icon={<Ban size={15} />} onClick={open} disabledHint={allowed ? undefined : "Esta meta ya no se puede anular"} />}
+      icon={<Ban size={15} />}
+      trigger={asButton ? undefined : (open) => <RowIcon tone="delete" label="Anular meta" icon={<Ban size={15} />} onClick={open} disabledHint={allowed ? undefined : hint} />}
     >
       {() => (
         <>
@@ -106,75 +110,35 @@ export function TargetVoidAction({ target }: { target: SalesTarget }) {
   );
 }
 
-export function TargetDetailAction({ target, manage }: { target: SalesTarget; manage: boolean }) {
+export function TargetStepAction({ target, manage }: { target: SalesTarget; manage: boolean }) {
   const step = manage && target.status === "borrador" ? "activate" : manage && target.health === "por_cerrar" ? "close" : null;
-  const health = HEALTH[target.health] ?? HEALTH.borrador;
+  if (!step) return null;
   return (
     <PanelAction<StepResult>
-      label="Ver"
-      formId={`meta-${target.code}`}
-      title={`${target.scope.name} · ${target.period_label}`}
-      description={`${target.scope_label} · ${formatDate(target.period_from)} al ${formatDate(target.period_to)}`}
-      submitLabel={step === "activate" ? "Activar meta" : step === "close" ? "Cerrar período" : "Listo"}
-      action={step ? targetStep : async () => ({ message: null, done: true })}
+      label={step === "activate" ? "Activar" : "Cerrar período"}
+      icon={step === "activate" ? <PlayCircle size={15} /> : <CalendarCheck2 size={15} />}
+      variant="primary"
+      formId={`meta-${step}-${target.code}`}
+      title={step === "activate" ? "Activar meta" : "Cerrar período"}
+      description={`${target.scope.name} · ${target.period_label} · ${formatDate(target.period_from)} al ${formatDate(target.period_to)}`}
+      submitLabel={step === "activate" ? "Activar meta" : "Cerrar período"}
+      action={targetStep}
       initial={initial}
-      trigger={(open) => <RowIcon tone="view" label="Ver meta" onClick={open} />}
     >
       {() => (
         <>
           <input type="hidden" name="code" value={target.code} />
           <input type="hidden" name="lock_version" value={target.lock_version} />
-          {step && <input type="hidden" name="step" value={step} />}
-          <div className="flex flex-wrap gap-2">
-            <StatusBadge status={target.status} />
-            <Badge tone={health.tone}>{health.label}</Badge>
-            {target.bonus && <Badge tone="sun" dot={false}>Bono estimado {formatMoney(target.bonus.estimated)}</Badge>}
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: "Ventas", real: formatMoney(target.actual.sales), goal: formatMoney(target.goals.sales) },
-              { label: "Reservas", real: String(target.actual.bookings), goal: target.goals.bookings !== null ? String(target.goals.bookings) : "—" },
-              { label: "Margen", real: formatMoney(target.actual.margin), goal: target.goals.margin !== null ? formatMoney(target.goals.margin) : "—" },
-              { label: "Conversión", real: target.actual.conversion !== null ? formatPercent(target.actual.conversion) : "—", goal: target.goals.conversion !== null ? formatPercent(target.goals.conversion, 0) : "—" },
-            ].map((item) => (
-              <div key={item.label} className="rounded-xl bg-surface-2 px-3 py-2.5">
-                <p className="text-[12px] text-fg-3">{item.label}</p>
-                <p className="text-[15px] font-bold">{item.real}</p>
-                <p className="text-[11.5px] text-fg-3">Meta {item.goal}</p>
-              </div>
-            ))}
-          </div>
-          <div>
-            <p className="mb-1.5 text-[12.5px] font-semibold text-fg-3">Reservas que suman</p>
-            {target.reservations.length === 0 ? (
-              <p className="text-[13px] text-fg-3">Aún no hay reservas en el período.</p>
-            ) : (
-              <ul className="flex flex-col gap-1.5">
-                {target.reservations.map((item) => (
-                  <li key={item.code} className="flex justify-between gap-3 rounded-lg border border-line px-3 py-2 text-[12.5px]">
-                    <span className="min-w-0 truncate">{item.code} · {item.title}</span>
-                    <b className="font-mono">{formatMoney(item.total_pen)}</b>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          {target.pipeline.length > 0 && (
-            <div>
-              <p className="mb-1.5 text-[12.5px] font-semibold text-fg-3">Oportunidades que cierran en el período</p>
-              <ul className="flex flex-col gap-1.5">
-                {target.pipeline.map((item) => (
-                  <li key={item.code} className="flex justify-between gap-3 rounded-lg border border-dashed border-line px-3 py-2 text-[12.5px]">
-                    <span className="min-w-0 truncate">{item.title} · {item.probability} %</span>
-                    <b className="font-mono">{formatMoney(item.amount, item.currency)}</b>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <input type="hidden" name="step" value={step} />
           {step === "close" && (
             <p className="flex items-center gap-2 rounded-xl bg-[color-mix(in_srgb,var(--violet)_10%,var(--surface))] px-3.5 py-2.5 text-[12.5px]">
               <CalendarCheck2 size={15} className="text-[var(--violet)]" /> Al cerrar, el resultado queda congelado y ya no cambia con nuevas reservas.
+            </p>
+          )}
+          {step === "close" && target.bonus && (
+            <p className="flex items-center gap-2 rounded-xl bg-[color-mix(in_srgb,var(--warn)_12%,var(--surface))] px-3.5 py-2.5 text-[12.5px]">
+              <Trophy size={15} className="shrink-0 text-warn" />
+              {target.bonus.pct > 0 ? `Se generará la comisión «Bono por meta» por ${formatMoney(target.bonus.estimated)} para que Finanzas la apruebe y la pague.` : "Con el avance actual no alcanza el tramo mínimo: no se genera bono."}
             </p>
           )}
           {step === "activate" && (

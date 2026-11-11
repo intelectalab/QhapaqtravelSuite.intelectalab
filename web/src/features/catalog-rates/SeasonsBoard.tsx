@@ -160,7 +160,7 @@ export function SeasonsBoard({ overview }: { overview: RatesOverview }) {
         <Timeline seasons={overview.seasons} today={overview.today} />
         <Overlaps overview={overview} />
       </section>
-      <DataTable screen="temporadas" rows={overview.seasons} columns={columns} getKey={(season) => season.ref} entityLabel="temporadas" searchText={(season) => `${season.ref} ${season.name} ${season.type}`} searchPlaceholder="Buscar temporada" metrics={metrics} filters={filters} />
+      <DataTable screen="temporadas" rows={overview.seasons} columns={columns} getKey={(season) => season.ref} entityLabel="temporadas" searchText={(season) => `${season.ref} ${season.name} ${season.type}`} searchPlaceholder="Buscar temporada" metrics={metrics} filters={filters} csv={{ fileName: "temporadas", columns: [{ header: "Código", value: (season) => season.ref }, { header: "Temporada", value: (season) => season.name }, { header: "Tipo", value: (season) => season.type }, { header: "Desde", value: (season) => season.date_from }, { header: "Hasta", value: (season) => season.date_to }, { header: "Prioridad", value: (season) => season.priority }, { header: "Factor", value: (season) => season.factor }, { header: "Tarifas que la usan", value: (season) => season.rates }, { header: "Productos", value: (season) => season.products }, { header: "Estado", value: (season) => (season.status === "activa" ? "Activa" : "Inactiva") }] }} />
     </div>
   );
 }

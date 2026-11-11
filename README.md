@@ -1,4 +1,4 @@
-# Qhapaq Travel Suite
+# KipuControl
 
 SaaS multi-tenant de gestión integral para agencias de viajes y tour operadores (Perú).
 

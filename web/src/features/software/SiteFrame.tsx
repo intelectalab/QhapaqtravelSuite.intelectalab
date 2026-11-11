@@ -51,8 +51,7 @@ export async function SiteFrame({ children }: { children: ReactNode }) {
         </div>
         <div className="border-t border-white/10">
           <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-3 px-5 py-5 text-[12.5px] text-white/45 sm:px-8">
-            <span>© {new Date().getFullYear()} Qhapaq Cloud S.A.C.</span>
-            <span>Qhapaq Ñan: el camino que lo une todo.</span>
+            <span>© {new Date().getFullYear()} KipuControl Cloud S.A.C.</span>
           </div>
         </div>
       </footer>

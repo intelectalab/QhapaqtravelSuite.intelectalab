@@ -45,18 +45,29 @@ final class TenantBootstrap
             ->all();
     }
 
-    public static function permissionsFor(string $role): array
+    public static function permissionsFor(string $role, string $template = 'standard'): array
     {
-        return array_values(array_diff([...(KitSeeds::read('rolePerms')[$role] ?? []), ...(self::ROLE_EXTRA_PERMISSIONS[$role] ?? [])], self::PLATFORM_ONLY));
+        $permissions = array_values(array_diff([...(KitSeeds::read('rolePerms')[$role] ?? []), ...(self::ROLE_EXTRA_PERMISSIONS[$role] ?? [])], self::PLATFORM_ONLY));
+
+        if ($template === 'minimal' && $role !== 'tenant_admin') {
+            return array_values(array_filter($permissions, fn (string $permission): bool => str_ends_with($permission, '.view')));
+        }
+
+        return $permissions;
     }
 
-    public function roles(Tenant $tenant, ?array $permissions = null): array
+    public static function tenantRoles(): array
+    {
+        return array_values(array_filter(KitSeeds::read('roles'), fn (array $seed): bool => $seed['scope'] !== 'plataforma'));
+    }
+
+    public function roles(Tenant $tenant, ?array $permissions = null, ?array $only = null, string $template = 'standard'): array
     {
         $permissions ??= Permission::query()->where('guard_name', 'api')->get()->keyBy('name')->all();
         $roles = [];
 
-        foreach (KitSeeds::read('roles') as $seed) {
-            if ($seed['scope'] === 'plataforma') {
+        foreach (self::tenantRoles() as $seed) {
+            if ($only !== null && $seed['id'] !== 'tenant_admin' && ! in_array($seed['id'], $only, true)) {
                 continue;
             }
             $role = Role::query()->updateOrCreate(
@@ -68,7 +79,7 @@ final class TenantBootstrap
                     'experience' => config("access.roles.{$seed['id']}.experience", 'backoffice'),
                 ],
             );
-            $role->syncPermissions(array_values(Arr::only($permissions, self::permissionsFor($seed['id']))));
+            $role->syncPermissions(array_values(Arr::only($permissions, self::permissionsFor($seed['id'], $template))));
             $roles[$seed['id']] = $role;
         }
 

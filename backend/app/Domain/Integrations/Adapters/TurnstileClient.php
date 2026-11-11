@@ -12,7 +12,7 @@ final class TurnstileClient
 {
     public const ENDPOINT = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
-    public const PROBE_TOKEN = 'qhapaq-prueba-de-clave';
+    public const PROBE_TOKEN = 'kipucontrol-prueba-de-clave';
 
     public function verify(string $secret, ?string $token, ?string $ip = null): bool
     {

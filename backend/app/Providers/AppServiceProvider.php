@@ -8,6 +8,10 @@ use App\Domain\Booking\Events\ReservationConfirmed;
 use App\Domain\Booking\Listeners\NotifyReservationConfirmed;
 use App\Domain\Booking\Models\Reservation;
 use App\Domain\Booking\Policies\ReservationPolicy;
+use App\Domain\Catalog\Listeners\ConsumeAllotmentOnServiceChange;
+use App\Domain\Crm\Events\SalesTargetClosed;
+use App\Domain\Finance\Listeners\CreateTargetBonus;
+use App\Domain\Finance\Listeners\TreasurySyncListener;
 use App\Domain\Iam\Models\AccessToken;
 use App\Domain\Quotes\Models\Quote;
 use App\Domain\Quotes\Policies\QuotePolicy;
@@ -37,6 +41,9 @@ final class AppServiceProvider extends ServiceProvider
         Gate::policy(Quote::class, QuotePolicy::class);
         Gate::policy(Reservation::class, ReservationPolicy::class);
         Event::listen(ReservationConfirmed::class, NotifyReservationConfirmed::class);
+        Event::listen(ConsumeAllotmentOnServiceChange::EVENTS, ConsumeAllotmentOnServiceChange::class);
+        Event::listen(TreasurySyncListener::EVENTS, TreasurySyncListener::class);
+        Event::listen(SalesTargetClosed::class, CreateTargetBonus::class);
         Sanctum::usePersonalAccessTokenModel(AccessToken::class);
         Sanctum::authenticateAccessTokensUsing(fn ($token, bool $isValid): bool => $isValid && (! method_exists($token->tokenable, 'isActive') || $token->tokenable->isActive()));
 
@@ -51,7 +58,7 @@ final class AppServiceProvider extends ServiceProvider
         RateLimiter::for('exports', fn (Request $request) => Limit::perHour(10)->by($tenantKey($request)));
 
         RateLimiter::for('public', fn (Request $request) => Limit::perMinute(600)
-            ->by((string) $request->header('X-Qhapaq-Key').'|'.$request->ip()));
+            ->by((string) $request->header('X-KipuControl-Key').'|'.$request->ip()));
     }
 
     private function freezeBusinessDay(): void

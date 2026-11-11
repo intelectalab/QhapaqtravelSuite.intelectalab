@@ -32,6 +32,27 @@ export async function changeStage(_state: StageState, form: FormData): Promise<S
   return { message: null, done: true, warnings: result.data?.meta.warnings ?? [] };
 }
 
+export async function moveOpportunity(code: string, stage: string, version: number): Promise<StageState> {
+  const result = await apiFetch<{ data: unknown; meta: { warnings: string[] } }>(`/crm/opportunities/${encodeURIComponent(code)}/stage`, { method: "POST", raw: true, body: { stage, lock_version: version } });
+  if (!result.ok) return { message: result.error?.message ?? "No pudimos mover la oportunidad.", done: false };
+  revalidatePath("/crm/oportunidades", "layout");
+  revalidatePath("/dashboard");
+  return { message: null, done: true, warnings: result.data?.meta.warnings ?? [] };
+}
+
+export async function reassignOpportunity(_state: StageState, form: FormData): Promise<StageState> {
+  const result = await apiFetch(`/crm/opportunities/${encodeURIComponent(String(form.get("code") ?? ""))}/reassign`, {
+    method: "POST",
+    body: { owner_id: field(form, "owner_id"), note: field(form, "note"), lock_version: numeric(form, "lock_version") },
+  });
+  if (!result.ok) {
+    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { message: firstError ?? result.error?.message ?? "No pudimos reasignar la oportunidad.", done: false };
+  }
+  revalidatePath("/crm/oportunidades", "layout");
+  return { message: null, done: true };
+}
+
 export interface OpportunityFormState {
   message: string | null;
   done: boolean;
@@ -58,6 +79,8 @@ async function save(path: string, method: "POST" | "PATCH", form: FormData): Pro
       currency: field(form, "currency"),
       expected_close_date: field(form, "expected_close_date"),
       probability: numeric(form, "probability"),
+      stage: method === "POST" ? field(form, "stage") : undefined,
+      product_id: field(form, "product_id"),
       owner_id: field(form, "owner_id"),
       destination: field(form, "destination"),
       pax: numeric(form, "pax"),

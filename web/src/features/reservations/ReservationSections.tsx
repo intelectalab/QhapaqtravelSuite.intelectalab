@@ -12,6 +12,7 @@ import { RegisterPaymentAction } from "@/features/finance/Receivables";
 import { cn } from "@/lib/cn";
 import type { ReceivablesOverview } from "@/lib/finance";
 import { amountAttr, formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { FeedbackIncidentAction } from "@/features/operations/FeedbackIncidentAction";
 import { CHANGE_TYPE, DOC_TYPE, PAX_TYPE, SERVICE_KIND, type ReservationDetail, type ReservationFeedback, type ReservationHistoryEvent, type ReservationPaxMessage, type ReservationWebSnapshot } from "@/lib/reservations";
 import { statusLabel } from "@/lib/tone";
 import { PassengerAddAction, PassengerRowActions } from "./ReservationActions";
@@ -200,7 +201,15 @@ export function PassengersSection({ reservation, editable }: { reservation: Rese
                 </b>
                 {passenger.relationship && !(passenger.is_lead && passenger.relationship === "Titular") && <span className="block text-xs text-fg-3">{passenger.relationship}</span>}
               </td>
-              <td>{PAX_TYPE[passenger.pax_type] ?? passenger.pax_type}</td>
+              <td>
+                {PAX_TYPE[passenger.pax_type] ?? passenger.pax_type}
+                {passenger.age_warning && (
+                  <span className="mt-0.5 flex items-center gap-1 text-xs text-warn" title={passenger.age_warning}>
+                    <TriangleAlert size={12} />
+                    Revisar tipo por edad
+                  </span>
+                )}
+              </td>
               <td className="tabular-nums">
                 {age ?? "—"}
                 {passenger.birth_date && <span className="block text-xs text-fg-3">{formatDate(passenger.birth_date)}</span>}
@@ -661,7 +670,7 @@ export function WebSection({ snapshot, currency }: { snapshot: ReservationWebSna
   );
 }
 
-export function FeedbackSection({ feedback, messages }: { feedback: ReservationFeedback[]; messages: ReservationPaxMessage[] }) {
+export function FeedbackSection({ feedback, messages, canEscalate = false }: { feedback: ReservationFeedback[]; messages: ReservationPaxMessage[]; canEscalate?: boolean }) {
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
       <Card>
@@ -700,6 +709,11 @@ export function FeedbackSection({ feedback, messages }: { feedback: ReservationF
                   <p className="mt-2 rounded-[10px] bg-surface px-3 py-2 text-[12.5px]">
                     <b className="font-semibold">Respuesta{item.replied_by ? ` de ${item.replied_by}` : ""}:</b> {item.reply}
                   </p>
+                )}
+                {canEscalate && !item.incident_code && (
+                  <div className="mt-2 flex justify-end">
+                    <FeedbackIncidentAction feedback={item} />
+                  </div>
                 )}
               </li>
             ))}

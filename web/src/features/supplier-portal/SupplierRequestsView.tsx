@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
 import { dayDistance, deadlineLabel, scheduleLabel, SERVICE_KINDS, supplierStatus, type SupplierRequest, type SupplierRequests } from "@/lib/supplier-portal";
 import { toneStyle } from "@/lib/tone";
-import { ConfirmPanel, RejectPanel } from "./RequestActions";
+import { AlternativePanel, ConfirmPanel, RejectPanel } from "./RequestActions";
 import { KindIcon, PaxLine, requestTone, SupplierBadge } from "./SupplierUi";
 
 export function SupplierRequestsView({ data, contact }: { data: SupplierRequests; contact: string }) {
@@ -84,10 +84,11 @@ export function SupplierRequestsView({ data, contact }: { data: SupplierRequests
       cell: (row) => (
         <RowActions>
           <RowIcon tone="view" label="Ver solicitud" href={`/proveedor/solicitudes/${row.code}`} />
-          {row.state === "por_responder" && (
+          {(row.state === "por_responder" || row.state === "alternativa_propuesta") && (
             <>
               <ConfirmPanel row={row} contact={contact} asIcon />
               <RejectPanel row={row} reasons={data.reasons} today={data.today} asIcon />
+              {row.state === "por_responder" && <AlternativePanel row={row} kinds={data.alternative_kinds} catalog={data.catalog} today={data.today} asIcon />}
             </>
           )}
         </RowActions>

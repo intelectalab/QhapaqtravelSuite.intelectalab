@@ -6,11 +6,12 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { MetricCard, MetricCardRow } from "@/components/ui/MetricCard";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
+import { downloadCsv, type CsvExport } from "@/lib/csv";
 import { useStoredValue } from "@/lib/useStoredValue";
 import { Pager } from "./Pager";
 import { openRow, ROWS_OPEN } from "./rowOpen";
 import { applyQuery, countActiveFilters, LONG_PAGE, parseRows, SORT_DIRECTIONS, type TableQuery } from "./query";
-import { Chip, DrawerBar, FilterIcon, SearchBox, SortIcon, ToggleButton } from "./Toolbar";
+import { Chip, DrawerBar, ExportButton, FilterIcon, SearchBox, SortIcon, ToggleButton } from "./Toolbar";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "./types";
 
 interface DataTableProps<T> {
@@ -28,6 +29,7 @@ interface DataTableProps<T> {
   selectionActions?: (selected: T[], clear: () => void) => ReactNode;
   toolbarEnd?: ReactNode;
   emptyTitle?: string;
+  csv?: CsvExport<T>;
 }
 
 const EMPTY_QUERY: TableQuery = { search: "", metric: "", filters: {}, sortId: "", sortDir: "asc" };
@@ -47,6 +49,7 @@ export function DataTable<T>({
   selectionActions,
   toolbarEnd,
   emptyTitle = "No hay coincidencias",
+  csv,
 }: DataTableProps<T>) {
   const [query, setQuery] = useState<TableQuery>(() => ({ ...EMPTY_QUERY, search: initialSearch ?? "" }));
   const [open, setOpen] = useState<"filters" | "sort" | null>(null);
@@ -123,6 +126,7 @@ export function DataTable<T>({
             {filters.length > 0 && (
               <ToggleButton active={open === "filters"} onClick={() => setOpen(open === "filters" ? null : "filters")} icon={FilterIcon} label="Filtro" badge={activeFilters} collapseLabel />
             )}
+            {csv && <ExportButton disabled={visible.length === 0} onClick={() => downloadCsv(visible, csv)} />}
             {sorts.length > 0 && (
               <ToggleButton
                 active={open === "sort"}

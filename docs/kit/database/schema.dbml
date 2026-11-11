@@ -1,4 +1,4 @@
-// Qhapaq Travel Suite · esquema completo (dbdiagram.io). Generado desde database/*.sql.
+// KipuControl · esquema completo (dbdiagram.io). Generado desde database/*.sql.
 // Las FKs a tenants(id) se omiten para legibilidad (todas las tablas de negocio las tienen).
 
 Table platform_users {
@@ -339,7 +339,7 @@ Table platform_invoices {
   updated_by uuid
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
-  Note: '13 §3.8 · Facturas de plataforma (emisor Qhapaq Cloud). [Fase 3]'
+  Note: '13 §3.8 · Facturas de plataforma (emisor KipuControl Cloud). [Fase 3]'
 }
 
 Table platform_invoice_lines {

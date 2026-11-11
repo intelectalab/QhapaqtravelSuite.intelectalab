@@ -9,6 +9,7 @@ import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
+import { GuardianFields } from "@/features/claims/GuardianFields";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { IDLE, type Option, type SiteFormState } from "@/lib/site";
 import { CheckBox, ChipGroup, Consent, FieldError, FormAlert } from "./FormBits";
@@ -242,17 +243,8 @@ export function ClaimForm({ sedes, responseDays }: { sedes: Option[]; responseDa
             </Field>
           </div>
         </div>
-        <CheckBox name="minor" label="El consumidor es menor de edad (completa los datos del padre, madre o apoderado)" onChange={setMinor} />
-        {minor && (
-          <div className="grid gap-4 sm:grid-cols-2 animate-[rise-in_320ms_cubic-bezier(0.22,1,0.36,1)_backwards]">
-            <Field error={errors.guardian_name}>
-              <TextField label="Nombre del apoderado" name="guardian_name" />
-            </Field>
-            <Field error={errors.guardian_doc}>
-              <TextField label="Documento del apoderado" name="guardian_doc" />
-            </Field>
-          </div>
-        )}
+        <CheckBox name="is_minor" label="El consumidor es menor de edad (completa los datos del padre, madre o apoderado)" onChange={setMinor} />
+        {minor && <GuardianFields errors={errors} />}
       </Section>
 
       <Section title="2. Bien contratado">
@@ -287,7 +279,7 @@ export function ClaimForm({ sedes, responseDays }: { sedes: Option[]; responseDa
       </Section>
 
       <div className="grid gap-3">
-        <CheckBox name="declaration" error={errors.declaration} label="Declaro que la información es verdadera. La formulación del reclamo no impide acudir a otras vías de solución de controversias ni es requisito previo para interponer una denuncia ante el Indecopi." />
+        <CheckBox name="declaration" error={errors.declaration} label="Declaro que la información es verdadera y autorizo que la respuesta se me envíe al correo indicado. La formulación del reclamo no impide acudir a otras vías de solución de controversias ni es requisito previo para interponer una denuncia ante el Indecopi." />
       </div>
       {state.status === "error" && <FormAlert message={state.message} />}
       <div>

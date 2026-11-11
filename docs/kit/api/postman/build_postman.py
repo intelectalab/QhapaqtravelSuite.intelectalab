@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Genera la colección Postman v2.1 de Qhapaq Travel Suite desde kit-ia/api/openapi.json.
+"""Genera la colección Postman v2.1 de KipuControl desde kit-ia/api/openapi.json.
 
 Uso:  python3 kit-ia/api/postman/build_postman.py
 Salida (misma carpeta):
-  qhapaq-api.postman_collection.json   colección (carpetas Fase › módulo/tag)
+  kipucontrol-api.postman_collection.json   colección (carpetas Fase › módulo/tag)
   local.postman_environment.json       tenant demo TNT-0001 «andes» (andes.localhost:8000)
   tenant-b.postman_environment.json    tenant TNT-0002 «selva» (selva.localhost:8000), prueba de aislamiento
 
@@ -344,7 +344,7 @@ def headers_for(op: dict, params: list[dict]) -> list[dict]:
     elif "platformSanctum" in first:
         h.append({"key": "Authorization", "value": "Bearer {{platformToken}}", "description": "Token del guard platform (Super Admin)."})
     if "widgetKey" in first:
-        h.append({"key": "X-Qhapaq-Key", "value": "{{widgetKey}}", "description": "Publishable key del tenant (validada con Origin)."})
+        h.append({"key": "X-KipuControl-Key", "value": "{{widgetKey}}", "description": "Publishable key del tenant (validada con Origin)."})
         h.append({"key": "Origin", "value": "{{siteOrigin}}"})
     if "cartToken" in first:
         h.append({"key": "Cookie", "value": "ah_cart={{cartToken}}", "description": "Token opaco del carrito."})
@@ -557,14 +557,14 @@ def main() -> int:
         return sum(count(i) if "item" in i else 1 for i in node["item"])
 
     n = count(collection)
-    out = HERE / "qhapaq-api.postman_collection.json"
+    out = HERE / "kipucontrol-api.postman_collection.json"
     out.write_text(json.dumps(collection, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     def env(name, base, email, slug, origin, note):
         values = [
             ("baseUrl", base, "default"), ("tenantSlug", slug, "default"), ("email", email, "default"),
-            ("password", "Qhapaq#E2E-2026", "secret"), ("totpCode", "", "default"), ("token", "", "secret"),
-            ("tokenMfaPending", "false", "default"), ("platformEmail", "ops@qhapaq.cloud", "default"),
+            ("password", "KipuControl#E2E-2026", "secret"), ("totpCode", "", "default"), ("token", "", "secret"),
+            ("tokenMfaPending", "false", "default"), ("platformEmail", "ops@kipucontrol.com", "default"),
             ("platformToken", "", "secret"), ("widgetKey", "pk_test_" + slug, "secret"), ("siteOrigin", origin, "default"),
             ("apiKey", "qts_test_" + slug, "secret"), ("cartToken", "", "secret"), ("orderToken", "", "secret"),
             ("providerSignature", "", "secret"), ("lockVersion", "1", "default"),
@@ -574,12 +574,12 @@ def main() -> int:
                 "_postman_variable_scope": "environment", "_postman_note": note}
 
     (HERE / "local.postman_environment.json").write_text(json.dumps(env(
-        "Qhapaq · local (andes · TNT-0001)", "http://andes.localhost:8000", "mquispe@andeshorizonte.pe", "andes",
+        "KipuControl · local (andes · TNT-0001)", "http://andes.localhost:8000", "mquispe@andeshorizonte.pe", "andes",
         "http://andes.localhost:3000",
         "Usuarios de kit-ia/seeds/users.json; contraseña = E2E_PASSWORD del E2ESeeder."), ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8")
     (HERE / "tenant-b.postman_environment.json").write_text(json.dumps(env(
-        "Qhapaq · tenant B (selva · TNT-0002)", "http://selva.localhost:8000", "gerencia@selvaviva.pe", "selva",
+        "KipuControl · tenant B (selva · TNT-0002)", "http://selva.localhost:8000", "gerencia@selvaviva.pe", "selva",
         "http://selva.localhost:3000",
         "Tenant de aislamiento (E2E-08): los ids del tenant andes deben responder 404."), ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8")

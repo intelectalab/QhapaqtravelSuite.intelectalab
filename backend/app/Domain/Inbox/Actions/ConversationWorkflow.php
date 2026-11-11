@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Inbox\Actions;
 
 use App\Domain\Crm\Support\Advisors;
+use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Inbox\Support\ConversationDirectory;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -19,6 +20,7 @@ final class ConversationWorkflow
         private readonly ConversationDirectory $directory,
         private readonly Advisors $advisors,
         private readonly AuditLogger $audit,
+        private readonly ConversationAttachments $attachments,
     ) {}
 
     public function reply(string $code, array $data, User $actor): void
@@ -34,20 +36,37 @@ final class ConversationWorkflow
             }
         }
 
-        DB::transaction(function () use ($conversation, $data, $actor, $internal, $template): void {
+        $files = $this->attachments->claim((array) ($data['attachments'] ?? []), $actor, $conversation->code);
+
+        DB::transaction(function () use ($conversation, $data, $actor, $internal, $template, $files): void {
             $now = now();
+            $messageId = (string) Str::uuid7();
             DB::table('collab_messages')->insert([
-                'id' => (string) Str::uuid7(),
+                'id' => $messageId,
                 'conversation_id' => $conversation->id,
                 'channel' => $conversation->channel,
                 'direction' => $internal ? 'internal' : 'out',
                 'author_user_id' => $actor->getKey(),
-                'body' => $data['body'],
+                'body' => (string) ($data['body'] ?? ''),
                 'template_id' => $template->id ?? null,
                 'delivery_status' => $internal ? null : 'enviado',
                 'sent_at' => $now,
                 'created_by' => $actor->getKey(),
             ]);
+
+            foreach ($files as $file) {
+                DB::table('collab_message_attachments')->insert([
+                    'id' => (string) Str::uuid7(),
+                    'message_id' => $messageId,
+                    'file_name' => $file['file_name'],
+                    'mime' => $file['mime'],
+                    'size_bytes' => $file['size'],
+                    'storage_path' => $file['path'],
+                    'sha256' => $file['sha256'],
+                    'scan_status' => 'limpio',
+                    'created_by' => $actor->getKey(),
+                ]);
+            }
 
             $values = ['last_message_at' => $now, 'updated_by' => $actor->getKey(), 'updated_at' => $now];
             if (! $internal) {
@@ -66,7 +85,13 @@ final class ConversationWorkflow
             DB::table('collab_conversations')->where('id', $conversation->id)->update($values);
             $action = $internal ? 'nota_interna' : (($data['resolve'] ?? false) ? 'responder_y_resolver' : 'responder');
             $this->audit->log('Conversación', $conversation->code, $action, $conversation->status, $values['status'] ?? $conversation->status);
+
+            if ($files !== []) {
+                $this->audit->log('Conversación', $conversation->code, 'adjuntar', null, implode(', ', array_column($files, 'file_name')));
+            }
         });
+
+        $this->attachments->release($files);
     }
 
     public function assign(string $code, ?string $assigneeId, User $actor): void
@@ -119,6 +144,41 @@ final class ConversationWorkflow
         });
     }
 
+    public function link(string $code, string $kind, string $recordCode, ?int $version, User $actor): void
+    {
+        $link = ConversationDirectory::LINKS[$kind];
+        $this->assertLinkPermission($link, $actor);
+        $conversation = $this->directory->find($code, $actor);
+        $record = $this->directory->linkable($kind, $actor)->where('x.code', $recordCode)->first($kind === 'reservation' ? ['x.id', 'x.code', 'x.client_id'] : ['x.id', 'x.code'])
+            ?? throw Portfolio::missing($actor, $link['table'], $recordCode, "{$link['entity']} no existe.", $link['entity']);
+
+        if ($conversation->{$link['column']} === $record->id) {
+            throw ApiException::conflict('INB-BR-06', "La conversación ya está vinculada a {$record->code}.");
+        }
+
+        $values = [$link['column'] => $record->id];
+        if ($kind === 'reservation' && $conversation->client_id === null && ($record->client_id ?? null) !== null) {
+            $values['client_id'] = $record->client_id;
+        }
+
+        $previous = $this->linkedCode($link, $conversation->{$link['column']});
+        $this->saveLink($conversation, $values, $version, $actor, "Vinculada a {$link['label']} {$record->code} por {$actor->name}.", "vincular_{$link['label']}", $previous, $record->code);
+    }
+
+    public function unlink(string $code, string $kind, ?int $version, User $actor): void
+    {
+        $link = ConversationDirectory::LINKS[$kind];
+        $this->assertLinkPermission($link, $actor);
+        $conversation = $this->directory->find($code, $actor);
+        $previous = $this->linkedCode($link, $conversation->{$link['column']});
+
+        if ($previous === null) {
+            throw ApiException::conflict('INB-BR-06', "La conversación no tiene {$link['label']} vinculado.");
+        }
+
+        $this->saveLink($conversation, [$link['column'] => null], $version, $actor, "Se quitó el vínculo con {$link['label']} {$previous} ({$actor->name}).", "desvincular_{$link['label']}", $previous, null);
+    }
+
     public function classify(string $code, array $data, User $actor): void
     {
         $conversation = $this->directory->find($code, $actor);
@@ -132,5 +192,41 @@ final class ConversationWorkflow
             'updated_at' => now(),
         ]);
         $this->audit->log('Conversación', $conversation->code, 'clasificar', $conversation->priority, "{$data['priority']} · ".$tags->implode(', '));
+    }
+
+    private function assertLinkPermission(array $link, User $actor): void
+    {
+        if (! $actor->can($link['permission'])) {
+            throw ApiException::forbidden('INB-BR-06', "Tu rol no vincula conversaciones a un {$link['label']}.", [$link['permission']]);
+        }
+    }
+
+    private function linkedCode(array $link, ?string $id): ?string
+    {
+        return $id === null ? null : DB::table($link['table'])->where('id', $id)->value('code');
+    }
+
+    private function saveLink(object $conversation, array $values, ?int $version, User $actor, string $note, string $action, ?string $before, ?string $after): void
+    {
+        DB::transaction(function () use ($conversation, $values, $version, $actor, $note, $action, $before, $after): void {
+            $updated = DB::table('collab_conversations')->where('id', $conversation->id)->where('lock_version', $version ?? $conversation->lock_version)
+                ->update([...$values, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+
+            if ($updated === 0) {
+                throw ApiException::conflict('STALE_VERSION', 'Otra persona acaba de cambiar esta conversación. Actualiza la bandeja.');
+            }
+
+            DB::table('collab_messages')->insert([
+                'id' => (string) Str::uuid7(),
+                'conversation_id' => $conversation->id,
+                'channel' => $conversation->channel,
+                'direction' => 'system',
+                'author_user_id' => $actor->getKey(),
+                'body' => $note,
+                'sent_at' => now(),
+                'created_by' => $actor->getKey(),
+            ]);
+            $this->audit->log('Conversación', $conversation->code, $action, $before, $after);
+        });
     }
 }

@@ -1,4 +1,4 @@
-# Pruebas de referencia — Qhapaq Travel Suite
+# Pruebas de referencia — KipuControl
 
 Plantillas ejecutables para que el asistente de IA (Claude Code) programe **primero la prueba de cada historia y después el código**. Cubren los 10 casos E2E de DOC-PROC-001 y las pruebas obligatorias de CONVENCIONES §7 (aislamiento de tenant, RBAC 403, ownership de Ventas, máquinas de estado, reglas de negocio, idempotencia) más el motor de reservas con el caso PRD-011.
 

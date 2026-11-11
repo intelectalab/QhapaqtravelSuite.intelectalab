@@ -1,7 +1,7 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
-import type { ChangeOptions, DirectFormOptions, ReservationCancellation, ReservationDetail, ReservationFeedback, ReservationHistoryEvent, ReservationList, ReservationListMeta, ReservationPaxMessage, ReservationRow, ReservationWebSnapshot } from "@/lib/reservations";
+import type { ChangeOptions, Occupancy, DirectFormOptions, ReservationCancellation, ReservationDetail, ReservationFeedback, ReservationHistoryEvent, ReservationList, ReservationListMeta, ReservationPaxMessage, ReservationRow, ReservationWebSnapshot } from "@/lib/reservations";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
 import { fetchPages } from "./pages";
@@ -27,6 +27,8 @@ export async function listReservations(): Promise<ReservationList> {
   const { today, can, view, kpis } = result.data.meta;
   return { today, can, view, kpis, items: result.data.data };
 }
+
+export const getOccupancy = (month?: string) => get<Occupancy>(`/reservations/occupancy${month && /^\d{4}-\d{2}$/.test(month) ? `?month=${month}` : ""}`);
 
 export const getReservation = cache(async (code: string): Promise<ReservationDetail> => (await get<ReservationDetail>(`/reservations/${encodeURIComponent(code)}`)) ?? notFound());
 

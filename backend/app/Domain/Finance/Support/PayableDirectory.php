@@ -46,9 +46,10 @@ final class PayableDirectory
             ->join('catalog_providers as v', 'v.id', '=', 'p.provider_id')
             ->leftJoin('booking_reservations as b', 'b.id', '=', 'p.reservation_id')
             ->leftJoin('booking_reservation_services as s', 's.id', '=', 'p.reservation_service_id')
+            ->leftJoin('fin_treasury_accounts as t', 't.id', '=', 'p.scheduled_bank_account_id')
             ->whereNull('p.deleted_at')
             ->orderBy('p.due_date')
-            ->get(['p.code', 'p.lock_version', 'p.kind', 'p.cost_type', 'p.concept', 'p.amount', 'p.paid_amount', 'p.currency', 'p.fx_rate', 'p.due_date', 'p.status', 'p.approved_at', 'p.supplier_doc_number', 'p.evidence_note', 'p.observation', 'p.scheduled_date', 'v.ref as provider_ref', 'v.name as provider_name', 'v.status as provider_status', 'b.code as reservation_code', 'b.title as reservation_title', 's.name as service_name', 's.code as service_code', 's.service_date', 's.status as service_status'])
+            ->get(['p.code', 'p.lock_version', 'p.kind', 'p.cost_type', 'p.concept', 'p.amount', 'p.paid_amount', 'p.currency', 'p.fx_rate', 'p.due_date', 'p.status', 'p.approved_at', 'p.supplier_doc_number', 'p.evidence_note', 'p.observation', 'p.scheduled_date', 't.code as scheduled_account', 'v.ref as provider_ref', 'v.name as provider_name', 'v.status as provider_status', 'b.code as reservation_code', 'b.title as reservation_title', 's.name as service_name', 's.code as service_code', 's.service_date', 's.status as service_status'])
             ->map(function (object $row) use ($today): array {
                 $amount = (float) $row->amount;
                 $paid = (float) $row->paid_amount;
@@ -63,6 +64,8 @@ final class PayableDirectory
                     'concept' => $row->concept,
                     'amount' => $amount,
                     'paid' => $paid,
+                    'amount_pen' => $this->money->pen($amount, $row->currency, $row->fx_rate),
+                    'paid_pen' => $this->money->pen($paid, $row->currency, $row->fx_rate),
                     'balance' => $status === 'cancelada' ? 0.0 : $balance,
                     'balance_pen' => $status === 'cancelada' ? 0.0 : $this->money->pen($balance, $row->currency, $row->fx_rate),
                     'currency' => $row->currency,
@@ -75,6 +78,7 @@ final class PayableDirectory
                     'evidence' => $row->evidence_note,
                     'observation' => $row->observation,
                     'scheduled_date' => $row->scheduled_date,
+                    'scheduled_account' => $row->scheduled_account,
                     'provider' => ['ref' => $row->provider_ref, 'name' => $row->provider_name, 'status' => $row->provider_status],
                     'reservation' => $row->reservation_code ? ['code' => $row->reservation_code, 'title' => $row->reservation_title] : null,
                     'service' => $row->service_code ? ['code' => $row->service_code, 'name' => $row->service_name, 'date' => $row->service_date, 'status' => $row->service_status] : null,
@@ -95,6 +99,8 @@ final class PayableDirectory
                 'overdue_count' => $open->where('status', 'vencida')->count(),
                 'to_approve' => $open->where('approved', false)->count(),
                 'due_week_pen' => round($open->where('due_date', '<=', $week)->where('status', '<>', 'vencida')->sum('balance_pen'), 2),
+                'scheduled_week_pen' => round($open->filter(fn (array $row): bool => $row['scheduled_date'] !== null && $row['scheduled_date'] <= $week)->sum('balance_pen'), 2),
+                'scheduled_week_count' => $open->filter(fn (array $row): bool => $row['scheduled_date'] !== null && $row['scheduled_date'] <= $week)->count(),
                 'paid_month_pen' => round($paidMonth->sum(fn (object $row): float => $this->money->pen($row->amount, $row->currency, $row->fx_rate)), 2),
             ],
             'by_provider' => $open->groupBy(fn (array $row): string => $row['provider']['name'])
@@ -106,6 +112,7 @@ final class PayableDirectory
                     ->map(fn (object $row): array => ['value' => $row->value, 'label' => "{$row->value} · {$row->title}", 'currency' => $row->currency]),
                 'cost_types' => collect(self::COST_TYPES)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
                 'payout_methods' => collect(self::PAYOUT_METHODS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
+                'bank_accounts' => FinanceDetails::bankAccounts(),
             ],
             'today' => $today,
             'usd_rate' => $this->money->usdRate(),

@@ -6,6 +6,7 @@ namespace App\Domain\Crm\Actions;
 
 use App\Domain\Crm\Support\BusinessDays;
 use App\Domain\Crm\Support\ClaimBookDirectory;
+use App\Domain\Crm\Support\ClaimConsumer;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -14,6 +15,7 @@ use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 final class ClaimBookWorkflow
 {
@@ -35,7 +37,7 @@ final class ClaimBookWorkflow
         $responseDays = (int) $this->directory->settings()->response_days;
 
         return DB::transaction(function () use ($data, $actor, $sede, $clientId, $reservationId, $now, $responseDays): string {
-            $prefix = 'LR-'.$this->prefix($sede->name).'-'.$now->year.'-';
+            $prefix = 'LR-'.self::sedePrefix($sede->name).'-'.$now->year.'-';
             $number = $this->codes->next('crm_cases', $prefix, 6, 'book_number');
             $code = $this->codes->next('crm_cases', 'REC-');
             $id = (string) Str::uuid7();
@@ -64,11 +66,12 @@ final class ClaimBookWorkflow
                 'received_at' => $now,
                 'due_date' => $this->days->add($now, $responseDays)->toDateString(),
                 'response_days' => $responseDays,
-                'ack_sent_at' => isset($data['consumer_email']) ? $now : null,
+                'ack_sent_at' => $now,
                 'submitted_by' => $actor->getKey(),
                 'created_by' => $actor->getKey(),
             ]);
-            $this->log($id, 'registro', null, 'abierta', "Hoja registrada en {$sede->name} (presencial)", $actor);
+            $minor = ($data['is_minor'] ?? false) ? " · menor de edad, apoderado {$data['guardian_name']} ({$data['guardian_relation']})" : '';
+            $this->log($id, 'registro', null, 'abierta', "Hoja registrada en {$sede->name} (presencial){$minor}. El consumidor aceptó recibir la respuesta en {$data['consumer_email']}", $actor);
             $this->audit->log('Libro de reclamaciones', $number, 'registrar', null, "{$data['type']} · {$data['consumer_name']}");
 
             return $code;
@@ -83,9 +86,9 @@ final class ClaimBookWorkflow
             throw ApiException::conflict('LR-STATE', 'La hoja ya fue respondida; no se edita.');
         }
 
-        $stored = json_decode((string) $claim->consumer, true) ?: [];
-        $consumer = $this->consumer($data);
-        $changed = collect(['name', 'docType', 'docNumber', 'address', 'email', 'phone'])->contains(fn (string $key): bool => (string) ($stored[$key] ?? '') !== (string) ($consumer[$key] ?? ''))
+        $stored = ClaimConsumer::read(json_decode((string) $claim->consumer, true) ?: []);
+        $consumer = ClaimConsumer::read($this->consumer($data));
+        $changed = collect(['name', 'doc_type', 'doc_number', 'address', 'email', 'phone'])->contains(fn (string $key): bool => (string) ($stored[$key] ?? '') !== (string) ($consumer[$key] ?? ''))
             || (string) $claim->detail !== (string) $data['detail']
             || (string) $claim->request !== (string) $data['request'];
 
@@ -130,7 +133,7 @@ final class ClaimBookWorkflow
             throw ApiException::conflict('LR-STATE', 'La hoja ya fue respondida.');
         }
 
-        $consumer = json_decode((string) $claim->consumer, true) ?: [];
+        $consumer = ClaimConsumer::read(json_decode((string) $claim->consumer, true) ?: []);
         $now = Carbon::now($this->context->timezone());
         $late = $claim->due_date && $now->copy()->startOfDay()->gt(Carbon::parse($claim->due_date));
 
@@ -158,6 +161,29 @@ final class ClaimBookWorkflow
         });
     }
 
+    public function saveSettings(array $data, User $actor): array
+    {
+        if ((int) $data['alert_days'] >= (int) $data['response_days']) {
+            throw ValidationException::withMessages(['alert_days' => 'La alerta debe llegar antes de que venza el plazo de respuesta.']);
+        }
+
+        $current = DB::table('crm_claim_book_settings')->first(['id', 'response_days', 'alert_days', 'retention_years']);
+        $values = ['response_days' => (int) $data['response_days'], 'alert_days' => (int) $data['alert_days'], 'retention_years' => (int) $data['retention_years']];
+
+        DB::transaction(function () use ($current, $values, $actor): void {
+            if ($current === null) {
+                DB::table('crm_claim_book_settings')->insert([...$values, 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
+            } else {
+                DB::table('crm_claim_book_settings')->where('id', $current->id)->update([...$values, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            }
+
+            $before = $current ? "{$current->response_days} días · alerta {$current->alert_days} · {$current->retention_years} años" : null;
+            $this->audit->log('Libro de reclamaciones', 'configuracion', 'actualizar', $before, "{$values['response_days']} días · alerta {$values['alert_days']} · {$values['retention_years']} años");
+        });
+
+        return $values;
+    }
+
     public function close(string $code, string $note, User $actor): void
     {
         $claim = $this->find($code);
@@ -175,16 +201,14 @@ final class ClaimBookWorkflow
 
     private function consumer(array $data): array
     {
-        return [
+        return ClaimConsumer::build([
             'name' => $data['consumer_name'],
-            'docType' => $data['consumer_doc_type'],
-            'docNumber' => $data['consumer_doc_number'],
+            'doc_type' => $data['consumer_doc_type'],
+            'doc_number' => $data['consumer_doc_number'],
             'address' => $data['consumer_address'] ?? null,
             'email' => $data['consumer_email'] ?? null,
             'phone' => $data['consumer_phone'] ?? null,
-            'minor' => false,
-            'guardian' => null,
-        ];
+        ], $data);
     }
 
     private function links(array $data): array
@@ -199,7 +223,7 @@ final class ClaimBookWorkflow
         return [$client ?? $reservation?->client_id, $reservation?->id];
     }
 
-    private function prefix(string $sede): string
+    public static function sedePrefix(string $sede): string
     {
         $first = Str::lower(Str::ascii(strtok($sede, ' —') ?: $sede));
 

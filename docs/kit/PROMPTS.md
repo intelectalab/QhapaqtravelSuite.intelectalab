@@ -11,7 +11,7 @@ Regla general: **una historia por sesión** (`/clear` entre historias). Si una s
 **Arranque (una vez):**
 
 ```text
-Vamos a empezar la Fase 0 de Qhapaq Travel Suite. Lee docs/kit/backlog/fase-0.md completo,
+Vamos a empezar la Fase 0 de KipuControl. Lee docs/kit/backlog/fase-0.md completo,
 docs/CONVENCIONES.md, docs/02-ARQUITECTURA.md y docs/kit/infra/README.md.
 No escribas código todavía. Dime:
 1) qué historias forman la ruta crítica de la fase y en qué orden,
@@ -33,7 +33,7 @@ Las tres conexiones de base (pgsql, pgsql_platform, pgsql_owner) según docs/kit
 /implementar-historia F0-06
 Antes de programar, lee docs/kit/database/00_extensions_and_functions.sql y 90_rls.sql.
 Quiero pruebas que demuestren: sin app.tenant_id no se ve ninguna fila; con el tenant A no se ve
-nada del B aunque se consulte por id; un job en cola restablece su tenant; qhapaq_app no tiene BYPASSRLS.
+nada del B aunque se consulte por id; un job en cola restablece su tenant; kipucontrol_app no tiene BYPASSRLS.
 ```
 
 **Cierre:** `/cerrar-fase 0` y luego, en otra sesión, el subagente `revisor-seguridad` sobre todo `app/Domain/{Shared,Iam,Platform}`.
@@ -98,7 +98,7 @@ aprobaciones e inbox, cupos, documentos de viaje y tesorería. Specs 07, 10, 11 
 - **Integraciones** (OSE, pasarela, WhatsApp, TripAdvisor/Trustpilot, tipo de cambio): «Solo interfaz + adaptador Fake con respuestas realistas. No inventes URLs ni credenciales de proveedores; deja el adaptador real como historia aparte cuando haya contrato con el proveedor.»
 - **Offline de la app del operador**: «Outbox con `Idempotency-Key`, estados pending/syncing/synced/failed/conflict; el servidor gana en conflicto. Prueba `e2e-07-offline-sync.spec.ts`.»
 
-**Cierre:** `/cerrar-fase 2` y subir `QHAPAQ_PHASE` a 2 en el CI.
+**Cierre:** `/cerrar-fase 2` y subir `KIPUCONTROL_PHASE` a 2 en el CI.
 
 ---
 

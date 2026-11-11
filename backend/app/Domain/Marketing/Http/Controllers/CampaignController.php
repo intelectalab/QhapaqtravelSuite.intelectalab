@@ -59,6 +59,16 @@ final class CampaignController
         return response()->json(['data' => ['code' => $code]]);
     }
 
+    public function send(Request $request, string $code, CampaignWorkflow $workflow): JsonResponse
+    {
+        return response()->json(['data' => ['code' => $code, 'audience' => $workflow->send($code, $this->user($request))]], 202);
+    }
+
+    public function duplicate(Request $request, string $code, CampaignWorkflow $workflow): JsonResponse
+    {
+        return response()->json(['data' => ['code' => $workflow->duplicate($code, $this->user($request))]], 201);
+    }
+
     private function validated(Request $request): array
     {
         return $request->validate([

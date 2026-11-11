@@ -94,7 +94,7 @@ it('X-02 / T-02: una ruta que intenta fijar otro tenant responde 403 TENANT_SCOP
         ->toBeApiError(403, 'TENANT_SCOPE_VIOLATION');
 });
 
-it('X-03: con qhapaq_app y sin app.tenant_id una consulta directa devuelve 0 filas', function () {
+it('X-03: con kipucontrol_app y sin app.tenant_id una consulta directa devuelve 0 filas', function () {
     expect(withinTenant(tenantA(), fn () => DB::table('booking_reservations')->count()))->toBeGreaterThan(0);
 
     DB::transaction(function () {
@@ -106,7 +106,7 @@ it('X-03: con qhapaq_app y sin app.tenant_id una consulta directa devuelve 0 fil
     });
 });
 
-it('X-03: con qhapaq_app y sin app.tenant_id un INSERT viola la política', function () {
+it('X-03: con kipucontrol_app y sin app.tenant_id un INSERT viola la política', function () {
     $insert = fn () => DB::transaction(function () {
         DB::statement("select set_config('app.tenant_id', '', true)");
         DB::table('crm_leads')->insert(['tenant_id' => tenantA()->getKey(), 'code' => 'LEAD-RLS-1', 'name' => 'Sin tenant']);
@@ -123,7 +123,7 @@ it('X-01: RLS aísla por sí sola aunque la consulta SQL directa no filtre por t
     });
 });
 
-it('X-01: con qhapaq_app y app.tenant_id de B no se puede escribir una fila con tenant_id de A', function () {
+it('X-01: con kipucontrol_app y app.tenant_id de B no se puede escribir una fila con tenant_id de A', function () {
     $insert = fn () => withinTenant(tenantB(), fn () => DB::table('crm_leads')->insert([
         'tenant_id' => tenantA()->getKey(), 'code' => 'LEAD-RLS-2', 'name' => 'Cruce de tenant',
     ]));
@@ -206,13 +206,20 @@ function tenantACodesUnknownToB(): array
     $tables = DB::table('information_schema.columns as c')->join('information_schema.columns as t', fn ($join) => $join->on('t.table_name', '=', 'c.table_name')->on('t.table_schema', '=', 'c.table_schema'))
         ->where('c.table_schema', 'public')->where('c.column_name', 'code')->where('t.column_name', 'tenant_id')->distinct()->pluck('c.table_name');
 
-    return $tables->flatMap(function (string $table) {
+    $global = DB::table('information_schema.columns as c')->where('c.table_schema', 'public')->where('c.column_name', 'code')
+        ->whereNotExists(fn ($query) => $query->from('information_schema.columns as t')->whereColumn('t.table_name', 'c.table_name')->whereColumn('t.table_schema', 'c.table_schema')->where('t.column_name', 'tenant_id'))
+        ->pluck('c.table_name')
+        ->flatMap(fn (string $table) => DB::connection('pgsql_platform')->table($table)->pluck('code'))
+        ->filter(fn ($code) => is_string($code))
+        ->flip();
+
+    return $tables->flatMap(function (string $table) use ($global) {
         if (withinTenant(tenantB(), fn () => DB::table($table)->exists())) {
             return [];
         }
 
         return withinTenant(tenantA(), fn () => DB::table($table)->limit(40)->pluck('code'))
-            ->filter(fn ($code) => is_string($code) && strlen($code) >= 6 && preg_match('/^[A-Z][A-Z0-9]*-[A-Z0-9-]+$/', $code) === 1 && preg_match('/-0*1$/', $code) !== 1)
+            ->filter(fn ($code) => is_string($code) && ! $global->has($code) && strlen($code) >= 6 && preg_match('/^[A-Z][A-Z0-9]*-[A-Z0-9-]+$/', $code) === 1 && preg_match('/-0*1$/', $code) !== 1)
             ->map(fn (string $code) => [$code, $table]);
     })->unique(0)->values()->all();
 }

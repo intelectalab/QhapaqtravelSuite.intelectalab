@@ -31,7 +31,7 @@ return [
         'slug' => 'admin-usuarios-sedes',
         'audience' => 'agency',
         'module' => 'Administración',
-        'screen' => '/admin/usuarios/sedes',
+        'screen' => '/admin/sedes',
         'title' => 'Sedes',
         'summary' => 'Las sedes son las oficinas de tu agencia: agrupan usuarios, reservas y caja. Desde esta pestaña las creas, editas, desactivas o eliminas.',
         'steps' => [
@@ -119,6 +119,23 @@ return [
             ['question' => '¿Qué significa el número junto a cada color?', 'answer' => 'Es el contraste del texto sobre ese color según la norma WCAG AA, que pide 4.5 o más para leer con comodidad.'],
         ],
         'keywords' => ['colores', 'marca', 'logo', 'apariencia', 'tema', 'contraste', 'sitio web', 'pagina', 'portada', 'banner', 'textos', 'publicar', 'seo', 'redes sociales'],
+        'roles' => [],
+    ],
+    [
+        'slug' => 'admin-reglas-simulador',
+        'audience' => 'agency',
+        'module' => 'Administración',
+        'screen' => '/admin/reglas/simulador',
+        'title' => 'Simulador de reglas',
+        'summary' => 'Prueba cómo responden las reglas de reserva antes de cambiarlas.',
+        'steps' => [
+            ['title' => 'Elegir el caso', 'text' => 'Indica producto, fecha, pasajeros, moneda, forma de pago y el plan a simular.'],
+            ['title' => 'Leer el resultado', 'text' => 'El simulador muestra la disponibilidad del día, la cotización que saldría y qué reglas intervienen en cada paso.'],
+        ],
+        'faqs' => [
+            ['question' => '¿Simular cambia algo?', 'answer' => 'No. Solo calcula; no crea cotizaciones, reservas ni bloqueos.'],
+        ],
+        'keywords' => ['simulador', 'reglas', 'prueba', 'plan'],
         'roles' => [],
     ],
     [
@@ -213,16 +230,16 @@ return [
         'module' => 'Administración',
         'screen' => '/admin/suscripcion',
         'title' => 'Suscripción y uso',
-        'summary' => 'Tu plan de Qhapaq Travel Suite, el consumo del mes frente a sus límites, tus datos de facturación y las facturas que te emitimos.',
+        'summary' => 'Tu plan de KipuControl, el consumo del mes frente a sus límites, tus datos de facturación y las facturas que te emitimos.',
         'steps' => [
             ['title' => 'Revisar tu plan', 'text' => 'La banda superior muestra el plan, su precio y ciclo, el estado de la suscripción, el periodo actual, el próximo cobro, el saldo a favor y los adicionales contratados.'],
             ['title' => 'Controlar el consumo', 'text' => 'Consumo del mes frente al plan muestra cada límite con su barra. Al superar el 80 % aparece un aviso. En Consumo de los últimos meses alternas entre Reservas, WhatsApp, Correos y API.'],
             ['title' => 'Actualizar los datos de facturación', 'text' => 'En Datos de facturación pulsa editar y cambia RUC, razón social, dirección fiscal, ubigeo o correo para facturas. Aplican desde la próxima factura; las emitidas no cambian.'],
-            ['title' => 'Consultar tus facturas', 'text' => 'En Facturas de Qhapaq Travel Suite pulsa «Ver factura» para ver el detalle, el IGV, el pago y el estado ante SUNAT. Las tarjetas Pagadas y Por pagar o fallidas filtran la lista.'],
+            ['title' => 'Consultar tus facturas', 'text' => 'En Facturas de KipuControl pulsa «Ver factura» para ver el detalle, el IGV, el pago y el estado ante SUNAT. Las tarjetas Pagadas y Por pagar o fallidas filtran la lista.'],
         ],
         'faqs' => [
             ['question' => '¿Qué pasa si llego a un límite?', 'answer' => 'Los usuarios y las sedes se bloquean al llegar al límite. Las reservas solo avisan. Los mensajes de WhatsApp y correo que lo superen quedan en cola hasta el siguiente mes o hasta sumar un paquete.'],
-            ['question' => '¿Cómo cambio de plan?', 'answer' => 'Esta pantalla no cambia el plan. Solicítalo al equipo de Qhapaq Travel Suite y verás el nuevo plan aquí en cuanto se aplique.'],
+            ['question' => '¿Cómo cambio de plan?', 'answer' => 'Esta pantalla no cambia el plan. Solicítalo al equipo de KipuControl y verás el nuevo plan aquí en cuanto se aplique.'],
             ['question' => '¿Puedo corregir el RUC de una factura ya emitida?', 'answer' => 'No. Los datos de facturación se copian a cada factura al emitirla. Corrígelos aquí y se usarán desde la próxima.'],
         ],
         'keywords' => ['plan', 'factura', 'limite', 'consumo', 'pago'],

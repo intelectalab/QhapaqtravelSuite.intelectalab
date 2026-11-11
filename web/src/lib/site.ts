@@ -390,7 +390,7 @@ export interface SiteCart {
 export interface CheckoutTerms {
   currency: string;
   total: string;
-  modes: { value: "total" | "adelanto"; label: string; amount: string; balance?: string; balance_due?: string; pct?: number }[];
+  modes: { value: "total" | "adelanto" | "pagar_despues"; label: string; amount: string; balance?: string; balance_due?: string; pct?: number; hold_hours?: number; hold_until?: string }[];
   adelanto_unavailable: string | null;
   methods: { value: string; label: string }[];
   bank_accounts: { bank: string | null; name: string; currency: string; account_number: string; cci: string | null }[];
@@ -445,6 +445,7 @@ export interface SiteOrder {
   deposit_pct: number;
   amount_due_now: string;
   balance_due_date: string | null;
+  pay_later?: boolean;
   due: string;
   methods: { value: string; label: string }[];
   bank_accounts: CheckoutTerms["bank_accounts"];
@@ -464,11 +465,11 @@ export interface SiteOrder {
 }
 
 export function cartCookie(agencia: string): string {
-  return `qhapaq_cart_${agencia}`;
+  return `kipucontrol_cart_${agencia}`;
 }
 
 export function orderCookie(code: string): string {
-  return `qhapaq_order_${code}`;
+  return `kipucontrol_order_${code}`;
 }
 
 export const SITE_COUNTRIES = ["Perú", "Argentina", "Bolivia", "Brasil", "Chile", "Colombia", "Ecuador", "México", "Estados Unidos", "Canadá", "España", "Francia", "Alemania", "Reino Unido", "Italia", "Otro"].map((value) => ({ value, label: value }));
@@ -478,7 +479,7 @@ export const SITE_DOC_TYPES = [{ value: "DNI", label: "DNI" }, { value: "CE", la
 export const WISHLIST_STORAGE_KEY = "qts_site_wishlist";
 
 export function accountCookie(agencia: string): string {
-  return `qhapaq_account_${agencia}`;
+  return `kipucontrol_account_${agencia}`;
 }
 
 export interface AccountMoney {
@@ -563,4 +564,31 @@ export interface AccountReceivables {
   totals: { payable: AccountMoney[]; pending: AccountMoney[] };
   methods: { value: string; label: string }[];
   bank_accounts: CheckoutTerms["bank_accounts"];
+}
+
+export interface WidgetConfig {
+  agency: { subdomain: string; name: string };
+  product: { code: string; slug: string; name: string } | null;
+  defaults: { lang: "es" | "en"; currency: "PEN" | "USD"; theme: string; radius: number; reviews: boolean };
+  products: { code: string; slug: string; name: string; category: string; destination: string }[];
+  domains: string[];
+  site_url: string;
+}
+
+export interface WidgetHandoff {
+  code: string;
+  total: string;
+  currency: string;
+  expires_at: string;
+  checkout_url: string;
+}
+
+export interface ReviewInvite {
+  code: string;
+  agency: string;
+  traveler: string;
+  trip: { code: string; title: string; from: string | null; to: string | null };
+  expires_at: string;
+  subratings: { key: string; label: string }[];
+  items: { product: { code: string; name: string }; date: string; eligible: boolean; reason: string | null; review: { code: string; stars: number; title: string; status: string } | null }[];
 }

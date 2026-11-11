@@ -91,7 +91,7 @@ final class ResetPassword
     private function send(object $user, string $token): void
     {
         $link = rtrim((string) config('app.frontend_url'), '/').'/restablecer/'.$token.'?email='.rawurlencode((string) $user->email);
-        $body = "Hola {$user->name}:\n\nRecibimos un pedido para restablecer tu contraseña de {$user->agency} en Qhapaq Travel Suite.\n\nDefine una nueva aquí (el enlace vence en ".self::MINUTES." minutos y solo sirve una vez):\n{$link}\n\nSi no lo pediste, ignora este correo: tu contraseña actual sigue vigente.";
+        $body = "Hola {$user->name}:\n\nRecibimos un pedido para restablecer tu contraseña de {$user->agency} en KipuControl.\n\nDefine una nueva aquí (el enlace vence en ".self::MINUTES." minutos y solo sirve una vez):\n{$link}\n\nSi no lo pediste, ignora este correo: tu contraseña actual sigue vigente.";
 
         app(QueuedMail::class)->send((string) $user->email, (string) $user->name, "Restablece tu contraseña · {$user->agency}", $body);
     }

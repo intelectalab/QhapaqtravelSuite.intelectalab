@@ -1,5 +1,5 @@
 -- =============================================================================
--- Qhapaq Travel Suite · Esquema PostgreSQL 17 · 30_fase2.sql
+-- KipuControl · Esquema PostgreSQL 17 · 30_fase2.sql
 -- Fase 2 · Canales y campo
 -- Generado desde §3 de las especificaciones 00–18 + CONVENCIONES.md (fuente de verdad del kit).
 -- Tablas nuevas: 86. Requiere: 00_extensions_and_functions.sql y archivos previos.

@@ -295,7 +295,7 @@ def write_dictionary(cat, tables, out_dir):
 
     # índice general
     c = cat["counts"]
-    L = ["# Diccionario de datos · Qhapaq Travel Suite\n", gen + "\n",
+    L = ["# Diccionario de datos · KipuControl\n", gen + "\n",
          "Fuente de verdad: `kit-ia/database/*.sql`. Este índice y los archivos de `diccionario/` se regeneran con "
          "`python3 kit-ia/database/referencia/build_reference.py` (ver [README](README.md)).\n",
          "## Cifras del catálogo\n",
@@ -487,7 +487,7 @@ def write_index_html(er_dir, items):
                      f'<div class="svg">{svg}</div></section>')
     page = f"""<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Diagramas ER · Qhapaq</title>
+<title>Diagramas ER · KipuControl</title>
 <style>
 :root{{--navy:#0A3A73;--ink:#15202E;--muted:#5A6B82;--line:#D5DEEA;--bg:#F6F8FB;--card:#fff}}
 *{{box-sizing:border-box}}
@@ -508,7 +508,7 @@ section p a{{color:var(--navy)}}
 .svg svg{{max-width:none!important;height:auto}}
 @media (max-width:640px){{.top,nav,main{{padding-left:16px;padding-right:16px}}}}
 </style></head><body>
-<div class="top"><h1>Diagramas entidad-relación · Qhapaq Travel Suite</h1>
+<div class="top"><h1>Diagramas entidad-relación · KipuControl</h1>
 <p>Generado por build_reference.py desde el catálogo de PostgreSQL. Se omiten las FK a tenants(tenant_id) salvo en Plataforma; se muestran PK, FK, UK y columnas clave.</p></div>
 <nav>{''.join(nav)}</nav><main>{''.join(cards)}</main></body></html>"""
     (er_dir / "index.html").write_text(page, encoding="utf-8")

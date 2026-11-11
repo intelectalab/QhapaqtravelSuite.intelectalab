@@ -9,6 +9,7 @@ import { FieldList } from "@/components/ui/Details";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextField } from "@/components/ui/TextField";
 import { EditSection, SectionCard } from "@/features/admin/Settings";
+import { OutgoingMailCard } from "@/features/platform/OutgoingMail";
 import { formatDateTime } from "@/lib/format";
 import type { PlatformSettingsOverview } from "@/lib/platform";
 import type { Tone } from "@/lib/tone";
@@ -42,7 +43,7 @@ function FormProtectionFields({ protection }: { protection: PlatformSettingsOver
 const days = (list: number[]) => (list.length === 0 ? "—" : list.map((day) => (day === 0 ? "el mismo día" : `${day} ${day === 1 ? "día" : "días"}`)).join(", "));
 
 export function PlatformSettingsSections({ data }: { data: PlatformSettingsOverview }) {
-  const { issuer, taxes, notices, dunning, form_protection: protection, antivirus } = data.sections;
+  const { issuer, taxes, notices, dunning, form_protection: protection, outgoing_mail: mail, antivirus } = data.sections;
   const captcha = CAPTCHA_STATUS[protection.status];
   const version = data.lock_version;
 
@@ -160,7 +161,9 @@ export function PlatformSettingsSections({ data }: { data: PlatformSettingsOverv
         {protection.status !== "activa" && <p className="mt-3 rounded-xl bg-surface-2 px-3.5 py-2.5 text-[12.5px] text-fg-2">Mientras esté apagada, los formularios públicos funcionan sin esta verificación.</p>}
       </SectionCard>
 
-      <SectionCard index={5} icon={ScanSearch} tone={antivirus.ok && !antivirus.simulated ? "ok" : "sun"} title="Antivirus de adjuntos">
+      <OutgoingMailCard mail={mail} version={version} index={5} />
+
+      <SectionCard index={6} icon={ScanSearch} tone={antivirus.ok && !antivirus.simulated ? "ok" : "sun"} title="Antivirus de adjuntos">
         <FieldList
           fields={[
             { label: "Estado", value: <Badge tone={antivirus.simulated ? "warn" : antivirus.ok ? "ok" : "bad"}>{antivirus.simulated ? "Simulado" : antivirus.ok ? "Conectado" : "No responde"}</Badge> },

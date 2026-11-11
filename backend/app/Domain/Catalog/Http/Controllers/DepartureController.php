@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog\Http\Controllers;
 
+use App\Domain\Catalog\Actions\AvailabilityRegistry;
 use App\Domain\Catalog\Actions\DepartureRegistry;
 use App\Domain\Catalog\Http\Controllers\Concerns\ResolvesActor;
 use App\Domain\Catalog\Support\DepartureDirectory;
@@ -40,6 +41,25 @@ final class DepartureController
     public function cancel(Request $request, string $ref): JsonResponse
     {
         return response()->json(['data' => $this->registry->changeStatus($ref, 'cancelada', $this->reason($request), $this->actor($request))]);
+    }
+
+    public function confirmSeats(Request $request, AvailabilityRegistry $availability, string $ref): JsonResponse
+    {
+        if (! $request->has('lock_version') && $request->hasHeader('If-Match')) {
+            $request->merge(['lock_version' => trim((string) $request->header('If-Match'), '"W/ ')]);
+        }
+
+        $data = $request->validate([
+            'quantity' => ['required', 'integer', 'between:1,60'],
+            'reference' => ['required', 'string', 'min:3', 'max:60'],
+            'lock_version' => ['required', 'integer'],
+        ], [
+            'quantity.*' => 'Indica cuántos cupos vender (1 a 60).',
+            'reference.*' => 'Indica la reserva o el pedido.',
+            'lock_version.*' => 'Recarga la página e inténtalo de nuevo.',
+        ]);
+
+        return response()->json(['data' => $availability->sellSeats($ref, $data, $this->actor($request))]);
     }
 
     private function reason(Request $request): string

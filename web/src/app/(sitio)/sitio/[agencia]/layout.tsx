@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PreviewBridge } from "@/features/site/PreviewBridge";
+import { SiteAnalytics } from "@/features/site/SiteAnalytics";
 import { SiteBanner } from "@/features/site/SiteBanner";
 import { SiteProvider } from "@/features/site/SiteContext";
 import { SiteFooter } from "@/features/site/SiteFooter";
@@ -35,6 +36,7 @@ export default async function SiteLayout({ children, params }: LayoutProps<"/sit
         <SiteHeader name={profile.agency.name} initials={profile.agency.initials} logo={profile.agency.logo} />
         <main className="flex-1">{children}</main>
         <SiteFooter profile={profile} base={base} />
+        {!profile.preview && <SiteAnalytics />}
       </div>
     </SiteProvider>
   );

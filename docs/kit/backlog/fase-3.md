@@ -39,7 +39,7 @@ Cobertura referencial: 154 endpoints, 74 tablas citadas, 55 casos de prueba de l
 - Las dependencias con fases previas usan los IDs de `fase-0.md`, `fase-1a.md`, `fase-1b.md` y `fase-2.md`. F2-MOT-01 deja `plan_allows()` en verdadero: F3-PLT-03 activa la dimensión plan del `RuleResolver`.
 - El catálogo de funcionalidades de 13 §3.4 (28 claves, `features` + `plan_features` con niveles + add-ons + overrides) reemplaza la matriz de 18 entitlements de 09 §3.2 creada en F0-05; la migración de F3-PLT-01 mapea los valores existentes.
 - Precios, límites y matriz planes × reglas son **DEMO editables** (D-08, D-11, 13 §12-9): se siembran desde `seeds/plans.json`, `planCatalogDemo.json` y `settings.json › bookingRules[].minPlan` con `is_demo=true`.
-- Pasarela de cobro recurrente y OSE de la plataforma sin definir (D-01, D-02, 13 §12-1): se construye la interfaz `PaymentGateway` con adaptador sandbox y se reutiliza el adaptador OSE de Fase 2 con credenciales del emisor Qhapaq Cloud; el adaptador real se conecta cuando se decida, sin cambiar las historias.
+- Pasarela de cobro recurrente y OSE de la plataforma sin definir (D-01, D-02, 13 §12-1): se construye la interfaz `PaymentGateway` con adaptador sandbox y se reutiliza el adaptador OSE de Fase 2 con credenciales del emisor KipuControl Cloud; el adaptador real se conecta cuando se decida, sin cambiar las historias.
 - Excesos de consumo (overage) no se facturan: se avisa al 80/100 % y se bloquea según `hard` (13 §12-5); `line_type usage_overage` queda previsto.
 - Manager sin acceso a Suscripción ni API (13 §12-6); OAuth 2.0 queda en P2 (13 §12-7).
 - «Reportes avanzados» = metas reales y rendimiento de marketing en paneles y reportes, exportación XLSX/PDF y envíos programados. Los read models `rpt_*`, los 7 reportes, la exportación CSV y los paneles ejecutivo/gerencia ya se construyen en Fase 1-B (F1B-REP-01…05, que difiere XLSX/PDF, programación y metas a esta fase).
@@ -378,7 +378,7 @@ Cobertura referencial: 154 endpoints, 74 tablas citadas, 55 casos de prueba de l
 
 #### F3-BIL-01 · Facturas de plataforma, notas de crédito, intentos de cobro y correlativos
 
-**Historia:** Como plataforma (Qhapaq Cloud S.A.C.), quiero emitir facturas y notas de crédito a cada tenant con numeración propia, para cobrar la suscripción con respaldo tributario.
+**Historia:** Como plataforma (KipuControl Cloud S.A.C.), quiero emitir facturas y notas de crédito a cada tenant con numeración propia, para cobrar la suscripción con respaldo tributario.
 
 **Especificación:** 13 §3.8, §4.2, §8.1
 
@@ -674,7 +674,7 @@ Cobertura referencial: 154 endpoints, 74 tablas citadas, 55 casos de prueba de l
 **Criterios de aceptación:**
 
 1. `OutboxRelay` publica eventos de `sys_outbox` y, por cada webhook `active` suscrito (GIN `events @> ARRAY[type]`), crea una entrega `pending` y encola `DeliverWebhookJob` (cola `integrations`).
-2. Cuerpo `{id: evt_…, type, api_version, created_at, tenant_id, data}` sin costos ni márgenes; cabeceras `Qhapaq-Signature: t=…,v1=…`, `Qhapaq-Event-Id`, `Qhapaq-Event-Type`, `Qhapaq-Delivery-Id`, `User-Agent: Qhapaq-Webhooks/1.0`.
+2. Cuerpo `{id: evt_…, type, api_version, created_at, tenant_id, data}` sin costos ni márgenes; cabeceras `KipuControl-Signature: t=…,v1=…`, `KipuControl-Event-Id`, `KipuControl-Event-Type`, `KipuControl-Delivery-Id`, `User-Agent: KipuControl-Webhooks/1.0`.
 3. Firma `hex(HMAC_SHA256(secret, t + "." + raw_body))`; timeout 10 s; SSRF revalidado en cada envío (DNS rebinding).
 4. 2xx = entregado; 410 = deshabilitar; otro código o timeout → reintentos `[60, 300, 1800, 7200, 21600, 86400]` (6 intentos) → `failed`.
 5. 10 fallos consecutivos → `disabled` + `webhook.deshabilitado` al Tenant Admin (API-BR-07); reenvío manual crea entrega `manual=true`.

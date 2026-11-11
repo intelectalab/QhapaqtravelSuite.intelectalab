@@ -32,7 +32,10 @@ function catHoldAction(string $ref, string $action, array $body = [])
     return test()->postJson("/api/v1/catalog/holds/{$ref}/{$action}", $body, critical($lock));
 }
 
-beforeEach(fn () => Queue::fake());
+beforeEach(function () {
+    lockCatalogProducts();
+    Queue::fake();
+});
 
 it('crea un hold que retiene cupo sin tocar lo vendido', function () {
     actingAsSeed('U05');

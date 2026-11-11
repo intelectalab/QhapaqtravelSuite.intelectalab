@@ -10,7 +10,7 @@ export default async function PlatformConsoleLayout({ children }: { children: Re
   const workspace: WorkspaceInfo = {
     navigation: "platform",
     userId: me.id,
-    account: { name: "Consola de plataforma", detail: "Qhapaq Travel Suite", initials: "QT" },
+    account: { name: "Consola de plataforma", detail: "KipuControl", initials: "KC" },
     person: { name: me.name, email: me.email, detail: "Super Admin", color: null },
     logoutHref: REALMS.platform.logout,
     counts: {},

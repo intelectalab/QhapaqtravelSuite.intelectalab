@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, AtSign, Building2, CalendarDays, FileLock2, MapPin, Pencil, Phone, Plus, Tag, TriangleAlert, User } from "lucide-react";
+import { Archive, AtSign, Building2, CalendarDays, FileLock2, MapPin, Pencil, Phone, Plus, Tag, TriangleAlert, User, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { anonymizeClient, archiveClient, createClient, updateClient, type ClientActionState } from "@/app/(backoffice)/crm/clientes/actions";
@@ -52,6 +52,7 @@ function DuplicateNotice({ state }: { state: ClientActionState }) {
 function ClientFields({ options, client }: { options: ClientFormOptions; client?: ClientDetail }) {
   const [kind, setKind] = useState<string>(client?.rawKind ?? "persona");
   const company = kind === "empresa";
+  const primary = client?.contacts.find((contact) => contact.is_primary);
 
   return (
     <>
@@ -84,6 +85,19 @@ function ClientFields({ options, client }: { options: ClientFormOptions; client?
           <TextField label="País" name="country" defaultValue={client?.country ?? "Perú"} />
         </div>
       </Section>
+      {company && (
+        <Section title="Contacto principal">
+          <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-3">
+            <TextField label="Nombre" name="contact_name" defaultValue={primary?.name} icon={<UserRound size={17} />} />
+            <TextField label="Cargo" name="contact_role" defaultValue={primary?.role ?? undefined} placeholder="Por ejemplo: Compras" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <TextField label="Correo" name="contact_email" type="email" defaultValue={primary?.email ?? undefined} icon={<AtSign size={17} />} />
+            <TextField label="Teléfono" name="contact_phone" inputMode="tel" defaultValue={primary?.phone ?? undefined} icon={<Phone size={17} />} />
+          </div>
+          <p className="-mt-1 text-[12.5px] text-fg-3">{primary ? "Actualiza a la persona con quien coordinas. Los demás contactos están en «Contactos y datos»." : "La persona con quien coordinas los viajes de la empresa."}</p>
+        </Section>
+      )}
       <Section title="Para tu equipo">
         <SelectField key={client ? "segment" : kind} label="Segmento" name="segment" options={options.segments.map((segment) => ({ value: segment, label: segmentLabel(segment) }))} defaultValue={client?.rawSegment ?? (company ? "Corporativo" : options.segments[0])} />
         {options.canReassign && options.advisors.length > 0 && (

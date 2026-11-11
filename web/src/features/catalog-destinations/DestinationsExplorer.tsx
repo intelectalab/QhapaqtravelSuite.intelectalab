@@ -3,6 +3,7 @@
 import { ChevronRight, Compass, MapPin, Package } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { ExportButton } from "@/components/table/Toolbar";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
@@ -10,8 +11,26 @@ import { TintCardTitle } from "@/components/ui/Tinted";
 import { DESTINATION_TONE, type DestinationNode, type DestinationsOverview } from "@/lib/catalog-destinations";
 import { PRODUCT_STATUS, type ProductStatus } from "@/lib/catalog";
 import { cn } from "@/lib/cn";
+import { downloadCsv, type CsvExport } from "@/lib/csv";
 import { toneStyle } from "@/lib/tone";
 import { DestinationCreateAction, DestinationDeleteAction, DestinationEditAction } from "./DestinationForms";
+
+const DESTINATIONS_CSV: CsvExport<DestinationNode> = {
+  fileName: "destinos",
+  columns: [
+    { header: "Código", value: (node) => node.ref },
+    { header: "Destino", value: (node) => node.name },
+    { header: "Tipo", value: (node) => node.type },
+    { header: "Nivel", value: (node) => node.level },
+    { header: "Ruta", value: (node) => node.path },
+    { header: "Depende de", value: (node) => node.parent?.name },
+    { header: "Latitud", value: (node) => node.lat },
+    { header: "Longitud", value: (node) => node.lng },
+    { header: "Subdestinos", value: (node) => node.children },
+    { header: "Productos directos", value: (node) => node.direct_products },
+    { header: "Productos con subdestinos", value: (node) => node.products.length },
+  ],
+};
 
 function TreeRow({ node, active, collapsed, onSelect, onToggle, index }: { node: DestinationNode; active: boolean; collapsed: boolean; onSelect: () => void; onToggle: () => void; index: number }) {
   return (
@@ -55,7 +74,13 @@ export function DestinationsExplorer({ overview }: { overview: DestinationsOverv
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
       <Card>
-        <TintCardTitle icon={Compass} title="Árbol de destinos" aside={`${nodes.length} destinos`} />
+        <TintCardTitle
+          icon={Compass}
+          title="Árbol de destinos"
+          aside={
+            <ExportButton disabled={nodes.length === 0} onClick={() => downloadCsv(nodes, DESTINATIONS_CSV)} />
+          }
+        />
         <ul className="flex flex-col gap-0.5">
           {visible.map((node, index) => (
             <TreeRow key={node.ref} node={node} index={index} active={node.ref === selected?.ref} collapsed={collapsed.has(node.ref)} onSelect={() => setSelectedRef(node.ref)} onToggle={() => toggle(node.ref)} />

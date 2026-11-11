@@ -45,7 +45,7 @@ final class InvoiceDirectory
 
     public function summary(): array
     {
-        return ['kpis' => $this->kpis(), 'pending' => $this->pendingReceivables()];
+        return ['kpis' => $this->kpis(), 'pending' => $this->pendingReceivables(), 'invoiceable' => $this->invoiceableReceivables()];
     }
 
     public function find(string $number, User $viewer): array
@@ -187,6 +187,27 @@ final class InvoiceDirectory
                 $pending = round((float) $row->paid_amount - (float) ($invoiced[$row->id] ?? 0), 2);
 
                 return $pending > 0.5 ? ['code' => $row->code, 'concept' => $row->concept, 'client' => $row->client_name, 'reservation' => $row->reservation_code, 'currency' => $row->currency, 'paid' => (string) $row->paid_amount, 'pending' => number_format($pending, 2, '.', '')] : null;
+            })->filter()->values()->all();
+    }
+
+    private function invoiceableReceivables(): array
+    {
+        $invoiced = DB::table('fin_invoices')->where('status', '<>', 'anulado')->whereNotNull('receivable_id')->get(['receivable_id', 'doc_type', 'total_amount'])
+            ->groupBy('receivable_id')->map(fn (Collection $items): float => $items->sum(fn (object $row): float => ($row->doc_type === '07' ? -1 : 1) * (float) $row->total_amount));
+
+        return DB::table('fin_receivables as x')->join('booking_reservations as b', 'b.id', '=', 'x.reservation_id')->join('crm_clients as c', 'c.id', '=', 'x.client_id')
+            ->whereNull('x.deleted_at')->where('x.status', '<>', 'cancelada')
+            ->orderByDesc('x.created_at')->limit(500)->get(['x.id', 'x.code', 'x.concept', 'x.kind', 'x.amount', 'x.paid_amount', 'x.currency', 'x.due_date', 'b.code as reservation_code', 'c.name as client_name'])
+            ->map(function (object $row) use ($invoiced): ?array {
+                $left = round((float) $row->amount - (float) ($invoiced[$row->id] ?? 0), 2);
+
+                return $left > 0.5 ? [
+                    'value' => $row->code,
+                    'label' => "{$row->code} · {$row->client_name}",
+                    'hint' => "{$row->concept} · {$row->reservation_code} · {$row->currency} ".number_format($left, 2, '.', '').((float) $row->paid_amount <= 0 ? ' · sin cobrar' : ''),
+                    'kind' => $row->kind,
+                    'paid' => (float) $row->paid_amount > 0,
+                ] : null;
             })->filter()->values()->all();
     }
 

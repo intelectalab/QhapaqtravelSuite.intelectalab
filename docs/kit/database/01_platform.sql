@@ -1,5 +1,5 @@
 -- =============================================================================
--- Qhapaq Travel Suite · Esquema PostgreSQL 17 · 01_platform.sql
+-- KipuControl · Esquema PostgreSQL 17 · 01_platform.sql
 -- Plataforma (tablas sin tenant / sin RLS de tenant)
 -- Generado desde §3 de las especificaciones 00–18 + CONVENCIONES.md (fuente de verdad del kit).
 -- Tablas nuevas: 30. Requiere: 00_extensions_and_functions.sql.
@@ -608,7 +608,7 @@ comment on table coupons is '[Spec 13 §3.9] [Plataforma] Cupones de suscripció
 comment on table subscriptions is '[Spec 13 §3.6] [Plataforma] Suscripción del tenant a un plan. [Fase 3]';
 comment on table coupon_redemptions is '[Spec 13 §3.9] [Plataforma] Canje de cupón por tenant. [Fase 3]';
 comment on table subscription_items is '[Spec 13 §3.6] [Plataforma] Add-ons contratados en la suscripción. [Fase 3]';
-comment on table platform_invoices is '[Spec 13 §3.8] [Plataforma] Facturas de plataforma (emisor Qhapaq Cloud). [Fase 3]';
+comment on table platform_invoices is '[Spec 13 §3.8] [Plataforma] Facturas de plataforma (emisor KipuControl Cloud). [Fase 3]';
 comment on table platform_invoice_lines is '[Spec 13 §3.8] [Plataforma] Líneas de factura de plataforma. [Fase 3]';
 comment on table subscription_changes is '[Spec 13 §3.6] [Plataforma] Cambios de plan/ciclo/add-on (programados o aplicados). [Fase 3]';
 comment on table platform_credit_notes is '[Spec 13 §3.8] [Plataforma] Notas de crédito de plataforma (serie NQ01). [Fase 3]';

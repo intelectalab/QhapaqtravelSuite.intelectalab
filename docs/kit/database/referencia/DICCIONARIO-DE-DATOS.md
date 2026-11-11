@@ -1,4 +1,4 @@
-# Diccionario de datos · Qhapaq Travel Suite
+# Diccionario de datos · KipuControl
 
 _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras cargar `00`→`90`. No editar a mano._
 
@@ -58,7 +58,7 @@ Diagrama general entre dominios: [`er/00-general.svg`](er/00-general.svg). Visor
 | [`plans`](diccionario/plataforma.md#plans) | plataforma | plataforma | [Spec 13 §3.2 + 09 §3.1] [Plataforma] Planes comerciales (Starter/Professional/Enterprise). |
 | [`platform_credit_notes`](diccionario/plataforma.md#platform_credit_notes) | plataforma | plataforma | [Spec 13 §3.8] [Plataforma] Notas de crédito de plataforma (serie NQ01). [Fase 3] |
 | [`platform_invoice_lines`](diccionario/plataforma.md#platform_invoice_lines) | plataforma | plataforma | [Spec 13 §3.8] [Plataforma] Líneas de factura de plataforma. [Fase 3] |
-| [`platform_invoices`](diccionario/plataforma.md#platform_invoices) | plataforma | plataforma | [Spec 13 §3.8] [Plataforma] Facturas de plataforma (emisor Qhapaq Cloud). [Fase 3] |
+| [`platform_invoices`](diccionario/plataforma.md#platform_invoices) | plataforma | plataforma | [Spec 13 §3.8] [Plataforma] Facturas de plataforma (emisor KipuControl Cloud). [Fase 3] |
 | [`platform_metrics_daily`](diccionario/plataforma.md#platform_metrics_daily) | plataforma | plataforma | [Spec 13 §3.1] [Plataforma] Snapshot diario de MRR/ARR/churn. [Fase 3] (supuesto: columnas) |
 | [`platform_sequences`](diccionario/plataforma.md#platform_sequences) | plataforma | plataforma | [Spec 13 §3.8] [Plataforma] Correlativos globales de plataforma (series FQ01/NQ01, TNT-, SUB-). |
 | [`platform_users`](diccionario/plataforma.md#platform_users) | plataforma | plataforma | [Spec 00 §3.1] [Plataforma] Usuarios de plataforma (Super Admin). Guard `platform`; nunca tienen filas en iam_users. |

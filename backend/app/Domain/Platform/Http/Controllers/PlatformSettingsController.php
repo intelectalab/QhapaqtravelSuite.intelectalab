@@ -6,8 +6,10 @@ namespace App\Domain\Platform\Http\Controllers;
 
 use App\Domain\Admin\Support\Branding;
 use App\Domain\Platform\Actions\UpdateFormProtection;
+use App\Domain\Platform\Actions\UpdateOutgoingMail;
 use App\Domain\Platform\Actions\UpdatePlatformSettings;
 use App\Domain\Platform\Models\PlatformUser;
+use App\Domain\Platform\Support\OutgoingMail;
 use App\Domain\Platform\Support\PlatformBranding;
 use App\Domain\Platform\Support\PlatformNotifications;
 use App\Domain\Platform\Support\PlatformSearch;
@@ -77,6 +79,40 @@ final class PlatformSettingsController
         ]);
 
         return response()->json(['data' => $forms->update((bool) $data['enabled'], (string) ($data['site_key'] ?? ''), $data['secret'] ?? null, $this->user($request))]);
+    }
+
+    public function updateOutgoingMail(Request $request, UpdateOutgoingMail $mail): JsonResponse
+    {
+        $enabled = $request->boolean('enabled');
+        $required = $enabled ? 'required' : 'nullable';
+        $data = $request->validate([
+            'enabled' => ['required', 'boolean'],
+            'host' => [$required, 'string', 'max:190', 'regex:/^[A-Za-z0-9.-]+$/'],
+            'port' => [$required, 'integer', 'min:1', 'max:65535'],
+            'encryption' => ['required', Rule::in(OutgoingMail::ENCRYPTIONS)],
+            'username' => [$required, 'string', 'max:190'],
+            'password' => ['nullable', 'string', 'max:255'],
+            'from_address' => [$required, 'email', 'max:190'],
+            'from_name' => ['nullable', 'string', 'max:120'],
+        ], [
+            'enabled.*' => 'Indica si el correo de salida queda activo.',
+            'host.*' => 'Escribe el servidor de salida, por ejemplo mail.tudominio.com.',
+            'port.*' => 'El puerto va de 1 a 65535. Con SSL suele ser 465 y con STARTTLS, 587.',
+            'encryption.*' => 'Elige el cifrado.',
+            'username.*' => 'Escribe el usuario del buzón, casi siempre la dirección completa.',
+            'password.*' => 'La contraseña no puede pasar de 255 caracteres.',
+            'from_address.*' => 'Escribe un remitente válido.',
+            'from_name.*' => 'El nombre del remitente no puede pasar de 120 caracteres.',
+        ]);
+
+        return response()->json(['data' => $mail->update($data, $request->input('password'), $this->user($request))]);
+    }
+
+    public function testOutgoingMail(Request $request, UpdateOutgoingMail $mail): JsonResponse
+    {
+        $data = $request->validate(['to' => ['required', 'email', 'max:190']], ['to.*' => 'Escribe el correo que recibirá la prueba.']);
+
+        return response()->json(['data' => $mail->sendTest(mb_strtolower((string) $data['to']), $this->user($request))]);
     }
 
     public function settings(UpdatePlatformSettings $settings): JsonResponse

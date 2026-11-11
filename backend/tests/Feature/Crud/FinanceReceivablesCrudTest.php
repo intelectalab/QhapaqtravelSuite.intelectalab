@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\DB;
 
+beforeEach(fn () => lockTreasury());
+
 it('anular una cuota abierta la deja cancelada con fecha, motivo y auditoría', function () {
     actingAsSeed('U07');
 

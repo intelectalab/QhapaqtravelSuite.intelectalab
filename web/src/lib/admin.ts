@@ -1,3 +1,4 @@
+import type { PlansCatalog } from "@/lib/software";
 export interface AdminActionState {
   message: string | null;
   done: boolean;
@@ -139,6 +140,7 @@ export interface SettingsOverview {
   base_locked: boolean;
   channels: SettingsChannel[];
   sequences: SettingsSequence[];
+  sequence_types: { value: string; label: string; pad: number; year_reset: boolean }[];
   options: {
     sedes: Option[];
     timezones: string[];
@@ -207,7 +209,47 @@ export interface RulesOverview {
   groups: { name: string; total: number; active: number }[];
   plan: string;
   history: AuditEntry[];
+  templates: RuleTemplate[];
+  template_applied: { code: string; name: string; at: string; by: string | null } | null;
   can_manage: boolean;
+}
+
+export interface RuleRef {
+  code: string;
+  name: string;
+}
+
+export interface RuleTemplate {
+  code: string;
+  name: string;
+  description: string;
+  active: number;
+  inactive: number;
+  enable: RuleRef[];
+  disable: RuleRef[];
+  blocked: RuleRef[];
+}
+
+export interface PaxMessage {
+  code: string;
+  reservation: string | null;
+  reservation_title: string | null;
+  template: string | null;
+  template_name: string | null;
+  channel: string;
+  recipient: string;
+  subject: string | null;
+  status: "programado" | "enviado" | "entregado" | "leido" | "fallido" | "cancelado";
+  direction: "saliente" | "entrante";
+  origin: "auto" | "manual" | "prueba";
+  scheduled_at: string | null;
+  sent_at: string | null;
+  delivered_at: string | null;
+  read_at: string | null;
+  attempts: number;
+  error: string | null;
+  lang: string;
+  at: string;
 }
 
 export interface PaxTemplate {
@@ -223,6 +265,8 @@ export interface PaxTemplate {
   lang: "ES" | "EN";
   only_if_balance: boolean;
   only_if_missing_docs: boolean;
+  products: string[];
+  sales_channels: string[];
   rule: { code: string; name: string; enabled: boolean } | null;
   active: boolean;
   sent: number;
@@ -238,6 +282,10 @@ export interface PaxTemplatesOverview {
   variables: { key: string; label: string }[];
   rules: (Option & { enabled: boolean })[];
   messages_enabled: boolean;
+  products: (Option & { hint?: string })[];
+  sales_channels: Option[];
+  reservations: (Option & { hint?: string })[];
+  can_send: boolean;
   sample: { reservation: string | null; values: Record<string, string> };
   history: AuditEntry[];
   can_manage: boolean;
@@ -254,6 +302,7 @@ export interface NotificationRule {
   critical: boolean;
   updated_at: string | null;
   updated_by: string | null;
+  custom_templates: Partial<Record<"email" | "whatsapp" | "push", number>>;
 }
 
 export interface NotificationMessage {
@@ -309,7 +358,7 @@ export interface NotificationRulesMeta {
 export interface NotificationsOverview {
   rules: NotificationRule[];
   messages: NotificationMessage[];
-  kpis: { sent_7d: number; failed: number; pending: number; routes: number };
+  kpis: { sent_7d: number; failed: number; pending: number; routes: number; messages: number };
   options: { channels: Option[]; timings: Option[]; conditions: Option[] };
   history: AuditEntry[];
   can_manage: boolean;
@@ -354,6 +403,30 @@ export interface AddonOffer {
 
 export type BillingCycle = "monthly" | "annual";
 
+export interface PaymentMethod {
+  brand: string;
+  last4: string;
+  exp: string;
+  holder: string;
+  status: "active" | "expired" | "removed";
+  token_hint: string;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+export interface NextCharge {
+  date: string;
+  plan: string;
+  cycle: BillingCycle;
+  base: number;
+  addons: number;
+  discount: number;
+  credit: number;
+  net: number;
+  igv: number;
+  total: number;
+}
+
 export interface PlanOption {
   code: string;
   name: string;
@@ -368,11 +441,7 @@ export interface PlanOption {
   rules_total: number;
 }
 
-export interface PlanRules {
-  current: string;
-  plans: PlanOption[];
-  rules: { group: string; rules: { code: string; name: string; description: string | null; from: string | null; rank: number }[] }[];
-}
+export type PlanRules = PlansCatalog & { current: string };
 
 export interface PlanChangePreview {
   kind: "upgrade" | "downgrade" | "cycle";
@@ -404,10 +473,13 @@ export interface SubscriptionOverview {
     trial_ends_at: string | null;
     scheduled: { kind: string; plan: string | null; cycle: "monthly" | "annual" | null; effective_at: string } | null;
     coupon: { code: string; label: string; remaining_cycles: number } | null;
-    billing: { ruc: string; name: string; address: string; ubigeo: string | null; email: string };
+    billing: { ruc: string; name: string; address: string; ubigeo: string | null; email: string; contact: string | null; doc_type: "Factura" | "Boleta" };
   } | null;
   addons: { code: string; label: string; quantity: number; unit_price: number; since: string; ends_at: string | null; detail: string | null }[];
   addon_catalog: AddonOffer[];
+  payment_method: PaymentMethod | null;
+  next_charge: NextCharge | null;
+  modules: { key: string; label: string; enabled: boolean; source: "plan" | "addon" | "override" | "none"; valid_until: string | null }[];
   usage: UsageMetric[];
   history: Record<string, { month: string; value: number }[]>;
   invoices: PlatformInvoice[];
@@ -472,6 +544,8 @@ export interface ApiOverview {
   apps: { name: string; vendor: string; scopes: string[]; redirects: string[]; status: string; created_at: string; last_token_at: string }[];
   limits: { api_keys: number | null; webhooks: number | null; calls_month: number | null; rate_per_min: number | null };
   calls_month: number;
+  calls_history: { month: string; value: number }[];
+  api_version: string;
   scopes: Option[];
   events: Option[];
   history: AuditEntry[];
@@ -581,4 +655,73 @@ export function actionLabel(action: string): string {
 
 export function latest(values: (string | null)[]): string | null {
   return values.filter((value): value is string => Boolean(value)).sort().at(-1) ?? null;
+}
+
+export interface SimulatorOptions {
+  products: (Option & { hint?: string })[];
+  plans: string[];
+  current_plan: string;
+  today: string;
+}
+
+export interface RuleSimulation {
+  product: { code: string; name: string };
+  plan: string | null;
+  current_plan: boolean;
+  day: { status: string; label: string; left: number | null; note: string | null };
+  pax: { ok: boolean; errors: string[]; seats: number };
+  quote: {
+    currency: string;
+    lines: { key: string; kind: string; label: string; qty: number; amount: string; removed: boolean }[];
+    adjustments: { key: string; label: string; amount: string }[];
+    total: string;
+    payment_mode: string;
+    modes: string[];
+    deposit_pct: number;
+    deposit: string;
+    balance_due: string | null;
+    hold_hours: number | null;
+    warnings: string[];
+  };
+  warning: string | null;
+  rules: { code: string; name: string; group: string; enabled: boolean; effective: boolean; plan_allows: boolean; overridden: boolean }[];
+}
+
+export interface CurrencyRow {
+  code: string;
+  name: string;
+  symbol: string;
+  active: boolean;
+  is_base: boolean;
+  is_charge: boolean;
+  rate: number | null;
+  client_rate: number | null;
+  rate_date: string | null;
+}
+
+export interface CurrenciesOverview {
+  currencies: CurrencyRow[];
+  settings: { margin_pct: number; alert_pct: number; multicurrency: boolean };
+  can_manage: boolean;
+}
+
+export interface WebhookDeliveryDetail {
+  code: string;
+  webhook: string;
+  url: string;
+  event: string;
+  event_id: string;
+  entity: string | null;
+  attempt: number;
+  status: "pending" | "delivered" | "retrying" | "failed";
+  http: number | null;
+  ms: number | null;
+  error: string | null;
+  response: string | null;
+  next_retry_at: string | null;
+  manual: boolean;
+  at: string;
+  payload: unknown;
+  headers: Record<string, string>;
+  related: { code: string; status: string; http: number | null; manual: boolean; at: string }[];
 }

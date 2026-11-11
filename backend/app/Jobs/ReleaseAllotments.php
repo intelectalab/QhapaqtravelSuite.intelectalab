@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Domain\Catalog\Support\AllotmentConsumption;
 use App\Domain\Finance\Support\Consolidation;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Money\Decimal;
@@ -18,6 +19,7 @@ final class ReleaseAllotments extends TenantJob
     {
         $today = $this->today()->toDateString();
         $audit = app(AuditLogger::class);
+        $this->resync($today);
         $days = DB::table('catalog_allotment_days as d')
             ->join('catalog_allotments as a', 'a.id', '=', 'd.allotment_id')
             ->whereIn('a.status', ['activo', 'en_release'])
@@ -61,6 +63,18 @@ final class ReleaseAllotments extends TenantJob
         $result = $charges === 0 ? $result : $result.' · '.self::plural($charges, 'cargo por no uso', 'cargos por no uso')." ({$chargedTotal})";
 
         return $expired->isEmpty() ? $result : $result.' · '.self::plural($expired->count(), 'contrato vencido', 'contratos vencidos');
+    }
+
+    private function resync(string $today): void
+    {
+        $consumption = app(AllotmentConsumption::class);
+        DB::table('catalog_allotments as a')->whereNull('a.deleted_at')
+            ->whereExists(fn ($query) => $query->from('catalog_allotment_days as d')->whereColumn('d.allotment_id', 'a.id')->whereNull('d.closed_at')
+                ->where(fn ($due) => $due->where('d.release_deadline', '<=', $today)->orWhere('d.service_date', '<', $today)))
+            ->whereExists(fn ($query) => $query->from('catalog_allotment_consumptions as c')->join('catalog_allotment_days as cd', 'cd.id', '=', 'c.allotment_day_id')
+                ->whereColumn('cd.allotment_id', 'a.id'))
+            ->orderBy('a.id')->lock('for no key update of a')->get(['a.id', 'a.code', 'a.service_id', 'a.provider_id', 'a.kind', 'a.valid_from', 'a.valid_to', 'a.status'])
+            ->each(fn (object $contract) => $consumption->sync($contract));
     }
 
     private function charge(string $today, AuditLogger $audit): array

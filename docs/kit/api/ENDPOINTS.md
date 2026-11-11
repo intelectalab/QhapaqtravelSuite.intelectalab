@@ -1,4 +1,4 @@
-# Índice de endpoints — Qhapaq Travel Suite API v1.0.0
+# Índice de endpoints — KipuControl API v1.0.0
 
 > Generado por `build_openapi.py` desde la §6 de las 19 especificaciones. No editar a mano.
 
@@ -909,7 +909,7 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 | POST | `/api/v1/public/auth/register` | público / token | 15 §6.5 | 🌐 |
 | POST | `/api/v1/public/availability` | público | 15 §6.2 | 🌐 |
 | GET | `/api/v1/public/booking-rules` | público | 15 §6.6 | 🌐 |
-| POST | `/api/v1/public/carts` | público \| X-Qhapaq-Key + Origin verificado | 15 §6.2, 17 §6 | 🔑 🌐 |
+| POST | `/api/v1/public/carts` | público \| X-KipuControl-Key + Origin verificado | 15 §6.2, 17 §6 | 🔑 🌐 |
 | GET | `/api/v1/public/carts/current` | token carrito | 15 §6.2 | 🌐 |
 | POST | `/api/v1/public/carts/current/items` | token carrito | 15 §6.2, 15 §6.6 | 🔑 🌐 |
 | PATCH | `/api/v1/public/carts/current/items/{line}` | token carrito | 15 §6.2 | 🌐 |
@@ -954,12 +954,12 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 | GET | `/api/v1/public/posts` | público | 15 §6.1 | 🌐 |
 | GET | `/api/v1/public/posts/{slug}` | público | 15 §6.1 | 🌐 |
 | POST | `/api/v1/public/price-quote` | público | 15 §6.2 | 🌐 |
-| GET | `/api/v1/public/products` | público \| X-Qhapaq-Key + Origin verificado | 15 §6.1, 17 §6 | 🌐 |
-| GET | `/api/v1/public/products/{slug}` | público \| X-Qhapaq-Key + Origin verificado | 15 §6.1, 17 §6 | 🌐 |
-| GET | `/api/v1/public/products/{slug}/availability` | público \| pública \| X-Qhapaq-Key + Origin verificado | 15 §6.6, 16 §6.1, 17 §6 | 🌐 |
+| GET | `/api/v1/public/products` | público \| X-KipuControl-Key + Origin verificado | 15 §6.1, 17 §6 | 🌐 |
+| GET | `/api/v1/public/products/{slug}` | público \| X-KipuControl-Key + Origin verificado | 15 §6.1, 17 §6 | 🌐 |
+| GET | `/api/v1/public/products/{slug}/availability` | público \| pública \| X-KipuControl-Key + Origin verificado | 15 §6.6, 16 §6.1, 17 §6 | 🌐 |
 | GET | `/api/v1/public/products/{slug}/calendar` | público | 15 §6.1 | 🌐 |
 | GET | `/api/v1/public/products/{slug}/departures` | público | 15 §6.1 | 🌐 |
-| POST | `/api/v1/public/quote` | público \| pública \| X-Qhapaq-Key + Origin verificado | 15 §6.6, 16 §6.1, 17 §6 | 🌐 |
+| POST | `/api/v1/public/quote` | público \| pública \| X-KipuControl-Key + Origin verificado | 15 §6.6, 16 §6.1, 17 §6 | 🌐 |
 | GET | `/api/v1/public/site` | público | 15 §6.1 | 🌐 |
 | POST | `/api/v1/webhooks/payments/{gateway}` | firma HMAC del proveedor \| firma del proveedor \| firma de la pasarela | 08 §6.3, 13 §6, 15 §6.3 | 🪝 |
 
@@ -1028,7 +1028,7 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 | DELETE | `/api/v1/notifications/pax-templates/{id}` | admin.settings.manage (GET también operations.assign) | 17 §6 | 🔒 |
 | POST | `/api/v1/notifications/pax-templates/{id}/preview` | admin.settings.manage \| operations.assign | 17 §6 |  |
 | POST | `/api/v1/notifications/pax-templates/{id}/test` | admin.settings.manage | 17 §6 | 🔑 |
-| POST | `/api/v1/public/widget-handoffs` | X-Qhapaq-Key + Origin verificado | 17 §6 | 🔑 🌐 |
+| POST | `/api/v1/public/widget-handoffs` | X-KipuControl-Key + Origin verificado | 17 §6 | 🔑 🌐 |
 | POST | `/api/v1/reservations/{id}/pax-messages` | admin.settings.manage \| operations.assign | 17 §6 | 🔑 |
 | POST | `/api/v1/webhooks/providers/{provider}` | firma del proveedor | 17 §6 | 🪝 |
 
@@ -1166,7 +1166,7 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 
 | Método | Ruta | Permiso | Spec | Marcas |
 |---|---|---|---|---|
-| GET | `/api/v1/public/reviews` | público \| X-Qhapaq-Key + Origin verificado | 15 §6.1, 15 §6.7, 17 §6, 18 §6 | 🌐 |
+| GET | `/api/v1/public/reviews` | público \| X-KipuControl-Key + Origin verificado | 15 §6.1, 15 §6.7, 17 §6, 18 §6 | 🌐 |
 | POST | `/api/v1/public/reviews/by-token` | — | 15 §6.7, 18 §6 | 🔑 🌐 |
 
 ### Reglas, comunicaciones y monedas (9)
@@ -1227,13 +1227,13 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 | POST | `/api/v1/platform/tenants/{id}/reactivate` | 09 §6.1 Plataforma (PROC-001); 13 §6 | permiso: «admin.tenant.manage» (09) ≠ «super_admin» (13)<br>If-Match: declarado solo en 09 → se exige<br>fase: [0, 3] → 0 (la de la spec dueña del dominio) |
 | GET | `/api/v1/audit-events` | 09 §6.3 Roles y permisos; 09 §6.7 Auditoría, reportes, exportación y dashboard | permiso: «admin.roles.manage» (09) ≠ «admin.audit.view» (09) |
 | POST | `/api/v1/public/contact` | 10 §6; 15 §6.4 Captación y legal | permiso: «rate limit» (10) ≠ «público + captcha» (15)<br>idempotencia: none (10), required (15) → se aplica «required» |
-| GET | `/api/v1/public/products` | 15 §6.1 Catálogo y contenido (GET, cache); 17 §6 | permiso: «público» (15) ≠ «X-Qhapaq-Key + Origin verificado» (17) |
-| GET | `/api/v1/public/products/{slug}` | 15 §6.1 Catálogo y contenido (GET, cache); 17 §6 | permiso: «público» (15) ≠ «X-Qhapaq-Key + Origin verificado» (17) |
-| GET | `/api/v1/public/reviews` | 15 §6.1 Catálogo y contenido (GET, cache); 15 §6.7 v2.2 — Reseñas públicas; 17 §6; 18 §6 | permiso: «público» (18) ≠ «X-Qhapaq-Key + Origin verificado» (17) |
-| POST | `/api/v1/public/carts` | 15 §6.2 Precio, disponibilidad, carrito; 17 §6 | permiso: «público» (15) ≠ «X-Qhapaq-Key + Origin verificado» (17) |
+| GET | `/api/v1/public/products` | 15 §6.1 Catálogo y contenido (GET, cache); 17 §6 | permiso: «público» (15) ≠ «X-KipuControl-Key + Origin verificado» (17) |
+| GET | `/api/v1/public/products/{slug}` | 15 §6.1 Catálogo y contenido (GET, cache); 17 §6 | permiso: «público» (15) ≠ «X-KipuControl-Key + Origin verificado» (17) |
+| GET | `/api/v1/public/reviews` | 15 §6.1 Catálogo y contenido (GET, cache); 15 §6.7 v2.2 — Reseñas públicas; 17 §6; 18 §6 | permiso: «público» (18) ≠ «X-KipuControl-Key + Origin verificado» (17) |
+| POST | `/api/v1/public/carts` | 15 §6.2 Precio, disponibilidad, carrito; 17 §6 | permiso: «público» (15) ≠ «X-KipuControl-Key + Origin verificado» (17) |
 | POST | `/api/v1/public/checkout/orders` | 15 §6.3 Checkout y pago; 15 §6.6 v2.1 — Motor de reservas público | If-Match: declarado solo en 15 → se exige |
-| GET | `/api/v1/public/products/{slug}/availability` | 15 §6.6 v2.1 — Motor de reservas público; 16 §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key* del tenant + rate limit Redis; 17 §6 | permiso: «público» (15) ≠ «pública» (16) ≠ «X-Qhapaq-Key + Origin verificado» (17) |
-| POST | `/api/v1/public/quote` | 15 §6.6 v2.1 — Motor de reservas público; 16 §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key* del tenant + rate limit Redis; 17 §6 | permiso: «público» (15) ≠ «pública» (16) ≠ «X-Qhapaq-Key + Origin verificado» (17) |
+| GET | `/api/v1/public/products/{slug}/availability` | 15 §6.6 v2.1 — Motor de reservas público; 16 §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key* del tenant + rate limit Redis; 17 §6 | permiso: «público» (15) ≠ «pública» (16) ≠ «X-KipuControl-Key + Origin verificado» (17) |
+| POST | `/api/v1/public/quote` | 15 §6.6 v2.1 — Motor de reservas público; 16 §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key* del tenant + rate limit Redis; 17 §6 | permiso: «público» (15) ≠ «pública» (16) ≠ «X-KipuControl-Key + Origin verificado» (17) |
 | PUT | `/api/v1/catalog/products/{id}/rule-overrides/{code}` | 16 §6.2 Internas (back-office); 17 §6 | permiso: «catalog.products.update» (16) ≠ «admin.settings.manage» (17)<br>If-Match: declarado solo en 17 → se exige |
 | DELETE | `/api/v1/catalog/products/{id}/rule-overrides/{code}` | 16 §6.2 Internas (back-office); 17 §6 | permiso: «catalog.products.update» (16) ≠ «admin.settings.manage» (17)<br>If-Match: declarado solo en 17 → se exige |
 | PATCH | `/api/v1/admin/booking-rules/{code}` | 16 §6.2 Internas (back-office); 17 §6 | If-Match: declarado solo en 17 → se exige |

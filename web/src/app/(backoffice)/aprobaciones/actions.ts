@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { ReservationCancellation } from "@/lib/reservations";
+import { getReservationCancellation } from "@/lib/server/reservations";
 import { formValues, sendStep, type StepResult } from "@/lib/server/resource";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
@@ -47,7 +49,7 @@ export async function decideApproval(_state: StepResult, form: FormData): Promis
 
 export async function saveApproval(_state: StepResult, form: FormData): Promise<StepResult> {
   const code = text(form, "code");
-  const body = formValues(form, ["type", "title", "amount", "currency", "reference", "justification"]);
+  const body = formValues(form, ["type", "title", "amount", "currency", "agency", "reservation", "justification"]);
   return refresh(await sendStep(code ? `/approvals/${encodeURIComponent(code)}` : "/approvals", code ? "PATCH" : "POST", body, "No pudimos guardar la solicitud."));
 }
 
@@ -55,11 +57,42 @@ export async function withdrawApproval(_state: StepResult, form: FormData): Prom
   return refresh(await sendStep(`/approvals/${encodeURIComponent(text(form, "code"))}/withdraw`, "POST", formValues(form, ["note", "lock_version"]), "No pudimos retirar la solicitud."));
 }
 
+export async function delegateApproval(_state: StepResult, form: FormData): Promise<StepResult> {
+  return refresh(await sendStep(`/approvals/${encodeURIComponent(text(form, "code"))}/delegate`, "POST", formValues(form, ["user_id", "note", "lock_version"]), "No pudimos delegar la solicitud."));
+}
+
+export async function askApprovalInfo(_state: StepResult, form: FormData): Promise<StepResult> {
+  return refresh(await sendStep(`/approvals/${encodeURIComponent(text(form, "code"))}/info-requests`, "POST", formValues(form, ["question", "lock_version"]), "No pudimos enviar la consulta."));
+}
+
+export async function answerApprovalInfo(_state: StepResult, form: FormData): Promise<StepResult> {
+  const path = `/approvals/${encodeURIComponent(text(form, "code"))}/info-requests/${encodeURIComponent(text(form, "info_id"))}/answer`;
+  return refresh(await sendStep(path, "POST", formValues(form, ["answer"]), "No pudimos guardar la respuesta."));
+}
+
+export async function resubmitApproval(_state: StepResult, form: FormData): Promise<StepResult> {
+  return refresh(await sendStep(`/approvals/${encodeURIComponent(text(form, "code"))}/resubmit`, "POST", formValues(form, ["note"]), "No pudimos reenviar la solicitud."));
+}
+
 export async function saveApprovalRule(_state: StepResult, form: FormData): Promise<StepResult> {
+  const code = text(form, "code");
   const body = {
-    ...formValues(form, ["permission", "min_amount", "sla_hours"]),
+    ...formValues(form, ["type", "permission", "min_amount", "sla_hours"]),
     active: form.get("active") === "on",
     forbid_self: form.get("forbid_self") === "on",
   };
-  return refresh(await sendStep(`/approval-rules/${encodeURIComponent(text(form, "code"))}`, "PATCH", body, "No pudimos guardar la regla."));
+  if (!code) return refresh(await sendStep("/approval-rules", "POST", body, "No pudimos crear la regla."));
+  return refresh(await sendStep(`/approval-rules/${encodeURIComponent(code)}`, "PATCH", body, "No pudimos guardar la regla."));
+}
+
+export async function deleteApprovalRule(_state: StepResult, form: FormData): Promise<StepResult> {
+  return refresh(await sendStep(`/approval-rules/${encodeURIComponent(text(form, "code"))}`, "DELETE", {}, "No pudimos eliminar la regla."));
+}
+
+export async function resetApprovalRules(): Promise<StepResult> {
+  return refresh(await sendStep("/approval-rules/reset", "POST", {}, "No pudimos restaurar la matriz."));
+}
+
+export async function loadCancellation(reservation: string): Promise<ReservationCancellation | null> {
+  return getReservationCancellation(reservation);
 }

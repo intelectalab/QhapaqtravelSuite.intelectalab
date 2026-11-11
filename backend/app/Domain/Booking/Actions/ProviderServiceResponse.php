@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Actions;
 
+use App\Domain\Booking\Events\BookingServiceCancelled;
+use App\Domain\Booking\Events\BookingServiceConfirmed;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
@@ -15,6 +17,8 @@ use Illuminate\Support\Str;
 final class ProviderServiceResponse
 {
     public const OPEN = ['pendiente', 'solicitado'];
+
+    public const LATE = ['confirmado'];
 
     public const REJECT_REASONS = ['Sin disponibilidad (sold out)', 'Fecha bloqueada por mantenimiento', 'Tarifa no vigente para la fecha', 'Cupo de grupo excedido', 'Otro'];
 
@@ -51,6 +55,7 @@ final class ProviderServiceResponse
         }
 
         DB::table('booking_reservation_services')->where('id', $service->id)->update($values);
+        BookingServiceConfirmed::dispatch((string) $service->reservation_id, (string) $service->id);
         $request = $this->request($service, $actor);
         DB::table('ops_supplier_requests')->where('id', $request)->update([
             'status' => 'confirmado',
@@ -68,9 +73,9 @@ final class ProviderServiceResponse
         return (object) ['service' => $service, 'request_id' => $request, 'code' => $code, 'alternative' => null];
     }
 
-    public function reject(string $serviceId, array $data, User $actor, string $source): object
+    public function reject(string $serviceId, array $data, User $actor, string $source, bool $late = false): object
     {
-        $service = $this->lockOpen($serviceId);
+        $service = $this->lockOpen($serviceId, $late ? [...self::OPEN, ...self::LATE] : self::OPEN);
         $reason = (string) $data['reason'];
 
         if (! in_array($reason, self::REJECT_REASONS, true) || trim((string) ($data['note'] ?? '')) === '') {
@@ -78,8 +83,8 @@ final class ProviderServiceResponse
         }
 
         $alternative = null;
-        if (! empty($data['alt_date'])) {
-            $alternative = $this->alternative($service, (string) $data['alt_date'], $actor);
+        if (! empty($data['alt_provider_id']) || ! empty($data['alt_date'])) {
+            $alternative = $this->alternative($service, empty($data['alt_date']) ? null : (string) $data['alt_date'], empty($data['alt_provider_id']) ? null : (string) $data['alt_provider_id'], $actor);
         }
 
         DB::table('booking_reservation_services')->where('id', $service->id)->update([
@@ -91,6 +96,7 @@ final class ProviderServiceResponse
             'updated_by' => $actor->getKey(),
             'updated_at' => now(),
         ]);
+        BookingServiceCancelled::dispatch((string) $service->reservation_id, (string) $service->id);
         $request = $this->request($service, $actor);
         DB::table('ops_supplier_requests')->where('id', $request)->update([
             'status' => 'rechazado',
@@ -114,13 +120,13 @@ final class ProviderServiceResponse
         return (object) ['service' => $service, 'request_id' => $request, 'code' => null, 'alternative' => $alternative];
     }
 
-    private function lockOpen(string $serviceId): object
+    private function lockOpen(string $serviceId, array $open = self::OPEN): object
     {
         $reservationId = DB::table('booking_reservation_services')->where('id', $serviceId)->value('reservation_id') ?? throw ApiException::notFound();
         $reservationStatus = DB::table('booking_reservations')->where('id', $reservationId)->lock('for no key update')->value('status');
         $service = DB::table('booking_reservation_services')->where('id', $serviceId)->lock('for no key update')->first() ?? throw ApiException::notFound();
 
-        if (! in_array($service->status, self::OPEN, true) || in_array($reservationStatus, self::CLOSED_RESERVATIONS, true)) {
+        if (! in_array($service->status, $open, true) || in_array($reservationStatus, self::CLOSED_RESERVATIONS, true)) {
             throw ApiException::conflict('SUP-BR-04', 'La solicitud ya fue respondida ('.str_replace('_', ' ', (string) $service->status).'). Para cambios contacte a Operaciones.');
         }
 
@@ -149,25 +155,51 @@ final class ProviderServiceResponse
         ], 'id');
     }
 
-    private function alternative(object $service, string $date, User $actor): object
+    private function alternative(object $service, ?string $date, ?string $providerId, User $actor): object
     {
-        if ($date === $service->service_date) {
+        if ($providerId === null && $date === $service->service_date) {
             throw ApiException::unprocessable('RES-BR-13', 'La fecha alternativa debe ser distinta a la solicitada.');
         }
 
+        $provider = $providerId === null ? null : $this->alternativeProvider($service, $providerId);
         $code = $this->codes->next('booking_reservation_services', 'RS-');
         $values = collect((array) $service)->only(self::COPIED)->all();
         $id = (string) DB::table('booking_reservation_services')->insertGetId([
             ...$values,
             'code' => $code,
-            'service_date' => $date,
+            'service_date' => $date ?? $service->service_date,
+            'provider_id' => $provider->id ?? $service->provider_id,
             'status' => 'pendiente',
             'alt_of_id' => $service->id,
             'created_by' => $actor->getKey(),
             'updated_by' => $actor->getKey(),
         ], 'id');
 
-        return (object) ['id' => $id, 'code' => $code, 'date' => $date];
+        return (object) ['id' => $id, 'code' => $code, 'date' => $date ?? (string) $service->service_date, 'provider' => $provider->name ?? null];
+    }
+
+    public static function alternatives(?string $providerId): array
+    {
+        $type = $providerId === null ? null : DB::table('catalog_providers')->where('id', $providerId)->value('type');
+
+        if ($type === null) {
+            return [];
+        }
+
+        return DB::table('catalog_providers')->whereNull('deleted_at')->where('status', 'activo')->where('type', $type)->where('id', '<>', $providerId)
+            ->orderBy('name')->get(['id', 'ref', 'name', 'city'])->map(fn (object $row): array => (array) $row)->all();
+    }
+
+    private function alternativeProvider(object $service, string $providerId): object
+    {
+        $provider = DB::table('catalog_providers')->whereNull('deleted_at')->where('id', $providerId)->first(['id', 'name', 'type', 'status']);
+        $type = $service->provider_id ? DB::table('catalog_providers')->where('id', $service->provider_id)->value('type') : null;
+
+        if ($provider === null || $provider->status !== 'activo' || $provider->id === $service->provider_id || ($type !== null && $provider->type !== $type)) {
+            throw ApiException::unprocessable('RES-BR-13', 'Elige otro proveedor activo del mismo tipo.', ['alternative_provider_id' => ['Elige otro proveedor activo del mismo tipo.']]);
+        }
+
+        return $provider;
     }
 
     private function settleReservation(string $reservationId): void

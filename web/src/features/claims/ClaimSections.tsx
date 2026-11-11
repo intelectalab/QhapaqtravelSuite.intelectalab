@@ -1,0 +1,193 @@
+"use client";
+
+import { BookOpen, Building2, CalendarRange, Coins, Download, Hash, MapPin, Settings2, Tags, Timer, TimerReset } from "lucide-react";
+import { saveClaimSettings } from "@/app/(backoffice)/crm/reclamaciones/actions";
+import { Button } from "@/components/ui/Button";
+import { BarChart } from "@/components/ui/Charts";
+import { FieldList } from "@/components/ui/Details";
+import { PanelAction } from "@/components/ui/PanelAction";
+import { TextField } from "@/components/ui/TextField";
+import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
+import type { ClaimSheet, ClaimsOverview } from "@/lib/claims";
+import { formatMoney, formatNumber } from "@/lib/format";
+import type { StepResult } from "@/lib/server/resource";
+import { ClaimsTable } from "./ClaimsTable";
+
+const initial: StepResult = { message: null, done: false };
+
+const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"];
+
+const plural = (count: number, one: string, many: string) => `${formatNumber(count)} ${count === 1 ? one : many}`;
+
+function claimedAmounts(claims: ClaimSheet[]) {
+  const totals = new Map<string, number>();
+  for (const claim of claims) {
+    if (!claim.good || claim.good.amount <= 0) continue;
+    totals.set(claim.good.currency, (totals.get(claim.good.currency) ?? 0) + claim.good.amount);
+  }
+  return [...totals.entries()];
+}
+
+export function ClaimTiles({ overview }: { overview: ClaimsOverview }) {
+  const { kpis, settings, claims, today } = overview;
+  const month = today.slice(0, 7);
+  const ofMonth = claims.filter((claim) => claim.received_on.startsWith(month));
+  const open = claims.filter((claim) => claim.book_status === "received" || claim.book_status === "in_review");
+  const amounts = claimedAmounts(open);
+  const answered = claims.filter((claim) => claim.deadline === "respondido_en_plazo" || claim.deadline === "respondido_fuera_de_plazo");
+  const late = answered.filter((claim) => claim.deadline === "respondido_fuera_de_plazo").length;
+  return (
+    <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <TintTile icon={CalendarRange} tone="t1" label="Hojas del mes" value={formatNumber(kpis.month)} info={<p>Recibidas desde el día 1: {plural(ofMonth.filter((claim) => claim.type_code === "reclamo").length, "reclamo", "reclamos")} y {plural(ofMonth.filter((claim) => claim.type_code === "queja").length, "queja", "quejas")}.</p>} />
+      <TintTile icon={Timer} tone="violet" label="Tiempo de respuesta" value={kpis.avg_days !== null ? `${kpis.avg_days} días` : "Sin datos"} note="Días hábiles, en promedio" info={<p>Desde que se recibe la hoja hasta que se responde, sin contar fines de semana ni feriados. Promedio de {plural(answered.length, "hoja respondida", "hojas respondidas")}.</p>} />
+      <TintTile icon={TimerReset} tone="ok" label="Respondidas a tiempo" value={kpis.on_time_pct !== null ? `${kpis.on_time_pct} %` : "Sin datos"} note={`Plazo de ${settings.response_days} días hábiles`} info={<p>{late === 0 ? "Ninguna respuesta salió fuera del plazo legal." : `${plural(late, "respuesta salió", "respuestas salieron")} fuera del plazo legal.`}</p>} />
+      <TintTile icon={Coins} tone="sun" label="Monto en reclamo" value={amounts.length ? amounts.map(([currency, amount]) => formatMoney(amount, currency, { compact: true })).join(" · ") : "—"} note="Hojas sin responder" info={<p>Suma del monto del bien contratado declarado por el consumidor en las hojas que aún no se responden.</p>} />
+    </section>
+  );
+}
+
+function monthly(claims: ClaimSheet[], today: string) {
+  const [year, month] = today.split("-").map(Number);
+  return Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(year, month - 1 - (5 - index), 1);
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const items = claims.filter((claim) => claim.received_on.startsWith(key));
+    const claimsCount = items.filter((claim) => claim.type_code === "reclamo").length;
+    return { label: MONTHS[date.getMonth()], value: items.length, caption: String(items.length), detail: `${plural(claimsCount, "reclamo", "reclamos")} · ${plural(items.length - claimsCount, "queja", "quejas")}`, highlight: index === 5 };
+  });
+}
+
+const csvCell = (value: string | number | null | undefined) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+
+function downloadYear(overview: ClaimsOverview) {
+  const year = overview.today.slice(0, 4);
+  const rows = overview.claims.filter((claim) => claim.received_on.startsWith(year)).sort((a, b) => a.received_at.localeCompare(b.received_at));
+  const head = ["N° de hoja", "Fecha", "Sede", "Tipo", "Consumidor", "Documento", "Detalle", "Pedido", "Monto", "Estado", "Respuesta", "Sentido"];
+  const body = rows.map((claim) =>
+    [
+      claim.book_number,
+      claim.received_on,
+      claim.sede,
+      claim.type,
+      claim.consumer.name,
+      `${claim.consumer.doc_type ?? ""} ${claim.consumer.doc_number ?? ""}`.trim(),
+      claim.detail,
+      claim.request,
+      claim.good && claim.good.amount > 0 ? `${claim.good.currency} ${claim.good.amount}` : "",
+      claim.book_status_label,
+      claim.response?.answered_at?.slice(0, 10),
+      claim.response?.decision,
+    ]
+      .map(csvCell)
+      .join(";"),
+  );
+  const blob = new Blob([`﻿${[head.map(csvCell).join(";"), ...body].join("\n")}`], { type: "text/csv;charset=utf-8" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `libro-de-reclamaciones-${year}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+export function ClaimReports({ overview }: { overview: ClaimsOverview }) {
+  const year = overview.today.slice(0, 4);
+  const ofYear = overview.claims.filter((claim) => claim.received_on.startsWith(year)).length;
+  return (
+    <div className="flex flex-col gap-5">
+      <section className="lift rounded-tile border border-line p-4">
+        <TintCardTitle icon={CalendarRange} title="Hojas por mes" aside="Últimos 6 meses" />
+        <BarChart data={monthly(overview.claims, overview.today)} height={110} />
+      </section>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <section className="lift rounded-tile border border-line p-4">
+          <TintCardTitle icon={Tags} title="Por tipo" tone="violet" />
+          <BarChart data={overview.by_type.map((item) => ({ label: item.label, value: item.count, caption: String(item.count), detail: plural(item.count, "hoja", "hojas") }))} height={100} />
+        </section>
+        <section className="lift rounded-tile border border-line p-4">
+          <TintCardTitle icon={MapPin} title="Por sede" tone="t3" />
+          <BarChart data={overview.by_sede.map((item) => ({ label: item.label.split(" — ")[0], value: item.count, caption: String(item.count), detail: `${item.label}: ${item.count}` }))} height={100} />
+        </section>
+      </div>
+      <section className="lift rounded-tile border border-line p-4">
+        <TintCardTitle icon={BookOpen} title={`Relación de hojas ${year}`} aside={plural(ofYear, "hoja", "hojas")} />
+        <ul className="mb-4 flex flex-col gap-1.5 text-[13px] text-fg-2">
+          <li>Número, fecha, sede, tipo, consumidor y documento.</li>
+          <li>Detalle, pedido y monto declarado.</li>
+          <li>Estado, fecha y sentido de la respuesta.</li>
+        </ul>
+        <Button variant="secondary" size="sm" icon={<Download size={15} />} onClick={() => downloadYear(overview)} disabled={ofYear === 0}>
+          Descargar en CSV
+        </Button>
+      </section>
+    </div>
+  );
+}
+
+function SettingsAction({ overview }: { overview: ClaimsOverview }) {
+  const { settings } = overview;
+  return (
+    <PanelAction<StepResult>
+      label="Editar parámetros"
+      icon={<Settings2 size={16} />}
+      size="sm"
+      formId="claim-book-settings"
+      title="Parámetros del libro"
+      description="El nuevo plazo se aplica a las hojas que se registren desde ahora; las anteriores conservan su vencimiento."
+      submitLabel="Guardar"
+      action={saveClaimSettings}
+      initial={initial}
+    >
+      {() => (
+        <>
+          <TextField label="Plazo de respuesta (días hábiles)" name="response_days" type="number" min={1} max={30} required defaultValue={settings.response_days} hint="Valida el plazo vigente con asesoría legal." />
+          <TextField label="Alerta previa (días hábiles)" name="alert_days" type="number" min={0} max={10} required defaultValue={settings.alert_days} />
+          <TextField label="Conservación (años)" name="retention_years" type="number" min={2} max={20} required defaultValue={settings.retention_years} />
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+export function ClaimSettings({ overview }: { overview: ClaimsOverview }) {
+  const { settings } = overview;
+  return (
+    <div className="grid items-start gap-5 xl:grid-cols-2">
+      <section className="lift rounded-tile border border-line p-4">
+        <TintCardTitle icon={Settings2} title="Parámetros del libro" aside={overview.can.settings ? <SettingsAction overview={overview} /> : undefined} />
+        <FieldList
+          fields={[
+            { label: "Plazo de respuesta", value: `${settings.response_days} días hábiles` },
+            { label: "Alerta previa", value: settings.alert_days === 0 ? "Sin alerta" : `${settings.alert_days} días hábiles antes` },
+            { label: "Conservación", value: `${settings.retention_years} años` },
+          ]}
+        />
+        {!overview.can.settings && <p className="mt-3 text-[12.5px] text-fg-3">Solo el administrador de la agencia cambia estos parámetros.</p>}
+      </section>
+      <section className="lift rounded-tile border border-line p-4">
+        <TintCardTitle icon={Hash} title="Correlativos por sede" tone="t3" />
+        <ul className="flex flex-col gap-2">
+          {overview.sequences.map((item) => (
+            <li key={item.sede} className="lift flex items-center gap-3 rounded-tile border border-line px-3.5 py-2.5">
+              <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-surface-2 text-fg-2">
+                <Building2 size={16} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <b className="block truncate text-[13.5px] font-semibold">{item.sede}</b>
+                <span className="block text-[12px] text-fg-3">
+                  Siguiente <span className="font-mono text-fg-2">{item.next}</span>
+                </span>
+              </span>
+              <span className="flex-none text-right text-[12px] text-fg-3">{plural(item.year_count, "hoja", "hojas")} este año</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
+}
+
+export function ClaimsWorkspace({ overview, section }: { overview: ClaimsOverview; section: "sheets" | "reports" | "settings" }) {
+  if (section === "reports") return <ClaimReports overview={overview} />;
+  if (section === "settings") return <ClaimSettings overview={overview} />;
+  return <ClaimsTable overview={overview} />;
+}

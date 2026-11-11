@@ -30,6 +30,7 @@ final class ClientWorkflow
         private readonly CodeSequence $codes,
         private readonly Advisors $advisors,
         private readonly TenantContext $context,
+        private readonly ClientContacts $contacts,
     ) {}
 
     public function create(array $data, User $actor): string
@@ -46,6 +47,7 @@ final class ClientWorkflow
                 'created_by' => $actor->getKey(),
             ]);
             $this->audit->log('Cliente', $code, 'crear', after: $values['name']);
+            $this->primaryContact(DB::table('crm_clients')->where('code', $code)->first(['id', 'code']), $values['kind'], $data, $actor);
 
             return $code;
         });
@@ -58,6 +60,7 @@ final class ClientWorkflow
             $values = $this->values($data, $actor, $client);
             $before = [...(array) $client, 'tags' => $this->tags((string) $client->tags)];
             $changed = array_filter(self::FIELDS, fn (string $label, string $field) => array_key_exists($field, $values) && (string) $values[$field] !== (string) ($before[$field] ?? ''), ARRAY_FILTER_USE_BOTH);
+            $this->primaryContact($client, $values['kind'], $data, $actor);
 
             if ($changed === []) {
                 return;
@@ -87,6 +90,33 @@ final class ClientWorkflow
 
         DB::table('crm_clients')->where('id', $client->id)->update(['deleted_at' => now(), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         $this->audit->log('Cliente', $code, 'archivar', $client->name, $reason);
+    }
+
+    private function primaryContact(?object $client, string $kind, array $data, User $actor): void
+    {
+        $name = trim((string) ($data['contact_name'] ?? ''));
+
+        if ($client === null || $kind !== 'empresa' || $name === '') {
+            return;
+        }
+
+        $fields = [
+            'name' => $name,
+            'role' => trim((string) ($data['contact_role'] ?? '')) ?: null,
+            'email' => trim((string) ($data['contact_email'] ?? '')) ?: null,
+            'phone' => trim((string) ($data['contact_phone'] ?? '')) ?: null,
+        ];
+        $primary = DB::table('crm_client_contacts')->where('client_id', $client->id)->where('is_primary', true)->first(['id', 'name', 'role', 'email', 'phone']);
+
+        if ($primary === null) {
+            $this->contacts->add($client, [...$fields, 'is_primary' => true], $actor);
+
+            return;
+        }
+
+        if (array_filter($fields, fn (?string $value, string $field) => (string) $value !== (string) $primary->{$field}, ARRAY_FILTER_USE_BOTH) !== []) {
+            $this->contacts->update($client, (string) $primary->id, $fields, $actor);
+        }
     }
 
     private function values(array $data, User $actor, ?object $current): array

@@ -6,6 +6,7 @@ import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { LiveTag, StatusBadge } from "@/components/ui/Badge";
+import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
 import { CLOSED_RESERVATION, type ReservationRow } from "@/lib/reservations";
 import { statusLabel } from "@/lib/tone";
@@ -14,7 +15,7 @@ const href = (row: ReservationRow) => `/reservas/${row.code}`;
 
 const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es"));
 
-export function ReservationsTable({ rows, today, can, prices = true }: { rows: ReservationRow[]; today: string; can: { modify: boolean; cancel: boolean }; prices?: boolean }) {
+export function ReservationsTable({ rows, today, can, prices = true, costs = false }: { rows: ReservationRow[]; today: string; can: { modify: boolean; cancel: boolean }; prices?: boolean; costs?: boolean }) {
   const traveling = (row: ReservationRow) => row.travel_from <= today && row.travel_to >= today && row.status !== "cancelada";
 
   const columns: Column<ReservationRow>[] = [
@@ -33,7 +34,7 @@ export function ReservationsTable({ rows, today, can, prices = true }: { rows: R
             </span>
           )}
           <small className="block text-xs text-fg-3">
-            {row.code} · {row.client.name}
+            {row.code} · {row.client.name} · {row.origin.label} · {row.owner.name}
           </small>
         </div>
       ),
@@ -45,6 +46,19 @@ export function ReservationsTable({ rows, today, can, prices = true }: { rows: R
         <span className="text-[13px]">
           {formatDate(row.travel_from).replace(/ \d{4}$/, "")} al {formatDate(row.travel_to)}
           <span className="block text-xs text-fg-3">{row.passengers === 1 ? "1 pasajero" : `${row.passengers} pasajeros`}</span>
+        </span>
+      ),
+    },
+    {
+      id: "services",
+      header: "Servicios",
+      cell: (row) => (
+        <span className="text-[12.5px]">
+          <b className={cn("tabular-nums", row.services.total > 0 && row.services.confirmed === row.services.total ? "text-ok" : "text-warn")}>
+            {row.services.confirmed}/{row.services.total}
+          </b>{" "}
+          confirmados
+          {costs && row.supplier_cost_pen !== undefined && <span className="block font-mono text-xs text-fg-3">{formatMoney(row.supplier_cost_pen)} proveedores</span>}
         </span>
       ),
     },
@@ -62,6 +76,7 @@ export function ReservationsTable({ rows, today, can, prices = true }: { rows: R
         <span className="flex items-center gap-2">
           <StatusBadge status={row.status} />
           {row.open_incidents > 0 && <TriangleAlert size={15} className="text-bad" aria-label="Incidencia abierta" />}
+          {row.cancel_requested && <span className="text-[11.5px] font-semibold text-bad">Anulación pedida</span>}
         </span>
       ),
     },
@@ -93,6 +108,7 @@ export function ReservationsTable({ rows, today, can, prices = true }: { rows: R
 
   const filters: FilterConfig<ReservationRow>[] = [
     { id: "status", label: "Estado", options: unique(rows.map((row) => row.status)).map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status },
+    { id: "origin", label: "Origen", options: [{ value: "cotizacion", label: "Desde cotización" }, { value: "directa", label: "Directa" }, { value: "web", label: "Sitio web" }], value: (row) => row.origin.kind },
     { id: "channel", label: "Canal", options: unique(rows.map((row) => row.channel)).map((value) => ({ value, label: value })), value: (row) => row.channel },
   ];
 
@@ -114,11 +130,27 @@ export function ReservationsTable({ rows, today, can, prices = true }: { rows: R
       columns={visibleColumns}
       getKey={(row) => row.code}
       entityLabel="reservas"
-      searchText={(row) => `${row.code} ${row.title} ${row.client.name}`}
-      searchPlaceholder="Buscar reserva o cliente"
+      searchText={(row) => `${row.code} ${row.title} ${row.client.name} ${row.origin.label}`}
+      searchPlaceholder="Buscar reserva, cliente o cotización"
       metrics={visibleMetrics}
       filters={filters}
       sorts={visibleSorts}
+      csv={{
+        fileName: "reservas",
+        columns: [
+          { header: "Código", value: (row) => row.code },
+          { header: "Reserva", value: (row) => row.title },
+          { header: "Cliente", value: (row) => row.client.name },
+          { header: "Origen", value: (row) => row.origin.label },
+          { header: "Asesor", value: (row) => row.owner.name },
+          { header: "Desde", value: (row) => row.travel_from },
+          { header: "Hasta", value: (row) => row.travel_to },
+          { header: "Pasajeros", value: (row) => row.passengers },
+          { header: "Estado", value: (row) => statusLabel(row.status) },
+          { header: "Servicios confirmados", value: (row) => `${row.services.confirmed}/${row.services.total}` },
+          ...(prices ? [{ header: "Total (S/)", value: (row: ReservationRow) => row.total_pen ?? null }, { header: "Por cobrar (S/)", value: (row: ReservationRow) => row.balance_pen ?? null }] : []),
+        ],
+      }}
     />
   );
 }

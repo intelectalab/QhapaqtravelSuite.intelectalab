@@ -10,8 +10,8 @@ const ref = (form: FormData) => encodeURIComponent(String(form.get("ref") ?? "")
 async function run(path: string, method: "POST" | "PATCH", body: Record<string, unknown>, failure: string): Promise<StepResult> {
   const result = await sendStep(path, method, body, failure);
   if (result.done) {
-    revalidatePath("/catalogo/servicios");
-    revalidatePath("/catalogo/proveedores");
+    revalidatePath("/catalogo/servicios", "layout");
+    revalidatePath("/catalogo/proveedores", "layout");
   }
   return result;
 }

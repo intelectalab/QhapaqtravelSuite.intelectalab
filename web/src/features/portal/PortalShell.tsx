@@ -97,7 +97,7 @@ export function PortalShell({ session, children }: { session: PortalSession | nu
           <Link href="/portal" className="group flex min-w-0 items-center gap-2.5">
             <span className="relative grid h-10 w-10 flex-none place-items-center overflow-hidden rounded-xl bg-t1 text-[14px] font-bold text-white shadow-[0_10px_22px_-12px_var(--t1)]">
               <span aria-hidden className="weave-pattern absolute inset-0 bg-[length:14px_14px] opacity-[0.18] transition-[background-position] duration-700 group-hover:bg-[position:7px_7px]" />
-              <span className="relative">{session?.agency.initials ?? "QT"}</span>
+              <span className="relative">{session?.agency.initials ?? "KC"}</span>
             </span>
             <span className="min-w-0 leading-tight">
               <b className="block truncate text-[15px] font-bold tracking-tight">{session?.agency.name ?? "Tu agencia"}</b>
@@ -137,7 +137,7 @@ export function PortalShell({ session, children }: { session: PortalSession | nu
           <span>{session?.agency.name ?? "Tu agencia"} · Tus datos están protegidos según la Ley 29733.</span>
           <span className="flex items-center gap-1.5">
             <BrandMark size={14} />
-            Qhapaq Travel Suite
+            KipuControl
           </span>
         </div>
       </footer>

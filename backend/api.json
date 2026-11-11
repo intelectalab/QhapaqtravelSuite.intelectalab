@@ -1,7 +1,7 @@
 {
     "openapi": "3.1.2",
     "info": {
-        "title": "Qhapaq Travel Suite",
+        "title": "KipuControl",
         "version": "0.0.1"
     },
     "servers": [

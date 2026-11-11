@@ -70,11 +70,28 @@ final class ReceivableDirectory
             'aging' => $this->aging($open->all()),
             'methods' => $this->methods->options(),
             'usd_rate' => $this->money->usdRate(),
+            'advance_reservations' => $viewer->can('finance.payments.register') ? $this->advanceReservations() : [],
             'can' => [
                 'register' => $viewer->can('finance.payments.register'),
                 'cancel' => $viewer->can('finance.payments.register'),
+                'invoice' => $viewer->can('finance.invoicing'),
             ],
         ];
+    }
+
+    private function advanceReservations(): array
+    {
+        $committed = DB::table('fin_receivables')->whereNull('deleted_at')->where('status', '<>', 'cancelada')->groupBy('reservation_id')->selectRaw('reservation_id, sum(amount) as total')->pluck('total', 'reservation_id');
+
+        return DB::table('booking_reservations as b')->join('crm_clients as c', 'c.id', '=', 'b.client_id')->whereNull('b.deleted_at')->whereNotIn('b.status', ['borrador', 'cancelada', 'completada'])
+            ->orderByDesc('b.code')->get(['b.id', 'b.code', 'b.title', 'b.currency', 'b.total_amount', 'c.name as client'])
+            ->map(function (object $row) use ($committed): array {
+                $total = round((float) $row->total_amount, 2);
+                $used = round((float) ($committed[$row->id] ?? 0), 2);
+
+                return ['value' => $row->code, 'label' => "{$row->code} · {$row->title}", 'client' => $row->client, 'currency' => $row->currency, 'total' => $total, 'committed' => $used, 'available' => round(max(0, $total - $used), 2)];
+            })
+            ->filter(fn (array $row): bool => $row['available'] > 0)->values()->all();
     }
 
     private function aging(array $open): array

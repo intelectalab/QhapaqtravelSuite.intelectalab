@@ -8,7 +8,7 @@ import type { Column, FilterConfig, MetricFilter, SortOption } from "@/component
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
 import type { ProfitabilityOverview, ProfitRow } from "@/lib/finance";
-import { formatMoney, formatPercent } from "@/lib/format";
+import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import { statusLabel } from "@/lib/tone";
 
 const BAND = { ok: { tone: "ok", label: "En meta" }, warn: { tone: "warn", label: "Vigilar" }, bad: { tone: "bad", label: "Bajo mínimo" } } as const;
@@ -41,8 +41,15 @@ export function ProfitabilityTable({ data }: { data: ProfitabilityOverview }) {
           <Link href={`/reservas/${row.code}`} className="font-semibold hover:underline">
             {row.title}
           </Link>
+          {row.settled_at && (
+            <span title={`Liquidada el ${formatDate(row.settled_at)}`}>
+              <Badge tone="ok" className="ml-2">
+                Liquidada
+              </Badge>
+            </span>
+          )}
           <small className="block text-xs text-fg-3">
-            {row.code} · {row.client} · {row.owner}
+            {row.code} · {row.client} · {row.channel}
           </small>
         </div>
       ),
@@ -50,7 +57,8 @@ export function ProfitabilityTable({ data }: { data: ProfitabilityOverview }) {
     { id: "income", header: "Ingreso", align: "right", cell: (row) => <span className="font-mono text-[13px]">{formatMoney(row.income_pen)}</span> },
     { id: "cost", header: "Costo", align: "right", cell: (row) => <span className="font-mono text-[13px] text-fg-2" title={row.extra_cost_pen > 0 ? `Incluye ${formatMoney(row.extra_cost_pen)} de costos adicionales aprobados` : undefined}>{formatMoney(row.cost_pen)}</span> },
     { id: "margin", header: "Margen bruto", align: "right", cell: (row) => <span className="font-mono text-[13px] font-semibold">{formatMoney(row.margin_pen)}</span> },
-    { id: "net", header: "Utilidad neta", align: "right", wideOnly: true, cell: (row) => <span className="font-mono text-[13px]" title={`Comisiones ${formatMoney(row.commissions_pen)}`}>{formatMoney(row.net_pen)}</span> },
+    { id: "commissions", header: "Comisiones", align: "right", wideOnly: true, cell: (row) => <span className="font-mono text-[13px] text-fg-2">{row.commissions_pen > 0 ? formatMoney(row.commissions_pen) : "—"}</span> },
+    { id: "net", header: "Utilidad neta", align: "right", wideOnly: true, cell: (row) => <span className="font-mono text-[13px]">{formatMoney(row.net_pen)}</span> },
     { id: "pct", header: "Margen", cell: (row) => <MarginMeter row={row} target={target} /> },
     { id: "band", header: "Semáforo", cell: (row) => <Badge tone={BAND[row.band].tone}>{BAND[row.band].label}</Badge> },
     {
@@ -76,6 +84,7 @@ export function ProfitabilityTable({ data }: { data: ProfitabilityOverview }) {
     { id: "owner", label: "Asesor", options: unique(rows.map((row) => row.owner)).map((value) => ({ value, label: value })), value: (row) => row.owner },
     { id: "channel", label: "Canal", options: unique(rows.map((row) => row.channel)).map((value) => ({ value, label: value })), value: (row) => row.channel },
     { id: "status", label: "Estado", options: unique(rows.map((row) => row.status)).map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status },
+    { id: "settled", label: "Liquidación", options: [{ value: "si", label: "Liquidada" }, { value: "no", label: "Sin liquidar" }], value: (row) => (row.settled_at ? "si" : "no") },
   ];
 
   const sorts: SortOption<ProfitRow>[] = [

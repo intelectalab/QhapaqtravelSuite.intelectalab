@@ -1,28 +1,33 @@
 "use client";
 
-import { BadgeCheck, CircleAlert, Clock3, FileSearch, FileWarning, Plane, ShieldCheck } from "lucide-react";
+import { BadgeCheck, CircleAlert, Clock3, Eye, FileSearch, FileWarning, Plane, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
-import { StatusBadge } from "@/components/ui/Badge";
+import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
+import { formatDate } from "@/lib/format";
 import type { TravelDocList, TravelDocRow, TravelDocument } from "@/lib/operations";
 import { statusLabel } from "@/lib/tone";
 import { DateRange, Meter } from "./OpsBits";
 import { ConfirmNote, OpsStep } from "./OpsStep";
+import { UploadDocAction } from "./TravelDocActions";
 
 const href = (code: string) => `/operaciones/documentos-viaje/${code}`;
 
-export function DocumentActions({ document, passenger, target }: { document: TravelDocument; passenger: string; target: string }) {
+export function DocumentActions({ document, passenger, target, fileHref }: { document: TravelDocument; passenger: string; target: string; fileHref: string }) {
   return (
     <RowActions>
+      {document.has_file ? <RowIcon tone="view" label="Ver archivo" icon={<Eye size={15} />} href={fileHref} /> : <RowIcon tone="view" label="Ver archivo" icon={<Eye size={15} />} disabledHint="Todavía no hay archivo" />}
+      <UploadDocAction document={document} passenger={passenger} target={target} />
       {document.status === "completo" ? (
         <RowIcon tone="edit" label="Validar" icon={<BadgeCheck size={15} />} disabledHint="Ya está validado" />
       ) : (
         <OpsStep step="doc_validate" target={target} formKey={`${document.id}-ok`} label="Validar" title={`Validar ${document.label.toLowerCase()}`} description={passenger} submitLabel="Validar documento" trigger={(open) => <RowIcon tone="edit" label="Validar" icon={<BadgeCheck size={15} />} onClick={open} />}>
-          {document.file ? <ConfirmNote>Archivo recibido: <b>{document.file}</b></ConfirmNote> : <ConfirmNote tone="warn">No hay archivo cargado. Valida solo si revisaste el documento por otro medio.</ConfirmNote>}
+          {document.file ? <ConfirmNote>Archivo recibido: <b>{document.file}</b></ConfirmNote> : <ConfirmNote tone="warn">{document.type === "minor_auth" ? "Carga primero la partida de nacimiento o el permiso notarial." : "No hay archivo cargado. Valida solo si revisaste el documento por otro medio."}</ConfirmNote>}
+          {document.min_expiry && <ConfirmNote>Para validarlo debe vencer después del <b>{formatDate(document.min_expiry)}</b>.</ConfirmNote>}
           <div className="grid grid-cols-2 gap-3">
             <TextField label="Número" name="doc_number" maxLength={40} defaultValue={document.number ?? ""} />
             <TextField label="Vence" name="expiry_date" type="date" defaultValue={document.expiry ?? ""} />
@@ -64,6 +69,7 @@ export function TravelDocsTable({ data }: { data: TravelDocList }) {
         return alerts.length ? <span className="block max-w-[220px] text-[12.5px] text-fg-2">{alerts.join(" · ")}</span> : <span className="text-[12.5px] text-ok">Sin alertas</span>;
       },
     },
+    { id: "mapi", header: "Entradas MAPI", wideOnly: true, cell: (row) => (row.mapi ? <Badge tone={row.mapi.used ? "mute" : row.mapi.blocked ? "bad" : "ok"}>{row.mapi.used ? "Utilizadas" : row.mapi.blocked ? "Bloqueadas" : "Habilitadas"}</Badge> : <span className="text-[12.5px] text-fg-3">No aplica</span>) },
     { id: "status", header: "Reserva", wideOnly: true, cell: (row) => <StatusBadge status={row.status} /> },
     { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => (<RowActions><RowIcon tone="view" label="Ver checklist" href={href(row.code)} />{data.can.manage && (row.progress < 100 ? <RowIcon tone="edit" label="Revisar documentos" icon={<FileSearch size={15} />} href={href(row.code)} /> : <RowIcon tone="edit" label="Revisar documentos" icon={<FileSearch size={15} />} disabledHint="Checklist completo" />)}</RowActions>) },
   ];

@@ -71,6 +71,23 @@ it('audit-events/exports genera el CSV, lo registra y es idempotente', function 
     Storage::disk('local')->assertExists($export->file_path);
 });
 
+it('la bitácora también se exporta en XLSX y PDF, y otro formato se rechaza', function () {
+    Storage::fake('local');
+    actingAsSeed('U01');
+
+    foreach (['XLSX' => 'PK', 'PDF' => '%PDF'] as $format => $signature) {
+        $data = $this->postJson('/api/v1/audit-events/exports', ['filters' => ['days' => 30], 'format' => $format], critical())->assertStatus(202)->json('data');
+        $export = withinTenant(tenantA(), fn () => DB::table('report_exports')->where('id', $data['export_id'])->first());
+
+        expect($data['format'])->toBe($format)
+            ->and($export->format)->toBe($format)
+            ->and($export->file_path)->toEndWith('.'.strtolower($format))
+            ->and(substr((string) Storage::disk('local')->get($export->file_path), 0, strlen($signature)))->toBe($signature);
+    }
+
+    $this->postJson('/api/v1/audit-events/exports', ['filters' => ['days' => 30], 'format' => 'DOCX'], critical())->assertStatus(422)->assertJsonValidationErrors(['format']);
+});
+
 it('Ventas no consulta ni exporta la bitácora', function () {
     actingAsSeed('U03');
 

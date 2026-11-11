@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 final class ClientDirectory
 {
-    private const COUNTED = ['confirmada', 'en_operacion', 'completada', 'pendiente_pago', 'pendiente_proveedor', 'parcial', 'incidencia', 'reprogramada'];
+    public const COUNTED = ['confirmada', 'en_operacion', 'completada', 'pendiente_pago', 'pendiente_proveedor', 'parcial', 'incidencia', 'reprogramada'];
 
     private const DOC_LABELS = ['DNI' => 'DNI', 'RUC' => 'RUC', 'PASAPORTE' => 'Pasaporte', 'CE' => 'CE'];
 
@@ -92,6 +92,8 @@ final class ClientDirectory
             ->selectRaw("count(r.id) filter (where {$counted}) as trips")
             ->selectRaw("coalesce(sum(r.total_amount * r.fx_rate) filter (where {$counted}), 0) as total_pen")
             ->selectRaw("max(r.travel_from) filter (where {$counted}) as last_trip_from")
+            ->selectRaw("max(r.created_at) filter (where {$counted}) as last_purchase_at")
+            ->selectRaw("(select coalesce(sum((f.amount - f.paid_amount) * coalesce(nullif(f.fx_rate, 0), 1)), 0) from fin_receivables f where f.client_id = c.id and f.deleted_at is null and f.status not in ('pagada', 'cancelada')) as open_balance_pen")
             ->selectRaw("coalesce(bool_or({$counted} and r.travel_from <= ?::date and r.travel_to >= ?::date), false) as on_trip", [$today, $today]);
 
         return Portfolio::scope($query, $viewer, 'c.owner_id');
@@ -114,6 +116,9 @@ final class ClientDirectory
             'trips_count' => (int) $row->trips,
             'total_pen' => (int) round((float) $row->total_pen),
             'last_trip_from' => $row->last_trip_from,
+            'reservations_count' => (int) $row->trips,
+            'balance_pen' => (int) round((float) $row->open_balance_pen),
+            'last_purchase_date' => $row->last_purchase_at ? Carbon::parse($row->last_purchase_at)->setTimezone($this->context->tenant()->timezone ?: 'America/Lima')->toDateString() : null,
             'on_trip' => (bool) $row->on_trip,
             'created_at' => Carbon::parse($row->created_at)->toDateString(),
         ];

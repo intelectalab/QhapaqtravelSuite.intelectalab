@@ -3,7 +3,8 @@
 import { AlertTriangle, Award, Coins, Crosshair, Medal, TrendingUp, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { DataTable } from "@/components/table/DataTable";
-import { RowActions } from "@/components/table/RowActions";
+import Link from "next/link";
+import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column } from "@/components/table/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
@@ -12,14 +13,14 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
 import { formatMoney, formatPercent } from "@/lib/format";
-import { HEALTH, type SalesTarget, type TargetsOverview } from "@/lib/targets";
+import { HEALTH, targetHref, type SalesTarget, type TargetsOverview } from "@/lib/targets";
 import { toneStyle } from "@/lib/tone";
-import { PeriodPicker, ProgressBar, TargetAdjustAction, TargetDetailAction, TargetVoidAction } from "./TargetForms";
+import { PeriodPicker, ProgressBar, TargetAdjustAction, TargetVoidAction } from "./TargetForms";
 
 function Actions({ target, overview }: { target: SalesTarget; overview: TargetsOverview }) {
   return (
     <RowActions>
-      <TargetDetailAction target={target} manage={overview.can.manage} />
+      <RowIcon tone="view" label="Ver meta" href={targetHref(target.code)} />
       {overview.can.manage && (
         <>
           <TargetAdjustAction target={target} lockPct={overview.policy.lock_decrease_after_pct} canReduceLate={overview.can.reduce_late} />
@@ -43,7 +44,9 @@ function AdvisorCard({ target, overview, index }: { target: SalesTarget; overvie
         <div className="flex min-w-0 items-center gap-2.5">
           <Avatar name={target.scope.name} size="md" />
           <div className="min-w-0">
-            <p className="truncate text-[14px] font-semibold">{target.scope.name}</p>
+            <Link href={targetHref(target.code)} className="block truncate text-[14px] font-semibold hover:text-accent hover:underline">
+              {target.scope.name}
+            </Link>
             <p className="text-[12px] text-fg-3">{target.status === "vigente" && target.days_left > 0 ? `${target.days_left} días por delante` : target.period_label}</p>
           </div>
         </div>
@@ -96,7 +99,9 @@ export function TargetsWorkspace({ overview }: { overview: TargetsOverview }) {
         <span className="flex items-center gap-2.5">
           <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-surface-2 text-fg-2">{row.scope_type === "equipo" ? <Users size={15} /> : <Crosshair size={15} />}</span>
           <span>
-            <b className="block text-[13.5px]">{row.scope.name}</b>
+            <Link href={targetHref(row.code)} className="block text-[13.5px] font-bold hover:text-accent hover:underline">
+              {row.scope.name}
+            </Link>
             <span className="text-[12px] text-fg-3">{row.scope_label} · {row.code}</span>
           </span>
         </span>
@@ -116,11 +121,11 @@ export function TargetsWorkspace({ overview }: { overview: TargetsOverview }) {
         <p className="text-[12.5px] text-fg-3">Ventas = reservas confirmadas creadas en el período, en soles con el tipo de cambio de cada reserva.</p>
       </div>
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <TintTile icon={Crosshair} tone="t1" label={overview.can.manage ? "Meta de asesores" : "Mi meta"} value={formatMoney(goal)} />
-        <TintTile icon={Coins} tone="ok" label="Vendido" value={formatMoney(real)} note={goal > 0 ? `${formatPercent((real / goal) * 100, 0)} de la meta` : undefined} />
-        <TintTile icon={TrendingUp} tone="violet" label="Proyección al cierre" value={formatMoney(projection)} note="Incluye oportunidades ponderadas" />
-        <TintTile icon={AlertTriangle} tone="bad" label="En riesgo" value={risk} note="Proyección bajo el 100 %" />
-        <TintTile icon={Award} tone="sun" label="Bonos estimados" value={formatMoney(bonus)} />
+        <TintTile icon={Crosshair} tone="t1" label={overview.can.manage ? "Meta de asesores" : "Mi meta"} value={formatMoney(goal)} info={<p>Suma de la meta de ventas de las metas de asesor activas o cerradas del período elegido. No incluye borradores.</p>} />
+        <TintTile icon={Coins} tone="ok" label="Vendido" value={formatMoney(real)} note={goal > 0 ? `${formatPercent((real / goal) * 100, 0)} de la meta` : undefined} info={<p>Reservas confirmadas creadas en el período por esos asesores, en soles con el tipo de cambio de cada reserva.</p>} />
+        <TintTile icon={TrendingUp} tone="violet" label="Proyección al cierre" value={formatMoney(projection)} note="Incluye oportunidades ponderadas" info={<p>Lo vendido más las oportunidades abiertas que cierran en el período, multiplicadas por su probabilidad.</p>} />
+        <TintTile icon={AlertTriangle} tone="bad" label="En riesgo" value={risk} note="Proyección bajo el 100 %" info={<p>Metas de asesor cuya proyección no alcanza la meta: en riesgo desde el 80 %, crítico por debajo.</p>} />
+        <TintTile icon={Award} tone="sun" label="Bonos estimados" value={formatMoney(bonus)} info={<p>Bono base de cada meta por el tramo que alcanza su proyección: {overview.policy.tiers.map((tier) => `${tier.min} % paga ${tier.pay} %`).join(", ")}.</p>} />
       </section>
 
       <section className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -154,9 +159,7 @@ export function TargetsWorkspace({ overview }: { overview: TargetsOverview }) {
                 </li>
               ))}
             </ol>
-          )}
-          <p className="mt-3 text-[11.5px] text-fg-3">Bono por tramos: {overview.policy.tiers.map((tier) => `≥ ${tier.min} % paga ${tier.pay} %`).join(" · ")}.</p>
-        </Card>
+          )}        </Card>
       </section>
 
       {overview.can.manage && (

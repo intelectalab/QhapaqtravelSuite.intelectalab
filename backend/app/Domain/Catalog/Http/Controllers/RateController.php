@@ -12,6 +12,7 @@ use App\Domain\Catalog\Support\CatalogAccess;
 use App\Domain\Catalog\Support\RateDirectory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 
 final class RateController
@@ -39,6 +40,14 @@ final class RateController
         $data = $this->validateRate($request, false);
 
         return response()->json(['data' => $this->rates->update($ref, $data, (int) $request->input('lock_version'), $this->actor($request))]);
+    }
+
+    public function destroy(Request $request, string $product, string $ref): Response
+    {
+        $this->ownedRate($product, $ref);
+        $this->rates->delete($ref, $this->actor($request));
+
+        return response()->noContent();
     }
 
     public function activate(Request $request, string $product, string $ref): JsonResponse

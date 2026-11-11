@@ -13,7 +13,7 @@ import { SiteFrame } from "@/features/software/SiteFrame";
 import { MODULE_AREAS, MODULE_SCREEN_COUNT, trialDays } from "@/lib/software";
 
 export const metadata: Metadata = {
-  title: { absolute: "Qhapaq Travel Suite · Software para agencias de viaje" },
+  title: { absolute: "KipuControl · Software para agencias de viaje" },
   description: "Gestión integral para agencias de viaje y operadores turísticos del Perú: leads, cotizaciones, reservas, operación y cobranza en un solo sistema.",
 };
 

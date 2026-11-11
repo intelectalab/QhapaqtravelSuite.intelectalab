@@ -18,8 +18,12 @@ use App\Domain\Integrations\Fake\FakeMalwareScanner;
 use App\Domain\Integrations\Fake\FakeMessagingChannel;
 use App\Domain\Integrations\Fake\FakePaymentGateway;
 use App\Domain\Integrations\Fake\FakeReviewsProvider;
+use App\Domain\Integrations\Mail\PlatformMailTransport;
+use App\Domain\Integrations\Mail\SmtpConnector;
 use App\Domain\Integrations\Support\ConfiguredCaptchaVerifier;
+use App\Domain\Platform\Support\OutgoingMail;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
 
@@ -55,5 +59,14 @@ final class IntegrationServiceProvider extends ServiceProvider
                 return $app->make($class);
             });
         }
+    }
+
+    public function boot(): void
+    {
+        Mail::extend('platform', function (array $config): PlatformMailTransport {
+            $fallback = (string) ($config['fallback'] ?? 'log');
+
+            return new PlatformMailTransport($this->app->make(OutgoingMail::class), $this->app->make(SmtpConnector::class), $this->app->make('mail.manager'), $fallback === 'platform' ? 'log' : $fallback);
+        });
     }
 }

@@ -14,7 +14,7 @@ export default async function FacturacionPage() {
     <>
       <PageHeader
         title="Facturación"
-        subtitle="Lo que factura Qhapaq Cloud a las agencias: ingreso recurrente, bajas y cobros pendientes."
+        subtitle="Lo que factura KipuControl Cloud a las agencias: ingreso recurrente, bajas y cobros pendientes."
         info={<InfoTip>El ingreso recurrente suma, sin IGV, el plan y los complementos de cada agencia al día o en cobranza. Los cobros fallidos se muestran con IGV, como en la factura. No incluye ventas ni datos comerciales de las agencias.</InfoTip>}
       />
       <BillingTabs />

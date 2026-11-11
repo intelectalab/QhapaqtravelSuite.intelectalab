@@ -1,4 +1,4 @@
-# Colección Postman de la API — Qhapaq Travel Suite
+# Colección Postman de la API — KipuControl
 
 Colección **Postman v2.1** generada desde el contrato `kit-ia/api/openapi.json` por `build_postman.py`. Sirve para
 probar el backend Laravel a mano durante el desarrollo, reproducir errores y compartir ejemplos de llamadas.
@@ -6,7 +6,7 @@ No se edita a mano: si cambia el contrato, se regenera.
 
 | Archivo | Contenido |
 |---|---|
-| `qhapaq-api.postman_collection.json` | 1 006 requests (una por operación del contrato) |
+| `kipucontrol-api.postman_collection.json` | 1 006 requests (una por operación del contrato) |
 | `local.postman_environment.json` | Tenant demo TNT-0001 «andes»: `http://andes.localhost:8000`, usuario `mquispe@andeshorizonte.pe` (Tenant Admin) |
 | `tenant-b.postman_environment.json` | Tenant TNT-0002 «selva»: `http://selva.localhost:8000`, usuario `gerencia@selvaviva.pe` (prueba de aislamiento E2E-08) |
 | `build_postman.py` | Generador (Python 3, sin dependencias) |
@@ -29,7 +29,7 @@ Fase = `x-phase` de la operación; subcarpeta = primer `tag` del contrato (módu
 - **Query params** documentados en el contrato (filtros `filter[…]`, `sort`, `include`, `page[size]`, `page[cursor]`),
   desactivados por defecto salvo los obligatorios: se activan con la casilla.
 - **Headers**: `Accept: application/json`; `Authorization: Bearer {{token}}` (o `{{platformToken}}` en `/platform/*`);
-  `X-Qhapaq-Key` + `Origin` en rutas públicas del widget/sitio; `Cookie: ah_cart=…` o `X-Order-Token` en carrito y pedido;
+  `X-KipuControl-Key` + `Origin` en rutas públicas del widget/sitio; `Cookie: ah_cart=…` o `X-Order-Token` en carrito y pedido;
   `X-Signature` en webhooks entrantes; `Idempotency-Key: {{$guid}}` en 156 operaciones (`x-idempotency` obligatorio u
   opcional); `If-Match: {{lockVersion}}` en 185 operaciones con `lock_version`. Donde el contrato admite API key del tenant,
   hay un segundo `Authorization: Bearer {{apiKey}}` desactivado como alternativa.
@@ -43,8 +43,8 @@ Fase = `x-phase` de la operación; subcarpeta = primer `tag` del contrato (módu
 
 ## 2. Importar
 
-**Postman** (v10+): *Import* → arrastrar `qhapaq-api.postman_collection.json` y los dos `*.postman_environment.json` →
-elegir el entorno «Qhapaq · local (andes · TNT-0001)» arriba a la derecha.
+**Postman** (v10+): *Import* → arrastrar `kipucontrol-api.postman_collection.json` y los dos `*.postman_environment.json` →
+elegir el entorno «KipuControl · local (andes · TNT-0001)» arriba a la derecha.
 
 **Insomnia** (2023+): *Create* → *Import* → *From File* → la colección; Insomnia convierte las variables `{{…}}` y las
 carpetas. Los entornos de Postman se importan igual (o se crea un *Environment* con `baseUrl`, `email`, `password`,

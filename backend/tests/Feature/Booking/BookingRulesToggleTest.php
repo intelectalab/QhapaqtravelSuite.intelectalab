@@ -13,7 +13,7 @@ function publicQuote(array $selection)
 {
     $key = withinTenant(tenantA(), fn () => DB::table('channel_widget_config')->value('public_key'));
 
-    return test()->withHeaders(['X-Qhapaq-Key' => (string) $key, 'Origin' => 'https://andeshorizonte.pe'])
+    return test()->withHeaders(['X-KipuControl-Key' => (string) $key, 'Origin' => 'https://andeshorizonte.pe'])
         ->postJson('/api/v1/public/quote', ['product' => 'PRD-011'] + $selection);
 }
 

@@ -51,5 +51,5 @@ export const TENANT_B = SEED_TENANTS.find((t) => t.id === 'TNT-0002')!;
 /** Admin de TNT-0002: lo crea el E2ESeeder con el correo de tenants.json (supuesto). */
 export const TENANT_B_ADMIN = { id: 'TNT-0002-ADMIN', email: TENANT_B.adminEmail, role: 'tenant_admin', mfa: false };
 
-export const PASSWORD = process.env.E2E_PASSWORD ?? 'Qhapaq#E2E-2026';
+export const PASSWORD = process.env.E2E_PASSWORD ?? 'KipuControl#E2E-2026';
 export const TOTP_SECRET = process.env.E2E_TOTP_SECRET ?? 'JBSWY3DPEHPK3PXP';

@@ -1,9 +1,7 @@
 import { BarChart3, Briefcase, FileText, Radio, UsersRound, Wallet } from "lucide-react";
 import type { Metadata } from "next";
-import { PageHeader } from "@/components/shell/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { BarChart } from "@/components/ui/Charts";
-import { InfoTip } from "@/components/ui/InfoTip";
 import { KpiTile } from "@/components/ui/KpiTile";
 import { TintCardTitle } from "@/components/ui/Tinted";
 import { Ratio, ShareBars, StatusStrip } from "@/features/reports/ReportBlocks";
@@ -17,7 +15,7 @@ export default async function ReportesPage() {
   const report = await getResource<KpiOverview>("/reports/kpis", "No pudimos cargar los reportes.");
 
   if (!report) {
-    return <PageHeader title="Reportes y KPIs" subtitle="Tu rol no tiene acceso a esta sección." />;
+    return null;
   }
 
   const { kpis, months, collection } = report;
@@ -26,11 +24,6 @@ export default async function ReportesPage() {
 
   return (
     <>
-      <PageHeader
-        title="Reportes y KPIs"
-        subtitle={report.scope === "own" ? "Tus indicadores de los últimos seis meses." : "Indicadores de la agencia en los últimos seis meses."}
-        info={<InfoTip>Ventas = reservas confirmadas en soles con el tipo de cambio de cada reserva. Margen = venta menos el costo de los servicios no cancelados.</InfoTip>}
-      />
       <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiTile tone="t1" label="Ventas del mes" value={formatMoney(kpis.sales, "PEN", { compact: true })} note={change === null ? "Sin mes anterior para comparar" : `${change >= 0 ? "+" : ""}${formatPercent(change, 0)} frente al mes anterior`} trend={months.map((month) => month.sales)} trendLabels={months.map((month) => `${month.label} · ${formatMoney(month.sales)}`)} />
         <KpiTile tone="t3" label="Margen bruto" value={kpis.margin_pct !== null ? formatPercent(kpis.margin_pct) : "—"} note={`${formatMoney(kpis.sales_period, "PEN", { compact: true })} vendidos en el período`} />

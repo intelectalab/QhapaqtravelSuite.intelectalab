@@ -4,7 +4,10 @@ use App\Domain\Catalog\Support\CancellationTiers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 
-beforeEach(fn () => Queue::fake());
+beforeEach(function () {
+    lockCatalogProducts();
+    Queue::fake();
+});
 
 function tiersLock(string $code): int
 {

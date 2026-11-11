@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace App\Domain\Crm\Actions;
 
 use App\Domain\Crm\Support\Advisors;
+use App\Domain\Crm\Support\CatalogInterest;
 use App\Domain\Crm\Support\ClientDocument;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Crm\Support\CrmCatalog;
+use App\Domain\Crm\Support\LeadDuplicates;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -27,6 +30,8 @@ final class LeadWorkflow
         private readonly ActivityWorkflow $activities,
         private readonly CodeSequence $codes,
         private readonly Advisors $advisors,
+        private readonly CatalogInterest $interest,
+        private readonly LeadDuplicates $matcher,
     ) {}
 
     public function create(array $data, User $actor): array
@@ -39,7 +44,13 @@ final class LeadWorkflow
             throw ApiException::conflict('CRM-BR-04', 'Ya existe un lead o cliente con ese correo o teléfono. Elige qué hacer.', ['matches' => $matches]);
         }
 
-        $owner = Portfolio::ownOnly($actor) ? $actor->getKey() : ($data['owner_id'] ?? null);
+        if ($resolution === 'merge') {
+            return $this->absorbIncoming($data, $matches, $actor);
+        }
+
+        $owner = $this->initialOwner($data['owner_id'] ?? null, $actor);
+        $destination = $this->interest->destination($data);
+        $product = $this->interest->product($data);
         $first = $matches[0] ?? null;
         $code = $this->nextCode('crm_leads', 'LEAD-');
         $notes = trim((string) ($data['notes'] ?? ''));
@@ -60,7 +71,8 @@ final class LeadWorkflow
             'channel_code' => $data['channel'],
             'source_code' => $data['source'],
             'interest_code' => $data['interest'],
-            'destination_label' => $data['destination'] ?? null,
+            ...$destination,
+            'product_id' => $product,
             'travel_date' => $data['travel_date'] ?? null,
             'pax' => (int) ($data['pax'] ?? 0),
             'status' => $resolution === 'mark_duplicate' ? 'duplicado' : 'nuevo',
@@ -93,7 +105,8 @@ final class LeadWorkflow
             'channel_code' => $data['channel'],
             'source_code' => $data['source'],
             'interest_code' => $data['interest'],
-            'destination_label' => trim((string) ($data['destination'] ?? '')) ?: null,
+            ...$this->interest->destination($data),
+            'product_id' => $this->interest->product($data, $lead->product_id),
             'travel_date' => $data['travel_date'] ?? null,
             'pax' => (int) ($data['pax'] ?? 0),
             'notes' => trim((string) ($data['notes'] ?? '')) ?: null,
@@ -102,15 +115,48 @@ final class LeadWorkflow
             throw ApiException::unprocessable('CRM-BR-05', 'La fecha de viaje no puede ser anterior a hoy.');
         }
 
-        $labels = ['full_name' => 'Nombre', 'company' => 'Empresa', 'email' => 'Correo', 'phone' => 'Teléfono', 'channel_code' => 'Canal', 'source_code' => 'Fuente', 'interest_code' => 'Interés', 'destination_label' => 'Destino', 'travel_date' => 'Fecha de viaje', 'pax' => 'Pasajeros', 'notes' => 'Notas'];
+        $labels = ['full_name' => 'Nombre', 'company' => 'Empresa', 'email' => 'Correo', 'phone' => 'Teléfono', 'channel_code' => 'Canal', 'source_code' => 'Fuente', 'interest_code' => 'Interés', 'destination_label' => 'Destino', 'product_id' => 'Producto de interés', 'travel_date' => 'Fecha de viaje', 'pax' => 'Pasajeros', 'notes' => 'Notas'];
         $changed = array_filter($labels, fn (string $label, string $field) => (string) $values[$field] !== (string) $lead->{$field}, ARRAY_FILTER_USE_BOTH);
+        $owner = $data['owner_id'] ?? null;
+        $reassign = $owner && $owner !== $lead->owner_id && ! Portfolio::ownOnly($actor);
 
-        if ($changed === []) {
+        if ($changed === [] && ! $reassign) {
             return;
         }
 
-        $this->save($lead, $version, $values, $actor);
-        $this->audit->log('Lead', $code, 'editar', after: implode(', ', $changed));
+        DB::transaction(function () use ($lead, $version, $values, $changed, $reassign, $owner, $actor): void {
+            if ($changed !== []) {
+                $this->save($lead, $version, $values, $actor);
+                $this->audit->log('Lead', $lead->code, 'editar', after: implode(', ', $changed));
+            } else {
+                $this->save($lead, $version, [], $actor);
+            }
+
+            if ($reassign) {
+                $this->assign($lead->code, (string) $owner, false, null, $actor);
+            }
+        });
+    }
+
+    private function initialOwner(?string $requested, User $actor): ?string
+    {
+        if (Portfolio::ownOnly($actor)) {
+            return $actor->getKey();
+        }
+
+        if (! $requested) {
+            return null;
+        }
+
+        if (! $actor->can('crm.records.reassign')) {
+            throw ApiException::forbidden('CRM-BR-09', 'Solo Gerencia o la Administración pueden asignar leads.', ['crm.records.reassign']);
+        }
+
+        if (! $this->advisors->has($requested)) {
+            throw ApiException::unprocessable('CRM-BR-09', 'Elige un asesor activo de la lista.');
+        }
+
+        return $requested;
     }
 
     public function assign(string $code, string $ownerId, bool $firstContact, ?string $reason, User $actor): void
@@ -165,7 +211,7 @@ final class LeadWorkflow
         $this->activities->scheduleFirstContact(DB::table('crm_leads')->where('code', $code)->first(), $actor);
     }
 
-    public function changeStatus(string $code, string $status, int $version, User $actor): void
+    public function changeStatus(string $code, string $status, int $version, User $actor, ?string $note = null): void
     {
         $lead = $this->lead($code, $actor);
         $this->assertOpen($lead);
@@ -182,7 +228,7 @@ final class LeadWorkflow
             'status' => $status,
             'first_contact_at' => $status !== 'nuevo' ? ($lead->first_contact_at ?? now()) : $lead->first_contact_at,
         ], $actor);
-        $this->audit->log('Lead', $code, 'cambio_estado', $lead->status, $status);
+        $this->audit->log('Lead', $code, 'cambio_estado', $lead->status, trim($status.($note ? " · {$note}" : '')));
     }
 
     public function qualify(string $code, array $bant, int $version, bool $markQualified, User $actor): array
@@ -253,6 +299,131 @@ final class LeadWorkflow
         $this->audit->log('Lead', $code, 'descartar', $lead->status, $this->catalog->label('discard_reason', $reason));
     }
 
+    public function reopen(string $code, int $version, User $actor): void
+    {
+        $lead = $this->lead($code, $actor);
+
+        if (! in_array($lead->status, ['descartado', 'duplicado'], true)) {
+            throw ApiException::conflict('LEAD_NOT_CLOSED', 'Solo se reabren leads descartados o marcados como duplicados.');
+        }
+
+        $this->save($lead, $version, ['status' => 'nuevo', 'duplicate_of_type' => null, 'duplicate_of_id' => null], $actor);
+        $this->audit->log('Lead', $code, 'reabrir', $lead->status, 'nuevo');
+    }
+
+    public function markDuplicate(string $code, string $type, string $id, int $version, User $actor): void
+    {
+        $lead = $this->lead($code, $actor);
+        $this->assertOpen($lead);
+        $match = collect($this->duplicates($lead->email, $lead->phone, $lead->id))->first(fn (array $item) => $item['type'] === $type && $item['id'] === $id);
+
+        if ($match === null) {
+            throw ApiException::unprocessable('CRM-BR-04', 'Elige una de las coincidencias por correo o teléfono.');
+        }
+
+        $this->save($lead, $version, ['status' => 'duplicado', 'duplicate_of_type' => $type, 'duplicate_of_id' => $id], $actor);
+        $this->audit->log('Lead', $code, 'marcar_duplicado', $lead->status, "duplicado de {$match['code']}");
+    }
+
+    public function merge(string $code, string $sourceId, User $actor): array
+    {
+        $target = $this->lead($code, $actor);
+        $this->assertOpen($target);
+        $found = DB::table('crm_leads')->where('id', $sourceId)->whereNull('deleted_at')->value('code') ?? throw ApiException::notFound('El lead que quieres fusionar no existe.');
+        $source = $this->lead((string) $found, $actor);
+
+        if ($source->id === $target->id) {
+            throw ApiException::unprocessable('CRM-BR-04', 'Elige otro lead para fusionar.');
+        }
+
+        if (in_array($source->status, ['convertido', 'duplicado'], true)) {
+            throw ApiException::conflict('CRM-BR-04', 'Ese lead ya está convertido o marcado como duplicado y no se puede fusionar.');
+        }
+
+        $coincides = collect($this->duplicates($target->email, $target->phone, $target->id))->contains(fn (array $item) => $item['type'] === 'lead' && $item['id'] === $source->id);
+
+        if (! $coincides) {
+            throw ApiException::unprocessable('CRM-BR-04', 'Solo se fusionan leads que coinciden por correo o teléfono.');
+        }
+
+        return DB::transaction(function () use ($target, $source, $actor): array {
+            $target = DB::table('crm_leads')->where('id', $target->id)->lockForUpdate()->first();
+            $source = DB::table('crm_leads')->where('id', $source->id)->lockForUpdate()->first();
+            $values = $this->filledFrom($target, (array) $source);
+            $values['score'] = max((int) $target->score, (int) $source->score);
+
+            DB::table('crm_leads')->where('id', $target->id)->update([...$values, 'lock_version' => $target->lock_version + 1, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            DB::table('crm_leads')->where('id', $source->id)->update([
+                'status' => 'duplicado',
+                'duplicate_of_type' => 'lead',
+                'duplicate_of_id' => $target->id,
+                'lock_version' => $source->lock_version + 1,
+                'updated_by' => $actor->getKey(),
+                'updated_at' => now(),
+            ]);
+            $moved = DB::table('crm_activities')->where('related_type', 'lead')->where('related_id', $source->id)
+                ->update(['related_id' => $target->id, 'merged_from_lead_id' => $source->id, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+
+            $this->audit->log('Lead', $source->code, 'fusionar', $source->status, "duplicado de {$target->code}");
+            $this->audit->log('Lead', $target->code, 'fusionar', null, "absorbe {$source->code}".($moved > 0 ? " · {$moved} ".($moved === 1 ? 'actividad' : 'actividades') : ''));
+
+            return ['code' => $target->code, 'merged' => $source->code, 'activities' => $moved];
+        });
+    }
+
+    private function absorbIncoming(array $data, array $matches, User $actor): array
+    {
+        $candidates = collect($matches)->where('type', 'lead')->whereIn('status', self::OPEN);
+        $chosen = ! empty($data['merge_into']) ? $candidates->firstWhere('code', $data['merge_into']) : $candidates->first();
+
+        if ($chosen === null) {
+            throw ApiException::unprocessable('CRM-BR-04', 'Solo se fusiona con un lead abierto que coincida por correo o teléfono.');
+        }
+
+        $target = $this->lead($chosen['code'], $actor);
+        $incoming = [
+            'company' => $data['company'] ?? null,
+            'email' => $data['email'] ?? null,
+            'phone' => $data['phone'] ?? null,
+            ...$this->interest->destination($data),
+            'product_id' => $this->interest->product($data),
+            'travel_date' => $data['travel_date'] ?? null,
+            'pax' => (int) ($data['pax'] ?? 0),
+        ];
+        $values = $this->filledFrom($target, $incoming);
+        unset($values['notes']);
+        $stamp = Carbon::now($this->context->tenant()->timezone ?: 'America/Lima')->locale('es')->translatedFormat('d M');
+        $source = $this->catalog->label('lead_source', $data['source']);
+        $note = trim("[Fusionado {$stamp} · {$source}/".$this->catalog->label('lead_channel', $data['channel']).'] '.trim((string) ($data['notes'] ?? '')));
+        $values['notes'] = trim(($target->notes ? $target->notes."\n" : '').$note);
+        $values['score'] = min(100, (int) $target->score + 5);
+
+        $this->save($target, (int) $target->lock_version, $values, $actor);
+        $this->audit->log('Lead', $target->code, 'fusionar', "ingreso {$source}", "fusionado en {$target->code}");
+
+        return ['code' => $target->code, 'merged' => true];
+    }
+
+    private function filledFrom(object $target, array $source): array
+    {
+        $values = [];
+        foreach (['company', 'email', 'phone', 'destination_id', 'destination_label', 'product_id', 'travel_date', 'notes'] as $field) {
+            if (blank($target->{$field}) && ! blank($source[$field] ?? null)) {
+                $values[$field] = $source[$field];
+            }
+        }
+
+        if (isset($values['phone'])) {
+            $values['phone_norm'] = $this->phoneNorm((string) $values['phone']);
+        }
+
+        if ((int) $target->pax === 0 && (int) ($source['pax'] ?? 0) > 0) {
+            $values['pax'] = (int) $source['pax'];
+        }
+
+        return $values;
+    }
+
     public function convert(string $code, array $data, int $version, User $actor): array
     {
         $lead = $this->lead($code, $actor);
@@ -262,11 +433,13 @@ final class LeadWorkflow
         }
 
         return DB::transaction(function () use ($lead, $data, $version, $actor): array {
-            $client = isset($data['client_code'])
-                ? DB::table('crm_clients')->where('code', $data['client_code'])->whereNull('deleted_at')->first() ?? throw ApiException::notFound('El cliente no existe.')
+            $client = ! empty($data['client_code'])
+                ? $this->existingClient((string) $data['client_code'], $actor)
                 : $this->createClient($lead, $data, $actor);
 
-            $stage = DB::table('crm_pipeline_stages')->where('code', 'calificacion')->first();
+            $stageCode = $data['stage'] ?? 'calificacion';
+            $stage = DB::table('crm_pipeline_stages')->where('code', $stageCode)->first() ?? throw ApiException::unprocessable('STAGE', 'Elige una etapa del embudo.');
+            $owner = $this->opportunityOwner($data['owner_id'] ?? null, $lead, $actor);
             $opportunityCode = $this->nextCode('crm_opportunities', 'OPP-');
             $opportunityId = (string) Str::uuid7();
             DB::table('crm_opportunities')->insert([
@@ -275,13 +448,14 @@ final class LeadWorkflow
                 'code' => $opportunityCode,
                 'client_id' => $client->id,
                 'title' => trim($data['opportunity_title']),
-                'stage' => 'calificacion',
+                'stage' => $stageCode,
                 'amount' => $data['amount'],
                 'currency' => $data['currency'],
                 'probability' => (int) ($stage->default_probability ?? 20),
                 'expected_close_date' => $data['expected_close_date'],
-                'owner_id' => $lead->owner_id ?? $actor->getKey(),
+                'owner_id' => $owner,
                 'destination_label' => $lead->destination_label,
+                'product_id' => $lead->product_id,
                 'pax' => $lead->pax,
                 'lead_id' => $lead->id,
                 'origin' => 'lead',
@@ -298,17 +472,62 @@ final class LeadWorkflow
 
             $this->audit->log('Oportunidad', $opportunityCode, 'crear', after: "desde {$lead->code}");
             $this->audit->log('Lead', $lead->code, 'convertir', 'calificado', "{$client->code} + {$opportunityCode}");
+            $activity = ($data['schedule_discovery_meeting'] ?? false) ? $this->scheduleDiscovery($opportunityCode, trim($data['opportunity_title']), $owner, $actor) : null;
 
-            return ['client' => $client->code, 'opportunity' => $opportunityCode];
+            return ['client' => $client->code, 'opportunity' => $opportunityCode, 'activity' => $activity];
         });
+    }
+
+    private function existingClient(string $code, User $actor): object
+    {
+        $client = DB::table('crm_clients')->where('code', $code)->whereNull('deleted_at')->first() ?? throw ApiException::unprocessable('CRM-BR-16', 'Elige un cliente de la lista.');
+
+        if (Portfolio::ownOnly($actor) && $client->owner_id !== $actor->getKey()) {
+            throw ApiException::forbidden('CRM-BR-21', 'Solo puedes vincular clientes de tu cartera.');
+        }
+
+        return $client;
+    }
+
+    private function opportunityOwner(?string $requested, object $lead, User $actor): string
+    {
+        if (Portfolio::ownOnly($actor) || ! $requested) {
+            return $lead->owner_id ?? $actor->getKey();
+        }
+
+        if (! $this->advisors->has($requested)) {
+            throw ApiException::unprocessable('CRM-BR-31', 'Elige un responsable activo de la lista.');
+        }
+
+        return $requested;
+    }
+
+    private function scheduleDiscovery(string $opportunityCode, string $title, string $owner, User $actor): string
+    {
+        $due = now($this->context->tenant()->timezone ?: 'America/Lima')->addWeekday()->setTime(10, 0);
+        $code = $this->activities->create([
+            'type' => 'reunion',
+            'subject' => "Reunión de descubrimiento — {$title}",
+            'related_type' => 'opportunity',
+            'related_code' => $opportunityCode,
+            'owner_id' => $owner,
+            'due_at' => $due->toIso8601String(),
+        ], $actor);
+
+        return $code;
     }
 
     private function createClient(object $lead, array $data, User $actor): object
     {
         $type = $data['doc_type'];
-        $kind = $type === 'RUC' ? 'empresa' : 'persona';
-        $country = $data['country'] ?? 'Perú';
-        $number = ClientDocument::normalize(($data['as_company'] ?? false) ? 'empresa' : $kind, $type, (string) $data['doc_number'], $country);
+        $kind = $data['kind'] ?? ($type === 'RUC' ? 'empresa' : 'persona');
+        $country = trim((string) ($data['country'] ?? '')) ?: 'Perú';
+        $number = ClientDocument::normalize($kind, $type, (string) $data['doc_number'], $country);
+        $segment = $data['segment'] ?? ($kind === 'empresa' ? 'Corporativo' : 'Retail');
+
+        if (! empty($data['segment']) && ! $this->catalog->options()->get('client_segment', collect())->pluck('label')->contains($segment)) {
+            throw ApiException::unprocessable('CRM-BR-01', 'Elige el segmento de la lista.');
+        }
 
         $existing = DB::table('crm_clients')->where('doc_type', $type)->where('doc_number', $number)->whereNull('deleted_at')->first(['code', 'name']);
 
@@ -323,7 +542,7 @@ final class LeadWorkflow
             'tenant_id' => $lead->tenant_id,
             'code' => $code,
             'kind' => $kind,
-            'name' => $kind === 'empresa' && $lead->company ? $lead->company : $lead->full_name,
+            'name' => trim((string) ($data['name'] ?? '')) ?: ($kind === 'empresa' && $lead->company ? $lead->company : $lead->full_name),
             'doc_type' => $type,
             'doc_number' => $number,
             'email' => $lead->email,
@@ -331,7 +550,7 @@ final class LeadWorkflow
             'phone_norm' => $lead->phone_norm,
             'country' => $country,
             'city' => $data['city'] ?? null,
-            'segment_code' => $kind === 'empresa' ? 'Corporativo' : 'Retail',
+            'segment_code' => $segment,
             'owner_id' => $lead->owner_id ?? $actor->getKey(),
             'tags' => '{"'.str_replace('"', '', $this->catalog->label('lead_source', $lead->source_code)).'"}',
             'source_lead_id' => $lead->id,
@@ -379,30 +598,9 @@ final class LeadWorkflow
         }
     }
 
-    private function duplicates(?string $email, ?string $phone): array
+    private function duplicates(?string $email, ?string $phone, ?string $excludeId = null): array
     {
-        $email = $email ? mb_strtolower(trim($email)) : null;
-        $phone = $this->phoneNorm($phone);
-
-        if ($email === null && $phone === null) {
-            return [];
-        }
-
-        $match = fn ($query) => $query->where(function ($where) use ($email, $phone): void {
-            if ($email) {
-                $where->orWhere('email_norm', $email);
-            }
-            if ($phone) {
-                $where->orWhere('phone_norm', $phone);
-            }
-        });
-
-        $leads = $match(DB::table('crm_leads')->whereNull('deleted_at')->whereNotIn('status', ['duplicado']))->get(['id', 'code', 'full_name as name', 'status'])
-            ->map(fn (object $row) => ['type' => 'lead', 'id' => $row->id, 'code' => $row->code, 'name' => $row->name, 'status' => $row->status]);
-        $clients = $match(DB::table('crm_clients')->whereNull('deleted_at'))->get(['id', 'code', 'name', 'segment_code'])
-            ->map(fn (object $row) => ['type' => 'client', 'id' => $row->id, 'code' => $row->code, 'name' => $row->name, 'status' => $row->segment_code]);
-
-        return $clients->concat($leads)->values()->all();
+        return $this->matcher->find($email, $phone, $excludeId);
     }
 
     private function initialScore(array $data): int
@@ -420,9 +618,7 @@ final class LeadWorkflow
 
     private function phoneNorm(?string $phone): ?string
     {
-        $digits = preg_replace('/\D/', '', (string) $phone);
-
-        return $digits === '' ? null : substr($digits, -9);
+        return LeadDuplicates::phoneNorm($phone);
     }
 
     private function nextCode(string $table, string $prefix): string

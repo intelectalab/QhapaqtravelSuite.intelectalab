@@ -85,9 +85,11 @@ export async function sendClaim(agencia: string, _state: SiteFormState, form: Fo
       email: text(form, "email"),
       phone: text(form, "phone"),
       address: text(form, "address"),
-      minor: flag(form, "minor"),
+      is_minor: flag(form, "is_minor"),
       guardian_name: text(form, "guardian_name"),
-      guardian_doc: text(form, "guardian_doc"),
+      guardian_doc_type: text(form, "guardian_doc_type"),
+      guardian_doc_number: text(form, "guardian_doc_number"),
+      guardian_relation: text(form, "guardian_relation"),
       sede_id: text(form, "sede_id"),
       good_kind: text(form, "good_kind"),
       good_description: text(form, "good_description"),
@@ -177,7 +179,14 @@ export async function placeOrder(agencia: string, _state: SiteFormState, form: F
 
 export async function payOrder(agencia: string, code: string, payment: Record<string, string>): Promise<{ ok: boolean; message: string | null }> {
   const token = (await cookies()).get(orderCookie(code))?.value;
-  const result = await sendSite<{ payment: { result: string; message: string } }>(agencia, `/orders/${encodeURIComponent(code)}/payments`, payment, token ? { "X-Order-Token": token } : {});
+  const orderHeaders: Record<string, string> = token ? { "X-Order-Token": token } : {};
+  let body: Record<string, string> = payment;
+  if (payment.method === "tarjeta") {
+    const session = await sendSite<{ session_id: string }>(agencia, `/orders/${encodeURIComponent(code)}/payment-session`, {}, orderHeaders);
+    if (!session.ok || !session.data) return { ok: false, message: session.error?.message ?? "La pasarela no respondió. Intenta de nuevo en unos minutos." };
+    body = { ...payment, session_id: session.data.session_id };
+  }
+  const result = await sendSite<{ payment: { result: string; message: string } }>(agencia, `/orders/${encodeURIComponent(code)}/payments`, body, orderHeaders);
   revalidatePath(`/sitio/${agencia}/confirmacion/${code}`);
   if (!result.ok || !result.data) {
     const errors = fieldErrors(result.error?.errors);
@@ -307,4 +316,14 @@ export async function unsubscribeNewsletter(agencia: string, token: string): Pro
   const result = await sendSite<{ email: string }>(agencia, "/newsletter/unsubscribe", { token });
   if (!result.ok || !result.data) return accountFailure(result.status, result.error, "No pudimos procesar la baja.");
   return { status: "done", message: `Listo: ${result.data.email} ya no recibirá el boletín.` };
+}
+
+export async function sendTokenReview(agencia: string, _state: SiteFormState, form: FormData): Promise<SiteFormState> {
+  const subratings = Object.fromEntries([...form.entries()].filter(([key, value]) => key.startsWith("sub_") && typeof value === "string" && value !== "").map(([key, value]) => [key.slice(4), Number(value)]));
+  return submit(agencia, "/reviews/by-token", { code: text(form, "code"), t: text(form, "t"), product: text(form, "product"), stars: Number(text(form, "stars") ?? 0), title: text(form, "title"), body: text(form, "body"), lang: text(form, "lang") ?? "es", country: text(form, "country"), subratings, consent_publish: flag(form, "consent_publish") }, "No pudimos enviar tu opinión.", form);
+}
+
+export async function recordSiteEvents(agencia: string, payload: { session_id: string; currency?: string; events: { event: string; params?: Record<string, unknown> }[] }): Promise<boolean> {
+  const result = await sendSite<{ recorded: number }>(agencia, "/analytics/events", { ...payload, consent: true });
+  return result.ok;
 }

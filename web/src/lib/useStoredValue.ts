@@ -2,7 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-const CHANGE_EVENT = "qhapaq-storage";
+const CHANGE_EVENT = "kipucontrol-storage";
 
 function subscribe(listener: () => void): () => void {
   window.addEventListener("storage", listener);

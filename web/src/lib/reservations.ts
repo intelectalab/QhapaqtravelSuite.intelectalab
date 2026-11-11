@@ -15,6 +15,18 @@ export interface ReservationRow {
   passengers: number;
   balance_pen?: number;
   open_incidents: number;
+  services: { confirmed: number; total: number };
+  supplier_cost_pen?: number;
+  origin: { kind: "cotizacion" | "web" | "directa"; label: string };
+  cancel_requested: boolean;
+}
+
+export interface Occupancy {
+  month: string;
+  today: string;
+  days: { date: string; pax: number; reservations: number }[];
+  next: { date: string; pax: number; reservations: number }[];
+  departures: { ref: string; product: string; date: string; time: string | null; capacity: number; sold: number; free: number; status: string }[];
 }
 
 export interface ReservationView {
@@ -53,7 +65,9 @@ export interface ReservationService {
   confirmation: string | null;
   reject_reason: string | null;
   replaced: boolean;
-  provider: { name: string; active: boolean } | null;
+  alt_of?: string | null;
+  provider: { ref?: string | null; name: string; active: boolean } | null;
+  alternatives?: { id: string; name: string; city: string | null }[];
   price?: string;
   cost?: string;
   currency: string;
@@ -73,7 +87,7 @@ export interface ReservationCan {
   operation_order: boolean;
 }
 
-export interface ReservationDetail extends Omit<ReservationRow, "passengers" | "balance_pen" | "open_incidents"> {
+export interface ReservationDetail extends Omit<ReservationRow, "passengers" | "balance_pen" | "open_incidents" | "services" | "origin" | "cancel_requested"> {
   today: string;
   notes: string | null;
   sede: string | null;
@@ -252,6 +266,7 @@ export interface ReservationPassenger {
   relationship: string | null;
   is_lead: boolean;
   is_placeholder: boolean;
+  age_warning?: string | null;
 }
 
 export interface ReservationCancellation {
@@ -304,6 +319,17 @@ export interface ChangeImpact {
 
 export const CHANGE_TYPE: Record<string, string> = { pax: "Pasajeros", servicio: "Servicio", upgrade: "Mejora", otro: "Otro ajuste" };
 
+export interface ConfirmPreview {
+  code: string;
+  status: string;
+  confirmable: boolean;
+  services: { code: string; name: string; date: string; status: string; provider: string | null; ok: boolean; kind: "cupo" | "proveedor" | "rechazo" | "reemplazado"; message: string; alternatives: { ref: string; date: string; free: number }[] }[];
+  passengers: { ok: boolean; count: number };
+  blocked: boolean;
+  reschedule: boolean;
+  waiting: boolean;
+}
+
 export interface ReschedulePlan {
   code: string;
   currency: string;
@@ -329,6 +355,17 @@ export interface DirectFormOptions {
   today: string;
 }
 
+export interface DirectRateOption {
+  id: string;
+  ref: string;
+  type: string;
+  segment: string;
+  channel: string;
+  currency: string;
+  price: string;
+  valid: boolean;
+}
+
 export interface DirectDeparture {
   id: string;
   ref: string;
@@ -342,6 +379,10 @@ export interface DirectPlan {
   departures: DirectDeparture[];
   pax: { adt: number; chd: number; inf: number };
   priced: boolean;
+  rates: DirectRateOption[];
+  rate_id?: string;
+  rate_ref?: string;
+  season_factor?: string | null;
   channel?: string;
   date?: string;
   travel_from?: string;
@@ -362,6 +403,7 @@ export interface DirectPayload {
   channel: string;
   owner_id: string;
   departure_id: string;
+  rate_id: string;
   date: string;
   adt: number;
   chd: number;

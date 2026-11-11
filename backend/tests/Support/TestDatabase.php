@@ -19,7 +19,7 @@ use Throwable;
 
 final class TestDatabase
 {
-    public const NAME = 'qhapaq_test';
+    public const NAME = 'kipucontrol_test';
 
     public const CONNECTIONS = ['pgsql', 'pgsql_audit', 'pgsql_platform', 'pgsql_owner'];
 
@@ -92,13 +92,13 @@ final class TestDatabase
         $session->query('select pg_advisory_lock('.self::REBUILD_LOCK.')');
 
         try {
-            if (self::fingerprint() !== self::storedFingerprint() || getenv('QHAPAQ_TEST_REFRESH') === '1') {
+            if (self::fingerprint() !== self::storedFingerprint() || getenv('KIPUCONTROL_TEST_REFRESH') === '1') {
                 self::rebuildWhenAlone($session);
             }
 
             $session->query('select pg_advisory_lock_shared('.self::USAGE_LOCK.')');
         } catch (Throwable $e) {
-            self::$failure = new RuntimeException('No se pudo preparar qhapaq_test: '.$e->getMessage(), 0, $e);
+            self::$failure = new RuntimeException('No se pudo preparar kipucontrol_test: '.$e->getMessage(), 0, $e);
 
             throw self::$failure;
         } finally {
@@ -111,7 +111,7 @@ final class TestDatabase
     private static function rebuildWhenAlone(PDO $session): void
     {
         if (! $session->query('select pg_try_advisory_lock('.self::USAGE_LOCK.')')->fetchColumn()) {
-            fwrite(STDERR, "Otra ejecución de pruebas usa qhapaq_test: se reutiliza la semilla actual.\n");
+            fwrite(STDERR, "Otra ejecución de pruebas usa kipucontrol_test: se reutiliza la semilla actual.\n");
 
             return;
         }

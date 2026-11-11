@@ -114,6 +114,7 @@ final class IncidentDirectory
             'sla_due_at' => $row->sla_due_at,
             'sla_pct' => (int) min(100, max(0, round($created->diffInMinutes($end) / $total * 100))),
             'overdue' => $open && $due->lessThan($now),
+            'on_time' => $open ? null : $end->lessThanOrEqualTo($due),
         ];
     }
 }

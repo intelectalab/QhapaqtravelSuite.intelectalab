@@ -131,6 +131,26 @@ export function RatesTable({ overview }: { overview: RatesOverview }) {
       metrics={metrics}
       filters={filters}
       sorts={sorts}
+      csv={{
+        fileName: "tarifas",
+        columns: [
+          { header: "Tarifa", value: (rate) => rate.ref },
+          { header: "Producto", value: (rate) => rate.product.name },
+          { header: "Código del producto", value: (rate) => rate.product.code },
+          { header: "Tipo", value: (rate) => rate.type },
+          { header: "Segmento", value: (rate) => rate.segment },
+          { header: "Canal", value: (rate) => rate.channel },
+          { header: "Moneda", value: (rate) => rate.currency },
+          { header: "Se cobra", value: (rate) => rate.basis },
+          ...(can.see_cost ? [{ header: "Costo", value: (rate: RateRow) => rate.cost }] : []),
+          { header: "Precio", value: (rate) => rate.price },
+          ...(can.see_margin ? [{ header: "Margen %", value: (rate: RateRow) => rate.margin_pct }] : []),
+          { header: "Vigente desde", value: (rate) => rate.valid_from },
+          { header: "Vigente hasta", value: (rate) => rate.valid_to },
+          { header: "Temporada", value: (rate) => rate.season?.name },
+          { header: "Estado", value: (rate) => RATE_STATE[rate.state].label },
+        ],
+      }}
     />
   );
 }

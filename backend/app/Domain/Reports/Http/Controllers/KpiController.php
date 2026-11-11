@@ -7,6 +7,7 @@ namespace App\Domain\Reports\Http\Controllers;
 use App\Domain\Iam\Models\User;
 use App\Domain\Reports\Support\KpiReport;
 use App\Domain\Reports\Support\ProcessMap;
+use App\Domain\Reports\Support\ReportCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,6 +16,14 @@ final class KpiController
     public function kpis(Request $request, KpiReport $report): JsonResponse
     {
         return response()->json(['data' => $report->build($this->user($request))]);
+    }
+
+    public function report(Request $request, string $report, ReportCatalog $catalog): JsonResponse
+    {
+        $period = $request->query('period');
+        $sede = $request->query('sede');
+
+        return response()->json(['data' => $catalog->build($this->user($request), $report, is_string($period) ? $period : null, is_string($sede) ? $sede : null)]);
     }
 
     public function flow(Request $request, ProcessMap $map): JsonResponse

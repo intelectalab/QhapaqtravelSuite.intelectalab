@@ -1,5 +1,5 @@
 -- =============================================================================
--- Qhapaq Travel Suite · Esquema PostgreSQL 17 · 20_fase1.sql
+-- KipuControl · Esquema PostgreSQL 17 · 20_fase1.sql
 -- Fase 1 · MVP
 -- Generado desde §3 de las especificaciones 00–18 + CONVENCIONES.md (fuente de verdad del kit).
 -- Tablas nuevas: 94. Requiere: 00_extensions_and_functions.sql y archivos previos.

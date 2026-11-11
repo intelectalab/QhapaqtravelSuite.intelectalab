@@ -23,17 +23,17 @@
         <server name="BCRYPT_ROUNDS" value="4" force="true"/>
         <server name="BROADCAST_CONNECTION" value="null" force="true"/>
         <server name="DB_CONNECTION" value="pgsql" force="true"/>
-        <server name="DB_DATABASE" value="qhapaq_test" force="true"/>
+        <server name="DB_DATABASE" value="kipucontrol_test" force="true"/>
         <server name="DB_URL" value="" force="true"/>
-        <server name="DB_USERNAME" value="qhapaq_app" force="true"/>
-        <server name="DB_PLATFORM_USERNAME" value="qhapaq_platform" force="true"/>
-        <server name="DB_OWNER_USERNAME" value="qhapaq_owner" force="true"/>
-        <server name="REDIS_PREFIX" value="qhapaq_test:" force="true"/>
+        <server name="DB_USERNAME" value="kipucontrol_app" force="true"/>
+        <server name="DB_PLATFORM_USERNAME" value="kipucontrol_platform" force="true"/>
+        <server name="DB_OWNER_USERNAME" value="kipucontrol_owner" force="true"/>
+        <server name="REDIS_PREFIX" value="kipucontrol_test:" force="true"/>
         <server name="REDIS_DB" value="14" force="true"/>
         <server name="REDIS_CACHE_DB" value="15" force="true"/>
         <server name="CACHE_STORE" value="redis" force="true"/>
-        <server name="CACHE_PREFIX" value="qhapaq_test_cache:" force="true"/>
-        <server name="HORIZON_PREFIX" value="qhapaq_test_horizon:" force="true"/>
+        <server name="CACHE_PREFIX" value="kipucontrol_test_cache:" force="true"/>
+        <server name="HORIZON_PREFIX" value="kipucontrol_test_horizon:" force="true"/>
         <server name="FILESYSTEM_DISK" value="local" force="true"/>
         <server name="MAIL_MAILER" value="array" force="true"/>
         <server name="QUEUE_CONNECTION" value="sync" force="true"/>
@@ -46,17 +46,17 @@
         <env name="BCRYPT_ROUNDS" value="4" force="true"/>
         <env name="BROADCAST_CONNECTION" value="null" force="true"/>
         <env name="DB_CONNECTION" value="pgsql" force="true"/>
-        <env name="DB_DATABASE" value="qhapaq_test" force="true"/>
+        <env name="DB_DATABASE" value="kipucontrol_test" force="true"/>
         <env name="DB_URL" value="" force="true"/>
-        <env name="DB_USERNAME" value="qhapaq_app" force="true"/>
-        <env name="DB_PLATFORM_USERNAME" value="qhapaq_platform" force="true"/>
-        <env name="DB_OWNER_USERNAME" value="qhapaq_owner" force="true"/>
-        <env name="REDIS_PREFIX" value="qhapaq_test:" force="true"/>
+        <env name="DB_USERNAME" value="kipucontrol_app" force="true"/>
+        <env name="DB_PLATFORM_USERNAME" value="kipucontrol_platform" force="true"/>
+        <env name="DB_OWNER_USERNAME" value="kipucontrol_owner" force="true"/>
+        <env name="REDIS_PREFIX" value="kipucontrol_test:" force="true"/>
         <env name="REDIS_DB" value="14" force="true"/>
         <env name="REDIS_CACHE_DB" value="15" force="true"/>
         <env name="CACHE_STORE" value="redis" force="true"/>
-        <env name="CACHE_PREFIX" value="qhapaq_test_cache:" force="true"/>
-        <env name="HORIZON_PREFIX" value="qhapaq_test_horizon:" force="true"/>
+        <env name="CACHE_PREFIX" value="kipucontrol_test_cache:" force="true"/>
+        <env name="HORIZON_PREFIX" value="kipucontrol_test_horizon:" force="true"/>
         <env name="FILESYSTEM_DISK" value="local" force="true"/>
         <env name="MAIL_MAILER" value="array" force="true"/>
         <env name="LOG_CHANNEL" value="null" force="true"/>

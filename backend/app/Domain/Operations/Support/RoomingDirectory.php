@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Domain\Operations\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Operations\Actions\RoomingPrefill;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final class RoomingDirectory
 {
-    public function __construct(private readonly OpsCommon $common) {}
+    public function __construct(private readonly OpsCommon $common, private readonly RoomingPrefill $prefill) {}
 
     public function list(User $viewer): array
     {
@@ -65,6 +66,7 @@ final class RoomingDirectory
                 ];
             })->values(),
             'candidates' => $canModify ? $this->candidates() : [],
+            'prefill' => $this->prefillable(),
             'hotels' => $canModify ? DB::table('catalog_providers')->whereNull('deleted_at')->where('type', 'Hotel')->where('status', 'activo')->orderBy('name')->get(['id as value', 'name as label', 'city as hint']) : [],
         ];
     }
@@ -95,6 +97,15 @@ final class RoomingDirectory
         }
 
         return $warnings;
+    }
+
+    private function prefillable(): Collection
+    {
+        return DB::table('booking_reservations as r')->whereNull('r.deleted_at')->whereNotIn('r.status', ['cancelada', 'completada', 'borrador'])
+            ->whereExists(fn ($query) => $query->from('booking_reservation_web_snapshots as w')->join('booking_reservation_web_lodging as l', 'l.snapshot_id', '=', 'w.id')->whereColumn('w.reservation_id', 'r.id'))
+            ->orderBy('r.travel_from')->get(['r.id', 'r.code', 'r.title'])
+            ->map(fn (object $row): array => ['reservation' => $row->code, 'title' => $row->title, 'legs' => $this->prefill->pending($row->id)->map(fn (array $leg): array => ['city' => $leg['city'], 'hotel' => $leg['hotel'], 'rooms' => count($leg['rooms'])])->values()])
+            ->filter(fn (array $row): bool => $row['legs']->isNotEmpty())->values();
     }
 
     private function candidates(): Collection

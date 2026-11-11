@@ -1,4 +1,4 @@
-# Kit de desarrollo con IA — Qhapaq Travel Suite
+# Kit de desarrollo con IA — KipuControl
 
 Todo lo necesario para programar el SaaS completo (fases 0 a 3) con un asistente de IA como Claude Code: el esquema de base de datos validado, el contrato de la API, el backlog de historias con criterios de aceptación, las pruebas de referencia, los datos semilla, el sistema de diseño, la infraestructura local, las instrucciones para el asistente y material de referencia técnica para el programador: guía técnica, código de ejemplo verificado, diccionario de datos con diagramas entidad-relación, máquinas de estado, reglas de negocio, códigos de error, eventos y jobs, permisos, glosario y una colección de la API lista para importar.
 
@@ -30,7 +30,7 @@ El kit se usa junto con la documentación funcional (`docs/`): `CONVENCIONES.md`
 ## 2. Armar el espacio de trabajo
 
 ```text
-qhapaq/                          ← abrir Claude Code aquí para trabajo transversal
+kipucontrol/                          ← abrir Claude Code aquí para trabajo transversal
 ├── CLAUDE.md                    ← kit/claude/CLAUDE.md
 ├── .claude/                     ← kit/claude/.claude/ (commands, agents, settings.json)
 ├── docker-compose.yml  Makefile  docker/      ← kit/infra/
@@ -48,7 +48,7 @@ qhapaq/                          ← abrir Claude Code aquí para trabajo transv
 Pasos:
 
 ```bash
-mkdir qhapaq && cd qhapaq && git init
+mkdir kipucontrol && cd kipucontrol && git init
 mkdir -p docs backend web mobile
 # copiar la documentación y el prototipo en docs/, y este kit en docs/kit/
 cp docs/kit/claude/CLAUDE.md . && cp -r docs/kit/claude/.claude .
@@ -102,7 +102,7 @@ El kit no incluye equipo, plazos ni estimaciones de tiempo: la planificación la
 
 Resumen de lo que ya dicen los `CLAUDE.md`; conviene tenerlo presente al revisar su trabajo:
 
-- **Tenant** siempre desde la autenticación, nunca desde el request; RLS como segunda barrera; `qhapaq_app` sin BYPASSRLS.
+- **Tenant** siempre desde la autenticación, nunca desde el request; RLS como segunda barrera; `kipucontrol_app` sin BYPASSRLS.
 - **Permisos** del contrato en cada endpoint; Ventas solo ve su cartera; usuarios externos solo sus recursos vinculados.
 - **Costos y márgenes** omitidos en las respuestas según permiso.
 - **Dinero** con moneda y tipo de cambio conservado; nunca `float`.
@@ -134,7 +134,7 @@ El kit toma supuestos donde las especificaciones dejan algo abierto; están marc
 - Material de referencia: `bash docs/kit/referencia/tools/regenerar.sh` (Postman, reglas, errores, eventos, permisos, glosario, diccionario, ER y máquinas de estado) y `bash docs/kit/ejemplos/tools/verificar_todo.sh` (regenera y verifica el código de ejemplo).
 
 - Cambio de tabla: editar `database/*.sql` → `make db-validate` → migración.
-- Cambio de endpoint: editar la §6 de la especificación → `python3 docs/kit/api/build_openapi.py` → implementar. Las specs se buscan en `docs/especificaciones/` (o en la ruta de la variable `QHAPAQ_SPECS_DIR`).
+- Cambio de endpoint: editar la §6 de la especificación → `python3 docs/kit/api/build_openapi.py` → implementar. Las specs se buscan en `docs/especificaciones/` (o en la ruta de la variable `KIPUCONTROL_SPECS_DIR`).
 - Cambio de historia: `.md` y `.csv` de la fase y `backlog-completo.csv` en el mismo commit.
 - Cambio de valores del motor: `node docs/kit/tests/tools/recalcular-esperados.cjs docs/prototipo/index.html` regenera los esperados desde el prototipo.
 - Todo cambio con entrada en `docs/CHANGELOG.md`.

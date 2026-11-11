@@ -1,4 +1,4 @@
-# Código de referencia — Qhapaq Travel Suite
+# Código de referencia — KipuControl
 
 Archivos **listos para copiar** que resuelven las reglas de los `CLAUDE.md` del kit (`claude/backend`, `claude/web`, `claude/mobile`) con los nombres exactos del esquema (`database/*.sql`), del contrato (`api/openapi.yaml`) y de las plantillas de pruebas (`tests/pest`, `tests/e2e`). Comentarios en español; código en inglés.
 
@@ -85,7 +85,7 @@ Resultado de la última ejecución: 81 archivos PHP sin errores de sintaxis (PHP
 
 ## 4. Clases que el proyecto debe aportar
 
-Los ejemplos referencian, sin incluirlas: `App\Domain\Iam\Models\User` (`iam_users`, con `HasRoles` de spatie y `HasApiTokens`), `App\Domain\Platform\Models\Tenant` (`tenants`), `App\Domain\Crm\Models\Client` (`crm_clients`), `App\Domain\Notifications\Notify` (spec 00 §8.1) y los middleware de la historia F0 `EnsureTenantActive`, `EnsureMfaVerified`, `SetPermissionsTeam`, `EnsureExperience` (spec 00 §11 fila 1). Conexiones de BD supuestas en `config/database.php`: `pgsql` (usuario `qhapaq_app`), `pgsql_platform` (`qhapaq_platform`), `pgsql_owner` (migraciones) — las tres están en `infra/env/backend.env.example` — y `pgsql_audit` (**Supuesto**: segunda conexión con `qhapaq_app` para escribir auditoría fuera de la transacción de la solicitud).
+Los ejemplos referencian, sin incluirlas: `App\Domain\Iam\Models\User` (`iam_users`, con `HasRoles` de spatie y `HasApiTokens`), `App\Domain\Platform\Models\Tenant` (`tenants`), `App\Domain\Crm\Models\Client` (`crm_clients`), `App\Domain\Notifications\Notify` (spec 00 §8.1) y los middleware de la historia F0 `EnsureTenantActive`, `EnsureMfaVerified`, `SetPermissionsTeam`, `EnsureExperience` (spec 00 §11 fila 1). Conexiones de BD supuestas en `config/database.php`: `pgsql` (usuario `kipucontrol_app`), `pgsql_platform` (`kipucontrol_platform`), `pgsql_owner` (migraciones) — las tres están en `infra/env/backend.env.example` — y `pgsql_audit` (**Supuesto**: segunda conexión con `kipucontrol_app` para escribir auditoría fuera de la transacción de la solicitud).
 
 ## 5. Supuestos y diferencias detectadas entre fuentes
 

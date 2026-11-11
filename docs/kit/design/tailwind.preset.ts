@@ -1,8 +1,8 @@
-// Preset de Tailwind CSS v3 para web/ (tailwind.config.ts → presets: [qhapaqPreset]).
+// Preset de Tailwind CSS v3 para web/ (tailwind.config.ts → presets: [kipucontrolPreset]).
 // Si el proyecto usa Tailwind v4, usar theme.v4.css en lugar de este archivo.
 import type { Config } from 'tailwindcss';
 
-const qhapaqPreset: Partial<Config> = {
+const kipucontrolPreset: Partial<Config> = {
   darkMode: ['class', '[data-theme="dark"]'],
   theme: {
     extend: {
@@ -55,7 +55,7 @@ const qhapaqPreset: Partial<Config> = {
   },
 };
 
-export default qhapaqPreset;
+export default kipucontrolPreset;
 
 /** Tono de badge por estado. Fuente: tokens.json → status.map (mismo valor que los CHECK de SQL). */
 export type Tone = 'ok' | 'warn' | 'bad' | 'info' | 'accent' | 'violet' | 'sun' | 'mute';

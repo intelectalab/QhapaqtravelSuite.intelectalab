@@ -1,8 +1,8 @@
 "use client";
 
-import { CircleCheck, FilePlus2, FileMinus2, RefreshCw, Send, SendHorizontal, TriangleAlert } from "lucide-react";
+import { Check, CircleCheck, Eye, FilePlus2, FileMinus2, MailCheck, RefreshCw, Send, SendHorizontal, TriangleAlert } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { checkInvoice, loadInvoiceDraft } from "@/app/(backoffice)/finanzas/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -11,12 +11,13 @@ import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
-import { TintCardTitle } from "@/components/ui/Tinted";
-import { cn } from "@/lib/cn";
 import { SelectField } from "@/components/ui/SelectField";
+import { SidePanel } from "@/components/ui/SidePanel";
+import { TintCardTitle } from "@/components/ui/Tinted";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
-import type { FinanceOption, InvoiceCheck, InvoiceDraft, InvoicePending, InvoiceRow, InvoicesOverview } from "@/lib/finance";
+import { cn } from "@/lib/cn";
+import type { FinanceOption, InvoiceCheck, InvoiceDraft, InvoiceInvoiceable, InvoicePending, InvoiceRow, InvoicesOverview } from "@/lib/finance";
 import { formatDate, formatMoney } from "@/lib/format";
 import { statusLabel, type Tone } from "@/lib/tone";
 import { FinanceStep, SummaryBox } from "./FinanceStep";
@@ -75,6 +76,69 @@ function FiscalStatusAction({ row }: { row: InvoiceRow }) {
   );
 }
 
+const FLOW = ["Emitido", "Enviado al OSE", "Aceptado", "Entregado"];
+
+function flowIndex(row: Pick<InvoiceRow, "status" | "delivered">): number {
+  if (row.status === "aceptado") return row.delivered ? 3 : 2;
+  if (["observado", "rechazado", "anulado"].includes(row.status)) return 1;
+  if (row.status === "emitido") return 1;
+  return 0;
+}
+
+export function InvoiceFlow({ row }: { row: Pick<InvoiceRow, "status" | "delivered"> }) {
+  const current = flowIndex(row);
+  const failed = ["observado", "rechazado"].includes(row.status);
+  return (
+    <ol className="flex flex-wrap items-center gap-x-2 gap-y-2" aria-label="Flujo del comprobante">
+      {FLOW.map((label, index) => {
+        const done = index < current || (index === current && !failed && row.status !== "pendiente_envio" && row.status !== "emitido");
+        const active = index === current;
+        const tone = active && failed ? "bad" : done ? "ok" : active ? "warn" : "mute";
+        return (
+          <li key={label} className="flex items-center gap-2">
+            <span style={{ animationDelay: `${index * 70}ms` }} className={cn("inline-flex animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-semibold transition hover:-translate-y-0.5", tone === "ok" && "border-[color-mix(in_srgb,var(--ok)_40%,transparent)] bg-[color-mix(in_srgb,var(--ok)_10%,transparent)] text-ok", tone === "warn" && "border-[color-mix(in_srgb,var(--warn)_40%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] text-fg", tone === "bad" && "border-[color-mix(in_srgb,var(--bad)_40%,transparent)] bg-[color-mix(in_srgb,var(--bad)_10%,transparent)] text-bad", tone === "mute" && "border-line text-fg-3")}>
+              {done && <Check size={12} strokeWidth={3} />}
+              {active && failed ? `${label}: ${statusLabel(row.status).toLowerCase()}` : label}
+            </span>
+            {index < FLOW.length - 1 && <span className={cn("h-px w-5", index < current ? "bg-ok" : "bg-line")} />}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function InvoicePreview({ row, canIssue, reasons }: { row: InvoiceRow; canIssue: boolean; reasons: FinanceOption[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <RowIcon tone="view" label="Vista previa" icon={<Eye size={15} />} onClick={() => setOpen(true)} testId={`invoice-preview:${row.number}`} />
+      <SidePanel
+        open={open}
+        onOpenChange={setOpen}
+        title={`${row.type} ${row.number}`}
+        description={`${row.customer.name} · ${formatDate(row.issue_date)}`}
+        footer={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {canIssue && <InvoiceRowActions row={row} reasons={reasons} />}
+            <Button variant="primary" href={`/finanzas/facturacion/${row.number}`}>
+              Abrir comprobante
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <InvoiceFlow row={row} />
+          <SummaryBox rows={[...invoiceSummary(row), { label: "Reserva", value: <Link href={`/reservas/${row.reservation.code}`} className="hover:underline">{row.reservation.code}</Link> }, ...(row.receivable ? [{ label: "Cuenta por cobrar", value: row.receivable }] : [])]} />
+          <p className="text-[13px] text-fg-2">{row.description}</p>
+          {row.ose_message && <p className="rounded-xl bg-surface-2 px-3.5 py-2.5 text-[12.5px] text-fg-2">OSE: {row.ose_message}</p>}
+          <p className="text-[12px] text-fg-3">{row.in_words}</p>
+        </div>
+      </SidePanel>
+    </>
+  );
+}
+
 export function InvoicesTable({ data }: { data: InvoicesOverview }) {
   const { rows, can, reasons } = data;
 
@@ -112,6 +176,8 @@ export function InvoicesTable({ data }: { data: InvoicesOverview }) {
         </span>
       ),
     },
+    { id: "reservation", header: "Reserva", wideOnly: true, cell: (row) => (<Link href={`/reservas/${row.reservation.code}`} className="block max-w-[160px] text-[13px] hover:text-accent hover:underline" title={row.reservation.title}><span className="font-mono">{row.reservation.code}</span><span className="block truncate text-xs text-fg-3">{row.reservation.title}</span></Link>) },
+    { id: "operation", header: "Operación", wideOnly: true, cell: (row) => <Badge tone={row.operation === "gravada" ? "t1" : "violet"} dot={false}>{row.operation === "gravada" ? "Gravada" : "Exportación"}</Badge> },
     { id: "date", header: "Emisión", cell: (row) => <span className="text-[13px]">{formatDate(row.issue_date)}</span> },
     { id: "total", header: "Total", align: "right", cell: (row) => <span className={`font-mono text-[13px] font-semibold ${row.doc_type === "07" ? "text-bad" : ""}`} title={row.in_words}>{row.doc_type === "07" ? "−" : ""}{formatMoney(row.total, row.currency)}</span> },
     {
@@ -124,6 +190,7 @@ export function InvoicesTable({ data }: { data: InvoicesOverview }) {
         </span>
       ),
     },
+    { id: "delivery", header: "Entrega", wideOnly: true, cell: (row) => (row.doc_type === "07" ? <span className="text-[12.5px] text-fg-3">—</span> : row.delivered ? <span className="inline-flex items-center gap-1.5 text-[12.5px] text-ok"><MailCheck size={14} />Entregado</span> : <span className="text-[12.5px] text-fg-3">Sin entregar</span>) },
     {
       id: "actions",
       header: "",
@@ -131,6 +198,7 @@ export function InvoicesTable({ data }: { data: InvoicesOverview }) {
       align: "right",
       cell: (row) => (
         <RowActions>
+          <InvoicePreview row={row} canIssue={can.issue} reasons={reasons} />
           <RowIcon tone="view" label="Ver comprobante" href={`/finanzas/facturacion/${row.number}`} testId={`invoice-view:${row.number}`} />
           {can.issue && <InvoiceRowActions row={row} reasons={reasons} />}
         </RowActions>
@@ -148,6 +216,8 @@ export function InvoicesTable({ data }: { data: InvoicesOverview }) {
     { id: "type", label: "Tipo", options: unique(rows.map((row) => row.type)).map((value) => ({ value, label: value })), value: (row) => row.type },
     { id: "status", label: "Estado", options: unique(rows.map((row) => row.status)).map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status },
     { id: "currency", label: "Moneda", options: unique(rows.map((row) => row.currency)).map((value) => ({ value, label: value })), value: (row) => row.currency },
+    { id: "operation", label: "Operación", options: [{ value: "gravada", label: "Gravada" }, { value: "exportacion", label: "Exportación" }], value: (row) => (row.operation === "gravada" ? "gravada" : "exportacion") },
+    { id: "delivery", label: "Entrega", options: [{ value: "si", label: "Entregados" }, { value: "no", label: "Sin entregar" }], value: (row) => (row.delivered ? "si" : "no") },
   ];
 
   const sorts: SortOption<InvoiceRow>[] = [
@@ -162,7 +232,7 @@ export function InvoicesTable({ data }: { data: InvoicesOverview }) {
       columns={columns}
       getKey={(row) => row.number}
       entityLabel="comprobantes"
-      searchText={(row) => `${row.number} ${row.customer.name} ${row.customer.doc_number} ${row.reservation.code}`}
+      searchText={(row) => `${row.number} ${row.customer.name} ${row.customer.doc_number} ${row.reservation.code} ${row.reservation.title}`}
       searchPlaceholder="Buscar número, cliente o documento"
       metrics={metrics}
       filters={filters}
@@ -239,7 +309,7 @@ function IssueInvoiceFields({ code }: { code: string }) {
         <TextField label="Número" name="customer_doc_number" maxLength={20} defaultValue={draft.customer_doc_number} onChange={(event) => set("customer_doc_number")(event.target.value)} />
       </div>
       <TextField label="Razón social o nombre" name="customer_name" maxLength={200} defaultValue={draft.customer_name} onChange={(event) => set("customer_name")(event.target.value)} />
-      <input type="hidden" name="customer_address" value={draft.customer_address ?? ""} />
+      <TextField label="Dirección del adquirente" name="customer_address" maxLength={250} defaultValue={draft.customer_address ?? ""} hint={form.doc_type === "01" ? "Se imprime en la factura. Revísala si el cliente cambió de domicilio fiscal." : "Opcional en boletas."} />
       <ChoiceGroup label="Adquirente" name="domiciled" defaultValue={draft.domiciled ? "1" : "0"} onChange={set("domiciled")} options={[{ value: "1", label: "Domiciliado (con IGV)" }, { value: "0", label: "No domiciliado (exportación)" }]} />
       <div className="grid grid-cols-2 gap-3">
         <TextField label={`Importe (${draft.currency})`} name="amount" type="number" step="0.01" min="0.01" max={draft.maximum} defaultValue={draft.amount} onChange={(event) => set("amount")(event.target.value)} />
@@ -266,10 +336,28 @@ function IssueInvoiceFields({ code }: { code: string }) {
   );
 }
 
-function IssueInvoiceAction({ item }: { item: InvoicePending }) {
+export function IssueInvoiceAction({ code, trigger }: { code: string; trigger?: (open: () => void) => ReactNode }) {
   return (
-    <FinanceStep step="invoice_issue" itemKey={item.code} label="Emitir" title="Emitir comprobante" description="Se numera con la serie del tipo elegido y se envía al OSE. La respuesta llega en segundos." submitLabel="Validar y emitir" trigger={(open) => <Button size="sm" variant="secondary" icon={<FilePlus2 size={15} />} onClick={open} data-testid={`invoice-issue:${item.code}`}>Emitir</Button>}>
-      <IssueInvoiceFields code={item.code} />
+    <FinanceStep step="invoice_issue" itemKey={code} label="Emitir comprobante" title="Emitir comprobante" description="Se numera con la serie del tipo elegido y se envía al OSE. La respuesta llega en segundos." submitLabel="Validar y emitir" trigger={trigger ?? ((open) => <Button size="sm" variant="secondary" icon={<FilePlus2 size={15} />} onClick={open} data-testid={`invoice-issue:${code}`}>Emitir</Button>)}>
+      <IssueInvoiceFields code={code} />
+    </FinanceStep>
+  );
+}
+
+function IssueAnyFields({ options }: { options: InvoiceInvoiceable[] }) {
+  const [code, setCode] = useState("");
+  return (
+    <>
+      <SelectField label="Cuenta por cobrar" name="pick_receivable" options={options.map((option) => ({ value: option.value, label: option.label, hint: option.hint }))} defaultValue="" onChange={setCode} placeholder="Busca por código o cliente" searchable hint="Incluye anticipos sin cobrar y cargos puntuales con importe pendiente de facturar." />
+      {code ? <IssueInvoiceFields key={code} code={code} /> : <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[12.5px] text-fg-3">Elige la cuenta por cobrar para preparar el comprobante.</p>}
+    </>
+  );
+}
+
+export function IssueAnyInvoiceAction({ options }: { options: InvoiceInvoiceable[] }) {
+  return (
+    <FinanceStep step="invoice_issue" itemKey="libre" label="Emitir comprobante" icon={<FilePlus2 size={16} />} variant="primary" title="Emitir comprobante" description="Para cualquier cuenta por cobrar con importe pendiente de facturar. Se numera con la serie del tipo elegido y se envía al OSE." submitLabel="Validar y emitir">
+      {options.length === 0 ? <p className="text-[13px] text-fg-3">No hay cuentas por cobrar con importe pendiente de facturar.</p> : <IssueAnyFields options={options} />}
     </FinanceStep>
   );
 }
@@ -289,7 +377,7 @@ export function PendingInvoicing({ pending }: { pending: InvoicePending[] }) {
               </span>
             </span>
             <span className="font-mono text-[13px]">{formatMoney(item.pending, item.currency)}</span>
-            <IssueInvoiceAction item={item} />
+            <IssueInvoiceAction code={item.code} />
           </li>
         ))}
       </ul>

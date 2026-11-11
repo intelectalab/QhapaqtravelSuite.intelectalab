@@ -5,7 +5,7 @@ import type { SiteLocale, SiteText } from "@/lib/site-i18n";
 export type SiteFont = "moderna" | "clasica" | "redondeada" | "editorial";
 export type SiteCorners = "suaves" | "rectas" | "redondeadas";
 export type SiteSectionId = "destinations" | "featured" | "promos" | "offers" | "departures" | "reasons" | "reviews" | "newsletter";
-export type SiteNavLinkId = "destinations" | "tours" | "packages" | "experiences" | "offers" | "tailored" | "contact";
+export type SiteNavLinkId = "destinations" | "tours" | "packages" | "experiences" | "transfers" | "offers" | "tailored" | "contact";
 export type SiteSocial = "facebook" | "instagram" | "tiktok" | "youtube" | "whatsapp";
 export type PromoTone = "marca" | "acento" | "menu";
 
@@ -198,6 +198,7 @@ export const TEXT_GROUPS: { title: string; hint: string; keys: { key: string; la
       { key: "header.links.tours", label: "Enlace a tours" },
       { key: "header.links.packages", label: "Enlace a paquetes" },
       { key: "header.links.experiences", label: "Enlace a experiencias" },
+      { key: "header.links.transfers", label: "Enlace a traslados" },
       { key: "header.links.offers", label: "Enlace a ofertas" },
       { key: "header.links.tailored", label: "Enlace a viajes a medida" },
       { key: "header.links.contact", label: "Enlace a contacto" },

@@ -10,8 +10,8 @@ const ref = (form: FormData) => encodeURIComponent(String(form.get("ref") ?? "")
 async function run(path: string, method: "POST" | "PATCH" | "DELETE", body: Record<string, unknown>, failure: string): Promise<StepResult> {
   const result = await sendStep(path, method, body, failure);
   if (result.done) {
-    revalidatePath("/catalogo/proveedores");
-    revalidatePath("/catalogo/servicios");
+    revalidatePath("/catalogo/proveedores", "layout");
+    revalidatePath("/catalogo/servicios", "layout");
   }
   return result;
 }
@@ -35,4 +35,12 @@ export async function addProviderContact(_state: StepResult, form: FormData): Pr
 
 export async function removeProviderContact(_state: StepResult, form: FormData): Promise<StepResult> {
   return run(`/catalog/providers/${ref(form)}/contacts/${encodeURIComponent(String(form.get("contact") ?? ""))}`, "DELETE", {}, "No pudimos quitar el contacto.");
+}
+
+export async function renewProviderContract(_state: StepResult, form: FormData): Promise<StepResult> {
+  return run(`/catalog/providers/${ref(form)}/renew-contract`, "POST", formValues(form, ["contract_end", "payment_terms"]), "No pudimos renovar el contrato.");
+}
+
+export async function rateProvider(_state: StepResult, form: FormData): Promise<StepResult> {
+  return run(`/catalog/providers/${ref(form)}/rating`, "POST", formValues(form, ["rating", "note"]), "No pudimos guardar la calificación.");
 }

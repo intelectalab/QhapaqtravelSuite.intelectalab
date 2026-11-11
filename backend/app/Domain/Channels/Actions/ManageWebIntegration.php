@@ -35,6 +35,36 @@ final class ManageWebIntegration
         $this->audit->log('Widget web', 'predeterminados', 'editar', $before['method'] ?? null, "{$after['method']} · {$after['lang']} · {$after['currency']}");
     }
 
+    public function rotateKey(string $reason, User $actor): array
+    {
+        $config = DB::table('channel_widget_config')->lockForUpdate()->first(['id', 'public_key', 'tenant_slug']);
+
+        if ($config === null) {
+            throw ApiException::conflict('WEB-BR-01', 'El widget todavía no está configurado para esta agencia.');
+        }
+
+        $prefix = substr((string) preg_replace('/[^a-z0-9]/', '', mb_strtolower((string) $config->tenant_slug)), 0, 4) ?: 'qh';
+        $key = 'pk_live_'.$prefix.'_'.Str::random(16);
+        $until = now()->addHours((int) config('widget.key_grace_hours', 24));
+
+        DB::table('channel_widget_config')->where('id', $config->id)->update([
+            'public_key' => $key,
+            'public_key_prev' => $config->public_key,
+            'prev_expires_at' => $until,
+            'updated_by' => $actor->getKey(),
+            'updated_at' => now(),
+        ]);
+
+        $this->audit->log('Widget web', 'clave_publica', 'regenerar_clave', self::mask((string) $config->public_key), self::mask($key)." · motivo: {$reason}", evidence: ['reason' => $reason, 'grace_until' => $until->toIso8601String()]);
+
+        return ['public_key' => $key, 'previous_key_until' => $until->toIso8601String()];
+    }
+
+    private static function mask(string $key): string
+    {
+        return substr($key, 0, 12).'…';
+    }
+
     public function addDomain(string $domain, ?string $cms, User $actor): void
     {
         $domain = mb_strtolower(trim($domain));
@@ -47,7 +77,7 @@ final class ManageWebIntegration
             'domain' => $domain,
             'cms' => $cms,
             'status' => 'pendiente',
-            'verify_token' => 'qhapaq-verify='.Str::lower(Str::random(8)),
+            'verify_token' => 'kipucontrol-verify='.Str::lower(Str::random(8)),
             'created_by' => $actor->getKey(),
             'updated_by' => $actor->getKey(),
         ]);

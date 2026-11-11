@@ -19,6 +19,7 @@ use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Support\PlanCatalog;
 use App\Domain\Platform\Support\PlatformBranding;
+use App\Domain\Platform\Support\ProvisionOptions;
 use App\Domain\Platform\Support\TenantDirectory;
 use App\Domain\Platform\Support\TenantHealth;
 use App\Domain\Shared\Errors\ApiException;
@@ -79,9 +80,9 @@ final class PlatformController
         return response()->json(['data' => ['valid' => true]]);
     }
 
-    public function provisionOptions(): JsonResponse
+    public function provisionOptions(ProvisionOptions $options): JsonResponse
     {
-        return response()->json(['data' => ['business_types' => TenantProvisionRequest::BUSINESS_TYPES]]);
+        return response()->json(['data' => $options->all()]);
     }
 
     public function tenant(string $id, TenantDirectory $directory): JsonResponse

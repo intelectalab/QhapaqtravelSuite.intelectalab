@@ -49,7 +49,7 @@ it('platform/auth/mfa/verify completa el acceso del Super Admin y registra el in
 
     expect(AccessToken::query()->find(strtok($token, '|'))->mfa_verified_at)->not->toBeNull()
         ->and(platformUser()->last_login_at)->not->toBeNull()
-        ->and(platAudit(['entity' => 'Sesión de plataforma', 'entity_id' => 'ops@qhapaq.cloud', 'action' => 'login', 'after_value' => 'MFA OK']))->toBeTrue();
+        ->and(platAudit(['entity' => 'Sesión de plataforma', 'entity_id' => 'ops@kipucontrol.com', 'action' => 'login', 'after_value' => 'MFA OK']))->toBeTrue();
     $this->getJson('/api/v1/platform/tenants')->assertOk();
 });
 
@@ -58,7 +58,7 @@ it('platform/auth/mfa/verify rechaza un código equivocado y lo audita como inte
     $wrong = platOtp() === '000000' ? '111111' : '000000';
 
     expect($this->postJson('/api/v1/platform/auth/mfa/verify', ['code' => $wrong]))->toBeApiError(422, 'MFA_INVALID')
-        ->and(platAudit(['entity' => 'Sesión de plataforma', 'entity_id' => 'ops@qhapaq.cloud', 'action' => 'login_fallido', 'after_value' => 'MFA']))->toBeTrue();
+        ->and(platAudit(['entity' => 'Sesión de plataforma', 'entity_id' => 'ops@kipucontrol.com', 'action' => 'login_fallido', 'after_value' => 'MFA']))->toBeTrue();
     $this->postJson('/api/v1/platform/auth/mfa/verify', ['code' => 'abc'])->assertStatus(422)->assertJsonValidationErrors('code');
     expect($this->getJson('/api/v1/platform/tenants'))->toBeApiError(403, 'MFA_REQUIRED');
 });
@@ -80,7 +80,7 @@ it('platform/auth/logout cierra la sesión del Super Admin y lo audita', functio
     $this->postJson('/api/v1/platform/auth/logout')->assertOk()->assertJsonPath('data.message', 'Cerraste sesión.');
     app('auth')->forgetGuards();
 
-    expect(platAudit(['entity' => 'Sesión de plataforma', 'entity_id' => 'ops@qhapaq.cloud', 'action' => 'logout']))->toBeTrue();
+    expect(platAudit(['entity' => 'Sesión de plataforma', 'entity_id' => 'ops@kipucontrol.com', 'action' => 'logout']))->toBeTrue();
     expect($this->getJson('/api/v1/platform/me'))->toBeApiError(401);
 });
 

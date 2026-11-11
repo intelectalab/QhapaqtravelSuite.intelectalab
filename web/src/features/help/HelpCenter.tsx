@@ -64,7 +64,7 @@ function ArticleCard({ article, realm, index }: { article: HelpArticleSummary; r
           <MessageCircleQuestion size={13} />
           {article.faqs_count} dudas
         </span>
-        {article.origin !== "qhapaq" && <Badge tone={ORIGIN_TONES[article.origin]}>{article.origin_label}</Badge>}
+        {article.origin !== "kipucontrol" && <Badge tone={ORIGIN_TONES[article.origin]}>{article.origin_label}</Badge>}
         {(article.adaptations ?? 0) > 0 && <Badge tone="violet">{article.adaptations === 1 ? "1 agencia lo adaptó" : `${article.adaptations} agencias lo adaptaron`}</Badge>}
         {article.status === "archived" && <Badge tone="mute">Archivado</Badge>}
       </span>

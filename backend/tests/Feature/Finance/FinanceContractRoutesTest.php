@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\DB;
 
+beforeEach(fn () => lockTreasury());
+
 it('la conciliación bancaria responde en /finance/bank-lines', function () {
     actingAsSeed('U07');
 
@@ -27,7 +29,7 @@ it('la tesorería responde en /treasury/accounts y /treasury/movements', functio
     actingAsSeed('U07');
 
     $this->getJson('/api/v1/treasury/accounts')->assertOk()->assertJsonStructure(['data' => ['accounts', 'movements', 'kpis']]);
-    $code = $this->postJson('/api/v1/treasury/movements', ['account' => 'CTA-01', 'direction' => 'in', 'amount' => '15.00', 'date' => BUSINESS_TODAY, 'category' => 'Otros', 'description' => 'Ingreso de prueba'], critical())->assertCreated()->json('data.code');
+    $code = $this->postJson('/api/v1/treasury/movements', ['account' => 'CTA-01', 'direction' => 'in', 'amount' => '15.00', 'date' => BUSINESS_TODAY, 'category' => 'Intereses bancarios', 'description' => 'Ingreso de prueba', 'reference' => 'OP-0001'], critical())->assertCreated()->json('data.code');
     $this->postJson("/api/v1/treasury/movements/{$code}/void", ['reason' => 'Registro de prueba'], critical())->assertOk();
 
     expect(rowOf('fin_treasury_movements', $code)->status)->not->toBe('posted')

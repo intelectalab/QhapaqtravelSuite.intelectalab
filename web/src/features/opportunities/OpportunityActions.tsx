@@ -1,15 +1,16 @@
 "use client";
 
-import { ArrowRightLeft, CircleX, RotateCcw, TriangleAlert, Trophy } from "lucide-react";
+import { ArrowRightLeft, CircleX, RotateCcw, TriangleAlert, Trophy, UserRoundCog } from "lucide-react";
 import { useState } from "react";
-import { changeStage, type StageState } from "@/app/(backoffice)/crm/oportunidades/actions";
+import { changeStage, reassignOpportunity, type StageState } from "@/app/(backoffice)/crm/oportunidades/actions";
+import { useCan } from "@/components/shell/SessionProvider";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import type { CatalogItem } from "@/lib/leads";
-import { OPEN_STAGES, type OpportunityDetail } from "@/lib/opportunities";
+import { OPEN_STAGES, type OpportunityDetail, type OpportunityFormOptions } from "@/lib/opportunities";
 
 const initial: StageState = { message: null, done: false };
 
@@ -88,5 +89,24 @@ export function OpportunityActions({ opportunity, lostReasons }: { opportunity: 
         </p>
       ))}
     </div>
+  );
+}
+
+export function OpportunityReassignAction({ opportunity, advisors }: { opportunity: OpportunityDetail; advisors: OpportunityFormOptions["advisors"] }) {
+  const canReassign = useCan("crm.records.reassign");
+  const closed = opportunity.stage === "ganada" || opportunity.stage === "perdida";
+  const choices = advisors.filter((advisor) => advisor.id !== opportunity.owner_id).map((advisor) => ({ value: advisor.id, label: advisor.name }));
+  if (!canReassign || closed || choices.length === 0) return null;
+
+  return (
+    <PanelAction label="Reasignar" icon={<UserRoundCog size={16} />} title="Reasignar oportunidad" description={`Hoy la lleva ${opportunity.owner.name}. Sus cotizaciones y actividades no cambian de dueño.`} submitLabel="Reasignar" action={reassignOpportunity} initial={initial}>
+      {() => (
+        <>
+          <Code code={opportunity.code} version={opportunity.lock_version} />
+          <SelectField label="Nuevo responsable" name="owner_id" options={choices} placeholder="Elegir" searchable />
+          <TextArea label="Nota (opcional)" name="note" rows={2} maxLength={300} placeholder="Por ejemplo: pasa a la cartera de corporativos." />
+        </>
+      )}
+    </PanelAction>
   );
 }

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\Site\Actions;
 
+use App\Domain\Finance\Events\PaymentApplied;
 use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Portal\Support\PortalAccount;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Sequences\SequenceService;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\Site\Support\CardPayments;
 use App\Domain\Site\Support\CheckoutRules;
 use App\Domain\Site\Support\CheckoutTerms;
 use App\Domain\Site\Support\SiteAccountDirectory;
@@ -24,6 +26,7 @@ final class SiteAccountPayment
         private readonly SequenceService $sequences,
         private readonly ReceivableLedger $ledger,
         private readonly AuditLogger $audit,
+        private readonly CardPayments $cards,
     ) {}
 
     public function pay(PortalAccount $account, string $code, array $data): array
@@ -49,9 +52,9 @@ final class SiteAccountPayment
             }
 
             $method = (string) $payment['method'];
-            $card = $method === 'tarjeta' ? SiteCheckout::cardResult((string) ($payment['card_token'] ?? 'tok_14_0000')) : null;
+            $card = $method === 'tarjeta' ? $this->cards->charge('receivable', (string) $receivable->code, (string) $amount, (string) $receivable->currency, (string) ($account->user->email ?? ''), (string) $payment['card_token'], $payment['session_id'] ?? null) : null;
             $result = $method === 'tarjeta' ? ($card['approved'] ? 'aprobado' : 'rechazado') : 'por_validar';
-            $txn = $result === 'aprobado' ? 'SBX-'.Str::upper(Str::random(10)) : null;
+            $txn = $card['txn'] ?? null;
             $orderId = DB::table('booking_reservations')->where('id', $receivable->reservation_id)->value('ecom_order_id');
             $paymentId = null;
             $today = Carbon::now($this->context->timezone())->toDateString();
@@ -72,13 +75,14 @@ final class SiteAccountPayment
                     'fx_rate' => $receivable->fx_rate ?? null,
                     'paid_on' => $today,
                     'reference' => $result === 'aprobado' ? $txn : $payment['operation_ref'],
-                    'note' => $result === 'aprobado' ? "Pago en línea de la cuota {$receivable->code} desde Mi cuenta (pasarela de prueba)." : "Pago informado desde Mi cuenta para la cuota {$receivable->code}. Por validar.",
+                    'note' => $result === 'aprobado' ? "Pago en línea de la cuota {$receivable->code} desde Mi cuenta (pasarela {$this->cards->gatewayName()})." : "Pago informado desde Mi cuenta para la cuota {$receivable->code}. Por validar.",
                     'status' => $result === 'aprobado' ? 'aplicado' : 'pendiente',
                 ]);
 
                 if ($result === 'aprobado') {
                     DB::table('fin_payment_applications')->insert(['payment_id' => $paymentId, 'receivable_id' => $receivable->id, 'amount' => (string) $amount, 'applied_at' => now()]);
                     $this->ledger->recalculate((string) $receivable->id, null);
+                    PaymentApplied::dispatch($paymentId, (string) $account->user->getKey());
                 }
             }
 

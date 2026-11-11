@@ -8,6 +8,7 @@ use App\Domain\Booking\Actions\ProviderServiceResponse;
 use App\Domain\Booking\Support\ReservationSections;
 use App\Domain\Finance\Support\NetSales;
 use App\Domain\Iam\Models\User;
+use App\Domain\Operations\Actions\RoomingPrefill;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -17,7 +18,7 @@ final class OrderDirectory
 
     public const OPEN_INCIDENT = ['abierta', 'en_proceso'];
 
-    public function __construct(private readonly OpsCommon $common, private readonly ResourceDirectory $resources, private readonly EvidenceStore $evidences) {}
+    public function __construct(private readonly OpsCommon $common, private readonly ResourceDirectory $resources, private readonly EvidenceStore $evidences, private readonly RoomingPrefill $prefill) {}
 
     public function list(User $viewer): array
     {
@@ -105,7 +106,8 @@ final class OrderDirectory
         }
 
         $names = $this->common->userNames();
-        $assignments = $this->resources->assignments(['a.order_id' => $order->id]);
+        $checkins = DB::table('ops_assignment_checkins as k')->join('ops_assignments as a', 'a.id', '=', 'k.assignment_id')->where('a.order_id', $order->id)->whereNull('k.undone_at')->get(['k.assignment_id', 'k.passenger_id', 'k.checked_at', 'k.source']);
+        $assignments = $this->resources->assignments(['a.order_id' => $order->id])->map(fn (array $item): array => [...$item, 'checked_in' => $checkins->where('assignment_id', $item['id'])->pluck('passenger_id')->values()])->values();
         $assigned = $assignments->pluck('service_code')->all();
         $services = DB::table('booking_reservation_services as s')->leftJoin('catalog_providers as p', 'p.id', '=', 's.provider_id')->leftJoin('catalog_products as pr', 'pr.id', '=', 's.product_id')
             ->where('s.reservation_id', $order->reservation_id)->orderBy('s.service_date')->orderBy('s.service_time')
@@ -157,22 +159,23 @@ final class OrderDirectory
                 ->selectSub(DB::table('ops_rooming_rooms as rr')->whereColumn('rr.rooming_list_id', 'l.id')->selectRaw('count(*)'), 'rooms')
                 ->selectSub(DB::table('ops_rooming_guests as rg')->whereColumn('rg.rooming_list_id', 'l.id')->selectRaw('count(*)'), 'guests')
                 ->addSelect(['l.id', 'l.city', 'l.hotel_name', 'h.name as hotel', 'l.check_in', 'l.check_out', 'l.status', 'l.sent_at', 'l.hotel_confirmed_at'])->get(),
-            'vouchers' => DB::table('ops_vouchers as v')->leftJoin('catalog_providers as p', 'p.id', '=', 'v.provider_id')->where('v.reservation_id', $order->reservation_id)->orderBy('v.service_date')
-                ->get(['v.code', 'v.service_label', 'v.service_date', 'v.pax', 'v.status', 'v.version', 'p.name as provider']),
+            'vouchers' => DB::table('ops_vouchers as v')->leftJoin('catalog_providers as p', 'p.id', '=', 'v.provider_id')->leftJoin('booking_reservation_services as vs', 'vs.id', '=', 'v.reservation_service_id')->where('v.reservation_id', $order->reservation_id)->orderBy('v.service_date')
+                ->get(['v.code', 'v.service_label', 'v.service_date', 'v.pax', 'v.status', 'v.version', 'p.name as provider', 'vs.code as service_code']),
             'economics' => $seesMargin ? [
                 'sale' => (string) round($services->where('status', '<>', 'cancelado')->sum(fn (object $service) => (float) (string) NetSales::of($service->price_amount, $service->currency)), 2),
                 'cost' => (string) $services->where('status', '<>', 'cancelado')->sum(fn (object $service) => (float) $service->cost_amount),
                 'currency' => $services->first()->currency ?? 'PEN',
             ] : null,
             'reject_reasons' => $viewer->can('reservations.modify') ? ProviderServiceResponse::REJECT_REASONS : [],
-            'passengers' => $passengers,
+            'passengers' => $passengers->map(fn (object $passenger): array => [...(array) $passenger, 'checkins' => $checkins->where('passenger_id', $passenger->id)->count(), 'last_checkin_at' => $checkins->where('passenger_id', $passenger->id)->max('checked_at')])->values(),
+            'lodging_pending' => $this->prefill->pending($order->reservation_id)->map(fn (array $leg): array => ['city' => $leg['city'], 'hotel' => $leg['hotel'], 'check_in' => $leg['check_in'], 'check_out' => $leg['check_out'], 'rooms' => count($leg['rooms'])])->values(),
             'incidents' => $incidents,
             'evidences' => $evidences,
-            'evidence_files' => $this->evidences->forOrder($order->id),
+            'evidence_files' => $this->evidences->forOrder($order->id, $order->reservation_id),
             'evidence_rules' => ['max_bytes' => EvidenceStore::MAX_BYTES, 'mimes' => array_keys(EvidenceStore::MIME)],
             'checks' => $this->checks($order->id, $order->reservation_id),
             'transitions' => $canAssign ? OrderFlow::targets($order->status) : [],
-            'can' => ['assign' => $canAssign, 'close' => $viewer->can('operations.close'), 'incidents' => $viewer->can('operations.incidents'), 'services' => $viewer->can('reservations.modify'), 'vouchers' => $viewer->can('operations.vouchers')],
+            'can' => ['assign' => $canAssign, 'close' => $viewer->can('operations.close'), 'incidents' => $viewer->can('operations.incidents'), 'services' => $viewer->can('reservations.modify'), 'vouchers' => $viewer->can('operations.vouchers'), 'rooming' => $viewer->can('reservations.modify')],
             'coordinators' => $canAssign ? $this->common->coordinators() : [],
             'options' => $canAssign ? $this->resources->options() : null,
         ];

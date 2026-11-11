@@ -50,7 +50,7 @@ export function RequestItem({ row, index, showDeadline = false }: { row: Supplie
   );
 }
 
-const ALERT_ICONS: Record<SupplierAlert["kind"], LucideIcon> = { request: CalendarClock, contract: FileWarning, invoice: ScrollText, rate: Tags };
+const ALERT_ICONS: Record<SupplierAlert["kind"], LucideIcon> = { request: CalendarClock, contract: FileWarning, invoice: ScrollText, rate: Tags, rooming: BedDouble };
 
 export function SupplierAlerts({ alerts }: { alerts: SupplierAlert[] }) {
   if (alerts.length === 0) return <p className="rounded-tile border border-dashed border-line px-4 py-5 text-center text-[13px] text-fg-3">Sin avisos. Todo está al día con la agencia.</p>;

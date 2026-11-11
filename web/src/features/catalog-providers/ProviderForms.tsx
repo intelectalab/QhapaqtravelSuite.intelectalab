@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, CirclePlay, CircleStop, Plus, UserPlus, X } from "lucide-react";
+import { Building2, CirclePlay, CircleStop, Pencil, Plus, UserPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { startTransition, useActionState, useEffect, useRef, type FormEvent } from "react";
 import { addProviderContact, createProvider, removeProviderContact, toggleProvider, updateProvider } from "@/app/(backoffice)/catalogo/proveedores/actions";
@@ -17,7 +17,9 @@ import type { StepResult } from "@/lib/server/resource";
 
 const list = (values: string[]) => values.map((value) => ({ value, label: value }));
 
-function ProviderFields({ overview, provider }: { overview: ProvidersOverview; provider?: ProviderRow }) {
+type ProviderFormContext = Pick<ProvidersOverview, "options" | "today">;
+
+function ProviderFields({ overview, provider }: { overview: ProviderFormContext; provider?: ProviderRow }) {
   return (
     <>
       <PanelSection title="Empresa">
@@ -74,13 +76,14 @@ export function ProviderCreateAction({ overview }: { overview: ProvidersOverview
   );
 }
 
-export function ProviderEditAction({ overview, provider }: { overview: ProvidersOverview; provider: ProviderRow }) {
+export function ProviderEditAction({ overview, provider, button = false }: { overview: ProviderFormContext; provider: ProviderRow; button?: boolean }) {
   const router = useRouter();
   return (
     <PanelAction<StepResult>
       label="Editar"
       formId={`provider-edit-${provider.ref}`}
-      trigger={(open) => <RowIcon tone="edit" label="Editar" onClick={open} />}
+      icon={<Pencil size={15} />}
+      trigger={button ? undefined : (open) => <RowIcon tone="edit" label="Editar" onClick={open} />}
       title="Editar proveedor"
       description={provider.state === "vencido" ? `${provider.ref} · contrato vencido: si extiendes la fecha de fin, vuelve a inactivo y podrás activarlo.` : provider.ref}
       submitLabel="Guardar cambios"
@@ -98,8 +101,9 @@ export function ProviderEditAction({ overview, provider }: { overview: Providers
   );
 }
 
-export function ProviderToggleAction({ provider }: { provider: ProviderRow }) {
+export function ProviderToggleAction({ provider, button = false }: { provider: ProviderRow; button?: boolean }) {
   const activate = provider.status !== "activo";
+  if (activate && provider.contract_days < 0 && button) return null;
   if (activate && provider.contract_days < 0) return <RowIcon tone="neutral" label="Activar" icon={<CirclePlay size={16} />} disabledHint="Contrato vencido: extiéndelo para activarlo" />;
   return (
     <ConfirmAction
@@ -119,6 +123,7 @@ export function ProviderToggleAction({ provider }: { provider: ProviderRow }) {
       action={toggleProvider}
       hidden={{ ref: provider.ref, action: activate ? "activate" : "deactivate" }}
       reason={activate ? undefined : "Por ejemplo: incumplimiento de servicio."}
+      button={button}
     />
   );
 }

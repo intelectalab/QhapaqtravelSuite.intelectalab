@@ -82,7 +82,7 @@ final class AuditLogger
 
     /**
      * Para `acceso_denegado` y `login_fallido`: nueva conexión lógica fuera de la transacción de la solicitud.
-     * Se usa la conexión `pgsql_audit` (misma BD y usuario qhapaq_app, otra conexión PDO) para que el ROLLBACK
+     * Se usa la conexión `pgsql_audit` (misma BD y usuario kipucontrol_app, otra conexión PDO) para que el ROLLBACK
      * de la solicitud no borre el evento. Supuesto: definir `pgsql_audit` en config/database.php.
      */
     public function logOutsideTransaction(string $entity, string $entityId, string $action, ?string $before = null, ?string $after = null): void

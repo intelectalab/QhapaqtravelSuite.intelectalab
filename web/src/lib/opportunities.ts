@@ -1,3 +1,5 @@
+import type { ActivityItem } from "./activities";
+import type { RecordEvent } from "./history";
 import type { Tone } from "./tone";
 
 export type OpportunityStage = "calificacion" | "descubrimiento" | "cotizacion" | "negociacion" | "ganada" | "perdida";
@@ -25,6 +27,9 @@ export interface OpportunityItem {
   pax: number;
   client: { code: string; name: string };
   owner: { name: string; color: string | null };
+  quotes_count?: number;
+  updated_at: string;
+  lock_version: number;
 }
 
 export interface OpportunityBoard {
@@ -35,6 +40,7 @@ export interface OpportunityBoard {
 
 export interface OpportunityDetail extends OpportunityItem {
   notes: string | null;
+  product: { id: string; code: string; name: string } | null;
   lock_version: number;
   owner_id: string;
   origin: string | null;
@@ -42,8 +48,19 @@ export interface OpportunityDetail extends OpportunityItem {
   lost_detail: string | null;
   lost_at_stage: string | null;
   lead: { code: string; name: string } | null;
-  quotes: { code: string; title: string; status: string; valid_until: string }[];
-  history: { action: string; before_value: string | null; after_value: string | null; occurred_at: string }[];
+  client_card: {
+    kind: string | null;
+    document: string | null;
+    email: string | null;
+    phone: string | null;
+    segment: string | null;
+    contact: { name: string; role: string | null; email: string | null; phone: string | null } | null;
+  };
+  quotes: { code: string; title: string; status: string; valid_until: string; version: number; currency: string; total: string | null }[];
+  activities: ActivityItem[];
+  pending_activities: number;
+  close_overdue: boolean;
+  history: RecordEvent[];
   stages: PipelineStage[];
 }
 
@@ -60,4 +77,6 @@ export interface OpportunityFormOptions {
   clients: { code: string; name: string; kind: string }[];
   advisors: { id: string; name: string; color: string | null }[];
   can_reassign: boolean;
+  stages: PipelineStage[];
+  products: { id: string; code: string; name: string }[];
 }

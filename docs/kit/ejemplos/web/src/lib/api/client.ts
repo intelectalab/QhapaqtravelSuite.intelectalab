@@ -81,6 +81,6 @@ export async function serverApi(): Promise<ApiClient> {
 }
 
 /** Cookie httpOnly con el token Sanctum (la fija el BFF al iniciar sesión; SameSite=Lax, Secure en producción). */
-export const SESSION_COOKIE = "qhapaq_session";
+export const SESSION_COOKIE = "kipucontrol_session";
 /** Cookie legible por el middleware de Next con la experiencia y el rol (UX; la API vuelve a validar todo). */
-export const UX_COOKIE = "qhapaq_ux";
+export const UX_COOKIE = "kipucontrol_ux";

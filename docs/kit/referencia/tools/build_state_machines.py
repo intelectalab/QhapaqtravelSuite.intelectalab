@@ -578,7 +578,7 @@ def generate(cat, check_mermaid=True):
         sections.append("\n".join(L))
 
     head = [
-        "# Máquinas de estado · Qhapaq Travel Suite\n",
+        "# Máquinas de estado · KipuControl\n",
         "_Generado por `tools/build_state_machines.py`: valores tomados del catálogo de PostgreSQL (CHECK de cada columna de estado) y transiciones de la §4 de "
         "`proto/docs/especificaciones/00…18-*.md` (tablas «Desde | Hacia» leídas automáticamente y prosa transcrita en `tools/estados_fuentes.py`), "
         "más los endpoints de escritura de `api/openapi.yaml` por tabla (`x-resource`). No editar a mano: corregir la fuente o `estados_fuentes.py` y regenerar con "

@@ -6,6 +6,8 @@ namespace App\Domain\Channels\Actions;
 
 use App\Domain\Channels\Support\ChannelKit;
 use App\Domain\Channels\Support\OwnReviewSettings;
+use App\Domain\Channels\Support\ReviewLinks;
+use App\Domain\Channels\Support\ReviewRequestSender;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -15,7 +17,7 @@ final class ModerateOwnReview
 {
     private const TARGETS = ['publicar' => 'publicada', 'ocultar' => 'oculta', 'rechazar' => 'rechazada'];
 
-    public function __construct(private readonly AuditLogger $audit, private readonly ChannelKit $kit) {}
+    public function __construct(private readonly AuditLogger $audit, private readonly ChannelKit $kit, private readonly ReviewRequestSender $sender) {}
 
     public function moderate(string $code, string $action, ?string $reason, User $actor): void
     {
@@ -70,7 +72,7 @@ final class ModerateOwnReview
 
     public function sendRequest(string $code, User $actor): void
     {
-        $request = $this->kit->row('crm_review_requests', $code, ['id', 'status']);
+        $request = $this->kit->row('crm_review_requests', $code, ['id', 'code', 'status', 'reservation_id', 'client_id', 'channel', 'to_address', 'lang']);
 
         if (! in_array($request->status, ['programada', 'vencida', 'enviada'], true)) {
             throw ApiException::conflict('RVW-09', 'Esta solicitud ya fue abierta o respondida.');
@@ -78,13 +80,15 @@ final class ModerateOwnReview
 
         DB::table('crm_review_requests')->where('id', $request->id)->update([
             'status' => 'enviada',
+            'token_hash' => ReviewLinks::hash((string) DB::table('crm_review_requests')->where('id', $request->id)->value('tenant_id'), (string) $request->code),
             'sent_at' => now(),
             'expires_at' => now()->addDays((int) OwnReviewSettings::read()['invite']['expire_days']),
             'reminded_at' => $request->status === 'programada' ? null : now(),
             'updated_by' => $actor->getKey(),
             'updated_at' => now(),
         ]);
-        $this->audit->log('Solicitud de reseña', $code, 'enviar', $request->status, 'enviada');
+        $sent = $this->sender->send($request, $request->status !== 'programada');
+        $this->audit->log('Solicitud de reseña', $code, 'enviar', $request->status, 'enviada'.($sent ? '' : ' · el canal no confirmó la entrega'));
     }
 
     public function cancelRequest(string $code, User $actor): void

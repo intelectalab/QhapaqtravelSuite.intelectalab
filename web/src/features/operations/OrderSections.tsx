@@ -9,12 +9,13 @@ import { SOFT_TINT, TintCardTitle, ToneScope } from "@/components/ui/Tinted";
 import { ServiceRowActions } from "@/features/reservations/ReservationLifecycleActions";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney, shortName } from "@/lib/format";
-import { SEVERITY_LABEL, type IncidentList, type OrderDetail, type VoucherOverview } from "@/lib/operations";
+import { SEVERITY_LABEL, type EvidenceFile, type IncidentList, type OrderDetail, type VoucherOverview } from "@/lib/operations";
 import { PAX_TYPE, SERVICE_KIND } from "@/lib/reservations";
 import { EvidenceSection, ServiceCompleteAction } from "./Evidence";
 import { OrderIncidentCreateAction } from "./Incidents";
 import { TimeSlot } from "./OpsBits";
 import { AssignmentControls, CloseChecklist, TaskList } from "./OrderActions";
+import { RoomingPrefillAction } from "./Rooming";
 import { PendingVouchers } from "./Vouchers";
 
 export function ClientOperationData({ order }: { order: OrderDetail }) {
@@ -77,9 +78,15 @@ export function ServicesSection({ order, editable }: { order: OrderDetail; edita
                       {formatDate(assignment.date)} · <TimeSlot time={assignment.time} className="min-w-0 text-xs" />
                     </span>
                     <span className={cn("block truncate text-[12.5px]", people.length ? "text-fg-2" : "text-warn")}>{people.length ? people.join(" · ") : "Sin recursos asignados"}</span>
+                    {(assignment.checked_in?.length ?? 0) > 0 && (
+                      <span className="block text-[12px] font-medium text-ok">
+                        Check-in {assignment.checked_in?.length} de {order.passengers.length}
+                        {assignment.checkin_at ? ` · desde ${formatDateTime(assignment.checkin_at, false)}` : ""}
+                      </span>
+                    )}
                   </span>
                   <StatusBadge status={assignment.status} />
-                  {editable && order.options && !["completada", "en_curso"].includes(assignment.status) && <AssignmentControls assignment={assignment} options={order.options} />}
+                  {editable && order.options && !["completada", "en_curso"].includes(assignment.status) && <AssignmentControls assignment={assignment} options={order.options} passengers={order.passengers} today={order.today} />}
                 </li>
               );
             })}
@@ -139,10 +146,11 @@ export function TasksSection({ order, editable }: { order: OrderDetail; editable
 }
 
 export function PassengersSection({ order }: { order: OrderDetail }) {
+  const checkable = order.assignments.filter((assignment) => assignment.status !== "pendiente" && assignment.date <= order.today).length;
   return (
     <Card>
       <TintCardTitle icon={Users} title="Pasajeros" aside={String(order.passengers.length)} />
-      <MiniTable head={["Pasajero", "Tipo", "Edad", "Documento", "Nacionalidad", "Teléfono", "Dieta y notas"]} minWidth={720}>
+      <MiniTable head={["Pasajero", "Tipo", "Edad", "Documento", "Nacionalidad", "Teléfono", "Dieta y notas", "Check-ins"]} align={["left", "left", "left", "left", "left", "left", "left", "right"]} minWidth={780}>
         {order.passengers.map((passenger) => (
           <tr key={passenger.id}>
             <td>
@@ -158,6 +166,11 @@ export function PassengersSection({ order }: { order: OrderDetail }) {
             <td>{passenger.nationality ?? "—"}</td>
             <td>{passenger.phone ?? "—"}</td>
             <td className="text-xs">{passenger.diet_notes ?? "—"}</td>
+            <td className="text-right" title={passenger.last_checkin_at ? `Último: ${formatDateTime(passenger.last_checkin_at)}` : undefined}>
+              <span className={cn("tabular-nums font-semibold", passenger.checkins ? "text-ok" : "text-fg-3")}>
+                {passenger.checkins} de {checkable}
+              </span>
+            </td>
           </tr>
         ))}
       </MiniTable>
@@ -166,9 +179,19 @@ export function PassengersSection({ order }: { order: OrderDetail }) {
 }
 
 export function RoomingSection({ order }: { order: OrderDetail }) {
+  const canPrefill = order.can.rooming && order.lodging_pending.length > 0 && !["completada", "cancelada"].includes(order.status);
   return (
     <Card>
       <TintCardTitle icon={BedDouble} title="Rooming" aside={<Link href="/operaciones/rooming" className="text-[12.5px] font-semibold text-[var(--tint)] hover:underline">Gestionar rooming</Link>} />
+      {order.lodging_pending.length > 0 && (
+        <div className={cn("mb-4 flex flex-wrap items-center gap-3 rounded-tile px-3.5 py-3", SOFT_TINT)}>
+          <span className="min-w-0 flex-1 text-[13px]">
+            <b className="block font-semibold">La reserva web trae alojamiento sin rooming list</b>
+            <span className="text-fg-2">{order.lodging_pending.map((leg) => `${leg.city}: ${leg.rooms} hab. en ${leg.hotel} (${formatDate(leg.check_in).replace(/ \d{4}$/, "")} al ${formatDate(leg.check_out)})`).join(" · ")}</span>
+          </span>
+          {canPrefill && <RoomingPrefillAction reservation={order.reservation.code} legs={order.lodging_pending.length} />}
+        </div>
+      )}
       {order.rooming.length === 0 ? (
         <p className="text-[13.5px] text-fg-3">La reserva no tiene listas de habitaciones. Créalas en Rooming cuando el viaje incluya hoteles.</p>
       ) : (
@@ -261,14 +284,24 @@ export function IncidentsSection({ order, list }: { order: OrderDetail; list: In
 }
 
 export function EvidenceTab({ order, editable }: { order: OrderDetail; editable: boolean }) {
+  const own = order.evidence_files.filter((file) => !file.incident);
+  const byIncident = Object.entries(
+    order.evidence_files
+      .filter((file) => file.incident)
+      .reduce<Record<string, { title: string; files: EvidenceFile[] }>>((acc, file) => {
+        const key = file.incident ?? "";
+        acc[key] = { title: file.incident_title ?? key, files: [...(acc[key]?.files ?? []), file] };
+        return acc;
+      }, {}),
+  );
   return (
     <ToneScope tone="violet">
       <Card>
-        <TintCardTitle icon={Camera} title="Evidencias" aside={String(order.evidence_files.length)} />
+        <TintCardTitle icon={Camera} title="Evidencias de la operación" aside={String(own.length)} />
         <EvidenceSection
           scope="order"
           target={order.code}
-          files={order.evidence_files}
+          files={own}
           canUpload={editable}
           canRemove={editable}
           services={order.services}
@@ -276,6 +309,22 @@ export function EvidenceTab({ order, editable }: { order: OrderDetail; editable:
           emptyText={editable ? "Aún no hay evidencias. Sube al menos una foto o acta de la operación para poder cerrarla." : "La orden no tiene evidencias registradas."}
         />
       </Card>
+      {byIncident.length > 0 && (
+        <Card className="mt-5">
+          <TintCardTitle icon={Siren} title="Evidencias de sus incidencias" aside={String(byIncident.reduce((sum, [, group]) => sum + group.files.length, 0))} />
+          <div className="flex flex-col gap-4">
+            {byIncident.map(([code, group]) => (
+              <div key={code}>
+                <Link href={`/operaciones/incidencias/${code}`} className="mb-2 flex items-center gap-2 text-[13px] font-semibold hover:underline">
+                  <span className="font-mono text-xs text-fg-3">{code}</span>
+                  {group.title}
+                </Link>
+                <EvidenceSection scope="incident" target={code} files={group.files} canUpload={false} canRemove={false} emptyText="" />
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
     </ToneScope>
   );
 }

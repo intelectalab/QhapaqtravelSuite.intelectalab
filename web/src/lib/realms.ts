@@ -14,19 +14,19 @@ interface RealmConfig {
 
 export const REALMS: Record<Realm, RealmConfig> = {
   agency: {
-    session: "qhapaq_session",
-    mfa: "qhapaq_mfa_pending",
+    session: "kipucontrol_session",
+    mfa: "kipucontrol_mfa_pending",
     path: "/",
     hours: 12,
     login: "/login",
     mfaPage: "/mfa",
     logout: "/salir",
     home: "/dashboard",
-    publicPaths: ["/login", "/salir", "/invitacion", "/recuperar", "/restablecer", "/sitio", "/software"],
+    publicPaths: ["/login", "/salir", "/invitacion", "/recuperar", "/restablecer", "/sitio", "/software", "/widget", "/c"],
   },
   platform: {
-    session: "qhapaq_platform_session",
-    mfa: "qhapaq_platform_mfa",
+    session: "kipucontrol_platform_session",
+    mfa: "kipucontrol_platform_mfa",
     path: "/plataforma",
     hours: 8,
     login: "/login",

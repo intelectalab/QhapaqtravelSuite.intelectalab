@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\DB;
 
 function intHookBody(array $overrides = []): array
 {
-    return ['url' => 'https://93.184.216.34/qhapaq/hooks', 'description' => 'Sincroniza reservas con el ERP', 'events' => ['reservation.confirmed', 'payment.applied'], ...$overrides];
+    return ['url' => 'https://93.184.216.34/kipucontrol/hooks', 'description' => 'Sincroniza reservas con el ERP', 'events' => ['reservation.confirmed', 'payment.applied'], ...$overrides];
 }
 
 function intHookCodes(): array
@@ -33,7 +33,7 @@ it('crear un webhook lo deja activo, entrega el secreto una sola vez y cuenta en
     expect($data['code'])->toBe('WH-0004')
         ->and($data['secret'])->toStartWith('whsec_')
         ->and($row->status)->toBe('active')
-        ->and($row->url)->toBe('https://93.184.216.34/qhapaq/hooks')
+        ->and($row->url)->toBe('https://93.184.216.34/kipucontrol/hooks')
         ->and($row->events)->toBe('{reservation.confirmed,payment.applied}')
         ->and($row->secret_prefix)->toBe(substr($data['secret'], 0, 10))
         ->and(Crypt::decryptString($row->secret_encrypted))->toBe($data['secret'])
@@ -46,7 +46,7 @@ it('crear un webhook lo deja activo, entrega el secreto una sola vez y cuenta en
 it('API-BR-05 / API-BR-06: la URL debe ser https pública y los eventos de la lista', function () {
     actingAsSeed('U01');
 
-    $this->postJson('/api/v1/integrations/webhooks', intHookBody(['url' => 'http://93.184.216.34/qhapaq']))->assertStatus(422)->assertJsonValidationErrors(['url']);
+    $this->postJson('/api/v1/integrations/webhooks', intHookBody(['url' => 'http://93.184.216.34/kipucontrol']))->assertStatus(422)->assertJsonValidationErrors(['url']);
     $this->postJson('/api/v1/integrations/webhooks', intHookBody(['url' => 'https://localhost/hook']))->assertStatus(422)->assertJsonValidationErrors(['url']);
     $this->postJson('/api/v1/integrations/webhooks', intHookBody(['url' => 'https://erp.empresa.internal/hook']))->assertStatus(422)->assertJsonValidationErrors(['url']);
     $this->postJson('/api/v1/integrations/webhooks', intHookBody(['url' => 'https://10.0.0.5/hook']))->assertStatus(422)->assertJsonValidationErrors(['url']);
@@ -75,13 +75,13 @@ it('eliminar un webhook es lógico: deja de figurar, deja de contar en el plan y
 it('API-BR-04: al llegar al límite del plan no se crean más webhooks y eliminar uno libera el cupo', function () {
     actingAsSeed('U01');
     for ($i = 4; $i <= 20; $i++) {
-        $this->postJson('/api/v1/integrations/webhooks', intHookBody(['url' => "https://93.184.216.34/qhapaq/hook-{$i}"]))->assertCreated();
+        $this->postJson('/api/v1/integrations/webhooks', intHookBody(['url' => "https://93.184.216.34/kipucontrol/hook-{$i}"]))->assertCreated();
     }
 
-    expect($this->postJson('/api/v1/integrations/webhooks', intHookBody(['url' => 'https://93.184.216.34/qhapaq/extra'])))->toBeApiError(409, 'API-BR-04');
+    expect($this->postJson('/api/v1/integrations/webhooks', intHookBody(['url' => 'https://93.184.216.34/kipucontrol/extra'])))->toBeApiError(409, 'API-BR-04');
 
     $this->deleteJson('/api/v1/integrations/webhooks/WH-0003')->assertOk();
-    $this->postJson('/api/v1/integrations/webhooks', intHookBody(['url' => 'https://93.184.216.34/qhapaq/extra']))->assertCreated()->assertJsonPath('data.code', 'WH-0021');
+    $this->postJson('/api/v1/integrations/webhooks', intHookBody(['url' => 'https://93.184.216.34/kipucontrol/extra']))->assertCreated()->assertJsonPath('data.code', 'WH-0021');
 });
 
 it('solo la Administración crea o elimina webhooks', function (string $user) {

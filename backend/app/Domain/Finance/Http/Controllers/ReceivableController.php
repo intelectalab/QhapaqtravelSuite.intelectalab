@@ -47,6 +47,31 @@ final class ReceivableController
         return response()->json(['data' => ['payment' => $payment]], 201);
     }
 
+    public function advance(Request $request, ReceivableWorkflow $workflow): JsonResponse
+    {
+        $data = $request->validate([
+            'reservation' => ['required', 'string', 'max:30'],
+            'pct' => ['nullable', 'numeric', 'gt:0', 'lte:100'],
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'due_date' => ['required', 'date', 'after_or_equal:today'],
+            'concept' => ['required', 'string', 'min:3', 'max:255'],
+            'notify' => ['nullable', 'boolean'],
+        ], [
+            'reservation.*' => 'Elige la reserva.',
+            'pct.*' => 'El porcentaje va de 1 a 100.',
+            'amount.*' => 'El importe debe ser mayor que cero.',
+            'due_date.*' => 'El vencimiento no puede ser una fecha pasada.',
+            'concept.*' => 'Describe el anticipo (3 a 255 caracteres).',
+        ]);
+
+        return response()->json(['data' => ['code' => $workflow->requestAdvance($data, $this->actor($request))]], 201);
+    }
+
+    public function remind(Request $request, string $code, ReceivableWorkflow $workflow): JsonResponse
+    {
+        return response()->json(['data' => $workflow->remind($code, $this->actor($request))], 201);
+    }
+
     public function cancel(Request $request, string $code, ReceivableWorkflow $workflow): JsonResponse
     {
         $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:500']], ['reason.*' => 'Explica el motivo de la anulación (mínimo 5 caracteres).']);

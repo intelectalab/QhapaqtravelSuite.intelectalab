@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
+    lockSeededBookings();
+    lockTreasury();
     Queue::fake();
     freezeBusinessToday();
 });

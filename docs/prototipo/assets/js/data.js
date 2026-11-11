@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Qhapaq Travel Suite — Datos de demostración (tenant ficticio)
+   KipuControl — Datos de demostración (tenant ficticio)
    Todos los nombres de empresas, personas y proveedores son ficticios.
    Fecha de referencia del prototipo: 29/09/2026
    ========================================================================== */
@@ -100,7 +100,7 @@ window.SEED = (function () {
     { id: 'U13', agencyId: 'AGB-01', clientId: 'CLI-0007', name: 'Agencia Wayra Viajes (B2B)', email: 'reservas@wayraviajes.pe', role: 'b2b', sede: 'SED-01', status: 'activo', lastLogin: '2026-09-28 16:22', mfa: false, phone: '01 445 9012', color: '#0E9AAB' },
     { id: 'U14', clientId: 'CLI-0001', name: 'Gabriela Ríos Montoya', email: 'gabriela.rios@correo.pe', role: 'customer', sede: 'SED-01', status: 'activo', lastLogin: '2026-09-27 21:14', mfa: false, phone: '999 102 334', color: '#1560B8' },
     { id: 'U15', clientId: 'CLI-0003', resId: 'RES-2026-000347', name: 'Thomas Keller', email: 't.keller@mail.de', role: 'passenger', sede: 'SED-02', status: 'activo', lastLogin: '2026-09-29 05:30', mfa: false, phone: '+49 171 5550102', color: '#1E8A55' },
-    { id: 'U16', name: 'Superadmin Plataforma', email: 'ops@qhapaq.cloud', role: 'super_admin', sede: 'SED-01', status: 'activo', lastLogin: '2026-09-29 07:00', mfa: true, phone: '—', color: '#0A3A73' },
+    { id: 'U16', name: 'Superadmin Plataforma', email: 'ops@kipucontrol.com', role: 'super_admin', sede: 'SED-01', status: 'activo', lastLogin: '2026-09-29 07:00', mfa: true, phone: '—', color: '#0A3A73' },
     { id: 'U17', providerId: 'PRV-001', name: 'Hotel Tambo Real Cusco (Proveedor)', email: 'reservas@tamboreal.pe', role: 'provider', sede: 'SED-02', status: 'activo', lastLogin: '2026-09-28 11:05', mfa: false, phone: '084 25 3300', color: '#1F6FB8' }
   ];
 

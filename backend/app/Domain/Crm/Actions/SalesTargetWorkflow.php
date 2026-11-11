@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Crm\Actions;
 
+use App\Domain\Crm\Events\SalesTargetClosed;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Crm\Support\SalesTargetDirectory;
 use App\Domain\Crm\Support\TargetPeriod;
@@ -117,8 +118,8 @@ final class SalesTargetWorkflow
     {
         $target = $this->find($code);
 
-        if (! in_array($target->status, ['borrador', 'vigente'], true)) {
-            throw ApiException::conflict('MET-STATE', 'Esta meta ya no se puede anular.');
+        if ($target->status !== 'borrador') {
+            throw ApiException::conflict('MET-STATE', 'Solo se anulan metas en borrador. Una meta vigente se ajusta o se cierra al terminar su período.');
         }
 
         $this->change($target, 'anulada', 'anular', $reason, $actor);
@@ -138,7 +139,7 @@ final class SalesTargetWorkflow
 
         $progress = $this->directory->progress($target, $this->today());
         DB::transaction(function () use ($target, $actor, $progress): void {
-            DB::table('crm_sales_targets')->where('id', $target->id)->update([
+            $closed = DB::table('crm_sales_targets')->where('id', $target->id)->where('status', 'vigente')->update([
                 'status' => 'cerrada',
                 'result' => json_encode([
                     'sales' => $progress['sales'],
@@ -152,9 +153,15 @@ final class SalesTargetWorkflow
                 'updated_by' => $actor->getKey(),
                 'updated_at' => now(),
             ]);
+
+            if ($closed === 0) {
+                throw ApiException::conflict('MET-STATE', 'Solo se cierran metas vigentes.');
+            }
+
             $pct = (float) $target->goal_sales_pen > 0 ? round($progress['sales'] / (float) $target->goal_sales_pen * 100, 1) : 0;
             $this->history($target->id, 'cerrar', null, null, "Período cerrado · cumplimiento {$pct} %", $actor);
             $this->audit->log('Meta comercial', $target->code, 'cerrar', 'vigente', "cerrada · {$pct} %");
+            SalesTargetClosed::dispatch((string) $target->id, (string) $actor->getKey());
         });
     }
 

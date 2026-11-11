@@ -29,7 +29,7 @@ final class PlatformOperationsSeeder
 
     public function run(): void
     {
-        $this->operator = DB::table('platform_users')->where('email', 'ops@qhapaq.cloud')->value('id');
+        $this->operator = DB::table('platform_users')->where('email', 'ops@kipucontrol.com')->value('id');
         $this->jobs();
         $this->audit();
     }

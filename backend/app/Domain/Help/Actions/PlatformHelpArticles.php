@@ -34,7 +34,7 @@ final class PlatformHelpArticles
             'articles' => $scoped
                 ->filter(fn (object $row): bool => ($module === '' || $row->module === $module) && HelpArticleShape::matches($row, $query))
                 ->sortBy(fn (object $row): array => $query === '' ? [$row->audience === 'agency' ? 0 : 1, (int) $row->sort_order] : [-HelpArticleShape::rank($row, $query), (int) $row->sort_order])
-                ->map(fn (object $row): array => [...HelpArticleShape::summary($row, 'qhapaq'), 'adaptations' => (int) ($adaptations[$row->slug] ?? 0)])
+                ->map(fn (object $row): array => [...HelpArticleShape::summary($row, 'kipucontrol'), 'adaptations' => (int) ($adaptations[$row->slug] ?? 0)])
                 ->values()->all(),
             'modules' => $scoped->groupBy('module')->map(fn (Collection $group, string $name): array => ['module' => $name, 'count' => $group->count(), 'order' => (int) $group->min('sort_order')])->sortBy('order')->map(fn (array $m): array => ['module' => $m['module'], 'count' => $m['count']])->values()->all(),
             'counts' => [
@@ -53,9 +53,9 @@ final class PlatformHelpArticles
         $row = $this->find($slug);
 
         return [
-            ...HelpArticleShape::full($row, 'qhapaq'),
+            ...HelpArticleShape::full($row, 'kipucontrol'),
             'adaptations' => (int) ($this->adaptations()[$slug] ?? 0),
-            'related' => $this->globals()->filter(fn (object $other): bool => $other->audience === $row->audience && $other->module === $row->module && $other->slug !== $slug && $other->status === 'published')->take(4)->map(fn (object $other): array => HelpArticleShape::summary($other, 'qhapaq'))->values()->all(),
+            'related' => $this->globals()->filter(fn (object $other): bool => $other->audience === $row->audience && $other->module === $row->module && $other->slug !== $slug && $other->status === 'published')->take(4)->map(fn (object $other): array => HelpArticleShape::summary($other, 'kipucontrol'))->values()->all(),
             'history' => $this->history($slug),
             'can_manage' => true,
             'has_original' => false,
@@ -73,9 +73,9 @@ final class PlatformHelpArticles
 
         return [
             'path' => $path,
-            'article' => $main === null ? null : HelpArticleShape::full($main, 'qhapaq'),
-            'more' => $candidates->skip(1)->take(4)->map(fn (object $row): array => HelpArticleShape::summary($row, 'qhapaq'))->values()->all(),
-            'related' => $related->map(fn (object $row): array => HelpArticleShape::summary($row, 'qhapaq'))->values()->all(),
+            'article' => $main === null ? null : HelpArticleShape::full($main, 'kipucontrol'),
+            'more' => $candidates->skip(1)->take(4)->map(fn (object $row): array => HelpArticleShape::summary($row, 'kipucontrol'))->values()->all(),
+            'related' => $related->map(fn (object $row): array => HelpArticleShape::summary($row, 'kipucontrol'))->values()->all(),
             'can_manage' => true,
         ];
     }

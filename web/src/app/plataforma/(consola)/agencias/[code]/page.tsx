@@ -46,7 +46,7 @@ export default async function AgenciaPage({ params, searchParams }: PageProps<"/
             <StatusBadge status={tenant.status} />
           </span>
         }
-        subtitle={[tenant.code, `${tenant.subdomain}.qhapaq.cloud`, tenant.created_at ? `Alta el ${formatDate(tenant.created_at)}` : null].filter(Boolean).join(" · ")}
+        subtitle={[tenant.code, `${tenant.subdomain}.kipucontrol.com`, tenant.created_at ? `Alta el ${formatDate(tenant.created_at)}` : null].filter(Boolean).join(" · ")}
         actions={
           <>
             <TenantEditAction tenant={tenant} defaultOpen={editar === "1"} />

@@ -1,29 +1,12 @@
 import type { Metadata } from "next";
-import { PageHeader } from "@/components/shell/PageHeader";
-import { InfoTip } from "@/components/ui/InfoTip";
-import { OwnReviewSummary, OwnReviewTiles, OwnReviewsWorkspace } from "@/features/channels/OwnReviews";
-import type { OwnReviewSettings, OwnReviewsOverview } from "@/lib/channels";
-import { getResource } from "@/lib/server/resource";
+import { OwnReviewSummary } from "@/features/channels/OwnReviews";
+import type { OwnReviewsOverview } from "@/lib/channels";
+import { getCachedResource } from "@/lib/server/resource";
 
 export const metadata: Metadata = { title: "Reseñas de clientes" };
 
-export default async function OwnReviewsPage() {
-  const [overview, settings] = await Promise.all([getResource<OwnReviewsOverview>("/reviews", "No pudimos cargar las reseñas."), getResource<OwnReviewSettings>("/settings/own-reviews", "No pudimos cargar los ajustes.")]);
-
-  if (!overview) {
-    return <PageHeader title="Reseñas de clientes" subtitle="Tu rol no tiene acceso a esta sección." />;
-  }
-
-  return (
-    <>
-      <PageHeader
-        title="Reseñas de clientes"
-        subtitle={overview.own_only ? "Opiniones de los viajeros de tu cartera." : "Opiniones de viajeros con reserva real, listas para el sitio y el widget."}
-        info={<InfoTip>Solo opinan pasajeros de viajes realizados. Se publica con el consentimiento del viajero; rechazar u ocultar exige un motivo y la nota nunca lo es.</InfoTip>}
-      />
-      <OwnReviewTiles kpis={overview.kpis} />
-      <OwnReviewSummary overview={overview} />
-      <OwnReviewsWorkspace overview={overview} settings={overview.can_moderate ? settings : null} />
-    </>
-  );
+export default async function SectionPage() {
+  const overview = await getCachedResource<OwnReviewsOverview>("/reviews", "No pudimos cargar las reseñas.");
+  if (!overview) return null;
+  return <OwnReviewSummary overview={overview} />;
 }

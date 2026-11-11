@@ -33,3 +33,15 @@ export async function moveCase(_state: StepResult, form: FormData): Promise<Step
   if (!action) return { message: "Elige qué paso registrar.", done: false };
   return refresh(await sendStep(`/crm/cases/${encodeURIComponent(text(form, "code"))}/${action}`, "POST", formValues(form, ["note", "lock_version"]), "No pudimos actualizar el caso."));
 }
+
+export async function createRebuy(_state: StepResult, form: FormData): Promise<StepResult> {
+  const body = {
+    ...formValues(form, ["client_code", "title", "amount", "currency", "expected_close_date", "destination", "notes", "owner_id"]),
+    stage: "calificacion",
+    origin: "fidelizacion",
+    confirm_open: form.get("confirm_open") === "on",
+  };
+  const result = await sendStep("/crm/opportunities", "POST", body, "No pudimos crear la oportunidad de recompra.");
+  if (result.done) revalidatePath("/crm/oportunidades");
+  return refresh(result);
+}

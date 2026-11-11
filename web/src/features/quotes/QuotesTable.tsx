@@ -28,7 +28,8 @@ export function QuotesTable({ rows, canManage }: { rows: QuoteRow[]; canManage: 
             {row.title}
           </Link>
           <small className="block text-xs text-fg-3">
-            {row.code} · v{row.version} · {row.client.name}
+            {row.code} · v{row.version}
+            {row.version_count > 1 ? ` de ${row.version_count}` : ""} · {row.client.name} · {row.owner.name}
           </small>
         </div>
       ),
@@ -68,7 +69,17 @@ export function QuotesTable({ rows, canManage }: { rows: QuoteRow[]; canManage: 
           </span>
         ),
     },
-    { id: "status", header: "Estado", cell: (row) => <StatusBadge status={row.status} /> },
+    {
+      id: "status",
+      header: "Estado",
+      cell: (row) => (
+        <span className="flex flex-col items-start gap-1">
+          <StatusBadge status={row.status} />
+          {row.internal_status === "pend" && <span className="text-[11.5px] font-semibold text-warn">Pend. aprobación gerencia</span>}
+          {row.internal_status === "req" && <span className="text-[11.5px] text-fg-3">Requiere aprobación</span>}
+        </span>
+      ),
+    },
     {
       id: "actions",
       header: "",
@@ -97,6 +108,7 @@ export function QuotesTable({ rows, canManage }: { rows: QuoteRow[]; canManage: 
 
   const filters: FilterConfig<QuoteRow>[] = [
     { id: "status", label: "Estado", options: [...new Set(rows.map((row) => row.status))].map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status },
+    { id: "internal", label: "Aprobación interna", options: [{ value: "pend", label: "Pendiente de Gerencia" }, { value: "req", label: "Requiere aprobación" }, { value: "ok", label: "Aprobada" }], value: (row) => row.internal_status ?? "" },
     { id: "owner", label: "Asesor", options: [...new Set(rows.map((row) => row.owner.name))].map((value) => ({ value, label: value })), value: (row) => row.owner.name },
   ];
 

@@ -8,7 +8,7 @@ $postgres = fn (string $username, string $password): array => [
     'url' => env('DB_URL'),
     'host' => env('DB_HOST', '127.0.0.1'),
     'port' => env('DB_PORT', '5432'),
-    'database' => env('DB_DATABASE', 'qhapaq'),
+    'database' => env('DB_DATABASE', 'kipucontrol'),
     'username' => $username,
     'password' => $password,
     'charset' => env('DB_CHARSET', 'utf8'),
@@ -76,13 +76,13 @@ return [
             ]) : [],
         ],
 
-        'pgsql' => $postgres(env('DB_USERNAME', 'qhapaq_app'), env('DB_PASSWORD', '')),
+        'pgsql' => $postgres(env('DB_USERNAME', 'kipucontrol_app'), env('DB_PASSWORD', '')),
 
-        'pgsql_audit' => $postgres(env('DB_USERNAME', 'qhapaq_app'), env('DB_PASSWORD', '')),
+        'pgsql_audit' => $postgres(env('DB_USERNAME', 'kipucontrol_app'), env('DB_PASSWORD', '')),
 
-        'pgsql_platform' => $postgres(env('DB_PLATFORM_USERNAME', 'qhapaq_platform'), env('DB_PLATFORM_PASSWORD', '')),
+        'pgsql_platform' => $postgres(env('DB_PLATFORM_USERNAME', 'kipucontrol_platform'), env('DB_PLATFORM_PASSWORD', '')),
 
-        'pgsql_owner' => $postgres(env('DB_OWNER_USERNAME', 'qhapaq_owner'), env('DB_OWNER_PASSWORD', '')),
+        'pgsql_owner' => $postgres(env('DB_OWNER_USERNAME', 'kipucontrol_owner'), env('DB_OWNER_PASSWORD', '')),
 
         'sqlsrv' => [
             'driver' => 'sqlsrv',

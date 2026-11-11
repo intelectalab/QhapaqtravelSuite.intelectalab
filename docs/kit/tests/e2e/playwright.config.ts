@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Playwright sobre Next.js (App Router) — Qhapaq Travel Suite.
+ * Playwright sobre Next.js (App Router) — KipuControl.
  * Casos: E2E-01…E2E-10 (DOC-PROC-001) + motor de reservas + ownership + 403.
  * Fecha de negocio congelada en backend: E2E_FROZEN_TODAY (2026-09-29, igual que window.TODAY del prototipo).
  */

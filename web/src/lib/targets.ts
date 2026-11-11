@@ -44,6 +44,55 @@ export interface TargetsOverview {
   can: { manage: boolean; reduce_late: boolean };
 }
 
+export interface TargetBreakdownRow {
+  kind: "asesor" | "equipo" | "sede";
+  name: string;
+  target_code: string | null;
+  period_label: string | null;
+  sales: number;
+  bookings: number;
+  goal: number | null;
+  progress_pct: number | null;
+  share_pct: number;
+}
+
+export interface TargetAdjustment {
+  action: "crear" | "activar" | "ajustar" | "anular" | "cerrar" | "bono";
+  before: Record<string, number | string | null> | null;
+  after: Record<string, number | string | null> | null;
+  reason: string | null;
+  by: string;
+  at: string;
+}
+
+export interface TargetDetail {
+  target: SalesTarget;
+  commission: { code: string; status: "calculada" | "aprobada" | "pagada"; amount: number; currency: string; can_open: boolean } | null;
+  breakdown: TargetBreakdownRow[];
+  history: SalesTarget[];
+  adjustments: TargetAdjustment[];
+  policy: TargetsOverview["policy"];
+  can: TargetsOverview["can"];
+}
+
+export const ADJUSTMENT_LABELS: Record<TargetAdjustment["action"], string> = {
+  crear: "Creó la meta",
+  activar: "Activó la meta",
+  ajustar: "Ajustó la meta",
+  anular: "Anuló la meta",
+  cerrar: "Cerró el período",
+  bono: "Registró el bono",
+};
+
+export const GOAL_LABELS: Record<string, string> = {
+  goal_sales_pen: "Ventas",
+  goal_bookings: "Reservas",
+  goal_margin_pen: "Margen",
+  goal_conversion_pct: "Conversión",
+};
+
+export const targetHref = (code: string) => `/crm/metas/${encodeURIComponent(code)}`;
+
 export const HEALTH: Record<string, { label: string; tone: Tone }> = {
   borrador: { label: "Borrador", tone: "mute" },
   anulada: { label: "Anulada", tone: "mute" },

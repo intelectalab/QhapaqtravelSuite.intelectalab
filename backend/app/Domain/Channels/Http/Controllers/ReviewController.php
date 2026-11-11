@@ -7,6 +7,7 @@ namespace App\Domain\Channels\Http\Controllers;
 use App\Domain\Channels\Actions\ModerateOwnReview;
 use App\Domain\Channels\Actions\OwnReviewInvitations;
 use App\Domain\Channels\Actions\ReplyExternalReview;
+use App\Domain\Channels\Actions\SaveExternalReviewWidget;
 use App\Domain\Channels\Support\ExternalReviewDirectory;
 use App\Domain\Channels\Support\OwnReviewDirectory;
 use App\Domain\Channels\Support\OwnReviewSettings;
@@ -14,6 +15,7 @@ use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 final class ReviewController
 {
@@ -116,6 +118,26 @@ final class ReviewController
         $reply->reply($id, $data['text'], $this->user($request));
 
         return response()->json(['data' => ['id' => $id]]);
+    }
+
+    public function externalWidget(Request $request, SaveExternalReviewWidget $widget): JsonResponse
+    {
+        $data = $request->validate([
+            'sources' => ['required', 'array', 'min:1'],
+            'sources.*' => ['string', Rule::in(array_keys(ExternalReviewDirectory::PROVIDERS))],
+            'min_rating' => ['required', 'integer', 'between:1,5'],
+            'count' => ['required', 'integer', 'between:1,12'],
+            'layout' => ['required', Rule::in(ExternalReviewDirectory::LAYOUTS)],
+        ], [
+            'sources.required' => 'Elige al menos una plataforma.',
+            'sources.min' => 'Elige al menos una plataforma.',
+            'sources.*.*' => 'Esa plataforma no existe.',
+            'min_rating.*' => 'El mínimo de estrellas va de 1 a 5.',
+            'count.*' => 'Muestra entre 1 y 12 reseñas.',
+            'layout.*' => 'Elige el diseño.',
+        ]);
+
+        return response()->json(['data' => $widget->save($data, $this->user($request))]);
     }
 
     public function publishExternal(Request $request, string $id, ReplyExternalReview $reply): JsonResponse

@@ -1,13 +1,15 @@
 "use client";
 
-import { Globe, Mail, MessageCircle, MessagesSquare, Paperclip, Search, StickyNote, TicketCheck, FileText } from "lucide-react";
+import { FilePlus2, Globe, Mail, MessageCircle, MessagesSquare, Paperclip, Search, StickyNote, TicketCheck, FileText } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { formatDateTime, formatMoney, normalize } from "@/lib/format";
-import { CHANNEL_TONES, SLA_STATE, type ConversationSummary, type ConversationThread } from "@/lib/inbox";
+import { CHANNEL_TONES, LINK_KINDS, SLA_STATE, type ConversationSummary, type ConversationThread, type LinkKind } from "@/lib/inbox";
+import { ConversationLinkAction, ConversationUnlinkAction } from "./InboxActions";
 import { toneStyle } from "@/lib/tone";
 
 const CHANNEL_ICONS: Record<string, typeof Mail> = { whatsapp: MessageCircle, email: Mail, webchat: MessagesSquare, form: FileText, portal: TicketCheck };
@@ -116,8 +118,14 @@ export function MessageBubble({ message, index }: { message: ConversationThread[
   );
 }
 
-export function ContactCard({ thread }: { thread: ConversationThread }) {
+export function ContactCard({ thread, canLink = [], canQuote = false }: { thread: ConversationThread; canLink?: LinkKind[]; canQuote?: boolean }) {
   const { card } = thread;
+  const links: { kind: LinkKind; code: string | null; title: string; detail: string; status: string | null }[] = [
+    { kind: "client", code: card.client?.code ?? null, title: card.client?.name ?? "", detail: card.client ? [card.client.segment, card.client.country, card.client.nps !== null ? `NPS ${card.client.nps}` : null].filter(Boolean).join(" · ") : "", status: null },
+    { kind: "lead", code: card.lead?.code ?? null, title: card.lead?.name ?? "", detail: card.lead?.code ?? "", status: card.lead?.status ?? null },
+    { kind: "reservation", code: card.reservation?.code ?? null, title: card.reservation?.title ?? "", detail: card.reservation?.code ?? "", status: card.reservation?.status ?? null },
+  ];
+  const others = card.reservations.filter((item) => item.code !== card.reservation?.code);
   const sla = SLA_STATE[thread.sla.state];
   return (
     <aside className="flex flex-col gap-4 border-line p-4 lg:border-l">
@@ -142,32 +150,37 @@ export function ContactCard({ thread }: { thread: ConversationThread }) {
           <dd className="font-medium">{thread.assignee?.name ?? "Sin asignar"}</dd>
         </div>
       </dl>
-      {card.client && (
-        <section>
-          <p className="mb-1.5 text-[12px] font-semibold text-fg-3">Cliente</p>
-          <Link href={`/crm/clientes/${card.client.code}`} className="lift block rounded-xl border border-line px-3 py-2.5 hover:border-accent/40">
-            <b className="text-[13px]">{card.client.name}</b>
-            <span className="block text-[12px] text-fg-3">
-              {card.client.segment} · {card.client.country}
-              {card.client.nps !== null ? ` · NPS ${card.client.nps}` : ""}
-            </span>
-          </Link>
-        </section>
+      {links.map(({ kind, code, title, detail, status }) =>
+        code || canLink.includes(kind) ? (
+          <section key={kind}>
+            <p className="mb-1.5 text-[12px] font-semibold text-fg-3">{LINK_KINDS[kind].label}</p>
+            {code ? (
+              <div className="flex items-center gap-1.5">
+                <Link href={LINK_KINDS[kind].href(code)} className="lift min-w-0 flex-1 rounded-xl border border-line px-3 py-2.5 hover:border-accent/40">
+                  <span className="flex items-center justify-between gap-2">
+                    <b className="truncate text-[13px]">{title}</b>
+                    {status && <StatusBadge status={status} />}
+                  </span>
+                  <span className="block truncate text-[12px] text-fg-3">{detail}</span>
+                </Link>
+                {canLink.includes(kind) && (
+                  <span className="flex flex-col gap-1">
+                    <ConversationLinkAction thread={thread} kind={kind} linked />
+                    <ConversationUnlinkAction thread={thread} kind={kind} code={code} />
+                  </span>
+                )}
+              </div>
+            ) : (
+              <ConversationLinkAction thread={thread} kind={kind} linked={false} />
+            )}
+          </section>
+        ) : null,
       )}
-      {card.lead && (
+      {others.length > 0 && (
         <section>
-          <p className="mb-1.5 text-[12px] font-semibold text-fg-3">Lead</p>
-          <Link href={`/crm/leads/${card.lead.code}`} className="lift flex items-center justify-between rounded-xl border border-line px-3 py-2.5 hover:border-accent/40">
-            <span className="text-[13px] font-semibold">{card.lead.code}</span>
-            <StatusBadge status={card.lead.status} />
-          </Link>
-        </section>
-      )}
-      {card.reservations.length > 0 && (
-        <section>
-          <p className="mb-1.5 text-[12px] font-semibold text-fg-3">Reservas</p>
+          <p className="mb-1.5 text-[12px] font-semibold text-fg-3">Otras reservas del cliente</p>
           <ul className="flex flex-col gap-1.5">
-            {card.reservations.map((item) => (
+            {others.map((item) => (
               <li key={item.code}>
                 <Link href={`/reservas/${item.code}`} className={cn("lift block rounded-xl border px-3 py-2 hover:border-accent/40", item.linked ? "border-accent/40" : "border-line")}>
                   <span className="flex items-center justify-between gap-2 text-[12.5px] font-semibold">
@@ -181,9 +194,18 @@ export function ContactCard({ thread }: { thread: ConversationThread }) {
           </ul>
         </section>
       )}
-      {card.quotes.length > 0 && (
+      {(card.quotes.length > 0 || canQuote) && (
         <section>
-          <p className="mb-1.5 text-[12px] font-semibold text-fg-3">Cotizaciones</p>
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <p className="text-[12px] font-semibold text-fg-3">Cotizaciones</p>
+            {canQuote && (
+              <Button href={card.opportunity ? `/cotizaciones/nueva?oportunidad=${encodeURIComponent(card.opportunity.code)}` : "/cotizaciones/nueva"} variant="secondary" size="sm" icon={<FilePlus2 size={14} />}>
+                Crear cotización
+              </Button>
+            )}
+          </div>
+          {canQuote && card.opportunity && <p className="mb-1.5 truncate text-[12px] text-fg-3">Para la oportunidad {card.opportunity.code} · {card.opportunity.title}</p>}
+          {card.quotes.length === 0 && <p className="text-[12.5px] text-fg-3">El cliente aún no tiene cotizaciones.</p>}
           <ul className="flex flex-col gap-1.5">
             {card.quotes.map((item) => (
               <li key={item.code}>

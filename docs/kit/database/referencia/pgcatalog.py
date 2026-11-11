@@ -46,7 +46,7 @@ def _find_pgbin(explicit=None):
 def temp_cluster(pgbin=None, port=55447, sql_dir=DB_DIR):
     """initdb → start → carga 00…90 → yield función psql(sql) → stop."""
     pgbin = _find_pgbin(pgbin)
-    tmp = tempfile.mkdtemp(prefix="qhapaq_ref_")
+    tmp = tempfile.mkdtemp(prefix="kipucontrol_ref_")
     as_ = []
     if os.geteuid() == 0:
         as_ = ["runuser", "-u", "postgres", "--"]
@@ -60,14 +60,14 @@ def temp_cluster(pgbin=None, port=55447, sql_dir=DB_DIR):
                "-l", f"{tmp}/pg.log", "-w", "start"], stdout=subprocess.DEVNULL)
     base = [f"{pgbin}/psql", "-h", sock, "-p", str(port), "-U", "postgres", "-X", "-q", "-v", "ON_ERROR_STOP=1"]
     try:
-        run(base + ["-d", "postgres", "-c", "create database qhapaq_reference"], stdout=subprocess.DEVNULL)
+        run(base + ["-d", "postgres", "-c", "create database kipucontrol_reference"], stdout=subprocess.DEVNULL)
         for f in SQL_FILES:
-            p = subprocess.run(base + ["-d", "qhapaq_reference", "-f", str(Path(sql_dir, f + ".sql"))],
+            p = subprocess.run(base + ["-d", "kipucontrol_reference", "-f", str(Path(sql_dir, f + ".sql"))],
                                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
             if p.returncode:
                 raise SystemExit(f"FALLO al cargar {f}.sql:\n{p.stderr}")
         def psql(sql):
-            p = subprocess.run(base + ["-d", "qhapaq_reference", "-A", "-t", "-c", sql],
+            p = subprocess.run(base + ["-d", "kipucontrol_reference", "-A", "-t", "-c", sql],
                                capture_output=True, text=True, check=True)
             return p.stdout
         yield psql

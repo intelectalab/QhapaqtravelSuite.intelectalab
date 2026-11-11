@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { ChangeImpact, DirectPayload, DirectPlan, ReschedulePlan } from "@/lib/reservations";
+import type { ChangeImpact, ConfirmPreview, DirectPayload, DirectPlan, ReschedulePlan } from "@/lib/reservations";
 import { apiFetch } from "@/lib/server/api";
 import { stepByField, wizardFailure, type WizardResult } from "@/lib/wizard";
 
@@ -23,7 +23,7 @@ const STEPS: Record<string, { path: (form: FormData) => string; method: "POST" |
   request_pending: { path: () => "/services/request-pending", method: "POST", fields: [] },
   service_request: { path: (form) => `/services/${form.get("service")}/request`, method: "POST", fields: ["note"] },
   service_confirm: { path: (form) => `/services/${form.get("service")}/confirm`, method: "POST", fields: ["confirmation_code", "time", "confirmed_by"] },
-  service_reject: { path: (form) => `/services/${form.get("service")}/reject`, method: "POST", fields: ["reason", "detail", "alternative_date"] },
+  service_reject: { path: (form) => `/services/${form.get("service")}/reject`, method: "POST", fields: ["reason", "detail", "alternative_date", "alternative_provider_id"] },
   cancel: { path: () => "/cancel", method: "POST", fields: ["reason", "detail"] },
   request_cancel: { path: () => "/cancel-requests", method: "POST", fields: ["reason", "detail"] },
   reject_request: { path: (form) => `/cancel-requests/${form.get("request")}/reject`, method: "POST", fields: ["note"] },
@@ -69,6 +69,12 @@ export async function previewChange(code: string, payload: Record<string, unknow
   return { impact: result.data ?? null, message: null };
 }
 
+export async function previewConfirm(code: string): Promise<{ plan: ConfirmPreview | null; message: string | null }> {
+  const result = await apiFetch<ConfirmPreview>(`/reservations/${encodeURIComponent(code)}/confirm-preview`);
+  if (!result.ok) return { plan: null, message: result.error?.message ?? "No pudimos revisar la disponibilidad." };
+  return { plan: result.data ?? null, message: null };
+}
+
 export async function previewReschedule(code: string, newStart: string | null): Promise<{ plan: ReschedulePlan | null; message: string | null }> {
   const result = await apiFetch<ReschedulePlan>(`/reservations/${encodeURIComponent(code)}/reschedule/preview`, { method: "POST", body: { new_start: newStart } });
   if (!result.ok) return { plan: null, message: result.error?.message ?? null };
@@ -77,7 +83,7 @@ export async function previewReschedule(code: string, newStart: string | null): 
 
 function directBody(payload: DirectPayload): Record<string, unknown> {
   const body: Record<string, unknown> = { product_id: payload.product_id, adt: payload.adt, chd: payload.chd, inf: payload.inf };
-  for (const field of ["client_id", "channel", "owner_id", "departure_id", "date", "notes"] as const) {
+  for (const field of ["client_id", "channel", "owner_id", "departure_id", "rate_id", "date", "notes"] as const) {
     if (payload[field].trim() !== "") body[field] = payload[field].trim();
   }
   return body;

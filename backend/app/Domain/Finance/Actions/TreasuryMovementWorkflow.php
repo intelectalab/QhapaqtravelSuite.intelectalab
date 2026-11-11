@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Finance\Actions;
 
 use App\Domain\Finance\Support\Consolidation;
+use App\Domain\Finance\Support\TreasuryDirectory;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -23,6 +24,14 @@ final class TreasuryMovementWorkflow
 
             if ($account === null || $account->status !== 'active') {
                 throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige una cuenta activa.');
+            }
+
+            if ($account->kind !== 'bank') {
+                throw ApiException::unprocessable('VALIDATION_ERROR', 'Los movimientos manuales se registran en cuentas bancarias. Las cajas chicas usan gastos y arqueos, y las pasarelas su liquidación.');
+            }
+
+            if (! in_array($data['category'], TreasuryDirectory::CATEGORIES[$data['direction']], true)) {
+                throw ApiException::unprocessable('VALIDATION_ERROR', $data['direction'] === 'in' ? 'Elige una categoría de ingreso.' : 'Elige una categoría de egreso.');
             }
 
             $amount = Decimal::money($data['amount']);

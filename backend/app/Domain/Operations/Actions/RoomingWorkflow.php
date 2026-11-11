@@ -130,7 +130,7 @@ final class RoomingWorkflow
         }
 
         $this->ensureConsistent($list);
-        DB::table('ops_rooming_lists')->where('id', $list->id)->update(['status' => 'enviada', 'sent_at' => now(), 'sent_by' => $actor->getKey(), 'sent_version' => (int) $list->sent_version + 1, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+        DB::table('ops_rooming_lists')->where('id', $list->id)->update(['status' => 'enviada', 'sent_at' => now(), 'sent_by' => $actor->getKey(), 'sent_version' => (int) $list->sent_version + 1, 'hotel_ack_at' => null, 'hotel_ack_by' => null, 'hotel_confirmed_at' => null, 'hotel_confirmed_by' => null, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         $this->audit->log('Rooming list', $list->reservation_code, 'enviar_hotel', $list->status, 'enviada v'.((int) $list->sent_version + 1));
     }
 

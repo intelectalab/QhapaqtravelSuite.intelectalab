@@ -13,7 +13,6 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
         </>
       }
       description="Clientes, cotizaciones, reservas, operaciones y cobros en un solo lugar, con la información de tu equipo siempre al día."
-      footnote="Qhapaq Ñan: el camino que lo une todo."
     >
       {children}
     </AuthFrame>

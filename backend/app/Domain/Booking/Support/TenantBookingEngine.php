@@ -10,6 +10,7 @@ use App\Domain\Booking\Data\ProductData;
 use App\Domain\Booking\Data\SeasonCalendar;
 use App\Domain\Booking\Inventory\DatabaseInventoryReader;
 use App\Domain\Booking\Rules\RuleResolver;
+use App\Domain\Catalog\Support\ProductBookingConfig;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
@@ -36,8 +37,19 @@ final class TenantBookingEngine
         private readonly DatabaseInventoryReader $inventory,
     ) {}
 
-    public function engine(): BookingEngine
+    public function engine(?string $previewPlan = null): BookingEngine
     {
+        if ($previewPlan !== null) {
+            return new BookingEngine(
+                rules: $this->rules->forTenant($previewPlan),
+                fx: $this->fxTable(),
+                seasons: $this->seasons(),
+                inventory: $this->inventory,
+                ecommerceDefaults: $this->defaults(),
+                today: CarbonImmutable::now($this->context->timezone())->toDateString(),
+            );
+        }
+
         return $this->engine ??= new BookingEngine(
             rules: $this->rules->forTenant(),
             fx: $this->fxTable(),
@@ -55,6 +67,7 @@ final class TenantBookingEngine
             ?? throw ApiException::notFound('El producto no existe.');
         $paxRules = DB::table('catalog_pax_rules')->where('product_id', $productId)->first();
         [$overrides, $params] = $this->rules->productOverrides($productId);
+        $sections = app(ProductBookingConfig::class)->engineSections($productId);
 
         return new ProductData(
             id: (string) $product->id,
@@ -70,6 +83,9 @@ final class TenantBookingEngine
             ruleOverrides: $overrides,
             ruleParams: $params,
             rates: $this->rates($productId, $date),
+            addons: $sections['addons'],
+            accommodation: $sections['accommodation'],
+            payment: $sections['payment'],
         );
     }
 

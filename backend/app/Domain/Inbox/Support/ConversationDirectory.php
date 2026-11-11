@@ -21,6 +21,12 @@ final class ConversationDirectory
 
     public const PRIORITIES = ['baja' => 'Baja', 'media' => 'Media', 'alta' => 'Alta', 'critica' => 'Crítica'];
 
+    public const LINKS = [
+        'client' => ['table' => 'crm_clients', 'column' => 'client_id', 'permission' => 'crm.clients.manage', 'name' => 'name', 'label' => 'cliente', 'entity' => 'El cliente'],
+        'lead' => ['table' => 'crm_leads', 'column' => 'lead_id', 'permission' => 'crm.leads.manage', 'name' => 'full_name', 'label' => 'lead', 'entity' => 'El lead'],
+        'reservation' => ['table' => 'booking_reservations', 'column' => 'reservation_id', 'permission' => 'reservations.view', 'name' => 'title', 'label' => 'reserva', 'entity' => 'La reserva'],
+    ];
+
     private const AGENT_ROLES = ['tenant_admin', 'manager', 'sales', 'operations'];
 
     public function __construct(private readonly Advisors $advisors) {}
@@ -53,7 +59,12 @@ final class ConversationDirectory
                 ->get(['code', 'name', 'body', 'channels', 'is_whatsapp_approved'])
                 ->map(fn (object $row): array => ['code' => $row->code, 'name' => $row->name, 'body' => $row->body, 'channels' => $this->array($row->channels), 'whatsapp_approved' => (bool) $row->is_whatsapp_approved])->values(),
             'agents' => $viewer->can('crm.records.reassign') ? $this->advisors->all(self::AGENT_ROLES)->values() : [],
-            'can' => ['manage' => $viewer->can('inbox.manage'), 'reassign' => self::canReassign($viewer)],
+            'can' => [
+                'manage' => $viewer->can('inbox.manage'),
+                'reassign' => self::canReassign($viewer),
+                'quote' => $viewer->can('inbox.manage') && $viewer->can('quotes.create'),
+                'link' => $viewer->can('inbox.manage') ? collect(self::LINKS)->filter(fn (array $link): bool => $viewer->can($link['permission']))->keys()->values()->all() : [],
+            ],
             'me' => $viewer->getKey(),
         ];
     }
@@ -80,6 +91,43 @@ final class ConversationDirectory
             ])->values(),
             'card' => $this->contact($row),
         ];
+    }
+
+    public function linkOptions(string $code, string $kind, string $search, User $viewer): array
+    {
+        $conversation = $this->find($code, $viewer);
+        $link = self::LINKS[$kind];
+        $search = mb_strtolower(trim($search));
+        $term = '%'.addcslashes($search, '%_\\').'%';
+        $booking = $kind === 'reservation';
+        $query = $this->linkable($kind, $viewer)->when($booking, fn (Builder $inner) => $inner->leftJoin('crm_clients as k', 'k.id', '=', 'x.client_id'));
+
+        if ($search !== '') {
+            $query->where(function (Builder $match) use ($term, $link, $booking): void {
+                $match->whereRaw('lower(x.code) like ?', [$term])->orWhereRaw("lower(x.{$link['name']}) like ?", [$term]);
+                $booking
+                    ? $match->orWhereRaw('lower(k.name) like ?', [$term])
+                    : $match->orWhereRaw("lower(coalesce(x.email, '')) like ?", [$term])->orWhereRaw("coalesce(x.phone, '') like ?", [$term]);
+            });
+        } elseif ($booking && $conversation->client_id) {
+            $query->orderByRaw('case when x.client_id = ? then 0 else 1 end', [$conversation->client_id]);
+        } elseif (! $booking) {
+            $query->orderByRaw("case when lower(coalesce(x.email, '')) = ? or coalesce(x.phone, '') = ? then 0 else 1 end", [mb_strtolower((string) $conversation->contact_email), (string) $conversation->contact_phone]);
+        }
+
+        $columns = $booking ? ['x.id', 'x.code', 'x.title as name', 'x.travel_from', 'k.name as client'] : ['x.id', 'x.code', "x.{$link['name']} as name", 'x.email', 'x.phone'];
+
+        return $query->orderByDesc('x.created_at')->limit(12)->get($columns)->map(fn (object $row): array => [
+            'code' => $row->code,
+            'label' => $row->name,
+            'hint' => $booking ? implode(' · ', array_filter([$row->client, $row->travel_from])) : ($row->email ?? $row->phone),
+            'linked' => $row->id === $conversation->{$link['column']},
+        ])->values()->all();
+    }
+
+    public function linkable(string $kind, User $viewer): Builder
+    {
+        return Portfolio::scope(DB::table(self::LINKS[$kind]['table'].' as x')->whereNull('x.deleted_at'), $viewer, 'x.owner_id');
     }
 
     public static function canReassign(User $viewer): bool
@@ -155,10 +203,15 @@ final class ConversationDirectory
         $reservations = $this->related('booking_reservations', $row->client_id, $row->reservation_id, ['code', 'title', 'status', 'travel_from', 'total_amount', 'currency']);
         $quotes = $this->related('quote_quotes', $row->client_id, $row->quote_id, ['code', 'title', 'status', 'travel_from', 'currency']);
 
+        $opportunity = $row->client_id ? DB::table('crm_opportunities')->where('client_id', $row->client_id)->whereNull('deleted_at')->whereIn('stage', ['calificacion', 'descubrimiento', 'cotizacion', 'negociacion'])->orderByDesc('updated_at')->first(['code', 'title', 'stage']) : null;
+        $booking = $row->reservation_id ? DB::table('booking_reservations')->where('id', $row->reservation_id)->first(['code', 'title', 'status']) : null;
+
         return [
             'client' => $client ? ['code' => $client->code, 'name' => $client->name, 'segment' => $client->segment_code, 'country' => $client->country, 'nps' => $client->nps_last, 'owner' => $client->owner] : null,
             'lead' => $lead ? ['code' => $lead->code, 'name' => $lead->full_name, 'status' => $lead->status] : null,
+            'reservation' => $booking ? ['code' => $booking->code, 'title' => $booking->title, 'status' => $booking->status] : null,
             'reservations' => $reservations->map(fn ($item): array => ['code' => $item->code, 'title' => $item->title, 'status' => $item->status, 'date' => $item->travel_from, 'total' => (float) $item->total_amount, 'currency' => $item->currency, 'linked' => $item->id === $row->reservation_id])->values(),
+            'opportunity' => $opportunity ? ['code' => $opportunity->code, 'title' => $opportunity->title, 'stage' => $opportunity->stage] : null,
             'quotes' => $quotes->map(fn ($item): array => ['code' => $item->code, 'title' => $item->title, 'status' => $item->status, 'date' => $item->travel_from, 'linked' => $item->id === $row->quote_id])->values(),
         ];
     }

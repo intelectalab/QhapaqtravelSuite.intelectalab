@@ -50,7 +50,7 @@ it('la búsqueda de la consola pide al menos dos caracteres y es solo para la pl
 it('la configuración de la plataforma guarda el emisor y los avisos con If-Match y queda en la auditoría', function () {
     actingAsPlatform();
 
-    $this->patchJson('/api/v1/platform/settings/issuer', ['name' => 'Qhapaq Cloud S.A.C.', 'ruc' => '20614455661', 'address' => 'Av. Prueba 123, Lima', 'email' => 'facturas@qhapaq.cloud', 'web' => 'www.qhapaq.cloud'])
+    $this->patchJson('/api/v1/platform/settings/issuer', ['name' => 'KipuControl Cloud S.A.C.', 'ruc' => '20614455661', 'address' => 'Av. Prueba 123, Lima', 'email' => 'facturas@kipucontrol.com', 'web' => 'www.kipucontrol.com'])
         ->assertStatus(428);
 
     $this->patchJson('/api/v1/platform/settings/notices', ['trial_days' => [5, 2], 'usage_warn_pct' => 75, 'api_key_days' => 10], ['If-Match' => platformSettingsVersion()])->assertOk();

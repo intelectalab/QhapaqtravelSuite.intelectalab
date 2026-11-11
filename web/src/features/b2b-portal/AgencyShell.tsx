@@ -89,7 +89,7 @@ export function AgencyShell({ session, children }: { session: AgencySession | nu
             </span>
             <span className="min-w-0 leading-tight">
               <b className="block max-w-[220px] truncate text-[15px] font-bold tracking-tight">{session?.agency.name ?? "Agencia aliada"}</b>
-              <span className="block truncate text-[12px] text-fg-3">Agencias aliadas · {session?.tenant.name ?? "Qhapaq"}</span>
+              <span className="block truncate text-[12px] text-fg-3">Agencias aliadas · {session?.tenant.name ?? "KipuControl"}</span>
             </span>
           </Link>
           <nav aria-label="Secciones" className="ml-4 hidden items-center gap-1 xl:flex">
@@ -131,7 +131,7 @@ export function AgencyShell({ session, children }: { session: AgencySession | nu
           </span>
           <span className="flex items-center gap-1.5">
             <BrandMark size={14} />
-            Qhapaq Travel Suite
+            KipuControl
           </span>
         </div>
       </footer>

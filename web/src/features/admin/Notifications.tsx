@@ -1,7 +1,7 @@
 "use client";
 
-import { CheckCircle2, Clock, Mail, RefreshCw, XCircle } from "lucide-react";
-import { fallbackNotification, retryNotification, updateNotificationRule } from "@/app/(backoffice)/admin/notificaciones/actions";
+import { CheckCircle2, Clock, FileText, FlaskConical, Mail, PenLine, RefreshCw, XCircle } from "lucide-react";
+import { fallbackNotification, retryFailedNotifications, retryNotification, testNotificationRule, updateNotificationRule } from "@/app/(backoffice)/admin/notificaciones/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -13,6 +13,7 @@ import { TextField } from "@/components/ui/TextField";
 import { ADMIN_INITIAL, CHANNEL_LABELS, type AdminActionState, type NotificationMessage, type NotificationRule, type NotificationsOverview } from "@/lib/admin";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
+import { TEMPLATE_CHANNELS } from "@/lib/notificationTemplates";
 import { RISE, ToggleField } from "./AdminParts";
 import { TemplateEditor } from "./TemplateEditor";
 import { ChannelChips } from "./PaxTemplates";
@@ -34,6 +35,21 @@ function RuleEditor({ rule, options }: { rule: NotificationRule; options: Notifi
           <TextField label="Destinatarios" name="recipients" required minLength={3} defaultValue={rule.recipients} hint="Por ejemplo: Cliente + Operaciones" />
           <SelectField label="Cuándo se envía" name="timing" options={options.timings} defaultValue={rule.timing} />
           <SelectField label="Condición" name="condition" options={options.conditions} defaultValue={rule.condition} />
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+function RuleTester({ rule }: { rule: NotificationRule }) {
+  const channels = CHANNELS.filter((channel) => rule.channels[channel]);
+  if (channels.length === 0) return <RowIcon tone="neutral" label="Probar evento" icon={<FlaskConical size={15} />} disabledHint="Enciende al menos un canal para probarlo" />;
+  return (
+    <PanelAction<AdminActionState> label="Probar" variant="ghost" size="sm" formId={`notif-test-${rule.event}`} trigger={(open) => <RowIcon tone="neutral" label={`Probar ${rule.label}`} icon={<FlaskConical size={15} />} onClick={open} />} title={`Probar «${rule.label}»`} description="Envía el aviso de prueba a tu propio usuario por cada canal activo, con datos de ejemplo. Queda en el historial de envíos." submitLabel="Enviar prueba" action={testNotificationRule} initial={ADMIN_INITIAL}>
+      {() => (
+        <>
+          <input type="hidden" name="event" value={rule.event} />
+          <ChannelChips channels={channels} />
         </>
       )}
     </PanelAction>
@@ -86,6 +102,7 @@ export function NotificationMatrix({ data }: { data: NotificationsOverview }) {
                 {data.can_manage && (
                   <span className="inline-flex items-center gap-1">
                     <TemplateEditor event={rule.event} label={rule.label} />
+                    <RuleTester rule={rule} />
                     <RuleEditor rule={rule} options={data.options} />
                   </span>
                 )}
@@ -96,6 +113,45 @@ export function NotificationMatrix({ data }: { data: NotificationsOverview }) {
       </table>
     </div>
   );
+}
+
+export function NotificationTemplatesTable({ data }: { data: NotificationsOverview }) {
+  const customized = (rule: NotificationRule) => Object.keys(rule.custom_templates).length > 0;
+  const columns: Column<NotificationRule>[] = [
+    {
+      id: "event",
+      header: "Evento",
+      mobile: "title",
+      cell: (rule) => (
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-[13.5px] font-semibold">
+            {rule.label}
+            {rule.critical && <Badge tone="bad">Crítico</Badge>}
+          </p>
+          <p className="text-[11.5px] text-fg-3">
+            <span className="font-mono">{rule.event}</span> · {rule.group}
+          </p>
+        </div>
+      ),
+    },
+    ...TEMPLATE_CHANNELS.map<Column<NotificationRule>>((channel) => ({
+      id: channel.value,
+      header: channel.label,
+      cell: (rule) => {
+        const version = rule.custom_templates[channel.value];
+        return version ? <Badge tone="t1">{`Propia · v${version}`}</Badge> : <span className="text-[12.5px] text-fg-3">Del sistema</span>;
+      },
+    })),
+    { id: "updated", header: "Último cambio", wideOnly: true, cell: (rule) => <span className="text-[12.5px] text-fg-3">{rule.updated_at ? `${formatDateTime(rule.updated_at, false)}${rule.updated_by ? ` · ${rule.updated_by}` : ""}` : "Sin cambios"}</span> },
+    { id: "actions", header: "", align: "right", mobile: "detail", cell: (rule) => (data.can_manage ? <RowActions><TemplateEditor event={rule.event} label={rule.label} /></RowActions> : null) },
+  ];
+  const metrics: MetricFilter<NotificationRule>[] = [
+    { id: "custom", label: "Con texto propio", tone: "t1", icon: <PenLine size={19} />, matches: customized },
+    { id: "system", label: "Solo del sistema", tone: "mute", icon: <FileText size={19} />, matches: (rule) => !customized(rule) },
+  ];
+  const filters: FilterConfig<NotificationRule>[] = [{ id: "group", label: "Módulo", options: [...new Set(data.rules.map((rule) => rule.group))].map((group) => ({ value: group, label: group })), value: (rule) => rule.group }];
+  const sorts: SortOption<NotificationRule>[] = [{ id: "label", label: "Evento", value: (rule) => rule.label }];
+  return <DataTable screen="admin-notificaciones-plantillas" rows={data.rules} columns={columns} getKey={(rule) => rule.event} entityLabel="eventos" searchText={(rule) => `${rule.label} ${rule.event} ${rule.group}`} searchPlaceholder="Buscar evento" metrics={metrics} filters={filters} sorts={sorts} />;
 }
 
 export function NotificationLog({ data }: { data: NotificationsOverview }) {
@@ -166,5 +222,12 @@ export function NotificationLog({ data }: { data: NotificationsOverview }) {
     { id: "event", label: "Evento", options: [...new Map(data.messages.map((message) => [message.event, message.event_label])).entries()].map(([value, label]) => ({ value, label })), value: (message) => message.event },
   ];
   const sorts: SortOption<NotificationMessage>[] = [{ id: "at", label: "Fecha", type: "date", value: (message) => message.at }];
-  return <DataTable screen="admin-notificaciones" rows={data.messages} columns={columns} getKey={(message) => message.code} entityLabel="envíos" searchText={(message) => `${message.code} ${message.subject} ${message.to} ${message.event_label}`} searchPlaceholder="Buscar envío, destinatario o asunto" metrics={metrics} filters={filters} sorts={sorts} />;
+  const retryable = data.messages.filter((message) => message.status === "fallido" && !message.permanent).length;
+  const retryAll =
+    data.can_manage && retryable > 0 ? (
+      <PanelAction<AdminActionState> label="Reintentar fallidos" icon={<RefreshCw size={15} />} variant="secondary" size="sm" formId="notif-retry-failed" title="Reintentar los envíos fallidos" description="Volvemos a encolar los envíos con error temporal. Los de error permanente se quedan como están: corrige el destinatario o reenvíalos por correo." submitLabel="Reintentar" action={retryFailedNotifications} initial={ADMIN_INITIAL}>
+        {() => null}
+      </PanelAction>
+    ) : undefined;
+  return <DataTable screen="admin-notificaciones" rows={data.messages} columns={columns} getKey={(message) => message.code} entityLabel="envíos" searchText={(message) => `${message.code} ${message.subject} ${message.to} ${message.event_label}`} searchPlaceholder="Buscar envío, destinatario o asunto" metrics={metrics} filters={filters} sorts={sorts} toolbarEnd={retryAll} />;
 }

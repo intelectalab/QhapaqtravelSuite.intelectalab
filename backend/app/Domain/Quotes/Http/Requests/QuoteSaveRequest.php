@@ -33,9 +33,10 @@ final class QuoteSaveRequest extends FormRequest
             'pax_adt' => ['nullable', 'integer', 'min:0', 'max:999'],
             'pax_chd' => ['nullable', 'integer', 'min:0', 'max:999'],
             'pax_inf' => ['nullable', 'integer', 'min:0', 'max:999'],
-            'discount_pct' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'tax_pct' => ['nullable', 'numeric', 'in:0,18'],
+            'discount_pct' => ['nullable', 'numeric', 'min:0', 'max:50'],
+            'tax_pct' => ['nullable', 'numeric', 'min:0', 'max:18'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'conditions' => ['nullable', 'string', 'max:4000'],
             'items' => [$required(3), 'array', ! $preview || $step >= 3 ? 'min:1' : 'min:0', 'max:60'],
             'items.*.product_code' => ['required', 'string', 'max:30'],
             'items.*.date' => ['required', 'date'],
@@ -43,6 +44,8 @@ final class QuoteSaveRequest extends FormRequest
             'items.*.pax' => ['required', 'integer', 'min:1', 'max:999'],
             'items.*.segment' => ['nullable', 'in:Adulto,Niño,Infante,Grupo,Pasajero'],
             'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
+            'items.*.unit_cost' => ['nullable', 'numeric', 'min:0'],
+            'items.*.rate_id' => ['nullable', 'uuid'],
             'lock_version' => ['nullable', 'integer'],
             'step' => ['nullable', 'integer', 'min:1', 'max:'.self::STEPS],
         ];
@@ -75,6 +78,10 @@ final class QuoteSaveRequest extends FormRequest
             'items.*.date.required' => 'Cada ítem necesita su fecha.',
             'items.*.pax.min' => 'Cada ítem necesita al menos un pasajero.',
             'items.*.qty.min' => 'La cantidad debe ser al menos 1.',
+            'items.*.unit_cost.min' => 'El costo unitario no puede ser negativo.',
+            'tax_pct.max' => 'El IGV va de 0 a 18 %.',
+            'tax_pct.min' => 'El IGV va de 0 a 18 %.',
+            'discount_pct.max' => 'El descuento no puede pasar de 50 %.',
         ];
     }
 }

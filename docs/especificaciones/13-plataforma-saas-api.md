@@ -8,7 +8,7 @@ Stack y convenciones generales: `proto/docs/CONVENCIONES.md`.
 Este módulo es lo que permite vender el producto como SaaS. Cubre:
 
 - **Suscripción del tenant**: plan, ciclo (mensual/anual), add-ons, consumo frente a límites, cambio de plan con prorrateo, cupones, método de pago, datos de facturación, renovación y cancelación.
-- **Facturación de la plataforma**: facturas electrónicas que la plataforma (Qhapaq Cloud S.A.C.) emite a cada tenant, cobro recurrente con tarjeta tokenizada, dunning (reintentos 1/3/7 días y suspensión automática), trials, cupones y métricas MRR/ARR/churn.
+- **Facturación de la plataforma**: facturas electrónicas que la plataforma (KipuControl Cloud S.A.C.) emite a cada tenant, cobro recurrente con tarjeta tokenizada, dunning (reintentos 1/3/7 días y suspensión automática), trials, cupones y métricas MRR/ARR/churn.
 - **Entitlements**: feature flags por plan, add-on y excepción por tenant, validados en backend por middleware.
 - **Medición de uso**: contadores en Redis consolidados cada día en PostgreSQL. Alimentan los límites y los avisos al 80 y 100 %.
 - **API pública del tenant**: API keys con scopes, rate limiting por API key, webhooks salientes firmados con HMAC-SHA256 con reintentos y log de entregas, documentación OpenAPI 3.1 y aplicaciones OAuth 2.0.
@@ -58,7 +58,7 @@ Restricción de datos: el Super Admin **no** ve clientes, reservas, montos de ve
 | `addons` | Plataforma | No | No | Catálogo. |
 | `subscriptions`, `subscription_items`, `subscription_changes` | Plataforma | FK `tenant_id` | No (acceso solo por `BillingService`) | La plataforma factura. El tenant consulta vía endpoints `/billing/*`, que filtran por el tenant autenticado. |
 | `payment_methods` | Plataforma | FK | No | Solo token de pasarela. |
-| `platform_invoices`, `platform_invoice_lines`, `platform_credit_notes`, `payment_attempts` | Plataforma | FK | No | Documentos del emisor Qhapaq Cloud. |
+| `platform_invoices`, `platform_invoice_lines`, `platform_credit_notes`, `payment_attempts` | Plataforma | FK | No | Documentos del emisor KipuControl Cloud. |
 | `coupons`, `coupon_redemptions` | Plataforma | FK en redemptions | No | |
 | `usage_counters` (diario), `usage_monthly` | Plataforma | FK | No | Medición para facturación. |
 | `platform_metrics_daily` | Plataforma | No | No | Snapshot de MRR/ARR/churn. |
@@ -458,8 +458,8 @@ Entitlements, en tres capas:
 1. Los eventos de dominio (`QuoteSent`, `QuoteApproved`, `ReservationCreated/Confirmed/Cancelled`, `PaymentApplied/Reversed`, `InvoiceIssued`, `VoucherIssued`, `IncidentCreated/Resolved`, `LeadCreated`) se escriben en `sys_outbox` en la misma transacción.
 2. `OutboxRelay` publica y, por cada webhook `active` suscrito (consulta GIN `events @> ARRAY[type]`), crea una entrega `pending` y encola `DeliverWebhookJob`.
 3. Cuerpo: `{id: evt_…, type, api_version, created_at, tenant_id, data}`. `data` contiene los campos públicos del recurso (sin costos ni márgenes).
-4. Firma: `t = unix_time`, `v1 = hex(HMAC_SHA256(secret, t + "." + raw_body))`. Header `Qhapaq-Signature: t=…,v1=…[,v1=…]` (dos v1 durante la gracia de rotación). Además: `Qhapaq-Event-Id`, `Qhapaq-Event-Type`, `Qhapaq-Delivery-Id`, `User-Agent: Qhapaq-Webhooks/1.0`.
-5. El receptor valida con comparación en tiempo constante y rechaza firmas con más de 5 minutos. Debe deduplicar por `Qhapaq-Event-Id`.
+4. Firma: `t = unix_time`, `v1 = hex(HMAC_SHA256(secret, t + "." + raw_body))`. Header `KipuControl-Signature: t=…,v1=…[,v1=…]` (dos v1 durante la gracia de rotación). Además: `KipuControl-Event-Id`, `KipuControl-Event-Type`, `KipuControl-Delivery-Id`, `User-Agent: KipuControl-Webhooks/1.0`.
+5. El receptor valida con comparación en tiempo constante y rechaza firmas con más de 5 minutos. Debe deduplicar por `KipuControl-Event-Id`.
 6. Envío HTTP: timeout de 10 s (30 s máximo de conexión), sin redirecciones, validación SSRF antes de conectar. 2xx = entregado. 410 = deshabilitar. Otro código o timeout = reintento con `backoff: [60, 300, 1800, 7200, 21600, 86400]` y `tries = 6`.
 7. Tras 10 fallos consecutivos: `disabled` y notificación.
 
@@ -516,7 +516,7 @@ Cambios y precisiones:
 - `DB.plans` (prototipo) se amplía con `limits`, `priceYear` y `trialDays`. Los límites coinciden con `PLAN_LIMITS` de `admin.js` (usuarios/almacenamiento/sedes) y añaden mensajería, API y webhooks.
 - La matriz de funcionalidades de `admin/tenants` (FEATURES estática) pasa a ser configurable: `DB.featureFlags` con overrides por tenant y add-ons.
 - El precio de TNT-0004 (S/ 3 150, Enterprise negociado) se trata como precio pactado de la suscripción, no del plan.
-- La facturación de la plataforma es un documento SUNAT del emisor Qhapaq Cloud, independiente de la facturación de cada agencia (`finanzas/facturacion`).
+- La facturación de la plataforma es un documento SUNAT del emisor KipuControl Cloud, independiente de la facturación de cada agencia (`finanzas/facturacion`).
 
 ### v2.2 — Planes × reglas (DEMO, decisión del cliente 30/09/2026)
 El cliente indicó: «Aún no tenemos reglas ni planes; crea unas de prueba para luego modificarlas». Se implementó una **matriz de demostración editable**:
@@ -536,7 +536,7 @@ Desviaciones temporales de la implementación respecto al kit, detectadas en la 
 
 - Consola completa: inicio, facturación (MRR, facturas, cobranza, pruebas, cupones, funcionalidades, uso), integraciones y auditoría. Pasarela simulada (`LocalGateway`).
 - Tablas nuevas fuera del esquema del kit: `platform_demo_requests` (solicitudes de demo desde la página comercial) y `platform_settings` (política de cobranza; `sys_settings` exige tenant). Pendiente incorporarlas a `docs/kit/database`.
-- Página comercial pública de Qhapaq (`/` y `/software/*`) con los planes reales. Agregado por decisión de producto.
+- Página comercial pública de KipuControl (`/` y `/software/*`) con los planes reales. Agregado por decisión de producto.
 
 ### v3.0 — Campana, Configuración y Personalización de la consola (07/11/2026)
 

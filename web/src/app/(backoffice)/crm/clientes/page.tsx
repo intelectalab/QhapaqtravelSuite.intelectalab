@@ -1,7 +1,5 @@
-import { Download } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { Button } from "@/components/ui/Button";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { ClientCreateAction } from "@/features/clients/ClientForms";
 import { ClientsTable } from "@/features/clients/ClientsTable";
@@ -16,15 +14,8 @@ export default async function ClientesPage() {
       <PageHeader
         title="Clientes"
         subtitle="Personas y empresas que te compran viajes."
-        info={<InfoTip>El total comprado suma sus reservas confirmadas y viajes realizados, en soles.</InfoTip>}
-        actions={
-          <>
-            <Button icon={<Download size={16} />} className="max-sm:hidden">
-              Exportar
-            </Button>
-            {options.canManage && <ClientCreateAction options={options} />}
-          </>
-        }
+        info={<InfoTip>El total comprado suma sus reservas confirmadas y viajes realizados, en soles. El saldo es lo que aún debe en cuentas por cobrar abiertas.</InfoTip>}
+        actions={options.canManage ? <ClientCreateAction options={options} /> : undefined}
       />
       <ClientsTable clients={clients} canManage={options.canManage} />
     </>

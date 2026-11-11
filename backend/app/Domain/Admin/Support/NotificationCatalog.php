@@ -56,7 +56,7 @@ final class NotificationCatalog
         'monto' => 'S/ 4 850.00',
         'servicio' => 'Machu Picchu full day',
         'hora' => '05:30',
-        'enlace' => 'https://andes.qhapaq.local/portal',
+        'enlace' => 'https://andes.kipucontrol.local/portal',
         'agencia' => 'Andes Horizonte',
         'vendedor' => 'Lucía Paredes',
     ];

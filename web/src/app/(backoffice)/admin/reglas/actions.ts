@@ -1,6 +1,7 @@
 "use server";
 
-import type { AdminActionState } from "@/lib/admin";
+import type { AdminActionState, RuleSimulation } from "@/lib/admin";
+import { apiFetch } from "@/lib/server/api";
 import { fields, list, sendAdmin, text } from "@/lib/server/admin";
 
 const PATH = "/admin/reglas";
@@ -24,6 +25,10 @@ export async function resetRule(_state: AdminActionState, form: FormData): Promi
   return sendAdmin("/admin/booking-rules/reset", "POST", { code: text(form, "code"), reason: text(form, "reason") }, PATH);
 }
 
+export async function applyRuleTemplate(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
+  return sendAdmin("/admin/booking-rules/apply-template", "POST", { template: text(form, "template") }, PATH, "No pudimos aplicar la plantilla.");
+}
+
 export async function createRule(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
   return sendAdmin("/admin/booking-rules", "POST", fields(form, ["name", "description", "group"]), PATH, "No pudimos crear la regla.");
 }
@@ -34,4 +39,14 @@ export async function updateRule(_state: AdminActionState, form: FormData): Prom
 
 export async function deleteRule(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
   return sendAdmin(`/admin/booking-rules/${rule(form)}`, "DELETE", fields(form, ["lock_version"]), PATH, "No pudimos eliminar la regla.");
+}
+
+export async function simulateRules(form: FormData): Promise<{ ok: true; data: RuleSimulation } | { ok: false; message: string }> {
+  const body = Object.fromEntries(Object.entries(fields(form, ["product", "date", "adt", "chd", "inf", "currency", "payment_mode", "channel", "promo_code", "plan"])).filter(([, value]) => value !== undefined && value !== ""));
+  const result = await apiFetch<RuleSimulation>("/admin/booking-rules/simulate", { method: "POST", body });
+  if (!result.ok || !result.data) {
+    const first = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { ok: false, message: first ?? result.error?.message ?? "No pudimos simular." };
+  }
+  return { ok: true, data: result.data };
 }

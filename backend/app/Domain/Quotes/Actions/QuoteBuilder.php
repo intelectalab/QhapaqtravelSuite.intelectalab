@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Quotes\Actions;
 
+use App\Domain\Admin\Support\TenantSettings;
+use App\Domain\Booking\Support\LineRates;
 use App\Domain\Booking\Support\TenantBookingEngine;
 use App\Domain\Catalog\Support\RateDirectory;
 use App\Domain\Crm\Support\Portfolio;
@@ -27,29 +29,78 @@ final class QuoteBuilder
 
     public const MAX_OVERRIDE = '50';
 
+    public const MAX_TAX = '18';
+
+    private const DOMESTIC = ['perú', 'peru', 'pe'];
+
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly SequenceService $sequences,
         private readonly TenantContext $context,
         private readonly QuoteLifecycle $lifecycle,
         private readonly TenantBookingEngine $engines,
+        private readonly LineRates $lineRates,
+        private readonly TenantSettings $settings,
     ) {}
+
+    public static function validityDays(): int
+    {
+        $days = (int) (app(TenantSettings::class)->section('policies')['quote_validity_days'] ?? self::VALIDITY_DAYS);
+
+        return $days > 0 ? $days : self::VALIDITY_DAYS;
+    }
+
+    public static function seesCost(User $actor): bool
+    {
+        return $actor->can('finance.profitability') || $actor->can('catalog.products.view_profitability') || $actor->can('quotes.approve_internal');
+    }
+
+    public static function domestic(?string $country): bool
+    {
+        return in_array(mb_strtolower(trim((string) $country)), self::DOMESTIC, true);
+    }
+
+    public function defaultTax(?string $country): string
+    {
+        if ($country !== null && ! self::domestic($country)) {
+            return '0';
+        }
+
+        $tax = $this->settings->section('currency')['tax_pct'] ?? self::MAX_TAX;
+
+        return is_numeric($tax) ? (string) BigDecimal::of((string) $tax)->strippedOfTrailingZeros() : self::MAX_TAX;
+    }
 
     public function options(User $actor): array
     {
         $today = $this->today();
-        $clients = Portfolio::scope(DB::table('crm_clients')->whereNull('deleted_at'), $actor, 'owner_id')->orderBy('name')->get(['code', 'name']);
+        $clients = Portfolio::scope(DB::table('crm_clients')->whereNull('deleted_at'), $actor, 'owner_id')->orderBy('name')->get(['code', 'name', 'country', 'segment_code'])
+            ->map(fn (object $client): array => ['code' => $client->code, 'name' => $client->name, 'country' => $client->country, 'domestic' => self::domestic($client->country), 'channel' => LineRates::channelFor($client->segment_code)]);
         $opportunities = Portfolio::scope(DB::table('crm_opportunities as o')->join('crm_clients as c', 'c.id', '=', 'o.client_id')->whereNull('o.deleted_at')->whereNotIn('o.stage', ['ganada', 'perdida']), $actor, 'o.owner_id')
             ->orderBy('o.title')->get(['o.code', 'o.title', 'o.currency', 'o.pax', 'c.code as client_code']);
         $rates = DB::table('catalog_rates')->where('status', 'vigente')->where('rate_type', 'Venta')->where('valid_from', '<=', $today)->where('valid_to', '>=', $today)
             ->orderBy('price')->get(['product_id', 'segment', 'currency', 'price', 'cost'])->groupBy('product_id');
 
+        $products = DB::table('catalog_products')->whereNull('deleted_at')->where('status', 'ACTIVE')->where('is_quoteable', true)->orderBy('name')->get(['id', 'code', 'name', 'duration_value', 'duration_unit']);
+        $catalog = $this->lineRates->catalog($products->pluck('id'));
+        $seeCost = self::seesCost($actor);
+
         return [
             'clients' => $clients,
             'opportunities' => $opportunities,
-            'products' => DB::table('catalog_products')->whereNull('deleted_at')->where('status', 'ACTIVE')->where('is_quoteable', true)->orderBy('name')->get(['id', 'code', 'name', 'duration_value', 'duration_unit'])
-                ->map(fn (object $product): array => $this->productOption($product, collect($rates->get($product->id, [])))),
-            'defaults' => ['valid_until' => Carbon::parse($today)->addDays(self::VALIDITY_DAYS)->toDateString(), 'tax_pct' => 18, 'max_discount' => (int) ($actor->can('quotes.discount_override') ? self::MAX_OVERRIDE : QuoteLifecycle::currentLimits()['max_discount'])],
+            'products' => $products->map(fn (object $product): array => [
+                ...$this->productOption($product, collect($rates->get($product->id, []))),
+                'rates' => collect($catalog->get($product->id, []))->map(fn (object $rate): array => LineRates::option($rate, $seeCost))->values()->all(),
+            ]),
+            'defaults' => [
+                'valid_until' => Carbon::parse($today)->addDays(self::validityDays())->toDateString(),
+                'validity_days' => self::validityDays(),
+                'tax_pct' => (float) $this->defaultTax(null),
+                'max_tax' => (int) self::MAX_TAX,
+                'max_discount' => (int) ($actor->can('quotes.discount_override') ? self::MAX_OVERRIDE : QuoteLifecycle::currentLimits()['max_discount']),
+                'margin_floor' => (float) QuoteLifecycle::currentLimits()['margin_floor'],
+            ],
+            'can' => ['edit_cost' => $seeCost],
         ];
     }
 
@@ -86,26 +137,47 @@ final class QuoteBuilder
 
     public function preview(array $data, User $actor, ?int $step = null): array
     {
+        $client = null;
+
         if ($step !== null) {
             $client = $this->atStep(1, 'client_code', fn (): object => $this->client((string) $data['client_code'], $actor));
             $this->atStep(1, 'opportunity_code', fn (): ?object => empty($data['opportunity_code']) ? null : $this->opportunity((string) $data['opportunity_code'], (string) $client->id, $actor));
             $this->atStep(1, 'currency', fn (): string => $this->fx((string) $data['currency']));
+        } elseif (! empty($data['client_code'])) {
+            $client = $this->client((string) $data['client_code'], $actor);
         }
 
-        $items = $step !== null && $step < 3 ? collect() : $this->atStep(3, null, fn (): Collection => $this->items($data['items'] ?? [], $data['currency'] ?? 'PEN'));
+        $items = $step !== null && $step < 3 ? collect() : $this->atStep(3, null, fn (): Collection => $this->items($data['items'] ?? [], $data['currency'] ?? 'PEN', $client, $actor));
         $discount = $step !== null && $step < 4 ? '0.00' : $this->atStep(4, 'discount_pct', fn (): string => $this->discount((string) ($data['discount_pct'] ?? '0'), $actor));
-        $totals = QuotePricing::totals($items->all(), $discount, $this->taxPct($data));
-        $seeMargin = $actor->can('finance.profitability') || $actor->can('catalog.products.view_profitability');
+        $tax = $this->atStep(4, 'tax_pct', fn (): string => $this->taxPct($data, $client));
+        $totals = QuotePricing::totals($items->all(), $discount, $tax);
+        $seeMargin = self::seesCost($actor);
+        $fx = $this->fx((string) ($data['currency'] ?? 'PEN'));
+        $pax = (int) ($data['pax_adt'] ?? 0) + (int) ($data['pax_chd'] ?? 0) + (int) ($data['pax_inf'] ?? 0);
 
         return [
             'lines' => $items->map(fn (array $item): array => [
+                'rate_id' => $item['rate_id'],
+                'rate_ref' => $item['rate_ref'],
                 'unit_price' => $item['unit_price'],
+                'unit_cost' => $seeMargin ? $item['unit_cost'] : null,
                 'rate_price' => $item['rate_price'],
+                'rate_cost' => $seeMargin ? $item['rate_cost'] : null,
                 'price_source' => $item['price_source'],
+                'season_factor' => $item['season_factor'],
                 'total' => (string) QuotePricing::lineTotal($item['unit_price'], $item['qty'], $item['pax']),
                 'margin_pct' => $seeMargin ? QuotePricing::lineMargin($item['unit_price'], $item['unit_cost']) : null,
             ])->values(),
-            'totals' => [...$totals, 'cost_total' => $seeMargin ? $totals['cost_total'] : null, 'profit_total' => $seeMargin ? $totals['profit_total'] : null, 'margin_pct' => $seeMargin ? $totals['margin_pct'] : null],
+            'totals' => [
+                ...$totals,
+                'cost_total' => $seeMargin ? $totals['cost_total'] : null,
+                'profit_total' => $seeMargin ? $totals['profit_total'] : null,
+                'margin_pct' => $seeMargin ? $totals['margin_pct'] : null,
+                'tax_pct' => $tax,
+                'grand_total_pen' => (string) Decimal::round2(BigDecimal::of($totals['grand_total'])->multipliedBy($fx)),
+                'per_pax' => $pax > 0 ? (string) BigDecimal::of($totals['grand_total'])->dividedBy($pax, 2, RoundingMode::HALF_UP) : null,
+            ],
+            'tax_default' => $this->defaultTax($client?->country),
             'needs_internal_approval' => QuoteLifecycle::needsInternalApproval($discount, $totals['margin_pct'], QuoteLifecycle::currentLimits()),
         ];
     }
@@ -170,21 +242,24 @@ final class QuoteBuilder
 
     private function writeVersion(string $quoteId, int $number, array $data, User $actor, ?string $versionId = null): string
     {
-        $items = $this->items($data['items'], $data['currency']);
+        $client = $this->client((string) $data['client_code'], $actor);
+        $items = $this->items($data['items'], $data['currency'], $client, $actor);
 
         if ($items->isEmpty()) {
             throw ApiException::unprocessable('QTE-BR-04', 'Agrega al menos un producto del catálogo.');
         }
 
         $discount = $this->discount((string) ($data['discount_pct'] ?? '0'), $actor);
-        $totals = QuotePricing::totals($items->all(), $discount, $this->taxPct($data));
+        $tax = $this->taxPct($data, $client);
+        $totals = QuotePricing::totals($items->all(), $discount, $tax);
         $values = [
             'status' => 'borrador',
             'issued_on' => $this->today(),
             'author_id' => $actor->getKey(),
             'discount_pct' => $discount,
-            'tax_pct' => $this->taxPct($data),
+            'tax_pct' => $tax,
             'notes' => trim((string) ($data['notes'] ?? '')) ?: null,
+            'conditions' => trim((string) ($data['conditions'] ?? '')) ?: null,
             'snapshot_label' => $items->map(fn (array $item) => $item['product_code'])->unique()->implode(' / '),
             'catalog_snapshot' => json_encode($items->map(fn (array $item) => ['product_id' => $item['product_id'], 'name' => $item['product_name']])->values()->all(), JSON_UNESCAPED_UNICODE),
             'policies_snapshot' => json_encode(DB::table('catalog_product_policies')->whereIn('product_id', $items->pluck('product_id'))->get(['product_id', 'cancellation', 'modification', 'no_show', 'refund', 'penalty_tiers'])->all(), JSON_UNESCAPED_UNICODE),
@@ -214,6 +289,9 @@ final class QuoteBuilder
                 'service_date' => $item['date'],
                 'qty' => $item['qty'],
                 'pax' => $item['pax'],
+                'rate_id' => $item['rate_id'],
+                'rate_snapshot' => $item['rate_snapshot'] === null ? null : json_encode($item['rate_snapshot'], JSON_UNESCAPED_UNICODE),
+                'season_factor' => $item['season_factor'],
                 'unit_cost' => $item['unit_cost'],
                 'unit_price' => $item['unit_price'],
                 'price_source' => $item['price_source'],
@@ -224,12 +302,15 @@ final class QuoteBuilder
         return $versionId;
     }
 
-    private function items(array $rows, string $currency): Collection
+    private function items(array $rows, string $currency, ?object $client, User $actor): Collection
     {
         $codes = collect($rows)->pluck('product_code')->filter()->unique();
         $products = DB::table('catalog_products')->whereIn('code', $codes)->whereNull('deleted_at')->get(['id', 'code', 'name', 'status', 'is_quoteable'])->keyBy('code');
+        $catalog = $this->lineRates->catalog($products->pluck('id'));
+        $channel = LineRates::channelFor($client?->segment_code);
+        $editCost = self::seesCost($actor);
 
-        return collect($rows)->map(function (array $row, int $index) use ($products, $currency): array {
+        $line = function (array $row, int $index) use ($products, $currency, $catalog, $channel, $editCost): array {
             $field = ['field' => "items.{$index}.product_code"];
             $product = $products[$row['product_code']] ?? throw ApiException::unprocessable('QTE-BR-05', 'Uno de los productos no existe en el catálogo.', $field);
 
@@ -238,30 +319,72 @@ final class QuoteBuilder
             }
 
             $segment = $row['segment'] ?? 'Adulto';
-            $engine = $this->engines->engine();
-            $rate = $engine->segmentPrice($this->engines->product((string) $product->id, (string) $row['date']), $segment, (string) $row['date'], $currency);
-            $ratePrice = $rate === null ? null : (string) $rate['price']->getAmount();
+            $date = (string) $row['date'];
+            $rates = collect($catalog->get($product->id, []));
+            $manualMode = array_key_exists('rate_id', $row) && ($row['rate_id'] === null || $row['rate_id'] === '');
+            $rate = null;
+
+            if (! $manualMode && ! empty($row['rate_id'])) {
+                $rate = $this->lineRates->find((string) $row['rate_id'], (string) $product->id);
+
+                if (! LineRates::valid($rate, $date)) {
+                    throw ApiException::unprocessable('QTE-BR-06', "La tarifa {$rate->ref} no está vigente el ".Carbon::parse($date)->format('d/m/Y').' (PRD-BR-005). Elige otra tarifa.', ['field' => "items.{$index}.rate_id"]);
+                }
+            } elseif (! $manualMode) {
+                $rate = $this->lineRates->pick($rates, $date, $segment, $channel);
+            }
+
+            $companions = $rate === null ? [] : $rates->filter(fn (object $other): bool => $other->id !== $rate->id && $other->segment === 'Niño' && LineRates::valid($other, $date) && in_array($other->channel, [$rate->channel, 'Directo'], true));
+            $priced = $rate === null ? null : $this->lineRates->price((string) $product->id, $rate, $segment, $date, $currency, $companions);
+
+            if ($rate !== null && $priced === null) {
+                throw ApiException::unprocessable('QTE-BR-06', "La tarifa {$rate->ref} es para {$rate->segment}: elige otra tarifa o el tipo {$rate->segment}.", ['field' => "items.{$index}.rate_id"]);
+            }
+
+            $ratePrice = $priced['price'] ?? null;
             $manual = isset($row['unit_price']) && $row['unit_price'] !== '' && is_numeric($row['unit_price']) ? (string) Decimal::round2((string) $row['unit_price']) : null;
             $price = $manual ?? $ratePrice ?? '0.00';
+            $typedCost = $editCost && isset($row['unit_cost']) && $row['unit_cost'] !== '' && is_numeric($row['unit_cost']) ? (string) Decimal::round2((string) $row['unit_cost']) : null;
+            $suggested = $rate === null && $manualMode ? $this->lineRates->pick($rates, $date, $segment, $channel) : null;
+            $fallback = $suggested === null ? null : ($this->lineRates->price((string) $product->id, $suggested, $segment, $date, $currency)['cost'] ?? null);
+            $cost = $typedCost ?? $priced['cost'] ?? $fallback;
 
             if (! BigDecimal::of($price)->isPositive() || (int) $row['qty'] <= 0 || (int) $row['pax'] <= 0) {
                 throw ApiException::unprocessable('QTE-BR-07', "Revisa {$product->name}: precio, cantidad y pasajeros deben ser mayores que cero.", ['field' => "items.{$index}.unit_price"]);
+            }
+
+            if ($cost === null) {
+                throw ApiException::unprocessable('QTE-BR-07', $editCost
+                    ? "Indica el costo unitario de {$product->name}: sin tarifa el margen no se puede calcular."
+                    : "{$product->name} no tiene tarifa para esa fecha: elige una tarifa o pide a Gerencia que registre el costo.", ['field' => "items.{$index}.unit_cost"]);
             }
 
             return [
                 'product_id' => $product->id,
                 'product_code' => $product->code,
                 'product_name' => $product->name,
-                'date' => $row['date'],
+                'date' => $date,
                 'qty' => (int) $row['qty'],
                 'pax' => (int) $row['pax'],
                 'segment' => $segment,
+                'rate_id' => $rate?->id,
+                'rate_ref' => $rate?->ref,
+                'rate_snapshot' => $rate === null ? null : LineRates::snapshot($rate, $priced),
+                'season_factor' => $this->lineRates->seasonFactor($date),
                 'unit_price' => $price,
                 'rate_price' => $ratePrice,
-                'unit_cost' => $rate === null ? '0.00' : (string) $rate['cost']->getAmount(),
+                'rate_cost' => $priced['cost'] ?? null,
+                'unit_cost' => $cost,
                 'price_source' => $ratePrice !== null && BigDecimal::of($ratePrice)->isEqualTo($price) ? 'rate' : 'manual',
             ];
-        });
+        };
+        $items = new Collection;
+
+        foreach (array_values($rows) as $index => $row) {
+            $items->push($line((array) $row, $index));
+        }
+
+        return $items;
     }
 
     private function atStep(int $step, ?string $field, callable $check): mixed
@@ -279,7 +402,7 @@ final class QuoteBuilder
             'title' => trim($data['title']),
             'travel_from' => $data['travel_from'],
             'travel_to' => $data['travel_to'],
-            'valid_until' => $data['valid_until'] ?? Carbon::parse($this->today())->addDays(self::VALIDITY_DAYS)->toDateString(),
+            'valid_until' => $data['valid_until'] ?? Carbon::parse($this->today())->addDays(self::validityDays())->toDateString(),
             'currency' => $data['currency'],
             'fx_rate' => $this->fx($data['currency']),
             'pax_adt' => (int) ($data['pax_adt'] ?? 0),
@@ -300,16 +423,20 @@ final class QuoteBuilder
         return (string) $value->toScale(2, RoundingMode::HALF_UP);
     }
 
-    private function taxPct(array $data): string
+    private function taxPct(array $data, ?object $client): string
     {
-        $tax = (string) ($data['tax_pct'] ?? '18');
+        $tax = isset($data['tax_pct']) && is_numeric($data['tax_pct']) ? BigDecimal::of((string) $data['tax_pct']) : BigDecimal::of($this->defaultTax($client?->country));
 
-        return is_numeric($tax) ? (string) BigDecimal::of($tax)->toScale(2, RoundingMode::HALF_UP) : '18.00';
+        if ($tax->isNegative() || $tax->isGreaterThan(self::MAX_TAX)) {
+            throw ApiException::unprocessable('PRC-07', 'El IGV va de 0 a 18 %.', ['field' => 'tax_pct']);
+        }
+
+        return (string) $tax->toScale(2, RoundingMode::HALF_UP);
     }
 
     private function client(string $code, User $actor): object
     {
-        return Portfolio::scope(DB::table('crm_clients')->whereNull('deleted_at'), $actor, 'owner_id')->where('code', $code)->first(['id', 'code'])
+        return Portfolio::scope(DB::table('crm_clients')->whereNull('deleted_at'), $actor, 'owner_id')->where('code', $code)->first(['id', 'code', 'country', 'segment_code'])
             ?? throw ApiException::unprocessable('QTE-BR-09', 'Elige un cliente de tu cartera.');
     }
 

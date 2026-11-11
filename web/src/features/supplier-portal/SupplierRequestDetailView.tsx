@@ -8,11 +8,14 @@ import { EmptyLine, PortalTitle, RISE, rise, SectionCard } from "@/features/port
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { dayDistance, deadlineLabel, PAX_TYPES, scheduleLabel, SERVICE_KINDS, supplierStatus, type SupplierRequestDetail } from "@/lib/supplier-portal";
-import { ConfirmPanel, RejectPanel } from "./RequestActions";
+import { AlternativePanel, ConfirmPanel, RejectPanel } from "./RequestActions";
 import { KindIcon, requestTone, SupplierBadge } from "./SupplierUi";
 
+const PROPOSAL_STATUS: Record<string, string> = { pendiente: "En revisión", aceptada: "Aceptada", rechazada: "No aceptada", expirada: "Venció el bloqueo" };
+
 export function SupplierRequestDetailView({ detail }: { detail: SupplierRequestDetail }) {
-  const open = detail.state === "por_responder";
+  const open = detail.state === "por_responder" || detail.state === "alternativa_propuesta";
+  const proposal = detail.proposal;
   const deadline = open ? deadlineLabel(detail) : null;
   const tone = requestTone(detail);
 
@@ -41,6 +44,7 @@ export function SupplierRequestDetailView({ detail }: { detail: SupplierRequestD
                 <div className="mt-4 flex flex-wrap gap-2">
                   <ConfirmPanel row={detail} contact={detail.contact} />
                   <RejectPanel row={detail} reasons={detail.reasons} today={detail.today} />
+                  {detail.state === "por_responder" && <AlternativePanel row={detail} kinds={detail.alternative_kinds} catalog={detail.catalog} today={detail.today} />}
                 </div>
               )}
             </div>
@@ -68,6 +72,22 @@ export function SupplierRequestDetailView({ detail }: { detail: SupplierRequestD
           </div>
         </HeroBand>
       </ToneScope>
+
+      {proposal && (
+        <SectionCard icon={ClipboardList} title="Su alternativa" aside={PROPOSAL_STATUS[proposal.review_status]}>
+          <FieldList
+            fields={[
+              { label: "Tipo", value: proposal.kind },
+              { label: "Fecha propuesta", value: proposal.date ? formatDate(proposal.date) : "La misma" },
+              { label: "Servicio", value: proposal.service ? `${proposal.service.name} · ${proposal.service.ref}` : "El mismo" },
+              { label: "Tarifa neta", value: proposal.net_cost !== null ? formatMoney(proposal.net_cost, proposal.currency) : "Sin cambio" },
+              { label: "Bloqueo hasta", value: proposal.hold_until ? formatDate(proposal.hold_until) : "—" },
+              { label: "Detalle", value: <span className="whitespace-normal">{proposal.note}</span> },
+              ...(proposal.review_note ? [{ label: "Respuesta", value: <span className="whitespace-normal">{proposal.review_note}</span> }] : []),
+            ]}
+          />
+        </SectionCard>
+      )}
 
       {!open && <p className="rounded-tile border border-line bg-surface-2 px-4 py-3 text-[13px] text-fg-2">La solicitud ya fue respondida. Para cualquier cambio comuníquese con Operaciones de la agencia.</p>}
 

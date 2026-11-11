@@ -1,15 +1,17 @@
 "use client";
 
-import { Ban, Calculator, CircleCheck, HandCoins, Hourglass, Stamp } from "lucide-react";
+import { Ban, Calculator, CircleCheck, HandCoins, Hourglass, Plus, RefreshCw, Stamp } from "lucide-react";
 import Link from "next/link";
+import { useState, type ReactNode } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { StatusBadge } from "@/components/ui/Badge";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { SwitchField } from "@/components/ui/SwitchField";
 import { TextField } from "@/components/ui/TextField";
-import type { CommissionRow, CommissionsOverview } from "@/lib/finance";
+import type { CommissionRow, CommissionRule, CommissionsOverview } from "@/lib/finance";
 import { formatDate, formatMoney } from "@/lib/format";
 import { statusLabel } from "@/lib/tone";
 import { FinanceStep, SummaryBox } from "./FinanceStep";
@@ -51,6 +53,62 @@ function PayCommissionAction({ row }: { row: CommissionRow }) {
       <SummaryBox rows={commissionSummary(row)} />
       <SelectField label="Forma de pago" name="method" options={row.pay_methods.map((value) => ({ value, label: value }))} defaultValue={row.pay_methods[0]} />
       <TextField label="Referencia" name="reference" required maxLength={80} placeholder="Planilla 2026-10 u OP 00918273" />
+    </FinanceStep>
+  );
+}
+
+export function RecalculateCommissionAction({ code, lockVersion, status, summary, trigger }: { code: string; lockVersion: number; status: string; summary: { label: string; value: ReactNode; strong?: boolean }[]; trigger?: (open: () => void) => ReactNode }) {
+  return (
+    <FinanceStep step="commission_recalculate" itemKey={code} label="Recalcular" title="Recalcular comisión" description="Vuelve a aplicar la regla vigente al total actual de la reserva." submitLabel="Recalcular" trigger={trigger ?? ((open) => <RowIcon tone="neutral" label="Recalcular" icon={<RefreshCw size={15} />} onClick={open} />)}>
+      <input type="hidden" name="lock_version" value={lockVersion} />
+      <SummaryBox rows={summary} />
+      {status === "aprobada" && <p className="rounded-xl bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] px-3.5 py-2.5 text-[12.5px] text-fg-2">Ya estaba aprobada: vuelve a revisión y hay que aprobarla de nuevo.</p>}
+    </FinanceStep>
+  );
+}
+
+const CONDITIONS = [
+  { value: "directo_ecommerce", label: "Venta directa y e-commerce" },
+  { value: "corporativo_grupos", label: "Corporativo y grupos" },
+  { value: "b2b_convenio", label: "Agencia B2B con convenio" },
+];
+
+const BASES = [
+  { value: "neto_sin_igv", label: "Venta neta sin IGV" },
+  { value: "total", label: "Total de la reserva" },
+];
+
+function RuleFields({ rule, today }: { rule?: CommissionRule; today: string }) {
+  const [condition, setCondition] = useState<string>(rule?.condition ?? "directo_ecommerce");
+  const [active, setActive] = useState(rule?.active ?? true);
+  return (
+    <>
+      {rule && <input type="hidden" name="lock_version" value={rule.lock_version} />}
+      <SelectField label="Aplica a" name="condition" options={CONDITIONS} defaultValue={condition} onChange={setCondition} />
+      {condition === "b2b_convenio" ? (
+        <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[12.5px] text-fg-2">Cada agencia cobra el porcentaje de su convenio, definido en su ficha de Canales B2B.</p>
+      ) : (
+        <TextField label="Porcentaje" name="pct" type="number" step="0.01" min="0.01" max="50" required defaultValue={rule?.pct !== null && rule?.pct !== undefined ? String(rule.pct) : ""} />
+      )}
+      <SelectField label="Base de cálculo" name="base_type" options={BASES} defaultValue={rule?.base_type ?? (condition === "b2b_convenio" ? "total" : "neto_sin_igv")} />
+      <div className="grid grid-cols-2 gap-3">
+        <TextField label="Rige desde" name="valid_from" type="date" required defaultValue={rule?.valid_from ?? today} />
+        <TextField label="Hasta (opcional)" name="valid_to" type="date" defaultValue={rule?.valid_to ?? ""} />
+      </div>
+      {rule && (
+        <>
+          <SwitchField label="Regla activa" name="active_switch" checked={active} onCheckedChange={setActive} hint="Una regla inactiva deja de usarse en los cálculos nuevos." />
+          <input type="hidden" name="active" value={active ? "1" : "0"} />
+        </>
+      )}
+    </>
+  );
+}
+
+export function RuleFormAction({ rule, today }: { rule?: CommissionRule; today: string }) {
+  return (
+    <FinanceStep step={rule ? "rule_update" : "rule_create"} itemKey={rule?.id} label={rule ? "Editar regla" : "Nueva regla"} icon={rule ? undefined : <Plus size={15} strokeWidth={2.4} />} title={rule ? `Editar ${rule.condition_label.toLowerCase()}` : "Nueva regla de comisión"} description="Solo puede haber una regla activa por tipo de venta en las mismas fechas." submitLabel={rule ? "Guardar cambios" : "Crear regla"} trigger={rule ? (open) => <RowIcon tone="edit" label="Editar regla" onClick={open} /> : undefined}>
+      <RuleFields rule={rule} today={today} />
     </FinanceStep>
   );
 }
@@ -118,6 +176,7 @@ export function CommissionsTable({ data }: { data: CommissionsOverview }) {
           <RowIcon tone="view" label="Ver comisión" href={`/finanzas/comisiones/${row.code}`} />
           {can.approve && row.status === "calculada" && <ApproveCommissionAction row={row} />}
           {can.operate && row.status === "aprobada" && <PayCommissionAction row={row} />}
+          {can.operate && row.reservation && (row.status === "calculada" || row.status === "aprobada") && <RecalculateCommissionAction code={row.code} lockVersion={row.lock_version} status={row.status} summary={commissionSummary(row)} />}
           {can.approve && (row.status === "calculada" ? <AnnulCommissionAction row={row} /> : <RowIcon tone="delete" label="Anular" icon={<Ban size={15} />} disabledHint={`Una comisión ${statusLabel(row.status).toLowerCase()} se ajusta en el siguiente periodo`} />)}
         </RowActions>
       ),

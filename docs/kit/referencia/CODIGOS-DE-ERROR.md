@@ -41,7 +41,7 @@ Reglas de emisión (SEC-BR-03/07/14/16/17/24/25, CONVENCIONES §3):
 
 ## 2. Códigos HTTP usados por el sistema
 
-| HTTP | `error` | Significado en Qhapaq | Ejemplos de `code` | Fuente |
+| HTTP | `error` | Significado en KipuControl | Ejemplos de `code` | Fuente |
 |---|---|---|---|---|
 | 400 | BAD_REQUEST | Petición mal formada que no llega al FormRequest (JSON inválido, firma de webhook ilegible, parámetros de consulta imposibles). | — | specs (uso puntual) |
 | 401 | UNAUTHENTICATED | Sin token, token vencido o revocado (logout, baja, cambio de rol, reset MFA). El cliente debe volver al login. | — | 00 §4, `responses.Unauthorized` |

@@ -248,7 +248,7 @@
   /* ==========================================================================
      LISTADO DE PRODUCTOS (tarjetas / tabla)
      ========================================================================== */
-  const LS = { view: (() => { try { return localStorage.getItem('qhapaq_cat_view') || 'cards'; } catch (e) { return 'cards'; } })(), q: '', f: { type: '', cat: '', status: '', dest: '', ch: '' } };
+  const LS = { view: (() => { try { return localStorage.getItem('kipucontrol_cat_view') || 'cards'; } catch (e) { return 'cards'; } })(), q: '', f: { type: '', cat: '', status: '', dest: '', ch: '' } };
   const PSTATUS = ['DRAFT', 'REVIEW', 'APPROVED', 'ACTIVE', 'SUSPENDED', 'INACTIVE', 'ARCHIVED'];
   const destOptions = () => { const out = []; const walk = (parent, depth) => DB.destinations.filter(d => (d.parent || null) === parent).forEach(d => { out.push([d.id, '  '.repeat(depth) + d.name + ' (' + d.type + ')']); walk(d.id, depth + 1); }); walk(null, 0); return out; };
 
@@ -325,7 +325,7 @@
     };
     el.querySelector('#lf-q').addEventListener('input', Util.debounce(e => { LS.q = e.target.value; draw(); }, 150));
     el.querySelectorAll('[data-lf]').forEach(s => s.onchange = () => { LS.f[s.dataset.lf] = s.value; draw(); });
-    on(el, '[data-view]', (b) => { LS.view = b.dataset.view; try { localStorage.setItem('qhapaq_cat_view', LS.view); } catch (e) { } el.querySelectorAll('[data-view]').forEach(x => x.classList.toggle('on', x === b)); dt = null; body.innerHTML = ''; draw(); });
+    on(el, '[data-view]', (b) => { LS.view = b.dataset.view; try { localStorage.setItem('kipucontrol_cat_view', LS.view); } catch (e) { } el.querySelectorAll('[data-view]').forEach(x => x.classList.toggle('on', x === b)); dt = null; body.innerHTML = ''; draw(); });
     draw();
   });
 

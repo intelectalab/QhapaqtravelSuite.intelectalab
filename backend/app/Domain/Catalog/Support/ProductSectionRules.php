@@ -94,6 +94,9 @@ final class ProductSectionRules
             "{$prefix}.*.valid_from" => ['required', 'date'],
             "{$prefix}.*.valid_to" => ['required', 'date', "after_or_equal:{$prefix}.*.valid_from"],
             "{$prefix}.*.season_id" => ['nullable', 'uuid'],
+            "{$prefix}.*.min_price" => ['nullable', 'numeric', 'gt:0', 'max:999999'],
+            "{$prefix}.*.max_price" => ['nullable', 'numeric', 'gt:0', 'max:999999'],
+            "{$prefix}.*.conditions" => ['nullable', 'string', 'max:300'],
         ];
     }
 
@@ -186,6 +189,9 @@ final class ProductSectionRules
             'rates.*.valid_to.after_or_equal' => 'La vigencia debe terminar después de empezar.',
             'rates.*.valid_to.*' => 'Toda tarifa necesita fecha de fin (PRD-BR-004).',
             'rates.*.season_id.*' => 'Elige una temporada válida.',
+            'rates.*.min_price.*' => 'Revisa el precio mínimo de la tarifa.',
+            'rates.*.max_price.*' => 'Revisa el precio máximo de la tarifa.',
+            'rates.*.conditions.*' => 'Las condiciones admiten hasta 300 caracteres.',
             'season_ids.*' => 'Revisa las temporadas elegidas.',
             'availability.model.*' => 'Elige el modelo de disponibilidad.',
             'availability.capacity.*' => 'La capacidad va de 1 a 99 999.',

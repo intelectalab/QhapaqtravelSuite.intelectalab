@@ -4,6 +4,7 @@ import { CalendarDays, CircleAlert, CircleCheck } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { FieldError } from "@/components/ui/FieldError";
+import { Select } from "@/components/ui/Select";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
@@ -102,6 +103,12 @@ function PriceLines({ plan, form }: { plan: DirectPlan; form: DirectPayload }) {
           <dd>Sin cargo</dd>
         </div>
       )}
+      {plan.rate_ref && (
+        <div className="flex justify-between text-[12.5px]">
+          <dt className="text-fg-3">Tarifa</dt>
+          <dd>{`${plan.rate_ref}${plan.season_factor && Number(plan.season_factor) !== 1 ? ` · temporada ×${Number(plan.season_factor).toFixed(2)}` : ""}`}</dd>
+        </div>
+      )}
       <div className="flex justify-between border-t border-line-2 pt-1.5 text-[17px] font-bold">
         <dt>Total</dt>
         <dd data-testid="direct-total" data-amount={amountAttr(plan.total ?? "0")} className="font-mono">
@@ -149,13 +156,13 @@ export function TripStep({ form, set, options, errors, plan, checkError, checkin
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
       <div className="flex flex-col gap-6">
         <Section title="Producto" hint="Solo productos activos y reservables.">
-          <SelectField label="Producto" name="product_id" value={form.product_id} onChange={(value) => set({ product_id: value, departure_id: "", date: "" })} options={options.products.map((item) => ({ value: item.code, label: item.name, hint: `${item.duration} · ${MODEL_HINT[item.model] ?? item.model}` }))} placeholder="Elegir producto del catálogo" searchable error={errors.product_id} />
+          <SelectField label="Producto" name="product_id" value={form.product_id} onChange={(value) => set({ product_id: value, departure_id: "", date: "", rate_id: "" })} options={options.products.map((item) => ({ value: item.code, label: item.name, hint: `${item.duration} · ${MODEL_HINT[item.model] ?? item.model}` }))} placeholder="Elegir producto del catálogo" searchable error={errors.product_id} />
           {product && perDeparture && (
             <SelectField
               label="Salida"
               name="departure_id"
               value={form.departure_id}
-              onChange={(value) => set({ departure_id: value })}
+              onChange={(value) => set({ departure_id: value, rate_id: "" })}
               options={(plan?.departures ?? []).map((item) => ({ value: item.id, label: `${formatDate(item.date)}${item.time ? ` · ${item.time}` : ""}`, hint: item.free === 0 ? `${item.ref} · sin cupos` : `${item.ref} · ${plural(item.free, "cupo libre", "cupos libres")}` }))}
               placeholder={plan && plan.departures.length === 0 ? "No hay salidas abiertas" : "Elegir salida"}
               searchable
@@ -163,7 +170,24 @@ export function TripStep({ form, set, options, errors, plan, checkError, checkin
               error={errors.departure_id}
             />
           )}
-          {product && !perDeparture && <TextField label="Fecha del servicio" type="date" min={options.today} value={form.date} onChange={(event) => set({ date: event.target.value })} icon={<CalendarDays size={17} />} hint={product.advance_min_days > 0 ? `Se reserva con al menos ${plural(product.advance_min_days, "día", "días")} de anticipación.` : undefined} error={errors.date} data-testid="field:date" />}
+          {product && !perDeparture && <TextField label="Fecha del servicio" type="date" min={options.today} value={form.date} onChange={(event) => set({ date: event.target.value, rate_id: "" })} icon={<CalendarDays size={17} />} hint={product.advance_min_days > 0 ? `Se reserva con al menos ${plural(product.advance_min_days, "día", "días")} de anticipación.` : undefined} error={errors.date} data-testid="field:date" />}
+          {product && plan?.rates?.length ? (
+            <div>
+              <span className="mb-1.5 block text-[13px] font-semibold text-fg">Tarifa</span>
+              <Select
+                value={form.rate_id}
+                onChange={(value) => set({ rate_id: value })}
+                options={[
+                  { value: "", label: "Tarifa sugerida", hint: plan.rate_ref ?? "La del canal para la fecha" },
+                  ...plan.rates.map((rate) => ({ value: rate.id, label: `${rate.ref} · ${rate.type} ${rate.segment} · ${rate.channel}`, hint: rate.valid ? formatMoney(rate.price, rate.currency) : "No vigente para la fecha (PRD-BR-005)", disabled: !rate.valid })),
+                ]}
+                ariaLabel="Tarifa de la reserva"
+                className="h-12 w-full"
+                testId="field:rate_id"
+              />
+              <FieldError name="rate_id" message={errors.rate_id} />
+            </div>
+          ) : null}
         </Section>
         <Section title="Pasajeros" hint={product?.max_pax ? `Hasta ${plural(product.max_pax, "pasajero", "pasajeros")} por reserva. Los infantes no pagan.` : "Los infantes no pagan."}>
           <div className="grid grid-cols-3 gap-3 md:max-w-xl">
@@ -221,7 +245,7 @@ export function SummaryStep({ form, options, plan, checkError, checking }: Direc
           <div className="flex flex-col gap-3">
             <Availability plan={priced} />
             <PriceLines plan={priced} form={form} />
-            <p className="text-[12px] text-fg-3">Precio sin IGV con la tarifa vigente del canal. Se crean el anticipo y el saldo según las políticas comerciales.</p>
+            <p className="text-[12px] text-fg-3">Precio sin IGV con la tarifa elegida. Se crean el anticipo y el saldo según las políticas comerciales.</p>
           </div>
         )}
       </Aside>

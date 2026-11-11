@@ -11,6 +11,8 @@ final class ExternalReviewDirectory
 {
     public const PROVIDERS = ['google' => 'Google', 'tripadvisor' => 'TripAdvisor', 'trustpilot' => 'Trustpilot', 'facebook' => 'Facebook', 'getyourguide' => 'GetYourGuide', 'viator' => 'Viator'];
 
+    public const LAYOUTS = ['lista', 'cuadricula'];
+
     public function overview(User $viewer): array
     {
         $sources = DB::table('integration_review_sources as s')->leftJoin('iam_users as u', 'u.id', '=', 's.connected_by')->get(['s.*', 'u.name as connected_by_name'])->keyBy('id');
@@ -42,6 +44,7 @@ final class ExternalReviewDirectory
                     'count' => (int) ($source->review_count ?? 0),
                     'account' => $source->account_ref ?? null,
                     'key_last4' => $source->secret_last4 ?? null,
+                    'scopes' => $source ? array_values(array_filter(explode(',', trim((string) $source->scopes, '{}')), fn (string $scope): bool => $scope !== '')) : [],
                     'can_reply' => (bool) ($source->can_reply ?? false),
                     'invites' => (bool) ($source->supports_invites ?? false),
                     'last_sync_at' => $source->last_sync_at ?? null,
@@ -74,6 +77,39 @@ final class ExternalReviewDirectory
                 ];
             })->values(),
             'can_reply' => $viewer->can('channels.ecommerce.manage') || $viewer->can('crm.clients.manage'),
+            'widget' => $this->widget($sources->where('status', 'conectado')->pluck('provider')->values()->all()),
+            'can_configure' => $viewer->can('channels.ecommerce.manage'),
+        ];
+    }
+
+    public static function widgetSettings(array $defaults, array $connected): array
+    {
+        $stored = (array) ($defaults['reviews_widget'] ?? []);
+        $sources = array_values(array_filter((array) ($stored['sources'] ?? $connected), fn (mixed $provider): bool => is_string($provider) && isset(self::PROVIDERS[$provider])));
+
+        return [
+            'sources' => $sources,
+            'min_rating' => (int) ($stored['min_rating'] ?? 4),
+            'count' => (int) ($stored['count'] ?? 3),
+            'layout' => in_array($stored['layout'] ?? null, self::LAYOUTS, true) ? $stored['layout'] : 'lista',
+        ];
+    }
+
+    private function widget(array $connected): ?array
+    {
+        $config = DB::table('channel_widget_config')->first(['tenant_slug', 'public_key', 'defaults']);
+
+        if ($config === null) {
+            return null;
+        }
+
+        $defaults = json_decode((string) $config->defaults, true) ?: [];
+
+        return [
+            'tenant_slug' => $config->tenant_slug,
+            'public_key' => $config->public_key,
+            'cdn' => $defaults['cdn'] ?? null,
+            'settings' => self::widgetSettings($defaults, $connected),
         ];
     }
 }

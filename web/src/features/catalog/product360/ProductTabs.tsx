@@ -9,6 +9,8 @@ import { AVAILABILITY_HINT, AVAILABILITY_LABEL, durationLabel, PRODUCT_STATUS, t
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { PromotionsTable } from "@/features/channels/Promotions";
 import type { PromotionCatalog } from "@/lib/channels";
+import type { BookingSectionId, ProductBookingConfig } from "@/lib/catalog-booking";
+import { AddonsSection, LodgingSection, OperationCard, PaxSection, PaymentSection, PickupSection, RulesSection } from "../booking/BookingSections";
 import { PenaltyTiersView } from "../PenaltyTiers";
 import { ProductTranslationsCard } from "../ProductTranslations";
 import { EditStepButton } from "../wizard/ProductWizard";
@@ -21,6 +23,7 @@ export interface ProductTabContext {
   options: ProductFormOptions;
   translations: ProductTranslations | null;
   promotions?: PromotionCatalog | null;
+  booking?: ProductBookingConfig | null;
 }
 
 export interface ProductTab {
@@ -239,7 +242,8 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       id: "disponibilidad",
       label: "Disponibilidad",
       render: () => (
-        <Panel title="Disponibilidad" action={<span className="flex gap-2">{editAt(ctx, 7)}<ModuleLink href="/catalogo/cupos" label="Cupos y bloqueos" /></span>}>
+        <div className="flex flex-col gap-5">
+        <Panel title="Disponibilidad" action={<span className="flex gap-2">{editAt(ctx, 7)}<ModuleLink href="/catalogo/salidas/rangos" label="Rangos de venta" /></span>}>
           <FieldList
             fields={[
               { label: "Modelo", value: AVAILABILITY_LABEL[editor.availability.model] ?? editor.availability.model },
@@ -250,6 +254,8 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
             ]}
           />
         </Panel>
+        {ctx.booking && <OperationCard config={ctx.booking} />}
+        </div>
       ),
     },
     {
@@ -492,15 +498,36 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
         </div>
       ),
     },
+    ...bookingTabs(ctx.booking ?? null),
   ];
 
   return tabs.filter((tab): tab is ProductTab => tab !== false);
+}
+
+const BOOKING_TABS: { id: string; label: string; section?: BookingSectionId; count?: (config: ProductBookingConfig) => number; render: (config: ProductBookingConfig) => ReactNode }[] = [
+  { id: "pasajeros", label: "Pasajeros", section: "pasajeros", render: (config) => <PaxSection config={config} /> },
+  { id: "adicionales", label: "Adicionales", section: "adicionales", count: (config) => config.addons.length, render: (config) => <AddonsSection config={config} /> },
+  { id: "alojamiento", label: "Alojamiento", section: "alojamiento", count: (config) => (config.accommodation.enabled ? config.accommodation.legs.length : 0), render: (config) => <LodgingSection config={config} /> },
+  { id: "pago", label: "Pago", section: "pago", render: (config) => <PaymentSection config={config} /> },
+  { id: "recojo", label: "Recojo", section: "recojo", count: (config) => config.pickup.points.length, render: (config) => <PickupSection config={config} /> },
+  { id: "reglas", label: "Reglas", count: (config) => config.summary.overrides, render: (config) => <RulesSection config={config} /> },
+];
+
+function bookingTabs(config: ProductBookingConfig | null): ProductTab[] {
+  if (!config) return [];
+  return BOOKING_TABS.map((tab) => ({
+    id: tab.id,
+    label: tab.section && config.sections[tab.section].status !== "on" ? `${tab.label} (desactivada)` : tab.label,
+    count: tab.count?.(config),
+    render: () => tab.render(config),
+  }));
 }
 
 export const PRODUCT_SECTION_GROUPS: { title: string; ids: string[] }[] = [
   { title: "Ficha", ids: ["general", "contenido", "politicas", "inclusiones", "personalizacion"] },
   { title: "Operación", ids: ["componentes", "itinerario", "proveedores", "disponibilidad", "salidas"] },
   { title: "Precios", ids: ["tarifas", "temporadas", "rentabilidad", "promociones", "b2b"] },
+  { title: "Reservas online", ids: ["pasajeros", "adicionales", "alojamiento", "pago", "recojo", "reglas"] },
   { title: "Venta", ids: ["canales", "relacionados", "uso"] },
   { title: "Control", ids: ["versiones", "historial"] },
 ];

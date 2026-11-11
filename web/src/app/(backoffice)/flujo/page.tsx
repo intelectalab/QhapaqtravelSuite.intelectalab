@@ -27,9 +27,9 @@ export default async function FlujoPage() {
         info={<InfoTip>Cada etapa muestra lo que hoy está en curso. Entre etapas verás la tasa de paso calculada con los registros reales.</InfoTip>}
       />
       <section className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <TintTile icon={Percent} tone="info" label="Leads que pasan a oportunidad" value={`${conversion.lead_to_opportunity} %`} />
-        <TintTile icon={Trophy} tone="violet" label="Oportunidades ganadas" value={conversion.opportunity_win !== null ? `${conversion.opportunity_win} %` : "Sin cierres"} note="Sobre las cerradas" />
-        <TintTile icon={Target} tone="ok" label="Cotizaciones convertidas en reserva" value={conversion.quote_to_reservation !== null ? `${conversion.quote_to_reservation} %` : "Sin datos"} />
+        <TintTile icon={Percent} tone="info" label="Leads que pasan a oportunidad" value={`${conversion.lead_to_opportunity} %`} info={<p>Leads en estado convertido sobre el total de leads de la agencia.</p>} />
+        <TintTile icon={Trophy} tone="violet" label="Oportunidades ganadas" value={conversion.opportunity_win !== null ? `${conversion.opportunity_win} %` : "Sin cierres"} note="Sobre las cerradas" info={<p>Oportunidades ganadas sobre las cerradas (ganadas más perdidas). Las abiertas no cuentan.</p>} />
+        <TintTile icon={Target} tone="ok" label="Cotizaciones convertidas en reserva" value={conversion.quote_to_reservation !== null ? `${conversion.quote_to_reservation} %` : "Sin datos"} info={<p>Cotizaciones convertidas en reserva sobre el total de cotizaciones registradas.</p>} />
       </section>
       <Card>
         <TintCardTitle icon={Route} title="Lead → oportunidad → cotización → reserva → operación → cobro" />

@@ -88,13 +88,15 @@ final class ReservationServiceRequests
         return DB::transaction(function () use ($code, $serviceCode, $data, $actor): object {
             $reservation = $this->lifecycle->open($code, $actor);
             $service = $this->service($reservation, $serviceCode);
+            $late = $service->status === 'confirmado';
             $result = $this->responses->reject($service->id, [
                 'reason' => $data['reason'],
                 'note' => $data['detail'],
                 'alt_date' => $data['alternative_date'] ?? null,
-            ], $actor, 'web_interno');
-            $after = "rechazado: {$data['reason']}".($result->alternative ? " · alternativa {$result->alternative->date} ({$result->alternative->code})" : '');
-            $this->audit->log('Servicio reserva', $service->code, 'rechazar', $service->status, $after, actor: $actor);
+                'alt_provider_id' => $data['alternative_provider_id'] ?? null,
+            ], $actor, 'web_interno', true);
+            $alternative = $result->alternative ? ' · alternativa '.($result->alternative->provider ? "con {$result->alternative->provider} " : '')."el {$result->alternative->date} ({$result->alternative->code})" : '';
+            $this->audit->log('Servicio reserva', $service->code, $late ? 'rechazo_posterior' : 'rechazar', $service->status, "rechazado: {$data['reason']}{$alternative}", actor: $actor);
 
             return (object) [...(array) $this->fresh($service->id), 'alternative' => $result->alternative?->code];
         });

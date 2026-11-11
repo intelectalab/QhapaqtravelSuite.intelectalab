@@ -2,6 +2,7 @@ import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import type { ProductDetail, ProductEditorState, ProductFormOptions, ProductOverview, ProductRow, ProductTranslations } from "@/lib/catalog";
+import type { ProductBookingConfig } from "@/lib/catalog-booking";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
 
@@ -24,5 +25,7 @@ export const getProductFormOptions = cache(async (): Promise<ProductFormOptions 
 export const getProductOverview = async (code: string): Promise<ProductOverview | null> => get<ProductOverview>(`/catalog/products/${encodeURIComponent(code)}/overview`);
 
 export const getProductEditor = async (code: string): Promise<ProductEditorState | null> => get<ProductEditorState>(`/catalog/products/${encodeURIComponent(code)}/editor`);
+
+export const getProductBookingConfig = async (code: string): Promise<ProductBookingConfig | null> => get<ProductBookingConfig>(`/catalog/products/${encodeURIComponent(code)}/booking-config`);
 
 export const getProductTranslations = async (code: string): Promise<ProductTranslations | null> => get<ProductTranslations>(`/catalog/products/${encodeURIComponent(code)}/translations`);

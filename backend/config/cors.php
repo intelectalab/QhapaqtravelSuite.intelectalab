@@ -11,7 +11,7 @@ return [
     'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     'allowed_origins' => array_values(array_unique([(string) env('FRONTEND_URL', 'http://localhost:3000'), ...$extra])),
     'allowed_origins_patterns' => ["#^{$scheme}://([a-z0-9-]+\\.)*{$domain}(:\\d+)?$#"],
-    'allowed_headers' => ['Accept', 'Authorization', 'Content-Type', 'Idempotency-Key', 'If-Match', 'X-Request-Id', 'X-Site-Locale', 'X-Order-Token', 'X-Qhapaq-Key'],
+    'allowed_headers' => ['Accept', 'Authorization', 'Content-Type', 'Idempotency-Key', 'If-Match', 'X-Request-Id', 'X-Site-Locale', 'X-Order-Token', 'X-KipuControl-Key'],
     'exposed_headers' => ['ETag', 'X-Request-Id', 'Retry-After'],
     'max_age' => 600,
     'supports_credentials' => false,

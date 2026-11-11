@@ -2,7 +2,7 @@
 
 import { CalendarRange, CheckCheck, CircleCheck, Lock, TimerOff, Undo2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { changeHold, createHold, createRange, deleteRange, expireHolds, updateRange } from "@/app/(backoffice)/catalogo/cupos/actions";
+import { changeHold, createHold, createRange, deleteRange, expireHolds, updateRange } from "@/app/(backoffice)/catalogo/salidas/actions";
 import { RowIcon } from "@/components/table/RowActions";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";

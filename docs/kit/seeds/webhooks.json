@@ -2,7 +2,7 @@
   {
     "id": "WH-0001",
     "tenantId": "TNT-0001",
-    "url": "https://erp.andeshorizonte.pe/api/qhapaq/webhooks",
+    "url": "https://erp.andeshorizonte.pe/api/kipucontrol/webhooks",
     "description": "ERP contable: pagos, comprobantes y reservas",
     "events": [
       "reservation.confirmed",

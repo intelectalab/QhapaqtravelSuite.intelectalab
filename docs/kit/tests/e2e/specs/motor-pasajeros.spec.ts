@@ -10,7 +10,7 @@ import { T } from '../support/testids';
  * R-INFANT-FREE, R-MAX-PAX). PRD-011: adulto 11+, niño 4–10 (paga tarifa Niño), infante 0–3 (no paga,
  * no ocupa asiento), máx. 2 niños y 1 infante por adulto, mínimo 1 adulto, máx. 16 pax.
  */
-const pk = { 'X-Qhapaq-Key': process.env.E2E_WIDGET_PUBLIC_KEY ?? 'pk_demo' };
+const pk = { 'X-KipuControl-Key': process.env.E2E_WIDGET_PUBLIC_KEY ?? 'pk_demo' };
 
 async function setPax(page: import('@playwright/test').Page, target: { adt: number; chd: number; inf: number }) {
   for (const k of ['adt', 'chd', 'inf'] as const) {

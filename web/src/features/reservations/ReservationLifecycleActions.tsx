@@ -10,6 +10,7 @@ import { formatDate } from "@/lib/format";
 import type { Advisor } from "@/lib/leads";
 import type { ReservationDetail, ReservationService } from "@/lib/reservations";
 import { Step } from "./ReservationActions";
+import { ConfirmChecklist } from "./ReservationConfirm";
 
 const LIFT = "transition-transform duration-300 hover:-translate-y-0.5";
 
@@ -20,7 +21,9 @@ export function ReservationStateActions({ reservation }: { reservation: Pick<Res
   return (
     <>
       {can.confirm && (
-        <Step code={code} step="confirm" label="Confirmar reserva" icon={<CircleCheck size={16} />} variant="primary" title="Confirmar reserva" description="Se verifica que haya pasajeros y cupo en las salidas. Si la reserva no tiene cuotas, se crean el anticipo y el saldo según las políticas comerciales." submitLabel="Confirmar" testId="action:confirm" />
+        <Step code={code} step="confirm" label="Confirmar reserva" icon={<CircleCheck size={16} />} variant="primary" title="Confirmar reserva" description="Disponibilidad de cada servicio requerido y pasajeros registrados." submitLabel="Confirmar reserva" testId="action:confirm">
+          <ConfirmChecklist code={code} />
+        </Step>
       )}
       {can.start_operation && (
         <Step code={code} step="start_operation" label="Iniciar operación" icon={<PlaneTakeoff size={16} />} variant="primary" title="Iniciar operación" description={`El viaje empieza el ${formatDate(reservation.travel_from)}. La reserva pasa a En operación y Operaciones la sigue día a día.`} submitLabel="Iniciar operación" testId="action:start-operation" />
@@ -104,9 +107,32 @@ export function RequestPendingServicesAction({ code, count }: { code: string; co
   );
 }
 
+function RejectFields({ service, reasons, late }: { service: ReservationService; reasons: string[]; late: boolean }) {
+  return (
+    <>
+      <input type="hidden" name="service" value={service.code} />
+      <SelectField label="Motivo" name="reason" options={reasons.map((value) => ({ value, label: value }))} placeholder="Elegir" />
+      <TextArea label="Detalle" name="detail" rows={3} required minLength={3} maxLength={500} placeholder={late ? "Qué pasó y cuándo avisó el proveedor." : "Qué respondió el proveedor."} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <SelectField label="Otro proveedor (opcional)" name="alternative_provider_id" options={(service.alternatives ?? []).map((item) => ({ value: item.id, label: item.name, hint: item.city ?? undefined }))} placeholder={service.alternatives?.length ? "Mismo proveedor" : "No hay otro del mismo tipo"} clearable hint="Activo y del mismo tipo." />
+        <TextField label="Otra fecha (opcional)" name="alternative_date" type="date" hint="Vacía si se mantiene la fecha." />
+      </div>
+      <p className="text-[12.5px] text-fg-3">Con proveedor o fecha alternativa se crea un servicio nuevo pendiente que reemplaza a este.</p>
+    </>
+  );
+}
+
 export function ServiceRowActions({ code, service, reasons }: { code: string; service: ReservationService; reasons: string[] }) {
-  if (!OPEN_SERVICE.includes(service.status)) return null;
   const subject = service.provider ? `${service.name} · ${service.provider.name}` : service.name;
+  if (service.status === "confirmado" && reasons.length > 0)
+    return (
+      <span className="flex flex-none gap-1.5">
+        <Step code={code} step="service_reject" formKey={`${service.code}-late`} label="Rechazo posterior" icon={<CircleX size={15} />} title="Registrar rechazo posterior" description={`${subject} estaba confirmado${service.confirmation ? ` (${service.confirmation})` : ""}. El servicio pasa a rechazado y la reserva vuelve a pendiente de proveedor.`} submitLabel="Registrar rechazo" trigger={(open) => <RowIcon tone="delete" icon={<CircleX size={15} />} label="Registrar rechazo posterior" onClick={open} testId={`service-late-reject:${service.code}`} />}>
+          <RejectFields service={service} reasons={reasons} late />
+        </Step>
+      </span>
+    );
+  if (!OPEN_SERVICE.includes(service.status)) return null;
   return (
     <span className="flex flex-none gap-1.5">
       {service.status === "pendiente" &&
@@ -127,10 +153,7 @@ export function ServiceRowActions({ code, service, reasons }: { code: string; se
         </div>
       </Step>
       <Step code={code} step="service_reject" formKey={`${service.code}-reject`} label="Rechazo" icon={<CircleX size={15} />} title="Registrar rechazo del proveedor" description={`${subject}. Si la reserva estaba confirmada, vuelve a pendiente de proveedor.`} submitLabel="Registrar rechazo" trigger={(open) => <RowIcon tone="delete" icon={<CircleX size={15} />} label="Registrar rechazo" onClick={open} />}>
-        <input type="hidden" name="service" value={service.code} />
-        <SelectField label="Motivo" name="reason" options={reasons.map((value) => ({ value, label: value }))} placeholder="Elegir" />
-        <TextArea label="Detalle" name="detail" rows={3} required minLength={3} maxLength={500} placeholder="Qué respondió el proveedor." />
-        <TextField label="Otra fecha que ofrece (opcional)" name="alternative_date" type="date" hint="Se crea un servicio nuevo pendiente en esa fecha." />
+        <RejectFields service={service} reasons={reasons} late={false} />
       </Step>
     </span>
   );

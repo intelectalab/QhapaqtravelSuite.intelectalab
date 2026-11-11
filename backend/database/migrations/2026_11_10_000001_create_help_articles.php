@@ -44,7 +44,7 @@ return new class extends Migration
 
             select app_enable_tenant_rls('help_articles', 'shared');
 
-            comment on table help_articles is 'Artículos de autoayuda por pantalla. tenant_id nulo = contenido de Qhapaq para todas las agencias; con tenant_id = artículo propio de la agencia o su versión de uno de Qhapaq (mismo slug).';
+            comment on table help_articles is 'Artículos de autoayuda por pantalla. tenant_id nulo = contenido de KipuControl para todas las agencias; con tenant_id = artículo propio de la agencia o su versión de uno de KipuControl (mismo slug).';
             SQL);
     }
 

@@ -2,6 +2,10 @@
 
 use Illuminate\Support\Facades\DB;
 
+beforeEach(function () {
+    lockSeededBookings();
+});
+
 function opsAsgAudit(array $where): bool
 {
     return withinTenant(tenantA(), fn () => DB::table('audit_events')->where($where)->exists());

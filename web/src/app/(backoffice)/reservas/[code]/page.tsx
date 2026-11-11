@@ -18,6 +18,7 @@ import type { ReceivablesOverview, SettlementDetail } from "@/lib/finance";
 import { SettlementSection } from "@/features/finance/Settlement";
 import { CLOSED_RESERVATION } from "@/lib/reservations";
 import { getAdvisors } from "@/lib/server/leads";
+import { currentUser } from "@/lib/server/me";
 import { getChangeOptions, getReservation, getReservationCancellation, getReservationFeedback, getReservationHistory, getReservationPaxMessages, getReservationWebSnapshot } from "@/lib/server/reservations";
 import { getResource } from "@/lib/server/resource";
 import { statusTone } from "@/lib/tone";
@@ -107,8 +108,8 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
       case "incidencias":
         return <IncidentsSection reservation={reservation} />;
       case "comentarios": {
-        const [feedback, messages] = await Promise.all([getReservationFeedback(code), getReservationPaxMessages(code)]);
-        return <FeedbackSection feedback={feedback ?? []} messages={messages ?? []} />;
+        const [feedback, messages, me] = await Promise.all([getReservationFeedback(code), getReservationPaxMessages(code), currentUser()]);
+        return <FeedbackSection feedback={feedback ?? []} messages={messages ?? []} canEscalate={me.permissions.includes("operations.incidents")} />;
       }
       case "historial":
         return <HistorySection events={await getReservationHistory(code)} labels={ACTION_LABEL} />;

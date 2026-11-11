@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Domain\Finance\Actions;
 
 use App\Domain\Channels\Support\B2bCredit;
+use App\Domain\Finance\Events\PaymentApplied;
+use App\Domain\Finance\Events\PaymentConfirmed;
+use App\Domain\Finance\Events\PaymentReverted;
 use App\Domain\Finance\Support\FinanceHistory;
 use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
+use App\Domain\Shared\Concurrency\IfMatch;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
 use App\Domain\Site\Support\WebOrderSettlement;
@@ -30,6 +34,7 @@ final class PaymentWorkflow
             if ($payment->status === 'pendiente') {
                 $this->transition($payment, 'confirmado', 'Pago validado', $actor);
                 $this->audit->log('Pago', $payment->code, 'validar', 'pendiente', 'confirmado');
+                PaymentConfirmed::dispatch((string) $payment->id, (string) $actor->getKey());
             }
 
             $receivableCode ??= $payment->receivable_id ? DB::table('fin_receivables')->where('id', $payment->receivable_id)->value('code') : null;
@@ -55,6 +60,25 @@ final class PaymentWorkflow
         });
     }
 
+    public function retry(string $code, ?int $lockVersion, ?string $note, User $actor): void
+    {
+        DB::transaction(function () use ($code, $lockVersion, $note, $actor): void {
+            $payment = $this->open($code);
+
+            if ($lockVersion !== null) {
+                IfMatch::assertMatches($lockVersion, (int) $payment->lock_version, 'El pago');
+            }
+
+            if ($payment->status !== 'rechazado') {
+                throw ApiException::conflict('FIN-BR-13', 'Solo se reintenta la validación de un pago rechazado.');
+            }
+
+            $attempt = (int) $payment->retries + 1;
+            $this->transition($payment, 'pendiente', $note ?: "Reintento de validación {$attempt}", $actor, ['retries' => $attempt, 'reject_reason' => null]);
+            $this->audit->log('Pago', $payment->code, 'reintentar', 'rechazado', "pendiente · intento {$attempt}".($note ? " · {$note}" : ''));
+        });
+    }
+
     public function revert(string $code, string $reason, User $actor): void
     {
         DB::transaction(function () use ($code, $reason, $actor): void {
@@ -75,6 +99,7 @@ final class PaymentWorkflow
             }
 
             $this->credit->paymentReverted($payment, $actor->getKey());
+            PaymentReverted::dispatch((string) $payment->id, (string) $actor->getKey());
             $this->audit->log('Pago', $payment->code, 'revertir', $payment->status, $detail);
         });
     }
@@ -104,6 +129,7 @@ final class PaymentWorkflow
         $result = $this->ledger->recalculate($receivable->id, $actor);
         $this->audit->log('Cuenta por cobrar', $receivable->code, 'aplicar', (string) $result->before, (string) $result->after);
         $this->credit->paymentApplied($payment, $actor->getKey());
+        PaymentApplied::dispatch((string) $payment->id, (string) $actor->getKey());
     }
 
     private function transition(object $payment, string $status, ?string $note, User $actor, array $extra = []): void

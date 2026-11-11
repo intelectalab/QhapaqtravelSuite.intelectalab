@@ -92,6 +92,53 @@ final class AvailabilityRegistry
         });
     }
 
+    public function sellSeats(string $departureRef, array $data, User $actor): array
+    {
+        return DB::transaction(function () use ($departureRef, $data, $actor): array {
+            $departure = DB::table('catalog_product_departures as d')->join('catalog_products as p', 'p.id', '=', 'd.product_id')
+                ->where('d.ref', $departureRef)->lockForUpdate()
+                ->first(['d.*', 'p.status as product_status']) ?? throw ApiException::notFound('La salida no existe.');
+
+            if ((int) $departure->lock_version !== (int) $data['lock_version']) {
+                throw ApiException::conflict('STALE_VERSION', 'Alguien cambió esta salida mientras la veías. Recarga la página e inténtalo de nuevo.');
+            }
+
+            if ($departure->product_status !== 'ACTIVE') {
+                throw ApiException::unprocessable('PRD-BR-002', 'El producto no está activo: no admite ventas.');
+            }
+
+            if ($departure->status !== 'abierta' || $departure->departure_date < CatalogAccess::today()) {
+                throw ApiException::unprocessable('CAT-BR-21', 'Solo se venden cupos de salidas abiertas y futuras.');
+            }
+
+            $available = DepartureDirectory::available($departure, DepartureDirectory::held($departure->id));
+            $quantity = (int) $data['quantity'];
+
+            if ($quantity > $available) {
+                throw ApiException::unprocessable('PRD-BR-012', "Cupo insuficiente: quedan {$available} libres en {$departure->ref}.".$this->alternatives($departure, $quantity));
+            }
+
+            $ref = $this->codes->next('catalog_availability_holds', 'HLD-', 4, 'ref');
+            DB::table('catalog_availability_holds')->insert([
+                'ref' => $ref,
+                'departure_id' => $departure->id,
+                'product_id' => $departure->product_id,
+                'service_date' => $departure->departure_date,
+                'quantity' => $quantity,
+                'reference' => trim($data['reference']),
+                'status' => 'confirmada',
+                'expires_at' => now(),
+                'notes' => 'Venta directa',
+                'created_by' => $actor->getKey(),
+                'updated_by' => $actor->getKey(),
+            ]);
+            $this->moveSold($departure, $quantity, $actor);
+            $this->audit->log('Salida', $departure->ref, 'confirmar_cupos', "{$departure->sold} vendidos", ($departure->sold + $quantity)." vendidos · {$quantity} cupos · {$data['reference']} · {$ref}");
+
+            return ['ref' => $departure->ref, 'hold' => $ref, 'sold' => (int) $departure->sold + $quantity, 'lock_version' => (int) $departure->lock_version + 1];
+        });
+    }
+
     public function confirmHold(string $ref, User $actor): void
     {
         DB::transaction(function () use ($ref, $actor): void {

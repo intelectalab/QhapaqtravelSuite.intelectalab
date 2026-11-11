@@ -30,7 +30,10 @@ function elComponents(string $code): array
     return withinTenant(tenantA(), fn () => DB::table('catalog_product_items')->where('product_id', $id)->orderBy('sort_order')->get()->all());
 }
 
-beforeEach(fn () => Queue::fake());
+beforeEach(function () {
+    lockCatalogProducts();
+    Queue::fake();
+});
 
 it('agrega, edita y quita componentes uno por uno y deja cada cambio en la auditoría', function () {
     actingAsSeed('U01');

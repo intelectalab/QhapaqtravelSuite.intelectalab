@@ -119,6 +119,7 @@ it('no se prueba una campaña con plantilla de WhatsApp sin aprobar ni una campa
 });
 
 it('programar una campaña probada la deja programada en la fecha elegida', function () {
+    lockScheduledCampaigns();
     actingAsSeed('U01');
     $this->postJson('/api/v1/marketing/campaigns/CMP-0012/test-send', [], critical())->assertCreated();
     $version = mktCampanaVersion('CMP-0012');
@@ -134,6 +135,7 @@ it('programar una campaña probada la deja programada en la fecha elegida', func
 });
 
 it('programar exige prueba previa, 15 minutos de anticipación y fecha válida', function () {
+    lockScheduledCampaigns();
     actingAsSeed('U01');
 
     $this->postJson('/api/v1/marketing/campaigns/CMP-0012/schedule', [], critical(mktCampanaVersion('CMP-0012')))->assertStatus(422)->assertJsonValidationErrors('scheduled_at');

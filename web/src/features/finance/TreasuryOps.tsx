@@ -2,9 +2,11 @@
 
 import { ArrowLeftRight, Calculator, CheckCheck, CreditCard, DoorOpen, Pencil, Plus, Receipt, RotateCcw, ShieldCheck, ThumbsDown, ThumbsUp, Wallet } from "lucide-react";
 import { useState } from "react";
+import { recordExpense } from "@/app/(backoffice)/finanzas/actions";
 import { RowIcon } from "@/components/table/RowActions";
 import { Button } from "@/components/ui/Button";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
+import { FilePicker } from "@/components/ui/FilePicker";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
@@ -164,6 +166,7 @@ function ExpenseFields({ account, today, max }: { account: TreasuryAccount; toda
       {needsRuc && <TextField label="RUC del emisor" name="issuer_ruc" required inputMode="numeric" pattern="\d{11}" maxLength={11} />}
       <TextField label="Pagado a" name="supplier" required maxLength={160} />
       <TextField label="Reserva (opcional)" name="reservation" maxLength={30} placeholder="RES-2026-000350" hint="Para cargar el gasto al costo de un viaje." />
+      {needsNumber && <FilePicker key={receipt} label="Archivo del comprobante" accept="application/pdf,image/jpeg,image/png,image/webp" formats="PDF, JPG, PNG o WEBP" maxKb={10240} />}
       <input type="hidden" name="account" value={account.code} />
     </>
   );
@@ -171,7 +174,7 @@ function ExpenseFields({ account, today, max }: { account: TreasuryAccount; toda
 
 export function ExpenseAction({ account, today, max }: { account: TreasuryAccount; today: string; max: string | null }) {
   return (
-    <FinanceStep step="expense_create" itemKey={account.code} label="Gasto" icon={<Receipt size={16} />} title={`Gasto de ${account.name}`} description="Cada gasto se sustenta con su comprobante y se rinde en la próxima reposición." submitLabel="Registrar gasto" trigger={(open) => <Button size="sm" variant="secondary" icon={<Receipt size={15} />} onClick={open}>Gasto</Button>}>
+    <FinanceStep step="expense_create" itemKey={account.code} action={recordExpense} label="Gasto" icon={<Receipt size={16} />} title={`Gasto de ${account.name}`} description="Cada gasto se sustenta con su comprobante y se rinde en la próxima reposición." submitLabel="Registrar gasto" trigger={(open) => <Button size="sm" variant="secondary" icon={<Receipt size={15} />} onClick={open}>Gasto</Button>}>
       <ExpenseFields account={account} today={today} max={max} />
     </FinanceStep>
   );

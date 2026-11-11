@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, CalendarClock, FlaskConical, Megaphone, Plus, Ticket, Undo2 } from "lucide-react";
+import { Ban, CalendarClock, Copy, FlaskConical, Megaphone, Plus, SendHorizontal, Ticket, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { campaignStep, saveCampaign } from "@/app/(backoffice)/marketing/campanas/actions";
 import { RowIcon } from "@/components/table/RowActions";
@@ -12,7 +12,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { formatDateTime, formatMoney, formatPercent } from "@/lib/format";
-import { rate, type Campaign, type MarketingOverview } from "@/lib/marketing";
+import { rate, suppressedOf, type Campaign, type MarketingOverview } from "@/lib/marketing";
 import type { StepResult } from "@/lib/server/resource";
 
 const initial: StepResult = { message: null, done: false };
@@ -133,9 +133,14 @@ export function CampaignDetailAction({ campaign, canManage }: { campaign: Campai
       trigger={(open) => <RowIcon tone="view" label="Ver campaña" onClick={open} />}
       footerExtra={(_state, pending) =>
         canManage && (draft || scheduled) ? (
-          <Button type="submit" form={formId} name="intent" value="test" variant="secondary" icon={<FlaskConical size={15} />} disabled={pending}>
-            Enviar prueba
-          </Button>
+          <>
+            <Button type="submit" form={formId} name="intent" value="test" variant="secondary" icon={<FlaskConical size={15} />} disabled={pending}>
+              Enviar prueba
+            </Button>
+            <Button type="submit" form={formId} name="intent" value="send" variant="secondary" icon={<SendHorizontal size={15} />} disabled={pending || campaign.tests.length === 0} title={campaign.tests.length === 0 ? "Primero envía una prueba con el contenido actual" : undefined}>
+              Enviar ahora
+            </Button>
+          </>
         ) : null
       }
     >
@@ -176,7 +181,7 @@ export function CampaignDetailAction({ campaign, canManage }: { campaign: Campai
               <div className="grid grid-cols-3 gap-2">
                 <Metric label="Coinciden" value={String(campaign.audience.matched)} />
                 <Metric label="Elegibles" value={String(campaign.audience.eligible)} note="Con consentimiento" />
-                <Metric label="Suprimidos" value={String(campaign.audience.optout + campaign.audience.nodata + campaign.audience.consent)} note="Baja, sin dato o sin permiso" />
+                <Metric label="Suprimidos" value={String(suppressedOf(campaign.audience))} note={campaign.audience.fatigue ? `Incluye ${campaign.audience.fatigue} por otra campaña en 72 h` : "Baja, sin dato o sin permiso"} />
               </div>
             )
           )}
@@ -186,6 +191,31 @@ export function CampaignDetailAction({ campaign, canManage }: { campaign: Campai
           {campaign.cancel_reason && <p className="text-[13px] text-fg-2"><b>Cancelada:</b> {campaign.cancel_reason}</p>}
           {canManage && draft && <TextField label="Enviar el" name="scheduled_at" type="datetime-local" icon={<CalendarClock size={17} />} hint="Al menos 15 minutos después de ahora. WhatsApp solo entre 08:00 y 20:00." />}
           {canManage && scheduled && <p className="flex items-center gap-2 text-[12.5px] text-fg-3"><Undo2 size={14} /> Desprogramar la devuelve a borrador para editarla.</p>}
+          {canManage && (draft || scheduled) && <p className="flex items-center gap-2 text-[12.5px] text-fg-3"><SendHorizontal size={14} /> Enviar ahora recalcula la audiencia, excluye bajas y a quien recibió otra campaña en 72 h, y despacha el envío por lotes.</p>}
+          {campaign.status === "enviando" && <p className="rounded-xl bg-[color-mix(in_srgb,var(--sun)_12%,var(--surface))] px-3.5 py-2.5 text-[12.5px] text-fg-2">El envío está en curso por lotes. Antes de cada mensaje se vuelve a comprobar el consentimiento y la baja.</p>}
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+export function CampaignDuplicateAction({ campaign }: { campaign: Campaign }) {
+  return (
+    <PanelAction<StepResult>
+      label="Duplicar"
+      formId={`duplicar-${campaign.code}`}
+      title="Duplicar campaña"
+      description={`Crea «${campaign.name} (copia)» en borrador con el mismo segmento, plantilla y contenido, sin pruebas ni destinatarios.`}
+      submitLabel="Duplicar"
+      action={campaignStep}
+      initial={initial}
+      trigger={(open) => <RowIcon tone="neutral" label="Duplicar campaña" icon={<Copy size={15} />} onClick={open} />}
+    >
+      {() => (
+        <>
+          <input type="hidden" name="code" value={campaign.code} />
+          <input type="hidden" name="step" value="duplicate" />
+          <p className="text-[13px] text-fg-2">Segmento {campaign.segment?.name ?? "sin segmento"} · plantilla {campaign.template?.name ?? "sin plantilla"}{campaign.promo_code ? ` · código ${campaign.promo_code}` : ""}.</p>
         </>
       )}
     </PanelAction>

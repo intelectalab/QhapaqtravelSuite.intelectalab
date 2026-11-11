@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { apiFetch } from "@/lib/server/api";
 import { confirmMfa, type FormState } from "@/lib/server/auth";
+import { TENANT_STEP_FIELDS, type ProvisionPayload } from "@/lib/platform";
+import { stepByField, wizardFailure, type WizardResult } from "@/lib/wizard";
 
 export async function platformVerifyMfa(_state: FormState, form: FormData): Promise<FormState> {
   return confirmMfa("platform", form);
@@ -78,21 +80,6 @@ export interface ProvisionState {
   code?: string;
 }
 
-const PROVISION_FIELDS = ["commercial_name", "legal_name", "ruc", "fiscal_address", "business_type", "subdomain", "plan", "status", "sede_name", "sede_city", "sede_address", "admin_name", "admin_email"] as const;
-
-export async function provisionTenant(_state: ProvisionState, form: FormData): Promise<ProvisionState> {
-  const body = Object.fromEntries(PROVISION_FIELDS.map((field) => [field, String(form.get(field) ?? "").trim()]));
-  const result = await apiFetch<{ code: string }>("/platform/tenants", { method: "POST", body, realm: "platform" });
-
-  if (!result.ok) {
-    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
-    return { message: firstError ?? result.error?.message ?? "No pudimos crear la agencia.", done: false };
-  }
-
-  revalidatePath("/plataforma", "layout");
-  return { message: null, done: true, code: result.data?.code };
-}
-
 const TENANT_FIELDS = ["commercial_name", "legal_name", "ruc", "fiscal_address", "business_type", "subdomain"] as const;
 
 async function tenantRequest(path: string, method: "POST" | "PATCH", body: Record<string, unknown>): Promise<ProvisionState> {
@@ -117,3 +104,19 @@ export async function updateTenant(_state: ProvisionState, form: FormData): Prom
   const body = Object.fromEntries(TENANT_FIELDS.map((field) => [field, String(form.get(field) ?? "").trim()]));
   return tenantRequest(`/platform/tenants/${encodeURIComponent(tenant)}`, "PATCH", { ...body, lock_version: lockVersion(form) });
 }
+
+const tenantStepOf = stepByField(TENANT_STEP_FIELDS, 11);
+
+export async function checkTenantStep(payload: ProvisionPayload, step: number): Promise<WizardResult<null>> {
+  const result = await apiFetch<{ valid: boolean }>("/platform/tenants/validate-step", { method: "POST", body: { ...payload, step }, realm: "platform" });
+  if (!result.ok) return wizardFailure(result, "No pudimos revisar este paso.", tenantStepOf);
+  return { ok: true, data: null };
+}
+
+export async function provisionTenantWizard(payload: ProvisionPayload): Promise<WizardResult<{ code: string }>> {
+  const result = await apiFetch<{ code: string }>("/platform/tenants", { method: "POST", body: payload, realm: "platform" });
+  if (!result.ok || !result.data) return wizardFailure(result, "No pudimos crear la agencia.", tenantStepOf);
+  revalidatePath("/plataforma", "layout");
+  return { ok: true, data: { code: result.data.code } };
+}
+

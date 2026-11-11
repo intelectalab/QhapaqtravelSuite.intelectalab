@@ -10,7 +10,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "Qhapaq Travel Suite", template: "%s · Qhapaq Travel Suite" },
+  title: { default: "KipuControl", template: "%s · KipuControl" },
   description: "Gestión integral para agencias de viajes y operadores turísticos.",
 };
 

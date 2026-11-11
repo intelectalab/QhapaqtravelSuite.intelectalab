@@ -1,22 +1,24 @@
 "use client";
 
-import { Activity, Ban, CheckCircle2, KeyRound, Link2, Pause, Play, Plus, RotateCw, ShieldCheck, Trash2, Webhook as WebhookIcon, XCircle } from "lucide-react";
-import { createContext, useContext, useState, type ReactNode } from "react";
-import { createApiKey, createWebhook, deleteWebhook, revokeApiKey, setWebhookStatus, updateWebhook } from "@/app/(backoffice)/admin/api/actions";
+import { Activity, Ban, BarChart3, CheckCircle2, Gauge, KeyRound, KeySquare, Link2, Pause, Play, Plus, Radar, RotateCw, Send, ShieldCheck, Trash2, Webhook as WebhookIcon, XCircle } from "lucide-react";
+import { createContext, useContext, useState, useTransition, type ReactNode } from "react";
+import { createApiKey, createWebhook, deleteWebhook, loadDelivery, pingWebhook, redeliverWebhook, revokeApiKey, rotateWebhookSecret, setWebhookStatus, updateWebhook } from "@/app/(backoffice)/admin/api/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { BarChart } from "@/components/ui/Charts";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { FieldList } from "@/components/ui/Details";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SidePanel } from "@/components/ui/SidePanel";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
-import { ToneScope } from "@/components/ui/Tinted";
-import { ADMIN_INITIAL, type AdminActionState, type ApiKey, type ApiOverview, type Option, type Webhook, type WebhookDelivery } from "@/lib/admin";
+import { TintCardTitle, ToneScope } from "@/components/ui/Tinted";
+import { ADMIN_INITIAL, type AdminActionState, type ApiKey, type ApiOverview, type Option, type Webhook, type WebhookDelivery, type WebhookDeliveryDetail } from "@/lib/admin";
 import { cn } from "@/lib/cn";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime, formatNumber } from "@/lib/format";
 import type { Tone } from "@/lib/tone";
 import { CheckChips, FieldLabel, RISE, SecretReveal } from "./AdminParts";
 
@@ -192,6 +194,20 @@ export function ApiKeysTable({ data }: { data: ApiOverview }) {
   return <DataTable screen="admin-api-keys" rows={data.keys} columns={columns} getKey={(apiKey) => apiKey.code} entityLabel="claves" searchText={(apiKey) => `${apiKey.name} ${apiKey.masked}`} searchPlaceholder="Buscar clave" metrics={metrics} filters={filters} sorts={sorts} />;
 }
 
+function WebhookTools({ hook }: { hook: Webhook }) {
+  const { reveal } = useContext(SecretContext);
+  return (
+    <>
+      <PanelAction<AdminActionState> label="Ping" variant="ghost" size="sm" formId={`hook-ping-${hook.code}`} trigger={(open) => <RowIcon tone="neutral" label="Enviar ping de prueba" icon={<Radar size={15} />} onClick={open} disabledHint={hook.status === "active" ? undefined : "Reanuda el webhook para probarlo"} />} title="Enviar ping" description={`Envía el evento «ping» firmado a ${hook.url} y espera la respuesta. No cuenta como fallo si no responde.`} submitLabel="Enviar ping" action={pingWebhook} initial={ADMIN_INITIAL}>
+        {() => <input type="hidden" name="code" value={hook.code} />}
+      </PanelAction>
+      <PanelAction<AdminActionState> label="Rotar secreto" variant="ghost" size="sm" formId={`hook-rotate-${hook.code}`} trigger={(open) => <RowIcon tone="neutral" label="Rotar secreto" icon={<KeySquare size={15} />} onClick={open} />} title="Rotar secreto" description="Se genera un secreto nuevo y lo verás una sola vez. Durante 24 horas cada envío lleva las dos firmas, para que actualices tu sistema sin perder eventos." submitLabel="Rotar secreto" action={rotateWebhookSecret} initial={ADMIN_INITIAL} onDone={(state) => state.secret && reveal(state.secret, `Nuevo secreto del webhook ${hook.code}`)}>
+        {() => <input type="hidden" name="code" value={hook.code} />}
+      </PanelAction>
+    </>
+  );
+}
+
 function WebhookCard({ hook, data, index }: { hook: Webhook; data: ApiOverview; index: number }) {
   const health: Tone = hook.status !== "active" ? "mute" : hook.failures >= 5 ? "bad" : hook.failures > 0 ? "warn" : "ok";
   const rate = hook.total > 0 ? Math.round((hook.delivered / hook.total) * 100) : null;
@@ -237,6 +253,7 @@ function WebhookCard({ hook, data, index }: { hook: Webhook; data: ApiOverview; 
         </p>
         {data.can_manage && (
           <div className="mt-auto flex justify-end gap-1.5 border-t border-line-2 pt-3">
+            <WebhookTools hook={hook} />
             <PanelAction<AdminActionState> label="Editar" variant="ghost" size="sm" formId={`hook-edit-${hook.code}`} trigger={(open) => <RowIcon tone="edit" label="Editar webhook" onClick={open} />} title="Editar webhook" description={hook.code} submitLabel="Guardar cambios" action={updateWebhook} initial={ADMIN_INITIAL}>
               {() => <WebhookFields events={data.events} hook={hook} />}
             </PanelAction>
@@ -279,6 +296,75 @@ export function WebhooksGrid({ data }: { data: ApiOverview }) {
   );
 }
 
+function DeliveryDetail({ delivery, canManage }: { delivery: WebhookDelivery; canManage: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [detail, setDetail] = useState<WebhookDeliveryDetail | null>(null);
+  const [pending, start] = useTransition();
+  const show = () => {
+    setOpen(true);
+    start(async () => setDetail(await loadDelivery(delivery.code)));
+  };
+  return (
+    <>
+      <RowIcon tone="view" label="Ver entrega" onClick={show} />
+      <SidePanel open={open} onOpenChange={setOpen} title={`Entrega ${delivery.code}`} description={`${delivery.event} · ${delivery.webhook}`} size="wide">
+        {pending || !detail ? (
+          <p className="text-[13px] text-fg-3">{pending ? "Cargando la entrega…" : "No pudimos cargar la entrega."}</p>
+        ) : (
+          <div className="flex flex-col gap-4 text-[13px]">
+            <div className="flex flex-wrap gap-2">
+              <Badge tone={DELIVERY_STATUS[detail.status].tone}>{DELIVERY_STATUS[detail.status].label}</Badge>
+              {detail.manual && <Badge tone="violet" dot={false}>Reenvío manual</Badge>}
+              <Badge tone="mute" dot={false}>Intento {detail.attempt}</Badge>
+            </div>
+            <FieldList
+              fields={[
+                { label: "Destino", value: <span className="break-all font-mono text-[12px]">{detail.url}</span> },
+                { label: "Respuesta", value: `${detail.http ?? "sin respuesta"}${detail.ms !== null ? ` · ${detail.ms} ms` : ""}` },
+                { label: "Evento", value: <span className="font-mono text-[12px]">{detail.event_id}</span> },
+                { label: "Fecha", value: formatDateTime(detail.at) },
+                ...(detail.error ? [{ label: "Error", value: detail.error }] : []),
+              ]}
+            />
+            <div>
+              <p className="mb-1.5 text-[12.5px] font-semibold text-fg-3">Cabeceras</p>
+              <pre className="scroll-thin overflow-x-auto rounded-[12px] bg-surface-2 p-3 font-mono text-[11.5px] leading-relaxed">{Object.entries(detail.headers).map(([key, value]) => `${key}: ${value}`).join("\n")}</pre>
+            </div>
+            <div>
+              <p className="mb-1.5 text-[12.5px] font-semibold text-fg-3">Cuerpo enviado</p>
+              <pre className="scroll-thin max-h-64 overflow-auto rounded-[12px] bg-surface-2 p-3 font-mono text-[11.5px] leading-relaxed">{JSON.stringify(detail.payload, null, 2)}</pre>
+            </div>
+            {detail.response && (
+              <div>
+                <p className="mb-1.5 text-[12.5px] font-semibold text-fg-3">Respuesta del destino</p>
+                <pre className="scroll-thin max-h-40 overflow-auto rounded-[12px] bg-surface-2 p-3 font-mono text-[11.5px]">{detail.response}</pre>
+              </div>
+            )}
+            {detail.related.length > 0 && (
+              <div>
+                <p className="mb-1.5 text-[12.5px] font-semibold text-fg-3">Otros envíos del mismo evento</p>
+                <ul className="flex flex-col gap-1">
+                  {detail.related.map((item) => (
+                    <li key={item.code} className="flex justify-between gap-2 rounded-[10px] bg-surface-2 px-3 py-1.5 text-[12.5px]">
+                      <span className="font-mono">{item.code}{item.manual ? " · manual" : ""}</span>
+                      <span className="text-fg-3">{item.http ?? "—"} · {formatDateTime(item.at, false)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {canManage && (
+              <PanelAction<AdminActionState> label="Reenviar ahora" icon={<Send size={15} />} formId={`redeliver-${detail.code}`} title="Reenviar entrega" description="Se crea una entrega nueva y manual con el mismo evento y cuerpo, firmada con el secreto vigente." submitLabel="Reenviar" action={redeliverWebhook} initial={ADMIN_INITIAL} onDone={() => setOpen(false)}>
+                {() => <input type="hidden" name="code" value={detail.code} />}
+              </PanelAction>
+            )}
+          </div>
+        )}
+      </SidePanel>
+    </>
+  );
+}
+
 export function DeliveriesTable({ data }: { data: ApiOverview }) {
   const columns: Column<WebhookDelivery>[] = [
     {
@@ -316,6 +402,17 @@ export function DeliveriesTable({ data }: { data: ApiOverview }) {
       ),
     },
     { id: "at", header: "Fecha", wideOnly: true, cell: (delivery) => <span className="text-[12.5px] text-fg-3">{formatDateTime(delivery.at, false)}</span> },
+    {
+      id: "actions",
+      header: "",
+      align: "right",
+      mobile: "detail",
+      cell: (delivery) => (
+        <RowActions>
+          <DeliveryDetail delivery={delivery} canManage={data.can_manage} />
+        </RowActions>
+      ),
+    },
   ];
   const metrics: MetricFilter<WebhookDelivery>[] = [
     { id: "ok", label: "Entregadas", tone: "ok", icon: <CheckCircle2 size={19} />, matches: (delivery) => delivery.status === "delivered" },
@@ -350,5 +447,54 @@ export function OAuthApps({ apps, scopes }: { apps: ApiOverview["apps"]; scopes:
         </li>
       ))}
     </ul>
+  );
+}
+
+const monthLabel = (month: string) => new Intl.DateTimeFormat("es-PE", { month: "short", year: "2-digit" }).format(new Date(`${month}-01T12:00:00`)).replace(/\./g, "");
+
+export function ApiLimits({ data }: { data: ApiOverview }) {
+  const active = data.keys.filter((apiKey) => apiKey.status === "active").length;
+  const hooks = data.webhooks.length;
+  const remaining = (limit: number | null, used: number) => (limit === null ? "Sin límite en tu plan" : limit - used > 0 ? `Te quedan ${formatNumber(limit - used)}` : "Llegaste al máximo");
+  const share = data.limits.calls_month ? Math.min(100, (data.calls_month / data.limits.calls_month) * 100) : null;
+  const limits = [
+    { icon: Activity, label: "Llamadas al mes", value: data.limits.calls_month, note: share === null ? "Sin límite en tu plan" : `Usaste el ${share.toFixed(0)} % este mes`, share },
+    { icon: Gauge, label: "Llamadas por minuto", value: data.limits.rate_per_min, note: "Por agencia, sumando todas las claves", share: null },
+    { icon: KeyRound, label: "Claves activas", value: data.limits.api_keys, note: remaining(data.limits.api_keys, active), share: null },
+    { icon: WebhookIcon, label: "Webhooks", value: data.limits.webhooks, note: remaining(data.limits.webhooks, hooks), share: null },
+  ];
+  return (
+    <div className="flex flex-col gap-5">
+      <Card>
+        <TintCardTitle icon={ShieldCheck} title="Límites de tu plan" aside={`API ${data.api_version}`} />
+        <ul className="flex flex-col">
+          {limits.map((limit, index) => (
+            <li key={limit.label} style={{ animationDelay: `${index * 45}ms` }} className={cn("group flex items-center gap-3 rounded-[11px] px-2 py-2.5 transition-colors hover:bg-surface-2", RISE)}>
+              <span className="grid h-9 w-9 flex-none place-items-center rounded-[10px] bg-surface-2 text-accent transition-transform duration-200 group-hover:scale-110">
+                <limit.icon size={16} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13.5px] font-semibold">{limit.label}</span>
+                <span className="block text-[12px] text-fg-3">{limit.note}</span>
+                {limit.share !== null && (
+                  <span className="mt-1.5 block h-1.5 max-w-[320px] overflow-hidden rounded-full bg-surface-2">
+                    <span className={cn("block h-full origin-left rounded-full motion-safe:animate-[fill-x_700ms_cubic-bezier(0.4,0,0.2,1)_backwards]", limit.share >= 100 ? "bg-bad" : limit.share >= 80 ? "bg-warn" : "bg-accent")} style={{ width: `${Math.max(limit.share, 2)}%` }} />
+                  </span>
+                )}
+              </span>
+              <span className="font-mono text-[14px] font-semibold">{limit.value === null ? "Sin límite" : formatNumber(limit.value)}</span>
+            </li>
+          ))}
+        </ul>
+      </Card>
+      <Card>
+        <TintCardTitle icon={BarChart3} title="Llamadas por mes" />
+        {data.calls_history.length === 0 ? (
+          <p className="text-[13px] text-fg-3">Tu agencia aún no registra llamadas a la API.</p>
+        ) : (
+          <BarChart data={data.calls_history.map((item, index) => ({ label: monthLabel(item.month), value: item.value, caption: formatNumber(item.value), detail: `${formatNumber(item.value)} llamadas`, highlight: index === data.calls_history.length - 1 }))} height={120} />
+        )}
+      </Card>
+    </div>
   );
 }

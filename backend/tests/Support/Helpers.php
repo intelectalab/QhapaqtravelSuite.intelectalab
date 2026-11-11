@@ -96,7 +96,7 @@ function actingAsTenantBAdmin(): User
     return actingAsUser(seedUser('U01', tenantB()), tenantB());
 }
 
-function platformUser(string $email = 'ops@qhapaq.cloud'): PlatformUser
+function platformUser(string $email = 'ops@kipucontrol.com'): PlatformUser
 {
     return PlatformUser::query()->where('email', $email)->firstOrFail();
 }
@@ -198,6 +198,26 @@ function lockScheduledJobs(): void
 function lockPlatformBilling(): void
 {
     DB::connection('pgsql_platform')->select('select pg_advisory_xact_lock(7410302)');
+}
+
+function lockCatalogProducts(): void
+{
+    DB::select('select pg_advisory_xact_lock(7410303)');
+}
+
+function lockSeededBookings(): void
+{
+    DB::select('select pg_advisory_xact_lock(7410304)');
+}
+
+function lockTreasury(): void
+{
+    DB::select('select pg_advisory_xact_lock(7410305)');
+}
+
+function lockScheduledCampaigns(): void
+{
+    DB::select('select pg_advisory_xact_lock(7410306)');
 }
 
 function sendBody(): array

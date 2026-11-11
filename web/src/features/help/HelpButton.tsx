@@ -62,7 +62,7 @@ function PanelContent({ screen, pending, failed, realm, close }: { screen: HelpS
             <Badge tone="t1" dot={false}>
               {article.module}
             </Badge>
-            {article.origin !== "qhapaq" && <Badge tone={ORIGIN_TONES[article.origin]}>{article.origin_label}</Badge>}
+            {article.origin !== "kipucontrol" && <Badge tone={ORIGIN_TONES[article.origin]}>{article.origin_label}</Badge>}
           </div>
           <HelpArticleBody summary={article.summary} steps={article.steps} faqs={article.faqs} compact />
           <HelpLinkList title="Más sobre esta pantalla" items={screen.more} realm={realm} onOpen={close} />
@@ -131,7 +131,7 @@ export function HelpButton({ realm }: { realm: HelpRealm }) {
         open={open}
         onOpenChange={setOpen}
         title={article?.title ?? "Ayuda"}
-        description={article ? "Ayuda de la pantalla en la que estás." : "Guías y respuestas para trabajar en Qhapaq."}
+        description={article ? "Ayuda de la pantalla en la que estás." : "Guías y respuestas para trabajar en KipuControl."}
         footer={
           <>
             {article && screen?.can_manage && (

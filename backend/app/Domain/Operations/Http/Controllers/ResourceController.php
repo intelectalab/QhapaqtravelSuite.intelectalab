@@ -26,6 +26,13 @@ final class ResourceController
         return response()->json(['data' => $calendar->month($this->user($request), $data['month'] ?? null)]);
     }
 
+    public function availability(Request $request, ResourceDirectory $directory): JsonResponse
+    {
+        $data = $request->validate(['from' => ['nullable', 'date_format:Y-m-d']], ['from.*' => 'Elige una fecha válida.']);
+
+        return response()->json(['data' => $directory->availability($data['from'] ?? null)]);
+    }
+
     public function store(Request $request, string $type, ResourceCatalog $catalog): JsonResponse
     {
         $id = $catalog->save($this->type($type), null, $this->validated($request, $type), $this->user($request));
@@ -58,6 +65,7 @@ final class ResourceController
                 'rating' => ['nullable', 'numeric', 'min:0', 'max:5'],
                 'phone' => ['nullable', 'string', 'max:30'],
                 'status' => ['required', 'in:'.implode(',', ResourceDirectory::PERSON_STATUS)],
+                'user_id' => ['sometimes', 'nullable', 'uuid'],
             ], $this->messages()),
             'driver' => $request->validate([
                 'full_name' => ['required', 'string', 'min:3', 'max:150'],
@@ -66,6 +74,7 @@ final class ResourceController
                 'license_expires_on' => ['required', 'date'],
                 'phone' => ['nullable', 'string', 'max:30'],
                 'status' => ['required', 'in:'.implode(',', ResourceDirectory::PERSON_STATUS)],
+                'user_id' => ['sometimes', 'nullable', 'uuid'],
             ], $this->messages()),
             default => $request->validate([
                 'plate' => ['required', 'string', 'min:5', 'max:12'],
@@ -92,6 +101,7 @@ final class ResourceController
             'capacity.*' => 'Indica las plazas (1 a 80).',
             'soat_expires_on.*' => 'Indica el vencimiento del SOAT.',
             'status.*' => 'Elige el estado.',
+            'user_id.*' => 'Elige un usuario válido.',
         ];
     }
 

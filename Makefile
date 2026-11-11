@@ -1,4 +1,4 @@
-# Qhapaq Travel Suite — atajos de desarrollo (colocar en la raíz del espacio de trabajo)
+# KipuControl — atajos de desarrollo (colocar en la raíz del espacio de trabajo)
 DC := docker compose
 PHP := $(DC) exec -T api
 FILTER ?=

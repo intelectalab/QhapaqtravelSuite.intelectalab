@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Crm\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
@@ -59,6 +60,47 @@ final class SalesTargetDirectory
                 'teams' => DB::table('crm_sales_teams')->orderBy('code')->get(['id', 'name'])->map(fn (object $row): array => ['value' => $row->id, 'label' => $row->name])->values(),
                 'periods' => $this->openPeriods($today),
             ] : null,
+            'can' => ['manage' => $manage, 'reduce_late' => $viewer->can('admin.settings.manage')],
+        ];
+    }
+
+    public function detail(string $code, User $viewer): array
+    {
+        $manage = $viewer->can('crm.targets.manage');
+        $row = DB::table('crm_sales_targets')->where('code', $code)->first();
+
+        if ($row === null || (! $manage && ($row->status === 'borrador' || $row->scope_type !== 'asesor' || $row->scope_id !== $viewer->getKey()))) {
+            throw ApiException::notFound('La meta no existe o no está a tu alcance.');
+        }
+
+        $today = Carbon::now($this->context->timezone())->startOfDay();
+        $policy = $this->policy();
+        $names = $this->scopeNames();
+        $target = $this->present($row, $names, $policy, $today);
+        $history = DB::table('crm_sales_targets')->where('scope_type', $row->scope_type)->where('scope_id', $row->scope_id)->where('id', '<>', $row->id)
+            ->when(! $manage, fn (Builder $query) => $query->where('status', '<>', 'borrador'))
+            ->orderByDesc('period_from')->limit(12)->get()
+            ->map(fn (object $other): array => $this->present($other, $names, $policy, $today))
+            ->map(fn (array $other): array => [...$other, 'reservations' => [], 'pipeline' => []])
+            ->values();
+
+        $commission = DB::table('fin_commissions')->where('sales_target_id', $row->id)->whereNull('deleted_at')->first(['code', 'status', 'amount', 'currency']);
+
+        return [
+            'target' => $target,
+            'commission' => $commission === null ? null : ['code' => $commission->code, 'status' => $commission->status, 'amount' => (float) $commission->amount, 'currency' => $commission->currency, 'can_open' => $viewer->can('finance.commissions')],
+            'breakdown' => $this->breakdown($row, $target, $names, $today),
+            'history' => $history,
+            'adjustments' => DB::table('crm_sales_target_adjustments')->where('target_id', $row->id)->orderByDesc('occurred_at')->get()
+                ->map(fn (object $entry): array => [
+                    'action' => $entry->action,
+                    'before' => $entry->before ? json_decode((string) $entry->before, true) : null,
+                    'after' => $entry->after ? json_decode((string) $entry->after, true) : null,
+                    'reason' => $entry->reason,
+                    'by' => $names['asesor'][$entry->actor_id] ?? 'Sistema',
+                    'at' => $entry->occurred_at,
+                ])->values(),
+            'policy' => $policy,
             'can' => ['manage' => $manage, 'reduce_late' => $viewer->can('admin.settings.manage')],
         ];
     }
@@ -186,6 +228,72 @@ final class SalesTargetDirectory
                 'sales' => $amounts ? $target['actual']['sales'] : null,
                 'goal' => $amounts ? $target['goals']['sales'] : null,
             ])->all();
+    }
+
+    private function breakdown(object $row, array $target, array $names, Carbon $today): array
+    {
+        if ($row->scope_type === 'asesor') {
+            $teams = DB::table('crm_sales_team_members')->where('user_id', $row->scope_id)->where('valid_from', '<=', $row->period_to)
+                ->where(fn (Builder $query) => $query->whereNull('valid_to')->orWhere('valid_to', '>=', $row->period_from))->pluck('team_id');
+            $sede = DB::table('iam_users')->where('id', $row->scope_id)->value('sede_id');
+            $groups = DB::table('crm_sales_targets')->whereIn('status', ['vigente', 'cerrada'])
+                ->where('period_from', '<=', $row->period_to)->where('period_to', '>=', $row->period_from)
+                ->where(fn (Builder $query) => $query->where(fn (Builder $team) => $team->where('scope_type', 'equipo')->whereIn('scope_id', $teams))->orWhere(fn (Builder $place) => $place->where('scope_type', 'sede')->where('scope_id', $sede)))
+                ->orderBy('scope_type')->get();
+
+            return $groups->map(function (object $group) use ($names, $target, $today): array {
+                $goal = (float) $group->goal_sales_pen;
+                $result = $group->result ? json_decode((string) $group->result, true) : null;
+                $live = $group->status === 'cerrada' && is_array($result) ? ['sales' => (float) $result['sales'], 'bookings' => (int) $result['bookings']] : $this->progress($group, $today);
+
+                return [
+                    'kind' => $group->scope_type,
+                    'name' => $names[$group->scope_type][$group->scope_id] ?? 'Sin nombre',
+                    'target_code' => $group->code,
+                    'period_label' => TargetPeriod::label($group->period_key),
+                    'sales' => round((float) $live['sales'], 2),
+                    'bookings' => (int) $live['bookings'],
+                    'goal' => $goal,
+                    'progress_pct' => $goal > 0 ? round((float) $live['sales'] / $goal * 100, 1) : null,
+                    'share_pct' => (float) $live['sales'] > 0 ? round($target['actual']['sales'] / (float) $live['sales'] * 100, 1) : 0.0,
+                ];
+            })->values()->all();
+        }
+
+        $members = $row->scope_type === 'equipo'
+            ? $this->owners($row)
+            : DB::table('iam_users as u')->join('model_has_roles as mr', 'mr.model_id', '=', 'u.id')->join('roles as ro', 'ro.id', '=', 'mr.role_id')
+                ->where('u.sede_id', $row->scope_id)->whereNull('u.deleted_at')->whereIn('ro.name', ['manager', 'sales'])->distinct()->pluck('u.id')->all();
+        $tz = $this->context->timezone();
+        $sales = DB::table('booking_reservations as r')->whereNull('r.deleted_at')->whereIn('r.status', self::COUNTED)
+            ->where('r.created_at', '>=', Carbon::parse($row->period_from, $tz)->startOfDay()->utc())
+            ->where('r.created_at', '<=', Carbon::parse($row->period_to, $tz)->endOfDay()->utc())
+            ->when($row->scope_type === 'sede', fn (Builder $query) => $query->where('r.sede_id', $row->scope_id), fn (Builder $query) => $query->whereIn('r.owner_id', $members))
+            ->groupBy('r.owner_id')
+            ->selectRaw('r.owner_id, sum(r.total_amount * r.fx_rate) as sales, count(*) as bookings')
+            ->get()->keyBy('owner_id');
+        $goals = DB::table('crm_sales_targets')->where('scope_type', 'asesor')->whereIn('scope_id', [...$members, ...$sales->keys()->all()])->whereIn('status', ['vigente', 'cerrada', 'borrador'])
+            ->where('period_from', '>=', $row->period_from)->where('period_to', '<=', $row->period_to)
+            ->get(['code', 'scope_id', 'goal_sales_pen', 'status'])->groupBy('scope_id');
+        $total = (float) $sales->sum('sales');
+
+        return collect([...$members, ...$sales->keys()->all()])->filter()->unique()->map(function (string $id) use ($sales, $goals, $names, $total): array {
+            $own = $goals->get($id, collect());
+            $goal = (float) $own->sum('goal_sales_pen');
+            $sold = round((float) ($sales[$id]->sales ?? 0), 2);
+
+            return [
+                'kind' => 'asesor',
+                'name' => $names['asesor'][$id] ?? 'Sin nombre',
+                'target_code' => $own->count() === 1 ? $own->first()->code : null,
+                'period_label' => null,
+                'sales' => $sold,
+                'bookings' => (int) ($sales[$id]->bookings ?? 0),
+                'goal' => $goal > 0 ? $goal : null,
+                'progress_pct' => $goal > 0 ? round($sold / $goal * 100, 1) : null,
+                'share_pct' => $total > 0 ? round($sold / $total * 100, 1) : 0.0,
+            ];
+        })->sortByDesc('sales')->values()->all();
     }
 
     private function owners(object $row): array

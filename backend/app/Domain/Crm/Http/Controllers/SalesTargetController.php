@@ -17,6 +17,11 @@ final class SalesTargetController
         return response()->json(['data' => $directory->overview($this->user($request))]);
     }
 
+    public function show(Request $request, string $code, SalesTargetDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->detail($code, $this->user($request))]);
+    }
+
     public function store(Request $request, SalesTargetWorkflow $workflow): JsonResponse
     {
         $data = $request->validate([

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CartSummary } from "@/features/site/Cart";
 import { CheckoutWizard } from "@/features/site/CheckoutWizard";
+import { TrackEvent } from "@/features/site/SiteAnalytics";
 import { Breadcrumbs, PageHero } from "@/features/site/Hero";
 import { capitalize, formatDate, formatMoney } from "@/lib/format";
 import { getCheckoutTerms, getSiteCart, getSiteProfile, siteBase } from "@/lib/server/site";
@@ -16,6 +17,7 @@ export default async function CheckoutPage({ params }: PageProps<"/sitio/[agenci
 
   return (
     <>
+      <TrackEvent event="begin_checkout" params={{ items: cart.items.length, value: Number(terms.total), currency: terms.currency }} />
       <PageHero eyebrow="Reserva" title="Finalizar compra" description="Completa los datos en pocos pasos. Te enviaremos la confirmación por correo.">
         <div className="mt-5">
           <Breadcrumbs items={[{ label: "Inicio", href: siteHref(base) }, { label: "Carrito", href: siteHref(base, "/carrito") }, { label: "Finalizar compra" }]} />

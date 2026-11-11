@@ -14,13 +14,15 @@ export interface QuoteRow extends QuoteContractFields {
   total: string;
   total_pen: string;
   margin_pct: string | null;
+  internal_status: "pend" | "req" | "ok" | null;
+  version_count: number;
   days_left: number | null;
   pax: { adt: number; chd: number; inf: number };
   created_at: string;
 }
 
 export interface QuoteListMeta {
-  kpis: { open: number; open_pen: string; expiring: number; approved: number; conversion: number | null; total: number };
+  kpis: { open: number; open_pen: string; expiring: number; approved: number; conversion: number | null; total: number; pending_internal: number | null; followup_pen: string };
   can: { manage: boolean };
   today: string;
 }
@@ -36,6 +38,9 @@ export interface QuoteItem {
   total: string;
   unit_cost: string | null;
   margin_pct: string | null;
+  rate_id?: string | null;
+  rate_ref?: string | null;
+  price_source?: "rate" | "manual";
 }
 
 export interface QuoteVersion {
@@ -118,6 +123,8 @@ export interface QuoteDetail extends QuoteRow {
   internal: { required: boolean; status: string | null; note: string | null } | null;
   can: { edit: boolean; send: boolean; approve_internal: boolean; register_approval: boolean; reassign: boolean; duplicate: boolean };
   contact: { email: string | null; phone: string | null } | null;
+  share: { active: boolean; url: string | null; created_at: string | null; expires_at: string | null; last_view_at: string | null; last_view_source: string | null } | null;
+  evidence_types: string[];
   versions: QuoteVersion[];
   history: { action: string; before_value: string | null; after_value: string | null; occurred_at: string }[];
 }
@@ -145,12 +152,29 @@ export interface QuoteSegmentOption {
   pct: string | null;
 }
 
-export interface QuoteFormOptions {
-  clients: { code: string; name: string }[];
-  opportunities: { code: string; title: string; currency: string; pax: number; client_code: string }[];
-  products: { code: string; name: string; duration: string; segments: QuoteSegmentOption[] }[];
-  defaults: { valid_until: string; tax_pct: number; max_discount: number };
+export interface QuoteRateOption {
+  id: string;
+  ref: string;
+  type: string;
+  segment: string;
+  channel: string;
+  currency: string;
+  price: string;
+  cost: string | null;
+  valid_from: string;
+  valid_to: string;
+  active: boolean;
 }
+
+export interface QuoteFormOptions {
+  clients: { code: string; name: string; country: string; domestic: boolean; channel: string }[];
+  opportunities: { code: string; title: string; currency: string; pax: number; client_code: string }[];
+  products: { code: string; name: string; duration: string; segments: QuoteSegmentOption[]; rates: QuoteRateOption[] }[];
+  defaults: { valid_until: string; validity_days: number; tax_pct: number; max_tax: number; max_discount: number; margin_floor: number };
+  can: { edit_cost: boolean };
+}
+
+export const MANUAL_RATE = "manual";
 
 export interface QuoteLineInput {
   key: string;
@@ -159,12 +183,30 @@ export interface QuoteLineInput {
   qty: number;
   pax: number;
   segment: string;
+  rate_id: string;
   unit_price: string;
+  unit_cost: string;
+}
+
+export const rateValidOn = (rate: QuoteRateOption, date: string) => rate.active && rate.valid_from <= date && rate.valid_to >= date;
+
+export interface QuotePreviewLine {
+  rate_id: string | null;
+  rate_ref: string | null;
+  unit_price: string;
+  unit_cost: string | null;
+  rate_price: string | null;
+  rate_cost: string | null;
+  price_source: "rate" | "manual";
+  season_factor: string | null;
+  total: string;
+  margin_pct: string | null;
 }
 
 export interface QuotePreview {
-  lines: { unit_price: string; rate_price: string | null; price_source: "rate" | "manual"; total: string; margin_pct: string | null }[];
-  totals: { sale_total: string; discount_total: string; net_total: string; tax_total: string; grand_total: string; cost_total: string | null; profit_total: string | null; margin_pct: string | null };
+  lines: QuotePreviewLine[];
+  totals: { sale_total: string; discount_total: string; net_total: string; tax_total: string; grand_total: string; cost_total: string | null; profit_total: string | null; margin_pct: string | null; tax_pct: string; grand_total_pen: string; per_pax: string | null };
+  tax_default: string;
   needs_internal_approval: boolean;
 }
 

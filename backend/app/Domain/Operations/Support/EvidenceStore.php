@@ -44,16 +44,16 @@ final class EvidenceStore
         return "ops:evidence-upload:{$tenantId}:{$uploadId}";
     }
 
-    public function forOrder(string $orderId): Collection
+    public function forOrder(string $orderId, ?string $reservationId = null): Collection
     {
         $names = DB::table('iam_users')->pluck('name', 'id');
 
         return DB::table('ops_evidences as e')
             ->leftJoin('booking_reservation_services as s', 's.id', '=', 'e.reservation_service_id')
             ->leftJoin('ops_incidents as i', 'i.id', '=', 'e.incident_id')
-            ->where('e.order_id', $orderId)->whereNull('e.removed_at')
+            ->where(fn ($query) => $query->where('e.order_id', $orderId)->when($reservationId, fn ($inner) => $inner->orWhere('i.reservation_id', $reservationId)))->whereNull('e.removed_at')
             ->orderByDesc('e.captured_at')
-            ->get(['e.id', 'e.file_name', 'e.mime_type', 'e.size_bytes', 'e.source', 'e.captured_at', 'e.uploaded_by', 's.code as service_code', 's.name as service_name', 'i.code as incident_code'])
+            ->get(['e.id', 'e.file_name', 'e.mime_type', 'e.size_bytes', 'e.source', 'e.captured_at', 'e.uploaded_by', 's.code as service_code', 's.name as service_name', 'i.code as incident_code', 'i.title as incident_title'])
             ->map(fn (object $file): array => [
                 'id' => $file->id,
                 'name' => $file->file_name,
@@ -64,6 +64,7 @@ final class EvidenceStore
                 'by' => $names[$file->uploaded_by] ?? null,
                 'service' => $file->service_code ? ['code' => $file->service_code, 'name' => $file->service_name] : null,
                 'incident' => $file->incident_code,
+                'incident_title' => $file->incident_title,
             ])->values();
     }
 }

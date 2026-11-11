@@ -48,7 +48,7 @@ let dbPromise: Promise<Db> | null = null;
 
 export function getDb(): Promise<Db> {
   dbPromise ??= (async () => {
-    const db = await SQLite.openDatabaseAsync("qhapaq-ops.db");
+    const db = await SQLite.openDatabaseAsync("kipucontrol-ops.db");
     await db.execAsync("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
     const row = await db.getFirstAsync<{ user_version: number }>("PRAGMA user_version");
     const current = row?.user_version ?? 0;

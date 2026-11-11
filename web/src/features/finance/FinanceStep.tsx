@@ -18,10 +18,11 @@ interface FinanceStepProps {
   description?: ReactNode;
   submitLabel: string;
   trigger?: (open: () => void) => ReactNode;
+  action?: (state: StepResult, form: FormData) => Promise<StepResult>;
   children?: ReactNode;
 }
 
-export function FinanceStep({ step, itemKey = "", label, icon, variant = "secondary", title, description, submitLabel, trigger, children }: FinanceStepProps) {
+export function FinanceStep({ step, itemKey = "", label, icon, variant = "secondary", title, description, submitLabel, trigger, action = financeStep, children }: FinanceStepProps) {
   const router = useRouter();
   return (
     <PanelAction<StepResult>
@@ -32,7 +33,7 @@ export function FinanceStep({ step, itemKey = "", label, icon, variant = "second
       title={title}
       description={description}
       submitLabel={submitLabel}
-      action={financeStep}
+      action={action}
       initial={initial}
       trigger={trigger}
       onDone={() => router.refresh()}

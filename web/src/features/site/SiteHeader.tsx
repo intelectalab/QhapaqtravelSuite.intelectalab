@@ -19,6 +19,7 @@ const LINK_PATHS: Record<SiteNavLinkId, string> = {
   tours: "/tours?tipo=tours",
   packages: "/tours?tipo=paquetes",
   experiences: "/tours?tipo=experiencias",
+  transfers: "/tours?tipo=traslados",
   offers: "/ofertas",
   tailored: "/viajes-a-medida",
   contact: "/contacto",

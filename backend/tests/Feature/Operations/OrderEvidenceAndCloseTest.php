@@ -11,6 +11,7 @@ use Illuminate\Testing\TestResponse;
 const EVIDENCE_ORDER = 'OP-2026-0412';
 
 beforeEach(function () {
+    lockSeededBookings();
     Storage::fake(EvidenceStore::diskName());
 });
 

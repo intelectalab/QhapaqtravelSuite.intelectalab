@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Actions;
 
+use App\Domain\Booking\Events\ReservationRescheduled;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
@@ -100,6 +101,7 @@ final class ReservationReschedule
             }
 
             $this->payables->handle((string) $reservation->id, $actor);
+            ReservationRescheduled::dispatch((string) $reservation->id);
             $this->audit->log('Reserva', $reservation->code, 'reprogramar', "{$reservation->travel_from} → {$reservation->travel_to}", "{$plan['new_from']} → {$plan['new_to']} · {$reason}");
             $this->mailer->send($reservation->id, 'Tu viaje cambió de fecha', "Tu viaje {$reservation->title} ahora es del {$plan['new_from']} al {$plan['new_to']}.".($diff->isPositive() ? " La diferencia de tarifa es {$reservation->currency} {$diff}." : ''));
         });

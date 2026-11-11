@@ -237,7 +237,7 @@ export interface WidgetDefaults {
 }
 
 export interface WebOverview {
-  config: { tenant_slug: string; public_key: string; key_created_at: string; key_created_by: string | null; cdn: string | null; host: string | null } | null;
+  config: { tenant_slug: string; public_key: string; key_created_at: string; key_created_by: string | null; cdn: string; host: string; site: string; key_rotated_at: string | null; previous_key_until: string | null } | null;
   defaults: WidgetDefaults;
   domains: WebDomain[];
   events: WebEvent[];
@@ -245,6 +245,7 @@ export interface WebOverview {
   products: { code: string; name: string }[];
   methods: { value: string; label: string }[];
   can_manage: boolean;
+  can_rotate: boolean;
 }
 
 export interface OwnReview {
@@ -312,6 +313,7 @@ export interface ReviewSource {
   count: number;
   account: string | null;
   key_last4: string | null;
+  scopes: string[];
   can_reply: boolean;
   invites: boolean;
   last_sync_at: string | null;
@@ -345,6 +347,15 @@ export interface ExternalReviewsOverview {
   sources: ReviewSource[];
   items: ExternalReview[];
   can_reply: boolean;
+  widget: { tenant_slug: string; public_key: string; cdn: string | null; settings: ReviewWidgetSettings } | null;
+  can_configure: boolean;
+}
+
+export interface ReviewWidgetSettings {
+  sources: string[];
+  min_rating: number;
+  count: number;
+  layout: "lista" | "cuadricula";
 }
 
 export interface CustomerPortal {

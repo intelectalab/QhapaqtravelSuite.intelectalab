@@ -1,4 +1,4 @@
-import { BadgePercent, Boxes, Box, CalendarRange, ChartPie, Clock, Coins, FileText, GitBranch, History, Link2, ListChecks, LayoutDashboard, MapPin, Radio, Route, ScrollText, ShoppingBag, SlidersHorizontal, Truck, Users, Warehouse, type LucideIcon } from "lucide-react";
+import { Baby, BadgePercent, BedDouble, Boxes, Box, CalendarRange, ChartPie, Clock, Coins, FileText, GitBranch, History, Link2, ListChecks, LayoutDashboard, MapPin, MapPinned, PackagePlus, Radio, Route, ScrollText, ShieldCheck, ShoppingBag, SlidersHorizontal, Truck, Users, Wallet, Warehouse, type LucideIcon } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -9,7 +9,7 @@ import { durationLabel, PRODUCT_STATUS } from "@/lib/catalog";
 import { formatMoney } from "@/lib/format";
 import { resolveSections } from "@/lib/sections";
 import type { PromotionCatalog } from "@/lib/channels";
-import { getProduct, getProductEditor, getProductFormOptions, getProductOverview, getProductTranslations } from "@/lib/server/catalog";
+import { getProduct, getProductBookingConfig, getProductEditor, getProductFormOptions, getProductOverview, getProductTranslations } from "@/lib/server/catalog";
 import { getResource } from "@/lib/server/resource";
 import { ProductDeleteAction, ProductLifecycleActions } from "@/features/catalog/ProductForms";
 import { ProductHighlights } from "@/features/catalog/ProductHighlights";
@@ -38,6 +38,12 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   uso: ShoppingBag,
   versiones: GitBranch,
   historial: History,
+  pasajeros: Baby,
+  adicionales: PackagePlus,
+  alojamiento: BedDouble,
+  pago: Wallet,
+  recojo: MapPinned,
+  reglas: ShieldCheck,
 };
 
 export async function generateMetadata({ params }: PageProps<"/catalogo/productos/[code]">): Promise<Metadata> {
@@ -48,14 +54,14 @@ export async function generateMetadata({ params }: PageProps<"/catalogo/producto
 export default async function ProductoPage({ params, searchParams }: PageProps<"/catalogo/productos/[code]">) {
   const { code } = await params;
   const { editar, seccion } = await searchParams;
-  const [product, options, translations, editor, overview] = await Promise.all([getProduct(code), getProductFormOptions(), getProductTranslations(code), getProductEditor(code), getProductOverview(code)]);
+  const [product, options, translations, editor, overview, booking] = await Promise.all([getProduct(code), getProductFormOptions(), getProductTranslations(code), getProductEditor(code), getProductOverview(code), getProductBookingConfig(code)]);
   if (!options || !editor || !overview) notFound();
   const promotions = seccion === "promociones" && options.can_update ? await getResource<PromotionCatalog>("/channels/ecommerce/promotions", "No pudimos cargar las promociones.") : null;
 
   const status = PRODUCT_STATUS[product.status];
   const editable = options.can_update && product.status !== "ARCHIVED";
   const sale = product.rates.filter((rate) => rate.active && rate.type === "Venta" && ["Adulto", "Pasajero"].includes(rate.segment)).sort((a, b) => Number(a.price) - Number(b.price))[0];
-  const tabs = productTabs({ product, editor, overview, options, translations, promotions });
+  const tabs = productTabs({ product, editor, overview, options, translations, promotions, booking });
   const base = `/catalogo/productos/${encodeURIComponent(product.code)}`;
   const { active: activeId, groups } = resolveSections(
     base,

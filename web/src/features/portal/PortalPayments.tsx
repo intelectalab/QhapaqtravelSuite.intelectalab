@@ -1,15 +1,16 @@
 "use client";
 
-import { AlarmClock, BadgeCheck, Hourglass, ReceiptText, Send, Wallet } from "lucide-react";
+import { AlarmClock, BadgeCheck, CreditCard, Hourglass, ReceiptText, Send, Wallet } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { PanelActionState } from "@/components/ui/PanelAction";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
-import { reportPayment } from "@/app/(portal)/portal/actions";
+import { payOnline, reportPayment } from "@/app/(portal)/portal/actions";
+import { PaymentFields, type PaymentValue } from "@/features/site/PaymentFields";
 import { MoneyLines } from "@/features/channels/ChannelUi";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -27,7 +28,6 @@ function ReportPanel({ row, methods, today }: { row: PortalInstallment; methods:
     <PanelAction
       label="Reportar pago"
       icon={<Send size={15} />}
-      variant="primary"
       size="sm"
       formId={`pago-${row.code}`}
       title="Reportar un pago"
@@ -44,6 +44,38 @@ function ReportPanel({ row, methods, today }: { row: PortalInstallment; methods:
           <TextField label="Número de operación" name="reference" maxLength={60} required={needsReference} hint="Lo encuentras en la constancia de tu banco o billetera." />
           <TextField label="Fecha del pago" name="paid_on" type="date" defaultValue={today} max={today} />
           <TextArea label="Comentario" name="note" rows={3} maxLength={500} placeholder="Opcional" />
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+const CARD = [{ value: "tarjeta", label: "Tarjeta" }];
+
+function PayOnlinePanel({ row }: { row: PortalInstallment }) {
+  const [payment, setPayment] = useState<PaymentValue>({ method: "tarjeta", ready: false });
+  const onPayment = useCallback((value: PaymentValue) => setPayment(value), []);
+  const available = Math.max(0, row.balance - (row.reported ?? 0));
+  return (
+    <PanelAction
+      label="Pagar en línea"
+      icon={<CreditCard size={15} />}
+      variant="primary"
+      size="sm"
+      formId={`pago-linea-${row.code}`}
+      title="Pagar en línea"
+      description={`${row.concept} · ${formatMoney(available, row.currency)}`}
+      submitLabel={`Pagar ${formatMoney(available, row.currency)}`}
+      action={payOnline.bind(null, row.code)}
+      initial={initial}
+    >
+      {() => (
+        <>
+          <p className="rounded-tile bg-surface-2 px-3.5 py-3 text-[13px] text-fg-2">El cobro se acredita al instante y la cuota queda pagada. Los datos de la tarjeta los procesa la pasarela.</p>
+          <PaymentFields methods={CARD} accounts={[]} walletPhone={null} onChange={onPayment} />
+          <input type="hidden" name="method" value="tarjeta" />
+          <input type="hidden" name="card_token" value={payment.ready ? (payment.card_token ?? "") : ""} />
+          <input type="hidden" name="card_holder" value={payment.card_holder ?? ""} />
         </>
       )}
     </PanelAction>
@@ -102,7 +134,12 @@ export function PortalPayments({ billing }: { billing: PortalBilling }) {
                         </span>
                         {!!row.reported && <p className="mt-1.5 text-[12px] font-medium text-info">{formatMoney(row.reported, row.currency)} en validación</p>}
                       </div>
-                      {available > 0.004 && <ReportPanel row={row} methods={billing.methods} today={billing.today} />}
+                      {available > 0.004 && (
+                        <span className="flex flex-wrap gap-2">
+                          <PayOnlinePanel row={row} />
+                          <ReportPanel row={row} methods={billing.methods} today={billing.today} />
+                        </span>
+                      )}
                     </div>
                   </li>
                 );

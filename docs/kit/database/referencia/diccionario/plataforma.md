@@ -25,7 +25,7 @@ Planes, tenants, suscripciones, facturación SaaS, cupones y medición de uso (s
 | [`plans`](#plans) | Plataforma | plataforma | 16 | 0 | [Spec 13 §3.2 + 09 §3.1] [Plataforma] Planes comerciales (Starter/Professional/Enterprise). |
 | [`platform_credit_notes`](#platform_credit_notes) | Plataforma | plataforma | 10 | 2 | [Spec 13 §3.8] [Plataforma] Notas de crédito de plataforma (serie NQ01). [Fase 3] |
 | [`platform_invoice_lines`](#platform_invoice_lines) | Plataforma | plataforma | 7 | 1 | [Spec 13 §3.8] [Plataforma] Líneas de factura de plataforma. [Fase 3] |
-| [`platform_invoices`](#platform_invoices) | Plataforma | plataforma | 33 | 2 | [Spec 13 §3.8] [Plataforma] Facturas de plataforma (emisor Qhapaq Cloud). [Fase 3] |
+| [`platform_invoices`](#platform_invoices) | Plataforma | plataforma | 33 | 2 | [Spec 13 §3.8] [Plataforma] Facturas de plataforma (emisor KipuControl Cloud). [Fase 3] |
 | [`platform_metrics_daily`](#platform_metrics_daily) | Plataforma | plataforma | 11 | 0 | [Spec 13 §3.1] [Plataforma] Snapshot diario de MRR/ARR/churn. [Fase 3] (supuesto: columnas) |
 | [`platform_sequences`](#platform_sequences) | Plataforma | plataforma | 6 | 0 | [Spec 13 §3.8] [Plataforma] Correlativos globales de plataforma (series FQ01/NQ01, TNT-, SUB-). |
 | [`platform_users`](#platform_users) | Plataforma | plataforma | 11 | 0 | [Spec 00 §3.1] [Plataforma] Usuarios de plataforma (Super Admin). Guard `platform`; nunca tienen filas en iam_users. |
@@ -708,7 +708,7 @@ Planes, tenants, suscripciones, facturación SaaS, cupones y medición de uso (s
 
 ### `platform_invoices`
 
-[Spec 13 §3.8] [Plataforma] Facturas de plataforma (emisor Qhapaq Cloud). [Fase 3]
+[Spec 13 §3.8] [Plataforma] Facturas de plataforma (emisor KipuControl Cloud). [Fase 3]
 
 | Dominio | Fase (archivo) | RLS | Políticas | Particionado |
 |---|---|---|---|---|

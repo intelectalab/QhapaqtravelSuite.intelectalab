@@ -6,6 +6,7 @@ namespace App\Domain\SupplierPortal\Http\Controllers;
 
 use App\Domain\Booking\Actions\ProviderServiceResponse;
 use App\Domain\Iam\Models\User;
+use App\Domain\SupplierPortal\Actions\ProposeAlternative;
 use App\Domain\SupplierPortal\Actions\RespondServiceRequest;
 use App\Domain\SupplierPortal\Actions\SupplierContacts;
 use App\Domain\SupplierPortal\Actions\SupplierInvoices;
@@ -74,6 +75,28 @@ final class SupplierPortalController
         ]);
 
         return $this->json(['code' => $code, 'alternative' => $respond->reject($account, $code, $data)]);
+    }
+
+    public function alternative(Request $request, string $code, ProposeAlternative $propose): JsonResponse
+    {
+        $account = $this->account($request);
+        $data = $request->validate([
+            'alt_kind' => ['required', Rule::in(ProposeAlternative::KINDS)],
+            'alt_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:'.Carbon::today()->toDateString()],
+            'alt_service' => ['nullable', 'string', 'max:30'],
+            'alt_net_cost' => ['nullable', 'numeric', 'gt:0', 'max:9999999'],
+            'hold_until' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:'.Carbon::today()->toDateString()],
+            'note' => ['required', 'string', 'min:5', 'max:1000'],
+        ], [
+            'alt_kind.*' => 'Elija el tipo de alternativa.',
+            'alt_date.*' => 'La fecha propuesta debe ser hoy o posterior.',
+            'alt_service.*' => 'Elija un servicio de su catálogo.',
+            'alt_net_cost.*' => 'Escriba una tarifa neta válida.',
+            'hold_until.*' => 'El bloqueo debe mantenerse hasta hoy o una fecha posterior.',
+            'note.*' => 'Describa la alternativa (mínimo 5 caracteres).',
+        ]);
+
+        return $this->json(['code' => $code, 'response' => $propose->handle($account, $code, $data)], 201);
     }
 
     public function calendar(Request $request): JsonResponse

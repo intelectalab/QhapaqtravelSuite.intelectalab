@@ -4,6 +4,7 @@ use App\Jobs\ReleaseAllotments;
 use Illuminate\Support\Facades\DB;
 
 beforeEach(function () {
+    lockSeededBookings();
     lockScheduledJobs();
     freezeBusinessToday();
 });
@@ -71,13 +72,13 @@ it('CUP-BR-009/010: la fecha pasada retenida sin usar genera cargo y cuenta por 
 });
 
 it('una segunda ejecución no duplica cargos ni cuentas por pagar', function () {
-    allotmentWithDays();
+    $id = allotmentWithDays();
 
     runReleaseAllotments();
     runReleaseAllotments();
 
     [$charges, $payables] = withinTenant(tenantA(), fn () => [
-        DB::table('catalog_allotment_charges')->count(),
+        DB::table('catalog_allotment_charges as c')->join('catalog_allotment_days as d', 'd.id', '=', 'c.allotment_day_id')->where('d.allotment_id', $id)->count(),
         DB::table('fin_payables')->where('concept', 'like', 'Penalidad por no uso de cupo CUP-PRUEBA%')->count(),
     ]);
 

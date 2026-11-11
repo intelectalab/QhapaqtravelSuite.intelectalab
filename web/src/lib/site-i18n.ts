@@ -18,7 +18,7 @@ const es = {
     home: (name: string) => `${name}, inicio`,
     sections: "Secciones del sitio",
     mobileMenu: "Menú móvil",
-    links: { destinations: "Destinos", tours: "Tours", packages: "Paquetes", experiences: "Experiencias", offers: "Ofertas", tailored: "Viajes a medida", contact: "Contacto" },
+    links: { destinations: "Destinos", tours: "Tours", packages: "Paquetes", experiences: "Experiencias", transfers: "Traslados", offers: "Ofertas", tailored: "Viajes a medida", contact: "Contacto" },
     cart: "Ver carrito",
     cartTitle: "Carrito",
     account: "Mi cuenta",
@@ -334,6 +334,18 @@ const es = {
     generated: "Texto basado en las políticas comerciales vigentes de la agencia.",
     links: { terminos: "Términos y condiciones", privacidad: "Privacidad", cookies: "Cookies", cancelacion: "Cancelaciones" },
   },
+  widget: {
+    eyebrow: "Reserva en línea",
+    continue: "Continuar reserva",
+    continuing: "Preparando tu reserva…",
+    handoffNote: "Completarás tus datos y el pago en el sitio de la agencia. El total final se recalcula al pagar.",
+    catalogTitle: "Elige tu experiencia",
+    catalogEmpty: "Esta agencia no tiene productos publicados para reservar en línea.",
+    unavailableTitle: "El widget no está disponible",
+    unavailableBody: "La clave de integración no es válida o el sitio de la agencia no está publicado.",
+    poweredBy: (agency: string) => `Reserva segura con ${agency}`,
+    reviews: "Reseñas verificadas",
+  },
 };
 
 export type SiteText = typeof es;
@@ -344,7 +356,7 @@ const en: SiteText = {
     home: (name: string) => `${name}, home`,
     sections: "Site sections",
     mobileMenu: "Mobile menu",
-    links: { destinations: "Destinations", tours: "Tours", packages: "Packages", experiences: "Experiences", offers: "Deals", tailored: "Tailor-made trips", contact: "Contact" },
+    links: { destinations: "Destinations", tours: "Tours", packages: "Packages", experiences: "Experiences", transfers: "Transfers", offers: "Deals", tailored: "Tailor-made trips", contact: "Contact" },
     cart: "View cart",
     cartTitle: "Cart",
     account: "My account",
@@ -659,6 +671,18 @@ const en: SiteText = {
     updated: (date: string) => `Updated on ${date}`,
     generated: "Text based on the agency's current commercial policies.",
     links: { terminos: "Terms and conditions", privacidad: "Privacy", cookies: "Cookies", cancelacion: "Cancellations" },
+  },
+  widget: {
+    eyebrow: "Book online",
+    continue: "Continue booking",
+    continuing: "Preparing your booking…",
+    handoffNote: "You will complete your details and payment on the agency's site. The final total is recalculated at payment.",
+    catalogTitle: "Choose your experience",
+    catalogEmpty: "This agency has no products published for online booking.",
+    unavailableTitle: "The widget is not available",
+    unavailableBody: "The integration key is not valid or the agency's site is not published.",
+    poweredBy: (agency: string) => `Secure booking with ${agency}`,
+    reviews: "Verified reviews",
   },
 };
 

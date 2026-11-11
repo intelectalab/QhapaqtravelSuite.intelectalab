@@ -161,7 +161,7 @@ final class ManageApiAccess
         return $prefix.str_pad((string) ($last + 1), $pad, '0', STR_PAD_LEFT);
     }
 
-    private function assertSafeUrl(string $url): void
+    public function assertSafeUrl(string $url): void
     {
         $host = strtolower((string) parse_url($url, PHP_URL_HOST));
         $fail = fn (string $message) => throw ValidationException::withMessages(['url' => $message]);

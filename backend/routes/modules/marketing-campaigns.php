@@ -13,4 +13,6 @@ Route::middleware('permission:marketing.campaigns.manage')->group(function (): v
     Route::post('marketing/campaigns/{code}/schedule', [CampaignController::class, 'schedule'])->name('marketing.campaigns.schedule');
     Route::post('marketing/campaigns/{code}/unschedule', [CampaignController::class, 'unschedule'])->name('marketing.campaigns.unschedule');
     Route::post('marketing/campaigns/{code}/cancel', [CampaignController::class, 'cancel'])->name('marketing.campaigns.cancel');
+    Route::post('marketing/campaigns/{code}/send', [CampaignController::class, 'send'])->middleware(['idempotent', 'if-match:mkt_campaigns,code,code'])->name('marketing.campaigns.send');
+    Route::post('marketing/campaigns/{code}/duplicate', [CampaignController::class, 'duplicate'])->name('marketing.campaigns.duplicate');
 });

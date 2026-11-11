@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, CircleX, Hourglass, Landmark, Undo2 } from "lucide-react";
+import { CircleCheck, CircleX, Hourglass, Landmark, RotateCcw, Undo2 } from "lucide-react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
@@ -58,6 +58,16 @@ function ReasonStep({ row, step, label, title, description, submitLabel, icon, t
       <input type="hidden" name="lock_version" value={row.lock_version} />
       <SummaryBox rows={paymentSummary(row)} />
       <TextArea label="Motivo" name="reason" rows={4} required minLength={5} maxLength={500} />
+    </FinanceStep>
+  );
+}
+
+export function RetryPaymentAction({ code, lockVersion, retries, summary, trigger }: { code: string; lockVersion: number; retries: number; summary: { label: string; value: ReactNode; strong?: boolean }[]; trigger?: (open: () => void) => ReactNode }) {
+  return (
+    <FinanceStep step="payment_retry" itemKey={code} label="Reintentar validación" title="Reintentar validación" description="El pago vuelve a pendiente para validarlo otra vez, por ejemplo cuando el cliente reenvía la constancia." submitLabel="Volver a pendiente" trigger={trigger ?? ((open) => <RowIcon tone="neutral" label="Reintentar validación" icon={<RotateCcw size={15} />} onClick={open} />)}>
+      <input type="hidden" name="lock_version" value={lockVersion} />
+      <SummaryBox rows={[...summary, { label: "Intentos previos", value: retries }]} />
+      <TextArea label="Nota (opcional)" name="note" rows={3} maxLength={500} placeholder="Ejemplo: el cliente envió la constancia correcta" />
     </FinanceStep>
   );
 }
@@ -126,6 +136,7 @@ export function PaymentsTable({ data }: { data: PaymentsOverview }) {
           <RowActions>
             <RowIcon tone="view" label="Ver pago" href={`/finanzas/pagos/${row.code}`} />
             {can.validate && (validable ? <ConfirmPaymentAction row={row} /> : <RowIcon tone="edit" label="Validar" icon={<CircleCheck size={15} />} disabledHint="Solo se validan pagos pendientes" />)}
+            {can.validate && row.status === "rechazado" && <RetryPaymentAction code={row.code} lockVersion={row.lock_version} retries={row.retries} summary={paymentSummary(row)} />}
             {can.validate && row.status === "pendiente" && <ReasonStep row={row} step="payment_reject" label="Rechazar" title="Rechazar pago" description="La cuota se mantiene con su saldo y el pago queda como rechazado." submitLabel="Rechazar pago" icon={<CircleX size={15} />} tone="delete" />}
             {can.revert && (revertible ? <ReasonStep row={row} step="payment_revert" label="Revertir" title="Revertir pago" description="Se desaplica de la cuota y su saldo vuelve a quedar pendiente. Es definitivo." submitLabel="Revertir pago" icon={<Undo2 size={15} />} tone="delete" /> : row.status !== "pendiente" && <RowIcon tone="delete" label="Revertir" icon={<Undo2 size={15} />} disabledHint={`Un pago ${statusLabel(row.status).toLowerCase()} no se revierte`} />)}
           </RowActions>

@@ -34,6 +34,14 @@ final class PaymentController
         return response()->json(['data' => ['code' => $code]]);
     }
 
+    public function retry(Request $request, string $code, PaymentWorkflow $workflow): JsonResponse
+    {
+        $data = $request->validate(['note' => ['nullable', 'string', 'max:500'], 'lock_version' => ['nullable', 'integer']], ['note.*' => 'La nota admite hasta 500 caracteres.']);
+        $workflow->retry($code, isset($data['lock_version']) ? (int) $data['lock_version'] : null, $data['note'] ?? null, $this->actor($request));
+
+        return response()->json(['data' => ['code' => $code]]);
+    }
+
     public function revert(Request $request, string $code, PaymentWorkflow $workflow): JsonResponse
     {
         $workflow->revert($code, $this->reason($request), $this->actor($request));

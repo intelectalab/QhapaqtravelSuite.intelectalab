@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders\Modules;
 
+use App\Domain\Marketing\Support\AutomationDirectory;
 use App\Domain\Platform\Models\Tenant;
 use Database\Support\KitSeeds;
 use Database\Support\SeedsTenant;
@@ -81,6 +82,50 @@ final class MarketingSeeder
 
         foreach (KitSeeds::read('consents') as $seed) {
             $this->seedConsent($seed, $campaigns);
+        }
+
+        foreach (KitSeeds::read('automations') as $seed) {
+            $this->seedAutomation($seed, $templates);
+        }
+    }
+
+    private function seedAutomation(array $seed, array $templates): void
+    {
+        $id = $this->upsert('mkt_automations', ['code' => $seed['id']], [
+            'key' => $seed['key'],
+            'name' => $seed['name'],
+            'trigger_desc' => $seed['trigger'],
+            'delay_desc' => $seed['delay'],
+            'delay_minutes' => AutomationDirectory::DELAY_MINUTES[$seed['key']] ?? null,
+            'schedule_cron' => AutomationDirectory::SCHEDULES[$seed['key']] ?? null,
+            'channel' => $seed['channel'],
+            'template_id' => $templates[$seed['templateId']],
+            'purpose' => $seed['purpose'],
+            'status' => $seed['status'],
+            'sent_total' => $seed['stats']['sent'] ?? 0,
+            'suppressed_total' => $seed['stats']['suppressed'] ?? 0,
+            'conversions_total' => $seed['stats']['conv'] ?? 0,
+            'created_by' => $this->userId($seed['updatedBy'] ?? null),
+            'created_at' => $this->moment($seed['updatedAt'] ?? null) ?? now(),
+            'updated_at' => $this->moment($seed['updatedAt'] ?? null) ?? now(),
+        ]);
+
+        foreach ($seed['done'] ?? [] as $key) {
+            [$type, $subjectId] = $this->subject($key);
+            if ($subjectId === null || DB::table('mkt_automation_enrollments')->where(['automation_id' => $id, 'subject_type' => $type, 'subject_id' => $subjectId])->exists()) {
+                continue;
+            }
+            DB::table('mkt_automation_enrollments')->insert([
+                'id' => (string) Str::uuid7(),
+                'tenant_id' => $this->tenant->getKey(),
+                'automation_id' => $id,
+                'subject_type' => $type,
+                'subject_id' => $subjectId,
+                'ref_type' => $type,
+                'ref_id' => $subjectId,
+                'status' => 'enviado',
+                'processed_at' => $this->moment($seed['updatedAt'] ?? null) ?? now(),
+            ]);
         }
     }
 

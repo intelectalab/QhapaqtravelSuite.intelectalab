@@ -92,7 +92,7 @@ export function CallToAction({ days, title, description }: { days: number; title
           <div className="flex flex-wrap items-end justify-between gap-8">
             <div className="max-w-2xl">
               <Eyebrow inverted>Empieza esta semana</Eyebrow>
-              <h2 className="site-display mt-4 text-[30px] font-bold leading-[1.08] tracking-[-0.035em] sm:text-[42px]">{title ?? `Prueba Qhapaq ${days} días con tu propio equipo.`}</h2>
+              <h2 className="site-display mt-4 text-[30px] font-bold leading-[1.08] tracking-[-0.035em] sm:text-[42px]">{title ?? `Prueba KipuControl ${days} días con tu propio equipo.`}</h2>
               <p className="mt-4 text-[15.5px] leading-relaxed text-white/65 sm:text-[17px]">{description ?? "Te mostramos el sistema con un recorrido de tu operación real y dejamos tu espacio listo para empezar."}</p>
             </div>
             <div className="flex flex-wrap gap-3">

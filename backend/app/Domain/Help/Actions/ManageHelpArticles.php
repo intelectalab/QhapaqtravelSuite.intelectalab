@@ -67,7 +67,7 @@ final class ManageHelpArticles
             }
 
             $this->adapt($global, [...$values, 'status' => 'published'], $actor);
-            $this->audit->log(HelpArticleShape::ENTITY, $slug, 'adaptar', 'Versión de Qhapaq', $values['title'] ?? $global->title);
+            $this->audit->log(HelpArticleShape::ENTITY, $slug, 'adaptar', 'Versión de KipuControl', $values['title'] ?? $global->title);
         });
     }
 
@@ -113,15 +113,15 @@ final class ManageHelpArticles
             [$own, $global] = $this->lock($slug);
 
             if ($global === null) {
-                throw ApiException::conflict('HLP-BR-04', 'Es un artículo propio de la agencia: no tiene versión de Qhapaq. Si ya no sirve, archívalo.');
+                throw ApiException::conflict('HLP-BR-04', 'Es un artículo propio de la agencia: no tiene versión de KipuControl. Si ya no sirve, archívalo.');
             }
 
             if ($own === null) {
-                throw ApiException::conflict('HLP-BR-04', 'Este artículo ya muestra la versión de Qhapaq.');
+                throw ApiException::conflict('HLP-BR-04', 'Este artículo ya muestra la versión de KipuControl.');
             }
 
             DB::table('help_articles')->where('id', $own->id)->delete();
-            $this->audit->log(HelpArticleShape::ENTITY, $slug, 'restaurar_original', $own->title.($own->status === 'archived' ? ' (archivado)' : ''), 'Versión de Qhapaq');
+            $this->audit->log(HelpArticleShape::ENTITY, $slug, 'restaurar_original', $own->title.($own->status === 'archived' ? ' (archivado)' : ''), 'Versión de KipuControl');
         });
     }
 

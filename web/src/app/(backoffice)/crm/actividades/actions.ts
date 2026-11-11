@@ -24,17 +24,34 @@ async function send(path: string, body: Record<string, unknown>, method: "POST" 
   return { message: null, done: true };
 }
 
-export async function createActivity(_state: ActivityState, form: FormData): Promise<ActivityState> {
+const number = (form: FormData, key: string) => {
+  const raw = value(form, key);
+  return raw === undefined ? undefined : Number(raw);
+};
+
+const relation = (form: FormData) => {
   const related = value(form, "related");
-  const [relatedType, relatedCode] = related ? related.split(":") : [undefined, undefined];
-  return send("/crm/activities", {
-    type: value(form, "type"),
-    subject: value(form, "subject"),
-    description: value(form, "description"),
-    related_type: relatedType,
-    related_code: relatedCode,
-    due_at: value(form, "due_at"),
-  });
+  const [type, code] = related ? related.split(":") : [null, null];
+  return { related_type: type, related_code: code };
+};
+
+const activityBody = (form: FormData) => ({
+  type: value(form, "type"),
+  subject: value(form, "subject"),
+  description: value(form, "description"),
+  owner_id: value(form, "owner_id"),
+  due_at: value(form, "due_at"),
+});
+
+export async function createActivity(_state: ActivityState, form: FormData): Promise<ActivityState> {
+  const { related_type, related_code } = relation(form);
+  return send("/crm/activities", { ...activityBody(form), related_type: related_type ?? undefined, related_code: related_code ?? undefined });
+}
+
+export async function createConversationActivity(_state: ActivityState, form: FormData): Promise<ActivityState> {
+  const state = await send(`/inbox/conversations/${encodeURIComponent(value(form, "conversation") ?? "")}/activities`, activityBody(form));
+  if (state.done) revalidatePath("/inbox", "layout");
+  return state;
 }
 
 export async function completeActivity(_state: ActivityState, form: FormData): Promise<ActivityState> {
@@ -43,11 +60,15 @@ export async function completeActivity(_state: ActivityState, form: FormData): P
 }
 
 export async function rescheduleActivity(_state: ActivityState, form: FormData): Promise<ActivityState> {
-  return send(`/crm/activities/${encodeURIComponent(value(form, "code") ?? "")}/reschedule`, { due_at: value(form, "due_at") });
+  return send(`/crm/activities/${encodeURIComponent(value(form, "code") ?? "")}/reschedule`, { due_at: value(form, "due_at"), reason: value(form, "reason"), lock_version: number(form, "lock_version") });
 }
 
 export async function updateActivity(_state: ActivityState, form: FormData): Promise<ActivityState> {
-  return send(`/crm/activities/${encodeURIComponent(value(form, "code") ?? "")}`, { type: value(form, "type"), subject: value(form, "subject"), description: value(form, "description"), owner_id: value(form, "owner_id") }, "PATCH");
+  return send(`/crm/activities/${encodeURIComponent(value(form, "code") ?? "")}`, { ...activityBody(form), ...relation(form), lock_version: number(form, "lock_version") }, "PATCH");
+}
+
+export async function reassignActivity(_state: ActivityState, form: FormData): Promise<ActivityState> {
+  return send(`/crm/activities/${encodeURIComponent(value(form, "code") ?? "")}/reassign`, { owner_id: value(form, "owner_id"), note: value(form, "note"), lock_version: number(form, "lock_version") });
 }
 
 export async function deleteActivity(_state: ActivityState, form: FormData): Promise<ActivityState> {

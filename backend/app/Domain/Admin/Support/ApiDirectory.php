@@ -61,7 +61,8 @@ final class ApiDirectory
                 'created_at' => $row->created_at,
                 'last_token_at' => $row->updated_at,
             ]);
-        $calls = DB::connection('pgsql_platform')->table('usage_monthly')->where('tenant_id', $this->context->idOrFail())->where('metric', 'api_calls_month')->orderByDesc('month')->value('value');
+        $history = DB::connection('pgsql_platform')->table('usage_monthly')->where('tenant_id', $this->context->idOrFail())->where('metric', 'api_calls_month')->orderByDesc('month')->limit(6)->get(['month', 'value']);
+        $calls = $history->first()?->value;
 
         return [
             'keys' => $keys->values(),
@@ -88,6 +89,8 @@ final class ApiDirectory
                 'rate_per_min' => isset($limits['api_rate_per_min']) ? (int) $limits['api_rate_per_min'] : null,
             ],
             'calls_month' => (int) ($calls ?? 0),
+            'calls_history' => $history->reverse()->map(fn (object $row): array => ['month' => substr((string) $row->month, 0, 7), 'value' => (int) $row->value])->values(),
+            'api_version' => self::API_VERSION,
             'scopes' => collect(self::SCOPES)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
             'events' => collect(self::EVENTS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
             'history' => $this->audit->recent(['Clave de API', 'Webhook'], 8),

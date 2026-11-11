@@ -25,10 +25,10 @@ export default async function ConfiguracionPage({ searchParams }: PageProps<"/ad
       { group: "Agencia", id: "agencia", label: "Datos y contacto", icon: <Building2 size={15} /> },
       { group: "Agencia", id: "moneda", label: "Moneda e impuestos", icon: <Coins size={15} /> },
       { group: "Cómo vende", id: "politicas", label: "Políticas comerciales", icon: <ScrollText size={15} /> },
-      { group: "Cómo vende", id: "canales", label: "Canales", icon: <Radio size={15} />, count: data.kpis.channels_on },
+      { group: "Cómo vende", id: "canales", label: "Canales", icon: <Radio size={15} /> },
       { group: "Cómo opera", id: "operacion", label: "Parámetros operativos", icon: <Wrench size={15} /> },
-      { group: "Cómo opera", id: "series", label: "Series y correlativos", icon: <Hash size={15} />, count: data.sequences.length },
-      { group: "Control", id: "historial", label: "Historial de cambios", icon: <History size={15} />, count: data.kpis.changes_30d || undefined },
+      { group: "Cómo opera", id: "series", label: "Series y correlativos", icon: <Hash size={15} /> },
+      { group: "Control", id: "historial", label: "Historial de cambios", icon: <History size={15} /> },
     ],
     seccion,
   );
@@ -37,7 +37,7 @@ export default async function ConfiguracionPage({ searchParams }: PageProps<"/ad
     active === "series" ? (
       <Card>
         <TintCardTitle icon={Hash} title="Series y correlativos" aside={`${data.sequences.length} series`} />
-        <SequencesTable rows={data.sequences} manage={data.can_manage} />
+        <SequencesTable rows={data.sequences} manage={data.can_manage} types={data.sequence_types} />
       </Card>
     ) : active === "historial" ? (
       <AuditTrail entries={data.history} empty="Todavía no hay cambios de configuración." />
@@ -53,10 +53,10 @@ export default async function ConfiguracionPage({ searchParams }: PageProps<"/ad
         info={<InfoTip>Solo se guardan los campos que cambias y cada uno queda en la auditoría. Los cambios aplican a documentos nuevos; las cotizaciones, reservas y pagos ya emitidos conservan sus valores.</InfoTip>}
       />
       <KpiGrid>
-        <TintTile icon={Layers} tone="t1" label="Plan" value={data.agency.plan} note={`Subdominio ${data.agency.subdomain}`} />
-        <TintTile icon={Radio} tone="t4" label="Canales activos" value={`${data.kpis.channels_on} de ${data.kpis.channels_allowed}`} note="Incluidos en tu plan" />
-        <TintTile icon={Hash} tone="sun" label="Series de documentos" value={data.kpis.sequences} note="Correlativos que solo avanzan" />
-        <TintTile icon={History} tone="violet" label="Cambios en 30 días" value={data.kpis.changes_30d} note={data.kpis.updated_at ? `Último: ${formatDateTime(data.kpis.updated_at, false)}` : undefined} />
+        <TintTile icon={Layers} tone="t1" label="Plan" value={data.agency.plan} note={`Subdominio ${data.agency.subdomain}`} info={<p>Plan contratado de la suscripción de la agencia y subdominio de su sitio público. Se cambia en Suscripción y uso.</p>} />
+        <TintTile icon={Radio} tone="t4" label="Canales activos" value={`${data.kpis.channels_on} de ${data.kpis.channels_allowed}`} note="Incluidos en tu plan" info={<p>Canales de venta encendidos en la sección Canales, frente a los que permite el plan contratado.</p>} />
+        <TintTile icon={Hash} tone="sun" label="Series de documentos" value={data.kpis.sequences} note="Correlativos que solo avanzan" info={<p>Series de cotizaciones, reservas, comprobantes y demás documentos configuradas por sede. El número nunca retrocede ni se reutiliza.</p>} />
+        <TintTile icon={History} tone="violet" label="Cambios en 30 días" value={data.kpis.changes_30d} note={data.kpis.updated_at ? `Último: ${formatDateTime(data.kpis.updated_at, false)}` : undefined} info={<p>Cambios de configuración guardados en los últimos 30 días, tomados del historial de cambios auditado.</p>} />
       </KpiGrid>
       <SectionLayout nav={<SectionNav label="Secciones de configuración" groups={groups} active={active} testId="settings-sections" />}>{body}</SectionLayout>
     </>

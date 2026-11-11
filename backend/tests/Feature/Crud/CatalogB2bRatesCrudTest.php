@@ -3,7 +3,10 @@
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 
-beforeEach(fn () => Queue::fake());
+beforeEach(function () {
+    lockCatalogProducts();
+    Queue::fake();
+});
 
 function b2bRate(string $product, string $agency): ?object
 {

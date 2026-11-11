@@ -170,8 +170,9 @@ final class CheckoutRules
 
         return Validator::make([...$data, 'method' => $method], [
             'method' => ['required', 'in:'.implode(',', array_keys(CheckoutTerms::METHODS))],
-            'card_token' => ['nullable', 'regex:/^tok_(ok|51|14)_\d{4}$/'],
+            'card_token' => [$method === 'tarjeta' ? 'required' : 'nullable', 'regex:/^tok_(ok|51|14)_\d{4}$/'],
             'card_holder' => ['nullable', 'string', 'max:80'],
+            'session_id' => ['nullable', 'string', 'max:800'],
             'operation_ref' => [$method !== 'tarjeta' ? 'required' : 'nullable', 'string', 'min:4', 'max:40'],
         ], [
             'method.*' => 'Elige el medio de pago.',
@@ -185,7 +186,7 @@ final class CheckoutRules
         $method = (string) ($data['method'] ?? '');
         $values = Validator::make(['pay_mode' => 'total', ...$data], [
             'pay_mode' => ['required', 'in:'.implode(',', array_column($terms['modes'], 'value'))],
-            'method' => ['nullable', 'in:'.implode(',', array_keys(CheckoutTerms::METHODS))],
+            'method' => [($data['pay_mode'] ?? null) === CheckoutTerms::PAY_LATER ? 'prohibited' : 'nullable', 'in:'.implode(',', array_keys(CheckoutTerms::METHODS))],
             'card_token' => [$method === 'tarjeta' ? 'required' : 'nullable', 'regex:/^tok_(ok|51|14)_\d{4}$/'],
             'card_holder' => [$method === 'tarjeta' ? 'required' : 'nullable', 'string', 'min:3', 'max:80'],
             'operation_ref' => [$method !== '' && $method !== 'tarjeta' ? 'required' : 'nullable', 'string', 'min:4', 'max:40'],
@@ -194,6 +195,7 @@ final class CheckoutRules
             'marketing' => ['nullable', 'boolean'],
         ], [
             'pay_mode.*' => 'Elige cómo quieres pagar.',
+            'method.prohibited' => 'Con «pagar después» no se cobra ahora: elige el medio de pago cuando pagues la reserva.',
             'method.*' => 'Elige el medio de pago.',
             'card_token.*' => 'Revisa los datos de la tarjeta.',
             'card_holder.*' => 'Escribe el nombre que figura en la tarjeta.',

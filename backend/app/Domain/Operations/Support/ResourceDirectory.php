@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Operations\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Operations\Actions\ResourceCatalog;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -26,8 +28,10 @@ final class ResourceDirectory
         $upcoming = $assignments->filter(fn (array $row) => $row['date'] >= $today && $row['status'] !== 'completada' && $row['order_status'] !== 'cancelada');
         $count = fn (string $key, string $id) => $upcoming->filter(fn (array $row) => ($row[$key]['id'] ?? null) === $id)->sortBy(fn (array $row) => $row['date'].($row['time'] ?? ''))->values();
         $providers = DB::table('catalog_providers')->pluck('name', 'id');
+        $users = DB::table('iam_users')->whereNull('deleted_at')->where(fn ($query) => $query->whereNotNull('guide_id')->orWhereNotNull('driver_id'))->get(['id', 'name', 'email', 'status'])->keyBy('id');
+        $user = fn (?string $id): ?array => $id !== null && $users->has($id) ? ['id' => $id, 'name' => $users[$id]->name, 'email' => $users[$id]->email, 'status' => $users[$id]->status] : null;
 
-        $guides = DB::table('ops_guides')->whereNull('deleted_at')->orderBy('code')->get()->map(function (object $guide) use ($count, $providers): array {
+        $guides = DB::table('ops_guides')->whereNull('deleted_at')->orderBy('code')->get()->map(function (object $guide) use ($count, $providers, $user): array {
             $agenda = $count('guide', $guide->id);
 
             return [
@@ -41,12 +45,13 @@ final class ResourceDirectory
                 'phone' => $guide->phone,
                 'provider' => $guide->provider_id ? ($providers[$guide->provider_id] ?? null) : null,
                 'linked' => $guide->user_id !== null,
+                'user' => $user($guide->user_id),
                 'upcoming' => $agenda->count(),
                 'next' => $agenda->first(),
             ];
         })->values();
 
-        $drivers = DB::table('ops_drivers')->whereNull('deleted_at')->orderBy('code')->get()->map(function (object $driver) use ($count, $providers, $today, $limit): array {
+        $drivers = DB::table('ops_drivers')->whereNull('deleted_at')->orderBy('code')->get()->map(function (object $driver) use ($count, $providers, $today, $limit, $user): array {
             $agenda = $count('driver', $driver->id);
 
             return [
@@ -61,6 +66,7 @@ final class ResourceDirectory
                 'phone' => $driver->phone,
                 'provider' => $driver->provider_id ? ($providers[$driver->provider_id] ?? null) : null,
                 'linked' => $driver->user_id !== null,
+                'user' => $user($driver->user_id),
                 'upcoming' => $agenda->count(),
                 'next' => $agenda->first(),
             ];
@@ -94,10 +100,93 @@ final class ResourceDirectory
             'languages' => collect(self::LANGUAGES)->map(fn (string $label, string $code) => ['value' => $code, 'label' => $label])->values(),
             'carriers' => DB::table('catalog_providers')->whereNull('deleted_at')->where('type', 'Transporte')->orderBy('name')->get(['id', 'name']),
             'options' => $viewer->can('operations.assign') ? $this->options() : null,
+            'users' => $viewer->can('operations.assign') ? ['guide' => ResourceCatalog::linkableUsers('guide'), 'driver' => ResourceCatalog::linkableUsers('driver')] : null,
         ];
     }
 
-    public function assignments(array $where = []): Collection
+    public function availability(?string $from): array
+    {
+        $today = $this->common->today();
+        $start = CarbonImmutable::parse($from ?? $today);
+        $days = collect(range(0, 6))->map(fn (int $offset) => $start->addDays($offset)->toDateString())->all();
+        $occupations = $this->occupations($days[0], $days[6]);
+
+        $groups = [
+            ['kind' => 'guide', 'label' => 'Guías', 'rows' => DB::table('ops_guides')->whereNull('deleted_at')->orderBy('full_name')->get()->map(fn (object $row): array => $this->availabilityRow('guide', $row, $row->full_name, implode(' · ', $this->languages($row->languages)).' · '.$row->license_number, null, $days, $occupations))->values()],
+            ['kind' => 'driver', 'label' => 'Conductores', 'rows' => DB::table('ops_drivers')->whereNull('deleted_at')->orderBy('full_name')->get()->map(fn (object $row): array => $this->availabilityRow('driver', $row, $row->full_name, trim(($row->license_class ?? '').' '.$row->license_number), $row->license_expires_on, $days, $occupations))->values()],
+            ['kind' => 'vehicle', 'label' => 'Vehículos', 'rows' => DB::table('ops_vehicles')->whereNull('deleted_at')->orderBy('plate')->get()->map(fn (object $row): array => $this->availabilityRow('vehicle', $row, "{$row->plate} · {$row->vehicle_type}", "{$row->capacity} plazas", $row->soat_expires_on, $days, $occupations))->values()],
+        ];
+
+        return [
+            'today' => $today,
+            'from' => $days[0],
+            'previous' => $start->subDays(7)->toDateString(),
+            'next' => $start->addDays(7)->toDateString(),
+            'days' => $days,
+            'groups' => $groups,
+        ];
+    }
+
+    private function availabilityRow(string $kind, object $row, string $name, string $sub, ?string $document, array $days, Collection $occupations): array
+    {
+        $cells = array_map(function (string $day) use ($kind, $row, $document, $occupations): array {
+            $items = $occupations->filter(fn (array $item) => $item['kind'] === $kind && $item['resource_id'] === $row->id && $item['date'] === $day);
+            $items = $items->reject(fn (array $item) => $item['source'] === 'departure' && $items->contains(fn (array $other) => $other['source'] === 'order' && $other['time'] === $item['time']))->sortBy('time')->values();
+            $off = in_array($row->status, ['vacaciones', 'mantenimiento'], true);
+
+            return [
+                'date' => $day,
+                'state' => match (true) {
+                    $off => $row->status,
+                    $document !== null && $document < $day => 'documento_vencido',
+                    $items->isNotEmpty() => 'ocupado',
+                    $row->status === 'descanso' => 'descanso',
+                    default => 'libre',
+                },
+                'document' => $document === null ? null : ($document < $day ? 'vencido' : ($document === $day ? 'vence_hoy' : null)),
+                'items' => $off ? [] : $items->map(fn (array $item) => collect($item)->except(['kind', 'resource_id'])->all())->all(),
+            ];
+        }, $days);
+
+        return ['id' => $row->id, 'kind' => $kind, 'name' => $name, 'sub' => $sub, 'status' => $row->status, 'busy' => count(array_filter($cells, fn (array $cell) => $cell['items'] !== [])), 'days' => $cells];
+    }
+
+    private function occupations(string $from, string $to): Collection
+    {
+        $assignments = DB::table('ops_assignments as a')
+            ->join('ops_orders as o', 'o.id', '=', 'a.order_id')
+            ->whereNull('o.deleted_at')
+            ->where('o.status', '<>', 'cancelada')
+            ->whereBetween('a.service_date', [$from, $to])
+            ->get(['a.guide_id', 'a.driver_id', 'a.vehicle_id', 'a.service_date', 'a.service_time', 'a.service_label', 'a.status', 'o.code']);
+
+        $departures = DB::table('catalog_product_departures as d')
+            ->join('catalog_products as p', 'p.id', '=', 'd.product_id')
+            ->where('d.status', '<>', 'cancelada')
+            ->whereBetween('d.departure_date', [$from, $to])
+            ->where(fn ($query) => $query->whereNotNull('d.guide_id')->orWhereNotNull('d.vehicle_id'))
+            ->get(['d.guide_id', 'd.vehicle_id', 'd.departure_date', 'd.departure_time', 'd.ref', 'p.name']);
+
+        $items = collect();
+        foreach ($assignments as $row) {
+            foreach (['guide' => $row->guide_id, 'driver' => $row->driver_id, 'vehicle' => $row->vehicle_id] as $kind => $id) {
+                if ($id !== null) {
+                    $items->push(['kind' => $kind, 'resource_id' => $id, 'date' => $row->service_date, 'time' => OpsCommon::time($row->service_time), 'label' => $row->service_label, 'ref' => $row->code, 'source' => 'order', 'done' => $row->status === 'completada']);
+                }
+            }
+        }
+        foreach ($departures as $row) {
+            foreach (['guide' => $row->guide_id, 'vehicle' => $row->vehicle_id] as $kind => $id) {
+                if ($id !== null) {
+                    $items->push(['kind' => $kind, 'resource_id' => $id, 'date' => $row->departure_date, 'time' => OpsCommon::time($row->departure_time), 'label' => $row->name, 'ref' => $row->ref, 'source' => 'departure', 'done' => false]);
+                }
+            }
+        }
+
+        return $items;
+    }
+
+    public function assignments(array $where = [], ?array $between = null): Collection
     {
         $query = DB::table('ops_assignments as a')
             ->join('ops_orders as o', 'o.id', '=', 'a.order_id')
@@ -110,6 +199,10 @@ final class ResourceDirectory
 
         foreach ($where as $column => $value) {
             $query->where($column, $value);
+        }
+
+        if ($between !== null) {
+            $query->whereBetween('a.service_date', $between);
         }
 
         $rows = $query->orderBy('a.service_date')->orderBy('a.service_time')->get([

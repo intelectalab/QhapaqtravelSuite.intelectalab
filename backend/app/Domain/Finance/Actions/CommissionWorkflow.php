@@ -8,10 +8,12 @@ use App\Domain\Finance\Support\CommissionDirectory;
 use App\Domain\Finance\Support\FinanceHistory;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
+use App\Domain\Shared\Concurrency\IfMatch;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Sequences\SequenceService;
 use Brick\Math\RoundingMode;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final class CommissionWorkflow
@@ -21,49 +23,118 @@ final class CommissionWorkflow
     public function calculate(User $actor): int
     {
         return DB::transaction(function () use ($actor): int {
-            $rules = DB::table('fin_commission_rules')->where('active', true)->get(['id', 'condition', 'pct'])->keyBy('condition');
-            $reservations = $this->directory->eligibleReservations()
-                ->get(['b.id', 'b.code', 'b.channel', 'b.owner_id', 'b.currency', 'b.fx_rate', 'b.total_amount', 'c.segment_code', 'a.id as agency_id', 'a.commission_pct']);
+            $rules = $this->rules();
+            $reservations = $this->directory->eligibleReservations()->get(CommissionDirectory::RESERVATION_COLUMNS);
             $created = 0;
 
             foreach ($reservations as $reservation) {
-                $total = Decimal::money($reservation->total_amount);
-                $isAgency = $reservation->channel === 'B2B' && $reservation->agency_id !== null;
-                if (! $isAgency && $reservation->owner_id === null) {
+                $terms = $this->terms($reservation, $rules);
+                if ($terms === null) {
                     continue;
                 }
 
-                $corporate = in_array($reservation->channel, ['Corporativo', 'Grupos'], true) || $reservation->segment_code === 'Corporativo';
-                $rule = $rules->get($isAgency ? 'b2b_convenio' : ($corporate ? 'corporativo_grupos' : 'directo_ecommerce'));
-                $pct = Decimal::of($isAgency ? $reservation->commission_pct : ($rule->pct ?? ($corporate ? '2.5' : '3')))->strippedOfTrailingZeros();
-                $base = $isAgency || $reservation->currency === 'USD' ? $total : Decimal::withoutIgv($total);
-                $description = $isAgency ? "Convenio B2B: {$pct} % sobre el total de la reserva" : ($corporate ? 'Vendedor corporativo o grupos' : 'Vendedor venta directa').": {$pct} % sobre ".($reservation->currency === 'USD' ? 'el total (exportación, sin IGV)' : 'la venta neta sin IGV');
                 $code = $this->sequences->next('commission');
-
                 $id = (string) DB::table('fin_commissions')->insertGetId([
                     'code' => $code,
                     'reservation_id' => $reservation->id,
-                    'kind' => $isAgency ? 'agencia_b2b' : 'vendedor',
-                    'beneficiary_user_id' => $isAgency ? null : $reservation->owner_id,
-                    'beneficiary_agency_id' => $isAgency ? $reservation->agency_id : null,
-                    'rule_id' => $rule->id ?? null,
-                    'rule_description' => $description,
-                    'base_amount' => (string) $base,
-                    'pct' => (string) $pct,
-                    'amount' => (string) $base->multipliedBy($pct)->dividedBy(100, 2, RoundingMode::HALF_UP),
+                    'kind' => $terms['kind'],
+                    'beneficiary_user_id' => $terms['user'],
+                    'beneficiary_agency_id' => $terms['agency'],
+                    'rule_id' => $terms['rule_id'],
+                    'rule_description' => $terms['description'],
+                    'base_amount' => $terms['base'],
+                    'pct' => $terms['pct'],
+                    'amount' => $terms['amount'],
                     'currency' => $reservation->currency,
                     'fx_rate' => $reservation->currency === 'USD' ? $reservation->fx_rate : null,
                     'status' => 'calculada',
                     'created_by' => $actor->getKey(),
                     'updated_by' => $actor->getKey(),
                 ], 'id');
-                FinanceHistory::record('commission', $id, 'calculada', $description, $actor);
-                $this->audit->log('Comisión', $code, 'calcular', null, "{$reservation->code} · {$pct} %");
+                FinanceHistory::record('commission', $id, 'calculada', $terms['description'], $actor);
+                $this->audit->log('Comisión', $code, 'calcular', null, "{$reservation->code} · {$terms['pct']} %");
                 $created++;
             }
 
             return $created;
         });
+    }
+
+    public function recalculate(string $code, ?int $lockVersion, User $actor): array
+    {
+        $result = [];
+        DB::transaction(function () use ($code, $lockVersion, $actor, &$result): void {
+            $commission = $this->open($code);
+
+            if ($lockVersion !== null) {
+                IfMatch::assertMatches($lockVersion, (int) $commission->lock_version, 'La comisión');
+            }
+
+            if ($commission->status === 'pagada') {
+                throw ApiException::conflict('FIN-BR-29', 'La comisión ya está pagada: registra un ajuste en el siguiente periodo.');
+            }
+
+            if ($commission->reservation_id === null) {
+                throw ApiException::unprocessable('FIN-BR-29', 'Los bonos por meta se recalculan desde la meta de ventas.');
+            }
+
+            $reservation = $this->directory->reservations()->where('b.id', $commission->reservation_id)->first(CommissionDirectory::RESERVATION_COLUMNS);
+            $terms = $reservation ? $this->terms($reservation, $this->rules()) : null;
+
+            if ($reservation === null || $terms === null) {
+                throw ApiException::unprocessable('FIN-BR-29', 'La reserva ya no tiene asesor ni agencia con convenio: anula la comisión en lugar de recalcularla.');
+            }
+
+            $status = $commission->status === 'aprobada' ? 'calculada' : $commission->status;
+            DB::table('fin_commissions')->where('id', $commission->id)->update([
+                'kind' => $terms['kind'], 'beneficiary_user_id' => $terms['user'], 'beneficiary_agency_id' => $terms['agency'], 'rule_id' => $terms['rule_id'], 'rule_description' => $terms['description'],
+                'base_amount' => $terms['base'], 'pct' => $terms['pct'], 'amount' => $terms['amount'], 'fx_rate' => $reservation->currency === 'USD' ? $reservation->fx_rate : null,
+                'status' => $status, 'approved_at' => $status === 'calculada' ? null : $commission->approved_at, 'approved_by' => $status === 'calculada' ? null : $commission->approved_by,
+                'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now(),
+            ]);
+            FinanceHistory::record('commission', $commission->id, $status, "Recalculada: {$terms['description']}", $actor);
+            $this->audit->log('Comisión', $commission->code, 'recalcular', "{$commission->pct} % · {$commission->amount}", "{$terms['pct']} % · {$terms['amount']}".($commission->status === 'aprobada' ? ' · vuelve a revisión' : ''));
+
+            $result = ['code' => (string) $commission->code, 'before' => (string) $commission->amount, 'after' => (string) $terms['amount'], 'status' => (string) $status];
+        });
+
+        return $result;
+    }
+
+    private function rules(): Collection
+    {
+        $today = now()->toDateString();
+
+        return DB::table('fin_commission_rules')->where('active', true)->where('valid_from', '<=', $today)
+            ->where(fn ($query) => $query->whereNull('valid_to')->orWhere('valid_to', '>=', $today))
+            ->orderBy('valid_from')->get(['id', 'condition', 'pct', 'base_type'])->keyBy('condition');
+    }
+
+    private function terms(object $reservation, Collection $rules): ?array
+    {
+        $total = Decimal::money($reservation->total_amount);
+        $isAgency = $reservation->channel === 'B2B' && $reservation->agency_id !== null;
+        if (! $isAgency && $reservation->owner_id === null) {
+            return null;
+        }
+
+        $corporate = in_array($reservation->channel, ['Corporativo', 'Grupos'], true) || $reservation->segment_code === 'Corporativo';
+        $rule = $rules->get($isAgency ? 'b2b_convenio' : ($corporate ? 'corporativo_grupos' : 'directo_ecommerce'));
+        $pct = Decimal::of($isAgency ? $reservation->commission_pct : ($rule->pct ?? ($corporate ? '2.5' : '3')))->strippedOfTrailingZeros();
+        $onTotal = $isAgency || $reservation->currency === 'USD' || ($rule->base_type ?? null) === 'total';
+        $base = $onTotal ? $total : Decimal::withoutIgv($total);
+        $description = $isAgency ? "Convenio B2B: {$pct} % sobre el total de la reserva" : ($corporate ? 'Vendedor corporativo o grupos' : 'Vendedor venta directa').": {$pct} % sobre ".($reservation->currency === 'USD' ? 'el total (exportación, sin IGV)' : ($onTotal ? 'el total de la reserva' : 'la venta neta sin IGV'));
+
+        return [
+            'kind' => $isAgency ? 'agencia_b2b' : 'vendedor',
+            'user' => $isAgency ? null : $reservation->owner_id,
+            'agency' => $isAgency ? $reservation->agency_id : null,
+            'rule_id' => $rule->id ?? null,
+            'description' => $description,
+            'base' => (string) $base,
+            'pct' => (string) $pct,
+            'amount' => (string) $base->multipliedBy($pct)->dividedBy(100, 2, RoundingMode::HALF_UP),
+        ];
     }
 
     public function approve(string $code, User $actor): void

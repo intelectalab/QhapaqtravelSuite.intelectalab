@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\DB;
 
+beforeEach(fn () => lockTreasury());
+
 function finPagLock(string $code): int
 {
     return (int) rowOf('fin_payments', $code)->lock_version;

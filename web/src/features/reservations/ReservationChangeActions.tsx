@@ -211,7 +211,7 @@ function RescheduleFields({ code }: { code: string }) {
   );
 }
 
-export function ReservationRescheduleAction({ code }: { code: string }) {
+export function ReservationRescheduleAction({ code, labeled = false }: { code: string; labeled?: boolean }) {
   const router = useRouter();
   return (
     <PanelAction<ReservationState>
@@ -224,7 +224,15 @@ export function ReservationRescheduleAction({ code }: { code: string }) {
       action={reservationStep}
       initial={initial}
       onDone={() => router.refresh()}
-      trigger={(open) => <Button iconOnly icon={<CalendarClock size={16} />} label="Reprogramar" onClick={open} className="transition-transform duration-300 hover:-translate-y-0.5" />}
+      trigger={(open) =>
+        labeled ? (
+          <Button size="sm" variant="primary" icon={<CalendarClock size={15} />} onClick={open} data-testid="confirm-reschedule">
+            Reprogramar
+          </Button>
+        ) : (
+          <Button iconOnly icon={<CalendarClock size={16} />} label="Reprogramar" onClick={open} className="transition-transform duration-300 hover:-translate-y-0.5" />
+        )
+      }
     >
       {() => (
         <>

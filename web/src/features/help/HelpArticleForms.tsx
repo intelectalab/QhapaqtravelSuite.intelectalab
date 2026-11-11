@@ -87,14 +87,14 @@ export function HelpCreateAction({ actions, options, audiences = false }: { acti
 
 export function HelpEditAction({ article, actions, defaultOpen = false }: { article: HelpArticle; actions: HelpActionSet; defaultOpen?: boolean }) {
   const router = useRouter();
-  const adapting = article.origin === "qhapaq" && !!actions.original;
+  const adapting = article.origin === "kipucontrol" && !!actions.original;
   return (
     <PanelAction<StepResult>
       label="Editar"
       icon={<Pencil size={15} />}
       formId={`help-edit-${article.slug}`}
       title={`Editar «${article.title}»`}
-      description={adapting ? "Tus cambios crean la versión de tu agencia. La de Qhapaq queda guardada y puedes volver a ella cuando quieras." : "Los cambios se ven al instante en el botón de ayuda y en el centro de ayuda."}
+      description={adapting ? "Tus cambios crean la versión de tu agencia. La de KipuControl queda guardada y puedes volver a ella cuando quieras." : "Los cambios se ven al instante en el botón de ayuda y en el centro de ayuda."}
       submitLabel="Guardar cambios"
       action={actions.save}
       initial={STEP_INITIAL}
@@ -134,13 +134,13 @@ export function HelpStatusActions({ article, actions, platform = false }: { arti
           label="Archivar"
           icon={<Archive size={15} />}
           title="Archivar artículo"
-          description={platform ? `«${article.title}» deja de mostrarse a todas las agencias que usan la versión de Qhapaq. Las que tienen su propia versión la conservan.` : `«${article.title}» deja de mostrarse a tu equipo. Puedes reactivarlo cuando quieras.`}
+          description={platform ? `«${article.title}» deja de mostrarse a todas las agencias que usan la versión de KipuControl. Las que tienen su propia versión la conservan.` : `«${article.title}» deja de mostrarse a tu equipo. Puedes reactivarlo cuando quieras.`}
           submitLabel="Archivar"
           testId="help-archive"
         />
       )}
       {actions.original && article.origin === "adaptado" && (
-        <ConfirmAction article={article} action={actions.original} label="Volver a la versión de Qhapaq" icon={<RotateCcw size={15} />} title="Volver a la versión de Qhapaq" description="Se descarta la versión de tu agencia y el artículo vuelve a mostrar el contenido original. El cambio queda en el historial." submitLabel="Volver a la original" testId="help-original" />
+        <ConfirmAction article={article} action={actions.original} label="Volver a la versión de KipuControl" icon={<RotateCcw size={15} />} title="Volver a la versión de KipuControl" description="Se descarta la versión de tu agencia y el artículo vuelve a mostrar el contenido original. El cambio queda en el historial." submitLabel="Volver a la original" testId="help-original" />
       )}
     </>
   );

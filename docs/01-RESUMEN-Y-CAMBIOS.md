@@ -1,4 +1,4 @@
-# Qhapaq Travel Suite — Resumen para desarrollo y registro de cambios
+# KipuControl — Resumen para desarrollo y registro de cambios
 
 Versión del paquete: **2.4 (01/10/2026)**. Este documento explica al área de programación qué contiene el prototipo, qué cambió respecto a la documentación inicial (DOC-PROC-001 v1.0 y Especificación PRD de Productos Turísticos) y dónde está el detalle de cada módulo.
 

@@ -1,12 +1,12 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Qhapaq Travel Suite API",
+    "title": "KipuControl API",
     "version": "1.0.0",
     "summary": "Contrato REST del SaaS multi-tenant para agencias de viajes y operadores turísticos.",
     "description": "Contrato generado por `kit-ia/api/build_openapi.py` a partir de la §6 (API REST) y la §3 (modelo de datos) de las 19 especificaciones (v2.2). No editar a mano: corregir la spec o las reglas del script.\n\nConvenciones (CONVENCIONES.md §3): prefijo `/api/v1`; listados con `filter[...]`, `sort`, `include`, `page[size]`, `page[cursor]`; montos como string decimal + `currency`; errores 422 con `errors` y 409/422 con `code` de regla; `Idempotency-Key` en operaciones críticas (TTL 24 h); `If-Match` con `lock_version` en recursos con concurrencia optimista (conflicto → 409).\n\nExtensiones: `x-permission` (permiso requerido, texto normalizado de la spec), `x-permissions` (códigos), `x-spec` (archivo y sección de origen), `x-spec-also` (otras specs que declaran el mismo endpoint), `x-phase` (0–3), `x-resource` (tabla §3), `x-idempotency`, `x-api-key-scope`.",
     "contact": {
-      "name": "Equipo interno Qhapaq Travel Suite"
+      "name": "Equipo interno KipuControl"
     },
     "license": {
       "name": "Propietario — uso interno",
@@ -19,7 +19,7 @@
       "description": "Local (Laravel `php artisan serve` / Sail). Tenant por host o token."
     },
     {
-      "url": "https://api.staging.qhapaq.cloud",
+      "url": "https://api.staging.kipucontrol.com",
       "description": "Staging (supuesto de dominio; tenant resuelto desde token/API key/host)."
     }
   ],
@@ -62197,7 +62197,7 @@
             "$ref": "#/components/responses/TooManyRequests"
           }
         },
-        "x-permission": "público | X-Qhapaq-Key + Origin verificado",
+        "x-permission": "público | X-KipuControl-Key + Origin verificado",
         "x-spec": "15-sitio-web-publico.md §6.1 Catálogo y contenido (GET, cache)",
         "x-spec-also": [
           "17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6"
@@ -62257,7 +62257,7 @@
             "$ref": "#/components/responses/TooManyRequests"
           }
         },
-        "x-permission": "público | X-Qhapaq-Key + Origin verificado",
+        "x-permission": "público | X-KipuControl-Key + Origin verificado",
         "x-spec": "15-sitio-web-publico.md §6.1 Catálogo y contenido (GET, cache)",
         "x-spec-also": [
           "17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6"
@@ -62648,7 +62648,7 @@
             "$ref": "#/components/responses/TooManyRequests"
           }
         },
-        "x-permission": "público | X-Qhapaq-Key + Origin verificado",
+        "x-permission": "público | X-KipuControl-Key + Origin verificado",
         "x-spec": "15-sitio-web-publico.md §6.1 Catálogo y contenido (GET, cache)",
         "x-spec-also": [
           "15-sitio-web-publico.md §6.7 v2.2 — Reseñas públicas",
@@ -63006,7 +63006,7 @@
             "$ref": "#/components/responses/TooManyRequests"
           }
         },
-        "x-permission": "público | X-Qhapaq-Key + Origin verificado",
+        "x-permission": "público | X-KipuControl-Key + Origin verificado",
         "x-spec": "15-sitio-web-publico.md §6.2 Precio, disponibilidad, carrito",
         "x-spec-also": [
           "17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6"
@@ -65708,7 +65708,7 @@
             "$ref": "#/components/responses/TooManyRequests"
           }
         },
-        "x-permission": "público | pública | X-Qhapaq-Key + Origin verificado",
+        "x-permission": "público | pública | X-KipuControl-Key + Origin verificado",
         "x-spec": "15-sitio-web-publico.md §6.6 v2.1 — Motor de reservas público",
         "x-spec-also": [
           "16-motor-de-reservas-y-reglas.md §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key* del tenant + rate limit Redis",
@@ -65771,7 +65771,7 @@
             "$ref": "#/components/responses/TooManyRequests"
           }
         },
-        "x-permission": "público | pública | X-Qhapaq-Key + Origin verificado",
+        "x-permission": "público | pública | X-KipuControl-Key + Origin verificado",
         "x-spec": "15-sitio-web-publico.md §6.6 v2.1 — Motor de reservas público",
         "x-spec-also": [
           "16-motor-de-reservas-y-reglas.md §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key* del tenant + rate limit Redis",
@@ -71462,7 +71462,7 @@
             "$ref": "#/components/responses/TooManyRequests"
           }
         },
-        "x-permission": "X-Qhapaq-Key + Origin verificado",
+        "x-permission": "X-KipuControl-Key + Origin verificado",
         "x-spec": "17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6",
         "x-phase": 2,
         "x-idempotency": {
@@ -72482,7 +72482,7 @@
       "widgetKey": {
         "type": "apiKey",
         "in": "header",
-        "name": "X-Qhapaq-Key",
+        "name": "X-KipuControl-Key",
         "description": "Clave pública (publishable key) del widget/sitio del tenant para `/api/v1/public/*`. Se valida junto con el `Origin` (dominios verificados) y rate limit Redis. Rotación: `POST /api/v1/channels/widget/rotate-key`."
       },
       "cartToken": {

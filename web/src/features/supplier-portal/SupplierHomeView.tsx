@@ -1,4 +1,4 @@
-import { BellRing, CalendarCheck2, ClipboardList, FileSignature, Hourglass, Wallet } from "lucide-react";
+import { BellRing, CalendarCheck2, ClipboardList, Hourglass, Siren, Wallet } from "lucide-react";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { TintTile } from "@/components/ui/Tinted";
@@ -22,10 +22,10 @@ export function SupplierHomeView({ home, session }: { home: SupplierHome; sessio
       </div>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TintTile icon={ClipboardList} tone={kpis.overdue ? "bad" : kpis.pending ? "warn" : "ok"} label="Solicitudes por responder" value={kpis.pending} note={kpis.overdue ? `${kpis.overdue} fuera de plazo · responda en 24 h` : "Responda en máximo 24 h"} />
-        <TintTile icon={CalendarCheck2} tone="t1" label="Servicios próximos 7 días" value={kpis.upcoming} note={`${kpis.upcoming_pax} pasajeros`} />
-        <TintTile icon={Wallet} tone="t3" label="Por cobrar a la agencia" value={<MoneyLines values={kpis.receivable} empty="Sin saldo" />} note="Saldo por moneda, sin conversión" />
-        <TintTile icon={FileSignature} tone={kpis.contract_days < 0 ? "bad" : kpis.contract_days < 60 ? "warn" : "violet"} label="Contrato" value={kpis.contract_days < 0 ? "Vencido" : `${kpis.contract_days} días`} note={kpis.contract_days < 0 ? "Renueve para recibir solicitudes" : "Para el vencimiento"} />
+        <TintTile icon={ClipboardList} tone={kpis.overdue ? "bad" : kpis.pending ? "warn" : "ok"} label="Solicitudes por responder" value={kpis.pending} note={kpis.overdue ? `${kpis.overdue} fuera de plazo · responda en 24 h` : kpis.alternatives ? `${kpis.alternatives} con alternativa en revisión` : "Responda en máximo 24 h"} info="Servicios que la agencia le solicitó y aún esperan su confirmación o rechazo. Las que tienen una alternativa suya en revisión se cuentan aparte en la nota." />
+        <TintTile icon={CalendarCheck2} tone="t1" label="Servicios próximos 7 días" value={kpis.upcoming} note={`${kpis.upcoming_pax} pasajeros`} info="Servicios confirmados o en curso con fecha entre hoy y los próximos 7 días." />
+        <TintTile icon={Wallet} tone="t3" label="Por cobrar a la agencia" value={<MoneyLines values={kpis.receivable} empty="Sin saldo" />} note="Saldo por moneda, sin conversión" info="Saldo pendiente de las cuentas por pagar que la agencia registró a su nombre." />
+        <TintTile icon={Siren} tone={kpis.open_incidents ? "bad" : "ok"} label="Incidencias abiertas" value={kpis.open_incidents} note={kpis.open_incidents ? "Requieren seguimiento" : "Sin pendientes"} info="Incidencias abiertas o en proceso vinculadas a sus servicios o reportadas por su empresa." />
       </section>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">

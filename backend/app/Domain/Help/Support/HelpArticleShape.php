@@ -14,7 +14,7 @@ final class HelpArticleShape
 
     public const AUDIENCES = ['agency' => 'Agencias', 'platform' => 'Consola de plataforma'];
 
-    public const ORIGINS = ['qhapaq' => 'Versión de Qhapaq', 'adaptado' => 'Adaptado por la agencia', 'propio' => 'Propio de la agencia'];
+    public const ORIGINS = ['kipucontrol' => 'Versión de KipuControl', 'adaptado' => 'Adaptado por la agencia', 'propio' => 'Propio de la agencia'];
 
     public const CONTENT = ['module', 'screen', 'title', 'summary', 'steps', 'faqs', 'keywords', 'roles', 'sort_order'];
 

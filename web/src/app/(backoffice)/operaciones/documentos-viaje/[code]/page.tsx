@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { SOFT_TINT, TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
+import { AttentionAction, ContactAction, RequestDocsAction } from "@/features/operations/TravelDocActions";
 import { DocumentActions } from "@/features/operations/TravelDocs";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -27,6 +28,7 @@ export default async function DocumentosReservaPage({ params }: PageProps<"/oper
   const documents = data.passengers.flatMap((passenger) => passenger.documents);
   const complete = documents.filter((document) => document.status === "completo").length;
   const contacts = data.passengers.filter((passenger) => passenger.contact).length;
+  const passengerTarget = (id: string) => `${encodeURIComponent(data.code)}/travel-docs/${id}`;
   const attention = data.passengers.filter((passenger) => passenger.attention?.flag).length;
 
   return (
@@ -50,13 +52,14 @@ export default async function DocumentosReservaPage({ params }: PageProps<"/oper
             <Link href={`/reservas/${data.code}`} className="hover:text-accent hover:underline">{data.code}</Link> · {data.client} · {formatDate(data.travel_from).replace(/ \d{4}$/, "")} al {formatDate(data.travel_to)}
           </>
         }
+        actions={data.can.request ? <RequestDocsAction data={data} /> : undefined}
       />
 
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <TintTile icon={ShieldCheck} tone="ok" label="Documentos completos" value={`${complete} de ${documents.length}`} />
-        <TintTile icon={Users} tone="t1" label="Pasajeros" value={data.passengers.length} />
-        <TintTile icon={Phone} tone="t4" label="Contactos de emergencia" value={`${contacts} de ${data.passengers.length}`} />
-        <TintTile icon={HeartPulse} tone="violet" label="Atención especial" value={attention} note="Indicaciones operativas" />
+        <TintTile icon={ShieldCheck} tone="ok" label="Documentos completos" value={`${complete} de ${documents.length}`} info="Documentos que aplican a los pasajeros de la reserva y Operaciones ya validó. Los que no aplican por nacionalidad, edad o programa no se cuentan." />
+        <TintTile icon={Users} tone="t1" label="Pasajeros" value={data.passengers.length} note={`${data.passengers.filter((passenger) => passenger.foreign).length} extranjeros`} info="Pasajeros registrados en la reserva. La nota cuenta a los extranjeros, que necesitan pasaporte con vigencia extendida y registro migratorio." />
+        <TintTile icon={Phone} tone="t4" label="Contactos de emergencia" value={`${contacts} de ${data.passengers.length}`} info="Pasajeros con contacto de emergencia (nombre y teléfono). Es obligatorio para todos (DOC-BR-008)." />
+        <TintTile icon={HeartPulse} tone="violet" label="Atención especial" value={attention} note="Indicaciones operativas" info="Pasajeros marcados con atención especial en la operación. Solo guarda la indicación operativa, sin datos clínicos." />
       </section>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
@@ -83,10 +86,18 @@ export default async function DocumentosReservaPage({ params }: PageProps<"/oper
                       {(document.observation || document.note) && <span className="mt-0.5 block text-xs text-fg-2">{document.observation ?? document.note}</span>}
                     </span>
                     <StatusBadge status={document.status} />
-                    {data.can.manage && <DocumentActions document={document} passenger={passenger.name} target={`${encodeURIComponent(data.code)}/travel-docs/${passenger.id}/${document.type}`} />}
+                    {data.can.manage && <DocumentActions document={document} passenger={passenger.name} target={`${passengerTarget(passenger.id)}/${document.type}`} fileHref={`/operaciones/documentos-viaje/${encodeURIComponent(data.code)}/archivo/${passenger.id}/${document.type}`} />}
                   </li>
                 ))}
               </ul>
+              {passenger.not_applicable.length > 0 && <p className="mt-2 text-xs text-fg-3">No aplica: {passenger.not_applicable.join(" · ")}</p>}
+              {data.can.manage && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <ContactAction passenger={passenger} relations={data.relations} target={passengerTarget(passenger.id)} />
+                  <AttentionAction passenger={passenger} target={passengerTarget(passenger.id)} />
+                </div>
+              )}
+              {!passenger.contact && <p className="mt-3 text-[12.5px] font-medium text-warn">Falta el contacto de emergencia.</p>}
               {(passenger.contact || passenger.attention?.note) && (
                 <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-fg-2">
                   {passenger.contact && (
@@ -119,6 +130,7 @@ export default async function DocumentosReservaPage({ params }: PageProps<"/oper
                   <span className="absolute -left-[27px] top-1 h-3 w-3 rounded-full bg-[var(--tint)] ring-4 ring-surface" />
                   <p className="text-[13.5px]">
                     {reminder.trigger === "auto" ? `Recordatorio automático${reminder.days_before ? ` a ${reminder.days_before} días` : ""}` : "Solicitud manual"} por {reminder.channel}
+                    {reminder.items > 0 && <span className="text-fg-3"> · {reminder.items === 1 ? "1 documento" : `${reminder.items} documentos`}</span>}
                   </p>
                   <p className="text-xs text-fg-3">
                     {reminder.to} · {reminder.by ?? "Sistema"} · {formatDateTime(reminder.at, false)}

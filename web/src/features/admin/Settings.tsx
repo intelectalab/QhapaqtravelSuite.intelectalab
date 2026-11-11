@@ -1,9 +1,9 @@
 "use client";
 
-import { Building2, CalendarClock, Coins, Hash, Mail, MapPin, Pencil, Phone, Radio, ScrollText, Settings2, Timer, Wrench } from "lucide-react";
+import { Building2, CalendarClock, Coins, Hash, Mail, MapPin, Pencil, Phone, Plus, Radio, ScrollText, Settings2, Timer, Wrench } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
-import { updateSequence, updateSettings } from "@/app/(backoffice)/admin/configuracion/actions";
+import { createSequence, updateSequence, updateSettings } from "@/app/(backoffice)/admin/configuracion/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column } from "@/components/table/types";
@@ -13,6 +13,7 @@ import { FieldList } from "@/components/ui/Details";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
+import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { TintCardTitle } from "@/components/ui/Tinted";
@@ -348,7 +349,33 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
   );
 }
 
-export function SequencesTable({ rows, manage }: { rows: SettingsSequence[]; manage: boolean }) {
+function SequenceFields({ types }: { types: SettingsOverview["sequence_types"] }) {
+  const [type, setType] = useState(types[0]?.value ?? "");
+  const chosen = types.find((option) => option.value === type);
+  const [yearly, setYearly] = useState(chosen?.year_reset ?? false);
+  return (
+    <>
+      <SelectField label="Documento" name="doc_type" options={types.map((option) => ({ value: option.value, label: option.label }))} value={type} onChange={(value) => { setType(value); setYearly(types.find((option) => option.value === value)?.year_reset ?? false); }} />
+      <div className="grid grid-cols-[1fr_120px] gap-3">
+        <TextField label="Prefijo" name="prefix" required maxLength={30} placeholder="Ej.: OC-" hint="Mayúsculas, números y guiones." icon={<Settings2 size={17} />} />
+        <TextField key={type} label="Dígitos" name="pad_width" type="number" min={3} max={10} defaultValue={String(chosen?.pad ?? 5)} />
+      </div>
+      <TextField label="Primer número" name="next_number" type="number" min={1} defaultValue="1" hint="Si migras desde otro sistema, empieza en el siguiente al último que emitiste." />
+      <SwitchField label="Reiniciar cada año" name="year_reset" checked={yearly} onCheckedChange={setYearly} hint="El correlativo vuelve a 1 el 1 de enero." />
+    </>
+  );
+}
+
+export function SequenceCreateAction({ types }: { types: SettingsOverview["sequence_types"] }) {
+  if (types.length === 0) return null;
+  return (
+    <PanelAction<AdminActionState> label="Nueva serie" icon={<Plus size={15} />} variant="primary" size="sm" formId="sequence-create" title="Nueva serie" description="Para documentos internos que aún no tienen correlativo. Las series de comprobantes electrónicos se crean en Facturación." submitLabel="Crear serie" action={createSequence} initial={ADMIN_INITIAL}>
+      {() => <SequenceFields types={types} />}
+    </PanelAction>
+  );
+}
+
+export function SequencesTable({ rows, manage, types = [] }: { rows: SettingsSequence[]; manage: boolean; types?: SettingsOverview["sequence_types"] }) {
   const columns: Column<SettingsSequence>[] = [
     { id: "doc", header: "Documento", mobile: "title", cell: (row) => <div><b className="text-[13.5px] font-semibold">{row.label}</b>{row.series !== "default" && <div className="text-[12px] text-fg-3">Serie {row.series}</div>}</div> },
     { id: "prefix", header: "Prefijo", cell: (row) => <span className="font-mono text-[13px]">{row.prefix}</span> },
@@ -388,5 +415,5 @@ export function SequencesTable({ rows, manage }: { rows: SettingsSequence[]; man
         ) : null,
     },
   ];
-  return <DataTable screen="admin-series" rows={rows} columns={columns} getKey={(row) => `${row.doc_type}:${row.series}`} entityLabel="series" searchText={(row) => `${row.label} ${row.prefix}`} searchPlaceholder="Buscar documento o prefijo" />;
+  return <DataTable screen="admin-series" rows={rows} columns={columns} getKey={(row) => `${row.doc_type}:${row.series}`} entityLabel="series" searchText={(row) => `${row.label} ${row.prefix}`} searchPlaceholder="Buscar documento o prefijo" toolbarEnd={manage ? <SequenceCreateAction types={types} /> : undefined} />;
 }

@@ -58,13 +58,35 @@ final class PayableController
     public function update(Request $request, string $code, PayableWorkflow $workflow): JsonResponse
     {
         $data = $request->validate([
+            'reservation' => ['sometimes', 'string', 'max:30'],
+            'provider' => ['sometimes', 'string', 'max:30'],
+            'cost_type' => ['sometimes', 'in:'.implode(',', PayableWorkflow::costTypes())],
+            'currency' => ['sometimes', 'in:PEN,USD'],
+            'fx_rate' => ['nullable', 'numeric', 'gt:0.5', 'lt:20'],
             'concept' => ['required', 'string', 'max:255'],
             'amount' => ['nullable', 'numeric', 'gt:0'],
             'due_date' => ['required', 'date'],
             'supplier_doc' => ['nullable', 'string', 'max:30'],
             'evidence' => ['nullable', 'string', 'max:1000'],
+            'lock_version' => ['nullable', 'integer'],
         ], self::MESSAGES);
-        $workflow->update($code, $data, $this->actor($request));
+        $lock = isset($data['lock_version']) ? (int) $data['lock_version'] : null;
+        unset($data['lock_version']);
+        $workflow->update($code, array_filter($data, fn ($value) => $value !== null), $this->actor($request), $lock);
+
+        return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function schedule(Request $request, string $code, PayableWorkflow $workflow): JsonResponse
+    {
+        $actor = $this->actor($request);
+        $this->requireOperator($actor);
+        $data = $request->validate([
+            'scheduled_date' => ['required', 'date', 'after_or_equal:today'],
+            'bank_account' => ['required', 'string', 'max:20'],
+            'lock_version' => ['nullable', 'integer'],
+        ], ['scheduled_date.*' => 'La fecha programada no puede ser pasada.', 'bank_account.*' => 'Elige la cuenta de origen.']);
+        $workflow->schedule($code, $data, isset($data['lock_version']) ? (int) $data['lock_version'] : null, $actor);
 
         return response()->json(['data' => ['code' => $code]]);
     }
@@ -84,6 +106,7 @@ final class PayableController
             'paid_on' => ['required', 'date', 'before_or_equal:today'],
             'operation_ref' => ['required', 'string', 'max:80'],
             'fx_rate' => ['nullable', 'numeric', 'gt:0.5', 'lt:20'],
+            'bank_account' => ['nullable', 'string', 'max:20'],
         ], self::MESSAGES);
 
         return response()->json(['data' => ['payout' => $workflow->pay($code, $data, $actor)]], 201);

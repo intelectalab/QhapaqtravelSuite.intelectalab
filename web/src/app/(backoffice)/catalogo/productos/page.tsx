@@ -1,5 +1,7 @@
+import { Shapes } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { ProductsTable } from "@/features/catalog/ProductsTable";
 import { ProductWizardAction } from "@/features/catalog/wizard/ProductWizard";
 import { getProductFormOptions, listProducts } from "@/lib/server/catalog";
@@ -12,7 +14,17 @@ export default async function ProductosPage({ searchParams }: PageProps<"/catalo
 
   return (
     <>
-      <PageHeader title="Productos" subtitle="Tours, excursiones, paquetes y servicios que vende tu agencia." actions={options?.can_create ? <ProductWizardAction options={options} defaultOpen={nuevo === "1"} /> : undefined} />
+      <PageHeader title="Productos" subtitle="Tours, excursiones, paquetes y servicios que vende tu agencia." actions={
+          <>
+            {options?.can_update && (
+              <Button href="/catalogo/categorias" variant="secondary" icon={<Shapes size={16} />} iconOnlyOnMobile>
+                Tipos y categorías
+              </Button>
+            )}
+            {options?.can_create && <ProductWizardAction options={options} defaultOpen={nuevo === "1"} />}
+          </>
+        }
+      />
       <ProductsTable products={products} can={{ edit: Boolean(options?.can_update), remove: Boolean(options?.can_activate) }} />
     </>
   );

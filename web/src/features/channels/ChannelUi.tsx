@@ -88,6 +88,23 @@ export function Timeline({ items }: { items: { key: string; title: ReactNode; me
   );
 }
 
+export function CodeSnippet({ code, className }: { code: string; className?: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  };
+  return (
+    <div className={cn("relative", className)}>
+      <pre className="scroll-thin max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-tile bg-fg p-3.5 pr-20 font-mono text-[12px] leading-relaxed text-bg">{code}</pre>
+      <button type="button" onClick={copy} className="absolute right-2 top-2 rounded-md bg-surface/90 px-2 py-1 text-[11.5px] font-semibold text-fg transition-transform duration-300 hover:-translate-y-0.5">
+        {copied ? "Copiado" : "Copiar"}
+      </button>
+    </div>
+  );
+}
+
 export function TileGrid({ children, className }: { children: ReactNode; className?: string }) {
   return <section className={cn("mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4", className)}>{children}</section>;
 }

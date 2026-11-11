@@ -32,10 +32,10 @@ final class Invitations
 
     public function send(string $email, string $name, string $agency, string $token, bool $isAdmin = false): void
     {
-        $role = $isAdmin ? 'Se creó la cuenta de '.$agency.' en Qhapaq Travel Suite y eres su administrador.' : $agency.' te invitó a Qhapaq Travel Suite.';
+        $role = $isAdmin ? 'Se creó la cuenta de '.$agency.' en KipuControl y eres su administrador.' : $agency.' te invitó a KipuControl.';
         $body = "Hola {$name}:\n\n{$role}\n\nDefine tu contraseña aquí (el enlace vence en ".self::HOURS." horas):\n{$this->link($token)}\n\nNunca te enviaremos tu contraseña por correo.";
 
-        app(QueuedMail::class)->send($email, $name, "Invitación a Qhapaq Travel Suite · {$agency}", $body);
+        app(QueuedMail::class)->send($email, $name, "Invitación a KipuControl · {$agency}", $body);
     }
 
     public function sendPortal(string $email, string $name, string $agency, string $token): void

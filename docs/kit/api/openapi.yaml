@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: Qhapaq Travel Suite API
+  title: KipuControl API
   version: 1.0.0
   summary: Contrato REST del SaaS multi-tenant para agencias de viajes y operadores turísticos.
   description: 'Contrato generado por `kit-ia/api/build_openapi.py` a partir de la §6 (API REST) y la §3 (modelo de datos)
@@ -16,14 +16,14 @@ info:
     y sección de origen), `x-spec-also` (otras specs que declaran el mismo endpoint), `x-phase` (0–3), `x-resource` (tabla
     §3), `x-idempotency`, `x-api-key-scope`.'
   contact:
-    name: Equipo interno Qhapaq Travel Suite
+    name: Equipo interno KipuControl
   license:
     name: Propietario — uso interno
     identifier: LicenseRef-Proprietary
 servers:
 - url: http://localhost:8000
   description: Local (Laravel `php artisan serve` / Sail). Tenant por host o token.
-- url: https://api.staging.qhapaq.cloud
+- url: https://api.staging.kipucontrol.com
   description: Staging (supuesto de dominio; tenant resuelto desde token/API key/host).
 security:
 - sanctum: []
@@ -41887,7 +41887,7 @@ paths:
                     $ref: '#/components/schemas/CursorLinks'
         '429':
           $ref: '#/components/responses/TooManyRequests'
-      x-permission: público | X-Qhapaq-Key + Origin verificado
+      x-permission: público | X-KipuControl-Key + Origin verificado
       x-spec: 15-sitio-web-publico.md §6.1 Catálogo y contenido (GET, cache)
       x-spec-also:
       - 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6
@@ -41933,7 +41933,7 @@ paths:
           $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/TooManyRequests'
-      x-permission: público | X-Qhapaq-Key + Origin verificado
+      x-permission: público | X-KipuControl-Key + Origin verificado
       x-spec: 15-sitio-web-publico.md §6.1 Catálogo y contenido (GET, cache)
       x-spec-also:
       - 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6
@@ -42195,7 +42195,7 @@ paths:
                     $ref: '#/components/schemas/CursorLinks'
         '429':
           $ref: '#/components/responses/TooManyRequests'
-      x-permission: público | X-Qhapaq-Key + Origin verificado
+      x-permission: público | X-KipuControl-Key + Origin verificado
       x-spec: 15-sitio-web-publico.md §6.1 Catálogo y contenido (GET, cache)
       x-spec-also:
       - 15-sitio-web-publico.md §6.7 v2.2 — Reseñas públicas
@@ -42448,7 +42448,7 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         '429':
           $ref: '#/components/responses/TooManyRequests'
-      x-permission: público | X-Qhapaq-Key + Origin verificado
+      x-permission: público | X-KipuControl-Key + Origin verificado
       x-spec: 15-sitio-web-publico.md §6.2 Precio, disponibilidad, carrito
       x-spec-also:
       - 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6
@@ -44273,7 +44273,7 @@ paths:
           $ref: '#/components/responses/NotFound'
         '429':
           $ref: '#/components/responses/TooManyRequests'
-      x-permission: público | pública | X-Qhapaq-Key + Origin verificado
+      x-permission: público | pública | X-KipuControl-Key + Origin verificado
       x-spec: 15-sitio-web-publico.md §6.6 v2.1 — Motor de reservas público
       x-spec-also:
       - 16-motor-de-reservas-y-reglas.md §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key*
@@ -44329,7 +44329,7 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         '429':
           $ref: '#/components/responses/TooManyRequests'
-      x-permission: público | pública | X-Qhapaq-Key + Origin verificado
+      x-permission: público | pública | X-KipuControl-Key + Origin verificado
       x-spec: 15-sitio-web-publico.md §6.6 v2.1 — Motor de reservas público
       x-spec-also:
       - 16-motor-de-reservas-y-reglas.md §6.1 Públicas (sitio, widget, CMS externo) — autenticación por *publishable key*
@@ -48226,7 +48226,7 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         '429':
           $ref: '#/components/responses/TooManyRequests'
-      x-permission: X-Qhapaq-Key + Origin verificado
+      x-permission: X-KipuControl-Key + Origin verificado
       x-spec: 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6
       x-phase: 2
       x-idempotency:
@@ -48914,7 +48914,7 @@ components:
     widgetKey:
       type: apiKey
       in: header
-      name: X-Qhapaq-Key
+      name: X-KipuControl-Key
       description: 'Clave pública (publishable key) del widget/sitio del tenant para `/api/v1/public/*`. Se valida junto con
         el `Origin` (dominios verificados) y rate limit Redis. Rotación: `POST /api/v1/channels/widget/rotate-key`.'
     cartToken:

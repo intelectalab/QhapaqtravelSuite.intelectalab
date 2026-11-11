@@ -10,7 +10,7 @@ final class LeadStatusRequest extends FormRequest
 {
     public function rules(): array
     {
-        return ['status' => ['required', 'in:nuevo,contactado,calificado'], 'lock_version' => ['required', 'integer']];
+        return ['status' => ['required', 'in:nuevo,contactado,calificado'], 'lock_version' => ['required', 'integer'], 'note' => ['nullable', 'string', 'max:300']];
     }
 
     public function messages(): array

@@ -10,7 +10,7 @@ function aprSolicitudDatos(array $extra = []): array
         'title' => 'Excepción de pago en destino',
         'amount' => 1500,
         'currency' => 'PEN',
-        'reference' => 'RES-2026-000350',
+        'reservation' => 'RES-2026-000350',
         'justification' => 'El cliente paga el saldo en Cusco por acuerdo comercial.',
         ...$extra,
     ];
@@ -89,7 +89,7 @@ it('el solicitante edita su solicitud pendiente y los niveles se recalculan con 
     $code = aprSolicitudNueva(['type' => 'refund', 'amount' => 300]);
     expect((int) rowOf('collab_approval_requests', $code)->total_levels)->toBe(1);
 
-    $this->patchJson("/api/v1/approvals/{$code}", aprSolicitudDatos(['title' => 'Reembolso por excursión cancelada', 'amount' => 1800, 'reference' => 'RES-2026-000346']))->assertOk();
+    $this->patchJson("/api/v1/approvals/{$code}", aprSolicitudDatos(['title' => 'Reembolso por excursión cancelada', 'amount' => 1800, 'reservation' => 'RES-2026-000346']))->assertOk();
 
     $request = rowOf('collab_approval_requests', $code);
     expect($request->title)->toBe('Reembolso por excursión cancelada')

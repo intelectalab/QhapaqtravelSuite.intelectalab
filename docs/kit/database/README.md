@@ -1,4 +1,4 @@
-# Base de datos · Qhapaq Travel Suite (PostgreSQL 17)
+# Base de datos · KipuControl (PostgreSQL 17)
 
 Esquema físico completo del SaaS, consolidado desde la **sección 3 (modelo de datos)** de las 19 especificaciones (`proto/docs/especificaciones/00…18`) y `CONVENCIONES.md`. Los archivos `.sql` de esta carpeta son la **fuente de verdad** del modelo de datos: las migraciones de Laravel se escriben a partir de ellos, no del prototipo.
 

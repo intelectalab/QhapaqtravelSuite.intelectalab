@@ -8,6 +8,7 @@ import { Breadcrumbs } from "@/features/site/Hero";
 import { AvailabilityCalendar, BookingPanel, BookingProvider, MobileBookingBar } from "@/features/site/ProductBooking";
 import { ReviewsSection } from "@/features/site/Reviews";
 import { Scenery } from "@/features/site/Scenery";
+import { TrackEvent } from "@/features/site/SiteAnalytics";
 import { WishButton } from "@/features/site/Account";
 import { accountFetch, accountToken, getSiteProduct, siteBase, siteLocale } from "@/lib/server/site";
 import { siteHref } from "@/lib/site";
@@ -40,6 +41,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
 
   return (
     <BookingProvider key={fecha ?? "sin-fecha"} detail={detail} initialDate={fecha}>
+      <TrackEvent event="view_item" params={{ item_id: product.slug, item_name: product.name }} />
       <section className="relative">
         <Scenery seed={product.slug} label={product.name} className="h-[340px] sm:h-[400px]">
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10" />

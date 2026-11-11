@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
+import { RolesLayout } from "@/features/users/TeamSections";
 import { NoAccess } from "@/components/shell/NoAccess";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { AccessMap } from "@/features/users/AccessMap";
-import { RolesTabs } from "@/features/users/RolesTabs";
 import { getAccessMap } from "@/lib/server/users";
 
 export const metadata: Metadata = { title: "Mapa de acceso" };
@@ -19,8 +19,9 @@ export default async function AccessMapPage() {
         subtitle={`Qué pantallas del back-office ve cada uno de los ${data.roles.length} roles`}
         info={<InfoTip>Una pantalla aparece para un rol si tiene al menos uno de los permisos que esa pantalla exige. Para cambiarlo, ajusta los permisos del rol.</InfoTip>}
       />
-      <RolesTabs />
-      <AccessMap data={data} />
+      <RolesLayout>
+        <AccessMap data={data} />
+      </RolesLayout>
     </>
   );
 }

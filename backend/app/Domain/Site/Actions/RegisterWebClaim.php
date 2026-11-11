@@ -6,6 +6,7 @@ namespace App\Domain\Site\Actions;
 
 use App\Domain\Crm\Support\BusinessDays;
 use App\Domain\Crm\Support\ClaimBookDirectory;
+use App\Domain\Crm\Support\ClaimConsumer;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -61,16 +62,14 @@ final class RegisterWebClaim
             'sede_id' => $sede->id,
             'channel' => 'web',
             'book_status' => 'received',
-            'consumer' => json_encode([
-                'name' => trim($data['name']),
-                'docType' => $data['doc_type'],
-                'docNumber' => Str::upper(trim($data['doc_number'])),
+            'consumer' => json_encode(ClaimConsumer::build([
+                'name' => $data['name'],
+                'doc_type' => $data['doc_type'],
+                'doc_number' => $data['doc_number'],
                 'address' => $data['address'],
                 'email' => $email,
                 'phone' => $data['phone'],
-                'minor' => (bool) ($data['minor'] ?? false),
-                'guardian' => ($data['minor'] ?? false) ? ['name' => $data['guardian_name'] ?? null, 'docNumber' => $data['guardian_doc'] ?? null] : null,
-            ], JSON_UNESCAPED_UNICODE),
+            ], $data), JSON_UNESCAPED_UNICODE),
             'good' => json_encode(['kind' => $data['good_kind'], 'description' => $data['good_description'], 'amount' => (float) ($data['good_amount'] ?? 0), 'currency' => $data['good_currency'] ?? 'PEN'], JSON_UNESCAPED_UNICODE),
             'detail' => $data['detail'],
             'request' => $data['request'],
@@ -86,7 +85,7 @@ final class RegisterWebClaim
             'event' => 'registro',
             'from_status' => null,
             'to_status' => 'abierta',
-            'message' => "Hoja registrada en el sitio web ({$sede->name}). Constancia enviada a {$email}",
+            'message' => "Hoja registrada en el sitio web ({$sede->name})".(($data['is_minor'] ?? false) ? " · menor de edad, apoderado {$data['guardian_name']} ({$data['guardian_relation']})" : '').". El consumidor aceptó recibir la respuesta en {$email}; constancia enviada",
         ]);
         $this->audit->log('Libro de reclamaciones', $number, 'registrar', null, "{$data['type']} · web");
 

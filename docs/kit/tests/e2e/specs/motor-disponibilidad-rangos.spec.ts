@@ -43,7 +43,7 @@ test.describe('Motor · disponibilidad por rangos (PRD-011) @fase1 @motor @respo
   });
 
   test('API pública devuelve el mismo estado por día (el front no calcula)', async () => {
-    const api = await request.newContext({ baseURL: `${API_URL}/`, extraHTTPHeaders: { 'X-Qhapaq-Key': process.env.E2E_WIDGET_PUBLIC_KEY ?? 'pk_demo' } });
+    const api = await request.newContext({ baseURL: `${API_URL}/`, extraHTTPHeaders: { 'X-KipuControl-Key': process.env.E2E_WIDGET_PUBLIC_KEY ?? 'pk_demo' } });
     const r = await api.get(API.publicAvailability(PRD011.code, '2026-10', 2).slice(1));
     expect(r.ok()).toBeTruthy();
     const days = Object.fromEntries(((await r.json()).data as any[]).map((d) => [d.date, d]));
@@ -55,7 +55,7 @@ test.describe('Motor · disponibilidad por rangos (PRD-011) @fase1 @motor @respo
   });
 
   test('07–09 oct no se puede reservar aunque se fuerce por API (409)', async () => {
-    const api = await request.newContext({ baseURL: `${API_URL}/`, extraHTTPHeaders: { 'X-Qhapaq-Key': process.env.E2E_WIDGET_PUBLIC_KEY ?? 'pk_demo' } });
+    const api = await request.newContext({ baseURL: `${API_URL}/`, extraHTTPHeaders: { 'X-KipuControl-Key': process.env.E2E_WIDGET_PUBLIC_KEY ?? 'pk_demo' } });
     const r = await api.post('public/widget-handoffs', {
       headers: { 'Idempotency-Key': `e2e-${Date.now()}` },
       data: { product: PRD011.code, service_date: '2026-10-08', pax: { adt: 2, chd: 0, inf: 0 }, currency_display: 'PEN', payment_mode: 'total' },

@@ -76,5 +76,5 @@ it('los códigos MFA equivocados de la plataforma también bloquean la cuenta', 
     }
 
     expect($this->postJson('/api/v1/platform/auth/mfa/verify', ['code' => '000000']))->toBeApiError(429, 'ACCOUNT_LOCKED');
-    expect($this->postJson('/api/v1/platform/auth/login', ['email' => 'ops@qhapaq.cloud', 'password' => (string) config('demo.password')]))->toBeApiError(429, 'ACCOUNT_LOCKED');
+    expect($this->postJson('/api/v1/platform/auth/login', ['email' => 'ops@kipucontrol.com', 'password' => (string) config('demo.password')]))->toBeApiError(429, 'ACCOUNT_LOCKED');
 });

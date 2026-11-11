@@ -6,7 +6,9 @@ namespace App\Domain\Quotes\Support;
 
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
+use App\Domain\Quotes\Actions\QuoteAccessTokens;
 use App\Domain\Quotes\Actions\QuoteLifecycle;
+use App\Domain\Quotes\Http\Controllers\QuoteController;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Http\CursorPage;
 use App\Domain\Shared\Money\Decimal;
@@ -66,6 +68,8 @@ final class QuoteDirectory
             'approved' => $rows->whereIn('status', ['aprobada', 'convertida'])->count(),
             'conversion' => $this->conversion($rows),
             'total' => $rows->count(),
+            'pending_internal' => $viewer->can('quotes.approve_internal') ? $open->where('internal_status', 'pend')->count() : null,
+            'followup_pen' => (string) $open->where('status', '<>', 'borrador')->reduce(fn (BigDecimal $sum, array $quote): BigDecimal => $sum->plus($quote['total_pen']), BigDecimal::zero())->toScale(0, RoundingMode::HALF_UP),
         ];
     }
 
@@ -245,7 +249,7 @@ final class QuoteDirectory
         $versions = DB::table('quote_versions as v')->join('iam_users as u', 'u.id', '=', 'v.author_id')->where('v.quote_id', $row->id)->orderByDesc('v.version_no')
             ->get(['v.id', 'v.version_no', 'v.status', 'v.issued_on', 'v.discount_pct', 'v.tax_pct', 'v.notes', 'v.snapshot_label', 'v.sale_total', 'v.discount_total', 'v.net_total', 'v.tax_total', 'v.grand_total', 'v.cost_total', 'v.profit_total', 'v.margin_pct', 'u.name as author']);
         $items = DB::table('quote_items as i')->join('catalog_products as p', 'p.id', '=', 'i.product_id')->whereIn('i.quote_version_id', $versions->pluck('id'))->orderBy('i.line_no')
-            ->get(['i.quote_version_id', 'i.line_no', 'i.service_date', 'i.qty', 'i.pax', 'i.segment', 'i.unit_cost', 'i.unit_price', 'i.cost_total', 'i.sale_total', 'p.code as product_code', 'p.name as product_name'])
+            ->get(['i.quote_version_id', 'i.line_no', 'i.service_date', 'i.qty', 'i.pax', 'i.segment', 'i.unit_cost', 'i.unit_price', 'i.cost_total', 'i.sale_total', 'i.rate_id', 'i.price_source', 'i.rate_snapshot', 'p.code as product_code', 'p.name as product_name'])
             ->groupBy('quote_version_id');
         $sections = app(QuoteSections::class);
         $extras = $sections->versionExtras($versions);
@@ -272,6 +276,8 @@ final class QuoteDirectory
                 'register_approval' => $viewer->can('reservations.create'),
             ],
             'contact' => DB::table('crm_clients')->where('id', $row->client_id)->first(['email', 'phone']),
+            'share' => $viewer->can('quotes.send') ? app(QuoteAccessTokens::class)->state((string) $row->id) : null,
+            'evidence_types' => QuoteController::EVIDENCE,
             'versions' => $versions->map(fn (object $version): array => [
                 ...$this->version($version, collect($items->get($version->id, [])), $seeMargin),
                 'conditions' => $extras[$version->id]->conditions ?? null,
@@ -324,6 +330,9 @@ final class QuoteDirectory
             'unit_price' => Decimal::toApi((string) $item->unit_price),
             'total' => Decimal::toApi((string) $item->sale_total),
             'unit_cost' => $seeMargin ? Decimal::toApi((string) $item->unit_cost) : null,
+            'rate_id' => $item->rate_id ?? null,
+            'rate_ref' => isset($item->rate_snapshot) ? (json_decode((string) $item->rate_snapshot, true)['ref'] ?? null) : null,
+            'price_source' => $item->price_source ?? 'rate',
             'margin_pct' => $seeMargin ? QuotePricing::lineMargin((string) $item->sale_total, (string) $item->cost_total) : null,
         ];
     }
@@ -337,7 +346,7 @@ final class QuoteDirectory
             ->leftJoin('crm_opportunities as o', 'o.id', '=', 'q.opportunity_id')
             ->leftJoin('booking_reservations as r', 'r.id', '=', 'q.reservation_id')
             ->whereNull('q.deleted_at')
-            ->select(['q.*', 'c.code as client_code', 'c.name as client_name', 'u.name as owner_name', 'u.avatar_color as owner_color', 'v.grand_total', 'v.margin_pct as version_margin', 'o.code as opportunity_code', 'o.title as opportunity_title', 'r.code as reservation_code']);
+            ->select(['q.*', 'c.code as client_code', 'c.name as client_name', 'u.name as owner_name', 'u.avatar_color as owner_color', 'v.grand_total', 'v.margin_pct as version_margin', 'v.discount_pct as version_discount', DB::raw('(select a.status from quote_internal_approvals a where a.quote_version_id = q.current_version_id order by a.created_at desc limit 1) as internal_last'), DB::raw('(select count(*) from quote_versions vv where vv.quote_id = q.id) as version_count'), 'o.code as opportunity_code', 'o.title as opportunity_title', 'r.code as reservation_code']);
 
         return Portfolio::scope($query, $viewer, 'q.owner_id');
     }
@@ -368,6 +377,8 @@ final class QuoteDirectory
             'total_pen' => (string) Decimal::round2($total->multipliedBy((string) $row->fx_rate)),
             'margin_pct' => $this->seesMargin($viewer, (string) $row->owner_id) && $row->version_margin !== null ? (string) $row->version_margin : null,
             'lock_version' => (int) $row->lock_version,
+            'internal_status' => $this->internalStatus($row),
+            'version_count' => (int) ($row->version_count ?? 1),
             'travel_from' => $row->travel_from,
             'travel_to' => $row->travel_to,
             'valid_until' => $row->valid_until,
@@ -375,6 +386,25 @@ final class QuoteDirectory
             'pax' => ['adt' => (int) $row->pax_adt, 'chd' => (int) $row->pax_chd, 'inf' => (int) $row->pax_inf],
             'created_at' => Carbon::parse($row->created_at)->toDateString(),
         ];
+    }
+
+    private function internalStatus(object $row): ?string
+    {
+        $last = $row->internal_last ?? null;
+
+        if ($last === 'pendiente') {
+            return 'pend';
+        }
+
+        if ($last === 'aprobada') {
+            return 'ok';
+        }
+
+        if (! isset($row->version_discount) || $row->version_margin === null) {
+            return null;
+        }
+
+        return QuoteLifecycle::needsInternalApproval((string) $row->version_discount, (string) $row->version_margin, QuoteLifecycle::currentLimits()) ? 'req' : null;
     }
 
     private function conversion(Collection $rows): ?int

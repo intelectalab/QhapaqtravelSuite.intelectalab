@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Platform\Support\Entitlements;
+use App\Jobs\SendPlainMail;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Carbon;
@@ -201,4 +202,50 @@ it('qué incluye el plan y permisos: solo quien gestiona la facturación cambia 
     actingAsSeed('U03');
     expect($this->postJson('/api/v1/billing/subscription/preview-change', ['plan' => 'enterprise', 'cycle' => 'monthly'])->status())->toBe(403);
     expect($this->postJson('/api/v1/billing/coupon', ['code' => 'X'])->status())->toBe(403);
+});
+
+it('datos de facturación: contacto y tipo de comprobante; una empresa con RUC 20 no recibe boleta', function () {
+    subSetPlan('professional');
+    actingAsSeed('U01');
+    $body = ['ruc' => '20612345671', 'name' => 'Andes Horizonte Viajes S.A.C.', 'address' => 'Av. El Sol 820, Cusco', 'ubigeo' => '080101', 'email' => 'facturas@andeshorizonte.pe'];
+
+    expect($this->patchJson('/api/v1/billing/subscription', [...$body, 'doc_type' => 'Boleta']))->toBeApiError(422, 'SUB-BR-09');
+    $this->patchJson('/api/v1/billing/subscription', [...$body, 'contact' => 'Mariela Quispe Rojas', 'doc_type' => 'Factura'])->assertOk();
+    expect($this->getJson('/api/v1/billing/subscription')->json('data.subscription.billing'))->toMatchArray(['contact' => 'Mariela Quispe Rojas', 'doc_type' => 'Factura']);
+});
+
+it('método de pago: la pasarela local entrega una sesión y la tarjeta tokenizada reemplaza a la anterior', function () {
+    subSetPlan('professional');
+    actingAsSeed('U01');
+    $card = ['token' => 'pm_local_'.Str::random(16), 'brand' => 'Mastercard', 'last4' => '4444', 'exp_month' => 9, 'exp_year' => (int) date('Y') + 3, 'holder' => 'Mariela Quispe'];
+
+    expect($this->putJson('/api/v1/billing/payment-methods/default', [...$card, 'session' => 'seti_inventada'], critical()))->toBeApiError(422, 'SETUP_EXPIRED');
+
+    $session = $this->postJson('/api/v1/billing/payment-methods/setup-intent')->assertOk()->json('data.session');
+    expect($this->putJson('/api/v1/billing/payment-methods/default', [...$card, 'session' => $session, 'exp_year' => 2021], critical()))->toBeApiError(422, 'CARD_EXPIRED');
+
+    $session = $this->postJson('/api/v1/billing/payment-methods/setup-intent')->json('data.session');
+    $this->putJson('/api/v1/billing/payment-methods/default', [...$card, 'session' => $session], critical())->assertOk()->assertJsonPath('data.method', 'Mastercard •••• 4444');
+
+    $method = $this->getJson('/api/v1/billing/subscription')->json('data.payment_method');
+    expect($method)->toMatchArray(['brand' => 'Mastercard', 'last4' => '4444', 'holder' => 'MARIELA QUISPE'])
+        ->and(subDb()->table('payment_methods')->where('tenant_id', tenantA()->getKey())->where('is_default', true)->count())->toBe(1);
+    expect(subAudited('metodo_pago'))->toBeTrue();
+});
+
+it('reenviar factura por correo y resumen: próximo cargo estimado y módulos con su origen', function () {
+    subSetPlan('professional');
+    actingAsSeed('U01');
+    $number = collect($this->getJson('/api/v1/billing/invoices')->json('data'))->value('number');
+
+    $this->postJson("/api/v1/billing/invoices/{$number}/send")->assertOk()->assertJsonStructure(['data' => ['sent_to']]);
+    Queue::assertPushed(SendPlainMail::class);
+    expect(subAudited('reenviar'))->toBeTrue();
+
+    $data = $this->getJson('/api/v1/billing/subscription')->json('data');
+    $price = (float) subDb()->table('plans')->where('code', 'professional')->value('price_month');
+    expect($data['next_charge']['base'])->toEqual($price)
+        ->and($data['next_charge']['total'])->toBeGreaterThan($data['next_charge']['net'])
+        ->and($data['modules'])->not->toBeEmpty()
+        ->and($data['modules'][0])->toHaveKeys(['label', 'enabled', 'source']);
 });

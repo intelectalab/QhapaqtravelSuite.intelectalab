@@ -6,7 +6,7 @@ export function createNonce(): string {
   return btoa(crypto.randomUUID());
 }
 
-export function contentSecurityPolicy(nonce: string, frameable = false): string {
+export function contentSecurityPolicy(nonce: string, frameable = false, ancestors: string[] = []): string {
   const scripts = [`'self'`, `'nonce-${nonce}'`, `'strict-dynamic'`, ...(isProduction ? [] : [`'unsafe-eval'`])];
   return [
     `default-src 'self'`,
@@ -19,7 +19,7 @@ export function contentSecurityPolicy(nonce: string, frameable = false): string 
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,
-    frameable ? `frame-ancestors 'self'` : `frame-ancestors 'none'`,
+    frameable ? ["frame-ancestors 'self'", ...ancestors].join(" ") : `frame-ancestors 'none'`,
     ...(isProduction ? ["upgrade-insecure-requests"] : []),
   ].join("; ");
 }
@@ -32,5 +32,9 @@ export const STATIC_SECURITY_HEADERS: { key: string; value: string }[] = [
 ];
 
 export const FRAMEABLE_PREFIX = "/sitio/";
+
+export const WIDGET_PREFIX = "/widget/";
+
+export const WIDGET_ASSETS_PREFIX = "/widget/v1/";
 
 export const FRAME_HEADERS = { deny: [{ key: "X-Frame-Options", value: "DENY" }], sameOrigin: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }] };

@@ -339,7 +339,7 @@ Table platform_invoices {
   updated_by uuid
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
-  Note: '13 §3.8 · Facturas de plataforma (emisor Qhapaq Cloud). [Fase 3]'
+  Note: '13 §3.8 · Facturas de plataforma (emisor KipuControl Cloud). [Fase 3]'
 }
 
 Table platform_invoice_lines {

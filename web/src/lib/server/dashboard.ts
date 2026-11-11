@@ -1,12 +1,12 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import type { AccessInfo } from "@/lib/access";
-import type { HomeDashboard, NavCounts } from "@/lib/dashboard";
+import type { HomePanel, NavCounts } from "@/lib/dashboard";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
 
-export async function getHomeDashboard(): Promise<HomeDashboard> {
-  const result = await apiFetch<HomeDashboard>("/dashboard/home");
+export async function getHomeDashboard(): Promise<HomePanel> {
+  const result = await apiFetch<HomePanel>("/dashboard/home");
   if (result.status === 401) redirect(REALMS.agency.logout);
   if (result.status === 403 && result.error?.code === "MFA_REQUIRED") redirect(REALMS.agency.mfaPage);
   if (!result.ok || !result.data) throw new Error(result.error?.message ?? "No pudimos cargar el panel de control.");

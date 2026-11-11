@@ -9,7 +9,9 @@ import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { MiniTable } from "@/components/ui/MiniTable";
 import { TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
+import { Button } from "@/components/ui/Button";
 import { AuditCard, StatusHistoryCard } from "@/features/finance/FinanceDetailParts";
+import { SchedulePayableAction } from "@/features/finance/Payables";
 import type { PayableDetail } from "@/lib/finance";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { getResource } from "@/lib/server/resource";
@@ -43,13 +45,27 @@ export default async function ObligacionPage({ params }: PageProps<"/finanzas/pr
           </span>
         }
         subtitle={`${row.code}${row.provider ? ` · ${row.provider.name}` : ""}`}
+        actions={
+          row.can.operate && row.approved_at && Number(row.balance) > 0 && row.status !== "cancelada" ? (
+            <SchedulePayableAction
+              row={{ code: row.code, concept: row.concept, balance: Number(row.balance), currency: row.currency, lock_version: row.lock_version, scheduled_date: row.scheduled?.date ?? null, scheduled_account: row.scheduled?.account?.code ?? null, due_date: row.due_date, provider: { name: row.provider?.name ?? "Sin proveedor" } }}
+              banks={row.bank_accounts}
+              today={row.today}
+              trigger={(show) => (
+                <Button variant="primary" icon={<CalendarClock size={16} />} onClick={show}>
+                  {row.scheduled ? "Reprogramar pago" : "Programar pago"}
+                </Button>
+              )}
+            />
+          ) : undefined
+        }
       />
       {row.observation && <p className="mb-5 rounded-card border border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-4 py-3 text-[13.5px]"><b className="font-semibold">Observada.</b> {row.observation}</p>}
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <TintTile icon={Receipt} tone="t1" label="Monto" value={formatMoney(row.amount, row.currency)} />
         <TintTile icon={Wallet} tone="ok" label="Pagado" value={formatMoney(row.paid, row.currency)} />
         <TintTile icon={Truck} tone={row.status === "vencida" ? "bad" : "sun"} label="Saldo" value={formatMoney(row.balance, row.currency)} />
-        <TintTile icon={CalendarClock} tone="violet" label={row.scheduled_date ? "Pago programado" : "Vence"} value={<span className="text-[16px]">{formatDate(row.scheduled_date ?? row.due_date)}</span>} note={row.scheduled_date ? `Vence el ${formatDate(row.due_date)}` : undefined} />
+        <TintTile icon={CalendarClock} tone="violet" label={row.scheduled_date ? "Pago programado" : "Vence"} value={<span className="text-[16px]">{formatDate(row.scheduled_date ?? row.due_date)}</span>} note={row.scheduled ? `${row.scheduled.account ? `Desde ${row.scheduled.account.name} · ` : ""}vence el ${formatDate(row.due_date)}` : undefined} />
       </section>
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-5">

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('permission:catalog.products.view')->group(function (): void {
     Route::get('catalog/services', [ServiceController::class, 'index'])->name('catalog.services.index');
+    Route::get('catalog/services/{ref}', [ServiceController::class, 'show'])->name('catalog.services.show');
 
     Route::middleware('permission:catalog.providers.manage')->group(function (): void {
         Route::post('catalog/services', [ServiceController::class, 'store'])->name('catalog.services.store');

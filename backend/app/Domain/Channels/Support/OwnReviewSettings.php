@@ -32,7 +32,7 @@ final class OwnReviewSettings
         'show_on_widget' => true,
         'invite' => [
             'channel' => 'email',
-            'reminder_days' => 3,
+            'reminder_days' => 5,
             'expire_days' => 30,
             'subject' => '¿Cómo estuvo tu viaje?',
             'body' => 'Hola {nombre}, gracias por viajar con nosotros. Cuéntanos cómo te fue en {tour}: tu opinión ayuda a otros viajeros.',

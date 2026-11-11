@@ -27,7 +27,7 @@ final class RuleParams
         'pct' => ['label' => 'Porcentaje', 'unit' => '%', 'min' => 0, 'max' => 100],
         'fromPax' => ['label' => 'Desde cuántos pasajeros', 'unit' => 'pax', 'min' => 2, 'max' => 100],
         'days' => ['label' => 'Días', 'unit' => 'días', 'min' => 1, 'max' => 365],
-        'fxMarginPct' => ['label' => 'Margen sobre el tipo de cambio', 'unit' => '%', 'min' => 0, 'max' => 10],
+        'fxMarginPct' => ['label' => 'Margen sobre el tipo de cambio', 'unit' => '%', 'min' => 0, 'max' => 15],
         'balanceDueDays' => ['label' => 'El saldo vence (días antes del viaje)', 'unit' => 'días', 'min' => 0, 'max' => 90],
         'holdHours' => ['label' => 'Horas para pagar después', 'unit' => 'h', 'min' => 1, 'max' => 168],
         'cardPct' => ['label' => 'Recargo por pago con tarjeta', 'unit' => '%', 'min' => 0, 'max' => 10],

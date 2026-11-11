@@ -20,10 +20,14 @@ final class OpportunitySaveRequest extends FormRequest
             'expected_close_date' => ['required', 'date', ...($creating ? ['after_or_equal:today'] : [])],
             'probability' => [$creating ? 'nullable' : 'required', 'integer', 'min:0', 'max:100'],
             'owner_id' => ['nullable', 'uuid'],
+            'stage' => ['nullable', 'in:calificacion,descubrimiento,cotizacion,negociacion'],
+            'product_id' => ['nullable', 'uuid'],
             'destination' => ['nullable', 'string', 'max:120'],
             'pax' => ['nullable', 'integer', 'min:0', 'max:999'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'lock_version' => [$creating ? 'nullable' : 'required', 'integer'],
+            'origin' => ['nullable', 'in:manual,fidelizacion'],
+            'confirm_open' => ['nullable', 'boolean'],
         ];
     }
 
@@ -39,6 +43,7 @@ final class OpportunitySaveRequest extends FormRequest
             'expected_close_date.after_or_equal' => 'La fecha de cierre no puede ser anterior a hoy.',
             'probability.*' => 'La probabilidad va de 0 a 100.',
             'pax.*' => 'Escribe un número de pasajeros válido.',
+            'stage.in' => 'Elige una etapa abierta del embudo.',
         ];
     }
 }

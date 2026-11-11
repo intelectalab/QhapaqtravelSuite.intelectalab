@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { FieldList } from "@/components/ui/Details";
 import { PanelAction } from "@/components/ui/PanelAction";
-import { Tabs } from "@/components/ui/Tabs";
+import { SectionPanel } from "@/components/ui/SectionPanel";
 import { TextArea } from "@/components/ui/TextArea";
 import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
 import { channelStatus, type OwnReview, type OwnReviewSettings, type OwnReviewsOverview, type ReviewRequest } from "@/lib/channels";
@@ -35,7 +35,7 @@ export function OwnReviewTiles({ kpis }: { kpis: OwnReviewsOverview["kpis"] }) {
       <TintTile icon={Star} tone="sun" label="Calificación promedio" value={kpis.average !== null ? <span className="flex items-center gap-2">{kpis.average.toFixed(1)} <Stars value={kpis.average} size={13} /></span> : "—"} note="De las reseñas publicadas" />
       <TintTile icon={BadgeCheck} tone="t1" label="Publicadas" value={`${kpis.published} de ${kpis.received}`} note="Todas de viajes verificados" />
       <TintTile icon={ThumbsUp} tone="t4" label="Recomiendan" value={kpis.recommend_pct !== null ? `${kpis.recommend_pct} %` : "—"} note="Calificaron con 4 o 5 estrellas" />
-      <TintTile icon={Inbox} tone="violet" label="Por moderar" value={kpis.pending} note={kpis.flagged > 0 ? `${kpis.flagged} con alertas` : "Sin alertas"} />
+      <TintTile icon={Inbox} tone="violet" label="Con alertas" value={kpis.flagged} note={`De ${kpis.pending} por moderar`} info={<p>Reseñas pendientes que el filtro marcó para revisar con cuidado: lenguaje ofensivo, datos personales o una nota muy baja.</p>} />
     </TileGrid>
   );
 }
@@ -310,12 +310,12 @@ function RequestsTable({ rows, canModerate }: { rows: ReviewRequest[]; canModera
   return <DataTable screen="canales-resenas-solicitudes" rows={rows} columns={columns} getKey={(row) => row.code} entityLabel="solicitudes" searchText={(row) => `${row.client} ${row.reservation} ${row.to}`} searchPlaceholder="Buscar viajero o reserva" emptyTitle="Sin solicitudes" />;
 }
 
-export function OwnReviewsWorkspace({ overview, settings }: { overview: OwnReviewsOverview; settings?: OwnReviewSettings | null }) {
+export function OwnReviewsWorkspace({ overview, settings, section }: { overview: OwnReviewsOverview; settings?: OwnReviewSettings | null; section: string }) {
   const pending = overview.items.filter((review) => review.status === "pendiente");
   return (
     <Card padded={false}>
-      <Tabs
-        initial={pending.length > 0 ? "inbox" : "all"}
+      <SectionPanel
+        active={section}
         tabs={[
           { id: "inbox", label: "Por moderar", count: pending.length, content: <ModerationInbox rows={pending} canModerate={overview.can_moderate} /> },
           { id: "all", label: "Todas las reseñas", count: overview.items.length, content: <ReviewsTable rows={overview.items} canModerate={overview.can_moderate} /> },

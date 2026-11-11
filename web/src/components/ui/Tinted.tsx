@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { toneStyle, type Tone } from "@/lib/tone";
 import { TILE_VARIANTS, type TileVariant } from "@/lib/tileVariants";
+import { InfoTip } from "./InfoTip";
 import { TileVariantSwitch } from "./TileVariant";
 
 export const SOFT_TINT = "bg-[color-mix(in_srgb,var(--tint)_9%,var(--surface))]";
@@ -116,6 +117,7 @@ interface TintTileProps {
   tone?: Tone;
   title?: string;
   variant?: TileVariant;
+  info?: ReactNode;
 }
 
 export type { TileVariant };
@@ -125,8 +127,18 @@ export function TintTile(props: TintTileProps) {
   return <TileVariantSwitch options={Object.fromEntries(TILE_VARIANTS.map((variant) => [variant, renderTile(variant, props)]))} />;
 }
 
-function renderTile(variant: TileVariant, { icon: Icon, label, value, note, tone, title }: TintTileProps) {
+function renderTile(variant: TileVariant, { icon: Icon, label: caption, value, note, tone, title, info }: TintTileProps) {
   const style: CSSProperties | undefined = tone ? toneStyle(tone) : undefined;
+  const label = info ? (
+    <span className="inline-flex items-center gap-1">
+      {caption}
+      <InfoTip label={`De dónde sale: ${caption}`} className="h-4 w-4">
+        {info}
+      </InfoTip>
+    </span>
+  ) : (
+    caption
+  );
   const text = (
     <>
       <p className="text-[12.5px] font-medium text-fg-2">{label}</p>
@@ -137,7 +149,7 @@ function renderTile(variant: TileVariant, { icon: Icon, label, value, note, tone
 
   if (variant === "side") {
     return (
-      <div title={title} style={style} className={cn("lift group flex items-center gap-3.5 rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] px-4 py-3.5 hover:border-[color-mix(in_srgb,var(--tint)_45%,transparent)]", SOFT_TINT)}>
+      <div title={info ? undefined : title} style={style} className={cn("lift group flex items-center gap-3.5 rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] px-4 py-3.5 hover:border-[color-mix(in_srgb,var(--tint)_45%,transparent)]", SOFT_TINT)}>
         <span className="grid h-11 w-11 flex-none place-items-center rounded-[12px] bg-[var(--tint)] text-white shadow-[0_8px_18px_-10px_var(--tint)] transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110">
           <Icon size={20} />
         </span>
@@ -148,7 +160,7 @@ function renderTile(variant: TileVariant, { icon: Icon, label, value, note, tone
 
   if (variant === "inline") {
     return (
-      <div title={title} style={style} className={cn("lift group rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] px-4 py-3.5 hover:border-[color-mix(in_srgb,var(--tint)_45%,transparent)]", SOFT_TINT)}>
+      <div title={info ? undefined : title} style={style} className={cn("lift group rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] px-4 py-3.5 hover:border-[color-mix(in_srgb,var(--tint)_45%,transparent)]", SOFT_TINT)}>
         <p className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[var(--tint)]">
           <Icon size={15} className="transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-125" />
           {label}
@@ -161,7 +173,7 @@ function renderTile(variant: TileVariant, { icon: Icon, label, value, note, tone
 
   if (variant === "watermark") {
     return (
-      <div title={title} style={style} className={cn("lift group relative overflow-hidden rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] px-4 py-3.5 hover:border-[color-mix(in_srgb,var(--tint)_45%,transparent)]", SOFT_TINT)}>
+      <div title={info ? undefined : title} style={style} className={cn("lift group relative overflow-hidden rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] px-4 py-3.5 hover:border-[color-mix(in_srgb,var(--tint)_45%,transparent)]", SOFT_TINT)}>
         <Icon aria-hidden size={76} strokeWidth={1.5} className="pointer-events-none absolute -bottom-4 -right-3 text-[var(--tint)] opacity-[0.13] transition-transform duration-500 group-hover:-rotate-12 group-hover:scale-110" />
         <div className="relative pr-10">{text}</div>
       </div>
@@ -170,7 +182,7 @@ function renderTile(variant: TileVariant, { icon: Icon, label, value, note, tone
 
   if (variant === "bento-split") {
     return (
-      <div title={title} style={style} className="lift group grid grid-cols-[78px_minmax(0,1fr)] gap-1.5 rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] bg-[color-mix(in_srgb,var(--tint)_9%,var(--surface))] p-1.5">
+      <div title={info ? undefined : title} style={style} className="lift group grid grid-cols-[78px_minmax(0,1fr)] gap-1.5 rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] bg-[color-mix(in_srgb,var(--tint)_9%,var(--surface))] p-1.5">
         <span className="relative grid place-items-center overflow-hidden rounded-[12px] bg-[var(--tint)] text-white">
           <span aria-hidden className="weave-pattern absolute inset-0 bg-[length:18px_18px] opacity-[0.12]" />
           <Icon size={24} className="relative transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110" />
@@ -188,7 +200,7 @@ function renderTile(variant: TileVariant, { icon: Icon, label, value, note, tone
 
   if (variant === "bento") {
     return (
-      <div title={title} style={style} className="lift group grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_1fr] gap-1.5 rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] bg-[color-mix(in_srgb,var(--tint)_9%,var(--surface))] p-1.5 hover:border-[color-mix(in_srgb,var(--tint)_45%,transparent)]">
+      <div title={info ? undefined : title} style={style} className="lift group grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_1fr] gap-1.5 rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] bg-[color-mix(in_srgb,var(--tint)_9%,var(--surface))] p-1.5 hover:border-[color-mix(in_srgb,var(--tint)_45%,transparent)]">
         <span className="relative grid h-10 w-10 place-items-center overflow-hidden rounded-[11px] bg-[var(--tint)] text-white shadow-[0_8px_16px_-10px_var(--tint)]">
           <span aria-hidden className="weave-pattern absolute inset-0 bg-[length:16px_16px] opacity-[0.16] transition-[background-position] duration-700 ease-out group-hover:bg-[position:8px_8px]" />
           <Icon size={18} className="relative transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-115" />
@@ -204,7 +216,7 @@ function renderTile(variant: TileVariant, { icon: Icon, label, value, note, tone
 
   if (variant === "bento-stack") {
     return (
-      <div title={title} style={style} className="lift group flex flex-col overflow-hidden rounded-tile border border-[color-mix(in_srgb,var(--tint)_30%,transparent)] bg-surface">
+      <div title={info ? undefined : title} style={style} className="lift group flex flex-col overflow-hidden rounded-tile border border-[color-mix(in_srgb,var(--tint)_30%,transparent)] bg-surface">
         <div className="relative flex items-center justify-between overflow-hidden bg-[var(--tint)] px-4 py-2.5 text-white">
           <span aria-hidden className="weave-pattern absolute inset-0 bg-[length:18px_18px] opacity-[0.1]" />
           <p className="relative text-[12.5px] font-semibold">{label}</p>
@@ -220,7 +232,7 @@ function renderTile(variant: TileVariant, { icon: Icon, label, value, note, tone
 
   if (variant === "stripe") {
     return (
-      <div title={title} style={style} className="lift group relative overflow-hidden rounded-tile border border-line bg-surface py-3.5 pl-5 pr-4 shadow-card">
+      <div title={info ? undefined : title} style={style} className="lift group relative overflow-hidden rounded-tile border border-line bg-surface py-3.5 pl-5 pr-4 shadow-card">
         <span aria-hidden className="absolute inset-y-0 left-0 w-1.5 bg-[var(--tint)] transition-[width] duration-300 group-hover:w-2" />
         <p className="flex items-center gap-1.5 text-[12.5px] font-medium text-fg-2">
           <Icon size={15} className="text-[var(--tint)]" />
@@ -233,7 +245,7 @@ function renderTile(variant: TileVariant, { icon: Icon, label, value, note, tone
   }
 
   return (
-    <div title={title} style={style} className={cn("lift group rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] px-4 py-3.5 hover:border-[color-mix(in_srgb,var(--tint)_45%,transparent)]", SOFT_TINT)}>
+    <div title={info ? undefined : title} style={style} className={cn("lift group rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] px-4 py-3.5 hover:border-[color-mix(in_srgb,var(--tint)_45%,transparent)]", SOFT_TINT)}>
       <div className="mb-2.5 w-fit transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110">
         <TintIcon icon={Icon} solid />
       </div>

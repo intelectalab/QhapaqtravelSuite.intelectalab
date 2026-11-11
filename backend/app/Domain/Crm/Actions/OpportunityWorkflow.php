@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Domain\Crm\Actions;
 
 use App\Domain\Crm\Support\Advisors;
+use App\Domain\Crm\Support\CatalogInterest;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Crm\Support\CrmCatalog;
+use App\Domain\Crm\Support\LoyaltySegments;
 use App\Domain\Crm\Support\OpportunityDirectory;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
@@ -26,7 +28,37 @@ final class OpportunityWorkflow
         private readonly TenantContext $context,
         private readonly CodeSequence $codes,
         private readonly Advisors $advisors,
+        private readonly CatalogInterest $interest,
+        private readonly LoyaltySegments $loyalty,
     ) {}
+
+    public function reassign(string $code, string $ownerId, ?string $note, ?int $version, User $actor): void
+    {
+        $opportunity = $this->directory->scoped($actor)->where('o.code', $code)->first(['o.*']) ?? throw Portfolio::missing($actor, 'crm_opportunities', $code, 'La oportunidad no existe.', 'Esta oportunidad');
+
+        if (in_array($opportunity->stage, ['ganada', 'perdida'], true)) {
+            throw ApiException::conflict('OPPORTUNITY_CLOSED', 'Una oportunidad cerrada no se reasigna. Reábrela primero.');
+        }
+
+        if ($opportunity->owner_id === $ownerId) {
+            throw ApiException::unprocessable('CRM-BR-31', 'Elige un responsable distinto del actual.');
+        }
+
+        if (! $this->advisors->has($ownerId)) {
+            throw ApiException::unprocessable('CRM-BR-31', 'Elige un responsable activo de la lista.');
+        }
+
+        $updated = DB::table('crm_opportunities')->where('id', $opportunity->id)->when($version !== null, fn ($query) => $query->where('lock_version', $version))
+            ->update(['owner_id' => $ownerId, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+
+        if ($updated === 0) {
+            throw ApiException::conflict('STALE_VERSION', 'Alguien cambió esta oportunidad mientras la veías. Recarga la página e inténtalo de nuevo.');
+        }
+
+        $before = DB::table('iam_users')->where('id', $opportunity->owner_id)->value('name');
+        $after = DB::table('iam_users')->where('id', $ownerId)->value('name');
+        $this->audit->log('Oportunidad', $code, 'reasignar', $before, trim($after.($note ? " · {$note}" : '')));
+    }
 
     public function changeStage(string $code, array $data, User $actor): array
     {
@@ -73,13 +105,18 @@ final class OpportunityWorkflow
         return $warnings;
     }
 
-    private const FIELDS = ['title' => 'Título', 'amount' => 'Monto', 'currency' => 'Moneda', 'probability' => 'Probabilidad', 'expected_close_date' => 'Fecha de cierre', 'destination_label' => 'Destino', 'pax' => 'Pasajeros', 'notes' => 'Notas', 'owner_id' => 'Responsable'];
+    private const FIELDS = ['client_id' => 'Cliente', 'product_id' => 'Producto', 'title' => 'Título', 'amount' => 'Monto', 'currency' => 'Moneda', 'probability' => 'Probabilidad', 'expected_close_date' => 'Fecha de cierre', 'destination_label' => 'Destino', 'pax' => 'Pasajeros', 'notes' => 'Notas', 'owner_id' => 'Responsable'];
 
     public function create(array $data, User $actor): string
     {
         return DB::transaction(function () use ($data, $actor): string {
             $client = $this->client((string) $data['client_code'], $actor);
-            $stage = DB::table('crm_pipeline_stages')->where('code', 'descubrimiento')->first();
+            $origin = ($data['origin'] ?? null) === LoyaltySegments::ORIGIN ? LoyaltySegments::ORIGIN : 'manual';
+            if ($origin === LoyaltySegments::ORIGIN) {
+                $this->loyalty->guard($client, $data);
+            }
+            $stageCode = $data['stage'] ?? 'descubrimiento';
+            $stage = DB::table('crm_pipeline_stages')->where('code', $stageCode)->first() ?? throw ApiException::unprocessable('STAGE', 'Elige una etapa del embudo.');
             $owner = $this->owner($data['owner_id'] ?? null, $actor);
             $code = $this->codes->next('crm_opportunities', 'OPP-');
             DB::table('crm_opportunities')->insert([
@@ -88,7 +125,8 @@ final class OpportunityWorkflow
                 'code' => $code,
                 'client_id' => $client->id,
                 'title' => trim($data['title']),
-                'stage' => 'descubrimiento',
+                'stage' => $stageCode,
+                'product_id' => $this->interest->product($data),
                 'amount' => $data['amount'],
                 'currency' => $data['currency'],
                 'probability' => (int) ($stage->default_probability ?? 35),
@@ -97,10 +135,13 @@ final class OpportunityWorkflow
                 'destination_label' => trim((string) ($data['destination'] ?? '')) ?: null,
                 'pax' => (int) ($data['pax'] ?? 0),
                 'notes' => trim((string) ($data['notes'] ?? '')) ?: null,
-                'origin' => 'manual',
+                'origin' => $origin,
                 'created_by' => $actor->getKey(),
             ]);
             $this->audit->log('Oportunidad', $code, 'crear', after: "{$client->code} · ".trim($data['title']));
+            if ($origin === LoyaltySegments::ORIGIN) {
+                $this->loyalty->record($client->code, $code);
+            }
 
             return $code;
         });
@@ -111,6 +152,8 @@ final class OpportunityWorkflow
         $opportunity = $this->directory->scoped($actor)->where('o.code', $code)->first(['o.*']) ?? throw Portfolio::missing($actor, 'crm_opportunities', $code, 'La oportunidad no existe.', 'Esta oportunidad');
         $closed = in_array($opportunity->stage, ['ganada', 'perdida'], true);
         $values = [
+            'client_id' => ! empty($data['client_code']) ? $this->client((string) $data['client_code'], $actor)->id : $opportunity->client_id,
+            'product_id' => $this->interest->product($data, $opportunity->product_id),
             'title' => trim($data['title']),
             'amount' => $data['amount'],
             'currency' => $data['currency'],

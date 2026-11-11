@@ -1,17 +1,20 @@
 "use client";
 
-import { Ban, CopyPlus, Eye, Handshake, MessagesSquare, Send, ShieldCheck, ShieldQuestion, ThumbsUp, Trash2 } from "lucide-react";
+import { Ban, CircleAlert, CircleCheck, CopyPlus, Eye, Handshake, MessagesSquare, RefreshCw, Send, ShieldCheck, ShieldQuestion, ThumbsUp, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { quoteStep, type QuoteStepState } from "@/app/(backoffice)/cotizaciones/actions";
 import { RowIcon } from "@/components/table/RowActions";
 import { Button } from "@/components/ui/Button";
+import { ChipToggleGroup } from "@/components/ui/ChipToggleGroup";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
+import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
-import { formatMoney } from "@/lib/format";
+import { cn } from "@/lib/cn";
+import { formatDate, formatMoney } from "@/lib/format";
 import type { QuoteDetail } from "@/lib/quotes";
 
 const initial: QuoteStepState = { message: null, done: false };
@@ -60,18 +63,61 @@ function StepPanel({ code, step, label, icon, variant = "secondary", title, desc
 const SEND_CHANNELS = [
   { value: "Email", label: "Correo" },
   { value: "WhatsApp", label: "WhatsApp" },
-  { value: "Portal", label: "Enlace del portal" },
+  { value: "Portal", label: "Publicar en el portal" },
 ];
 
-function SendFields({ contact }: { contact: QuoteDetail["contact"] }) {
-  const [channel, setChannel] = useState("Email");
-  const recipient = channel === "Email" ? contact?.email : channel === "WhatsApp" ? contact?.phone : contact?.email;
+function CheckRow({ ok, warn = false, title, detail }: { ok: boolean; warn?: boolean; title: string; detail: string }) {
+  return (
+    <li className={cn("flex items-start gap-2.5 rounded-xl px-3 py-2 text-[13px]", ok ? "bg-surface-2" : warn ? "bg-[color-mix(in_srgb,var(--warn)_10%,transparent)]" : "bg-[color-mix(in_srgb,var(--bad)_9%,transparent)]")}>
+      <span className={cn("mt-0.5 flex-none", ok ? "text-ok" : warn ? "text-warn" : "text-bad")}>{ok ? <CircleCheck size={15} /> : <CircleAlert size={15} />}</span>
+      <span className="min-w-0">
+        <b className="block font-semibold">{title}</b>
+        <span className="text-fg-3">{detail}</span>
+      </span>
+    </li>
+  );
+}
+
+function SendFields({ quote }: { quote: QuoteDetail }) {
+  const internalOk = !quote.internal?.required || quote.internal.status === "aprobada";
+  const valid = quote.days_left === null || quote.days_left >= 0;
   return (
     <>
-      <ChoiceGroup label="Cómo se envía" name="channel" options={SEND_CHANNELS} defaultValue="Email" onChange={setChannel} />
-      <TextField key={channel} label={channel === "WhatsApp" ? "Número" : "Correo del cliente"} name="recipient" required defaultValue={recipient ?? ""} maxLength={200} />
-      <TextArea label="Mensaje (opcional)" name="message" rows={4} maxLength={2000} placeholder="Unas líneas para acompañar la propuesta." />
+      <ul className="flex flex-col gap-1.5" data-testid="quote-send-checklist">
+        <CheckRow ok={internalOk} title="Versión validada" detail={internalOk ? `Versión ${quote.version} lista para el cliente.` : "Falta la aprobación de Gerencia por el descuento o el margen."} />
+        <CheckRow ok title="Documento" detail={`Se comparte la propuesta de la versión ${quote.version} con su PDF.`} />
+        <CheckRow ok title="Enlace con token" detail={quote.share?.active ? `Se usa el enlace activo, vigente hasta el ${formatDate(quote.share.expires_at ?? quote.valid_until)}.` : "Se crea al enviar y vence con la cotización."} />
+        <CheckRow ok={valid} warn={!valid} title="Validez" detail={valid ? `Válida hasta el ${formatDate(quote.valid_until)}.` : "La validez ya pasó: se renueva al enviar el borrador."} />
+      </ul>
+      <ChipToggleGroup label="Canales" name="channels" options={SEND_CHANNELS} defaultValue={["Email"]} hint="Elige uno o varios. Se registra un envío por canal." />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <TextField label="Correo del cliente" name="recipient" type="email" defaultValue={quote.contact?.email ?? ""} maxLength={200} hint="Para el envío por correo." />
+        <TextField label="Celular del cliente" name="phone" defaultValue={quote.contact?.phone ?? ""} maxLength={40} hint="Para el envío por WhatsApp." />
+      </div>
+      <TextArea label="Mensaje" name="message" rows={4} maxLength={2000} defaultValue={`Hola, te compartimos la propuesta «${quote.title}». Puedes revisarla en el enlace que va en este mensaje.`} />
     </>
+  );
+}
+
+export function QuoteTokenAction({ code, lockVersion, regenerate }: { code: string; lockVersion: number; regenerate: boolean }) {
+  const router = useRouter();
+  return (
+    <StepPanel
+      code={code}
+      step="token"
+      lockVersion={lockVersion}
+      label={regenerate ? "Regenerar enlace" : "Generar enlace"}
+      icon={<RefreshCw size={15} />}
+      title={regenerate ? "Regenerar el enlace seguro" : "Generar el enlace seguro"}
+      description={regenerate ? "Se crea un enlace nuevo y el anterior deja de funcionar. Queda registrado en la actividad." : "Se crea un enlace que el cliente abre sin cuenta. Vence junto con la cotización."}
+      submitLabel={regenerate ? "Regenerar" : "Generar"}
+      trigger={(open) => (
+        <Button size="sm" variant="ghost" icon={<RefreshCw size={14} />} onClick={open} data-testid="quote-token">
+          {regenerate ? "Regenerar" : "Generar"}
+        </Button>
+      )}
+      onDone={() => router.refresh()}
+    />
   );
 }
 
@@ -81,8 +127,8 @@ function ApproveFields({ quote }: { quote: QuoteDetail }) {
   return (
     <>
       <TextField label="Quién aprobó" name="approved_by_name" required maxLength={150} placeholder="Nombre de la persona del cliente" />
-      <ChoiceGroup label="Por dónde" name="channel" options={[{ value: "WhatsApp", label: "WhatsApp" }, { value: "Email", label: "Correo" }, { value: "Llamada", label: "Llamada" }, { value: "Presencial", label: "En la oficina" }]} defaultValue="WhatsApp" />
-      <TextField label="Referencia (opcional)" name="ref" maxLength={200} placeholder="Por ejemplo: mensaje del 5 de noviembre" />
+      <SelectField label="Evidencia" name="channel" options={quote.evidence_types.map((value) => ({ value, label: value }))} placeholder="Elegir el tipo de evidencia" />
+      <TextField label="Referencia" name="ref" required minLength={3} maxLength={200} placeholder="Asunto del correo, número de orden o fecha del mensaje" />
       {needsInternal && quote.can.approve_internal && (
         <>
           <SwitchField label="Aprobar internamente en el mismo paso" hint="Por el descuento o el margen, esta versión necesita el visto bueno de Gerencia." name="internal_approval" checked={internal} onCheckedChange={setInternal} />
@@ -140,7 +186,7 @@ export function QuoteLifecycleActions({ quote }: { quote: QuoteDetail }) {
   if ((status === "borrador" && !blockedInternal && can.send) || (live && can.send)) {
     actions.push(
       <StepPanel key="send" code={code} lockVersion={quote.lock_version} step="send" label={status === "borrador" ? "Enviar al cliente" : "Reenviar"} icon={<Send size={16} />} variant={status === "borrador" ? "primary" : "secondary"} compact={status !== "borrador"} title={status === "borrador" ? "Enviar al cliente" : "Reenviar la cotización"} description={status === "borrador" ? "La versión queda congelada: para cambiarla después se crea una nueva versión." : `Se reenvía la versión ${quote.version}.`} submitLabel="Enviar">
-        <SendFields contact={quote.contact} />
+        <SendFields quote={quote} />
       </StepPanel>,
     );
   }

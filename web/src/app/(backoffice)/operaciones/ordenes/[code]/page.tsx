@@ -10,9 +10,10 @@ import { HeroBand, HeroChip, HeroPanel, Journey, TintTile, ToneScope } from "@/c
 import { OrderAdvanceActions } from "@/features/operations/OrderActions";
 import { CloseSection, EvidenceTab, IncidentsSection, PassengersSection, RoomingSection, ServicesSection, TasksSection, VouchersSection } from "@/features/operations/OrderSections";
 import { Notice } from "@/features/operations/OpsBits";
+import { SupplierAlternativesNotice } from "@/features/operations/SupplierAlternatives";
 import { OrderCancelAction, OrderEditAction } from "@/features/operations/Orders";
 import { formatDate, shortName } from "@/lib/format";
-import { ORDER_FLOW, type IncidentList, type OrderDetail, type VoucherOverview } from "@/lib/operations";
+import { ORDER_FLOW, type IncidentList, type OrderDetail, type SupplierAlternativeList, type VoucherOverview } from "@/lib/operations";
 import { resolveSections } from "@/lib/sections";
 import { getResource } from "@/lib/server/resource";
 import { statusLabel, statusTone } from "@/lib/tone";
@@ -35,7 +36,12 @@ export default async function OrdenPage({ params, searchParams }: PageProps<"/op
   const confirmedSuppliers = order.services.filter((service) => ["confirmado", "completado", "en_curso"].includes(service.status)).length;
   const openIncidents = order.incidents.filter((incident) => ["abierta", "en_proceso"].includes(incident.status));
   const liveVouchers = order.vouchers.filter((voucher) => voucher.status !== "anulado").length;
+  const vouchered = new Set(order.vouchers.filter((voucher) => voucher.status !== "anulado").map((voucher) => voucher.service_code));
+  const withoutVoucher = order.services.filter((service) => ["confirmado", "completado"].includes(service.status) && service.kind !== "libre" && !vouchered.has(service.code)).length;
+  const due = order.assignments.filter((item) => item.status !== "pendiente" && item.date <= order.today);
+  const checkedIn = due.filter((item) => (item.checked_in?.length ?? 0) > 0).length;
   const base = `/operaciones/ordenes/${encodeURIComponent(order.code)}`;
+  const alternatives = closed ? null : await getResource<SupplierAlternativeList>(`/ops/supplier-responses?filter[type]=alternativa&filter[review_status]=pendiente&filter[reservation]=${encodeURIComponent(order.reservation.code)}`, "No pudimos cargar las alternativas de proveedores.");
 
   const { active, groups } = resolveSections(
     base,
@@ -107,6 +113,8 @@ export default async function OrdenPage({ params, searchParams }: PageProps<"/op
         </p>
       )}
 
+      {alternatives && <SupplierAlternativesNotice data={alternatives} scope="order" />}
+
       {openIncidents.some((incident) => incident.severity === "critica") && (
         <Notice tone="bad" icon={<Siren size={16} />} action={<Link href={`/operaciones/incidencias/${openIncidents.find((incident) => incident.severity === "critica")?.code}`} className="text-[13px] font-semibold text-[var(--tint)] hover:underline">Ver incidencia</Link>}>
           <b className="font-semibold">Incidencia crítica abierta:</b> {openIncidents.find((incident) => incident.severity === "critica")?.title}
@@ -137,10 +145,10 @@ export default async function OrdenPage({ params, searchParams }: PageProps<"/op
       </HeroBand>
 
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <TintTile icon={Truck} tone="t1" label="Con recursos" value={`${assigned} de ${order.assignments.length}`} note="Tours y traslados" />
-        <TintTile icon={ShieldCheck} tone="ok" label="Confirmados por proveedor" value={`${confirmedSuppliers} de ${order.services.length}`} />
-        <TintTile icon={TicketCheck} tone="violet" label="Vouchers vigentes" value={liveVouchers} />
-        <TintTile icon={Siren} tone="bad" label="Incidencias abiertas" value={openIncidents.length} note={`${order.incidents.length} en total`} />
+        <TintTile icon={Truck} tone="t1" label="Con recursos" value={`${assigned} de ${order.assignments.length}`} note="Tours y traslados" info="Asignaciones de la orden que ya tienen guía, conductor o vehículo." />
+        <TintTile icon={ShieldCheck} tone="ok" label="Confirmados por proveedor" value={`${confirmedSuppliers} de ${order.services.length}`} info="Servicios de la reserva que el proveedor confirmó con su código, están en curso o completados." />
+        <TintTile icon={TicketCheck} tone={withoutVoucher ? "warn" : "violet"} label="Confirmados sin voucher" value={withoutVoucher} note={withoutVoucher ? "Emítelos en Vouchers" : "Todos emitidos"} info="Servicios confirmados por el proveedor que todavía no tienen un voucher vigente para el pasajero." />
+        <TintTile icon={ClipboardCheck} tone="t4" label="Con check-in" value={`${checkedIn} de ${due.length}`} note="Servicios hasta hoy" info="Servicios ya iniciados o de fecha pasada con al menos un pasajero marcado como presente, desde la app o la web." />
       </section>
 
       <SectionLayout nav={<SectionNav label="Secciones de la orden" groups={groups} active={active} testId="order-sections" />}>{body}</SectionLayout>

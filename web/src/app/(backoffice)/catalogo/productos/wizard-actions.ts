@@ -71,6 +71,11 @@ function failure<T>(result: ApiResult<T>, fallback: string): { ok: false; error:
   return { ok: false, error: { message, step: detailStep ?? (firstField ? stepOf(firstField) : null), fields } };
 }
 
+function rateBody(rate: ProductRateDraft): Record<string, unknown> {
+  const optional = (value: string | null | undefined) => (value === undefined || value === null || String(value).trim() === "" ? null : value);
+  return { rate_type: rate.rate_type, segment: rate.segment, channel: rate.channel, currency: rate.currency, price_basis: rate.price_basis, cost: rate.cost ?? 0, price: rate.price, min_price: optional(rate.min_price), max_price: optional(rate.max_price), conditions: optional(rate.conditions), valid_from: rate.valid_from, valid_to: rate.valid_to, season_id: rate.season_id };
+}
+
 function payload(draft: ProductDraft): Record<string, unknown> {
   return {
     ...draft.master,
@@ -78,7 +83,7 @@ function payload(draft: ProductDraft): Record<string, unknown> {
     secondary_destination_ids: draft.secondary_destination_ids,
     components: draft.components.map((component) => ({ id: component.id, service_id: component.service_id, component_product_id: component.component_product_id, quantity: component.quantity, is_required: component.is_required, is_included: component.is_included, notes: component.notes })),
     itinerary: draft.itinerary,
-    rates: draft.rates.map((rate) => ({ rate_type: rate.rate_type, segment: rate.segment, channel: rate.channel, currency: rate.currency, price_basis: rate.price_basis, cost: rate.cost ?? 0, price: rate.price, valid_from: rate.valid_from, valid_to: rate.valid_to, season_id: rate.season_id })),
+    rates: draft.rates.map(rateBody),
     season_ids: draft.season_ids,
     availability: draft.availability,
     content: draft.content,
@@ -141,12 +146,34 @@ export async function saveProductSection(code: string, lockVersion: number, sect
 export async function addProductRate(code: string, rate: ProductRateDraft): Promise<WizardResult<ProductEditorState>> {
   const result = await apiFetch<{ ref: string }>(`/catalog/products/${encodeURIComponent(code)}/rates`, {
     method: "POST",
-    body: { rate_type: rate.rate_type, segment: rate.segment, channel: rate.channel, currency: rate.currency, price_basis: rate.price_basis, cost: rate.cost ?? 0, price: rate.price, valid_from: rate.valid_from, valid_to: rate.valid_to, season_id: rate.season_id },
+    body: rateBody(rate),
   });
   if (!result.ok) {
     const failed = failure(result, "No pudimos agregar la tarifa.");
     return { ok: false, error: { ...failed.error, step: 6, fields: Object.fromEntries(Object.entries(failed.error.fields).map(([field, message]) => [`rates.0.${field}`, message])) } };
   }
+  revalidatePath("/catalogo/productos", "layout");
+  return readEditor(code);
+}
+
+function rateFailure(result: ApiResult<unknown>, fallback: string): { ok: false; error: WizardFailure } {
+  const failed = failure(result, fallback);
+  return { ok: false, error: { ...failed.error, step: 6, fields: Object.fromEntries(Object.entries(failed.error.fields).map(([field, message]) => [`rates.0.${field}`, message])) } };
+}
+
+export async function updateProductRate(code: string, rate: ProductRateDraft, reason: string | null): Promise<WizardResult<ProductEditorState>> {
+  const result = await apiFetch(`/catalog/products/${encodeURIComponent(code)}/rates/${encodeURIComponent(rate.ref ?? "")}/price`, {
+    method: "PATCH",
+    body: { ...rateBody(rate), reason, lock_version: rate.lock_version ?? 0 },
+  });
+  if (!result.ok) return rateFailure(result, "No pudimos guardar la tarifa.");
+  revalidatePath("/catalogo/productos", "layout");
+  return readEditor(code);
+}
+
+export async function removeProductRate(code: string, ref: string): Promise<WizardResult<ProductEditorState>> {
+  const result = await apiFetch(`/catalog/products/${encodeURIComponent(code)}/rates/${encodeURIComponent(ref)}`, { method: "DELETE", body: {} });
+  if (!result.ok) return failure(result, "No pudimos quitar la tarifa.");
   revalidatePath("/catalogo/productos", "layout");
   return readEditor(code);
 }

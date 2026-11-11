@@ -1,6 +1,6 @@
 "use client";
 
-import { CirclePlay, CircleStop, Layers, Plus } from "lucide-react";
+import { CirclePlay, CircleStop, Layers, Pencil, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createService, toggleService, updateService } from "@/app/(backoffice)/catalogo/servicios/actions";
 import { RowIcon } from "@/components/table/RowActions";
@@ -14,7 +14,9 @@ import type { StepResult } from "@/lib/server/resource";
 
 const list = (values: string[]) => values.map((value) => ({ value, label: value }));
 
-function ServiceFields({ overview, service }: { overview: ServicesOverview; service?: ServiceRow }) {
+type ServiceFormContext = Pick<ServicesOverview, "options" | "today">;
+
+function ServiceFields({ overview, service }: { overview: ServiceFormContext; service?: ServiceRow }) {
   const { options } = overview;
   return (
     <>
@@ -55,13 +57,14 @@ export function ServiceCreateAction({ overview }: { overview: ServicesOverview }
   );
 }
 
-export function ServiceEditAction({ overview, service }: { overview: ServicesOverview; service: ServiceRow }) {
+export function ServiceEditAction({ overview, service, button = false }: { overview: ServiceFormContext; service: ServiceRow; button?: boolean }) {
   const router = useRouter();
   return (
     <PanelAction<StepResult>
       label="Editar"
       formId={`service-edit-${service.ref}`}
-      trigger={(open) => <RowIcon tone="edit" label="Editar" onClick={open} />}
+      icon={<Pencil size={15} />}
+      trigger={button ? undefined : (open) => <RowIcon tone="edit" label="Editar" onClick={open} />}
       title="Editar servicio"
       description={service.products.length ? `${service.ref} · lo usan ${service.products.length} productos; un cambio de costo queda en el historial.` : service.ref}
       submitLabel="Guardar cambios"
@@ -79,7 +82,7 @@ export function ServiceEditAction({ overview, service }: { overview: ServicesOve
   );
 }
 
-export function ServiceToggleAction({ service }: { service: ServiceRow }) {
+export function ServiceToggleAction({ service, button = false }: { service: ServiceRow; button?: boolean }) {
   const activate = service.status !== "activo";
   return (
     <ConfirmAction
@@ -99,6 +102,7 @@ export function ServiceToggleAction({ service }: { service: ServiceRow }) {
       action={toggleService}
       hidden={{ ref: service.ref, action: activate ? "activate" : "deactivate" }}
       reason={activate ? undefined : "Por ejemplo: el proveedor dejó de prestarlo."}
+      button={button}
     />
   );
 }

@@ -35,8 +35,10 @@ export interface ConversationMessage {
 export interface ConversationCard {
   client: { code: string; name: string; segment: string; country: string; nps: number | null; owner: string | null } | null;
   lead: { code: string; name: string; status: string } | null;
+  reservation: { code: string; title: string; status: string } | null;
   reservations: { code: string; title: string; status: string; date: string; total: number; currency: string; linked: boolean }[];
   quotes: { code: string; title: string; status: string; date: string; linked: boolean }[];
+  opportunity: { code: string; title: string; stage: string } | null;
 }
 
 export interface ConversationThread extends ConversationSummary {
@@ -57,9 +59,24 @@ export interface InboxOverview {
   items: ConversationSummary[];
   templates: ReplyTemplate[];
   agents: { id: string; name: string }[];
-  can: { manage: boolean; reassign: boolean };
+  can: { manage: boolean; reassign: boolean; link: LinkKind[]; quote?: boolean };
   me: string;
 }
+
+export type LinkKind = "client" | "lead" | "reservation";
+
+export interface LinkOption {
+  code: string;
+  label: string;
+  hint: string | null;
+  linked: boolean;
+}
+
+export const LINK_KINDS: Record<LinkKind, { label: string; article: string; href: (code: string) => string; placeholder: string }> = {
+  client: { label: "Cliente", article: "un cliente", href: (code) => `/crm/clientes/${code}`, placeholder: "Nombre, código, correo o teléfono" },
+  lead: { label: "Lead", article: "un lead", href: (code) => `/crm/leads/${code}`, placeholder: "Nombre, código, correo o teléfono" },
+  reservation: { label: "Reserva", article: "una reserva", href: (code) => `/reservas/${code}`, placeholder: "Código, viaje o cliente" },
+};
 
 export const CHANNEL_TONES: Record<string, Tone> = { whatsapp: "ok", email: "info", webchat: "violet", form: "sun", portal: "t3" };
 
@@ -77,3 +94,9 @@ export const PRIORITY_OPTIONS = [
   { value: "alta", label: "Alta" },
   { value: "critica", label: "Crítica" },
 ];
+
+export const ATTACHMENT_ACCEPT = "image/jpeg,image/png,image/webp,application/pdf";
+
+export const ATTACHMENT_MAX_FILES = 5;
+
+export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;

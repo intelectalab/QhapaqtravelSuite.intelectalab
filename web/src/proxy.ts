@@ -1,10 +1,20 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { REALMS, realmFor } from "@/lib/realms";
-import { FRAMEABLE_PREFIX, NONCE_HEADER, contentSecurityPolicy, createNonce } from "@/lib/security-headers";
+import { FRAMEABLE_PREFIX, NONCE_HEADER, WIDGET_ASSETS_PREFIX, WIDGET_PREFIX, contentSecurityPolicy, createNonce } from "@/lib/security-headers";
+import { widgetAncestors } from "@/lib/widget-ancestors";
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  if (pathname.startsWith(WIDGET_ASSETS_PREFIX)) {
+    const response = NextResponse.next();
+    response.headers.set("Access-Control-Allow-Origin", "*");
+    response.headers.set("Cross-Origin-Resource-Policy", "cross-origin");
+    return response;
+  }
   const nonce = createNonce();
-  const policy = contentSecurityPolicy(nonce, request.nextUrl.pathname.startsWith(FRAMEABLE_PREFIX));
+  const widget = pathname.startsWith(WIDGET_PREFIX);
+  const ancestors = widget ? await widgetAncestors(request.nextUrl.searchParams.get("key"), request.headers.get("host")) : [];
+  const policy = contentSecurityPolicy(nonce, widget || pathname.startsWith(FRAMEABLE_PREFIX), ancestors);
   const response = route(request, nonce, policy);
   response.headers.set("Content-Security-Policy", policy);
   return response;

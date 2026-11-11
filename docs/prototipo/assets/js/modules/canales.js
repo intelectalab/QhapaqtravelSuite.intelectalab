@@ -363,8 +363,8 @@
     const cur = (br || pub || { currency: 'PEN' }).currency;
     return { ok: true, price: entry.price, cur, commissionPct: entry.commissionPct, list: entry.priceList, credit: !!entry.credit, pub: pub ? pub.price : null, cost: br ? br.cost : pub ? pub.cost : entry.price * 0.8 };
   }
-  let b2bSess = null; try { b2bSess = localStorage.getItem('qhapaq_b2b_sess'); } catch (e) { }
-  const setB2bSess = (v) => { b2bSess = v; try { v ? localStorage.setItem('qhapaq_b2b_sess', v) : localStorage.removeItem('qhapaq_b2b_sess'); } catch (e) { } };
+  let b2bSess = null; try { b2bSess = localStorage.getItem('kipucontrol_b2b_sess'); } catch (e) { }
+  const setB2bSess = (v) => { b2bSess = v; try { v ? localStorage.setItem('kipucontrol_b2b_sess', v) : localStorage.removeItem('kipucontrol_b2b_sess'); } catch (e) { } };
 
   App.register('canales/b2b', (el, params) => {
     const isAgency = Auth.role === 'b2b';
@@ -1433,8 +1433,8 @@
      PORTAL DEL PASAJERO — PROC-052
      ===================================================================================== */
   const PAX_RES = 'RES-2026-000347';
-  let paxSess = null; try { paxSess = localStorage.getItem('qhapaq_pax_sess'); } catch (e) { }
-  const setPax = (v) => { paxSess = v; try { v ? localStorage.setItem('qhapaq_pax_sess', v) : localStorage.removeItem('qhapaq_pax_sess'); } catch (e) { } };
+  let paxSess = null; try { paxSess = localStorage.getItem('kipucontrol_pax_sess'); } catch (e) { }
+  const setPax = (v) => { paxSess = v; try { v ? localStorage.setItem('kipucontrol_pax_sess', v) : localStorage.removeItem('kipucontrol_pax_sess'); } catch (e) { } };
   const svcKind = (s) => /Hotel|hab\./i.test(s.name) ? 'hotel' : (s.productId === 'PRD-005' || /Traslado|Tren|Bus/i.test(s.name)) ? 'transporte' : (/libre/i.test(s.name) ? 'libre' : 'actividad');
   const svcState = (s, r) => (svcKind(s) === 'hotel' && s.status !== 'completado' && s.date <= T() && r && r.travelTo >= T()) ? 'stay' : s.status === 'completado' || s.date < T() ? 'done' : s.date === T() ? 'today' : 'next';
   let pxR = null;

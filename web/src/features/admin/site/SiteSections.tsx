@@ -44,6 +44,7 @@ const NAV_PATHS: Record<SiteNavLinkId, string> = {
   tours: "/tours?tipo=tours",
   packages: "/tours?tipo=paquetes",
   experiences: "/tours?tipo=experiencias",
+  transfers: "/tours?tipo=traslados",
   offers: "/ofertas",
   tailored: "/viajes-a-medida",
   contact: "/contacto",
@@ -442,7 +443,7 @@ function SeoForm({ studio }: { studio: StudioContext }) {
       <Card>
         <CardHeader title="Así se vería en el buscador" />
         <div className="rounded-[14px] border border-line bg-white p-4 text-left font-[Arial,sans-serif] dark:bg-surface-2" data-testid="site-seo-preview">
-          <p className="truncate text-[12px] text-[#4d5156] dark:text-fg-3">{data.site.subdomain}.qhapaq.travel</p>
+          <p className="truncate text-[12px] text-[#4d5156] dark:text-fg-3">{data.site.subdomain}.kipucontrol.com</p>
           <p className="mt-0.5 truncate text-[18px] leading-snug text-[#1a0dab] dark:text-[#8ab4f8]">{title}</p>
           <p className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-[#4d5156] dark:text-fg-2">{description}</p>
         </div>

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CartLines, CartSummary } from "@/features/site/Cart";
 import { Breadcrumbs, PageHero } from "@/features/site/Hero";
+import { TrackEvent } from "@/features/site/SiteAnalytics";
 import { getSiteCart, siteBase, siteLocale } from "@/lib/server/site";
 import { siteHref } from "@/lib/site";
 import { siteText } from "@/lib/site-i18n";
@@ -20,6 +21,7 @@ export default async function CartPage({ params }: PageProps<"/sitio/[agencia]/c
 
   return (
     <>
+      <TrackEvent event="view_cart" params={{ items: cart.items.length }} />
       <PageHero eyebrow={t.eyebrow} title={t.title} description={t.description}>
         <div className="mt-5">
           <Breadcrumbs items={[{ label: site.common.home, href: siteHref(base) }, { label: t.crumb }]} />

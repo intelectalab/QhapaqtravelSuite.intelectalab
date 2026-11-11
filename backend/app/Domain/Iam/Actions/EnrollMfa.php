@@ -39,7 +39,7 @@ final class EnrollMfa
 
         return [
             'secret' => $secret,
-            'otpauth_uri' => $this->google2fa->getQRCodeUrl('Qhapaq Travel Suite', $user->email, $secret),
+            'otpauth_uri' => $this->google2fa->getQRCodeUrl('KipuControl', $user->email, $secret),
         ];
     }
 

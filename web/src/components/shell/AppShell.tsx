@@ -20,7 +20,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { userId, groups, allows, lockedFor, navigation } = useWorkspace();
   const home = groups[0]?.screens[0]?.href ?? "/";
   const locked = lockedFor(pathname);
-  const [collapsed, setCollapsed] = useStoredValue("qhapaq-menu-collapsed", parseCollapsed, serializeCollapsed);
+  const [collapsed, setCollapsed] = useStoredValue("kipucontrol-menu-collapsed", parseCollapsed, serializeCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {

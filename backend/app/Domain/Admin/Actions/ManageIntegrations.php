@@ -101,6 +101,21 @@ final class ManageIntegrations
         });
     }
 
+    public function reportSchedule(string $id, string $mode, User $actor): void
+    {
+        $job = DB::table('sys_scheduled_jobs')->where(Str::isUuid($id) ? 'id' : 'code', $id)->first() ?? throw ApiException::notFound('El proceso no existe.');
+
+        if ($job->is_system || $job->report_key === null) {
+            throw ApiException::conflict('JOB-BR-03', 'Aquí solo se pausan los envíos programados de reportes.');
+        }
+
+        if (! $actor->can('admin.settings.manage') && $job->owner_user_id !== $actor->getKey()) {
+            throw ApiException::forbidden('SCOPE_OWNERSHIP', 'Solo puedes pausar los envíos que programaste.', ['admin.settings.manage']);
+        }
+
+        $this->job((string) $job->id, $mode);
+    }
+
     public function run(string $id, User $actor): array
     {
         return DB::transaction(function () use ($id, $actor): array {

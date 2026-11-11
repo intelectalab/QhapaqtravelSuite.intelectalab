@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\DB;
 
+beforeEach(fn () => lockTreasury());
+
 function finCxpBody(array $overrides = []): array
 {
     return [
@@ -136,4 +138,15 @@ it('sin Idempotency-Key el costo adicional se registra igual, porque el contrato
     actingAsSeed('U07');
 
     $this->postJson('/api/v1/finance/payables', finCxpBody())->assertCreated();
+});
+
+it('cada obligación trae su importe y lo pagado en soles para agrupar por proveedor', function () {
+    actingAsSeed('U07');
+
+    $code = $this->postJson('/api/v1/finance/payables', finCxpBody(['currency' => 'USD', 'amount' => '100.00', 'fx_rate' => '3.75']), critical())->assertCreated()->json('data.code');
+    $row = collect($this->getJson('/api/v1/finance/payables')->assertOk()->json('data.rows'))->firstWhere('code', $code);
+
+    expect($row['amount_pen'])->toEqual(375.0)
+        ->and($row['paid_pen'])->toEqual(0.0)
+        ->and($row['balance_pen'])->toEqual(375.0);
 });

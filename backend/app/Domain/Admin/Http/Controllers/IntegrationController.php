@@ -71,6 +71,20 @@ final class IntegrationController
         return response()->json(['data' => $this->integrations->run($id, $this->user($request))], 202);
     }
 
+    public function pauseSchedule(Request $request, string $id): JsonResponse
+    {
+        $this->integrations->reportSchedule($id, 'pause', $this->user($request));
+
+        return response()->json(['data' => ['code' => $id, 'paused' => true]]);
+    }
+
+    public function resumeSchedule(Request $request, string $id): JsonResponse
+    {
+        $this->integrations->reportSchedule($id, 'resume', $this->user($request));
+
+        return response()->json(['data' => ['code' => $id, 'paused' => false]]);
+    }
+
     public function destroyJob(Request $request, string $id): Response
     {
         $this->integrations->delete($id, $this->user($request));

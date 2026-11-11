@@ -14,7 +14,10 @@ export interface ClientRow {
   ownerColor: string | null;
   satisfaction: number | null;
   trips: number;
+  reservations: number;
   totalPen: number;
+  balancePen: number;
+  lastPurchase: string | null;
   lastTripFrom: string | null;
   upcomingTrip: boolean;
   onTrip: boolean;
@@ -148,7 +151,10 @@ export interface ApiClient {
   owner: { name: string; color: string | null };
   satisfaction: number | null;
   trips_count: number;
+  reservations_count: number;
   total_pen: number;
+  balance_pen: number;
+  last_purchase_date: string | null;
   last_trip_from: string | null;
   on_trip: boolean;
   created_at: string;
@@ -219,7 +225,10 @@ export function toClientRow(client: ApiClient, today: string): ClientRow {
     ownerColor: client.owner.color,
     satisfaction: client.satisfaction,
     trips: client.trips_count,
+    reservations: client.reservations_count,
     totalPen: client.total_pen,
+    balancePen: client.balance_pen,
+    lastPurchase: client.last_purchase_date,
     lastTripFrom: client.last_trip_from,
     upcomingTrip: client.last_trip_from !== null && client.last_trip_from > today,
     onTrip: client.on_trip,

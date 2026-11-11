@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Domain\Booking\Actions;
 
 use App\Domain\Booking\Enums\ReservationStatus;
+use App\Domain\Booking\Events\ReservationCancelled;
 use App\Domain\Booking\Models\Reservation;
 use App\Domain\Booking\StateMachines\ReservationStateMachine;
+use App\Domain\Booking\Support\PassengerAgeCheck;
 use App\Domain\Catalog\Support\CancellationTiers;
 use App\Domain\Channels\Support\B2bCredit;
 use App\Domain\Crm\Support\Portfolio;
@@ -93,8 +95,11 @@ final class ReservationWorkflow
             return $id;
         });
 
-        return DB::table('booking_passengers')->where('id', $id)
+        $passenger = DB::table('booking_passengers')->where('id', $id)
             ->first(['id', 'reservation_id', 'seq', 'full_name', 'doc_type', 'doc_number', 'pax_type', 'nationality', 'birth_date', 'age', 'phone', 'email', 'diet_notes', 'relationship', 'is_lead', 'is_placeholder']);
+        $passenger->warning = app(PassengerAgeCheck::class)->warning((string) $reservation->id, $passenger->age === null ? null : (int) $passenger->age, (string) $passenger->pax_type);
+
+        return $passenger;
     }
 
     public function deletePassenger(string $code, string $passengerId, User $actor): void
@@ -176,6 +181,7 @@ final class ReservationWorkflow
             DB::table('booking_cancellations')->insert(['reservation_id' => $reservation->id, 'total_at_cancel' => $calc['total'], 'paid_at_cancel' => $calc['paid'], 'penalty_services' => $calc['penalty_services'], 'consumed_amount' => $calc['consumed'], 'factor_k' => $calc['factor_k'], 'penalty_amount' => $calc['penalty'], 'refund_amount' => $calc['refund'], 'owed_amount' => $calc['owed'], 'currency' => $reservation->currency, 'lines' => json_encode($calc['lines'], JSON_UNESCAPED_UNICODE), 'refund_payment_id' => $refundPayment, 'penalty_receivable_id' => $penaltyReceivable, 'reason' => $full, 'cancelled_by' => $actor->getKey(), 'cancelled_at' => $now, 'created_by' => $actor->getKey()]);
             DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->where('status', 'pendiente')->update(['status' => 'aprobada', 'decided_by' => $actor->getKey(), 'decided_at' => $now, 'decision_note' => 'Cancelación procesada']);
             $this->payables->handle((string) $reservation->id, $actor);
+            ReservationCancelled::dispatch((string) $reservation->id);
 
             $this->mailer->send($reservation->id, 'Tu reserva fue cancelada', "Cancelamos tu viaje {$reservation->title}.".(BigDecimal::of($calc['refund'])->isPositive() ? " Te reembolsaremos {$reservation->currency} {$calc['refund']} en 7 a 15 días hábiles." : ''));
             $this->audit->log('Reserva', $reservation->code, 'cancelar', $reservation->status, "cancelada · penalidad {$reservation->currency} {$calc['penalty']} · reembolso {$calc['refund']}");

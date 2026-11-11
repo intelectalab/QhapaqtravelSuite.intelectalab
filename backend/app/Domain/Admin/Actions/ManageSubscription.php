@@ -12,6 +12,7 @@ use App\Domain\Platform\Support\PlatformInvoicer;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Concurrency\IfMatch;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Mail\QueuedMail;
 use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Brick\Math\BigDecimal;
@@ -19,6 +20,7 @@ use Brick\Math\RoundingMode;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -34,6 +36,7 @@ final class ManageSubscription
         private readonly CollectInvoice $collector,
         private readonly DowngradeValidator $validator,
         private readonly AuditLogger $audit,
+        private readonly QueuedMail $mail,
     ) {}
 
     public function preview(string $planCode, string $cycle): array
@@ -327,6 +330,73 @@ final class ManageSubscription
         }
 
         return ['number' => $number, 'status' => 'paid', 'method' => $charge['method'] ?? null];
+    }
+
+    public function setupIntent(): array
+    {
+        $session = 'seti_'.Str::lower(Str::random(24));
+        Cache::put("billing-setup:{$session}", $this->context->idOrFail(), now()->addMinutes(15));
+
+        return ['gateway' => 'local_gateway', 'session' => $session, 'expires_in' => 900];
+    }
+
+    public function saveCard(array $data, string $userId): array
+    {
+        $tenantId = $this->context->idOrFail();
+
+        if (Cache::pull("billing-setup:{$data['session']}") !== $tenantId) {
+            throw ApiException::unprocessable('SETUP_EXPIRED', 'La sesión de la pasarela venció. Vuelve a abrir el formulario.');
+        }
+
+        $expires = Carbon::create((int) $data['exp_year'], (int) $data['exp_month'], 1, 0, 0, 0, 'America/Lima')->endOfMonth();
+
+        if ($expires->isPast()) {
+            throw ApiException::unprocessable('CARD_EXPIRED', 'La tarjeta está vencida.');
+        }
+
+        $before = $this->db()->transaction(function () use ($data, $tenantId, $userId): ?string {
+            $current = $this->db()->table('payment_methods')->where('tenant_id', $tenantId)->where('is_default', true)->where('status', '<>', 'removed')->lockForUpdate()->first(['brand', 'last4']);
+            $this->db()->table('payment_methods')->where('tenant_id', $tenantId)->where('is_default', true)->update(['is_default' => false, 'status' => 'removed']);
+            $this->db()->table('payment_methods')->insert([
+                'id' => (string) Str::uuid7(),
+                'tenant_id' => $tenantId,
+                'gateway_token' => $data['token'],
+                'brand' => $data['brand'],
+                'last4' => $data['last4'],
+                'exp_month' => (int) $data['exp_month'],
+                'exp_year' => (int) $data['exp_year'],
+                'holder' => Str::upper(trim($data['holder'])),
+                'is_default' => true,
+                'status' => 'active',
+                'created_by' => $userId,
+                'created_at' => now(),
+            ]);
+
+            return $current ? "{$current->brand} •••• {$current->last4}" : null;
+        });
+
+        $label = "{$data['brand']} •••• {$data['last4']}";
+        $this->audit->log(self::ENTITY, $this->code(), 'metodo_pago', $before, $label);
+
+        return ['method' => $label];
+    }
+
+    public function sendInvoice(string $number): string
+    {
+        $invoice = $this->invoice($number);
+        $subscription = $this->subscription();
+        $email = (string) $subscription->billing_email;
+
+        if ($email === '') {
+            throw ApiException::unprocessable('BILLING_EMAIL', 'Registra el correo para comprobantes en los datos de facturación.');
+        }
+
+        $status = ['open' => 'pendiente de pago', 'failed' => 'con cobro rechazado', 'paid' => 'pagada', 'void' => 'anulada', 'uncollectible' => 'incobrable', 'draft' => 'en borrador'][$invoice->status] ?? $invoice->status;
+        $total = number_format((float) $invoice->total, 2, '.', ' ');
+        $this->mail->send($email, (string) ($subscription->billing_name ?: $email), "Factura {$number} de KipuControl", "Hola:\n\nTe reenviamos la factura {$number} de tu suscripción, emitida el {$invoice->issue_date} por S/ {$total} (incluye IGV). Estado: {$status}.\n\nPuedes verla y pagarla desde Administración, Suscripción y uso.\n\nKipuControl");
+        $this->audit->log(self::ENTITY, "factura.{$number}", 'reenviar', null, $email);
+
+        return $email;
     }
 
     public function invoice(string $number): object

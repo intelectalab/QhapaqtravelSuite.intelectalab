@@ -70,7 +70,7 @@ it('eliminar una plantilla sin mensajes enviados la quita del listado', function
 
 it('MSG-04: una plantilla con mensajes enviados no se elimina, se desactiva', function () {
     actingAsSeed('U01');
-    withinTenant(tenantA(), fn () => DB::table('notif_pax_messages')->whereNull('template_id')->limit(1)->update(['template_id' => idOf('notif_pax_message_templates', 'PMT-001')]));
+    withinTenant(tenantA(), fn () => DB::table('notif_pax_messages')->whereNull('template_id')->where('status', '<>', 'programado')->limit(1)->update(['template_id' => idOf('notif_pax_message_templates', 'PMT-001')]));
     expect(withinTenant(tenantA(), fn () => DB::table('notif_pax_messages')->where('template_id', idOf('notif_pax_message_templates', 'PMT-001'))->exists()))->toBeTrue();
 
     expect($this->deleteJson('/api/v1/notifications/pax-templates/PMT-001'))->toBeApiError(409, 'MSG-04')

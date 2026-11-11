@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
+    lockSeededBookings();
     Queue::fake();
     freezeBusinessToday();
 });

@@ -1,4 +1,4 @@
-# Backlog de desarrollo — Qhapaq Travel Suite
+# Backlog de desarrollo — KipuControl
 
 Historias de usuario listas para implementarse con Claude Code, una por sesión, en orden de fase. Cada historia cita la especificación, las tablas (`../database/`), los endpoints (`../api/openapi.yaml`), las pantallas del prototipo, los criterios de aceptación y las pruebas. El formato está descrito en [FORMATO.md](FORMATO.md).
 

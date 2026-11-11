@@ -52,6 +52,9 @@ test-results/
 # Credenciales de prueba: solo en la PC de desarrollo
 Credenciales de prueba/
 
+# Paquetes de actualización del kit: solo local
+Actualización/
+
 # Documentación interna (avances, pendientes): solo local. Se sube únicamente el manual de uso.
 Documentación/*
 !Documentación/Manual de uso/

@@ -139,7 +139,7 @@ export function DemoForm({ options, action, initialKind, initialPlan, initialCyc
       <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden className="absolute left-[-9999px] h-px w-px opacity-0" />
 
       <div className="rounded-[14px] bg-surface-2 p-4">
-        <SwitchField label="Acepto que Qhapaq me contacte por esta solicitud" hint={errors.consent ?? "Usamos tus datos solo para responder a esta solicitud."} name="consent" checked={consent} onCheckedChange={setConsent} />
+        <SwitchField label="Acepto que KipuControl me contacte por esta solicitud" hint={errors.consent ?? "Usamos tus datos solo para responder a esta solicitud."} name="consent" checked={consent} onCheckedChange={setConsent} />
       </div>
 
       <Captcha />

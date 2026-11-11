@@ -1,5 +1,5 @@
 -- =============================================================================
--- Qhapaq Travel Suite · Esquema PostgreSQL 17 · 10_fase0.sql
+-- KipuControl · Esquema PostgreSQL 17 · 10_fase0.sql
 -- Fase 0 · Fundaciones
 -- Generado desde §3 de las especificaciones 00–18 + CONVENCIONES.md (fuente de verdad del kit).
 -- Tablas nuevas: 24. Requiere: 00_extensions_and_functions.sql y archivos previos.

@@ -70,7 +70,16 @@ export interface ReceivablesOverview {
   aging: AgingBucket[];
   methods: PaymentMethodOption[];
   usd_rate: number;
-  can: { register: boolean; cancel: boolean };
+  advance_reservations: AdvanceOption[];
+  can: { register: boolean; cancel: boolean; invoice: boolean };
+}
+
+export interface AdvanceOption extends FinanceOption {
+  client: string;
+  currency: string;
+  total: number;
+  committed: number;
+  available: number;
 }
 
 export interface ApplyOption {
@@ -118,6 +127,8 @@ export interface PayableRow {
   concept: string;
   amount: number;
   paid: number;
+  amount_pen: number;
+  paid_pen: number;
   balance: number;
   balance_pen: number;
   currency: string;
@@ -130,6 +141,7 @@ export interface PayableRow {
   evidence: string | null;
   observation: string | null;
   scheduled_date: string | null;
+  scheduled_account: string | null;
   provider: { ref: string; name: string; status: string };
   reservation: { code: string; title: string } | null;
   service: { code: string; name: string; date: string; status: string } | null;
@@ -144,9 +156,9 @@ export interface NamedAmount {
 
 export interface PayablesOverview {
   rows: PayableRow[];
-  kpis: { payable_pen: number; payable_count: number; overdue_pen: number; overdue_count: number; to_approve: number; due_week_pen: number; paid_month_pen: number };
+  kpis: { payable_pen: number; payable_count: number; overdue_pen: number; overdue_count: number; to_approve: number; due_week_pen: number; paid_month_pen: number; scheduled_week_pen: number; scheduled_week_count: number };
   by_provider: NamedAmount[];
-  options: { providers: FinanceOption[]; reservations: (FinanceOption & { currency: string })[]; cost_types: FinanceOption[]; payout_methods: FinanceOption[] };
+  options: { providers: FinanceOption[]; reservations: (FinanceOption & { currency: string })[]; cost_types: FinanceOption[]; payout_methods: FinanceOption[]; bank_accounts: BankAccountOption[] };
   today: string;
   usd_rate: number;
   can: { manage: boolean; operate: boolean };
@@ -173,12 +185,41 @@ export interface CommissionRow {
   pay_methods: string[];
 }
 
+export interface BankAccountOption extends FinanceOption {
+  currency: string;
+}
+
+export interface CommissionRule {
+  id: string;
+  lock_version: number;
+  condition: "directo_ecommerce" | "corporativo_grupos" | "b2b_convenio";
+  condition_label: string;
+  beneficiary: string;
+  pct: number | null;
+  base_type: "neto_sin_igv" | "total";
+  base: string;
+  valid_from: string;
+  valid_to: string | null;
+  active: boolean;
+  in_force: boolean;
+  used: number;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export interface BeneficiarySummary extends NamedAmount {
+  kind: string;
+  calculated: number;
+  approved: number;
+  paid: number;
+}
+
 export interface CommissionsOverview {
   rows: CommissionRow[];
   kpis: Record<"calculada" | "aprobada" | "pagada", { count: number; pen: number }> & { pending_reservations: number };
-  by_beneficiary: NamedAmount[];
-  rules: { condition: string; pct: number | null; base: string }[];
-  can: { approve: boolean; operate: boolean };
+  by_beneficiary: BeneficiarySummary[];
+  rules: CommissionRule[];
+  can: { approve: boolean; operate: boolean; rules: boolean };
 }
 
 export interface ProfitRow {
@@ -198,6 +239,7 @@ export interface ProfitRow {
   net_pen: number;
   margin_pct: number;
   band: "ok" | "warn" | "bad";
+  settled_at: string | null;
 }
 
 export interface ProfitGroup {
@@ -210,11 +252,11 @@ export interface ProfitGroup {
 
 export interface ProfitabilityOverview {
   rows: ProfitRow[];
-  kpis: { income_pen: number; cost_pen: number; commissions_pen: number; margin_pen: number; net_pen: number; margin_pct: number; below_floor: number };
+  kpis: { income_pen: number; cost_pen: number; commissions_pen: number; margin_pen: number; net_pen: number; margin_pct: number; below_floor: number; settled: number };
   by_product: ProfitGroup[];
   by_owner: ProfitGroup[];
   by_channel: ProfitGroup[];
-  monthly: { month: string; label: string; income_pen: number; cost_pen: number; margin_pen: number }[];
+  monthly: { month: string; label: string; income_pen: number; cost_pen: number; margin_pen: number; margin_pct: number }[];
   target: number;
   floor: number;
 }
@@ -244,6 +286,14 @@ export interface InvoiceRow {
   issued_by: string | null;
   lock_version: number;
   creditable: number;
+}
+
+export interface InvoiceInvoiceable {
+  value: string;
+  label: string;
+  hint: string;
+  kind: string;
+  paid: boolean;
 }
 
 export interface InvoiceKpis {
@@ -336,8 +386,86 @@ export interface TreasuryMovement {
   counterparty: string | null;
   status: "posted" | "voided";
   void_reason: string | null;
+  voided: { at: string; by: string | null } | null;
+  created_at: string;
+  fx_rate: number | null;
+  origin: { label: string; code: string | null; href: string | null } | null;
+  reservation: string | null;
+  receipt: { type: string; number: string | null; ruc: string | null; supplier: string; file: boolean } | null;
   account: { code: string; name: string };
   user: string;
+}
+
+export interface TreasurySettingsData {
+  petty_tolerance: number;
+  max_petty_expense: number;
+  sworn_statement_max: number;
+  replenish_threshold_pct: number;
+  gateway_fee_pct: number;
+  cash_deposit_hours: number;
+  margin_target_pct: number;
+  margin_floor_pct: number;
+  recurring_outflows: { concept: string; amount: number; day: number }[];
+  payment_routing: PaymentRoutingRule[];
+  routing_banks: string[];
+  lock_version: number;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export type RoutingDestination = "bank" | "gateway" | "petty_cash" | "none";
+
+export interface PaymentRoutingRule {
+  method: string;
+  label: string;
+  b2b: boolean;
+  destination: RoutingDestination;
+  bank: string | null;
+  currency: "PEN" | "USD" | null;
+  accounts: { PEN: string | null; USD: string | null };
+}
+
+export const ROUTING_DESTINATIONS: Record<RoutingDestination, string> = {
+  bank: "Cuenta bancaria",
+  gateway: "Pasarela de pagos",
+  petty_cash: "Caja chica de la sede",
+  none: "Sin movimiento de caja",
+};
+
+export interface FxRevaluationPreview {
+  period: string;
+  today: string;
+  close_rate: string;
+  reference_rate: number;
+  rows: { code: string; name: string; kind: string; balance_usd: string; book_rate: string; book_pen: string; market_pen: string; unrealized_pen: string; realized_pen: string; registered: string | null }[];
+  totals: { unrealized_pen: string; realized_pen: string };
+  pending: number;
+  history: { code: string; period: string; date: string; balance_usd: string; book_rate: string; close_rate: string; diff_pen: string; account: { code: string; name: string }; user: string | null }[];
+  can: { register: boolean };
+}
+
+export interface PeriodCheck {
+  code: string;
+  label: string;
+  detail: string;
+  ok: boolean;
+  href?: string;
+  checked_at?: string | null;
+  checked_by?: string | null;
+}
+
+export interface PeriodCloseState {
+  period: string;
+  label: string;
+  status: "abierto" | "cerrado";
+  closed_at: string | null;
+  closed_by: string | null;
+  automatic: PeriodCheck[];
+  manual: PeriodCheck[];
+  done: number;
+  total: number;
+  periods: { period: string; label: string; closed: boolean }[];
+  can: { manage: boolean; close: boolean };
 }
 
 export interface CashSession {
@@ -359,10 +487,10 @@ export interface TreasuryOverview {
   sessions: CashSession[];
   replenishments: { code: string; amount: number; status: string; status_label: string; requested_at: string; note: string | null; reject_reason: string | null; account: string; account_code: string; requested_by: string | null; requested_by_id: string }[];
   kpis: { bank_pen: number; cash_pen: number; gateway_pen: number; total_pen: number; in_month_pen: number; out_month_pen: number; open_sessions: number };
-  categories: string[];
+  categories: { in: string[]; out: string[] };
   usd_rate: number;
   today: string;
-  can: { manage: boolean };
+  can: { manage: boolean; settings: boolean; revalue: boolean };
   counts: CashCount[];
   alerts: { tone: "warn" | "bad" | "info"; text: string }[];
   options: { sedes: { value: string; label: string }[]; custodians: { value: string; label: string }[]; denominations: string[]; gateway_fee_pct: string | null; max_petty_expense: string | null };
@@ -488,6 +616,12 @@ export interface ReceivableDetail {
   reminders: { channels: string | null; sent_at: string; balance_at_send: string | null; sent_by: string | null }[];
   notifications: { code: string; channel: string; recipient_address: string | null; subject: string | null; status: string; sent_at: string | null; created_at: string }[];
   audit: Audit;
+  lock_version: number;
+  balance_pen: string;
+  methods: PaymentMethodOption[];
+  today: string;
+  usd_rate: number;
+  can: { register: boolean; invoice: boolean };
 }
 
 export interface PaymentDetail {
@@ -515,6 +649,9 @@ export interface PaymentDetail {
   bank_line: { code: string; value_date: string; description: string; amount: string; status: string } | null;
   history: History;
   audit: Audit;
+  retries: number;
+  lock_version: number;
+  can: { retry: boolean };
 }
 
 export interface PayableDetail {
@@ -541,6 +678,11 @@ export interface PayableDetail {
   payouts: { code: string; paid_on: string; amount: string; method: string; operation_ref: string | null; account: string | null }[];
   history: History;
   audit: Audit;
+  lock_version: number;
+  scheduled: { date: string; account: { code: string; name: string } | null; by: string | null } | null;
+  bank_accounts: BankAccountOption[];
+  today: string;
+  can: { manage: boolean; operate: boolean };
 }
 
 export interface CommissionDetail {
@@ -565,6 +707,8 @@ export interface CommissionDetail {
   current_rule: { pct: string; active: boolean; condition: string | null; expected: string; difference: string } | null;
   history: History;
   audit: Audit;
+  lock_version: number;
+  can: { recalculate: boolean };
 }
 
 export interface SettlementDetail {

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { addToCart, loadMonth, quoteProduct } from "@/app/(sitio)/sitio/[agencia]/actions";
 import { cn } from "@/lib/cn";
+import { trackSiteEvent } from "@/lib/site-analytics";
 import { capitalize, formatDate, formatMoney, monthName } from "@/lib/format";
 import { listingQuery, type CalendarDay, type CalendarMonth, type ProductDetail, type Quote } from "@/lib/site";
 import { Stepper } from "./SearchBar";
@@ -189,7 +190,16 @@ function MonthGrid({ month, selected, onSelect }: { month: CalendarMonth; select
   );
 }
 
-export function BookingPanel({ promoHint }: { promoHint?: string | null }) {
+export interface BookingSelection {
+  product: string;
+  date: string;
+  adults: number;
+  children: number;
+  infants: number;
+  promo?: string;
+}
+
+export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { promoHint?: string | null; onReserve?: (selection: BookingSelection) => Promise<{ ok: boolean; message: string | null }>; reserveLabel?: string; onQuote?: (quote: Quote, selection: BookingSelection) => void }) {
   const { agencia, href, t, dateLocale } = useSite();
   const router = useRouter();
   const { slug, product, date, pax, setPax, days } = useBooking();
@@ -209,13 +219,21 @@ export function BookingPanel({ promoHint }: { promoHint?: string | null }) {
       const result = await quoteProduct(agencia, slug, { date, ...pax, promo: appliedPromo || undefined });
       setQuote(result.quote);
       setError(result.error);
+      if (result.quote) onQuote?.(result.quote, { product: slug, date, ...pax });
     });
-  }, [agencia, slug, date, pax, appliedPromo]);
+  }, [agencia, slug, date, pax, appliedPromo, onQuote]);
 
   const reserve = () => {
     if (!date) return;
     startAdding(async () => {
-      const result = await addToCart(agencia, { product: slug, date, ...pax, promo: appliedPromo || undefined });
+      const selection = { product: slug, date, ...pax, promo: appliedPromo || undefined };
+      if (onReserve) {
+        const result = await onReserve(selection);
+        if (!result.ok) setError(result.message);
+        return;
+      }
+      const result = await addToCart(agencia, selection);
+      if (result.ok) trackSiteEvent("add_to_cart", { item_id: slug, date, adults: pax.adults, children: pax.children, value: current ? Number(current.total) : null, currency: current?.currency ?? null });
       if (result.ok) router.push(href("/carrito"));
       else setError(result.message);
     });
@@ -313,13 +331,15 @@ export function BookingPanel({ promoHint }: { promoHint?: string | null }) {
 
       <button type="button" onClick={reserve} disabled={!current || Boolean(error) || adding} className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-control bg-brand text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:pointer-events-none disabled:opacity-50">
         {adding ? <Loader2 size={17} className="animate-spin" /> : <ShoppingBag size={17} />}
-        {t.booking.reserve}
+        {reserveLabel ?? t.booking.reserve}
       </button>
-      <Link href={tailorHref} className="mt-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-control border border-line text-[14px] font-semibold text-fg transition hover:bg-surface-2">
-        <MessageSquareText size={16} />
-        {t.common.tailor}
-      </Link>
-      <p className="mt-3 text-center text-[11.5px] text-fg-3">{t.booking.holdNote}</p>
+      {!onReserve && (
+        <Link href={tailorHref} className="mt-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-control border border-line text-[14px] font-semibold text-fg transition hover:bg-surface-2">
+          <MessageSquareText size={16} />
+          {t.common.tailor}
+        </Link>
+      )}
+      <p className="mt-3 text-center text-[11.5px] text-fg-3">{onReserve ? t.widget.handoffNote : t.booking.holdNote}</p>
     </div>
   );
 }

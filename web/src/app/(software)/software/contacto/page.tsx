@@ -11,7 +11,7 @@ import { requestDemo } from "./actions";
 
 export const metadata: Metadata = {
   title: "Solicitar demo",
-  description: "Solicita una demo de Qhapaq Travel Suite o empieza tu prueba gratuita para tu agencia de viajes.",
+  description: "Solicita una demo de KipuControl o empieza tu prueba gratuita para tu agencia de viajes.",
 };
 
 export default async function ContactoPage({ searchParams }: PageProps<"/software/contacto">) {
@@ -32,7 +32,7 @@ export default async function ContactoPage({ searchParams }: PageProps<"/softwar
       <div className="mx-auto grid max-w-[1200px] gap-12 px-5 py-14 sm:px-8 sm:py-20 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
         <div className="animate-[rise-in_620ms_cubic-bezier(0.22,1,0.36,1)_backwards] lg:sticky lg:top-28 lg:self-start">
           <Eyebrow>Contacto</Eyebrow>
-          <h1 className="site-display mt-5 text-[36px] font-bold leading-[1.04] tracking-[-0.045em] text-fg sm:text-[50px]">Veamos Qhapaq con tu propia operación.</h1>
+          <h1 className="site-display mt-5 text-[36px] font-bold leading-[1.04] tracking-[-0.045em] text-fg sm:text-[50px]">Veamos KipuControl con tu propia operación.</h1>
           <p className="mt-5 text-[16px] leading-relaxed text-fg-2 sm:text-[17px]">Pide una demo guiada o empieza tu prueba. Sin tarjeta y sin compromiso.</p>
           <ol className="mt-10 grid gap-3">
             {steps.map((step, index) => (

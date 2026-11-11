@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Finance\Actions;
 
+use App\Domain\Finance\Events\PaymentConfirmed;
+use App\Domain\Finance\Events\SupplierPaymentRegistered;
 use App\Domain\Finance\Support\Consolidation;
 use App\Domain\Finance\Support\FinanceHistory;
 use App\Domain\Finance\Support\ReceivableLedger;
@@ -102,6 +104,7 @@ final class ReconciliationWorkflow
                 DB::table('fin_payments')->where('id', $payment->id)->update(['status' => 'confirmado', 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
                 FinanceHistory::record('payment', $payment->id, 'confirmado', "Confirmado en conciliación ({$line->code})", $actor);
                 $this->audit->log('Pago', $payment->code, 'validar', 'pendiente', "confirmado (conciliación {$line->code})");
+                PaymentConfirmed::dispatch((string) $payment->id, (string) $actor->getKey());
             }
 
             return $payment->code ?? null;
@@ -128,18 +131,19 @@ final class ReconciliationWorkflow
         $amount = Decimal::round2(BigDecimal::min($inCurrency, $balance));
         $code = $this->sequences->next('payout');
 
-        DB::table('fin_payable_payouts')->insert([
+        $payoutId = (string) DB::table('fin_payable_payouts')->insertGetId([
             'code' => $code,
             'payable_id' => $payable->id,
             'paid_on' => $line->value_date,
             'amount' => (string) $amount,
             'fx_rate' => $fx,
             'method' => 'cargo_bancario',
+            'bank_account_id' => $line->statement_id !== null ? DB::table('fin_bank_statements')->where('id', $line->statement_id)->value('bank_account_id') : null,
             'operation_ref' => mb_substr((string) $line->description, 0, 80),
             'bank_line_id' => $line->id,
             'created_by' => $actor->getKey(),
             'updated_by' => $actor->getKey(),
-        ]);
+        ], 'id');
 
         $paid = Decimal::of($payable->paid_amount)->plus($amount);
         $settled = $paid->isGreaterThanOrEqualTo(Decimal::of($payable->amount));
@@ -153,6 +157,7 @@ final class ReconciliationWorkflow
         ]);
         FinanceHistory::record('payable', $payable->id, $settled ? 'pagada' : 'parcial', "{$code} · cargo bancario ({$line->code})", $actor);
         $this->audit->log('Cuenta por pagar', $payable->code, 'pagar', (string) Decimal::round2($balance), (string) Decimal::round2($balance->minus($amount))." (conciliación {$line->code})");
+        SupplierPaymentRegistered::dispatch($payoutId, (string) $actor->getKey());
     }
 
     private function settle(object $line, string $resolution, ?string $note, User $actor): void

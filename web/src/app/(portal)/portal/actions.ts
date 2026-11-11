@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { apiFetch } from "@/lib/server/api";
 import { formValues, sendStep, type StepResult } from "@/lib/server/resource";
 
 function refresh(...paths: string[]) {
@@ -78,4 +79,14 @@ export async function requestQuoteChanges(code: string, _state: StepResult, form
   const result = await sendStep(`/portal/client/quotes/${encodeURIComponent(code)}/update-request`, "POST", formValues(form, ["message"]), "No pudimos enviar tu pedido.");
   if (result.done) refresh("/portal/propuestas", `/portal/propuestas/${code}`, "/portal/mensajes");
   return result;
+}
+
+export async function payOnline(code: string, _state: StepResult, form: FormData): Promise<StepResult> {
+  const result = await apiFetch<{ result: string; message: string }>(`/portal/customer/receivables/${encodeURIComponent(code)}/pay`, { method: "POST", body: formValues(form, ["method", "card_token", "card_holder", "operation_ref"]) });
+  refresh("/portal/pagos");
+  if (!result.ok || !result.data) {
+    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { message: firstError ?? result.error?.message ?? "No pudimos procesar el pago.", done: false };
+  }
+  return result.data.result === "rechazado" ? { message: result.data.message, done: false } : { message: result.data.message, done: true };
 }

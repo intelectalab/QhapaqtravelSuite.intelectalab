@@ -31,18 +31,18 @@ Tenants por subdominio: `andes.localhost` (TNT-0001, datos demo) y `selva.localh
 | scheduler | misma imagen | — | `schedule:work` (vencimiento de holds, recordatorios, tipo de cambio, sincronización de reseñas) |
 | reverb | misma imagen | 8080 | WebSockets |
 | web | node 22 | 3000 | Next.js en modo desarrollo |
-| postgres | postgres:17 | 5432 | Base `qhapaq` y `qhapaq_test` |
+| postgres | postgres:17 | 5432 | Base `kipucontrol` y `kipucontrol_test` |
 | redis | redis:8 | 6379 | Caché, sesiones, colas, locks, idempotencia |
-| minio (+ minio-init) | minio | 9000 / 9001 | S3 local; buckets `qhapaq-private` y `qhapaq-public` |
+| minio (+ minio-init) | minio | 9000 / 9001 | S3 local; buckets `kipucontrol-private` y `kipucontrol-public` |
 | mailpit | mailpit | 8025 / 1025 | Correo de prueba (enlaces mágicos, notificaciones) |
 
 ## Usuarios de base de datos (RLS)
 
 | Usuario | Rol | Uso |
 |---|---|---|
-| `qhapaq_owner` | dueño del esquema | Solo migraciones (`--database=pgsql_owner`). Nunca en runtime. |
-| `qhapaq_app` | `app_role` (sin BYPASSRLS) | API, colas, scheduler. Siempre con `SET LOCAL app.tenant_id`. |
-| `qhapaq_platform` | `platform_role` | Módulo de plataforma (Super Admin, facturación SaaS, jobs multi-tenant). |
+| `kipucontrol_owner` | dueño del esquema | Solo migraciones (`--database=pgsql_owner`). Nunca en runtime. |
+| `kipucontrol_app` | `app_role` (sin BYPASSRLS) | API, colas, scheduler. Siempre con `SET LOCAL app.tenant_id`. |
+| `kipucontrol_platform` | `platform_role` | Módulo de plataforma (Super Admin, facturación SaaS, jobs multi-tenant). |
 
 Las políticas están en `docs/kit/database/90_rls.sql`. En `backend/config/database.php` se definen tres conexiones que comparten host y base y cambian usuario:
 
@@ -54,9 +54,9 @@ Las políticas están en `docs/kit/database/90_rls.sql`. En `backend/config/data
 
 ## CI
 
-`ci.yml` tiene cuatro trabajos: **backend** (Pint, Larastan, migraciones, Pest con PostgreSQL 17 y Redis 8 reales, comparación con el contrato hasta la fase de la variable de repositorio `QHAPAQ_PHASE`), **database-kit** (valida los `.sql` y que el contrato siga generándose igual desde las specs), **web** (cliente tipado al día, lint, Vitest, build) y **e2e** en pull requests (stack completo con Docker + Playwright).
+`ci.yml` tiene cuatro trabajos: **backend** (Pint, Larastan, migraciones, Pest con PostgreSQL 17 y Redis 8 reales, comparación con el contrato hasta la fase de la variable de repositorio `KIPUCONTROL_PHASE`), **database-kit** (valida los `.sql` y que el contrato siga generándose igual desde las specs), **web** (cliente tipado al día, lint, Vitest, build) y **e2e** en pull requests (stack completo con Docker + Playwright).
 
-Subir `QHAPAQ_PHASE` (0 → 1 → 2 → 3) al cerrar cada fase hace que el CI exija todos los endpoints del contrato de esa fase.
+Subir `KIPUCONTROL_PHASE` (0 → 1 → 2 → 3) al cerrar cada fase hace que el CI exija todos los endpoints del contrato de esa fase.
 
 ## Producción (lineamientos, no incluidos como archivos)
 

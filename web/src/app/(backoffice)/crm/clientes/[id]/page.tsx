@@ -10,6 +10,8 @@ import { formatMoney } from "@/lib/format";
 import { resolveSections } from "@/lib/sections";
 import { getClient, getClientFormOptions, getClientTab } from "@/lib/server/clients";
 import { getOpportunityFormOptions } from "@/lib/server/opportunities";
+import { getRelatedOptions } from "@/lib/server/activities";
+import { ActivityCreateAction } from "@/features/activities/ActivityForms";
 import { OpportunityCreateAction } from "@/features/opportunities/OpportunityForms";
 import { ClientArchiveAction, ClientDataRightsCard, ClientEditAction } from "@/features/clients/ClientForms";
 import { ClientCommunicationAction } from "@/features/clients/ClientContactForms";
@@ -25,12 +27,14 @@ export async function generateMetadata({ params }: PageProps<"/crm/clientes/[id]
 export default async function ClientePage({ params, searchParams }: PageProps<"/crm/clientes/[id]">) {
   const { id } = await params;
   const { editar, seccion } = await searchParams;
-  const [client, options, opportunityOptions] = await Promise.all([getClient(id), getClientFormOptions(), getOpportunityFormOptions()]);
+  const [client, options, opportunityOptions, activityOptions] = await Promise.all([getClient(id), getClientFormOptions(), getOpportunityFormOptions(), getRelatedOptions()]);
 
   const otherTrips = client.history.filter((trip) => trip.id !== client.currentTrip?.trip.id);
   const since = new Intl.DateTimeFormat("es-PE", { month: "long", year: "numeric" }).format(new Date(`${client.createdAt}T12:00:00`));
   const ticket = client.trips > 0 ? Math.round(client.totalPen / client.trips) : 0;
   const opportunityAction = opportunityOptions ? <OpportunityCreateAction options={opportunityOptions} clientCode={client.id} /> : null;
+  const activityPreset = { type: "client", code: client.id, name: client.name };
+  const activityAction = (size: "sm" | "md") => (activityOptions ? <ActivityCreateAction options={activityOptions} preset={activityPreset} label="Registrar actividad" size={size} variant="secondary" /> : null);
   const writeAction = options.canManage ? <ClientCommunicationAction code={client.id} email={client.email || null} name={client.name} /> : null;
   const base = `/crm/clientes/${encodeURIComponent(client.id)}`;
 
@@ -78,7 +82,7 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
       case "comunicaciones":
         return <CommunicationsSection rows={await getClientTab(client.id, "communications")} action={writeAction} />;
       case "actividades":
-        return <ActivitiesSection rows={await getClientTab(client.id, "activities")} />;
+        return <ActivitiesSection rows={await getClientTab(client.id, "activities")} action={activityAction("sm")} />;
       case "historial": {
         const [timeline, audit] = await Promise.all([getClientTab(client.id, "timeline"), getClientTab(client.id, "audit")]);
         return <HistorySection timeline={timeline} audit={audit} />;
@@ -118,6 +122,7 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
         actions={
           <>
             {writeAction}
+            {activityAction("md")}
             {opportunityAction}
             {options.canManage && (
               <>

@@ -6,6 +6,7 @@ namespace App\Domain\Crm\Http\Controllers;
 
 use App\Domain\Crm\Actions\ActivityWorkflow;
 use App\Domain\Crm\Support\ActivityDirectory;
+use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,25 @@ final class ActivityController
         return response()->json(['data' => $this->directory->agenda($this->user($request))]);
     }
 
+    public function show(Request $request, string $code): JsonResponse
+    {
+        $user = $this->user($request);
+
+        return response()->json(['data' => $this->directory->find($user, $code) ?? throw Portfolio::missing($user, 'crm_activities', $code, 'La actividad no existe.', 'Esta actividad')]);
+    }
+
+    public function reassign(Request $request, string $code): JsonResponse
+    {
+        $data = $request->validate([
+            'owner_id' => ['required', 'uuid'],
+            'note' => ['nullable', 'string', 'max:300'],
+            'lock_version' => ['nullable', 'integer'],
+        ], ['owner_id.required' => 'Elige el nuevo responsable.']);
+        $this->workflow->reassign($code, $data['owner_id'], $data['note'] ?? null, isset($data['lock_version']) ? (int) $data['lock_version'] : null, $this->user($request));
+
+        return response()->json(['data' => ['code' => $code]]);
+    }
+
     public function options(Request $request): JsonResponse
     {
         return response()->json(['data' => $this->directory->relatedOptions($this->user($request))]);
@@ -28,18 +48,7 @@ final class ActivityController
 
     public function store(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'type' => ['required', self::TYPES],
-            'subject' => ['required', 'string', 'max:200'],
-            'description' => ['nullable', 'string', 'max:2000'],
-            'related_type' => ['nullable', 'in:lead,opportunity,client'],
-            'related_code' => ['required_with:related_type', 'nullable', 'string'],
-            'due_at' => ['required', 'date'],
-        ], [
-            'subject.required' => 'Escribe el asunto.',
-            'due_at.required' => 'Elige la fecha y la hora.',
-            'related_code.required_with' => 'Elige el registro relacionado.',
-        ]);
+        $data = $request->validate(self::fields(true), self::MESSAGES);
 
         return response()->json(['data' => ['code' => $this->workflow->create($data, $this->user($request))]], 201);
     }
@@ -63,20 +72,19 @@ final class ActivityController
 
     public function reschedule(Request $request, string $code): JsonResponse
     {
-        $data = $request->validate(['due_at' => ['required', 'date']], ['due_at.required' => 'Elige la nueva fecha y hora.']);
-        $this->workflow->reschedule($code, $data['due_at'], $this->user($request));
+        $data = $request->validate([
+            'due_at' => ['required', 'date'],
+            'reason' => ['nullable', 'string', 'max:300'],
+            'lock_version' => ['nullable', 'integer'],
+        ], ['due_at.required' => 'Elige la nueva fecha y hora.']);
+        $this->workflow->reschedule($code, $data['due_at'], $data['reason'] ?? null, isset($data['lock_version']) ? (int) $data['lock_version'] : null, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
     }
 
     public function update(Request $request, string $code): JsonResponse
     {
-        $data = $request->validate([
-            'type' => ['required', self::TYPES],
-            'subject' => ['required', 'string', 'max:200'],
-            'description' => ['nullable', 'string', 'max:2000'],
-            'owner_id' => ['nullable', 'uuid'],
-        ], ['subject.required' => 'Escribe el asunto.']);
+        $data = $request->validate(self::fields(false), self::MESSAGES);
         $this->workflow->update($code, $data, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
@@ -88,6 +96,27 @@ final class ActivityController
         $this->workflow->delete($code, $request->input('reason'), $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public const MESSAGES = [
+        'subject.required' => 'Escribe el asunto.',
+        'due_at.required' => 'Elige la fecha y la hora.',
+        'related_code.required_with' => 'Elige el registro relacionado.',
+        'related_type.in' => 'Ese tipo de relación no existe.',
+    ];
+
+    public static function fields(bool $creating): array
+    {
+        return [
+            'type' => ['required', self::TYPES],
+            'subject' => ['required', 'string', 'max:200'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'related_type' => ['nullable', 'in:'.implode(',', ActivityDirectory::OWNED)],
+            'related_code' => ['required_with:related_type', 'nullable', 'string'],
+            'owner_id' => ['nullable', 'uuid'],
+            'due_at' => [$creating ? 'required' : 'nullable', 'date'],
+            'lock_version' => ['nullable', 'integer'],
+        ];
     }
 
     private function user(Request $request): User

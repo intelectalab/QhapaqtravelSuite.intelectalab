@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Finance\Actions;
 
 use App\Domain\Finance\Support\Consolidation;
+use App\Domain\Finance\Support\ExpenseReceiptFiles;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -13,6 +14,7 @@ use App\Domain\Shared\Sequences\SequenceService;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -25,6 +27,7 @@ final class TreasuryOperations
         private readonly Consolidation $money,
         private readonly AuditLogger $audit,
         private readonly TenantContext $context,
+        private readonly ExpenseReceiptFiles $files,
     ) {}
 
     public function saveAccount(?string $code, array $data, User $actor): string
@@ -154,36 +157,49 @@ final class TreasuryOperations
         });
     }
 
-    public function expense(string $accountCode, array $data, User $actor): string
+    public function expense(string $accountCode, array $data, User $actor, ?UploadedFile $file = null): string
     {
-        return DB::transaction(function () use ($accountCode, $data, $actor): string {
-            $account = $this->pettyCash($accountCode, true);
-            $settings = DB::table('fin_treasury_settings')->first(['max_petty_expense', 'sworn_statement_max']);
-            $amount = Decimal::money($data['amount']);
+        if ($file !== null) {
+            $this->files->scan($file, $accountCode);
+        }
 
-            if (DB::table('fin_cash_sessions')->where('account_id', $account->id)->where('status', 'open')->doesntExist()) {
-                throw ApiException::conflict('TES-BR-04', 'Abre la caja del día antes de registrar gastos.');
-            }
+        $stored = null;
 
-            if ($settings && $amount->isGreaterThan((string) $settings->max_petty_expense)) {
-                throw ApiException::unprocessable('TES-BR-05', 'El gasto supera el máximo por caja chica (S/ '.$settings->max_petty_expense.'). Págalo desde un banco.');
-            }
+        try {
+            return DB::transaction(function () use ($accountCode, $data, $actor, $file, &$stored): string {
+                $account = $this->pettyCash($accountCode, true);
+                $settings = DB::table('fin_treasury_settings')->first(['max_petty_expense', 'sworn_statement_max']);
+                $amount = Decimal::money($data['amount']);
 
-            if ($data['receipt_type'] === 'sworn_statement' && $settings && $amount->isGreaterThan((string) $settings->sworn_statement_max)) {
-                throw ApiException::unprocessable('TES-BR-11', 'Con declaración jurada solo se sustentan gastos de hasta S/ '.$settings->sworn_statement_max.'.');
-            }
+                if (DB::table('fin_cash_sessions')->where('account_id', $account->id)->where('status', 'open')->doesntExist()) {
+                    throw ApiException::conflict('TES-BR-04', 'Abre la caja del día antes de registrar gastos.');
+                }
 
-            $this->ensureFunds($account, $amount);
-            $reservation = filled($data['reservation'] ?? null) ? DB::table('booking_reservations')->where('code', $data['reservation'])->value('id') : null;
-            $movementCode = $this->movement($account, 'out', 'petty_expense', $amount, $data['date'] ?? $this->money->today(), 'expense', null, $data['description'], $data['series_number'] ?? null, $actor, ['reservation_id' => $reservation, 'category' => $data['category'] ?? null, 'counterparty' => $data['supplier']]);
-            DB::table('fin_expense_receipts')->insert([
-                'id' => (string) Str::uuid7(), 'tenant_id' => $this->context->idOrFail(), 'movement_id' => DB::table('fin_treasury_movements')->where('code', $movementCode)->value('id'),
-                'receipt_type' => $data['receipt_type'], 'series_number' => $data['series_number'] ?? null, 'issuer_ruc' => $data['issuer_ruc'] ?? null, 'supplier_name' => $data['supplier'],
-                'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey(),
-            ]);
+                if ($settings && $amount->isGreaterThan((string) $settings->max_petty_expense)) {
+                    throw ApiException::unprocessable('TES-BR-05', 'El gasto supera el máximo por caja chica (S/ '.$settings->max_petty_expense.'). Págalo desde un banco.');
+                }
 
-            return $movementCode;
-        });
+                if ($data['receipt_type'] === 'sworn_statement' && $settings && $amount->isGreaterThan((string) $settings->sworn_statement_max)) {
+                    throw ApiException::unprocessable('TES-BR-11', 'Con declaración jurada solo se sustentan gastos de hasta S/ '.$settings->sworn_statement_max.'.');
+                }
+
+                $this->ensureFunds($account, $amount);
+                $reservation = filled($data['reservation'] ?? null) ? DB::table('booking_reservations')->where('code', $data['reservation'])->value('id') : null;
+                $movementCode = $this->movement($account, 'out', 'petty_expense', $amount, $data['date'] ?? $this->money->today(), 'expense', null, $data['description'], $data['series_number'] ?? null, $actor, ['reservation_id' => $reservation, 'category' => $data['category'] ?? null, 'counterparty' => $data['supplier']]);
+                $stored = $file !== null ? $this->files->store($file, $movementCode) : null;
+                DB::table('fin_expense_receipts')->insert([
+                    'id' => (string) Str::uuid7(), 'tenant_id' => $this->context->idOrFail(), 'movement_id' => DB::table('fin_treasury_movements')->where('code', $movementCode)->value('id'),
+                    'receipt_type' => $data['receipt_type'], 'series_number' => $data['series_number'] ?? null, 'issuer_ruc' => $data['issuer_ruc'] ?? null, 'supplier_name' => $data['supplier'],
+                    'file_path' => $stored, 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey(),
+                ]);
+
+                return $movementCode;
+            });
+        } catch (\Throwable $exception) {
+            $this->files->discard($stored);
+
+            throw $exception;
+        }
     }
 
     public function count(string $accountCode, array $data, User $actor): string

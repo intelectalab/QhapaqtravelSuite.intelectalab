@@ -1,5 +1,5 @@
 -- =============================================================================
--- Qhapaq Travel Suite · Esquema PostgreSQL 17 · 40_fase3.sql
+-- KipuControl · Esquema PostgreSQL 17 · 40_fase3.sql
 -- Fase 3 · SaaS y crecimiento
 -- Generado desde §3 de las especificaciones 00–18 + CONVENCIONES.md (fuente de verdad del kit).
 -- Tablas nuevas: 28. Requiere: 00_extensions_and_functions.sql y archivos previos.

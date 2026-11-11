@@ -22,6 +22,13 @@ final class TreasuryDirectory
         'count_adjustment' => 'Ajuste de arqueo', 'other_income' => 'Otro ingreso', 'other_expense' => 'Otro egreso',
     ];
 
+    public const CATEGORIES = [
+        'in' => ['Intereses bancarios', 'Devolución de proveedor', 'Aporte de capital', 'Préstamo recibido', 'Otros ingresos'],
+        'out' => ['Alquileres', 'Planilla', 'Tributos (SUNAT)', 'Servicios TI y licencias', 'Servicios básicos', 'Gastos bancarios / ITF', 'Publicidad', 'Mantenimiento', 'Otros egresos'],
+    ];
+
+    public const RECEIPTS = ['invoice' => 'Factura', 'sales_receipt' => 'Boleta', 'ticket' => 'Ticket', 'fee_receipt' => 'Recibo por honorarios', 'mobility_sheet' => 'Planilla de movilidad', 'sworn_statement' => 'Declaración jurada'];
+
     private const COUNT_STATUS = ['signed' => 'Firmado', 'pending_approval' => 'Por aprobar', 'approved' => 'Aprobado', 'validated' => 'Validado'];
 
     private const COUNT_RESULT = ['balanced' => 'Cuadrado', 'over' => 'Sobrante', 'short' => 'Faltante'];
@@ -65,18 +72,30 @@ final class TreasuryDirectory
         $movements = DB::table('fin_treasury_movements as m')
             ->join('fin_treasury_accounts as a', 'a.id', '=', 'm.account_id')
             ->leftJoin('iam_users as u', 'u.id', '=', 'm.created_by')
+            ->leftJoin('iam_users as v', 'v.id', '=', 'm.voided_by')
+            ->leftJoin('fin_payments as p', fn ($join) => $join->on('p.id', '=', 'm.source_id')->whereIn('m.source_type', ['payment', 'payment_reversal']))
+            ->leftJoin('fin_payable_payouts as o', fn ($join) => $join->on('o.id', '=', 'm.source_id')->where('m.source_type', 'payout'))
+            ->leftJoin('fin_payables as q', fn ($join) => $join->on('q.id', '=', DB::raw('coalesce(o.payable_id, case when m.source_type = \'payable\' then m.source_id end)')))
+            ->leftJoin('fin_treasury_transfers as t', 't.id', '=', 'm.transfer_id')
+            ->leftJoin('fin_cash_counts as k', fn ($join) => $join->on('k.id', '=', 'm.source_id')->where('m.source_type', 'cash_count'))
+            ->leftJoin('fin_cash_replenishments as r', 'r.id', '=', 'm.replenishment_id')
+            ->leftJoin('booking_reservations as b', 'b.id', '=', 'm.reservation_id')
+            ->leftJoin('fin_expense_receipts as e', 'e.movement_id', '=', 'm.id')
             ->orderByDesc('m.movement_date')
             ->orderByDesc('m.code')
             ->limit(500)
-            ->get(['m.code', 'm.movement_date', 'm.direction', 'm.type', 'm.amount', 'm.currency', 'm.fx_rate', 'm.source_type', 'm.category', 'm.description', 'm.reference', 'm.counterparty', 'm.status', 'm.void_reason', 'a.code as account_code', 'a.name as account_name', 'u.name as user_name'])
+            ->get(['m.code', 'm.movement_date', 'm.direction', 'm.type', 'm.amount', 'm.currency', 'm.fx_rate', 'm.source_type', 'm.category', 'm.description', 'm.reference', 'm.counterparty', 'm.status', 'm.void_reason', 'm.voided_at', 'm.created_at', 'a.code as account_code', 'a.name as account_name', 'u.name as user_name', 'v.name as voided_name',
+                'p.code as payment_code', 'q.code as payable_code', 't.code as transfer_code', 'k.code as count_code', 'r.code as replenishment_code', 'b.code as reservation_code',
+                'e.receipt_type', 'e.series_number', 'e.issuer_ruc', 'e.supplier_name', 'e.file_path'])
             ->map(fn (object $row): array => [
                 'code' => $row->code,
                 'date' => $row->movement_date,
-                'direction' => $row->direction,
+                'direction' => trim((string) $row->direction),
                 'type' => $row->type,
                 'type_label' => self::TYPES[$row->type] ?? $row->type,
                 'amount' => (float) $row->amount,
                 'currency' => $row->currency,
+                'fx_rate' => $row->fx_rate !== null ? (float) $row->fx_rate : null,
                 'pen' => $this->money->pen($row->amount, $row->currency, $row->fx_rate),
                 'manual' => $row->source_type === 'manual',
                 'category' => $row->category,
@@ -85,6 +104,11 @@ final class TreasuryDirectory
                 'counterparty' => $row->counterparty,
                 'status' => $row->status,
                 'void_reason' => $row->void_reason,
+                'voided' => $row->voided_at ? ['at' => $row->voided_at, 'by' => $row->voided_name] : null,
+                'created_at' => $row->created_at,
+                'origin' => $this->origin($row),
+                'reservation' => $row->reservation_code,
+                'receipt' => $row->receipt_type ? ['type' => self::RECEIPTS[$row->receipt_type] ?? $row->receipt_type, 'number' => $row->series_number, 'ruc' => $row->issuer_ruc, 'supplier' => $row->supplier_name, 'file' => $row->file_path !== null] : null,
                 'account' => ['code' => $row->account_code, 'name' => $row->account_name],
                 'user' => $row->user_name ?? 'Sistema',
             ])->values();
@@ -118,10 +142,10 @@ final class TreasuryDirectory
                 'out_month_pen' => round($posted->where('direction', 'out')->sum('pen'), 2),
                 'open_sessions' => DB::table('fin_cash_sessions')->where('status', 'open')->count(),
             ],
-            'categories' => DB::table('fin_treasury_movements')->whereNotNull('category')->whereIn('type', ['other_income', 'other_expense'])->distinct()->orderBy('category')->pluck('category'),
+            'categories' => self::CATEGORIES,
             'usd_rate' => $this->money->usdRate(),
             'today' => $this->money->today(),
-            'can' => ['manage' => $viewer->can('finance.treasury')],
+            'can' => ['manage' => $viewer->can('finance.treasury'), 'settings' => $viewer->can('admin.settings.manage'), 'revalue' => $viewer->can('finance.invoicing')],
         ];
     }
 
@@ -218,6 +242,19 @@ final class TreasuryDirectory
                 'result' => self::COUNT_RESULT[$row->result] ?? $row->result, 'status' => $row->status, 'status_label' => self::COUNT_STATUS[$row->status] ?? $row->status, 'note' => $row->note,
                 'signed_by_id' => $row->signed_by, 'signed_by' => $row->signed_name, 'witness' => $row->witness, 'account' => ['code' => $row->account_code, 'name' => $row->account],
             ])->values()->all();
+    }
+
+    private function origin(object $row): ?array
+    {
+        return match (true) {
+            $row->payment_code !== null => ['label' => $row->source_type === 'payment_reversal' ? 'Reversión de pago' : 'Pago de cliente', 'code' => $row->payment_code, 'href' => "/finanzas/pagos/{$row->payment_code}"],
+            $row->payable_code !== null => ['label' => 'Cuenta por pagar', 'code' => $row->payable_code, 'href' => "/finanzas/proveedores/{$row->payable_code}"],
+            $row->replenishment_code !== null => ['label' => 'Reposición de caja', 'code' => $row->replenishment_code, 'href' => null],
+            $row->transfer_code !== null => ['label' => $row->type === 'gateway_settlement' ? 'Liquidación de pasarela' : 'Transferencia', 'code' => $row->transfer_code, 'href' => null],
+            $row->count_code !== null => ['label' => 'Arqueo de caja', 'code' => $row->count_code, 'href' => "/finanzas/tesoreria/arqueos/{$row->count_code}/acta"],
+            $row->source_type === 'expense' => ['label' => 'Gasto de caja chica', 'code' => null, 'href' => null],
+            default => null,
+        };
     }
 
     private function alerts(Collection $accounts): array

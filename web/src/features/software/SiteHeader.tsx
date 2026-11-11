@@ -15,13 +15,12 @@ const keepTheme = (theme: Theme) => theme;
 
 export function SiteBrand({ inverted = false }: { inverted?: boolean }) {
   return (
-    <Link href="/" className="group flex items-center gap-2.5" aria-label="Qhapaq Travel Suite, inicio">
+    <Link href="/" className="group flex items-center gap-2.5" aria-label="KipuControl, inicio">
       <span className={cn("grid h-10 w-10 place-items-center rounded-xl transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105", inverted ? "bg-white" : "bg-menu")}>
         <BrandMark size={22} />
       </span>
       <span className="leading-tight">
-        <b className={cn("block text-[16px] font-bold tracking-tight", inverted ? "text-white" : "text-fg")}>Qhapaq</b>
-        <span className={cn("text-[10.5px] font-medium tracking-[0.16em]", inverted ? "text-white/55" : "text-fg-3")}>Travel Suite</span>
+        <b className={cn("block text-[16px] font-bold tracking-tight", inverted ? "text-white" : "text-fg")}>KipuControl</b>
       </span>
     </Link>
   );

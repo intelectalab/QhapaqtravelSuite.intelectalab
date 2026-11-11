@@ -7,6 +7,7 @@ namespace Database\Seeders;
 use App\Domain\Catalog\Support\CancellationTiers;
 use App\Domain\Platform\Models\Tenant;
 use Database\Support\KitSeeds;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -241,6 +242,12 @@ final class CatalogDemoSeeder
     public static function seedBooking(string $productId, string $tenantId, array $seed, ?string $connection = null): void
     {
         $db = DB::connection($connection);
+        self::seedPaxRules($db, $productId, $tenantId, $seed['paxRules'] ?? null);
+        self::seedAddons($db, $productId, $tenantId, (array) ($seed['addons'] ?? []));
+        self::seedAccommodation($db, $productId, $tenantId, $seed['accommodation'] ?? null);
+        if (is_array($seed['pickup'] ?? null)) {
+            $db->table('catalog_products')->where('id', $productId)->update(['pickup_required' => (bool) ($seed['pickup']['required'] ?? false), 'pickup_ask_flight' => (bool) ($seed['pickup']['askFlight'] ?? false)]);
+        }
         $db->table('catalog_payment_policies')->where('product_id', $productId)->delete();
         $payment = $seed['payment'] ?? null;
         if (is_array($payment) && ($payment['modes'] ?? []) !== []) {
@@ -275,6 +282,101 @@ final class CatalogDemoSeeder
                 },
                 'requires_address' => str_contains($text, 'hotel'),
             ]);
+        }
+    }
+
+    private static function seedPaxRules(ConnectionInterface $db, string $productId, string $tenantId, ?array $rules): void
+    {
+        $db->table('catalog_pax_rules')->where('product_id', $productId)->delete();
+        if ($rules === null) {
+            return;
+        }
+
+        $db->table('catalog_pax_rules')->insert([
+            'id' => (string) Str::uuid7(),
+            'tenant_id' => $tenantId,
+            'product_id' => $productId,
+            'adult_min_age' => (int) $rules['adultMinAge'],
+            'child_min_age' => (int) $rules['childMinAge'],
+            'child_max_age' => (int) $rules['childMaxAge'],
+            'infant_max_age' => (int) $rules['infantMaxAge'],
+            'child_pays' => (bool) ($rules['childPays'] ?? true),
+            'child_price_pct' => (float) ($rules['childPricePct'] ?? 100),
+            'infant_allowed' => (bool) ($rules['infantAllowed'] ?? true),
+            'infant_pays' => (bool) ($rules['infantPays'] ?? false),
+            'max_children_per_adult' => (int) ($rules['maxChildrenPerAdult'] ?? 10),
+            'max_infants_per_adult' => (int) ($rules['maxInfantsPerAdult'] ?? 5),
+            'min_adults' => (int) ($rules['minAdults'] ?? 1),
+            'note' => $rules['note'] ?? null,
+        ]);
+    }
+
+    private static function seedAddons(ConnectionInterface $db, string $productId, string $tenantId, array $addons): void
+    {
+        $db->table('catalog_product_addons')->where('product_id', $productId)->delete();
+        foreach ($addons as $addon) {
+            $db->table('catalog_product_addons')->insert([
+                'id' => (string) Str::uuid7(),
+                'tenant_id' => $tenantId,
+                'product_id' => $productId,
+                'code' => $addon['id'],
+                'name' => $addon['name'],
+                'category' => $addon['category'],
+                'price' => $addon['price'],
+                'currency' => $addon['currency'],
+                'charge_per' => ($addon['per'] ?? 'pax') === 'reserva' ? 'reserva' : 'pax',
+                'applies_to' => '{'.implode(',', (array) ($addon['appliesTo'] ?? ['ADT'])).'}',
+                'stock_note' => $addon['stock'] ?? $addon['stockNote'] ?? null,
+                'provider_id' => isset($addon['providerId']) ? $db->table('catalog_providers')->where('ref', $addon['providerId'])->value('id') : null,
+                'is_optional' => (bool) ($addon['optional'] ?? true),
+            ]);
+        }
+    }
+
+    private static function seedAccommodation(ConnectionInterface $db, string $productId, string $tenantId, ?array $accommodation): void
+    {
+        $db->table('catalog_accommodation_legs')->where('product_id', $productId)->delete();
+        $db->table('catalog_products')->where('id', $productId)->update([
+            'accommodation_enabled' => $accommodation !== null,
+            'accommodation_optional' => (bool) ($accommodation['optional'] ?? true),
+            'accommodation_currency' => $accommodation['currency'] ?? null,
+            'accommodation_note' => $accommodation['note'] ?? null,
+        ]);
+
+        foreach (array_values((array) ($accommodation['legs'] ?? [])) as $index => $leg) {
+            $legId = (string) Str::uuid7();
+            $db->table('catalog_accommodation_legs')->insert([
+                'id' => $legId,
+                'tenant_id' => $tenantId,
+                'product_id' => $productId,
+                'code' => $leg['id'],
+                'sequence' => $index + 1,
+                'city' => $leg['city'],
+                'destination_id' => isset($leg['destId']) ? $db->table('catalog_destinations')->where('ref', $leg['destId'])->value('id') : null,
+                'nights' => (int) $leg['nights'],
+            ]);
+            foreach ((array) ($leg['hotels'] ?? []) as $hotel) {
+                $hotelId = (string) Str::uuid7();
+                $db->table('catalog_accommodation_hotels')->insert([
+                    'id' => $hotelId,
+                    'tenant_id' => $tenantId,
+                    'leg_id' => $legId,
+                    'code' => $hotel['id'],
+                    'name' => $hotel['name'],
+                    'category' => $hotel['category'],
+                    'provider_id' => isset($hotel['providerId']) ? $db->table('catalog_providers')->where('ref', $hotel['providerId'])->where('type', 'Hotel')->value('id') : null,
+                ]);
+                foreach ((array) ($hotel['rooms'] ?? []) as $room) {
+                    $db->table('catalog_accommodation_room_types')->insert([
+                        'id' => (string) Str::uuid7(),
+                        'tenant_id' => $tenantId,
+                        'hotel_id' => $hotelId,
+                        'room_type' => $room['type'],
+                        'capacity' => (int) $room['capacity'],
+                        'price_per_night' => $room['price'],
+                    ]);
+                }
+            }
         }
     }
 

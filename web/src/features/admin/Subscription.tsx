@@ -1,18 +1,16 @@
 "use client";
 
-import { CheckCircle2, Mail, MapPin, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle } from "lucide-react";
 import { useState } from "react";
-import { updateBilling } from "@/app/(backoffice)/admin/suscripcion/actions";
+import { PayInvoiceAction, SendInvoiceAction } from "./SubscriptionActions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { BarChart } from "@/components/ui/Charts";
 import { FieldList } from "@/components/ui/Details";
-import { PanelAction } from "@/components/ui/PanelAction";
 import { SidePanel } from "@/components/ui/SidePanel";
-import { TextField } from "@/components/ui/TextField";
-import { ADMIN_INITIAL, type AdminActionState, type PlatformInvoice, type SubscriptionOverview } from "@/lib/admin";
+import type { PlatformInvoice, SubscriptionOverview } from "@/lib/admin";
 import { formatDate, formatDateTime, formatMoney, formatNumber, monthName } from "@/lib/format";
 import { UsageBar } from "./AdminParts";
 
@@ -25,11 +23,13 @@ const INVOICE_STATUS: Record<string, { label: string; tone: "ok" | "bad" | "sun"
   uncollectible: { label: "Incobrable", tone: "bad" },
 };
 
+const INVOICE_KIND: Record<string, string> = { subscription: "Suscripción", proration: "Cambio de plan (prorrateo)", addon: "Complemento (prorrateo)", manual: "Cargo manual" };
+
 const SUNAT: Record<string, string> = { accepted: "Aceptada por SUNAT", observed: "Observada", rejected: "Rechazada", pending: "Pendiente de envío" };
 
-export function UsageGrid({ usage }: { usage: SubscriptionOverview["usage"] }) {
+export function UsageGrid({ usage, columns = 3 }: { usage: SubscriptionOverview["usage"]; columns?: 2 | 3 }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div className={columns === 3 ? "grid gap-3 sm:grid-cols-2 xl:grid-cols-3" : "grid gap-3 sm:grid-cols-2"}>
       {usage.map((metric, index) => (
         <div key={metric.metric} style={{ animationDelay: `${index * 50}ms` }} className="animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]">
           <UsageBar used={metric.used} limit={metric.limit} label={metric.label} unit={metric.unit} note={metric.limit !== null && metric.used >= metric.limit * 0.8 ? (metric.hard ? "Cerca del límite: al llegar se bloquea" : "Cerca del límite") : undefined} />
@@ -39,20 +39,22 @@ export function UsageGrid({ usage }: { usage: SubscriptionOverview["usage"] }) {
   );
 }
 
-export function UsageHistory({ history }: { history: SubscriptionOverview["history"] }) {
-  const [metric, setMetric] = useState<string>("reservations_month");
+const HISTORY_METRICS = [
+  { id: "reservations_month", label: "Reservas" },
+  { id: "whatsapp_month", label: "WhatsApp" },
+  { id: "email_month", label: "Correos" },
+  { id: "api_calls_month", label: "API" },
+];
+
+export function UsageHistory({ history, metrics = HISTORY_METRICS }: { history: SubscriptionOverview["history"]; metrics?: { id: string; label: string }[] }) {
+  const tabs = metrics.filter((tab) => (history[tab.id] ?? []).length > 0);
+  const [metric, setMetric] = useState<string>(tabs[0]?.id ?? metrics[0]?.id ?? "");
   const series = history[metric] ?? [];
-  const tabs = [
-    { id: "reservations_month", label: "Reservas" },
-    { id: "whatsapp_month", label: "WhatsApp" },
-    { id: "email_month", label: "Correos" },
-    { id: "api_calls_month", label: "API" },
-  ].filter((tab) => (history[tab.id] ?? []).length > 0);
   if (tabs.length === 0) return <p className="text-[13px] text-fg-3">Aún no hay consumo registrado.</p>;
   return (
     <div>
       <div className="mb-4 flex w-fit gap-1 rounded-control bg-surface-2 p-1">
-        {tabs.map((tab) => (
+        {tabs.length > 1 && tabs.map((tab) => (
           <button key={tab.id} type="button" onClick={() => setMetric(tab.id)} className={metric === tab.id ? "rounded-[10px] bg-surface px-3 py-1.5 text-[12.5px] font-semibold shadow-card" : "rounded-[10px] px-3 py-1.5 text-[12.5px] font-semibold text-fg-3 hover:text-fg"}>
             {tab.label}
           </button>
@@ -72,7 +74,7 @@ export function UsageHistory({ history }: { history: SubscriptionOverview["histo
   );
 }
 
-function InvoiceDetail({ invoice }: { invoice: PlatformInvoice }) {
+function InvoiceDetail({ invoice, manage }: { invoice: PlatformInvoice; manage: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -99,13 +101,20 @@ function InvoiceDetail({ invoice }: { invoice: PlatformInvoice }) {
               { label: "SUNAT", value: SUNAT[invoice.sunat] ?? invoice.sunat },
             ]}
           />
+          {manage && ["open", "failed"].includes(invoice.status) && (
+            <div className="flex items-center justify-between gap-3 rounded-[14px] bg-surface-2 px-3.5 py-3">
+              <p className="text-[12.5px] text-fg-2">{invoice.status === "failed" ? "El último cobro fue rechazado." : `Vence el ${formatDate(invoice.due_date)}.`}</p>
+              <PayInvoiceAction number={invoice.number} total={invoice.total} currency={invoice.currency} />
+            </div>
+          )}
+          {manage && <SendInvoiceAction number={invoice.number} />}
         </div>
       </SidePanel>
     </>
   );
 }
 
-export function InvoicesTable({ invoices }: { invoices: PlatformInvoice[] }) {
+export function InvoicesTable({ invoices, manage = false }: { invoices: PlatformInvoice[]; manage?: boolean }) {
   const columns: Column<PlatformInvoice>[] = [
     {
       id: "number",
@@ -118,6 +127,7 @@ export function InvoicesTable({ invoices }: { invoices: PlatformInvoice[] }) {
         </span>
       ),
     },
+    { id: "kind", header: "Concepto", wideOnly: true, cell: (invoice) => <span className="text-[13px] text-fg-2">{INVOICE_KIND[invoice.kind] ?? invoice.kind}</span> },
     { id: "period", header: "Periodo", cell: (invoice) => <span className="text-[13px]">{formatDate(invoice.period_from)} – {formatDate(invoice.period_to)}</span> },
     { id: "total", header: "Total", align: "right", cell: (invoice) => <b className="font-semibold">{formatMoney(invoice.total, invoice.currency)}</b> },
     { id: "status", header: "Estado", cell: (invoice) => <Badge tone={INVOICE_STATUS[invoice.status]?.tone ?? "mute"}>{INVOICE_STATUS[invoice.status]?.label ?? invoice.status}</Badge> },
@@ -129,7 +139,7 @@ export function InvoicesTable({ invoices }: { invoices: PlatformInvoice[] }) {
       mobile: "detail",
       cell: (invoice) => (
         <RowActions>
-          <InvoiceDetail invoice={invoice} />
+          <InvoiceDetail invoice={invoice} manage={manage} />
         </RowActions>
       ),
     },
@@ -144,38 +154,4 @@ export function InvoicesTable({ invoices }: { invoices: PlatformInvoice[] }) {
     { id: "total", label: "Total", type: "number", value: (invoice) => invoice.total },
   ];
   return <DataTable screen="admin-facturas-plataforma" rows={invoices} columns={columns} getKey={(invoice) => invoice.number} entityLabel="facturas" searchText={(invoice) => `${invoice.number} ${invoice.lines.map((line) => line.description).join(" ")}`} searchPlaceholder="Buscar factura" metrics={metrics} filters={filters} sorts={sorts} />;
-}
-
-export function BillingCard({ subscription, manage }: { subscription: NonNullable<SubscriptionOverview["subscription"]>; manage: boolean }) {
-  const billing = subscription.billing;
-  return (
-    <>
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-[12.5px] text-fg-3">Se copian a cada factura al emitirla; las ya emitidas no cambian.</p>
-        {manage && (
-          <PanelAction<AdminActionState> label="Editar" variant="ghost" size="sm" formId="billing-edit" trigger={(open) => <RowIcon tone="edit" label="Editar datos de facturación" onClick={open} />} title="Datos de facturación" description="Aplican desde la próxima factura." submitLabel="Guardar" action={updateBilling} initial={ADMIN_INITIAL}>
-            {() => (
-              <>
-                <TextField label="RUC" name="ruc" required inputMode="numeric" maxLength={11} defaultValue={billing.ruc} />
-                <TextField label="Razón social" name="name" required defaultValue={billing.name} />
-                <TextField label="Dirección fiscal" name="address" required defaultValue={billing.address} icon={<MapPin size={17} />} />
-                <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-3">
-                  <TextField label="Ubigeo" name="ubigeo" inputMode="numeric" maxLength={6} defaultValue={billing.ubigeo ?? undefined} />
-                  <TextField label="Correo para facturas" name="email" type="email" required defaultValue={billing.email} icon={<Mail size={17} />} />
-                </div>
-              </>
-            )}
-          </PanelAction>
-        )}
-      </div>
-      <FieldList
-        fields={[
-          { label: "RUC", value: <span className="font-mono">{billing.ruc}</span> },
-          { label: "Razón social", value: billing.name },
-          { label: "Dirección", value: billing.address },
-          { label: "Correo", value: billing.email },
-        ]}
-      />
-    </>
-  );
 }

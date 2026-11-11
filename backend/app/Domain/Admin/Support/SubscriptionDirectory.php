@@ -6,7 +6,12 @@ namespace App\Domain\Admin\Support;
 
 use App\Domain\Iam\Models\User;
 use App\Domain\Iam\Support\StaffSeats;
+use App\Domain\Platform\Support\Entitlements;
+use App\Domain\Platform\Support\PlatformInvoicer;
+use App\Domain\Platform\Support\PlatformSettings;
+use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Tenancy\TenantContext;
+use Brick\Math\RoundingMode;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +32,13 @@ final class SubscriptionDirectory
 
     private const STATUS = ['trialing' => 'En prueba', 'active' => 'Activa', 'past_due' => 'Pago pendiente', 'cancel_scheduled' => 'Cancelación programada', 'suspended' => 'Suspendida', 'canceled' => 'Cancelada'];
 
-    public function __construct(private readonly TenantContext $context, private readonly AuditDirectory $audit) {}
+    public function __construct(
+        private readonly TenantContext $context,
+        private readonly AuditDirectory $audit,
+        private readonly Entitlements $entitlements,
+        private readonly PlatformInvoicer $invoicer,
+        private readonly PlatformSettings $settings,
+    ) {}
 
     public function overview(User $viewer): array
     {
@@ -93,6 +104,8 @@ final class SubscriptionDirectory
                     'address' => $subscription->billing_address,
                     'ubigeo' => $subscription->billing_ubigeo,
                     'email' => $subscription->billing_email,
+                    'contact' => $subscription->billing_contact,
+                    'doc_type' => $subscription->billing_doc_type,
                 ],
             ] : null,
             'addons' => $items->map(fn (object $item): array => [
@@ -147,6 +160,9 @@ final class SubscriptionDirectory
                 'sunat' => $row->sunat_status,
                 'lines' => collect($lines[$row->id] ?? [])->map(fn ($line): array => ['description' => $line->description, 'quantity' => (float) $line->quantity, 'amount' => (float) $line->amount])->values(),
             ])->values(),
+            'payment_method' => $this->paymentMethod((string) $tenant->getKey()),
+            'next_charge' => $subscription ? $this->nextCharge($subscription, $plan, $items, $coupon) : null,
+            'modules' => collect($this->entitlements->for((string) $tenant->getKey()))->filter(fn (array $feature, string $key): bool => str_starts_with($key, 'module.'))->map(fn (array $feature, string $key): array => ['key' => $key, 'label' => $feature['label'], 'enabled' => $feature['enabled'], 'source' => $feature['source'], 'valid_until' => $feature['valid_until']])->sortBy('label')->values()->all(),
             'changes' => $this->audit->recent(['Suscripción'], 6),
             'can_manage' => $viewer->can('admin.billing.manage'),
         ];
@@ -156,13 +172,13 @@ final class SubscriptionDirectory
     {
         $platform = $this->platform();
         $tenantId = $this->context->idOrFail();
-        $subscription = $platform->table('subscriptions')->where('tenant_id', $tenantId)->where('status', '<>', 'canceled')->first(['id', 'billing_ruc', 'billing_name', 'billing_address', 'billing_ubigeo', 'billing_email']);
+        $subscription = $platform->table('subscriptions')->where('tenant_id', $tenantId)->where('status', '<>', 'canceled')->first(['id', 'billing_ruc', 'billing_name', 'billing_address', 'billing_ubigeo', 'billing_email', 'billing_contact', 'billing_doc_type']);
 
         if ($subscription === null) {
             return [];
         }
 
-        $after = ['billing_ruc' => $data['ruc'], 'billing_name' => $data['name'], 'billing_address' => $data['address'], 'billing_ubigeo' => $data['ubigeo'] ?? null, 'billing_email' => $data['email']];
+        $after = ['billing_ruc' => $data['ruc'], 'billing_name' => $data['name'], 'billing_address' => $data['address'], 'billing_ubigeo' => $data['ubigeo'] ?? null, 'billing_email' => $data['email'], 'billing_contact' => $data['contact'] ?? null, 'billing_doc_type' => $data['doc_type'] ?? 'Factura'];
         $changed = TenantSettings::changes((array) $subscription, $after);
 
         if ($changed !== []) {
@@ -198,6 +214,54 @@ final class SubscriptionDirectory
             'lines' => $lines->map(fn (object $line): array => ['description' => $line->description, 'quantity' => (float) $line->quantity, 'unit_price' => (float) $line->unit_price, 'amount' => (float) $line->amount, 'type' => $line->line_type])->values()->all(),
             'attempts' => $attempts->map(fn (object $attempt): array => ['number' => (int) $attempt->attempt_no, 'source' => $attempt->source, 'result' => $attempt->result, 'message' => $attempt->message, 'at' => $attempt->created_at])->values()->all(),
         ];
+    }
+
+    private function paymentMethod(string $tenantId): ?array
+    {
+        $method = $this->platform()->table('payment_methods as m')->leftJoin('iam_users as u', 'u.id', '=', 'm.created_by')->where('m.tenant_id', $tenantId)->where('m.is_default', true)->where('m.status', '<>', 'removed')
+            ->first(['m.brand', 'm.last4', 'm.exp_month', 'm.exp_year', 'm.holder', 'm.status', 'm.gateway_token', 'm.created_at', 'u.name as updated_by']);
+
+        return $method ? [
+            'brand' => $method->brand,
+            'last4' => $method->last4,
+            'exp' => str_pad((string) $method->exp_month, 2, '0', STR_PAD_LEFT).'/'.$method->exp_year,
+            'holder' => $method->holder,
+            'status' => $method->status,
+            'token_hint' => mb_substr((string) $method->gateway_token, 0, 12),
+            'updated_at' => $method->created_at,
+            'updated_by' => $method->updated_by,
+        ] : null;
+    }
+
+    private function nextCharge(object $subscription, ?object $plan, $items, ?object $coupon): ?array
+    {
+        if ($plan === null || $subscription->status === 'cancel_scheduled') {
+            return null;
+        }
+
+        $platform = $this->platform();
+        $renewal = Carbon::parse($subscription->current_period_end)->addDay()->toDateString();
+        $change = $platform->table('subscription_changes')->where('subscription_id', $subscription->id)->where('status', 'scheduled')->whereIn('kind', ['upgrade', 'downgrade', 'cycle'])->first(['to_plan_id', 'to_cycle']);
+        $cycle = (string) ($change->to_cycle ?? $subscription->cycle);
+        $target = $platform->table('plans')->where('id', $change->to_plan_id ?? $subscription->plan_id)->first();
+        $base = $this->invoicer->price($target, $cycle);
+        $months = $cycle === 'annual' ? 12 : 1;
+        $addons = Decimal::money(0);
+
+        foreach ($items as $item) {
+            if ($item->ends_at === null || $item->ends_at >= $renewal) {
+                $addons = $addons->plus(Decimal::money($item->unit_price)->multipliedBy((int) $item->quantity * $months));
+            }
+        }
+
+        $discount = $coupon ? $this->invoicer->discount((object) ['type' => $coupon->type, 'value' => $coupon->value], $base) : Decimal::money(0);
+        $gross = $base->plus($addons)->minus($discount);
+        $credit = Decimal::money($subscription->credit_balance);
+        $credit = $credit->isGreaterThan($gross) ? $gross : $credit;
+        $net = $gross->minus($credit);
+        $igv = $net->multipliedBy(Decimal::of($this->settings->igv()))->dividedBy(100, 2, RoundingMode::HALF_UP);
+
+        return ['date' => $renewal, 'plan' => $target->name, 'cycle' => $cycle, 'base' => (float) (string) $base, 'addons' => (float) (string) $addons, 'discount' => (float) (string) $discount, 'credit' => (float) (string) $credit, 'net' => (float) (string) $net, 'igv' => (float) (string) $igv, 'total' => (float) (string) $net->plus($igv)];
     }
 
     private static function uuids(?string $value): array

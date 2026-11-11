@@ -26,6 +26,9 @@ Route::name('admin.')->group(function (): void {
         Route::get('billing/usage', [SubscriptionController::class, 'usage'])->name('subscription.usage');
         Route::get('billing/invoices', [SubscriptionController::class, 'invoices'])->name('subscription.invoices.index');
         Route::get('billing/invoices/{number}', [SubscriptionController::class, 'invoice'])->name('subscription.invoices.show');
+        Route::post('billing/invoices/{number}/send', [SubscriptionController::class, 'sendInvoice'])->name('subscription.invoices.send');
+        Route::post('billing/payment-methods/setup-intent', [SubscriptionController::class, 'setupIntent'])->name('subscription.payment-methods.setup');
+        Route::put('billing/payment-methods/default', [SubscriptionController::class, 'saveCard'])->name('subscription.payment-methods.default');
         Route::post('billing/invoices/{number}/pay', [SubscriptionController::class, 'pay'])->name('subscription.invoices.pay');
         Route::get('billing/plan-rules', [SubscriptionController::class, 'planRules'])->name('subscription.plan-rules');
     });

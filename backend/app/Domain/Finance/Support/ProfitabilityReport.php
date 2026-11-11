@@ -10,10 +10,6 @@ use Illuminate\Support\Facades\DB;
 
 final class ProfitabilityReport
 {
-    public const TARGET = 25.0;
-
-    public const FLOOR = 15.0;
-
     private const KINDS = ['alojamiento' => 'Alojamiento', 'tour' => 'Tours y excursiones', 'traslado' => 'Traslados', 'tren_entrada' => 'Trenes y entradas', 'libre' => 'Otros servicios'];
 
     public function __construct(private readonly Consolidation $money) {}
@@ -39,8 +35,10 @@ final class ProfitabilityReport
         $commissions = DB::table('fin_commissions')->whereIn('reservation_id', $ids)->whereNull('deleted_at')
             ->get(['reservation_id', 'amount', 'currency', 'fx_rate'])->groupBy('reservation_id');
         $servicesBy = $services->groupBy('reservation_id');
+        $settled = DB::table('fin_settlements')->whereIn('reservation_id', $ids)->pluck('closed_at', 'reservation_id');
+        ['target' => $target, 'floor' => $floor] = TreasurySettings::margins();
 
-        $rows = $reservations->map(function (object $reservation) use ($servicesBy, $extraCosts, $commissions): array {
+        $rows = $reservations->map(function (object $reservation) use ($servicesBy, $extraCosts, $commissions, $settled, $target, $floor): array {
             $income = $this->money->pen((string) NetSales::of($reservation->total_amount, $reservation->currency), $reservation->currency, $reservation->fx_rate);
             $serviceCost = ($servicesBy->get($reservation->id) ?? collect())->sum(fn (object $row): float => $this->money->pen($row->cost_amount, $row->currency, $row->fx_rate ?? $reservation->fx_rate));
             $extra = ($extraCosts->get($reservation->id) ?? collect())->sum(fn (object $row): float => $this->money->pen($row->amount, $row->currency, $row->fx_rate));
@@ -65,7 +63,8 @@ final class ProfitabilityReport
                 'margin_pen' => $margin,
                 'net_pen' => round($margin - $commission, 2),
                 'margin_pct' => $pct,
-                'band' => $pct >= self::TARGET ? 'ok' : ($pct >= self::FLOOR ? 'warn' : 'bad'),
+                'band' => $pct >= $target ? 'ok' : ($pct >= $floor ? 'warn' : 'bad'),
+                'settled_at' => $settled->get($reservation->id),
             ];
         })->sortByDesc('income_pen')->values();
 
@@ -83,13 +82,14 @@ final class ProfitabilityReport
                 'net_pen' => round($income - $cost - $commission, 2),
                 'margin_pct' => $income > 0 ? round(($income - $cost) / $income * 100, 1) : 0.0,
                 'below_floor' => $rows->where('band', 'bad')->count(),
+                'settled' => $rows->whereNotNull('settled_at')->count(),
             ],
             'by_product' => $this->byProduct($services, $reservations),
             'by_owner' => $this->group($rows, 'owner'),
             'by_channel' => $this->group($rows, 'channel'),
             'monthly' => $this->monthly($rows),
-            'target' => self::TARGET,
-            'floor' => self::FLOOR,
+            'target' => $target,
+            'floor' => $floor,
         ];
     }
 
@@ -124,6 +124,7 @@ final class ProfitabilityReport
                 'income_pen' => round($items->sum('income_pen'), 2),
                 'cost_pen' => round($items->sum('cost_pen'), 2),
                 'margin_pen' => round($items->sum('margin_pen'), 2),
+                'margin_pct' => $items->sum('income_pen') > 0 ? round($items->sum('margin_pen') / $items->sum('income_pen') * 100, 1) : 0.0,
             ])->sortKeys()->values();
     }
 }

@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Domain\Site\Actions;
 
 use App\Domain\Crm\Support\CodeSequence;
+use App\Domain\Finance\Events\PaymentApplied;
 use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Sequences\SequenceService;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\Site\Support\CardPayments;
 use App\Domain\Site\Support\CheckoutRules;
 use App\Domain\Site\Support\CheckoutTerms;
 use App\Domain\Site\Support\SiteProfile;
@@ -26,8 +28,6 @@ use stdClass;
 
 final class SiteCheckout
 {
-    private const GATEWAY = ['51' => 'Fondos insuficientes. Prueba con otra tarjeta u otro medio de pago.', '14' => 'La tarjeta no es válida. Revisa el número o usa otro medio de pago.'];
-
     public function __construct(
         private readonly TenantContext $context,
         private readonly CodeSequence $codes,
@@ -40,6 +40,7 @@ final class SiteCheckout
         private readonly ReceivableLedger $ledger,
         private readonly CheckoutTerms $terms,
         private readonly WebClients $clients,
+        private readonly CardPayments $cards,
     ) {}
 
     public function options(?string $token): array
@@ -77,8 +78,10 @@ final class SiteCheckout
             $extras = CheckoutRules::lines($data, $terms);
             $payment = CheckoutRules::payment($data, $terms);
             $deposit = $payment['pay_mode'] === 'adelanto';
+            $payLater = $payment['pay_mode'] === CheckoutTerms::PAY_LATER;
             $mode = collect($terms['modes'])->firstWhere('value', $payment['pay_mode']);
             $now = Carbon::now($this->context->timezone());
+            $holdUntil = $payLater ? Carbon::now()->addHours($this->terms->payLaterHours()) : null;
             $owner = $this->clients->owner();
             $sede = DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->orderByDesc('is_main')->value('id');
             $currency = $terms['currency'];
@@ -116,15 +119,15 @@ final class SiteCheckout
                 'currency' => $currency,
                 'fx_rate' => $rate,
                 'status' => 'pago_pendiente',
-                'hold_expires_at' => $lines->map(fn (array $l): ?string => $l['item']->hold_expires_at)->filter()->min(),
+                'hold_expires_at' => $holdUntil ?? $lines->map(fn (array $l): ?string => $l['item']->hold_expires_at)->filter()->min(),
                 'buyer_snapshot' => json_encode(collect($buyer)->only(['name', 'email', 'phone', 'country', 'doc_type', 'doc_number', 'birth_date', 'nationality', 'diet'])->all(), JSON_UNESCAPED_UNICODE),
                 'cart_id' => $cart->id,
                 'sales_channel' => 'sitio_web',
                 'locale' => 'es',
                 'pay_mode' => $deposit ? 'anticipo' : 'total',
-                'deposit_pct' => $deposit ? $mode['pct'] : 100,
+                'deposit_pct' => $deposit || $payLater ? $mode['pct'] : 100,
                 'amount_due_now' => $mode['amount'],
-                'balance_due_date' => $deposit ? $mode['balance_due'] : null,
+                'balance_due_date' => $deposit ? $mode['balance_due'] : $holdUntil?->copy()->setTimezone($this->context->timezone())->toDateString(),
                 'billing' => json_encode($billing, JSON_UNESCAPED_UNICODE),
                 'consents' => json_encode(['terms_at' => $now->toIso8601String(), 'cancellation_at' => $now->toIso8601String(), 'privacy_at' => $now->toIso8601String(), 'marketing_at' => ($payment['marketing'] ?? false) ? $now->toIso8601String() : null, 'policy_version' => CaptureWebLead::POLICY_VERSION], JSON_UNESCAPED_UNICODE),
                 'access_token_hash' => hash('sha256', $accessToken),
@@ -150,7 +153,7 @@ final class SiteCheckout
 
             foreach ($lines->values() as $index => $line) {
                 $termsLine = $terms['items'][$index];
-                [$reservationId, $receivableId, $serviceId] = $this->reservation($line, $termsLine, $extras[$index], $orderId, $orderCode, $clientId, $owner, $sede, $buyer, $passengers, $deposit, $rate, $today, $currency);
+                [$reservationId, $receivableId, $serviceId] = $this->reservation($line, $termsLine, $extras[$index], $orderId, $orderCode, $clientId, $owner, $sede, $buyer, $passengers, $deposit, $rate, $today, $currency, $holdUntil);
                 $reservations[] = $reservationId;
                 $receivables[] = $receivableId;
                 $quote = $line['quote'];
@@ -187,13 +190,18 @@ final class SiteCheckout
 
             DB::table('channel_ecom_orders')->where('id', $orderId)->update(['reservation_id' => $reservations[0], 'reservation_ids' => '{'.implode(',', $reservations).'}', 'receivable_id' => $receivables[0], 'cost_total' => DB::table('channel_ecom_order_lines')->where('order_id', $orderId)->sum('cost_total')]);
             DB::table('channel_web_carts')->where('id', $cart->id)->update(['status' => 'convertido', 'order_id' => $orderId, 'crm_client_id' => $clientId, 'last_activity_at' => now()]);
-            DB::table('catalog_availability_holds')->whereIn('id', $lines->pluck('item.hold_id')->filter()->all())->update(['reference' => $orderCode, 'reference_type' => 'order', 'reference_id' => $orderId, 'updated_at' => now()]);
+            WidgetHandoffs::convert((string) $cart->id);
+            DB::table('catalog_availability_holds')->whereIn('id', $lines->pluck('item.hold_id')->filter()->all())->update(['reference' => $orderCode, 'reference_type' => 'order', 'reference_id' => $orderId, ...($holdUntil ? ['expires_at' => $holdUntil] : []), 'updated_at' => now()]);
 
             if ($payment['marketing'] ?? false) {
                 $this->newsletter->handle($buyer['email'], $buyer['name']);
             }
 
-            $this->audit->log('Pedido web', $orderCode, 'crear', after: "pago_pendiente · {$currency} {$terms['total']} · ".($deposit ? "adelanto {$mode['amount']}" : 'pago total'));
+            $this->audit->log('Pedido web', $orderCode, 'crear', after: "pago_pendiente · {$currency} {$terms['total']} · ".match (true) {
+                $deposit => "adelanto {$mode['amount']}",
+                $payLater => 'pagar después · bloqueo hasta '.$holdUntil->copy()->setTimezone($this->context->timezone())->format('d/m/Y H:i'),
+                default => 'pago total',
+            });
             $order = DB::table('channel_ecom_orders')->where('id', $orderId)->first();
             $attempt = empty($payment['method']) ? null : $this->charge($order, $payment);
 
@@ -222,6 +230,7 @@ final class SiteCheckout
             'deposit_pct' => (float) $order->deposit_pct,
             'amount_due_now' => Decimal::toApi((string) $order->amount_due_now),
             'balance_due_date' => $order->balance_due_date,
+            'pay_later' => DB::table('booking_reservation_web_snapshots')->where('order_code', $order->code)->where('payment_mode', CheckoutTerms::PAY_LATER)->exists(),
             'due' => $this->dueAmount($order),
             'methods' => collect(CheckoutTerms::METHODS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values()->all(),
             'bank_accounts' => CheckoutTerms::bankAccounts(),
@@ -244,17 +253,11 @@ final class SiteCheckout
 
     public function pay(string $code, ?string $token, array $data): array
     {
-        $payment = CheckoutRules::retry($data === [] ? ['method' => 'tarjeta', 'card_token' => 'tok_ok_1111', 'card_holder' => 'Pago de demostración'] : $data);
+        $payment = CheckoutRules::retry($data);
 
         return DB::transaction(function () use ($code, $token, $payment): array {
             $order = $this->authorize($code, $token, true);
-            if (in_array($order->status, ['cancelado', 'expirado', 'pago_por_validar'], true)) {
-                throw ApiException::conflict('ORDER_STATE', $order->status === 'pago_por_validar' ? 'Tu pago está en validación; te avisaremos por correo.' : 'Este pedido ya no admite pagos.');
-            }
-
-            if ($this->dueReceivables($order)->isEmpty()) {
-                throw ApiException::conflict('ORDER_STATE', 'Este pedido no tiene pagos pendientes.');
-            }
+            $this->ensurePayable($order);
 
             $attempt = $this->charge($order, $payment);
 
@@ -292,16 +295,56 @@ final class SiteCheckout
         return 'g.'.hash_hmac('sha256', $order->id.'|'.Str::lower((string) $order->customer_email).'|'.Carbon::today()->toDateString(), (string) config('app.key'));
     }
 
-    private function charge(stdClass $order, array $payment): array
+    public function session(string $code, ?string $token, ?string $returnUrl): array
+    {
+        $order = $this->authorize($code, $token);
+        $this->ensurePayable($order);
+
+        return [...$this->cards->openSession('order', (string) $order->code, $this->dueAmount($order), (string) $order->currency, (string) $order->customer_email, $returnUrl), 'order' => $order->code];
+    }
+
+    public function settle(string $code, array $card): array
+    {
+        $order = DB::table('channel_ecom_orders')->where('code', $code)->lockForUpdate()->first();
+
+        if ($order === null) {
+            throw ApiException::notFound('No encontramos ese pedido.');
+        }
+
+        if ($card['txn'] !== null && DB::table('channel_ecom_payment_attempts')->where('gateway_txn_id', $card['txn'])->exists()) {
+            return ['result' => 'duplicado', 'message' => 'El cobro ya estaba registrado.'];
+        }
+
+        if ($this->dueReceivables($order)->isEmpty() || in_array($order->status, ['cancelado', 'expirado'], true)) {
+            $this->audit->log('Pedido web', (string) $order->code, 'pago_sin_deuda', $order->status, ($card['approved'] ? 'aprobado' : 'rechazado').' · '.($card['txn'] ?? 'sin referencia'));
+
+            return ['result' => 'sin_deuda', 'message' => 'El pedido no tenía pagos pendientes.'];
+        }
+
+        return $this->charge($order, ['method' => 'tarjeta'], $card);
+    }
+
+    private function ensurePayable(stdClass $order): void
+    {
+        if (in_array($order->status, ['cancelado', 'expirado', 'pago_por_validar'], true)) {
+            throw ApiException::conflict('ORDER_STATE', $order->status === 'pago_por_validar' ? 'Tu pago está en validación; te avisaremos por correo.' : 'Este pedido ya no admite pagos.');
+        }
+
+        if ($this->dueReceivables($order)->isEmpty()) {
+            throw ApiException::conflict('ORDER_STATE', 'Este pedido no tiene pagos pendientes.');
+        }
+    }
+
+    private function charge(stdClass $order, array $payment, ?array $settled = null): array
     {
         $now = Carbon::now($this->context->timezone());
         $due = $this->dueReceivables($order);
         $balanceOnly = $due->every(fn (stdClass $r): bool => $r->kind === 'saldo');
         $amount = $this->dueAmount($order);
         $method = $payment['method'];
-        $card = $method === 'tarjeta' ? self::cardResult((string) ($payment['card_token'] ?? 'tok_14_0000')) : null;
+        $card = $method === 'tarjeta' ? ($settled ?? $this->cards->charge('order', (string) $order->code, $amount, (string) $order->currency, (string) $order->customer_email, (string) ($payment['card_token'] ?? ''), $payment['session_id'] ?? null)) : null;
         $result = $method === 'tarjeta' ? ($card['approved'] ? 'aprobado' : 'rechazado') : 'por_validar';
-        $txn = $result === 'aprobado' ? 'SBX-'.Str::upper(Str::random(10)) : null;
+        $txn = $card['txn'] ?? null;
         $paymentIds = [];
 
         if ($result !== 'rechazado') {
@@ -322,7 +365,7 @@ final class SiteCheckout
                     'fx_rate' => $receivable->currency === 'USD' ? $order->fx_rate : null,
                     'paid_on' => $now->toDateString(),
                     'reference' => $result === 'aprobado' ? $txn : $payment['operation_ref'],
-                    'note' => $result === 'aprobado' ? "Cobro en línea del pedido {$order->code} (pasarela de prueba)." : "Pago informado en el sitio web, pedido {$order->code}. Por validar.",
+                    'note' => $result === 'aprobado' ? "Cobro en línea del pedido {$order->code} (pasarela {$this->cards->gatewayName()})." : "Pago informado en el sitio web, pedido {$order->code}. Por validar.",
                     'status' => $result === 'aprobado' ? 'aplicado' : 'pendiente',
                 ]);
                 $paymentIds[] = $id;
@@ -361,6 +404,10 @@ final class SiteCheckout
             foreach ($due as $receivable) {
                 $this->ledger->recalculate((string) $receivable->id, null);
             }
+
+            foreach ($paymentIds as $paymentId) {
+                PaymentApplied::dispatch($paymentId, null);
+            }
         }
 
         if (! $balanceOnly) {
@@ -371,18 +418,6 @@ final class SiteCheckout
         $this->audit->log('Pedido web', $order->code, $result === 'aprobado' ? 'pago_aprobado' : 'pago_por_validar', $order->status, ($balanceOnly ? 'saldo · ' : '').CheckoutTerms::METHODS[$method]." · {$order->currency} {$amount}");
 
         return ['result' => $result, 'message' => $result === 'aprobado' ? 'Pago aprobado.' : 'Recibimos tu número de operación. Validamos el pago en un plazo de 4 horas hábiles.'];
-    }
-
-    public static function cardResult(string $token): array
-    {
-        [, $code, $last4] = explode('_', $token);
-
-        return [
-            'approved' => $code === 'ok',
-            'code' => $code === 'ok' ? '00' : $code,
-            'masked' => "•••• {$last4}",
-            'message' => $code === 'ok' ? 'Aprobado' : (self::GATEWAY[$code] ?? self::GATEWAY['14']),
-        ];
     }
 
     private function dueReceivables(stdClass $order): Collection
@@ -443,7 +478,7 @@ final class SiteCheckout
         return [$cart, $lines];
     }
 
-    private function reservation(array $line, array $termsLine, array $extra, string $orderId, string $orderCode, string $clientId, string $owner, ?string $sede, array $buyer, array $passengers, bool $deposit, string $rate, string $today, string $currency): array
+    private function reservation(array $line, array $termsLine, array $extra, string $orderId, string $orderCode, string $clientId, string $owner, ?string $sede, array $buyer, array $passengers, bool $deposit, string $rate, string $today, string $currency, ?Carbon $holdUntil = null): array
     {
         $item = $line['item'];
         $product = $line['product'];
@@ -505,7 +540,7 @@ final class SiteCheckout
 
         $receivables = $deposit
             ? [['adelanto', "Adelanto {$termsLine['deposit_pct']} % — pedido web {$orderCode} · {$product->name}", $depositAmount, $today], ['saldo', 'Saldo '.(100 - $termsLine['deposit_pct'])." % — pedido web {$orderCode} · {$product->name}", $total->minus($depositAmount), $termsLine['balance_due']]]
-            : [['total', "Pago total — pedido web {$orderCode} · {$product->name}", $total, $today]];
+            : [['total', ($holdUntil ? 'Pago total (reservado, pagar después)' : 'Pago total')." — pedido web {$orderCode} · {$product->name}", $total, $holdUntil?->copy()->setTimezone($this->context->timezone())->toDateString() ?? $today]];
         $firstReceivable = null;
 
         foreach ($receivables as [$kind, $concept, $amount, $due]) {
@@ -545,13 +580,13 @@ final class SiteCheckout
             'pickup_flight' => $extra['pickup_flight'],
             'pickup_arrival' => $extra['pickup_arrival'],
             'comments' => $extra['comments'],
-            'payment_mode' => $deposit ? 'adelanto' : 'total',
-            'deposit_pct' => $deposit ? $termsLine['deposit_pct'] : 100,
-            'deposit' => (string) ($deposit ? $depositAmount : $total),
-            'balance' => (string) ($deposit ? Decimal::round2($total->minus($depositAmount)) : BigDecimal::zero()->toScale(2)),
-            'balance_due' => $deposit ? $termsLine['balance_due'] : null,
+            'payment_mode' => $deposit ? 'adelanto' : ($holdUntil ? CheckoutTerms::PAY_LATER : 'total'),
+            'deposit_pct' => $deposit ? $termsLine['deposit_pct'] : ($holdUntil ? 0 : 100),
+            'deposit' => (string) ($deposit ? $depositAmount : ($holdUntil ? BigDecimal::zero()->toScale(2) : $total)),
+            'balance' => (string) ($deposit ? Decimal::round2($total->minus($depositAmount)) : ($holdUntil ? $total : BigDecimal::zero()->toScale(2))),
+            'balance_due' => $deposit ? $termsLine['balance_due'] : $holdUntil?->copy()->setTimezone($this->context->timezone())->toDateString(),
             'companions_pending' => $passengers === [],
-            'rules_applied' => '{'.implode(',', array_keys(array_filter(['R-DEPOSIT' => $deposit, 'R-PICKUP' => $termsLine['pickup'] !== null, 'R-COMMENTS' => $termsLine['comments'] !== null]))).'}',
+            'rules_applied' => '{'.implode(',', array_keys(array_filter(['R-DEPOSIT' => $deposit, 'R-PAY-LATER' => $holdUntil !== null, 'R-PICKUP' => $termsLine['pickup'] !== null, 'R-COMMENTS' => $termsLine['comments'] !== null]))).'}',
             'source' => 'sitio_web',
             'order_code' => $orderCode,
         ]);

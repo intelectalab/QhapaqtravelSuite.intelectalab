@@ -100,6 +100,24 @@ return [
         'roles' => [],
     ],
     [
+        'slug' => 'finanzas-cierre',
+        'audience' => 'agency',
+        'module' => 'Finanzas',
+        'screen' => '/finanzas/cierre',
+        'title' => 'Cierre de periodo',
+        'summary' => 'El cierre contable del mes: controles automáticos y manuales antes de cerrar.',
+        'steps' => [
+            ['title' => 'Revisar los controles automáticos', 'text' => 'Comprobantes observados, cobros sin comprobante, reversiones sin nota de crédito y conciliación del mes. Cada uno indica qué falta resolver.'],
+            ['title' => 'Marcar los controles manuales', 'text' => 'Tipo de cambio de cierre, cobranza vencida e IGV. Se marcan en orden.'],
+            ['title' => 'Cerrar el periodo', 'text' => 'Con todos los controles en orden, «Cerrar» deja el mes cerrado y avisa por correo a Finanzas.'],
+        ],
+        'faqs' => [
+            ['question' => '¿Se puede reabrir un periodo?', 'answer' => 'No. Los ajustes posteriores se registran en el periodo siguiente.'],
+        ],
+        'keywords' => ['cierre', 'periodo', 'mes', 'contabilidad', 'igv'],
+        'roles' => [],
+    ],
+    [
         'slug' => 'finanzas-rentabilidad',
         'audience' => 'agency',
         'module' => 'Finanzas',
@@ -109,7 +127,7 @@ return [
         'steps' => [
             ['title' => 'Liquidar una reserva', 'text' => 'En la ficha de la reserva, la sección «Liquidación» muestra el estado de resultados (ingresos, costos, comisiones y utilidad), el flujo de caja y los cuatro puntos para liquidar: viaje terminado, todo cobrado, proveedores pagados y comisiones aprobadas. Con todo en orden, «Cerrar liquidación» guarda el resultado y ya no cambia.'],
             ['title' => 'Leer los indicadores', 'text' => 'Las tarjetas muestran ingresos y costos, margen bruto, margen promedio y utilidad neta después de comisiones. Todo se expresa en soles.'],
-            ['title' => 'Detectar reservas bajo mínimo', 'text' => 'Usa las tarjetas «En meta», «Vigilar» y «Bajo mínimo». La meta es 25 %; por debajo de 15 % la reserva queda bajo mínimo y la columna «Semáforo» la marca en rojo.'],
+            ['title' => 'Detectar reservas bajo mínimo', 'text' => 'Usa las tarjetas «En meta», «Vigilar» y «Bajo mínimo». La meta (25 % por defecto) y el mínimo (15 %) se configuran en Tesorería, sección Parámetros. Por debajo del mínimo la reserva queda bajo mínimo y la columna «Semáforo» la marca en rojo.'],
             ['title' => 'Comparar productos y asesores', 'text' => 'Los bloques «Por tipo de servicio» y «Por asesor» ordenan el margen en soles y en porcentaje. «Margen por mes de viaje» muestra la evolución mensual.'],
             ['title' => 'Analizar una reserva', 'text' => 'Filtra por «Asesor», «Canal» o «Estado», ordena por «Ingreso», «Margen bruto» o «Margen %» y abre la reserva con el ojo para revisar sus servicios.'],
         ],

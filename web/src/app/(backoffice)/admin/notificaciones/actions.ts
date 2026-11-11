@@ -52,6 +52,14 @@ export async function retryNotification(_state: AdminActionState, form: FormData
   return sendAdmin(`/notifications/messages/${message(form)}/retry`, "POST", {}, PATH, "No pudimos reintentar el envío.");
 }
 
+export async function retryFailedNotifications(): Promise<AdminActionState> {
+  return sendAdmin("/notifications/messages/retry-failed", "POST", {}, PATH, "No pudimos reintentar los envíos fallidos.");
+}
+
 export async function fallbackNotification(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
   return sendAdmin(`/notifications/messages/${message(form)}/fallback`, "POST", {}, PATH, "No pudimos reenviar por correo.");
+}
+
+export async function testNotificationRule(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
+  return sendAdmin(`/notifications/rules/${encodeURIComponent(text(form, "event") ?? "")}/test`, "POST", {}, PATH, "No pudimos enviar la prueba del evento.");
 }

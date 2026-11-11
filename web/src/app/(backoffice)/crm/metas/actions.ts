@@ -8,7 +8,7 @@ const GOALS = ["goal_sales", "goal_bookings", "goal_margin", "goal_conversion", 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
 function refresh(result: StepResult): StepResult {
-  if (result.done) revalidatePath("/crm/metas");
+  if (result.done) revalidatePath("/crm/metas", "layout");
   return result;
 }
 

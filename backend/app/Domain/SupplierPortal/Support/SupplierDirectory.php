@@ -8,6 +8,7 @@ use App\Domain\Booking\Actions\ProviderServiceResponse;
 use App\Domain\Finance\Support\PayableDirectory;
 use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\SupplierPortal\Actions\ProposeAlternative;
 use App\Domain\SupplierPortal\Actions\SupplierInvoices;
 use App\Domain\SupplierPortal\Actions\SupplierRateRequests;
 use Illuminate\Support\Carbon;
@@ -25,7 +26,7 @@ final class SupplierDirectory
 
     private const SERVICE_COLUMNS = ['s.id', 's.code', 's.lock_version', 's.name', 's.service_kind', 's.service_date', 's.service_time', 's.pax', 's.rooms', 's.nights', 's.status', 's.confirmation_code', 's.confirmed_by_name', 's.confirmed_at', 's.cost_amount', 's.currency', 's.requested_at', 's.reject_reason', 's.alt_of_id', 's.replaced_by_id', 's.reservation_id', 's.product_id', 's.departure_id', 'r.code as reservation_code', 'r.title as reservation_title'];
 
-    public function __construct(private readonly TenantContext $context) {}
+    public function __construct(private readonly TenantContext $context, private readonly SupplierOperations $operations) {}
 
     public function session(SupplierAccount $account): array
     {
@@ -35,7 +36,7 @@ final class SupplierDirectory
             'provider' => ['ref' => $account->provider->ref, 'name' => $account->provider->name, 'type' => $account->provider->type, 'city' => $account->provider->city, 'initials' => $this->initials($account->provider->name)],
             'agency' => ['name' => $tenant->commercial_name, 'initials' => $tenant->logo_initials],
             'user' => ['name' => $account->user->name, 'email' => $account->user->email],
-            'counts' => ['pending' => (clone $account->services())->whereIn('s.status', ProviderServiceResponse::OPEN)->count()],
+            'counts' => ['pending' => (clone $account->services())->whereIn('s.status', ProviderServiceResponse::OPEN)->count(), 'rooming' => $this->operations->pendingRooming($account), 'incidents' => $this->operations->openIncidents($account)],
         ];
     }
 
@@ -54,11 +55,13 @@ final class SupplierDirectory
             'today' => $today,
             'kpis' => [
                 'pending' => $pending->count(),
+                'alternatives' => $requests->where('state', 'alternativa_propuesta')->count(),
                 'overdue' => $pending->where('overdue', true)->count(),
                 'upcoming' => $upcoming->count(),
                 'upcoming_pax' => (int) $upcoming->sum('pax'),
                 'receivable' => $this->byCurrency($open, 'balance'),
                 'contract_days' => $contract['days_left'],
+                'open_incidents' => $this->operations->openIncidents($account),
             ],
             'pending' => $pending->take(6)->values(),
             'upcoming' => $upcoming->take(8)->values(),
@@ -72,8 +75,10 @@ final class SupplierDirectory
         return [
             'today' => $this->today(),
             'response_hours' => self::RESPONSE_HOURS,
-            'rows' => $this->rows($account)->sortBy(fn (array $row): string => ($row['state'] === 'por_responder' ? '0' : '1').$row['date'])->values(),
+            'rows' => $this->rows($account)->sortBy(fn (array $row): string => (in_array($row['state'], ['por_responder', 'alternativa_propuesta'], true) ? '0' : '1').$row['date'])->values(),
             'reasons' => ProviderServiceResponse::REJECT_REASONS,
+            'alternative_kinds' => ProposeAlternative::KINDS,
+            'catalog' => $this->catalogOptions($account),
         ];
     }
 
@@ -87,6 +92,8 @@ final class SupplierDirectory
         return [
             ...$row,
             'reasons' => ProviderServiceResponse::REJECT_REASONS,
+            'alternative_kinds' => ProposeAlternative::KINDS,
+            'catalog' => $this->catalogOptions($account),
             'today' => $this->today(),
             'contact' => $account->provider->contact_name,
             'passengers' => DB::table('booking_passengers')->where('reservation_id', $service->reservation_id)->orderBy('seq')->get(['full_name', 'pax_type', 'nationality', 'diet_notes', 'is_lead', 'is_placeholder'])
@@ -228,11 +235,16 @@ final class SupplierDirectory
         $reservationIds = $services->pluck('reservation_id')->unique()->all();
         $leads = DB::table('booking_passengers')->whereIn('reservation_id', $reservationIds)->orderByDesc('is_lead')->orderBy('seq')->get(['reservation_id', 'full_name'])->unique('reservation_id')->pluck('full_name', 'reservation_id');
         $alternatives = DB::table('booking_reservation_services')->whereIn('id', $services->pluck('alt_of_id')->filter()->all())->pluck('code', 'id');
+        $proposals = DB::table('supplier_request_responses as x')->leftJoin('catalog_services as c', 'c.id', '=', 'x.alt_service_id')
+            ->whereIn('x.reservation_service_id', $services->pluck('id')->all())->where('x.provider_id', $account->id())->where('x.type', 'alternativa')
+            ->orderByDesc('x.responded_at')->get(['x.reservation_service_id', 'x.alt_kind', 'x.alt_date', 'x.alt_net_cost', 'x.currency', 'x.hold_until', 'x.note', 'x.review_status', 'x.review_note', 'x.responded_at', 'c.ref as service_ref', 'c.name as service_name'])
+            ->unique('reservation_service_id')->keyBy('reservation_service_id');
         $now = Carbon::now($this->context->timezone());
         $today = $now->toDateString();
 
-        return $services->map(function (object $row) use ($leads, $alternatives, $now, $today): array {
+        return $services->map(function (object $row) use ($leads, $alternatives, $proposals, $now, $today): array {
             $open = in_array($row->status, ProviderServiceResponse::OPEN, true);
+            $proposal = $proposals[$row->id] ?? null;
             $deadline = $open && $row->requested_at ? Carbon::parse($row->requested_at)->addHours(self::RESPONSE_HOURS) : null;
             $pax = (int) ($row->pax ?? 0);
 
@@ -251,7 +263,19 @@ final class SupplierDirectory
                 'net_cost' => (float) $row->cost_amount,
                 'currency' => $row->currency,
                 'status' => $row->status,
-                'state' => $open ? 'por_responder' : $row->status,
+                'state' => $open ? ($proposal?->review_status === 'pendiente' ? 'alternativa_propuesta' : 'por_responder') : $row->status,
+                'proposal' => $proposal ? [
+                    'kind' => $proposal->alt_kind,
+                    'date' => $proposal->alt_date,
+                    'service' => $proposal->service_ref ? ['ref' => $proposal->service_ref, 'name' => $proposal->service_name] : null,
+                    'net_cost' => $proposal->alt_net_cost === null ? null : (float) $proposal->alt_net_cost,
+                    'currency' => $proposal->currency,
+                    'hold_until' => $proposal->hold_until,
+                    'note' => $proposal->note,
+                    'review_status' => $proposal->review_status,
+                    'review_note' => $proposal->review_note,
+                    'at' => $this->iso($proposal->responded_at),
+                ] : null,
                 'confirmation_code' => $row->confirmation_code,
                 'confirmed_by' => $row->confirmed_by_name,
                 'confirmed_at' => $this->iso($row->confirmed_at),
@@ -321,6 +345,11 @@ final class SupplierDirectory
 
         if ($contract['alert'] !== null) {
             $alerts[] = ['kind' => 'contract', 'tone' => $contract['days_left'] < 0 ? 'bad' : 'warn', 'title' => $contract['alert'], 'detail' => 'Coordine la renovación con el área de Compras de la agencia.', 'href' => '/proveedor/empresa'];
+        }
+
+        $rooming = $this->operations->pendingRooming($account);
+        if ($rooming > 0) {
+            $alerts[] = ['kind' => 'rooming', 'tone' => 'warn', 'title' => $rooming === 1 ? 'Una rooming list espera su respuesta' : "{$rooming} rooming lists esperan su respuesta", 'detail' => 'Acuse recibo y confirme las habitaciones para que la agencia cierre la distribución.', 'href' => '/proveedor/rooming'];
         }
 
         $withoutInvoice = $open->where('can_invoice', true);
@@ -394,12 +423,21 @@ final class SupplierDirectory
         $requests = DB::table('ops_supplier_requests')->where('reservation_service_id', $serviceId)->where('provider_id', $account->id())->whereNull('deleted_at')->get(['requested_at', 'channel'])
             ->map(fn (object $row): array => ['key' => "req-{$row->requested_at}", 'kind' => 'solicitud', 'at' => $this->iso($row->requested_at), 'title' => 'Solicitud enviada por la agencia', 'detail' => 'Canal: '.str_replace('_', ' ', $row->channel), 'note' => null]);
         $responses = DB::table('supplier_request_responses as x')->leftJoin('iam_users as u', 'u.id', '=', 'x.responded_by_user_id')->where('x.reservation_service_id', $serviceId)->where('x.provider_id', $account->id())
-            ->get(['x.id', 'x.type', 'x.responded_at', 'x.confirmation_code', 'x.confirmed_by_name', 'x.rejection_reason', 'x.alt_date', 'x.note', 'u.name as user_name'])
+            ->get(['x.id', 'x.type', 'x.responded_at', 'x.confirmation_code', 'x.confirmed_by_name', 'x.rejection_reason', 'x.alt_kind', 'x.alt_date', 'x.alt_net_cost', 'x.currency', 'x.review_status', 'x.note', 'u.name as user_name'])
             ->map(fn (object $row): array => [
                 'key' => (string) $row->id,
                 'kind' => $row->type,
                 'at' => $this->iso($row->responded_at),
-                'title' => $row->type === 'confirmacion' ? "Confirmado con código {$row->confirmation_code}" : "Rechazado: {$row->rejection_reason}",
+                'title' => match ($row->type) {
+                    'confirmacion' => "Confirmado con código {$row->confirmation_code}",
+                    'alternativa' => "Alternativa propuesta: {$row->alt_kind}".match ($row->review_status) {
+                        'aceptada' => ' · aceptada por la agencia',
+                        'rechazada' => ' · rechazada por la agencia',
+                        'expirada' => ' · venció el bloqueo',
+                        default => ' · en revisión',
+                    },
+                    default => "Rechazado: {$row->rejection_reason}",
+                },
                 'detail' => trim(($row->type === 'confirmacion' ? "Por {$row->confirmed_by_name}" : '').($row->user_name ? " · {$row->user_name}" : ''), ' ·'),
                 'note' => trim(($row->note ?? '').($row->alt_date ? " Propuso otra fecha: {$row->alt_date}." : '')) ?: null,
             ]);
@@ -415,6 +453,12 @@ final class SupplierDirectory
     private function today(): string
     {
         return Carbon::now($this->context->timezone())->toDateString();
+    }
+
+    private function catalogOptions(SupplierAccount $account): array
+    {
+        return DB::table('catalog_services')->where('provider_id', $account->id())->whereNull('deleted_at')->where('status', 'activo')->orderBy('name')->get(['ref', 'name'])
+            ->map(fn (object $row): array => ['value' => $row->ref, 'label' => $row->name, 'hint' => $row->ref])->values()->all();
     }
 
     private function relatedService(object $service): array

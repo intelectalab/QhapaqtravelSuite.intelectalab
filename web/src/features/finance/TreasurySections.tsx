@@ -1,12 +1,15 @@
-import { AlertTriangle, Calculator, ClipboardCheck, CreditCard, Landmark, LineChart, RotateCcw, Wallet } from "lucide-react";
+import { AlertTriangle, ArrowDownLeft, Ban, Calculator, CalendarClock, ClipboardCheck, Coins, CreditCard, FileText, History, Landmark, LineChart, Percent, RotateCcw, Settings2, Wallet } from "lucide-react";
 import Link from "next/link";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { MiniTable, ProgressBar } from "@/components/ui/MiniTable";
+import { TextField } from "@/components/ui/TextField";
 import { SOFT_TINT, TintCardTitle } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
-import type { CashFlowProjection, TreasuryOverview } from "@/lib/finance";
+import { ROUTING_DESTINATIONS, type CashFlowProjection, type FxRevaluationPreview, type PaymentRoutingRule, type RoutingDestination, type TreasuryOverview, type TreasurySettingsData } from "@/lib/finance";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { RegisterRevaluationAction, TreasurySettingsAction } from "./TreasuryConfig";
 import { AccountFormAction, CountAction, CountDecisionActions, ExpenseAction, OpenSessionAction, ReplenishmentActions, ReplenishmentRequestAction, SettleGatewayAction } from "./TreasuryOps";
 
 const ALERT_TONE = { warn: "border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)]", bad: "border-[color-mix(in_srgb,var(--bad)_30%,transparent)] bg-[color-mix(in_srgb,var(--bad)_7%,transparent)]", info: "border-line bg-surface-2" };
@@ -141,7 +144,14 @@ export function CashSection({ data, editable }: { data: TreasuryOverview; editab
                 <td>
                   <StatusBadge status={count.status_label} />
                 </td>
-                <td className="text-right">{editable && <CountDecisionActions count={count} viewerId={data.viewer_id} />}</td>
+                <td className="text-right">
+                  <span className="inline-flex items-center gap-1.5">
+                    <a href={`/finanzas/tesoreria/arqueos/${encodeURIComponent(count.code)}/acta`} target="_blank" rel="noreferrer" title="Acta del arqueo en PDF" aria-label={`Acta del arqueo ${count.code}`} className="grid h-8 w-8 place-items-center rounded-[9px] bg-accent/10 text-accent transition hover:-translate-y-0.5">
+                      <FileText size={15} />
+                    </a>
+                    {editable && <CountDecisionActions count={count} viewerId={data.viewer_id} />}
+                  </span>
+                </td>
               </tr>
             ))}
           </MiniTable>
@@ -252,6 +262,200 @@ export function CashFlowSection({ flow }: { flow: CashFlowProjection | null }) {
             </tr>
           ))}
         </MiniTable>
+      </Card>
+    </div>
+  );
+}
+
+const signedMoney = (value: string | number) => {
+  const amount = Number(value);
+  return <span className={cn("font-mono", amount > 0 ? "text-ok" : amount < 0 ? "text-bad" : "text-fg-3")}>{amount > 0 ? "+" : ""}{formatMoney(amount)}</span>;
+};
+
+export function FxSection({ preview }: { preview: FxRevaluationPreview | null }) {
+  if (!preview) return null;
+  return (
+    <div className="flex flex-col gap-5">
+      <Card>
+        <TintCardTitle icon={Coins} title={`Revaluación de ${preview.period}`} aside={preview.can.register && preview.pending > 0 ? <RegisterRevaluationAction preview={preview} /> : preview.pending === 0 ? "Registrada" : undefined} />
+        <form method="get" className="mb-4 flex flex-wrap items-end gap-3">
+          <input type="hidden" name="seccion" value="cambio" />
+          <div className="w-48">
+            <TextField label="Tipo de cambio de cierre" name="tc" type="number" step="0.0001" min="0.5" max="20" defaultValue={preview.close_rate} />
+          </div>
+          <Button type="submit" variant="secondary">
+            Calcular
+          </Button>
+          <p className="text-[12.5px] text-fg-3">Referencia del día: {preview.reference_rate}. Usa el de cierre publicado por la SBS.</p>
+        </form>
+        {preview.rows.length === 0 ? (
+          <p className="text-[13.5px] text-fg-3">No hay cuentas activas en dólares.</p>
+        ) : (
+          <MiniTable head={["Cuenta", "Saldo USD", "TC contable", "Valor contable", "Valor al cierre", "No realizada", "Realizada del mes", ""]} align={["left", "right", "right", "right", "right", "right", "right", "left"]} minWidth={900}>
+            {preview.rows.map((row) => (
+              <tr key={row.code}>
+                <td>
+                  <Link href={accountHref(row.code)} className="font-semibold hover:underline">
+                    {row.name}
+                  </Link>
+                  <span className="block text-xs text-fg-3">{row.code}</span>
+                </td>
+                <td className="text-right font-mono">{formatMoney(row.balance_usd, "USD")}</td>
+                <td className="text-right font-mono text-fg-2">{Number(row.book_rate).toFixed(4)}</td>
+                <td className="text-right font-mono">{formatMoney(row.book_pen)}</td>
+                <td className="text-right font-mono">{formatMoney(row.market_pen)}</td>
+                <td className="text-right">{signedMoney(row.unrealized_pen)}</td>
+                <td className="text-right">{signedMoney(row.realized_pen)}</td>
+                <td>{row.registered ? <Badge tone="ok">{row.registered}</Badge> : <Badge tone="warn">Pendiente</Badge>}</td>
+              </tr>
+            ))}
+            <tr className="font-semibold">
+              <td colSpan={5}>Total del periodo</td>
+              <td className="text-right">{signedMoney(preview.totals.unrealized_pen)}</td>
+              <td className="text-right">{signedMoney(preview.totals.realized_pen)}</td>
+              <td />
+            </tr>
+          </MiniTable>
+        )}
+        {!preview.can.register && preview.pending > 0 && <p className="mt-3 text-[12.5px] text-fg-3">La registra Contabilidad o quien tenga el permiso de facturación.</p>}
+      </Card>
+      <Card>
+        <TintCardTitle icon={History} title="Historial de revaluaciones" aside={preview.history.length ? String(preview.history.length) : undefined} />
+        {preview.history.length === 0 ? (
+          <p className="text-[13.5px] text-fg-3">Todavía no se registró ninguna diferencia cambiaria.</p>
+        ) : (
+          <MiniTable head={["Revaluación", "Cuenta", "Saldo USD", "TC contable", "TC cierre", "Diferencia", "Registró"]} align={["left", "left", "right", "right", "right", "right", "left"]} minWidth={760}>
+            {preview.history.map((row) => (
+              <tr key={row.code}>
+                <td>
+                  <b className="block font-semibold">{row.code}</b>
+                  <span className="text-xs text-fg-3">
+                    {row.period} · {formatDate(row.date)}
+                  </span>
+                </td>
+                <td>{row.account.name}</td>
+                <td className="text-right font-mono">{formatMoney(row.balance_usd, "USD")}</td>
+                <td className="text-right font-mono text-fg-2">{Number(row.book_rate).toFixed(4)}</td>
+                <td className="text-right font-mono">{Number(row.close_rate).toFixed(4)}</td>
+                <td className="text-right">{signedMoney(row.diff_pen)}</td>
+                <td className="text-xs">{row.user ?? "—"}</td>
+              </tr>
+            ))}
+          </MiniTable>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+function SettingBlock({ icon: Icon, title, rows }: { icon: typeof Wallet; title: string; rows: { label: string; value: string; hint?: string }[] }) {
+  return (
+    <div className={cn("lift rounded-[14px] px-4 py-3.5", SOFT_TINT)}>
+      <p className="mb-2.5 flex items-center gap-2 text-[13px] font-semibold">
+        <Icon size={15} className="text-[var(--tint)]" />
+        {title}
+      </p>
+      <dl className="flex flex-col gap-2">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-baseline justify-between gap-3 text-[13px]" title={row.hint}>
+            <dt className="text-fg-3">{row.label}</dt>
+            <dd className="whitespace-nowrap font-mono font-semibold">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+const ROUTING_ICONS: Record<RoutingDestination, typeof Wallet> = { bank: Landmark, gateway: CreditCard, petty_cash: Wallet, none: Ban };
+
+function PaymentRoutingCard({ rules }: { rules: PaymentRoutingRule[] }) {
+  return (
+    <Card>
+      <TintCardTitle icon={ArrowDownLeft} title="Cuenta de cada medio de pago" />
+      <p className="-mt-1 mb-3 text-[12.5px] text-fg-3">Cada cobro confirmado entra solo a esta cuenta y su reversión sale de la misma. Los pagos a proveedores salen de la cuenta de origen elegida al pagar.</p>
+      <ul className="grid gap-2 sm:grid-cols-2">
+        {rules.map((rule) => {
+          const Icon = ROUTING_ICONS[rule.destination];
+          const accounts = rule.destination === "none" ? [] : Array.from(new Set([rule.accounts.PEN, rule.accounts.USD].filter((name): name is string => Boolean(name))));
+          return (
+            <li key={rule.method} className={cn("lift flex items-center gap-3 rounded-[12px] px-3.5 py-2.5", SOFT_TINT)}>
+              <span className={cn("grid h-8 w-8 flex-none place-items-center rounded-[9px] bg-surface", rule.destination === "none" ? "text-fg-3" : "text-[var(--tint)]")}>
+                <Icon size={15} />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-[13px] font-semibold">{rule.label}</span>
+                <span className="block truncate text-[12px] text-fg-3" title={accounts.join(" · ")}>
+                  {rule.destination === "none" ? ROUTING_DESTINATIONS.none : accounts.length ? accounts.join(" · ") : "Sin cuenta activa de ese tipo"}
+                </span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
+  );
+}
+
+export function TreasurySettingsSection({ settings, editable }: { settings: TreasurySettingsData | null; editable: boolean }) {
+  if (!settings) return null;
+  const monthly = settings.recurring_outflows.reduce((sum, item) => sum + item.amount, 0);
+  const max = Math.max(1, ...settings.recurring_outflows.map((item) => item.amount));
+  return (
+    <div className="flex flex-col gap-5">
+      <Card>
+        <TintCardTitle icon={Settings2} title="Parámetros de la agencia" aside={editable ? <TreasurySettingsAction settings={settings} /> : settings.updated_by ? `Editó ${settings.updated_by}` : undefined} />
+        <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
+          <SettingBlock
+            icon={Wallet}
+            title="Caja chica"
+            rows={[
+              { label: "Tolerancia del arqueo", value: formatMoney(settings.petty_tolerance), hint: "Una diferencia mayor la aprueba otra persona." },
+              { label: "Máximo por gasto", value: formatMoney(settings.max_petty_expense), hint: "Por encima se paga desde un banco." },
+              { label: "Declaración jurada hasta", value: formatMoney(settings.sworn_statement_max) },
+              { label: "Reponer bajo el", value: `${settings.replenish_threshold_pct} % del fondo` },
+            ]}
+          />
+          <SettingBlock
+            icon={CreditCard}
+            title="Pasarela y depósitos"
+            rows={[
+              { label: "Comisión de la pasarela", value: `${settings.gateway_fee_pct} %` },
+              { label: "Depositar el efectivo en", value: `${settings.cash_deposit_hours} h` },
+            ]}
+          />
+          <SettingBlock
+            icon={Percent}
+            title="Rentabilidad"
+            rows={[
+              { label: "Meta de margen", value: `${settings.margin_target_pct} %` },
+              { label: "Margen mínimo", value: `${settings.margin_floor_pct} %`, hint: "Debajo de este valor la reserva queda en rojo." },
+            ]}
+          />
+        </div>
+        {!editable && <p className="mt-3 text-[12.5px] text-fg-3">Solo el administrador de la agencia cambia estos parámetros.</p>}
+      </Card>
+      <PaymentRoutingCard rules={settings.payment_routing} />
+      <Card>
+        <TintCardTitle icon={CalendarClock} title="Egresos fijos del mes" aside={settings.recurring_outflows.length ? formatMoney(monthly) : undefined} />
+        {settings.recurring_outflows.length === 0 ? (
+          <p className="text-[13.5px] text-fg-3">Sin egresos fijos: el flujo proyectado solo considera cobros y pagos registrados.</p>
+        ) : (
+          <ul className="flex flex-col gap-2.5">
+            {settings.recurring_outflows.map((item, index) => (
+              <li key={`${item.concept}-${index}`} className="group grid grid-cols-[3.5rem_minmax(0,1fr)_7rem] items-center gap-3 text-[13px]">
+                <span className="rounded-lg bg-surface-2 px-2 py-1 text-center text-[12px] font-semibold text-fg-2">Día {item.day}</span>
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{item.concept}</span>
+                  <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-surface-2">
+                    <span className="block h-full origin-left rounded-full bg-bad/70 transition-[filter] group-hover:brightness-110 motion-safe:animate-[fill-x_700ms_cubic-bezier(0.22,1,0.36,1)_backwards]" style={{ width: `${(item.amount / max) * 100}%` }} />
+                  </span>
+                </span>
+                <span className="text-right font-mono font-semibold">{formatMoney(item.amount)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
     </div>
   );

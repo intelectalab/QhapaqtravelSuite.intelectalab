@@ -1,14 +1,13 @@
 "use client";
 
-import { CircleCheck, CircleX, Clock3, Eye, EyeOff, Gauge, Globe, Send, ShoppingBag, ShoppingCart, Star, Wallet } from "lucide-react";
+import { CircleCheck, CircleX, Clock3, Eye, EyeOff, Gauge, Globe, Send, ShoppingBag, MousePointerClick, Star, Wallet } from "lucide-react";
 import { cancelOrder, sendPaymentLink, togglePublication } from "@/app/(backoffice)/canales/ecommerce/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
-import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { PanelAction } from "@/components/ui/PanelAction";
-import { Tabs } from "@/components/ui/Tabs";
+import { SectionPanel } from "@/components/ui/SectionPanel";
 import { TextArea } from "@/components/ui/TextArea";
 import { TintTile } from "@/components/ui/Tinted";
 import { channelStatus, type EcommerceOverview, type EcomOrder, type EcomProduct, type PromotionCatalog } from "@/lib/channels";
@@ -20,38 +19,50 @@ import { PromotionsTable } from "./Promotions";
 
 const initial: StepResult = { message: null, done: false };
 
-export function EcommerceTiles({ kpis }: { kpis: EcommerceOverview["kpis"] }) {
-  return (
-    <TileGrid>
-      <TintTile icon={ShoppingCart} tone="t1" label="Pedidos web" value={formatNumber(kpis.orders)} note={`${kpis.pending} con pago pendiente`} />
-      <TintTile icon={Wallet} tone="t4" label="Ingresos confirmados" value={<MoneyLines values={kpis.revenue} />} note={`${kpis.confirmed} pedidos pagados`} />
-      <TintTile icon={Gauge} tone="violet" label="Conversión" value={formatPercent(kpis.conversion, 0)} note="Pedidos pagados sobre creados" />
-      <TintTile icon={Globe} tone="sun" label="Productos publicados" value={formatNumber(kpis.published)} note={kpis.rejected > 0 ? `${kpis.rejected} pagos rechazados por revisar` : "Sin pagos rechazados"} />
-    </TileGrid>
-  );
-}
-
-const FUNNEL_TONES: Tone[] = ["t1", "violet", "t4", "ok"];
-
-export function EcommerceFunnel({ steps }: { steps: EcommerceOverview["funnel"] }) {
+function FunnelSteps({ steps }: { steps: EcommerceOverview["funnel"] }) {
   const max = Math.max(...steps.map((step) => step.value), 1);
   return (
-    <ol className="grid gap-2.5 md:grid-cols-4">
+    <ol className="mt-2 grid gap-1.5">
       {steps.map((step, index) => {
         const previous = index > 0 ? steps[index - 1].value : null;
-        const rate = previous ? (step.value / previous) * 100 : null;
         return (
-          <li key={step.id} style={{ ...toneStyle(FUNNEL_TONES[index % FUNNEL_TONES.length]), animationDelay: `${index * 80}ms` }} className="lift group animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] bg-[color-mix(in_srgb,var(--tint)_6%,var(--surface))] p-3.5" title={rate !== null ? `${formatPercent(rate, 0)} respecto del paso anterior` : undefined}>
-            <p className="text-[12.5px] font-semibold text-[var(--tint)]">{step.label}</p>
-            <p className="mt-1 text-[24px] font-bold leading-none tracking-tight">{formatNumber(step.value)}</p>
-            <span className="mt-3 block h-2 overflow-hidden rounded-full bg-surface-2">
-              <span className="block h-full origin-left rounded-full bg-[var(--tint)] transition-[filter] duration-300 group-hover:brightness-110 motion-safe:animate-[fill-x_800ms_cubic-bezier(0.22,1,0.36,1)_backwards]" style={{ width: `${Math.max(4, (step.value / max) * 100)}%` }} />
+          <li key={step.id} className="grid grid-cols-[96px_1fr_auto] items-center gap-2 text-[12px]">
+            <span className="text-fg-2">{step.label}</span>
+            <span className="h-1.5 overflow-hidden rounded-full bg-surface-2">
+              <span className="block h-full rounded-full bg-accent" style={{ width: `${Math.max(4, (step.value / max) * 100)}%` }} />
             </span>
-            <p className="mt-1.5 text-[11.5px] text-fg-3">{rate !== null ? `${formatPercent(rate, 0)} del paso anterior` : "Punto de partida"}</p>
+            <span className="font-mono">
+              {formatNumber(step.value)}
+              {previous ? <span className="text-fg-3"> · {formatPercent((step.value / previous) * 100, 0)}</span> : null}
+            </span>
           </li>
         );
       })}
     </ol>
+  );
+}
+
+export function EcommerceTiles({ kpis, funnel, products }: { kpis: EcommerceOverview["kpis"]; funnel: EcommerceOverview["funnel"]; products: number }) {
+  const step = (id: string) => funnel.find((item) => item.id === id)?.value ?? 0;
+  return (
+    <TileGrid>
+      <TintTile icon={Wallet} tone="t4" label="Ingresos confirmados" value={<MoneyLines values={kpis.revenue} />} note={`${kpis.confirmed} pedidos pagados`} info={<p>Total de los pedidos web con el pago confirmado, en la moneda de cada pedido.</p>} />
+      <TintTile
+        icon={Gauge}
+        tone="violet"
+        label="Conversión"
+        value={formatPercent(kpis.conversion, 0)}
+        note="Pedidos pagados sobre creados"
+        info={
+          <div>
+            <p>Del sitio y el widget al pago. Cada paso muestra cuántos llegan y qué parte del paso anterior:</p>
+            <FunnelSteps steps={funnel} />
+          </div>
+        }
+      />
+      <TintTile icon={MousePointerClick} tone="t1" label="Visitas a la tienda" value={formatNumber(step("sessions"))} note={`${formatNumber(step("views"))} vistas de página`} info={<p>Sesiones y vistas de página registradas por los eventos del sitio y del widget, con el consentimiento del visitante.</p>} />
+      <TintTile icon={Globe} tone="sun" label="Productos publicados" value={formatNumber(kpis.published)} note={`De ${formatNumber(products)} en la tienda`} info={<p>Productos visibles en el sitio y el widget. Los demás están en la tienda pero sin publicar.</p>} />
+    </TileGrid>
   );
 }
 
@@ -271,16 +282,17 @@ function ProductsTable({ rows, canManage }: { rows: EcomProduct[]; canManage: bo
   return <DataTable screen="canales-ecommerce-productos" rows={rows} columns={columns} getKey={(row) => row.code} entityLabel="productos" searchText={(row) => `${row.code} ${row.name}`} searchPlaceholder="Buscar producto" metrics={metrics} sorts={sorts} />;
 }
 
-export function EcommerceWorkspace({ overview, promotions }: { overview: EcommerceOverview; promotions: PromotionCatalog | null }) {
+export function EcommerceWorkspace({ overview, promotions, section }: { overview: EcommerceOverview; promotions: PromotionCatalog | null; section: string }) {
   return (
-    <Card padded={false}>
-      <Tabs
+    <>
+      <SectionPanel
+        active={section}
         tabs={[
           { id: "orders", label: "Pedidos web", count: overview.orders.length, content: <OrdersTable rows={overview.orders} canManage={overview.can_manage} /> },
           { id: "products", label: "Productos en la tienda", count: overview.products.length, content: <ProductsTable rows={overview.products} canManage={overview.can_manage} /> },
           ...(promotions ? [{ id: "promotions", label: "Promociones y códigos", count: promotions.rows.filter((row) => row.state === "vigente").length, content: <PromotionsTable catalog={promotions} canManage={overview.can_manage} screen="canales-ecommerce-promociones" /> }] : []),
         ]}
       />
-    </Card>
+    </>
   );
 }

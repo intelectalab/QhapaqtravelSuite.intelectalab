@@ -17,7 +17,7 @@ final class E2ESeeder extends Seeder
 {
     public const FROZEN_TODAY = '2026-09-29';
 
-    public const PASSWORD = 'Qhapaq#E2E-2026';
+    public const PASSWORD = 'KipuControl#E2E-2026';
 
     public const TOTP_SECRET = 'JBSWY3DPEHPK3PXP';
 

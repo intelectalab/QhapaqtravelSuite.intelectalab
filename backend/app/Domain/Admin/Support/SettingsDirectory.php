@@ -59,6 +59,7 @@ final class SettingsDirectory
                 'allowed' => $rank >= $channel['plan'],
                 'min_plan' => SettingsCatalog::PLAN_NAMES[$channel['plan']],
             ])->values(),
+            'sequence_types' => collect(SettingsCatalog::SEQUENCE_TYPES)->except(DB::table('sys_sequences')->pluck('doc_type')->all())->map(fn (array $type, string $value): array => ['value' => $value, 'label' => $type['label'], 'pad' => $type['pad'], 'year_reset' => $type['year_reset']])->values()->all(),
             'sequences' => DB::table('sys_sequences')->orderBy('label')->orderBy('series')->get(['doc_type', 'label', 'series', 'prefix', 'pad_width', 'next_number', 'year_reset', 'updated_at'])->map(fn (object $row): array => [
                 'doc_type' => $row->doc_type,
                 'series' => $row->series,

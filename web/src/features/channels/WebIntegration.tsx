@@ -1,45 +1,48 @@
 "use client";
 
-import { Activity, BadgeCheck, CalendarDays, Code2, Globe, KeyRound, MousePointerClick, Palette, Plus, ShieldCheck, Star, Trash2, Users } from "lucide-react";
-import { useState } from "react";
-import { addDomain, removeDomain, saveWidgetDefaults, verifyDomain } from "@/app/(backoffice)/canales/integracion-web/actions";
+import { Activity, BadgeCheck, BookOpen, CalendarDays, Code2, ExternalLink, Globe, KeyRound, type LucideIcon, MonitorSmartphone, MousePointerClick, PackageCheck, Palette, Plus, RefreshCw, ShieldCheck, Star, Trash2, Users } from "lucide-react";
+import { type ReactNode, useState } from "react";
+import { addDomain, removeDomain, rotateWidgetKey, saveWidgetDefaults, verifyDomain } from "@/app/(backoffice)/canales/integracion-web/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
-import type { Column, MetricFilter } from "@/components/table/types";
-import { Card } from "@/components/ui/Card";
+import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { FieldList } from "@/components/ui/Details";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextField } from "@/components/ui/TextField";
-import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
+import { TintTile } from "@/components/ui/Tinted";
 import type { WebDomain, WebEvent, WebOverview, WidgetDefaults } from "@/lib/channels";
-import { formatDateTime, formatNumber } from "@/lib/format";
+import { formatDateTime, formatNumber, formatPercent } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
-import { ChannelBadge, TileGrid } from "./ChannelUi";
+import { ChannelBadge, CodeSnippet, TileGrid } from "./ChannelUi";
 
 const initial: StepResult = { message: null, done: false };
 
-export function WebTiles({ kpis }: { kpis: WebOverview["kpis"] }) {
+export function WebTiles({ overview }: { overview: WebOverview }) {
+  const { kpis } = overview;
   return (
     <TileGrid>
-      <TintTile icon={ShieldCheck} tone="t1" label="Dominios verificados" value={`${kpis.verified} de ${kpis.domains}`} note={kpis.domains - kpis.verified > 0 ? `${kpis.domains - kpis.verified} esperan su registro DNS` : "Todos habilitados"} />
-      <TintTile icon={Activity} tone="violet" label="Eventos registrados" value={formatNumber(kpis.events)} note="Del sitio y del widget" />
-      <TintTile icon={Users} tone="t4" label="Sesiones" value={formatNumber(kpis.sessions)} note="Visitantes únicos con actividad" />
-      <TintTile icon={MousePointerClick} tone="sun" label="Traspasos al checkout" value={formatNumber(kpis.handoffs)} note="Reservas iniciadas desde el widget" />
+      <TintTile icon={Users} tone="t4" label="Sesiones" value={formatNumber(kpis.sessions)} note="Visitantes únicos con actividad" info={<p>Sesiones distintas que enviaron al menos un evento desde el sitio o el widget, con el consentimiento del visitante.</p>} />
+      <TintTile icon={Activity} tone="violet" label="Eventos registrados" value={formatNumber(kpis.events)} note="Del sitio y del widget" info={<p>Vistas, productos vistos, carritos, checkouts y compras. La sección Eventos muestra los 50 más recientes.</p>} />
+      <TintTile icon={MousePointerClick} tone="sun" label="Traspasos al checkout" value={formatNumber(kpis.handoffs)} note="Reservas iniciadas desde el widget" info={<p>Veces que el widget pasó una selección al checkout{kpis.sessions > 0 ? `: ${formatPercent((kpis.handoffs / kpis.sessions) * 100, 1)} de las sesiones` : ""}.</p>} />
+      <TintTile icon={PackageCheck} tone="t1" label="Productos para el widget" value={formatNumber(overview.products.length)} note="Publicados en la tienda" info={<p>Solo los productos publicados en el canal e-commerce se pueden mostrar en el widget.</p>} />
     </TileGrid>
   );
 }
 
-function snippet(overview: WebOverview): string {
+function snippet(overview: WebOverview, method = overview.defaults.method): string {
   const config = overview.config;
   const d = overview.defaults;
   if (!config) return "";
-  const attrs = `product="${d.product ?? ""}" lang="${d.lang}" currency="${d.currency}" theme="${d.theme}" radius="${d.radius}"${d.reviews ? " reviews" : ""}`;
-  if (d.method === "iframe") return `<iframe src="${config.host}/widget/${d.product}?lang=${d.lang}&currency=${d.currency}" style="width:100%;min-height:640px;border:0;border-radius:${d.radius}px"></iframe>`;
-  if (d.method === "link") return `${config.host}/widget/${d.product}?lang=${d.lang}&currency=${d.currency}`;
-  if (d.method === "script") return `<script src="${config.cdn}/qhapaq.js" data-key="${config.public_key}" data-${attrs.replaceAll('" ', '" data-')}></script>\n<button data-qhapaq-open>Reservar</button>`;
-  return `<script type="module" src="${config.cdn}/qhapaq-widget.js"></script>\n<qhapaq-booking key="${config.public_key}" ${attrs}></qhapaq-booking>`;
+  const sameHost = new URL(config.cdn).origin === new URL(config.host).origin;
+  const hostAttr = sameHost ? "" : ` host="${config.host}"`;
+  const attrs = `product="${d.product ?? ""}" lang="${d.lang}" currency="${d.currency}" theme="${d.theme}" radius="${d.radius}"${d.reviews ? ' reviews="1"' : ""}${hostAttr}`;
+  const url = `${config.host}/widget/${d.product}?key=${config.public_key}&lang=${d.lang}&currency=${d.currency}&theme=${d.theme.slice(1)}&radius=${d.radius}&reviews=${d.reviews ? 1 : 0}`;
+  if (method === "iframe") return `<iframe src="${url}" title="Reserva en línea" loading="lazy" allow="payment" style="width:100%;min-height:760px;border:0;border-radius:${d.radius}px"></iframe>`;
+  if (method === "link") return url;
+  if (method === "script") return `<script src="${config.cdn}/kipucontrol.js" data-key="${config.public_key}" data-${attrs.replaceAll('" ', '" data-')}></script>\n<button data-kipucontrol-open>Reservar</button>`;
+  return `<script type="module" src="${config.cdn}/kipucontrol-widget.js"></script>\n<kipucontrol-booking key="${config.public_key}" ${attrs}></kipucontrol-booking>`;
 }
 
 function WidgetPreview({ defaults }: { defaults: WidgetDefaults }) {
@@ -111,38 +114,194 @@ function DefaultsAction({ overview }: { overview: WebOverview }) {
   );
 }
 
-export function WidgetCard({ overview }: { overview: WebOverview }) {
-  const [copied, setCopied] = useState(false);
-  const code = snippet(overview);
-  const method = overview.methods.find((item) => item.value === overview.defaults.method)?.label ?? overview.defaults.method;
-  const copy = async () => {
-    await navigator.clipboard.writeText(code);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
-  };
+function SectionHead({ icon: Icon, title, aside }: { icon: LucideIcon; title: string; aside?: ReactNode }) {
   return (
-    <Card className="mb-5">
-      <TintCardTitle icon={Code2} title="Widget de reservas" aside={overview.can_manage ? <DefaultsAction overview={overview} /> : undefined} />
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <p className="flex items-center gap-1.5 text-[14px] font-semibold">
+        <Icon size={16} className="text-fg-3" /> {title}
+      </p>
+      {aside}
+    </div>
+  );
+}
+
+export function ConfiguratorSection({ overview }: { overview: WebOverview }) {
+  const method = overview.methods.find((item) => item.value === overview.defaults.method)?.label ?? overview.defaults.method;
+  const config = overview.config;
+  const live = config && overview.defaults.product ? widgetUrl(overview) : null;
+  return (
+    <div className="flex flex-col gap-5">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 flex-col gap-3">
+          <SectionHead
+            icon={Code2}
+            title="Widget de reservas"
+            aside={
+              <span className="flex flex-wrap items-center gap-2">
+                {live && (
+                  <a href={live} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center gap-1.5 rounded-control border border-line px-3 text-[12.5px] font-semibold text-fg-2 transition hover:border-accent hover:text-accent">
+                    <ExternalLink size={14} /> Abrir a pantalla completa
+                  </a>
+                )}
+                {overview.can_rotate && config && <RotateKeyAction overview={overview} />}
+                {overview.can_manage && <DefaultsAction overview={overview} />}
+              </span>
+            }
+          />
           <FieldList
             fields={[
-              { label: "Clave pública", value: <span className="inline-flex items-center gap-1.5 font-mono text-[12.5px]"><KeyRound size={13} className="text-fg-3" />{overview.config?.public_key ?? "Sin clave"}</span> },
-              { label: "Agencia", value: overview.config?.tenant_slug ?? "—" },
-              { label: "Checkout", value: overview.config?.host ?? "—" },
+              {
+                label: "Clave pública",
+                value: (
+                  <span className="flex flex-col">
+                    <span className="inline-flex items-center gap-1.5 font-mono text-[12.5px]"><KeyRound size={13} className="text-fg-3" />{config?.public_key ?? "Sin clave"}</span>
+                    {config?.previous_key_until && <span className="text-[12px] text-warn">La clave anterior funciona hasta el {formatDateTime(config.previous_key_until)}</span>}
+                  </span>
+                ),
+              },
+              { label: "Agencia", value: config?.tenant_slug ?? "—" },
+              { label: "Checkout", value: config?.site ?? "—" },
+              { label: "Script del widget", value: config ? <span className="font-mono text-[12px]">{config.cdn}</span> : "—" },
               { label: "Método", value: method },
+              { label: "Producto", value: overview.defaults.product_name ?? "—" },
             ]}
           />
-          <div className="relative">
-            <pre className="scroll-thin max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-tile bg-fg p-3.5 font-mono text-[12px] leading-relaxed text-bg">{code}</pre>
-            <button type="button" onClick={copy} className="absolute right-2 top-2 rounded-md bg-surface/90 px-2 py-1 text-[11.5px] font-semibold text-fg transition-transform duration-300 hover:-translate-y-0.5">
-              {copied ? "Copiado" : "Copiar"}
-            </button>
-          </div>
+          <CodeSnippet code={snippet(overview)} />
         </div>
         <WidgetPreview defaults={overview.defaults} />
       </div>
-    </Card>
+      {live && <LivePreview url={live} domain={overview.defaults.domain} />}
+    </div>
+  );
+}
+
+function widgetUrl(overview: WebOverview): string {
+  const config = overview.config;
+  const d = overview.defaults;
+  if (!config) return "";
+  return `${config.host}/widget/${d.product}?key=${config.public_key}&lang=${d.lang}&currency=${d.currency}&theme=${d.theme.slice(1)}&radius=${d.radius}&reviews=${d.reviews ? 1 : 0}`;
+}
+
+function LivePreview({ url, domain }: { url: string; domain: string | null }) {
+  return (
+    <div>
+      <SectionHead icon={MonitorSmartphone} title="Vista previa en vivo" aside={<span className="text-[12px] text-fg-3">El mismo widget que verán tus visitantes, con disponibilidad y precios reales</span>} />
+      <div className="rounded-tile border border-line bg-surface-2/60 p-3">
+        <div className="mb-2 flex items-center gap-1.5">
+          {["#f87171", "#fbbf24", "#34d399"].map((color) => (
+            <span key={color} className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+          ))}
+          <span className="ml-2 truncate rounded-md bg-surface px-2 py-0.5 font-mono text-[11px] text-fg-3">{domain ?? "tu-sitio.pe"}</span>
+        </div>
+        <iframe src={url} title="Vista previa del widget" className="h-[720px] w-full rounded-tile border border-line bg-surface" />
+      </div>
+    </div>
+  );
+}
+
+function RotateKeyAction({ overview }: { overview: WebOverview }) {
+  return (
+    <PanelAction<StepResult>
+      label="Regenerar clave"
+      icon={<RefreshCw size={15} />}
+      size="sm"
+      formId="widget-rotate-key"
+      title="Regenerar la clave pública"
+      description="La clave actual seguirá funcionando 24 horas para que actualices el código en tus sitios. Después, solo responde la nueva."
+      submitLabel="Regenerar"
+      action={rotateWidgetKey}
+      initial={initial}
+    >
+      {() => (
+        <>
+          <FieldList fields={[{ label: "Clave actual", value: <span className="font-mono text-[12.5px]">{overview.config?.public_key}</span> }]} />
+          <TextField label="Motivo" name="reason" required minLength={5} maxLength={300} placeholder="Por ejemplo: la clave quedó publicada en un repositorio" hint="Queda en la auditoría del widget." />
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+const METHOD_HINTS: Record<string, string> = {
+  webcomponent: "Una etiqueta que se adapta al diseño del sitio. La opción recomendada.",
+  iframe: "Una ventana aislada del sitio. Útil cuando el CMS no admite scripts.",
+  script: "Un botón que abre el widget sobre la página.",
+  link: "Una dirección para redes, correos o un botón propio.",
+};
+
+const PLATFORM_GUIDES = [
+  { platform: "WordPress", method: "webcomponent", steps: "Bloque HTML personalizado en la página o entrada." },
+  { platform: "Wix", method: "iframe", steps: "Elemento Insertar código y luego Insertar un sitio." },
+  { platform: "Shopify", method: "script", steps: "Sección Liquid personalizada en el tema." },
+  { platform: "Sitio propio", method: "webcomponent", steps: "Pega el código donde debe aparecer el widget." },
+  { platform: "Redes y correo", method: "link", steps: "Usa el enlace directo en botones y mensajes." },
+];
+
+export function MethodsSection({ overview }: { overview: WebOverview }) {
+  const label = (value: string) => overview.methods.find((method) => method.value === value)?.label ?? value;
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid gap-4 xl:grid-cols-2">
+        {overview.methods.map((method, index) => {
+          const current = method.value === overview.defaults.method;
+          return (
+            <article key={method.value} style={{ animationDelay: `${index * 60}ms` }} className="lift flex min-w-0 animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] flex-col gap-2.5 rounded-tile border border-line bg-surface p-4">
+              <span className="flex items-center justify-between gap-2">
+                <b className="text-[14px] font-semibold">{method.label}</b>
+                {current && <ChannelBadge status="activo" label="Predeterminado" />}
+              </span>
+              <span className="text-[12.5px] text-fg-3">{METHOD_HINTS[method.value] ?? ""}</span>
+              <CodeSnippet code={snippet(overview, method.value)} />
+            </article>
+          );
+        })}
+      </div>
+      <div>
+        <SectionHead icon={BookOpen} title="Guías por plataforma" />
+        <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {PLATFORM_GUIDES.map((guide) => (
+            <li key={guide.platform} className="lift flex items-start gap-3 rounded-tile border border-line px-3.5 py-3">
+              <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-surface-2 text-fg-2">
+                <MonitorSmartphone size={16} />
+              </span>
+              <span className="min-w-0">
+                <b className="block text-[13.5px] font-semibold">{guide.platform}</b>
+                <span className="block text-[12px] text-accent">{label(guide.method)}</span>
+                <span className="block text-[12px] text-fg-3">{guide.steps}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+export function DomainsSection({ overview }: { overview: WebOverview }) {
+  const verified = overview.domains.filter((domain) => domain.status === "verificado").map((domain) => `https://${domain.domain}`);
+  const headers = verified.length ? `Content-Security-Policy: frame-ancestors 'self' ${verified.join(" ")}\nAccess-Control-Allow-Origin: ${verified[0]}${verified.length > 1 ? `\nVary: Origin` : ""}` : "";
+  return (
+    <div className="flex flex-col gap-6">
+      <DomainsTable rows={overview.domains} canManage={overview.can_manage} />
+      <div className="grid items-start gap-5 xl:grid-cols-2">
+        <div className="min-w-0">
+          <SectionHead icon={ShieldCheck} title="Cabeceras que envía el widget" />
+          {headers ? <CodeSnippet code={headers} /> : <p className="rounded-tile border border-dashed border-line px-4 py-5 text-center text-[13px] text-fg-3">Verifica un dominio para habilitar el widget.</p>}
+          <p className="mt-2 text-[12px] text-fg-3">El origen permitido se responde según el dominio que pide el widget.</p>
+        </div>
+        <div>
+          <SectionHead icon={BadgeCheck} title="Cómo verificar un dominio" />
+          <ol className="flex flex-col gap-2">
+            {["Agrega el dominio sin https:// ni rutas.", "Crea en tu DNS un registro TXT con el valor que te damos.", "Cuando el DNS se propague, pulsa Verificar."].map((step, index) => (
+              <li key={step} className="lift flex items-center gap-3 rounded-tile border border-line px-3.5 py-2.5 text-[13px]">
+                <span className="grid h-7 w-7 flex-none place-items-center rounded-full bg-accent/10 text-[12px] font-bold text-accent">{index + 1}</span>
+                {step}
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -223,28 +382,36 @@ export function DomainsTable({ rows, canManage }: { rows: WebDomain[]; canManage
 
 const EVENT_LABELS: Record<string, string> = { page_view: "Vista de página", view_item: "Vio un producto", add_to_cart: "Agregó al carrito", begin_checkout: "Inició el checkout", purchase: "Compró" };
 
-export function EventsCard({ events }: { events: WebEvent[] }) {
+export function EventsSection({ events }: { events: WebEvent[] }) {
+  const columns: Column<WebEvent>[] = [
+    { id: "event", header: "Evento", mobile: "title", cell: (row) => <b className="text-[13.5px] font-semibold">{EVENT_LABELS[row.event] ?? row.event}</b> },
+    { id: "detail", header: "Detalle", cell: (row) => <span className="block max-w-[260px] truncate text-[13px] text-fg-2">{row.params.title ?? row.params.page ?? "—"}</span> },
+    { id: "session", header: "Sesión", wideOnly: true, cell: (row) => <span className="font-mono text-[12px] text-fg-3">{row.session}</span> },
+    { id: "context", header: "Idioma y moneda", wideOnly: true, cell: (row) => <span className="text-[12.5px] text-fg-2">{row.locale.toUpperCase()} · {row.currency}{row.client ? ` · ${row.client}` : ""}</span> },
+    { id: "at", header: "Fecha", mobile: "detail", cell: (row) => <span className="text-[12.5px] text-fg-2">{formatDateTime(row.at)}</span> },
+  ];
+  const filters: FilterConfig<WebEvent>[] = [{ id: "event", label: "Evento", options: [...new Set(events.map((row) => row.event))].map((value) => ({ value, label: EVENT_LABELS[value] ?? value })), value: (row) => row.event }];
+  const sorts: SortOption<WebEvent>[] = [{ id: "at", label: "Fecha", type: "date", value: (row) => row.at }];
   return (
-    <Card>
-      <TintCardTitle icon={Activity} title="Últimos eventos" aside={`${events.length}`} />
-      {events.length === 0 ? (
-        <p className="text-[13px] text-fg-3">Aún no llegan eventos del sitio ni del widget.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {events.map((event, index) => (
-            <li key={event.id} style={{ animationDelay: `${index * 50}ms` }} className="lift flex animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] items-center justify-between gap-3 rounded-tile border border-line px-3.5 py-2.5">
-              <span className="min-w-0">
-                <b className="block text-[13.5px] font-semibold">{EVENT_LABELS[event.event] ?? event.event}</b>
-                <span className="block truncate text-[12px] text-fg-3">{event.params.title ?? event.params.page ?? "—"} · sesión {event.session}</span>
-              </span>
-              <span className="flex flex-none flex-col items-end text-[12px] text-fg-3">
-                <span>{formatDateTime(event.at)}</span>
-                <span>{event.locale.toUpperCase()} · {event.currency}{event.client ? ` · ${event.client}` : ""}</span>
-              </span>
+    <div className="flex flex-col gap-6">
+      <DataTable screen="canales-web-eventos" rows={events} columns={columns} getKey={(row) => String(row.id)} entityLabel="eventos" searchText={(row) => `${row.event} ${row.params.title ?? ""} ${row.params.page ?? ""} ${row.session} ${row.client ?? ""}`} searchPlaceholder="Buscar evento, página o sesión" filters={filters} sorts={sorts} emptyTitle="Aún no llegan eventos del sitio ni del widget" />
+      <div>
+        <SectionHead icon={Activity} title="Eventos que se registran" />
+        <ul className="flex flex-wrap gap-1.5">
+          {Object.entries(EVENT_LABELS).map(([code, text]) => (
+            <li key={code} className="lift rounded-full border border-line px-3 py-1 text-[12.5px]">
+              <span className="font-mono text-fg-3">{code}</span> · {text}
             </li>
           ))}
         </ul>
-      )}
-    </Card>
+      </div>
+    </div>
   );
+}
+
+export function WebIntegrationWorkspace({ overview, section }: { overview: WebOverview; section: "configurator" | "methods" | "domains" | "events" }) {
+  if (section === "methods") return <MethodsSection overview={overview} />;
+  if (section === "domains") return <DomainsSection overview={overview} />;
+  if (section === "events") return <EventsSection events={overview.events} />;
+  return <ConfiguratorSection overview={overview} />;
 }

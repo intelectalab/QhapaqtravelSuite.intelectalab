@@ -7,6 +7,9 @@ import { InfoTip } from "@/components/ui/InfoTip";
 import { TintTile } from "@/components/ui/Tinted";
 import { Composer, ThreadActions } from "@/features/inbox/InboxActions";
 import { ChannelIcon, ContactCard, ConversationList, MessageBubble } from "@/features/inbox/InboxViews";
+import { ConversationCrmActions } from "@/features/leads/ConversationCrmActions";
+import { getRelatedOptions } from "@/lib/server/activities";
+import { getAdvisors, getCatalogs } from "@/lib/server/leads";
 import type { ConversationThread, InboxOverview } from "@/lib/inbox";
 import { getResource } from "@/lib/server/resource";
 import { currentUser } from "@/lib/server/me";
@@ -21,9 +24,12 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   }
 
   const selected = overview.items.find((item) => item.code === c) ?? overview.items.find((item) => item.status !== "resuelta") ?? overview.items[0];
-  const [thread, me] = await Promise.all([
+  const [thread, me, catalogs, advisors, activityOptions] = await Promise.all([
     selected ? getResource<ConversationThread>(`/inbox/conversations/${encodeURIComponent(selected.code)}`, "No pudimos abrir la conversación.") : Promise.resolve(null),
     currentUser(),
+    overview.can.manage ? getCatalogs() : Promise.resolve(null),
+    overview.can.manage ? getAdvisors() : Promise.resolve([]),
+    overview.can.manage ? getRelatedOptions() : Promise.resolve(null),
   ]);
   const { kpis } = overview;
 
@@ -35,10 +41,10 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
         info={<InfoTip>Responder una conversación sin responsable te la asigna. Las notas internas nunca llegan al cliente.</InfoTip>}
       />
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <TintTile icon={Inbox} tone="t1" label="Abiertas" value={kpis.open} note={`${kpis.unassigned} sin asignar`} />
-        <TintTile icon={AlarmClock} tone="bad" label="Primera respuesta vencida" value={kpis.sla_breached} note="Aún sin respuesta" />
-        <TintTile icon={Timer} tone="violet" label="Primera respuesta" value={kpis.first_response_minutes !== null ? `${kpis.first_response_minutes} min` : "Sin datos"} note="Promedio" />
-        <TintTile icon={CircleCheckBig} tone="ok" label="Resueltas en 7 días" value={kpis.resolved_week} />
+        <TintTile icon={Inbox} tone="t1" label="Abiertas" value={kpis.open} note={`${kpis.unassigned} sin asignar`} info={<p>Conversaciones a tu alcance que esperan respuesta del equipo. La nota cuenta las que no tienen responsable y no están resueltas.</p>} />
+        <TintTile icon={AlarmClock} tone="bad" label="Primera respuesta vencida" value={kpis.sla_breached} note="Aún sin respuesta" info={<p>Conversaciones sin primera respuesta cuyo plazo por canal ya pasó.</p>} />
+        <TintTile icon={Timer} tone="violet" label="Primera respuesta" value={kpis.first_response_minutes !== null ? `${kpis.first_response_minutes} min` : "Sin datos"} note="Promedio" info={<p>Minutos promedio entre el primer mensaje del cliente y la primera respuesta del equipo.</p>} />
+        <TintTile icon={CircleCheckBig} tone="ok" label="Resueltas en 7 días" value={kpis.resolved_week} info={<p>Conversaciones marcadas como resueltas en los últimos 7 días.</p>} />
       </section>
       <section className="grid overflow-hidden rounded-card border border-line bg-surface shadow-card lg:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)_300px]">
         <ConversationList items={overview.items} selected={selected?.code ?? null} />
@@ -72,7 +78,8 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
               {overview.can.manage && <Composer thread={thread} templates={overview.templates} me={me.name} />}
             </div>
             <div className="lg:col-span-2 2xl:col-span-1">
-              <ContactCard thread={thread} />
+              <ContactCard thread={thread} canLink={overview.can.link ?? []} canQuote={overview.can.quote ?? false} />
+              {overview.can.manage && <ConversationCrmActions thread={thread} catalogs={catalogs} advisors={advisors} activityOptions={activityOptions} />}
             </div>
           </>
         ) : (

@@ -45,6 +45,37 @@ final class ProviderController
         return response()->json(['data' => $this->registry->setActive($ref, false, (string) $request->input('reason'), $this->actor($request))]);
     }
 
+    public function show(Request $request, ProviderDirectory $directory, string $ref): JsonResponse
+    {
+        return response()->json(['data' => $directory->show($this->actor($request), $ref)]);
+    }
+
+    public function renewContract(Request $request, string $ref): JsonResponse
+    {
+        $data = $request->validate([
+            'contract_end' => ['required', 'date'],
+            'payment_terms' => ['nullable', 'string', 'max:120'],
+        ], [
+            'contract_end.*' => 'Indica la nueva fecha de fin del contrato.',
+            'payment_terms.*' => 'Las condiciones de pago admiten hasta 120 caracteres.',
+        ]);
+
+        return response()->json(['data' => ['ref' => $this->registry->renewContract($ref, $data, $this->actor($request))]]);
+    }
+
+    public function rate(Request $request, string $ref): JsonResponse
+    {
+        $data = $request->validate([
+            'rating' => ['required', 'numeric', 'between:1,5'],
+            'note' => ['nullable', 'string', 'max:500'],
+        ], [
+            'rating.*' => 'La calificación va de 1 a 5.',
+            'note.*' => 'El comentario admite hasta 500 caracteres.',
+        ]);
+
+        return response()->json(['data' => ['ref' => $this->registry->rate($ref, (float) $data['rating'], $data['note'] ?? null, $this->actor($request))]]);
+    }
+
     public function storeContact(Request $request, string $ref): JsonResponse
     {
         $data = $request->validate([

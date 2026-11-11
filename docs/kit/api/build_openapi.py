@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-build_openapi.py — Genera el contrato OpenAPI 3.1 de Qhapaq Travel Suite a partir de las
+build_openapi.py — Genera el contrato OpenAPI 3.1 de KipuControl a partir de las
 19 especificaciones de módulo (proto/docs/especificaciones/00…18-*.md).
 
 Entradas:
@@ -33,9 +33,9 @@ import yaml
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent                       # /home/claude/agencia-viajes
 import os as _os
-# Ubicación de las specs: variable QHAPAQ_SPECS_DIR, o estructura original (proto/docs/especificaciones),
+# Ubicación de las specs: variable KIPUCONTROL_SPECS_DIR, o estructura original (proto/docs/especificaciones),
 # o estructura del repositorio de docs (docs/kit/api → docs/especificaciones).
-SPECS_DIR = Path(_os.environ["QHAPAQ_SPECS_DIR"]) if _os.environ.get("QHAPAQ_SPECS_DIR") else next(
+SPECS_DIR = Path(_os.environ["KIPUCONTROL_SPECS_DIR"]) if _os.environ.get("KIPUCONTROL_SPECS_DIR") else next(
     (d for d in (ROOT / "proto" / "docs" / "especificaciones", ROOT / "especificaciones") if d.is_dir()),
     ROOT / "proto" / "docs" / "especificaciones")
 CONTRACT_VERSION = "1.0.0"
@@ -1103,7 +1103,7 @@ def base_document() -> dict:
     return {
         "openapi": "3.1.0",
         "info": {
-            "title": "Qhapaq Travel Suite API",
+            "title": "KipuControl API",
             "version": CONTRACT_VERSION,
             "summary": "Contrato REST del SaaS multi-tenant para agencias de viajes y operadores turísticos.",
             "description": (
@@ -1116,12 +1116,12 @@ def base_document() -> dict:
                 "Extensiones: `x-permission` (permiso requerido, texto normalizado de la spec), `x-permissions` (códigos), "
                 "`x-spec` (archivo y sección de origen), `x-spec-also` (otras specs que declaran el mismo endpoint), "
                 "`x-phase` (0–3), `x-resource` (tabla §3), `x-idempotency`, `x-api-key-scope`."),
-            "contact": {"name": "Equipo interno Qhapaq Travel Suite"},
+            "contact": {"name": "Equipo interno KipuControl"},
             "license": {"name": "Propietario — uso interno", "identifier": "LicenseRef-Proprietary"},
         },
         "servers": [
             {"url": "http://localhost:8000", "description": "Local (Laravel `php artisan serve` / Sail). Tenant por host o token."},
-            {"url": "https://api.staging.qhapaq.cloud", "description": "Staging (supuesto de dominio; tenant resuelto desde token/API key/host)."},
+            {"url": "https://api.staging.kipucontrol.com", "description": "Staging (supuesto de dominio; tenant resuelto desde token/API key/host)."},
         ],
         "security": [{"sanctum": []}],
         "tags": [{"name": v[0], "description": v[1], "x-spec": k} for k, v in TAGS.items()],
@@ -1133,7 +1133,7 @@ def base_document() -> dict:
                                            "`mfa:verify`, `supplier`, `customer`, etc. Tenant resuelto desde el token."},
                 "platformSanctum": {"type": "http", "scheme": "bearer", "bearerFormat": "Sanctum (guard platform)",
                                     "description": "Token del guard `platform` (Super Admin, MFA siempre)."},
-                "widgetKey": {"type": "apiKey", "in": "header", "name": "X-Qhapaq-Key",
+                "widgetKey": {"type": "apiKey", "in": "header", "name": "X-KipuControl-Key",
                               "description": "Clave pública (publishable key) del widget/sitio del tenant para `/api/v1/public/*`. "
                                              "Se valida junto con el `Origin` (dominios verificados) y rate limit Redis. "
                                              "Rotación: `POST /api/v1/channels/widget/rotate-key`."},
@@ -1606,7 +1606,7 @@ def write_endpoints_md(endpoints, conflicts, alias_log, override_log, param_rena
     for e in endpoints:
         by_phase[e["phase"]][e["tag"]].append(e)
     total = len(endpoints)
-    L.append("# Índice de endpoints — Qhapaq Travel Suite API v" + CONTRACT_VERSION)
+    L.append("# Índice de endpoints — KipuControl API v" + CONTRACT_VERSION)
     L.append("")
     L.append("> Generado por `build_openapi.py` desde la §6 de las 19 especificaciones. No editar a mano.")
     L.append("")

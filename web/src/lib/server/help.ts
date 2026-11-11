@@ -54,7 +54,7 @@ export async function saveArticle(target: HelpTarget, form: FormData): Promise<S
 
 export async function changeArticle(target: HelpTarget, form: FormData, step: "archive" | "restore" | "adaptation"): Promise<State> {
   const path = `${target.api}/articles/${slugOf(form)}/${step}`;
-  const result = step === "adaptation" ? await sendHelp(path, "DELETE", {}, "No pudimos volver a la versión de Qhapaq.", target.realm) : await sendHelp(path, "POST", lockOf(form), step === "archive" ? "No pudimos archivar el artículo." : "No pudimos reactivar el artículo.", target.realm);
+  const result = step === "adaptation" ? await sendHelp(path, "DELETE", {}, "No pudimos volver a la versión de KipuControl.", target.realm) : await sendHelp(path, "POST", lockOf(form), step === "archive" ? "No pudimos archivar el artículo." : "No pudimos reactivar el artículo.", target.realm);
   if (result.state.done) refresh(target, slugOf(form));
   return result.state;
 }

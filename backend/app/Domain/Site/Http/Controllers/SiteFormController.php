@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Site\Http\Controllers;
 
+use App\Domain\Crm\Support\ClaimConsumer;
 use App\Domain\Site\Actions\CaptureWebLead;
 use App\Domain\Site\Actions\ReceiveWebContact;
 use App\Domain\Site\Actions\RegisterWebClaim;
@@ -95,12 +96,7 @@ final class SiteFormController
 
     public function claim(Request $request, RegisterWebClaim $register): JsonResponse
     {
-        $docRules = match ($request->input('doc_type')) {
-            'DNI' => ['regex:/^\d{8}$/'],
-            'CE' => ['regex:/^[A-Za-z0-9]{9,12}$/'],
-            'RUC' => ['regex:/^(10|15|17|20)\d{9}$/'],
-            default => ['regex:/^[A-Za-z0-9]{6,15}$/'],
-        };
+        $docRules = ClaimConsumer::docRule($request->input('doc_type'));
         $data = $request->validate([
             'name' => ['required', 'string', 'min:5', 'max:150', 'regex:/\S+\s+\S+/u'],
             'doc_type' => ['required', 'in:DNI,CE,Pasaporte,RUC'],
@@ -108,9 +104,7 @@ final class SiteFormController
             'email' => ['required', 'email', 'max:190'],
             'phone' => ['required', 'string', 'regex:/^[0-9+()\s-]{7,20}$/'],
             'address' => ['required', 'string', 'min:5', 'max:250'],
-            'minor' => ['boolean'],
-            'guardian_name' => ['required_if:minor,true', 'nullable', 'string', 'max:150'],
-            'guardian_doc' => ['required_if:minor,true', 'nullable', 'string', 'max:20'],
+            ...ClaimConsumer::guardianRules($request->input('guardian_doc_type')),
             'sede_id' => ['required', 'uuid'],
             'good_kind' => ['required', 'in:producto,servicio'],
             'good_description' => ['required', 'string', 'min:3', 'max:300'],
@@ -128,8 +122,7 @@ final class SiteFormController
             'email.*' => 'Escribe un correo válido; ahí te enviaremos la constancia.',
             'phone.*' => 'Escribe un teléfono válido.',
             'address.*' => 'Escribe tu domicilio.',
-            'guardian_name.*' => 'Escribe el nombre del padre, madre o apoderado.',
-            'guardian_doc.*' => 'Escribe el documento del apoderado.',
+            ...ClaimConsumer::guardianMessages(),
             'sede_id.*' => 'Elige el establecimiento.',
             'good_kind.*' => 'Indica si es un producto o un servicio.',
             'good_description.*' => 'Describe el producto o servicio contratado.',
@@ -137,7 +130,7 @@ final class SiteFormController
             'type.*' => 'Elige si es un reclamo o una queja.',
             'detail.*' => 'Detalla lo ocurrido (al menos 15 caracteres).',
             'request.*' => 'Indica qué solicitas a la agencia.',
-            'declaration.*' => 'Debes confirmar que la información es verdadera.',
+            'declaration.*' => 'Confirma que la información es verdadera y que aceptas recibir la respuesta en tu correo.',
             '*' => 'Revisa este dato.',
         ]);
 

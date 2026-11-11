@@ -38,7 +38,13 @@ export interface ApprovalItem {
   decided_at: string | null;
   decision_note: string | null;
   href: string | null;
+  href_label?: string | null;
   target: string;
+  subject?: { type: string; code: string | null } | null;
+  agency?: string | null;
+  reservation?: string | null;
+  rule?: { code: string; min_amount: number; permission_label: string; approvers: string[] } | null;
+  effect?: string | null;
   lock_version: number | null;
   version_no?: number;
   change_id?: string;
@@ -50,10 +56,28 @@ export interface ApprovalItem {
   is_generic?: boolean;
   can_decide: boolean;
   can_edit: boolean;
+  can_delegate: boolean;
+  can_ask: boolean;
+  can_answer: boolean;
+  can_resubmit: boolean;
+  delegated_to: { id: string; name: string } | null;
+  delegates: { id: string; name: string }[];
+  resubmitted_from?: string | null;
   sla: ApprovalSla;
   mine: boolean;
   steps: ApprovalStep[];
   events: ApprovalEvent[];
+  questions: ApprovalQuestion[];
+}
+
+export interface ApprovalQuestion {
+  id: string;
+  question: string;
+  asked_by: string;
+  asked_at: string;
+  answer: string | null;
+  answered_by: string | null;
+  answered_at: string | null;
 }
 
 export interface ApprovalRule {
@@ -77,10 +101,25 @@ export interface ApprovalsOverview {
   rules: ApprovalRule[];
   types: { value: string; label: string }[];
   cancel_reasons: string[];
+  options: { agencies: ApprovalOption[]; reservations: ApprovalOption[] };
+  usd_rate: number;
   can: { create: boolean; manage_rules: boolean };
 }
 
+export interface ApprovalOption {
+  value: string;
+  label: string;
+  hint?: string;
+}
+
 export const GENERIC_TYPES = ["credit_b2b", "refund", "other"];
+
+export function approvalRoute(rules: ApprovalRule[], type: string, amountPen: number): ApprovalRule[] {
+  const applicable = rules.filter((rule) => rule.type === type && rule.active && rule.min_amount <= amountPen);
+  return [1, 2]
+    .map((level) => applicable.filter((rule) => rule.level === level).sort((a, b) => b.min_amount - a.min_amount)[0])
+    .filter((rule): rule is ApprovalRule => rule !== undefined);
+}
 
 export const SLA_META: Record<ApprovalSla, { label: string; tone: Tone }> = {
   ok: { label: "En plazo", tone: "ok" },
@@ -112,6 +151,7 @@ export const EVENT_LABELS: Record<string, string> = {
   info_solicitada: "Pidió información",
   info_respondida: "Respondió la consulta",
   delegada: "Delegó",
+  reenviada: "Reenvió a aprobación",
 };
 
 export const PERMISSION_OPTIONS = [

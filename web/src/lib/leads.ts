@@ -1,3 +1,6 @@
+import type { ActivityItem } from "./activities";
+import type { RecordEvent } from "./history";
+
 export type LeadStatus = "nuevo" | "contactado" | "calificado" | "convertido" | "duplicado" | "descartado";
 
 export interface LeadRow {
@@ -10,6 +13,7 @@ export interface LeadRow {
   channel: string;
   interest: string;
   destination: string | null;
+  destination_id: string | null;
   travel_date: string | null;
   pax: number;
   score: number;
@@ -23,14 +27,19 @@ export interface LeadRow {
 
 export interface LeadDetail extends LeadRow {
   notes: string | null;
-  bant: { budget: number; authority: number; need: number; timeline: number; score: number; declared_amount: string | null; currency: string | null; notes: string | null; qualified_at: string } | null;
+  product: { id: string; code: string; name: string } | null;
+  bant: { budget: number; authority: number; need: number; timeline: number; score: number; declared_amount: string | null; currency: string | null; notes: string | null; qualified_at: string; qualified_by: string | null } | null;
   validated_at: string | null;
   assigned_at: string | null;
   first_contact_at: string | null;
   discard_reason: string | null;
   discard_detail: string | null;
   discarded_at: string | null;
-  duplicate_of: { code: string; name: string } | null;
+  duplicate_of: { type: "lead" | "client"; code: string; name: string } | null;
+  duplicates: LeadMatch[];
+  absorbed: { code: string; name: string }[];
+  activities: ActivityItem[];
+  history: RecordEvent[];
   converted: {
     at: string | null;
     client: { code: string; name: string };
@@ -48,7 +57,38 @@ export interface CatalogItem {
   requires_detail: boolean;
 }
 
-export type CrmCatalogs = Record<"lead_source" | "lead_channel" | "lead_interest" | "client_segment" | "activity_type" | "discard_reason" | "lost_reason", CatalogItem[]>;
+export type CatalogKind = "lead_source" | "lead_channel" | "lead_interest" | "client_segment" | "activity_type" | "discard_reason" | "lost_reason";
+
+export interface CatalogDestination {
+  id: string;
+  name: string;
+  type: string;
+  path: string;
+}
+
+export interface CatalogProduct {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export type CrmCatalogs = Record<CatalogKind, CatalogItem[]> & { destinations: CatalogDestination[]; products: CatalogProduct[] };
+
+export const catalogOptions = (items: CatalogItem[]) => items.map((item) => ({ value: item.code, label: item.label }));
+
+export const destinationOptions = (items: CatalogDestination[]) => items.map((item) => ({ value: item.id, label: item.name, hint: item.path }));
+
+export const productOptions = (items: CatalogProduct[]) => items.map((item) => ({ value: item.id, label: item.name, hint: item.code }));
+
+export interface LeadMatch {
+  type: "lead" | "client";
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+  by: ("email" | "phone")[];
+  mergeable: boolean;
+}
 
 export interface DuplicateMatch {
   type: "lead" | "client";

@@ -885,7 +885,7 @@ Tiempo real (Reverb): canal `tenant.{t}.ops` para tablero de órdenes, calendari
 | Archivos | expo-file-system (cola de fotos), expo-image-picker / expo-camera, expo-image-manipulator (máx. 1920 px, JPEG q=0.7), expo-crypto (SHA-256) |
 | Red | @react-native-community/netinfo (detección online/offline) |
 | Background | expo-background-fetch + expo-task-manager (intento de sync cada ≥ 15 min y al recuperar red) |
-| Push | **expo-notifications** (FCM/APNs) + Expo Push API desde Laravel (job `SendExpoPush`); deep links `qhapaq-ops://assignments/{id}`, `qhapaq-trip://alerts/{id}` |
+| Push | **expo-notifications** (FCM/APNs) + Expo Push API desde Laravel (job `SendExpoPush`); deep links `kipucontrol-ops://assignments/{id}`, `kipucontrol-trip://alerts/{id}` |
 | Validación | Zod (esquemas espejo de FormRequest) |
 | Autenticación | Login email + contraseña (y enlace mágico para pasajero), token Sanctum con abilities `mobile:operator` / `mobile:passenger`; refresh por re-login; revocación remota |
 

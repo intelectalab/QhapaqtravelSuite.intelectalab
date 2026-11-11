@@ -81,10 +81,10 @@ export default async function IncidenciaPage({ params }: PageProps<"/operaciones
       </HeroBand>
 
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <TintTile icon={UserRound} tone="t1" label="Responsable" value={<span className="text-[16px]">{incident.assignee ? shortName(incident.assignee.name) : "Sin asignar"}</span>} />
-        <TintTile icon={ClipboardList} tone="t4" label="Orden" value={<span className="text-[16px]">{incident.order ? <Link href={`/operaciones/ordenes/${incident.order.code}`} className="hover:underline">{incident.order.code}</Link> : "—"}</span>} note={incident.reservation?.code} />
-        <TintTile icon={Timer} tone="warn" label="Registrada" value={<span className="text-[16px]">{formatDateTime(incident.created_at, false)}</span>} />
-        <TintTile icon={Camera} tone="violet" label="Evidencias" value={incident.evidence_files.length} />
+        <TintTile icon={UserRound} tone="t1" label="Responsable" info="Persona de Operaciones o Gerencia que atiende la incidencia; por defecto, el coordinador de la orden." value={<span className="text-[16px]">{incident.assignee ? shortName(incident.assignee.name) : "Sin asignar"}</span>} />
+        <TintTile icon={ClipboardList} tone="t4" label="Orden" info="Orden operativa y reserva afectadas por la incidencia." value={<span className="text-[16px]">{incident.order ? <Link href={`/operaciones/ordenes/${incident.order.code}`} className="hover:underline">{incident.order.code}</Link> : "—"}</span>} note={incident.reservation?.code} />
+        <TintTile icon={Timer} tone="warn" label="Registrada" info="Fecha y hora del reporte; desde ahí corre el plazo según la severidad." value={<span className="text-[16px]">{formatDateTime(incident.created_at, false)}</span>} />
+        <TintTile icon={Camera} tone="violet" label="Evidencias" info="Fotos o documentos adjuntos a la incidencia y vigentes (no retirados)." value={incident.evidence_files.length} />
       </section>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">

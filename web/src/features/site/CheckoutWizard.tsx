@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Loader2, Lock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Loader2, Lock } from "lucide-react";
 import { useActionState, useCallback, useMemo, useState, useTransition } from "react";
 import { placeOrder, validateCheckoutStep } from "@/app/(sitio)/sitio/[agencia]/actions";
 import { Captcha } from "@/components/ui/Captcha";
@@ -10,7 +10,7 @@ import { StepIndicator } from "@/components/ui/StepIndicator";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
-import { capitalize, formatDate, formatMoney } from "@/lib/format";
+import { capitalize, formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { IDLE, SITE_COUNTRIES, SITE_DOC_TYPES, type CheckoutTerms } from "@/lib/site";
 import { CheckBox, FieldError, FormAlert } from "./FormBits";
 import { PaymentFields, type PaymentValue } from "./PaymentFields";
@@ -57,6 +57,8 @@ export function CheckoutWizard({ terms, walletPhone }: { terms: CheckoutTerms; w
   const [payment, setPayment] = useState<PaymentValue>({ method: "tarjeta", ready: false });
   const [state, action, pending] = useActionState(placeOrder.bind(null, agencia), IDLE);
   const onPayment = useCallback((value: PaymentValue) => setPayment(value), []);
+  const later = mode === "pagar_despues";
+  const laterMode = terms.modes.find((option) => option.value === "pagar_despues");
 
   const setBuyerField = (field: keyof Buyer) => (value: string) => setBuyer((current) => ({ ...current, [field]: value }));
   const setTraveler = (index: number, field: keyof Traveler, value: string) => setTravelers((current) => current.map((row, position) => (position === index ? { ...row, [field]: value } : row)));
@@ -74,10 +76,7 @@ export function CheckoutWizard({ terms, walletPhone }: { terms: CheckoutTerms; w
     passengers: travelerPayload(),
     lines,
     pay_mode: mode,
-    method: payment.method,
-    card_token: payment.card_token,
-    card_holder: payment.card_holder,
-    operation_ref: payment.operation_ref,
+    ...(later ? {} : { method: payment.method, card_token: payment.card_token, card_holder: payment.card_holder, operation_ref: payment.operation_ref }),
     ...consents,
   });
 
@@ -279,20 +278,32 @@ export function CheckoutWizard({ terms, walletPhone }: { terms: CheckoutTerms; w
                   <span className="block text-[14px] font-semibold text-fg">{option.value === "adelanto" ? `Adelanto ${option.pct} %` : option.label}</span>
                   <span className="block text-[20px] font-bold tabular-nums text-fg">{formatMoney(option.amount, terms.currency)}</span>
                   {option.value === "adelanto" && option.balance && option.balance_due && <span className="block text-[12.5px] text-fg-2">Saldo de {formatMoney(option.balance, terms.currency)} hasta el {formatDate(option.balance_due)}</span>}
+                  {option.value === "pagar_despues" && option.hold_hours && <span className="block text-[12.5px] text-fg-2">Guardamos tus cupos {option.hold_hours} horas sin cobrarte</span>}
                 </button>
               ))}
             </div>
             {terms.adelanto_unavailable && <p className="text-[12.5px] text-fg-3">{terms.adelanto_unavailable}</p>}
           </Panel>
-          <Panel title="Medio de pago">
-            <PaymentFields methods={terms.methods} accounts={terms.bank_accounts} walletPhone={walletPhone} onChange={onPayment} errors={allErrors} />
-          </Panel>
+          {later && laterMode ? (
+            <Panel title="Pagas después">
+              <div className="flex items-start gap-3 rounded-2xl bg-surface-2 px-4 py-3.5 text-[13.5px] text-fg-2">
+                <Clock size={18} className="mt-0.5 flex-none text-brand" />
+                <p>
+                  Reservamos tus cupos hasta el <b className="text-fg">{laterMode.hold_until ? formatDateTime(laterMode.hold_until) : ""}</b>. Antes de esa hora paga {formatMoney(terms.total, terms.currency)} desde la confirmación o desde Mi cuenta; si no recibimos el pago, los cupos se liberan y la reserva se anula.
+                </p>
+              </div>
+            </Panel>
+          ) : (
+            <Panel title="Medio de pago">
+              <PaymentFields methods={terms.methods} accounts={terms.bank_accounts} walletPhone={walletPhone} onChange={onPayment} errors={allErrors} />
+            </Panel>
+          )}
           <input type="hidden" name="payload" value={JSON.stringify(payload())} />
           {state.status === "error" && <FormAlert message={state.message} />}
           <Captcha />
-          <button type="submit" disabled={pending || !payment.ready} className="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-brand text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60">
+          <button type="submit" disabled={pending || (!later && !payment.ready)} className="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-brand text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60">
             {pending ? <Loader2 size={17} className="animate-spin" /> : <Lock size={17} />}
-            {payment.method === "tarjeta" ? `Pagar ${formatMoney(due, terms.currency)}` : `Registrar pago de ${formatMoney(due, terms.currency)}`}
+            {later ? "Reservar sin pagar ahora" : payment.method === "tarjeta" ? `Pagar ${formatMoney(due, terms.currency)}` : `Registrar pago de ${formatMoney(due, terms.currency)}`}
           </button>
         </form>
       )}

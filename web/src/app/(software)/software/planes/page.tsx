@@ -12,7 +12,7 @@ import { trialDays } from "@/lib/software";
 
 export const metadata: Metadata = {
   title: "Planes y precios",
-  description: "Planes de Qhapaq Travel Suite para agencias de viaje: precios mensuales y anuales en soles, límites, funciones y adicionales.",
+  description: "Planes de KipuControl para agencias de viaje: precios mensuales y anuales en soles, límites, funciones y adicionales.",
 };
 
 export default async function PlanesPage({ searchParams }: PageProps<"/software/planes">) {

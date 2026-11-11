@@ -1,6 +1,6 @@
 import type { Tone } from "./tone";
 
-export type HelpOrigin = "qhapaq" | "adaptado" | "propio";
+export type HelpOrigin = "kipucontrol" | "adaptado" | "propio";
 
 export type HelpAudience = "agency" | "platform";
 
@@ -90,15 +90,15 @@ export const AGENCY_HELP: HelpRealm = { centerHref: "/ayuda", screenUrl: "/ayuda
 
 export const PLATFORM_HELP: HelpRealm = { centerHref: "/plataforma/ayuda", screenUrl: "/plataforma/ayuda/pantalla", platform: true };
 
-export const ORIGIN_TONES: Record<HelpOrigin, Tone> = { qhapaq: "info", adaptado: "violet", propio: "sun" };
+export const ORIGIN_TONES: Record<HelpOrigin, Tone> = { kipucontrol: "info", adaptado: "violet", propio: "sun" };
 
 export const HELP_ACTIONS: Record<string, string> = {
   crear: "Creó el artículo",
   editar: "Editó el artículo",
-  adaptar: "Adaptó la versión de Qhapaq",
+  adaptar: "Adaptó la versión de KipuControl",
   archivar: "Archivó el artículo",
   reactivar: "Reactivó el artículo",
-  restaurar_original: "Volvió a la versión de Qhapaq",
+  restaurar_original: "Volvió a la versión de KipuControl",
 };
 
 export function helpHref(realm: HelpRealm, slug: string, edit = false): string {

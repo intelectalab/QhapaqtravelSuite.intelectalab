@@ -1,4 +1,4 @@
-import { Banknote, Landmark, Link2, Wallet } from "lucide-react";
+import { Banknote, Landmark, Link2, RotateCcw, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,7 +9,9 @@ import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { MiniTable } from "@/components/ui/MiniTable";
 import { TintCardTitle, ToneScope } from "@/components/ui/Tinted";
+import { Button } from "@/components/ui/Button";
 import { AuditCard, StatusHistoryCard } from "@/features/finance/FinanceDetailParts";
+import { RetryPaymentAction } from "@/features/finance/Payments";
 import type { PaymentDetail } from "@/lib/finance";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { getResource } from "@/lib/server/resource";
@@ -43,6 +45,25 @@ export default async function PagoPage({ params }: PageProps<"/finanzas/pagos/[c
           </span>
         }
         subtitle={`${row.code} · ${row.method.replaceAll("_", " ")} · ${formatDate(row.paid_on)}`}
+        actions={
+          row.status === "rechazado" && row.can.retry ? (
+            <RetryPaymentAction
+              code={row.code}
+              lockVersion={row.lock_version}
+              retries={row.retries}
+              summary={[
+                { label: "Pago", value: `${row.code} · ${row.method.replaceAll("_", " ")}` },
+                { label: "Motivo del rechazo", value: row.reject_reason ?? "—" },
+                { label: "Monto", value: formatMoney(row.amount, row.currency), strong: true },
+              ]}
+              trigger={(show) => (
+                <Button variant="primary" icon={<RotateCcw size={16} />} onClick={show}>
+                  Reintentar validación
+                </Button>
+              )}
+            />
+          ) : undefined
+        }
       />
       {(row.reject_reason || row.revert_reason) && (
         <p className="mb-5 rounded-card border border-[color-mix(in_srgb,var(--bad)_30%,transparent)] bg-[color-mix(in_srgb,var(--bad)_7%,transparent)] px-4 py-3 text-[13.5px]">
@@ -86,6 +107,7 @@ export default async function PagoPage({ params }: PageProps<"/finanzas/pagos/[c
                 { label: "Operación", value: row.reference ?? "—" },
                 { label: "Origen", value: row.reported_by_agency ? "Reportado por la agencia aliada" : (row.source ?? "Back-office") },
                 { label: "Registró", value: `${row.registered_by ?? "Sistema"} · ${formatDateTime(row.created_at)}` },
+                ...(row.retries > 0 ? [{ label: "Reintentos de validación", value: String(row.retries) }] : []),
                 ...(row.note ? [{ label: "Nota", value: <span className="whitespace-normal">{row.note}</span> }] : []),
               ]}
             />

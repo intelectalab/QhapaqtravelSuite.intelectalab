@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpDown, Search, SlidersHorizontal, X } from "lucide-react";
+import { ArrowUpDown, FileDown, Search, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
@@ -60,6 +60,22 @@ export function ToggleButton({ active, onClick, icon, label, badge, collapseLabe
       {badge !== undefined && badge > 0 && (
         <span className={cn("rounded-md px-1.5 font-mono text-[11px] font-semibold", active ? "bg-surface text-fg" : "bg-accent text-white")}>{badge}</span>
       )}
+    </button>
+  );
+}
+
+export function ExportButton({ onClick, disabled, label = "Exportar CSV" }: { onClick: () => void; disabled?: boolean; label?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={disabled ? "No hay filas para exportar" : "Descarga las filas que ves con los filtros aplicados"}
+      data-testid="table-export"
+      className="inline-flex h-9 flex-none items-center gap-2 whitespace-nowrap rounded-[10px] border border-line bg-surface px-3 text-[13px] font-medium text-fg-2 transition hover:text-fg disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      <FileDown size={15} className="text-accent" />
+      <span className="hidden sm:inline">{label}</span>
     </button>
   );
 }

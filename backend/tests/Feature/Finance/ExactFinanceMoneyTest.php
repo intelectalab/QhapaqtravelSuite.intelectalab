@@ -5,7 +5,10 @@ use App\Domain\Shared\Money\Decimal;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
-beforeEach(fn () => freezeBusinessToday());
+beforeEach(function () {
+    lockTreasury();
+    freezeBusinessToday();
+});
 
 function servicesTotal(string $reservationId): string
 {

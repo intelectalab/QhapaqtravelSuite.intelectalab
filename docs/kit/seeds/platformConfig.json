@@ -1,10 +1,10 @@
 {
   "issuer": {
-    "name": "Qhapaq Cloud S.A.C.",
+    "name": "KipuControl Cloud S.A.C.",
     "ruc": "20614455661",
     "address": "Av. Santo Toribio 143, Of. 1102, San Isidro, Lima",
-    "email": "facturacion@qhapaq.cloud",
-    "web": "www.qhapaq.cloud"
+    "email": "facturacion@kipucontrol.com",
+    "web": "www.kipucontrol.com"
   },
   "igvPct": 18,
   "currency": "PEN",

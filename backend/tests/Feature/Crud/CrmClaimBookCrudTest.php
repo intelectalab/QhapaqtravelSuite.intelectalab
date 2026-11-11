@@ -24,6 +24,7 @@ function crmHojaDatos(array $extra = []): array
         'good_currency' => 'PEN',
         'detail' => 'El tour salió una hora tarde y no se visitó la Catedral.',
         'request' => 'Devolución parcial del servicio.',
+        'email_consent' => true,
         ...$extra,
     ];
 }
@@ -37,8 +38,8 @@ function crmHojaEdicion(string $code, array $extra = []): array
     return [
         'type' => $row->type_code,
         'consumer_name' => $consumer['name'],
-        'consumer_doc_type' => $consumer['docType'],
-        'consumer_doc_number' => $consumer['docNumber'],
+        'consumer_doc_type' => $consumer['doc_type'] ?? $consumer['docType'],
+        'consumer_doc_number' => $consumer['doc_number'] ?? $consumer['docNumber'],
         'consumer_email' => $consumer['email'] ?? null,
         'consumer_phone' => $consumer['phone'] ?? null,
         'consumer_address' => $consumer['address'] ?? null,
@@ -84,7 +85,7 @@ it('registrar una hoja le asigna correlativo de la sede, plazo hábil y aparece 
         ->and($due->gt(Carbon::parse(BUSINESS_TODAY)->addDays(15)))->toBeTrue()
         ->and($due->isWeekend())->toBeFalse()
         ->and($claim->ack_sent_at)->not->toBeNull()
-        ->and(json_decode((string) $claim->consumer, true)['docNumber'])->toBe('41553200')
+        ->and(json_decode((string) $claim->consumer, true)['doc_number'])->toBe('41553200')
         ->and(crmHojaEventos($code))->toBe(['registro'])
         ->and(crmHojaAuditoria('LR-LIM-2026-000008', 'registrar'))->not->toBeNull()
         ->and(collect($this->getJson('/api/v1/crm/claim-book')->assertOk()->json('data.claims'))->pluck('code'))->toContain($code);
@@ -108,6 +109,31 @@ it('registrar una hoja valida sede, tipo, documento y que la reserva sea del cli
     $this->postJson('/api/v1/crm/claim-book', crmHojaDatos(['type' => 'consulta', 'consumer_doc_number' => '41-553', 'detail' => 'Corto']), critical())
         ->assertStatus(422)->assertJsonValidationErrors(['sede_id', 'type', 'consumer_doc_number', 'detail']);
     expect($this->postJson('/api/v1/crm/claim-book', ['sede_id' => crmHojaSede(), ...crmHojaDatos(['client' => 'CLI-0002', 'reservation' => 'RES-2026-000344'])], critical()))->toBeApiError(422, 'VALIDATION_ERROR');
+});
+
+it('la hoja presencial exige domicilio, correo y la aceptación de la respuesta por correo', function () {
+    actingAsSeed('U01');
+
+    $this->postJson('/api/v1/crm/claim-book', ['sede_id' => crmHojaSede(), ...crmHojaDatos(['consumer_email' => null, 'consumer_address' => null, 'email_consent' => false, 'consumer_doc_number' => '4155320', 'detail' => 'Demora de una hora.'])], critical())
+        ->assertStatus(422)->assertJsonValidationErrors(['consumer_email', 'consumer_address', 'email_consent', 'consumer_doc_number', 'detail']);
+});
+
+it('una hoja de un menor exige al padre, madre o apoderado y lo guarda con el formato del kit', function () {
+    actingAsSeed('U01');
+
+    $this->postJson('/api/v1/crm/claim-book', ['sede_id' => crmHojaSede(), ...crmHojaDatos(['is_minor' => true])], critical())
+        ->assertStatus(422)->assertJsonValidationErrors(['guardian_name', 'guardian_doc_type', 'guardian_doc_number', 'guardian_relation']);
+
+    $code = $this->postJson('/api/v1/crm/claim-book', ['sede_id' => crmHojaSede(), ...crmHojaDatos(['is_minor' => true, 'guardian_name' => 'Rosa Carpio Delgado', 'guardian_doc_type' => 'DNI', 'guardian_doc_number' => '29654102', 'guardian_relation' => 'Madre'])], critical())
+        ->assertCreated()->json('data.code');
+
+    $consumer = json_decode((string) rowOf('crm_cases', $code)->consumer, true);
+    $sheet = collect($this->getJson('/api/v1/crm/claim-book')->assertOk()->json('data.claims'))->firstWhere('code', $code);
+
+    expect($consumer['is_minor'])->toBeTrue()
+        ->and($consumer['guardian'])->toBe(['name' => 'Rosa Carpio Delgado', 'doc_type' => 'DNI', 'doc_number' => '29654102', 'relation' => 'Madre'])
+        ->and($sheet['consumer']['is_minor'])->toBeTrue()
+        ->and($sheet['consumer']['guardian']['relation'])->toBe('Madre');
 });
 
 it('Ventas no gestiona el libro de reclamaciones', function () {

@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight, Check, Headset, Hourglass, Infinity as InfinityIcon, ShieldCheck } from "lucide-react";
+import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { InfoTip } from "@/components/ui/InfoTip";
@@ -44,12 +45,12 @@ export function CycleToggle({ cycle, onChange, saving }: { cycle: BillingCycle; 
   );
 }
 
-function PriceBlock({ plan, cycle }: { plan: PublicPlan; cycle: BillingCycle }) {
+function PriceBlock({ plan, cycle, dense = false }: { plan: PublicPlan; cycle: BillingCycle; dense?: boolean }) {
   const price = monthlyPrice(plan, cycle);
   return (
     <div className="mt-6">
       <div className="flex items-end gap-1.5">
-        <span key={`${plan.code}-${cycle}`} className="font-mono text-[40px] font-bold leading-none tracking-[-0.04em] text-fg animate-[rise-in_380ms_cubic-bezier(0.22,1,0.36,1)_backwards]">
+        <span key={`${plan.code}-${cycle}`} className={cn("whitespace-nowrap font-mono font-bold leading-none tracking-[-0.04em] text-fg animate-[rise-in_380ms_cubic-bezier(0.22,1,0.36,1)_backwards]", dense ? "text-[30px]" : "text-[40px]")}>
           {formatMoney(price, plan.currency)}
         </span>
         <span className="pb-1 text-[13px] font-medium text-fg-3">al mes</span>
@@ -68,7 +69,7 @@ function PriceBlock({ plan, cycle }: { plan: PublicPlan; cycle: BillingCycle }) 
   );
 }
 
-export function PlanCard({ plan, cycle, featured, index, compact = false }: { plan: PublicPlan; cycle: BillingCycle; featured: boolean; index: number; compact?: boolean }) {
+export function PlanCard({ plan, cycle, featured, index, compact = false, action, current = false }: { plan: PublicPlan; cycle: BillingCycle; featured: boolean; index: number; compact?: boolean; action?: ReactNode; current?: boolean }) {
   const tone = planTone(plan.rank);
   const shown = plan.highlights.slice(0, compact ? 4 : HIGHLIGHTS);
   const rest = plan.highlights.slice(shown.length);
@@ -93,15 +94,19 @@ export function PlanCard({ plan, cycle, featured, index, compact = false }: { pl
             </p>
           )}
         </div>
-        {plan.agencies > 0 && (
+        {current && <span className="rounded-full bg-[var(--tint)] px-2.5 py-1 text-[11.5px] font-semibold text-white">Tu plan</span>}
+        {action === undefined && plan.agencies > 0 && (
           <span className={cn("rounded-full px-2.5 py-1 text-[11.5px] font-semibold", featured ? "bg-[var(--tint)] text-white" : "bg-[color-mix(in_srgb,var(--tint)_12%,transparent)] text-[var(--tint)]")}>
             {plan.agencies} {plan.agencies === 1 ? "agencia" : "agencias"}
           </span>
         )}
       </div>
 
-      <PriceBlock plan={plan} cycle={cycle} />
+      <PriceBlock plan={plan} cycle={cycle} dense={action !== undefined} />
 
+      {action !== undefined ? (
+        <div className="mt-6 grid min-h-[40px] gap-2">{action}</div>
+      ) : (
       <div className="mt-6 grid gap-2">
         <Button href={contactHref("trial", plan.code, cycle)} variant={featured ? "primary" : "dark"} icon={<ArrowRight size={16} />} className="site-sheen relative w-full overflow-hidden">
           Probar {plan.trial_days} días gratis
@@ -112,6 +117,7 @@ export function PlanCard({ plan, cycle, featured, index, compact = false }: { pl
           </Button>
         )}
       </div>
+      )}
 
       <ul className="mt-6 grid grid-cols-2 gap-2">
         {KEY_LIMITS.map((info) => {
@@ -179,10 +185,12 @@ export function PlanCard({ plan, cycle, featured, index, compact = false }: { pl
             <span className="block h-full origin-left rounded-full bg-[var(--tint)] motion-safe:animate-[fill-x_900ms_cubic-bezier(0.22,1,0.36,1)_backwards]" style={{ width: `${rulesShare}%`, animationDelay: `${300 + index * 120}ms` }} />
           </span>
         </div>
-        <span className="flex items-center gap-1.5 text-fg-3">
-          <Hourglass size={13} />
-          {plan.trial_days} días de prueba con todas las funciones del plan
-        </span>
+        {action === undefined && (
+          <span className="flex items-center gap-1.5 text-fg-3">
+            <Hourglass size={13} />
+            {plan.trial_days} días de prueba con todas las funciones del plan
+          </span>
+        )}
       </div>
     </article>
   );

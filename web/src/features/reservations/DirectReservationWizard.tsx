@@ -22,7 +22,7 @@ export function DirectReservationWizard({ options, open, onOpenChange }: DirectR
   const router = useRouter();
   const wizard = useWizard(DIRECT_STEPS.length, false);
   const { step, errors, busy, setBusy, fail, pass } = wizard;
-  const [form, setForm] = useState<DirectPayload>({ client_id: "", product_id: "", channel: "", owner_id: options.owner_id, departure_id: "", date: "", adt: 2, chd: 0, inf: 0, notes: "" });
+  const [form, setForm] = useState<DirectPayload>({ client_id: "", product_id: "", channel: "", owner_id: options.owner_id, departure_id: "", rate_id: "", date: "", adt: 2, chd: 0, inf: 0, notes: "" });
   const [plan, setPlan] = useState<DirectPlan | null>(null);
   const [checkError, setCheckError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);

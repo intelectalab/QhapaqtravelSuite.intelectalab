@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN echo "pm.status_path = /status" >> /usr/local/etc/php-fpm.d/zz-docker.conf
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-COPY php.ini /usr/local/etc/php/conf.d/zz-qhapaq.ini
+COPY php.ini /usr/local/etc/php/conf.d/zz-kipucontrol.ini
 
 # PDF (vouchers, comprobantes, itinerarios) con Chromium headless (spatie/browsershot o similar)
 ENV CHROME_PATH=/usr/bin/chromium

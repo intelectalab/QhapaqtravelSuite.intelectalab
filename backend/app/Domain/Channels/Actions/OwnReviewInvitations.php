@@ -8,6 +8,7 @@ use App\Domain\Admin\Support\TenantSettings;
 use App\Domain\Booking\Rules\RuleResolver;
 use App\Domain\Channels\Support\ChannelKit;
 use App\Domain\Channels\Support\OwnReviewSettings;
+use App\Domain\Channels\Support\ReviewLinks;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -15,7 +16,6 @@ use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 final class OwnReviewInvitations
 {
@@ -66,7 +66,7 @@ final class OwnReviewInvitations
                     'client_id' => $row->client_id,
                     'to_address' => $address,
                     'channel' => $channel,
-                    'token_hash' => hash('sha256', Str::random(48)),
+                    'token_hash' => ReviewLinks::hash($this->context->idOrFail(), $code),
                     'scheduled_at' => $scheduled->utc(),
                     'expires_at' => $scheduled->copy()->addDays((int) $settings['invite']['expire_days'])->utc(),
                     'status' => 'programada',

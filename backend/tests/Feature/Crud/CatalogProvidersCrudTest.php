@@ -48,7 +48,10 @@ function catProviderContacts(string $ref): array
     return withinTenant(tenantA(), fn () => DB::table('catalog_provider_contacts')->where('provider_id', catProviderRow($ref)->id)->orderBy('name')->pluck('name', 'id')->all());
 }
 
-beforeEach(fn () => Queue::fake());
+beforeEach(function () {
+    lockCatalogProducts();
+    Queue::fake();
+});
 
 it('registra un proveedor inactivo con su contacto comercial', function () {
     actingAsSeed('U05');

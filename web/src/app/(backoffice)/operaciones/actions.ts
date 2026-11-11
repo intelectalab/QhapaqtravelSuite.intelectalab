@@ -36,11 +36,15 @@ const STEPS: Record<string, Step> = {
   task_add: { path: (code) => `/ops/orders/${id(code)}/tasks`, method: "POST", fields: ["title"], failure: "No pudimos agregar la tarea." },
   task_toggle: { path: (task) => `/ops/order-tasks/${id(task)}`, method: "PATCH", flags: ["done"], failure: "No pudimos actualizar la tarea." },
   task_delete: { path: (task) => `/ops/order-tasks/${id(task)}`, method: "DELETE", failure: "No pudimos eliminar la tarea." },
-  assign: { path: (assignment) => `/ops/assignments/${id(assignment)}/resources`, method: "PUT", fields: ["guide_id", "driver_id", "vehicle_id"], flags: ["ack_warnings"], failure: "No pudimos asignar los recursos." },
+  assign: { path: (assignment) => `/ops/assignments/${id(assignment)}/resources`, method: "PUT", fields: ["guide_id", "driver_id", "vehicle_id"], lists: ["notify"], flags: ["ack_warnings"], failure: "No pudimos asignar los recursos." },
+  assign_checkins: { path: (assignment) => `/ops/assignments/${id(assignment)}/checkins`, method: "PUT", lists: ["passenger_ids"], failure: "No pudimos registrar el check-in." },
+  rooming_prefill: { path: () => "/ops/rooming/prefill", method: "POST", fields: ["reservation"], failure: "No pudimos prellenar la rooming list." },
   assign_confirm: { path: (assignment) => `/ops/assignments/${id(assignment)}/confirm`, method: "POST", failure: "No pudimos registrar la confirmación." },
   assign_release: { path: (assignment) => `/ops/assignments/${id(assignment)}/release`, method: "POST", failure: "No pudimos liberar los recursos." },
-  guide_save: { path: (resource) => (resource ? `/ops/resources/guide/${id(resource)}` : "/ops/resources/guide"), method: "POST", fields: ["full_name", "license_number", "rating", "phone", "status"], lists: ["languages"], failure: "No pudimos guardar el guía." },
-  driver_save: { path: (resource) => (resource ? `/ops/resources/driver/${id(resource)}` : "/ops/resources/driver"), method: "POST", fields: ["full_name", "license_number", "license_class", "license_expires_on", "phone", "status"], failure: "No pudimos guardar el conductor." },
+  alternative_accept: { path: (response) => `/ops/supplier-responses/${id(response)}/accept`, method: "POST", fields: ["confirmation_code", "note"], failure: "No pudimos aceptar la alternativa." },
+  alternative_reject: { path: (response) => `/ops/supplier-responses/${id(response)}/reject`, method: "POST", fields: ["note"], failure: "No pudimos registrar la respuesta." },
+  guide_save: { path: (resource) => (resource ? `/ops/resources/guide/${id(resource)}` : "/ops/resources/guide"), method: "POST", fields: ["full_name", "license_number", "rating", "phone", "status", "user_id"], lists: ["languages"], failure: "No pudimos guardar el guía." },
+  driver_save: { path: (resource) => (resource ? `/ops/resources/driver/${id(resource)}` : "/ops/resources/driver"), method: "POST", fields: ["full_name", "license_number", "license_class", "license_expires_on", "phone", "status", "user_id"], failure: "No pudimos guardar el conductor." },
   vehicle_save: { path: (resource) => (resource ? `/ops/resources/vehicle/${id(resource)}` : "/ops/resources/vehicle"), method: "POST", fields: ["plate", "vehicle_type", "capacity", "provider_id", "soat_expires_on", "status"], failure: "No pudimos guardar el vehículo." },
   resource_archive: { path: (target) => `/ops/resources/${target}`, method: "DELETE", failure: "No pudimos dar de baja el recurso." },
   rooming_create: { path: () => "/ops/rooming-lists", method: "POST", fields: ["reservation_code", "hotel_id", "check_in", "check_out"], failure: "No pudimos crear la rooming list." },
@@ -53,6 +57,7 @@ const STEPS: Record<string, Step> = {
   voucher_version: { path: (code) => `/ops/vouchers/${id(code)}/versions`, method: "POST", fields: ["reason"], failure: "No pudimos emitir la nueva versión." },
   voucher_redeem: { path: (code) => `/ops/vouchers/${id(code)}/redeem`, method: "POST", failure: "No pudimos marcarlo como utilizado." },
   voucher_void: { path: (code) => `/ops/vouchers/${id(code)}/void`, method: "POST", fields: ["reason"], failure: "No pudimos anular el voucher." },
+  feedback_incident: { path: (code) => `/pax-feedback/${id(code)}/incident`, method: "POST", fields: ["title", "type", "severity", "description"], failure: "No pudimos crear la incidencia." },
   incident_create: { path: () => "/ops/incidents", method: "POST", fields: ["order_code", "type", "severity", "title", "description", "assignee_id"], failure: "No pudimos registrar la incidencia." },
   incident_update: { path: (code) => `/ops/incidents/${id(code)}`, method: "PATCH", fields: ["type", "severity", "title", "description", "assignee_id"], failure: "No pudimos guardar los cambios." },
   incident_take: { path: (code) => `/ops/incidents/${id(code)}/take`, method: "POST", failure: "No pudimos tomar la incidencia." },
@@ -122,5 +127,6 @@ export async function opsStep(_state: OpsState, form: FormData): Promise<OpsStat
     return { message: firstError ?? result.error?.message ?? step.failure, done: false };
   }
   revalidatePath("/operaciones", "layout");
+  if (name === "feedback_incident") revalidatePath("/reservas", "layout");
   return { message: null, done: true };
 }

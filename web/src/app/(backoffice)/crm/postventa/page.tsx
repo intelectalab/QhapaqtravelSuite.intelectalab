@@ -1,4 +1,4 @@
-import { BarChart3, ClipboardList, Gauge, HeartHandshake, LifeBuoy, PlaneLanding, Smile, TrendingUp } from "lucide-react";
+import { BarChart3, ClipboardList, Gauge, HeartHandshake, LifeBuoy, PlaneLanding, Repeat2, Smile, TrendingUp } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -10,14 +10,19 @@ import { InfoTip } from "@/components/ui/InfoTip";
 import { TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
 import { CaseFormAction, SurveyAction } from "@/features/aftersales/AfterSalesForms";
 import { CasesTable, ScoreBadge, SurveysTable } from "@/features/aftersales/AfterSalesTables";
-import type { AfterSalesOverview } from "@/lib/aftersales";
+import { LoyaltyTable } from "@/features/aftersales/LoyaltyTable";
+import type { AfterSalesOverview, LoyaltyMeta, LoyaltyRow } from "@/lib/aftersales";
 import { formatDate, formatMoney } from "@/lib/format";
+import { getCollection } from "@/lib/server/admin";
 import { getResource } from "@/lib/server/resource";
 
 export const metadata: Metadata = { title: "Postventa y fidelización" };
 
 export default async function PostventaPage() {
-  const overview = await getResource<AfterSalesOverview>("/crm/after-sales", "No pudimos cargar postventa.");
+  const [overview, loyalty] = await Promise.all([
+    getResource<AfterSalesOverview>("/crm/after-sales", "No pudimos cargar postventa."),
+    getCollection<LoyaltyRow, LoyaltyMeta>("/crm/loyalty/segments", "No pudimos cargar la segmentación."),
+  ]);
 
   if (!overview) {
     return <PageHeader title="Postventa y fidelización" subtitle="Tu rol no tiene acceso a esta sección." />;
@@ -42,15 +47,15 @@ export default async function PostventaPage() {
         }
       />
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <TintTile icon={PlaneLanding} tone="t1" label="Viajes por cerrar" value={kpis.to_close} note="Sin encuesta" />
-        <TintTile icon={Gauge} tone={kpis.nps !== null && kpis.nps >= 50 ? "ok" : kpis.nps !== null && kpis.nps < 0 ? "bad" : "sun"} label="NPS últimos 12 meses" value={kpis.nps ?? "Sin datos"} note={`${kpis.promoters} promotores · ${kpis.detractors} detractores`} />
-        <TintTile icon={Smile} tone="violet" label="Puntaje promedio" value={kpis.average ?? "Sin datos"} note={`${kpis.responses} respuestas`} />
-        <TintTile icon={LifeBuoy} tone="bad" label="Casos abiertos" value={kpis.open_cases} note="Reclamos y quejas en curso" />
+        <TintTile icon={PlaneLanding} tone="t1" label="Viajes por cerrar" value={kpis.to_close} note="Sin encuesta" info={<p>Viajes completados en los últimos 90 días, o por terminar, que todavía no tienen encuesta de satisfacción.</p>} />
+        <TintTile icon={Gauge} tone={kpis.nps !== null && kpis.nps >= 50 ? "ok" : kpis.nps !== null && kpis.nps < 0 ? "bad" : "sun"} label="NPS últimos 12 meses" value={kpis.nps ?? "Sin datos"} note="% promotores menos % detractores" info={<p>Encuestas respondidas en los últimos 12 meses de los clientes de tu cartera. Promotores puntúan 9 o 10; detractores, de 0 a 6.</p>} />
+        <TintTile icon={Smile} tone="violet" label="Puntaje promedio" value={kpis.average ?? "Sin datos"} note={`${kpis.responses} respuestas`} info={<p>Promedio de 0 a 10 de las mismas encuestas de los últimos 12 meses.</p>} />
+        <TintTile icon={LifeBuoy} tone="bad" label="Casos abiertos" value={kpis.open_cases} note="Reclamos y quejas en curso" info={<p>Casos de postventa abiertos o en atención, incluidos los que abre una encuesta de 6 o menos.</p>} />
       </section>
 
       <section className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <Card>
-          <TintCardTitle icon={BarChart3} title="Distribución de puntajes" aside={`${kpis.responses} respuestas`} />
+          <TintCardTitle icon={BarChart3} title="Distribución de puntajes" aside="Últimos 12 meses" />
           {kpis.responses > 0 ? (
             <BarChart data={overview.distribution.map((item) => ({ label: String(item.score), value: item.count, caption: String(item.count), detail: `${item.count} ${item.count === 1 ? "respuesta" : "respuestas"} con ${item.score}`, highlight: item.score >= 9 }))} height={130} />
           ) : (
@@ -105,12 +110,23 @@ export default async function PostventaPage() {
         )}
       </Card>
 
+      {loyalty && (
+        <Card className="mb-5">
+          <TintCardTitle
+            icon={Repeat2}
+            title="Segmentación y recompra"
+            aside={<InfoTip>Clientes de tu cartera con su última compra, lo comprado en soles (reservas vigentes), los destinos que ya visitaron (productos reservados y oportunidades ganadas) y su último NPS. La recompra crea una oportunidad en Calificación con origen Fidelización.</InfoTip>}
+          />
+          <LoyaltyTable rows={loyalty.data} meta={loyalty.meta} owners={overview.owners} />
+        </Card>
+      )}
+
       <Card className="mb-5">
-        <TintCardTitle icon={ClipboardList} title="Casos de postventa" aside={`${overview.cases.length} registrados`} />
+        <TintCardTitle icon={ClipboardList} title="Casos de postventa" />
         <CasesTable overview={overview} />
       </Card>
       <Card>
-        <TintCardTitle icon={Smile} title="Encuestas" aside={`${overview.surveys.length} en total`} />
+        <TintCardTitle icon={Smile} title="Encuestas" />
         <SurveysTable overview={overview} />
       </Card>
     </>

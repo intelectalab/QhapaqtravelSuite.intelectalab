@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, CalendarDays, ClipboardList, Home, LogOut, Moon, Sun, Tags, Wallet, type LucideIcon } from "lucide-react";
+import { BedDouble, Building2, CalendarDays, ClipboardList, Home, LogOut, Moon, Siren, Sun, Tags, Ticket, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -24,9 +24,12 @@ function navFor(session: SupplierSession): NavItem[] {
   return [
     { href: "/proveedor", label: "Inicio", icon: Home },
     { href: "/proveedor/solicitudes", label: "Solicitudes", icon: ClipboardList, count: session.counts.pending },
+    { href: "/proveedor/rooming", label: "Rooming", icon: BedDouble, count: session.counts.rooming },
+    { href: "/proveedor/vouchers", label: "Vouchers", icon: Ticket },
     { href: "/proveedor/calendario", label: "Calendario", icon: CalendarDays },
-    { href: "/proveedor/tarifas", label: "Tarifas", icon: Tags },
     { href: "/proveedor/pagos", label: "Pagos", icon: Wallet },
+    { href: "/proveedor/incidencias", label: "Incidencias", icon: Siren, count: session.counts.incidents },
+    { href: "/proveedor/tarifas", label: "Tarifas", icon: Tags },
     { href: "/proveedor/empresa", label: "Mi empresa", icon: Building2 },
   ];
 }
@@ -87,7 +90,7 @@ export function SupplierShell({ session, children }: { session: SupplierSession 
               <span className="block truncate text-[12px] text-fg-3">{session ? `Extranet de ${session.agency.name}` : "Extranet de proveedores"}</span>
             </span>
           </Link>
-          <nav aria-label="Secciones" className="ml-6 hidden items-center gap-1 xl:flex">
+          <nav aria-label="Secciones" className="ml-6 hidden items-center gap-1 2xl:flex">
             {items.map((item) => (
               <NavLink key={item.href} item={item} active={isActive(item.href)} />
             ))}
@@ -107,7 +110,7 @@ export function SupplierShell({ session, children }: { session: SupplierSession 
           </div>
         </div>
         {items.length > 0 && (
-          <nav aria-label="Secciones" className="scroll-thin mx-auto flex max-w-[1280px] gap-1 overflow-x-auto px-4 pb-2 sm:px-6 xl:hidden">
+          <nav aria-label="Secciones" className="scroll-thin mx-auto flex max-w-[1280px] gap-1 overflow-x-auto px-4 pb-2 sm:px-6 2xl:hidden">
             {items.map((item) => (
               <NavLink key={item.href} item={item} active={isActive(item.href)} />
             ))}
@@ -120,7 +123,7 @@ export function SupplierShell({ session, children }: { session: SupplierSession 
           <span>Solo se muestran datos vinculados a su empresa. Los precios de venta de la agencia no forman parte de la extranet.</span>
           <span className="flex items-center gap-1.5">
             <BrandMark size={14} />
-            Qhapaq Travel Suite
+            KipuControl
           </span>
         </div>
       </footer>

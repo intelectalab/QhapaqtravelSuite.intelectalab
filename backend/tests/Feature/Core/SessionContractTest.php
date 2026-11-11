@@ -69,7 +69,7 @@ it('auth/invitations/{token}/accept exige Idempotency-Key y repite la misma resp
 });
 
 it('platform/auth/login entrega un token con MFA pendiente y no acepta usuarios de agencia', function () {
-    $login = $this->postJson('/api/v1/platform/auth/login', ['email' => 'ops@qhapaq.cloud', 'password' => (string) config('demo.password')]);
+    $login = $this->postJson('/api/v1/platform/auth/login', ['email' => 'ops@kipucontrol.com', 'password' => (string) config('demo.password')]);
 
     $login->assertOk()->assertJsonPath('data.realm', 'platform')->assertJsonPath('data.mfa_required', true);
     expect($this->postJson('/api/v1/platform/auth/login', ['email' => 'lparedes@andeshorizonte.pe', 'password' => (string) config('demo.password')]))->toBeApiError(401);

@@ -2,14 +2,17 @@
 
 import { Archive, Plus, UserRound } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { claimStep, saveClaim } from "@/app/(backoffice)/crm/reclamaciones/actions";
 import { RowIcon } from "@/components/table/RowActions";
 import { Badge } from "@/components/ui/Badge";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
+import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
+import { GuardianFields } from "@/features/claims/GuardianFields";
 import { BOOK_STATUS_TONE, DEADLINE, DECISIONS, DOC_TYPES, type ClaimSheet, type ClaimsOverview } from "@/lib/claims";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
@@ -22,6 +25,30 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <span className="text-fg-3">{label}</span>
       <span className="min-w-0">{children}</span>
     </div>
+  );
+}
+
+function MinorConsumerFields() {
+  const [minor, setMinor] = useState(false);
+  return (
+    <>
+      <SwitchField label="El consumidor es menor de edad" name="is_minor" checked={minor} onCheckedChange={setMinor} hint="Se exigen el nombre y el documento del padre, madre o apoderado." />
+      {minor && <GuardianFields />}
+    </>
+  );
+}
+
+function ConsentField() {
+  const [accepted, setAccepted] = useState(false);
+  return <SwitchField label="Acepta recibir la respuesta por correo" name="email_consent" checked={accepted} onCheckedChange={setAccepted} hint="Requisito legal: la constancia y la respuesta se envían al correo consignado." />;
+}
+
+function GuardianSummary({ sheet }: { sheet: ClaimSheet }) {
+  const guardian = sheet.consumer.guardian;
+  return (
+    <p className="rounded-xl bg-surface-2 px-3.5 py-2.5 text-[13px]">
+      <b>Menor de edad.</b> {guardian ? `${guardian.relation ?? "Apoderado"}: ${guardian.name ?? ""} · ${[guardian.doc_type, guardian.doc_number].filter(Boolean).join(" ")}` : "Sin datos del apoderado."}
+    </p>
   );
 }
 
@@ -60,10 +87,11 @@ export function ClaimFormAction({ overview, sheet }: { overview: ClaimsOverview;
             <TextField label="Número" name="consumer_doc_number" required defaultValue={sheet?.consumer.doc_number ?? undefined} readOnly={Boolean(sheet)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <TextField label="Correo" name="consumer_email" type="email" defaultValue={sheet?.consumer.email ?? undefined} readOnly={Boolean(sheet)} hint={sheet ? undefined : "Ahí se envía la constancia y la respuesta."} />
+            <TextField label="Correo" name="consumer_email" type="email" required={!sheet} defaultValue={sheet?.consumer.email ?? undefined} readOnly={Boolean(sheet)} hint={sheet ? undefined : "Ahí se envía la constancia y la respuesta."} />
             <TextField label="Teléfono" name="consumer_phone" defaultValue={sheet?.consumer.phone ?? undefined} readOnly={Boolean(sheet)} />
           </div>
-          <TextField label="Dirección" name="consumer_address" defaultValue={sheet?.consumer.address ?? undefined} readOnly={Boolean(sheet)} />
+          <TextField label="Domicilio" name="consumer_address" required={!sheet} minLength={5} defaultValue={sheet?.consumer.address ?? undefined} readOnly={Boolean(sheet)} />
+          {sheet ? sheet.consumer.is_minor && <GuardianSummary sheet={sheet} /> : <MinorConsumerFields />}
           <p className="text-[12.5px] font-semibold text-fg-3">Bien contratado</p>
           <ChoiceGroup label="Tipo de bien" name="good_kind" options={[{ value: "Servicio", label: "Servicio" }, { value: "Producto", label: "Producto" }]} defaultValue={sheet?.good?.kind ?? "Servicio"} />
           <TextField label="Descripción" name="good_description" required defaultValue={sheet?.good?.description} />
@@ -71,10 +99,11 @@ export function ClaimFormAction({ overview, sheet }: { overview: ClaimsOverview;
             <TextField label="Monto reclamado" name="good_amount" type="number" step="0.01" min="0" defaultValue={sheet?.good ? String(sheet.good.amount) : undefined} />
             <ChoiceGroup label="Moneda" name="good_currency" options={[{ value: "PEN", label: "S/" }, { value: "USD", label: "US$" }]} defaultValue={sheet?.good?.currency ?? "PEN"} />
           </div>
-          <TextArea label="Detalle" name="detail" rows={4} required minLength={10} defaultValue={sheet?.detail} readOnly={Boolean(sheet)} />
+          <TextArea label="Detalle" name="detail" rows={4} required minLength={20} defaultValue={sheet?.detail} readOnly={Boolean(sheet)} />
           <TextArea label="Pedido del consumidor" name="request" rows={2} required minLength={5} defaultValue={sheet?.request ?? undefined} readOnly={Boolean(sheet)} />
           <SelectField label="Cliente (opcional)" name="client" options={overview.options.clients} defaultValue={sheet?.client?.code ?? ""} placeholder="Vincular a un cliente" />
           <SelectField label="Reserva (opcional)" name="reservation" options={overview.options.reservations} defaultValue={sheet?.reservation ?? ""} placeholder="Vincular a una reserva" />
+          {!sheet && <ConsentField />}
         </>
       )}
     </PanelAction>
@@ -110,8 +139,16 @@ export function ClaimDetailAction({ sheet, canManage }: { sheet: ClaimSheet; can
           <section className="rounded-xl bg-surface-2 px-3.5 py-1">
             <Row label="Consumidor">
               {sheet.consumer.name}
+              {sheet.consumer.is_minor && <span className="ml-2 align-middle"><Badge tone="warn" dot={false}>Menor de edad</Badge></span>}
               <span className="block text-[12px] text-fg-3">{[sheet.consumer.doc_type, sheet.consumer.doc_number].filter(Boolean).join(" ")} · {sheet.consumer.email ?? sheet.consumer.phone ?? "sin contacto"}</span>
             </Row>
+            {sheet.consumer.guardian && (
+              <Row label={sheet.consumer.guardian.relation ?? "Apoderado"}>
+                {sheet.consumer.guardian.name}
+                <span className="block text-[12px] text-fg-3">{[sheet.consumer.guardian.doc_type, sheet.consumer.guardian.doc_number].filter(Boolean).join(" ")}</span>
+              </Row>
+            )}
+            {sheet.consumer.address && <Row label="Domicilio">{sheet.consumer.address}</Row>}
             {sheet.good && <Row label="Bien">{sheet.good.description}{sheet.good.amount > 0 ? ` · ${formatMoney(sheet.good.amount, sheet.good.currency)}` : ""}</Row>}
             <Row label="Recibida">{formatDateTime(sheet.received_at)}</Row>
             {sheet.due_date && <Row label="Responder hasta">{formatDate(sheet.due_date)}</Row>}

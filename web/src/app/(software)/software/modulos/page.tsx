@@ -9,7 +9,7 @@ import { MODULE_AREAS, MODULE_SCREEN_COUNT, trialDays } from "@/lib/software";
 
 export const metadata: Metadata = {
   title: "Módulos",
-  description: "CRM, catálogo turístico, cotizaciones, reservas, operaciones, finanzas, canales y administración: los módulos de Qhapaq Travel Suite.",
+  description: "CRM, catálogo turístico, cotizaciones, reservas, operaciones, finanzas, canales y administración: los módulos de KipuControl.",
 };
 
 export default async function ModulosPage() {

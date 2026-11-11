@@ -28,18 +28,9 @@ final class WeeklyManagementReport
         $current = $this->period($from, $to);
         $previous = $this->period($previousFrom, $previousFrom->addDays(6));
         $tenant = $this->context->tenant();
-        $branding = (array) (((array) $tenant->settings)['branding'] ?? []);
 
         return [
-            'agency' => [
-                'name' => (string) $tenant->commercial_name,
-                'legal_name' => (string) $tenant->legal_name,
-                'ruc' => (string) $tenant->ruc,
-                'initials' => (string) ($tenant->logo_initials ?: mb_substr((string) $tenant->commercial_name, 0, 2)),
-                'brand' => $this->color($branding['brand'] ?? null, '#b3263e'),
-                'accent' => $this->color($branding['accent'] ?? null, '#26357a'),
-                'ink' => $this->color($branding['menu'] ?? null, '#141a33'),
-            ],
+            'agency' => ReportBranding::for($tenant),
             'period' => [
                 'from' => $from->toDateString(),
                 'to' => $to->toDateString(),
@@ -217,10 +208,5 @@ final class WeeklyManagementReport
     private function label(CarbonImmutable $from, CarbonImmutable $to): string
     {
         return $from->locale('es')->isoFormat('D [de] MMMM').' al '.$to->locale('es')->isoFormat('D [de] MMMM [de] YYYY');
-    }
-
-    private function color(?string $value, string $fallback): string
-    {
-        return is_string($value) && preg_match('/^#[0-9a-fA-F]{6}$/', $value) === 1 ? $value : $fallback;
     }
 }

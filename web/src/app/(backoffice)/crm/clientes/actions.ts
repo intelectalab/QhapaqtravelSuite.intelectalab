@@ -40,6 +40,10 @@ const payload = (form: FormData) => ({
   segment: text(form, "segment"),
   owner_id: text(form, "owner_id"),
   tags: text(form, "tags") ?? "",
+  contact_name: text(form, "contact_name"),
+  contact_role: text(form, "contact_role"),
+  contact_email: text(form, "contact_email"),
+  contact_phone: text(form, "contact_phone"),
   confirm_duplicate: form.get("confirm_duplicate") === "1",
 });
 

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { formValues, sendStep, type StepResult } from "@/lib/server/resource";
 
 const done = (result: StepResult) => {
-  if (result.done) revalidatePath("/canales/integracion-web");
+  if (result.done) revalidatePath("/canales/integracion-web", "layout");
   return result;
 };
 
@@ -23,4 +23,8 @@ export async function verifyDomain(_state: StepResult, form: FormData): Promise<
 
 export async function removeDomain(_state: StepResult, form: FormData): Promise<StepResult> {
   return done(await sendStep(`/channels/widget/domains/${encodeURIComponent(String(form.get("id") ?? ""))}`, "DELETE", {}, "No pudimos quitar el dominio."));
+}
+
+export async function rotateWidgetKey(_state: StepResult, form: FormData): Promise<StepResult> {
+  return done(await sendStep("/channels/widget/rotate-key", "POST", formValues(form, ["reason"]), "No pudimos regenerar la clave pública."));
 }

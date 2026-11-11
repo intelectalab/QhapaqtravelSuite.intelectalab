@@ -21,7 +21,7 @@ final class TenantNotice
             return false;
         }
 
-        $this->mail->send((string) $email, (string) $tenant->commercial_name, $subject, "Hola, equipo de {$tenant->commercial_name}:\n\n{$body}\n\nQhapaq Travel Suite");
+        $this->mail->send((string) $email, (string) $tenant->commercial_name, $subject, "Hola, equipo de {$tenant->commercial_name}:\n\n{$body}\n\nKipuControl");
 
         return true;
     }

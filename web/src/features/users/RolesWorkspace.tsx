@@ -1,7 +1,7 @@
 "use client";
 
 import * as Switch from "@radix-ui/react-switch";
-import { CircleAlert, Copy, KeyRound, Pencil, Plus, ShieldCheck, Smartphone, Trash2, Users } from "lucide-react";
+import { CircleAlert, Copy, Pencil, Plus, ShieldCheck, Smartphone, Trash2, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useOptimistic, useState, useTransition } from "react";
 import { createRole, deleteRole, setRolePermissions, updateRole, type RoleActionState } from "@/app/(backoffice)/admin/roles/actions";
@@ -103,7 +103,7 @@ function PermissionSwitch({ checked, onChange, disabled, label, code }: { checke
 
 export function RolesWorkspace({ roles, catalog, initial: initialCode, detail }: { roles: TeamRole[]; catalog: PermissionModule[]; initial?: string; detail?: RoleDetail | null }) {
   const router = useRouter();
-  const [selected, setSelected] = useState(initialCode && roles.some((role) => role.code === initialCode) ? initialCode : roles[0]?.code);
+  const selected = initialCode && roles.some((role) => role.code === initialCode) ? initialCode : roles[0]?.code;
   const role = roles.find((item) => item.code === selected) ?? roles[0];
   const [pending, startTransition] = useTransition();
   const [notice, setNotice] = useState<string | null>(null);
@@ -122,49 +122,10 @@ export function RolesWorkspace({ roles, catalog, initial: initialCode, detail }:
     });
   };
 
-  const groups = (Object.keys(SCOPE_LABEL) as RoleScope[]).map((scope) => ({ scope, items: roles.filter((item) => item.scope === scope) })).filter((group) => group.items.length > 0);
   const Icon = SCOPE_ICON[role.scope];
 
   return (
-    <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
-      <nav aria-label="Roles" className="flex flex-col gap-4">
-        {groups.map((group) => (
-          <section key={group.scope}>
-            <p className="mb-1.5 px-1 text-[12px] font-semibold text-fg-3">{SCOPE_LABEL[group.scope]}</p>
-            <ul className="flex flex-col gap-1.5">
-              {group.items.map((item) => (
-                <li key={item.code}>
-                  <ToneScope tone={SCOPE_TONE[item.scope]}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelected(item.code);
-                        setNotice(null);
-                        router.replace(`/admin/roles?rol=${item.code}`, { scroll: false });
-                      }}
-                      className={cn(
-                        "group/role flex w-full items-center gap-3 rounded-tile border px-3 py-2.5 text-left transition-[background-color,border-color,transform,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-                        item.code === role.code ? "border-[var(--tint)] bg-[color-mix(in_srgb,var(--tint)_10%,var(--surface))] shadow-[0_10px_22px_-16px_var(--tint)]" : "border-line bg-surface hover:-translate-y-0.5 hover:border-[color-mix(in_srgb,var(--tint)_40%,transparent)]",
-                      )}
-                    >
-                      <span className={cn("grid h-9 w-9 flex-none place-items-center rounded-[10px] transition-transform duration-300 group-hover/role:-rotate-6 group-hover/role:scale-110", item.code === role.code ? "bg-[var(--tint)] text-white" : "bg-[color-mix(in_srgb,var(--tint)_12%,transparent)] text-[var(--tint)]")}>
-                        <KeyRound size={16} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <b className="block truncate text-[13.5px] font-semibold">{item.name}</b>
-                        <span className="text-[12px] text-fg-3">
-                          {item.users === 1 ? "1 usuario" : `${item.users} usuarios`} · {item.permissions.length} permisos{item.custom ? " · propio" : ""}
-                        </span>
-                      </span>
-                    </button>
-                  </ToneScope>
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))}
-      </nav>
-
+    <div>
       <ToneScope tone={SCOPE_TONE[role.scope]}>
         <section key={role.code} className="overflow-hidden rounded-card border border-line bg-surface shadow-card motion-safe:animate-[drop-in_260ms_ease-out_backwards]">
           <header className="relative flex flex-wrap items-center gap-3 overflow-hidden bg-[var(--tint)] px-5 py-4 text-white">

@@ -1,6 +1,6 @@
 "use client";
 
-import { BedDouble, CalendarDays, CircleCheck, Hotel, Pencil, Plus, Send, Trash2, TriangleAlert, Users } from "lucide-react";
+import { BedDouble, CircleCheck, Hotel, Pencil, Plus, Send, Trash2, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { RowIcon } from "@/components/table/RowActions";
@@ -11,13 +11,53 @@ import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { ROOM_STATUS, type RoomingList, type RoomingOverview, type RoomingRoom } from "@/lib/operations";
 import { statusLabel, statusTone, toneStyle } from "@/lib/tone";
 import { QuickError, useQuickStep } from "./OrderActions";
 import { ConfirmNote, OpsStep, ToggleChips } from "./OpsStep";
+
+export function RoomingPrefillAction({ reservation, legs }: { reservation: string; legs: number }) {
+  return (
+    <OpsStep
+      step="rooming_prefill"
+      formKey={`prefill-${reservation}`}
+      label="Prellenar rooming desde la reserva web"
+      icon={<Wand2 size={15} />}
+      size="sm"
+      variant="primary"
+      title="Prellenar rooming desde la reserva web"
+      description={`${reservation} · ${legs === 1 ? "1 ciudad" : `${legs} ciudades`} con alojamiento`}
+      submitLabel="Prellenar"
+    >
+      <input type="hidden" name="reservation" value={reservation} />
+      <ConfirmNote>Se crea una rooming list en borrador por ciudad, con las habitaciones que eligió el cliente y numeración provisional. Los adultos se reparten primero, luego los niños; cada infante va con un adulto. Revisa los números de habitación y confírmala antes de enviarla.</ConfirmNote>
+    </OpsStep>
+  );
+}
+
+export function RoomingPrefillNotice({ items, canModify }: { items: RoomingOverview["prefill"]; canModify: boolean }) {
+  if (items.length === 0) return null;
+  return (
+    <ul className="mb-5 flex flex-col gap-2">
+      {items.map((item, index) => (
+        <li key={item.reservation} style={{ ...toneStyle("info"), animationDelay: `${index * 50}ms` }} className="lift flex animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] flex-wrap items-center gap-3 rounded-tile border border-[color-mix(in_srgb,var(--tint)_25%,transparent)] bg-[color-mix(in_srgb,var(--tint)_7%,var(--surface))] px-3.5 py-3">
+          <span className="grid h-9 w-9 flex-none place-items-center rounded-[10px] bg-[var(--tint)] text-white">
+            <Wand2 size={16} />
+          </span>
+          <span className="min-w-0 flex-1 text-[13px]">
+            <b className="block font-semibold">
+              Reserva web <Link href={`/reservas/${item.reservation}`} className="hover:underline">{item.reservation}</Link> sin rooming list
+            </b>
+            <span className="text-fg-2">{item.legs.map((leg) => `${leg.city} · ${leg.hotel} (${leg.rooms} hab.)`).join(" · ")}</span>
+          </span>
+          {canModify && <RoomingPrefillAction reservation={item.reservation} legs={item.legs.length} />}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function RoomingCreateAction({ candidates, hotels }: { candidates: RoomingOverview["candidates"]; hotels: RoomingOverview["hotels"] }) {
   const [reservation, setReservation] = useState(candidates[0]?.value ?? "");
@@ -169,16 +209,28 @@ export function RoomingBoard({ data }: { data: RoomingOverview }) {
               <Link href={`/reservas/${list.reservation.code}`} className="hover:text-accent hover:underline">{list.reservation.code}</Link> · {list.reservation.title}
             </p>
             {list.sent_at && <p className="mt-1 text-[12.5px] text-fg-3">Enviada {formatDateTime(list.sent_at, false)}{list.sent_by ? ` por ${list.sent_by}` : ""} · versión {list.sent_version}</p>}
+            {list.sent_at && (
+              <p className={cn("mt-0.5 text-[12.5px] font-medium", list.hotel_confirmed_at ? "text-ok" : list.hotel_ack_at ? "text-t1" : "text-warn")}>
+                {list.hotel_confirmed_at ? `El hotel confirmó las habitaciones el ${formatDateTime(list.hotel_confirmed_at, false)}` : list.hotel_ack_at ? `El hotel acusó recibo el ${formatDateTime(list.hotel_ack_at, false)}` : "El hotel aún no acusa recibo"}
+              </p>
+            )}
           </div>
           {editable && <ListActions list={list} />}
         </div>
 
-        <section className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <TintTile icon={CalendarDays} tone="t1" variant="inline" label="Estadía" value={<span className="text-[15px]">{formatDate(list.check_in).replace(/ \d{4}$/, "")} al {formatDate(list.check_out)}</span>} note={list.nights === 1 ? "1 noche" : `${list.nights} noches`} />
-          <TintTile icon={BedDouble} tone="t4" variant="inline" label="Habitaciones" value={list.rooms.length} note={`${list.rooms.filter((room) => room.status === "confirmada").length} confirmadas por el hotel`} />
-          <TintTile icon={Users} tone="violet" variant="inline" label="Pasajeros ubicados" value={`${placed} de ${list.passengers.length}`} />
-          <TintTile icon={TriangleAlert} tone={list.warnings.some((warning) => warning.level === "bad") ? "bad" : "warn"} variant="inline" label="Avisos" value={list.warnings.length} note={list.warnings.length ? "Revisa antes de enviar" : "Todo en orden"} />
-        </section>
+        <dl className="mb-4 grid grid-cols-2 gap-2 lg:grid-cols-3">
+          {[
+            { label: "Estadía", value: `${formatDate(list.check_in).replace(/ \d{4}$/, "")} al ${formatDate(list.check_out)}`, note: list.nights === 1 ? "1 noche" : `${list.nights} noches` },
+            { label: "Habitaciones confirmadas", value: `${list.rooms.filter((room) => room.status === "confirmada").length} de ${list.rooms.length}`, note: list.rooms.some((room) => room.status === "observada") ? "Con observación del hotel" : "Según el hotel" },
+            { label: "Pasajeros ubicados", value: `${placed} de ${list.passengers.length}`, note: placed < list.passengers.length ? "Faltan ubicar" : "Todos con habitación" },
+          ].map((fact) => (
+            <div key={fact.label} className="rounded-[12px] bg-surface-2 px-3.5 py-2.5">
+              <dt className="text-[12px] text-fg-3">{fact.label}</dt>
+              <dd className="text-[15px] font-semibold">{fact.value}</dd>
+              <dd className="text-[12px] text-fg-3">{fact.note}</dd>
+            </div>
+          ))}
+        </dl>
 
         {list.warnings.length > 0 && (
           <ul className="mb-4 flex flex-wrap gap-2">

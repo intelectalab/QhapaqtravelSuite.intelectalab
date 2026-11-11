@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Domain\Admin\Actions;
 
 use App\Domain\Admin\Support\RuleParams;
+use App\Domain\Admin\Support\RuleTemplates;
 use App\Domain\Admin\Support\SettingsDirectory;
+use App\Domain\Booking\Rules\RuleResolver;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Jobs\SchedulePaxMessages;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -16,6 +19,8 @@ use Illuminate\Validation\ValidationException;
 final class ManageBookingRules
 {
     private const PLAN_RANK = ['Starter' => 1, 'Professional' => 2, 'Enterprise' => 3];
+
+    private const MESSAGE_RULES = ['R-PAX-MESSAGES', 'R-REVIEW-INVITE', 'R-COMPANIONS', 'R-DEPOSIT'];
 
     public function __construct(private readonly AuditLogger $audit, private readonly SettingsDirectory $settings) {}
 
@@ -39,6 +44,7 @@ final class ManageBookingRules
             DB::table('sys_booking_rules')->where('id', $rule->id)->update(['enabled' => $enabled, 'updated_by' => $actor->getKey(), 'updated_at' => now(), 'lock_version' => DB::raw('lock_version + 1')]);
             $this->audit->log('Regla de reserva', $code, $enabled ? 'activar' : 'desactivar', $enabled ? 'inactiva' : 'activa', $enabled ? 'activa' : 'inactiva');
         });
+        $this->reschedule($code);
     }
 
     public function params(string $code, array $input, User $actor): void
@@ -60,6 +66,15 @@ final class ManageBookingRules
             DB::table('sys_booking_rules')->where('id', $rule->id)->update(['params' => json_encode($clean), 'updated_by' => $actor->getKey(), 'updated_at' => now(), 'lock_version' => DB::raw('lock_version + 1')]);
             $this->audit->log('Regla de reserva', $code, 'editar_parametros', json_encode($current, JSON_UNESCAPED_UNICODE) ?: null, json_encode($clean, JSON_UNESCAPED_UNICODE) ?: null);
         });
+        $this->reschedule($code);
+    }
+
+    private function reschedule(string $code): void
+    {
+        if (in_array($code, self::MESSAGE_RULES, true)) {
+            RuleResolver::invalidate((string) DB::table('sys_booking_rules')->where('code', $code)->value('tenant_id'));
+            dispatch((new SchedulePaxMessages)->captureTenant())->afterCommit();
+        }
     }
 
     public function reset(?string $code, string $reason, User $actor): array
@@ -72,6 +87,31 @@ final class ManageBookingRules
             }
 
             return $codes;
+        });
+    }
+
+    public function applyTemplate(string $code, User $actor): array
+    {
+        $template = RuleTemplates::TEMPLATES[$code] ?? throw ValidationException::withMessages(['template' => 'Elige una plantilla de la lista.']);
+
+        return DB::transaction(function () use ($code, $template, $actor): array {
+            $rules = DB::table('sys_booking_rules')->where('is_custom', false)->whereIn('code', DB::table('sys_booking_rule_catalog')->select('code'))->orderBy('sort_order')->lockForUpdate()->get(['id', 'code', 'enabled', 'depends_on', 'min_plan']);
+            $changes = RuleTemplates::changes($template, $rules, $this->settings->planRank());
+
+            if ($changes['enable'] === [] && $changes['disable'] === []) {
+                throw ApiException::unprocessable('CR-03', 'Tus reglas ya coinciden con esta plantilla.');
+            }
+
+            foreach ([...$changes['enable'], ...$changes['disable']] as $rule) {
+                $enabled = in_array($rule, $changes['enable'], true);
+                DB::table('sys_booking_rules')->where('code', $rule)->update(['enabled' => $enabled, 'updated_by' => $actor->getKey(), 'updated_at' => now(), 'lock_version' => DB::raw('lock_version + 1')]);
+                $this->audit->log('Regla de reserva', $rule, $enabled ? 'activar' : 'desactivar', $enabled ? 'inactiva' : 'activa', ($enabled ? 'activa' : 'inactiva')." · plantilla {$template['name']}");
+            }
+
+            $total = count($changes['enable']) + count($changes['disable']);
+            $this->audit->log('Regla de reserva', $code, 'aplicar_plantilla', null, "{$template['name']} · {$total} ".($total === 1 ? 'cambio' : 'cambios'));
+
+            return ['template' => $code, 'enabled' => $changes['enable'], 'disabled' => $changes['disable'], 'blocked' => $changes['blocked']];
         });
     }
 

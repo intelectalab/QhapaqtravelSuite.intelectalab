@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
+    lockSeededBookings();
     Storage::fake((string) config('filesystems.default'));
 });
 

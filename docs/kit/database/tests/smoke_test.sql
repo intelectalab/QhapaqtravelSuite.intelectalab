@@ -83,7 +83,7 @@ end $$;
 -- resolución por host antes del contexto
 do $$ declare t uuid; begin
   set local role app_role;
-  select tenant_id into t from app_resolve_tenant_by_host('inca.qhapaq.app', 'qhapaq.app');
+  select tenant_id into t from app_resolve_tenant_by_host('inca.kipucontrol.app', 'kipucontrol.app');
   assert t = '22222222-2222-7222-8222-222222222222', 'resolución por host';
   raise notice 'OK resolución por host';
 end $$;

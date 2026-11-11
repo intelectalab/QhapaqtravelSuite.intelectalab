@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
+    lockSeededBookings();
     $this->withoutMiddleware(ThrottleRequests::class);
     Queue::fake();
     freezeBusinessToday();
@@ -169,14 +170,14 @@ function flujoReserva(array $flow): array
     actingAsSeed('U05');
     $placeholders = withinTenant(tenantA(), fn () => DB::table('booking_passengers')->where('reservation_id', $reservation->id)->orderBy('seq')->get());
     $people = [
-        ['full_name' => 'Valeria Gutiérrez Soto', 'pax_type' => 'ADT', 'doc_type' => 'DNI', 'doc_number' => '70451236', 'relationship' => 'Titular', 'is_lead' => true],
-        ['full_name' => 'Martín Rojas Delgado', 'pax_type' => 'ADT', 'doc_type' => 'DNI', 'doc_number' => '70451299', 'relationship' => 'Cónyuge / pareja'],
+        ['full_name' => 'Valeria Gutiérrez Soto', 'pax_type' => 'ADT', 'doc_type' => 'DNI', 'doc_number' => '70451236', 'nationality' => 'Peruana', 'birth_date' => '1990-05-12', 'relationship' => 'Titular', 'is_lead' => true],
+        ['full_name' => 'Martín Rojas Delgado', 'pax_type' => 'ADT', 'doc_type' => 'DNI', 'doc_number' => '70451299', 'nationality' => 'Peruana', 'birth_date' => '1988-11-30', 'relationship' => 'Cónyuge / pareja'],
     ];
     expect($placeholders)->toHaveCount(2);
     foreach ($placeholders as $index => $placeholder) {
         test()->putJson("/api/v1/reservations/{$code}/passengers/{$placeholder->id}", $people[$index], critical(reservationLock($code)))->assertOk();
     }
-    $extra = test()->postJson("/api/v1/reservations/{$code}/passengers", ['full_name' => 'Lucía Rojas Gutiérrez', 'pax_type' => 'INF', 'doc_type' => 'DNI', 'doc_number' => '90451200', 'relationship' => 'Hijo/a'], critical(reservationLock($code)))->assertCreated();
+    $extra = test()->postJson("/api/v1/reservations/{$code}/passengers", ['full_name' => 'Lucía Rojas Gutiérrez', 'pax_type' => 'INF', 'doc_type' => 'DNI', 'doc_number' => '90451200', 'nationality' => 'Peruana', 'birth_date' => '2025-12-01', 'relationship' => 'Hijo/a'], critical(reservationLock($code)))->assertCreated();
     expect($extra->json('data.is_placeholder'))->toBeFalse()
         ->and(withinTenant(tenantA(), fn () => DB::table('booking_passengers')->where('reservation_id', $reservation->id)->where('is_placeholder', true)->count()))->toBe(0);
 
@@ -539,7 +540,7 @@ function flujoSitio(): array
         ->and($pending['reservations'][0]['status'])->toBe('pendiente_pago');
     expect(test()->getJson("/api/v1/public/orders/{$order['code']}", siteOf()))->toBeApiError(404);
 
-    $paid = test()->postJson("/api/v1/public/orders/{$order['code']}/payments", [], [...$access, ...critical()])->assertOk()->json('data');
+    $paid = test()->postJson("/api/v1/public/orders/{$order['code']}/payments", ['method' => 'tarjeta', 'card_token' => 'tok_ok_1111', 'card_holder' => 'PAGO SANDBOX'], [...$access, ...critical()])->assertOk()->json('data');
     $reservation = $paid['reservations'][0]['code'];
 
     expect($paid['status'])->toBe('confirmado')

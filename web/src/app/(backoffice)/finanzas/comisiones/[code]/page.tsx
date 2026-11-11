@@ -1,4 +1,4 @@
-import { BadgePercent, Calculator, Coins, Scale } from "lucide-react";
+import { BadgePercent, Calculator, Coins, RefreshCw, Scale } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,6 +8,8 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
+import { Button } from "@/components/ui/Button";
+import { RecalculateCommissionAction } from "@/features/finance/Commissions";
 import { AuditCard, StatusHistoryCard } from "@/features/finance/FinanceDetailParts";
 import { cn } from "@/lib/cn";
 import type { CommissionDetail } from "@/lib/finance";
@@ -44,6 +46,25 @@ export default async function ComisionPage({ params }: PageProps<"/finanzas/comi
           </span>
         }
         subtitle={`${row.code} · ${row.beneficiary_kind === "asesor" ? "Asesor" : "Agencia aliada"}`}
+        actions={
+          row.can.recalculate && row.reservation && (row.status === "calculada" || row.status === "aprobada") ? (
+            <RecalculateCommissionAction
+              code={row.code}
+              lockVersion={row.lock_version}
+              status={row.status}
+              summary={[
+                { label: "Base actual", value: formatMoney(row.base, row.currency) },
+                { label: "Porcentaje actual", value: `${Number(row.pct)} %` },
+                ...(rule ? [{ label: "Con la regla vigente", value: formatMoney(rule.expected, row.currency), strong: true }] : [{ label: "Comisión actual", value: formatMoney(row.amount, row.currency), strong: true }]),
+              ]}
+              trigger={(show) => (
+                <Button variant="primary" icon={<RefreshCw size={16} />} onClick={show}>
+                  Recalcular
+                </Button>
+              )}
+            />
+          ) : undefined
+        }
       />
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <TintTile icon={Calculator} tone="t1" label="Base" value={formatMoney(row.base, row.currency)} />

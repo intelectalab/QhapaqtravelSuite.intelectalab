@@ -30,6 +30,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('health', HealthController::class)->name('health');
 
+foreach (glob(__DIR__.'/webhooks/*.php') ?: [] as $webhookRoutes) {
+    require $webhookRoutes;
+}
+
 Route::prefix('public')->middleware(['throttle:public', 'feature'])->name('public.')->group(function (): void {
     foreach (glob(__DIR__.'/public/*.php') ?: [] as $publicRoutes) {
         require $publicRoutes;
@@ -72,6 +76,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
             Route::get('crm/catalogs', [LeadController::class, 'catalogs'])->name('crm.catalogs');
             Route::get('crm/leads', [LeadController::class, 'index'])->name('crm.leads.index');
             Route::get('crm/advisors', [LeadController::class, 'advisors'])->name('crm.advisors');
+            Route::get('crm/leads/duplicates', [LeadController::class, 'duplicates'])->middleware('permission:crm.leads.manage')->name('crm.leads.duplicates');
             Route::get('crm/leads/{code}', [LeadController::class, 'show'])->name('crm.leads.show');
 
             Route::middleware('permission:crm.leads.manage')->group(function (): void {
@@ -82,6 +87,9 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
                 Route::post('crm/leads/{code}/status', [LeadController::class, 'status'])->name('crm.leads.status');
                 Route::post('crm/leads/{code}/qualify', [LeadController::class, 'qualify'])->name('crm.leads.qualify');
                 Route::post('crm/leads/{code}/discard', [LeadController::class, 'discard'])->name('crm.leads.discard');
+                Route::post('crm/leads/{code}/reopen', [LeadController::class, 'reopen'])->name('crm.leads.reopen');
+                Route::post('crm/leads/{code}/mark-duplicate', [LeadController::class, 'markDuplicate'])->name('crm.leads.mark-duplicate');
+                Route::post('crm/leads/{code}/merge', [LeadController::class, 'merge'])->name('crm.leads.merge');
                 Route::post('crm/leads/{code}/convert', [LeadController::class, 'convert'])->middleware('permission:crm.opportunities.manage')->name('crm.leads.convert');
             });
         });
@@ -147,6 +155,8 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
             Route::get('crm/activities', [ActivityController::class, 'index'])->name('crm.activities.index');
             Route::get('crm/activities/related-options', [ActivityController::class, 'options'])->name('crm.activities.options');
             Route::post('crm/activities', [ActivityController::class, 'store'])->name('crm.activities.store');
+            Route::get('crm/activities/{code}', [ActivityController::class, 'show'])->name('crm.activities.show');
+            Route::post('crm/activities/{code}/reassign', [ActivityController::class, 'reassign'])->middleware('permission:crm.records.reassign')->name('crm.activities.reassign');
             Route::post('crm/activities/{code}/complete', [ActivityController::class, 'complete'])->name('crm.activities.complete');
             Route::post('crm/activities/{code}/reschedule', [ActivityController::class, 'reschedule'])->name('crm.activities.reschedule');
             Route::patch('crm/activities/{code}', [ActivityController::class, 'update'])->name('crm.activities.update');
@@ -160,6 +170,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
             Route::get('crm/opportunities/{code}', [OpportunityController::class, 'show'])->name('crm.opportunities.show');
             Route::patch('crm/opportunities/{code}', [OpportunityController::class, 'update'])->name('crm.opportunities.update');
             Route::post('crm/opportunities/{code}/stage', [OpportunityController::class, 'stage'])->name('crm.opportunities.stage');
+            Route::post('crm/opportunities/{code}/reassign', [OpportunityController::class, 'reassign'])->middleware('permission:crm.records.reassign')->name('crm.opportunities.reassign');
         });
 
         Route::middleware('permission:quotes.view')->group(function (): void {

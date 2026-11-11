@@ -3,7 +3,7 @@
 import { ArrowLeft, ArrowRight, Check, CircleAlert, LoaderCircle, Pencil, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { addProductRate, createProductFromDraft, previewProductDraft, saveProductSection, setProductRateActive, type ProductSection, type WizardFailure } from "@/app/(backoffice)/catalogo/productos/wizard-actions";
+import { addProductRate, createProductFromDraft, previewProductDraft, removeProductRate, saveProductSection, setProductRateActive, updateProductRate, type ProductSection, type WizardFailure } from "@/app/(backoffice)/catalogo/productos/wizard-actions";
 import { Button } from "@/components/ui/Button";
 import { SidePanel } from "@/components/ui/SidePanel";
 import { StepIndicator } from "@/components/ui/StepIndicator";
@@ -139,6 +139,28 @@ export function ProductWizard({ options, initial, open, onOpenChange, initialSte
     setNotice(active ? "Tarifa activada" : "Tarifa desactivada");
   };
 
+  const updateRate = async (rate: ProductRateDraft, reason: string | null): Promise<boolean> => {
+    if (!saved) return false;
+    const result = await updateProductRate(saved.code, rate, reason);
+    if (!result.ok) {
+      fail(result.error, 5);
+      return false;
+    }
+    setSaved(result.data);
+    setErrors({});
+    setFailure(null);
+    setNotice("Tarifa guardada");
+    return true;
+  };
+
+  const removeRate = async (ref: string) => {
+    if (!saved) return;
+    const result = await removeProductRate(saved.code, ref);
+    if (!result.ok) return fail(result.error, 5);
+    setSaved(result.data);
+    setNotice("Tarifa quitada");
+  };
+
   const props = { draft, set, options, errors };
   const bodies: ReactNode[] = [
     <DefineStep key="1" {...props} creating={creating} />,
@@ -146,7 +168,7 @@ export function ProductWizard({ options, initial, open, onOpenChange, initialSte
     <DestinationStep key="3" {...props} />,
     <ComponentsStep key="4" {...props} review={review} />,
     <ItineraryStep key="5" {...props} />,
-    <RatesStep key="6" {...props} review={review} saved={saved ? saved.rates : null} onAdd={addRate} onToggle={toggleRate} />,
+    <RatesStep key="6" {...props} review={review} saved={saved ? saved.rates : null} onAdd={addRate} onToggle={toggleRate} onUpdate={updateRate} onRemove={removeRate} />,
     <SeasonsStep key="7" {...props} rates={rates} />,
     <AvailabilityStep key="8" {...props} />,
     <ContentStep key="9" {...props} />,

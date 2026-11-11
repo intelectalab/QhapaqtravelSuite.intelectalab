@@ -1,5 +1,6 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
+import { cache } from "react";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
 
@@ -35,3 +36,5 @@ export function formValues(form: FormData, fields: string[]): Record<string, unk
   }
   return body;
 }
+
+export const getCachedResource = cache(getResource);

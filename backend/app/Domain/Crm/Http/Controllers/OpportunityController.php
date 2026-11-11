@@ -7,6 +7,7 @@ namespace App\Domain\Crm\Http\Controllers;
 use App\Domain\Crm\Actions\OpportunityWorkflow;
 use App\Domain\Crm\Http\Requests\OpportunitySaveRequest;
 use App\Domain\Crm\Support\Advisors;
+use App\Domain\Crm\Support\CatalogInterest;
 use App\Domain\Crm\Support\OpportunityDirectory;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
@@ -41,7 +42,7 @@ final class OpportunityController
         return response()->json(['data' => $this->directory->find($this->user($request), $code), 'meta' => ['warnings' => $warnings]]);
     }
 
-    public function formOptions(Request $request, Advisors $advisors): JsonResponse
+    public function formOptions(Request $request, Advisors $advisors, CatalogInterest $interest): JsonResponse
     {
         $user = $this->user($request);
         $clients = Portfolio::scope(DB::table('crm_clients')->whereNull('deleted_at'), $user, 'owner_id')->orderBy('name')->get(['code', 'name', 'kind']);
@@ -50,12 +51,26 @@ final class OpportunityController
             'clients' => $clients,
             'advisors' => Portfolio::ownOnly($user) ? [] : $advisors->all()->values(),
             'can_reassign' => ! Portfolio::ownOnly($user),
+            'stages' => $this->directory->stages()->whereIn('code', OpportunityDirectory::OPEN)->values(),
+            'products' => $interest->products(),
         ]]);
     }
 
     public function store(OpportunitySaveRequest $request, OpportunityWorkflow $workflow): JsonResponse
     {
         return response()->json(['data' => ['code' => $workflow->create($request->validated(), $this->user($request))]], 201);
+    }
+
+    public function reassign(Request $request, string $code, OpportunityWorkflow $workflow): JsonResponse
+    {
+        $data = $request->validate([
+            'owner_id' => ['required', 'uuid'],
+            'note' => ['nullable', 'string', 'max:300'],
+            'lock_version' => ['nullable', 'integer'],
+        ], ['owner_id.required' => 'Elige el nuevo responsable.']);
+        $workflow->reassign($code, $data['owner_id'], $data['note'] ?? null, isset($data['lock_version']) ? (int) $data['lock_version'] : null, $this->user($request));
+
+        return response()->json(['data' => $this->directory->find($this->user($request), $code)]);
     }
 
     public function update(OpportunitySaveRequest $request, string $code, OpportunityWorkflow $workflow): JsonResponse

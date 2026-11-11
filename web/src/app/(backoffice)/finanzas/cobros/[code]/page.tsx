@@ -1,4 +1,4 @@
-import { Bell, CalendarClock, HandCoins, Receipt, Wallet } from "lucide-react";
+import { Bell, CalendarClock, FilePlus2, HandCoins, Receipt, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -9,7 +9,10 @@ import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { MiniTable, ProgressBar } from "@/components/ui/MiniTable";
 import { TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
+import { Button } from "@/components/ui/Button";
 import { AuditCard } from "@/features/finance/FinanceDetailParts";
+import { IssueInvoiceAction } from "@/features/finance/Invoices";
+import { RegisterPaymentAction, RemindAction } from "@/features/finance/Receivables";
 import type { ReceivableDetail } from "@/lib/finance";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { DOC_TYPE } from "@/lib/reservations";
@@ -27,6 +30,8 @@ export default async function CuotaPage({ params }: PageProps<"/finanzas/cobros/
   const { code } = await params;
   const row = await getReceivable(code);
   const paidPct = Number(row.amount) > 0 ? (Number(row.paid) / Number(row.amount)) * 100 : 0;
+  const open = row.status !== "pagada" && row.status !== "cancelada" && Number(row.balance) > 0;
+  const payable = { code: row.code, concept: row.concept, balance: Number(row.balance), currency: row.currency, fx_rate: row.currency === "PEN" ? null : Number(row.fx_rate), client: { name: row.client.name } };
 
   return (
     <ToneScope tone={statusTone(row.status)}>
@@ -45,6 +50,15 @@ export default async function CuotaPage({ params }: PageProps<"/finanzas/cobros/
           </span>
         }
         subtitle={`${row.code} · ${row.client.name}`}
+        actions={
+          open || (row.can.invoice && Number(row.paid) > 0 && row.status !== "cancelada") ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {open && row.can.register && <RemindAction row={payable} trigger={(show) => <Button variant="secondary" icon={<Bell size={16} />} onClick={show}>Recordatorio</Button>} />}
+              {row.can.invoice && Number(row.paid) > 0 && row.status !== "cancelada" && <IssueInvoiceAction code={row.code} trigger={(show) => <Button variant="secondary" icon={<FilePlus2 size={16} />} onClick={show}>Emitir comprobante</Button>} />}
+              {open && row.can.register && <RegisterPaymentAction row={payable} methods={row.methods} today={row.today} usdRate={row.usd_rate} trigger={(show) => <Button variant="primary" icon={<Wallet size={16} />} onClick={show}>Registrar pago</Button>} />}
+            </div>
+          ) : undefined
+        }
       />
       {row.cancel_reason && <p className="mb-5 rounded-card border border-line bg-surface-2 px-4 py-3 text-[13.5px] text-fg-2"><b className="text-fg">Anulada.</b> {row.cancel_reason}</p>}
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">

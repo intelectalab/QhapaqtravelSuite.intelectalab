@@ -9,6 +9,7 @@ use App\Domain\Iam\Support\RoleExperience;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class SupplierAccount
 {
@@ -80,6 +81,57 @@ final class SupplierAccount
     {
         return DB::table('supplier_rate_requests')->where('provider_id', $this->provider->id)->where('code', $code)->first()
             ?? throw ApiException::notFound('Esa solicitud de tarifa no corresponde a su empresa.');
+    }
+
+    public function roomingLists(): Builder
+    {
+        return DB::table('ops_rooming_lists as l')
+            ->join('booking_reservations as r', 'r.id', '=', 'l.reservation_id')
+            ->where('l.hotel_provider_id', $this->provider->id)
+            ->whereNull('l.deleted_at')
+            ->whereNull('r.deleted_at')
+            ->whereNotNull('l.sent_at');
+    }
+
+    public function roomingList(string $id): object
+    {
+        $list = Str::isUuid($id) ? $this->roomingLists()->where('l.id', $id)->lock('for update of l')->first(['l.*', 'r.code as reservation_code']) : null;
+
+        return $list ?? throw ApiException::notFound('Esa rooming list no corresponde a su hotel.');
+    }
+
+    public function roomingRoom(string $id): object
+    {
+        $room = Str::isUuid($id) ? DB::table('ops_rooming_rooms as rr')->joinSub($this->roomingLists()->select(['l.id as list_id', 'l.reservation_id', 'r.code as reservation_code', 'l.check_in', 'l.check_out']), 'x', 'x.list_id', '=', 'rr.rooming_list_id')
+            ->where('rr.id', $id)->first(['rr.*', 'x.reservation_id', 'x.reservation_code', 'x.check_in', 'x.check_out']) : null;
+
+        return $room ?? throw ApiException::notFound('Esa habitación no corresponde a su hotel.');
+    }
+
+    public function vouchers(): Builder
+    {
+        return DB::table('ops_vouchers as v')
+            ->join('booking_reservations as r', 'r.id', '=', 'v.reservation_id')
+            ->where('v.provider_id', $this->provider->id)
+            ->whereNull('r.deleted_at');
+    }
+
+    public function incidents(): Builder
+    {
+        $reservations = (clone $this->services())->select('s.reservation_id');
+        $users = DB::table('iam_users')->where('provider_id', $this->provider->id)->select('id');
+
+        return DB::table('ops_incidents as i')
+            ->leftJoin('booking_reservations as r', 'r.id', '=', 'i.reservation_id')
+            ->where(fn (Builder $query) => $query->where('i.provider_id', $this->provider->id)
+                ->orWhereIn('i.reported_by', $users)
+                ->orWhere(fn (Builder $inner) => $inner->where('i.type', 'Proveedor')->whereIn('i.reservation_id', $reservations)));
+    }
+
+    public function incident(string $code): object
+    {
+        return $this->incidents()->where('i.code', $code)->first(['i.*', 'r.code as reservation_code'])
+            ?? throw ApiException::notFound('Esa incidencia no corresponde a su empresa.');
     }
 
     public function contact(string $id): object

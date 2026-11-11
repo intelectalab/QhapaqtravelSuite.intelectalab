@@ -20,14 +20,14 @@ final class FinanceDetailController
 
     public function __construct(private readonly FinanceDetails $details) {}
 
-    public function receivable(string $code): JsonResponse
+    public function receivable(Request $request, string $code): JsonResponse
     {
-        return response()->json(['data' => $this->details->receivable($code) ?? throw ApiException::notFound('La cuota no existe.')]);
+        return response()->json(['data' => $this->details->receivable($code, $this->actor($request)) ?? throw ApiException::notFound('La cuota no existe.')]);
     }
 
-    public function payment(string $code): JsonResponse
+    public function payment(Request $request, string $code): JsonResponse
     {
-        return response()->json(['data' => $this->details->payment($code) ?? throw ApiException::notFound('El pago no existe.')]);
+        return response()->json(['data' => $this->details->payment($code, $this->actor($request)) ?? throw ApiException::notFound('El pago no existe.')]);
     }
 
     public function payable(Request $request, string $code): JsonResponse
@@ -35,9 +35,9 @@ final class FinanceDetailController
         return response()->json(['data' => $this->details->payable($code, $this->actor($request)) ?? throw ApiException::notFound('La obligación no existe.')]);
     }
 
-    public function commission(string $code): JsonResponse
+    public function commission(Request $request, string $code): JsonResponse
     {
-        return response()->json(['data' => $this->details->commission($code) ?? throw ApiException::notFound('La comisión no existe.')]);
+        return response()->json(['data' => $this->details->commission($code, $this->actor($request)) ?? throw ApiException::notFound('La comisión no existe.')]);
     }
 
     public function settlement(string $code): JsonResponse

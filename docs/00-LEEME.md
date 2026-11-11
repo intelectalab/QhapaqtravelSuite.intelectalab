@@ -1,4 +1,4 @@
-# Documentación para desarrollo — Qhapaq Travel Suite
+# Documentación para desarrollo — KipuControl
 
 Orden de lectura recomendado:
 

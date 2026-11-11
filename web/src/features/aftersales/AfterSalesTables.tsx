@@ -71,7 +71,7 @@ export function CasesTable({ overview }: { overview: AfterSalesOverview }) {
     },
   ];
   const metrics: MetricFilter<CaseItem>[] = [
-    { id: "open", label: "Abiertos", tone: "info", icon: <CircleAlert size={19} />, matches: (row) => row.status === "abierta" || row.status === "en_proceso" },
+    { id: "high", label: "Prioridad alta", tone: "warn", icon: <CircleAlert size={19} />, matches: (row) => row.priority === "alta" && (row.status === "abierta" || row.status === "en_proceso") },
     { id: "nps", label: "Por NPS de detractor", tone: "bad", icon: <Bot size={19} />, matches: (row) => row.origin === "nps_auto" },
   ];
   const filters: FilterConfig<CaseItem>[] = [

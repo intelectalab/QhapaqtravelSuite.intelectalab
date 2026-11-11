@@ -21,6 +21,10 @@ final class CheckoutTerms
 
     private const DEFAULT_DAYS = 15;
 
+    public const PAY_LATER = 'pagar_despues';
+
+    private const PAY_LATER_HOURS = 24;
+
     public function __construct(private readonly RuleResolver $rules) {}
 
     public static function bankAccounts(): array
@@ -81,16 +85,22 @@ final class CheckoutTerms
         }
 
         $companions = $this->rules->on('R-COMPANIONS') ? (string) ($this->rules->param('R-COMPANIONS', 'when') ?? 'al_reservar') : 'opcional';
+        $modes = $adelanto
+            ? [
+                ['value' => 'total', 'label' => 'Pago total', 'amount' => (string) $total],
+                ['value' => 'adelanto', 'label' => 'Adelanto', 'amount' => (string) $deposit, 'balance' => (string) $total->minus($deposit), 'balance_due' => $balanceDue, 'pct' => $total->isPositive() ? (int) round((float) (string) $deposit->dividedBy($total, 4, RoundingMode::HALF_UP)->multipliedBy(100)) : 0],
+            ]
+            : [['value' => 'total', 'label' => 'Pago total', 'amount' => (string) $total]];
+
+        if ($this->payLater($lines)) {
+            $hours = $this->payLaterHours();
+            $modes[] = ['value' => self::PAY_LATER, 'label' => 'Reservar ahora, pagar después', 'amount' => '0.00', 'balance' => (string) $total, 'pct' => 0, 'hold_hours' => $hours, 'hold_until' => Carbon::now()->addHours($hours)->toIso8601String()];
+        }
 
         return [
             'currency' => $currency,
             'total' => (string) $total,
-            'modes' => $adelanto
-                ? [
-                    ['value' => 'total', 'label' => 'Pago total', 'amount' => (string) $total],
-                    ['value' => 'adelanto', 'label' => 'Adelanto', 'amount' => (string) $deposit, 'balance' => (string) $total->minus($deposit), 'balance_due' => $balanceDue, 'pct' => $total->isPositive() ? (int) round((float) (string) $deposit->dividedBy($total, 4, RoundingMode::HALF_UP)->multipliedBy(100)) : 0],
-                ]
-                : [['value' => 'total', 'label' => 'Pago total', 'amount' => (string) $total]],
+            'modes' => $modes,
             'adelanto_unavailable' => $depositOn && ! $adelanto ? 'El adelanto no está disponible para esta compra: algún servicio no lo admite o su saldo vencería antes de hoy.' : null,
             'methods' => collect(self::METHODS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values()->all(),
             'bank_accounts' => self::bankAccounts(),
@@ -99,5 +109,19 @@ final class CheckoutTerms
             'companions' => ['when' => $companions, 'require_document' => (bool) ($this->rules->param('R-COMPANIONS', 'requireDocument') ?? true)],
             'items' => $items,
         ];
+    }
+
+    public function payLaterHours(): int
+    {
+        return max(1, (int) ($this->rules->param('R-PAY-LATER', 'holdHours') ?? self::PAY_LATER_HOURS));
+    }
+
+    private function payLater(Collection $lines): bool
+    {
+        if (! $this->rules->on('R-PAY-LATER')) {
+            return false;
+        }
+
+        return $lines->every(fn (array $line): bool => ! array_key_exists('R-PAY-LATER', $this->rules->productOverrides((string) $line['product']->id)[0]));
     }
 }

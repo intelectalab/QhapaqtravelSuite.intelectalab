@@ -453,11 +453,17 @@ export function CommunicationsSection({ rows, action }: { rows: ClientTabData["c
   );
 }
 
-export function ActivitiesSection({ rows }: { rows: ClientTabData["activities"] }) {
-  if (rows.length === 0) return <Empty icon={<CalendarCheck size={20} />} title="Sin actividades" description="No hay llamadas, reuniones ni tareas ligadas al cliente, sus oportunidades o sus cotizaciones." />;
+export function ActivitiesSection({ rows, action }: { rows: ClientTabData["activities"]; action?: ReactNode }) {
+  if (rows.length === 0)
+    return (
+      <Card>
+        <TintCardTitle icon={CalendarCheck} title="Actividades" aside={action} />
+        <p className="text-[13.5px] text-fg-3">No hay llamadas, reuniones ni tareas ligadas al cliente, sus oportunidades o sus cotizaciones.</p>
+      </Card>
+    );
   return (
     <Card>
-      <TintCardTitle icon={CalendarCheck} title="Actividades" aside={String(rows.length)} />
+      <TintCardTitle icon={CalendarCheck} title="Actividades" aside={action} />
       <MiniTable head={["Actividad", "Tipo", "Fecha", "Responsable", "Estado"]}>
         {rows.map((activity) => (
           <tr key={activity.code}>

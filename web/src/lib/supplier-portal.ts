@@ -6,7 +6,7 @@ export interface SupplierSession {
   provider: { ref: string; name: string; type: string; city: string | null; initials: string };
   agency: { name: string; initials: string };
   user: { name: string; email: string };
-  counts: { pending: number };
+  counts: { pending: number; rooming: number; incidents: number };
 }
 
 export interface SupplierRequest {
@@ -33,6 +33,20 @@ export interface SupplierRequest {
   overdue: boolean;
   days_to: number;
   alternative_of: string | null;
+  proposal: SupplierProposal | null;
+}
+
+export interface SupplierProposal {
+  kind: string;
+  date: string | null;
+  service: { ref: string; name: string } | null;
+  net_cost: number | null;
+  currency: string;
+  hold_until: string | null;
+  note: string;
+  review_status: "pendiente" | "aceptada" | "rechazada" | "expirada";
+  review_note: string | null;
+  at: string | null;
 }
 
 export interface SupplierRelated {
@@ -52,6 +66,8 @@ export interface SupplierHistoryItem {
 
 export interface SupplierRequestDetail extends SupplierRequest {
   reasons: string[];
+  alternative_kinds: string[];
+  catalog: { value: string; label: string; hint?: string }[];
   today: string;
   contact: string;
   passengers: { name: string; type: string; nationality: string | null; diet: string | null; lead: boolean; placeholder: boolean }[];
@@ -69,6 +85,8 @@ export interface SupplierRequests {
   response_hours: number;
   rows: SupplierRequest[];
   reasons: string[];
+  alternative_kinds: string[];
+  catalog: { value: string; label: string; hint?: string }[];
 }
 
 export interface SupplierPayable {
@@ -99,7 +117,7 @@ export interface SupplierPayables {
 }
 
 export interface SupplierAlert {
-  kind: "request" | "contract" | "invoice" | "rate";
+  kind: "request" | "contract" | "invoice" | "rate" | "rooming";
   tone: Tone;
   title: string;
   detail: string;
@@ -108,7 +126,7 @@ export interface SupplierAlert {
 
 export interface SupplierHome {
   today: string;
-  kpis: { pending: number; overdue: number; upcoming: number; upcoming_pax: number; receivable: Money; contract_days: number };
+  kpis: { pending: number; alternatives: number; overdue: number; upcoming: number; upcoming_pax: number; receivable: Money; contract_days: number; open_incidents: number };
   pending: SupplierRequest[];
   upcoming: SupplierRequest[];
   payments: SupplierPayable[];
@@ -185,10 +203,105 @@ export interface SupplierCompany {
   activity: { services: number; reservations: number; catalog: number };
 }
 
+export interface SupplierRoomingRoom {
+  id: string;
+  number: string;
+  type: string;
+  capacity: number;
+  status: string;
+  note: string | null;
+  incident: { code: string; status: string } | null;
+  guests: { name: string; type: string }[];
+}
+
+export interface SupplierRoomingList {
+  id: string;
+  lock_version: number;
+  reservation: string;
+  holder: string;
+  check_in: string;
+  check_out: string;
+  nights: number;
+  days_to: number;
+  in_house: boolean;
+  state: "por_acusar" | "recibida" | "confirmada";
+  modified: boolean;
+  sent_at: string | null;
+  sent_version: number;
+  acknowledged_at: string | null;
+  confirmed_at: string | null;
+  guests: number;
+  observed: number;
+  rooms: SupplierRoomingRoom[];
+}
+
+export interface SupplierRooming {
+  today: string;
+  reasons: string[];
+  impacts: string[];
+  items: SupplierRoomingList[];
+  kpis: { arrivals_week: number; in_house: number; observed: number };
+}
+
+export interface SupplierVoucher {
+  code: string;
+  lock_version: number;
+  version: number;
+  issued_at: string | null;
+  service: string;
+  reservation: string;
+  holder: string;
+  date: string;
+  days_to: number;
+  pax: number;
+  status: string;
+  used_at: string | null;
+  used_via: string | null;
+  void_at: string | null;
+}
+
+export interface SupplierVouchers {
+  today: string;
+  early_days: number;
+  items: SupplierVoucher[];
+  kpis: { today: number; used_month: number };
+}
+
+export interface SupplierIncident {
+  code: string;
+  title: string;
+  type: string;
+  severity: string;
+  status: string;
+  reservation: string | null;
+  created_at: string;
+  updated_at: string;
+  can_comment: boolean;
+  own: boolean;
+  last: { message: string; at: string } | null;
+}
+
+export interface SupplierIncidentDetail extends Omit<SupplierIncident, "own" | "last"> {
+  description: string;
+  resolution: string | null;
+  service: { code: string; name: string; date: string } | null;
+  logs: { id: string; kind: string; message: string; at: string; mine: boolean; author: string }[];
+}
+
+export interface SupplierIncidents {
+  today: string;
+  types: string[];
+  severities: string[];
+  sla_hours: Record<string, number>;
+  services: { value: string; label: string; hint: string }[];
+  items: SupplierIncident[];
+}
+
 type Meta = { label: string; tone: Tone };
 
 const REQUEST_STATES: Record<string, Meta> = {
   por_responder: { label: "Por responder", tone: "warn" },
+  alternativa_propuesta: { label: "Alternativa propuesta", tone: "violet" },
   confirmado: { label: "Confirmado", tone: "ok" },
   rechazado: { label: "Rechazado", tone: "bad" },
   en_curso: { label: "En curso", tone: "t4" },
@@ -224,7 +337,33 @@ const VOUCHER_STATES: Record<string, Meta> = {
   anulado: { label: "Anulado", tone: "bad" },
 };
 
-const SCOPES = { request: REQUEST_STATES, payable: PAYABLE_STATES, invoice: INVOICE_STATES, rate: RATE_STATES, voucher: VOUCHER_STATES };
+const ROOMING_STATES: Record<string, Meta> = {
+  por_acusar: { label: "Por acusar recibo", tone: "warn" },
+  recibida: { label: "Recibida", tone: "info" },
+  confirmada: { label: "Confirmada por el hotel", tone: "ok" },
+};
+
+const ROOM_STATES: Record<string, Meta> = {
+  pendiente: { label: "Pendiente", tone: "warn" },
+  confirmada: { label: "Confirmada", tone: "ok" },
+  observada: { label: "Observada", tone: "bad" },
+};
+
+const INCIDENT_STATES: Record<string, Meta> = {
+  abierta: { label: "Abierta", tone: "bad" },
+  en_proceso: { label: "En proceso", tone: "warn" },
+  resuelta: { label: "Resuelta", tone: "ok" },
+  cerrada: { label: "Cerrada", tone: "mute" },
+};
+
+const SEVERITY_STATES: Record<string, Meta> = {
+  baja: { label: "Baja", tone: "t1" },
+  media: { label: "Media", tone: "warn" },
+  alta: { label: "Alta", tone: "bad" },
+  critica: { label: "Crítica", tone: "bad" },
+};
+
+const SCOPES = { request: REQUEST_STATES, payable: PAYABLE_STATES, invoice: INVOICE_STATES, rate: RATE_STATES, voucher: VOUCHER_STATES, rooming: ROOMING_STATES, room: ROOM_STATES, incident: INCIDENT_STATES, severity: SEVERITY_STATES };
 
 export type SupplierScope = keyof typeof SCOPES;
 

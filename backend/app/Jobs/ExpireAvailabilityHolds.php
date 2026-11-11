@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Domain\Channels\Support\EcommerceOrderRelease;
 use App\Domain\Shared\Audit\AuditLogger;
+use App\Domain\Site\Support\CheckoutTerms;
 use Illuminate\Support\Facades\DB;
 
 final class ExpireAvailabilityHolds extends TenantJob
@@ -51,9 +52,10 @@ final class ExpireAvailabilityHolds extends TenantJob
 
     private function expireOrders(AuditLogger $audit): int
     {
-        $orders = DB::table('channel_ecom_orders')->whereIn('status', ['pago_pendiente', 'pago_rechazado'])
-            ->whereNotNull('hold_expires_at')->where('hold_expires_at', '<', now())
-            ->orderBy('id')->lockForUpdate()->get(['id', 'code', 'status']);
+        $orders = DB::table('channel_ecom_orders as o')->whereIn('o.status', ['pago_pendiente', 'pago_rechazado'])
+            ->whereNotNull('o.hold_expires_at')->where('o.hold_expires_at', '<', now())
+            ->whereNotExists(fn ($query) => $query->selectRaw('1')->from('booking_reservation_web_snapshots as s')->whereColumn('s.order_code', 'o.code')->where('s.payment_mode', CheckoutTerms::PAY_LATER))
+            ->orderBy('o.id')->lockForUpdate()->get(['o.id', 'o.code', 'o.status']);
         $release = app(EcommerceOrderRelease::class);
 
         foreach ($orders as $order) {

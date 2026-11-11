@@ -42,6 +42,25 @@ export async function saveFormProtection(_state: AdminActionState, form: FormDat
   return send("/settings/form-protection", "PUT", { enabled: form.get("enabled") === "on", site_key: text(form, "site_key"), secret: text(form, "secret") }, "No pudimos guardar la protección de formularios.");
 }
 
+export async function saveOutgoingMail(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
+  const port = text(form, "port");
+  const body = {
+    enabled: form.get("enabled") === "on",
+    host: text(form, "host"),
+    port: port === "" ? null : Number(port),
+    encryption: text(form, "encryption") || "ssl",
+    username: text(form, "username"),
+    password: String(form.get("password") ?? ""),
+    from_address: text(form, "from_address"),
+    from_name: text(form, "from_name"),
+  };
+  return send("/settings/outgoing-mail", "PUT", body, "No pudimos guardar el correo de salida.");
+}
+
+export async function sendOutgoingMailTest(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
+  return send("/settings/outgoing-mail/test", "POST", { to: text(form, "to") }, "No pudimos enviar el correo de prueba.");
+}
+
 export async function savePlatformBranding(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
   return send("/branding", "PUT", { brand: text(form, "brand"), accent: text(form, "accent"), menu: text(form, "menu"), tile_variant: text(form, "tile_variant") }, "No pudimos guardar la apariencia.");
 }

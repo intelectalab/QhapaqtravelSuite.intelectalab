@@ -11,12 +11,25 @@ import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
-import { paxLabel, type QuoteFormOptions, type QuoteLineInput, type QuotePreview, type QuoteSegmentOption } from "@/lib/quotes";
+import { MANUAL_RATE, paxLabel, rateValidOn, type QuoteFormOptions, type QuoteLineInput, type QuotePreview, type QuoteRateOption, type QuoteSegmentOption } from "@/lib/quotes";
 import { lineKey, lineReady, type QuoteDraft, type QuotePatch } from "./draft";
 
 const SEGMENTS = ["Adulto", "Niño", "Infante", "Grupo", "Pasajero"];
 
 const PAX_BY_SEGMENT: Record<string, "adt" | "chd" | "inf"> = { Adulto: "adt", Niño: "chd", Infante: "inf" };
+
+const rateLabel = (rate: QuoteRateOption) => `${rate.ref} · ${rate.type} ${rate.segment} · ${rate.channel}`;
+
+const rateOptions = (rates: QuoteRateOption[], date: string, suggested: string | null) => [
+  { value: "", label: "Tarifa sugerida", hint: suggested ?? "La que corresponde al cliente y la fecha" },
+  { value: MANUAL_RATE, label: "Precio manual", hint: "Sin tarifa: escribes precio y costo" },
+  ...rates.map((rate) => {
+    const valid = Boolean(date) && rateValidOn(rate, date);
+    return { value: rate.id, label: rateLabel(rate), hint: valid ? formatMoney(rate.price, rate.currency) : "No vigente para la fecha (PRD-BR-005)", disabled: !valid };
+  }),
+];
+
+const marginTone = (margin: string, floor: number) => (Number(margin) < floor ? "text-bad" : Number(margin) < floor + 7 ? "text-warn" : "text-ok");
 
 const segmentHint = (segment: QuoteSegmentOption) => (segment.price ? formatMoney(segment.price, segment.currency ?? "PEN") : segment.pct ? `${segment.pct} % del adulto` : undefined);
 
@@ -45,6 +58,11 @@ function Section({ title, hint, children, className }: { title: string; hint?: s
 
 export function GeneralStep({ draft, set, options, errors }: QuoteStepProps) {
   const opportunities = options.opportunities.filter((item) => !draft.client || item.client_code === draft.client);
+  const chosen = options.clients.find((item) => item.code === draft.client);
+  const chooseClient = (code: string) => {
+    const client = options.clients.find((item) => item.code === code);
+    set({ client: code, opportunity: "", tax: client && !client.domestic ? "0" : String(options.defaults.tax_pct) });
+  };
   const chooseOpportunity = (code: string) => {
     const opportunity = options.opportunities.find((item) => item.code === code);
     set((current) => ({ opportunity: code, title: current.title || opportunity?.title || "" }));
@@ -54,14 +72,20 @@ export function GeneralStep({ draft, set, options, errors }: QuoteStepProps) {
     <div className="flex flex-col gap-6">
       <Section title="Cliente" hint="Solo clientes de tu cartera. La oportunidad es opcional y debe ser del mismo cliente.">
         <div className="grid gap-4 md:grid-cols-2">
-          <SelectField label="Cliente" name="client_code" value={draft.client} onChange={(value) => set({ client: value, opportunity: "" })} options={options.clients.map((item) => ({ value: item.code, label: item.name, hint: item.code }))} placeholder="Elegir cliente" searchable error={errors.client_code} />
+          <SelectField label="Cliente" name="client_code" value={draft.client} onChange={chooseClient} options={options.clients.map((item) => ({ value: item.code, label: item.name, hint: `${item.code} · ${item.country}` }))} placeholder="Elegir cliente" searchable error={errors.client_code} />
           <SelectField label="Oportunidad (opcional)" name="opportunity_code" value={draft.opportunity} onChange={chooseOpportunity} options={opportunities.map((item) => ({ value: item.code, label: item.title, hint: item.code }))} placeholder="Sin oportunidad" clearable error={errors.opportunity_code} />
         </div>
+        {chosen && !chosen.domestic && (
+          <p className="flex items-center gap-1.5 text-[12.5px] text-fg-3">
+            <CircleAlert size={13} />
+            Cliente no domiciliado ({chosen.country}): el IGV queda en 0 % por exportación de servicios. Puedes ajustarlo en el resumen.
+          </p>
+        )}
       </Section>
       <Section title="Propuesta">
         <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <TextField label="Título" value={draft.title} onChange={(event) => set({ title: event.target.value })} placeholder="Por ejemplo: Luna de miel Cusco 5D/4N" maxLength={200} error={errors.title} data-testid="field:title" />
-          <TextField label="Válida hasta" type="date" value={draft.validUntil} onChange={(event) => set({ validUntil: event.target.value })} icon={<CalendarDays size={17} />} tip="Pasada esta fecha la cotización vence si el cliente no la aprobó." error={errors.valid_until} />
+          <TextField label="Válida hasta" type="date" value={draft.validUntil} onChange={(event) => set({ validUntil: event.target.value })} icon={<CalendarDays size={17} />} tip={`Pasada esta fecha la cotización vence si el cliente no la aprobó. La agencia propone ${options.defaults.validity_days} días.`} error={errors.valid_until} />
         </div>
         <div className="max-w-sm">
           <ChoiceGroup label="Moneda" name="currency" defaultValue={draft.currency} onChange={(value) => set({ currency: value })} options={[{ value: "USD", label: "Dólares" }, { value: "PEN", label: "Soles" }]} hint="Las tarifas se convierten con el tipo de cambio vigente." />
@@ -100,7 +124,16 @@ export function TripStep({ draft, set, errors }: QuoteStepProps) {
   );
 }
 
-function Totals({ preview, currency, compact = false }: { preview: QuotePreview | null; currency: string; compact?: boolean }) {
+function Row({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="flex justify-between">
+      <dt className="text-fg-3">{label}</dt>
+      <dd className={cn("font-mono", tone)}>{value}</dd>
+    </div>
+  );
+}
+
+function Totals({ preview, currency, floor, compact = false }: { preview: QuotePreview | null; currency: string; floor: number; compact?: boolean }) {
   const totals = preview?.totals;
   return (
     <dl className="flex flex-col gap-1.5 text-[13px]">
@@ -118,22 +151,23 @@ function Totals({ preview, currency, compact = false }: { preview: QuotePreview 
       )}
       {!compact && (
         <>
-          <div className="flex justify-between">
-            <dt className="text-fg-3">IGV</dt>
-            <dd className="font-mono">{formatMoney(totals?.tax_total ?? 0, currency)}</dd>
-          </div>
+          <Row label="Valor de venta" value={formatMoney(totals?.net_total ?? 0, currency)} />
+          <Row label={`IGV ${Number(totals?.tax_pct ?? 0)} %`} value={formatMoney(totals?.tax_total ?? 0, currency)} />
           <div className="flex justify-between border-t border-line-2 pt-1.5 text-[17px] font-bold">
             <dt>Total</dt>
             <dd data-testid="quote-total" className="font-mono transition-all duration-300">
               {formatMoney(totals?.grand_total ?? 0, currency)}
             </dd>
           </div>
+          {currency !== "PEN" && totals && <Row label="Equivalente en soles" value={formatMoney(totals.grand_total_pen, "PEN")} />}
+          {totals?.per_pax && <Row label="Precio medio por pasajero" value={formatMoney(totals.per_pax, currency)} />}
+          {totals?.cost_total && <Row label="Costo total" value={formatMoney(totals.cost_total, currency)} />}
         </>
       )}
       {totals?.margin_pct !== null && totals?.margin_pct !== undefined && (
         <div className="flex justify-between text-[12.5px]">
           <dt className="text-fg-3">Margen</dt>
-          <dd className={cn("font-semibold", Number(totals.margin_pct) < 15 ? "text-warn" : "text-ok")}>{totals.margin_pct} %</dd>
+          <dd className={cn("font-semibold", marginTone(totals.margin_pct, floor))}>{totals.margin_pct} %</dd>
         </div>
       )}
     </dl>
@@ -167,11 +201,22 @@ export function ItemsStep({ draft, set, options, errors, preview }: QuoteStepPro
       all.map((line) => {
         if (line.key !== key) return line;
         const segment = segments.length === 0 || segments.some((item) => item.value === line.segment) ? line.segment : segments[0].value;
-        return { ...line, product_code: code, segment, pax: paxFor(segment, line.pax), unit_price: "" };
+        return { ...line, product_code: code, segment, pax: paxFor(segment, line.pax), rate_id: "", unit_price: "", unit_cost: "" };
       }),
     );
   };
-  const addLine = () => setLines((all) => [...all, { key: lineKey(), product_code: "", date: travelFrom, qty: 1, pax: pax.adt > 0 ? pax.adt : totalPax || 1, segment: "Adulto", unit_price: "" }]);
+  const addLine = () => setLines((all) => [...all, { key: lineKey(), product_code: "", date: travelFrom, qty: 1, pax: pax.adt > 0 ? pax.adt : totalPax || 1, segment: "Adulto", rate_id: "", unit_price: "", unit_cost: "" }]);
+  const changeDate = (line: QuoteLineInput, date: string) => {
+    const rate = options.products.find((item) => item.code === line.product_code)?.rates.find((item) => item.id === line.rate_id);
+    updateLine(line.key, { date, ...(rate && !rateValidOn(rate, date) ? { rate_id: "", unit_price: "" } : {}) });
+  };
+  const chooseRate = (line: QuoteLineInput, value: string) => {
+    const rate = options.products.find((item) => item.code === line.product_code)?.rates.find((item) => item.id === value);
+    const segment = rate && SEGMENTS.includes(rate.segment) ? rate.segment : line.segment;
+    updateLine(line.key, { rate_id: value, segment, pax: paxFor(segment, line.pax), unit_price: "", unit_cost: "" });
+  };
+  const floor = options.defaults.margin_floor;
+  const editCost = options.can.edit_cost;
 
   const productOptions = options.products.map((product) => {
     const priced = product.segments.find((segment) => segment.price);
@@ -181,7 +226,7 @@ export function ItemsStep({ draft, set, options, errors, preview }: QuoteStepPro
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
       <div className="flex flex-col gap-2.5">
-        {draft.lines.length === 0 && <p className="rounded-[14px] border border-dashed border-line px-4 py-3.5 text-[13px] text-fg-3">Solo productos activos y cotizables. Si dejas el precio vacío usamos la tarifa vigente para esa fecha.</p>}
+        {draft.lines.length === 0 && <p className="rounded-[14px] border border-dashed border-line px-4 py-3.5 text-[13px] text-fg-3">Solo productos activos y cotizables. Cada línea toma la tarifa que corresponde al cliente y la fecha; puedes elegir otra o poner un precio manual.</p>}
         <ul className="flex flex-col gap-2.5">
           {draft.lines.map((line, position) => {
             const product = options.products.find((item) => item.code === line.product_code);
@@ -190,6 +235,7 @@ export function ItemsStep({ draft, set, options, errors, preview }: QuoteStepPro
             const readyIndex = ready.indexOf(line);
             const result = readyIndex >= 0 ? shown?.lines[readyIndex] : undefined;
             const ratePrice = result?.rate_price ?? null;
+            const manual = line.rate_id === MANUAL_RATE;
             const lineErrors = readyIndex >= 0 ? [...new Set(Object.entries(errors).filter(([field]) => field.startsWith(`items.${readyIndex}.`)).map(([, message]) => message))] : [];
             return (
               <li key={line.key} data-testid={`quote-line:${position + 1}`} className={cn("lift rounded-[14px] border bg-surface-2/40 p-3 motion-safe:animate-[rise-in_260ms_ease-out_backwards]", lineErrors.length ? "border-bad/50" : "border-line")}>
@@ -203,25 +249,36 @@ export function ItemsStep({ draft, set, options, errors, preview }: QuoteStepPro
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,0.75fr)_minmax(0,0.75fr)_minmax(0,0.85fr)_minmax(0,0.95fr)]">
-                  <TextField className="min-w-0" label="Fecha" type="date" value={line.date} min={travelFrom || undefined} max={travelTo || undefined} onChange={(event) => updateLine(line.key, { date: event.target.value })} />
+                  <TextField className="min-w-0" label="Fecha" type="date" value={line.date} min={travelFrom || undefined} max={travelTo || undefined} onChange={(event) => changeDate(line, event.target.value)} />
                   <TextField className="min-w-0" label="Pasajeros" tip="Cuántos pasajeros del tipo elegido toman este producto. Al cambiar el tipo se completa con los adultos, niños o infantes de la cotización." type="number" min={1} value={line.pax} onChange={(event) => updateLine(line.key, { pax: Number(event.target.value) })} />
                   <TextField className="min-w-0" label="Cantidad" tip="Cuántas veces se toma el producto para esos pasajeros, por ejemplo 2 traslados (llegada y salida) o la misma excursión en dos fechas seguidas. El total de la línea es precio × pasajeros × cantidad; lo normal es 1." type="number" min={1} value={line.qty} onChange={(event) => updateLine(line.key, { qty: Number(event.target.value) })} />
                   <div className="min-w-0">
                     <Label>Tipo</Label>
                     <Select value={line.segment} onChange={(value) => updateLine(line.key, { segment: value, pax: paxFor(value, line.pax), unit_price: "" })} options={segmentOptions} ariaLabel="Tipo de pasajero" className="h-12 w-full" />
                   </div>
-                  <TextField className="min-w-0" label={`Precio (${currency})`} type="number" min={0} step="0.01" value={line.unit_price} onChange={(event) => updateLine(line.key, { unit_price: event.target.value })} placeholder={ratePrice ? Number(ratePrice).toFixed(2) : segments.length ? "Según tarifa" : "Escribir"} />
+                  <TextField className="min-w-0" label={`Precio (${currency})`} type="number" min={0} step="0.01" value={line.unit_price} onChange={(event) => updateLine(line.key, { unit_price: event.target.value })} placeholder={ratePrice ? Number(ratePrice).toFixed(2) : manual ? "Escribir" : "Según tarifa"} />
                 </div>
+                {product && (
+                  <div className={cn("mt-2 grid gap-2", editCost ? "sm:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)]" : "")}>
+                    <div className="min-w-0">
+                      <Label>Tarifa</Label>
+                      <Select value={line.rate_id} onChange={(value) => chooseRate(line, value)} options={rateOptions(product.rates, line.date, result?.rate_ref ?? null)} ariaLabel="Tarifa de la línea" className="h-12 w-full" testId={`field:items.${position}.rate_id`} />
+                    </div>
+                    {editCost && (
+                      <TextField className="min-w-0" label={`Costo (${currency})`} tip="Costo unitario del proveedor. La tarifa lo propone; cámbialo si el proveedor te dio otro precio. El margen y la aprobación de Gerencia se calculan con este costo." type="number" min={0} step="0.01" value={line.unit_cost} onChange={(event) => updateLine(line.key, { unit_cost: event.target.value })} placeholder={result?.rate_cost ? Number(result.rate_cost).toFixed(2) : manual ? "Obligatorio" : "Según tarifa"} data-testid={`field:items.${position}.unit_cost`} />
+                    )}
+                  </div>
+                )}
                 {product && !line.date && (
                   <p className="mt-2 flex items-center gap-1.5 text-[12.5px] text-fg-3">
                     <CircleAlert size={13} />
                     Elige la fecha para calcular la tarifa.
                   </p>
                 )}
-                {product && segments.length === 0 && (
+                {product && line.date && !manual && !product.rates.some((rate) => rateValidOn(rate, line.date)) && (
                   <p className="mt-2 flex items-center gap-1.5 text-[12.5px] text-warn">
                     <CircleAlert size={13} />
-                    Este producto no tiene tarifa de venta vigente: escribe el precio.
+                    Ninguna tarifa está vigente para esa fecha: elige «Precio manual» y escribe precio y costo.
                   </p>
                 )}
                 {lineErrors.map((message) => (
@@ -233,11 +290,12 @@ export function ItemsStep({ draft, set, options, errors, preview }: QuoteStepPro
                 {result && (
                   <p className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[12.5px]">
                     <span className="text-fg-3">
-                      {result.price_source === "manual" ? `Precio manual${ratePrice ? ` · tarifa ${formatMoney(ratePrice, currency)}` : ""}` : `Tarifa vigente ${formatMoney(result.unit_price, currency)}`} × {line.pax} {line.pax === 1 ? "pasajero" : "pasajeros"}
+                      {result.price_source === "manual" ? `Precio manual${ratePrice ? ` · tarifa ${formatMoney(ratePrice, currency)}` : ""}` : `${result.rate_ref ?? "Tarifa"} ${formatMoney(result.unit_price, currency)}`} × {line.pax} {line.pax === 1 ? "pasajero" : "pasajeros"}
                       {line.qty > 1 ? ` × ${line.qty}` : ""}
+                      {result.season_factor && Number(result.season_factor) !== 1 ? ` · temporada ×${Number(result.season_factor).toFixed(2)}` : ""}
                     </span>
                     <span className="flex items-center gap-3">
-                      {result.margin_pct !== null && <span className={cn("font-semibold", Number(result.margin_pct) < 15 ? "text-warn" : "text-ok")}>{result.margin_pct} % margen</span>}
+                      {result.margin_pct !== null && <span className={cn("font-semibold", marginTone(result.margin_pct, floor))}>{result.margin_pct} % margen</span>}
                       <b className="font-mono">{formatMoney(result.total, currency)}</b>
                     </span>
                   </p>
@@ -257,7 +315,7 @@ export function ItemsStep({ draft, set, options, errors, preview }: QuoteStepPro
         )}
       </div>
       <Aside title="Precio al momento">
-        <Totals preview={shown} currency={currency} compact />
+        <Totals preview={shown} currency={currency} floor={floor} compact />
         <p className="mt-3 text-[12px] text-fg-3">El descuento y el IGV se aplican en el siguiente paso.</p>
       </Aside>
     </div>
@@ -267,7 +325,9 @@ export function ItemsStep({ draft, set, options, errors, preview }: QuoteStepPro
 export function SummaryStep({ draft, set, options, errors, preview }: QuoteStepProps & { preview: QuotePreview | null }) {
   const ready = draft.lines.filter(lineReady);
   const shown = ready.length > 0 ? preview : null;
-  const client = options.clients.find((item) => item.code === draft.client)?.name;
+  const chosen = options.clients.find((item) => item.code === draft.client);
+  const client = chosen?.name;
+  const taxHint = chosen && !chosen.domestic ? `Cliente no domiciliado: 0 % por exportación de servicios.` : `Tasa general de la agencia: ${options.defaults.tax_pct} %. Va de 0 a ${options.defaults.max_tax} %.`;
 
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -275,12 +335,10 @@ export function SummaryStep({ draft, set, options, errors, preview }: QuoteStepP
         <Section title="Condiciones de precio">
           <div className="grid gap-4 md:grid-cols-2">
             <TextField label="Descuento (%)" type="number" min={0} max={options.defaults.max_discount} step="0.5" value={draft.discount} onChange={(event) => set({ discount: event.target.value })} hint={`Hasta ${options.defaults.max_discount} %. Más de 5 % pide aprobación de Gerencia.`} error={errors.discount_pct} data-testid="field:discount_pct" />
-            <div>
-              <ChoiceGroup label="IGV" name="tax" defaultValue={draft.tax} onChange={(value) => set({ tax: value })} options={[{ value: "18", label: "18 %" }, { value: "0", label: "Exonerado" }]} />
-              <FieldError name="tax_pct" message={errors.tax_pct} />
-            </div>
+            <TextField label="IGV (%)" type="number" min={0} max={options.defaults.max_tax} step="0.5" value={draft.tax} onChange={(event) => set({ tax: event.target.value })} hint={taxHint} error={errors.tax_pct} data-testid="field:tax_pct" />
           </div>
-          <TextArea label="Notas para la versión (opcional)" rows={3} maxLength={2000} value={draft.notes} onChange={(event) => set({ notes: event.target.value })} placeholder="Condiciones comerciales, lo que incluye la propuesta o recordatorios para el cliente." error={errors.notes} />
+          <TextArea label="Condiciones comerciales" rows={3} maxLength={4000} value={draft.conditions} onChange={(event) => set({ conditions: event.target.value })} placeholder="Por ejemplo: precios sujetos a disponibilidad; anticipo para confirmar y fecha del saldo." hint="Salen en la propuesta y en el PDF que recibe el cliente." error={errors.conditions} data-testid="field:conditions" />
+          <TextArea label="Notas de la versión (opcional)" rows={2} maxLength={2000} value={draft.notes} onChange={(event) => set({ notes: event.target.value })} placeholder="Lo que incluye la propuesta o recordatorios para el equipo." error={errors.notes} />
         </Section>
         <Section title="Lo que se guarda">
           <dl className="grid gap-x-6 gap-y-2.5 text-[13px] sm:grid-cols-2">
@@ -312,14 +370,14 @@ export function SummaryStep({ draft, set, options, errors, preview }: QuoteStepP
         </Section>
       </div>
       <Aside title="Resumen económico">
-        <Totals preview={shown} currency={draft.currency} />
+        <Totals preview={shown} currency={draft.currency} floor={options.defaults.margin_floor} />
         {shown?.needs_internal_approval && (
           <p className="mt-3 flex items-start gap-2 rounded-xl bg-warn/[0.1] px-3 py-2.5 text-[12.5px] text-warn">
             <ShieldAlert size={16} className="mt-0.5 flex-none" />
             Por el descuento o el margen, Gerencia tendrá que aprobarla antes de enviarla al cliente.
           </p>
         )}
-        <p className="mt-3 text-[12px] text-fg-3">Se guarda como borrador. El precio final lo calcula el sistema con las tarifas vigentes.</p>
+        <p className="mt-3 text-[12px] text-fg-3">Se guarda como borrador. El sistema recalcula los totales con la tarifa, el costo y el tipo de cambio de cada línea.</p>
       </Aside>
     </div>
   );

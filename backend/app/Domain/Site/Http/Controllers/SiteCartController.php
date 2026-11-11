@@ -105,7 +105,14 @@ final class SiteCartController
 
     public function pay(Request $request, string $code, SiteCheckout $checkout): JsonResponse
     {
-        return response()->json(['data' => $checkout->pay($code, $request->header('X-Order-Token'), $request->only(['method', 'card_token', 'card_holder', 'operation_ref']))]);
+        return response()->json(['data' => $checkout->pay($code, $request->header('X-Order-Token'), $request->only(['method', 'card_token', 'card_holder', 'operation_ref', 'session_id']))]);
+    }
+
+    public function paymentSession(Request $request, string $code, SiteCheckout $checkout): JsonResponse
+    {
+        $data = $request->validate(['return_url' => ['nullable', 'url', 'max:500']], ['return_url.*' => 'La dirección de retorno no es válida.']);
+
+        return response()->json(['data' => $checkout->session($code, $request->header('X-Order-Token'), $data['return_url'] ?? null)], 201);
     }
 
     private function token(Request $request): ?string

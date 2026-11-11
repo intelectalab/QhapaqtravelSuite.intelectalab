@@ -8,6 +8,7 @@ use App\Domain\Iam\Models\User;
 use App\Domain\Operations\Actions\AssignmentWorkflow;
 use App\Domain\Operations\Actions\OrderWorkflow;
 use App\Domain\Operations\Actions\ServiceCompletion;
+use App\Domain\Operations\Support\OpsNotices;
 use App\Domain\Operations\Support\OrderDirectory;
 use App\Domain\Operations\Support\OrderFlow;
 use App\Domain\Shared\Errors\ApiException;
@@ -93,9 +94,32 @@ final class OrderController
             'driver_id' => ['nullable', 'uuid'],
             'vehicle_id' => ['nullable', 'uuid'],
             'ack_warnings' => ['nullable', 'boolean'],
-        ], ['*.uuid' => 'Elige un recurso de la lista.']);
+            'notify' => ['nullable', 'array'],
+            'notify.*' => ['string', 'in:'.implode(',', OpsNotices::CHANNELS)],
+        ], ['*.uuid' => 'Elige un recurso de la lista.', 'notify.*' => 'Elige cómo avisar al equipo.']);
 
         return response()->json(['data' => $assignments->assign($assignment, $data, $this->user($request))]);
+    }
+
+    public function validateAssignment(Request $request, string $assignment, AssignmentWorkflow $assignments): JsonResponse
+    {
+        $data = $request->validate([
+            'guide_id' => ['nullable', 'uuid'],
+            'driver_id' => ['nullable', 'uuid'],
+            'vehicle_id' => ['nullable', 'uuid'],
+        ], ['*.uuid' => 'Elige un recurso de la lista.']);
+
+        return response()->json(['data' => $assignments->preview($assignment, $data)]);
+    }
+
+    public function checkins(Request $request, string $assignment, AssignmentWorkflow $assignments): JsonResponse
+    {
+        $data = $request->validate([
+            'passenger_ids' => ['present', 'array'],
+            'passenger_ids.*' => ['uuid'],
+        ], ['passenger_ids.*' => 'Elige pasajeros de la lista.']);
+
+        return response()->json(['data' => $assignments->checkins($assignment, $data['passenger_ids'], $this->user($request))]);
     }
 
     public function confirmAssignment(Request $request, string $assignment, AssignmentWorkflow $assignments): JsonResponse

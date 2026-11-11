@@ -1,21 +1,25 @@
 "use client";
 
-import { Lock, PencilRuler, Plus, Power, PowerOff, RotateCcw, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
+import { Check, Layers, Lock, PencilRuler, Plus, Power, PowerOff, RotateCcw, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useOptimistic, useState, useTransition } from "react";
-import { createRule, deleteRule, resetRule, toggleRule, updateRule, updateRuleParams } from "@/app/(backoffice)/admin/reglas/actions";
+import { applyRuleTemplate, createRule, deleteRule, resetRule, toggleRule, updateRule, updateRuleParams } from "@/app/(backoffice)/admin/reglas/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
-import { ADMIN_INITIAL, type AdminActionState, type BookingRule, type RuleParam } from "@/lib/admin";
+import { ADMIN_INITIAL, type AdminActionState, type AuditEntry, type BookingRule, type RuleParam, type RuleRef, type RuleTemplate, type RulesOverview } from "@/lib/admin";
 import { cn } from "@/lib/cn";
-import { ToggleField } from "./AdminParts";
+import { formatDateTime } from "@/lib/format";
+import { RISE, ToggleField } from "./AdminParts";
 
 export const RULE_GROUPS = ["Disponibilidad", "Pasajeros", "Alojamiento", "Adicionales", "Precios", "Monedas y pagos", "Checkout", "Comunicación"];
 
@@ -214,23 +218,179 @@ export function RulesTable({ rules, manage }: { rules: BookingRule[]; manage: bo
   return <DataTable screen="admin-reglas" rows={rules} columns={columns} getKey={(rule) => rule.code} entityLabel="reglas" searchText={(rule) => `${rule.name} ${rule.code} ${rule.description} ${rule.group}`} searchPlaceholder="Buscar regla" metrics={metrics} filters={filters} sorts={sorts} />;
 }
 
-export function GroupPulse({ groups }: { groups: { name: string; total: number; active: number }[] }) {
+function RuleChips({ rules, tone, sign }: { rules: RuleRef[]; tone: "ok" | "mute" | "warn"; sign?: string }) {
   return (
-    <div className="mb-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4 xl:grid-cols-8">
-      {groups.map((group, index) => (
-        <div key={group.name} style={{ animationDelay: `${index * 45}ms` }} title={`${group.active} de ${group.total} reglas activas`} className="lift group rounded-[14px] border border-line bg-surface px-3 py-2.5 shadow-card animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]">
-          <p className="truncate text-[12px] font-semibold text-fg-2">{group.name}</p>
-          <p className="text-[17px] font-bold">
-            {group.active}
-            <span className="text-[12px] font-medium text-fg-3"> / {group.total}</span>
-          </p>
-          <div className="mt-1.5 flex gap-0.5">
-            {Array.from({ length: group.total }, (_, i) => (
-              <span key={i} className={cn("h-1.5 flex-1 rounded-full transition-transform duration-300 group-hover:scale-y-150", i < group.active ? "bg-ok" : "bg-surface-2")} />
-            ))}
-          </div>
-        </div>
+    <span className="flex flex-wrap gap-1">
+      {rules.map((rule) => (
+        <span key={rule.code} title={rule.name} className="transition-transform duration-200 hover:-translate-y-0.5">
+          <Badge tone={tone} dot={false}>
+            {sign ? `${sign} ${rule.code}` : rule.code}
+          </Badge>
+        </span>
       ))}
+    </span>
+  );
+}
+
+function TemplateApply({ template }: { template: RuleTemplate }) {
+  const total = template.enable.length + template.disable.length;
+  return (
+    <PanelAction<AdminActionState>
+      label="Aplicar plantilla"
+      icon={<Layers size={15} />}
+      variant={total > 0 ? "primary" : "secondary"}
+      size="sm"
+      formId={`rule-template-${template.code}`}
+      title={`Aplicar «${template.name}»`}
+      description={`Cambia el estado de ${total} ${total === 1 ? "regla" : "reglas"}. Afecta de inmediato al sitio web, el widget, las cotizaciones y los portales.`}
+      submitLabel={`Aplicar ${total} ${total === 1 ? "cambio" : "cambios"}`}
+      action={applyRuleTemplate}
+      initial={ADMIN_INITIAL}
+      trigger={total === 0 ? () => <Button variant="secondary" size="sm" icon={<Check size={15} />} disabled>Sin cambios</Button> : undefined}
+    >
+      {() => (
+        <>
+          <input type="hidden" name="template" value={template.code} />
+          {template.enable.length > 0 && (
+            <section>
+              <h3 className="mb-1.5 text-[12.5px] font-semibold text-fg-2">Se encienden</h3>
+              <ul className="flex flex-col gap-1 text-[13px]">
+                {template.enable.map((rule) => <li key={rule.code} className="flex items-center gap-2"><Power size={14} className="text-ok" />{rule.name}<span className="font-mono text-[11.5px] text-fg-3">{rule.code}</span></li>)}
+              </ul>
+            </section>
+          )}
+          {template.disable.length > 0 && (
+            <section>
+              <h3 className="mb-1.5 text-[12.5px] font-semibold text-fg-2">Se apagan</h3>
+              <ul className="flex flex-col gap-1 text-[13px]">
+                {template.disable.map((rule) => <li key={rule.code} className="flex items-center gap-2"><PowerOff size={14} className="text-fg-3" />{rule.name}<span className="font-mono text-[11.5px] text-fg-3">{rule.code}</span></li>)}
+              </ul>
+            </section>
+          )}
+          {template.blocked.length > 0 && <p className="text-[12.5px] text-warn">{`${template.blocked.length} ${template.blocked.length === 1 ? "regla queda" : "reglas quedan"} fuera porque no están en tu plan o dependen de otra apagada.`}</p>}
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+export function RuleTemplatesGrid({ data }: { data: RulesOverview }) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {data.templates.map((template, index) => {
+        const current = data.template_applied?.code === template.code;
+        const pending = template.enable.length + template.disable.length;
+        return (
+          <div key={template.code} style={{ animationDelay: `${index * 60}ms` }} className={cn("flex", RISE)}>
+            <Card className="lift flex w-full flex-col gap-3">
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="flex items-center gap-2 text-[15px] font-semibold">
+                  <Layers size={17} className="text-accent" />
+                  {template.name}
+                </h3>
+                {current && <Badge tone="ok">Aplicada</Badge>}
+              </div>
+              <p className="text-[13px] text-fg-2">{template.description}</p>
+              <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-fg-3">
+                <li className="flex items-center gap-1.5">
+                  <Power size={13} className="text-ok" />
+                  {`${template.active} activas`}
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <PowerOff size={13} />
+                  {`${template.inactive} apagadas`}
+                </li>
+              </ul>
+              {pending > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-[12px] font-semibold text-fg-3">Diferencia con tu configuración</p>
+                  <RuleChips rules={template.enable} tone="ok" sign="+" />
+                  <RuleChips rules={template.disable} tone="mute" sign="−" />
+                </div>
+              ) : (
+                <p className="flex items-center gap-1.5 text-[12.5px] text-ok">
+                  <Check size={14} />
+                  Tu configuración coincide con esta plantilla.
+                </p>
+              )}
+              {template.blocked.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <p className="flex items-center gap-1.5 text-[12px] font-semibold text-warn" title="No están en tu plan o dependen de una regla que queda apagada">
+                    <Lock size={13} />
+                    Quedan fuera
+                  </p>
+                  <RuleChips rules={template.blocked} tone="warn" />
+                </div>
+              )}
+              {data.can_manage && (
+                <div className="mt-auto pt-1">
+                  <TemplateApply template={template} />
+                </div>
+              )}
+            </Card>
+          </div>
+        );
+      })}
     </div>
   );
+}
+
+const CHANGE_ACTIONS: Record<string, { label: string; tone: "ok" | "mute" | "t1" | "violet" | "sun" | "bad" | "info" }> = {
+  activar: { label: "Activó", tone: "ok" },
+  desactivar: { label: "Desactivó", tone: "mute" },
+  editar_parametros: { label: "Ajustó parámetros", tone: "t1" },
+  aplicar_plantilla: { label: "Aplicó plantilla", tone: "violet" },
+  restablecer: { label: "Restableció", tone: "sun" },
+  crear: { label: "Creó", tone: "info" },
+  editar: { label: "Editó", tone: "info" },
+  eliminar: { label: "Eliminó", tone: "bad" },
+};
+
+export function RuleChangesTable({ entries }: { entries: AuditEntry[] }) {
+  const columns: Column<AuditEntry>[] = [
+    {
+      id: "rule",
+      header: "Regla",
+      mobile: "title",
+      cell: (entry) => (
+        <div className="min-w-0">
+          <p className="font-mono text-[13px] font-semibold">{entry.entity_id}</p>
+          <p className="text-[11.5px] text-fg-3">{entry.entity}</p>
+        </div>
+      ),
+    },
+    { id: "action", header: "Cambio", cell: (entry) => <Badge tone={CHANGE_ACTIONS[entry.action]?.tone ?? "mute"}>{CHANGE_ACTIONS[entry.action]?.label ?? entry.action.replace(/_/g, " ")}</Badge> },
+    {
+      id: "detail",
+      header: "Antes y después",
+      wideOnly: true,
+      cell: (entry) => (
+        <p className="max-w-[360px] truncate text-[12.5px] text-fg-2" title={`${entry.before ?? "—"} → ${entry.after ?? "—"}`}>
+          {entry.before ? <span className="text-fg-3 line-through decoration-fg-3/50">{entry.before}</span> : null}
+          {entry.before && entry.after ? " → " : null}
+          {entry.after}
+        </p>
+      ),
+    },
+    { id: "actor", header: "Quién", cell: (entry) => <span className="text-[13px]">{entry.actor}</span> },
+    {
+      id: "at",
+      header: "Fecha",
+      align: "right",
+      mobile: "detail",
+      cell: (entry) => (
+        <Link href={`/admin/auditoria/${entry.code}`} className="font-mono text-[12px] text-fg-3 hover:text-accent">
+          {formatDateTime(entry.at, false)}
+        </Link>
+      ),
+    },
+  ];
+  const metrics: MetricFilter<AuditEntry>[] = [
+    { id: "toggle", label: "Encendidas y apagadas", tone: "ok", icon: <Power size={19} />, matches: (entry) => entry.action === "activar" || entry.action === "desactivar" },
+    { id: "params", label: "Parámetros", tone: "t1", icon: <SlidersHorizontal size={19} />, matches: (entry) => entry.action === "editar_parametros" },
+    { id: "templates", label: "Plantillas y restablecer", tone: "violet", icon: <Layers size={19} />, matches: (entry) => entry.action === "aplicar_plantilla" || entry.action === "restablecer" },
+  ];
+  const filters: FilterConfig<AuditEntry>[] = [{ id: "actor", label: "Quién", options: [...new Set(entries.map((entry) => entry.actor))].map((actor) => ({ value: actor, label: actor })), value: (entry) => entry.actor }];
+  const sorts: SortOption<AuditEntry>[] = [{ id: "at", label: "Fecha", type: "date", value: (entry) => entry.at }];
+  return <DataTable screen="admin-reglas-historial" rows={entries} columns={columns} getKey={(entry) => String(entry.code)} entityLabel="cambios" searchText={(entry) => `${entry.entity_id} ${entry.actor} ${entry.before ?? ""} ${entry.after ?? ""}`} searchPlaceholder="Buscar regla o persona" metrics={metrics} filters={filters} sorts={sorts} emptyTitle="Aún no hay cambios en las reglas" />;
 }

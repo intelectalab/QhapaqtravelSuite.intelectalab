@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Operations\Http\Controllers;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Operations\Actions\RoomingPrefill;
 use App\Domain\Operations\Actions\RoomingWorkflow;
 use App\Domain\Operations\Support\RoomingDirectory;
 use App\Domain\Operations\Support\RoomTypes;
@@ -36,6 +37,13 @@ final class RoomingController
         ]);
 
         return response()->json(['data' => ['id' => $this->workflow->create($data, $this->user($request))]], 201);
+    }
+
+    public function prefill(Request $request, RoomingPrefill $prefill): JsonResponse
+    {
+        $data = $request->validate(['reservation' => ['required', 'string', 'max:30']], ['reservation.*' => 'Elige la reserva.']);
+
+        return response()->json(['data' => $prefill->run($data['reservation'], $this->user($request))], 201);
     }
 
     public function destroy(Request $request, string $list): JsonResponse

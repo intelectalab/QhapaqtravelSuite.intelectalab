@@ -14,7 +14,9 @@ final class RemindTravelDocuments extends TenantJob
 
     private const EVENT = 'documentos.recordatorio';
 
-    private const DEFAULT_DAYS = [15, 7, 3];
+    public const CODE = 'JOB-11';
+
+    public const DEFAULT_DAYS = [15, 7, 3];
 
     protected function run(): string
     {

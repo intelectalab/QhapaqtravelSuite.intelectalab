@@ -19,8 +19,8 @@ export default async function PlataformaAyudaPage({ searchParams }: PageProps<"/
     <>
       <PageHeader
         title="Centro de ayuda"
-        subtitle="Los artículos de Qhapaq que ven todas las agencias y los de esta consola."
-        info={<InfoTip>Cada agencia puede tener su propia versión de un artículo. Esa versión reemplaza la de Qhapaq solo para ella y no cambia aunque edites aquí el original.</InfoTip>}
+        subtitle="Los artículos de KipuControl que ven todas las agencias y los de esta consola."
+        info={<InfoTip>Cada agencia puede tener su propia versión de un artículo. Esa versión reemplaza la de KipuControl solo para ella y no cambia aunque edites aquí el original.</InfoTip>}
         actions={<HelpCreateAction actions={{ create: createPlatformHelpArticle, save: savePlatformHelpArticle, archive: archivePlatformHelpArticle, restore: restorePlatformHelpArticle }} options={index.options} audiences />}
       />
       <HelpCenter index={{ ...index, can_manage: true }} realm={PLATFORM_HELP} />

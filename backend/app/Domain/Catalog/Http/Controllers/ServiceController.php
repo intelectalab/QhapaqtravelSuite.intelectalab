@@ -23,6 +23,11 @@ final class ServiceController
         return response()->json(['data' => $directory->overview($this->actor($request))]);
     }
 
+    public function show(Request $request, ServiceDirectory $directory, string $ref): JsonResponse
+    {
+        return response()->json(['data' => $directory->show($this->actor($request), $ref)]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         return response()->json(['data' => $this->registry->create($this->validated($request), $this->actor($request))], 201);

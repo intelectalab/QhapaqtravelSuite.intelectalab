@@ -2,9 +2,11 @@
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Str;
 
-beforeEach(fn () => Queue::fake());
+beforeEach(function () {
+    lockTreasury();
+    Queue::fake();
+});
 
 function treasuryUser(string $code): string
 {
@@ -45,7 +47,7 @@ it('createTreasuryTransfers mueve saldo entre cuentas y convierte con el tipo pa
 
 it('createTreasuryGatewaySettlements liquida la pasarela al banco descontando la comisión', function () {
     actingAsSeed('U07');
-    $this->postJson('/api/v1/treasury/movements', ['account' => 'CTA-11', 'direction' => 'in', 'amount' => 300, 'date' => now()->toDateString(), 'category' => 'Cobros web', 'description' => 'Ventas del día en la pasarela'], ['Idempotency-Key' => (string) Str::uuid()])->assertCreated();
+    $this->postJson('/api/v1/treasury/transfers', ['from' => 'CTA-01', 'to' => 'CTA-11', 'amount' => 300, 'date' => now()->toDateString(), 'reference' => 'OP-PASARELA', 'description' => 'Fondeo de prueba de la pasarela'])->assertCreated();
 
     $code = $this->postJson('/api/v1/treasury/gateway/CTA-11/settlements', ['gross' => 100, 'fee_pct' => 4, 'date' => now()->toDateString(), 'batch' => 'LOTE-001'])->assertCreated()->json('data.code');
     $types = collect($this->getJson('/api/v1/treasury/accounts/CTA-11/movements')->json('data.movements'))->pluck('type');

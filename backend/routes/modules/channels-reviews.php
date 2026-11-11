@@ -16,6 +16,7 @@ Route::middleware('permission:channels.ecommerce.manage|crm.clients.manage')->gr
     Route::post('channels/external-reviews/{id}/mark-published', [ReviewController::class, 'publishExternal'])->whereUuid('id')->name('channels.reviews.external.published');
 
     Route::middleware('permission:channels.ecommerce.manage')->group(function (): void {
+        Route::put('channels/external-reviews/widget', [ReviewController::class, 'externalWidget'])->name('channels.reviews.external.widget');
         Route::patch('settings/own-reviews', [ReviewController::class, 'updateSettings'])->name('channels.reviews.settings.update');
         Route::post('review-requests/schedule-pending', [ReviewController::class, 'schedulePending'])->name('channels.reviews.requests.schedule');
         Route::post('reviews/export-feed', [ReviewController::class, 'exportFeed'])->name('channels.reviews.export-feed');

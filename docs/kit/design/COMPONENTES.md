@@ -1,4 +1,4 @@
-# Sistema de diseño — Qhapaq Travel Suite
+# Sistema de diseño — KipuControl
 
 Identidad sobria de software empresarial: sidebar azul marino, área de trabajo clara, dorado solo para acentos (acción comercial destacada, avatar del tenant, estrellas de reseñas). Nada de degradados decorativos, sombras pesadas, ilustraciones genéricas ni emojis en el back-office.
 
@@ -8,7 +8,7 @@ Identidad sobria de software empresarial: sidebar azul marino, área de trabajo 
 |---|---|
 | `tokens.json` | Fuente única: colores claro/oscuro, tipografía, radios, sombras, tamaños, breakpoints y **tono por estado** (102 estados). |
 | `globals.css` | `app/globals.css` de Next.js con Tailwind v3: variables CSS claro/oscuro y estilos base. |
-| `tailwind.preset.ts` | Preset de Tailwind v3 (`presets: [qhapaqPreset]`) + `statusTone` / `toneFor()` para badges. |
+| `tailwind.preset.ts` | Preset de Tailwind v3 (`presets: [kipucontrolPreset]`) + `statusTone` / `toneFor()` para badges. |
 | `theme.v4.css` | Alternativa si el proyecto usa Tailwind v4 (`@theme inline`). Usar este **o** el preset, no ambos. |
 | `theme.native.ts` | Tema para la app Expo (mismos valores). |
 

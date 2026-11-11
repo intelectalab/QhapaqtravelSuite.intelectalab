@@ -14,7 +14,7 @@ export default async function FacturasPage() {
     <>
       <PageHeader
         title="Facturación"
-        subtitle="Facturas electrónicas que Qhapaq Cloud emite a cada agencia, serie FQ01."
+        subtitle="Facturas electrónicas que KipuControl Cloud emite a cada agencia, serie FQ01."
         info={<InfoTip>Anular emite una nota de crédito NQ01 y, si la factura estaba pagada, solicita el reembolso a la pasarela. Los montos incluyen IGV.</InfoTip>}
       />
       <BillingTabs />

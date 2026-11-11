@@ -63,6 +63,54 @@ final class IncidentWorkflow
         });
     }
 
+    public function fromFeedback(string $feedbackCode, array $data, User $actor): array
+    {
+        return DB::transaction(function () use ($feedbackCode, $data, $actor): array {
+            $feedback = DB::table('channel_pax_feedback')->where('code', $feedbackCode)->lock('for no key update')->first() ?? throw ApiException::notFound('El comentario no existe.');
+
+            if ($feedback->status === 'derivado' || $feedback->incident_id !== null) {
+                $existing = DB::table('ops_incidents')->where('id', $feedback->incident_id)->value('code');
+
+                throw ApiException::conflict('VALIDATION_ERROR', 'El comentario ya se derivó'.($existing ? " a la incidencia {$existing}" : '').'.');
+            }
+
+            $order = DB::table('ops_orders')->whereNull('deleted_at')->where('reservation_id', $feedback->reservation_id)->where('status', '<>', 'cancelada')->first(['id', 'coordinator_id']);
+            $assignee = $order->coordinator_id ?? null;
+            $code = $this->sequence->next('ops_incidents', 'INC-', 4);
+            $hours = IncidentDirectory::SLA_HOURS[$data['severity']];
+            $id = (string) Str::uuid7();
+            DB::table('ops_incidents')->insert([
+                'id' => $id,
+                'code' => $code,
+                'order_id' => $order?->id,
+                'reservation_id' => $feedback->reservation_id,
+                'reservation_service_id' => $feedback->reservation_service_id,
+                'type' => $data['type'],
+                'severity' => $data['severity'],
+                'title' => $data['title'],
+                'description' => $data['description'],
+                'status' => 'abierta',
+                'assignee_id' => $assignee,
+                'reported_by' => $actor->getKey(),
+                'source' => 'web',
+                'sla_hours' => $hours,
+                'sla_due_at' => CarbonImmutable::now()->addHours($hours),
+                'created_by' => $actor->getKey(),
+            ]);
+            $this->log($id, $actor, 'registro', "Incidencia creada desde el comentario del pasajero {$feedback->code}.");
+
+            if ($data['severity'] === 'critica') {
+                $this->log($id, null, 'alerta', 'Alerta crítica enviada a gerencia.');
+            }
+
+            DB::table('channel_pax_feedback')->where('id', $feedback->id)->update(['status' => 'derivado', 'incident_id' => $id, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            $this->audit->log('Incidencia', $code, 'crear', "Comentario {$feedback->code}", "abierta / {$data['severity']}");
+            $this->audit->log('Comentario pasajero', (string) $feedback->code, 'derivar', (string) $feedback->status, "derivado · {$code}");
+
+            return ['code' => $code, 'feedback' => $feedback->code, 'order' => $order !== null];
+        });
+    }
+
     public function update(string $code, array $data, User $actor): void
     {
         $incident = $this->open($code);

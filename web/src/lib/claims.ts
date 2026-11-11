@@ -2,6 +2,13 @@ import type { Tone } from "@/lib/tone";
 
 export type Deadline = "en_plazo" | "por_vencer" | "vencido" | "respondido_en_plazo" | "respondido_fuera_de_plazo";
 
+export interface ClaimGuardian {
+  name: string | null;
+  doc_type: string | null;
+  doc_number: string | null;
+  relation: string | null;
+}
+
 export interface ClaimSheet {
   code: string;
   lock_version: number;
@@ -18,7 +25,7 @@ export interface ClaimSheet {
   channel_label: string;
   book_status: "received" | "in_review" | "answered" | "closed";
   book_status_label: string;
-  consumer: { name: string; doc_type: string | null; doc_number: string | null; email: string | null; phone: string | null; address: string | null; minor: boolean };
+  consumer: { name: string; doc_type: string | null; doc_number: string | null; email: string | null; phone: string | null; address: string | null; is_minor: boolean; guardian: ClaimGuardian | null };
   good: { kind: string; description: string; amount: number; currency: string } | null;
   received_at: string;
   received_on: string;
@@ -42,6 +49,7 @@ export interface ClaimsOverview {
   by_type: { label: string; count: number }[];
   by_sede: { label: string; count: number }[];
   claims: ClaimSheet[];
+  sequences: { sede: string; year_count: number; last: string | null; next: string }[];
   options: { sedes: { value: string; label: string }[]; clients: { value: string; label: string }[]; reservations: { value: string; label: string; hint?: string }[] };
   can: { manage: boolean; settings: boolean };
 }
@@ -62,6 +70,10 @@ export const DOC_TYPES = [
   { value: "Pasaporte", label: "Pasaporte" },
   { value: "RUC", label: "RUC" },
 ];
+
+export const GUARDIAN_DOC_TYPES = DOC_TYPES.filter((option) => option.value !== "RUC");
+
+export const GUARDIAN_RELATIONS = ["Padre", "Madre", "Apoderado"].map((value) => ({ value, label: value }));
 
 export const DECISIONS = [
   { value: "Procedente", label: "Procedente" },

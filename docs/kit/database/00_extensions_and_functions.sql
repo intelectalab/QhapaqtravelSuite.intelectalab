@@ -1,5 +1,5 @@
 -- =============================================================================
--- Qhapaq Travel Suite · Esquema PostgreSQL 17 · 00_extensions_and_functions.sql
+-- KipuControl · Esquema PostgreSQL 17 · 00_extensions_and_functions.sql
 -- Extensiones y funciones compartidas por todas las fases. Ejecutar PRIMERO.
 -- Probado en PostgreSQL 16 (sintaxis compatible con 17).
 -- =============================================================================

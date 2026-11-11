@@ -60,6 +60,40 @@ final class ProviderRegistry
         });
     }
 
+    public function renewContract(string $ref, array $data, User $actor): string
+    {
+        return DB::transaction(function () use ($ref, $data, $actor): string {
+            $provider = $this->provider($ref);
+
+            if ($data['contract_end'] <= $provider->contract_end) {
+                throw ApiException::unprocessable('CAT-BR-38', 'La nueva fecha de fin debe ser posterior a la actual ('.$provider->contract_end.').');
+            }
+
+            if ($data['contract_end'] < CatalogAccess::today()) {
+                throw ApiException::unprocessable('CAT-BR-38', 'La renovación debe terminar hoy o después.');
+            }
+
+            $terms = array_key_exists('payment_terms', $data) && $data['payment_terms'] !== null ? trim($data['payment_terms']) : $provider->payment_terms;
+            $status = $provider->status === 'vencido' ? 'inactivo' : $provider->status;
+            DB::table('catalog_providers')->where('id', $provider->id)->update(['contract_end' => $data['contract_end'], 'payment_terms' => $terms, 'status' => $status, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            $this->audit->log('Proveedor', $ref, 'renovar_contrato', "hasta {$provider->contract_end} · {$provider->payment_terms}", "hasta {$data['contract_end']} · {$terms}");
+
+            return $ref;
+        });
+    }
+
+    public function rate(string $ref, float $rating, ?string $note, User $actor): string
+    {
+        return DB::transaction(function () use ($ref, $rating, $note, $actor): string {
+            $provider = $this->provider($ref);
+            $value = round($rating, 1);
+            DB::table('catalog_providers')->where('id', $provider->id)->update(['rating' => $value, 'rating_note' => $note, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            $this->audit->log('Proveedor', $ref, 'calificar', number_format((float) $provider->rating, 1).' / 5', trim(number_format($value, 1).' / 5'.($note ? " · {$note}" : '')));
+
+            return $ref;
+        });
+    }
+
     public function addContact(string $ref, array $data, User $actor): void
     {
         $provider = $this->provider($ref);

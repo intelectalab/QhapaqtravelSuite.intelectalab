@@ -16,7 +16,7 @@ final class PdfRenderer
         $dompdf = $pdf->getDomPDF();
         $dompdf->addInfo('Title', $draft->title);
         $dompdf->addInfo('Author', (string) ($draft->data['agency']['name'] ?? ''));
-        $dompdf->addInfo('Creator', 'Qhapaq Travel Suite');
+        $dompdf->addInfo('Creator', 'KipuControl');
         $dompdf->render();
         $canvas = $dompdf->getCanvas();
         [$r, $g, $b] = sscanf(DocumentFormat::tint((string) ($draft->data['agency']['ink'] ?? AgencyLetterhead::INK), 0.45), '#%02x%02x%02x');

@@ -6,6 +6,7 @@ namespace App\Domain\Quotes\Http\Controllers;
 
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
+use App\Domain\Quotes\Actions\QuoteAccessTokens;
 use App\Domain\Quotes\Actions\QuoteBuilder;
 use App\Domain\Quotes\Actions\QuoteLifecycle;
 use App\Domain\Quotes\Http\Requests\QuoteSaveRequest;
@@ -13,9 +14,12 @@ use App\Domain\Quotes\Support\QuoteDirectory;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 final class QuoteController
 {
+    public const EVIDENCE = ['Aceptación en portal (enlace con token)', 'Correo electrónico del cliente', 'Mensaje de WhatsApp', 'Firma de conformidad', 'Orden de compra / servicio'];
+
     public function __construct(private readonly QuoteDirectory $directory) {}
 
     public function index(Request $request): JsonResponse
@@ -134,13 +138,24 @@ final class QuoteController
     public function send(Request $request, string $code, QuoteLifecycle $lifecycle): JsonResponse
     {
         $data = $request->validate([
-            'channel' => ['required', 'in:Email,WhatsApp,Portal'],
-            'recipient' => ['required', 'string', 'max:200'],
+            'channels' => ['required_without:channel', 'array', 'min:1', 'max:3'],
+            'channels.*' => ['string', 'in:Email,WhatsApp,Portal,email,whatsapp,portal'],
+            'channel' => ['nullable', 'in:Email,WhatsApp,Portal'],
+            'recipient' => ['nullable', 'string', 'max:200'],
+            'phone' => ['nullable', 'string', 'max:40'],
             'message' => ['nullable', 'string', 'max:2000'],
-        ], ['channel.*' => 'Elige cómo enviarla.', 'recipient.required' => 'Escribe a quién se envía.']);
-        $lifecycle->send($code, $data['channel'], $data['recipient'], $data['message'] ?? null, $this->user($request));
+        ], ['channels.*' => 'Elige al menos un canal.', 'channels.required_without' => 'Elige al menos un canal.']);
+        $names = array_combine(array_map('mb_strtolower', QuoteLifecycle::SEND_CHANNELS), QuoteLifecycle::SEND_CHANNELS);
+        $channels = array_map(fn (string $channel): string => $names[mb_strtolower($channel)], $data['channels'] ?? [$data['channel']]);
+        $recipient = $data['recipient'] ?? null;
+        $to = ['email' => $recipient !== null && str_contains($recipient, '@') ? $recipient : null, 'phone' => $data['phone'] ?? ($recipient !== null && ! str_contains($recipient, '@') ? $recipient : null)];
 
-        return response()->json(['data' => ['code' => $code]]);
+        return response()->json(['data' => $lifecycle->send($code, $channels, $to, $data['message'] ?? null, $this->user($request))]);
+    }
+
+    public function token(Request $request, string $code, QuoteAccessTokens $tokens): JsonResponse
+    {
+        return response()->json(['data' => $tokens->regenerate($code, $this->user($request))]);
     }
 
     public function recordView(Request $request, string $code, QuoteLifecycle $lifecycle): JsonResponse
@@ -166,11 +181,11 @@ final class QuoteController
     {
         $data = $request->validate([
             'approved_by_name' => ['required', 'string', 'max:150'],
-            'channel' => ['required', 'string', 'max:60'],
-            'ref' => ['nullable', 'string', 'max:200'],
+            'channel' => ['required', Rule::in(self::EVIDENCE)],
+            'ref' => ['required', 'string', 'min:3', 'max:200'],
             'internal_approval' => ['nullable', 'boolean'],
             'internal_note' => ['nullable', 'string', 'max:500'],
-        ], ['approved_by_name.required' => 'Escribe quién aprobó.', 'channel.required' => 'Indica por dónde aprobó.']);
+        ], ['approved_by_name.required' => 'Escribe quién aprobó.', 'channel.*' => 'Elige el tipo de evidencia de la aprobación.', 'ref.*' => 'Escribe la referencia de la evidencia: asunto del correo, número de orden o fecha del mensaje.']);
         $lifecycle->approve($code, $data, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);

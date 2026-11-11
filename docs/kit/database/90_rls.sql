@@ -1,5 +1,5 @@
 -- =============================================================================
--- Qhapaq Travel Suite · Esquema PostgreSQL 17 · 90_rls.sql
+-- KipuControl · Esquema PostgreSQL 17 · 90_rls.sql
 -- Roles de base de datos, privilegios, Row Level Security por tenant y funciones de
 -- resolución previas al contexto (host, API key, widget, webhooks).
 -- Idempotente: puede ejecutarse después de CADA fase (omite tablas aún inexistentes).
@@ -11,8 +11,8 @@ set search_path = public;
 -- app_role      : conexión de la API/colas del tenant. Sin BYPASSRLS. Siempre con app.tenant_id fijado.
 -- platform_role : conexión de plataforma (App\Domain\Platform\*): Super Admin, facturación SaaS, jobs multi-tenant.
 --                 Accede a todo vía la política platform_access (no requiere BYPASSRLS; compatible con RDS/Cloud SQL).
--- Ejemplo infra:  create role qhapaq_app login password '…' in role app_role;
---                 create role qhapaq_platform login password '…' in role platform_role;
+-- Ejemplo infra:  create role kipucontrol_app login password '…' in role app_role;
+--                 create role kipucontrol_platform login password '…' in role platform_role;
 do $$ begin
   if not exists (select 1 from pg_roles where rolname = 'app_role') then
     create role app_role nologin nobypassrls;

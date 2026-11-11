@@ -4,7 +4,7 @@ import { BrandMark } from "./BrandMark";
 interface AuthFrameProps {
   headline: ReactNode;
   description: string;
-  footnote: string;
+  footnote?: string;
   children: ReactNode;
 }
 
@@ -20,15 +20,14 @@ export function AuthFrame({ headline, description, footnote, children }: AuthFra
             <BrandMark size={26} />
           </span>
           <span className="leading-tight">
-            <b className="block text-lg font-bold tracking-tight">Qhapaq</b>
-            <span className="text-[11px] uppercase tracking-[0.18em] text-white/55">Travel Suite</span>
+            <b className="block text-lg font-bold tracking-tight">KipuControl</b>
           </span>
         </div>
         <div className="relative mt-auto max-w-md">
           <h1 className="text-[40px] font-bold leading-[1.08] tracking-[-0.04em]">{headline}</h1>
           <p className="mt-5 text-[15px] leading-relaxed text-white/65">{description}</p>
         </div>
-        <p className="relative mt-12 text-[12.5px] text-white/40">{footnote}</p>
+        {footnote && <p className="relative mt-12 text-[12.5px] text-white/40">{footnote}</p>}
       </aside>
       <main className="flex items-center justify-center px-5 py-12 sm:px-10">
         <div className="w-full max-w-[400px]">
@@ -36,7 +35,7 @@ export function AuthFrame({ headline, description, footnote, children }: AuthFra
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-menu">
               <BrandMark size={22} />
             </span>
-            <b className="text-lg font-bold tracking-tight">Qhapaq Travel Suite</b>
+            <b className="text-lg font-bold tracking-tight">KipuControl</b>
           </div>
           {children}
         </div>

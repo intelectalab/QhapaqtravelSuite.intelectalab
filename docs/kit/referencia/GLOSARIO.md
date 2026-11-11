@@ -138,7 +138,7 @@
 | **Reseña propia / externa** | Opinión verificada que el pasajero deja tras el viaje (R-OWN-REVIEWS), frente a reseñas importadas de TripAdvisor/Google. | `crm_own_reviews`, `channel_external_reviews` | 18 (41), 15 (26), 17 (22), 08 (7), 13 (2) |
 | **Tarifa neta** | Precio B2B que paga la agencia asociada antes de su comisión o margen de reventa. | `catalog_product_b2b_rates`, `channel_b2b_price_lists` | 06 (12), 11 (5), 02 (4), 08 (3), 07 (2) y 2 más |
 | **Ventana de 24 h (WhatsApp)** | Regla de Meta: fuera de las 24 h desde el último mensaje del cliente solo se pueden enviar plantillas aprobadas (INB-BR-02). | `collab_reply_templates` | 10 (2), 17 (1) |
-| **Widget / publishable key** | Componente embebible en webs de terceros autenticado con clave pública `X-Qhapaq-Key` validada contra dominios verificados. | `channel_widget_config`, `channel_widget_domains` | 17 (52), 18 (9), 16 (8), 15 (6), 04 (1) |
+| **Widget / publishable key** | Componente embebible en webs de terceros autenticado con clave pública `X-KipuControl-Key` validada contra dominios verificados. | `channel_widget_config`, `channel_widget_domains` | 17 (52), 18 (9), 16 (8), 15 (6), 04 (1) |
 
 ## Documentación y pruebas
 

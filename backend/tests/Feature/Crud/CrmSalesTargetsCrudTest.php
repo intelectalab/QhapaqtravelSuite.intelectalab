@@ -123,17 +123,26 @@ it('activar una meta en borrador la deja vigente y solo aplica a borradores', fu
     expect($this->postJson('/api/v1/crm/sales-targets/MET-0013/activate', [], critical(crmMetaVersion('MET-0013'))))->toBeApiError(409, 'MET-STATE');
 });
 
-it('anular una meta exige motivo y libera el alcance y período para una nueva', function () {
+it('anular una meta en borrador exige motivo y libera el alcance y período para una nueva', function () {
+    actingAsSeed('U02');
+    $draft = rowOf('crm_sales_targets', 'MET-0013');
+
+    $this->postJson('/api/v1/crm/sales-targets/MET-0013/void', [], critical(crmMetaVersion('MET-0013')))->assertStatus(422)->assertJsonValidationErrors('reason');
+    $this->postJson('/api/v1/crm/sales-targets/MET-0013/void', ['reason' => 'Se cargó con el monto equivocado'], critical(crmMetaVersion('MET-0013')))->assertOk();
+
+    expect(rowOf('crm_sales_targets', 'MET-0013')->status)->toBe('anulada')
+        ->and(collect(crmMetaHistorial('MET-0013'))->last()->reason)->toBe('Se cargó con el monto equivocado')
+        ->and(crmMetaAuditada('MET-0013', 'anular'))->toBeTrue();
+
+    $this->postJson('/api/v1/crm/sales-targets', ['scope_type' => $draft->scope_type, 'scope_id' => $draft->scope_id, 'period' => $draft->period_key, 'goal_sales' => 28000])->assertCreated();
+});
+
+it('solo se anulan borradores: una meta vigente o cerrada no se anula', function () {
     actingAsSeed('U02');
 
-    $this->postJson('/api/v1/crm/sales-targets/MET-0015/void', [], critical(crmMetaVersion('MET-0015')))->assertStatus(422)->assertJsonValidationErrors('reason');
-    $this->postJson('/api/v1/crm/sales-targets/MET-0015/void', ['reason' => 'Se cargó con el monto equivocado'], critical(crmMetaVersion('MET-0015')))->assertOk();
-
-    expect(rowOf('crm_sales_targets', 'MET-0015')->status)->toBe('anulada')
-        ->and(collect(crmMetaHistorial('MET-0015'))->last()->reason)->toBe('Se cargó con el monto equivocado');
-
-    $this->postJson('/api/v1/crm/sales-targets', ['scope_type' => 'asesor', 'scope_id' => seedUser('U04')->id, 'period' => '2026-10', 'goal_sales' => 28000, 'activate' => true])->assertCreated();
-    expect($this->postJson('/api/v1/crm/sales-targets/MET-0001/void', ['reason' => 'Ya no corresponde'], critical(crmMetaVersion('MET-0001'))))->toBeApiError(409, 'MET-STATE');
+    expect($this->postJson('/api/v1/crm/sales-targets/MET-0015/void', ['reason' => 'Ya no corresponde'], critical(crmMetaVersion('MET-0015'))))->toBeApiError(409, 'MET-STATE')
+        ->and($this->postJson('/api/v1/crm/sales-targets/MET-0001/void', ['reason' => 'Ya no corresponde'], critical(crmMetaVersion('MET-0001'))))->toBeApiError(409, 'MET-STATE')
+        ->and(rowOf('crm_sales_targets', 'MET-0015')->status)->toBe('vigente');
 });
 
 it('cerrar una meta de un período terminado congela el resultado', function () {
@@ -145,7 +154,7 @@ it('cerrar una meta de un período terminado congela el resultado', function () 
     $result = json_decode((string) $target->result, true);
     expect($target->status)->toBe('cerrada')
         ->and($result)->toHaveKeys(['sales', 'bookings', 'margin', 'conversion', 'reservation_ids', 'closed_at'])
-        ->and(collect(crmMetaHistorial('MET-0005'))->last()->action)->toBe('cerrar')
+        ->and(collect(crmMetaHistorial('MET-0005'))->pluck('action')->all())->toContain('cerrar')
         ->and(crmMetaAuditada('MET-0005', 'cerrar'))->toBeTrue();
 });
 

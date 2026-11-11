@@ -16,6 +16,8 @@ Route::middleware('permission:admin.settings.manage')->prefix('admin')->name('ad
     Route::get('booking-rules', [RuleController::class, 'index'])->name('rules.index');
     Route::post('booking-rules', [RuleController::class, 'store'])->name('rules.store');
     Route::post('booking-rules/reset', [RuleController::class, 'reset'])->name('rules.reset');
+    Route::post('booking-rules/apply-template', [RuleController::class, 'applyTemplate'])->name('rules.apply-template');
+    Route::get('booking-rules/audit', [RuleController::class, 'audit'])->name('rules.audit');
     Route::patch('booking-rules/{code}', [RuleController::class, 'update'])->name('rules.update');
     Route::delete('booking-rules/{code}', [RuleController::class, 'destroy'])->name('rules.destroy');
 });
@@ -26,6 +28,8 @@ Route::middleware('permission:admin.settings.manage')->name('admin.')->group(fun
     Route::patch('notifications/pax-templates/{code}', [PaxTemplateController::class, 'update'])->name('pax-templates.update');
     Route::delete('notifications/pax-templates/{code}', [PaxTemplateController::class, 'destroy'])->name('pax-templates.destroy');
 });
+
+Route::get('notifications/pax-messages', [PaxTemplateController::class, 'messages'])->middleware('permission:admin.settings.manage|operations.assign')->name('admin.pax-messages.index');
 
 Route::get('settings/fx-rates', [SettingsController::class, 'fxRates'])->middleware('permission:admin.settings.manage|finance.treasury')->name('settings.fx-rates.index');
 

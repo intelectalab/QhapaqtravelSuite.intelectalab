@@ -69,7 +69,10 @@ function catTransition(string $code, string $action, ?string $reason = null)
     return test()->postJson("/api/v1/catalog/products/{$code}/{$action}", array_filter(['reason' => $reason, 'lock_version' => $lock], fn ($v) => $v !== null), critical($lock));
 }
 
-beforeEach(fn () => Queue::fake());
+beforeEach(function () {
+    lockCatalogProducts();
+    Queue::fake();
+});
 
 it('crea un producto en borrador con versión 0.1, canal ERP, SKU por defecto y auditoría', function () {
     $code = catCreateProduct(['code' => 'cus-vsu-fd']);

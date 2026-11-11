@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Admin\Http\Controllers;
 
 use App\Domain\Admin\Actions\ManageApiAccess;
+use App\Domain\Admin\Actions\ManageWebhookDeliveries;
 use App\Domain\Admin\Support\ApiDirectory;
 use App\Domain\Iam\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -74,6 +75,26 @@ final class ApiAccessController
         $access->updateWebhook($code, $this->webhook($request), $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function rotateSecret(Request $request, string $code, ManageWebhookDeliveries $webhooks): JsonResponse
+    {
+        return response()->json(['data' => $webhooks->rotate($code, $this->user($request))]);
+    }
+
+    public function ping(Request $request, string $code, ManageWebhookDeliveries $webhooks): JsonResponse
+    {
+        return response()->json(['data' => $webhooks->ping($code, $this->user($request))]);
+    }
+
+    public function delivery(string $code, ManageWebhookDeliveries $webhooks): JsonResponse
+    {
+        return response()->json(['data' => $webhooks->detail($code)]);
+    }
+
+    public function redeliver(Request $request, string $code, ManageWebhookDeliveries $webhooks): JsonResponse
+    {
+        return response()->json(['data' => $webhooks->redeliver($code, $this->user($request))], 201);
     }
 
     public function destroyWebhook(Request $request, string $code, ManageApiAccess $access): JsonResponse

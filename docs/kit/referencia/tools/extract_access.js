@@ -59,7 +59,7 @@ function readCap() {
   const browser = await chromium.launch({ executablePath: fs.existsSync(EXE) ? EXE : undefined });
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   await ctx.addInitScript(() => {
-    try { localStorage.clear(); localStorage.setItem('qhapaq_session', 'U01'); } catch (e) { }
+    try { localStorage.clear(); localStorage.setItem('kipucontrol_session', 'U01'); } catch (e) { }
     window.__ROUTES__ = [];
     let _app;
     Object.defineProperty(window, 'App', {

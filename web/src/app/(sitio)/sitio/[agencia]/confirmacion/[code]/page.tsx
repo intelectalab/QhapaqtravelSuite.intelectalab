@@ -6,6 +6,7 @@ import { DownloadButton } from "@/components/ui/DownloadButton";
 import { HoldTimer } from "@/features/site/Cart";
 import { PageHero } from "@/features/site/Hero";
 import { OrderPayment } from "@/features/site/PayButton";
+import { TrackEvent } from "@/features/site/SiteAnalytics";
 import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { getSiteOrder, getSiteProfile, siteBase } from "@/lib/server/site";
@@ -29,6 +30,7 @@ export default async function ConfirmationPage({ params }: PageProps<"/sitio/[ag
 
   return (
     <>
+      <TrackEvent event={paid ? "purchase" : "purchase_pending"} params={{ transaction_id: order.code, value: Number(order.total), currency: order.currency }} />
       <PageHero
         eyebrow={`Pedido ${order.code}`}
         title={paid ? "¡Tu reserva está registrada!" : "Tu pedido está listo para el pago"}
@@ -58,7 +60,9 @@ export default async function ConfirmationPage({ params }: PageProps<"/sitio/[ag
                   ? `Te queda un saldo de ${formatMoney(order.due, order.currency)}${order.balance_due_date ? ` que vence el ${formatDate(order.balance_due_date)}` : ""}.`
                   : rejected
                     ? `${order.attempts[0]?.message ?? "El banco rechazó el cobro."} Tus cupos siguen bloqueados; puedes intentar con otra tarjeta u otro medio.`
-                    : `Pendiente de pago: ${formatMoney(order.due, order.currency)}${order.pay_mode === "anticipo" ? " (adelanto)" : ""}.`}
+                    : order.pay_later
+                      ? `Reservaste sin pagar: tus cupos quedan guardados hasta el ${order.hold_expires_at ? formatDateTime(order.hold_expires_at) : ""}. Paga ${formatMoney(order.due, order.currency)} antes de esa hora para confirmar el viaje.`
+                      : `Pendiente de pago: ${formatMoney(order.due, order.currency)}${order.pay_mode === "anticipo" ? " (adelanto)" : ""}.`}
               </p>
               <div className="mt-4">
                 <OrderPayment code={order.code} label={`Pagar ${formatMoney(order.due, order.currency)}`} methods={order.methods} accounts={order.bank_accounts} walletPhone={profile.agency.phone} />

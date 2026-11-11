@@ -23,6 +23,14 @@ final class ReceivableLedger
         return Decimal::of($row->amount)->minus(Decimal::of($row->paid_amount));
     }
 
+    public static function available(object $reservation): BigDecimal
+    {
+        $committed = Decimal::of(DB::table('fin_receivables')->where('reservation_id', $reservation->id)->whereNull('deleted_at')->where('status', '<>', 'cancelada')->sum('amount'));
+        $available = Decimal::of($reservation->total_amount)->minus($committed);
+
+        return $available->isNegative() ? BigDecimal::zero() : Decimal::round2($available);
+    }
+
     public static function status(string $stored, BigDecimal|string|float $amount, BigDecimal|string|float $paid, string $due, string $today): string
     {
         $paid = Decimal::of($paid);

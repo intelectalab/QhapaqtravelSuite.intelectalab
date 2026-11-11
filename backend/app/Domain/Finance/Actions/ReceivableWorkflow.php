@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Finance\Actions;
 
+use App\Domain\Admin\Support\EmailNotifications;
 use App\Domain\Channels\Support\B2bCredit;
+use App\Domain\Finance\Events\PaymentApplied;
 use App\Domain\Finance\Support\Consolidation;
 use App\Domain\Finance\Support\FinanceHistory;
 use App\Domain\Finance\Support\PaymentMethods;
@@ -14,7 +16,10 @@ use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Sequences\SequenceService;
+use Brick\Math\BigDecimal;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class ReceivableWorkflow
 {
@@ -25,6 +30,7 @@ final class ReceivableWorkflow
         private readonly ReceivableLedger $ledger,
         private readonly AuditLogger $audit,
         private readonly B2bCredit $credit,
+        private readonly EmailNotifications $notifications,
     ) {}
 
     public function registerPayment(string $code, array $data, User $actor): string
@@ -92,6 +98,7 @@ final class ReceivableWorkflow
             $method->is_b2b_credit
                 ? $this->credit->creditPayment($receivable, $paymentId, $paymentCode, (string) $amount, $actor->getKey())
                 : $this->credit->paymentApplied(DB::table('fin_payments')->where('id', $paymentId)->first(), $actor->getKey());
+            PaymentApplied::dispatch($paymentId, (string) $actor->getKey());
 
             return $paymentCode;
         });
@@ -116,6 +123,97 @@ final class ReceivableWorkflow
             ]);
             $this->audit->log('Cuenta por cobrar', $receivable->code, 'cancelar', $receivable->status, $reason);
         });
+    }
+
+    public function requestAdvance(array $data, User $actor): string
+    {
+        return DB::transaction(function () use ($data, $actor): string {
+            $reservation = DB::table('booking_reservations as b')->join('crm_clients as c', 'c.id', '=', 'b.client_id')->where('b.code', $data['reservation'])->whereNull('b.deleted_at')
+                ->lock('for no key update of b')->first(['b.id', 'b.code', 'b.status', 'b.client_id', 'b.currency', 'b.fx_rate', 'b.total_amount', 'b.travel_from', 'c.name as client_name', 'c.email as client_email']);
+
+            if ($reservation === null) {
+                throw ApiException::notFound('La reserva no existe.');
+            }
+
+            if (in_array($reservation->status, ['borrador', 'cancelada'], true)) {
+                throw ApiException::unprocessable('FIN-BR-02', 'Solo se piden anticipos de reservas vigentes (no borrador ni cancelada).');
+            }
+
+            $available = ReceivableLedger::available($reservation);
+            $amount = Decimal::money($data['amount']);
+
+            if ($amount->isGreaterThan($available)) {
+                throw ApiException::unprocessable('PROC-041', 'El anticipo supera lo que falta comprometer de la reserva ('.Decimal::display($available, (string) $reservation->currency).').', ['available' => (string) $available]);
+            }
+
+            $code = $this->sequences->next('receivable');
+            DB::table('fin_receivables')->insert([
+                'code' => $code,
+                'reservation_id' => $reservation->id,
+                'client_id' => $reservation->client_id,
+                'kind' => 'anticipo',
+                'concept' => $data['concept'],
+                'amount' => (string) $amount,
+                'currency' => $reservation->currency,
+                'fx_rate' => $this->money->fxFor((string) $reservation->currency, $reservation->fx_rate),
+                'paid_amount' => '0',
+                'due_date' => $data['due_date'],
+                'status' => 'abierta',
+                'created_by' => $actor->getKey(),
+                'updated_by' => $actor->getKey(),
+            ]);
+            $this->audit->log('Cuenta por cobrar', $code, 'solicitar_anticipo', null, "{$reservation->code} · {$reservation->currency} {$amount} · vence {$data['due_date']}");
+
+            if ($data['notify'] ?? false) {
+                $this->notifyClient(DB::table('fin_receivables')->where('code', $code)->first(), $reservation, $amount, $actor);
+            }
+
+            return $code;
+        });
+    }
+
+    public function remind(string $code, User $actor): array
+    {
+        $result = [];
+        DB::transaction(function () use ($code, $actor, &$result): void {
+            $receivable = $this->open($code);
+            $balance = ReceivableLedger::balance($receivable);
+
+            if (in_array($receivable->status, ['pagada', 'cancelada'], true) || ! $balance->isPositive()) {
+                throw ApiException::conflict('FIN-BR-05', $receivable->status === 'cancelada' ? 'La cuota está anulada: no se recuerda.' : 'La cuota ya está pagada: no hay nada que recordar.');
+            }
+
+            $reservation = DB::table('booking_reservations as b')->join('crm_clients as c', 'c.id', '=', 'b.client_id')->where('b.id', $receivable->reservation_id)
+                ->first(['b.id', 'b.code', 'b.client_id', 'b.travel_from', 'c.name as client_name', 'c.email as client_email']);
+
+            if ($reservation === null || ! str_contains((string) $reservation->client_email, '@')) {
+                throw ApiException::unprocessable('FIN-BR-05', 'El cliente no tiene un correo registrado. Agrégalo en su ficha para enviarle el recordatorio.');
+            }
+
+            $message = $this->notifyClient($receivable, $reservation, $balance, $actor);
+            $sentAt = now();
+            DB::table('fin_receivable_reminders')->insert([
+                'id' => (string) Str::uuid7(), 'tenant_id' => $receivable->tenant_id, 'receivable_id' => $receivable->id, 'channels' => 'email',
+                'sent_by' => $actor->getKey(), 'sent_at' => $sentAt, 'balance_at_send' => (string) $balance->toScale(2), 'created_by' => $actor->getKey(), 'created_at' => $sentAt,
+            ]);
+            DB::table('fin_receivables')->where('id', $receivable->id)->update(['last_reminder_at' => $sentAt, 'updated_by' => $actor->getKey(), 'updated_at' => $sentAt]);
+            $this->audit->log('Cuenta por cobrar', $receivable->code, 'recordar', null, "{$reservation->client_email} · saldo {$receivable->currency} {$balance->toScale(2)}");
+
+            $result = ['code' => (string) $receivable->code, 'sent_to' => (string) $reservation->client_email, 'message' => $message];
+        });
+
+        return $result;
+    }
+
+    private function notifyClient(object $receivable, object $reservation, BigDecimal $amount, User $actor): ?string
+    {
+        return $this->notifications->queue('pago.recordatorio', (string) $reservation->client_email, [
+            'cliente' => (string) $reservation->client_name,
+            'reserva' => (string) $reservation->code,
+            'monto' => Decimal::display($amount, (string) $receivable->currency),
+            'fecha_viaje' => $reservation->travel_from ? CarbonImmutable::parse((string) $reservation->travel_from)->format('d/m/Y') : '',
+            'vendedor' => (string) $actor->name,
+        ], ['source_type' => 'fin_receivable', 'source_id' => $receivable->id, 'client_id' => $reservation->client_id, 'reservation_id' => $reservation->id]);
     }
 
     private function open(string $code): object

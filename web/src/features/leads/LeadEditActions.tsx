@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, CircleSlash, Mail, Pencil, Phone, User, UserRoundCog, Users } from "lucide-react";
+import { CircleSlash, Pencil, UserRoundCog } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { assignLead, discardLead, updateLead, type LeadActionState } from "@/app/(backoffice)/crm/leads/actions";
@@ -9,23 +9,12 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
-import { TextField } from "@/components/ui/TextField";
-import type { Advisor, CrmCatalogs, LeadDetail } from "@/lib/leads";
+import { catalogOptions, type Advisor, type CrmCatalogs, type LeadDetail } from "@/lib/leads";
+import { LeadFields } from "./LeadFields";
 
 const initial: LeadActionState = { message: null, done: false };
 
-const options = (items: CrmCatalogs[keyof CrmCatalogs]) => items.map((item) => ({ value: item.code, label: item.label }));
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3">
-      <h3 className="border-b border-line-2 pb-1.5 text-[13.5px] font-semibold text-fg">{title}</h3>
-      {children}
-    </section>
-  );
-}
-
-export function LeadEditAction({ lead, catalogs, defaultOpen = false }: { lead: LeadDetail; catalogs: CrmCatalogs; defaultOpen?: boolean }) {
+export function LeadEditAction({ lead, catalogs, advisors, defaultOpen = false }: { lead: LeadDetail; catalogs: CrmCatalogs; advisors: Advisor[]; defaultOpen?: boolean }) {
   const router = useRouter();
   return (
     <PanelAction<LeadActionState>
@@ -44,29 +33,7 @@ export function LeadEditAction({ lead, catalogs, defaultOpen = false }: { lead: 
         <>
           <input type="hidden" name="code" value={lead.code} />
           <input type="hidden" name="lock_version" value={lead.lock_version} />
-          <Section title="Persona">
-            <TextField label="Nombre" name="name" required defaultValue={lead.name} icon={<User size={17} />} />
-            <TextField label="Empresa (opcional)" name="company" defaultValue={lead.company ?? undefined} />
-            <div className="grid grid-cols-2 gap-3">
-              <TextField label="Correo" name="email" type="email" defaultValue={lead.email ?? undefined} icon={<Mail size={17} />} />
-              <TextField label="Teléfono" name="phone" inputMode="tel" defaultValue={lead.phone ?? undefined} icon={<Phone size={17} />} />
-            </div>
-          </Section>
-          <Section title="Cómo llegó">
-            <div className="grid grid-cols-2 gap-3">
-              <SelectField label="Fuente" name="source" options={options(catalogs.lead_source)} defaultValue={lead.codes.source} />
-              <SelectField label="Canal" name="channel" options={options(catalogs.lead_channel)} defaultValue={lead.codes.channel} />
-            </div>
-          </Section>
-          <Section title="Qué busca">
-            <SelectField label="Interés" name="interest" options={options(catalogs.lead_interest)} defaultValue={lead.codes.interest} />
-            <TextField label="Destino" name="destination" defaultValue={lead.destination ?? undefined} placeholder="Por ejemplo: Cusco" />
-            <div className="grid grid-cols-2 gap-3">
-              <TextField label="Fecha de viaje" name="travel_date" type="date" defaultValue={lead.travel_date ?? undefined} icon={<CalendarDays size={17} />} />
-              <TextField label="Pasajeros" name="pax" type="number" min={0} defaultValue={lead.pax || undefined} icon={<Users size={17} />} />
-            </div>
-            <TextArea label="Notas" name="notes" rows={3} defaultValue={lead.notes ?? undefined} />
-          </Section>
+          <LeadFields catalogs={catalogs} advisors={advisors} lead={lead} />
         </>
       )}
     </PanelAction>
@@ -123,7 +90,7 @@ export function LeadDiscardAction({ lead, catalogs, iconOnly = false }: { lead: 
         <>
           <input type="hidden" name="code" value={lead.code} />
           <input type="hidden" name="lock_version" value={lead.lock_version} />
-          <SelectField label="Motivo" name="reason" options={options(catalogs.discard_reason)} placeholder="Elegir" />
+          <SelectField label="Motivo" name="reason" options={catalogOptions(catalogs.discard_reason)} placeholder="Elegir" />
           <TextArea label="Detalle (opcional)" name="detail" rows={3} />
         </>
       )}

@@ -53,7 +53,10 @@ function catDeskPrice(): string
     return (string) test()->postJson('/api/v1/reservations/availability-check', ['product_id' => 'CUS-HUM-FD', 'departure_id' => departureRow('SAL-0403')->id, 'adt' => 2])->assertOk()->json('data.adult_price');
 }
 
-beforeEach(fn () => Queue::fake());
+beforeEach(function () {
+    lockCatalogProducts();
+    Queue::fake();
+});
 
 it('cambiar el precio de la tarifa directa cambia el precio del cotizador y lo audita', function () {
     actingAsSeed('U01');

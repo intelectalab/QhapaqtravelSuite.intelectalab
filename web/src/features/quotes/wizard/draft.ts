@@ -1,6 +1,6 @@
 import type { QuotePayload } from "@/app/(backoffice)/cotizaciones/actions";
 import { formatDate, formatMoney } from "@/lib/format";
-import { paxLabel, type QuoteDetail, type QuoteFormOptions, type QuoteLineInput, type QuotePreview } from "@/lib/quotes";
+import { MANUAL_RATE, paxLabel, type QuoteDetail, type QuoteFormOptions, type QuoteLineInput, type QuotePreview } from "@/lib/quotes";
 
 export interface QuoteDraft {
   client: string;
@@ -14,6 +14,7 @@ export interface QuoteDraft {
   discount: string;
   tax: string;
   notes: string;
+  conditions: string;
   lines: QuoteLineInput[];
 }
 
@@ -39,7 +40,19 @@ export function initialDraft(options: QuoteFormOptions, quote?: QuoteDetail, opp
     discount: String(current?.discount_pct ?? 0),
     tax: String(current?.tax_pct ?? options.defaults.tax_pct),
     notes: current?.notes ?? "",
-    lines: current?.items.map((item) => ({ key: lineKey(), product_code: item.product.code, date: item.date, qty: item.qty, pax: item.pax, segment: item.segment, unit_price: String(item.unit_price) })) ?? [],
+    conditions: current?.conditions ?? "",
+    lines:
+      current?.items.map((item) => ({
+        key: lineKey(),
+        product_code: item.product.code,
+        date: item.date,
+        qty: item.qty,
+        pax: item.pax,
+        segment: item.segment,
+        rate_id: item.rate_id ?? (item.price_source === "manual" ? MANUAL_RATE : ""),
+        unit_price: item.price_source === "rate" ? "" : String(item.unit_price),
+        unit_cost: options.can.edit_cost && item.unit_cost !== null && !item.rate_id ? String(item.unit_cost) : "",
+      })) ?? [],
   };
 }
 
@@ -56,9 +69,19 @@ export function quotePayload(draft: QuoteDraft, lockVersion?: number): QuotePayl
     pax_chd: draft.pax.chd,
     pax_inf: draft.pax.inf,
     discount_pct: Number(draft.discount) || 0,
-    tax_pct: Number(draft.tax),
+    tax_pct: draft.tax === "" ? undefined : Number(draft.tax),
     notes: draft.notes || undefined,
-    items: draft.lines.filter(lineReady).map((line) => ({ product_code: line.product_code, date: line.date, qty: line.qty, pax: line.pax, segment: line.segment, unit_price: line.unit_price === "" ? undefined : Number(line.unit_price) })),
+    conditions: draft.conditions || undefined,
+    items: draft.lines.filter(lineReady).map((line) => ({
+      product_code: line.product_code,
+      date: line.date,
+      qty: line.qty,
+      pax: line.pax,
+      segment: line.segment,
+      ...(line.rate_id === "" ? {} : { rate_id: line.rate_id === MANUAL_RATE ? null : line.rate_id }),
+      unit_price: line.unit_price === "" ? undefined : Number(line.unit_price),
+      unit_cost: line.unit_cost === "" ? undefined : Number(line.unit_cost),
+    })),
     lock_version: lockVersion,
   };
 }

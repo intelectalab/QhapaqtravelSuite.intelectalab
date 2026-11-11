@@ -50,7 +50,10 @@ function catServiceProductLock(string $code): int
     return (int) rowOf('catalog_products', $code)->lock_version;
 }
 
-beforeEach(fn () => Queue::fake());
+beforeEach(function () {
+    lockCatalogProducts();
+    Queue::fake();
+});
 
 it('crea un servicio activo cuando el proveedor está activo', function () {
     actingAsSeed('U05');

@@ -342,7 +342,7 @@ Fuente: 05 §2.1–2.3, §3.13–3.14, §4.8, §5 (MOB-BR, PAX-BR), §6.7–6.9,
 **Criterios de aceptación:**
 
 1. Job `SendExpoPush` (cola notifications) para: nueva asignación/liberación/cambio de hora, alerta operativa, voucher emitido, cambio de horario, respuesta de chat.
-2. Deep links `qhapaq-ops://assignments/{id}` y `qhapaq-trip://alerts/{id}` abren la pantalla correcta.
+2. Deep links `kipucontrol-ops://assignments/{id}` y `kipucontrol-trip://alerts/{id}` abren la pantalla correcta.
 3. Receipt `DeviceNotRegistered` anula el token; si push falla, se usa WhatsApp según la matriz de notificaciones.
 
 **Pruebas:** Pest: receipt inválido anula token; Pest: evento ServiceAssigned encola push al recurso.
@@ -2036,7 +2036,7 @@ Fuente: 16 completa; 17 §3.1–3.6, §3.8 (sin reseñas externas).
 
 **Criterios de aceptación:**
 
-1. Autenticación por `X-Qhapaq-Key` (publishable key) + Origin verificado + rate limit Redis.
+1. Autenticación por `X-KipuControl-Key` (publishable key) + Origin verificado + rate limit Redis.
 2. Caché mensual `avail:{tenant}:{product}:{yyyy-mm}:v{ver}` con invalidación por INCR de versión y `ETag`.
 3. Confirmación con `Cache::lock` por fecha (orden ascendente), `FOR UPDATE`, recálculo sin caché; 409 `AVAIL_CHANGED` o `QUOTE_CHANGED`; `Idempotency-Key`.
 
@@ -2082,7 +2082,7 @@ Fuente: 16 completa; 17 §3.1–3.6, §3.8 (sin reseñas externas).
 
 1. Web Component + iframe + shortcode WordPress + uso headless; ruta pública `/widget/[code]` con calendario, pasajeros, alojamiento, adicionales y resumen.
 2. Solo dominios verificados por DNS TXT reciben CORS y `frame-ancestors` (job `VerifyWidgetDomain`); rotación de clave con 24 h de gracia.
-3. Traspaso al checkout del sitio (`widget-handoffs` → `checkout_url`), TTL 24 h con `ExpireWidgetHandoffs`; eventos `qhapaq:*` por postMessage a orígenes verificados.
+3. Traspaso al checkout del sitio (`widget-handoffs` → `checkout_url`), TTL 24 h con `ExpireWidgetHandoffs`; eventos `kipucontrol:*` por postMessage a orígenes verificados.
 4. Configurador `/canales/integracion-web` genera el código a copiar.
 5. Supuesto / nota: Widget de reseñas (17) queda para Fase 3.
 

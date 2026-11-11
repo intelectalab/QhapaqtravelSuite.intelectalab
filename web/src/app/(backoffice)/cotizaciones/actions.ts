@@ -18,9 +18,10 @@ export interface QuotePayload {
   pax_chd: number;
   pax_inf: number;
   discount_pct: number;
-  tax_pct: number;
+  tax_pct?: number;
   notes?: string;
-  items: { product_code: string; date: string; qty: number; pax: number; segment: string; unit_price?: number }[];
+  conditions?: string;
+  items: { product_code: string; date: string; qty: number; pax: number; segment: string; rate_id?: string | null; unit_price?: number; unit_cost?: number }[];
   lock_version?: number;
 }
 
@@ -33,7 +34,7 @@ export async function previewQuote(payload: QuotePayload): Promise<{ preview: Qu
   return { preview: result.data ?? null, message: null };
 }
 
-const quoteStepOf = stepByField({ client_code: 1, opportunity_code: 1, title: 1, valid_until: 1, currency: 1, travel_from: 2, travel_to: 2, pax_adt: 2, pax_chd: 2, pax_inf: 2, items: 3, discount_pct: 4, tax_pct: 4, notes: 4 }, 1);
+const quoteStepOf = stepByField({ client_code: 1, opportunity_code: 1, title: 1, valid_until: 1, currency: 1, travel_from: 2, travel_to: 2, pax_adt: 2, pax_chd: 2, pax_inf: 2, items: 3, discount_pct: 4, tax_pct: 4, notes: 4, conditions: 4 }, 1);
 
 export async function checkQuoteStep(payload: QuotePayload, step: number): Promise<WizardResult<QuotePreview>> {
   const result = await apiFetch<QuotePreview>("/quotes/pricing/preview", { method: "POST", body: { ...payload, step } });
@@ -54,8 +55,9 @@ export interface QuoteStepState {
   done: boolean;
 }
 
-const STEPS: Record<string, { path: string; method: "POST" | "DELETE"; fields: string[]; flags?: string[] }> = {
-  send: { path: "send", method: "POST", fields: ["channel", "recipient", "message"] },
+const STEPS: Record<string, { path: string; method: "POST" | "DELETE"; fields: string[]; flags?: string[]; lists?: string[] }> = {
+  send: { path: "send", method: "POST", fields: ["recipient", "phone", "message"], lists: ["channels"] },
+  token: { path: "token", method: "POST", fields: [] },
   negotiate: { path: "negotiations", method: "POST", fields: ["channel", "note"] },
   view: { path: "views", method: "POST", fields: ["note"] },
   version: { path: "versions", method: "POST", fields: [] },
@@ -74,6 +76,9 @@ export async function quoteStep(_state: QuoteStepState, form: FormData): Promise
   for (const field of step.fields) {
     const raw = form.get(field);
     if (typeof raw === "string" && raw.trim() !== "") body[field] = raw.trim();
+  }
+  for (const list of step.lists ?? []) {
+    body[list] = form.getAll(list).filter((value): value is string => typeof value === "string" && value !== "");
   }
   for (const flag of step.flags ?? []) {
     const raw = form.get(flag);

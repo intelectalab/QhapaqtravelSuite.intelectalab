@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Finance\Http\Controllers;
 
+use App\Domain\Finance\Actions\ManageCurrencies;
 use App\Domain\Finance\Actions\RegisterFxRate;
 use App\Domain\Finance\Support\FxDirectory;
 use App\Domain\Iam\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 final class FxRateController
 {
@@ -37,6 +39,57 @@ final class FxRateController
         $register($data, $this->user($request));
 
         return response()->json(['data' => ['currency' => $data['currency']]], 201);
+    }
+
+    public function currencies(Request $request, ManageCurrencies $currencies): JsonResponse
+    {
+        $settings = $currencies->settings();
+        $rates = DB::table('fin_fx_rates')->orderBy('currency_code')->orderByDesc('rate_date')->orderByDesc('effective_at')->get(['currency_code', 'rate_pen', 'rate_date'])->unique('currency_code')->keyBy('currency_code');
+        $user = $this->user($request);
+
+        return response()->json(['data' => [
+            'currencies' => $currencies->all()->map(function ($row) use ($rates, $settings): array {
+                $code = trim((string) $row->code);
+                $rate = $code === ManageCurrencies::BASE ? 1.0 : (isset($rates[$code]) ? (float) $rates[$code]->rate_pen : null);
+
+                return [
+                    'code' => $code,
+                    'name' => $row->name,
+                    'symbol' => $row->symbol,
+                    'active' => (bool) $row->active,
+                    'is_base' => (bool) $row->is_base,
+                    'is_charge' => (bool) $row->is_charge,
+                    'rate' => $rate,
+                    'client_rate' => $rate === null || $code === ManageCurrencies::BASE ? $rate : round($rate * (1 - $settings['margin_pct'] / 100), 4),
+                    'rate_date' => $rates[$code]->rate_date ?? null,
+                ];
+            })->values(),
+            'settings' => $settings,
+            'can_manage' => $user->can('admin.settings.manage'),
+        ]]);
+    }
+
+    public function updateCurrency(Request $request, string $code, ManageCurrencies $currencies): JsonResponse
+    {
+        $data = $request->validate([
+            'active' => ['sometimes', 'boolean'],
+            'is_charge' => ['sometimes', 'boolean'],
+        ], ['active.*' => 'Indica si la moneda queda activa.', 'is_charge.*' => 'Indica si es moneda de cobro.']);
+
+        return response()->json(['data' => $currencies->update(strtoupper($code), $data, $this->user($request))]);
+    }
+
+    public function saveSettings(Request $request, ManageCurrencies $currencies): JsonResponse
+    {
+        $data = $request->validate([
+            'margin_pct' => ['required', 'numeric', 'between:0,15'],
+            'alert_pct' => ['required', 'numeric', 'between:0.1,20'],
+        ], [
+            'margin_pct.*' => 'El margen de conversión va de 0 a 15 %.',
+            'alert_pct.*' => 'La alerta de variación va de 0,1 a 20 %.',
+        ]);
+
+        return response()->json(['data' => $currencies->saveSettings($data, $this->user($request))]);
     }
 
     private function user(Request $request): User

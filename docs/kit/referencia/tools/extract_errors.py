@@ -173,7 +173,7 @@ A("- Implementación de referencia: `App\\Domain\\Shared\\Errors\\ApiException` 
 A("")
 A("## 2. Códigos HTTP usados por el sistema")
 A("")
-A("| HTTP | `error` | Significado en Qhapaq | Ejemplos de `code` | Fuente |")
+A("| HTTP | `error` | Significado en KipuControl | Ejemplos de `code` | Fuente |")
 A("|---|---|---|---|---|")
 rows = [
     ("400", "BAD_REQUEST", "Petición mal formada que no llega al FormRequest (JSON inválido, firma de webhook ilegible, parámetros de consulta imposibles).", "—", "specs (uso puntual)"),

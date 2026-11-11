@@ -46,7 +46,10 @@ function catDepCheck(string $ref)
     return test()->postJson('/api/v1/reservations/availability-check', ['product_id' => 'CUS-HUM-FD', 'departure_id' => departureRow($ref)->id, 'adt' => 2]);
 }
 
-beforeEach(fn () => Queue::fake());
+beforeEach(function () {
+    lockCatalogProducts();
+    Queue::fake();
+});
 
 it('crea una salida abierta que aparece en el cotizador y en el sitio', function () {
     actingAsSeed('U05');

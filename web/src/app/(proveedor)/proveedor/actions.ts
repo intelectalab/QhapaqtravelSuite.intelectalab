@@ -21,6 +21,12 @@ export async function rejectRequest(code: string, _state: StepResult, form: Form
   return result;
 }
 
+export async function proposeAlternative(code: string, _state: StepResult, form: FormData): Promise<StepResult> {
+  const result = await sendStep(`/supplier/requests/${encodeURIComponent(code)}/alternative`, "POST", formValues(form, ["alt_kind", "alt_date", "alt_service", "alt_net_cost", "hold_until", "note"]), "No pudimos enviar la alternativa.");
+  if (result.done) refresh("/proveedor/solicitudes", `/proveedor/solicitudes/${code}`);
+  return result;
+}
+
 export async function saveRateRequest(code: string | null, _state: StepResult, form: FormData): Promise<StepResult> {
   const body = formValues(form, ["service", "proposed_cost", "effective_from", "reason_type", "reason_detail"]);
   const result = code
@@ -49,6 +55,43 @@ export async function registerInvoice(code: string, _state: StepResult, form: Fo
 export async function annulInvoice(code: string): Promise<StepResult> {
   const result = await sendStep(`/supplier/payables/${encodeURIComponent(code)}/invoices`, "DELETE", {}, "No pudimos anular la factura.");
   if (result.done) refresh("/proveedor/pagos");
+  return result;
+}
+
+export async function acknowledgeRooming(id: string, _state: StepResult, form: FormData): Promise<StepResult> {
+  const result = await sendStep(`/supplier/rooming-lists/${encodeURIComponent(id)}/acknowledge`, "POST", formValues(form, ["lock_version"]), "No pudimos registrar el acuse de recibo.");
+  if (result.done) refresh("/proveedor/rooming");
+  return result;
+}
+
+export async function confirmRooming(id: string, _state: StepResult, form: FormData): Promise<StepResult> {
+  const result = await sendStep(`/supplier/rooming-lists/${encodeURIComponent(id)}/confirm`, "POST", formValues(form, ["lock_version"]), "No pudimos confirmar las habitaciones.");
+  if (result.done) refresh("/proveedor/rooming");
+  return result;
+}
+
+export async function observeRoom(id: string, _state: StepResult, form: FormData): Promise<StepResult> {
+  const result = await sendStep(`/supplier/rooming-rooms/${encodeURIComponent(id)}/observations`, "POST", formValues(form, ["reason", "impact", "proposal"]), "No pudimos registrar la observación.");
+  if (result.done) refresh("/proveedor/rooming", "/proveedor/incidencias");
+  return result;
+}
+
+export async function redeemVoucher(_state: StepResult, form: FormData): Promise<StepResult> {
+  const body = { ...formValues(form, ["code"]), confirm_future: ["1", "on"].includes(String(form.get("confirm_future") ?? "")) };
+  const result = await sendStep("/supplier/vouchers/redeem", "POST", body, "No pudimos validar el voucher.");
+  if (result.done) refresh("/proveedor/vouchers");
+  return result;
+}
+
+export async function reportIncident(_state: StepResult, form: FormData): Promise<StepResult> {
+  const result = await sendStep("/supplier/incidents", "POST", formValues(form, ["service", "type", "severity", "title", "description"]), "No pudimos reportar la incidencia.");
+  if (result.done) refresh("/proveedor/incidencias");
+  return result;
+}
+
+export async function commentIncident(code: string, _state: StepResult, form: FormData): Promise<StepResult> {
+  const result = await sendStep(`/supplier/incidents/${encodeURIComponent(code)}/comments`, "POST", formValues(form, ["message"]), "No pudimos enviar el comentario.");
+  if (result.done) refresh("/proveedor/incidencias", `/proveedor/incidencias/${code}`);
   return result;
 }
 

@@ -11,6 +11,7 @@ use App\Domain\Shared\Tenancy\TenantContext;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final class DirectBookingPlan
@@ -21,8 +22,8 @@ final class DirectBookingPlan
 
     public function __construct(
         private readonly TenantContext $context,
-        private readonly TenantBookingEngine $engines,
         private readonly ReservationAssembler $assembler,
+        private readonly LineRates $lineRates,
     ) {}
 
     public function today(): CarbonImmutable
@@ -65,8 +66,11 @@ final class DirectBookingPlan
 
         $departure = $perSeat ? $this->departure((string) $product->id, $data, $today) : null;
         $date = $departure !== null ? $departure->departure_date : ($data['date'] ?? null);
+        $rates = collect($this->lineRates->catalog([(string) $product->id])->get($product->id, []));
+        $seeCost = $actor->can('finance.profitability') || $actor->can('catalog.products.view_profitability');
         $base = [
             'product' => ['code' => $product->code, 'name' => $product->name, 'model' => $product->availability_model, 'advance_min_days' => (int) $product->booking_advance_min_days, 'max_pax' => $product->maximum_passengers === null ? null : (int) $product->maximum_passengers],
+            'rates' => $rates->reject(fn (object $rate): bool => $rate->segment === 'Niño')->map(fn (object $rate): array => [...LineRates::option($rate, $seeCost), 'valid' => $date !== null && LineRates::valid($rate, (string) $date)])->values()->all(),
             'departures' => $departures,
             'pax' => ['adt' => $adults, 'chd' => $children, 'inf' => $infants],
         ];
@@ -91,7 +95,8 @@ final class DirectBookingPlan
 
         $client = isset($data['client_id']) ? DB::table('crm_clients')->whereNull('deleted_at')->where(self::isUuid((string) $data['client_id']) ? 'id' : 'code', $data['client_id'])->value('id') : null;
         $channel = (string) ($data['channel'] ?? ($client ? $this->assembler->channelFor((string) $client) : 'Directo'));
-        $price = $this->price((string) $product->id, $date->toDateString(), $channel, $adults, $children);
+        $rate = $this->rate($rates, $data, $date->toDateString(), $channel);
+        $price = $this->price((string) $product->id, $rates, $rate, $date->toDateString(), $adults, $children);
         $free = $departure ? (int) $departure->capacity - (int) $departure->sold : null;
         $available = $departure === null || $free >= $seats;
         $days = $product->duration_unit === 'días' ? max(1, (int) ceil((float) $product->duration_value)) : 1;
@@ -102,6 +107,11 @@ final class DirectBookingPlan
             'product_id' => (string) $product->id,
             'main_provider_id' => $product->main_provider_id,
             'channel' => $channel,
+            'rate_id' => $rate->id,
+            'rate_ref' => $rate->ref,
+            'rate_snapshot' => LineRates::snapshot($rate, ['price' => (string) $price['adult'], 'cost' => (string) $price['unit_cost']]),
+            'rates' => collect($base['rates'])->map(fn (array $option): array => [...$option, 'valid' => LineRates::valid($rates->firstWhere('id', $option['id']), $date->toDateString())])->all(),
+            'season_factor' => $this->lineRates->seasonFactor($date->toDateString()),
             'date' => $date->toDateString(),
             'travel_from' => $date->toDateString(),
             'travel_to' => $date->addDays($days - 1)->toDateString(),
@@ -121,7 +131,7 @@ final class DirectBookingPlan
 
     public function view(array $plan, User $viewer): array
     {
-        unset($plan['product_id'], $plan['main_provider_id'], $plan['fx_rate']);
+        unset($plan['product_id'], $plan['main_provider_id'], $plan['fx_rate'], $plan['rate_snapshot']);
 
         if (! $viewer->can('finance.profitability') && ! $viewer->can('catalog.products.view_profitability')) {
             unset($plan['cost']);
@@ -158,35 +168,41 @@ final class DirectBookingPlan
         return $departure;
     }
 
-    private function price(string $productId, string $date, string $channel, int $adults, int $children): array
+    private function rate(Collection $rates, array $data, string $date, string $channel): object
     {
-        $product = $this->engines->product($productId, $date);
-        $currency = null;
+        if (! empty($data['rate_id'])) {
+            $rate = $rates->firstWhere('id', (string) $data['rate_id'])
+                ?? throw ApiException::unprocessable('PRD-BR-005', 'La tarifa elegida no es de este producto.', ['rate_id' => ['Elige una tarifa del producto.']]);
 
-        foreach ($product->rates as $rate) {
-            if (in_array($rate['segment'] ?? '', ['Adulto', 'Pasajero'], true) && in_array($rate['channel'] ?? '', [$channel, 'Directo'], true)) {
-                $currency = (string) $rate['currency'];
-                break;
+            if ($rate->segment === 'Niño' || ! LineRates::valid($rate, $date)) {
+                throw ApiException::unprocessable('PRD-BR-005', "La tarifa {$rate->ref} no está vigente para esa fecha.", ['rate_id' => ['Elige una tarifa vigente.']]);
             }
+
+            return $rate;
         }
 
-        $engine = $this->engines->engine();
-        $adult = $currency === null ? null : $engine->segmentPrice($product, 'Adulto', $date, $currency, $channel);
+        $rate = $this->lineRates->pick($rates->reject(fn (object $rate): bool => $rate->segment === 'Niño'), $date, 'Adulto', $channel);
 
-        if ($adult === null) {
-            throw ApiException::unprocessable('PRD-BR-005', 'El producto no tiene una tarifa vigente para esa fecha y canal.', ['date' => ['Sin tarifa vigente para esa fecha.']]);
-        }
+        return $rate ?? throw ApiException::unprocessable('PRD-BR-005', 'El producto no tiene una tarifa vigente para esa fecha y canal.', ['date' => ['Sin tarifa vigente para esa fecha.']]);
+    }
 
-        $child = $children > 0 ? ($engine->segmentPrice($product, 'Niño', $date, $currency, $channel) ?? $adult) : $adult;
-        $adultPrice = Decimal::round2($adult['price']->getAmount());
-        $childPrice = Decimal::round2($child['price']->getAmount());
+    private function price(string $productId, Collection $rates, object $rate, string $date, int $adults, int $children): array
+    {
+        $currency = trim((string) $rate->currency);
+        $companions = $rates->filter(fn (object $other): bool => $other->segment === 'Niño' && LineRates::valid($other, $date) && in_array($other->channel, [$rate->channel, 'Directo'], true));
+        $adult = $this->lineRates->price($productId, $rate, 'Adulto', $date, $currency, $companions)
+            ?? throw ApiException::unprocessable('PRD-BR-005', 'El producto no tiene una tarifa vigente para esa fecha y canal.', ['date' => ['Sin tarifa vigente para esa fecha.']]);
+        $child = $children > 0 ? ($this->lineRates->price($productId, $rate, 'Niño', $date, $currency, $companions) ?? $adult) : $adult;
+        $adultPrice = BigDecimal::of($adult['price']);
+        $childPrice = BigDecimal::of($child['price']);
 
         return [
             'currency' => $currency,
             'adult' => $adultPrice,
             'child' => $childPrice,
+            'unit_cost' => $adult['cost'],
             'total' => Decimal::round2($adultPrice->multipliedBy($adults)->plus($childPrice->multipliedBy($children))),
-            'cost' => Decimal::round2($adult['cost']->getAmount()->multipliedBy($adults)->plus($child['cost']->getAmount()->multipliedBy($children))),
+            'cost' => Decimal::round2(BigDecimal::of($adult['cost'])->multipliedBy($adults)->plus(BigDecimal::of($child['cost'])->multipliedBy($children))),
         ];
     }
 

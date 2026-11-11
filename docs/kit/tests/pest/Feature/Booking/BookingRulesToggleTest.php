@@ -15,7 +15,7 @@ function publicQuote(array $sel)
     // Clave pública del widget del tenant A (channel_widget_config.public_key) + Origin verificado (WG-01/02)
     $key = withinTenant(tenantA(), fn () => DB::table('channel_widget_config')->value('public_key'));
 
-    return test()->withHeaders(['X-Qhapaq-Key' => $key, 'Origin' => 'https://andeshorizonte.pe'])
+    return test()->withHeaders(['X-KipuControl-Key' => $key, 'Origin' => 'https://andeshorizonte.pe'])
         ->postJson('/api/v1/public/quote', ['product' => 'PRD-011'] + $sel);
 }
 

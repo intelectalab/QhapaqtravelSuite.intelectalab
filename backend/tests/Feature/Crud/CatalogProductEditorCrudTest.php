@@ -106,7 +106,10 @@ function edFullPayload(array $overrides = []): array
     ]);
 }
 
-beforeEach(fn () => Queue::fake());
+beforeEach(function () {
+    lockCatalogProducts();
+    Queue::fake();
+});
 
 it('crea el producto del asistente en un solo envío con todas sus secciones', function () {
     actingAsSeed('U01');

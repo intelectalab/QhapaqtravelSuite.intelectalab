@@ -14,6 +14,7 @@ use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Http\CursorPage;
 use App\Domain\Shared\Tenancy\TenantContext;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -48,6 +49,10 @@ final class ReservationDirectory
                 'passengers' => (int) $row->passengers_count,
                 ...($view['price'] ? ['balance_pen' => (int) round((float) $row->balance_pen)] : []),
                 'open_incidents' => (int) $row->open_incidents,
+                'services' => ['confirmed' => (int) $row->services_confirmed, 'total' => (int) $row->services_total],
+                ...($view['cost'] ? ['supplier_cost_pen' => (int) round((float) $row->supplier_cost_pen)] : []),
+                'origin' => $row->quote_code !== null ? ['kind' => 'cotizacion', 'label' => $row->quote_code.($row->quote_version ? " v{$row->quote_version}" : '')] : ['kind' => $row->channel === 'E-commerce' ? 'web' : 'directa', 'label' => $row->channel === 'E-commerce' ? 'Sitio web' : 'Directa'],
+                'cancel_requested' => (bool) $row->cancel_requested,
             ];
         }, [
             'kpis' => $this->kpis($scoped, $today),
@@ -105,7 +110,7 @@ final class ReservationDirectory
         $today = $this->today();
         $services = DB::table('booking_reservation_services as s')->leftJoin('catalog_providers as p', 'p.id', '=', 's.provider_id')
             ->where('s.reservation_id', $row->id)->orderBy('s.service_date')->orderBy('s.service_time')
-            ->get(['s.code', 's.name', 's.service_date', 's.service_time', 's.service_kind', 's.status', 's.confirmation_code', 's.reject_reason', 's.replaced_by_id', 's.cost_amount', 's.price_amount', 's.currency', 's.fx_rate', 'p.name as provider_name', 'p.status as provider_status']);
+            ->get(['s.code', 's.name', 's.service_date', 's.service_time', 's.service_kind', 's.status', 's.confirmation_code', 's.reject_reason', 's.replaced_by_id', 's.cost_amount', 's.price_amount', 's.currency', 's.fx_rate', 's.provider_id', 's.alt_of_id', 's.id', 'p.ref as provider_ref', 'p.name as provider_name', 'p.status as provider_status']);
         $price = $services->where('status', '<>', 'cancelado')->sum(fn (object $service) => (float) (string) NetSales::of($service->price_amount, $service->currency));
         $cost = $services->where('status', '<>', 'cancelado')->sum(fn (object $service) => (float) $service->cost_amount);
         $receivables = DB::table('fin_receivables')->where('reservation_id', $row->id)->whereNull('deleted_at')->orderBy('due_date')
@@ -113,6 +118,9 @@ final class ReservationDirectory
         $order = DB::table('ops_orders')->where('reservation_id', $row->id)->whereNull('deleted_at')->value('code');
         $closed = ReservationStatus::from((string) $row->status)->isClosed();
         $modify = $viewer->can('reservations.modify') && ! $closed;
+        $alternatives = $modify ? $services->whereIn('status', [...ProviderServiceResponse::OPEN, ...ProviderServiceResponse::LATE])->pluck('provider_id')->filter()->unique()
+            ->mapWithKeys(fn (string $providerId): array => [$providerId => ProviderServiceResponse::alternatives($providerId)]) : collect();
+        $codes = $services->pluck('code', 'id');
 
         return [
             ...$this->summary($row, $view),
@@ -125,7 +133,8 @@ final class ReservationDirectory
             'cancel_reason' => $row->cancel_reason,
             ...($view['margin'] ? ['margin_pct' => $price > 0 ? round(($price - $cost) / $price * 100, 1) : null, 'economics' => ['sale_net' => round($price, 2), 'cost' => round($cost, 2), 'profit' => round($price - $cost, 2)]] : []),
             'passengers' => DB::table('booking_passengers')->where('reservation_id', $row->id)->orderBy('seq')
-                ->get(['id', 'full_name', 'doc_type', 'doc_number', 'pax_type', 'nationality', 'birth_date', 'age', 'phone', 'email', 'diet_notes', 'relationship', 'is_lead', 'is_placeholder']),
+                ->get(['id', 'full_name', 'doc_type', 'doc_number', 'pax_type', 'nationality', 'birth_date', 'age', 'phone', 'email', 'diet_notes', 'relationship', 'is_lead', 'is_placeholder'])
+                ->map(fn (object $passenger): object => (object) [...(array) $passenger, 'age_warning' => $passenger->is_placeholder ? null : app(PassengerAgeCheck::class)->warning((string) $row->id, $passenger->age === null ? null : (int) $passenger->age, (string) $passenger->pax_type)]),
             'owner_id' => $row->owner_id,
             'order' => $order,
             'can' => [
@@ -155,7 +164,9 @@ final class ReservationDirectory
                 'confirmation' => $service->confirmation_code,
                 'reject_reason' => $service->reject_reason,
                 'replaced' => $service->replaced_by_id !== null,
-                'provider' => $service->provider_name ? ['name' => $service->provider_name, 'active' => $service->provider_status === 'activo'] : null,
+                'alt_of' => $service->alt_of_id ? ($codes[$service->alt_of_id] ?? null) : null,
+                'provider' => $service->provider_name ? ['ref' => $service->provider_ref, 'name' => $service->provider_name, 'active' => $service->provider_status === 'activo'] : null,
+                'alternatives' => $service->provider_id ? array_map(fn (array $provider): array => ['id' => $provider['id'], 'name' => $provider['name'], 'city' => $provider['city']], $alternatives->get($service->provider_id, [])) : [],
                 ...($view['price'] ? ['price' => $service->price_amount] : []),
                 ...($view['cost'] ? ['cost' => $service->cost_amount] : []),
                 'currency' => $service->currency,
@@ -218,7 +229,13 @@ final class ReservationDirectory
             ->selectSub(DB::table('booking_passengers as bp')->whereColumn('bp.reservation_id', 'r.id')->selectRaw('count(*)'), 'passengers_count')
             ->selectSub(DB::table('ops_incidents as oi')->whereColumn('oi.reservation_id', 'r.id')->whereNotIn('oi.status', ['resuelta', 'cerrada'])->selectRaw('count(*)'), 'open_incidents')
             ->selectSub(DB::table('fin_receivables as fr')->whereColumn('fr.reservation_id', 'r.id')->whereNull('fr.deleted_at')->whereNotIn('fr.status', ['pagada', 'cancelada'])
-                ->selectRaw('coalesce(sum((fr.amount - fr.paid_amount) * coalesce(nullif(fr.fx_rate, 0), 1)), 0)'), 'balance_pen');
+                ->selectRaw('coalesce(sum((fr.amount - fr.paid_amount) * coalesce(nullif(fr.fx_rate, 0), 1)), 0)'), 'balance_pen')
+            ->selectSub(DB::table('booking_reservation_services as bs')->whereColumn('bs.reservation_id', 'r.id')->where('bs.is_required', true)->whereNotIn('bs.status', ['cancelado'])->where(fn (Builder $open): Builder => $open->where('bs.status', '<>', 'rechazado')->orWhereNull('bs.replaced_by_id'))->selectRaw('count(*)'), 'services_total')
+            ->selectSub(DB::table('booking_reservation_services as bs')->whereColumn('bs.reservation_id', 'r.id')->where('bs.is_required', true)->whereIn('bs.status', ['confirmado', 'en_curso', 'completado'])->selectRaw('count(*)'), 'services_confirmed')
+            ->selectSub(DB::table('booking_reservation_services as bs')->whereColumn('bs.reservation_id', 'r.id')->whereNotIn('bs.status', ['cancelado', 'rechazado'])->selectRaw('coalesce(sum(bs.cost_amount * coalesce(nullif(bs.fx_rate, 0), 1)), 0)'), 'supplier_cost_pen')
+            ->selectSub(DB::table('quote_quotes as qq')->whereColumn('qq.id', 'r.quote_id')->select('qq.code')->limit(1), 'quote_code')
+            ->selectSub(DB::table('quote_quotes as qq')->whereColumn('qq.id', 'r.quote_id')->select('qq.current_version_no')->limit(1), 'quote_version')
+            ->selectSub(DB::table('booking_cancel_requests as cr')->whereColumn('cr.reservation_id', 'r.id')->where('cr.status', 'pendiente')->selectRaw('count(*) > 0'), 'cancel_requested');
     }
 
     private function byOwner(Builder $query, User $viewer, ?string $owner): Builder
@@ -253,7 +270,8 @@ final class ReservationDirectory
             $term = '%'.mb_strtolower($filters['q']).'%';
             $query->where(fn (Builder $where): Builder => $where->whereRaw('lower(r.code) like ?', [$term])
                 ->orWhereRaw('lower(r.title) like ?', [$term])
-                ->orWhereRaw('lower(c.name) like ?', [$term]));
+                ->orWhereRaw('lower(c.name) like ?', [$term])
+                ->orWhereExists(fn (Builder $quote): Builder => $quote->from('quote_quotes as qs')->whereColumn('qs.id', 'r.quote_id')->whereRaw('lower(qs.code) like ?', [$term])));
         }
 
         return $query;
@@ -287,6 +305,47 @@ final class ReservationDirectory
             'client' => ['code' => $row->client_code, 'name' => $row->client_name],
             'owner' => ['name' => $row->owner_name, 'color' => $row->owner_color],
         ];
+    }
+
+    public function occupancy(User $viewer, ?string $month): array
+    {
+        $today = CarbonImmutable::parse($this->today());
+        $start = $month !== null && preg_match('/^\d{4}-\d{2}$/', $month) === 1 ? CarbonImmutable::parse("{$month}-01") : $today->startOfMonth();
+        $end = $start->endOfMonth();
+        $horizon = $today->addDays(13);
+        $from = $start->min($today);
+        $to = $end->max($horizon);
+        $reservations = Portfolio::scope(DB::table('booking_reservations as r')->whereNull('r.deleted_at'), $viewer, 'r.owner_id')
+            ->where('r.status', '<>', ReservationStatus::Cancelada->value)
+            ->where('r.travel_from', '<=', $to->toDateString())->where('r.travel_to', '>=', $from->toDateString())
+            ->select(['r.id', 'r.code', 'r.status', 'r.travel_from', 'r.travel_to'])
+            ->selectSub(DB::table('booking_passengers as bp')->whereColumn('bp.reservation_id', 'r.id')->selectRaw('count(*)'), 'pax')
+            ->get();
+        $daily = function (CarbonImmutable $day) use ($reservations): array {
+            $date = $day->toDateString();
+            $active = $reservations->filter(fn (object $row): bool => (string) $row->travel_from <= $date && (string) $row->travel_to >= $date);
+
+            return ['date' => $date, 'pax' => (int) $active->sum('pax'), 'reservations' => $active->count(), 'by_status' => $active->countBy('status')->all()];
+        };
+        $days = [];
+
+        for ($day = $start; $day->lessThanOrEqualTo($end); $day = $day->addDay()) {
+            $days[] = $daily($day);
+        }
+
+        $next = [];
+
+        for ($day = $today; $day->lessThanOrEqualTo($horizon); $day = $day->addDay()) {
+            $next[] = $daily($day);
+        }
+
+        $departures = DB::table('catalog_product_departures as d')->join('catalog_products as p', 'p.id', '=', 'd.product_id')
+            ->whereBetween('d.departure_date', [$today->toDateString(), $horizon->toDateString()])->whereNotIn('d.status', ['cancelada'])
+            ->orderBy('d.departure_date')->orderBy('d.departure_time')->limit(30)
+            ->get(['d.ref', 'd.departure_date', 'd.departure_time', 'd.capacity', 'd.sold', 'd.status', 'p.name as product'])
+            ->map(fn (object $row): array => ['ref' => $row->ref, 'product' => $row->product, 'date' => $row->departure_date, 'time' => $row->departure_time ? substr((string) $row->departure_time, 0, 5) : null, 'capacity' => (int) $row->capacity, 'sold' => (int) $row->sold, 'free' => max(0, (int) $row->capacity - (int) $row->sold), 'status' => $row->status]);
+
+        return ['month' => $start->format('Y-m'), 'today' => $today->toDateString(), 'days' => $days, 'next' => $next, 'departures' => $departures->values()];
     }
 
     private function today(): string

@@ -631,7 +631,7 @@ Desviaciones temporales de la implementación respecto al kit, detectadas en la 
 
 El sitio público usa las rutas del contrato: `/public/site`, `/public/destinations`, `/public/products` (con `{slug}` y `/calendar`), `/public/price-quote`, `/public/carts/current` (con `items`, `items/{line}` y `items/{line}/hold`), `/public/checkout/orders`, `/public/orders/{code}` (con `/payments`), `/public/leads`, `/public/contact`, `/public/newsletter` y `/public/claims`. La agencia ya no va en la URL:
 
-- **Widgets externos:** la identifica `X-Qhapaq-Key`, la clave pública de `channel_widget_config`. Si llega `Origin`, debe ser un dominio verificado de la agencia; si no, responde 403 `WIDGET_ORIGIN_NOT_ALLOWED`. Una clave inválida responde 401 `WIDGET_KEY_INVALID`.
+- **Widgets externos:** la identifica `X-KipuControl-Key`, la clave pública de `channel_widget_config`. Si llega `Origin`, debe ser un dominio verificado de la agencia; si no, responde 403 `WIDGET_ORIGIN_NOT_ALLOWED`. Una clave inválida responde 401 `WIDGET_KEY_INVALID`.
 - **Sitio alojado:** la identifica el dominio: `{subdominio}.SITES_DOMAIN`, el dominio propio de la agencia o un dominio verificado del widget. El servidor de Next envía `X-Forwarded-Host`.
 
 El carrito viaja en la cookie `ah_cart`, como en el contrato. El pedido sigue con `X-Order-Token`.

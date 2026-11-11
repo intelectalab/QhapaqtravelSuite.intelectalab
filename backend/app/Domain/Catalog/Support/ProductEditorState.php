@@ -63,7 +63,7 @@ final class ProductEditorState
             'itinerary_id' => $this->sections->itineraryId($product->id),
             'itinerary' => $this->sections->currentItinerary($product->id),
             'rates' => DB::table('catalog_rates')->where('product_id', $product->id)->orderByDesc('status')->orderBy('valid_from')
-                ->get(['ref', 'rate_type', 'segment', 'channel', 'currency', 'price_basis', 'cost', 'price', 'valid_from', 'valid_to', 'season_id', 'status', 'lock_version'])
+                ->get(['ref', 'rate_type', 'segment', 'channel', 'currency', 'price_basis', 'cost', 'price', 'min_price', 'max_price', 'conditions', 'valid_from', 'valid_to', 'season_id', 'status', 'lock_version'])
                 ->map(fn (object $rate) => [
                     'ref' => $rate->ref,
                     'rate_type' => $rate->rate_type,
@@ -73,6 +73,9 @@ final class ProductEditorState
                     'price_basis' => $rate->price_basis,
                     'cost' => $seesCost ? $rate->cost : null,
                     'price' => $rate->price,
+                    'min_price' => $rate->min_price,
+                    'max_price' => $rate->max_price,
+                    'conditions' => $rate->conditions,
                     'margin_pct' => CatalogAccess::seesMargin($viewer) ? CatalogAccess::marginPct($rate->price, $rate->cost) : null,
                     'valid_from' => $rate->valid_from,
                     'valid_to' => $rate->valid_to,

@@ -71,3 +71,44 @@ export interface AfterSalesOverview {
 export const CATEGORY_TONE = { promotor: "ok", pasivo: "warn", detractor: "bad" } as const;
 
 export const CATEGORY_LABEL = { promotor: "Promotor", pasivo: "Pasivo", detractor: "Detractor" } as const;
+
+export interface RebuyProposal {
+  title: string;
+  destination: string;
+  amount: number;
+  currency: "PEN" | "USD";
+  stage: string;
+  expected_close_date: string;
+  owner_id: string;
+  notes: string;
+}
+
+export interface LoyaltyRow {
+  code: string;
+  name: string;
+  segment: string | null;
+  owner: string | null;
+  last_purchase_date: string | null;
+  days_since: number | null;
+  destinations: string[];
+  purchases: number;
+  total_pen: number;
+  average_pen: number;
+  nps: number | null;
+  has_open_opportunity: boolean;
+  open_opportunities: { code: string; title: string; stage: string }[];
+  proposal: RebuyProposal;
+}
+
+export interface LoyaltyMeta {
+  total: number;
+  segments: string[];
+  destinations: string[];
+  recency: Option[];
+  can: { rebuy: boolean };
+}
+
+export function recencyBuckets(days: number | null): string[] {
+  if (days === null) return ["none"];
+  return [days <= 30 ? "30" : null, days > 90 ? "90" : null, days > 180 ? "180" : null].filter((bucket): bucket is string => bucket !== null);
+}

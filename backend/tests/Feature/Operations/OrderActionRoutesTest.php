@@ -2,6 +2,10 @@
 
 use Illuminate\Support\Facades\DB;
 
+beforeEach(function () {
+    lockSeededBookings();
+});
+
 it('la orden avanza con la acción del contrato y rechaza la que no corresponde', function () {
     actingAsSeed('U01');
     $code = withinTenant(tenantA(), function (): ?string {

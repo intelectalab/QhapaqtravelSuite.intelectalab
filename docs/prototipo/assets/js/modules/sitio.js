@@ -1761,7 +1761,7 @@
     const html = crumbs([[t('account')]]) + '<div class="ws-wrap ws-page-h"><div class="row between"><div><h1>' + (EN() ? 'Hello, ' : 'Hola, ') + esc(u.name.split(' ')[0]) + '</h1><p>' + esc(cli.email || '') + ' · ' + esc(cli.id) + '</p></div><button class="btn" data-a="logout">' + ic('logout') + (EN() ? 'Sign out' : 'Cerrar sesión') + '</button></div></div>' +
       '<div class="ws-wrap ws-acc"><nav class="ws-accnav">' + NAV2.map(n => '<a href="#/sitio/cuenta/' + n[0] + '" class="' + (tab === n[0] ? 'on' : '') + '">' + ic(n[2]) + esc(n[1]) + (n[3] ? ' <span class="badge" style="margin-left:auto">' + n[3] + '</span>' : '') + '</a>').join('') + '</nav><div class="stack">' + body + '</div></div>';
     return { title: t('account'), desc: '', html, after: (el) => {
-      on('logout', () => { Audit.log('Sesión', u.id, 'logout', '', 'sitio web'); Auth.user = null; try { localStorage.removeItem('qhapaq_session'); } catch (e) { } UI.toast('Sesión cerrada.'); App.go('#/sitio'); });
+      on('logout', () => { Audit.log('Sesión', u.id, 'logout', '', 'sitio web'); Auth.user = null; try { localStorage.removeItem('kipucontrol_session'); } catch (e) { } UI.toast('Sesión cerrada.'); App.go('#/sitio'); });
       on('vou', (b) => { const v = DB.vouchers.find(x => x.id === b.dataset.id); UI.modal({ title: 'Voucher ' + v.id, size: 'lg', body: voucherDoc(v) }); });
       on('comp', (b) => { const r = Q.reservation(b.dataset.id); if (r && r.clientId === cli.id) companionsModal(r); });
       on('paybal', (b) => payBalance(DB.receivables.find(x => x.id === b.dataset.id), pendingPayFor));

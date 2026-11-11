@@ -18,6 +18,7 @@ return [
             ['title' => 'Activarlo para la venta', 'text' => '«Activar» revisa los 12 requisitos del checklist: proveedor activo con contrato vigente, una tarifa vigente hoy, políticas completas, modelo de disponibilidad, itinerario y componentes, entre otros. Si algo falla, el panel te muestra qué falta.'],
             ['title' => 'Suspender, inactivar o archivar', 'text' => '«Suspender» e «Inactivar» lo sacan de la venta y piden un motivo; «Activar» lo devuelve. «Archivar» lo retira del catálogo de forma definitiva y conserva su historial.'],
             ['title' => 'Traducirlo para el sitio web', 'text' => 'En la tarjeta «Idiomas del sitio web» de la ficha, «Traducir» permite cargar nombre, resumen, descripción, qué incluye y los textos para buscadores. Lo que dejes vacío se muestra en español.'],
+            ['title' => 'Reservas online', 'text' => 'En la ficha, el grupo «Reservas online» configura pasajeros (bandas de edad y precio del niño, con simulador), adicionales, alojamiento por ciudad con hoteles y habitaciones, modalidades de pago, puntos de recojo y qué reglas de reserva aplica el producto. El motor de reservas usa esta configuración al cotizar y reservar.'],
         ],
         'faqs' => [
             ['question' => '¿Por qué no puedo eliminar un producto?', 'answer' => 'Solo se elimina si nunca se usó en cotizaciones, reservas ni paquetes, y nunca mientras está activo o suspendido. Si está en venta, inactívalo primero; si ya se usó, archívalo.'],
@@ -99,6 +100,25 @@ return [
         'roles' => [],
     ],
     [
+        'slug' => 'catalogo-categorias',
+        'audience' => 'agency',
+        'module' => 'Catálogo turístico',
+        'screen' => '/catalogo/categorias',
+        'title' => 'Tipos y categorías',
+        'summary' => 'La clasificación de tus productos: tipos de producto y categorías con sus subcategorías.',
+        'steps' => [
+            ['title' => 'Crear un tipo', 'text' => '«Nuevo tipo» pide el nombre (en mayúsculas) y si el producto de ese tipo requiere itinerario o componentes.'],
+            ['title' => 'Crear una categoría', 'text' => '«Nueva categoría» pide el nombre y sus subcategorías, una por línea.'],
+            ['title' => 'Renombrar', 'text' => 'Con «Editar» cambias el nombre. Los productos conservan su clasificación.'],
+            ['title' => 'Eliminar', 'text' => 'Solo se elimina un tipo, categoría o subcategoría que ningún producto usa.'],
+        ],
+        'faqs' => [
+            ['question' => '¿Por qué no puedo eliminar?', 'answer' => 'Hay productos que lo usan; cambia antes su clasificación.'],
+        ],
+        'keywords' => ['tipo', 'categoría', 'subcategoría', 'clasificación'],
+        'roles' => [],
+    ],
+    [
         'slug' => 'catalogo-servicios',
         'audience' => 'agency',
         'module' => 'Catálogo turístico',
@@ -109,7 +129,7 @@ return [
             ['title' => 'Registrar un servicio', 'text' => '«Nuevo servicio» pide nombre, proveedor, tipo, forma de cobro, moneda, costo, capacidad y vigencia. Si el proveedor no está activo, el servicio se guarda inactivo.'],
             ['title' => 'Editar un servicio', 'text' => 'Con «Editar» en la fila actualizas el costo, la capacidad o la vigencia. Renueva la vigencia antes de que venza para que los productos que lo usan sigan disponibles.'],
             ['title' => 'Activar o desactivar', 'text' => '«Desactivar» impide usarlo en productos y pide un motivo. «Activar» lo vuelve a habilitar si el proveedor está activo y la vigencia está al día.'],
-            ['title' => 'Revisar uso y vencimientos', 'text' => 'Filtra con «Activos», «Vencidos o inactivos», «Vencen en 90 días» y «Proveedor no activo». El detalle de cada servicio muestra los productos que lo usan.'],
+            ['title' => 'Revisar uso y vencimientos', 'text' => 'Filtra con «Activos», «Vencidos o inactivos», «Vencen en 90 días» y «Proveedor no activo». La ficha del servicio muestra el proveedor, los productos que lo usan y el historial de cambios.'],
         ],
         'faqs' => [
             ['question' => '¿Qué pasa con los productos si desactivo un servicio?', 'answer' => 'Siguen existiendo, pero no se pueden activar mientras incluyan un servicio inactivo, vencido o de un proveedor inactivo.'],
@@ -129,7 +149,8 @@ return [
         'steps' => [
             ['title' => 'Registrar un proveedor', 'text' => '«Nuevo proveedor» pide razón social, RUC, tipo, ciudad, contacto principal, fechas del contrato, moneda, condiciones de pago y calificación. Nace inactivo: actívalo cuando el contrato esté vigente.'],
             ['title' => 'Activar o desactivar', 'text' => '«Activar» lo deja disponible para servicios, productos y salidas. «Desactivar» pide un motivo y sus servicios dejan de poder usarse.'],
-            ['title' => 'Renovar el contrato', 'text' => 'Con «Editar» actualizas sus datos y las fechas del contrato. Con el contrato vencido no se puede activar: extiende la fecha de fin y vuelve a activarlo.'],
+            ['title' => 'Renovar el contrato', 'text' => 'En la ficha, «Renovar contrato» pide la nueva fecha de fin y las condiciones de pago. Con el contrato vencido no se puede activar: renuévalo y vuelve a activarlo.'],
+            ['title' => 'Calificar', 'text' => 'En la ficha, «Calificar» registra de 1 a 5 estrellas con un comentario.'],
             ['title' => 'Gestionar contactos', 'text' => 'En el detalle del proveedor, la sección de contactos permite «Agregar contacto» con nombre, cargo, teléfono y correo, y quitar los que ya no corresponden.'],
             ['title' => 'Filtrar la lista', 'text' => 'Usa «Activos», «Contrato por vencer» y «Vencidos o inactivos», busca por nombre, RUC o ciudad, y ordena por fin de contrato o calificación.'],
         ],

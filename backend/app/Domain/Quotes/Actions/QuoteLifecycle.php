@@ -6,6 +6,8 @@ namespace App\Domain\Quotes\Actions;
 
 use App\Domain\Crm\Support\Advisors;
 use App\Domain\Iam\Models\User;
+use App\Domain\Integrations\Contracts\MessagingChannel;
+use App\Domain\Integrations\Data\OutboundMessage;
 use App\Domain\Quotes\Enums\QuoteStatus;
 use App\Domain\Quotes\Models\Quote;
 use App\Domain\Quotes\StateMachines\QuoteStateMachine;
@@ -236,9 +238,17 @@ final class QuoteLifecycle
         });
     }
 
-    public function send(string $code, string $channel, string $recipient, ?string $message, User $actor): void
+    public const SEND_CHANNELS = ['Email', 'WhatsApp', 'Portal'];
+
+    public function send(string $code, array $channels, array $to, ?string $message, User $actor): array
     {
-        [$quote, $version] = DB::transaction(function () use ($code, $channel, $recipient, $message, $actor): array {
+        $channels = array_values(array_unique(array_intersect(self::SEND_CHANNELS, $channels)));
+
+        if ($channels === []) {
+            throw ApiException::unprocessable('QTE-BR-23', 'Elige al menos un canal.', ['field' => 'channels']);
+        }
+
+        [$quote, $version, $link, $recipients] = DB::transaction(function () use ($code, $channels, $to, $message, $actor): array {
             [$quote, $version] = $this->load($code, $actor);
             $status = $this->effectiveStatus($quote);
 
@@ -251,7 +261,7 @@ final class QuoteLifecycle
                 throw ApiException::conflict('QTE-BR-12', 'Por el descuento o el margen, Gerencia debe aprobarla antes de enviarla.');
             }
 
-            DB::table('quote_sends')->insert(['id' => (string) Str::uuid7(), 'tenant_id' => $this->context->idOrFail(), 'quote_id' => $quote->id, 'version_no' => $quote->current_version_no, 'channel' => $channel, 'recipient' => $recipient, 'message' => $message, 'sent_by' => $actor->getKey(), 'created_by' => $actor->getKey()]);
+            $recipients = $this->recipients((string) $quote->client_id, $channels, $to);
             $before = (string) $quote->status;
 
             if ($quote->status === QuoteStatus::Borrador->value) {
@@ -261,14 +271,48 @@ final class QuoteLifecycle
                 $quote->forceFill(['valid_until' => $renew ? $this->renewedValidity() : $quote->valid_until, 'updated_by' => $actor->getKey()])->save();
             }
 
-            $this->audit->log('Cotización', (string) $quote->code, 'enviar', $before, "{$channel} · {$recipient}");
+            $link = app(QuoteAccessTokens::class)->ensure((object) ['id' => $quote->id, 'code' => $quote->code, 'valid_until' => $quote->valid_until?->toDateString()], $actor);
 
-            return [$quote, $version];
+            foreach ($channels as $channel) {
+                DB::table('quote_sends')->insert(['id' => (string) Str::uuid7(), 'tenant_id' => $this->context->idOrFail(), 'quote_id' => $quote->id, 'version_no' => $quote->current_version_no, 'channel' => $channel, 'recipient' => $recipients[$channel], 'message' => $message, 'sent_by' => $actor->getKey(), 'created_by' => $actor->getKey()]);
+            }
+
+            $this->audit->log('Cotización', (string) $quote->code, 'enviar', $before, 'v'.$quote->current_version_no.' · '.implode(', ', array_map(fn (string $channel): string => "{$channel} {$recipients[$channel]}", $channels)));
+
+            return [$quote, $version, $link, $recipients];
         });
 
-        if ($channel === 'Email') {
-            $this->mail($quote, $version, $recipient, $message);
+        foreach ($channels as $channel) {
+            match ($channel) {
+                'Email' => $this->mail($quote, $version, $recipients['Email'], $message, $link['url']),
+                'WhatsApp' => $this->whatsapp($quote, $version, $recipients['WhatsApp'], $message, $link['url']),
+                default => null,
+            };
         }
+
+        return ['code' => $quote->code, 'channels' => $channels, 'url' => $link['url'], 'expires_at' => $link['expires_at']];
+    }
+
+    private function recipients(string $clientId, array $channels, array $to): array
+    {
+        $client = DB::table('crm_clients')->where('id', $clientId)->first(['email', 'phone', 'name']);
+        $recipients = [];
+
+        foreach ($channels as $channel) {
+            $value = match ($channel) {
+                'Email' => trim((string) ($to['email'] ?? '')) ?: (string) ($client->email ?? ''),
+                'WhatsApp' => trim((string) ($to['phone'] ?? '')) ?: (string) ($client->phone ?? ''),
+                default => 'Portal del cliente',
+            };
+
+            if ($value === '') {
+                throw ApiException::unprocessable('QTE-BR-23', $channel === 'Email' ? 'Falta el correo del cliente para enviarla por correo.' : 'Falta el celular del cliente para enviarla por WhatsApp.', ['field' => $channel === 'Email' ? 'recipient' : 'phone']);
+            }
+
+            $recipients[$channel] = Str::limit($value, 200, '');
+        }
+
+        return $recipients;
     }
 
     public function recordView(string $code, ?string $note, User $actor): void
@@ -412,14 +456,29 @@ final class QuoteLifecycle
         return $newId;
     }
 
-    private function mail(Quote $quote, object $version, string $recipient, ?string $message): void
+    private function body(Quote $quote, object $version, ?string $message, string $url): string
     {
         $agency = $this->context->tenant()->commercial_name;
         $total = Decimal::display((string) $version->grand_total, (string) $quote->currency);
         $valid = $quote->valid_until?->format('d/m/Y') ?? '';
-        $body = trim(($message ? $message."\n\n" : '')."{$quote->title}\nTotal: {$total}\nVálida hasta: {$valid}\n\n{$agency}");
 
-        app(QueuedMail::class)->send($recipient, null, "Cotización {$quote->code} · {$agency}", $body);
+        return trim(($message ? $message."\n\n" : '')."{$quote->title}\nTotal: {$total}\nVálida hasta: {$valid}\nVer la propuesta: {$url}\n\n{$agency}");
+    }
+
+    private function mail(Quote $quote, object $version, string $recipient, ?string $message, string $url): void
+    {
+        $agency = $this->context->tenant()->commercial_name;
+        app(QueuedMail::class)->send($recipient, null, "Cotización {$quote->code} · {$agency}", $this->body($quote, $version, $message, $url));
+    }
+
+    private function whatsapp(Quote $quote, object $version, string $phone, ?string $message, string $url): void
+    {
+        $agency = (string) $this->context->tenant()->commercial_name;
+        $result = app(MessagingChannel::class)->send(new OutboundMessage('whatsapp', $phone, "Cotización {$quote->code}", $this->body($quote, $version, $message, $url), 'cotizacion_enviada', ['codigo' => (string) $quote->code, 'enlace' => $url, 'agencia' => $agency]));
+
+        if (! $result->ok) {
+            $this->audit->log('Cotización', (string) $quote->code, 'envio_fallido', null, 'WhatsApp · '.Str::limit((string) ($result->message ?? 'sin detalle'), 150, ''));
+        }
     }
 
     private function reasons(object $version): array
@@ -460,7 +519,7 @@ final class QuoteLifecycle
 
     private function renewedValidity(): string
     {
-        return Carbon::parse($this->today())->addDays(QuoteBuilder::VALIDITY_DAYS)->toDateString();
+        return Carbon::parse($this->today())->addDays(QuoteBuilder::validityDays())->toDateString();
     }
 
     private function today(): string

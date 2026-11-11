@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Marketing\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Marketing\Actions\TemplateWorkflow;
+use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +38,8 @@ final class CampaignDirectory
         return [
             'kpis' => [
                 'sent_90' => $sent->count(),
+                'recipients_90' => $sent->sum('metrics.recipients'),
+                'delivered_90' => $delivered,
                 'open_rate' => $delivered > 0 ? round($sent->sum('metrics.opened') / $delivered * 100, 1) : null,
                 'click_rate' => $delivered > 0 ? round($sent->sum('metrics.clicked') / $delivered * 100, 1) : null,
                 'revenue' => round($sent->sum('attribution.revenue'), 2),
@@ -45,34 +49,10 @@ final class CampaignDirectory
                 'contacts' => $all->count(),
             ],
             'campaigns' => $campaigns->values(),
-            'segments' => $segments->map(function (object $row) use ($campaigns): array {
-                $rules = json_decode((string) $row->rules, true) ?: [];
-                $email = $this->contacts->audience($row->match, $rules, 'email');
-                $whatsapp = $this->contacts->audience($row->match, $rules, 'whatsapp');
-
-                return [
-                    'code' => $row->code,
-                    'name' => $row->name,
-                    'description' => $row->description,
-                    'match' => $row->match,
-                    'rules' => $rules,
-                    'rules_text' => $this->contacts->describe($rules, $row->match),
-                    'matched' => $email['matched'],
-                    'email' => $email['eligible'],
-                    'whatsapp' => $whatsapp['eligible'],
-                    'campaigns' => $campaigns->where('segment.code', $row->code)->count(),
-                ];
-            })->values(),
-            'templates' => $templates->map(fn (object $row): array => [
-                'code' => $row->code,
-                'name' => $row->name,
-                'channel' => $row->channel,
-                'category' => $row->category,
-                'status' => $row->status,
-                'subject' => $row->subject,
-                'body' => $row->body,
-                'usable' => $row->channel === 'email' ? $row->status === 'activa' : $row->status === 'aprobada',
-            ])->values(),
+            'segments' => $this->segmentRows($segments, $campaigns->pluck('segment.code')->filter()->countBy()->all()),
+            'templates' => $this->templateRows($templates, $campaigns->pluck('template.code')->filter()->countBy()->all()),
+            'segment_fields' => $this->contacts->catalog(),
+            'variables' => TemplateWorkflow::VARIABLES,
             'codes' => $this->codes($campaigns),
             'consents' => [
                 'email' => DB::table('mkt_consents')->where('channel', 'email')->where('status', 'otorgado')->count(),
@@ -82,6 +62,91 @@ final class CampaignDirectory
             ],
             'can' => ['manage' => $viewer->can('marketing.campaigns.manage')],
         ];
+    }
+
+    public function segments(): array
+    {
+        $usage = DB::table('mkt_campaigns as c')->join('mkt_segments as s', 's.id', '=', 'c.segment_id')->pluck('s.code')->countBy()->all();
+
+        return $this->segmentRows(DB::table('mkt_segments')->whereNull('deleted_at')->orderBy('code')->get(), $usage)->all();
+    }
+
+    public function templates(): array
+    {
+        $usage = DB::table('mkt_campaigns as c')->join('mkt_templates as t', 't.id', '=', 'c.template_id')->pluck('t.code')->countBy()->all();
+
+        return $this->templateRows(DB::table('mkt_templates')->orderBy('code')->get(), $usage)->all();
+    }
+
+    public function segment(string $code): array
+    {
+        $row = DB::table('mkt_segments as s')->leftJoin('iam_users as u', 'u.id', '=', 's.owner_id')->whereNull('s.deleted_at')->where('s.code', $code)->first(['s.*', 'u.name as owner'])
+            ?? throw ApiException::notFound('El segmento no existe.');
+        $rules = json_decode((string) $row->rules, true) ?: [];
+
+        return [
+            'code' => $row->code,
+            'lock_version' => (int) $row->lock_version,
+            'name' => $row->name,
+            'description' => $row->description,
+            'match' => $row->match,
+            'rules' => $rules,
+            'owner' => $row->owner,
+            'updated_at' => $row->updated_at,
+            'preview' => $this->contacts->preview($row->match, $rules),
+            'campaigns' => DB::table('mkt_campaigns')->where('segment_id', $row->id)->orderByDesc('created_at')->get(['code', 'name', 'status'])
+                ->map(fn (object $campaign): array => ['code' => $campaign->code, 'name' => $campaign->name, 'status' => $campaign->status, 'status_label' => self::STATUSES[$campaign->status] ?? $campaign->status])->all(),
+            'history' => DB::table('audit_events as e')->leftJoin('iam_users as u', 'u.id', '=', 'e.actor_id')->where('e.entity', 'Segmento')->where('e.entity_id', $row->code)
+                ->orderByDesc('e.occurred_at')->limit(20)->get(['e.action', 'e.after_value', 'e.occurred_at', 'u.name as by'])
+                ->map(fn (object $event): array => ['action' => $event->action, 'detail' => $event->after_value, 'at' => $event->occurred_at, 'by' => $event->by])->all(),
+        ];
+    }
+
+    private function segmentRows(Collection $segments, array $usage): Collection
+    {
+        $owners = DB::table('iam_users')->whereIn('id', $segments->pluck('owner_id')->filter()->unique())->pluck('name', 'id');
+
+        return $segments->map(function ($row) use ($usage, $owners): array {
+            $rules = json_decode((string) $row->rules, true) ?: [];
+            $email = $this->contacts->audience($row->match, $rules, 'email');
+            $whatsapp = $this->contacts->audience($row->match, $rules, 'whatsapp');
+
+            return [
+                'code' => $row->code,
+                'lock_version' => (int) $row->lock_version,
+                'name' => $row->name,
+                'description' => $row->description,
+                'match' => $row->match,
+                'rules' => $rules,
+                'rules_text' => $this->contacts->describe($rules, $row->match),
+                'matched' => $email['matched'],
+                'email' => $email['eligible'],
+                'whatsapp' => $whatsapp['eligible'],
+                'campaigns' => (int) ($usage[$row->code] ?? 0),
+                'owner' => $owners[$row->owner_id] ?? null,
+                'updated_at' => $row->updated_at,
+            ];
+        })->values();
+    }
+
+    private function templateRows(Collection $templates, array $usage): Collection
+    {
+        return $templates->map(fn ($row): array => [
+            'code' => $row->code,
+            'lock_version' => (int) $row->lock_version,
+            'name' => $row->name,
+            'channel' => $row->channel,
+            'category' => $row->category,
+            'category_label' => TemplateWorkflow::CATEGORIES[$row->category] ?? $row->category,
+            'status' => $row->status,
+            'subject' => $row->subject,
+            'body' => $row->body,
+            'provider_template_id' => $row->provider_template_id,
+            'reviewed_at' => $row->reviewed_at,
+            'updated_at' => $row->updated_at,
+            'uses' => (int) ($usage[$row->code] ?? 0),
+            'usable' => $row->channel === 'email' ? $row->status === 'activa' : $row->status === 'aprobada',
+        ])->values();
     }
 
     private function campaign(object $row, Collection $recipients, Collection $tests, Collection $segments, Collection $templates): array

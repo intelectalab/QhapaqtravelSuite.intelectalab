@@ -12,7 +12,13 @@ use Illuminate\Support\Facades\DB;
 
 final class LeadDirectory
 {
-    public function __construct(private readonly CrmCatalog $catalog) {}
+    public function __construct(
+        private readonly CrmCatalog $catalog,
+        private readonly CatalogInterest $interest,
+        private readonly ActivityDirectory $activities,
+        private readonly RecordHistory $history,
+        private readonly LeadDuplicates $matcher,
+    ) {}
 
     public function list(User $viewer): Collection
     {
@@ -27,13 +33,20 @@ final class LeadDirectory
             return null;
         }
 
-        $duplicate = $row->duplicate_of_type === 'client' ? DB::table('crm_clients')->where('id', $row->duplicate_of_id)->first(['code', 'name']) : null;
+        $duplicate = match ($row->duplicate_of_type) {
+            'client' => DB::table('crm_clients')->where('id', $row->duplicate_of_id)->first(['code', 'name']),
+            'lead' => DB::table('crm_leads')->where('id', $row->duplicate_of_id)->first(['code', 'full_name as name']),
+            default => null,
+        };
+        $open = in_array($row->status, LeadDuplicates::OPEN, true);
+        $absorbed = DB::table('crm_leads')->where('duplicate_of_type', 'lead')->where('duplicate_of_id', $row->id)->whereNull('deleted_at')->orderBy('code')->get(['code', 'full_name as name']);
         $client = $row->converted_client_id ? DB::table('crm_clients')->where('id', $row->converted_client_id)->first(['code', 'name']) : null;
         $opportunity = $row->converted_opportunity_id ? DB::table('crm_opportunities')->where('id', $row->converted_opportunity_id)->first(['code', 'title', 'stage', 'amount', 'currency']) : null;
 
         return [
             ...$this->summary($row),
             'notes' => $row->notes,
+            'product' => $this->interest->label($row->product_id),
             'bant' => $this->bant($row->id),
             'validated_at' => $this->iso($row->validated_at),
             'assigned_at' => $this->iso($row->assigned_at),
@@ -41,7 +54,14 @@ final class LeadDirectory
             'discard_reason' => $this->catalog->label('discard_reason', $row->discard_reason_code),
             'discard_detail' => $row->discard_detail,
             'discarded_at' => $this->iso($row->discarded_at),
-            'duplicate_of' => $duplicate ? ['code' => $duplicate->code, 'name' => $duplicate->name] : null,
+            'duplicate_of' => $duplicate ? ['type' => $row->duplicate_of_type, 'code' => $duplicate->code, 'name' => $duplicate->name] : null,
+            'duplicates' => $open ? collect($this->matcher->find($row->email, $row->phone, $row->id))->map(fn (array $match) => [
+                ...$match,
+                'mergeable' => $match['type'] === 'lead' && ! in_array($match['status'], ['convertido', 'duplicado'], true),
+            ])->values() : [],
+            'absorbed' => $absorbed->map(fn (object $lead) => ['code' => $lead->code, 'name' => $lead->name])->values(),
+            'activities' => $this->activities->related($viewer, ['lead' => [$row->id]]),
+            'history' => $this->history->for([$row->code, ...$absorbed->pluck('code')->all()]),
             'converted' => $client ? [
                 'at' => $this->iso($row->converted_at),
                 'client' => ['code' => $client->code, 'name' => $client->name],
@@ -52,7 +72,8 @@ final class LeadDirectory
 
     public function bant(string $leadId): ?array
     {
-        $row = DB::table('crm_lead_qualifications')->where('lead_id', $leadId)->orderByDesc('qualified_at')->first(['budget', 'authority', 'need', 'timeline', 'score', 'declared_amount', 'currency', 'notes', 'qualified_at']);
+        $row = DB::table('crm_lead_qualifications as q')->leftJoin('iam_users as u', 'u.id', '=', 'q.qualified_by')->where('q.lead_id', $leadId)->orderByDesc('q.qualified_at')
+            ->first(['q.budget', 'q.authority', 'q.need', 'q.timeline', 'q.score', 'q.declared_amount', 'q.currency', 'q.notes', 'q.qualified_at', 'u.name as qualified_by']);
 
         return $row ? (array) $row : null;
     }
@@ -83,6 +104,7 @@ final class LeadDirectory
             'channel' => $this->catalog->label('lead_channel', $row->channel_code),
             'interest' => $this->catalog->label('lead_interest', $row->interest_code),
             'destination' => $row->destination_label,
+            'destination_id' => $row->destination_id,
             'travel_date' => $row->travel_date,
             'pax' => (int) $row->pax,
             'score' => (int) $row->score,

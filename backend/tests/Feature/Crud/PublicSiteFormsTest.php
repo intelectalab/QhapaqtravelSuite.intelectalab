@@ -177,7 +177,7 @@ it('pagar el pedido confirma la reserva, salda las cuotas, convierte los bloqueo
     $order = sitioPedido(sitioCarrito(2));
     $access = siteOf(extra: ['X-Order-Token' => $order->token]);
 
-    $paid = $this->postJson("/api/v1/public/orders/{$order->code}/payments", [], [...$access, ...critical()])->assertOk()->json('data');
+    $paid = $this->postJson("/api/v1/public/orders/{$order->code}/payments", ['method' => 'tarjeta', 'card_token' => 'tok_ok_1111', 'card_holder' => 'PAGO SANDBOX'], [...$access, ...critical()])->assertOk()->json('data');
     $code = $paid['reservations'][0]['code'];
     $reservation = reservationRow($code);
     [$receivables, $payments] = withinTenant(tenantA(), fn () => [
@@ -200,11 +200,11 @@ it('un pedido ya pagado no se cobra dos veces y sin el token del pedido no se pa
     $order = sitioPedido(sitioCarrito(2));
     $access = siteOf(extra: ['X-Order-Token' => $order->token]);
 
-    expect($this->postJson("/api/v1/public/orders/{$order->code}/payments", [], siteOf(extra: critical())))->toBeApiError(404);
-    $this->postJson("/api/v1/public/orders/{$order->code}/payments", [], [...$access, ...critical()])->assertOk();
+    expect($this->postJson("/api/v1/public/orders/{$order->code}/payments", ['method' => 'tarjeta', 'card_token' => 'tok_ok_1111'], siteOf(extra: critical())))->toBeApiError(404);
+    $this->postJson("/api/v1/public/orders/{$order->code}/payments", ['method' => 'tarjeta', 'card_token' => 'tok_ok_1111'], [...$access, ...critical()])->assertOk();
     $sold = (int) departureRow('SAL-0404')->sold;
 
-    expect($this->postJson("/api/v1/public/orders/{$order->code}/payments", [], [...$access, ...critical()]))->toBeApiError(409, 'ORDER_STATE');
+    expect($this->postJson("/api/v1/public/orders/{$order->code}/payments", ['method' => 'tarjeta', 'card_token' => 'tok_ok_1111'], [...$access, ...critical()]))->toBeApiError(409, 'ORDER_STATE');
     expect((int) departureRow('SAL-0404')->sold)->toBe($sold);
 });
 
@@ -343,9 +343,17 @@ it('la hoja de reclamación del sitio aparece en el libro de reclamaciones con s
 });
 
 it('la hoja de reclamación valida el documento, el apoderado del menor y la declaración', function () {
-    sitioPost('/api/v1/public/claims', sitioReclamo(['sede_id' => sitioSedeLima(), 'doc_number' => '123', 'minor' => true, 'declaration' => false]))
-        ->assertStatus(422)->assertJsonValidationErrors(['doc_number', 'guardian_name', 'guardian_doc', 'declaration']);
+    sitioPost('/api/v1/public/claims', sitioReclamo(['sede_id' => sitioSedeLima(), 'doc_number' => '123', 'is_minor' => true, 'declaration' => false]))
+        ->assertStatus(422)->assertJsonValidationErrors(['doc_number', 'guardian_name', 'guardian_doc_type', 'guardian_doc_number', 'guardian_relation', 'declaration']);
     expect(sitioPost('/api/v1/public/claims', sitioReclamo(['sede_id' => '00000000-0000-0000-0000-000000000000'])))->toBeApiError(422, 'VALIDATION_ERROR');
+});
+
+it('la hoja del sitio de un menor guarda al apoderado con el formato del kit', function () {
+    $data = $this->postJson('/api/v1/public/claims', sitioReclamo(['sede_id' => sitioSedeLima(), 'is_minor' => true, 'guardian_name' => 'Rosa Carpio Delgado', 'guardian_doc_type' => 'DNI', 'guardian_doc_number' => '29654102', 'guardian_relation' => 'Madre']), siteOf(extra: critical()))->assertCreated()->json('data');
+    $consumer = json_decode((string) withinTenant(tenantA(), fn () => DB::table('crm_cases')->where('book_number', $data['number'])->value('consumer')), true);
+
+    expect($consumer)->toMatchArray(['doc_type' => 'DNI', 'doc_number' => '41523698', 'is_minor' => true])
+        ->and($consumer['guardian'])->toBe(['name' => 'Rosa Carpio Delgado', 'doc_type' => 'DNI', 'doc_number' => '29654102', 'relation' => 'Madre']);
 });
 
 it('la solicitud de demo del software aparece en la consola de la plataforma y no se duplica en 24 horas', function () {

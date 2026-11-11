@@ -1,4 +1,4 @@
-# Contrato API — Qhapaq Travel Suite (`/api/v1`)
+# Contrato API — KipuControl (`/api/v1`)
 
 Contrato **OpenAPI 3.1** de todo el SaaS, generado desde las 19 especificaciones. Es la fuente de verdad para el
 backend Laravel (lo que debe exponer) y para el frontend Next.js y las apps Expo (lo que pueden consumir).
@@ -38,7 +38,7 @@ del contrato → se sube la versión (§5). Si el script interpreta mal una fila
 - Extensiones: `x-permission` (texto de la spec), `x-permissions` (códigos spatie), `x-spec` / `x-spec-also` (archivo y
   sección), `x-phase` (0–3), `x-resource` (tabla), `x-idempotency`, `x-api-key-scope`.
 
-Seguridad: `sanctum` (por defecto), `platformSanctum` (`/platform/*`), `widgetKey` (`X-Qhapaq-Key`, para `/public/*`),
+Seguridad: `sanctum` (por defecto), `platformSanctum` (`/platform/*`), `widgetKey` (`X-KipuControl-Key`, para `/public/*`),
 `cartToken` / `orderToken` (carrito y pedido web), `tenantApiKey` y `oauth2` con scopes (`catalog:read`, `reservations:write`…)
 en las rutas de la API pública del tenant, `providerSignature` (webhooks entrantes).
 
@@ -83,12 +83,12 @@ Alternativa — **orval** (genera hooks de TanStack Query y esquemas Zod para Re
 ```ts
 // orval.config.ts
 export default {
-  qhapaq: {
+  kipucontrol: {
     input: "../kit-ia/api/openapi.yaml",
     output: { target: "src/lib/api/generated.ts", client: "react-query", mode: "tags-split",
               override: { mutator: { path: "src/lib/api/fetcher.ts", name: "apiFetch" } } },   // añade token, Idempotency-Key, If-Match
   },
-  qhapaqZod: { input: "../kit-ia/api/openapi.yaml", output: { target: "src/lib/api/zod.ts", client: "zod", mode: "tags-split" } },
+  kipucontrolZod: { input: "../kit-ia/api/openapi.yaml", output: { target: "src/lib/api/zod.ts", client: "zod", mode: "tags-split" } },
 };
 ```
 

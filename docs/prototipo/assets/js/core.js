@@ -1,19 +1,19 @@
 /* ==========================================================================
-   Qhapaq Travel Suite — Núcleo del prototipo (JS vanilla, sin dependencias)
+   KipuControl — Núcleo del prototipo (JS vanilla, sin dependencias)
    Store · Auth/RBAC · Router · Componentes UI · Motor de precios · Auditoría
    ========================================================================== */
 (function () {
   'use strict';
 
   /* ---------------- Store (persistencia local de la demo) ---------------- */
-  const KEY = 'qhapaq_demo_db_v5';
+  const KEY = 'kipucontrol_demo_db_v5';
   const clone = (o) => JSON.parse(JSON.stringify(o));
   let DB;
   try { const raw = localStorage.getItem(KEY); DB = raw ? JSON.parse(raw) : clone(window.SEED); } catch (e) { DB = clone(window.SEED); }
   window.DB = DB;
   const Store = {
     save() { try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch (e) { /* almacenamiento no disponible */ } },
-    reset() { try { localStorage.removeItem(KEY); localStorage.removeItem('qhapaq_session'); } catch (e) { } location.hash = '#/dashboard'; location.reload(); }
+    reset() { try { localStorage.removeItem(KEY); localStorage.removeItem('kipucontrol_session'); } catch (e) { } location.hash = '#/dashboard'; location.reload(); }
   };
 
   /* ---------------- Utilidades ---------------- */
@@ -119,9 +119,9 @@
   /* ---------------- Auth / RBAC ---------------- */
   const Auth = {
     user: null,
-    load() { try { const id = localStorage.getItem('qhapaq_session'); if (id) this.user = Q.user(id) || null; } catch (e) { } },
-    login(uidv) { this.user = Q.user(uidv); try { localStorage.setItem('qhapaq_session', uidv); } catch (e) { } Audit.log('Sesión', uidv, 'login', '', 'OK'); },
-    logout() { if (this.user) Audit.log('Sesión', this.user.id, 'logout', '', ''); this.user = null; try { localStorage.removeItem('qhapaq_session'); } catch (e) { } location.hash = '#/login'; App.render(); },
+    load() { try { const id = localStorage.getItem('kipucontrol_session'); if (id) this.user = Q.user(id) || null; } catch (e) { } },
+    login(uidv) { this.user = Q.user(uidv); try { localStorage.setItem('kipucontrol_session', uidv); } catch (e) { } Audit.log('Sesión', uidv, 'login', '', 'OK'); },
+    logout() { if (this.user) Audit.log('Sesión', this.user.id, 'logout', '', ''); this.user = null; try { localStorage.removeItem('kipucontrol_session'); } catch (e) { } location.hash = '#/login'; App.render(); },
     get role() { return this.user ? this.user.role : null; },
     can(perm) { if (!this.user) return false; const ps = DB.rolePerms[this.user.role] || []; return ps.includes(perm) || ps.some(p => p.endsWith('.') && perm.startsWith(p)); },
     canAny(perms) { return perms.some(p => this.can(p)); },
@@ -744,7 +744,7 @@
     renderNav() {
       const side = document.getElementById('side'); if (!side) { this.markActive(App.current); return; }
       const t = DB.tenant;
-      side.innerHTML = '<div class="brand"><div class="brand-mark">' + icon('logo') + '</div><div><div class="brand-name">Qhapaq Travel Suite</div><div class="brand-sub">ERP · CRM turístico</div></div></div>' +
+      side.innerHTML = '<div class="brand"><div class="brand-mark">' + icon('logo') + '</div><div><div class="brand-name">KipuControl</div><div class="brand-sub">ERP · CRM turístico</div></div></div>' +
         '<div class="tenant-chip" id="tenant-chip" title="Tenant activo"><div class="av">' + esc(t.logo) + '</div><div class="grow"><b>' + esc(t.short) + '</b><span>' + esc(t.plan) + ' · ' + esc(Q.sedeName(Auth.user.sede)) + '</span></div>' + icon('chevronDown') + '</div>' +
         '<div class="nav-find">' + icon('search') + '<input id="nav-q" type="search" placeholder="Buscar en el menú" aria-label="Buscar en el menú" autocomplete="off"></div>' +
         '<nav class="nav" aria-label="Navegación principal">' + NAV.map(g => ({ ...g, vis: g.items.filter(i => Access.canRoute(i.r)) })).filter(g => g.vis.length).map(g => '<div class="nav-group' + (Shell.collapsed(g.group) ? ' closed' : '') + '" data-g="' + esc(g.group) + '"><button class="nav-group-title" type="button" aria-expanded="' + !Shell.collapsed(g.group) + '">' + esc(g.group) + icon('chevronDown') + '</button><div class="nav-items">' + g.vis.map(i => { const c = i.count ? i.count() : 0; return '<a href="#/' + i.r + '" data-r="' + i.r + '">' + icon(i.icon) + '<span>' + esc(i.label) + '</span>' + (c ? '<span class="cnt">' + c + '</span>' : '') + '</a>'; }).join('') + '</div></div>').join('') + '</nav>' +
@@ -756,15 +756,15 @@
       nq.onkeydown = (e) => { if (e.key === 'Enter') { const a = [...side.querySelectorAll('.nav a')].find(x => !x.hidden); if (a) { location.hash = a.getAttribute('href'); nq.value = ''; nq.oninput(); } } if (e.key === 'Escape') { nq.value = ''; nq.oninput(); } };
       this.markActive(App.current);
     },
-    collapsed(g) { try { return (JSON.parse(localStorage.getItem('qhapaq_nav') || '{}'))[g] === true; } catch (e) { return false; } },
-    setCollapsed(g, v) { try { const m = JSON.parse(localStorage.getItem('qhapaq_nav') || '{}'); m[g] = v; localStorage.setItem('qhapaq_nav', JSON.stringify(m)); } catch (e) { } },
+    collapsed(g) { try { return (JSON.parse(localStorage.getItem('kipucontrol_nav') || '{}'))[g] === true; } catch (e) { return false; } },
+    setCollapsed(g, v) { try { const m = JSON.parse(localStorage.getItem('kipucontrol_nav') || '{}'); m[g] = v; localStorage.setItem('kipucontrol_nav', JSON.stringify(m)); } catch (e) { } },
     markActive(r) { const h = location.hash; document.querySelectorAll('.ext-nav a').forEach(a => a.classList.toggle('active', h === a.getAttribute('href') || h.startsWith(a.getAttribute('href') + '/'))); const en = document.querySelector('.ext-nav'); if (en) { const act = en.querySelector('a.active'); if (act && en.scrollWidth > en.clientWidth) en.scrollLeft = Math.max(0, act.offsetLeft - en.offsetLeft - (en.clientWidth - act.offsetWidth) / 2); const upd = () => { en.classList.toggle('at-end', en.scrollLeft + en.clientWidth >= en.scrollWidth - 4); en.classList.toggle('at-start', en.scrollLeft <= 4); }; upd(); en.onscroll = upd; } document.querySelectorAll('.nav a').forEach(a => { const on = !!r && (a.dataset.r === r || (r.startsWith(a.dataset.r + '/'))); a.classList.toggle('active', on); if (on) { const g = a.closest('.nav-group'); if (g) g.classList.remove('closed'); } }); },
     refreshUser() {
       const b = document.getElementById('btn-user'); if (!b || !Auth.user) return;
       b.innerHTML = UI.avatar(Auth.user) + '<span class="ub-text"><b>' + esc(Auth.user.name.split(' ').slice(0, 2).join(' ')) + '</b><span>' + esc(Q.roleName(Auth.user.role)) + '</span></span>' + icon('chevronDown');
     },
     refreshBell() { const d = document.getElementById('bell-dot'); if (!d) return; const n = DB.notifications.filter(x => !x.read).length; d.textContent = n > 9 ? '9+' : n; d.hidden = !n; },
-    toggleTheme() { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; try { localStorage.setItem('qhapaq_theme', r.dataset.theme); } catch (e) { } },
+    toggleTheme() { const r = document.documentElement; const dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; r.dataset.theme = dark ? 'light' : 'dark'; try { localStorage.setItem('kipucontrol_theme', r.dataset.theme); } catch (e) { } },
     userMenu(anchor) {
       const narrow = matchMedia('(max-width:640px)').matches;
       UI.menu(anchor, [
@@ -869,7 +869,7 @@
       const demo = [['U01', 'Back-office completo'], ['U02', 'Supervisión y aprobaciones'], ['U03', 'Su cartera comercial'], ['U05', 'Reservas en ejecución'], ['U07', 'Cobros, pagos y márgenes'], ['U08', 'Comprobantes y CxC'], ['U09', 'App móvil de campo'], ['U13', 'Portal de agencias'], ['U14', 'Portal del cliente'], ['U15', 'Portal del pasajero'], ['U17', 'Extranet de proveedores'], ['U16', 'Consola de plataforma']];
       let sel = 'U01';
       const root = document.getElementById('app');
-      root.innerHTML = '<div class="login"><section class="login-art"><div class="brand" style="padding:0"><div class="brand-mark">' + icon('logo') + '</div><div><div class="brand-name">Qhapaq Travel Suite</div><div class="brand-sub">SaaS multi-tenant para agencias y operadores</div></div></div>' +
+      root.innerHTML = '<div class="login"><section class="login-art"><div class="brand" style="padding:0"><div class="brand-mark">' + icon('logo') + '</div><div><div class="brand-name">KipuControl</div><div class="brand-sub">SaaS multi-tenant para agencias y operadores</div></div></div>' +
         '<div style="position:relative"><h1>Gestión integral de la agencia, de la primera consulta al cierre del viaje.</h1><p>CRM, catálogo turístico, cotizaciones versionadas, reservas, operaciones, finanzas, portales, B2B y apps móviles en una sola plataforma con aislamiento por tenant y auditoría completa.</p><div class="login-flow">' + ['Lead', 'Oportunidad', 'Cotización', 'Aprobación', 'Reserva', 'Operación', 'Voucher', 'Ejecución', 'Cobro', 'Rentabilidad', 'Postventa'].map(s => '<span>' + s + '</span>').join('') + '</div></div>' +
         '<svg class="bgm" viewBox="0 0 800 300" preserveAspectRatio="none"><path d="M0 300 L0 210 L90 150 L150 190 L260 80 L340 170 L420 120 L520 200 L610 110 L700 170 L800 130 L800 300Z" fill="#0B4E97"/><path d="M0 300 L0 250 L120 200 L210 240 L330 170 L450 235 L560 190 L680 245 L800 210 L800 300Z" fill="#0A3A73"/></svg>' +
         '<div class="small" style="position:relative;color:var(--side-fg-2)">Prototipo navegable · Datos ficticios · Fecha de referencia ' + date(window.TODAY) + '</div></section>' +
@@ -1002,7 +1002,7 @@
 
   /* Arranque */
   document.addEventListener('DOMContentLoaded', () => {
-    try { const th = localStorage.getItem('qhapaq_theme'); if (th) document.documentElement.dataset.theme = th; } catch (e) { }
+    try { const th = localStorage.getItem('kipucontrol_theme'); if (th) document.documentElement.dataset.theme = th; } catch (e) { }
     Auth.load();
     ResponsiveTables.init();
     MobileHeader.init();

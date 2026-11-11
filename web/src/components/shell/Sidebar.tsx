@@ -38,7 +38,7 @@ export function Sidebar({ collapsed, onToggle, onExpand, onNavigate, tagged = tr
   const pathname = usePathname();
   const { groups, account, navigation } = useWorkspace();
   const activeGroup = groupFor(pathname, groups);
-  const [openGroups, setOpenGroups] = useStoredValue(`qhapaq-menu-groups:${navigation}`, parseOpen, serializeOpen);
+  const [openGroups, setOpenGroups] = useStoredValue(`kipucontrol-menu-groups:${navigation}`, parseOpen, serializeOpen);
 
   const toggleGroup = (id: string) => setOpenGroups(openGroups.includes(id) ? openGroups.filter((item) => item !== id) : [...openGroups, id]);
   const openFromRail = (id: string) => {
@@ -56,8 +56,7 @@ export function Sidebar({ collapsed, onToggle, onExpand, onNavigate, tagged = tr
         </span>
         {!collapsed && (
           <span className="min-w-0 leading-tight">
-            <b className="block text-base font-bold tracking-tight text-white">Qhapaq</b>
-            <span className="text-[10.5px] uppercase tracking-[0.16em] text-white/55">Travel Suite</span>
+            <b className="block text-base font-bold tracking-tight text-white">KipuControl</b>
           </span>
         )}
         <button

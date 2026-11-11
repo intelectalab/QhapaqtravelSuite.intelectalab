@@ -215,7 +215,7 @@ Regla de oro: cada comportamiento consulta `BE.on('<regla>', producto)` y **desa
 | GET/PUT | `/api/v1/channels/widget` | channels.ecommerce.manage | Config y predeterminados | lock |
 | POST | `/api/v1/channels/widget/rotate-key` | admin.api.manage | Regenerar clave | Idempotency-Key |
 | GET/POST/DELETE | `/api/v1/channels/widget/domains[/{id}]` · POST `/{id}/verify` | channels.ecommerce.manage | Dominios | — |
-| GET | `/api/v1/public/products?category=&lang=` · `/public/products/{code}` | `X-Qhapaq-Key` + Origin verificado | Catálogo | cache CDN 5 min |
+| GET | `/api/v1/public/products?category=&lang=` · `/public/products/{code}` | `X-KipuControl-Key` + Origin verificado | Catálogo | cache CDN 5 min |
 | GET | `/api/v1/public/products/{code}/availability?month=&seats=` | idem | `BE.month` | cache 60 s |
 | POST | `/api/v1/public/quote` | idem | `BE.quote` (referencial) | rate limit 60/min/IP |
 | POST | `/api/v1/public/carts` · `/public/widget-handoffs` | idem | Traspaso al checkout → `checkout_url` | Idempotency-Key |
@@ -250,7 +250,7 @@ Botones sin permiso se muestran deshabilitados con `title="Requiere permiso x.y"
 | `VerifyWidgetDomain` (cada 10 min, 72 h) | low | Busca TXT; al verificar publica CORS/CSP |
 | `ExpireWidgetHandoffs` (hora) | low | `pendiente → expirado` a las 24 h |
 | Webhooks salientes | integrations (outbox) | `reservation.created/confirmed/cancelled`, `payment.applied`, `widget.checkout_started`, `review.received`, `passenger.message.failed` (HMAC-SHA256) |
-| Eventos del widget en el navegador | — | `qhapaq:ready`, `qhapaq:resize`, `qhapaq:date_selected`, `qhapaq:quote`, `qhapaq:checkout` (CustomEvent / postMessage a orígenes verificados) |
+| Eventos del widget en el navegador | — | `kipucontrol:ready`, `kipucontrol:resize`, `kipucontrol:date_selected`, `kipucontrol:quote`, `kipucontrol:checkout` (CustomEvent / postMessage a orígenes verificados) |
 
 ## 9. Auditoría
 
@@ -292,7 +292,7 @@ Playwright (prototipo verificado con scripts equivalentes):
 - Reglas personalizadas: se permiten como banderas; su comportamiento requiere desarrollo (no hay motor de reglas genérico en el prototipo; evaluar un DSL solo si la demanda lo justifica).
 - Mensajes al pasajero separados de `admin/notificaciones` (eventos internos): son comunicaciones al viajero, por reserva, multicanal e idioma, con programación y acuses.
 - Reseñas: se adopta un enfoque de cumplimiento estricto (APIs oficiales, sin scraping, sin gating). TripAdvisor Content API y los portales de GetYourGuide/Viator no permiten responder por API → flujo «guardar y copiar».
-- El widget reutiliza BookingEngine; el traspaso al checkout usa `window.SiteCart.add()` si sitio.js lo expone y, si no, `DB.widgetHandoff` + clave `qhapaq_widget_handoff` en localStorage (en producción: `POST /public/widget-handoffs` → `checkout_url`).
+- El widget reutiliza BookingEngine; el traspaso al checkout usa `window.SiteCart.add()` si sitio.js lo expone y, si no, `DB.widgetHandoff` + clave `kipucontrol_widget_handoff` en localStorage (en producción: `POST /public/widget-handoffs` → `checkout_url`).
 - El TC al cliente aplica el margen como `TC × (1 − margen)`.
 
 ### v2.2 — Decisiones del cliente (30/09/2026)
@@ -315,6 +315,6 @@ Todo valor DEMO se reemplazará por el definitivo sin cambios de modelo: basta e
 5. Recargo por tarjeta (R-PAY-FEE): verificar normativa de protección al consumidor y contrato con la pasarela antes de activarlo.
 6. Fuente oficial del TC (SBS, BCRP o proveedor comercial) y frecuencia; margen máximo 15 %; umbral de alerta definitivo (demo 3 %). Los tipos de cambio, historial y proveedores actuales son **DEMO**.
 7. Reseñas: estado real de contratos con Google, TripAdvisor y Trustpilot (fase 1) y luego Meta, GetYourGuide y Viator; los datos mostrados en el prototipo son **de ejemplo**.
-8. Widget: dominio del CDN (`cdn.qhapaq.app`) y del host de reservas por tenant; política de cookies/consentimiento en sitios de terceros.
+8. Widget: dominio del CDN (`cdn.kipucontrol.app`) y del host de reservas por tenant; política de cookies/consentimiento en sitios de terceros.
 9. Integración final con el checkout de sitio.js (carrito unificado basado en BE) — pendiente de alinear con el responsable de `sitio.js`.
 10. Plan mínimo de cada regla (matriz DEMO): validar con negocio antes de publicar precios.

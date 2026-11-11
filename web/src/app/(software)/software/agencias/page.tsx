@@ -12,7 +12,7 @@ import { trialDays } from "@/lib/software";
 
 export const metadata: Metadata = {
   title: "Para qué agencias",
-  description: "Qhapaq Travel Suite para agencias minoristas, operadores turísticos, DMC receptivos, agencias corporativas y mayoristas del Perú.",
+  description: "KipuControl para agencias minoristas, operadores turísticos, DMC receptivos, agencias corporativas y mayoristas del Perú.",
 };
 
 export default async function AgenciasPage() {
@@ -35,7 +35,7 @@ export default async function AgenciasPage() {
         )}
       </PageHero>
       <Section>
-        <SectionHead eyebrow="Casos de uso" title="Elige tu tipo de agencia y mira por dónde empezar." description="Cada tarjeta muestra cuántas agencias de ese tipo ya trabajan con Qhapaq y el plan que suelen elegir." />
+        <SectionHead eyebrow="Casos de uso" title="Elige tu tipo de agencia y mira por dónde empezar." description="Cada tarjeta muestra cuántas agencias de ese tipo ya trabajan con KipuControl y el plan que suelen elegir." />
         {overview ? (
           <Segments segments={overview.segments} />
         ) : (

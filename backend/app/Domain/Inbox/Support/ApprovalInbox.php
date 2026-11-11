@@ -28,6 +28,15 @@ final class ApprovalInbox
 
     public const GENERIC = ['credit_b2b', 'refund', 'other'];
 
+    private const SUBJECT_LABELS = ['channel_b2b_agencies' => 'Agencia B2B', 'booking_reservations' => 'Reserva', 'fin_payments' => 'Pago', 'fin_payables' => 'Cuenta por pagar', 'fin_commissions' => 'Comisión'];
+
+    private const EFFECTS = [
+        'reversal' => 'Al aprobar el último nivel, el pago pasa a revertido, se devuelve el crédito B2B si corresponde y se recalcula la cuota por cobrar.',
+        'credit_b2b' => 'Al aprobar, la gerencia queda autorizada a ampliar la línea de la agencia desde Canales.',
+        'refund' => 'Al aprobar, Finanzas queda autorizada a registrar el reembolso.',
+        'other' => 'Al aprobar, la excepción queda autorizada y registrada en la trazabilidad.',
+    ];
+
     private const ORIGIN_PERMISSION = ['quote' => 'quotes.approve_internal', 'change' => 'quotes.approve_internal', 'cancel' => 'reservations.cancel', 'commission' => 'finance.commissions', 'payable' => 'finance.payables'];
 
     private const RATE_PERMISSIONS = ['catalog.products.manage_rates', 'catalog.providers.manage'];
@@ -59,7 +68,7 @@ final class ApprovalInbox
 
         return [
             'kpis' => [
-                'for_me' => $pending->where('can_decide', true)->count(),
+                'for_me' => $pending->filter(fn (array $item): bool => $item['can_decide'] || $item['can_answer'])->count(),
                 'overdue' => $pending->where('sla', 'overdue')->count(),
                 'sent_open' => $pending->where('mine', true)->count(),
                 'resolved_week' => $resolved->count(),
@@ -69,11 +78,39 @@ final class ApprovalInbox
             'rules' => $this->rules->list(),
             'types' => collect(self::TYPES)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
             'cancel_reasons' => ReservationWorkflow::CANCEL_REASONS,
+            'options' => $this->options(),
+            'usd_rate' => $this->usdRate(),
             'can' => [
                 'create' => $viewer->can('approvals.view'),
                 'manage_rules' => $viewer->can('admin.settings.manage'),
             ],
         ];
+    }
+
+    private function options(): array
+    {
+        return [
+            'agencies' => DB::table('channel_b2b_agencies')->whereNull('deleted_at')->orderBy('legal_name')->get(['code', 'legal_name', 'credit_currency', 'credit_limit', 'credit_used', 'status'])
+                ->map(fn (object $agency): array => [
+                    'value' => $agency->code,
+                    'label' => $agency->legal_name,
+                    'hint' => "Línea {$agency->credit_currency} ".number_format((float) $agency->credit_limit, 0, '.', ' ').' · usado '.number_format((float) $agency->credit_used, 0, '.', ' ').($agency->status !== 'activa' ? " · {$agency->status}" : ''),
+                ])->values()->all(),
+            'reservations' => DB::table('booking_reservations as r')->join('crm_clients as c', 'c.id', '=', 'r.client_id')->whereNull('r.deleted_at')
+                ->where('r.status', '<>', 'cancelada')->orderByDesc('r.created_at')->limit(150)->get(['r.code', 'c.name'])
+                ->map(fn (object $reservation): array => ['value' => $reservation->code, 'label' => $reservation->code, 'hint' => $reservation->name])->values()->all(),
+        ];
+    }
+
+    private function reversalPayments(Collection $rows): Collection
+    {
+        $codes = $rows->where('request_type', 'reversal')->pluck('subject_code')->filter()->values();
+
+        return $codes->isEmpty() ? collect() : DB::table('fin_payments as p')
+            ->leftJoin('booking_reservations as r', 'r.id', '=', 'p.reservation_id')
+            ->whereIn('p.code', $codes)
+            ->get(['p.code', 'p.method', 'p.amount', 'p.currency', 'p.paid_on', 'p.reference', 'p.status', 'r.code as reservation'])
+            ->keyBy('code');
     }
 
     private function quotes(User $viewer): Collection
@@ -394,10 +431,18 @@ final class ApprovalInbox
             ->orderByDesc('created_at')->limit(200)->get();
         $steps = DB::table('collab_approval_steps')->whereIn('request_id', $rows->pluck('id'))->orderBy('level')->get()->groupBy('request_id');
         $events = DB::table('collab_approval_events')->whereIn('request_id', $rows->pluck('id'))->orderBy('occurred_at')->get()->groupBy('request_id');
+        $questions = DB::table('collab_approval_info_requests')->whereIn('request_id', $rows->pluck('id'))->orderBy('asked_at')->get()->groupBy('request_id');
+        $resubmitted = $rows->map(fn (object $row): ?string => (json_decode((string) $row->origin_snapshot, true) ?: [])['resubmitted_from'] ?? null)->filter()->flip();
+        $payments = $this->reversalPayments($rows);
 
-        return $rows->map(function (object $row) use ($viewer, $steps, $events): ?array {
+        return $rows->map(function (object $row) use ($viewer, $steps, $events, $questions, $resubmitted, $payments): ?array {
+            $amountPen = round((float) $row->amount * (float) $row->fx_rate, 2);
             $permissions = $this->rules->permissions($row->request_type);
-            $levelPermission = $this->rules->permission($row->request_type, (int) $row->current_level);
+            $levelPermission = $this->rules->permission($row->request_type, (int) $row->current_level, $amountPen);
+            $levelRule = $this->rules->rule($row->request_type, (int) $row->current_level, $amountPen);
+            $snapshot = json_decode((string) $row->origin_snapshot, true) ?: [];
+            $payment = $row->request_type === 'reversal' ? $payments->get((string) $row->subject_code) : null;
+            $reversible = $row->request_type !== 'reversal' || ($payment !== null && in_array($payment->status, ['confirmado', 'aplicado'], true));
             $mine = $row->requester_id === $viewer->getKey();
 
             if (! $mine && ! collect($permissions)->contains(fn (string $permission): bool => $viewer->can($permission))) {
@@ -406,13 +451,19 @@ final class ApprovalInbox
 
             $own = $steps->get($row->id, collect());
             $open = in_array($row->status, ['pendiente', 'info'], true);
+            $approver = $open && $levelPermission !== null && $viewer->can($levelPermission) && ! $mine && ! $own->contains('decided_by', $viewer->getKey())
+                && ($row->delegated_to === null || $row->delegated_to === $viewer->getKey());
+            $asked = $questions->get($row->id, collect());
+            $pending = $asked->first(fn (object $question): bool => $question->answered_at === null);
+            $deciders = $own->pluck('decided_by')->all();
+            $payablePermission = ['payable' => 'finance.payables', 'commission' => 'finance.commissions'][$row->request_type] ?? null;
             $item = $this->item([
                 'key' => "request:{$row->code}",
                 'type' => $row->request_type,
                 'code' => $row->code,
                 'title' => $row->title,
                 'detail' => $row->justification,
-                'facts' => array_values(array_filter([$row->subject_code ? "Origen: {$row->subject_code}" : null, $row->is_generic ? 'Solicitud creada en la bandeja' : null])),
+                'facts' => $payment ? $this->paymentFacts($payment) : array_values(array_filter([$row->subject_code ? (self::SUBJECT_LABELS[$row->subject_type] ?? 'Origen').": {$row->subject_code}" : null, isset($snapshot['reservation']) ? "Reserva relacionada: {$snapshot['reservation']}" : null, $row->is_generic ? 'Solicitud creada en la bandeja' : null])),
                 'requester_id' => $row->requester_id,
                 'requester_kind' => $row->requester_kind,
                 'created_at' => $row->created_at,
@@ -426,17 +477,33 @@ final class ApprovalInbox
                 'decided_by' => $row->decided_by,
                 'decided_at' => $row->decided_at,
                 'decision_note' => $row->decision_note,
-                'href' => null,
+                'href' => $payment ? "/finanzas/pagos/{$payment->code}" : self::subjectHref($row->subject_type, $row->subject_code),
+                'href_label' => $payment ? "Abrir {$payment->code}" : ($row->subject_code ? "Abrir {$row->subject_code}" : null),
                 'target' => $row->code,
+                'subject' => $row->subject_type ? ['type' => $row->subject_type, 'code' => $row->subject_code] : null,
+                'agency' => $row->subject_type === 'channel_b2b_agencies' ? $row->subject_code : null,
+                'reservation' => $row->subject_type === 'booking_reservations' ? $row->subject_code : ($snapshot['reservation'] ?? null),
+                'rule' => $levelRule ? ['code' => $levelRule->code, 'min_amount' => (float) $levelRule->min_amount_pen, 'permission_label' => ApprovalRules::PERMISSION_LABELS[$levelRule->permission] ?? $levelRule->permission, 'approvers' => array_column($this->rules->eligible($levelRule->permission), 'name')] : null,
+                'effect' => self::EFFECTS[$row->request_type] ?? null,
                 'lock_version' => (int) $row->lock_version,
                 'is_generic' => (bool) $row->is_generic,
                 'permission' => $levelPermission,
-                'can_decide' => $open && $levelPermission !== null && $viewer->can($levelPermission) && ! $mine && ! $own->contains('decided_by', $viewer->getKey()),
+                'can_decide' => $approver && $row->status === 'pendiente' && $reversible,
                 'can_edit' => $open && $mine && (bool) $row->is_generic,
+                'can_delegate' => $approver && $row->status === 'pendiente',
+                'can_ask' => $approver && $row->status === 'pendiente',
+                'can_answer' => $pending !== null && $pending->asked_by !== $viewer->getKey() && ($mine || $viewer->can('crm.records.reassign')),
+                'can_resubmit' => $row->status === 'rechazada' && ! $resubmitted->has($row->code) && ($mine || ($payablePermission !== null && $viewer->can($payablePermission))),
+                'delegated_to' => $row->delegated_to ? ['id' => $row->delegated_to, 'name' => $this->name($row->delegated_to)] : null,
+                'resubmitted_from' => (json_decode((string) $row->origin_snapshot, true) ?: [])['resubmitted_from'] ?? null,
             ], $viewer);
 
             $item['steps'] = $own->map(fn ($step): array => ['level' => (int) $step->level, 'decision' => $step->decision, 'by' => $this->name($step->decided_by), 'at' => $step->decided_at, 'note' => $step->note])->values();
             $item['events'] = $events->get($row->id, collect())->map(fn ($event): array => ['event' => $event->event, 'by' => $this->name($event->actor_id), 'at' => $event->occurred_at, 'note' => $event->note])->values();
+            $item['questions'] = $asked->map(fn ($question): array => ['id' => $question->id, 'question' => $question->question, 'asked_by' => $this->name($question->asked_by), 'asked_at' => $question->asked_at, 'answer' => $question->answer, 'answered_by' => $question->answered_by ? $this->name($question->answered_by) : null, 'answered_at' => $question->answered_at])->values();
+            $item['delegates'] = $item['can_delegate']
+                ? collect($this->rules->eligible($levelPermission))->reject(fn (array $user): bool => in_array($user['id'], [$viewer->getKey(), $row->requester_id, $row->delegated_to, ...$deciders], true))->values()->all()
+                : [];
 
             return $item;
         })->filter()->values();
@@ -467,9 +534,37 @@ final class ApprovalInbox
             'mine' => $item['requester_id'] === $viewer->getKey(),
             'steps' => [],
             'events' => [],
+            'questions' => [],
+            'delegates' => [],
             'can_edit' => $item['can_edit'] ?? false,
+            'can_delegate' => $item['can_delegate'] ?? false,
+            'can_ask' => $item['can_ask'] ?? false,
+            'can_answer' => $item['can_answer'] ?? false,
+            'can_resubmit' => $item['can_resubmit'] ?? false,
+            'delegated_to' => $item['delegated_to'] ?? null,
             'lock_version' => $item['lock_version'] ?? null,
         ];
+    }
+
+    private function paymentFacts(object $payment): array
+    {
+        return array_values(array_filter([
+            "Pago: {$payment->code} · ".ucfirst((string) $payment->method),
+            'Monto del pago: '.$payment->currency.' '.number_format((float) $payment->amount, 2, '.', ' '),
+            $payment->reservation ? "Reserva: {$payment->reservation}" : null,
+            $payment->reference ? "Operación: {$payment->reference}" : null,
+            'Estado del pago: '.$payment->status.(in_array($payment->status, ['confirmado', 'aplicado'], true) ? '' : ' (ya no se puede revertir)'),
+        ]));
+    }
+
+    private static function subjectHref(?string $type, ?string $code): ?string
+    {
+        return match (true) {
+            $code === null => null,
+            $type === 'booking_reservations' => "/reservas/{$code}",
+            $type === 'channel_b2b_agencies' => '/canales/b2b',
+            default => null,
+        };
     }
 
     private function splitReason(string $reason): array

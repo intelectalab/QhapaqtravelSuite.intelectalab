@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Channels\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
 
 final class WebIntegrationDirectory
@@ -15,6 +16,7 @@ final class WebIntegrationDirectory
     {
         $config = DB::table('channel_widget_config as w')->leftJoin('iam_users as u', 'u.id', '=', 'w.created_by')->first(['w.*', 'u.name as created_by_name']);
         $defaults = $config ? json_decode((string) $config->defaults, true) : [];
+        $subdomain = (string) app(TenantContext::class)->tenant()->subdomain;
         $product = isset($defaults['product']) ? DB::table('catalog_products')->where('ref', $defaults['product'])->orWhere('code', $defaults['product'])->first(['code', 'name']) : null;
         $domains = DB::table('channel_widget_domains as d')->leftJoin('iam_users as u', 'u.id', '=', 'd.created_by')->orderBy('d.created_at')->get(['d.id', 'd.domain', 'd.cms', 'd.status', 'd.verify_token', 'd.verified_at', 'd.created_at', 'u.name as added_by']);
         $events = DB::table('channel_web_events as e')->leftJoin('crm_clients as c', 'c.id', '=', 'e.client_id')->orderByDesc('e.occurred_at')->limit(50)->get(['e.id', 'e.occurred_at', 'e.session_id', 'e.event', 'e.params', 'e.locale', 'e.currency', 'c.name as client']);
@@ -25,8 +27,11 @@ final class WebIntegrationDirectory
                 'public_key' => $config->public_key,
                 'key_created_at' => $config->created_at,
                 'key_created_by' => $config->created_by_name,
-                'cdn' => $defaults['cdn'] ?? null,
-                'host' => $defaults['host'] ?? null,
+                'cdn' => WidgetHosts::cdn(),
+                'host' => WidgetHosts::host($subdomain),
+                'site' => WidgetHosts::site($subdomain),
+                'key_rotated_at' => $config->updated_at,
+                'previous_key_until' => $config->prev_expires_at !== null && strtotime((string) $config->prev_expires_at) > time() ? $config->prev_expires_at : null,
             ] : null,
             'defaults' => [
                 'product' => $product?->code,
@@ -73,6 +78,7 @@ final class WebIntegrationDirectory
                 ->whereNull('p.deleted_at')->orderBy('p.name')->get(['p.code', 'p.name']),
             'methods' => collect(self::METHODS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
             'can_manage' => $viewer->can('channels.ecommerce.manage'),
+            'can_rotate' => $viewer->can('admin.api.manage'),
         ];
     }
 }

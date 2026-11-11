@@ -118,9 +118,9 @@ final class HelpLibrary
                 $own = $rows->first(fn (object $row): bool => $row->tenant_id !== null);
                 $global = $rows->first(fn (object $row): bool => $row->tenant_id === null);
 
-                return ['row' => $own ?? $global, 'global' => $global, 'origin' => $own === null ? 'qhapaq' : ($global === null ? 'propio' : 'adaptado')];
+                return ['row' => $own ?? $global, 'global' => $global, 'origin' => $own === null ? 'kipucontrol' : ($global === null ? 'propio' : 'adaptado')];
             })
-            ->reject(fn (array $item): bool => $item['origin'] === 'qhapaq' && $item['row']->status === 'archived')
+            ->reject(fn (array $item): bool => $item['origin'] === 'kipucontrol' && $item['row']->status === 'archived')
             ->sortBy(fn (array $item): array => [(int) $item['row']->sort_order, $item['row']->title])
             ->values();
     }

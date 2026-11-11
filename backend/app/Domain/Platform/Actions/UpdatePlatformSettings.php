@@ -7,6 +7,7 @@ namespace App\Domain\Platform\Actions;
 use App\Domain\Integrations\Contracts\MalwareScanner;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Support\FormProtection;
+use App\Domain\Platform\Support\OutgoingMail;
 use App\Domain\Platform\Support\PlatformAudit;
 use App\Domain\Platform\Support\PlatformSettings;
 use App\Domain\Shared\Errors\ApiException;
@@ -29,7 +30,7 @@ final class UpdatePlatformSettings
         'notices.api_key_days' => 'Aviso de llaves de API',
     ];
 
-    public function __construct(private readonly PlatformSettings $settings, private readonly PlatformSession $session, private readonly PlatformAudit $audit, private readonly FormProtection $forms) {}
+    public function __construct(private readonly PlatformSettings $settings, private readonly PlatformSession $session, private readonly PlatformAudit $audit, private readonly FormProtection $forms, private readonly OutgoingMail $mail) {}
 
     public function overview(): array
     {
@@ -40,6 +41,7 @@ final class UpdatePlatformSettings
                 'notices' => $this->settings->notices(),
                 'dunning' => $this->settings->dunning(),
                 'form_protection' => $this->forms->summary(),
+                'outgoing_mail' => $this->mail->summary(),
                 'antivirus' => $this->antivirus(),
             ],
             'lock_version' => $this->settings->version(),

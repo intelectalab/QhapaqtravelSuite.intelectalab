@@ -13,6 +13,7 @@ import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import type { QuoteAuditEvent, QuoteDetail, QuoteTimelineEvent } from "@/lib/quotes";
 import { statusLabel } from "@/lib/tone";
 import { QuoteRecordViewAction } from "./QuoteActions";
+import { QuoteShareCard } from "./QuoteShare";
 import { QuoteCompare } from "./QuoteCompare";
 import { QuoteVersions } from "./QuoteVersions";
 
@@ -267,6 +268,8 @@ export function TrackingSection({ quote }: { quote: QuoteDetail }) {
             </ol>
           )}
         </Card>
+        <div className="flex flex-col gap-5">
+        <QuoteShareCard quote={quote} />
         <Card>
           <TintCardTitle icon={CalendarCheck} title="Actividades vinculadas" aside={quote.activities.length ? String(quote.activities.length) : undefined} />
           {quote.activities.length === 0 ? (
@@ -294,6 +297,7 @@ export function TrackingSection({ quote }: { quote: QuoteDetail }) {
             Ir a la agenda
           </Link>
         </Card>
+        </div>
       </div>
     </div>
   );

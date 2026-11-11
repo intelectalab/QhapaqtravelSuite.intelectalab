@@ -7,8 +7,8 @@ Registro del 6 de noviembre de 2026. Son las rutas que el código expone y que n
 | Alinear con el contrato | 0 | Ninguna. Las 109 que tenían equivalente en el contrato se movieron a su ruta el 6 de noviembre (sitio público, portales y back-office). |
 | Lectura de pantalla | 67 | Se quedan. Evitan varias llamadas por pantalla; se propone sumarlas al contrato como lecturas de interfaz. |
 | Editar, borrar o cambiar estado | 73 | Se quedan. Se propone sumarlas al contrato. |
-| Acción propia | 19 | Se quedan mientras negocio no las retire; se propone sumarlas al contrato. |
-| **Total** | **159** | |
+| Acción propia | 20 | Se quedan mientras negocio no las retire; se propone sumarlas al contrato. |
+| **Total** | **160** | |
 
 Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=storage/openapi.generated.json`) y correr `python3 docs/kit/api/compare_contract.py backend/storage/openapi.generated.json --phase 3`; las rutas nuevas fuera del contrato deben agregarse a este registro. Cuando el registro esté vacío de rutas «Alinear», la CI puede correr con `--strict-extra`.
 
@@ -43,7 +43,7 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `POST /crm/clients/{}/portal-access/revoke` | Acción propia | Revocar el acceso al portal: desactiva el usuario sin borrarlo, cierra sus sesiones y vence la invitación pendiente. El estado se lee en `GET /crm/clients/{code}` (`portal_access`). |
 | `POST /crm/clients/{}/anonymize` | Acción propia | Supresión de datos personales (derecho de cancelación ARCO, Ley 29733). Anonimiza al cliente, sus contactos, pasajeros, leads, suscripciones y usuario del portal. También revoca sus consentimientos, conserva reservas y comprobantes y resuelve su solicitud ARCO si se indica. GUIA-TECNICA §14 pide «supresión (`deleted_at` + anonimización)», pero el contrato no tiene la ruta. Requiere `crm.clients.manage` y no la ejecuta Ventas (ARCO-03). La clave Idempotency-Key se respeta si llega. |
 
-### Catálogo · spec 02 (18)
+### Catálogo · spec 02 (25)
 
 | Ruta | Grupo | Equivalente en el contrato o motivo |
 | --- | --- | --- |
@@ -65,6 +65,13 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `PUT /catalog/products/{}/translations/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `POST /catalog/seasons/{}/activate` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `POST /catalog/seasons/{}/deactivate` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
+| `PATCH /catalog/product-types/{}` | Editar, borrar o cambiar estado | Renombrar un tipo y cambiar si requiere itinerario o componentes. El contrato solo permite crear y borrar; lo exige el criterio de CRUD completo. |
+| `PATCH /catalog/categories/{}` | Editar, borrar o cambiar estado | Renombrar una categoría. Lo exige el criterio de CRUD completo. |
+| `PATCH /catalog/categories/{}/subcategories/{}` | Editar, borrar o cambiar estado | Renombrar una subcategoría. Lo exige el criterio de CRUD completo. |
+| `DELETE /catalog/products/{}/pax-rules` | Editar, borrar o cambiar estado | Vuelve a las reglas de pasajeros de la agencia (spec 16 §6.2). |
+| `DELETE /catalog/products/{}/payment-policy` | Editar, borrar o cambiar estado | Vuelve a la política de pago de la agencia. |
+| `POST /catalog/products/{}/accommodation/legs/reorder` | Editar, borrar o cambiar estado | Reordena los tramos de alojamiento `{ids[]}` (spec 16 §6.2). |
+| `DELETE /catalog/products/{}/rates/{}` | Editar, borrar o cambiar estado | Quita una tarifa sin uso; 409 `CAT-RATE-IN-USE` si ya se cotizó o vendió. |
 
 ### Cotizaciones · spec 03 (3)
 
@@ -74,15 +81,16 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `GET /quotes/form-options` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `DELETE /quotes/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 
-### Reservas · spec 04 (3)
+### Reservas · spec 04 (4)
 
 | Ruta | Grupo | Equivalente en el contrato o motivo |
 | --- | --- | --- |
 | `GET /reservations/form-options` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `GET /reservations/{}/changes/options` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `PATCH /reservations/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
+| `GET /reservations/{}/confirm-preview` | Lectura de pantalla | Vista previa de disponibilidad por servicio antes de confirmar, con salidas alternativas y «Reprogramar» si hay bloqueo (04 §4.1). Pide `reservations.modify`. |
 
-### Operaciones y móvil · spec 05 (15)
+### Operaciones y móvil · spec 05 (16)
 
 | Ruta | Grupo | Equivalente en el contrato o motivo |
 | --- | --- | --- |
@@ -101,6 +109,7 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `GET /ops/evidences/{}/file` | Lectura de pantalla | Entrega el archivo de una evidencia (`operations.view`) sin exponer el bucket privado. Una URL temporal de S3 apunta al host interno del almacenamiento (`storage:9000` en Docker) y el navegador no la alcanza; la web la sirve a través de su propia ruta con la sesión del usuario. |
 | `POST /ops/orders/{}/evidences/upload` | Acción propia | Carga directa multipart de una evidencia de la orden (`operations.assign`, imagen o PDF, hasta 10 MB). El flujo del contrato (`/ops/evidences/presign`, PUT al bucket y `/ops/orders/{}/evidences`) es para la app del operador; desde el panel el archivo pasa por una server action de Next, y el PUT a una URL prefirmada exigiría que el navegador vea el almacenamiento. Misma validación, deduplicación por SHA-256 (OPS-BR-71) y auditoría que la ruta del contrato. |
 | `POST /ops/incidents/{}/evidences/upload` | Acción propia | Igual que la anterior para una incidencia (`operations.incidents`); deja la entrada «evidencia» en la bitácora de la incidencia. |
+| `PUT /ops/assignments/{}/checkins` | Acción propia | Check-in por pasajero desde la ficha de la orden (origen web). El contrato solo lo prevé por la sincronización de la app móvil. |
 
 ### Extranet de proveedores · spec 06 (9)
 
@@ -116,7 +125,7 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `PATCH /supplier/rate-requests/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `POST /supplier/company/contacts` | Acción propia | Contactos de la empresa en la extranet del proveedor; el contrato no los tiene. |
 
-### Finanzas · spec 07 (8)
+### Finanzas · spec 07 (14)
 
 | Ruta | Grupo | Equivalente en el contrato o motivo |
 | --- | --- | --- |
@@ -128,6 +137,12 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `POST /finance/fx-rates` | Acción propia | Registro manual del tipo de cambio del día desde Finanzas; el contrato solo lo lee. |
 | `POST /finance/payables` | Acción propia | Registro de un costo adicional del proveedor sobre una reserva (FIN-BR-23). |
 | `GET /finance/bank-lines/{}/candidates` | Lectura de pantalla | Pagos u obligaciones disponibles para asignar una excepción de conciliación (FIN-BR-54: asignar requiere candidato), ordenados por diferencia y referencia. |
+| `GET /treasury/settings` | Acción propia | Parámetros de tesorería por agencia (spec 12 §3.9): tolerancia del arqueo, máximo por gasto, tope de declaración jurada, % de reposición, comisión de pasarela, meta y mínimo de margen, egresos fijos. |
+| `PATCH /treasury/settings` | Acción propia | Guarda los parámetros de tesorería, con `lock_version` y auditoría. |
+| `GET /treasury/movements/{}/receipt` | Lectura de pantalla | Archivo del comprobante del gasto de caja chica. |
+| `GET /treasury/counts/{}/pdf` | Lectura de pantalla | Acta imprimible del arqueo. |
+| `POST /finance/commission-rules` | Editar, borrar o cambiar estado | Alta de una regla de comisión (criterio de CRUD completo). |
+| `PATCH /finance/commission-rules/{}` | Editar, borrar o cambiar estado | Editar, cambiar vigencia o desactivar una regla de comisión, sin superposición. |
 
 ### Canales y portales · spec 08 (19)
 
@@ -153,10 +168,11 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `PATCH /portal/client/profile` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `PUT /portal/client/profile/consents/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 
-### Administración y reportes · spec 09 (11)
+### Administración y reportes · spec 09 (16)
 
 | Ruta | Grupo | Equivalente en el contrato o motivo |
 | --- | --- | --- |
+| `POST /billing/invoices/{}/send` | Acción propia | «Reenviar por correo» del detalle de la factura de plataforma (prototipo). Envía el resumen de la factura al correo para comprobantes y lo audita como `reenviar`. El contrato no la incluye. |
 | `GET /iam/roles/{}` | Lectura de pantalla | Detalle del rol en una sola llamada: experiencia, pantallas que ve (del mapa de acceso), usuarios con el rol y los últimos 30 cambios de permisos de la auditoría. El contrato solo trae la lista de roles y la matriz. Requiere `admin.roles.manage`. |
 | `GET /admin/api` | Lectura de pantalla | Agregado de la pantalla API y webhooks: entregas, apps OAuth, límites del plan, consumo, catálogos de permisos y eventos. Las listas del contrato (`/integrations/api-keys` y `/integrations/webhooks`) ya existen. |
 | `GET /admin/branding` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
@@ -168,6 +184,10 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `PUT /admin/branding` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `POST /admin/branding/reset` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `DELETE /cms/contents/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
+| `GET /admin/booking-rules/simulator` | Lectura de pantalla | Opciones del simulador de reglas (productos, planes, monedas y formas de pago); el contrato solo define `POST /admin/booking-rules/simulate`. |
+| `POST /reports/schedules/{}/pause` | Editar, borrar o cambiar estado | Pausa un envío programado propio de reportes (CRUD completo de jobs). |
+| `POST /reports/schedules/{}/resume` | Editar, borrar o cambiar estado | Reanuda un envío programado propio de reportes. |
+| `POST /notifications/pax-templates/{}/test` | Acción propia | Prueba de una plantilla de mensaje al pasajero. Está en el kit, pero aquí se identifica por código en lugar de id, igual que las rutas de aprobación, mensajes al pasajero y webhooks. |
 
 ### Aprobaciones · spec 10 (1)
 
@@ -180,6 +200,8 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | Ruta | Grupo | Equivalente en el contrato o motivo |
 | --- | --- | --- |
 | `GET /platform/branding` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
+| `PUT /platform/settings/outgoing-mail` | Editar, borrar o cambiar estado | Correo de salida de la plataforma (SMTP) desde Configuración de la consola. Prueba la conexión antes de guardar, guarda la contraseña cifrada en `platform_settings`, nunca la devuelve y audita cada campo. Todos los correos usan el mailer `platform`, que lee esta cuenta en cada envío. |
+| `POST /platform/settings/outgoing-mail/test` | Acción propia | Envía en el momento un correo de prueba con la cuenta guardada y registra el resultado. |
 | `PUT /platform/settings/form-protection` | Editar, borrar o cambiar estado | Protección de formularios (Cloudflare Turnstile, spec 15 §585) desde Configuración de la consola. Prueba la clave secreta con Cloudflare, la guarda cifrada en `platform_settings`, nunca la devuelve y audita cada campo. |
 | `GET /platform/demo-requests` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `GET /platform/dunning` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
@@ -217,7 +239,7 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `PATCH /crm/sales-targets/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `PATCH /marketing/campaigns/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 
-### Sitio web público · spec 15 (5)
+### Sitio web público · spec 15 (7)
 
 | Ruta | Grupo | Equivalente en el contrato o motivo |
 | --- | --- | --- |
@@ -226,6 +248,8 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `GET /public/home` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `GET /public/me/vouchers/{}.pdf` | Lectura de pantalla | PDF del voucher desde Mi cuenta; el contrato solo lista los vouchers (`GET /public/me/vouchers`). Verifica que el voucher sea de una reserva del cliente. |
 | `POST /public/auth/email/resend` | Acción propia | Reenvía el enlace de verificación del correo (SIT-BR-21) desde Mi cuenta; límite de 3 por minuto. |
+| `GET /public/widget/config?product=` | Lectura de pantalla | Configuración pública del widget (producto, valores y dominios verificados) para `/widget/[code]`. El contrato no tiene equivalente. |
+| `GET /public/reviews/by-token/{}?t=` | Lectura de pantalla | Carga el formulario del enlace de invitación a reseñar y marca la solicitud como abierta. Complementa `POST /public/reviews/by-token`. |
 
 ### Reseñas · spec 18 (1)
 
@@ -243,17 +267,17 @@ Agregadas el 10 de noviembre de 2026. El contrato no tiene un módulo de ayuda; 
 | `GET /help/articles/{}` | Lectura de pantalla | Ficha del artículo con relacionados e historial. |
 | `GET /help/screen` | Lectura de pantalla | Artículo de la pantalla actual (por prefijo de ruta) para el botón de ayuda de la barra superior. |
 | `POST /help/articles` | Acción propia | La agencia crea un artículo propio. |
-| `PUT /help/articles/{}` | Editar, borrar o cambiar estado | Edita el artículo propio o crea la versión de la agencia de uno de Qhapaq. |
+| `PUT /help/articles/{}` | Editar, borrar o cambiar estado | Edita el artículo propio o crea la versión de la agencia de uno de KipuControl. |
 | `POST /help/articles/{}/archive` | Editar, borrar o cambiar estado | Archiva el artículo solo para la agencia. |
 | `POST /help/articles/{}/restore` | Editar, borrar o cambiar estado | Reactiva un artículo archivado. |
-| `DELETE /help/articles/{}/adaptation` | Editar, borrar o cambiar estado | Descarta la versión de la agencia y vuelve a la de Qhapaq. |
-| `GET /platform/help/articles` | Lectura de pantalla | Centro de ayuda de la consola con los artículos de Qhapaq y cuántas agencias adaptaron cada uno. |
-| `GET /platform/help/articles/{}` | Lectura de pantalla | Ficha del artículo de Qhapaq. |
+| `DELETE /help/articles/{}/adaptation` | Editar, borrar o cambiar estado | Descarta la versión de la agencia y vuelve a la de KipuControl. |
+| `GET /platform/help/articles` | Lectura de pantalla | Centro de ayuda de la consola con los artículos de KipuControl y cuántas agencias adaptaron cada uno. |
+| `GET /platform/help/articles/{}` | Lectura de pantalla | Ficha del artículo de KipuControl. |
 | `GET /platform/help/screen` | Lectura de pantalla | Ayuda de la pantalla actual de la consola. |
 | `POST /platform/help/articles` | Acción propia | La plataforma crea un artículo para las agencias o para la consola. |
-| `PUT /platform/help/articles/{}` | Editar, borrar o cambiar estado | Edita un artículo de Qhapaq. |
-| `POST /platform/help/articles/{}/archive` | Editar, borrar o cambiar estado | Archiva un artículo de Qhapaq para todas las agencias que no lo adaptaron. |
-| `POST /platform/help/articles/{}/restore` | Editar, borrar o cambiar estado | Reactiva un artículo de Qhapaq. |
+| `PUT /platform/help/articles/{}` | Editar, borrar o cambiar estado | Edita un artículo de KipuControl. |
+| `POST /platform/help/articles/{}/archive` | Editar, borrar o cambiar estado | Archiva un artículo de KipuControl para todas las agencias que no lo adaptaron. |
+| `POST /platform/help/articles/{}/restore` | Editar, borrar o cambiar estado | Reactiva un artículo de KipuControl. |
 
 ### Diseño del sitio web · propia (9)
 
@@ -270,3 +294,12 @@ Agregadas el 10 de noviembre de 2026. Editor del sitio público de cada agencia 
 | `POST /admin/site-design/images` | Acción propia | Sube una imagen para la portada o un banner (antivirus, JPG, PNG o WebP, hasta 4 MB). |
 | `DELETE /admin/site-design/images/{}` | Editar, borrar o cambiar estado | Borra una imagen que no está en uso. |
 | `GET /public/site/images/{}` | Lectura de pantalla | Sirve la imagen en el sitio público de la agencia. |
+
+### Reseñas externas y libro de reclamaciones · propia (2)
+
+Agregadas el 11 de noviembre de 2026, con las secciones de Reseñas externas y del Libro de reclamaciones.
+
+| Ruta | Grupo | Equivalente en el contrato o motivo |
+| --- | --- | --- |
+| `PUT /channels/external-reviews/widget` | Editar, borrar o cambiar estado | Guarda la configuración del widget de reseñas para el sitio: plataformas (solo las conectadas), nota mínima, cantidad y diseño. Pide `channels.ecommerce.manage` y queda auditado. |
+| `PUT /crm/claim-book/settings` | Editar, borrar o cambiar estado | Guarda el plazo de respuesta, los días de alerta antes del vencimiento y los años de conservación. No tiene GET propio: la configuración y el siguiente correlativo por sede vienen en `GET /crm/claim-book`. Pide `admin.settings.manage` y queda auditado. |

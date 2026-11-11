@@ -3,7 +3,10 @@
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 
-beforeEach(fn () => Queue::fake());
+beforeEach(function () {
+    lockSeededBookings();
+    Queue::fake();
+});
 
 it('listReservations pagina por cursor, filtra por estado y trae los KPIs', function () {
     actingAsSeed('U01');
@@ -140,7 +143,7 @@ it('reservationsOperationOrder genera la orden operativa de una reserva pendient
 it('replaceReservationsPassengers y deleteReservationsPassengers exigen If-Match', function () {
     actingAsSeed('U01');
     $passenger = withinTenant(tenantA(), fn () => DB::table('booking_passengers')->where('reservation_id', reservationRow('RES-2026-000344')->id)->orderBy('seq')->first());
-    $payload = ['full_name' => 'Ana Torres Quispe', 'pax_type' => 'ADT', 'doc_type' => 'DNI', 'doc_number' => '45781236'];
+    $payload = ['full_name' => 'Ana Torres Quispe', 'pax_type' => 'ADT', 'doc_type' => 'DNI', 'doc_number' => '45781236', 'nationality' => 'Peruana', 'birth_date' => '1988-03-02'];
 
     expect($this->putJson("/api/v1/reservations/RES-2026-000344/passengers/{$passenger->id}", $payload, ['Accept' => 'application/json']))->toBeApiError(428, 'IF_MATCH_REQUIRED');
     $this->putJson("/api/v1/reservations/RES-2026-000344/passengers/{$passenger->id}", $payload, critical(reservationLock('RES-2026-000344')))
