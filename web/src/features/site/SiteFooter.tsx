@@ -54,7 +54,7 @@ export function SiteFooter({ profile, base }: { profile: SiteProfile; base: stri
               ))}
             </ul>
           )}
-          <Link href={siteHref(base, "/libro-reclamaciones")} className="group mt-6 inline-flex items-center gap-3 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 transition hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/10">
+          <Link href={siteHref(base, "/libro-reclamaciones")} data-site-claims className="group mt-6 inline-flex items-center gap-3 rounded-2xl border border-white/15 bg-white/5 px-4 py-3 transition hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/10">
             <BookOpenText size={22} className="text-t2 transition-transform group-hover:-rotate-6" />
             <span className="leading-tight">
               <b className="block text-[13.5px]">{t.footer.claimsBook}</b>

@@ -12,6 +12,8 @@ final class SiteDesign
 
     public const CORNERS = ['suaves' => 'Suaves', 'rectas' => 'Rectas', 'redondeadas' => 'Muy redondeadas'];
 
+    public const STYLES = ['actual' => 'Actual', 'andes' => 'Andes Clásico'];
+
     public const COLOR_SOURCES = ['panel' => 'Los mismos del panel', 'propios' => 'Colores propios del sitio'];
 
     public const HERO_STYLES = ['noche' => 'Noche andina', 'color' => 'Color sólido', 'imagen' => 'Imagen propia'];
@@ -98,7 +100,7 @@ final class SiteDesign
     public static function defaults(): array
     {
         return [
-            'theme' => ['colors' => 'panel', 'brand' => '#b3263e', 'accent' => '#26357a', 'menu' => '#141a33', 'font' => 'moderna', 'corners' => 'suaves'],
+            'theme' => ['colors' => 'panel', 'brand' => '#b3263e', 'accent' => '#26357a', 'menu' => '#141a33', 'font' => 'moderna', 'corners' => 'suaves', 'style' => 'actual'],
             'hero' => ['style' => 'noche', 'image_id' => null, 'overlay' => 45, 'align' => 'izquierda', 'show_search' => true, 'show_stats' => true],
             'sections' => array_map(fn (string $id): array => ['id' => $id, 'visible' => true], array_keys(self::SECTIONS)),
             'announcement' => ['mode' => 'cms', 'text' => '', 'link_label' => '', 'link_href' => ''],
@@ -131,6 +133,7 @@ final class SiteDesign
             'design.theme.menu' => $hex,
             'design.theme.font' => ['required', $in(self::FONTS)],
             'design.theme.corners' => ['required', $in(self::CORNERS)],
+            'design.theme.style' => ['sometimes', 'required', $in(self::STYLES)],
             'design.hero' => ['required', 'array'],
             'design.hero.style' => ['required', $in(self::HERO_STYLES)],
             'design.hero.image_id' => ['nullable', 'uuid', 'required_if:design.hero.style,imagen'],
@@ -343,6 +346,7 @@ final class SiteDesign
         return [
             'fonts' => $options(self::FONTS),
             'corners' => $options(self::CORNERS),
+            'styles' => $options(self::STYLES),
             'color_sources' => $options(self::COLOR_SOURCES),
             'hero_styles' => $options(self::HERO_STYLES),
             'hero_align' => $options(self::HERO_ALIGN),

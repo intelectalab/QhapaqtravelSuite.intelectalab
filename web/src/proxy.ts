@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { REALMS, realmFor } from "@/lib/realms";
-import { FRAMEABLE_PREFIX, NONCE_HEADER, WIDGET_ASSETS_PREFIX, WIDGET_PREFIX, contentSecurityPolicy, createNonce } from "@/lib/security-headers";
+import { FRAMEABLE_PREFIX, HSTS_HEADER, NONCE_HEADER, WIDGET_ASSETS_PREFIX, WIDGET_PREFIX, contentSecurityPolicy, createNonce, isSecureRequest } from "@/lib/security-headers";
 import { widgetAncestors } from "@/lib/widget-ancestors";
 
 export async function proxy(request: NextRequest) {
@@ -14,9 +14,11 @@ export async function proxy(request: NextRequest) {
   const nonce = createNonce();
   const widget = pathname.startsWith(WIDGET_PREFIX);
   const ancestors = widget ? await widgetAncestors(request.nextUrl.searchParams.get("key"), request.headers.get("host")) : [];
-  const policy = contentSecurityPolicy(nonce, widget || pathname.startsWith(FRAMEABLE_PREFIX), ancestors);
+  const secure = isSecureRequest(request.headers.get("x-forwarded-proto"), request.nextUrl.protocol);
+  const policy = contentSecurityPolicy(nonce, widget || pathname.startsWith(FRAMEABLE_PREFIX), ancestors, secure);
   const response = route(request, nonce, policy);
   response.headers.set("Content-Security-Policy", policy);
+  if (secure) response.headers.set(HSTS_HEADER.key, HSTS_HEADER.value);
   return response;
 }
 

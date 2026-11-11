@@ -62,7 +62,7 @@ export function SearchBar({ destinations, className, initial }: { destinations: 
           <Stepper value={viajeros} min={1} max={20} onChange={setViajeros} label={t.search.traveler} removeLabel={t.common.remove(t.search.traveler)} addLabel={t.common.add(t.search.traveler)} />
         </span>
       </div>
-      <button type="submit" className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-brand px-6 text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110">
+      <button type="submit" data-site-cta className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-brand px-6 text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110">
         <Search size={18} />
         {t.search.submit}
       </button>

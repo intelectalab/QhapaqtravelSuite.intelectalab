@@ -20,7 +20,7 @@ export function ProductCard({ product, base, index = 0, className }: { product: 
       className={cn("lift group flex flex-col overflow-hidden rounded-card border border-line bg-surface shadow-card", RISE, className)}
       style={{ animationDelay: `${index * 60}ms` }}
     >
-      <Scenery seed={product.slug} className="aspect-[16/10]">
+      <Scenery seed={product.slug} image={product.image} className="aspect-[16/10]">
         <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
           {product.tags.slice(0, 2).map((tag) => (
             <Chip key={tag.key} tone={tagTone[tag.key as keyof typeof tagTone] ?? "mute"} className="bg-surface/95 shadow-sm backdrop-blur">
@@ -86,7 +86,7 @@ export function DestinationTile({ destination, base, index = 0, large = false }:
   return (
     <Link href={siteHref(base, `/destinos/${destination.slug}`)} className={cn("lift group relative block overflow-hidden rounded-card", RISE, large ? "min-h-[300px] sm:row-span-2 sm:min-h-[420px]" : "min-h-[200px]")} style={{ animationDelay: `${index * 70}ms` }}>
       <div className="absolute inset-0">
-        <Scenery seed={destination.slug} className="h-full w-full" />
+        <Scenery seed={destination.slug} image={destination.image} className="h-full w-full" />
       </div>
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
       <div className="relative flex h-full min-h-[inherit] flex-col justify-end p-5 text-white">

@@ -296,3 +296,50 @@
       radial-gradient(520px 300px at 102% 18%, var(--glow-b), transparent 70%);
   }
 }
+
+[data-site-style="andes"] {
+  --andes-gold: #f2b33d;
+  --andes-gold-hover: #de9f2b;
+  --andes-gold-ink: #2a1e00;
+  --andes-ice: color-mix(in srgb, var(--site-accent) 8%, #ffffff);
+  --andes-serif: var(--font-site-noto-serif), Georgia, serif;
+  --radius-card: 12px;
+  --radius-tile: 12px;
+  --radius-control: 12px;
+}
+
+:root:not([data-theme="dark"]) [data-site-style="andes"] {
+  --bg: #f7f9fc;
+  --line: #e4e8ef;
+}
+
+[data-theme="dark"] [data-site-style="andes"] {
+  --andes-ice: color-mix(in srgb, var(--site-accent) 14%, var(--surface));
+}
+
+[data-site-style="andes"] :is(h1, h2, h3) {
+  font-family: var(--andes-serif);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+[data-site-style="andes"] [data-site-cta] {
+  background: var(--andes-gold);
+  color: var(--andes-gold-ink);
+  font-weight: 700;
+  box-shadow: 0 6px 16px -8px rgb(242 179 61 / 0.9);
+}
+
+[data-site-style="andes"] [data-site-cta]:hover {
+  background: var(--andes-gold-hover);
+  filter: none;
+}
+
+[data-site-style="andes"] [data-site-claims] {
+  border: 1.5px solid var(--andes-gold);
+  background: rgb(242 179 61 / 0.12);
+}
+
+[data-site-style="andes"] [data-site-claims] svg {
+  color: var(--andes-gold);
+}

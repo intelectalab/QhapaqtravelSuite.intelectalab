@@ -12,10 +12,10 @@ import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { AuditTrail } from "@/features/admin/AdminParts";
-import { ColorRole, type ColorRoleKey, type ColorRoleSpec } from "@/features/admin/Branding";
+import { ColorRole, PalettePicker, type ColorRoleKey, type ColorRoleSpec } from "@/features/admin/Branding";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
-import { AGENCY_TOKEN, CORNER_RADII, defaultText, FONT_STACK, TEXT_GROUPS, type SiteDesign, type SiteNavLinkId, type SitePromo, type SiteSectionId } from "@/lib/site-design";
+import { AGENCY_TOKEN, ANDES_SERIF, CORNER_RADII, defaultText, FONT_STACK, TEXT_GROUPS, type SiteDesign, type SiteNavLinkId, type SitePromo, type SiteSectionId, type SiteStyle } from "@/lib/site-design";
 import { SITE_FONT_VARIABLES } from "@/lib/site-fonts";
 import { SITE_TEXT, type SiteLocale } from "@/lib/site-i18n";
 import { CharCount, ImagePicker, OptionTile, OrderedToggles, Segmented } from "./SiteControls";
@@ -27,6 +27,8 @@ const SITE_COLORS: ColorRoleSpec[] = [
   { key: "accent", label: "Color de acento", hint: "Enlaces, iconos, etiquetas y el brillo del encabezado.", presets: ["#26357a", "#1e40af", "#0e7490", "#2c7a66", "#7a5af8", "#b45309", "#be185d"] },
   { key: "menu", label: "Color oscuro", hint: "Fondo del encabezado de la portada, del aviso superior y del pie.", presets: ["#141a33", "#0f172a", "#1c1917", "#14281f", "#2a1430", "#1e293b", "#3b0d18"] },
 ];
+
+const SITE_ACTUAL_PALETTE = { brand: "#b3263e", accent: "#26357a", menu: "#141a33" };
 
 const SECTION_HINTS: Record<SiteSectionId, string> = {
   destinations: "Hasta 6 destinos con sus tours.",
@@ -57,6 +59,29 @@ const OVERLAYS = [
   { value: "65", label: "Fuerte" },
 ];
 
+const STYLE_HINTS: Record<SiteStyle, string> = {
+  actual: "Portada de noche andina, tarjetas suaves y letra moderna.",
+  andes: "Editorial: títulos con serifa, buscador de vidrio y dorado para reservar.",
+};
+
+function StyleSample({ style }: { style: SiteStyle }) {
+  const andes = style === "andes";
+  return (
+    <span className={cn("block overflow-hidden rounded-[12px] border border-line", andes ? "bg-[#f7f9fc]" : "bg-surface")}>
+      <span className={cn("flex h-14 flex-col justify-center gap-1.5 px-3", andes ? "items-center bg-menu" : "bg-menu")}>
+        <span className={cn("h-2 rounded-full bg-white/85", andes ? "w-24" : "w-20")} />
+        <span className={cn("h-3.5 rounded-[6px]", andes ? "w-28 bg-white/90" : "w-16 bg-white/25")} />
+      </span>
+      <span className="flex items-center gap-2 px-3 py-2.5">
+        <span className={cn("text-[15px] font-semibold leading-none text-fg", andes && "tracking-tight")} style={{ fontFamily: andes ? ANDES_SERIF : FONT_STACK.moderna }}>
+          Cusco
+        </span>
+        <span className={cn("ml-auto h-4 w-12", andes ? "rounded-[6px] bg-[#f2b33d]" : "rounded-full bg-brand")} />
+      </span>
+    </span>
+  );
+}
+
 export function SiteSectionForm({ section, studio }: { section: SiteSectionKey; studio: StudioContext }) {
   const forms: Record<SiteSectionKey, ReactNode> = {
     "sitio-estilo": <StyleForm studio={studio} />,
@@ -80,6 +105,17 @@ function StyleForm({ studio }: { studio: StudioContext }) {
   return (
     <>
       <Card>
+        <CardHeader title="Estilo del sitio" subtitle="Cómo se ve todo el sitio. Tus colores, textos y secciones se mantienen al cambiarlo." />
+        <div role="radiogroup" aria-label="Estilo del sitio" className="grid gap-2 sm:grid-cols-2">
+          {catalog.styles.map((style) => (
+            <OptionTile key={style.value} selected={design.theme.style === style.value} onClick={() => change((draft) => void (draft.theme.style = style.value))} title={style.label} hint={STYLE_HINTS[style.value]} testId={`site-style:${style.value}`}>
+              <StyleSample style={style.value} />
+            </OptionTile>
+          ))}
+        </div>
+      </Card>
+
+      <Card>
         <CardHeader title="Colores del sitio" subtitle="Usa los mismos colores del panel o elige una paleta propia para tus clientes." />
         <Segmented
           label="Origen de los colores"
@@ -93,8 +129,20 @@ function StyleForm({ studio }: { studio: StudioContext }) {
             })
           }
         />
+        <div className="mt-4">
+          <PalettePicker
+            current={own ? { brand: design.theme.brand, accent: design.theme.accent, menu: design.theme.menu } : data.panel_colors}
+            actual={SITE_ACTUAL_PALETTE}
+            onPick={(colors) =>
+              change((draft) => {
+                Object.assign(draft.theme, colors);
+                draft.theme.colors = "propios";
+              })
+            }
+          />
+        </div>
         {own ? (
-          <div className="mt-4 grid gap-3">
+          <div className="grid gap-3">
             {SITE_COLORS.map((role) => (
               <div key={role.key}>
                 <ColorRole role={role} value={design.theme[role.key]} disabled={false} onChange={(value) => change((draft) => void (draft.theme[role.key as ColorRoleKey] = value))} />

@@ -44,7 +44,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
     <BookingProvider key={fecha ?? "sin-fecha"} detail={detail} initialDate={fecha}>
       <TrackEvent event="view_item" params={{ item_id: product.slug, item_name: product.name }} />
       <section className="relative">
-        <Scenery seed={product.slug} label={product.name} className="h-[340px] sm:h-[400px]">
+        <Scenery seed={product.slug} label={product.name} image={product.media[0] ?? null} className="h-[340px] sm:h-[400px]">
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10" />
           <div className="relative mx-auto flex h-full max-w-[1240px] flex-col justify-end px-5 pb-8 text-white sm:px-8">
             <Breadcrumbs
@@ -80,6 +80,13 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
 
       <div className="mx-auto grid max-w-[1240px] gap-10 px-5 pb-24 pt-10 sm:px-8 lg:grid-cols-[1fr_380px] lg:pb-0">
         <div className="min-w-0 space-y-14">
+          {product.media.length > 1 && (
+            <section data-testid="site-gallery" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {product.media.slice(1, 9).map((photo, index) => (
+                <div key={photo.url} role="img" aria-label={photo.alt || product.name} className="lift aspect-[4/3] rounded-tile border border-line bg-surface-2 bg-cover bg-center animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]" style={{ backgroundImage: `url(${JSON.stringify(photo.url)})`, animationDelay: `${index * 50}ms` }} />
+              ))}
+            </section>
+          )}
           <section>
             <ContentLocaleNotice contentLocale={product.content_locale} className="mb-5" />
             <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

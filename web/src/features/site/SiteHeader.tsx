@@ -145,7 +145,7 @@ export function SiteHeader({ name, initials, logo }: { name: string; initials: s
           </Link>
           )}
           {(nav?.show_quote ?? true) && (
-          <Link href={href("/viajes-a-medida")} className="hidden h-10 items-center gap-2 rounded-control bg-brand px-4 text-[13.5px] font-semibold text-brand-fg shadow-[0_6px_16px_-8px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 sm:inline-flex">
+          <Link href={href("/viajes-a-medida")} data-site-cta className="hidden h-10 items-center gap-2 rounded-control bg-brand px-4 text-[13.5px] font-semibold text-brand-fg shadow-[0_6px_16px_-8px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 sm:inline-flex">
             <MessageSquareText size={16} />
             {t.header.quote}
           </Link>
@@ -167,7 +167,7 @@ export function SiteHeader({ name, initials, logo }: { name: string; initials: s
             ))}
           </ul>
           {(nav?.show_quote ?? true) && (
-          <Link href={href("/viajes-a-medida")} onClick={() => setOpen(false)} className="mt-3 flex h-11 items-center justify-center gap-2 rounded-control bg-brand text-[14px] font-semibold text-brand-fg">
+          <Link href={href("/viajes-a-medida")} onClick={() => setOpen(false)} data-site-cta className="mt-3 flex h-11 items-center justify-center gap-2 rounded-control bg-brand text-[14px] font-semibold text-brand-fg">
             <MessageSquareText size={16} />
             {t.header.quote}
           </Link>

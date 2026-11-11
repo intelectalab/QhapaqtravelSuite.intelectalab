@@ -38,6 +38,8 @@ final class SiteCatalog
 
     private array $cards = [];
 
+    private ?Collection $images = null;
+
     private readonly SitePricing $pricing;
 
     public function __construct(
@@ -138,7 +140,7 @@ final class SiteCatalog
         return $this->destinations ??= DB::table('catalog_destination_contents as dc')
             ->join('catalog_destinations as d', 'd.id', '=', 'dc.destination_id')
             ->whereNull('d.deleted_at')->where('dc.locale', 'es')
-            ->get(['d.id', 'd.ref', 'd.name', 'd.type', 'd.path', 'd.lat', 'd.lng', 'dc.slug', 'dc.tagline', 'dc.description', 'dc.climate', 'dc.altitude_text', 'dc.faqs'])
+            ->get(['d.id', 'd.ref', 'd.name', 'd.type', 'd.path', 'd.lat', 'd.lng', 'dc.hero_media_id', 'dc.slug','dc.tagline', 'dc.description', 'dc.climate', 'dc.altitude_text', 'dc.faqs'])
             ->map(function (stdClass $row): stdClass {
                 $translation = $this->locale->translated() ? DB::table('catalog_destination_contents')->where('destination_id', $row->id)->where('locale', $this->locale->current())->first(['tagline', 'description', 'climate', 'altitude_text', 'faqs']) : null;
                 $row->content_locale = $translation ? $this->locale->current() : SiteLocale::BASE;
@@ -208,7 +210,38 @@ final class SiteCatalog
             'daily' => ! $this->availability->usesDepartures($product->id),
             'featured' => (bool) $product->is_featured,
             'tags' => $this->tags($product, $list, $nextDeparture),
+            'image' => $this->mainImage((string) $product->id),
         ];
+    }
+
+    public function mainImage(string $productId): ?array
+    {
+        $row = $this->images()->firstWhere('product_id', $productId);
+
+        return $row ? ['url' => $row->storage_path, 'alt' => $row->alt_text] : null;
+    }
+
+    public function destinationImage(stdClass $destination): ?array
+    {
+        $hero = $destination->hero_media_id ? $this->images()->firstWhere('id', $destination->hero_media_id) : null;
+        if ($hero) {
+            return ['url' => $hero->storage_path, 'alt' => $hero->alt_text];
+        }
+
+        foreach ($destination->products as $product) {
+            if ($image = $this->mainImage((string) $product->id)) {
+                return $image;
+            }
+        }
+
+        return null;
+    }
+
+    private function images(): Collection
+    {
+        return $this->images ??= DB::table('catalog_product_media')->where('kind', 'image')
+            ->orderByDesc('is_main')->orderBy('sort_order')
+            ->get(['id', 'product_id', 'storage_path', 'alt_text']);
     }
 
     public function destinationFor(stdClass $product): ?stdClass

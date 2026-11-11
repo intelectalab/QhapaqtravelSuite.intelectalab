@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { ArrowRight, BadgeCheck, CalendarCheck2, Headset, Landmark } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { AndesBand, CommitmentGrid } from "@/features/site/AndesBlocks";
+import { AndesHero, DepartureTable } from "@/features/site/AndesHome";
 import { SectionHeading } from "@/features/site/Bits";
 import { DepartureCard, DestinationTile, ProductCard } from "@/features/site/Cards";
 import { NightBackdrop } from "@/features/site/Hero";
@@ -28,6 +30,8 @@ export default async function SiteHomePage({ params }: PageProps<"/sitio/[agenci
   const { hero, sections, promos } = profile.design;
   const centered = hero.align === "centro";
   const image = hero.style === "imagen" && hero.image_id ? siteImageHref(base, hero.image_id) : null;
+  const andes = profile.design.theme.style === "andes";
+  const stats = hero.show_stats ? [t.statProducts(home.stats.products), t.statDestinations(home.stats.destinations), t.statDepartures(home.stats.departures)] : [];
   const reasons = [
     { icon: CalendarCheck2, title: t.priceTitle, text: t.priceText },
     { icon: Headset, title: t.teamTitle(profile.sedes.length), text: t.teamText(profile.sedes.map((sede) => sede.city ?? sede.name).join(", ")) },
@@ -69,14 +73,20 @@ export default async function SiteHomePage({ params }: PageProps<"/sitio/[agenci
       home.departures.length > 0 ? (
         <section>
           <SectionHeading eyebrow={t.departures.eyebrow} title={t.departures.title} description={t.departures.description} action={<MoreLink href={siteHref(base, "/buscar")} label={t.departures.more} />} />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {home.departures.map((departure, index) => (
-              <DepartureCard key={departure.ref} departure={departure} base={base} index={index} />
-            ))}
-          </div>
+          {andes ? (
+            <DepartureTable departures={home.departures} />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {home.departures.map((departure, index) => (
+                <DepartureCard key={departure.ref} departure={departure} base={base} index={index} />
+              ))}
+            </div>
+          )}
         </section>
       ) : null,
-    reasons: (
+    reasons: andes ? (
+      <CommitmentGrid items={reasons} />
+    ) : (
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {reasons.map(({ icon: Icon, title, text }, index) => (
           <article key={title} className="lift rounded-card border border-line bg-surface p-5 shadow-card animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]" style={{ animationDelay: `${index * 60}ms` }}>
@@ -99,6 +109,27 @@ export default async function SiteHomePage({ params }: PageProps<"/sitio/[agenci
   };
 
   const visible = sections.filter((section) => section.visible && blocks[section.id] !== null);
+
+  if (andes) {
+    return (
+      <>
+        <AndesHero
+          title={t.heroTitle(profile.agency.name)}
+          body={t.heroBody}
+          seal={profile.agency.registry}
+          image={image}
+          overlay={hero.overlay}
+          stats={stats}
+          search={hero.show_search ? <SearchBar destinations={home.search.destinations} /> : null}
+        />
+        {visible.map((section, index) => (
+          <AndesBand key={section.id} index={index}>
+            <div data-testid={`site-section:${section.id}`}>{blocks[section.id]}</div>
+          </AndesBand>
+        ))}
+      </>
+    );
+  }
 
   return (
     <>

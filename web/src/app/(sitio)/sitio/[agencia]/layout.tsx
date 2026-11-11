@@ -30,7 +30,7 @@ export default async function SiteLayout({ children, params }: LayoutProps<"/sit
 
   return (
     <SiteProvider value={{ agencia, base, name: profile.agency.name, locale, design }}>
-      <div id="site-root" lang={locale} style={style} className={`${SITE_FONT_VARIABLES} flex min-h-screen flex-col bg-bg text-fg [--accent:var(--site-accent)] dark:[--accent:color-mix(in_srgb,var(--t1)_45%,#b9c2ff)]`}>
+      <div id="site-root" lang={locale} data-site-style={design.theme.style ?? "actual"} style={style} className={`${SITE_FONT_VARIABLES} flex min-h-screen flex-col bg-bg text-fg [--accent:var(--site-accent)] dark:[--accent:color-mix(in_srgb,var(--t1)_45%,#b9c2ff)]`}>
         {profile.preview && <PreviewBridge agencia={agencia} />}
         {profile.banner && <SiteBanner banner={profile.banner} base={base} />}
         <SiteHeader name={profile.agency.name} initials={profile.agency.initials} logo={profile.agency.logo} />

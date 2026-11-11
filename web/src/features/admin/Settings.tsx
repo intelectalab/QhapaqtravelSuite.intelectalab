@@ -103,8 +103,7 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
         title="Datos de la agencia"
         action={
           manage && (
-            <EditSection section="agency" version={agency.lock_version} title="Datos de la agencia" description="El RUC y el país solo los cambia la plataforma, porque requieren validación.">
-              <TextField label="Razón social" name="legal_name" required defaultValue={agency.legal_name} />
+            <EditSection section="agency" version={agency.lock_version} title="Datos de la agencia" description="La razón social, el RUC y el país solo los cambia la plataforma, porque requieren validación.">
               <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-3">
                 <TextField label="Nombre comercial" name="commercial_name" required defaultValue={agency.commercial_name} />
                 <TextField label="Iniciales" name="logo_initials" required maxLength={3} defaultValue={agency.logo_initials} hint="Hasta 3 letras" />

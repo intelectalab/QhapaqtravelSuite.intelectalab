@@ -82,7 +82,13 @@ export interface SeasonTag {
   level: "alta" | "media" | "baja" | "especial";
 }
 
+export interface SiteImage {
+  url: string;
+  alt: string;
+}
+
 export interface ProductCard {
+  image?: SiteImage | null;
   slug: string;
   name: string;
   summary: string | null;
@@ -109,6 +115,7 @@ export interface ProductCard {
 }
 
 export interface DestinationCard {
+  image?: SiteImage | null;
   slug: string;
   name: string;
   tagline: string | null;

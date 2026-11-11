@@ -1,7 +1,8 @@
-import { Fraunces, Lora, Nunito } from "next/font/google";
+import { Fraunces, Lora, Noto_Serif, Nunito } from "next/font/google";
 
 const lora = Lora({ variable: "--font-site-lora", subsets: ["latin"], preload: false });
 const nunito = Nunito({ variable: "--font-site-nunito", subsets: ["latin"], preload: false });
 const fraunces = Fraunces({ variable: "--font-site-fraunces", subsets: ["latin"], preload: false });
+const notoSerif = Noto_Serif({ variable: "--font-site-noto-serif", subsets: ["latin"], weight: ["500", "600", "700"], preload: false });
 
-export const SITE_FONT_VARIABLES = `${lora.variable} ${nunito.variable} ${fraunces.variable}`;
+export const SITE_FONT_VARIABLES = `${lora.variable} ${nunito.variable} ${fraunces.variable} ${notoSerif.variable}`;

@@ -502,6 +502,7 @@ final class SitePages
             'type' => $destination->type,
             'count' => $destination->products->count(),
             'from' => $pen ? $prices->where('currency', 'PEN')->sortBy('amount')->first() : $prices->sortBy('amount')->first(),
+            'image' => $this->catalog->destinationImage($destination),
         ];
     }
 

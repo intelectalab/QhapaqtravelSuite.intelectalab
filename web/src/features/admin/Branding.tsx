@@ -30,6 +30,52 @@ const ROLES: ColorRoleSpec[] = [
 
 const HEX = /^#[0-9a-f]{6}$/i;
 
+export type PaletteColors = Record<ColorRoleKey, string>;
+
+export const PROTOTYPE_PALETTE: PaletteColors = { brand: "#0a3a73", accent: "#1f6fb8", menu: "#0a3a73" };
+
+export function PalettePicker({ current, actual, onPick, disabled = false }: { current: PaletteColors; actual: PaletteColors; onPick: (colors: PaletteColors) => void; disabled?: boolean }) {
+  const palettes = [
+    { key: "actual", label: "Actual", hint: "Rojo andino con azul índigo.", colors: actual },
+    { key: "prototipo", label: "Prototipo", hint: "Azul marino con dorado, como el prototipo.", colors: PROTOTYPE_PALETTE },
+  ];
+  const same = (colors: PaletteColors) => (Object.keys(colors) as ColorRoleKey[]).every((key) => colors[key].toLowerCase() === current[key].toLowerCase());
+  return (
+    <div role="radiogroup" aria-label="Paletas" className="mb-4 grid gap-2 sm:grid-cols-2">
+      {palettes.map((palette) => {
+        const selected = same(palette.colors);
+        return (
+          <button
+            key={palette.key}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            disabled={disabled}
+            data-testid={`palette:${palette.key}`}
+            onClick={() => onPick(palette.colors)}
+            className={cn("flex items-center gap-3 rounded-[14px] border p-3 text-left transition-[border-color,transform] duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed", selected ? "border-accent ring-2 ring-accent/25" : "border-line hover:border-accent/40")}
+          >
+            <span className="flex flex-none -space-x-2">
+              {[palette.colors.menu, palette.colors.brand, palette.colors.accent, "#f4b400"].map((color, index) => (
+                <span key={`${color}-${index}`} className="h-7 w-7 rounded-full border-2 border-surface" style={{ background: color }} />
+              ))}
+            </span>
+            <span className="min-w-0 flex-1 leading-tight">
+              <b className="block text-[13.5px] font-semibold">{palette.label}</b>
+              <span className="text-[12px] text-fg-3">{palette.hint}</span>
+            </span>
+            {selected && (
+              <span className="grid h-5 w-5 flex-none place-items-center rounded-full bg-accent text-white">
+                <Check size={12} strokeWidth={3} />
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function luminance(hex: string): number {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
@@ -164,6 +210,12 @@ export function BrandingStudio({ data, save = saveBranding, reset = resetBrandin
       <div className="flex flex-col gap-5">
         <Card>
           <TintCardTitle icon={Palette} title="Colores de la marca" />
+          <PalettePicker
+            current={values}
+            actual={{ brand: data.defaults.brand, accent: data.defaults.accent, menu: data.defaults.menu }}
+            disabled={!manage}
+            onPick={(colors) => setValues((current) => ({ ...current, ...colors }))}
+          />
           <div className="flex flex-col gap-3">
             {ROLES.map((role) => (
               <ColorRole key={role.key} role={role} value={values[role.key]} disabled={!manage} onChange={(value) => setValues((current) => ({ ...current, [role.key]: value }))} />

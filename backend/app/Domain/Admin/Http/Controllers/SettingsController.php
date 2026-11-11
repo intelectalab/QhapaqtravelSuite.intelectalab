@@ -140,20 +140,20 @@ final class SettingsController
     {
         return match ($section) {
             'agency' => [[
-                'legal_name' => ['sometimes', 'required', 'string', 'max:200'],
                 'commercial_name' => ['sometimes', 'required', 'string', 'max:120'],
                 'logo_initials' => ['sometimes', 'required', 'string', 'max:3', 'regex:/^[A-Za-zÁÉÍÓÚÑáéíóúñ]{1,3}$/u'],
                 'timezone' => ['sometimes', 'required', 'in:'.implode(',', SettingsCatalog::TIMEZONES)],
                 'fiscal_address' => ['sometimes', 'required', 'string', 'max:250'],
                 'legal_rep' => ['nullable', 'string', 'max:150'],
+                'legal_name' => ['prohibited'],
                 'ruc' => ['prohibited'],
                 'country' => ['prohibited'],
             ], [
-                'legal_name.*' => 'La razón social es obligatoria (CFG-BR-02).',
                 'commercial_name.*' => 'El nombre comercial es obligatorio (CFG-BR-02).',
                 'logo_initials.*' => 'Las iniciales del logo son obligatorias: hasta 3 letras (CFG-BR-02).',
                 'timezone.*' => 'Elige una zona horaria de la lista.',
                 'fiscal_address.*' => 'El domicilio fiscal es obligatorio.',
+                'legal_name.prohibited' => 'La razón social la cambia la plataforma, porque requiere validación (CFG-BR-03).',
                 'ruc.prohibited' => 'El RUC requiere validación de la plataforma (CFG-BR-03).',
                 'country.prohibited' => 'El país requiere validación de la plataforma (CFG-BR-03).',
             ]],

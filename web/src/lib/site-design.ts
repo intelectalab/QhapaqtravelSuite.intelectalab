@@ -4,6 +4,8 @@ import type { SiteLocale, SiteText } from "@/lib/site-i18n";
 
 export type SiteFont = "moderna" | "clasica" | "redondeada" | "editorial";
 export type SiteCorners = "suaves" | "rectas" | "redondeadas";
+
+export type SiteStyle = "actual" | "andes";
 export type SiteSectionId = "destinations" | "featured" | "promos" | "offers" | "departures" | "reasons" | "reviews" | "newsletter";
 export type SiteNavLinkId = "destinations" | "tours" | "packages" | "experiences" | "transfers" | "offers" | "tailored" | "contact";
 export type SiteSocial = "facebook" | "instagram" | "tiktok" | "youtube" | "whatsapp";
@@ -23,7 +25,7 @@ export interface SitePromo {
 }
 
 export interface SiteDesign {
-  theme: { colors: "panel" | "propios"; brand: string; accent: string; menu: string; font: SiteFont; corners: SiteCorners };
+  theme: { colors: "panel" | "propios"; brand: string; accent: string; menu: string; font: SiteFont; corners: SiteCorners; style: SiteStyle };
   hero: { style: "noche" | "color" | "imagen"; image_id: string | null; overlay: number; align: "izquierda" | "centro"; show_search: boolean; show_stats: boolean };
   sections: { id: SiteSectionId; visible: boolean }[];
   announcement: { mode: "cms" | "propio" | "oculto"; text: string; link_label: string; link_href: string };
@@ -66,6 +68,7 @@ interface Option<T extends string = string> {
 export interface SiteDesignCatalog {
   fonts: Option<SiteFont>[];
   corners: Option<SiteCorners>[];
+  styles: Option<SiteStyle>[];
   color_sources: Option<SiteDesign["theme"]["colors"]>[];
   hero_styles: Option<SiteDesign["hero"]["style"]>[];
   hero_align: Option<SiteDesign["hero"]["align"]>[];
@@ -114,6 +117,8 @@ export const FONT_STACK: Record<SiteFont, string> = {
   redondeada: "var(--font-site-nunito), ui-rounded, system-ui, sans-serif",
   editorial: "var(--font-site-fraunces), Georgia, serif",
 };
+
+export const ANDES_SERIF = "var(--font-site-noto-serif), Georgia, serif";
 
 export const CORNER_RADII: Record<SiteCorners, { card: string; tile: string; control: string }> = {
   suaves: { card: "20px", tile: "16px", control: "12px" },
