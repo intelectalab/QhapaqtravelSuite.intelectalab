@@ -8,6 +8,7 @@ use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Site\Actions\SiteCart;
 use App\Domain\Site\Actions\SiteCheckout;
 use App\Domain\Site\Support\CheckoutRules;
+use App\Domain\Site\Support\SiteBooking;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,10 +29,14 @@ final class SiteCartController
             'children' => ['nullable', 'integer', 'min:0', 'max:20'],
             'infants' => ['nullable', 'integer', 'min:0', 'max:10'],
             'promo' => ['nullable', 'string', 'max:40'],
+            'quote_token' => ['nullable', 'string', 'max:2000'],
+            'source' => ['nullable', 'string', 'in:sitio,widget'],
+            ...SiteBooking::rules(),
         ], [
             'product.*' => 'Elige un producto.',
             'date.*' => 'Elige una fecha disponible.',
             'adults.*' => 'Incluye al menos 1 adulto.',
+            ...SiteBooking::messages(),
             '*' => 'Revisa los viajeros.',
         ]);
 
@@ -75,6 +80,23 @@ final class SiteCartController
     public function remove(Request $request, int $line, SiteCart $cart): JsonResponse
     {
         return response()->json(['data' => $cart->remove($this->token($request), $line)]);
+    }
+
+    public function removedLines(Request $request, int $line, SiteCart $cart): JsonResponse
+    {
+        $data = $request->validate([
+            'key' => ['required', 'string', 'max:60'],
+            'removed' => ['required', 'boolean'],
+            'lock_version' => ['nullable', 'integer', 'min:0'],
+        ], [
+            'key.*' => 'Indica el ítem que quieres quitar o restaurar.',
+            'removed.*' => 'Indica si quitas o restauras el ítem.',
+            'lock_version.*' => 'La versión del carrito no es válida.',
+        ]);
+        $ifMatch = trim(str_replace('W/', '', (string) $request->header('If-Match')), ' "');
+        $version = isset($data['lock_version']) ? (int) $data['lock_version'] : (ctype_digit($ifMatch) ? (int) $ifMatch : null);
+
+        return response()->json(['data' => $cart->removedLines($this->token($request), $line, $data['key'], (bool) $data['removed'], $version)]);
     }
 
     public function hold(Request $request, int $line, SiteCart $cart): JsonResponse

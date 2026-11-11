@@ -336,16 +336,17 @@ final class QuoteLifecycle
         });
     }
 
-    public function negotiate(string $code, string $channel, string $note, User $actor): void
+    public function negotiate(string $code, string $channel, string $note, User $actor, bool $newVersion = false): void
     {
-        DB::transaction(function () use ($code, $channel, $note, $actor): void {
+        DB::transaction(function () use ($code, $channel, $note, $actor, $newVersion): void {
             [$quote] = $this->load($code, $actor);
 
             if (! in_array($this->effectiveStatus($quote), self::LIVE, true)) {
                 throw ApiException::conflict('QTE-BR-16', 'Solo se registra negociación en una cotización enviada y vigente.');
             }
 
-            DB::table('quote_negotiations')->insert(['id' => (string) Str::uuid7(), 'tenant_id' => $this->context->idOrFail(), 'quote_id' => $quote->id, 'channel' => $channel, 'note' => $note, 'recorded_by' => $actor->getKey(), 'created_by' => $actor->getKey()]);
+            $negotiationId = (string) Str::uuid7();
+            DB::table('quote_negotiations')->insert(['id' => $negotiationId, 'tenant_id' => $this->context->idOrFail(), 'quote_id' => $quote->id, 'channel' => $channel, 'note' => $note, 'recorded_by' => $actor->getKey(), 'created_by' => $actor->getKey()]);
             $before = (string) $quote->status;
 
             if ($quote->status !== QuoteStatus::Negociacion->value) {
@@ -361,6 +362,11 @@ final class QuoteLifecycle
             }
 
             $this->audit->log('Cotización', (string) $quote->code, 'negociacion', $before, "{$channel} · {$note}");
+
+            if ($newVersion) {
+                $this->newVersion((string) $quote->code, $actor);
+                DB::table('quote_negotiations')->where('id', $negotiationId)->update(['created_version_no' => (int) $quote->current_version_no + 1]);
+            }
         });
     }
 

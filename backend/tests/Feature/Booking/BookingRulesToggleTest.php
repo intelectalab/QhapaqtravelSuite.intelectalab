@@ -13,8 +13,8 @@ function publicQuote(array $selection)
 {
     $key = withinTenant(tenantA(), fn () => DB::table('channel_widget_config')->value('public_key'));
 
-    return test()->withHeaders(['X-KipuControl-Key' => (string) $key, 'Origin' => 'https://andeshorizonte.pe'])
-        ->postJson('/api/v1/public/quote', ['product' => 'PRD-011'] + $selection);
+    return test()->withHeaders(['X-KipuControl-Key' => (string) $key, 'Origin' => 'https://www.andeshorizonte.pe'])
+        ->postJson('/api/v1/public/quote', ['product' => 'PER-CIR-10D'] + $selection);
 }
 
 function ruleLockVersion(string $code): int
@@ -25,6 +25,11 @@ function ruleLockVersion(string $code): int
 function setRule(string $code, bool $enabled): void
 {
     actingAsSeed('U01');
+
+    if ((bool) withinTenant(tenantA(), fn () => DB::table('sys_booking_rules')->where('code', $code)->value('enabled')) === $enabled) {
+        return;
+    }
+
     test()->patchJson("/api/v1/admin/booking-rules/{$code}", ['enabled' => $enabled], critical(ruleLockVersion($code)))->assertSuccessful();
 }
 
@@ -102,7 +107,7 @@ it('al volver a Professional la regla recupera su efecto sin reconfigurar', func
 
 it('la vista previa por plan no cambia la suscripción (GET ?plan=Starter)', function () {
     actingAsSeed('U01');
-    $rules = collect($this->getJson('/api/v1/admin/booking-rules?plan=Starter')->assertOk()->json('data'))->keyBy('code');
+    $rules = collect($this->getJson('/api/v1/admin/booking-rules?plan=Starter')->assertOk()->json('data.rules'))->keyBy('code');
 
     expect($rules['R-LODGING']['effective'])->toBeFalse()
         ->and($rules['R-LODGING']['enabled'])->toBeTrue()
@@ -110,11 +115,11 @@ it('la vista previa por plan no cambia la suscripción (GET ?plan=Starter)', fun
 });
 
 it('CR-02: una excepción por producto no puede activar una regla inactiva del tenant', function () {
-    requireRoute('PUT', '/api/v1/catalog/products/PRD-011/rule-overrides/R-GROUP-DISC');
+    requireRoute('PUT', '/api/v1/catalog/products/PER-CIR-10D/rule-overrides/R-GROUP-DISC');
     setRule('R-GROUP-DISC', false);
     actingAsSeed('U01');
 
-    $this->putJson('/api/v1/catalog/products/PRD-011/rule-overrides/R-GROUP-DISC', ['disabled' => false, 'params' => ['pct' => 10]])
+    $this->putJson('/api/v1/catalog/products/PER-CIR-10D/rule-overrides/R-GROUP-DISC', ['disabled' => false, 'params' => ['pct' => 10]])
         ->assertStatus(422);
 });
 

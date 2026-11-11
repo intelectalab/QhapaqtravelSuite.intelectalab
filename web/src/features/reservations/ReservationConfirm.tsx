@@ -1,23 +1,18 @@
 "use client";
 
-import { CircleAlert, CircleCheck, LoaderCircle, Users } from "lucide-react";
+import { CircleAlert, LoaderCircle, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { previewConfirm } from "@/app/(backoffice)/reservas/actions";
-import { cn } from "@/lib/cn";
+import { CheckItem } from "@/components/ui/CheckItem";
 import { formatDate } from "@/lib/format";
 import type { ConfirmPreview } from "@/lib/reservations";
 import { ReservationRescheduleAction } from "./ReservationChangeActions";
 
 function Check({ ok, title, detail, delay, children }: { ok: boolean; title: string; detail: string; delay: number; children?: React.ReactNode }) {
   return (
-    <div style={{ animationDelay: `${delay}ms` }} className={cn("flex animate-[rise-in_380ms_cubic-bezier(0.22,1,0.36,1)_backwards] items-start gap-3 rounded-xl px-3.5 py-2.5 text-[13px]", ok ? "bg-surface-2" : "bg-[color-mix(in_srgb,var(--bad)_9%,transparent)]")}>
-      <span className={cn("mt-0.5 flex-none", ok ? "text-ok" : "text-bad")}>{ok ? <CircleCheck size={16} /> : <CircleAlert size={16} />}</span>
-      <span className="min-w-0 flex-1">
-        <b className="block truncate font-semibold">{title}</b>
-        <span className="text-fg-3">{detail}</span>
-        {children}
-      </span>
-    </div>
+    <CheckItem tone={ok ? "ok" : "bad"} title={title} detail={detail} delay={delay}>
+      {children}
+    </CheckItem>
   );
 }
 

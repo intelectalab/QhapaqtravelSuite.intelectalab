@@ -126,8 +126,27 @@ export function QuotesTable({ rows, canManage }: { rows: QuoteRow[]; canManage: 
       columns={columns}
       getKey={(row) => row.code}
       entityLabel="cotizaciones"
-      searchText={(row) => `${row.code} ${row.title} ${row.client.name}`}
-      searchPlaceholder="Buscar cotización o cliente"
+      searchText={(row) => `${row.code} ${row.title} ${row.client.name} ${row.opportunity?.code ?? ""} ${row.opportunity?.title ?? ""}`}
+      searchPlaceholder="Buscar cotización, cliente u oportunidad"
+      csv={{
+        fileName: "cotizaciones",
+        columns: [
+          { header: "Código", value: (row) => row.code },
+          { header: "Cotización", value: (row) => row.title },
+          { header: "Cliente", value: (row) => row.client.name },
+          { header: "Oportunidad", value: (row) => row.opportunity?.code ?? "" },
+          { header: "Asesor", value: (row) => row.owner.name },
+          { header: "Versión", value: (row) => `v${row.version} de ${row.version_count}` },
+          { header: "Estado", value: (row) => statusLabel(row.status) },
+          { header: "Desde", value: (row) => row.travel_from },
+          { header: "Hasta", value: (row) => row.travel_to },
+          { header: "Moneda", value: (row) => row.currency },
+          { header: "Total", value: (row) => row.total },
+          { header: "Total en soles", value: (row) => row.total_pen },
+          ...(showMargin ? [{ header: "Margen %", value: (row: QuoteRow) => row.margin_pct ?? "" }] : []),
+          { header: "Vigente hasta", value: (row) => row.valid_until },
+        ],
+      }}
       metrics={metrics}
       filters={filters}
       sorts={sorts}

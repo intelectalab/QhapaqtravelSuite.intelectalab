@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { startWidgetHandoff } from "@/app/(sitio)/widget/actions";
 import type { ProductDetail, Quote, WidgetConfig } from "@/lib/site";
 import { RatingLine } from "./Bits";
+import { BookingCustomizer } from "./BookingCustomizer";
 import { AvailabilityCalendar, BookingPanel, BookingProvider, type BookingSelection } from "./ProductBooking";
 import { useSite } from "./SiteContext";
 
@@ -67,12 +68,12 @@ export function WidgetBooking({ config, detail, widgetKey, currency, reviews }: 
       lastDate.current = selection.date;
       emit("kipucontrol:date_selected", { date: selection.date });
     }
-    emit("kipucontrol:quote", { total: Number(quote.total), currency: quote.currency, date: selection.date, adults: selection.adults, children: selection.children, infants: selection.infants });
+    emit("kipucontrol:quote", { total: Number(quote.total), currency: quote.currency, date: selection.date, adults: selection.adults, children: selection.children, infants: selection.infants, rooms: quote.rooms, nights: quote.nights, addons: quote.extras.addons.length, payment_mode: quote.payment_mode });
   }, [emit]);
 
   const onReserve = useCallback(async (selection: BookingSelection) => {
     const origin = parentOrigin(config.domains);
-    const result = await startWidgetHandoff(widgetKey, { product: selection.product, date: selection.date, adults: selection.adults, children: selection.children, infants: selection.infants, lang: locale, currency, origin });
+    const result = await startWidgetHandoff(widgetKey, { product: selection.product, date: selection.date, adults: selection.adults, children: selection.children, infants: selection.infants, lang: locale, currency, origin, extras: selection.extras, payment_mode: selection.payment_mode });
     if (!result.ok || !result.handoff) return { ok: false, message: result.message };
     emit("kipucontrol:checkout", { handoffId: result.handoff.code, total: Number(result.handoff.total), currency: result.handoff.currency });
     window.open(result.handoff.checkout_url, window.parent === window ? "_self" : "_top");
@@ -95,10 +96,15 @@ export function WidgetBooking({ config, detail, widgetKey, currency, reviews }: 
         </div>
       </header>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div id="calendario" className="min-w-0">
-          <AvailabilityCalendar />
+        <div className="grid min-w-0 content-start gap-5">
+          <div id="calendario">
+            <AvailabilityCalendar />
+          </div>
+          <BookingCustomizer />
         </div>
-        <BookingPanel onReserve={onReserve} onQuote={onQuote} reserveLabel={t.widget.continue} />
+        <div className="lg:sticky lg:top-4 lg:self-start">
+          <BookingPanel onReserve={onReserve} onQuote={onQuote} reserveLabel={t.widget.continue} />
+        </div>
       </div>
       <p className="mt-5 flex items-center justify-center gap-1.5 text-[11.5px] text-fg-3">
         <ShieldCheck size={13} />

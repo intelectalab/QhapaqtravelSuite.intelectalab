@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { HeroBand, HeroChip, HeroPanel, SOFT_TINT, TintCardTitle, ToneScope } from "@/components/ui/Tinted";
-import { ManualPaymentAction, RetryChargeAction, VoidInvoiceAction } from "@/features/platform/InvoiceActions";
+import { ManualPaymentAction, PaymentLinkAction, ResendInvoiceAction, RetryChargeAction, VoidInvoiceAction } from "@/features/platform/InvoiceActions";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { ATTEMPT_SOURCE, INVOICE_STATUS, isCollectible, SUBSCRIPTION_STATUS, SUNAT_STATUS } from "@/lib/platformBilling";
@@ -38,6 +38,8 @@ export default async function FacturaPage({ params }: PageProps<"/plataforma/fac
           <>
             {isCollectible(invoice) && <RetryChargeAction invoice={target} />}
             {isCollectible(invoice) && <ManualPaymentAction invoice={target} />}
+            {isCollectible(invoice) && <PaymentLinkAction invoice={target} />}
+            <ResendInvoiceAction invoice={target} />
             {invoice.status !== "void" && <VoidInvoiceAction invoice={target} />}
           </>
         }

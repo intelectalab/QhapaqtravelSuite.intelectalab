@@ -11,7 +11,7 @@ import { SectionPanel } from "@/components/ui/SectionPanel";
 import { TextArea } from "@/components/ui/TextArea";
 import { TintTile } from "@/components/ui/Tinted";
 import { channelStatus, type EcommerceOverview, type EcomOrder, type EcomProduct, type PromotionCatalog } from "@/lib/channels";
-import { formatDateTime, formatMoney, formatNumber, formatPercent } from "@/lib/format";
+import { formatDate, formatDateTime, formatMoney, formatNumber, formatPercent } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { toneStyle, type Tone } from "@/lib/tone";
 import { ChannelBadge, DetailPanel, MoneyLines, PanelSection, Stars, TileGrid } from "./ChannelUi";
@@ -149,6 +149,7 @@ function OrderDetail({ order }: { order: EcomOrder }) {
         <FieldList
           fields={[
             { label: "Producto", value: order.product?.name ?? "—" },
+            { label: "Fecha del viaje", value: order.travel_date ? formatDate(order.travel_date) : "—" },
             { label: "Pasajeros", value: order.pax },
             { label: "Total", value: formatMoney(order.total, order.currency) },
             { label: "Código promocional", value: order.promo_code ?? "Sin código" },

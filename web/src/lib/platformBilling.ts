@@ -154,6 +154,7 @@ export interface DunningOverview {
 export interface TrialItem {
   id: string;
   code: string;
+  cycle: "monthly" | "annual";
   tenant: { code: string; name: string; email: string };
   plan: { code: string; name: string; price_month: number };
   starts_at: string;
@@ -167,7 +168,8 @@ export interface TrialItem {
 
 export interface TrialsOverview {
   items: TrialItem[];
-  coupons: { code: string; label: string }[];
+  coupons: { code: string; label: string; plans: string[] }[];
+  plans: { code: string; name: string; rank: number; price_month: number; price_year: number }[];
 }
 
 export interface Coupon {
@@ -254,14 +256,62 @@ export interface AuditEvent {
   actor: string | null;
   actor_type: string;
   entity: string;
-  group: "agencias" | "facturacion" | "catalogo" | "tareas" | "sesiones" | "otros";
+  group: "agencias" | "facturacion" | "catalogo" | "tareas" | "sesiones" | "configuracion" | "otros";
   entity_id: string;
   subject: string;
+  tenant: { code: string; name: string } | null;
   action: string;
   critical: boolean;
   before: string | null;
   after: string | null;
   ip: string | null;
+  correlation_id: string | null;
+}
+
+export interface AuditEventDetail extends AuditEvent {
+  actor_role: string | null;
+  actor_email: string | null;
+  diff: Record<string, unknown> | null;
+  user_agent: string | null;
+  evidence: Record<string, unknown> | null;
+  related: (AuditEvent & { same_request: boolean })[];
+}
+
+export interface PlanRuleMatrix {
+  plans: { code: string; name: string; rank: number; rules: number; tenants: number }[];
+  groups: { group: string; rules: { code: string; name: string; description: string | null; min_plan: string | null; default_plan: string | null; tenants: number; updated_at: string | null }[] }[];
+  tenants: number;
+  rules: number;
+  differs: number;
+}
+
+export interface PlanRuleChange {
+  rule: { code: string; name: string };
+  from: string;
+  to: string;
+  effect: "gain" | "lose";
+  affected_tenants: { code: string; name: string; plan: string }[];
+  dry_run: boolean;
+}
+
+export interface TenantHealthRow {
+  id: string;
+  code: string;
+  name: string;
+  status: "activo" | "prueba" | "suspendido";
+  trial_ends_at: string | null;
+  plan: { code: string; name: string } | null;
+  health: "ok" | "atencion" | "critico";
+  integrations: { total: number; active: number; failing: number };
+  jobs: { total: number; paused: number; errors: number; warnings: number; last_run_at: string | null };
+  open_errors: number;
+  definitive_errors: number;
+  last_heartbeat_at: string | null;
+}
+
+export interface TenantHealthOverview {
+  rows: TenantHealthRow[];
+  kpis: { tenants: number; ok: number; attention: number; critical: number; open_errors: number };
 }
 
 export interface PlatformHomeOverview {
@@ -351,6 +401,14 @@ export const AUDIT_ACTIONS: Record<string, { label: string; tone: Tone }> = {
   editar: { label: "Edición", tone: "violet" },
   editar_plan: { label: "Edición de plan", tone: "violet" },
   cambio_plan: { label: "Cambio de plan", tone: "t1" },
+  cambio_plan_programado: { label: "Cambio de plan programado", tone: "t1" },
+  anular_cambio_programado: { label: "Cambio programado anulado", tone: "warn" },
+  cambiar_plan_minimo: { label: "Plan mínimo de regla", tone: "violet" },
+  restablecer_demo: { label: "Matriz restablecida", tone: "warn" },
+  enviar_enlace_pago: { label: "Enlace de pago enviado", tone: "info" },
+  reenviar: { label: "Factura reenviada", tone: "info" },
+  reintentar: { label: "Reintento", tone: "warn" },
+  resolver_error: { label: "Error resuelto", tone: "ok" },
   suspender: { label: "Suspensión", tone: "bad" },
   reactivar: { label: "Reactivación", tone: "ok" },
   extender_trial: { label: "Prueba extendida", tone: "info" },

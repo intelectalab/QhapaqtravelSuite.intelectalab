@@ -14,7 +14,7 @@ import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { INVOICE_STATUS, type DunningItem, type DunningOverview, type DunningPolicy } from "@/lib/platformBilling";
 import { ConsoleAction } from "./ConsoleAction";
-import { ExtendDunningAction, ManualPaymentAction, RetryChargeAction, SuspendForDebtAction } from "./InvoiceActions";
+import { ExtendDunningAction, ManualPaymentAction, PaymentLinkAction, RetryChargeAction, SuspendForDebtAction } from "./InvoiceActions";
 
 const SLOTS = 5;
 
@@ -164,6 +164,7 @@ function DunningCard({ item, index }: { item: DunningItem; index: number }) {
         <div className="flex flex-wrap gap-2">
           <RetryChargeAction invoice={item} size="sm" />
           <ManualPaymentAction invoice={item} size="sm" />
+          <PaymentLinkAction invoice={item} size="sm" />
           {item.status === "failed" && item.extended_days < 7 && <ExtendDunningAction invoice={item} size="sm" />}
           {item.tenant.status !== "suspendido" && <SuspendForDebtAction invoice={item} size="sm" />}
         </div>

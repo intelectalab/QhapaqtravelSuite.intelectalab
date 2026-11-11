@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { ChangeImpact, ConfirmPreview, DirectPayload, DirectPlan, ReschedulePlan } from "@/lib/reservations";
 import { apiFetch } from "@/lib/server/api";
+import { formValues, sendStep, type StepResult } from "@/lib/server/resource";
 import { stepByField, wizardFailure, type WizardResult } from "@/lib/wizard";
 
 export interface ReservationState {
@@ -112,4 +113,16 @@ export async function createDirectReservation(payload: DirectPayload, confirm: b
   revalidatePath("/reservas", "layout");
   revalidatePath("/dashboard");
   return { ok: true, data: { code: result.data.code } };
+}
+
+export async function replyPaxFeedback(_state: StepResult, form: FormData): Promise<StepResult> {
+  const result = await sendStep(`/channels/passenger-portal/feedback/${encodeURIComponent(String(form.get("code") ?? ""))}/reply`, "PUT", formValues(form, ["text"]), "No pudimos enviar la respuesta.");
+  if (result.done) revalidatePath("/reservas", "layout");
+  return result;
+}
+
+export async function markPaxFeedback(_state: StepResult, form: FormData): Promise<StepResult> {
+  const result = await sendStep(`/channels/passenger-portal/feedback/${encodeURIComponent(String(form.get("code") ?? ""))}/status`, "POST", { status: "leido" }, "No pudimos marcar el comentario.");
+  if (result.done) revalidatePath("/reservas", "layout");
+  return result;
 }

@@ -1,4 +1,4 @@
-import { CalendarDays, CheckCircle2, CircleDashed, Clock3, Receipt, Ticket } from "lucide-react";
+import { CalendarDays, CheckCircle2, CircleDashed, Clock3, Receipt, Ticket, UsersRound } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { StatusBadge } from "@/components/ui/Badge";
@@ -21,6 +21,8 @@ export default async function ConfirmationPage({ params }: PageProps<"/sitio/[ag
   const rejected = order.status === "pago_rechazado";
   const balance = paid && Number(order.due) > 0;
   const canPay = Number(order.due) > 0 && ["pago_pendiente", "pago_rechazado", "confirmado"].includes(order.status);
+  const groupSize = Math.max(0, ...order.reservations.flatMap((reservation) => reservation.services.map((service) => service.pax)));
+  const pendingTravelers = order.status === "cancelado" ? 0 : Math.max(0, groupSize - order.passengers.length);
   const steps = [
     { label: "Pedido creado", done: true },
     { label: "Pago registrado", done: paid },
@@ -148,6 +150,20 @@ export default async function ConfirmationPage({ params }: PageProps<"/sitio/[ag
               ))}
             </ol>
           </div>
+          {pendingTravelers > 0 && (
+            <div className="rounded-card border border-line bg-surface p-5 shadow-card">
+              <h2 className="flex items-center gap-2 text-[15px] font-semibold text-fg">
+                <UsersRound size={17} className="text-t1" />
+                Datos de tus acompañantes
+              </h2>
+              <p className="mt-2 text-[13px] text-fg-2">
+                Faltan los datos de {pendingTravelers === 1 ? "1 viajero" : `${pendingTravelers} viajeros`}. Complétalos antes del viaje para emitir los vouchers nominativos.
+              </p>
+              <Link href={siteHref(base, "/mi-viaje")} className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-control bg-brand text-[13.5px] font-semibold text-brand-fg transition hover:brightness-110">
+                Completar los datos
+              </Link>
+            </div>
+          )}
           {order.attempts.length > 0 && (
             <div className="rounded-card border border-line bg-surface p-5 shadow-card">
               <h2 className="text-[15px] font-semibold text-fg">Pagos</h2>

@@ -13,6 +13,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
+import { ApprovalOrigin } from "./ApprovalOrigin";
 import { CancelApprovalFields } from "./CancelApprovalFields";
 import { approvalRoute, EVENT_LABELS, GENERIC_TYPES, PERMISSION_OPTIONS, SLA_META, TYPE_TONES, type ApprovalItem, type ApprovalRule, type ApprovalsOverview } from "@/lib/approvals";
 import { formatDateTime, formatMoney } from "@/lib/format";
@@ -107,6 +108,7 @@ export function ApprovalDetailAction({ item, cancelReasons = [] }: { item: Appro
               </Fact>
             )}
           </section>
+          <ApprovalOrigin item={item} />
           {item.rule && (
             <section className="rounded-xl border border-line px-3.5 py-2.5 text-[13px]">
               <p className="flex items-center gap-1.5 font-semibold">

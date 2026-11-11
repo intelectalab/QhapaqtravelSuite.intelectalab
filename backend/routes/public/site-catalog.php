@@ -30,4 +30,5 @@ Route::middleware(['public.site', ScopeSiteTenant::class])->name('site.')->group
     Route::get('currencies', [SiteController::class, 'currencies'])->name('currencies');
     Route::get('reviews', [SiteController::class, 'reviews'])->name('reviews.index');
     Route::post('price-quote', [SiteController::class, 'quote'])->name('price-quote');
+    Route::post('quote', [SiteController::class, 'bookingQuote'])->middleware('throttle:60,1')->name('quote');
 });

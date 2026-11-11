@@ -8,6 +8,8 @@ use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\Site\Support\QuoteTokens;
+use App\Domain\Site\Support\SiteBooking;
 use App\Domain\Site\Support\SiteProfile;
 use App\Domain\Site\Support\SiteQuote;
 use Brick\Math\BigDecimal;
@@ -46,7 +48,11 @@ final class SiteCart
     public function add(?string $token, array $data): array
     {
         $product = $this->quotes->product($data['product']);
-        $quote = $this->quotes->quote($product, $data['date'], (int) $data['adults'], (int) ($data['children'] ?? 0), (int) ($data['infants'] ?? 0), $data['promo'] ?? null);
+        $quote = $this->quotes->quote($product, $data['date'], (int) $data['adults'], (int) ($data['children'] ?? 0), (int) ($data['infants'] ?? 0), $data['promo'] ?? null, SiteBooking::extrasFrom($data), true);
+        if (isset($data['quote_token']) && $data['quote_token'] !== '') {
+            QuoteTokens::verify((string) $data['quote_token'], $this->context->idOrFail(), $product->id, $quote);
+        }
+        $extras = $quote['extras'];
         $cart = $this->find($token);
 
         if ($cart === null) {
@@ -78,7 +84,12 @@ final class SiteCart
             'pax_adults' => (int) $data['adults'],
             'pax_children' => (int) ($data['children'] ?? 0),
             'pax_infants' => (int) ($data['infants'] ?? 0),
-            'source' => 'sitio',
+            'options' => json_encode($extras['options'], JSON_UNESCAPED_UNICODE),
+            'addons' => $extras['addons'] === [] ? null : json_encode($extras['addons'], JSON_UNESCAPED_UNICODE),
+            'lodging' => $extras['lodging'] === [] ? null : json_encode($extras['lodging'], JSON_UNESCAPED_UNICODE),
+            'no_lodging' => $extras['no_lodging'],
+            'removed_line_keys' => SiteBooking::pgArray($extras['removed']),
+            'source' => ($data['source'] ?? 'sitio') === 'widget' ? 'widget' : 'sitio',
         ]);
 
         if (isset($data['promo']) && trim($data['promo']) !== '') {
@@ -100,6 +111,39 @@ final class SiteCart
         DB::table('channel_web_carts')->where('id', $cart->id)->update(['last_activity_at' => now()]);
 
         return $this->present($cart);
+    }
+
+    public function removedLines(?string $token, int $line, string $key, bool $removed, ?int $lockVersion): array
+    {
+        return DB::transaction(function () use ($token, $line, $key, $removed, $lockVersion): array {
+            $cart = $this->find($token) ?? throw ApiException::notFound('Tu carrito expiró o ya fue procesado.');
+            $cart = DB::table('channel_web_carts')->where('id', $cart->id)->lockForUpdate()->first();
+
+            if ($lockVersion !== null && $lockVersion !== (int) $cart->lock_version) {
+                throw ApiException::conflict('VERSION_CONFLICT', 'Tu carrito cambió en otra pestaña. Vuelve a cargarlo.', ['current_version' => (int) $cart->lock_version]);
+            }
+
+            $item = DB::table('channel_web_cart_items as i')->join('catalog_products as p', 'p.id', '=', 'i.product_id')->where('i.cart_id', $cart->id)->where('i.line_no', $line)->first(['i.*', 'p.slug'])
+                ?? throw ApiException::notFound('Esa línea ya no está en tu carrito.');
+            $extras = SiteBooking::decode($item);
+            $quote = $this->quotes->quote($this->quotes->product($item->slug), $item->service_date, (int) $item->pax_adults, (int) $item->pax_children, (int) $item->pax_infants, $cart->promo_code, [...$extras, 'removed' => array_values(array_diff($extras['removed'], [$key]))]);
+            $target = collect($quote['lines'])->firstWhere('key', $key);
+
+            if (! $quote['can_remove']) {
+                throw ApiException::unprocessable('R-PREVIEW-REMOVE', 'La agencia no permite quitar ítems de la reserva en línea.', ['key' => ['La agencia no permite quitar ítems de la reserva en línea.']]);
+            }
+
+            if ($target === null || ! $target['removable']) {
+                throw ApiException::unprocessable('LINE_NOT_REMOVABLE', 'Ese ítem es parte del servicio y no se puede quitar.', ['key' => ['Ese ítem es parte del servicio y no se puede quitar.']]);
+            }
+
+            $keys = $removed ? array_values(array_unique([...$extras['removed'], $key])) : array_values(array_diff($extras['removed'], [$key]));
+            DB::table('channel_web_cart_items')->where('id', $item->id)->update(['removed_line_keys' => SiteBooking::pgArray($keys), 'updated_at' => now()]);
+            DB::table('channel_web_carts')->where('id', $cart->id)->update(['lock_version' => (int) $cart->lock_version + 1, 'last_activity_at' => now(), 'updated_at' => now()]);
+            $this->audit->log('Carrito', $cart->code, $removed ? 'quitar_item' : 'restaurar_item', $removed ? null : $target['label'], $removed ? $target['label'] : null);
+
+            return $this->present(DB::table('channel_web_carts')->where('id', $cart->id)->first());
+        });
     }
 
     public function promo(?string $token, ?string $code): array
@@ -148,7 +192,7 @@ final class SiteCart
             $error = null;
 
             try {
-                $quote = $this->quotes->quote($this->quotes->product($item->slug), $item->service_date, (int) $item->pax_adults, (int) $item->pax_children, (int) $item->pax_infants, $cart->promo_code);
+                $quote = $this->quotes->quote($this->quotes->product($item->slug), $item->service_date, (int) $item->pax_adults, (int) $item->pax_children, (int) $item->pax_infants, $cart->promo_code, SiteBooking::decode($item));
             } catch (ApiException $e) {
                 $error = $e->getMessage();
             } catch (Throwable) {
@@ -162,6 +206,7 @@ final class SiteCart
                 'product' => ['slug' => $item->slug, 'name' => $item->name],
                 'date' => $item->service_date,
                 'pax' => ['adults' => (int) $item->pax_adults, 'children' => (int) $item->pax_children, 'infants' => (int) $item->pax_infants],
+                'source' => $item->source,
                 'quote' => $quote ? array_diff_key($quote, ['rate_id' => true]) : null,
                 'error' => $error,
                 'cancellation' => DB::table('catalog_product_policies')->where('product_id', $item->product_id)->value('cancellation') ?? $this->profile->show()['policies']['cancel'],
@@ -178,6 +223,7 @@ final class SiteCart
 
         return [
             'code' => $cart->code,
+            'lock_version' => (int) $cart->lock_version,
             'promo' => $cart->promo_code,
             'items' => $lines->all(),
             'totals' => $totals->all(),

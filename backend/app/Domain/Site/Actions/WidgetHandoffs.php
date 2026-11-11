@@ -9,6 +9,7 @@ use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\Site\Support\SiteBooking;
 use App\Domain\Site\Support\SiteProfile;
 use App\Domain\Site\Support\SiteQuote;
 use Illuminate\Support\Carbon;
@@ -57,7 +58,8 @@ final class WidgetHandoffs
         $adults = (int) $data['adults'];
         $children = (int) ($data['children'] ?? 0);
         $infants = (int) ($data['infants'] ?? 0);
-        $quote = $this->quotes->quote($product, $data['date'], $adults, $children, $infants);
+        $quote = $this->quotes->quote($product, $data['date'], $adults, $children, $infants, null, SiteBooking::extrasFrom($data), true, $data['payment_mode'] ?? null);
+        $extras = $quote['extras'];
         $code = $this->codes->next('channel_widget_handoffs', 'WHO-', 6);
         $expires = Carbon::now()->addHours((int) config('widget.handoff_hours', 24));
         $origin = isset($data['origin']) ? mb_strtolower((string) parse_url((string) $data['origin'], PHP_URL_HOST) ?: (string) $data['origin']) : null;
@@ -69,11 +71,15 @@ final class WidgetHandoffs
             'product_id' => $product->id,
             'service_date' => $data['date'],
             'pax' => json_encode(['adt' => $adults, 'chd' => $children, 'inf' => $infants]),
+            'addons' => $extras['addons'] === [] ? null : json_encode($extras['addons'], JSON_UNESCAPED_UNICODE),
+            'lodging' => $extras['lodging'] === [] ? null : json_encode($extras['lodging'], JSON_UNESCAPED_UNICODE),
+            'removed' => SiteBooking::pgArray($extras['removed']),
+            'payment_mode' => $quote['payment_mode'],
             'currency_display' => $data['currency'] ?? $quote['currency'],
             'fx_rate' => number_format($this->profile->usdRate(), 6, '.', ''),
             'lang' => $data['lang'] ?? 'es',
             'origin_domain' => $origin !== null && $origin !== '' ? Str::limit($origin, 250, '') : null,
-            'quote_snapshot' => json_encode(['total' => $quote['total'], 'currency' => $quote['currency'], 'lines' => $quote['lines']], JSON_UNESCAPED_UNICODE),
+            'quote_snapshot' => json_encode(['total' => $quote['total'], 'currency' => $quote['currency'], 'lines' => $quote['lines'], 'extras' => $extras], JSON_UNESCAPED_UNICODE),
             'status' => 'pendiente',
             'expires_at' => $expires,
         ]);
@@ -104,10 +110,9 @@ final class WidgetHandoffs
 
             $pax = (array) json_decode((string) $handoff->pax, true);
             $slug = (string) DB::table('catalog_products')->where('id', $handoff->product_id)->value('slug');
-            $cart = $this->carts->add($token, ['product' => $slug, 'date' => $handoff->service_date, 'adults' => (int) ($pax['adt'] ?? 1), 'children' => (int) ($pax['chd'] ?? 0), 'infants' => (int) ($pax['inf'] ?? 0)]);
+            $extras = (array) (json_decode((string) $handoff->quote_snapshot, true)['extras'] ?? []);
+            $cart = $this->carts->add($token, ['product' => $slug, 'date' => $handoff->service_date, 'adults' => (int) ($pax['adt'] ?? 1), 'children' => (int) ($pax['chd'] ?? 0), 'infants' => (int) ($pax['inf'] ?? 0), 'source' => 'widget', ...SiteBooking::extrasFrom($extras)]);
             $cartId = $this->carts->find((string) $cart['token'])?->id;
-            $line = DB::table('channel_web_cart_items')->where('cart_id', $cartId)->orderByDesc('line_no')->value('id');
-            DB::table('channel_web_cart_items')->where('id', $line)->update(['source' => 'widget']);
 
             DB::table('channel_widget_handoffs')->where('id', $handoff->id)->update(['status' => 'en_carrito', 'cart_id' => $cartId, 'updated_at' => now()]);
             $this->audit->log('Traspaso del widget', $code, 'en_carrito', 'pendiente', 'en_carrito');

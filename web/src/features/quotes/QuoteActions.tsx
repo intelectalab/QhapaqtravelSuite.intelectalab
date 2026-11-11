@@ -78,6 +78,11 @@ function CheckRow({ ok, warn = false, title, detail }: { ok: boolean; warn?: boo
   );
 }
 
+function NewVersionSwitch({ version }: { version: number }) {
+  const [on, setOn] = useState(false);
+  return <SwitchField label="Crear una nueva versión para ajustar" hint={`Se copia la versión ${version} como borrador para aplicar lo que pidió el cliente.`} name="new_version" checked={on} onCheckedChange={setOn} />;
+}
+
 function SendFields({ quote }: { quote: QuoteDetail }) {
   const internalOk = !quote.internal?.required || quote.internal.status === "aprobada";
   const valid = quote.days_left === null || quote.days_left >= 0;
@@ -196,6 +201,7 @@ export function QuoteLifecycleActions({ quote }: { quote: QuoteDetail }) {
       <StepPanel key="negotiate" code={code} lockVersion={quote.lock_version} step="negotiate" label="Registrar negociación" icon={<MessagesSquare size={16} />} compact title="Registrar negociación" description="Anota lo que pidió el cliente. La oportunidad pasa a negociación." submitLabel="Registrar">
         <ChoiceGroup label="Canal" name="channel" options={[{ value: "Llamada", label: "Llamada" }, { value: "Reunión", label: "Reunión" }, { value: "WhatsApp", label: "WhatsApp" }, { value: "Email", label: "Correo" }]} defaultValue="Llamada" />
         <TextArea label="Qué pidió" name="note" rows={4} required minLength={3} maxLength={1000} placeholder="Por ejemplo: quiere hotel 4 estrellas en Cusco y bajar el total." />
+        {can.edit && <NewVersionSwitch version={quote.version} />}
       </StepPanel>,
     );
   }

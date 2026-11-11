@@ -273,6 +273,8 @@ Route::prefix('platform')->name('platform.')->group(function (): void {
                 Route::get('tenants/{id}', [PlatformController::class, 'tenant'])->name('tenants.show');
                 Route::post('tenants/{id}/suspend', [PlatformController::class, 'suspend'])->name('tenants.suspend');
                 Route::post('tenants/{id}/change-plan', [PlatformController::class, 'changePlan'])->name('tenants.change-plan');
+                Route::post('tenants/{id}/change-plan/preview', [PlatformController::class, 'previewPlanChange'])->name('tenants.change-plan.preview');
+                Route::delete('tenants/{id}/scheduled-change', [PlatformController::class, 'voidScheduledPlan'])->name('tenants.scheduled-change.destroy');
                 Route::patch('tenants/{id}', [PlatformController::class, 'updateTenant'])->name('tenants.update');
                 Route::post('tenants/{id}/reactivate', [PlatformController::class, 'reactivate'])->name('tenants.reactivate');
                 Route::get('plans', [PlatformController::class, 'plans'])->name('plans.index');

@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { apiFetch } from "@/lib/server/api";
 import { confirmMfa, type FormState } from "@/lib/server/auth";
-import { TENANT_STEP_FIELDS, type ProvisionPayload } from "@/lib/platform";
+import type { PlanChangePreview } from "@/lib/admin";
+import { TENANT_STEP_FIELDS, type BillingCycle, type PlanEffective, type ProvisionPayload } from "@/lib/platform";
 import { stepByField, wizardFailure, type WizardResult } from "@/lib/wizard";
 
 export async function platformVerifyMfa(_state: FormState, form: FormData): Promise<FormState> {
@@ -96,7 +97,23 @@ export async function changeTenantPlan(_state: ProvisionState, form: FormData): 
   const tenant = String(form.get("tenant") ?? "");
   const plan = String(form.get("plan") ?? "").trim();
   if (!plan) return { message: "Elige el nuevo plan.", done: false };
-  return tenantRequest(`/platform/tenants/${encodeURIComponent(tenant)}/change-plan`, "POST", { plan, reason: String(form.get("reason") ?? "").trim() || undefined, lock_version: lockVersion(form) });
+  const cycle = String(form.get("cycle") ?? "").trim() || undefined;
+  const effective = String(form.get("effective") ?? "").trim() || undefined;
+  return tenantRequest(`/platform/tenants/${encodeURIComponent(tenant)}/change-plan`, "POST", { plan, cycle, effective, reason: String(form.get("reason") ?? "").trim() || undefined, lock_version: lockVersion(form) });
+}
+
+export async function previewTenantPlan(tenant: string, plan: string, cycle: BillingCycle, effective: PlanEffective): Promise<{ preview: PlanChangePreview | null; message: string | null }> {
+  const result = await apiFetch<PlanChangePreview>(`/platform/tenants/${encodeURIComponent(tenant)}/change-plan/preview`, { method: "POST", body: { plan, cycle, effective }, realm: "platform" });
+  if (!result.ok || !result.data) return { preview: null, message: result.error?.message ?? "No pudimos calcular el cambio." };
+  return { preview: result.data, message: null };
+}
+
+export async function voidTenantScheduledPlan(_state: ProvisionState, form: FormData): Promise<ProvisionState> {
+  const tenant = String(form.get("tenant") ?? "");
+  const result = await apiFetch(`/platform/tenants/${encodeURIComponent(tenant)}/scheduled-change`, { method: "DELETE", realm: "platform" });
+  if (!result.ok) return { message: result.error?.message ?? "No pudimos anular el cambio programado.", done: false };
+  revalidatePath("/plataforma", "layout");
+  return { message: null, done: true };
 }
 
 export async function updateTenant(_state: ProvisionState, form: FormData): Promise<ProvisionState> {

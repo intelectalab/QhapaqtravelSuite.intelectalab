@@ -52,6 +52,34 @@ final class TenantDirectory
             'locations' => $sedes,
             'admins' => $admins,
             'history' => $this->history($tenant),
+            'subscription' => $this->subscription($tenant),
+        ];
+    }
+
+    private function subscription(Tenant $tenant): ?array
+    {
+        $db = DB::connection(self::CONNECTION);
+        $subscription = $db->table('subscriptions')->where('tenant_id', $tenant->getKey())->where('status', '<>', 'canceled')
+            ->first(['id', 'code', 'status', 'cycle', 'current_period_start', 'current_period_end', 'trial_ends_at', 'credit_balance', 'lock_version']);
+
+        if ($subscription === null) {
+            return null;
+        }
+
+        $change = $db->table('subscription_changes as c')->leftJoin('plans as p', 'p.id', '=', 'c.to_plan_id')
+            ->where('c.subscription_id', $subscription->id)->where('c.status', 'scheduled')->whereIn('c.kind', ['upgrade', 'downgrade', 'cycle'])
+            ->first(['c.kind', 'c.to_cycle', 'c.effective_at', 'p.code as plan_code', 'p.name as plan_name']);
+
+        return [
+            'code' => $subscription->code,
+            'status' => $subscription->status,
+            'cycle' => $subscription->cycle,
+            'period_start' => $subscription->current_period_start,
+            'period_end' => $subscription->current_period_end,
+            'trial_ends_at' => $subscription->trial_ends_at,
+            'credit_balance' => (string) $subscription->credit_balance,
+            'lock_version' => (int) $subscription->lock_version,
+            'scheduled' => $change ? ['kind' => $change->kind, 'plan' => ['code' => $change->plan_code, 'name' => $change->plan_name], 'cycle' => $change->to_cycle, 'effective_at' => $change->effective_at] : null,
         ];
     }
 

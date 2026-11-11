@@ -8,7 +8,7 @@ import { SectionLayout, SectionNav } from "@/components/ui/SectionNav";
 import { resolveSections } from "@/lib/sections";
 import { HeroBand, HeroChip, HeroPanel, TintTile, ToneScope } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
-import { amountAttr, formatDate, formatMoney, shortName } from "@/lib/format";
+import { amountAttr, formatDate, formatDateTime, formatMoney, shortName } from "@/lib/format";
 import { PendingChanges, ReservationModifyAction, ReservationRescheduleAction } from "@/features/reservations/ReservationChangeActions";
 import { ReservationCancelAction, ReservationEditAction, ReservationRejectRequestAction, ReservationRequestCancelAction } from "@/features/reservations/ReservationActions";
 import { ReservationOrderAction, ReservationReassignAction, ReservationStateActions } from "@/features/reservations/ReservationLifecycleActions";
@@ -109,7 +109,7 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
         return <IncidentsSection reservation={reservation} />;
       case "comentarios": {
         const [feedback, messages, me] = await Promise.all([getReservationFeedback(code), getReservationPaxMessages(code), currentUser()]);
-        return <FeedbackSection feedback={feedback ?? []} messages={messages ?? []} canEscalate={me.permissions.includes("operations.incidents")} />;
+        return <FeedbackSection feedback={feedback ?? []} messages={messages ?? []} canEscalate={me.permissions.includes("operations.incidents")} canReply={["channels.b2b.manage", "channels.cms.publish", "operations.assign"].some((permission) => me.permissions.includes(permission))} />;
       }
       case "historial":
         return <HistorySection events={await getReservationHistory(code)} labels={ACTION_LABEL} />;
@@ -221,6 +221,27 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
             </span>
             {reservation.can.cancel && <ReservationRejectRequestAction code={reservation.code} request={reservation.cancel_request.id} />}
           </div>
+        )}
+
+        {reservation.status === "pendiente_disponibilidad" && (
+          <p data-testid="reservation-notice-availability" className="mb-5 rounded-card border border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-4 py-3 text-[13.5px]">
+            <b className="font-semibold">Pendiente de disponibilidad.</b> Uno o más servicios no tienen cupo retenido. No se puede confirmar hasta contar con disponibilidad.
+          </p>
+        )}
+
+        {reservation.status === "reprogramada" && (
+          <p data-testid="reservation-notice-rescheduled" className="mb-5 rounded-card border border-[color-mix(in_srgb,var(--info)_35%,transparent)] bg-[color-mix(in_srgb,var(--info)_9%,transparent)] px-4 py-3 text-[13.5px]">
+            <b className="font-semibold">Reprogramada{reservation.rescheduled_at ? ` el ${formatDateTime(reservation.rescheduled_at)}` : ""}.</b> Vuelve a pedir los servicios a los proveedores y reemite los vouchers.
+          </p>
+        )}
+
+        {!closed && !reservation.cancel_request && reservation.cancel_rejected && (
+          <p data-testid="reservation-notice-cancel-rejected" className="mb-5 rounded-card border border-line bg-surface-2 px-4 py-3 text-[13.5px] text-fg-2">
+            <b className="font-semibold text-fg">Solicitud de anulación rechazada</b>
+            {reservation.cancel_rejected.decided_by ? ` por ${reservation.cancel_rejected.decided_by}` : ""}
+            {reservation.cancel_rejected.decided_at ? ` el ${formatDateTime(reservation.cancel_rejected.decided_at)}` : ""}
+            {reservation.cancel_rejected.decision_note ? `: «${reservation.cancel_rejected.decision_note}»` : "."}
+          </p>
         )}
 
         {!closed && <PendingChanges code={reservation.code} currency={reservation.currency} changes={reservation.changes} canApprove={reservation.can.approve_changes} />}

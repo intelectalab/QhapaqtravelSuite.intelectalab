@@ -1,6 +1,7 @@
 import { CalendarCheck, CheckCircle2, CircleAlert, ClipboardList, Eye, FileText, History, ListChecks, Map as MapIcon, MessagesSquare, Route, Send, ShieldCheck, ThumbsDown, ThumbsUp, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { AuditWhen, AuditWho } from "@/components/table/AuditCells";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
@@ -311,8 +312,12 @@ export function ActivitySection({ events, labels }: { events: QuoteAuditEvent[];
       <MiniTable head={["Fecha", "Usuario", "Acción", "Antes", "Después"]}>
         {events.map((event) => (
           <tr key={event.id}>
-            <td className="whitespace-nowrap text-xs">{formatDateTime(event.at)}</td>
-            <td>{event.actor ?? "—"}</td>
+            <td className="whitespace-nowrap text-xs">
+              <AuditWhen at={event.at} correlation={event.correlation} />
+            </td>
+            <td>
+              <AuditWho actor={event.actor} ip={event.ip} />
+            </td>
             <td className="font-semibold">{labels[event.action] ?? statusLabel(event.action.replaceAll("_", " "))}</td>
             <td className="max-w-[200px] whitespace-normal text-xs text-fg-3">{event.before ?? "—"}</td>
             <td className="max-w-[260px] whitespace-normal text-xs">{event.after ?? "—"}</td>

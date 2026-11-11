@@ -24,7 +24,7 @@ export default async function CheckoutPage({ params }: PageProps<"/sitio/[agenci
         </div>
       </PageHero>
       <div className="mx-auto grid max-w-[1240px] gap-6 px-5 pt-10 sm:px-8 lg:grid-cols-[1fr_360px]">
-        <CheckoutWizard terms={terms} walletPhone={profile.agency.phone} />
+        <CheckoutWizard terms={terms} walletPhone={profile.agency.phone} cart={cart} />
         <aside className="grid gap-4 lg:sticky lg:top-24 lg:self-start">
           <ul className="grid gap-2">
             {cart.items.map((item) => (

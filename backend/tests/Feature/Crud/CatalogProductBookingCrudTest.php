@@ -204,7 +204,7 @@ it('ajusta reglas por producto sin activar una regla apagada en la agencia ni to
     expect($config['sections']['adicionales']['status'])->toBe('product_off')
         ->and(bkAudit('CUS-GAS-EXP', 'regla_producto'))->toBeTrue();
 
-    $this->putJson('/api/v1/catalog/products/CUS-GAS-EXP/rule-overrides/R-SINGLE-SUPP', ['enabled' => true], critical())->assertOk();
+    expect($this->putJson('/api/v1/catalog/products/CUS-GAS-EXP/rule-overrides/R-SINGLE-SUPP', ['enabled' => true], critical()))->toBeApiError(422, 'CR-02');
     $single = collect($this->getJson('/api/v1/catalog/products/CUS-GAS-EXP/rule-overrides')->json('data'))->firstWhere('code', 'R-SINGLE-SUPP');
     expect($single['tenant_enabled'])->toBeFalse()->and($single['effective'])->toBeFalse();
 

@@ -38,7 +38,7 @@ final class EcommerceDirectory
             ->leftJoin('catalog_products as p', 'p.id', '=', 'o.product_id')
             ->leftJoin('booking_reservations as r', 'r.id', '=', 'o.reservation_id')
             ->orderByDesc('o.ordered_at')
-            ->get(['o.id', 'o.code', 'o.ordered_at', 'o.customer_name', 'o.customer_email', 'o.customer_country', 'o.pax_total', 'o.total', 'o.currency', 'o.status', 'o.promo_code', 'o.discount_amount', 'o.cancel_reason', 'o.lock_version', 'o.product_id', 'p.code as product_code', 'p.name as product_name', 'r.code as reservation_code']);
+            ->get(['o.id', 'o.code', 'o.ordered_at', 'o.customer_name', 'o.customer_email', 'o.customer_country', 'o.pax_total', 'o.total', 'o.currency', 'o.status', 'o.promo_code', 'o.discount_amount', 'o.cancel_reason', 'o.lock_version', 'o.product_id', 'p.code as product_code', 'p.name as product_name', 'r.code as reservation_code', 'r.travel_from', DB::raw('(select min(l.service_date) from channel_ecom_order_lines l where l.order_id = o.id) as first_service_date')]);
 
         $products = DB::table('catalog_products as p')
             ->leftJoin('catalog_product_channels as c', fn ($join) => $join->on('c.product_id', '=', 'p.id')->where('c.channel', 'ecommerce'))
@@ -95,6 +95,7 @@ final class EcommerceDirectory
                 'country' => $row->customer_country,
                 'product' => $row->product_code ? ['code' => $row->product_code, 'name' => $row->product_name] : null,
                 'pax' => (int) $row->pax_total,
+                'travel_date' => $row->travel_from ?? $row->first_service_date,
                 'total' => ChannelKit::money($row->total),
                 'currency' => $row->currency,
                 'status' => $row->status,

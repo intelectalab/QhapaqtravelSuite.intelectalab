@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { accountCookie, cartCookie, orderCookie, siteHref, type AccountMe, type CalendarMonth, type Quote, type SiteFormState } from "@/lib/site";
+import { accountCookie, cartCookie, NO_EXTRAS, orderCookie, siteHref, type AccountMe, type BookingExtras, type CalendarMonth, type PaymentMode, type Quote, type SiteFormState } from "@/lib/site";
 import { parseSiteLocale, SITE_LOCALE_COOKIE } from "@/lib/site-i18n";
 import { captchaHeaders } from "@/lib/server/captcha";
 import { apiFetch } from "@/lib/server/api";
@@ -111,8 +111,18 @@ export async function loadMonth(agencia: string, slug: string, month: string, pa
   return result.ok ? result.data : null;
 }
 
-export async function quoteProduct(agencia: string, slug: string, input: { date: string; adults: number; children: number; infants: number; promo?: string }): Promise<{ quote: Quote | null; error: string | null }> {
-  const result = await sendSite<Quote>(agencia, "/price-quote", { product: slug, ...input });
+export interface QuoteInput {
+  date: string;
+  adults: number;
+  children: number;
+  infants: number;
+  promo?: string;
+  extras?: BookingExtras;
+  payment_mode?: PaymentMode;
+}
+
+export async function quoteProduct(agencia: string, slug: string, input: QuoteInput): Promise<{ quote: Quote | null; error: string | null }> {
+  const result = await sendSite<Quote>(agencia, "/price-quote", { product: slug, date: input.date, adults: input.adults, children: input.children, infants: input.infants, promo: input.promo, payment_mode: input.payment_mode, ...(input.extras ?? NO_EXTRAS) });
   return result.ok ? { quote: result.data, error: null } : { quote: null, error: result.error?.message ?? "No pudimos calcular el precio." };
 }
 
@@ -122,9 +132,10 @@ async function cartToken(agencia: string): Promise<string | undefined> {
   return (await cookies()).get(cartCookie(agencia))?.value;
 }
 
-export async function addToCart(agencia: string, input: { product: string; date: string; adults: number; children: number; infants: number; promo?: string }): Promise<{ ok: boolean; message: string | null }> {
+export async function addToCart(agencia: string, input: { product: string; date: string; adults: number; children: number; infants: number; promo?: string; extras?: BookingExtras; quote_token?: string }): Promise<{ ok: boolean; message: string | null }> {
   const token = await cartToken(agencia);
-  const result = await sendSite<{ token: string }>(agencia, "/carts/current/items", input, cartHeaders(token));
+  const { extras, ...rest } = input;
+  const result = await sendSite<{ token: string }>(agencia, "/carts/current/items", { ...rest, ...(extras ?? NO_EXTRAS) }, cartHeaders(token));
   if (!result.ok || !result.data) return { ok: false, message: result.error?.message ?? "No pudimos agregar el producto al carrito." };
   (await cookies()).set(cartCookie(agencia), result.data.token, { httpOnly: true, sameSite: "lax", path: "/", maxAge: CART_DAYS * 86_400 });
   return { ok: true, message: null };
@@ -135,6 +146,16 @@ export async function removeCartLine(agencia: string, line: number): Promise<str
   const result = await sendSite(agencia, `/carts/current/items/${line}`, {}, cartHeaders(token), "DELETE");
   revalidatePath(`/sitio/${agencia}/carrito`);
   return result.ok ? null : result.status === 404 ? "Tu carrito expiró o esa línea ya no existe." : (result.error?.message ?? "No pudimos quitar la línea.");
+}
+
+export async function toggleCartItem(agencia: string, line: number, key: string, removed: boolean, lockVersion?: number): Promise<string | null> {
+  const token = await cartToken(agencia);
+  const result = await sendSite(agencia, `/carts/current/items/${line}/removed-lines`, { key, removed, lock_version: lockVersion }, cartHeaders(token), "PATCH");
+  revalidatePath(`/sitio/${agencia}/carrito`);
+  revalidatePath(`/sitio/${agencia}/checkout`);
+  if (result.ok) return null;
+  if (result.status === 409) return "Tu carrito cambió en otra pestaña. Recargamos los datos.";
+  return result.status === 404 ? "Tu carrito expiró o esa línea ya no existe." : (result.error?.message ?? "No pudimos actualizar la línea.");
 }
 
 export async function reholdCartLine(agencia: string, line: number): Promise<string | null> {

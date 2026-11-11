@@ -103,7 +103,9 @@ final class QuoteDirectory
             $term = '%'.mb_strtolower($filters['q']).'%';
             $query->where(fn (Builder $where): Builder => $where->whereRaw('lower(q.code) like ?', [$term])
                 ->orWhereRaw('lower(q.title) like ?', [$term])
-                ->orWhereRaw('lower(c.name) like ?', [$term]));
+                ->orWhereRaw('lower(c.name) like ?', [$term])
+                ->orWhereRaw("lower(coalesce(o.code, '')) like ?", [$term])
+                ->orWhereRaw("lower(coalesce(o.title, '')) like ?", [$term]));
         }
 
         return $query;
@@ -223,7 +225,7 @@ final class QuoteDirectory
 
         $query = DB::table('audit_events as e')->leftJoin('iam_users as u', 'u.id', '=', 'e.actor_id')
             ->where('e.entity', 'Cotización')->where('e.entity_id', $code)
-            ->select(['e.id', 'e.code', 'e.action', 'e.before_value', 'e.after_value', 'e.actor_type', 'e.occurred_at', 'u.name as actor_name']);
+            ->select(['e.id', 'e.code', 'e.action', 'e.before_value', 'e.after_value', 'e.actor_type', 'e.occurred_at', 'e.ip', 'e.correlation_id', 'u.name as actor_name']);
 
         return CursorPage::respond($request, $query, ['occurred_at' => 'e.occurred_at'], '-occurred_at', fn (object $event): array => [
             'id' => $event->id,
@@ -233,6 +235,8 @@ final class QuoteDirectory
             'after' => $event->after_value,
             'actor' => $event->actor_name ?? ($event->actor_type === 'system' ? 'Sistema' : null),
             'at' => $event->occurred_at,
+            'ip' => $event->ip,
+            'correlation' => $event->correlation_id,
         ]);
     }
 
@@ -258,7 +262,7 @@ final class QuoteDirectory
 
         return [
             ...$this->summary($row, $this->today(), $viewer),
-            'opportunity' => $row->opportunity_code ? ['code' => $row->opportunity_code, 'title' => $row->opportunity_title] : null,
+            'opportunity' => $row->opportunity_code ? ['code' => $row->opportunity_code, 'title' => $row->opportunity_title, 'stage' => $row->opportunity_stage] : null,
             'reservation' => $row->reservation_code ? ['code' => $row->reservation_code] : null,
             'approved_at' => $row->approved_at,
             'approved_by_name' => $row->approved_by_name,
@@ -346,7 +350,7 @@ final class QuoteDirectory
             ->leftJoin('crm_opportunities as o', 'o.id', '=', 'q.opportunity_id')
             ->leftJoin('booking_reservations as r', 'r.id', '=', 'q.reservation_id')
             ->whereNull('q.deleted_at')
-            ->select(['q.*', 'c.code as client_code', 'c.name as client_name', 'u.name as owner_name', 'u.avatar_color as owner_color', 'v.grand_total', 'v.margin_pct as version_margin', 'v.discount_pct as version_discount', DB::raw('(select a.status from quote_internal_approvals a where a.quote_version_id = q.current_version_id order by a.created_at desc limit 1) as internal_last'), DB::raw('(select count(*) from quote_versions vv where vv.quote_id = q.id) as version_count'), 'o.code as opportunity_code', 'o.title as opportunity_title', 'r.code as reservation_code']);
+            ->select(['q.*', 'c.code as client_code', 'c.name as client_name', 'u.name as owner_name', 'u.avatar_color as owner_color', 'v.grand_total', 'v.margin_pct as version_margin', 'v.discount_pct as version_discount', DB::raw('(select a.status from quote_internal_approvals a where a.quote_version_id = q.current_version_id order by a.created_at desc limit 1) as internal_last'), DB::raw('(select count(*) from quote_versions vv where vv.quote_id = q.id) as version_count'), 'o.code as opportunity_code', 'o.title as opportunity_title', 'o.stage as opportunity_stage', 'r.code as reservation_code']);
 
         return Portfolio::scope($query, $viewer, 'q.owner_id');
     }
@@ -367,6 +371,7 @@ final class QuoteDirectory
             'status' => $status,
             'client' => ['code' => $row->client_code, 'name' => $row->client_name],
             'owner' => ['name' => $row->owner_name, 'color' => $row->owner_color],
+            'opportunity' => $row->opportunity_code ? ['code' => $row->opportunity_code, 'title' => $row->opportunity_title] : null,
             'version' => (int) $row->current_version_no,
             'current_version_no' => (int) $row->current_version_no,
             'current_version_id' => $row->current_version_id,

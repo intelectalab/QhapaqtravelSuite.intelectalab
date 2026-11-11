@@ -1,4 +1,4 @@
-import { Building2, CircleAlert, CirclePause, CirclePlay, HardDrive, History, Layers, MapPin, ShieldCheck, Store, Ticket, Users } from "lucide-react";
+import { Building2, CalendarClock, CircleAlert, CirclePause, CirclePlay, HardDrive, History, Layers, MapPin, ShieldCheck, Store, Ticket, Undo2, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -6,11 +6,11 @@ import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { HeroBand, HeroChip, HeroPanel, SOFT_TINT, TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
-import { TenantEditAction, TenantPlanAction } from "@/features/platform/TenantManageActions";
+import { TenantEditAction, TenantPlanAction, TenantScheduledChange } from "@/features/platform/TenantManageActions";
 import { TenantStatusAction } from "@/features/platform/TenantStatusAction";
 import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatDateTime, formatMoney, initials } from "@/lib/format";
-import { formatBytes, planTone, type TenantDetail } from "@/lib/platform";
+import { CYCLE_LABEL, formatBytes, planTone, type TenantDetail } from "@/lib/platform";
 import { getTenant, listPlans } from "@/lib/server/platform";
 
 const ACTIONS: Record<string, { label: string; tone: "bad" | "ok" | "t1" | "warn"; icon: typeof History }> = {
@@ -18,6 +18,10 @@ const ACTIONS: Record<string, { label: string; tone: "bad" | "ok" | "t1" | "warn
   reactivar: { label: "Reactivada", tone: "ok", icon: CirclePlay },
   alta: { label: "Alta de la agencia", tone: "t1", icon: Building2 },
   cambio_plan: { label: "Cambio de plan", tone: "t1", icon: Ticket },
+  cambio_plan_programado: { label: "Cambio de plan programado", tone: "t1", icon: CalendarClock },
+  anular_cambio_programado: { label: "Cambio de plan anulado", tone: "warn", icon: Undo2 },
+  convertir_trial: { label: "Prueba convertida", tone: "ok", icon: Ticket },
+  extender_trial: { label: "Prueba extendida", tone: "t1", icon: CalendarClock },
   acceso_denegado: { label: "Acceso bloqueado", tone: "warn", icon: ShieldCheck },
 };
 
@@ -57,6 +61,7 @@ export default async function AgenciaPage({ params, searchParams }: PageProps<"/
       />
 
       {tenant.status === "suspendido" && <SuspendedNotice tenant={tenant} />}
+      <TenantScheduledChange tenant={tenant} />
 
       <HeroBand>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
@@ -69,6 +74,11 @@ export default async function AgenciaPage({ params, searchParams }: PageProps<"/
                 <Link href={`/plataforma/planes/${tenant.plan.code}`} className="rounded-full transition hover:brightness-110">
                   <HeroChip icon={<Ticket size={14} />}>Plan {tenant.plan.name}</HeroChip>
                 </Link>
+              )}
+              {tenant.subscription && tenant.subscription.status !== "trialing" && (
+                <HeroChip icon={<CalendarClock size={14} />}>
+                  Pago {CYCLE_LABEL[tenant.subscription.cycle].toLowerCase()} · renueva el {formatDate(tenant.subscription.period_end)}
+                </HeroChip>
               )}
             </div>
           </div>

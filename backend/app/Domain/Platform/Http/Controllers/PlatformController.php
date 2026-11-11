@@ -92,14 +92,40 @@ final class PlatformController
 
     public function changePlan(string $id, Request $request, ManageTenant $manage, TenantDirectory $directory): JsonResponse
     {
-        $data = $request->validate([
-            'plan' => ['required', 'string', 'max:20'],
-            'reason' => ['nullable', 'string', 'max:500'],
-        ], ['plan.required' => 'Elige el nuevo plan.']);
-        $tenant = $directory->locate($id) ?? throw ApiException::notFound('La agencia no existe.');
-        $manage->changePlan($tenant, $data['plan'], $data['reason'] ?? null, $this->user($request));
+        $data = $this->planChange($request, true);
+        $tenant = $this->tenantModel($id, $directory);
+        $result = $manage->changePlan($tenant, $data['plan'], $data['reason'] ?? null, $this->user($request), $data['cycle'] ?? null, $data['effective'] ?? null);
+
+        return response()->json(['data' => $directory->find($tenant->code), 'meta' => ['change' => $result]]);
+    }
+
+    public function previewPlanChange(string $id, Request $request, ManageTenant $manage, TenantDirectory $directory): JsonResponse
+    {
+        $data = $this->planChange($request, false);
+
+        return response()->json(['data' => $manage->previewPlan($this->tenantModel($id, $directory), $data['plan'], $data['cycle'] ?? null, $data['effective'] ?? null)]);
+    }
+
+    public function voidScheduledPlan(string $id, Request $request, ManageTenant $manage, TenantDirectory $directory): JsonResponse
+    {
+        $tenant = $this->tenantModel($id, $directory);
+        $manage->voidScheduledPlan($tenant, $this->user($request));
 
         return response()->json(['data' => $directory->find($tenant->code)]);
+    }
+
+    private function planChange(Request $request, bool $withReason): array
+    {
+        return $request->validate([
+            'plan' => ['required', 'string', 'max:20'],
+            'cycle' => ['nullable', 'in:monthly,annual'],
+            'effective' => ['nullable', 'in:immediate,next_cycle'],
+            ...($withReason ? ['reason' => ['nullable', 'string', 'max:500']] : []),
+        ], [
+            'plan.required' => 'Elige el nuevo plan.',
+            'cycle.in' => 'Elige el ciclo de pago: mensual o anual.',
+            'effective.in' => 'Elige cuándo rige el cambio: de inmediato o al cierre del ciclo.',
+        ]);
     }
 
     public function updateTenant(string $id, TenantProvisionRequest $request, ManageTenant $manage, TenantDirectory $directory): JsonResponse

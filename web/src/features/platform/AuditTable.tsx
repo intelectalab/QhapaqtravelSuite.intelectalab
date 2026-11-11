@@ -1,7 +1,9 @@
 "use client";
 
 import { Building2, KeyRound, Layers, ReceiptText, ServerCog } from "lucide-react";
+import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
+import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
@@ -34,7 +36,22 @@ const columns: Column<AuditEvent>[] = [
       </span>
     ),
   },
-  { id: "subject", header: "Sobre", cell: (event) => <span className="text-[13.5px] font-semibold">{event.subject}</span> },
+  {
+    id: "subject",
+    header: "Sobre",
+    cell: (event) => (
+      <span className="min-w-0">
+        <Link href={`/plataforma/auditoria/${event.id}`} className="block text-[13.5px] font-semibold hover:underline">
+          {event.subject}
+        </Link>
+        {event.tenant && event.entity !== "Tenant" && (
+          <Link href={`/plataforma/agencias/${event.tenant.code}`} className="block truncate text-xs text-fg-3 hover:underline">
+            {event.tenant.name}
+          </Link>
+        )}
+      </span>
+    ),
+  },
   { id: "detail", header: "Detalle", wideOnly: true, cell: (event) => <span className="line-clamp-2 max-w-[420px] text-[13px] text-fg-2" title={detail(event)}>{detail(event)}</span> },
   {
     id: "actor",
@@ -65,6 +82,17 @@ const columns: Column<AuditEvent>[] = [
       </span>
     ),
   },
+  {
+    id: "view",
+    header: "",
+    align: "right",
+    mobile: "detail",
+    cell: (event) => (
+      <RowActions>
+        <RowIcon tone="view" label="Ver el evento" href={`/plataforma/auditoria/${event.id}`} />
+      </RowActions>
+    ),
+  },
 ];
 
 const metrics: MetricFilter<AuditEvent>[] = GROUPS.map((group) => ({ id: group.id, label: group.label, tone: group.tone, icon: group.icon, matches: (event: AuditEvent) => event.group === group.id }));
@@ -76,9 +104,10 @@ const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.local
 export function AuditTable({ events }: { events: AuditEvent[] }) {
   const filters: FilterConfig<AuditEvent>[] = [
     { id: "action", label: "Acción", options: unique(events.map((event) => actionMeta(event.action).label)), value: (event) => actionMeta(event.action).label },
+    { id: "tenant", label: "Agencia", options: unique(events.flatMap((event) => (event.tenant ? [event.tenant.name] : []))), value: (event) => event.tenant?.name ?? "" },
     { id: "actor", label: "Quién", options: unique(events.map((event) => event.actor ?? "Sistema")), value: (event) => event.actor ?? "Sistema" },
     { id: "critical", label: "Criticidad", options: [{ value: "1", label: "Solo críticas" }, { value: "0", label: "No críticas" }], value: (event) => (event.critical ? "1" : "0") },
   ];
 
-  return <DataTable screen="plataforma-auditoria" rows={events} columns={columns} getKey={(event) => event.id} entityLabel="eventos" searchText={(event) => `${event.subject} ${event.entity_id} ${event.after ?? ""} ${event.before ?? ""} ${event.actor ?? ""}`} searchPlaceholder="Buscar agencia, factura o detalle" metrics={metrics} filters={filters} sorts={sorts} />;
+  return <DataTable screen="plataforma-auditoria" rows={events} columns={columns} getKey={(event) => event.id} entityLabel="eventos" searchText={(event) => `${event.subject} ${event.entity_id} ${event.tenant?.name ?? ""} ${event.after ?? ""} ${event.before ?? ""} ${event.actor ?? ""}`} searchPlaceholder="Buscar agencia, factura o detalle" metrics={metrics} filters={filters} sorts={sorts} />;
 }

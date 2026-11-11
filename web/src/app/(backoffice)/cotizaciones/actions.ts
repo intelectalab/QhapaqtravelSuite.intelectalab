@@ -58,7 +58,7 @@ export interface QuoteStepState {
 const STEPS: Record<string, { path: string; method: "POST" | "DELETE"; fields: string[]; flags?: string[]; lists?: string[] }> = {
   send: { path: "send", method: "POST", fields: ["recipient", "phone", "message"], lists: ["channels"] },
   token: { path: "token", method: "POST", fields: [] },
-  negotiate: { path: "negotiations", method: "POST", fields: ["channel", "note"] },
+  negotiate: { path: "negotiations", method: "POST", fields: ["channel", "note"], flags: ["new_version"] },
   view: { path: "views", method: "POST", fields: ["note"] },
   version: { path: "versions", method: "POST", fields: [] },
   request: { path: "internal-approval-requests", method: "POST", fields: ["note"] },
@@ -102,6 +102,25 @@ export interface ConvertState {
   message: string | null;
   done: boolean;
   reservation?: string;
+  version?: number;
+  edit?: boolean;
+}
+
+export async function createAlternativeVersion(_state: ConvertState, form: FormData): Promise<ConvertState> {
+  const code = String(form.get("code") ?? "");
+  const dates = [...form.entries()]
+    .filter(([key, value]) => key.startsWith("date_") && typeof value === "string" && value !== "")
+    .map(([key, value]) => ({ line: Number(key.slice(5)), date: String(value) }));
+  const lock = Number(form.get("lock_version"));
+  const body = { ...(dates.length > 0 ? { dates } : {}), ...(Number.isInteger(lock) ? { lock_version: lock } : {}) };
+  const result = await apiFetch<{ code: string; version?: number }>(`/quotes/${encodeURIComponent(code)}/versions`, { method: "POST", body });
+  if (!result.ok) {
+    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { message: firstError ?? result.error?.message ?? "No pudimos crear la nueva versión.", done: false };
+  }
+  revalidatePath("/cotizaciones", "layout");
+  revalidatePath("/crm/oportunidades", "layout");
+  return { message: null, done: true, version: result.data?.version, edit: dates.length === 0 || form.get("edit") === "1" };
 }
 
 export async function convertQuote(_state: ConvertState, form: FormData): Promise<ConvertState> {

@@ -14,3 +14,17 @@ export async function pausePlatformJob(_state: ConsoleResult, form: FormData): P
   revalidatePath("/plataforma", "layout");
   return outcome;
 }
+
+export async function retryIntegrationError(_state: ConsoleResult, form: FormData): Promise<ConsoleResult> {
+  const outcome = await platformSend(`/integration-errors/${encodeURIComponent(String(form.get("id") ?? ""))}/retry`, "POST", {}, "No pudimos reintentar el envío.");
+  revalidatePath("/plataforma", "layout");
+  return outcome;
+}
+
+export async function resolveIntegrationError(_state: ConsoleResult, form: FormData): Promise<ConsoleResult> {
+  const resolution = String(form.get("resolution") ?? "").trim();
+  if (resolution.length < 5) return { done: false, message: "Describe cómo se resolvió." };
+  const outcome = await platformSend(`/integration-errors/${encodeURIComponent(String(form.get("id") ?? ""))}/resolve`, "POST", { resolution }, "No pudimos marcar el error como resuelto.");
+  revalidatePath("/plataforma", "layout");
+  return outcome;
+}

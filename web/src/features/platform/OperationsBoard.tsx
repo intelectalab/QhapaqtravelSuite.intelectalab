@@ -1,14 +1,18 @@
 "use client";
 
-import { AlertTriangle, Bell, Building2, CircleCheck, CirclePause, CirclePlay, Clock, Cog, FileText, Gauge, Layers, Play, Plug, RefreshCw, ServerCog, Wrench, XCircle, type LucideIcon } from "lucide-react";
-import { pausePlatformJob, runPlatformJob } from "@/app/plataforma/(consola)/integraciones/actions";
+import { AlertTriangle, Bell, CircleCheck, CirclePause, CirclePlay, Cog, FileText, Gauge, Layers, Play, Plug, RefreshCw, RotateCw, ServerCog, Wrench, XCircle, type LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { pausePlatformJob, resolveIntegrationError, retryIntegrationError, runPlatformJob } from "@/app/plataforma/(consola)/integraciones/actions";
 import { DataTable } from "@/components/table/DataTable";
+import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
-import { Card } from "@/components/ui/Card";
+import { TabbedCard } from "@/components/ui/RouteTabs";
+import { TextArea } from "@/components/ui/TextArea";
 import { TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
+import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
-import type { AgencyJobs, IntegrationError, OperationsOverview, PlatformJob, QueueStat } from "@/lib/platformBilling";
+import type { IntegrationError, OperationsOverview, PlatformJob, QueueStat, TenantHealthRow } from "@/lib/platformBilling";
 import type { Tone } from "@/lib/tone";
 import { ConsoleAction } from "./ConsoleAction";
 
@@ -26,10 +30,10 @@ export function OperationsKpis({ overview }: { overview: OperationsOverview }) {
 
   return (
     <section aria-label="Resumen" className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <TintTile icon={ServerCog} tone="t1" label="Tareas de plataforma" value={overview.jobs.length} note={`${overview.jobs.filter((job) => job.paused).length} pausadas`} />
-      <TintTile icon={AlertTriangle} tone={flagged ? "warn" : "ok"} label="Con aviso en su última corrida" value={flagged} />
-      <TintTile icon={Layers} tone={failed ? "bad" : "violet"} label="Trabajos en cola" value={pending} note={`${failed} fallidos`} />
-      <TintTile icon={Plug} tone={open ? "bad" : "ok"} label="Errores abiertos en agencias" value={open} />
+      <TintTile icon={ServerCog} tone="t1" label="Tareas de plataforma" value={overview.jobs.length} note={`${overview.jobs.filter((job) => job.paused).length} pausadas`} info="Tareas programadas propias de la plataforma: cobranza, renovaciones, pruebas y métricas." />
+      <TintTile icon={AlertTriangle} tone={flagged ? "warn" : "ok"} label="Con aviso en su última corrida" value={flagged} info="Tareas de plataforma cuya última corrida terminó con error o advertencia." />
+      <TintTile icon={Layers} tone={failed ? "bad" : "violet"} label="Trabajos en cola" value={pending} note={`${failed} fallidos`} info="Trabajos pendientes en todas las colas del servidor; los fallidos son los que agotaron sus reintentos." />
+      <TintTile icon={Plug} tone={open ? "bad" : "ok"} label="Errores abiertos en agencias" value={open} info="Errores de integración, notificación o tareas de las agencias que aún no se resuelven." />
     </section>
   );
 }
@@ -106,9 +110,9 @@ function JobCard({ job, index }: { job: PlatformJob; index: number }) {
 
 export function QueuesPanel({ queues }: { queues: QueueStat[] }) {
   return (
-    <Card>
+    <section aria-label="Colas">
       <TintCardTitle icon={Layers} title="Colas" aside="Últimos 7 días" tone="violet" />
-      <ul className="grid gap-2 sm:grid-cols-2">
+      <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {queues.map((queue, index) => {
           const Icon = QUEUE_ICON[queue.queue] ?? Cog;
           const tone: Tone = queue.failed > 0 || queue.errors > 0 ? "bad" : queue.warnings > 0 ? "warn" : "ok";
@@ -131,37 +135,93 @@ export function QueuesPanel({ queues }: { queues: QueueStat[] }) {
           );
         })}
       </ul>
-    </Card>
+    </section>
   );
 }
 
-export function AgencyJobsPanel({ agencies }: { agencies: AgencyJobs[] }) {
-  return (
-    <Card>
-      <TintCardTitle icon={Building2} title="Tareas de las agencias" aside={`${agencies.length} con tareas`} tone="t4" />
-      {agencies.length === 0 ? (
-        <p className="text-[13.5px] text-fg-3">Ninguna agencia tiene tareas programadas todavía.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {agencies.map((agency, index) => (
-            <li key={agency.name} className="lift flex items-center gap-3 rounded-[12px] bg-surface-2/60 px-3 py-2.5 animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]" style={{ animationDelay: `${index * 60}ms` }}>
-              <span className="min-w-0 flex-1">
-                <b className="block truncate text-[13.5px] font-semibold">{agency.name}</b>
-                <span className="text-[12px] text-fg-3">
-                  {agency.jobs} tareas{agency.paused ? ` · ${agency.paused} pausadas` : ""}
-                  {agency.last_run_at ? ` · última el ${formatDateTime(agency.last_run_at, false)}` : ""}
-                </span>
-              </span>
-              {agency.errors > 0 && <Badge tone="bad">{agency.errors} con error</Badge>}
-              {agency.warnings > 0 && <Badge tone="warn">{agency.warnings} con aviso</Badge>}
-              {agency.open_errors > 0 && <Badge tone="info">{agency.open_errors} fallas abiertas</Badge>}
-              {agency.errors + agency.warnings + agency.open_errors === 0 && <Badge tone="ok">Sin incidencias</Badge>}
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
-  );
+const HEALTH: Record<TenantHealthRow["health"], { label: string; tone: Tone }> = {
+  ok: { label: "Sin incidencias", tone: "ok" },
+  atencion: { label: "Requiere atención", tone: "warn" },
+  critico: { label: "Crítica", tone: "bad" },
+};
+
+const healthColumns: Column<TenantHealthRow>[] = [
+  {
+    id: "tenant",
+    header: "Agencia",
+    mobile: "title",
+    cell: (row) => (
+      <div className="min-w-0">
+        <Link href={`/plataforma/agencias/${row.code}`} className="block truncate text-[13.5px] font-semibold hover:underline">
+          {row.name}
+        </Link>
+        <small className="block text-xs text-fg-3">
+          {row.code}
+          {row.plan ? ` · ${row.plan.name}` : ""}
+        </small>
+      </div>
+    ),
+  },
+  { id: "status", header: "Estado", wideOnly: true, cell: (row) => <StatusBadge status={row.status} /> },
+  { id: "health", header: "Salud", cell: (row) => <Badge tone={HEALTH[row.health].tone}>{HEALTH[row.health].label}</Badge> },
+  {
+    id: "integrations",
+    header: "Integraciones",
+    cell: (row) => (
+      <span className="flex items-center gap-2">
+        <span className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-2">
+          <span className={cn("block h-full rounded-full", row.integrations.failing ? "bg-warn" : "bg-ok")} style={{ width: `${(row.integrations.active / Math.max(row.integrations.total, 1)) * 100}%` }} />
+        </span>
+        <span className="text-[12.5px] text-fg-2">
+          {row.integrations.active} de {row.integrations.total}
+          {row.integrations.failing > 0 && <span className="text-warn"> · {row.integrations.failing} fallan</span>}
+        </span>
+      </span>
+    ),
+  },
+  {
+    id: "jobs",
+    header: "Tareas",
+    wideOnly: true,
+    cell: (row) => (
+      <span className="text-[12.5px] text-fg-2">
+        {row.jobs.total}
+        {row.jobs.paused > 0 && ` · ${row.jobs.paused} en pausa`}
+        {row.jobs.errors > 0 && <span className="text-bad"> · {row.jobs.errors} con error</span>}
+      </span>
+    ),
+  },
+  {
+    id: "errors",
+    header: "Errores abiertos",
+    align: "right",
+    cell: (row) => (
+      <span className={cn("font-mono text-[13px]", row.definitive_errors > 0 ? "text-bad" : row.open_errors > 0 ? "text-warn" : "text-fg-3")} title={row.definitive_errors > 0 ? `${row.definitive_errors} con falla definitiva` : undefined}>
+        {row.open_errors}
+      </span>
+    ),
+  },
+  { id: "heartbeat", header: "Última actividad", align: "right", wideOnly: true, cell: (row) => <span className="text-[12.5px] text-fg-3">{row.last_heartbeat_at ? formatDateTime(row.last_heartbeat_at, false) : "Sin actividad"}</span> },
+];
+
+const healthMetrics: MetricFilter<TenantHealthRow>[] = [
+  { id: "ok", label: "Sin incidencias", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.health === "ok" },
+  { id: "atencion", label: "Requieren atención", tone: "warn", icon: <AlertTriangle size={19} />, matches: (row) => row.health === "atencion" },
+  { id: "critico", label: "Críticas", tone: "bad", icon: <XCircle size={19} />, matches: (row) => row.health === "critico" },
+];
+
+const healthSorts: SortOption<TenantHealthRow>[] = [
+  { id: "errors", label: "Errores abiertos", type: "number", value: (row) => row.open_errors },
+  { id: "heartbeat", label: "Última actividad", type: "date", value: (row) => row.last_heartbeat_at },
+];
+
+export function HealthTable({ rows }: { rows: TenantHealthRow[] }) {
+  const filters: FilterConfig<TenantHealthRow>[] = [
+    { id: "plan", label: "Plan", options: [...new Map(rows.filter((row) => row.plan).map((row) => [row.plan?.code ?? "", row.plan?.name ?? ""])).entries()].map(([value, label]) => ({ value, label })), value: (row) => row.plan?.code ?? "" },
+    { id: "status", label: "Estado", options: [{ value: "activo", label: "Activa" }, { value: "prueba", label: "En prueba" }, { value: "suspendido", label: "Suspendida" }], value: (row) => row.status },
+  ];
+
+  return <DataTable screen="plataforma-salud" rows={rows} columns={healthColumns} getKey={(row) => row.id} entityLabel="agencias" searchText={(row) => `${row.name} ${row.code}`} searchPlaceholder="Buscar agencia" metrics={healthMetrics} filters={filters} sorts={healthSorts} />;
 }
 
 const errorColumns: Column<IntegrationError>[] = [
@@ -192,6 +252,25 @@ const errorColumns: Column<IntegrationError>[] = [
     ),
   },
   { id: "at", header: "Fecha", wideOnly: true, cell: (error) => <span className="text-[12.5px] text-fg-3">{formatDateTime(error.at, false)}</span> },
+  {
+    id: "actions",
+    header: "",
+    align: "right",
+    mobile: "detail",
+    cell: (error) =>
+      error.status === "resuelto" ? null : (
+        <RowActions>
+          {error.class === "permanente" ? (
+            <RowIcon tone="neutral" label="Reintentar" icon={<RotateCw size={15} />} disabledHint="Es un error permanente: reintentar no cambia el resultado" />
+          ) : (
+            <ConsoleAction id={`error-retry-${error.id}`} label="Reintentar" icon={<RotateCw size={15} />} rowTone="neutral" title="Reintentar ahora" description={`${error.target} · ${error.tenant ?? "Plataforma"}. Se reinicia el contador de intentos y se vuelve a intentar en un minuto.`} submitLabel="Reintentar" action={retryIntegrationError} fields={{ id: error.id }} />
+          )}
+          <ConsoleAction id={`error-resolve-${error.id}`} label="Marcar como resuelto" icon={<CircleCheck size={15} />} rowTone="edit" title="Marcar como resuelto" description={`${error.error} · ${error.tenant ?? "Plataforma"}. Deja de reintentarse y queda registrado quién lo resolvió.`} submitLabel="Marcar resuelto" action={resolveIntegrationError} fields={{ id: error.id }}>
+            <TextArea label="Cómo se resolvió" name="resolution" required minLength={5} maxLength={500} placeholder="Por ejemplo: la agencia corrigió el RUC del cliente y se reenvió el comprobante." />
+          </ConsoleAction>
+        </RowActions>
+      ),
+  },
 ];
 
 const errorMetrics: MetricFilter<IntegrationError>[] = [
@@ -208,11 +287,19 @@ export function ErrorsTable({ errors }: { errors: IntegrationError[] }) {
     { id: "source", label: "Origen", options: Object.entries(SOURCE).map(([value, label]) => ({ value, label })), value: (error) => error.source },
   ];
 
-  return (
-    <Card padded={false} className="p-4">
-      <TintCardTitle icon={Clock} title="Errores de integraciones y tareas" aside={String(errors.length)} tone="bad" />
-      <DataTable screen="plataforma-errores" rows={errors} columns={errorColumns} getKey={(error) => error.id} entityLabel="errores" searchText={(error) => `${error.target} ${error.error} ${error.tenant ?? ""} ${error.ref}`} searchPlaceholder="Buscar destino o error" metrics={errorMetrics} filters={filters} sorts={errorSorts} />
-    </Card>
-  );
+  return <DataTable screen="plataforma-errores" rows={errors} columns={errorColumns} getKey={(error) => error.id} entityLabel="errores" searchText={(error) => `${error.target} ${error.error} ${error.tenant ?? ""} ${error.ref}`} searchPlaceholder="Buscar destino o error" metrics={errorMetrics} filters={filters} sorts={errorSorts} />;
 }
 
+export function OperationsSection({ overview, children }: { overview: OperationsOverview; children: React.ReactNode }) {
+  return (
+    <TabbedCard
+      tabs={[
+        { href: "/plataforma/integraciones", label: "Tareas y colas" },
+        { href: "/plataforma/integraciones/salud", label: "Salud por agencia" },
+        { href: "/plataforma/integraciones/errores", label: "Errores", count: overview.errors.length },
+      ]}
+    >
+      {children}
+    </TabbedCard>
+  );
+}

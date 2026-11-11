@@ -12,6 +12,7 @@ Route::middleware(['public.site', ScopeSiteTenant::class])->name('site.cart.')->
     Route::put('carts/current/promo', [SiteCartController::class, 'applyPromo'])->middleware('throttle:10,1')->name('promo.apply');
     Route::delete('carts/current/promo', [SiteCartController::class, 'clearPromo'])->name('promo.clear');
     Route::delete('carts/current/items/{line}', [SiteCartController::class, 'remove'])->whereNumber('line')->name('items.destroy');
+    Route::patch('carts/current/items/{line}/removed-lines', [SiteCartController::class, 'removedLines'])->whereNumber('line')->middleware('throttle:60,1')->name('items.removed-lines');
     Route::post('carts/current/items/{line}/hold', [SiteCartController::class, 'hold'])->whereNumber('line')->name('items.hold');
     Route::post('checkout/orders', [SiteCartController::class, 'checkout'])->middleware(['throttle:10,1', 'captcha'])->name('checkout');
     Route::post('checkout/validate', [SiteCartController::class, 'validateCheckout'])->middleware('throttle:60,1')->name('checkout.validate');

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Platform\Http\Controllers;
 
+use App\Domain\Platform\Actions\ManageIntegrationErrors;
 use App\Domain\Platform\Actions\RunPlatformJob;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Support\PlatformAudit;
@@ -38,9 +39,29 @@ final class PlatformOperationsController
         return response()->json(['data' => ['paused' => (bool) $data['paused']]]);
     }
 
+    public function retryError(string $id, Request $request, ManageIntegrationErrors $errors): JsonResponse
+    {
+        $errors->retry($id, $this->user($request));
+
+        return response()->json(['data' => ['status' => 'reintentando']]);
+    }
+
+    public function resolveError(string $id, Request $request, ManageIntegrationErrors $errors): JsonResponse
+    {
+        $data = $request->validate(['resolution' => ['required', 'string', 'min:5', 'max:500']], ['resolution.*' => 'Describe cómo se resolvió (INT-BR-06).']);
+        $errors->resolve($id, $data['resolution'], $this->user($request));
+
+        return response()->json(['data' => ['status' => 'resuelto']]);
+    }
+
     public function audit(Request $request, PlatformAudit $audit): JsonResponse
     {
         return response()->json($audit->page($request));
+    }
+
+    public function auditEvent(string $id, PlatformAudit $audit): JsonResponse
+    {
+        return response()->json(['data' => $audit->find($id) ?? throw ApiException::notFound('El evento no existe.')]);
     }
 
     private function user(Request $request): PlatformUser

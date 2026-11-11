@@ -305,9 +305,17 @@ final class ProductBookingRegistry
 
     public function override(string $code, ?int $version, string $rule, array $data, User $actor): int
     {
-        $definition = DB::table('sys_booking_rules')->where('code', $rule)->first(['code', 'params', 'product_override']) ?? throw ApiException::notFound('La regla no existe.');
+        $definition = DB::table('sys_booking_rules')->where('code', $rule)->first(['code', 'params', 'product_override', 'enabled']) ?? throw ApiException::notFound('La regla no existe.');
         if (! $definition->product_override) {
             throw ApiException::unprocessable('CAT-RL-01', 'Esta regla solo se configura para toda la agencia, no por producto (CAT-RL-01).');
+        }
+
+        if (array_key_exists('disabled', $data) && $data['disabled'] !== null) {
+            $data['enabled'] = ! (bool) $data['disabled'];
+        }
+
+        if (! $definition->enabled && ($data['enabled'] ?? null) === true) {
+            throw ApiException::unprocessable('CR-02', 'La regla está apagada en la agencia: un producto solo puede desactivarla o ajustar sus parámetros, no activarla (CR-02).');
         }
 
         return $this->sections->edit($code, $version, $actor, function (object $product) use ($definition, $data, $actor): void {

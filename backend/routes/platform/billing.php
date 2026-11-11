@@ -13,6 +13,8 @@ Route::post('invoices/{id}/manual-payment', [PlatformBillingController::class, '
 Route::post('invoices/{id}/void', [PlatformBillingController::class, 'void'])->name('invoices.void');
 Route::post('invoices/{id}/dunning/extend', [PlatformBillingController::class, 'extend'])->name('invoices.dunning.extend');
 Route::post('invoices/{id}/dunning/suspend', [PlatformBillingController::class, 'suspend'])->name('invoices.dunning.suspend');
+Route::post('invoices/{id}/payment-link', [PlatformBillingController::class, 'paymentLink'])->middleware('throttle:10,1')->name('invoices.payment-link');
+Route::post('invoices/{id}/send', [PlatformBillingController::class, 'send'])->middleware('throttle:10,1')->name('invoices.send');
 Route::get('dunning', [PlatformBillingController::class, 'dunning'])->name('dunning.index');
 Route::patch('dunning-policy', [PlatformBillingController::class, 'dunningPolicy'])->name('dunning.policy');
 Route::get('trials', [PlatformBillingController::class, 'trials'])->name('trials.index');

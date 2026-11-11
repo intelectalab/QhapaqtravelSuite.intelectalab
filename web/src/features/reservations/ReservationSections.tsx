@@ -1,6 +1,7 @@
 import { BedDouble, CalendarClock, ClipboardCheck, ClipboardList, Coins, FileText, History, MessageSquareText, Plane, Receipt, Route, ScrollText, Send, Sparkles, Star, TicketCheck, TriangleAlert, Users, Wallet } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { AuditWhen, AuditWho } from "@/components/table/AuditCells";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
@@ -13,6 +14,7 @@ import { cn } from "@/lib/cn";
 import type { ReceivablesOverview } from "@/lib/finance";
 import { amountAttr, formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { FeedbackIncidentAction } from "@/features/operations/FeedbackIncidentAction";
+import { FeedbackReplyActions } from "./FeedbackReplyActions";
 import { CHANGE_TYPE, DOC_TYPE, PAX_TYPE, SERVICE_KIND, type ReservationDetail, type ReservationFeedback, type ReservationHistoryEvent, type ReservationPaxMessage, type ReservationWebSnapshot } from "@/lib/reservations";
 import { statusLabel } from "@/lib/tone";
 import { PassengerAddAction, PassengerRowActions } from "./ReservationActions";
@@ -283,8 +285,20 @@ export function ServicesSection({ reservation }: { reservation: ReservationDetai
                           <b className="block truncate text-[13.5px] font-semibold">{service.name}</b>
                           <span className="text-xs text-fg-3">
                             {service.time ? `${service.time} · ` : ""}
-                            {service.provider ? service.provider.name : kind.label}
+                            {service.provider ? (
+                              service.provider.ref ? (
+                                <Link href={`/catalogo/proveedores/${service.provider.ref}`} className="hover:text-[var(--tint)] hover:underline">
+                                  {service.provider.name}
+                                </Link>
+                              ) : (
+                                service.provider.name
+                              )
+                            ) : (
+                              kind.label
+                            )}
+                            {service.departure ? ` · salida ${service.departure}` : ""}
                             {service.confirmation ? ` · ${service.confirmation}` : ""}
+                            {service.alt_of ? ` · alternativa de ${service.alt_of}` : ""}
                           </span>
                           {service.status === "rechazado" && service.reject_reason && <span className="block text-xs text-bad">{service.reject_reason}</span>}
                         </span>
@@ -670,7 +684,7 @@ export function WebSection({ snapshot, currency }: { snapshot: ReservationWebSna
   );
 }
 
-export function FeedbackSection({ feedback, messages, canEscalate = false }: { feedback: ReservationFeedback[]; messages: ReservationPaxMessage[]; canEscalate?: boolean }) {
+export function FeedbackSection({ feedback, messages, canEscalate = false, canReply = false }: { feedback: ReservationFeedback[]; messages: ReservationPaxMessage[]; canEscalate?: boolean; canReply?: boolean }) {
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
       <Card>
@@ -710,22 +724,25 @@ export function FeedbackSection({ feedback, messages, canEscalate = false }: { f
                     <b className="font-semibold">Respuesta{item.replied_by ? ` de ${item.replied_by}` : ""}:</b> {item.reply}
                   </p>
                 )}
-                {canEscalate && !item.incident_code && (
-                  <div className="mt-2 flex justify-end">
-                    <FeedbackIncidentAction feedback={item} />
+                {((canEscalate && !item.incident_code) || canReply) && (
+                  <div className="mt-2 flex flex-wrap justify-end gap-1.5">
+                    {canReply && <FeedbackReplyActions feedback={item} />}
+                    {canEscalate && !item.incident_code && <FeedbackIncidentAction feedback={item} />}
                   </div>
                 )}
               </li>
             ))}
           </ul>
         )}
-        <p className="mt-3 text-[12.5px] text-fg-3">
-          Para responder o marcar como leído, usa la bandeja de{" "}
-          <Link href="/canales/portal-pasajero" className="font-semibold text-[var(--tint)] hover:underline">
-            mensajes del portal del pasajero
-          </Link>
-          .
-        </p>
+        {!canReply && (
+          <p className="mt-3 text-[12.5px] text-fg-3">
+            Las respuestas las envía el equipo que atiende la{" "}
+            <Link href="/canales/portal-pasajero" className="font-semibold text-[var(--tint)] hover:underline">
+              bandeja del portal del pasajero
+            </Link>
+            .
+          </p>
+        )}
       </Card>
       <Card>
         <TintCardTitle icon={Send} title="Mensajes enviados al pasajero" aside={messages.length ? String(messages.length) : undefined} />
@@ -764,8 +781,12 @@ export function HistorySection({ events, labels }: { events: ReservationHistoryE
       <MiniTable head={["Fecha", "Usuario", "Registro", "Acción", "Antes", "Después"]}>
         {events.map((event) => (
           <tr key={event.id}>
-            <td className="whitespace-nowrap text-xs">{formatDateTime(event.occurred_at)}</td>
-            <td>{event.actor ?? "—"}</td>
+            <td className="whitespace-nowrap text-xs">
+              <AuditWhen at={event.occurred_at} correlation={event.correlation} />
+            </td>
+            <td>
+              <AuditWho actor={event.actor} ip={event.ip} />
+            </td>
             <td className="text-xs">
               {ENTITY_LABEL[event.entity] ?? event.entity}
               <span className="block font-mono text-fg-3">{event.entity_id}</span>

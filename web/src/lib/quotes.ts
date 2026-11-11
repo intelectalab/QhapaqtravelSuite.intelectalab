@@ -7,6 +7,7 @@ export interface QuoteRow extends QuoteContractFields {
   status: QuoteQuote["status"];
   client: { code: string; name: string };
   owner: { name: string; color: string | null };
+  opportunity: { code: string; title: string; stage?: string | null } | null;
   version: number;
   current_version_id: string | null;
   reservation_id: string | null;
@@ -103,6 +104,8 @@ export interface QuoteAuditEvent {
   after: string | null;
   actor: string | null;
   at: string;
+  ip?: string | null;
+  correlation?: string | null;
 }
 
 export interface QuoteDetail extends QuoteRow {
@@ -113,7 +116,6 @@ export interface QuoteDetail extends QuoteRow {
   activities: QuoteActivityItem[];
   itinerary: { product: { code: string; name: string }; start: string; days: { day: number; title: string }[] }[];
   approval_rules: { discount_limit: string; margin_floor: string; max_discount: string };
-  opportunity: { code: string; title: string } | null;
   reservation: { code: string } | null;
   approved_at: string | null;
   approved_by_name: string | null;
@@ -217,8 +219,13 @@ export interface QuoteConversion {
   currency: string;
   total: string;
   pax: number;
+  version: number;
+  checks: { key: string; title: string; ok: boolean; detail: string }[];
+  ready: boolean;
+  blocked: boolean;
+  can_convert: boolean;
   receivables: { concept: string; amount: string; due: string }[];
-  items: { line: number; product: string; date: string; pax: number; ok: boolean; note: string }[];
+  items: { line: number; product: string; date: string; pax: number; ok: boolean; status: "disponible" | "proveedor" | "bloqueado"; departure?: string; note: string; alternatives: { ref: string; date: string; free: number }[] }[];
 }
 
 type ComparedItem = QuoteItem;

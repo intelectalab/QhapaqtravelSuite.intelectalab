@@ -97,7 +97,7 @@ function ThemeSwitch() {
 export function SiteHeader({ name, initials, logo }: { name: string; initials: string; logo: string | null }) {
   const { href, t, design } = useSite();
   const nav = design?.nav;
-  const links = (nav?.links ?? DEFAULT_LINKS).filter((link) => link.visible).map((link) => ({ path: LINK_PATHS[link.id], key: link.id }));
+  const links = (nav?.links ?? DEFAULT_LINKS).filter((link) => link.visible && link.id in LINK_PATHS).map((link) => ({ path: LINK_PATHS[link.id], key: link.id }));
   const pathname = usePathname();
   const search = useSearchParams();
   const [open, setOpen] = useState(false);

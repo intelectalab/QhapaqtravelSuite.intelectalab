@@ -66,6 +66,7 @@ export interface ReservationService {
   reject_reason: string | null;
   replaced: boolean;
   alt_of?: string | null;
+  departure?: string | null;
   provider: { ref?: string | null; name: string; active: boolean } | null;
   alternatives?: { id: string; name: string; city: string | null }[];
   price?: string;
@@ -104,6 +105,8 @@ export interface ReservationDetail extends Omit<ReservationRow, "passengers" | "
   reject_reasons: string[];
   changes: ReservationChange[];
   cancel_request: { id: string; reason: string; requested_at: string } | null;
+  cancel_rejected?: { reason: string; decided_at: string | null; decision_note: string | null; decided_by: string | null } | null;
+  rescheduled_at?: string | null;
   cancellation: { penalty_amount?: string; refund_amount?: string; owed_amount?: string; cancelled_at: string } | null;
   services: ReservationService[];
   receivables?: { code: string; kind: string; concept: string; amount: string; paid_amount: string; currency: string; due_date: string; status: string }[];
@@ -236,6 +239,8 @@ export interface ReservationHistoryEvent {
   after: string | null;
   actor: string | null;
   occurred_at: string;
+  ip?: string | null;
+  correlation?: string | null;
 }
 
 export const DOC_TYPE: Record<string, string> = { "01": "Factura", "03": "Boleta", "07": "Nota de crédito", "08": "Nota de débito" };
@@ -350,7 +355,7 @@ export interface DirectFormOptions {
   clients: { code: string; name: string }[];
   advisors: { id: string; name: string }[];
   channels: string[];
-  products: { code: string; name: string; model: string; duration: string; advance_min_days: number; max_pax: number | null }[];
+  products: { code: string; name: string; model: string; duration: string; advance_min_days: number; max_pax: number | null; min_pax?: number; min_age?: number }[];
   owner_id: string;
   today: string;
 }
@@ -375,7 +380,7 @@ export interface DirectDeparture {
 }
 
 export interface DirectPlan {
-  product: { code: string; name: string; model: string; advance_min_days: number; max_pax: number | null };
+  product: { code: string; name: string; model: string; advance_min_days: number; max_pax: number | null; min_pax?: number | null; min_age?: number | null; max_age?: number | null };
   departures: DirectDeparture[];
   pax: { adt: number; chd: number; inf: number };
   priced: boolean;

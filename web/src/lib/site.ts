@@ -271,17 +271,42 @@ export interface ProductDetail {
   faqs: { q: string; a: string }[];
   departures: Departure[];
   calendar: CalendarMonth[];
+  booking: BookingConfig;
   reviews: ReviewBlock;
   related: ProductCard[];
 }
 
+export type QuoteLineKind = "base" | "addon" | "lodging" | "surcharge" | "option";
+
 export interface QuoteLine {
   key: string;
+  kind: QuoteLineKind;
   label: string;
   qty: number;
   unit: string;
   amount: string;
+  removable: boolean;
+  removed: boolean;
+  meta?: Record<string, unknown>;
 }
+
+export type PaymentMode = "total" | "adelanto" | "pagar_despues";
+
+export interface LodgingChoice {
+  leg_id: string;
+  hotel_id: string;
+  rooms: { type: string; qty: number }[];
+}
+
+export interface BookingExtras {
+  addons: { id: string; qty?: number }[];
+  lodging: LodgingChoice[];
+  no_lodging: boolean;
+  options: { group: string; label: string }[];
+  removed: string[];
+}
+
+export const NO_EXTRAS: BookingExtras = { addons: [], lodging: [], no_lodging: false, options: [], removed: [] };
 
 export interface Quote {
   date: string;
@@ -292,9 +317,56 @@ export interface Quote {
   discount: { label: string; amount: string; code: string | null } | null;
   total: string;
   list_total: string | null;
+  extras_total: string;
+  extras: BookingExtras;
+  modes: PaymentMode[];
+  payment_mode: PaymentMode;
+  deposit_pct: number;
+  deposit: string;
+  balance: string;
+  balance_due: string | null;
+  hold_hours: number | null;
+  rooms: number;
+  nights: number;
+  warnings: string[];
+  can_remove: boolean;
   spots: number | null;
   departure: Departure | null;
   pax: { adults: number; children: number; infants: number };
+  quote_token?: string;
+}
+
+export interface BookingAddon {
+  id: string;
+  name: string;
+  category: string | null;
+  price: string;
+  currency: string;
+  per: "pax" | "reserva";
+  applies_to: string[];
+  optional: boolean;
+}
+
+export interface BookingHotel {
+  id: string;
+  name: string;
+  category: string | null;
+  rooms: { type: string; capacity: number; price: string }[];
+}
+
+export interface BookingConfig {
+  options: { group: string; options: { label: string; delta: string }[] }[];
+  addons: BookingAddon[];
+  lodging: { optional: boolean; currency: string; note: string | null; nights: number; legs: { id: string; city: string; nights: number; hotels: BookingHotel[] }[] } | null;
+  pickup: { required: boolean; ask_flight: boolean; points: { label: string; kind: string; requires_address: boolean }[] } | null;
+  payment: { modes: PaymentMode[]; deposit_pct: number; balance_due_days: number; hold_hours: number | null };
+  can_remove: boolean;
+}
+
+export interface ReviewWidgetFeed {
+  settings: { sources: string[]; min_rating: number; count: number; layout: "lista" | "cuadricula" };
+  sources: { provider: string; name: string; rating: number | null; count: number }[];
+  items: { id: string; author: string; date: string; rating: number; title: string | null; body: string | null; lang: string | null; url: string | null; product: string | null; source: { provider: string; name: string } }[];
 }
 
 export interface FormOptions {
@@ -372,6 +444,7 @@ export interface CartLine {
   product: { slug: string; name: string };
   date: string;
   pax: { adults: number; children: number; infants: number };
+  source: "sitio" | "widget";
   quote: Omit<Quote, "pax"> | null;
   error: string | null;
   cancellation: string | null;
@@ -380,6 +453,7 @@ export interface CartLine {
 
 export interface SiteCart {
   code: string | null;
+  lock_version?: number;
   promo: string | null;
   items: CartLine[];
   totals: { currency: string; subtotal: string; discount: string; total: string }[];

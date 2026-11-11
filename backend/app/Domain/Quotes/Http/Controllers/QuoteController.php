@@ -7,6 +7,7 @@ namespace App\Domain\Quotes\Http\Controllers;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Quotes\Actions\QuoteAccessTokens;
+use App\Domain\Quotes\Actions\QuoteAlternativeVersion;
 use App\Domain\Quotes\Actions\QuoteBuilder;
 use App\Domain\Quotes\Actions\QuoteLifecycle;
 use App\Domain\Quotes\Http\Requests\QuoteSaveRequest;
@@ -120,8 +121,18 @@ final class QuoteController
         return Portfolio::missing($this->user($request), 'quote_quotes', $code, 'La cotización no existe.', 'Esta cotización');
     }
 
-    public function newVersion(Request $request, string $code, QuoteLifecycle $lifecycle): JsonResponse
+    public function newVersion(Request $request, string $code, QuoteLifecycle $lifecycle, QuoteAlternativeVersion $alternative): JsonResponse
     {
+        $data = $request->validate([
+            'dates' => ['nullable', 'array', 'max:60'],
+            'dates.*.line' => ['required', 'integer', 'min:1', 'distinct'],
+            'dates.*.date' => ['required', 'date'],
+        ], ['dates.*.line.*' => 'Elige la línea que cambia de fecha.', 'dates.*.date.*' => 'Elige una fecha alternativa válida.']);
+
+        if (! empty($data['dates'])) {
+            return response()->json(['data' => ['code' => $code, 'version' => $alternative->handle($code, $data['dates'], $this->user($request))]]);
+        }
+
         $lifecycle->newVersion($code, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
@@ -171,8 +182,14 @@ final class QuoteController
         $data = $request->validate([
             'channel' => ['required', 'in:Llamada,Reunión,Email,WhatsApp'],
             'note' => ['required', 'string', 'min:3', 'max:1000'],
+            'new_version' => ['nullable', 'boolean'],
         ], ['note.*' => 'Cuenta qué pidió el cliente.']);
-        $lifecycle->negotiate($code, $data['channel'], $data['note'], $this->user($request));
+
+        if (! empty($data['new_version']) && ! $this->user($request)->can('quotes.create')) {
+            throw ApiException::forbidden('FORBIDDEN', 'Solo quien arma cotizaciones crea una nueva versión.', ['quotes.create']);
+        }
+
+        $lifecycle->negotiate($code, $data['channel'], $data['note'], $this->user($request), (bool) ($data['new_version'] ?? false));
 
         return response()->json(['data' => ['code' => $code]]);
     }

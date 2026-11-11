@@ -87,5 +87,31 @@ class KipuControlCatalog extends KipuControlFrame {
   }
 }
 
+const REVIEW_ATTRIBUTES = ["sources", "min-rating", "count", "layout"];
+
+class KipuControlReviews extends KipuControlFrame {
+  static get observedAttributes() {
+    return [...KipuControlFrame.observedAttributes, ...REVIEW_ATTRIBUTES];
+  }
+
+  path() {
+    return "resenas";
+  }
+
+  source() {
+    const url = new URL(super.source());
+    for (const name of REVIEW_ATTRIBUTES) {
+      const value = this.getAttribute(name);
+      if (value !== null && value !== "") url.searchParams.set(name, value);
+    }
+    return url.toString();
+  }
+
+  minHeight() {
+    return 260;
+  }
+}
+
 if (!customElements.get("kipucontrol-booking")) customElements.define("kipucontrol-booking", KipuControlBooking);
 if (!customElements.get("kipucontrol-catalog")) customElements.define("kipucontrol-catalog", KipuControlCatalog);
+if (!customElements.get("kipucontrol-reviews")) customElements.define("kipucontrol-reviews", KipuControlReviews);

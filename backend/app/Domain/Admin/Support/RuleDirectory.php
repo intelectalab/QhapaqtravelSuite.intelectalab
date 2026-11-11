@@ -18,9 +18,9 @@ final class RuleDirectory
 
     public function __construct(private readonly SettingsDirectory $settings, private readonly AuditDirectory $audit) {}
 
-    public function list(User $viewer): array
+    public function list(User $viewer, ?string $plan = null): array
     {
-        $rank = $this->settings->planRank();
+        $rank = $plan !== null && isset(self::PLAN_RANK[$plan]) ? self::PLAN_RANK[$plan] : $this->settings->planRank();
         $defaults = DB::table('sys_booking_rule_catalog')->get(['code', 'default_enabled', 'default_params'])->keyBy('code');
         $rules = DB::table('sys_booking_rules as r')
             ->leftJoin('iam_users as u', 'u.id', '=', 'r.updated_by')
@@ -43,6 +43,7 @@ final class RuleDirectory
                     'depends_on' => $row->depends_on,
                     'min_plan' => $row->min_plan,
                     'locked' => $rank < (self::PLAN_RANK[$row->min_plan] ?? 1),
+                    'effective' => (bool) $row->enabled && $rank >= (self::PLAN_RANK[$row->min_plan] ?? 1),
                     'modified' => $default !== null && ((bool) $default->default_enabled !== (bool) $row->enabled || (array) json_decode((string) $default->default_params, true) != $params),
                     'updated_at' => $row->updated_at,
                     'updated_by' => $row->user_name,

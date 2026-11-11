@@ -11,7 +11,8 @@ import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatDateTime, formatMoney } from "@/lib/format";
-import { IDLE, SITE_COUNTRIES, SITE_DOC_TYPES, type CheckoutTerms } from "@/lib/site";
+import { IDLE, SITE_COUNTRIES, SITE_DOC_TYPES, type CheckoutTerms, type SiteCart } from "@/lib/site";
+import { CartItemLines } from "./Cart";
 import { CheckBox, FieldError, FormAlert } from "./FormBits";
 import { PaymentFields, type PaymentValue } from "./PaymentFields";
 import { useSite } from "./SiteContext";
@@ -34,7 +35,7 @@ function Panel({ title, hint, children }: { title: string; hint?: string; childr
   );
 }
 
-export function CheckoutWizard({ terms, walletPhone }: { terms: CheckoutTerms; walletPhone: string | null }) {
+export function CheckoutWizard({ terms, walletPhone, cart }: { terms: CheckoutTerms; walletPhone: string | null; cart?: SiteCart }) {
   const { agencia, name: agencyName } = useSite();
   const travelersNeeded = terms.group.adt + terms.group.chd + terms.group.inf;
   const travelerTypes = useMemo(() => [...Array(terms.group.adt).fill("adt"), ...Array(terms.group.chd).fill("chd"), ...Array(terms.group.inf).fill("inf")] as string[], [terms.group]);
@@ -253,6 +254,18 @@ export function CheckoutWizard({ terms, walletPhone }: { terms: CheckoutTerms; w
               </ul>
             )}
           </Panel>
+          {cart && cart.items.some((item) => item.quote?.lines.some((line) => line.kind !== "base")) && (
+            <Panel title="Lo que incluye cada servicio" hint="Puedes quitar adicionales o alojamiento antes de pagar; el total se recalcula.">
+              <ul className="grid gap-3">
+                {cart.items.map((item) => (
+                  <li key={item.line}>
+                    <b className="text-[13.5px] text-fg">{item.product.name}</b>
+                    <CartItemLines item={item} lockVersion={cart.lock_version} />
+                  </li>
+                ))}
+              </ul>
+            </Panel>
+          )}
           <Panel title="Condiciones de cada servicio">
             <ul className="grid gap-2">
               {terms.items.map((item) => (

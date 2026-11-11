@@ -118,6 +118,7 @@ return [
         'supplier.vouchers.redeem',
         'supplier.incidents.store',
         'ops.rooming.prefill',
+        'platform.plan-rules.reset-demo',
         'public.site.widget.handoffs.store',
         'public.site.widget.carts.store',
         'public.site.reviews.by-token.store',

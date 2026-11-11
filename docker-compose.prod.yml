@@ -1,0 +1,137 @@
+name: kipucontrol
+
+x-php: &php
+  build:
+    context: ./docker/php
+    args: { UID: "${APP_UID}", GID: "${APP_GID}" }
+  image: kipucontrol/php:8.4-prod
+  working_dir: /var/www/backend
+  volumes:
+    - ./backend:/var/www/backend
+    - ./docs:/var/www/docs:ro
+    - ./docker/php/php.prod.ini:/usr/local/etc/php/conf.d/zz-kipucontrol-prod.ini:ro
+  env_file: [ ./backend/.env ]
+  restart: unless-stopped
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis: { condition: service_healthy }
+
+services:
+  api:
+    <<: *php
+    healthcheck:
+      test: ["CMD-SHELL", "SCRIPT_NAME=/status SCRIPT_FILENAME=/status REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 >/dev/null || exit 1"]
+      interval: 10s
+      retries: 5
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports: [ "127.0.0.1:${API_PORT}:80" ]
+    volumes:
+      - ./backend:/var/www/backend:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on: [ api ]
+
+  queue:
+    <<: *php
+    user: "${APP_UID}:${APP_GID}"
+    command: php artisan horizon
+
+  scheduler:
+    <<: *php
+    user: "${APP_UID}:${APP_GID}"
+    command: php artisan schedule:work
+
+  reverb:
+    <<: *php
+    user: "${APP_UID}:${APP_GID}"
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    ports: [ "127.0.0.1:${REVERB_HOST_PORT}:8080" ]
+
+  web:
+    image: node:22-alpine
+    restart: unless-stopped
+    user: "${APP_UID}:${APP_GID}"
+    working_dir: /app
+    command: npm run start -- -H 0.0.0.0 -p 3000
+    volumes: [ "./web:/app" ]
+    env_file: [ ./web/.env.production.local ]
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+    ports: [ "127.0.0.1:${WEB_PORT}:3000" ]
+    depends_on: [ nginx ]
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kipucontrol
+      POSTGRES_USER: kipucontrol_owner
+      POSTGRES_PASSWORD: "${DB_OWNER_PASSWORD}"
+      APP_DB_PASSWORD: "${DB_APP_PASSWORD}"
+      PLATFORM_DB_PASSWORD: "${DB_PLATFORM_PASSWORD}"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-prod:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kipucontrol_owner -d kipucontrol"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:8
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction"]
+    volumes: [ "redis_data:/data" ]
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping"]
+      interval: 5s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+
+  storage:
+    image: rustfs/rustfs:latest
+    restart: unless-stopped
+    command: /data
+    environment:
+      RUSTFS_ACCESS_KEY: "${STORAGE_ACCESS_KEY}"
+      RUSTFS_SECRET_KEY: "${STORAGE_SECRET_KEY}"
+      RUSTFS_CONSOLE_ENABLE: "false"
+    ports: [ "127.0.0.1:${STORAGE_PORT}:9000" ]
+    volumes: [ "storage_data:/data" ]
+
+  storage-init:
+    image: amazon/aws-cli:latest
+    profiles: [ "init" ]
+    depends_on: [ storage ]
+    environment:
+      AWS_ACCESS_KEY_ID: "${STORAGE_ACCESS_KEY}"
+      AWS_SECRET_ACCESS_KEY: "${STORAGE_SECRET_KEY}"
+      AWS_DEFAULT_REGION: us-east-1
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        sleep 4;
+        for b in kipucontrol-private kipucontrol-public; do aws --endpoint-url http://storage:9000 s3 mb "s3://$$b" || true; done;
+        aws --endpoint-url http://storage:9000 s3api put-bucket-policy --bucket kipucontrol-public --policy '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"arn:aws:s3:::kipucontrol-public/*"}]}';
+        aws --endpoint-url http://storage:9000 s3 ls
+
+  clamav:
+    image: clamav/clamav:1.4
+    restart: unless-stopped
+    volumes: [ "clamav_data:/var/lib/clamav" ]
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.31.230.0/24
+
+volumes:
+  pg_data:
+  redis_data:
+  storage_data:
+  clamav_data:

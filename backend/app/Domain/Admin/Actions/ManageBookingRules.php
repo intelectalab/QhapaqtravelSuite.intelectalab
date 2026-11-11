@@ -71,8 +71,9 @@ final class ManageBookingRules
 
     private function reschedule(string $code): void
     {
+        RuleResolver::invalidate((string) DB::table('sys_booking_rules')->where('code', $code)->value('tenant_id'));
+
         if (in_array($code, self::MESSAGE_RULES, true)) {
-            RuleResolver::invalidate((string) DB::table('sys_booking_rules')->where('code', $code)->value('tenant_id'));
             dispatch((new SchedulePaxMessages)->captureTenant())->afterCommit();
         }
     }

@@ -5,8 +5,13 @@ declare(strict_types=1);
 namespace App\Domain\Platform\Actions;
 
 use App\Domain\Platform\Models\PlatformUser;
+use App\Domain\Platform\Support\DowngradeValidator;
+use App\Domain\Platform\Support\Entitlements;
 use App\Domain\Platform\Support\PlatformInvoicer;
+use App\Domain\Platform\Support\TenantNotice;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
+use Brick\Math\RoundingMode;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +26,8 @@ final class ManageTrial
     public function __construct(
         private readonly PlatformSession $session,
         private readonly PlatformInvoicer $invoicer,
+        private readonly DowngradeValidator $downgrades,
+        private readonly TenantNotice $notice,
     ) {}
 
     public function extend(string $tenantCode, int $days, PlatformUser $actor): void
@@ -47,14 +54,17 @@ final class ManageTrial
         });
     }
 
-    public function convert(string $tenantCode, ?string $couponCode, ?PlatformUser $actor = null): array
+    public function convert(string $tenantCode, ?string $couponCode, ?PlatformUser $actor = null, ?string $planCode = null, ?string $cycle = null): array
     {
-        return $this->db()->transaction(function () use ($tenantCode, $couponCode, $actor): array {
+        $invoice = $this->db()->transaction(function () use ($tenantCode, $couponCode, $actor, $planCode, $cycle): array {
             $subscription = $this->trial($tenantCode);
-            $plan = $this->db()->table('plans')->where('id', $subscription->plan_id)->first();
+            $plan = $this->target($subscription, $planCode);
+            $cycle ??= (string) $subscription->cycle;
+            $subscription->plan_id = $plan->id;
+            $subscription->cycle = $cycle;
             $coupon = $couponCode ? $this->coupon($couponCode, $subscription) : null;
             $today = Carbon::today('America/Lima');
-            $end = ($subscription->cycle === 'annual' ? $today->copy()->addYearNoOverflow() : $today->copy()->addMonthNoOverflow())->subDay();
+            $end = ($cycle === 'annual' ? $today->copy()->addYearNoOverflow() : $today->copy()->addMonthNoOverflow())->subDay();
             $redemption = null;
 
             if ($coupon) {
@@ -65,6 +75,8 @@ final class ManageTrial
 
             $this->db()->table('subscriptions')->where('id', $subscription->id)->update([
                 'status' => 'active',
+                'plan_id' => $plan->id,
+                'cycle' => $cycle,
                 'current_period_start' => $today->toDateString(),
                 'current_period_end' => $end->toDateString(),
                 'billing_anchor_day' => min(28, $today->day),
@@ -72,13 +84,34 @@ final class ManageTrial
                 'updated_at' => now(),
                 'lock_version' => DB::raw('lock_version + 1'),
             ]);
-            $this->db()->table('tenants')->where('id', $subscription->tenant_id)->update(['status' => 'activo', 'mrr' => $plan->price_month, 'updated_by' => $actor?->getKey(), 'updated_at' => now()]);
+            $mrr = $cycle === 'annual' ? Decimal::money($plan->price_year)->dividedBy(12, 2, RoundingMode::HALF_UP) : Decimal::money($plan->price_month);
+            $this->db()->table('tenants')->where('id', $subscription->tenant_id)->update(['status' => 'activo', 'plan_id' => $plan->id, 'mrr' => (string) $mrr, 'updated_by' => $actor?->getKey(), 'updated_at' => now()]);
 
-            $invoice = $this->invoicer->issue($subscription, $plan, (string) $subscription->cycle, $today, $end, $coupon);
-            $this->session->log('Tenant', $tenantCode, 'convertir_trial', 'prueba', trim("activo · {$plan->name}".($coupon ? " · cupón {$coupon->code}" : '')." · {$invoice['number']}"), $actor);
+            $invoice = $this->invoicer->issue($subscription, $plan, $cycle, $today, $end, $coupon);
+            $this->session->log('Tenant', $tenantCode, 'convertir_trial', 'prueba', trim("activo · {$plan->name} · ".($cycle === 'annual' ? 'anual' : 'mensual').($coupon ? " · cupón {$coupon->code}" : '')." · {$invoice['number']}"), $actor);
 
-            return $invoice;
+            return [...$invoice, 'tenant_id' => (string) $subscription->tenant_id, 'plan' => $plan->name];
         });
+
+        Entitlements::flush();
+        $this->notice->send($invoice['tenant_id'], "Bienvenido al plan {$invoice['plan']}", "Tu periodo de prueba terminó y tu agencia ya está activa en el plan {$invoice['plan']}. Emitimos la factura {$invoice['number']} por S/ {$invoice['total']} (incluye IGV), con vencimiento a 7 días.\n\nRegistra tu tarjeta o paga la factura desde Administración, Suscripción y uso.");
+
+        return $invoice;
+    }
+
+    private function target(object $subscription, ?string $planCode): object
+    {
+        if ($planCode === null) {
+            return $this->db()->table('plans')->where('id', $subscription->plan_id)->first();
+        }
+
+        $plan = $this->db()->table('plans')->where('code', $planCode)->where('status', 'active')->first() ?? throw ApiException::unprocessable('PLAN', 'Elige un plan de la lista.', ['field' => 'plan']);
+
+        if ($this->downgrades->isDowngrade((string) $subscription->plan_id, (string) $plan->id)) {
+            $this->downgrades->assert((string) $subscription->tenant_id, $plan);
+        }
+
+        return $plan;
     }
 
     private function coupon(string $code, object $subscription): object

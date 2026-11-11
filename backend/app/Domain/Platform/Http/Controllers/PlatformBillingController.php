@@ -8,6 +8,7 @@ use App\Domain\Platform\Actions\CollectInvoice;
 use App\Domain\Platform\Actions\ManageCoupon;
 use App\Domain\Platform\Actions\ManageEntitlements;
 use App\Domain\Platform\Actions\ManageTrial;
+use App\Domain\Platform\Actions\SendInvoiceNotice;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Support\BillingDirectory;
 use App\Domain\Platform\Support\BillingMetrics;
@@ -91,6 +92,16 @@ final class PlatformBillingController
         return response()->json(['data' => ['suspended' => true]]);
     }
 
+    public function paymentLink(string $id, Request $request, SendInvoiceNotice $notice): JsonResponse
+    {
+        return response()->json(['data' => ['sent_to' => $notice->paymentLink($id, $this->user($request))]]);
+    }
+
+    public function send(string $id, Request $request, SendInvoiceNotice $notice): JsonResponse
+    {
+        return response()->json(['data' => ['sent_to' => $notice->resend($id, $this->user($request))]]);
+    }
+
     public function dunning(BillingDirectory $directory): JsonResponse
     {
         return response()->json(['data' => $directory->dunning()]);
@@ -129,9 +140,14 @@ final class PlatformBillingController
 
     public function convertTrial(string $tenant, Request $request, ManageTrial $trials): JsonResponse
     {
-        $data = $request->validate(['coupon' => ['nullable', 'string', 'max:20']]);
+        $data = $request->validate([
+            'coupon' => ['nullable', 'string', 'max:20'],
+            'plan' => ['nullable', 'string', 'max:20'],
+            'cycle' => ['nullable', 'in:monthly,annual'],
+        ], ['cycle.in' => 'Elige el ciclo de pago: mensual o anual.']);
+        $invoice = $trials->convert($tenant, $data['coupon'] ?? null, $this->user($request), $data['plan'] ?? null, $data['cycle'] ?? null);
 
-        return response()->json(['data' => ['invoice' => $trials->convert($tenant, $data['coupon'] ?? null, $this->user($request))['number']]]);
+        return response()->json(['data' => ['invoice' => $invoice['number'], 'total' => $invoice['total'], 'plan' => $invoice['plan']]]);
     }
 
     public function coupons(BillingDirectory $directory): JsonResponse

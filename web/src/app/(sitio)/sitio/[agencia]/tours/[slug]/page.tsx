@@ -5,6 +5,7 @@ import { DepartureCard, ProductCard } from "@/features/site/Cards";
 import { Faq } from "@/features/site/Content";
 import { ContentLocaleNotice } from "@/features/site/ContentLocaleNotice";
 import { Breadcrumbs } from "@/features/site/Hero";
+import { BookingCustomizer } from "@/features/site/BookingCustomizer";
 import { AvailabilityCalendar, BookingPanel, BookingProvider, MobileBookingBar } from "@/features/site/ProductBooking";
 import { ReviewsSection } from "@/features/site/Reviews";
 import { Scenery } from "@/features/site/Scenery";
@@ -158,6 +159,8 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
             <SectionHeading eyebrow={t.availability.eyebrow} title={t.availability.title} description={t.availability.description} className="mb-5" />
             <AvailabilityCalendar />
           </section>
+
+          <BookingCustomizer heading />
 
           {detail.departures.length > 0 && (
             <section>

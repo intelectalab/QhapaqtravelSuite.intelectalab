@@ -72,7 +72,26 @@ export interface TenantDetail extends TenantSummary {
   admins: { name: string; email: string; status: string; last_login_at: string | null }[];
   history: { action: string; before_value: string | null; after_value: string | null; occurred_at: string; actor: string | null }[];
   locations: { code: string; name: string; city: string; status: string; is_main: boolean }[];
+  subscription: TenantSubscription | null;
 }
+
+export type BillingCycle = "monthly" | "annual";
+
+export type PlanEffective = "immediate" | "next_cycle";
+
+export interface TenantSubscription {
+  code: string;
+  status: "trialing" | "active" | "past_due" | "cancel_scheduled" | "suspended" | "canceled";
+  cycle: BillingCycle;
+  period_start: string;
+  period_end: string;
+  trial_ends_at: string | null;
+  credit_balance: string;
+  lock_version: number;
+  scheduled: { kind: "upgrade" | "downgrade" | "cycle"; plan: { code: string; name: string }; cycle: BillingCycle; effective_at: string } | null;
+}
+
+export const CYCLE_LABEL: Record<BillingCycle, string> = { monthly: "Mensual", annual: "Anual" };
 
 export type PlanMetric = "users" | "sedes" | "storage_gb" | "reservations_month" | "whatsapp_month" | "email_month" | "api_calls_month" | "api_rate_per_min" | "webhooks" | "api_keys";
 

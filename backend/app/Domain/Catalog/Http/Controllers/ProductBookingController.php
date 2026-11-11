@@ -265,6 +265,7 @@ final class ProductBookingController
     {
         $data = $request->validate([
             'enabled' => ['nullable', 'boolean'],
+            'disabled' => ['nullable', 'boolean'],
             'params' => ['nullable', 'array'],
         ], [
             'enabled.*' => 'Indica si la regla se aplica a este producto.',

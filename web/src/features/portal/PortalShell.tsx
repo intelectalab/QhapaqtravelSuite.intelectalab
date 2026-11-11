@@ -1,6 +1,6 @@
 "use client";
 
-import { BellRing, CalendarHeart, Home, LifeBuoy, LogOut, MessageCircle, MessageSquareHeart, Moon, ScrollText, Star, Sun, UserRound, UsersRound, Wallet, type LucideIcon } from "lucide-react";
+import { Bell, BellRing, CalendarHeart, FileCheck2, Home, LifeBuoy, LogOut, MessageCircle, MessageSquareHeart, Moon, ScrollText, Star, Sun, UserRound, UsersRound, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -40,7 +40,9 @@ function navFor(session: PortalSession): NavItem[] {
     { href: "/portal/viajes", label: "Mis viajes", icon: CalendarHeart, count: session.counts.trips },
     { href: "/portal/propuestas", label: "Propuestas", icon: ScrollText, count: session.counts.quotes },
     { href: "/portal/pagos", label: "Pagos", icon: Wallet },
+    { href: "/portal/documentos", label: "Documentos", icon: FileCheck2 },
     { href: "/portal/mensajes", label: "Mensajes", icon: MessageCircle },
+    { href: "/portal/notificaciones", label: "Notificaciones", icon: Bell },
     { href: "/portal/datos", label: "Mis datos", icon: UserRound },
   ];
 }

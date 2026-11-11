@@ -18,6 +18,7 @@ AGENTS.md
 .env
 .env.*
 !.env.example
+deploy/servidor.env
 *.pem
 *.key
 
@@ -26,6 +27,8 @@ vendor/
 node_modules/
 .next/
 .next-e2e/
+.next-nueva/
+.next-anterior/
 out/
 dist/
 build/

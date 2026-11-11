@@ -39,20 +39,30 @@ final class ManageSubscription
         private readonly QueuedMail $mail,
     ) {}
 
-    public function preview(string $planCode, string $cycle): array
+    private ?string $auditConnection = null;
+
+    public function fromPlatform(): self
+    {
+        $copy = clone $this;
+        $copy->auditConnection = 'pgsql_platform';
+
+        return $copy;
+    }
+
+    public function preview(string $planCode, string $cycle, ?string $effective = null): array
     {
         $subscription = $this->subscription();
 
-        return $this->plan($subscription, $this->target($planCode), $cycle);
+        return $this->plan($subscription, $this->target($planCode), $cycle, $effective);
     }
 
-    public function change(string $planCode, string $cycle, ?int $version, string $userId): array
+    public function change(string $planCode, string $cycle, ?int $version, string $userId, ?string $effective = null): array
     {
-        $result = $this->db()->transaction(function () use ($planCode, $cycle, $version, $userId): array {
+        $result = $this->db()->transaction(function () use ($planCode, $cycle, $version, $userId, $effective): array {
             $subscription = $this->subscription(true, $version);
             $this->assertStatus($subscription, ['active', 'trialing'], 'Para cambiar de plan, la suscripción debe estar activa. Si tiene una cancelación programada, reanúdala primero.');
             $target = $this->target($planCode);
-            $plan = $this->plan($subscription, $target, $cycle);
+            $plan = $this->plan($subscription, $target, $cycle, $effective);
 
             if ($plan['blockers'] !== []) {
                 throw ApiException::unprocessable('SUB_DOWNGRADE_BLOCKED', "No se puede pasar al plan {$target->name}: ".implode('; ', $plan['blockers']).'.', ['blockers' => $plan['blockers']]);
@@ -81,7 +91,7 @@ final class ManageSubscription
             return [...$plan, 'invoice' => $invoice, 'action' => 'cambio_plan'];
         });
 
-        $this->audit->log(self::ENTITY, $this->code(), $result['action'], $result['from']['name'].' · '.$result['from']['cycle'], "{$result['plan']['name']} · {$result['cycle']}".($result['immediate'] ? '' : " · desde {$result['effective_at']}"));
+        $this->audit->log(self::ENTITY, $this->code(), $result['action'], $result['from']['name'].' · '.$result['from']['cycle'], "{$result['plan']['name']} · {$result['cycle']}".($result['immediate'] ? '' : " · desde {$result['effective_at']}"), connection: $this->auditConnection);
 
         return $this->settle($result);
     }
@@ -102,7 +112,7 @@ final class ManageSubscription
             return $change;
         });
 
-        $this->audit->log(self::ENTITY, $this->code(), 'anular_cambio_programado', $this->planName($change->to_plan_id).' · '.$change->to_cycle);
+        $this->audit->log(self::ENTITY, $this->code(), 'anular_cambio_programado', $this->planName($change->to_plan_id).' · '.$change->to_cycle, connection: $this->auditConnection);
     }
 
     public function cancel(array $survey, ?int $version, string $userId): string
@@ -409,7 +419,7 @@ final class ManageSubscription
             ?? throw ApiException::notFound('La factura no existe.');
     }
 
-    private function plan(object $subscription, object $target, string $cycle): array
+    private function plan(object $subscription, object $target, string $cycle, ?string $effective = null): array
     {
         $current = $this->db()->table('plans')->where('id', $subscription->plan_id)->first();
         $fromRank = (int) $current->rank;
@@ -422,6 +432,18 @@ final class ManageSubscription
 
         $kind = $toRank > $fromRank ? 'upgrade' : ($toRank < $fromRank ? 'downgrade' : 'cycle');
         $immediate = $subscription->status === 'trialing' || $kind === 'upgrade' || ($kind === 'cycle' && $cycle === 'annual');
+
+        if ($effective === 'immediate' && ! $immediate) {
+            throw ApiException::unprocessable('SUB-BR-02', 'Una bajada de plan o el paso de anual a mensual se programa para el cierre del ciclo, sin reembolso. Elige «Al cierre del ciclo».');
+        }
+
+        if ($effective === 'next_cycle' && $subscription->status === 'trialing') {
+            throw ApiException::unprocessable('SUB_TRIALING', 'La agencia está en prueba: el cambio de plan se aplica de inmediato y sin cobro.');
+        }
+
+        if ($effective === 'next_cycle') {
+            $immediate = false;
+        }
         $effective = $immediate ? Carbon::today('America/Lima') : Carbon::parse($subscription->current_period_end)->addDay();
         $blockers = $toRank < $fromRank ? $this->validator->blockers((string) $subscription->tenant_id, (string) $target->id) : [];
 

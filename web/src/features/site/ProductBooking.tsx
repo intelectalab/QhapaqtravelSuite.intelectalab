@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, ChevronLeft, ChevronRight, Loader2, MessageSquareText, ShoppingBag, Tag, TicketPercent } from "lucide-react";
+import { BedDouble, CalendarDays, ChevronLeft, ChevronRight, Loader2, MessageSquareText, ShoppingBag, Tag, TicketPercent, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
@@ -8,7 +8,8 @@ import { addToCart, loadMonth, quoteProduct } from "@/app/(sitio)/sitio/[agencia
 import { cn } from "@/lib/cn";
 import { trackSiteEvent } from "@/lib/site-analytics";
 import { capitalize, formatDate, formatMoney, monthName } from "@/lib/format";
-import { listingQuery, type CalendarDay, type CalendarMonth, type ProductDetail, type Quote } from "@/lib/site";
+import { listingQuery, NO_EXTRAS, type BookingConfig, type BookingExtras, type CalendarDay, type CalendarMonth, type PaymentMode, type ProductDetail, type Quote, type QuoteLine } from "@/lib/site";
+import { QuoteLines } from "./QuoteLines";
 import { Stepper } from "./SearchBar";
 import { useSite } from "./SiteContext";
 
@@ -21,6 +22,11 @@ interface Pax {
 interface BookingValue {
   slug: string;
   product: ProductDetail["product"];
+  config: BookingConfig;
+  extras: BookingExtras;
+  setExtras: (extras: BookingExtras) => void;
+  mode: PaymentMode | null;
+  setMode: (mode: PaymentMode | null) => void;
   date: string | null;
   setDate: (date: string | null) => void;
   pax: Pax;
@@ -32,7 +38,7 @@ interface BookingValue {
 
 const BookingContext = createContext<BookingValue | null>(null);
 
-function useBooking(): BookingValue {
+export function useBooking(): BookingValue {
   const value = useContext(BookingContext);
   if (!value) throw new Error("BookingProvider requerido");
   return value;
@@ -56,6 +62,17 @@ function shiftMonth(month: string, delta: number): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+export function initialExtras(config: BookingConfig | undefined, seats: number): BookingExtras {
+  if (!config) return NO_EXTRAS;
+  const lodging = config.lodging && !config.lodging.optional
+    ? config.lodging.legs.flatMap((leg) => {
+        const pick = leg.hotels.flatMap((hotel) => hotel.rooms.filter((room) => room.capacity >= 2).map((room) => ({ hotel, room }))).sort((a, b) => Number(a.room.price) - Number(b.room.price))[0];
+        return pick ? [{ leg_id: leg.id, hotel_id: pick.hotel.id, rooms: [{ type: pick.room.type, qty: Math.max(1, Math.ceil(seats / pick.room.capacity)) }] }] : [];
+      })
+    : [];
+  return { ...NO_EXTRAS, lodging, no_lodging: Boolean(config.lodging?.optional), options: config.options.map((group) => ({ group: group.group, label: group.options[0]?.label ?? "" })).filter((option) => option.label !== "") };
+}
+
 export function BookingProvider({ detail, initialDate, children }: { detail: ProductDetail; initialDate?: string; children: ReactNode }) {
   const product = detail.product;
   const [months, setMonths] = useState<CalendarMonth[]>(detail.calendar);
@@ -63,8 +80,11 @@ export function BookingProvider({ detail, initialDate, children }: { detail: Pro
   const initial = initialDate && days.get(initialDate)?.sellable ? initialDate : null;
   const [date, setDate] = useState<string | null>(initial);
   const [pax, setPax] = useState<Pax>({ adults: Math.max(1, Math.min(2, product.group.max)), children: 0, infants: 0 });
+  const config = detail.booking;
+  const [extras, setExtras] = useState<BookingExtras>(() => initialExtras(config, Math.max(1, Math.min(2, product.group.max))));
+  const [mode, setMode] = useState<PaymentMode | null>(null);
 
-  return <BookingContext.Provider value={{ slug: product.slug, product, date, setDate, pax, setPax, days, months, setMonths }}>{children}</BookingContext.Provider>;
+  return <BookingContext.Provider value={{ slug: product.slug, product, config, extras, setExtras, mode, setMode, date, setDate, pax, setPax, days, months, setMonths }}>{children}</BookingContext.Provider>;
 }
 
 export function AvailabilityCalendar() {
@@ -197,12 +217,15 @@ export interface BookingSelection {
   children: number;
   infants: number;
   promo?: string;
+  extras?: BookingExtras;
+  payment_mode?: PaymentMode;
+  quote_token?: string;
 }
 
 export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { promoHint?: string | null; onReserve?: (selection: BookingSelection) => Promise<{ ok: boolean; message: string | null }>; reserveLabel?: string; onQuote?: (quote: Quote, selection: BookingSelection) => void }) {
   const { agencia, href, t, dateLocale } = useSite();
   const router = useRouter();
-  const { slug, product, date, pax, setPax, days } = useBooking();
+  const { slug, product, date, pax, setPax, days, extras, setExtras, mode, setMode, config } = useBooking();
   const [quote, setQuote] = useState<Quote | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [promo, setPromo] = useState("");
@@ -216,23 +239,25 @@ export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { 
   useEffect(() => {
     if (!date) return;
     startQuote(async () => {
-      const result = await quoteProduct(agencia, slug, { date, ...pax, promo: appliedPromo || undefined });
+      const result = await quoteProduct(agencia, slug, { date, ...pax, promo: appliedPromo || undefined, extras, payment_mode: mode ?? undefined });
       setQuote(result.quote);
       setError(result.error);
-      if (result.quote) onQuote?.(result.quote, { product: slug, date, ...pax });
+      if (result.quote) onQuote?.(result.quote, { product: slug, date, ...pax, extras });
     });
-  }, [agencia, slug, date, pax, appliedPromo, onQuote]);
+  }, [agencia, slug, date, pax, appliedPromo, extras, mode, onQuote]);
+
+  const toggleLine = (line: QuoteLine) => setExtras({ ...extras, removed: line.removed ? extras.removed.filter((key) => key !== line.key) : [...extras.removed, line.key] });
 
   const reserve = () => {
     if (!date) return;
     startAdding(async () => {
-      const selection = { product: slug, date, ...pax, promo: appliedPromo || undefined };
+      const selection: BookingSelection = { product: slug, date, ...pax, promo: appliedPromo || undefined, extras: current?.extras ?? extras, payment_mode: mode ?? undefined, quote_token: current?.quote_token };
       if (onReserve) {
         const result = await onReserve(selection);
         if (!result.ok) setError(result.message);
         return;
       }
-      const result = await addToCart(agencia, selection);
+      const result = await addToCart(agencia, { product: selection.product, date: selection.date, adults: selection.adults, children: selection.children, infants: selection.infants, promo: selection.promo, extras: selection.extras, quote_token: selection.quote_token });
       if (result.ok) trackSiteEvent("add_to_cart", { item_id: slug, date, adults: pax.adults, children: pax.children, value: current ? Number(current.total) : null, currency: current?.currency ?? null });
       if (result.ok) router.push(href("/carrito"));
       else setError(result.message);
@@ -299,15 +324,13 @@ export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { 
         {date && error && <p className="rounded-xl bg-[color-mix(in_srgb,var(--bad)_8%,transparent)] px-3.5 py-3 text-[13px] text-bad">{error}</p>}
         {current && !error && (
           <dl className={cn("grid gap-1.5 text-[13px] transition-opacity", quoting && "opacity-60")}>
-            {current.lines.map((line) => (
-              <div key={line.key} className="flex justify-between gap-3 text-fg-2">
-                <dt>
-                  {line.label}
-                  {Number(line.unit) > 0 && line.qty > 1 && <span className="text-fg-3"> × {formatMoney(line.unit, current.currency)}</span>}
-                </dt>
-                <dd className="tabular-nums">{Number(line.amount) > 0 ? formatMoney(line.amount, current.currency) : t.booking.free}</dd>
-              </div>
-            ))}
+            <QuoteLines lines={current.lines} currency={current.currency} onToggle={current.can_remove ? toggleLine : undefined} />
+            {current.rooms > 0 && (
+              <p className="flex items-center gap-1.5 text-[12px] text-fg-3">
+                <BedDouble size={13} />
+                {t.booking.roomsNights(current.rooms, current.nights)}
+              </p>
+            )}
             {current.discount && (
               <div className="flex justify-between gap-3 text-ok">
                 <dt className="inline-flex items-center gap-1.5">
@@ -324,6 +347,29 @@ export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { 
                 <b className="text-[20px] font-bold tabular-nums text-fg">{formatMoney(current.total, current.currency)}</b>
               </dd>
             </div>
+            {current.modes.length > 1 && (
+              <div className="mt-1 grid gap-2">
+                <div role="radiogroup" aria-label={t.booking.payment} className="flex flex-wrap gap-1.5">
+                  {current.modes.map((value) => (
+                    <button key={value} type="button" role="radio" aria-checked={current.payment_mode === value} onClick={() => setMode(value)} className={cn("rounded-full border px-3 py-1 text-[12px] font-semibold transition", current.payment_mode === value ? "border-accent bg-accent text-white" : "border-line text-fg-2 hover:border-accent hover:text-accent")}>
+                      {value === "adelanto" ? t.booking.modes.adelanto(config.payment.deposit_pct) : value === "pagar_despues" ? t.booking.modes.pagar_despues(config.payment.hold_hours) : t.booking.modes.total}
+                    </button>
+                  ))}
+                </div>
+                {current.payment_mode !== "total" && (
+                  <p className="text-[12px] text-fg-2">
+                    {t.booking.depositNow(formatMoney(current.deposit, current.currency))}
+                    {current.balance_due && Number(current.balance) > 0 && <span className="block text-fg-3">{t.booking.balanceDue(formatMoney(current.balance, current.currency), formatDate(current.balance_due, "long", dateLocale))}</span>}
+                  </p>
+                )}
+              </div>
+            )}
+            {current.warnings.map((warning) => (
+              <p key={warning} className="flex items-start gap-1.5 text-[12px] text-warn">
+                <TriangleAlert size={13} className="mt-0.5 flex-none" />
+                {warning}
+              </p>
+            ))}
             {appliedPromo && !current.discount && <p className="text-[12px] text-warn">{t.booking.promoInvalid(appliedPromo)}</p>}
           </dl>
         )}

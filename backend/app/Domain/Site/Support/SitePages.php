@@ -23,6 +23,7 @@ final class SitePages
     public function __construct(
         private readonly SiteCatalog $catalog,
         private readonly SiteProfile $profile,
+        private readonly SiteBooking $booking,
     ) {
         $this->pricing = $catalog->pricing();
         $this->availability = $catalog->availability();
@@ -193,6 +194,7 @@ final class SitePages
                 'promotions' => $product->promotions,
                 'media' => DB::table('catalog_product_media')->where('product_id', $product->id)->orderByDesc('is_main')->orderBy('sort_order')->get(['storage_path as url', 'alt_text as alt'])->all(),
             ],
+            'booking' => $this->booking->config($product, $card['first_date'] ?? $today->toDateString()),
             'itinerary' => $this->translated($product, 'itinerary') ?? $this->itinerary($product->id),
             'inclusions' => $this->translated($product, 'inclusions') ?? DB::table('catalog_product_inclusions')->where('product_id', $product->id)->where('kind', 'include')->orderBy('sort_order')->pluck('text')->all(),
             'exclusions' => $this->translated($product, 'exclusions') ?? DB::table('catalog_product_inclusions')->where('product_id', $product->id)->where('kind', 'exclude')->orderBy('sort_order')->pluck('text')->all(),

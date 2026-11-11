@@ -1,4 +1,4 @@
-import { CalendarDays, ClipboardList, FileText, History, Layers, Route, Send, Target, TrendingUp, UserRound, Users, Wallet } from "lucide-react";
+import { BadgeCheck, CalendarDays, ClipboardList, FileText, History, Layers, Route, Send, Target, TrendingUp, UserRound, Users, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -11,12 +11,12 @@ import { QuoteConvertAction } from "@/features/quotes/QuoteConvertAction";
 import { QuoteDuplicateAction, QuoteReassignAction } from "@/features/quotes/QuoteCopyActions";
 import { ActivitySection, DetailSection, PricingSection, TrackingSection, VersionsSection } from "@/features/quotes/QuoteSections";
 import { QuoteWizardAction } from "@/features/quotes/wizard/QuoteWizard";
-import { formatDate, formatMoney, shortName } from "@/lib/format";
+import { formatDate, formatDateTime, formatMoney, shortName } from "@/lib/format";
 import { paxLabel, QUOTE_JOURNEY } from "@/lib/quotes";
 import { resolveSections } from "@/lib/sections";
 import { getAdvisors } from "@/lib/server/leads";
 import { getQuote, getQuoteActivity, getQuoteConversion, getQuoteFormOptions } from "@/lib/server/quotes";
-import { statusTone } from "@/lib/tone";
+import { statusLabel, statusTone } from "@/lib/tone";
 
 export async function generateMetadata({ params }: PageProps<"/cotizaciones/[code]">): Promise<Metadata> {
   const { code } = await params;
@@ -85,7 +85,7 @@ export default async function CotizacionPage({ params, searchParams }: PageProps
             <QuoteLifecycleActions quote={quote} />
             {quote.can.duplicate && <QuoteDuplicateAction quote={quote} />}
             {quote.can.reassign && quote.status !== "convertida" && <QuoteReassignAction quote={quote} advisors={advisors} />}
-            {conversion && <QuoteConvertAction conversion={conversion} lockVersion={quote.lock_version} />}
+            {conversion && <QuoteConvertAction conversion={conversion} lockVersion={quote.lock_version} canVersion={quote.can.edit} />}
           </div>
         }
       />
@@ -116,7 +116,7 @@ export default async function CotizacionPage({ params, searchParams }: PageProps
 
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <TintTile icon={UserRound} tone="t1" label="Cliente" value={<Link href={`/crm/clientes/${quote.client.code}`} className="text-[16px] hover:underline">{quote.client.name}</Link>} note={quote.client.code} />
-        <TintTile icon={Target} tone="violet" label="Oportunidad" value={quote.opportunity ? <Link href={`/crm/oportunidades/${quote.opportunity.code}`} className="text-[16px] hover:underline">{quote.opportunity.code}</Link> : <span className="text-[14px] text-fg-3">Sin oportunidad</span>} note={quote.opportunity?.title} />
+        <TintTile icon={Target} tone="violet" label="Oportunidad" value={quote.opportunity ? <Link href={`/crm/oportunidades/${quote.opportunity.code}`} className="text-[16px] hover:underline">{quote.opportunity.code}</Link> : <span className="text-[14px] text-fg-3">Sin oportunidad</span>} note={quote.opportunity ? `${quote.opportunity.title}${quote.opportunity.stage ? ` · etapa ${statusLabel(quote.opportunity.stage).toLowerCase()}` : ""}` : undefined} />
         <TintTile
           icon={quote.reservation ? Route : CalendarDays}
           tone="sun"
@@ -130,6 +130,15 @@ export default async function CotizacionPage({ params, searchParams }: PageProps
       {quote.status === "vencida" && (
         <p className="mb-5 rounded-card border border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-4 py-3 text-[13.5px]">
           <b className="font-semibold">Venció el {formatDate(quote.valid_until)}.</b> Ya no puede aprobarse ni enviarse; crea una nueva versión para renovar la vigencia.
+        </p>
+      )}
+      {quote.approval && ["aprobada", "convertida"].includes(quote.status) && (
+        <p data-testid="quote-approved-notice" className="mb-5 flex flex-wrap items-center gap-x-2 rounded-card border border-[color-mix(in_srgb,var(--ok)_35%,transparent)] bg-[color-mix(in_srgb,var(--ok)_9%,transparent)] px-4 py-3 text-[13.5px]">
+          <BadgeCheck size={16} className="flex-none text-ok" />
+          <b className="font-semibold">Aprobada por el cliente{quote.approval.version ? ` en la versión ${quote.approval.version}` : ""}.</b>
+          <span className="text-fg-2">
+            {[quote.approval.by, formatDateTime(quote.approval.at), quote.approval.channel, quote.approval.reference ? `ref. ${quote.approval.reference}` : null].filter(Boolean).join(" · ")}
+          </span>
         </p>
       )}
       {quote.internal?.required && quote.internal.status === "pendiente" && (

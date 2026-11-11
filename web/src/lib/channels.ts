@@ -91,6 +91,7 @@ export interface EcomOrder {
   country: string | null;
   product: { code: string; name: string } | null;
   pax: number;
+  travel_date: string | null;
   total: number;
   currency: string;
   status: string;

@@ -195,7 +195,7 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | --- | --- | --- |
 | `PATCH /approvals/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 
-### Plataforma SaaS y API · spec 13 (30)
+### Plataforma SaaS y API · spec 13 (38)
 
 | Ruta | Grupo | Equivalente en el contrato o motivo |
 | --- | --- | --- |
@@ -231,6 +231,14 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `POST /platform/auth/logout` | Acción propia | Cierre de sesión de la consola de plataforma. El contrato usa el `/auth/logout` común, que hoy está dentro del grupo de rutas de la agencia; unificarlo exige reordenar ese grupo. |
 | `POST /platform/notifications/read-all` | Acción propia | Marcar como leídos los avisos de la campana del Super Admin; el contrato no define la campana de la consola. |
 | `POST /public/software/demo-requests` | Acción propia | Solicitud de demo desde la página comercial de la plataforma; usa la tabla propia `platform_demo_requests`. |
+| `POST /platform/tenants/{}/change-plan/preview` | Lectura de pantalla | Vista previa del cambio de plan desde la consola (cobro, crédito, bloqueos y reglas que gana o pierde). |
+| `DELETE /platform/tenants/{}/scheduled-change` | Editar, borrar o cambiar estado | Anula el cambio de plan programado de una agencia. |
+| `POST /platform/invoices/{}/payment-link` | Acción propia | Envía a la agencia el enlace para registrar la tarjeta y pagar la factura. |
+| `POST /platform/invoices/{}/send` | Acción propia | Reenvía la factura por correo. |
+| `POST /platform/integration-errors/{}/retry` | Acción propia | Reintenta un error de integración de una agencia. |
+| `POST /platform/integration-errors/{}/resolve` | Editar, borrar o cambiar estado | Marca como resuelto un error de integración. |
+| `GET /platform/audit-events/{}` | Lectura de pantalla | Detalle de un evento de auditoría de la plataforma (antes y después, IP, navegador, eventos relacionados). |
+| `POST /platform/plan-rules/reset-demo` | Editar, borrar o cambiar estado | Restablece la matriz plan-regla a los valores del kit. |
 
 ### Marketing y metas · spec 14 (2)
 
@@ -250,6 +258,8 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `POST /public/auth/email/resend` | Acción propia | Reenvía el enlace de verificación del correo (SIT-BR-21) desde Mi cuenta; límite de 3 por minuto. |
 | `GET /public/widget/config?product=` | Lectura de pantalla | Configuración pública del widget (producto, valores y dominios verificados) para `/widget/[code]`. El contrato no tiene equivalente. |
 | `GET /public/reviews/by-token/{}?t=` | Lectura de pantalla | Carga el formulario del enlace de invitación a reseñar y marca la solicitud como abierta. Complementa `POST /public/reviews/by-token`. |
+
+Ampliaciones de rutas del contrato (11 de noviembre, panel de reserva del sitio): `POST /public/price-quote` acepta adicionales, alojamiento, opciones, ítems quitados y `payment_mode`, y responde `quote_token`; `POST /public/carts/current/items` acepta lo mismo más `quote_token` y `source`; `GET /public/reviews` tiene un modo widget (`widget`, `sources`, `min_rating`, `count`, `layout`) que devuelve reseñas de plataformas conectadas con atribución.
 
 ### Reseñas · spec 18 (1)
 

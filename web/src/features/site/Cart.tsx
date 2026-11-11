@@ -4,10 +4,11 @@ import { CalendarDays, Clock3, Loader2, Lock, RefreshCw, Trash2, Users } from "l
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { reholdCartLine, removeCartLine } from "@/app/(sitio)/sitio/[agencia]/actions";
+import { reholdCartLine, removeCartLine, toggleCartItem } from "@/app/(sitio)/sitio/[agencia]/actions";
 import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatMoney } from "@/lib/format";
-import type { CartLine, SiteCart } from "@/lib/site";
+import type { CartLine, QuoteLine, SiteCart } from "@/lib/site";
+import { QuoteLines } from "./QuoteLines";
 import { useSite } from "./SiteContext";
 
 function useNow(): number | null {
@@ -39,7 +40,31 @@ export function HoldTimer({ until, compact = false }: { until: string; compact?:
   );
 }
 
-function CartRow({ item, index }: { item: CartLine; index: number }) {
+export function CartItemLines({ item, lockVersion }: { item: CartLine; lockVersion?: number }) {
+  const { agencia } = useSite();
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [, start] = useTransition();
+  const quote = item.quote;
+  if (!quote || !quote.lines.some((line) => line.kind !== "base")) return null;
+  const toggle = (line: QuoteLine) => {
+    setBusy(line.key);
+    start(async () => {
+      setError(await toggleCartItem(agencia, item.line, line.key, !line.removed, lockVersion));
+      setBusy(null);
+      router.refresh();
+    });
+  };
+  return (
+    <div className="mt-3 rounded-2xl bg-surface-2/70 px-3.5 py-3">
+      <QuoteLines lines={quote.lines} currency={quote.currency} onToggle={quote.can_remove ? toggle : undefined} busyKey={busy} compact />
+      {error && <p className="mt-2 text-[12px] text-bad">{error}</p>}
+    </div>
+  );
+}
+
+function CartRow({ item, index, lockVersion }: { item: CartLine; index: number; lockVersion?: number }) {
   const { agencia, href, t, dateLocale } = useSite();
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -77,6 +102,7 @@ function CartRow({ item, index }: { item: CartLine; index: number }) {
           {item.quote?.discount && <span className="block text-[12px] text-ok">{item.quote.discount.label}: − {formatMoney(item.quote.discount.amount, item.quote.currency)}</span>}
         </div>
       </div>
+      <CartItemLines item={item} lockVersion={lockVersion} />
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
         <div className="flex flex-wrap items-center gap-2 text-[12px] text-fg-3">
           {item.hold ? (
@@ -113,7 +139,7 @@ export function CartLines({ cart }: { cart: SiteCart }) {
   return (
     <ul className="grid gap-4">
       {cart.items.map((item, index) => (
-        <CartRow key={item.line} item={item} index={index} />
+        <CartRow key={item.line} item={item} index={index} lockVersion={cart.lock_version} />
       ))}
     </ul>
   );

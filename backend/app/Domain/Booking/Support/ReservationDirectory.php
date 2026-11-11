@@ -83,11 +83,13 @@ final class ReservationDirectory
             ->where(fn (Builder $where): Builder => $where->where(fn (Builder $own): Builder => $own->where('e.entity', 'Reserva')->where('e.entity_id', $row->code))
                 ->orWhere(fn (Builder $service): Builder => $service->where('e.entity', 'Servicio reserva')->whereIn('e.entity_id', $services ?: ['']))
                 ->orWhere(fn (Builder $receivable): Builder => $receivable->where('e.entity', 'Cuenta por cobrar')->whereIn('e.entity_id', $receivables ?: [''])))
-            ->select(['e.id', 'e.code', 'e.entity', 'e.entity_id', 'e.action', 'e.before_value', 'e.after_value', 'e.actor_type', 'e.occurred_at', 'u.name as actor_name']);
+            ->select(['e.id', 'e.code', 'e.entity', 'e.entity_id', 'e.action', 'e.before_value', 'e.after_value', 'e.actor_type', 'e.occurred_at', 'e.ip', 'e.correlation_id', 'u.name as actor_name']);
 
         return CursorPage::respond($request, $query, ['occurred_at' => 'e.occurred_at'], '-occurred_at', fn (object $event): array => [
             'id' => $event->id,
             'code' => $event->code,
+            'ip' => $event->ip,
+            'correlation' => $event->correlation_id,
             'entity' => $event->entity,
             'entity_id' => $event->entity_id,
             'action' => $event->action,
@@ -108,9 +110,9 @@ final class ReservationDirectory
 
         $view = $this->view($viewer, $row->owner_id);
         $today = $this->today();
-        $services = DB::table('booking_reservation_services as s')->leftJoin('catalog_providers as p', 'p.id', '=', 's.provider_id')
+        $services = DB::table('booking_reservation_services as s')->leftJoin('catalog_providers as p', 'p.id', '=', 's.provider_id')->leftJoin('catalog_product_departures as d', 'd.id', '=', 's.departure_id')
             ->where('s.reservation_id', $row->id)->orderBy('s.service_date')->orderBy('s.service_time')
-            ->get(['s.code', 's.name', 's.service_date', 's.service_time', 's.service_kind', 's.status', 's.confirmation_code', 's.reject_reason', 's.replaced_by_id', 's.cost_amount', 's.price_amount', 's.currency', 's.fx_rate', 's.provider_id', 's.alt_of_id', 's.id', 'p.ref as provider_ref', 'p.name as provider_name', 'p.status as provider_status']);
+            ->get(['s.code', 's.name', 's.service_date', 's.service_time', 's.service_kind', 's.status', 's.confirmation_code', 's.reject_reason', 's.replaced_by_id', 's.cost_amount', 's.price_amount', 's.currency', 's.fx_rate', 's.provider_id', 's.alt_of_id', 's.id', 'p.ref as provider_ref', 'p.name as provider_name', 'p.status as provider_status', 'd.ref as departure_ref']);
         $price = $services->where('status', '<>', 'cancelado')->sum(fn (object $service) => (float) (string) NetSales::of($service->price_amount, $service->currency));
         $cost = $services->where('status', '<>', 'cancelado')->sum(fn (object $service) => (float) $service->cost_amount);
         $receivables = DB::table('fin_receivables')->where('reservation_id', $row->id)->whereNull('deleted_at')->orderBy('due_date')
@@ -153,6 +155,10 @@ final class ReservationDirectory
             'reject_reasons' => $modify ? ProviderServiceResponse::REJECT_REASONS : [],
             'changes' => app(ReservationChanges::class)->pending($row->id),
             'cancel_request' => DB::table('booking_cancel_requests')->where('reservation_id', $row->id)->where('status', 'pendiente')->first(['id', 'reason', 'requested_at']),
+            'cancel_rejected' => DB::table('booking_cancel_requests as cr')->leftJoin('iam_users as du', 'du.id', '=', 'cr.decided_by')->where('cr.reservation_id', $row->id)->where('cr.status', 'rechazada')
+                ->whereNotExists(fn ($pending) => $pending->from('booking_cancel_requests as cp')->whereColumn('cp.reservation_id', 'cr.reservation_id')->where('cp.status', 'pendiente'))
+                ->orderByDesc('cr.decided_at')->first(['cr.reason', 'cr.decided_at', 'cr.decision_note', 'du.name as decided_by']),
+            'rescheduled_at' => $row->rescheduled_at ?? null,
             'cancellation' => DB::table('booking_cancellations')->where('reservation_id', $row->id)->first($view['price'] ? ['penalty_amount', 'refund_amount', 'owed_amount', 'cancelled_at'] : ['cancelled_at']),
             'services' => $services->map(fn (object $service) => [
                 'code' => $service->code,
@@ -165,6 +171,7 @@ final class ReservationDirectory
                 'reject_reason' => $service->reject_reason,
                 'replaced' => $service->replaced_by_id !== null,
                 'alt_of' => $service->alt_of_id ? ($codes[$service->alt_of_id] ?? null) : null,
+                'departure' => $service->departure_ref,
                 'provider' => $service->provider_name ? ['ref' => $service->provider_ref, 'name' => $service->provider_name, 'active' => $service->provider_status === 'activo'] : null,
                 'alternatives' => $service->provider_id ? array_map(fn (array $provider): array => ['id' => $provider['id'], 'name' => $provider['name'], 'city' => $provider['city']], $alternatives->get($service->provider_id, [])) : [],
                 ...($view['price'] ? ['price' => $service->price_amount] : []),

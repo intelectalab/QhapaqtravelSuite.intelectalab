@@ -38,8 +38,8 @@ final class TenantProvisionRequest extends FormRequest
     {
         $partial = $this->routeIs('platform.tenants.validate');
         $updating = $this->routeIs('platform.tenants.update');
-        $required = $partial ? 'sometimes' : 'required';
-        $onCreate = $partial || $updating ? 'sometimes' : 'required';
+        $required = $partial ? 'nullable' : 'required';
+        $onCreate = $partial ? 'nullable' : ($updating ? 'sometimes' : 'required');
         $rules = [
             'commercial_name' => [$required, 'string', 'max:120'],
             'legal_name' => [$required, 'string', 'max:200'],
@@ -86,8 +86,8 @@ final class TenantProvisionRequest extends FormRequest
 
         if ($step > 0 && isset(self::STEP_FIELDS[$step])) {
             foreach (self::STEP_FIELDS[$step] as $field) {
-                if (in_array('sometimes', $rules[$field], true) && in_array($field, ['commercial_name', 'legal_name', 'ruc', 'fiscal_address', 'business_type', 'subdomain', 'plan', 'sede_name', 'sede_city', 'sede_address', 'admin_name', 'admin_email'], true)) {
-                    $rules[$field] = array_map(fn ($rule) => $rule === 'sometimes' ? 'required' : $rule, $rules[$field]);
+                if (in_array('nullable', $rules[$field], true) && in_array($field, ['commercial_name', 'legal_name', 'ruc', 'fiscal_address', 'business_type', 'subdomain', 'plan', 'sede_name', 'sede_city', 'sede_address', 'admin_name', 'admin_email'], true)) {
+                    $rules[$field] = array_map(fn ($rule) => $rule === 'nullable' ? 'required' : $rule, $rules[$field]);
                 }
             }
         }

@@ -113,10 +113,11 @@ final class BillingDirectory
 
         $items = $this->db()->table('subscriptions as s')->join('tenants as t', 't.id', '=', 's.tenant_id')->join('plans as p', 'p.id', '=', 's.plan_id')
             ->where('s.status', 'trialing')->orderBy('s.trial_ends_at')
-            ->get(['s.id', 's.code', 's.tenant_id', 's.trial_starts_at', 's.trial_ends_at', 's.trial_extended_days', 's.lock_version', 't.code as tenant_code', 't.commercial_name', 't.admin_email', 'p.code as plan_code', 'p.name as plan_name', 'p.price_month'])
+            ->get(['s.id', 's.code', 's.tenant_id', 's.cycle', 's.trial_starts_at', 's.trial_ends_at', 's.trial_extended_days', 's.lock_version', 't.code as tenant_code', 't.commercial_name', 't.admin_email', 'p.code as plan_code', 'p.name as plan_name', 'p.price_month'])
             ->map(fn (object $row) => [
                 'id' => $row->id,
                 'code' => $row->code,
+                'cycle' => $row->cycle,
                 'tenant' => ['code' => $row->tenant_code, 'name' => $row->commercial_name, 'email' => $row->admin_email],
                 'plan' => ['code' => $row->plan_code, 'name' => $row->plan_name, 'price_month' => (float) $row->price_month],
                 'starts_at' => $row->trial_starts_at,
@@ -129,9 +130,14 @@ final class BillingDirectory
             ]);
 
         $coupons = $this->db()->table('coupons')->where('status', 'active')->where(fn ($query) => $query->whereNull('valid_to')->orWhere('valid_to', '>=', $today))
-            ->whereRaw('(max_redemptions is null or redeemed_count < max_redemptions)')->orderBy('code')->get(['code', 'type', 'value', 'duration_cycles']);
+            ->whereRaw('(max_redemptions is null or redeemed_count < max_redemptions)')->orderBy('code')->get(['code', 'type', 'value', 'duration_cycles', 'plan_ids']);
+        $plans = $this->db()->table('plans')->where('status', 'active')->orderBy('rank')->get(['id', 'code', 'name', 'rank', 'price_month', 'price_year']);
 
-        return ['items' => $items->values(), 'coupons' => $coupons->map(fn (object $coupon) => ['code' => $coupon->code, 'label' => $this->couponLabel($coupon)])->values()];
+        return [
+            'items' => $items->values(),
+            'coupons' => $coupons->map(fn (object $coupon) => ['code' => $coupon->code, 'label' => $this->couponLabel($coupon), 'plans' => $plans->whereIn('id', $this->uuids($coupon->plan_ids))->pluck('code')->values()])->values(),
+            'plans' => $plans->map(fn (object $plan) => ['code' => $plan->code, 'name' => $plan->name, 'rank' => (int) $plan->rank, 'price_month' => (float) $plan->price_month, 'price_year' => (float) $plan->price_year])->values(),
+        ];
     }
 
     public function coupons(): Collection

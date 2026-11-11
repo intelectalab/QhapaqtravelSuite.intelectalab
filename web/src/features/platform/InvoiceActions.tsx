@@ -1,7 +1,7 @@
 "use client";
 
-import { Banknote, CalendarPlus, CirclePause, FileX2, Hash, RotateCw } from "lucide-react";
-import { extendDunning, registerManualPayment, retryInvoice, suspendForDebt, voidInvoice } from "@/app/plataforma/(consola)/facturacion/actions";
+import { Banknote, CalendarPlus, CirclePause, FileX2, Hash, Link2, Mail, RotateCw } from "lucide-react";
+import { extendDunning, registerManualPayment, resendInvoice, retryInvoice, sendPaymentLink, suspendForDebt, voidInvoice } from "@/app/plataforma/(consola)/facturacion/actions";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
@@ -109,5 +109,37 @@ export function SuspendForDebtAction({ invoice, size }: ActionProps) {
     >
       <TextArea label="Motivo" name="reason" required minLength={5} maxLength={500} defaultValue={`Falta de pago de la factura ${invoice.number}.`} />
     </ConsoleAction>
+  );
+}
+
+export function PaymentLinkAction({ invoice, size }: ActionProps) {
+  return (
+    <ConsoleAction
+      id={`link-${invoice.id}`}
+      label="Enviar enlace de pago"
+      icon={<Link2 size={15} />}
+      size={size}
+      title={`Enlace de pago para ${invoice.tenant.name}`}
+      description={`Le enviamos un correo al contacto de facturación con el monto de ${invoice.number} y el enlace para registrar o cambiar su tarjeta. El calendario de cobranza no cambia.`}
+      submitLabel="Enviar enlace"
+      action={sendPaymentLink}
+      fields={{ id: invoice.id }}
+    />
+  );
+}
+
+export function ResendInvoiceAction({ invoice, size }: ActionProps) {
+  return (
+    <ConsoleAction
+      id={`resend-${invoice.id}`}
+      label="Reenviar por correo"
+      icon={<Mail size={15} />}
+      size={size}
+      title={`Reenviar ${invoice.number}`}
+      description={`${invoice.tenant.name} recibe de nuevo la factura en su correo de facturación, con su estado actual.`}
+      submitLabel="Reenviar"
+      action={resendInvoice}
+      fields={{ id: invoice.id }}
+    />
   );
 }

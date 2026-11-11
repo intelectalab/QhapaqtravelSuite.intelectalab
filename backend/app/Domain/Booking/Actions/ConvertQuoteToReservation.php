@@ -108,6 +108,10 @@ final class ConvertQuoteToReservation
             throw ApiException::unprocessable('RT-3', 'La cotización necesita al menos un servicio, pasajeros y un total mayor a cero.');
         }
 
+        if ($quote->travel_from === null || $quote->travel_to === null || ! DB::table('crm_clients')->where('id', $quote->client_id)->whereNull('deleted_at')->exists()) {
+            throw ApiException::unprocessable('RT-3', 'La cotización necesita las fechas del viaje y un cliente vigente en el CRM.');
+        }
+
         $products = $this->plan->products($items);
         $departureByItem = $this->plan->departures($items, $products, $today);
         $departureIds = array_values(array_unique(array_filter($departureByItem)));

@@ -44,7 +44,7 @@ final class ReservationController
             'advisors' => Portfolio::ownOnly($user) ? [] : $advisors->all(),
             'channels' => DirectBookingPlan::CHANNELS,
             'products' => DB::table('catalog_products')->whereNull('deleted_at')->where('status', 'ACTIVE')->where('is_bookable', true)->orderBy('name')
-                ->get(['code', 'name', 'availability_model', 'duration_value', 'duration_unit', 'booking_advance_min_days', 'maximum_passengers'])
+                ->get(['code', 'name', 'availability_model', 'duration_value', 'duration_unit', 'booking_advance_min_days', 'minimum_passengers', 'maximum_passengers', 'minimum_age'])
                 ->map(fn (object $product): array => [
                     'code' => $product->code,
                     'name' => $product->name,
@@ -52,6 +52,8 @@ final class ReservationController
                     'duration' => rtrim(rtrim((string) $product->duration_value, '0'), '.').' '.$product->duration_unit,
                     'advance_min_days' => (int) $product->booking_advance_min_days,
                     'max_pax' => $product->maximum_passengers === null ? null : (int) $product->maximum_passengers,
+                    'min_pax' => (int) ($product->minimum_passengers ?? 1),
+                    'min_age' => (int) ($product->minimum_age ?? 0),
                 ]),
             'owner_id' => (string) $user->getKey(),
             'today' => app(DirectBookingPlan::class)->today()->toDateString(),

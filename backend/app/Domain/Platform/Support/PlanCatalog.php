@@ -105,7 +105,8 @@ final class PlanCatalog
     {
         $ranks = $this->plans()->mapWithKeys(fn (Plan $item) => [$item->name => $item->rank]);
 
-        return $this->db()->table('sys_booking_rule_catalog')->orderBy('rule_group')->orderBy('name')->get(['code', 'rule_group', 'name', 'description', 'min_plan'])
+        return $this->db()->table('sys_booking_rule_catalog as r')->leftJoin('plan_rule_entitlements as e', 'e.rule_code', '=', 'r.code')->orderBy('r.rule_group')->orderBy('r.name')
+            ->get(['r.code', 'r.rule_group', 'r.name', 'r.description', DB::raw('coalesce(e.min_plan, r.min_plan) as min_plan')])
             ->groupBy('rule_group')
             ->map(fn (Collection $rules, string $group) => [
                 'group' => $group,

@@ -12,6 +12,7 @@ use App\Domain\Platform\Http\Requests\TenantProvisionRequest;
 use App\Domain\Platform\Models\Plan;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Platform\Support\PlatformInvoicer;
 use App\Domain\Platform\Support\TenantBootstrap;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Jobs\DefaultScheduledJobs;
@@ -19,6 +20,7 @@ use App\Domain\Shared\Sequences\DefaultSequences;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
 use Database\Seeders\CrmCatalogSeeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
@@ -34,6 +36,7 @@ final class ProvisionTenant
         private readonly Invitations $invitations,
         private readonly DefaultSequences $sequences,
         private readonly DefaultScheduledJobs $jobs,
+        private readonly PlatformInvoicer $invoicer,
     ) {}
 
     public function validate(array $data): void
@@ -141,6 +144,7 @@ final class ProvisionTenant
                 $admin->syncRoles([$roles['tenant_admin']]);
 
                 $token = $this->invitations->create($admin, $tenant->getKey(), $admin->getKey());
+                $this->subscribe($tenant, $plan, $trial, $actor);
 
                 $this->session->log('Tenant', $tenant->code, 'alta', null, "{$tenant->commercial_name} · {$plan->name} · {$tenant->status} · ".count($roles).' roles · plantilla '.TenantProvisionRequest::TEMPLATES[$template], $actor);
 
@@ -155,6 +159,38 @@ final class ProvisionTenant
         $this->invitations->send($admin->email, $admin->name, $tenant->commercial_name, $token, true);
 
         return $tenant;
+    }
+
+    private function subscribe(Tenant $tenant, Plan $plan, bool $trial, PlatformUser $actor): void
+    {
+        $today = Carbon::today('America/Lima');
+        $end = $trial ? Carbon::parse($tenant->trial_ends_at)->timezone('America/Lima')->startOfDay() : $today->copy()->addMonthNoOverflow()->subDay();
+        $id = (string) Str::uuid7();
+        DB::table('subscriptions')->insert([
+            'id' => $id,
+            'code' => 'SUB-'.$today->year.'-'.substr($tenant->code, -4),
+            'tenant_id' => $tenant->getKey(),
+            'plan_id' => $plan->getKey(),
+            'cycle' => 'monthly',
+            'status' => $trial ? 'trialing' : 'active',
+            'trial_starts_at' => $trial ? $today->toDateString() : null,
+            'trial_ends_at' => $trial ? $end->toDateString() : null,
+            'current_period_start' => $today->toDateString(),
+            'current_period_end' => $end->toDateString(),
+            'billing_anchor_day' => min(28, $today->day),
+            'gateway' => 'local_gateway',
+            'billing_ruc' => $tenant->ruc,
+            'billing_name' => $tenant->legal_name,
+            'billing_address' => $tenant->fiscal_address,
+            'billing_email' => $tenant->admin_email,
+            'created_by' => $actor->getKey(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        if (! $trial) {
+            $this->invoicer->issue(DB::table('subscriptions')->where('id', $id)->first(), DB::table('plans')->where('id', $plan->getKey())->first(), 'monthly', $today, $end);
+        }
     }
 
     private function configure(Tenant $tenant, Sede $sede, array $data, Plan $plan): void

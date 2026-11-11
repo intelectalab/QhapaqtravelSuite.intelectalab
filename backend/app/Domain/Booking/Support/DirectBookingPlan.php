@@ -35,7 +35,7 @@ final class DirectBookingPlan
     {
         $product = DB::table('catalog_products')->whereNull('deleted_at')
             ->where(self::isUuid($reference) ? 'id' : 'code', $reference)
-            ->first(['id', 'code', 'name', 'status', 'is_bookable', 'availability_model', 'duration_value', 'duration_unit', 'booking_advance_min_days', 'maximum_passengers', 'main_provider_id'])
+            ->first(['id', 'code', 'name', 'status', 'is_bookable', 'availability_model', 'duration_value', 'duration_unit', 'booking_advance_min_days', 'minimum_passengers', 'maximum_passengers', 'minimum_age', 'maximum_age', 'main_provider_id'])
             ?? throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige un producto.', ['product_id' => ['Elige un producto.']]);
 
         if ($product->status !== 'ACTIVE' || ! $product->is_bookable) {
@@ -69,7 +69,7 @@ final class DirectBookingPlan
         $rates = collect($this->lineRates->catalog([(string) $product->id])->get($product->id, []));
         $seeCost = $actor->can('finance.profitability') || $actor->can('catalog.products.view_profitability');
         $base = [
-            'product' => ['code' => $product->code, 'name' => $product->name, 'model' => $product->availability_model, 'advance_min_days' => (int) $product->booking_advance_min_days, 'max_pax' => $product->maximum_passengers === null ? null : (int) $product->maximum_passengers],
+            'product' => ['code' => $product->code, 'name' => $product->name, 'model' => $product->availability_model, 'advance_min_days' => (int) $product->booking_advance_min_days, 'max_pax' => $product->maximum_passengers === null ? null : (int) $product->maximum_passengers, 'min_pax' => $product->minimum_passengers === null ? null : (int) $product->minimum_passengers, 'min_age' => $product->minimum_age === null ? null : (int) $product->minimum_age, 'max_age' => $product->maximum_age === null ? null : (int) $product->maximum_age],
             'rates' => $rates->reject(fn (object $rate): bool => $rate->segment === 'Niño')->map(fn (object $rate): array => [...LineRates::option($rate, $seeCost), 'valid' => $date !== null && LineRates::valid($rate, (string) $date)])->values()->all(),
             'departures' => $departures,
             'pax' => ['adt' => $adults, 'chd' => $children, 'inf' => $infants],

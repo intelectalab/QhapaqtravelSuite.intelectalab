@@ -6,6 +6,7 @@ namespace App\Domain\Site\Http\Controllers;
 
 use App\Domain\Site\Actions\SiteCart;
 use App\Domain\Site\Actions\WidgetHandoffs;
+use App\Domain\Site\Support\SiteBooking;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -29,10 +30,13 @@ final class SiteWidgetController
             'lang' => ['nullable', 'in:es,en'],
             'currency' => ['nullable', 'in:PEN,USD'],
             'origin' => ['nullable', 'string', 'max:253'],
+            'payment_mode' => ['nullable', 'in:total,adelanto,pagar_despues'],
+            ...SiteBooking::rules(),
         ], [
             'product.*' => 'Elige un producto.',
             'date.*' => 'Elige una fecha disponible.',
             'adults.*' => 'Incluye al menos 1 adulto.',
+            ...SiteBooking::messages(),
             '*' => 'Revisa la selección.',
         ]);
 

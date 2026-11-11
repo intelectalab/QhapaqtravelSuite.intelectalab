@@ -2,6 +2,7 @@
 
 import { CalendarPlus, CreditCard, Hourglass, Sparkles, TimerReset, Users } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { convertTrial, extendTrial } from "@/app/plataforma/(consola)/facturacion/actions";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -36,7 +37,7 @@ export function TrialsBoard({ overview }: { overview: TrialsOverview }) {
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {overview.items.map((item, index) => (
-            <TrialCard key={item.id} item={item} index={index} coupons={overview.coupons} />
+            <TrialCard key={item.id} item={item} index={index} coupons={overview.coupons} plans={overview.plans} />
           ))}
         </div>
       )}
@@ -44,7 +45,7 @@ export function TrialsBoard({ overview }: { overview: TrialsOverview }) {
   );
 }
 
-function TrialCard({ item, index, coupons }: { item: TrialItem; index: number; coupons: TrialsOverview["coupons"] }) {
+function TrialCard({ item, index, coupons, plans }: { item: TrialItem; index: number; coupons: TrialsOverview["coupons"]; plans: TrialsOverview["plans"] }) {
   const tone = urgency(item.days_left);
   const total = Math.max(1, Math.round((new Date(`${item.ends_at}T12:00:00`).getTime() - new Date(`${item.starts_at}T12:00:00`).getTime()) / 86_400_000));
   const elapsed = Math.min(100, Math.max(0, ((total - (item.days_left ?? 0)) / total) * 100));
@@ -86,12 +87,12 @@ function TrialCard({ item, index, coupons }: { item: TrialItem; index: number; c
             variant="primary"
             size="sm"
             title={`Convertir a ${item.tenant.name}`}
-            description={`La agencia pasa a estar activa en el plan ${item.plan.name}. Se emite la primera factura por cobrar con vencimiento a 7 días.`}
+            description="La agencia pasa a estar activa. Se emite la primera factura por cobrar con vencimiento a 7 días y se le avisa por correo para que registre su tarjeta."
             submitLabel="Convertir"
             action={convertTrial}
             fields={{ tenant: item.tenant.code }}
           >
-            <SelectField label="Cupón (opcional)" name="coupon" options={[{ value: "", label: "Sin cupón" }, ...coupons.map((coupon) => ({ value: coupon.code, label: `${coupon.code} · ${coupon.label}` }))]} defaultValue="" hint="Se descuenta desde la primera factura." />
+            <TrialConvertFields item={item} plans={plans} coupons={coupons} />
           </ConsoleAction>
           {extensions.length > 0 && (
             <ConsoleAction
@@ -111,6 +112,31 @@ function TrialCard({ item, index, coupons }: { item: TrialItem; index: number; c
         </div>
       </article>
     </ToneScope>
+  );
+}
+
+function TrialConvertFields({ item, plans, coupons }: { item: TrialItem; plans: TrialsOverview["plans"]; coupons: TrialsOverview["coupons"] }) {
+  const [plan, setPlan] = useState(item.plan.code);
+  const [cycle, setCycle] = useState<"monthly" | "annual">(item.cycle);
+  const chosen = plans.find((option) => option.code === plan);
+  const valid = coupons.filter((coupon) => coupon.plans.length === 0 || coupon.plans.includes(plan));
+  const price = chosen ? (cycle === "annual" ? chosen.price_year : chosen.price_month) : 0;
+  const current = plans.find((option) => option.code === item.plan.code);
+
+  return (
+    <>
+      <ChoiceGroup label="Plan" name="plan" options={plans.map((option) => ({ value: option.code, label: option.code === item.plan.code ? `${option.name} (actual)` : option.name }))} defaultValue={item.plan.code} onChange={setPlan} />
+      <ChoiceGroup label="Ciclo de pago" name="cycle" options={[{ value: "monthly", label: "Mensual" }, { value: "annual", label: "Anual" }]} defaultValue={item.cycle} onChange={(value) => setCycle(value as "monthly" | "annual")} />
+      <SelectField key={plan} label="Cupón (opcional)" name="coupon" options={[{ value: "", label: "Sin cupón" }, ...valid.map((coupon) => ({ value: coupon.code, label: `${coupon.code} · ${coupon.label}` }))]} defaultValue="" hint={valid.length < coupons.length ? "Solo se listan los cupones que aplican al plan elegido." : "Se descuenta desde la primera factura."} />
+      <div className="rounded-[14px] border border-line p-3.5 text-[13px]">
+        <p className="font-semibold">
+          Primera factura: {formatMoney(price)} {cycle === "annual" ? "al año" : "al mes"} + IGV
+        </p>
+        <p className="mt-1 text-[12.5px] text-fg-3">
+          {chosen && current && chosen.rank < current.rank ? "Es un plan menor: sus usuarios, sedes y almacenamiento deben caber en él." : cycle === "annual" ? "El periodo pagado dura 12 meses desde hoy." : "El periodo pagado dura un mes desde hoy."}
+        </p>
+      </div>
+    </>
   );
 }
 

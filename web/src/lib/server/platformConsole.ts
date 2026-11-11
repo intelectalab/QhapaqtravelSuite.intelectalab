@@ -1,6 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
-import type { AuditEvent, BillingOverview, Coupon, DunningOverview, FlagsOverview, InvoiceFull, InvoiceSummary, OperationsOverview, PlatformHomeOverview, TrialsOverview, UsageOverview } from "@/lib/platformBilling";
+import { cache } from "react";
+import type { AuditEvent, AuditEventDetail, BillingOverview, Coupon, DunningOverview, FlagsOverview, InvoiceFull, InvoiceSummary, OperationsOverview, PlanRuleMatrix, PlatformHomeOverview, TenantHealthOverview, TenantHealthRow, TrialsOverview, UsageOverview } from "@/lib/platformBilling";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
 import { fetchPages } from "./pages";
@@ -24,7 +25,7 @@ export const getFlags = () => platformGet<FlagsOverview>("/features");
 
 export const getUsage = () => platformGet<UsageOverview>("/usage");
 
-export const getOperations = () => platformGet<OperationsOverview>("/operations");
+export const getOperations = cache(() => platformGet<OperationsOverview>("/operations"));
 
 export async function listPlatformAudit(): Promise<AuditEvent[]> {
   const result = await fetchPages<AuditEvent>("/platform/audit-events", 500, "platform");
@@ -46,4 +47,15 @@ export async function platformSend<T = unknown>(path: string, method: "POST" | "
     return { message: firstError ?? result.error?.message ?? failure, done: false };
   }
   return { message: null, done: true, notice: notice?.(result.data) ?? null };
+}
+
+export const getPlanRules = () => platformGet<PlanRuleMatrix>("/plan-rules");
+
+export const getPlatformAuditEvent = (id: string) => platformGet<AuditEventDetail>(`/audit-events/${encodeURIComponent(id)}`);
+
+export async function getTenantHealth(): Promise<TenantHealthOverview> {
+  const result = await apiFetch<{ data: TenantHealthRow[]; meta: { kpis: TenantHealthOverview["kpis"] } }>("/platform/tenants/health", { realm: "platform", raw: true });
+  if (result.status === 403 && result.error?.code === "MFA_REQUIRED") redirect(REALMS.platform.mfaPage);
+  if (!result.ok || !result.data) redirect(REALMS.platform.logout);
+  return { rows: result.data.data, kpis: result.data.meta.kpis };
 }

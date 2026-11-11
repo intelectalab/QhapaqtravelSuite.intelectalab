@@ -15,6 +15,7 @@ use App\Domain\Shared\Tenancy\TenantContext;
 use App\Domain\Site\Support\CardPayments;
 use App\Domain\Site\Support\CheckoutRules;
 use App\Domain\Site\Support\CheckoutTerms;
+use App\Domain\Site\Support\SiteBooking;
 use App\Domain\Site\Support\SiteProfile;
 use App\Domain\Site\Support\SiteQuote;
 use App\Domain\Site\Support\WebClients;
@@ -464,7 +465,7 @@ final class SiteCheckout
 
         $lines = $items->map(function (stdClass $item) use ($cart, $lock): array {
             $product = $this->quotes->product((string) DB::table('catalog_products')->where('id', $item->product_id)->value('slug'));
-            $quote = $this->quotes->quote($product, $item->service_date, (int) $item->pax_adults, (int) $item->pax_children, (int) $item->pax_infants, $cart->promo_code);
+            $quote = $this->quotes->quote($product, $item->service_date, (int) $item->pax_adults, (int) $item->pax_children, (int) $item->pax_infants, $cart->promo_code, SiteBooking::decode($item));
             $hold = $item->hold_id ? DB::table('catalog_availability_holds')->where('id', $item->hold_id)->first(['status', 'expires_at']) : null;
 
             if ($lock && $item->hold_id && ($hold === null || $hold->status !== 'hold' || Carbon::parse($hold->expires_at)->isPast())) {

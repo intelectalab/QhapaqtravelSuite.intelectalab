@@ -15,7 +15,9 @@ final class RuleController
 {
     public function index(Request $request, RuleDirectory $directory): JsonResponse
     {
-        return response()->json(['data' => $directory->list($this->user($request))]);
+        $plan = $request->validate(['plan' => ['nullable', 'in:Starter,Professional,Enterprise']])['plan'] ?? null;
+
+        return response()->json(['data' => $directory->list($this->user($request), $plan)]);
     }
 
     public function simulatorOptions(BookingRuleSimulator $simulator): JsonResponse

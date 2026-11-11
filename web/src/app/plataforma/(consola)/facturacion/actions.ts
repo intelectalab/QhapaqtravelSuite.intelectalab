@@ -49,7 +49,7 @@ export async function extendTrial(_state: ConsoleResult, form: FormData): Promis
 }
 
 export async function convertTrial(_state: ConsoleResult, form: FormData): Promise<ConsoleResult> {
-  return finish(platformSend(`/trials/${encodeURIComponent(text(form, "tenant"))}/convert`, "POST", { coupon: optional(form, "coupon") }, "No pudimos convertir la prueba."));
+  return finish(platformSend(`/trials/${encodeURIComponent(text(form, "tenant"))}/convert`, "POST", { coupon: optional(form, "coupon"), plan: optional(form, "plan"), cycle: optional(form, "cycle") }, "No pudimos convertir la prueba."));
 }
 
 export async function saveCoupon(_state: ConsoleResult, form: FormData): Promise<ConsoleResult> {
@@ -83,4 +83,12 @@ export async function saveOverride(_state: ConsoleResult, form: FormData): Promi
 
 export async function deleteOverride(_state: ConsoleResult, form: FormData): Promise<ConsoleResult> {
   return finish(platformSend(`/feature-overrides/${encodeURIComponent(text(form, "id"))}`, "DELETE", {}, "No pudimos quitar la excepción."));
+}
+
+export async function sendPaymentLink(_state: ConsoleResult, form: FormData): Promise<ConsoleResult> {
+  return finish(platformSend<{ sent_to: string }>(invoicePath(form, "/payment-link"), "POST", {}, "No pudimos enviar el enlace de pago.", (data) => (data ? `Enlace enviado a ${data.sent_to}.` : null)));
+}
+
+export async function resendInvoice(_state: ConsoleResult, form: FormData): Promise<ConsoleResult> {
+  return finish(platformSend<{ sent_to: string }>(invoicePath(form, "/send"), "POST", {}, "No pudimos reenviar la factura.", (data) => (data ? `Factura reenviada a ${data.sent_to}.` : null)));
 }

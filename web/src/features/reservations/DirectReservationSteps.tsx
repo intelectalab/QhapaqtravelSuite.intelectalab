@@ -147,6 +147,14 @@ function PlanState({ plan, checkError, checking, perDeparture, chosen }: { plan:
   return null;
 }
 
+function paxHint(product: DirectStepProps["options"]["products"][number] | undefined): string {
+  if (!product) return "Los infantes no pagan.";
+  const min = product.min_pax && product.min_pax > 1 ? product.min_pax : null;
+  const range = min && product.max_pax ? `De ${min} a ${plural(product.max_pax, "pasajero", "pasajeros")} por reserva.` : product.max_pax ? `Hasta ${plural(product.max_pax, "pasajero", "pasajeros")} por reserva.` : min ? `Desde ${plural(min, "pasajero", "pasajeros")} por reserva.` : "";
+  const age = product.min_age && product.min_age > 0 ? ` Edad mínima: ${product.min_age} años.` : "";
+  return `${range}${age} Los infantes no pagan.`.trim();
+}
+
 export function TripStep({ form, set, options, errors, plan, checkError, checking }: DirectStepProps & { plan: DirectPlan | null; checkError: string | null; checking: boolean }) {
   const product = options.products.find((item) => item.code === form.product_id);
   const perDeparture = product?.model === "POR_SALIDA";
@@ -189,7 +197,7 @@ export function TripStep({ form, set, options, errors, plan, checkError, checkin
             </div>
           ) : null}
         </Section>
-        <Section title="Pasajeros" hint={product?.max_pax ? `Hasta ${plural(product.max_pax, "pasajero", "pasajeros")} por reserva. Los infantes no pagan.` : "Los infantes no pagan."}>
+        <Section title="Pasajeros" hint={paxHint(product)}>
           <div className="grid grid-cols-3 gap-3 md:max-w-xl">
             <TextField label="Adultos" type="number" min={0} max={99} value={form.adt} onChange={(event) => set({ adt: Math.max(0, Number(event.target.value)) })} data-testid="field:adt" />
             <TextField label="Niños" type="number" min={0} max={99} value={form.chd} onChange={(event) => set({ chd: Math.max(0, Number(event.target.value)) })} />
