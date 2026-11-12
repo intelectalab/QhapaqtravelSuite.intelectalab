@@ -7,14 +7,16 @@ namespace App\Http\Middleware;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Closure;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
 final class ResolveTenant
 {
+    private const PLATFORM_CONNECTION = 'pgsql_platform';
+
     public function __construct(private readonly TenantContext $context) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -27,6 +29,10 @@ final class ResolveTenant
         }
 
         $tenantId = $fromToken ?? $fromHost;
+
+        if ($tenantId === null && $request->bearerToken() === null && in_array('auth:sanctum', $request->route()?->gatherMiddleware() ?? [], true)) {
+            throw new AuthenticationException;
+        }
 
         if ($tenantId === null) {
             throw ApiException::forbidden('TENANT_REQUIRED', 'No se pudo determinar la empresa (tenant) de la solicitud.');
@@ -42,18 +48,27 @@ final class ResolveTenant
 
     private function tenantFromToken(Request $request): ?string
     {
-        $user = $request->user();
-        if ($user === null || ! method_exists($user, 'currentAccessToken')) {
-            return null;
+        $bearer = $request->bearerToken();
+
+        if ($bearer === null) {
+            return $request->user()->tenant_id ?? null;
         }
 
-        $token = $user->currentAccessToken();
+        $hash = hash('sha256', str_contains($bearer, '|') ? explode('|', $bearer, 2)[1] : $bearer);
+        $row = DB::selectOne('select tenant_id from app_resolve_access_token(?)', [$hash]);
 
-        if (! $token instanceof PersonalAccessToken) {
-            return $user->tenant_id ?? null;
+        if ($row !== null) {
+            return (string) $row->tenant_id;
         }
 
-        return $token->getAttribute('tenant_id');
+        $platform = DB::connection(self::PLATFORM_CONNECTION)->table('personal_access_tokens')->whereNull('tenant_id')->where('token', $hash)
+            ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))->exists();
+
+        if ($platform) {
+            throw ApiException::forbidden('EXPERIENCE_MISMATCH', 'La consola de la plataforma no accede a los datos de una agencia.');
+        }
+
+        throw new AuthenticationException;
     }
 
     private function tenantFromHost(Request $request): ?string

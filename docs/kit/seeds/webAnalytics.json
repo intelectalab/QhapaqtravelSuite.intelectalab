@@ -1,0 +1,838 @@
+{
+  "isDemo": true,
+  "cookieless": true,
+  "ga4Compare": 0.71,
+  "days": [
+    {
+      "d": "2026-08-01",
+      "visits": 521,
+      "visitors": 435,
+      "pageviews": 1187,
+      "bounces": 207,
+      "engaged": 65323,
+      "conv": 6,
+      "rev": 9752
+    },
+    {
+      "d": "2026-08-02",
+      "visits": 476,
+      "visitors": 394,
+      "pageviews": 1096,
+      "bounces": 213,
+      "engaged": 63360,
+      "conv": 8,
+      "rev": 15337
+    },
+    {
+      "d": "2026-08-03",
+      "visits": 402,
+      "visitors": 324,
+      "pageviews": 951,
+      "bounces": 161,
+      "engaged": 51253,
+      "conv": 7,
+      "rev": 10891
+    },
+    {
+      "d": "2026-08-04",
+      "visits": 467,
+      "visitors": 365,
+      "pageviews": 1069,
+      "bounces": 198,
+      "engaged": 55472,
+      "conv": 7,
+      "rev": 14271
+    },
+    {
+      "d": "2026-08-05",
+      "visits": 464,
+      "visitors": 372,
+      "pageviews": 1208,
+      "bounces": 179,
+      "engaged": 51642,
+      "conv": 5,
+      "rev": 11149
+    },
+    {
+      "d": "2026-08-06",
+      "visits": 381,
+      "visitors": 315,
+      "pageviews": 946,
+      "bounces": 156,
+      "engaged": 47874,
+      "conv": 7,
+      "rev": 15117
+    },
+    {
+      "d": "2026-08-07",
+      "visits": 452,
+      "visitors": 371,
+      "pageviews": 1032,
+      "bounces": 200,
+      "engaged": 57699,
+      "conv": 9,
+      "rev": 18226
+    },
+    {
+      "d": "2026-08-08",
+      "visits": 516,
+      "visitors": 425,
+      "pageviews": 1170,
+      "bounces": 217,
+      "engaged": 53581,
+      "conv": 7,
+      "rev": 12533
+    },
+    {
+      "d": "2026-08-09",
+      "visits": 525,
+      "visitors": 437,
+      "pageviews": 1232,
+      "bounces": 228,
+      "engaged": 64952,
+      "conv": 7,
+      "rev": 16003
+    },
+    {
+      "d": "2026-08-10",
+      "visits": 384,
+      "visitors": 316,
+      "pageviews": 847,
+      "bounces": 171,
+      "engaged": 41721,
+      "conv": 5,
+      "rev": 7547
+    },
+    {
+      "d": "2026-08-11",
+      "visits": 444,
+      "visitors": 369,
+      "pageviews": 1086,
+      "bounces": 171,
+      "engaged": 47685,
+      "conv": 5,
+      "rev": 11620
+    },
+    {
+      "d": "2026-08-12",
+      "visits": 449,
+      "visitors": 368,
+      "pageviews": 1126,
+      "bounces": 174,
+      "engaged": 53143,
+      "conv": 7,
+      "rev": 13025
+    },
+    {
+      "d": "2026-08-13",
+      "visits": 521,
+      "visitors": 409,
+      "pageviews": 1362,
+      "bounces": 224,
+      "engaged": 51289,
+      "conv": 9,
+      "rev": 19949
+    },
+    {
+      "d": "2026-08-14",
+      "visits": 472,
+      "visitors": 384,
+      "pageviews": 1176,
+      "bounces": 206,
+      "engaged": 55999,
+      "conv": 7,
+      "rev": 13688
+    },
+    {
+      "d": "2026-08-15",
+      "visits": 612,
+      "visitors": 480,
+      "pageviews": 1420,
+      "bounces": 259,
+      "engaged": 65018,
+      "conv": 10,
+      "rev": 17081
+    },
+    {
+      "d": "2026-08-16",
+      "visits": 527,
+      "visitors": 434,
+      "pageviews": 1187,
+      "bounces": 205,
+      "engaged": 70460,
+      "conv": 6,
+      "rev": 13630
+    },
+    {
+      "d": "2026-08-17",
+      "visits": 512,
+      "visitors": 425,
+      "pageviews": 1204,
+      "bounces": 207,
+      "engaged": 68730,
+      "conv": 7,
+      "rev": 10569
+    },
+    {
+      "d": "2026-08-18",
+      "visits": 504,
+      "visitors": 393,
+      "pageviews": 1174,
+      "bounces": 229,
+      "engaged": 62509,
+      "conv": 8,
+      "rev": 14028
+    },
+    {
+      "d": "2026-08-19",
+      "visits": 420,
+      "visitors": 340,
+      "pageviews": 954,
+      "bounces": 165,
+      "engaged": 55056,
+      "conv": 5,
+      "rev": 7998
+    },
+    {
+      "d": "2026-08-20",
+      "visits": 412,
+      "visitors": 336,
+      "pageviews": 1062,
+      "bounces": 183,
+      "engaged": 45671,
+      "conv": 7,
+      "rev": 12685
+    },
+    {
+      "d": "2026-08-21",
+      "visits": 532,
+      "visitors": 427,
+      "pageviews": 1324,
+      "bounces": 210,
+      "engaged": 68302,
+      "conv": 7,
+      "rev": 13452
+    },
+    {
+      "d": "2026-08-22",
+      "visits": 510,
+      "visitors": 409,
+      "pageviews": 1339,
+      "bounces": 222,
+      "engaged": 64907,
+      "conv": 9,
+      "rev": 17329
+    },
+    {
+      "d": "2026-08-23",
+      "visits": 519,
+      "visitors": 428,
+      "pageviews": 1307,
+      "bounces": 201,
+      "engaged": 64954,
+      "conv": 7,
+      "rev": 13212
+    },
+    {
+      "d": "2026-08-24",
+      "visits": 447,
+      "visitors": 352,
+      "pageviews": 959,
+      "bounces": 177,
+      "engaged": 51847,
+      "conv": 8,
+      "rev": 17103
+    },
+    {
+      "d": "2026-08-25",
+      "visits": 472,
+      "visitors": 375,
+      "pageviews": 1255,
+      "bounces": 204,
+      "engaged": 56128,
+      "conv": 6,
+      "rev": 13646
+    },
+    {
+      "d": "2026-08-26",
+      "visits": 443,
+      "visitors": 350,
+      "pageviews": 941,
+      "bounces": 171,
+      "engaged": 59275,
+      "conv": 6,
+      "rev": 9963
+    },
+    {
+      "d": "2026-08-27",
+      "visits": 527,
+      "visitors": 415,
+      "pageviews": 1292,
+      "bounces": 238,
+      "engaged": 65084,
+      "conv": 9,
+      "rev": 20943
+    },
+    {
+      "d": "2026-08-28",
+      "visits": 529,
+      "visitors": 414,
+      "pageviews": 1230,
+      "bounces": 242,
+      "engaged": 54323,
+      "conv": 6,
+      "rev": 10026
+    },
+    {
+      "d": "2026-08-29",
+      "visits": 658,
+      "visitors": 546,
+      "pageviews": 1675,
+      "bounces": 289,
+      "engaged": 87826,
+      "conv": 9,
+      "rev": 17609
+    },
+    {
+      "d": "2026-08-30",
+      "visits": 552,
+      "visitors": 441,
+      "pageviews": 1190,
+      "bounces": 220,
+      "engaged": 59386,
+      "conv": 11,
+      "rev": 16655
+    },
+    {
+      "d": "2026-08-31",
+      "visits": 442,
+      "visitors": 362,
+      "pageviews": 961,
+      "bounces": 186,
+      "engaged": 50945,
+      "conv": 6,
+      "rev": 11044
+    },
+    {
+      "d": "2026-09-01",
+      "visits": 474,
+      "visitors": 388,
+      "pageviews": 1201,
+      "bounces": 215,
+      "engaged": 57274,
+      "conv": 7,
+      "rev": 12604
+    },
+    {
+      "d": "2026-09-02",
+      "visits": 554,
+      "visitors": 453,
+      "pageviews": 1334,
+      "bounces": 214,
+      "engaged": 58119,
+      "conv": 9,
+      "rev": 20916
+    },
+    {
+      "d": "2026-09-03",
+      "visits": 495,
+      "visitors": 386,
+      "pageviews": 1066,
+      "bounces": 196,
+      "engaged": 56081,
+      "conv": 6,
+      "rev": 10850
+    },
+    {
+      "d": "2026-09-04",
+      "visits": 476,
+      "visitors": 385,
+      "pageviews": 1254,
+      "bounces": 204,
+      "engaged": 63088,
+      "conv": 8,
+      "rev": 16139
+    },
+    {
+      "d": "2026-09-05",
+      "visits": 554,
+      "visitors": 464,
+      "pageviews": 1418,
+      "bounces": 226,
+      "engaged": 62125,
+      "conv": 10,
+      "rev": 19818
+    },
+    {
+      "d": "2026-09-06",
+      "visits": 622,
+      "visitors": 486,
+      "pageviews": 1379,
+      "bounces": 286,
+      "engaged": 83012,
+      "conv": 12,
+      "rev": 17986
+    },
+    {
+      "d": "2026-09-07",
+      "visits": 556,
+      "visitors": 444,
+      "pageviews": 1224,
+      "bounces": 240,
+      "engaged": 69646,
+      "conv": 9,
+      "rev": 14690
+    },
+    {
+      "d": "2026-09-08",
+      "visits": 509,
+      "visitors": 404,
+      "pageviews": 1303,
+      "bounces": 194,
+      "engaged": 64106,
+      "conv": 6,
+      "rev": 13276
+    },
+    {
+      "d": "2026-09-09",
+      "visits": 525,
+      "visitors": 430,
+      "pageviews": 1213,
+      "bounces": 232,
+      "engaged": 69521,
+      "conv": 6,
+      "rev": 10423
+    },
+    {
+      "d": "2026-09-10",
+      "visits": 546,
+      "visitors": 426,
+      "pageviews": 1302,
+      "bounces": 208,
+      "engaged": 52238,
+      "conv": 9,
+      "rev": 13230
+    },
+    {
+      "d": "2026-09-11",
+      "visits": 505,
+      "visitors": 405,
+      "pageviews": 1191,
+      "bounces": 229,
+      "engaged": 52011,
+      "conv": 7,
+      "rev": 14289
+    },
+    {
+      "d": "2026-09-12",
+      "visits": 559,
+      "visitors": 461,
+      "pageviews": 1334,
+      "bounces": 234,
+      "engaged": 59725,
+      "conv": 8,
+      "rev": 12389
+    },
+    {
+      "d": "2026-09-13",
+      "visits": 693,
+      "visitors": 563,
+      "pageviews": 1755,
+      "bounces": 296,
+      "engaged": 83463,
+      "conv": 9,
+      "rev": 13100
+    },
+    {
+      "d": "2026-09-14",
+      "visits": 603,
+      "visitors": 480,
+      "pageviews": 1511,
+      "bounces": 231,
+      "engaged": 72328,
+      "conv": 11,
+      "rev": 25222
+    },
+    {
+      "d": "2026-09-15",
+      "visits": 519,
+      "visitors": 413,
+      "pageviews": 1243,
+      "bounces": 198,
+      "engaged": 69233,
+      "conv": 9,
+      "rev": 15820
+    },
+    {
+      "d": "2026-09-16",
+      "visits": 508,
+      "visitors": 419,
+      "pageviews": 1319,
+      "bounces": 206,
+      "engaged": 59039,
+      "conv": 8,
+      "rev": 12113
+    },
+    {
+      "d": "2026-09-17",
+      "visits": 467,
+      "visitors": 389,
+      "pageviews": 1099,
+      "bounces": 187,
+      "engaged": 62333,
+      "conv": 6,
+      "rev": 11955
+    },
+    {
+      "d": "2026-09-18",
+      "visits": 488,
+      "visitors": 384,
+      "pageviews": 1115,
+      "bounces": 197,
+      "engaged": 62828,
+      "conv": 9,
+      "rev": 20610
+    },
+    {
+      "d": "2026-09-19",
+      "visits": 730,
+      "visitors": 597,
+      "pageviews": 1843,
+      "bounces": 282,
+      "engaged": 87370,
+      "conv": 11,
+      "rev": 17277
+    },
+    {
+      "d": "2026-09-20",
+      "visits": 674,
+      "visitors": 529,
+      "pageviews": 1649,
+      "bounces": 284,
+      "engaged": 67564,
+      "conv": 11,
+      "rev": 21614
+    },
+    {
+      "d": "2026-09-21",
+      "visits": 529,
+      "visitors": 419,
+      "pageviews": 1379,
+      "bounces": 211,
+      "engaged": 68536,
+      "conv": 10,
+      "rev": 21701
+    },
+    {
+      "d": "2026-09-22",
+      "visits": 577,
+      "visitors": 452,
+      "pageviews": 1309,
+      "bounces": 257,
+      "engaged": 73570,
+      "conv": 10,
+      "rev": 15500
+    },
+    {
+      "d": "2026-09-23",
+      "visits": 575,
+      "visitors": 477,
+      "pageviews": 1231,
+      "bounces": 251,
+      "engaged": 55729,
+      "conv": 10,
+      "rev": 21353
+    },
+    {
+      "d": "2026-09-24",
+      "visits": 632,
+      "visitors": 511,
+      "pageviews": 1334,
+      "bounces": 278,
+      "engaged": 83740,
+      "conv": 12,
+      "rev": 26677
+    },
+    {
+      "d": "2026-09-25",
+      "visits": 535,
+      "visitors": 447,
+      "pageviews": 1272,
+      "bounces": 222,
+      "engaged": 51542,
+      "conv": 9,
+      "rev": 20496
+    },
+    {
+      "d": "2026-09-26",
+      "visits": 743,
+      "visitors": 624,
+      "pageviews": 1918,
+      "bounces": 327,
+      "engaged": 89287,
+      "conv": 12,
+      "rev": 18342
+    },
+    {
+      "d": "2026-09-27",
+      "visits": 723,
+      "visitors": 599,
+      "pageviews": 1841,
+      "bounces": 320,
+      "engaged": 97054,
+      "conv": 10,
+      "rev": 14740
+    },
+    {
+      "d": "2026-09-28",
+      "visits": 649,
+      "visitors": 515,
+      "pageviews": 1428,
+      "bounces": 292,
+      "engaged": 66758,
+      "conv": 11,
+      "rev": 20653
+    },
+    {
+      "d": "2026-09-29",
+      "visits": 551,
+      "visitors": 447,
+      "pageviews": 1390,
+      "bounces": 235,
+      "engaged": 69791,
+      "conv": 6,
+      "rev": 11218
+    }
+  ],
+  "pages": [
+    [
+      "/",
+      "Inicio",
+      31
+    ],
+    [
+      "/tours/machu-picchu-2d",
+      "Machu Picchu 2 días",
+      14
+    ],
+    [
+      "/destinos/cusco",
+      "Destino Cusco",
+      9
+    ],
+    [
+      "/tours/valle-sagrado-vip",
+      "Valle Sagrado VIP",
+      7
+    ],
+    [
+      "/blog/cuando-ir-a-machu-picchu",
+      "Blog: cuándo ir a Machu Picchu",
+      6
+    ],
+    [
+      "/tours/montana-de-colores",
+      "Montaña de 7 Colores",
+      6
+    ],
+    [
+      "/viajes-a-medida",
+      "Viajes a medida",
+      5
+    ],
+    [
+      "/ofertas",
+      "Ofertas",
+      4
+    ],
+    [
+      "/aventuras/luna-de-miel-en-cusco",
+      "Aventura: luna de miel",
+      3
+    ],
+    [
+      "/contacto",
+      "Contacto",
+      3
+    ]
+  ],
+  "sources": [
+    [
+      "google",
+      "organic",
+      "",
+      38
+    ],
+    [
+      "google",
+      "cpc",
+      "cusco-septiembre",
+      17
+    ],
+    [
+      "(directo)",
+      "(ninguno)",
+      "",
+      14
+    ],
+    [
+      "instagram",
+      "paid",
+      "mp-primavera",
+      9
+    ],
+    [
+      "facebook",
+      "social",
+      "",
+      6
+    ],
+    [
+      "rutaslibres.pe",
+      "referral",
+      "",
+      6
+    ],
+    [
+      "whatsapp",
+      "social",
+      "",
+      4
+    ],
+    [
+      "boletin",
+      "email",
+      "newsletter-sep",
+      3
+    ],
+    [
+      "tripadvisor.com",
+      "referral",
+      "",
+      2
+    ],
+    [
+      "bing",
+      "organic",
+      "",
+      1
+    ]
+  ],
+  "devices": [
+    [
+      "movil",
+      71
+    ],
+    [
+      "escritorio",
+      25
+    ],
+    [
+      "tablet",
+      4
+    ]
+  ],
+  "countries": [
+    [
+      "PE",
+      "Perú",
+      46
+    ],
+    [
+      "US",
+      "Estados Unidos",
+      15
+    ],
+    [
+      "ES",
+      "España",
+      8
+    ],
+    [
+      "MX",
+      "México",
+      6
+    ],
+    [
+      "CL",
+      "Chile",
+      5
+    ],
+    [
+      "AR",
+      "Argentina",
+      4
+    ],
+    [
+      "BR",
+      "Brasil",
+      4
+    ],
+    [
+      "DE",
+      "Alemania",
+      3
+    ],
+    [
+      "FR",
+      "Francia",
+      3
+    ],
+    [
+      "ZZ",
+      "Otros",
+      6
+    ]
+  ],
+  "byEvent": [
+    [
+      "compra",
+      46
+    ],
+    [
+      "compra_pendiente",
+      9
+    ],
+    [
+      "lead_cotizacion",
+      31
+    ],
+    [
+      "chat_web",
+      22
+    ],
+    [
+      "clic_whatsapp",
+      64
+    ],
+    [
+      "suscripcion_boletin",
+      18
+    ]
+  ],
+  "live": {
+    "now": 17,
+    "pages": [
+      [
+        "/",
+        6
+      ],
+      [
+        "/tours/machu-picchu-2d",
+        4
+      ],
+      [
+        "/destinos/cusco",
+        3
+      ],
+      [
+        "/ofertas",
+        2
+      ],
+      [
+        "/blog/cuando-ir-a-machu-picchu",
+        2
+      ]
+    ]
+  }
+}

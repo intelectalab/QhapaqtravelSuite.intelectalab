@@ -1,4 +1,4 @@
-// Fase 0 · Fundaciones — 24 tablas. Solo refs internas a la fase.
+// Fase 0 · Fundaciones — 25 tablas. Solo refs internas a la fase.
 
 
 Table iam_sedes {
@@ -452,3 +452,24 @@ Ref: sys_scheduled_jobs.owner_user_id > iam_users.id
 Ref: sys_job_runs.scheduled_job_id > sys_scheduled_jobs.id
 Ref: sys_job_runs.triggered_by > iam_users.id
 Ref: integration_errors.resolved_by > iam_users.id
+
+Table fin_fx_rates {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  currency_code char(3) [not null]
+  base_currency char(3) [not null]
+  rate_pen numeric(14,6) [not null]
+  buy numeric(12,6)
+  sell numeric(12,6)
+  previous_rate numeric(14,6)
+  rate_date date [not null]
+  source varchar(80) [not null]
+  effective_at timestamptz [not null]
+  created_by uuid
+  created_at timestamptz [not null]
+  provider_id uuid
+  daily_change_pct numeric(7,3)
+  alert_raised boolean [not null]
+  is_demo boolean [not null]
+  Note: '07 §3.19 + 09 §3.9 + 17 §3.6 · Histórico de tipo de cambio (append-only).'
+}

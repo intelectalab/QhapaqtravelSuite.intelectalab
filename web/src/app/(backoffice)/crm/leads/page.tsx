@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { LeadsTable } from "@/features/leads/LeadsTable";
 import { LeadCreateAction } from "@/features/leads/LeadCreateAction";
+import { LeadJourney } from "@/features/leads/LeadJourney";
 import { getAdvisors, getCatalogs, listLeads } from "@/lib/server/leads";
 
 export const metadata: Metadata = { title: "Leads" };
@@ -21,6 +22,7 @@ export default async function LeadsPage() {
         actions={catalogs ? <LeadCreateAction catalogs={catalogs} advisors={advisors} /> : undefined}
         info={<InfoTip>Cada lead se revisa contra los leads y clientes que ya existen, se asigna, se contacta y se califica antes de convertirlo en cliente y oportunidad. Los duplicados no cuentan para la conversión.</InfoTip>}
       />
+      <LeadJourney leads={leads} />
       <LeadsTable leads={leads} catalogs={catalogs} />
     </>
   );

@@ -1,29 +1,29 @@
-# Índice de endpoints — KipuControl API v1.0.0
+# Índice de endpoints — KipuControl API v2.10.0
 
-> Generado por `build_openapi.py` desde la §6 de las 19 especificaciones. No editar a mano.
+> Generado por `build_openapi.py` desde la §6 de las 25 especificaciones. No editar a mano.
 
 ## Resumen
 
-- **Operaciones únicas (método + ruta):** 1006 (de 1044 filas expandidas en las §6; 38 repeticiones deduplicadas).
-- **Paths:** 852 · **Esquemas de tabla (§3):** 168 (de 168 tablas detectadas).
-- **Por método:** GET 375 · POST 484 · PUT 41 · PATCH 54 · DELETE 52
-- **Idempotency-Key:** 153 obligatorias · 3 recomendadas · 8 webhooks (idempotentes por id de evento del proveedor, sin header).
-- **If-Match (lock_version):** 194
-- **Autenticación:** customer 12 · platform 36 · public 77 · sanctum 872 · verify-token 1 · webhook 8
-- **Listados con parámetros estándar** (`filter`, `sort`, `include`, `page[size]`, `page[cursor]`): 143
+- **Operaciones únicas (método + ruta):** 1242 (de 1280 filas expandidas en las §6; 38 repeticiones deduplicadas).
+- **Paths:** 1045 · **Esquemas de tabla (§3):** 186 (de 186 tablas detectadas).
+- **Por método:** GET 469 · POST 588 · PUT 48 · PATCH 79 · DELETE 58
+- **Idempotency-Key:** 197 obligatorias · 3 recomendadas · 10 webhooks (idempotentes por id de evento del proveedor, sin header).
+- **If-Match (lock_version):** 209
+- **Autenticación:** customer 12 · platform 68 · public 91 · sanctum 1060 · verify-token 1 · webhook 10
+- **Listados con parámetros estándar** (`filter`, `sort`, `include`, `page[size]`, `page[cursor]`): 158
 - **Aceptan API key / OAuth del tenant (scopes):** 35
 
 | Fase | Operaciones | GET | POST | PUT | PATCH | DELETE |
 |---|---:|---:|---:|---:|---:|---:|
-| Fase 0 · Fundaciones | 84 | 29 | 40 | 2 | 7 | 6 |
+| Fase 0 · Fundaciones | 85 | 30 | 40 | 2 | 7 | 6 |
 | Fase 1 · MVP | 411 | 151 | 198 | 14 | 23 | 25 |
-| Fase 2 · Canales y campo | 371 | 147 | 179 | 15 | 17 | 13 |
-| Fase 3 · SaaS y crecimiento | 140 | 48 | 67 | 10 | 7 | 8 |
-| **Total** | **1006** | **375** | **484** | **41** | **54** | **52** |
+| Fase 2 · Canales y campo | 364 | 144 | 175 | 15 | 17 | 13 |
+| Fase 3 · SaaS y crecimiento | 382 | 144 | 175 | 17 | 32 | 14 |
+| **Total** | **1242** | **469** | **588** | **48** | **79** | **58** |
 
 | Módulo (tag) | F0 | F1 | F2 | F3 | Total |
 |---|---:|---:|---:|---:|---:|
-| Núcleo | 19 | 0 | 0 | 0 | 19 |
+| Núcleo | 20 | 0 | 0 | 0 | 20 |
 | CRM | 0 | 54 | 0 | 0 | 54 |
 | Catálogo | 0 | 135 | 0 | 0 | 135 |
 | Cotizaciones | 0 | 29 | 0 | 0 | 29 |
@@ -31,7 +31,7 @@
 | Operaciones y móvil | 0 | 67 | 23 | 0 | 90 |
 | Extranet de proveedores | 0 | 0 | 34 | 0 | 34 |
 | Finanzas | 0 | 43 | 22 | 0 | 65 |
-| Canales y portales | 0 | 20 | 80 | 0 | 100 |
+| Canales y portales | 0 | 20 | 72 | 0 | 92 |
 | Administración y reportes | 65 | 6 | 0 | 1 | 72 |
 | Aprobaciones e inbox | 0 | 0 | 35 | 0 | 35 |
 | Cupos y documentos de viaje | 0 | 0 | 29 | 0 | 29 |
@@ -39,15 +39,22 @@
 | Plataforma SaaS y API | 0 | 0 | 0 | 62 | 62 |
 | Marketing y metas | 0 | 0 | 0 | 50 | 50 |
 | Sitio web público | 0 | 0 | 61 | 2 | 63 |
-| Motor de reservas | 0 | 9 | 20 | 0 | 29 |
+| Motor de reservas | 0 | 9 | 21 | 0 | 30 |
 | Reglas, comunicaciones y monedas | 0 | 0 | 39 | 9 | 48 |
 | Reseñas propias | 0 | 0 | 0 | 16 | 16 |
+| Crecimiento comercial | 0 | 0 | 0 | 65 | 65 |
+| Portal corporativo | 0 | 0 | 0 | 44 | 44 |
+| Viajes por tramos | 0 | 0 | 0 | 15 | 15 |
+| Vitrina, monetización y marca | 0 | 0 | 0 | 47 | 47 |
+| Plantillas web y contenido con IA | 0 | 0 | 0 | 31 | 31 |
+| Seguimiento, conversiones y visitas | 0 | 0 | 0 | 32 | 32 |
+| Landing de KipuControl | 0 | 0 | 0 | 8 | 8 |
 
 Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhook idempotente por id de evento · 🔒 `If-Match` · 🌐 pública (`/public` con clave de widget o sin auth) · 🧩 acepta API key/OAuth con scope.
 
 ## Fase 0 · Fundaciones
 
-### Núcleo (19)
+### Núcleo (20)
 
 | Método | Ruta | Permiso | Spec | Marcas |
 |---|---|---|---|---|
@@ -58,6 +65,7 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 | POST | `/api/v1/auth/mfa/verify` | token mfa:verify | 00 §6 |  |
 | POST | `/api/v1/auth/password/forgot` | público | 00 §6 | 🌐 |
 | POST | `/api/v1/auth/password/reset` | público | 00 §6 | 🌐 |
+| GET | `/api/v1/documents/{id}/download` | autenticado (mismo permiso y alcance que el registro de origen del documento) | 00 §6 |  |
 | GET | `/api/v1/me` | autenticado | 00 §6 |  |
 | GET | `/api/v1/me/access` | autenticado | 00 §6 |  |
 | DELETE | `/api/v1/me/mfa` | autenticado | 00 §6 |  |
@@ -68,7 +76,7 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 | GET | `/api/v1/me/permissions` | autenticado | 00 §6 |  |
 | GET | `/api/v1/me/tenant` | autenticado back-office | 00 §6 |  |
 | POST | `/api/v1/platform/auth/login` | público | 00 §6 | 🌐 |
-| POST | `/api/v1/platform/auth/mfa/verify` | público | 00 §6 | 🌐 |
+| POST | `/api/v1/platform/auth/mfa/verify` | token mfa:verify (guard platform) | 00 §6 |  |
 | GET | `/api/v1/search` | autenticado back-office | 00 §6 |  |
 
 ### Administración y reportes (65)
@@ -588,7 +596,7 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 | POST | `/api/v1/crm/claim-book/{id}/review` | crm.claims.manage | 12 §6 | 🔒 |
 | GET | `/api/v1/portal/claim-book` | sesión cliente/pasajero | 12 §6 |  |
 | POST | `/api/v1/portal/claim-book` | sesión cliente/pasajero | 12 §6 | 🔑 |
-| POST | `/api/v1/public/{tenant}/claim-book` | público (rate limit 5/min por IP + captcha) | 12 §6 | 🔑 🌐 |
+| POST | `/api/v1/public/claim-book` | público (rate limit 5/min por IP + captcha) | 12 §6 | 🔑 🌐 |
 
 ### Motor de reservas (9)
 
@@ -711,7 +719,7 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 | POST | `/api/v1/finance/reconciliation/matching` | finance.payments.register | 07 §6.7 | 🔑 |
 | POST | `/api/v1/integrations/fiscal/{provider}/webhook` | Firma del proveedor | 07 §6.6 | 🪝 |
 
-### Canales y portales (80)
+### Canales y portales (72)
 
 | Método | Ruta | Permiso | Spec | Marcas |
 |---|---|---|---|---|
@@ -762,9 +770,8 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 | POST | `/api/v1/cms/contents/{id}/return` | channels.cms.publish | 08 §6.4 | 🔒 |
 | POST | `/api/v1/cms/contents/{id}/submit` | channels.cms.publish (+ channels.cms.edit propuesto) (publicado → publish) | 08 §6.4 | 🔒 |
 | POST | `/api/v1/cms/contents/{id}/unpublish` | channels.cms.publish | 08 §6.4 | 🔒 |
-| POST | `/api/v1/portal/customer/receivables/{code}/pay` | customer | 08 §6.7 | 🔑 |
-| PUT | `/api/v1/portal/customer/reservations/{code}/companions` | customer \| cliente dueño | 08 §6.7, 15 §6.6 | 🔒 |
-| GET | `/api/v1/portal/customer/reservations/{code}/web-summary` | customer | 08 §6.7 |  |
+| PUT | `/api/v1/portal/client/reservations/{code}/companions` | customer \| cliente dueño | 08 §6.7, 15 §6.6 | 🔒 |
+| GET | `/api/v1/portal/client/reservations/{code}/web-summary` | customer | 08 §6.7 |  |
 | GET | `/api/v1/portal/passenger/activities` | passenger | 08 §6.6 |  |
 | GET | `/api/v1/portal/passenger/alerts` | passenger | 08 §6.6 |  |
 | POST | `/api/v1/portal/passenger/alerts/{incidentId}/ack` | passenger | 08 §6.6 |  |
@@ -788,13 +795,6 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 | GET | `/api/v1/portal/passenger/vouchers/{code}` | passenger | 08 §6.6 |  |
 | GET | `/api/v1/public/cms/contents/{slug}` | público | 08 §6.4 | 🌐 |
 | GET | `/api/v1/public/cms/placements/{placement}` | portal | 08 §6.4 | 🌐 |
-| POST | `/api/v1/public/shop/availability` | público | 08 §6.3 | 🌐 |
-| POST | `/api/v1/public/shop/orders` | público | 08 §6.3 | 🔑 🌐 |
-| GET | `/api/v1/public/shop/orders/{code}` | público (token del pedido) | 08 §6.3 | 🌐 |
-| POST | `/api/v1/public/shop/orders/{code}/payments` | público (token del pedido) | 08 §6.3 | 🔑 🌐 |
-| POST | `/api/v1/public/shop/price` | público | 08 §6.3 | 🌐 |
-| GET | `/api/v1/public/shop/products` | público (tenant por host) | 08 §6.3 | 🌐 |
-| GET | `/api/v1/public/shop/products/{slug}` | público | 08 §6.3 | 🌐 |
 
 ### Aprobaciones e inbox (35)
 
@@ -963,12 +963,13 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 | GET | `/api/v1/public/site` | público | 15 §6.1 | 🌐 |
 | POST | `/api/v1/webhooks/payments/{gateway}` | firma HMAC del proveedor \| firma del proveedor \| firma de la pasarela | 08 §6.3, 13 §6, 15 §6.3 | 🪝 |
 
-### Motor de reservas (20)
+### Motor de reservas (21)
 
 | Método | Ruta | Permiso | Spec | Marcas |
 |---|---|---|---|---|
 | PUT | `/api/v1/catalog/products/{id}/accommodation` | catalog.products.manage_rates | 16 §6.2 |  |
 | POST | `/api/v1/catalog/products/{id}/accommodation/legs` | catalog.products.manage_rates | 16 §6.2 |  |
+| POST | `/api/v1/catalog/products/{id}/accommodation/legs/reorder` | catalog.products.manage_rates | 16 §6.2 |  |
 | PATCH | `/api/v1/catalog/products/{id}/accommodation/legs/{legId}` | catalog.products.manage_rates | 16 §6.2 |  |
 | DELETE | `/api/v1/catalog/products/{id}/accommodation/legs/{legId}` | catalog.products.manage_rates | 16 §6.2 |  |
 | POST | `/api/v1/catalog/products/{id}/accommodation/legs/{legId}/hotels` | catalog.products.manage_rates | 16 §6.2 |  |
@@ -1091,7 +1092,7 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 | GET | `/api/v1/platform/features/{key}/plans/{plan}` | super_admin | 13 §6 |  |
 | PUT | `/api/v1/platform/features/{key}/plans/{plan}` | super_admin | 13 §6 |  |
 | GET | `/api/v1/platform/invoices` | super_admin | 13 §6 |  |
-| POST | `/api/v1/platform/invoices/{id}/dunning/extend` | super_admin | 13 §6 |  |
+| POST | `/api/v1/platform/invoices/{id}/dunning/extend` | super_admin | 13 §6 | 🔑 |
 | POST | `/api/v1/platform/invoices/{id}/manual-payment` | super_admin | 13 §6 | 🔑 |
 | POST | `/api/v1/platform/invoices/{id}/retry` | super_admin | 13 §6 | 🔑 |
 | POST | `/api/v1/platform/invoices/{id}/void` | super_admin | 13 §6 | 🔑 |
@@ -1204,6 +1205,283 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 | GET | `/api/v1/settings/own-reviews` | channels.ecommerce.manage (params de la regla: admin.settings.manage) | 18 §6 |  |
 | PATCH | `/api/v1/settings/own-reviews` | channels.ecommerce.manage (params de la regla: admin.settings.manage) | 18 §6 |  |
 
+### Crecimiento comercial (65)
+
+| Método | Ruta | Permiso | Spec | Marcas |
+|---|---|---|---|---|
+| POST | `/api/v1/ai/requests` | ai.assistant.use | 19 §6 | 🔑 |
+| GET | `/api/v1/ai/requests/{id}` | ai.assistant.use | 19 §6 |  |
+| POST | `/api/v1/ai/requests/{id}/apply` | ai.assistant.use | 19 §6 | 🔑 |
+| POST | `/api/v1/ai/requests/{id}/discard` | ai.assistant.use | 19 §6 |  |
+| GET | `/api/v1/ai/usage` | ai.assistant.use | 19 §6 |  |
+| GET | `/api/v1/catalog/dynamic-price-rules` | catalog.products.dynamic_pricing | 19 §6 |  |
+| POST | `/api/v1/catalog/dynamic-price-rules` | catalog.products.dynamic_pricing | 19 §6 |  |
+| POST | `/api/v1/catalog/dynamic-price-rules/simulate` | catalog.products.dynamic_pricing | 19 §6 |  |
+| PATCH | `/api/v1/catalog/dynamic-price-rules/{code}` | catalog.products.dynamic_pricing | 19 §6 | 🔒 |
+| POST | `/api/v1/catalog/imports` | catalog.products.import | 19 §6 | 🔑 |
+| GET | `/api/v1/catalog/imports/{code}` | catalog.products.import | 19 §6 |  |
+| POST | `/api/v1/catalog/imports/{code}/cancel` | catalog.products.import | 19 §6 |  |
+| POST | `/api/v1/catalog/imports/{code}/confirm` | catalog.products.import | 19 §6 | 🔑 |
+| GET | `/api/v1/channels/ota/bookings` | channels.ota.manage | 19 §6 |  |
+| GET | `/api/v1/channels/ota/connections` | channels.ota.manage | 19 §6 |  |
+| POST | `/api/v1/channels/ota/connections` | channels.ota.manage | 19 §6 |  |
+| PATCH | `/api/v1/channels/ota/connections/{code}` | channels.ota.manage | 19 §6 | 🔒 |
+| GET | `/api/v1/channels/ota/connections/{code}/mappings` | channels.ota.manage | 19 §6 |  |
+| PUT | `/api/v1/channels/ota/connections/{code}/mappings/{productId}` | channels.ota.manage | 19 §6 |  |
+| POST | `/api/v1/channels/ota/connections/{code}/sync` | channels.ota.manage | 19 §6 | 🔑 |
+| GET | `/api/v1/finance/account-mappings` | finance.accounting_export | 19 §6 |  |
+| PUT | `/api/v1/finance/account-mappings` | finance.accounting_export | 19 §6 |  |
+| GET | `/api/v1/finance/accounting-exports` | finance.accounting_export | 19 §6 |  |
+| POST | `/api/v1/finance/accounting-exports` | finance.accounting_export | 19 §6 | 🔑 |
+| GET | `/api/v1/finance/gift-cards` | finance.gift_cards | 19 §6 |  |
+| POST | `/api/v1/finance/gift-cards` | finance.gift_cards | 19 §6 | 🔑 |
+| GET | `/api/v1/finance/gift-cards/{code}` | finance.gift_cards | 19 §6 |  |
+| POST | `/api/v1/finance/gift-cards/{code}/redeem` | finance.gift_cards | 19 §6 | 🔑 |
+| POST | `/api/v1/finance/gift-cards/{code}/void` | finance.gift_cards | 19 §6 | 🔒 |
+| GET | `/api/v1/finance/payment-links` | finance.payment_links | 19 §6 |  |
+| POST | `/api/v1/finance/payment-links` | finance.payment_links | 19 §6 | 🔑 |
+| POST | `/api/v1/finance/payment-links/{code}/cancel` | finance.payment_links | 19 §6 | 🔒 |
+| POST | `/api/v1/finance/payment-links/{code}/send` | finance.payment_links | 19 §6 |  |
+| POST | `/api/v1/inbox/conversations/{code}/send-template` | inbox.manage | 19 §6 | 🔑 |
+| GET | `/api/v1/inbox/whatsapp-templates` | inbox.whatsapp.manage | 19 §6 |  |
+| POST | `/api/v1/inbox/whatsapp-templates` | inbox.whatsapp.manage | 19 §6 |  |
+| PATCH | `/api/v1/inbox/whatsapp-templates/{id}` | inbox.whatsapp.manage | 19 §6 |  |
+| GET | `/api/v1/marketing/recovery-attempts` | marketing.campaigns.manage | 19 §6 |  |
+| GET | `/api/v1/marketing/recovery-flows` | marketing.campaigns.manage | 19 §6 |  |
+| POST | `/api/v1/marketing/recovery-flows` | marketing.campaigns.manage | 19 §6 |  |
+| PATCH | `/api/v1/marketing/recovery-flows/{code}` | marketing.campaigns.manage | 19 §6 |  |
+| GET | `/api/v1/marketplace/listings` | channels.marketplace.manage | 19 §6 |  |
+| POST | `/api/v1/marketplace/listings` | channels.marketplace.manage | 19 §6 |  |
+| PATCH | `/api/v1/marketplace/listings/{id}` | channels.marketplace.manage | 19 §6 |  |
+| GET | `/api/v1/marketplace/orders` | channels.marketplace.manage | 19 §6 |  |
+| POST | `/api/v1/marketplace/orders` | channels.marketplace.manage | 19 §6 | 🔑 |
+| GET | `/api/v1/marketplace/partnerships` | channels.marketplace.manage | 19 §6 |  |
+| POST | `/api/v1/marketplace/partnerships` | channels.marketplace.manage | 19 §6 |  |
+| POST | `/api/v1/marketplace/partnerships/{id}/decide` | channels.marketplace.manage | 19 §6 |  |
+| GET | `/api/v1/ops/checkin/manifest/{serviceId}` | operations.checkin | 19 §6 |  |
+| POST | `/api/v1/ops/checkin/scan` | operations.checkin | 19 §6 | 🔑 |
+| GET | `/api/v1/ops/waiver-templates` | operations.checkin | 19 §6 |  |
+| POST | `/api/v1/ops/waiver-templates` | operations.checkin | 19 §6 |  |
+| GET | `/api/v1/portal/passenger/passes` | pasajero (su reserva) | 19 §6 |  |
+| POST | `/api/v1/portal/passenger/waivers` | pasajero (su reserva) | 19 §6 | 🔑 |
+| POST | `/api/v1/public/gift-cards` | público (widget key) | 19 §6 | 🔑 🌐 |
+| POST | `/api/v1/public/gift-cards/balance` | público (widget key) | 19 §6 | 🌐 |
+| GET | `/api/v1/public/pay/{token}` | público (token firmado) | 19 §6 | 🌐 |
+| POST | `/api/v1/public/pay/{token}/checkout` | público (token firmado) | 19 §6 | 🔑 🌐 |
+| POST | `/api/v1/quotes/{id}/external-offers` | quotes.external_offers | 19 §6 | 🔑 |
+| POST | `/api/v1/quotes/{id}/external-offers/search` | quotes.external_offers | 19 §6 |  |
+| DELETE | `/api/v1/quotes/{id}/external-offers/{offerId}` | quotes.external_offers | 19 §6 |  |
+| GET | `/api/v1/reports/insights` | ai.insights.view | 19 §6 |  |
+| POST | `/api/v1/reports/insights/{id}/resolve` | ai.insights.view | 19 §6 |  |
+| POST | `/api/v1/webhooks/ota/{ota}` | firma de la OTA | 19 §6 | 🪝 |
+
+### Portal corporativo (44)
+
+| Método | Ruta | Permiso | Spec | Marcas |
+|---|---|---|---|---|
+| GET | `/api/v1/crm/corporate-accounts` | crm.corporate.manage | 20 §6 |  |
+| POST | `/api/v1/crm/corporate-accounts` | crm.corporate.manage | 20 §6 | 🔑 |
+| GET | `/api/v1/crm/corporate-accounts/{id}` | crm.corporate.manage | 20 §6 |  |
+| PATCH | `/api/v1/crm/corporate-accounts/{id}` | crm.corporate.manage | 20 §6 | 🔒 |
+| GET | `/api/v1/crm/corporate-accounts/{id}/cost-centers` | crm.corporate.manage | 20 §6 |  |
+| POST | `/api/v1/crm/corporate-accounts/{id}/cost-centers` | crm.corporate.manage | 20 §6 |  |
+| PATCH | `/api/v1/crm/corporate-accounts/{id}/cost-centers/{costCenterId}` | crm.corporate.manage | 20 §6 |  |
+| GET | `/api/v1/crm/corporate-accounts/{id}/portal-users` | crm.corporate.manage | 20 §6 |  |
+| POST | `/api/v1/crm/corporate-accounts/{id}/portal-users` | crm.corporate.manage | 20 §6 | 🔑 |
+| PATCH | `/api/v1/crm/corporate-accounts/{id}/portal-users/{portalUserId}` | crm.corporate.manage | 20 §6 |  |
+| POST | `/api/v1/crm/corporate-accounts/{id}/portal-users/{portalUserId}/resend-invite` | crm.corporate.manage | 20 §6 |  |
+| POST | `/api/v1/crm/corporate-accounts/{id}/suspend` | crm.corporate.manage | 20 §6 | 🔒 |
+| GET | `/api/v1/crm/corporate-accounts/{id}/travelers` | crm.corporate.manage | 20 §6 |  |
+| POST | `/api/v1/crm/corporate-accounts/{id}/travelers` | crm.corporate.manage | 20 §6 |  |
+| POST | `/api/v1/crm/corporate-accounts/{id}/travelers/import` | crm.corporate.manage | 20 §6 | 🔑 |
+| PATCH | `/api/v1/crm/corporate-accounts/{id}/travelers/{travelerId}` | crm.corporate.manage | 20 §6 |  |
+| GET | `/api/v1/finance/corporate-statements` | finance.corporate_statements | 20 §6 |  |
+| POST | `/api/v1/finance/corporate-statements` | finance.corporate_statements | 20 §6 | 🔑 |
+| GET | `/api/v1/finance/corporate-statements/{code}` | finance.corporate_statements | 20 §6 |  |
+| POST | `/api/v1/finance/corporate-statements/{code}/send` | finance.corporate_statements | 20 §6 | 🔑 |
+| POST | `/api/v1/finance/corporate-statements/{code}/void` | finance.corporate_statements | 20 §6 |  |
+| GET | `/api/v1/portal/client/corporate/approvals` | customer (administrador, aprobador) | 20 §6 |  |
+| POST | `/api/v1/portal/client/corporate/approvals/{code}/approve` | customer (administrador, aprobador) | 20 §6 | 🔑 🔒 |
+| POST | `/api/v1/portal/client/corporate/approvals/{code}/reject` | customer (administrador, aprobador) | 20 §6 | 🔒 |
+| GET | `/api/v1/portal/client/corporate/cost-centers` | customer (cuenta corporativa) | 20 §6 |  |
+| POST | `/api/v1/portal/client/corporate/cost-centers` | customer (administrador) | 20 §6 |  |
+| PATCH | `/api/v1/portal/client/corporate/cost-centers/{code}` | customer (administrador) | 20 §6 |  |
+| GET | `/api/v1/portal/client/corporate/exports` | customer (cuenta corporativa) | 20 §6 |  |
+| POST | `/api/v1/portal/client/corporate/exports` | customer (cuenta corporativa) | 20 §6 | 🔑 |
+| GET | `/api/v1/portal/client/corporate/exports/{code}` | customer (cuenta corporativa) | 20 §6 |  |
+| GET | `/api/v1/portal/client/corporate/movements` | customer (cuenta corporativa) | 20 §6 |  |
+| GET | `/api/v1/portal/client/corporate/purchases` | customer (cuenta corporativa) | 20 §6 |  |
+| PATCH | `/api/v1/portal/client/corporate/statement-settings` | customer (administrador, pagador) | 20 §6 | 🔒 |
+| GET | `/api/v1/portal/client/corporate/statements` | customer (administrador, pagador, aprobador) | 20 §6 |  |
+| GET | `/api/v1/portal/client/corporate/statements/{code}/pdf` | customer (administrador, pagador, aprobador) | 20 §6 |  |
+| GET | `/api/v1/portal/client/corporate/summary` | customer (cuenta corporativa) | 20 §6 |  |
+| GET | `/api/v1/portal/client/corporate/travelers` | customer (administrador, aprobador) | 20 §6 |  |
+| POST | `/api/v1/portal/client/corporate/travelers` | customer (administrador) | 20 §6 |  |
+| GET | `/api/v1/portal/client/corporate/users` | customer (administrador) | 20 §6 |  |
+| POST | `/api/v1/portal/client/corporate/users` | customer (administrador) | 20 §6 | 🔑 |
+| PATCH | `/api/v1/portal/client/corporate/users/{portalUserId}` | customer (administrador) | 20 §6 |  |
+| POST | `/api/v1/quotes/{id}/corporate-approval` | quotes.send | 20 §6 | 🔑 |
+| GET | `/api/v1/reservations/{id}/cost-allocations` | crm.corporate.manage \| reservations.view | 20 §6 |  |
+| PUT | `/api/v1/reservations/{id}/cost-allocations` | crm.corporate.manage \| reservations.modify | 20 §6 | 🔒 |
+
+### Viajes por tramos (15)
+
+| Método | Ruta | Permiso | Spec | Marcas |
+|---|---|---|---|---|
+| GET | `/api/v1/catalog/hotels/{hotelId}/season-rates` | catalog.products.view | 21 §6 |  |
+| POST | `/api/v1/catalog/hotels/{hotelId}/season-rates` | catalog.products.update | 21 §6 |  |
+| DELETE | `/api/v1/catalog/hotels/{hotelId}/season-rates/{id}` | catalog.products.update | 21 §6 |  |
+| GET | `/api/v1/catalog/products/{id}/trip` | catalog.products.view | 21 §6 |  |
+| PUT | `/api/v1/catalog/products/{id}/trip/legs/{legId}/nights` | catalog.products.update | 21 §6 | 🔒 |
+| POST | `/api/v1/catalog/products/{id}/trip/tours` | catalog.products.update | 21 §6 |  |
+| PATCH | `/api/v1/catalog/products/{id}/trip/tours/{tourId}` | catalog.products.update | 21 §6 |  |
+| POST | `/api/v1/catalog/products/{id}/trip/transport` | catalog.products.update | 21 §6 |  |
+| PATCH | `/api/v1/catalog/products/{id}/trip/transport/{optionId}` | catalog.products.update | 21 §6 |  |
+| GET | `/api/v1/portal/client/reservations/{code}/in-trip` | customer (titular) | 21 §6 |  |
+| POST | `/api/v1/portal/client/reservations/{code}/in-trip` | customer (titular) | 21 §6 | 🔑 |
+| GET | `/api/v1/reservations/{id}/in-trip-offers` | reservations.view | 21 §6 |  |
+| POST | `/api/v1/reservations/{id}/in-trip-offers` | reservations.modify | 21 §6 | 🔑 |
+| POST | `/api/v1/reservations/{id}/in-trip-offers/{offerCode}/cancel` | reservations.modify | 21 §6 |  |
+| GET | `/api/v1/reservations/{id}/trip` | reservations.view | 21 §6 |  |
+
+### Vitrina, monetización y marca (47)
+
+| Método | Ruta | Permiso | Spec | Marcas |
+|---|---|---|---|---|
+| GET | `/api/v1/channels/showcase/bookings` | channels.showcase.manage | 22 §6 |  |
+| POST | `/api/v1/channels/showcase/bookings/{code}/attendance` | channels.showcase.manage | 22 §6 |  |
+| GET | `/api/v1/channels/showcase/fees` | channels.showcase.manage | 22 §6 |  |
+| GET | `/api/v1/channels/showcase/listings` | channels.showcase.manage | 22 §6 |  |
+| POST | `/api/v1/channels/showcase/listings` | channels.showcase.manage | 22 §6 | 🔑 |
+| PATCH | `/api/v1/channels/showcase/listings/{code}` | channels.showcase.manage | 22 §6 |  |
+| GET | `/api/v1/cms/domains` | cms.seo.manage | 22 §6 |  |
+| POST | `/api/v1/cms/domains` | cms.seo.manage | 22 §6 |  |
+| DELETE | `/api/v1/cms/domains/{id}` | cms.seo.manage | 22 §6 |  |
+| POST | `/api/v1/cms/domains/{id}/verify` | cms.seo.manage | 22 §6 |  |
+| GET | `/api/v1/cms/redirects` | cms.seo.manage | 22 §6 |  |
+| POST | `/api/v1/cms/redirects` | cms.seo.manage | 22 §6 |  |
+| DELETE | `/api/v1/cms/redirects/{id}` | cms.seo.manage | 22 §6 |  |
+| POST | `/api/v1/cms/seo/audit` | cms.seo.manage | 22 §6 |  |
+| GET | `/api/v1/cms/seo/pages` | cms.seo.manage | 22 §6 |  |
+| PATCH | `/api/v1/cms/seo/pages/{id}` | cms.seo.manage | 22 §6 |  |
+| GET | `/api/v1/cms/stories` | cms.seo.manage \| channels.cms.publish | 22 §6 |  |
+| POST | `/api/v1/cms/stories` | cms.seo.manage \| channels.cms.publish | 22 §6 |  |
+| POST | `/api/v1/cms/stories/{id}/consent-request` | cms.seo.manage \| channels.cms.publish | 22 §6 |  |
+| POST | `/api/v1/cms/stories/{id}/publish` | channels.cms.publish | 22 §6 |  |
+| POST | `/api/v1/cms/stories/{id}/unpublish` | channels.cms.publish | 22 §6 |  |
+| GET | `/api/v1/finance/gateway-fees` | finance.gateways.manage \| finance.profitability | 22 §6 |  |
+| POST | `/api/v1/finance/gateway-fees/import` | finance.gateways.manage | 22 §6 | 🔑 |
+| GET | `/api/v1/finance/gateways` | finance.gateways.manage | 22 §6 |  |
+| POST | `/api/v1/finance/gateways` | finance.gateways.manage | 22 §6 | 🔑 |
+| PATCH | `/api/v1/finance/gateways/{id}` | finance.gateways.manage | 22 §6 |  |
+| GET | `/api/v1/platform/access-passes` | super_admin | 22 §6 |  |
+| POST | `/api/v1/platform/access-passes` | super_admin | 22 §6 | 🔑 |
+| POST | `/api/v1/platform/access-passes/{code}/convert` | super_admin | 22 §6 | 🔑 |
+| POST | `/api/v1/platform/access-passes/{code}/extend` | super_admin | 22 §6 |  |
+| POST | `/api/v1/platform/access-passes/{code}/revoke` | super_admin | 22 §6 |  |
+| PATCH | `/api/v1/platform/addons/{code}/billing` | super_admin | 22 §6 |  |
+| POST | `/api/v1/platform/showcase/agencies/{code}/verify` | super_admin | 22 §6 |  |
+| GET | `/api/v1/platform/showcase/funnel` | super_admin | 22 §6 |  |
+| POST | `/api/v1/platform/showcase/listings/{code}/decision` | super_admin | 22 §6 |  |
+| GET | `/api/v1/platform/showcase/moderation` | super_admin | 22 §6 |  |
+| GET | `/api/v1/platform/showcase/posts` | super_admin | 22 §6 |  |
+| POST | `/api/v1/platform/showcase/posts` | super_admin | 22 §6 |  |
+| PATCH | `/api/v1/platform/showcase/posts/{id}` | super_admin | 22 §6 |  |
+| POST | `/api/v1/portal/client/stories/{id}/consent` | customer (titular) | 22 §6 |  |
+| POST | `/api/v1/showcase/agencies` | público | 22 §6 | 🔑 🌐 |
+| POST | `/api/v1/showcase/bookings/{token}/cancel` | público (token) | 22 §6 | 🌐 |
+| GET | `/api/v1/showcase/listings` | público | 22 §6 | 🌐 |
+| GET | `/api/v1/showcase/listings/{slug}` | público | 22 §6 | 🌐 |
+| POST | `/api/v1/showcase/listings/{slug}/bookings` | público | 22 §6 | 🔑 🌐 |
+| GET | `/api/v1/showcase/posts` | público | 22 §6 | 🌐 |
+| GET | `/api/v1/showcase/posts/{slug}` | público | 22 §6 | 🌐 |
+
+### Plantillas web y contenido con IA (31)
+
+| Método | Ruta | Permiso | Spec | Marcas |
+|---|---|---|---|---|
+| GET | `/api/v1/cms/ai/credits` | ai.content.use | 23 §6 |  |
+| GET | `/api/v1/cms/ai/credits/ledger` | ai.content.use | 23 §6 |  |
+| GET | `/api/v1/cms/ai/images` | ai.content.use | 23 §6 |  |
+| POST | `/api/v1/cms/ai/images` | ai.content.use | 23 §6 | 🔑 |
+| PATCH | `/api/v1/cms/ai/images/{id}` | ai.content.use | 23 §6 |  |
+| GET | `/api/v1/cms/ai/jobs` | ai.content.use | 23 §6 |  |
+| POST | `/api/v1/cms/ai/jobs` | ai.content.use | 23 §6 | 🔑 |
+| GET | `/api/v1/cms/ai/jobs/{id}` | ai.content.use | 23 §6 |  |
+| POST | `/api/v1/cms/ai/jobs/{id}/apply` | ai.content.use | 23 §6 | 🔑 |
+| POST | `/api/v1/cms/ai/jobs/{id}/discard` | ai.content.use | 23 §6 |  |
+| POST | `/api/v1/cms/ai/jobs/{id}/regenerate` | ai.content.use | 23 §6 | 🔑 |
+| GET | `/api/v1/cms/ai/packs` | ai.content.use | 23 §6 |  |
+| POST | `/api/v1/cms/ai/packs/{code}/purchase` | ai.content.use | 23 §6 | 🔑 |
+| GET | `/api/v1/cms/templates` | cms.templates.manage | 23 §6 |  |
+| GET | `/api/v1/cms/templates/{code}` | cms.templates.manage | 23 §6 |  |
+| POST | `/api/v1/cms/templates/{code}/preview` | cms.templates.manage | 23 §6 |  |
+| POST | `/api/v1/cms/templates/{code}/purchase` | cms.templates.manage | 23 §6 | 🔑 |
+| GET | `/api/v1/cms/theme` | cms.templates.manage | 23 §6 |  |
+| PUT | `/api/v1/cms/theme` | cms.templates.manage | 23 §6 | 🔒 |
+| POST | `/api/v1/cms/theme/restore/{id}` | cms.templates.manage | 23 §6 |  |
+| PATCH | `/api/v1/cms/theme/tokens` | cms.templates.manage | 23 §6 | 🔒 |
+| GET | `/api/v1/platform/ai/packs` | super_admin | 23 §6 |  |
+| PATCH | `/api/v1/platform/ai/packs/{code}` | super_admin | 23 §6 |  |
+| GET | `/api/v1/platform/template-submissions` | super_admin | 23 §6 |  |
+| POST | `/api/v1/platform/template-submissions` | super_admin | 23 §6 | 🔑 |
+| POST | `/api/v1/platform/template-submissions/{code}/decision` | super_admin | 23 §6 |  |
+| GET | `/api/v1/platform/templates` | super_admin | 23 §6 |  |
+| POST | `/api/v1/platform/templates` | super_admin | 23 §6 |  |
+| PATCH | `/api/v1/platform/templates/{code}` | super_admin | 23 §6 |  |
+| POST | `/api/v1/platform/tenants/{id}/theme` | super_admin | 23 §6 |  |
+| GET | `/api/v1/public/site/theme` | público | 23 §6 | 🌐 |
+
+### Seguimiento, conversiones y visitas (32)
+
+| Método | Ruta | Permiso | Spec | Marcas |
+|---|---|---|---|---|
+| GET | `/api/v1/analytics/web/devices` | analytics.web.view | 24 §6 |  |
+| GET | `/api/v1/analytics/web/export` | analytics.web.view | 24 §6 |  |
+| GET | `/api/v1/analytics/web/overview` | analytics.web.view | 24 §6 |  |
+| GET | `/api/v1/analytics/web/pages` | analytics.web.view | 24 §6 |  |
+| GET | `/api/v1/analytics/web/realtime` | analytics.web.view | 24 §6 |  |
+| GET | `/api/v1/analytics/web/sources` | analytics.web.view | 24 §6 |  |
+| GET | `/api/v1/marketing/tracking/conversions` | marketing.tracking.manage | 24 §6 |  |
+| PUT | `/api/v1/marketing/tracking/conversions/{tag}/{event}` | marketing.tracking.manage | 24 §6 |  |
+| DELETE | `/api/v1/marketing/tracking/conversions/{tag}/{event}` | marketing.tracking.manage | 24 §6 |  |
+| GET | `/api/v1/marketing/tracking/dispatches` | marketing.tracking.manage | 24 §6 |  |
+| POST | `/api/v1/marketing/tracking/dispatches/{id}/retry` | marketing.tracking.manage | 24 §6 |  |
+| GET | `/api/v1/marketing/tracking/tags` | marketing.tracking.manage | 24 §6 |  |
+| POST | `/api/v1/marketing/tracking/tags` | marketing.tracking.manage | 24 §6 | 🔑 |
+| GET | `/api/v1/marketing/tracking/tags/{code}` | marketing.tracking.manage | 24 §6 |  |
+| PATCH | `/api/v1/marketing/tracking/tags/{code}` | marketing.tracking.manage | 24 §6 | 🔒 |
+| DELETE | `/api/v1/marketing/tracking/tags/{code}` | marketing.tracking.manage | 24 §6 |  |
+| POST | `/api/v1/marketing/tracking/tags/{code}/decision` | marketing.tracking.approve | 24 §6 |  |
+| POST | `/api/v1/marketing/tracking/tags/{code}/pause` | marketing.tracking.manage | 24 §6 |  |
+| POST | `/api/v1/marketing/tracking/tags/{code}/submit` | marketing.tracking.manage | 24 §6 |  |
+| POST | `/api/v1/marketing/tracking/tags/{code}/verify` | marketing.tracking.manage | 24 §6 |  |
+| GET | `/api/v1/platform/analytics/web/agencies` | super_admin | 24 §6 |  |
+| GET | `/api/v1/platform/analytics/web/overview` | super_admin | 24 §6 |  |
+| GET | `/api/v1/platform/blog/sync-status` | super_admin | 24 §6 |  |
+| POST | `/api/v1/platform/blog/webhooks/payload` | firma HMAC | 24 §6 | 🪝 |
+| PUT | `/api/v1/platform/tracking/conversions/{tag}/{event}` | super_admin | 24 §6 |  |
+| GET | `/api/v1/platform/tracking/tags` | super_admin | 24 §6 |  |
+| POST | `/api/v1/platform/tracking/tags` | super_admin | 24 §6 | 🔑 |
+| PATCH | `/api/v1/platform/tracking/tags/{code}` | super_admin | 24 §6 | 🔒 |
+| POST | `/api/v1/platform/tracking/tags/{code}/decision` | super_admin | 24 §6 |  |
+| POST | `/api/v1/public/analytics/hit` | público | 24 §6 | 🌐 |
+| POST | `/api/v1/public/consent` | público | 24 §6 | 🌐 |
+| GET | `/api/v1/public/site/tags` | público | 24 §6 | 🌐 |
+
+### Landing de KipuControl (8)
+
+| Método | Ruta | Permiso | Spec | Marcas |
+|---|---|---|---|---|
+| GET | `/api/v1/platform/signups` | super_admin | 25 §6 |  |
+| POST | `/api/v1/public/coupons/validate` | público (límite 10/min por IP) | 25 §6 | 🌐 |
+| GET | `/api/v1/public/plans` | público | 25 §6 | 🌐 |
+| GET | `/api/v1/public/ruc/{ruc}` | público (límite 10/min por IP) | 25 §6 | 🌐 |
+| POST | `/api/v1/public/sales-leads` | público (límite 5/min por IP) | 25 §6 | 🔑 🌐 |
+| POST | `/api/v1/public/signups` | público (captcha invisible) | 25 §6 | 🔑 🌐 |
+| GET | `/api/v1/public/signups/{token}` | público (token firmado) | 25 §6 | 🌐 |
+| POST | `/api/v1/public/signups/{token}/checkout` | público (token firmado) | 25 §6 | 🔑 🌐 |
+
 ## Conflictos y deduplicación
 
 32 operaciones aparecen en más de una fila/spec. Se conserva la fuente del dominio dueño (o la primera) y su fase, la idempotencia/lock más estricta y, si el permiso difiere, se documenta la unión (`a | b`) para decidir en la implementación.
@@ -1221,7 +1499,7 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 | GET | `/api/v1/mobile/operator/assignments/{id}` | 05 §6.7 App operador (`/mobile/operator`, token Sanctum de guía/conductor; Policy por recurso); 05 §6.9 v2.1 | permiso: «operations.view + vínculo recurso + AssignmentPolicy» (05) ≠ «guía/conductor» (05) |
 | GET | `/api/v1/mobile/passenger/messages` | 05 §6.8 App pasajero (`/mobile/passenger`, rol passenger; también la consume el portal del pasajero); 05 §6.9 v2.1 | permiso: «reservations.view + vínculo» (05) ≠ «passenger» (05) |
 | POST | `/api/v1/webhooks/payments/{gateway}` | 08 §6.3 E-commerce; 13 §6; 15 §6.3 Checkout y pago | permiso: «firma del proveedor» (08) ≠ «firma de la pasarela» (13) ≠ «firma HMAC del proveedor» (15)<br>fase: [2, 3] → 2 (la de la spec dueña del dominio) |
-| PUT | `/api/v1/portal/customer/reservations/{code}/companions` | 08 §6.7 v2.1 — Endpoints de portales; 15 §6.6 v2.1 — Motor de reservas público | permiso: «customer» (08) ≠ «cliente dueño» (15) |
+| PUT | `/api/v1/portal/client/reservations/{code}/companions` | 08 §6.7 v2.1 — Endpoints de portales; 15 §6.6 v2.1 — Motor de reservas público | permiso: «customer» (08) ≠ «cliente dueño» (15) |
 | GET | `/api/v1/passenger/reviews/eligibility` | 08 §6.8 v2.2 — Endpoints de reseñas del pasajero; 18 §6 | permiso: «passenger (reserva del token)» (08) ≠ «passenger (su reserva)» (18) |
 | POST | `/api/v1/platform/tenants/{id}/suspend` | 09 §6.1 Plataforma (PROC-001); 13 §6 | permiso: «admin.tenant.manage» (09) ≠ «super_admin» (13)<br>If-Match: declarado solo en 09 → se exige<br>fase: [0, 3] → 0 (la de la spec dueña del dominio) |
 | POST | `/api/v1/platform/tenants/{id}/reactivate` | 09 §6.1 Plataforma (PROC-001); 13 §6 | permiso: «admin.tenant.manage» (09) ≠ «super_admin» (13)<br>If-Match: declarado solo en 09 → se exige<br>fase: [0, 3] → 0 (la de la spec dueña del dominio) |
@@ -1255,7 +1533,6 @@ Leyenda: 🔑 `Idempotency-Key` obligatoria · (🔑) recomendada · 🪝 webhoo
 - `/api/v1/fin/supplier-invoices/{id}/validate` → `/api/v1/finance/supplier-invoices/{id}/validate` (06). 06 §6 usa `/fin/supplier-invoices`; 07 §6 fija el prefijo `/api/v1/finance`.
 - `/api/v1/fin/supplier-invoices/{id}/observe` → `/api/v1/finance/supplier-invoices/{id}/observe` (06). 06 §6 usa `/fin/supplier-invoices`; 07 §6 fija el prefijo `/api/v1/finance`.
 - `/api/v1/fin/supplier-invoices/{id}/reject` → `/api/v1/finance/supplier-invoices/{id}/reject` (06). 06 §6 usa `/fin/supplier-invoices`; 07 §6 fija el prefijo `/api/v1/finance`.
-- `/api/v1/customer/reservations/{code}/companions` → `/api/v1/portal/customer/reservations/{code}/companions` (15). 15 §6.6 usa `/customer/reservations/{code}/companions`; 08 §6.7 define la misma operación en `/portal/customer/…`.
 
 ### Nombres de parámetros de ruta unificados
 
@@ -1272,10 +1549,21 @@ Mismo recurso con distinto nombre de parámetro entre specs (`{id}`/`{code}`…)
 - PATCH `/api/v1/admin/booking-rules/{ruleKey}` → `/api/v1/admin/booking-rules/{code}` (16 §6.2)
 - GET `/api/v1/public/products/{code}` → `/api/v1/public/products/{slug}` (17 §6)
 - GET `/api/v1/public/products/{code}/availability` → `/api/v1/public/products/{slug}/availability` (17 §6)
+- POST `/api/v1/inbox/conversations/{id}/send-template` → `/api/v1/inbox/conversations/{code}/send-template` (19 §6)
+- GET `/api/v1/reservations/{code}/cost-allocations` → `/api/v1/reservations/{id}/cost-allocations` (20 §6)
+- POST `/api/v1/quotes/{code}/corporate-approval` → `/api/v1/quotes/{id}/corporate-approval` (20 §6)
+- GET `/api/v1/catalog/products/{code}/trip` → `/api/v1/catalog/products/{id}/trip` (21 §6)
+- PUT `/api/v1/catalog/products/{code}/trip/legs/{legId}/nights` → `/api/v1/catalog/products/{id}/trip/legs/{legId}/nights` (21 §6)
+- POST `/api/v1/catalog/products/{code}/trip/tours` → `/api/v1/catalog/products/{id}/trip/tours` (21 §6)
+- PATCH `/api/v1/catalog/products/{code}/trip/tours/{tourId}` → `/api/v1/catalog/products/{id}/trip/tours/{tourId}` (21 §6)
+- POST `/api/v1/catalog/products/{code}/trip/transport` → `/api/v1/catalog/products/{id}/trip/transport` (21 §6)
+- PATCH `/api/v1/catalog/products/{code}/trip/transport/{optionId}` → `/api/v1/catalog/products/{id}/trip/transport/{optionId}` (21 §6)
+- GET `/api/v1/reservations/{code}/trip` → `/api/v1/reservations/{id}/trip` (21 §6)
+- GET `/api/v1/reservations/{code}/in-trip-offers` → `/api/v1/reservations/{id}/in-trip-offers` (21 §6)
+- POST `/api/v1/reservations/{code}/in-trip-offers/{offerCode}/cancel` → `/api/v1/reservations/{id}/in-trip-offers/{offerCode}/cancel` (21 §6)
 
 ### Expansiones de celdas abreviadas (supuestos)
 
-- 00 §6 — `/api/v1/platform/auth/login · /mfa/verify`: Expansión explícita (CELL_OVERRIDES).
 - 08 §6.5 — `/api/v1/channels/portal-preview/clients/{clientId}/…`: La spec usa `…` (mismos GET del portal del cliente en solo lectura). Se modela como `{portalPath}` (supuesto).
 - 08 §6.7 — `/api/v1/portal/passenger/messages/{id}/read · /read-all`: `/read-all` se interpreta a nivel de colección (`/messages/read-all`), igual que `/me/notifications/read-all`.
 - 10 §6 — `/api/v1/integrations/whatsapp/webhook · /email/inbound · /public/contact`: Expansión explícita (CELL_OVERRIDES).
@@ -1304,13 +1592,6 @@ Pares cruzados: una misma URL podría satisfacer ambas y ninguna es más especí
 - `/api/v1/integrations/review-sources/{provider}` ↔ `/api/v1/integrations/{id}/test`
 - `/api/v1/integrations/webhooks/{id}` ↔ `/api/v1/integrations/{id}/config`
 - `/api/v1/integrations/webhooks/{id}` ↔ `/api/v1/integrations/{id}/test`
-- `/api/v1/public/destinations/{slug}` ↔ `/api/v1/public/{tenant}/claim-book`
-- `/api/v1/public/orders/{code}` ↔ `/api/v1/public/{tenant}/claim-book`
-- `/api/v1/public/pages/{slug}` ↔ `/api/v1/public/{tenant}/claim-book`
-- `/api/v1/public/posts/{slug}` ↔ `/api/v1/public/{tenant}/claim-book`
-- `/api/v1/public/products/{slug}` ↔ `/api/v1/public/{tenant}/claim-book`
-- `/api/v1/public/quotes/{token}` ↔ `/api/v1/public/{tenant}/claim-book`
-- `/api/v1/public/unsubscribe/{token}` ↔ `/api/v1/public/{tenant}/claim-book`
 
 ### Otros supuestos del contrato
 

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { REALMS, realmFor } from "@/lib/realms";
+import { SITE_LOCALE_COOKIE, SITE_LOCALES } from "@/lib/site-i18n";
 import { FRAMEABLE_PREFIX, HSTS_HEADER, NONCE_HEADER, WIDGET_ASSETS_PREFIX, WIDGET_PREFIX, contentSecurityPolicy, createNonce, isSecureRequest } from "@/lib/security-headers";
 import { widgetAncestors } from "@/lib/widget-ancestors";
 
@@ -44,10 +45,15 @@ function route(request: NextRequest, nonce: string, policy: string) {
     return NextResponse.redirect(new URL(realm.home, request.url));
   }
 
+  const lang = request.nextUrl.searchParams.get("lang");
+  const locale = pathname.startsWith("/sitio/") && lang && (SITE_LOCALES as string[]).includes(lang) ? lang : null;
+  if (locale) request.cookies.set(SITE_LOCALE_COOKIE, locale);
   const headers = new Headers(request.headers);
   headers.set(NONCE_HEADER, nonce);
   headers.set("Content-Security-Policy", policy);
-  return NextResponse.next({ request: { headers } });
+  const response = NextResponse.next({ request: { headers } });
+  if (locale) response.cookies.set(SITE_LOCALE_COOKIE, locale, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  return response;
 }
 
 export const config = {

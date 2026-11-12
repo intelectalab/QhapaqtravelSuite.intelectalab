@@ -6,6 +6,7 @@ namespace App\Domain\Crm\Actions;
 
 use App\Domain\Crm\Support\ActivityDirectory;
 use App\Domain\Crm\Support\Advisors;
+use App\Domain\Crm\Support\CrmNotices;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -46,6 +47,7 @@ final class ActivityWorkflow
             'created_by' => $actor->getKey(),
         ]);
         $this->audit->log('Actividad', $code, 'crear', after: $data['subject']);
+        app(CrmNotices::class)->activityAssigned($code, (string) $owner, (string) $actor->getKey());
 
         return $code;
     }
@@ -164,6 +166,7 @@ final class ActivityWorkflow
 
         if (isset($changed['owner_id'])) {
             $this->audit->log('Actividad', $activity->code, 'reasignar', DB::table('iam_users')->where('id', $activity->owner_id)->value('name'), DB::table('iam_users')->where('id', $values['owner_id'])->value('name'));
+            app(CrmNotices::class)->activityAssigned((string) $activity->code, (string) $values['owner_id'], (string) $actor->getKey());
         }
     }
 
@@ -187,6 +190,7 @@ final class ActivityWorkflow
         $before = DB::table('iam_users')->where('id', $activity->owner_id)->value('name');
         $after = DB::table('iam_users')->where('id', $ownerId)->value('name');
         $this->audit->log('Actividad', $activity->code, 'reasignar', $before, trim($after.($note ? " · {$note}" : '')));
+        app(CrmNotices::class)->activityAssigned((string) $activity->code, $ownerId, (string) $actor->getKey());
     }
 
     public function delete(string $code, ?string $reason, User $actor): void

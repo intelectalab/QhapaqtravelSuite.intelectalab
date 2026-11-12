@@ -32,8 +32,10 @@ export default async function CotizacionPage({ params, searchParams }: PageProps
   const advisors = quote.can.reassign ? await getAdvisors() : [];
   const conversion = quote.status === "aprobada" && quote.can.register_approval ? await getQuoteConversion(code) : null;
   const reached = Math.max(QUOTE_JOURNEY.findIndex((step) => step.status === quote.status), quote.status === "convertida" ? QUOTE_JOURNEY.length - 1 : -1);
-  const closed = ["rechazada", "vencida"].includes(quote.status);
-  const steps = QUOTE_JOURNEY.map((step, index) => ({ label: step.label, status: step.status, at: null, done: !closed && index <= reached }));
+  const closed = ["rechazada", "vencida", "cancelada"].includes(quote.status);
+  const visited = new Set([quote.status, ...quote.history.flatMap((event) => [event.before_value, event.after_value]).filter((value): value is string => Boolean(value)), ...(quote.viewed_at ? ["vista"] : [])]);
+  const optional = (status: string) => status === "vista" || status === "negociacion";
+  const steps = QUOTE_JOURNEY.map((step, index) => ({ label: step.label, status: step.status, at: null, done: !closed && index <= reached && (!optional(step.status) || visited.has(step.status)), skipped: !closed && index < reached && optional(step.status) && !visited.has(step.status) }));
   const base = `/cotizaciones/${encodeURIComponent(quote.code)}`;
   const { active, groups } = resolveSections(
     base,
@@ -104,9 +106,9 @@ export default async function CotizacionPage({ params, searchParams }: PageProps
             </div>
           </div>
           <HeroPanel solid>
-            <p className="mb-3 text-[13.5px] font-semibold">{closed ? (quote.status === "rechazada" ? "El cliente la rechazó" : "Venció sin respuesta") : "Avance de la cotización"}</p>
+            <p className="mb-3 text-[13.5px] font-semibold">{closed ? (quote.status === "rechazada" ? "El cliente la rechazó" : quote.status === "cancelada" ? "Se canceló" : "Venció sin respuesta") : "Avance de la cotización"}</p>
             {closed ? (
-              <p className="text-[13.5px] text-fg-2">{quote.rejected_reason ?? `La vigencia terminó el ${formatDate(quote.valid_until)}.`}</p>
+              <p className="text-[13.5px] text-fg-2">{quote.status === "vencida" ? `La vigencia terminó el ${formatDate(quote.valid_until)}.` : (quote.rejected_reason ?? "Ya no sigue el flujo de venta.")}</p>
             ) : (
               <Journey steps={steps} formatAt={(iso) => formatDate(iso)} />
             )}

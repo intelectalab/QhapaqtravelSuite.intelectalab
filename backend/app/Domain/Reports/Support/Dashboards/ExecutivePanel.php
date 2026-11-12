@@ -63,7 +63,7 @@ final class ExecutivePanel
         $start = $this->data->monthStart()->utc();
         $leads = DB::table('crm_leads')->whereNull('deleted_at')->where('status', '<>', 'duplicado')->where('created_at', '>=', $start)->pluck('status');
         $quotes = DB::table('quote_quotes')->whereNull('deleted_at')->where('status', '<>', 'borrador')->where('created_at', '>=', $start)->pluck('status');
-        $booked = $this->data->reservations($viewer)->whereIn('r.status', KpiReport::SOLD)->where('r.created_at', '>=', $start)->get(['r.total_amount', 'r.fx_rate']);
+        $booked = $this->data->reservations($viewer)->whereIn('r.status', KpiReport::SOLD)->whereNotNull('r.quote_id')->where('r.created_at', '>=', $start)->get(['r.total_amount', 'r.fx_rate']);
         $won = DB::table('crm_opportunities')->whereNull('deleted_at')->where('stage', 'ganada')->where('closed_at', '>=', $start)
             ->selectRaw('avg(extract(epoch from (closed_at - created_at)) / 86400) as days')->value('days');
 

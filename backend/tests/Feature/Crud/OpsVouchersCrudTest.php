@@ -73,6 +73,12 @@ it('anula el voucher con motivo, lo conserva en el historial y libera el servici
     $code = $this->postJson('/api/v1/ops/vouchers', ['service_code' => 'RS-3482', 'note' => 'Reemplaza al anulado.'], critical())->assertCreated()->json('data.code');
     expect($code)->not->toBe('VOU-2026-01204')
         ->and(rowOf('ops_vouchers', $code)->reservation_service_id)->toBe(serviceRow('RS-3482')->id);
+
+    $voucher = rowOf('ops_vouchers', $code);
+    $passengers = withinTenant(tenantA(), fn () => DB::table('iam_users')->where('reservation_id', $voucher->reservation_id)->pluck('id'));
+    $notified = withinTenant(tenantA(), fn () => DB::table('notif_messages')->where('event_code', 'voucher.emitido')->where('source_id', $voucher->id)->whereNotNull('recipient_user_id')->pluck('recipient_user_id'));
+
+    expect($notified->sort()->values()->all())->toEqual($passengers->merge(withinTenant(tenantA(), fn () => DB::table('iam_users')->whereNull('reservation_id')->where('client_id', DB::table('booking_reservations')->where('id', $voucher->reservation_id)->value('client_id'))->pluck('id')))->unique()->sort()->values()->all());
 });
 
 it('solo quien gestiona vouchers los versiona, usa o anula, y otra agencia no los ve', function () {

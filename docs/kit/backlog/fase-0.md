@@ -32,7 +32,7 @@ Cobertura referencial: 70 endpoints, 38 tablas citadas, 40 casos de prueba de la
 
 ## Supuestos y decisiones que afectan esta fase
 
-- Se agrega el permiso `crm.records.reassign` (hallazgo H-18, propuesto en 01 §11 #24) al catálogo de 00 §7.1: el seeder carga 58 permisos; se asigna a Tenant Admin y Manager.
+- Se agrega el permiso `crm.records.reassign` (hallazgo H-18, propuesto en 01 §11 #24) al catálogo de 00 §7.1: se asigna a Tenant Admin y Manager. v2.5: el catálogo de 00 §7.1 queda en 72 permisos (reasignación, aprobación de cambios, edición CMS, promociones y 9 `supplier.*` de la extranet).
 - `admin.tenant.manage` es exclusivo de plataforma y no se asigna dentro de un tenant (decisión propuesta en 09 §11 #10).
 - Las especificaciones 01, 02 y 16 nombran la bitácora `audit_logs`; se usa `audit_events` (00 §3.6) como única tabla.
 - `sys_documents` no tiene columnas definidas en ninguna especificación; F0-30 propone un esquema mínimo a confirmar.
@@ -255,14 +255,14 @@ Cobertura referencial: 70 endpoints, 38 tablas citadas, 40 casos de prueba de la
 
 **Criterios de aceptación:**
 
-1. Action `ProvisionTenant` crea en una transacción: tenant (`prueba` con `trial_ends_at` +14 d o `activo`), sede principal, 12 roles base copiados con la plantilla elegida (`estandar`, `minimo_privilegio` según TEN-BR-12, `copiar_tenant`), `sys_settings` por defecto, `sys_sequences` (COT, RES, OP, VOU, F001, B001 con los números del prototipo), `notif_event_rules` por defecto, `sys_booking_rules` desde la plantilla de plataforma y el administrador en estado `pendiente` con invitación.
+1. Action `ProvisionTenant` crea en una transacción: tenant (`prueba` con `trial_ends_at` +14 d o `activo`), sede principal, 12 roles base copiados con la plantilla elegida (`estandar`, `minimo_privilegio` según TEN-BR-12, `copiar_tenant`), `sys_settings` por defecto (claves y defaults de 09 §3.8; F0-33 los edita después), `sys_sequences` (COT, RES, OP, VOU, F001, B001 con los números del prototipo), `notif_event_rules` por defecto, `sys_booking_rules` desde la plantilla de plataforma y el administrador en estado `pendiente` con invitación.
 2. Comando `php artisan tenant:provision --file=tenant.json` usa la misma Action.
 3. Validaciones TEN-BR-01..03 y 05 con los mensajes de la especificación; misma `Idempotency-Key` → un solo tenant (T-04).
 4. Audita `Tenant alta` y emite `TenantProvisioned` (invitación en cola `notifications`).
 
 **Pruebas:** T-03, T-04.
 
-**Depende de:** F0-16, F0-17, F0-20, F0-25, F0-26, F0-33 · **Prioridad:** P0
+**Depende de:** F0-16, F0-17, F0-20, F0-25, F0-26 · **Prioridad:** P0
 
 #### F0-10 · Suspender y reactivar tenant
 
@@ -342,7 +342,7 @@ Cobertura referencial: 70 endpoints, 38 tablas citadas, 40 casos de prueba de la
 
 **Especificación:** 00 §3.4 (revocación), §6 (password/forgot, reset), §8.3 `TokensRevoked`; 09 §4.2
 
-**Tablas:** `personal_access_tokens`, `password_reset_tokens`
+**Tablas:** `personal_access_tokens`, `password_reset_tokens` (tabla estándar de Laravel, fuera de `database/`: ver database/README §6)
 
 **Endpoints:** `POST /api/v1/auth/password/forgot`, `POST /api/v1/auth/password/reset`
 
@@ -404,7 +404,7 @@ Cobertura referencial: 70 endpoints, 38 tablas citadas, 40 casos de prueba de la
 
 ### E0.4 · IAM: usuarios, sedes, roles y permisos
 
-#### F0-16 · spatie/permission con teams: catálogo de 58 permisos y 13 roles plantilla
+#### F0-16 · spatie/permission con teams: catálogo de 72 permisos y 13 roles plantilla
 
 **Historia:** Como Tenant Admin, quiero roles con permisos explícitos y editables por tenant, para ajustar el acceso a mi operación.
 
@@ -419,8 +419,8 @@ Cobertura referencial: 70 endpoints, 38 tablas citadas, 40 casos de prueba de la
 **Criterios de aceptación:**
 
 1. Config `teams=true`, `team_foreign_key=tenant_id`, guard `api`, caché Redis por tenant; `model_has_permissions` no se usa (sin permisos directos).
-2. Seeder de 57 permisos de 00 §7.1 más `crm.records.reassign` (H-18) asignado a `tenant_admin` y `manager`; sin comodines.
-3. Plantilla «Estándar» = matriz exacta de 00 §7.3 (totales por rol 2/56/47/16/16/15/6/2/2/4/2/1/1, +1 en TA y MG por `crm.records.reassign`).
+2. Seeder de los 72 permisos de Fases 0–2 de 00 §7.1 (los 12 del módulo Crecimiento, v2.6, los siembra F3-IA-01, y los 2 del módulo Corporativo, v2.7, F3-CORP-01) (incluye `crm.records.reassign` de H-18, los permisos de reasignación y aprobación de cambios y los 9 `supplier.*` de la extranet); sin comodines.
+3. Plantilla «Estándar» = matriz exacta de 00 §7.3 (totales por rol sin el módulo Crecimiento: 2/62/53/16/16/15/6/2/2/4/2/1/10).
 4. `setPermissionsTeamId($tenantId)` antes de cualquier `can()` (middleware `SetPermissionsTeam`).
 
 **Pruebas:** X-05 (matriz parametrizada desde el seeder).
@@ -808,7 +808,7 @@ Cobertura referencial: 70 endpoints, 38 tablas citadas, 40 casos de prueba de la
 
 **Especificación:** 09 §3.8, §3.9, §5 CFG-BR-01..06, 09..12, TEN-BR-11, §6.4
 
-**Tablas:** `sys_settings`, `sys_fx_rates`
+**Tablas:** `sys_settings`, `fin_fx_rates`
 
 **Endpoints:** `GET /api/v1/settings`, `PATCH /api/v1/settings/{section}` (lock_version), `GET /api/v1/settings/fx-rates`
 
@@ -819,12 +819,12 @@ Cobertura referencial: 70 endpoints, 38 tablas citadas, 40 casos de prueba de la
 1. Secciones `general`, `currency`, `policies`, `operations`, `channels` con claves, rangos y defaults de 09 §3.8 validados por FormRequest por sección.
 2. Guardado por diferencia: solo audita campos cambiados (`actualizar` por campo); sin cambios → 200 «No hay cambios que guardar» sin auditoría (T-17).
 3. RUC y país prohibidos (CFG-BR-03); moneda base bloqueada si existen reservas o pagos (409 CFG-BR-05, con verificación registrable por módulo).
-4. Cada TC distinto inserta fila en `sys_fx_rates`; `SettingsUpdated` invalida caché `settings:{tenant}`.
+4. Cada TC distinto inserta fila en `fin_fx_rates`; `SettingsUpdated` invalida caché `settings:{tenant}`.
 5. Canales solo editables si el plan lo incluye (CFG-BR-12).
 
 **Pruebas:** T-16, T-17.
 
-**Depende de:** F0-09 · **Prioridad:** P0
+**Depende de:** F0-07, F0-24 · **Prioridad:** P0
 
 #### F0-34 · Series y correlativos configurables
 

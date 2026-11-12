@@ -15,6 +15,8 @@ import { ProductDeleteAction, ProductLifecycleActions } from "@/features/catalog
 import { ProductHighlights } from "@/features/catalog/ProductHighlights";
 import { ProductLifecycle, ProductStatusNotice } from "@/features/catalog/product360/ProductHeader";
 import { PRODUCT_SECTION_GROUPS, productTabs } from "@/features/catalog/product360/ProductTabs";
+import { DownloadButton } from "@/components/ui/DownloadButton";
+import { DuplicateProductAction } from "@/features/catalog/product360/ProductVersionTools";
 import { ProductWizardAction } from "@/features/catalog/wizard/ProductWizard";
 
 const SECTION_ICONS: Record<string, LucideIcon> = {
@@ -97,6 +99,8 @@ export default async function ProductoPage({ params, searchParams }: PageProps<"
           <>
             {editable && <ProductWizardAction options={options} initial={editor} defaultOpen={editar === "1"} />}
             <ProductLifecycleActions product={product} options={options} />
+            <DownloadButton href={`/catalogo/productos/${encodeURIComponent(product.code)}/ficha`} label="Ficha comercial" pendingLabel="Generando…" />
+            {options.can_create && <DuplicateProductAction code={product.code} name={product.name} />}
             {options.can_activate && !["ACTIVE", "SUSPENDED"].includes(product.status) && <ProductDeleteAction product={product} />}
           </>
         }

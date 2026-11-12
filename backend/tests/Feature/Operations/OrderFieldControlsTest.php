@@ -1,7 +1,11 @@
 <?php
 
+use App\Domain\Integrations\Contracts\PushSender;
+use App\Domain\Integrations\Fake\FakePushSender;
+use App\Jobs\SendPushNotification;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
 function fieldAssignment(array $values = []): object
@@ -81,12 +85,15 @@ it('al asignar con aviso deja el mensaje en la bandeja interna del guía', funct
     $this->putJson("/api/v1/ops/assignments/{$assignment->id}/resources", ['guide_id' => $guide, 'notify' => ['fax']], critical((int) rowOf('ops_assignments', $assignment->id, column: 'id')->lock_version))->assertStatus(422)->assertJsonValidationErrors('notify.0');
 });
 
-it('registra y corrige el check-in por pasajero desde la ficha de la orden', function () {
+it('registra y corrige el check-in por pasajero desde la ficha de la orden, solo con el servicio iniciado', function () {
     $guide = withinTenant(tenantA(), fn () => (string) DB::table('ops_guides')->whereNull('deleted_at')->orderBy('code')->value('id'));
     $assignment = fieldAssignment(['status' => 'confirmada', 'guide_id' => $guide]);
     $passengers = withinTenant(tenantA(), fn () => DB::table('booking_passengers')->where('reservation_id', $assignment->reservation_id)->orderBy('seq')->pluck('id')->map(fn ($id) => (string) $id)->all());
     expect(count($passengers))->toBeGreaterThan(0);
     actingAsSeed('U01');
+
+    expect($this->putJson("/api/v1/ops/assignments/{$assignment->id}/checkins", ['passenger_ids' => $passengers]))->toBeApiError(409, 'OPS-BR-50');
+    withinTenant(tenantA(), fn () => DB::table('ops_assignments')->where('id', $assignment->id)->update(['status' => 'en_curso', 'started_at' => now()]));
 
     $this->putJson("/api/v1/ops/assignments/{$assignment->id}/checkins", ['passenger_ids' => $passengers])->assertOk()->assertJsonPath('data.present', count($passengers));
     $order = $this->getJson("/api/v1/ops/orders/{$assignment->order_code}")->assertOk()->json('data');
@@ -161,4 +168,27 @@ it('ventas no valida asignaciones ni registra check-in', function () {
 
     $this->postJson("/api/v1/ops/assignments/{$assignment->id}/validate", [])->assertForbidden();
     $this->putJson("/api/v1/ops/assignments/{$assignment->id}/checkins", ['passenger_ids' => []])->assertForbidden();
+});
+
+it('al asignar con aviso envía push al teléfono del guía con la app instalada', function () {
+    Queue::fake();
+    $assignment = fieldAssignment();
+    $guide = withinTenant(tenantA(), function (): string {
+        $guide = (string) DB::table('iam_users')->where('code', 'U09')->value('guide_id');
+        DB::table('ops_guides')->where('id', $guide)->update(['status' => 'disponible']);
+        DB::table('ops_assignments')->where('guide_id', $guide)->where('service_date', BUSINESS_TODAY)->update(['guide_id' => null]);
+        DB::table('ops_mobile_devices')->insert(['id' => (string) Str::uuid7(), 'user_id' => seedUser('U09')->getKey(), 'app' => 'operador', 'platform' => 'android', 'app_version' => '1.0.0', 'expo_push_token' => 'ExponentPushToken[prueba-guia]', 'last_seen_at' => now()]);
+
+        return $guide;
+    });
+    actingAsSeed('U01');
+
+    $this->putJson("/api/v1/ops/assignments/{$assignment->id}/resources", ['guide_id' => $guide, 'ack_warnings' => true, 'notify' => ['push']], critical((int) $assignment->lock_version))->assertOk();
+
+    Queue::assertPushed(SendPushNotification::class, fn (SendPushNotification $job): bool => $job->userIds === [(string) seedUser('U09')->getKey()] && $job->data['assignment_id'] === $assignment->id);
+
+    FakePushSender::reset();
+    withinTenant(tenantA(), fn () => (new SendPushNotification([(string) seedUser('U09')->getKey()], 'Servicio asignado', 'Valle Sagrado mañana a las 08:00', ['assignment_id' => $assignment->id]))->handle(app(PushSender::class)));
+    expect(FakePushSender::sent())->toHaveCount(1)
+        ->and(FakePushSender::sent()[0]['tokens'])->toBe(['ExponentPushToken[prueba-guia]']);
 });

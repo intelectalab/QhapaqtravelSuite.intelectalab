@@ -11,7 +11,7 @@ import { OrderAdvanceActions } from "@/features/operations/OrderActions";
 import { CloseSection, EvidenceTab, IncidentsSection, PassengersSection, RoomingSection, ServicesSection, TasksSection, VouchersSection } from "@/features/operations/OrderSections";
 import { Notice } from "@/features/operations/OpsBits";
 import { SupplierAlternativesNotice } from "@/features/operations/SupplierAlternatives";
-import { OrderCancelAction, OrderEditAction } from "@/features/operations/Orders";
+import { OrderEditAction } from "@/features/operations/Orders";
 import { formatDate, shortName } from "@/lib/format";
 import { ORDER_FLOW, type IncidentList, type OrderDetail, type SupplierAlternativeList, type VoucherOverview } from "@/lib/operations";
 import { resolveSections } from "@/lib/sections";
@@ -31,8 +31,13 @@ export default async function OrdenPage({ params, searchParams }: PageProps<"/op
   const closed = ["completada", "cancelada"].includes(order.status);
   const editable = order.can.assign && !closed;
   const stepIndex = ORDER_FLOW.indexOf(order.status);
-  const steps = ORDER_FLOW.map((status, index) => ({ label: statusLabel(status), at: index === ORDER_FLOW.length - 1 ? order.closed_at : null, done: order.status !== "cancelada" && index <= stepIndex }));
+  const bornAssigning = order.assignments.length > 0;
+  const steps = ORDER_FLOW.map((status, index) => {
+    const skipped = status === "planificada" && order.status !== "planificada" && bornAssigning;
+    return { label: statusLabel(status), at: index === ORDER_FLOW.length - 1 ? order.closed_at : null, done: order.status !== "cancelada" && index <= stepIndex && !skipped, skipped: order.status !== "cancelada" && skipped };
+  });
   const assigned = order.assignments.filter((item) => item.status !== "pendiente").length;
+  const liveServices = order.services.filter((service) => service.status !== "cancelado" && !service.replaced).length;
   const confirmedSuppliers = order.services.filter((service) => ["confirmado", "completado", "en_curso"].includes(service.status)).length;
   const openIncidents = order.incidents.filter((incident) => ["abierta", "en_proceso"].includes(incident.status));
   const liveVouchers = order.vouchers.filter((voucher) => voucher.status !== "anulado").length;
@@ -100,7 +105,6 @@ export default async function OrdenPage({ params, searchParams }: PageProps<"/op
           editable ? (
             <div className="flex flex-wrap items-center justify-end gap-2">
               <OrderEditAction code={order.code} title={order.title} coordinator={order.coordinator.id} coordinators={order.coordinators} />
-              {order.status !== "en_ejecucion" && <OrderCancelAction code={order.code} title={order.title} />}
               <OrderAdvanceActions order={order} checks={order.checks} />
             </div>
           ) : undefined
@@ -139,14 +143,14 @@ export default async function OrdenPage({ params, searchParams }: PageProps<"/op
           </div>
           <HeroPanel solid>
             <p className="mb-3 text-[13.5px] font-semibold">Avance de la operación</p>
-            {order.status === "cancelada" ? <p className="text-[13px] text-fg-3">La orden se canceló y sus recursos quedaron libres.</p> : <Journey steps={steps} formatAt={(iso) => formatDate(iso)} />}
+            {order.status === "cancelada" ? <p className="text-[13px] text-fg-3">La orden se canceló y sus recursos quedaron libres.</p> : <Journey steps={steps} skippedLabel="Omitida" formatAt={(iso) => formatDate(iso)} />}
           </HeroPanel>
         </div>
       </HeroBand>
 
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <TintTile icon={Truck} tone="t1" label="Con recursos" value={`${assigned} de ${order.assignments.length}`} note="Tours y traslados" info="Asignaciones de la orden que ya tienen guía, conductor o vehículo." />
-        <TintTile icon={ShieldCheck} tone="ok" label="Confirmados por proveedor" value={`${confirmedSuppliers} de ${order.services.length}`} info="Servicios de la reserva que el proveedor confirmó con su código, están en curso o completados." />
+        <TintTile icon={ShieldCheck} tone="ok" label="Confirmados por proveedor" value={`${confirmedSuppliers} de ${liveServices}`} info="Servicios de la reserva que el proveedor confirmó con su código, están en curso o completados." />
         <TintTile icon={TicketCheck} tone={withoutVoucher ? "warn" : "violet"} label="Confirmados sin voucher" value={withoutVoucher} note={withoutVoucher ? "Emítelos en Vouchers" : "Todos emitidos"} info="Servicios confirmados por el proveedor que todavía no tienen un voucher vigente para el pasajero." />
         <TintTile icon={ClipboardCheck} tone="t4" label="Con check-in" value={`${checkedIn} de ${due.length}`} note="Servicios hasta hoy" info="Servicios ya iniciados o de fecha pasada con al menos un pasajero marcado como presente, desde la app o la web." />
       </section>

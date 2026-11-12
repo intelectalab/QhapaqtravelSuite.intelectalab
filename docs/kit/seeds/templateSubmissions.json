@@ -1,0 +1,76 @@
+[
+  {
+    "id": "TSB-0007",
+    "templateId": "TPL-QHAPAQ",
+    "version": "1.0.0",
+    "by": "Estudio Wayra (partner)",
+    "at": "2026-10-28 15:20",
+    "status": "validando",
+    "checks": {
+      "manifest": "ok",
+      "build": "ok",
+      "lighthouse": {
+        "perf": 88,
+        "a11y": 96,
+        "seo": 100,
+        "bp": 92
+      },
+      "contraste": "ok",
+      "i18n": "ok",
+      "datos_estructurados": "ok",
+      "seguridad": "ok",
+      "revision_visual": "pendiente"
+    }
+  },
+  {
+    "id": "TSB-0006",
+    "templateId": "TPL-NAZCA",
+    "version": "1.2.0",
+    "by": "Estudio Wayra (partner)",
+    "at": "2026-10-12 11:00",
+    "status": "aprobada",
+    "decidedAt": "2026-10-14 09:30",
+    "reviewer": "U16",
+    "checks": {
+      "manifest": "ok",
+      "build": "ok",
+      "lighthouse": {
+        "perf": 89,
+        "a11y": 96,
+        "seo": 100,
+        "bp": 92
+      },
+      "contraste": "ok",
+      "i18n": "ok",
+      "datos_estructurados": "ok",
+      "seguridad": "ok",
+      "revision_visual": "ok"
+    }
+  },
+  {
+    "id": "TSB-0005",
+    "templateId": "TPL-PACIFICO",
+    "version": "1.1.0",
+    "by": "Equipo KipuControl",
+    "at": "2026-10-05 18:40",
+    "status": "rechazada",
+    "decidedAt": "2026-10-06 10:15",
+    "reviewer": "U16",
+    "reason": "Contraste del botón secundario 3,1:1 (mínimo 4,5:1) y LCP de 3,4 s en móvil (máximo 2,5 s).",
+    "checks": {
+      "manifest": "ok",
+      "build": "ok",
+      "lighthouse": {
+        "perf": 78,
+        "a11y": 91,
+        "seo": 100,
+        "bp": 96
+      },
+      "contraste": "falla",
+      "i18n": "ok",
+      "datos_estructurados": "ok",
+      "seguridad": "ok",
+      "revision_visual": "pendiente"
+    }
+  }
+]

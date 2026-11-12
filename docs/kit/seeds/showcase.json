@@ -1,0 +1,728 @@
+{
+  "brand": "Rutas Libres Perú",
+  "domain": "rutaslibres.pe",
+  "domainNote": "Nombre y dominio provisionales: se eligen con el equipo SEO antes del lanzamiento.",
+  "rules": {
+    "freeMonthlyBookings": 30,
+    "feePerAttendee": 2,
+    "feeCurrency": "PEN",
+    "commissionPct": {
+      "none": 8,
+      "Starter": 5,
+      "Professional": 4,
+      "Enterprise": 3
+    }
+  },
+  "cities": [
+    {
+      "id": "lima",
+      "name": "Lima",
+      "zones": [
+        "Centro Histórico",
+        "Miraflores",
+        "Barranco"
+      ]
+    },
+    {
+      "id": "cusco",
+      "name": "Cusco",
+      "zones": [
+        "Centro Histórico",
+        "San Blas",
+        "Valle Sagrado"
+      ]
+    },
+    {
+      "id": "arequipa",
+      "name": "Arequipa",
+      "zones": [
+        "Centro Histórico",
+        "Yanahuara"
+      ]
+    },
+    {
+      "id": "puno",
+      "name": "Puno",
+      "zones": [
+        "Puerto",
+        "Centro"
+      ]
+    }
+  ],
+  "themes": [
+    "Historia",
+    "Gastronomía",
+    "Arte urbano",
+    "Naturaleza",
+    "Mercados",
+    "Nocturno"
+  ],
+  "agencies": [
+    {
+      "id": "SHA-01",
+      "tenantId": "TNT-0001",
+      "name": "Andes Horizonte Travel",
+      "city": "lima",
+      "plan": "Enterprise",
+      "verified": true,
+      "rating": 4.8,
+      "reviews": 412,
+      "since": "2026-06-01",
+      "color": "#1560B8",
+      "site": "reservas.andeshorizonte.pe"
+    },
+    {
+      "id": "SHA-02",
+      "tenantId": "TNT-0005",
+      "name": "Ruta Norte Turismo",
+      "city": "lima",
+      "plan": "Pase 30 días",
+      "verified": true,
+      "rating": 4.6,
+      "reviews": 38,
+      "since": "2026-09-12",
+      "color": "#0E8A6A",
+      "site": null
+    },
+    {
+      "id": "SHA-03",
+      "tenantId": null,
+      "name": "Lima a Pie Free Walking",
+      "city": "lima",
+      "plan": "Vitrina gratis",
+      "verified": true,
+      "rating": 4.7,
+      "reviews": 1290,
+      "since": "2026-07-04",
+      "color": "#C2410C",
+      "site": null
+    },
+    {
+      "id": "SHA-04",
+      "tenantId": null,
+      "name": "Cusco Libre Tours",
+      "city": "cusco",
+      "plan": "Vitrina gratis",
+      "verified": true,
+      "rating": 4.9,
+      "reviews": 2210,
+      "since": "2026-06-20",
+      "color": "#7C3AED",
+      "site": null
+    },
+    {
+      "id": "SHA-05",
+      "tenantId": null,
+      "name": "Misti Walkers Arequipa",
+      "city": "arequipa",
+      "plan": "Vitrina gratis",
+      "verified": false,
+      "rating": 4.5,
+      "reviews": 186,
+      "since": "2026-08-18",
+      "color": "#B45309",
+      "site": null
+    },
+    {
+      "id": "SHA-06",
+      "tenantId": null,
+      "name": "Titicaca Andino",
+      "city": "puno",
+      "plan": "Vitrina gratis",
+      "verified": true,
+      "rating": 4.6,
+      "reviews": 97,
+      "since": "2026-09-02",
+      "color": "#0369A1",
+      "site": null
+    }
+  ],
+  "listings": [
+    {
+      "id": "SHL-001",
+      "agencyId": "SHA-03",
+      "slug": "centro-historico-de-lima-gratis",
+      "title": "Free tour Centro Histórico de Lima",
+      "city": "lima",
+      "zone": "Centro Histórico",
+      "theme": "Historia",
+      "langs": [
+        "es",
+        "en"
+      ],
+      "times": [
+        "10:00",
+        "15:00"
+      ],
+      "hours": 2.5,
+      "meeting": "Parque Kennedy, frente a la iglesia Virgen Milagrosa (salida en bus público)",
+      "model": "propina",
+      "price": 0,
+      "rating": 4.8,
+      "reviews": 860,
+      "status": "publicado",
+      "featured": true,
+      "capacity": 25,
+      "highlights": [
+        "Plaza Mayor y Palacio de Gobierno",
+        "Catacumbas por fuera y balcones coloniales",
+        "Degustación de pisco sour (opcional)"
+      ]
+    },
+    {
+      "id": "SHL-002",
+      "agencyId": "SHA-03",
+      "slug": "barranco-arte-urbano-gratis",
+      "title": "Free tour Barranco y arte urbano",
+      "city": "lima",
+      "zone": "Barranco",
+      "theme": "Arte urbano",
+      "langs": [
+        "es",
+        "en"
+      ],
+      "times": [
+        "16:00"
+      ],
+      "hours": 2,
+      "meeting": "Plaza de Barranco, junto a la biblioteca municipal",
+      "model": "propina",
+      "price": 0,
+      "rating": 4.7,
+      "reviews": 430,
+      "status": "publicado",
+      "featured": false,
+      "capacity": 20,
+      "highlights": [
+        "Puente de los Suspiros",
+        "Murales y galerías",
+        "Atardecer en el mirador"
+      ]
+    },
+    {
+      "id": "SHL-003",
+      "agencyId": "SHA-01",
+      "slug": "miraflores-malecon-gratis",
+      "title": "Free tour Miraflores y malecón",
+      "city": "lima",
+      "zone": "Miraflores",
+      "theme": "Historia",
+      "langs": [
+        "es",
+        "en",
+        "pt"
+      ],
+      "times": [
+        "09:30"
+      ],
+      "hours": 2,
+      "meeting": "Parque del Amor, junto a la escultura El Beso",
+      "model": "propina",
+      "price": 0,
+      "rating": 4.8,
+      "reviews": 212,
+      "status": "publicado",
+      "featured": true,
+      "capacity": 20,
+      "highlights": [
+        "Huaca Pucllana por fuera",
+        "Malecón y parapentes",
+        "Recomendaciones de cevicherías"
+      ]
+    },
+    {
+      "id": "SHL-004",
+      "agencyId": "SHA-01",
+      "slug": "tour-gastronomico-barranco",
+      "title": "Tour gastronómico en Barranco (de pago)",
+      "city": "lima",
+      "zone": "Barranco",
+      "theme": "Gastronomía",
+      "langs": [
+        "es",
+        "en"
+      ],
+      "times": [
+        "18:30"
+      ],
+      "hours": 3,
+      "meeting": "Plaza de Barranco",
+      "model": "pago",
+      "price": 243,
+      "currency": "PEN",
+      "rating": 4.9,
+      "reviews": 96,
+      "status": "publicado",
+      "featured": false,
+      "capacity": 12,
+      "productId": "PRD-011",
+      "highlights": [
+        "5 paradas con degustación",
+        "Cevichería, picantería y bar de pisco",
+        "Grupo reducido"
+      ]
+    },
+    {
+      "id": "SHL-005",
+      "agencyId": "SHA-02",
+      "slug": "lima-nocturna-gratis",
+      "title": "Lima nocturna: plazas iluminadas",
+      "city": "lima",
+      "zone": "Centro Histórico",
+      "theme": "Nocturno",
+      "langs": [
+        "es"
+      ],
+      "times": [
+        "19:00"
+      ],
+      "hours": 2,
+      "meeting": "Plaza San Martín, frente al monumento",
+      "model": "propina",
+      "price": 0,
+      "rating": 4.6,
+      "reviews": 38,
+      "status": "publicado",
+      "featured": false,
+      "capacity": 20,
+      "highlights": [
+        "Circuito Mágico del Agua (entrada aparte)",
+        "Barrio Chino",
+        "Historias de la Lima virreinal"
+      ]
+    },
+    {
+      "id": "SHL-006",
+      "agencyId": "SHA-04",
+      "slug": "cusco-centro-historico-gratis",
+      "title": "Free tour Cusco: Centro Histórico y San Blas",
+      "city": "cusco",
+      "zone": "Centro Histórico",
+      "theme": "Historia",
+      "langs": [
+        "es",
+        "en"
+      ],
+      "times": [
+        "10:00",
+        "13:30",
+        "16:00"
+      ],
+      "hours": 2.5,
+      "meeting": "Plaza de Armas, bajo el portal de Panes (paraguas amarillo)",
+      "model": "propina",
+      "price": 0,
+      "rating": 4.9,
+      "reviews": 1810,
+      "status": "publicado",
+      "featured": true,
+      "capacity": 30,
+      "highlights": [
+        "Muro de los 12 ángulos",
+        "Barrio de San Blas",
+        "Mirador y tienda de textiles"
+      ]
+    },
+    {
+      "id": "SHL-007",
+      "agencyId": "SHA-04",
+      "slug": "mercado-san-pedro-gratis",
+      "title": "Mercado San Pedro y comida local",
+      "city": "cusco",
+      "zone": "Centro Histórico",
+      "theme": "Mercados",
+      "langs": [
+        "es",
+        "en"
+      ],
+      "times": [
+        "11:00"
+      ],
+      "hours": 2,
+      "meeting": "Puerta principal del mercado San Pedro",
+      "model": "propina",
+      "price": 0,
+      "rating": 4.8,
+      "reviews": 400,
+      "status": "publicado",
+      "featured": false,
+      "capacity": 15,
+      "highlights": [
+        "Frutas andinas",
+        "Jugos y caldos",
+        "Cacao y café"
+      ]
+    },
+    {
+      "id": "SHL-008",
+      "agencyId": "SHA-01",
+      "slug": "valle-sagrado-vip",
+      "title": "Valle Sagrado VIP con almuerzo (de pago)",
+      "city": "cusco",
+      "zone": "Valle Sagrado",
+      "theme": "Naturaleza",
+      "langs": [
+        "es",
+        "en"
+      ],
+      "times": [
+        "08:00"
+      ],
+      "hours": 10,
+      "meeting": "Recojo en hotel del centro de Cusco",
+      "model": "pago",
+      "price": 448,
+      "currency": "PEN",
+      "rating": 4.8,
+      "reviews": 140,
+      "status": "publicado",
+      "featured": true,
+      "capacity": 16,
+      "productId": "PRD-011",
+      "highlights": [
+        "Pisac y Ollantaytambo",
+        "Almuerzo buffet",
+        "Guía bilingüe"
+      ]
+    },
+    {
+      "id": "SHL-009",
+      "agencyId": "SHA-05",
+      "slug": "arequipa-ciudad-blanca-gratis",
+      "title": "Free tour Arequipa, la Ciudad Blanca",
+      "city": "arequipa",
+      "zone": "Centro Histórico",
+      "theme": "Historia",
+      "langs": [
+        "es",
+        "en"
+      ],
+      "times": [
+        "10:00",
+        "15:00"
+      ],
+      "hours": 2.5,
+      "meeting": "Plaza de Armas, junto a la fuente",
+      "model": "propina",
+      "price": 0,
+      "rating": 4.5,
+      "reviews": 150,
+      "status": "publicado",
+      "featured": false,
+      "capacity": 25,
+      "highlights": [
+        "Monasterio de Santa Catalina por fuera",
+        "Sillar y casonas",
+        "Mirador de Yanahuara"
+      ]
+    },
+    {
+      "id": "SHL-010",
+      "agencyId": "SHA-05",
+      "slug": "picanterias-arequipa",
+      "title": "Ruta de picanterías arequipeñas",
+      "city": "arequipa",
+      "zone": "Yanahuara",
+      "theme": "Gastronomía",
+      "langs": [
+        "es"
+      ],
+      "times": [
+        "12:30"
+      ],
+      "hours": 3,
+      "meeting": "Mirador de Yanahuara",
+      "model": "propina",
+      "price": 0,
+      "rating": 4.4,
+      "reviews": 36,
+      "status": "en_revision",
+      "featured": false,
+      "capacity": 12,
+      "highlights": [
+        "Rocoto relleno",
+        "Chicha de guiñapo",
+        "Historia de las picanteras"
+      ]
+    },
+    {
+      "id": "SHL-011",
+      "agencyId": "SHA-06",
+      "slug": "puno-lago-titicaca-gratis",
+      "title": "Free tour Puno y bahía del Titicaca",
+      "city": "puno",
+      "zone": "Puerto",
+      "theme": "Naturaleza",
+      "langs": [
+        "es",
+        "en"
+      ],
+      "times": [
+        "09:00"
+      ],
+      "hours": 2,
+      "meeting": "Muelle de Puno, caseta de información",
+      "model": "propina",
+      "price": 0,
+      "rating": 4.6,
+      "reviews": 97,
+      "status": "publicado",
+      "featured": false,
+      "capacity": 20,
+      "highlights": [
+        "Malecón Bahía de los Incas",
+        "Mirador Kuntur Wasi",
+        "Leyendas del lago"
+      ]
+    },
+    {
+      "id": "SHL-012",
+      "agencyId": "SHA-06",
+      "slug": "puno-noche-folklorica",
+      "title": "Noche folclórica en Puno",
+      "city": "puno",
+      "zone": "Centro",
+      "theme": "Nocturno",
+      "langs": [
+        "es"
+      ],
+      "times": [
+        "19:30"
+      ],
+      "hours": 2,
+      "meeting": "Jr. Lima, frente a la catedral",
+      "model": "propina",
+      "price": 0,
+      "rating": 0,
+      "reviews": 0,
+      "status": "rechazado",
+      "rejectReason": "Fotos con marca de agua de otra agencia. Suba fotos propias.",
+      "featured": false,
+      "capacity": 30,
+      "highlights": [
+        "Danzas de la Candelaria",
+        "Música en vivo"
+      ]
+    }
+  ],
+  "bookings": [
+    {
+      "id": "SHB-0141",
+      "listingId": "SHL-003",
+      "date": "2026-09-28",
+      "time": "09:30",
+      "name": "Laura Gómez",
+      "email": "laura.g@correo.com",
+      "pax": 2,
+      "lang": "es",
+      "status": "asistio",
+      "fee": 0,
+      "createdAt": "2026-09-25 21:10",
+      "source": "Google orgánico"
+    },
+    {
+      "id": "SHB-0142",
+      "listingId": "SHL-004",
+      "date": "2026-09-28",
+      "time": "18:30",
+      "name": "Tom Becker",
+      "email": "tbecker@mail.de",
+      "pax": 2,
+      "lang": "en",
+      "status": "asistio",
+      "amount": 486,
+      "currency": "PEN",
+      "commissionPct": 3,
+      "fee": 14.58,
+      "createdAt": "2026-09-26 10:02",
+      "source": "Blog: qué comer en Lima"
+    },
+    {
+      "id": "SHB-0143",
+      "listingId": "SHL-003",
+      "date": "2026-09-30",
+      "time": "09:30",
+      "name": "Ana Paula Ribeiro",
+      "email": "apr@mail.br",
+      "pax": 3,
+      "lang": "pt",
+      "status": "confirmada",
+      "fee": 0,
+      "createdAt": "2026-09-27 18:44",
+      "source": "Google orgánico"
+    },
+    {
+      "id": "SHB-0144",
+      "listingId": "SHL-008",
+      "date": "2026-10-02",
+      "time": "08:00",
+      "name": "Marco Rossi",
+      "email": "mrossi@mail.it",
+      "pax": 2,
+      "lang": "en",
+      "status": "confirmada",
+      "amount": 896,
+      "currency": "PEN",
+      "commissionPct": 3,
+      "fee": 26.88,
+      "createdAt": "2026-09-28 09:15",
+      "source": "Instagram"
+    },
+    {
+      "id": "SHB-0145",
+      "listingId": "SHL-003",
+      "date": "2026-09-27",
+      "time": "09:30",
+      "name": "Diego Paredes",
+      "email": "dparedes@correo.pe",
+      "pax": 1,
+      "lang": "es",
+      "status": "no_show",
+      "fee": 0,
+      "createdAt": "2026-09-26 22:30",
+      "source": "Directo"
+    },
+    {
+      "id": "SHB-0146",
+      "listingId": "SHL-005",
+      "date": "2026-09-29",
+      "time": "19:00",
+      "name": "Sofía Herrera",
+      "email": "sofia.h@correo.com",
+      "pax": 4,
+      "lang": "es",
+      "status": "confirmada",
+      "fee": 0,
+      "createdAt": "2026-09-28 13:00",
+      "source": "Google orgánico"
+    },
+    {
+      "id": "SHB-0147",
+      "listingId": "SHL-006",
+      "date": "2026-09-29",
+      "time": "10:00",
+      "name": "Emily Clark",
+      "email": "eclark@mail.uk",
+      "pax": 2,
+      "lang": "en",
+      "status": "confirmada",
+      "fee": 4,
+      "createdAt": "2026-09-27 08:20",
+      "source": "Google orgánico"
+    }
+  ],
+  "posts": [
+    {
+      "id": "SHP-001",
+      "slug": "free-tours-en-lima-guia",
+      "title": "Free tours en Lima: guía 2026 por barrio",
+      "excerpt": "Centro, Miraflores y Barranco a pie: horarios, puntos de encuentro y cuánta propina dejar.",
+      "city": "lima",
+      "keyword": "free tour lima",
+      "status": "publicado",
+      "publishedAt": "2026-08-20",
+      "author": "Equipo SEO",
+      "words": 1850,
+      "seoScore": 92,
+      "clicks": 3120,
+      "impressions": 48200,
+      "position": 6.4
+    },
+    {
+      "id": "SHP-002",
+      "slug": "que-comer-en-lima-en-un-dia",
+      "title": "Qué comer en Lima en un día (sin gastar de más)",
+      "excerpt": "Ruta de mercados, cevicherías y picanterías, con tours gastronómicos recomendados.",
+      "city": "lima",
+      "keyword": "qué comer en lima",
+      "status": "publicado",
+      "publishedAt": "2026-09-05",
+      "author": "Equipo SEO",
+      "words": 1420,
+      "seoScore": 88,
+      "clicks": 1460,
+      "impressions": 30100,
+      "position": 9.1
+    },
+    {
+      "id": "SHP-003",
+      "slug": "cusco-en-3-dias-a-pie",
+      "title": "Cusco en 3 días a pie: free tours y miradores",
+      "excerpt": "Itinerario para aclimatarse, con free tours por San Blas y el mercado San Pedro.",
+      "city": "cusco",
+      "keyword": "free walking tour cusco",
+      "status": "publicado",
+      "publishedAt": "2026-09-15",
+      "author": "Equipo SEO",
+      "words": 2100,
+      "seoScore": 90,
+      "clicks": 980,
+      "impressions": 22400,
+      "position": 11.3
+    },
+    {
+      "id": "SHP-004",
+      "slug": "cuanta-propina-free-tour-peru",
+      "title": "¿Cuánta propina dejar en un free tour en Perú?",
+      "excerpt": "Montos de referencia por ciudad y por qué el modelo de propina funciona.",
+      "city": null,
+      "keyword": "propina free tour",
+      "status": "borrador",
+      "publishedAt": null,
+      "author": "Equipo SEO",
+      "words": 900,
+      "seoScore": 71,
+      "clicks": 0,
+      "impressions": 0,
+      "position": null
+    }
+  ],
+  "funnel": [
+    {
+      "month": "2026-07",
+      "visits": 6400,
+      "bookings": 410,
+      "agencies": 3,
+      "trials": 0,
+      "paid": 0
+    },
+    {
+      "month": "2026-08",
+      "visits": 14800,
+      "bookings": 1120,
+      "agencies": 5,
+      "trials": 1,
+      "paid": 0
+    },
+    {
+      "month": "2026-09",
+      "visits": 27300,
+      "bookings": 2090,
+      "agencies": 6,
+      "trials": 2,
+      "paid": 1
+    }
+  ],
+  "benefits": [
+    [
+      "Vitrina gratis",
+      "Publique free tours sin costo y reciba reservas con nombre y correo."
+    ],
+    [
+      "Su propio sitio web",
+      "Dominio propio con SSL, blog y herramientas SEO para que Google lo encuentre."
+    ],
+    [
+      "Venda más en cada viaje",
+      "Armador de viajes por tramos, venta en ruta y paquetes con hotel por ciudad."
+    ],
+    [
+      "Cobre como quiera",
+      "Tarjeta, Yape o PayPal; el reporte muestra la comisión de cada pasarela y su neto."
+    ],
+    [
+      "Todo en un panel",
+      "Reservas, proveedores, pagos y rentabilidad en un mismo lugar."
+    ]
+  ]
+}

@@ -52,3 +52,17 @@ it('emite un comprobante desde una cuenta por cobrar elegida libremente con la d
     $number = $this->postJson('/api/v1/finance/invoices', $payload, critical())->assertSuccessful()->json('data.number');
     expect(withinTenant(tenantA(), fn () => DB::table('fin_invoices')->where('number', $number)->value('customer_address')))->toBe('Av. El Sol 123, Cusco');
 });
+
+it('un comprobante rechazado por el OSE no consume el importe facturable de la cuota', function () {
+    actingAsSeed('U07');
+    $code = collect($this->getJson('/api/v1/finance/invoices/summary')->json('data.invoiceable'))->pluck('value')->first();
+    $draft = $this->getJson("/api/v1/finance/receivables/{$code}/invoice-draft")->assertOk()->json('data');
+    $payload = collect($draft)->only(['doc_type', 'customer_doc_type', 'customer_doc_number', 'customer_name', 'domiciled', 'amount', 'fx_rate', 'description'])->all() + ['receivable_id' => $code, 'customer_address' => 'Av. El Sol 123, Cusco'];
+    expect($this->postJson('/api/v1/finance/invoices/validate', $payload)->json('data.ok'))->toBeTrue();
+
+    $number = $this->postJson('/api/v1/finance/invoices', $payload, critical())->assertSuccessful()->json('data.number');
+    withinTenant(tenantA(), fn () => DB::table('fin_invoices')->where('number', $number)->update(['status' => 'rechazado']));
+
+    expect($this->getJson("/api/v1/finance/receivables/{$code}/invoice-draft")->assertOk()->json('data.amount'))->toEqual($draft['amount'])
+        ->and(collect($this->getJson('/api/v1/finance/invoices/summary')->json('data.invoiceable'))->pluck('value'))->toContain($code);
+});

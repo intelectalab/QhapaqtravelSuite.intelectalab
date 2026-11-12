@@ -1202,7 +1202,7 @@ create table booking_passengers (
   seq smallint not null,
   full_name varchar(150) not null,
   doc_type varchar(12) check (doc_type is null or doc_type in ('DNI', 'Pasaporte', 'CE', 'Passport')),
-  doc_number varchar(30),
+  doc_number text,                 -- v2.5: text para el cast `encrypted` de Laravel (el cifrado no cabe en varchar(30))
   pax_type char(3) not null default 'ADT' check (pax_type in ('ADT', 'CHD', 'INF')),
   nationality varchar(60),
   birth_date date,
@@ -1481,7 +1481,7 @@ create table ops_assignments (
   guide_id uuid,
   driver_id uuid,
   vehicle_id uuid,
-  status varchar(30) not null default 'pendiente' check (status in ('pendiente', 'asignada', 'confirmada', 'en_curso', 'completada')),
+  status varchar(30) not null default 'pendiente' check (status in ('pendiente', 'asignada', 'confirmada', 'en_curso', 'completada', 'cancelada')),
   confirmed_at timestamptz,
   confirmed_via varchar(10) check (confirmed_via is null or confirmed_via in ('web', 'app')),
   started_at timestamptz,
@@ -1963,23 +1963,6 @@ create table fin_settlements (
   constraint pk_fin_settlements primary key (id)
 );
 
-create table fin_fx_rates (
-  id uuid not null default app_uuid_v7(),
-  tenant_id uuid not null default app_current_tenant_id(),
-  currency_code char(3) not null,
-  base_currency char(3) not null default 'PEN',
-  rate_pen numeric(14,6) not null check (rate_pen > 0),
-  buy numeric(12,6),
-  sell numeric(12,6),
-  previous_rate numeric(14,6),
-  rate_date date not null,
-  source varchar(80) not null,
-  effective_at timestamptz not null default now(),
-  created_by uuid,
-  created_at timestamptz not null default now(),
-  constraint pk_fin_fx_rates primary key (id)
-);
-
 create table channel_support_tickets (
   id uuid not null default app_uuid_v7(),
   tenant_id uuid not null default app_current_tenant_id(),
@@ -2458,7 +2441,6 @@ alter table fin_commissions add constraint fk_fin_commissions_approved_by foreig
 alter table fin_settlements add constraint fk_fin_settlements_tenant_id foreign key (tenant_id) references tenants (id);
 alter table fin_settlements add constraint fk_fin_settlements_reservation_id foreign key (reservation_id) references booking_reservations (id);
 alter table fin_settlements add constraint fk_fin_settlements_closed_by foreign key (closed_by) references iam_users (id);
-alter table fin_fx_rates add constraint fk_fin_fx_rates_tenant_id foreign key (tenant_id) references tenants (id);
 alter table channel_support_tickets add constraint fk_channel_support_tickets_tenant_id foreign key (tenant_id) references tenants (id);
 alter table channel_support_tickets add constraint fk_channel_support_tickets_crm_client_id foreign key (crm_client_id) references crm_clients (id);
 alter table channel_support_tickets add constraint fk_channel_support_tickets_reservation_id foreign key (reservation_id) references booking_reservations (id);
@@ -2592,8 +2574,6 @@ create index ix_fin_payables_tenant_id_kind on fin_payables (tenant_id, kind);
 create index ix_fin_payables_tenant_id_created_at_desc on fin_payables (tenant_id, created_at desc);
 create index ix_fin_commissions_tenant_id_status on fin_commissions (tenant_id, status);
 create index ix_fin_commissions_tenant_id_created_at_desc on fin_commissions (tenant_id, created_at desc);
-create index ix_fin_fx_rates_tenant_id_currency_code_effective_at_desc on fin_fx_rates (tenant_id, currency_code, effective_at desc);
-create index ix_fin_fx_rates_tenant_id_currency_code_rate_date_desc on fin_fx_rates (tenant_id, currency_code, rate_date desc);
 create index ix_channel_support_tickets_tenant_id_status on channel_support_tickets (tenant_id, status);
 create index ix_channel_support_tickets_tenant_id_owner_id on channel_support_tickets (tenant_id, owner_id);
 create index ix_channel_support_tickets_tenant_id_created_at_desc on channel_support_tickets (tenant_id, created_at desc);
@@ -2942,7 +2922,6 @@ create trigger trg_quote_items_frozen_guard before insert or update or delete on
 alter table ops_rooming_rooms add constraint ex_ops_rooming_rooms_overlap exclude using gist (tenant_id with =, hotel_provider_id with =, room_number with =, stay with &&);
 alter table ops_rooming_guests add constraint ex_ops_rooming_guests_overlap exclude using gist (tenant_id with =, passenger_id with =, stay with &&);
 create trigger trg_ops_incident_logs_append_only before update or delete on ops_incident_logs for each row execute function app_forbid_update_delete();
-create trigger trg_fin_fx_rates_append_only before update or delete on fin_fx_rates for each row execute function app_forbid_update_delete();
 
 -- ---------------------------------------------------------------- triggers de updated_at / lock_version
 create trigger trg_catalog_product_types_updated_at before update on catalog_product_types for each row execute function app_set_updated_at();
@@ -3077,7 +3056,7 @@ comment on table catalog_rates is '[Spec 02 §3.8] [Fase 1] Tarifas del producto
 comment on table catalog_rate_conditions is '[Spec 02 §3.8] [Fase 1] Condiciones estructuradas de tarifa (propuesta; el prototipo no la usa).';
 comment on table catalog_price_rules is '[Spec 02 §3.8] [Fase 1] Reglas de pricing a nivel tenant.';
 comment on table catalog_product_departures is '[Spec 02 §3.9] [Fase 1] Salidas programadas (cupo por fecha/hora).';
-comment on table catalog_availability_holds is '[Spec 02 §3.9 + 15 §3.13–3.14] [Fase 1] Retenciones de cupo (hold → confirmada/liberada/expirada/consumida).';
+comment on table catalog_availability_holds is '[Spec 02 §3.9 + 15 §3.13–3.14] [Fase 1] Retenciones de cupo (hold → confirmada/liberada/expirada/consumida). v2.5: fuente única de retenciones para el cálculo de disponibilidad (carrito, checkout, cotización y motor).';
 comment on table catalog_availability_ranges is '[Spec 16 §3.3] [Fase 1] Rangos de disponibilidad por producto (motor básico).';
 comment on table catalog_pax_rules is '[Spec 16 §3.4] [Fase 1] Reglas de pasajeros por producto (edades, proporciones).';
 comment on table crm_catalog_items is '[Spec 01 §3.1] [Fase 1] Catálogos configurables del CRM (fuentes, canales, motivos…).';
@@ -3105,7 +3084,7 @@ comment on table quote_approvals is '[Spec 08 §3.15] [Fase 1] Evidencia de apro
 comment on table booking_reservations is '[Spec 04 §3] [Fase 1] Reserva.';
 comment on table booking_passengers is '[Spec 04 §3 (+ v2.1)] [Fase 1] Pasajeros de la reserva.';
 comment on table booking_reservation_services is '[Spec 04 §3 + 05 §3.3 + 08 §3.15] [Fase 1] Servicios de la reserva (estado de proveedor y operativo).';
-comment on table booking_inventory_holds is '[Spec 04 §3] [Fase 1] Cupos retenidos por la reserva en salidas.';
+comment on table booking_inventory_holds is '[Spec 04 §3] [Fase 1] Cupo consumido por la reserva en una salida (registro por reserva). v2.5: no entra en el cálculo de disponibilidad; la disponibilidad = capacity − sold − holds vigentes de catalog_availability_holds (fuente única de retenciones).';
 comment on table booking_changes is '[Spec 04 §3] [Fase 1] Modificaciones y reprogramaciones de la reserva.';
 comment on table booking_cancel_requests is '[Spec 04 §3 + 10 §3.11] [Fase 1] Solicitudes de anulación de reserva.';
 comment on table booking_cancellations is '[Spec 04 §3] [Fase 1] Resultado de la cancelación (penalidad, reembolso).';
@@ -3137,7 +3116,6 @@ comment on table fin_payable_payouts is '[Spec 07 §3.7] [Fase 1] Pagos a provee
 comment on table fin_commission_rules is '[Spec 07 §3.10] [Fase 1] Reglas de comisión (vendedor / agencia B2B).';
 comment on table fin_commissions is '[Spec 07 §3.11 + 14 §3.17] [Fase 1] Comisiones calculadas (vendedor, agencia B2B, bono por meta).';
 comment on table fin_settlements is '[Spec 07 §3.12] [Fase 1] Liquidación / cierre financiero de la reserva.';
-comment on table fin_fx_rates is '[Spec 07 §3.19 + 09 §3.9 + 17 §3.6] [Fase 1] Histórico de tipo de cambio (append-only).';
 comment on table channel_support_tickets is '[Spec 08 §3.12] [Fase 1] Solicitudes desde portal cliente / pasajero.';
 comment on table channel_support_ticket_events is '[Spec 08 §3.12] [Fase 1] Bitácora del ticket (log).';
 comment on table report_exports is '[Spec 09 §3.16] [Fase 1] Exportaciones de reportes (PROC-061).';

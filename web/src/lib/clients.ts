@@ -85,6 +85,7 @@ export function toPortalAccess(access: ApiPortalAccess | null | undefined): Port
 }
 
 export interface ClientDetail extends ClientRow {
+  partial: boolean;
   portalAccess: PortalAccess;
   tags: string[];
   birth: string | null;
@@ -105,7 +106,7 @@ export interface ClientDetail extends ClientRow {
   openOpportunities: { code: string; title: string; stage: string; amount: string | null; currency: string; expected_close_date: string | null }[];
   nextActivities: { code: string; type: string; subject: string; status: string; due_at: string | null; owner: string | null }[];
   satisfactionDetail: { last: number; average: number; count: number; comment: string | null } | null;
-  destinations: string[];
+  destinations: { name: string; trips: number }[];
   openCases: { code: string; subject: string; priority: string | null; status: string }[];
   cancelledTrips: number;
 }
@@ -171,6 +172,7 @@ interface ApiTrip {
 }
 
 export interface ApiClientDetail extends ApiClient {
+  partial?: boolean;
   tags: string[];
   birth_date: string | null;
   doc_type: string;
@@ -189,7 +191,7 @@ export interface ApiClientDetail extends ApiClient {
   open_opportunities?: ClientDetail["openOpportunities"];
   next_activities?: ClientDetail["nextActivities"];
   satisfaction_detail?: ClientDetail["satisfactionDetail"];
-  destinations?: string[];
+  destinations?: ({ name: string; trips: number } | string)[];
   open_cases?: ClientDetail["openCases"];
   cancelled_trips?: number;
 }
@@ -240,6 +242,7 @@ export function toClientDetail(client: ApiClientDetail, today: string): ClientDe
   const current = client.current_trip;
   return {
     ...toClientRow(client, today),
+    partial: client.partial ?? false,
     tags: client.tags,
     birth: client.birth_date,
     rawKind: client.kind,
@@ -259,7 +262,7 @@ export function toClientDetail(client: ApiClientDetail, today: string): ClientDe
     openOpportunities: client.open_opportunities ?? [],
     nextActivities: client.next_activities ?? [],
     satisfactionDetail: client.satisfaction_detail ?? null,
-    destinations: client.destinations ?? [],
+    destinations: (client.destinations ?? []).map((item) => (typeof item === "string" ? { name: item, trips: 1 } : item)),
     openCases: client.open_cases ?? [],
     cancelledTrips: client.cancelled_trips ?? 0,
     currentTrip: current

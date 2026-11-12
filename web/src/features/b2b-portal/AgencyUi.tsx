@@ -6,10 +6,11 @@ import { EmptyLine, RISE, rise } from "@/features/portal/PortalUi";
 import { agencyStatus, creditTone, type AgencyAlert, type AgencyCredit, type CatalogCard } from "@/lib/b2b-portal";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
+import type { PortalStatusScope } from "@/lib/portal";
 import { toneStyle } from "@/lib/tone";
 
-export function AgencyBadge({ status }: { status: string }) {
-  const meta = agencyStatus(status);
+export function AgencyBadge({ status, scope }: { status: string; scope?: PortalStatusScope }) {
+  const meta = agencyStatus(status, scope);
   return <Badge tone={meta.tone}>{meta.label}</Badge>;
 }
 

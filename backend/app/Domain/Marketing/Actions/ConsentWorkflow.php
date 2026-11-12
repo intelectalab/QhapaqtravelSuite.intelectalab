@@ -8,6 +8,7 @@ use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Iam\Models\User;
 use App\Domain\Marketing\Support\CampaignDirectory;
 use App\Domain\Marketing\Support\ContactBook;
+use App\Domain\Marketing\Support\UnsubscribeConfirmation;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Concurrency\IfMatch;
 use App\Domain\Shared\Errors\ApiException;
@@ -89,6 +90,7 @@ final class ConsentWorkflow
             DB::table('mkt_consents')->where('id', $consent->id)->update(['status' => 'revocado', 'revoked_at' => now(), 'revoke_source' => $source, 'revoke_campaign_id' => null, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             $this->event($consent->id, 'revocado', $source, null, $actor);
             $this->audit->log('Consentimiento', $consent->code, "baja_{$consent->channel}", 'otorgado', "revocado · {$source}");
+            app(UnsubscribeConfirmation::class)->send((string) $consent->subject_type, (string) $consent->subject_id, (string) $consent->channel, (string) $consent->id);
         });
     }
 

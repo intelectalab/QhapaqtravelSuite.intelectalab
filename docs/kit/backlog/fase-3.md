@@ -1,7 +1,7 @@
 # Backlog · Fase 3 — SaaS y crecimiento
 
-Alcance: suscripciones y facturación de plataforma, planes × reglas y entitlements, medición de uso, alta de tenant de punta a punta, API keys, webhooks y OAuth (spec 13); marketing y metas comerciales (spec 14); reseñas propias verificadas (spec 18) y reseñas externas (spec 17, parte reseñas); reportes avanzados (spec 09).
-Especificaciones: `13-plataforma-saas-api.md`, `14-marketing-metas.md`, `18-resenas-propias.md`, `17-reglas-comunicaciones-monedas-resenas-integracion-web.md` (§3.7, R-REVIEW-INVITE, RV-01..03, reseñas externas), `09-administracion-reportes.md` (PROC-001 asistente, §3.16–3.17, §6.7, §7.3–7.4).
+Alcance: suscripciones y facturación de plataforma, planes × reglas y entitlements, medición de uso, alta de tenant de punta a punta, API keys, webhooks y OAuth (spec 13); marketing y metas comerciales (spec 14); reseñas propias verificadas (spec 18) y reseñas externas (spec 17, parte reseñas); reportes avanzados (spec 09); crecimiento comercial (spec 19, v2.6): IA de ventas, WhatsApp oficial, links de pago, recuperación, importador, OTAs, marketplace, precios dinámicos, vales, check-in QR, exportación contable y ofertas de aéreo y hotel; portal corporativo (spec 20, v2.7): reportes de compras y movimientos, estado de cuenta mensual, aprobaciones, centros de costo y usuarios de la empresa cliente.
+Especificaciones: `13-plataforma-saas-api.md`, `14-marketing-metas.md`, `18-resenas-propias.md`, `19-crecimiento-comercial.md`, `20-portal-corporativo.md`, `17-reglas-comunicaciones-monedas-resenas-integracion-web.md` (§3.7, R-REVIEW-INVITE, RV-01..03, reseñas externas), `09-administracion-reportes.md` (PROC-001 asistente, §3.16–3.17, §6.7, §7.3–7.4).
 Requiere Fases 0, 1 (A y B) y 2 terminadas. Criterio de salida (03-PLAN §2): alta de un segundo tenant real de punta a punta sin intervención manual (F3-QA-03), con las suites de las especificaciones 13, 14, 17 (reseñas) y 18 en verde y la regresión E2E-01…E2E-10 intacta.
 
 Archivo tabular equivalente: `fase-3.csv`.
@@ -20,12 +20,23 @@ Archivo tabular equivalente: `fase-3.csv`.
 | E3.8 | Reseñas propias verificadas | 5 |
 | E3.9 | Reseñas externas | 3 |
 | E3.10 | Reportes avanzados | 3 |
-| E3.11 | Pruebas y salida de Fase 3 | 4 |
-| **Total** | | **57** |
+| E3.12 | Asistente IA de ventas y alertas | 5 |
+| E3.13 | WhatsApp oficial, cobro local y recuperación de ventas | 3 |
+| E3.14 | Distribución: OTAs y marketplace B2B | 4 |
+| E3.15 | Venta y operación: precios dinámicos, vales y check-in QR | 3 |
+| E3.16 | Back office: exportación contable y aéreo/hotel | 2 |
+| E3.17 | Portal corporativo de la empresa cliente | 6 |
+| E3.18 | Viajes por tramos y venta en ruta | 5 |
+| E3.19 | Vitrina gratuita, monetización y marca propia | 7 |
+| E3.20 | Plantillas web y contenido con IA | 10 |
+| E3.21 | Blog en Payload, SEO, seguimiento y visitas | 9 |
+| E3.22 | Landing de KipuControl y alta sin intervención | 9 |
+| E3.11 | Pruebas y salida de Fase 3 | 10 |
+| **Total** | | **126** |
 
 Prioridad: P0 = imprescindible para el criterio de salida (636 h) · P1 = necesaria en la fase (288 h) · P2 = puede pasar a una fase posterior sin bloquear (24 h).
 
-Cobertura referencial: 154 endpoints, 74 tablas citadas, 55 casos de prueba de las especificaciones.
+Cobertura referencial: 154 endpoints, 74 tablas citadas, 55 casos de prueba de las especificaciones (sin contar las épicas E3.12–E3.16 de la v2.6, con 65 endpoints y 22 tablas de la spec 19, ni la épica E3.17 de la v2.7, con 44 endpoints y 8 tablas de la spec 20, ni las épicas E3.18 y E3.19 de la v2.8, con 62 endpoints y 19 tablas de las specs 21 y 22, ni la épica E3.20 de la v2.9, con 31 endpoints y 8 tablas de la spec 23, ni la épica E3.21 de la v2.10, con 32 endpoints y 8 tablas de la spec 24, ni la épica E3.22 de la v2.12, con 8 endpoints de la spec 25 y sin tablas nuevas).
 
 ## Cómo usar este backlog con Claude Code
 
@@ -58,7 +69,7 @@ Cobertura referencial: 154 endpoints, 74 tablas citadas, 55 casos de prueba de l
 - Conectores reales de Facebook, GetYourGuide y Viator; traducción automática de reseñas y votos «útil» públicos (18 §12).
 - Pantalla de reseña en la app React Native del pasajero: usa los mismos endpoints de F3-RVP-02; su UI queda para el backlog de apps.
 - CMS avanzado: 03-PLAN lo menciona en Fase 3, pero el mapa de fases del kit no lo incluye; se mantiene lo construido en Fase 2.
-- IA, scoring, OTA/GDS, marketplace y fiscal internacional (Futuro).
+- Scoring de leads y fiscal internacional (Futuro). IA, OTA/GDS y marketplace entran en la v2.6 (épicas E3.12–E3.16, spec 19).
 
 ## Historias
 
@@ -121,7 +132,7 @@ Cobertura referencial: 154 endpoints, 74 tablas citadas, 55 casos de prueba de l
 
 **Especificación:** 13 §3.4 v2.2 (`plan_rule_entitlements`), §5 PLN-BR-04, §6 plan-rules, §8.2 `BookingRulePlanChanged`, §11 v2.2; 17 §3.1 (`min_plan`, regla efectiva), PLN-R-01; D-11
 
-**Tablas:** `plan_rule_entitlements`, vista `plan_rules_v`, `sys_booking_rules.min_plan`, `sys_booking_rule_catalog.min_plan`
+**Tablas:** `plan_rule_entitlements`, vista `plan_rules_v`, `sys_booking_rules.min_plan`, `sys_booking_rule_catalog.min_plan` (objetos nuevos de esta historia: plan_rules_v; agregarlos a database/ y regenerar el diccionario antes de programar)
 
 **Endpoints:** `GET /api/v1/platform/plan-rules`, `PUT /api/v1/platform/plan-rules/{rule_code}` (If-Match; `?dry_run=1`), `POST /api/v1/platform/plan-rules/reset-demo` (Idempotency-Key), `GET /api/v1/billing/plan-rules` (cache 5 min)
 
@@ -738,7 +749,7 @@ Cobertura referencial: 154 endpoints, 74 tablas citadas, 55 casos de prueba de l
 
 **Especificación:** 14 §3.1–3.3, §4.2, §5 MKT-BR-01/02/11/15, §6 contacts/consents
 
-**Tablas:** `mkt_contacts_subscribers`, `mkt_consents`, `mkt_consent_events`, vista `mkt_contacts_v`
+**Tablas:** `mkt_contacts_subscribers`, `mkt_consents`, `mkt_consent_events`, vista `mkt_contacts_v` (objetos nuevos de esta historia: mkt_contacts_v; agregarlos a database/ y regenerar el diccionario antes de programar)
 
 **Endpoints:** `GET /api/v1/marketing/contacts`, `GET /api/v1/marketing/consents`, `POST /api/v1/marketing/consents`, `POST /api/v1/marketing/consents/{code}/revoke`, `GET /api/v1/marketing/consents/{code}/events`
 
@@ -831,7 +842,7 @@ Cobertura referencial: 154 endpoints, 74 tablas citadas, 55 casos de prueba de l
 
 **Especificación:** 14 §3.6–3.8, §4.1, §5 MKT-BR-03/04/05/07/08/09/18, §6 campaigns, §8 `DispatchScheduledCampaigns`/`SendCampaignBatch`
 
-**Tablas:** `mkt_campaigns`, `mkt_campaign_tests`, `mkt_campaign_recipients`, `mkt_campaign_suppressions`, `catalog_promotions` (+`campaign_id`)
+**Tablas:** `mkt_campaigns`, `mkt_campaign_tests`, `mkt_campaign_recipients`, `mkt_campaign_suppressions`, `catalog_product_promotions` (+`campaign_id`)
 
 **Endpoints:** `GET /api/v1/marketing/campaigns`, `POST /api/v1/marketing/campaigns`, `GET /api/v1/marketing/campaigns/{code}`, `PUT /api/v1/marketing/campaigns/{code}` (If-Match), `GET /api/v1/marketing/campaigns/{code}/audience`, `POST /api/v1/marketing/campaigns/{code}/test-send` (Idempotency-Key), `POST /api/v1/marketing/campaigns/{code}/schedule` (If-Match), `POST /api/v1/marketing/campaigns/{code}/unschedule` (If-Match), `POST /api/v1/marketing/campaigns/{code}/send` (Idempotency-Key + If-Match), `POST /api/v1/marketing/campaigns/{code}/cancel` (If-Match), `POST /api/v1/marketing/campaigns/{code}/duplicate`
 
@@ -996,7 +1007,7 @@ Cobertura referencial: 154 endpoints, 74 tablas citadas, 55 casos de prueba de l
 
 **Especificación:** 14 §5 MET-BR-07/08/09, §8 `SalesTargetProgress`, §6 ranking; 09 H-21
 
-**Tablas:** `crm_target_progress` (read model), `booking_reservations`, `crm_opportunities`
+**Tablas:** `crm_target_progress` (read model), `booking_reservations`, `crm_opportunities` (objetos nuevos de esta historia: crm_target_progress; agregarlos a database/ y regenerar el diccionario antes de programar)
 
 **Endpoints:** `GET /api/v1/crm/sales-targets/ranking?period=`
 
@@ -1260,7 +1271,7 @@ Cobertura referencial: 154 endpoints, 74 tablas citadas, 55 casos de prueba de l
 
 **Especificación:** 09 §7.2 (bloque «Metas del mes»), §7.4, H-21, §12-7; 14 §1 (PROC-060: avance, ranking e historial de metas; métricas y atribución de campañas)
 
-**Tablas:** `crm_target_progress`, `crm_sales_targets`, `mkt_campaigns`, `mkt_attributions`, `rpt_monthly_sales`
+**Tablas:** `crm_target_progress`, `crm_sales_targets`, `mkt_campaigns`, `mkt_attributions`, `rpt_monthly_sales` (crm_target_progress nace en F3-MET-02 y rpt_monthly_sales en F1B-REP-01)
 
 **Endpoints:** `GET /api/v1/dashboard/manager`, `GET /api/v1/dashboard/executive`, `GET /api/v1/reports/{report}`
 
@@ -1320,6 +1331,1501 @@ Cobertura referencial: 154 endpoints, 74 tablas citadas, 55 casos de prueba de l
 **Pruebas:** Pest: correo inválido → 422 EXP-BR-03; la ejecución crea un export `disponible` y un envío.
 
 **Depende de:** F3-REP-02 · **Prioridad:** P1
+
+### E3.12 · Asistente IA de ventas y alertas
+
+#### F3-IA-01 · Núcleo de IA: adaptador LLM, pedidos, cupo por plan y filtro de datos personales
+
+**Historia:** Como agencia, quiero un asistente de IA seguro y medido dentro del sistema, para dejar de copiar datos a herramientas externas.
+
+**Especificación:** 19 §3.1, §4 (pedido IA), SC-01, SC-02, SC-04; 13 §3.6 (medición de uso)
+
+**Tablas:** `sys_ai_requests`, `usage_counters`
+
+**Endpoints:** `POST /api/v1/ai/requests`, `GET /api/v1/ai/requests/{id}`, `POST /api/v1/ai/requests/{id}/discard`, `GET /api/v1/ai/usage`
+
+**Pantallas:** —
+
+**Criterios de aceptación:**
+
+1. Migración de `sys_ai_requests` con CHECK de `kind` y `status`, RLS y FKs compuestas.
+2. Interfaz `LlmClient` con adaptador `FakeLlmClient` (respuestas deterministas) y adaptador real configurable por entorno; sin claves en el código.
+3. `POST /ai/requests` responde 202 y encola `RunAiRequest` (cola `ai`); el resultado se emite por Reverb y por polling.
+4. Filtro de PII antes de llamar al LLM: elimina tarjetas, DNI/pasaporte y contraseñas (SC-04).
+5. Cupo mensual por plan con `usage_counters` (`ai_requests`): aviso al 80 % y 429 `AI_QUOTA_EXCEEDED` al 100 % (SC-02).
+6. Regla R-AI-ASSISTANT sembrada en `sys_booking_rule_catalog` y en la matriz de planes; los 12 permisos del módulo Crecimiento sembrados (00 §7.1).
+
+**Pruebas:** Pest: aislamiento de tenant; filtro de PII; 429 al superar el cupo; regla apagada → 403 `RULE_NOT_IN_PLAN`.
+
+**Depende de:** F3-PLT-03, F3-PLT-04 · **Prioridad:** P0
+
+#### F3-IA-02 · Itinerario y borrador de cotización desde un pedido en texto o audio
+
+**Historia:** Como vendedor, quiero describir el viaje que pide el cliente y recibir un itinerario y una cotización en borrador, para responder en minutos.
+
+**Especificación:** 19 §2 (panel Asistente), SC-03, §6
+
+**Tablas:** `sys_ai_requests`, `quote_quotes`, `quote_versions`, `quote_items`
+
+**Endpoints:** `POST /api/v1/ai/requests`, `POST /api/v1/ai/requests/{id}/apply`
+
+**Pantallas:** Panel lateral «Asistente» en lead y cotización
+
+**Criterios de aceptación:**
+
+1. `kind = itinerary` y `quote_draft` usan solo productos activos del catálogo del tenant y sus tarifas vigentes; lo que no existe se marca «por cotizar».
+2. «Aplicar» crea una versión de cotización en `borrador` con los ítems sugeridos y pasa por PricingService y aprobación interna como siempre (SC-03).
+3. Audio: transcripción por el adaptador; el texto transcrito queda en `prompt`.
+4. El vendedor puede editar antes de aplicar; descartar deja `status = discarded`.
+
+**Pruebas:** Pest: aplicar no cambia el estado de la cotización ni salta la aprobación; productos inactivos nunca se sugieren. Playwright: pedido de 4 días a Cusco → borrador aplicado.
+
+**Depende de:** F3-IA-01, F1B-COT-03 · **Prioridad:** P0
+
+#### F3-IA-03 · Respuestas sugeridas y resúmenes en la bandeja omnicanal
+
+**Historia:** Como vendedor, quiero que el sistema me proponga la respuesta y me resuma la conversación, para atender más chats con la misma calidad.
+
+**Especificación:** 19 §2, SC-03, SC-05; 10 (inbox)
+
+**Tablas:** `sys_ai_requests`, `collab_conversations`, `collab_messages`
+
+**Endpoints:** `POST /api/v1/ai/requests`, `POST /api/v1/ai/requests/{id}/apply`
+
+**Pantallas:** Inbox: botón «Sugerir respuesta» y «Resumir»
+
+**Criterios de aceptación:**
+
+1. `reply_draft` usa el historial de la conversación y los datos de la cotización o reserva vinculada.
+2. La respuesta sugerida se pega en el editor; nunca se envía sola (SC-03).
+3. `summary` guarda el resumen en la conversación y en la actividad del lead.
+
+**Pruebas:** Pest: el borrador no crea mensajes salientes; Ventas solo usa conversaciones de su cartera.
+
+**Depende de:** F3-IA-01, F2-INB-06 · **Prioridad:** P1
+
+#### F3-IA-04 · Importador de productos con IA desde una web, PDF o planilla
+
+**Historia:** Como agencia que migra, quiero cargar mi catálogo desde mi web o mis PDFs, para empezar a vender sin tipear todo.
+
+**Especificación:** 19 §3.5, §4 (importación), SC-08
+
+**Tablas:** `catalog_import_jobs`, `sys_ai_requests`, `catalog_products`
+
+**Endpoints:** `POST /api/v1/catalog/imports`, `GET /api/v1/catalog/imports/{code}`, `POST /api/v1/catalog/imports/{code}/confirm`, `POST /api/v1/catalog/imports/{code}/cancel`
+
+**Pantallas:** `/catalogo/importar`
+
+**Criterios de aceptación:**
+
+1. Migración de `catalog_import_jobs` con su máquina de estados.
+2. `ProcessCatalogImport` extrae nombre, destino, duración, incluye/no incluye, itinerario y precio desde; cada campo con su confianza.
+3. Revisión obligatoria: la confirmación crea solo los productos elegidos, siempre en `borrador` y marcados «detectado por IA» (SC-08).
+4. URLs validadas contra SSRF (como los webhooks de 13).
+
+**Pruebas:** Pest: confirmar nunca publica; URL a IP privada → 422; reintento de confirmación idempotente.
+
+**Depende de:** F3-IA-01, F1A-CAT-08 · **Prioridad:** P1
+
+#### F3-IA-05 · Alertas de rentabilidad con IA
+
+**Historia:** Como dueño de la agencia, quiero alertas diarias de margen bajo, proveedores caros, metas en riesgo y cobranza atrasada, para actuar antes de perder dinero.
+
+**Especificación:** 19 §3.13, §4 (alerta), SC-17
+
+**Tablas:** `report_ai_insights`, `sys_ai_requests`
+
+**Endpoints:** `GET /api/v1/reports/insights`, `POST /api/v1/reports/insights/{id}/resolve`
+
+**Pantallas:** `/reportes/alertas` y tarjeta en el panel
+
+**Criterios de aceptación:**
+
+1. `GenerateAiInsights` diario a las 06:00 calcula los indicadores con SQL y usa la IA solo para redactar el detalle.
+2. Cada alerta tiene severidad, métrica, origen y acción sugerida; se notifica a su audiencia.
+3. Ventas no recibe márgenes ni costos (SC-17).
+
+**Pruebas:** Pest: alerta de margen < umbral; Ventas → 403 o sin campos de costo; resolver cambia el estado.
+
+**Depende de:** F3-IA-01, F3-MET-02, F1B-REP-01 · **Prioridad:** P2
+
+### E3.13 · WhatsApp oficial, cobro local y recuperación de ventas
+
+#### F3-WAP-01 · WhatsApp Business oficial: número, plantillas transaccionales y envío desde la bandeja
+
+**Historia:** Como agencia, quiero enviar cotizaciones, links de pago y vouchers por WhatsApp oficial, para atender por el canal que usan mis clientes.
+
+**Especificación:** 19 §3.2, SC-05; 10 (cuentas de canal); 14 (consentimientos)
+
+**Tablas:** `collab_whatsapp_templates`, `collab_channel_accounts`, `collab_messages`
+
+**Endpoints:** `GET /api/v1/inbox/whatsapp-templates`, `POST /api/v1/inbox/whatsapp-templates`, `PATCH /api/v1/inbox/whatsapp-templates/{id}`, `POST /api/v1/inbox/conversations/{id}/send-template`
+
+**Pantallas:** `/admin/whatsapp`
+
+**Criterios de aceptación:**
+
+1. Migración de `collab_whatsapp_templates`; alta y edición envían a Meta por el adaptador y actualizan el estado por webhook.
+2. Fuera de la ventana de 24 h solo se envían plantillas `aprobada`; sin opt-in → 422 (SC-05).
+3. Atajos desde cotización, link de pago y voucher que eligen la plantilla del `purpose`.
+4. Regla R-WHATSAPP-OFFICIAL (Professional).
+
+**Pruebas:** Pest: envío fuera de ventana con plantilla no aprobada → 422; sin consentimiento → 422; aislamiento de tenant.
+
+**Depende de:** F2-INB-02, F3-MKT-04, F3-PLT-03 · **Prioridad:** P0
+
+#### F3-PAG-01 · Links de pago con Yape, Plin, Mercado Pago, PagoEfectivo y cuotas
+
+**Historia:** Como vendedor, quiero mandar un link de pago con los medios locales, para cobrar el adelanto en el momento.
+
+**Especificación:** 19 §3.3, §4 (link), SC-06; 07 §4.9
+
+**Tablas:** `fin_payment_links`, `fin_payments`, `fin_receivables`
+
+**Endpoints:** `GET /api/v1/finance/payment-links`, `POST /api/v1/finance/payment-links`, `POST /api/v1/finance/payment-links/{code}/send`, `POST /api/v1/finance/payment-links/{code}/cancel`, `GET /api/v1/public/pay/{token}`, `POST /api/v1/public/pay/{token}/checkout`
+
+**Pantallas:** `/finanzas/links-de-pago` y página pública `/pagar/{token}`
+
+**Criterios de aceptación:**
+
+1. Migración de `fin_payment_links` con CHECK de medios, cuotas y estados; token solo como hash.
+2. La página pública muestra concepto, monto y medios del link; a 400 px sin scroll horizontal.
+3. El webhook de la pasarela registra el pago y lo aplica como en 07 §4.9; un segundo webhook del mismo cobro no duplica (SC-06).
+4. Monto mayor al saldo pendiente → 422 `AMOUNT_EXCEEDS_BALANCE`; `ExpirePaymentLinks` vence los links cada hora.
+5. Ventas solo crea links de su cartera.
+
+**Pruebas:** Pest: webhook duplicado; link vencido → 410; anulado no se paga; Ventas fuera de cartera → 403. Playwright: link con Yape pagado en sandbox.
+
+**Depende de:** F2-WEB-08, F2-WEB-09, F1B-FIN-03 · **Prioridad:** P0
+
+#### F3-PAG-02 · Recuperación de carritos y cotizaciones abandonadas
+
+**Historia:** Como agencia, quiero recordar automáticamente al cliente que dejó un carrito o una cotización sin pagar, para recuperar ventas sin trabajo manual.
+
+**Especificación:** 19 §3.4, §4 (intento), SC-07; 15 (carrito); 14 (consentimientos)
+
+**Tablas:** `mkt_recovery_flows`, `mkt_recovery_attempts`, `channel_web_carts`, `quote_quotes`
+
+**Endpoints:** `GET /api/v1/marketing/recovery-flows`, `POST /api/v1/marketing/recovery-flows`, `PATCH /api/v1/marketing/recovery-flows/{code}`, `GET /api/v1/marketing/recovery-attempts`
+
+**Pantallas:** `/marketing/recuperacion`
+
+**Criterios de aceptación:**
+
+1. Migraciones de flujos e intentos; `ScheduleRecoveryAttempts` cada 15 min y `SendRecoveryAttempt` por email o WhatsApp.
+2. Sin consentimiento del canal no se envía; si el cliente ya compró, el intento queda `descartado` (SC-07).
+3. El mensaje puede incluir un link de pago (F3-PAG-01) y el carrito restaurado.
+4. Métricas: intentos, recuperados y monto recuperado por flujo. Amplía los recordatorios de F2-WEB-18.
+
+**Pruebas:** Pest: no envía sin consentimiento; compra antes del intento → descartado; `max_attempts` respetado.
+
+**Depende de:** F3-PAG-01, F2-WEB-18, F3-MKT-01 · **Prioridad:** P1
+
+### E3.14 · Distribución: OTAs y marketplace B2B
+
+#### F3-OTA-01 · Conexiones con OTAs y mapeo de productos
+
+**Historia:** Como operador receptivo, quiero conectar mis productos con Viator, GetYourGuide, Expedia y Google Things to Do, para vender en esos canales sin cargar todo dos veces.
+
+**Especificación:** 19 §3.6, §4 (conexión), SC-10
+
+**Tablas:** `channel_ota_connections`, `channel_ota_product_mappings`
+
+**Endpoints:** `GET /api/v1/channels/ota/connections`, `POST /api/v1/channels/ota/connections`, `PATCH /api/v1/channels/ota/connections/{code}`, `GET /api/v1/channels/ota/connections/{code}/mappings`, `PUT /api/v1/channels/ota/connections/{code}/mappings/{productId}`
+
+**Pantallas:** `/canales/ota`
+
+**Criterios de aceptación:**
+
+1. Migraciones de conexiones y mapeos; credenciales cifradas y nunca devueltas por la API.
+2. Interfaz `OtaConnector` con adaptador `Fake` por OTA; verificación de credenciales al conectar.
+3. Mapeo con modo de precio markup, fijo o neto (SC-10).
+4. Regla R-OTA-CHANNEL (Enterprise).
+
+**Pruebas:** Pest: credenciales nunca en la respuesta ni en auditoría; mapeo `fijo` sin precio → 422; aislamiento de tenant.
+
+**Depende de:** F2-MOT-09, F3-PLT-03 · **Prioridad:** P1
+
+#### F3-OTA-02 · Sincronización de disponibilidad y reservas entrantes de OTAs
+
+**Historia:** Como operador, quiero que las OTAs vean mi cupo real y que sus reservas entren solas, para no sobrevender.
+
+**Especificación:** 19 §3.6, §4 (reserva OTA), SC-09, SC-10
+
+**Tablas:** `channel_ota_bookings`, `catalog_availability_holds`, `booking_reservations`
+
+**Endpoints:** `POST /api/v1/channels/ota/connections/{code}/sync`, `GET /api/v1/channels/ota/bookings`, `POST /api/v1/webhooks/ota/{ota}`
+
+**Pantallas:** `/canales/ota` (reservas y errores)
+
+**Criterios de aceptación:**
+
+1. `SyncOtaAvailability` cada 15 min y tras cada venta publica disponibilidad = real − holds vigentes (SC-09).
+2. El webhook valida la firma y es idempotente por `ota_booking_ref`; crea la reserva con el mismo bloqueo de cupo del checkout o la rechaza.
+3. La comisión de la OTA se registra como CxP de comisión al confirmar; la cancelación de la OTA cancela la reserva con su política.
+4. Tres fallos seguidos pasan la conexión a `error` y avisan al Tenant Admin.
+
+**Pruebas:** Pest: dos reservas OTA concurrentes por el último cupo → una confirmada y una rechazada; webhook repetido no duplica; firma inválida → 401.
+
+**Depende de:** F3-OTA-01, F1A-CAT-26, F2-MOT-10 · **Prioridad:** P1
+
+#### F3-MKP-01 · Marketplace B2B: publicación de productos y alianzas entre tenants
+
+**Historia:** Como operador, quiero publicar mis productos para que otras agencias de KipuControl los revendan, para vender más sin buscar socios uno por uno.
+
+**Especificación:** 19 §3.7, §4 (alianza), SC-11
+
+**Tablas:** `platform_marketplace_listings`, `platform_marketplace_partnerships`
+
+**Endpoints:** `GET /api/v1/marketplace/listings`, `POST /api/v1/marketplace/listings`, `PATCH /api/v1/marketplace/listings/{id}`, `GET /api/v1/marketplace/partnerships`, `POST /api/v1/marketplace/partnerships`, `POST /api/v1/marketplace/partnerships/{id}/decide`
+
+**Pantallas:** `/canales/marketplace`
+
+**Criterios de aceptación:**
+
+1. Tablas de plataforma sin `tenant_id`; `app_role` sin privilegios; `MarketplaceService` usa la conexión `platform` y filtra por el tenant actual.
+2. Un tenant solo ve publicaciones `publicado` de otros y sus propias alianzas; nunca datos de reservas ajenas.
+3. Alianza con comisión, tarifa de plataforma (1 %), crédito y condición de pago; el vendedor decide.
+4. Regla R-MARKETPLACE (Enterprise).
+
+**Pruebas:** Pest: un tenant no ve publicaciones en borrador de otro; alianza consigo mismo → 422; app_role no lee las tablas (prueba de privilegios).
+
+**Depende de:** F2-B2B-01, F3-PLT-03 · **Prioridad:** P1
+
+#### F3-MKP-02 · Venta entre tenants por el marketplace con comisión y liquidación
+
+**Historia:** Como agencia revendedora, quiero vender el producto de un aliado desde mi sistema, para ofrecer más destinos sin contratar proveedores.
+
+**Especificación:** 19 §3.7, §4 (venta), SC-11
+
+**Tablas:** `platform_marketplace_orders`, `booking_reservations`, `fin_commissions`
+
+**Endpoints:** `POST /api/v1/marketplace/orders`, `GET /api/v1/marketplace/orders`
+
+**Pantallas:** `/canales/marketplace` (ventas y compras)
+
+**Criterios de aceptación:**
+
+1. La venta crea la reserva en el tenant vendedor (canal `marketplace`) y una espejo en el revendedor, en una sola operación idempotente por `idempotency_key`.
+2. El revendedor ve precio neto = público − comisión; el cupo se toma con el bloqueo de siempre.
+3. Cierre mensual: `liquidada` con comisión del revendedor y tarifa de plataforma en la suscripción del vendedor.
+
+**Pruebas:** Pest: misma clave dos veces → una sola venta; sin cupo → rechazada sin reservas; la tarifa aparece en la factura de plataforma.
+
+**Depende de:** F3-MKP-01, F3-BIL-01, F1B-FIN-06 · **Prioridad:** P2
+
+### E3.15 · Venta y operación: precios dinámicos, vales y check-in QR
+
+#### F3-VEN-01 · Precios dinámicos por ocupación, anticipación, día, temporada y demanda
+
+**Historia:** Como gerente, quiero que el precio suba cuando la salida se llena y baje cuando queda poco tiempo, para ganar más margen sin revisar cada producto.
+
+**Especificación:** 19 §3.8, SC-12; 16 (motor); 02 (pricing)
+
+**Tablas:** `catalog_dynamic_price_rules`
+
+**Endpoints:** `GET /api/v1/catalog/dynamic-price-rules`, `POST /api/v1/catalog/dynamic-price-rules`, `PATCH /api/v1/catalog/dynamic-price-rules/{code}`, `POST /api/v1/catalog/dynamic-price-rules/simulate`
+
+**Pantallas:** `/catalogo/precios-dinamicos` con simulador
+
+**Criterios de aceptación:**
+
+1. Migración con CHECK de ajuste, piso y techo.
+2. PricingService aplica las reglas activas por prioridad y canal; el ajuste acumulado queda entre `floor_pct` y `ceiling_pct` (SC-12).
+3. El ajuste se guarda en el snapshot de cotización y reserva; cambiar una regla no altera lo vendido.
+4. Regla R-DYNAMIC-PRICING (Enterprise).
+
+**Pruebas:** Pest: ajustes acumulados topados; snapshot inmutable; regla fuera de vigencia no aplica.
+
+**Depende de:** F1A-CAT-23, F2-MOT-08 · **Prioridad:** P1
+
+#### F3-VEN-02 · Vales y tarjetas de regalo
+
+**Historia:** Como agencia, quiero vender vales de regalo en mi sitio y canjearlos en reservas, para vender por adelantado en fechas especiales.
+
+**Especificación:** 19 §3.9, §4 (vale), SC-13
+
+**Tablas:** `fin_gift_cards`, `fin_gift_card_movements`, `fin_payment_links`
+
+**Endpoints:** `GET /api/v1/finance/gift-cards`, `POST /api/v1/finance/gift-cards`, `GET /api/v1/finance/gift-cards/{code}`, `POST /api/v1/finance/gift-cards/{code}/redeem`, `POST /api/v1/finance/gift-cards/{code}/void`, `POST /api/v1/public/gift-cards`, `POST /api/v1/public/gift-cards/balance`
+
+**Pantallas:** `/finanzas/vales` y `/regalo` en el sitio
+
+**Criterios de aceptación:**
+
+1. Migraciones con CHECK de saldo y movimientos append-only; el código de canje se muestra una vez y se guarda su hash.
+2. Canje con bloqueo de fila del vale; nunca supera el saldo (SC-13).
+3. Compra pública con pago (link o checkout) y entrega programada al destinatario.
+4. Regla R-GIFT-CARDS (Professional).
+
+**Pruebas:** Pest: canjes concurrentes no dejan saldo negativo; vencido no canjea; código incorrecto → 404 sin revelar existencia; rate limit en la consulta de saldo.
+
+**Depende de:** F3-PAG-01, F2-WEB-07 · **Prioridad:** P2
+
+#### F3-VEN-03 · Check-in con QR y deslinde de responsabilidad firmado
+
+**Historia:** Como guía, quiero escanear el QR de cada pasajero y saber si firmó el deslinde, para iniciar el servicio con el manifiesto al día.
+
+**Especificación:** 19 §3.10, §4 (pase QR), SC-14; 05 (app del operador)
+
+**Tablas:** `ops_checkin_passes`, `ops_waiver_templates`, `ops_waiver_signatures`
+
+**Endpoints:** `GET /api/v1/ops/waiver-templates`, `POST /api/v1/ops/waiver-templates`, `POST /api/v1/ops/checkin/scan`, `GET /api/v1/ops/checkin/manifest/{serviceId}`, `GET /api/v1/portal/passenger/passes`, `POST /api/v1/portal/passenger/waivers`
+
+**Pantallas:** App del operador (escáner y manifiesto), portal del pasajero («Mi pase», «Firmar deslinde»)
+
+**Criterios de aceptación:**
+
+1. Migraciones; firmas append-only con hash del texto firmado.
+2. `IssueCheckinPasses` al confirmar la reserva; el escaneo funciona offline con la cola de acciones de F2-MOV-05.
+3. Un pase se usa una vez; solo el recurso asignado y el día del servicio; sin deslinde vigente (o del tutor, para menores) → 422 (SC-14).
+4. Regla R-QR-CHECKIN (Professional).
+
+**Pruebas:** Pest: pase usado dos veces → 409; usuario no asignado → 403; sin firma → 422. Playwright: escaneo y manifiesto en vivo.
+
+**Depende de:** F2-MOV-05, F2-MOV-11 · **Prioridad:** P1
+
+### E3.16 · Back office: exportación contable y aéreo/hotel
+
+#### F3-BKO-01 · Exportación contable a Contasis, Concar, Siigo, QuickBooks, Xero o CSV
+
+**Historia:** Como contador, quiero exportar ventas, cobros y compras con mi plan de cuentas, para no volver a digitarlas en el sistema contable.
+
+**Especificación:** 19 §3.11, SC-15; 07 (comprobantes)
+
+**Tablas:** `fin_account_mappings`, `fin_accounting_exports`
+
+**Endpoints:** `GET /api/v1/finance/account-mappings`, `PUT /api/v1/finance/account-mappings`, `POST /api/v1/finance/accounting-exports`, `GET /api/v1/finance/accounting-exports`
+
+**Pantallas:** `/finanzas/exportacion-contable`
+
+**Criterios de aceptación:**
+
+1. Migraciones; plan de cuentas por destino y concepto.
+2. `BuildAccountingExport` genera el archivo en el formato del destino con hash SHA-256; solo comprobantes `aceptado` u `observado`.
+3. Falta una cuenta para el alcance → 422 `ACCOUNT_MAPPING_MISSING` (SC-15).
+4. Regla R-ACCOUNTING-EXPORT (Professional).
+
+**Pruebas:** Pest: sin plan de cuentas → 422; los totales del archivo cuadran con el reporte de ventas del período.
+
+**Depende de:** F2-FIS-03, F2-FIS-09 · **Prioridad:** P1
+
+#### F3-BKO-02 · Aéreo, hotel, auto y seguro por integración en la cotización
+
+**Historia:** Como vendedor de agencia emisiva, quiero buscar vuelos y hoteles y sumarlos a la cotización, para vender el paquete completo en un solo documento.
+
+**Especificación:** 19 §3.12, §4 (oferta externa), SC-16; 03 (cotizaciones)
+
+**Tablas:** `quote_external_offers`, `quote_versions`, `booking_reservation_services`
+
+**Endpoints:** `POST /api/v1/quotes/{id}/external-offers/search`, `POST /api/v1/quotes/{id}/external-offers`, `DELETE /api/v1/quotes/{id}/external-offers/{offerId}`
+
+**Pantallas:** Pestaña «Aéreo y hotel» de la cotización
+
+**Criterios de aceptación:**
+
+1. Interfaz `TravelInventory` con adaptador `Fake` (Amadeus, Hotelbeds) y precio de venta = neto + margen de la regla de pricing.
+2. `ExpireExternalOffers` vence las ofertas; una oferta vencida no se convierte (SC-16).
+3. Al convertir la cotización, las ofertas retenidas se emiten y su costo entra como servicio de la reserva.
+4. Regla R-GDS-OFFERS (Enterprise).
+
+**Pruebas:** Pest: convertir con oferta vencida → 422; emisión idempotente; Ventas no ve el neto si no tiene permiso de rentabilidad.
+
+**Depende de:** F1B-COT-03, F1B-RES-02 · **Prioridad:** P2
+
+### E3.17 · Portal corporativo de la empresa cliente
+
+#### F3-CORP-01 · Cuenta corporativa, centros de costo y viajeros
+
+**Historia:** Como vendedor o finanzas, quiero dar de alta la cuenta corporativa de una empresa cliente con sus centros de costo y viajeros, para que pueda controlar sus compras.
+
+**Especificación:** 20 §3.1–§3.3, §4 (cuenta), CP-01, CP-06; 00 §7.1 (permisos del módulo Corporativo)
+
+**Tablas:** `crm_corporate_accounts`, `crm_corporate_cost_centers`, `crm_corporate_travelers`
+
+**Endpoints:** `GET /api/v1/crm/corporate-accounts`, `POST /api/v1/crm/corporate-accounts`, `GET /api/v1/crm/corporate-accounts/{id}`, `PATCH /api/v1/crm/corporate-accounts/{id}`, `POST /api/v1/crm/corporate-accounts/{id}/suspend`, `GET /api/v1/crm/corporate-accounts/{id}/cost-centers`, `POST /api/v1/crm/corporate-accounts/{id}/cost-centers`, `PATCH /api/v1/crm/corporate-accounts/{id}/cost-centers/{costCenterId}`, `GET /api/v1/crm/corporate-accounts/{id}/travelers`, `POST /api/v1/crm/corporate-accounts/{id}/travelers`, `POST /api/v1/crm/corporate-accounts/{id}/travelers/import`, `PATCH /api/v1/crm/corporate-accounts/{id}/travelers/{travelerId}`
+
+**Pantallas:** `(backoffice)/crm/clientes/[code]/corporativo`
+
+**Criterios de aceptación:**
+
+1. Migraciones de las tres tablas con sus CHECK, RLS y FKs compuestas (bloque v2.7 de `40_fase3.sql`).
+2. Una sola cuenta por cliente; si exige aprobación, el umbral es obligatorio; con envío automático hay al menos un destinatario.
+3. Regla R-CORP-PORTAL sembrada con plan mínimo Professional; los permisos `crm.corporate.manage` y `finance.corporate_statements` sembrados (00 §7.1). Regla apagada → 403.
+4. Ventas solo gestiona cuentas de clientes de su cartera.
+5. La importación de viajeros acepta CSV o Excel, valida documento y código de empleado únicos y devuelve los errores por fila.
+
+**Pruebas:** Pest: aislamiento de tenant; cuenta duplicada → 422; Ventas fuera de su cartera → 403; regla apagada → 403.
+
+**Depende de:** F1A-CRM-15, F3-PLT-03 · **Prioridad:** P0
+
+#### F3-CORP-02 · Usuarios del portal corporativo con rol e invitaciones
+
+**Historia:** Como administrador de la empresa cliente, quiero invitar a mis compañeros con su rol (aprobador, pagador o viajero), para que cada uno vea solo lo que le toca.
+
+**Especificación:** 20 §3.4, §4 (usuario del portal), §7 (roles del portal), CP-02, CP-06
+
+**Tablas:** `crm_corporate_portal_users`, `iam_users`
+
+**Endpoints:** `GET /api/v1/crm/corporate-accounts/{id}/portal-users`, `POST /api/v1/crm/corporate-accounts/{id}/portal-users`, `PATCH /api/v1/crm/corporate-accounts/{id}/portal-users/{portalUserId}`, `POST /api/v1/crm/corporate-accounts/{id}/portal-users/{portalUserId}/resend-invite`, `GET /api/v1/portal/client/corporate/users`, `POST /api/v1/portal/client/corporate/users`, `PATCH /api/v1/portal/client/corporate/users/{portalUserId}`
+
+**Pantallas:** Portal del cliente › Panel corporativo › «Usuarios y centros de costo»
+
+**Criterios de aceptación:**
+
+1. La invitación crea el usuario `customer` vinculado al cliente al aceptarla; el estado pasa de `invitado` a `activo`.
+2. Un correo por cuenta; el aprobador exige centro de costo; siempre queda al menos un administrador activo (CP-06).
+3. Solo el administrador de la empresa o el personal con `crm.corporate.manage` invita, cambia roles o desactiva.
+4. El rol del portal se resuelve en cada pedido desde `crm_corporate_portal_users`; no se crea un rol nuevo en la matriz del tenant.
+
+**Pruebas:** Pest: correo repetido → 422; desactivar al último administrador → 422; un pagador no puede invitar → 403.
+
+**Depende de:** F3-CORP-01, F1B-POR-01 · **Prioridad:** P0
+
+#### F3-CORP-03 · Reportes de compras y movimientos en el portal
+
+**Historia:** Como empresa cliente, quiero ver cuánto compramos por mes, por centro de costo y por viajero, y todos los movimientos con su saldo, para controlar el gasto de viajes.
+
+**Especificación:** 20 §2 (Resumen y Movimientos), §3.6, CP-02, CP-04, CP-09, CP-10
+
+**Tablas:** `booking_cost_allocations`, `booking_reservations`, `fin_payments`, `fin_invoices`, `crm_corporate_cost_centers`
+
+**Endpoints:** `GET /api/v1/portal/client/corporate/summary`, `GET /api/v1/portal/client/corporate/purchases`, `GET /api/v1/portal/client/corporate/movements`, `GET /api/v1/portal/client/corporate/cost-centers`, `POST /api/v1/portal/client/corporate/cost-centers`, `PATCH /api/v1/portal/client/corporate/cost-centers/{code}`, `GET /api/v1/portal/client/corporate/travelers`, `POST /api/v1/portal/client/corporate/travelers`, `GET /api/v1/reservations/{code}/cost-allocations`, `PUT /api/v1/reservations/{code}/cost-allocations`
+
+**Pantallas:** Portal del cliente › Panel corporativo › «Resumen de compras» y «Movimientos»
+
+**Criterios de aceptación:**
+
+1. Resumen por período: total comprado, saldo por pagar, viajeros distintos, ticket promedio, gasto por mes, por centro de costo (con presupuesto y % de uso) y por viajero.
+2. Movimientos: compras, pagos aplicados y notas de crédito aceptadas, con cargo, abono y saldo acumulado; filtros por tipo y centro de costo.
+3. El reparto de costos suma 100 % y el total de la reserva; sin reparto va al centro de costo por defecto (CP-04).
+4. El viajero solo ve sus viajes y el aprobador su centro de costo (CP-02); nunca se exponen costos, márgenes ni comisiones (CP-09).
+5. Aviso al 80 % y al 100 % del presupuesto de un centro de costo (CP-10).
+
+**Pruebas:** Pest: el saldo final del período coincide con la suma de las CxC abiertas del cliente; viajero de otra compra no la ve; respuesta sin campos de costo. Playwright: filtro por trimestre y por centro de costo.
+
+**Depende de:** F3-CORP-02, F1B-FIN-03, F1B-POR-02 · **Prioridad:** P0
+
+#### F3-CORP-04 · Aprobación previa de compras por la empresa
+
+**Historia:** Como aprobador de la empresa cliente, quiero aprobar o rechazar las compras grandes antes de que la agencia las confirme, para respetar el presupuesto.
+
+**Especificación:** 20 §3.5, §4 (aprobación corporativa), CP-03, CP-07; 03 (convertir cotización)
+
+**Tablas:** `booking_corporate_approvals`, `quote_quotes`
+
+**Endpoints:** `POST /api/v1/quotes/{code}/corporate-approval`, `GET /api/v1/portal/client/corporate/approvals`, `POST /api/v1/portal/client/corporate/approvals/{code}/approve`, `POST /api/v1/portal/client/corporate/approvals/{code}/reject`
+
+**Pantallas:** Portal del cliente › Panel corporativo › «Aprobaciones»; cotización: botón «Pedir aprobación a la empresa»
+
+**Criterios de aceptación:**
+
+1. Si la cuenta exige aprobación y el total de la versión vigente alcanza el umbral, convertir sin aprobación vigente → 422 `CORPORATE_APPROVAL_REQUIRED` (CP-03).
+2. Una nueva versión de la cotización cancela la solicitud pendiente; solo una pendiente por cotización.
+3. El aprobador decide solo su centro de costo; rechazar exige motivo; una segunda decisión → 409 (CP-07).
+4. Job `ExpireCorporateApprovals` vence las solicitudes y avisa al vendedor; la decisión avisa al vendedor por portal y correo.
+
+**Pruebas:** Pest: convertir sin aprobación → 422; con aprobación de una versión anterior → 422; aprobador de otro centro → 403.
+
+**Depende de:** F3-CORP-02, F1B-COT-07 · **Prioridad:** P1
+
+#### F3-CORP-05 · Estado de cuenta mensual corporativo y envío automático
+
+**Historia:** Como pagador de la empresa cliente, quiero recibir cada mes el estado de cuenta con compras, pagos y notas de crédito, para conciliar sin pedirlo a la agencia.
+
+**Especificación:** 20 §3.7, §4 (estado de cuenta), CP-05; 07 (estado de cuenta por reserva)
+
+**Tablas:** `fin_corporate_statements`, `crm_corporate_accounts`, `sys_documents`
+
+**Endpoints:** `GET /api/v1/finance/corporate-statements`, `POST /api/v1/finance/corporate-statements`, `GET /api/v1/finance/corporate-statements/{code}`, `POST /api/v1/finance/corporate-statements/{code}/send`, `POST /api/v1/finance/corporate-statements/{code}/void`, `GET /api/v1/portal/client/corporate/statements`, `GET /api/v1/portal/client/corporate/statements/{code}/pdf`, `PATCH /api/v1/portal/client/corporate/statement-settings`
+
+**Pantallas:** Portal › «Estado de cuenta»; back office `/finanzas/estados-cuenta-corporativos`
+
+**Criterios de aceptación:**
+
+1. El estado congela las líneas del mes y cumple `closing = opening + charges − payments − credits` (CHECK).
+2. Importes en otra moneda se convierten con el tipo de cambio del día del movimiento.
+3. Job diario `GenerateCorporateStatements`: genera y envía el mes anterior el `statement_day` de cada cuenta, sin duplicar el mes.
+4. El administrador o el pagador configura el envío automático, el día (1–28) y los destinatarios; el cambio se audita.
+
+**Pruebas:** Pest: el job no duplica; saldo inconsistente → violación de CHECK; anular y regenerar deja un solo estado vigente.
+
+**Depende de:** F3-CORP-03, F1B-FIN-08 · **Prioridad:** P1
+
+#### F3-CORP-06 · Exportaciones del portal y front del panel corporativo
+
+**Historia:** Como empresa cliente, quiero un panel claro y descargar los reportes en Excel o PDF, para compartirlos con contabilidad.
+
+**Especificación:** 20 §2, §3.8, CP-08; prototipo `#/canales/portal-cliente/{clientId}/corporativo`
+
+**Tablas:** `report_corporate_exports`, `sys_documents`
+
+**Endpoints:** `GET /api/v1/portal/client/corporate/exports`, `POST /api/v1/portal/client/corporate/exports`, `GET /api/v1/portal/client/corporate/exports/{code}`
+
+**Pantallas:** `(portal-cliente)/corporativo` con las cinco pestañas del prototipo
+
+**Criterios de aceptación:**
+
+1. Pestaña «Panel corporativo» visible solo para clientes con cuenta corporativa activa y la regla R-CORP-PORTAL encendida.
+2. Las cinco pestañas replican el prototipo: resumen, movimientos, estado de cuenta, aprobaciones y usuarios y centros de costo.
+3. La exportación responde 202, se genera en la cola `reports`, queda 7 días con enlace firmado y máximo 10 en cola por cuenta (CP-08).
+4. A 390 px no hay scroll horizontal.
+
+**Pruebas:** Playwright: U18 entra, filtra el tercer trimestre, exporta movimientos y abre el estado de cuenta de setiembre.
+
+**Depende de:** F3-CORP-03, F3-REP-02, F1B-POR-06 · **Prioridad:** P1
+
+### E3.18 · Viajes por tramos y venta en ruta
+
+#### F3-TRP-01 · Tramos con noches mínimas y máximas, y temporadas de hotel
+
+**Historia:** Como gestor de producto, quiero definir cuántas noches puede quedarse el viajero en cada ciudad y subir la tarifa del hotel en temporada alta, para vender circuitos flexibles sin perder margen.
+
+**Especificación:** 21 §3.0–§3.1, TB-02, TB-03
+
+**Tablas:** `catalog_accommodation_legs`, `catalog_hotel_season_rates`
+
+**Endpoints:** `GET /api/v1/catalog/products/{code}/trip`, `PUT /api/v1/catalog/products/{code}/trip/legs/{legId}/nights`, `GET /api/v1/catalog/hotels/{hotelId}/season-rates`, `POST /api/v1/catalog/hotels/{hotelId}/season-rates`, `DELETE /api/v1/catalog/hotels/{hotelId}/season-rates/{id}`
+
+**Pantallas:** `(backoffice)/catalogo/productos/[code]/tramos`
+
+**Criterios de aceptación:**
+
+1. Migraciones del bloque v2.8 (columnas `min_nights`/`max_nights` y `catalog_hotel_season_rates` con EXCLUDE de solapes).
+2. Mínimo y máximo nulos mantienen las noches fijas; con valores, 1 ≤ min ≤ noches ≤ max ≤ 30.
+3. Una temporada que se solapa con otra del mismo hotel → 409.
+4. Regla R-TRIP-BUILDER sembrada (grupo Alojamiento, plan mínimo Professional) y visible en el centro de reglas.
+
+**Pruebas:** Pest: aislamiento de tenant; solape → 409; rango de noches inválido → 422.
+
+**Depende de:** F2-MOT-05, F3-PLT-03 · **Prioridad:** P0
+
+#### F3-TRP-02 · Tours y movilidad por tramo en el catálogo
+
+**Historia:** Como gestor de producto, quiero cargar los tours opcionales de cada ciudad y las opciones para llegar de una ciudad a otra, para que el viajero arme su viaje.
+
+**Especificación:** 21 §3.2–§3.3, TB-04, TB-05
+
+**Tablas:** `catalog_leg_tours`, `catalog_transport_options`, `catalog_transport_vehicles`
+
+**Endpoints:** `POST /api/v1/catalog/products/{code}/trip/tours`, `PATCH /api/v1/catalog/products/{code}/trip/tours/{tourId}`, `POST /api/v1/catalog/products/{code}/trip/transport`, `PATCH /api/v1/catalog/products/{code}/trip/transport/{optionId}`
+
+**Pantallas:** `(backoffice)/catalogo/productos/[code]/tramos` › Tours y Movilidad
+
+**Criterios de aceptación:**
+
+1. Tours con día relativo, hora, duración, precio adulto y niño, edad mínima, cupo y proveedor.
+2. Movilidad entre ciudades (con destino) o local (sin destino), por pasajero o por vehículo; por vehículo exige al menos un vehículo.
+3. Desactivar un tour o una opción no borra lo ya vendido.
+
+**Pruebas:** Pest: opción por pasajero sin precio → CHECK; mismo origen y destino → CHECK; código repetido → 422.
+
+**Depende de:** F3-TRP-01, F1A-CAT-05 · **Prioridad:** P0
+
+#### F3-TRP-03 · Motor: noches por ciudad, tarifa por fecha, tours, movilidad y gasto por categoría
+
+**Historia:** Como viajero, quiero elegir noches, tours y movilidad y ver cuánto gasto en cada cosa, para armar el viaje a mi medida.
+
+**Especificación:** 21 TB-01–TB-07; 16 (BookingEngine)
+
+**Tablas:** `catalog_leg_tours`, `catalog_transport_options`, `catalog_hotel_season_rates`
+
+**Endpoints:** —
+
+**Pantallas:** `(sitio)/tour/[slug]`: «Alojamiento por ciudad», «Tours y movilidad por ciudad» y resumen por categoría
+
+**Criterios de aceptación:**
+
+1. `BookingEngine::quote` acepta `nights`, `tours` y `transport` y devuelve `legs`, `tripEnd` y `byCategory` (sin endpoint nuevo).
+2. Cada noche se cobra con la tarifa de su fecha; la línea muestra el precio medio y la temporada.
+3. Tours y movilidad por pasajero cobran adultos y niños (infantes gratis); por vehículo elige el más chico que alcanza.
+4. Una sola movilidad por par de ciudades; regla apagada → noches fijas y sin tours ni movilidad.
+5. La ficha replica el prototipo `#/sitio/tour/peru-clasico-10d9n`.
+
+**Pruebas:** Pest: casos TB-02, TB-03, TB-05 y TB-06 de 21 §10. Playwright: noches + tour + vuelo y total por categoría igual a las líneas.
+
+**Depende de:** F3-TRP-02, F2-MOT-09, F2-WEB-05 · **Prioridad:** P0
+
+#### F3-TRP-04 · Reserva con tramos, tours y movilidad como servicios
+
+**Historia:** Como operaciones, quiero que cada tour y movilidad del viaje llegue como servicio con su proveedor y fecha, para operarlo y emitir vouchers.
+
+**Especificación:** 21 §3.4–§3.5, TB-07, TB-08
+
+**Tablas:** `booking_trip_legs`, `booking_trip_items`, `booking_reservation_services`
+
+**Endpoints:** `GET /api/v1/reservations/{code}/trip`
+
+**Pantallas:** `(backoffice)/reservas/[code]` › «Viaje por tramos»
+
+**Criterios de aceptación:**
+
+1. Al confirmar el pedido se crean los tramos con fechas y un `booking_trip_items` por tour o movilidad, cada uno con su servicio de reserva.
+2. La fecha fin de la reserva es la salida del último tramo.
+3. El snapshot del motor guarda `byCategory` y la rentabilidad muestra el margen por categoría.
+
+**Pruebas:** Pest: el pedido crea un servicio por ítem; `check_out = check_in + nights` (CHECK); un mismo tour dos veces el mismo día → 422.
+
+**Depende de:** F3-TRP-03, F2-MOT-10, F2-WEB-07 · **Prioridad:** P0
+
+#### F3-TRP-05 · Venta en ruta con link de pago
+
+**Historia:** Como pasajero en viaje, quiero agregar desde mi portal un tour o un traslado de las ciudades que me faltan y pagarlo en línea, para no tener que buscarlo afuera.
+
+**Especificación:** 21 §3.6, §4, TB-09, TB-10
+
+**Tablas:** `booking_in_trip_offers`, `fin_payment_links`, `booking_trip_items`
+
+**Endpoints:** `GET /api/v1/reservations/{code}/in-trip-offers`, `POST /api/v1/reservations/{code}/in-trip-offers`, `POST /api/v1/reservations/{code}/in-trip-offers/{offerCode}/cancel`, `GET /api/v1/portal/client/reservations/{code}/in-trip`, `POST /api/v1/portal/client/reservations/{code}/in-trip`
+
+**Pantallas:** Portal del cliente › reserva › «Agregar en ruta» (prototipo con U14 y RES-2026-000361)
+
+**Criterios de aceptación:**
+
+1. Regla R-IN-TRIP-SALES (grupo Comunicación, `minHoursBefore` 12) sembrada con plan mínimo Professional.
+2. Solo reservas confirmadas o en operación, ítems con `in_trip_sale` y tramos que aún no empiezan con la anticipación mínima.
+3. La oferta congela el precio y genera el link de pago (spec 19); pagada y confirmada crea el ítem, el servicio y el voucher; si el proveedor rechaza, se reembolsa.
+4. Job `ExpireInTripOffers` cada 15 min y recordatorio diario `SuggestInTripSales`.
+
+**Pruebas:** Pest: anticipación menor a la mínima → 422; oferta pagada sin link → CHECK; vencimiento por job. Playwright: U14 compra el kayak en Puno.
+
+**Depende de:** F3-TRP-04, F3-PAG-01, F1B-POR-04 · **Prioridad:** P1
+
+### E3.19 · Vitrina gratuita, monetización y marca propia
+
+#### F3-VIT-01 · Vitrina pública multi-agencia en dominio propio
+
+**Historia:** Como viajero, quiero encontrar free tours por ciudad y reservar gratis con mi nombre y correo, para planear mi día sin pagar por adelantado.
+
+**Especificación:** 22 §0, §2, §3.8–§3.10, VT-02, VT-04; prototipo `#/vitrina`
+
+**Tablas:** `platform_showcase_agencies`, `platform_showcase_listings`, `platform_showcase_bookings`, `platform_funnel_events`
+
+**Endpoints:** `GET /api/v1/showcase/listings`, `GET /api/v1/showcase/listings/{slug}`, `POST /api/v1/showcase/listings/{slug}/bookings`, `POST /api/v1/showcase/bookings/{token}/cancel`
+
+**Pantallas:** `(vitrina)/`, `(vitrina)/[ciudad]`, `(vitrina)/tour/[slug]` en Next.js con SSR/ISR sobre el dominio de la vitrina
+
+**Criterios de aceptación:**
+
+1. Migraciones de las tablas de plataforma del bloque v2.8 con REVOKE para `app_role`.
+2. Inicio con buscador, ciudades, más reservados y banda para agencias; ciudad con filtros de zona, tema, idioma y tipo; ficha con reserva.
+3. Reserva con nombre y correo válidos, cupo por salida y sin duplicar correo por salida; correo de confirmación con enlace para cancelar.
+4. Datos estructurados `WebSite`, `ItemList` y `TouristTrip`; sitemap por ciudad y por tour.
+5. Cada visita y reserva registra su evento del embudo.
+
+**Pruebas:** Pest: reserva duplicada → 422; app_role no lee las tablas (smoke test). Playwright: reserva gratis en la ficha de Cusco; a 390 px sin scroll horizontal.
+
+**Depende de:** F2-WEB-17, F3-PLT-01 · **Prioridad:** P0
+
+#### F3-VIT-02 · Registro de agencias, moderación y panel de la agencia
+
+**Historia:** Como agencia, quiero publicar mis tours en la vitrina y ver las reservas que llegan, para conseguir clientes sin costo.
+
+**Especificación:** 22 §3.8–§3.10, §4, VT-01, VT-03, VT-05
+
+**Tablas:** `platform_showcase_agencies`, `platform_showcase_listings`, `platform_showcase_bookings`
+
+**Endpoints:** `POST /api/v1/showcase/agencies`, `GET /api/v1/channels/showcase/listings`, `POST /api/v1/channels/showcase/listings`, `PATCH /api/v1/channels/showcase/listings/{code}`, `GET /api/v1/channels/showcase/bookings`, `POST /api/v1/channels/showcase/bookings/{code}/attendance`, `GET /api/v1/channels/showcase/fees`, `GET /api/v1/platform/showcase/moderation`, `POST /api/v1/platform/showcase/listings/{code}/decision`, `POST /api/v1/platform/showcase/agencies/{code}/verify`
+
+**Pantallas:** `(vitrina)/agencias`, `(backoffice)/canales/vitrina`, `(plataforma)/vitrina` › Moderación
+
+**Criterios de aceptación:**
+
+1. Registro público de agencia (con o sin pedido de pase) → `en_revision`; el Super Admin verifica RUC y licencia.
+2. Publicar exige declaración de contenido propio y pasa por moderación; rechazar exige motivo.
+3. Cargo mensual: 30 reservas gratis, luego S/ 2 por asistente; tours de pago con la comisión del plan; agencias con plan sin cargo por asistente (VT-03).
+4. El panel de una agencia sin plan muestra siempre los beneficios y «Probar 30 días» (VT-05).
+5. Permiso `channels.showcase.manage` sembrado (00 §7.1).
+
+**Pruebas:** Pest: reserva 31 del mes genera cargo; agencia con plan no; rechazo sin motivo → CHECK.
+
+**Depende de:** F3-VIT-01, F3-BIL-01 · **Prioridad:** P0
+
+#### F3-VIT-03 · Blog SEO de la vitrina y embudo de captación
+
+**Historia:** Como equipo SEO, quiero publicar guías por ciudad que enlacen a los tours y medir cuántas agencias llegan por la vitrina, para hacer crecer la plataforma.
+
+**Especificación:** 22 §3.11–§3.12, VT-13, §13
+
+**Tablas:** `platform_blog_posts`, `platform_funnel_events`
+
+**Endpoints:** `GET /api/v1/showcase/posts`, `GET /api/v1/showcase/posts/{slug}`, `GET /api/v1/platform/showcase/posts`, `POST /api/v1/platform/showcase/posts`, `PATCH /api/v1/platform/showcase/posts/{id}`, `GET /api/v1/platform/showcase/funnel`
+
+**Pantallas:** `(vitrina)/blog`, `(vitrina)/blog/[slug]`, `(plataforma)/vitrina` › Blog SEO y Embudo
+
+**Criterios de aceptación:**
+
+1. Artículo publicado con 800 palabras o más, palabra clave y al menos 3 tours enlazados de su ciudad.
+2. `BlogPosting` en cada artículo y banda «¿Organiza tours?» al final.
+3. Embudo por mes: visitas, reservas, agencias registradas, pases y planes pagados; los eventos son append-only.
+4. Integración de Search Console por adaptador (`Fake` en desarrollo) para impresiones, clics y posición.
+
+**Pruebas:** Pest: publicar 700 palabras → 422; UPDATE en `platform_funnel_events` → error.
+
+**Depende de:** F3-VIT-01 · **Prioridad:** P1
+
+#### F3-VIT-04 · Pase Básico de 30 días y add-ons de pago único o mensual
+
+**Historia:** Como Super Admin, quiero dar a una agencia 30 días con las funciones que yo elija y vender add-ons con pago único, para convertir agencias que no quieren una suscripción mensual.
+
+**Especificación:** 22 §3.7, §5.1, VT-06, VT-07; 13 (entitlements y facturación)
+
+**Tablas:** `platform_access_passes`, `addons`, `subscription_items`, `platform_invoices`
+
+**Endpoints:** `GET /api/v1/platform/access-passes`, `POST /api/v1/platform/access-passes`, `POST /api/v1/platform/access-passes/{code}/extend`, `POST /api/v1/platform/access-passes/{code}/convert`, `POST /api/v1/platform/access-passes/{code}/revoke`, `PATCH /api/v1/platform/addons/{code}/billing`
+
+**Pantallas:** `(plataforma)/pases` (prototipo `#/admin/pases`)
+
+**Criterios de aceptación:**
+
+1. Un pase activo por tenant, máximo 60 días; con precio se factura; el `EntitlementService` suma las funciones del pase.
+2. Al vencer: solo lectura 15 días y oferta del plan sugerido; avisos 7, 3 y 1 día antes.
+3. Add-ons con `billing_mode` mensual, único o ambos; el de pago único se factura una vez y no vence.
+4. Add-ons nuevos sembrados: PayPal, Armador por tramos, SEO y blog de aventuras, Destacado en la vitrina; Dominio propio pasa a «ambos».
+
+**Pruebas:** Pest: segundo pase activo → 409; pase de 61 días → CHECK; add-on único con `ends_at` → CHECK.
+
+**Depende de:** F3-PLT-02, F3-SUB-03, F3-BIL-01 · **Prioridad:** P0
+
+#### F3-VIT-05 · Pasarela PayPal y comisión por cobro en reportes
+
+**Historia:** Como finanzas, quiero cobrar con PayPal y ver en cada cobro cuánto se llevó la pasarela, para saber el neto real y la rentabilidad.
+
+**Especificación:** 22 §3.1–§3.2, VT-08–VT-10; 07 (pagos y rentabilidad)
+
+**Tablas:** `fin_gateway_accounts`, `fin_payment_fees`, `fin_payments`
+
+**Endpoints:** `GET /api/v1/finance/gateways`, `POST /api/v1/finance/gateways`, `PATCH /api/v1/finance/gateways/{id}`, `GET /api/v1/finance/gateway-fees`, `POST /api/v1/finance/gateway-fees/import`
+
+**Pantallas:** `(backoffice)/finanzas/pasarelas` (prototipo `#/finanzas/pasarelas`)
+
+**Criterios de aceptación:**
+
+1. Adaptador PayPal (Orders v2 + webhook) con `Fake` para desarrollo; credenciales en el vault.
+2. Cada cobro por pasarela crea `fin_payment_fees` estimado; el job `ImportGatewaySettlements` lo reemplaza por el real; `net = gross − fee − fee_tax − fx_spread` (CHECK).
+3. Rentabilidad de la reserva y reporte de finanzas descuentan la comisión; opción de trasladarla al cliente como recargo visible en el checkout.
+4. Permiso `finance.gateways.manage` (Finanzas y Tenant Admin; no Manager).
+
+**Pruebas:** Pest: neto inconsistente → CHECK; secreto nunca en la respuesta; rentabilidad baja por la comisión.
+
+**Depende de:** F2-WEB-08, F1B-FIN-07, F3-VIT-04 · **Prioridad:** P1
+
+#### F3-VIT-06 · Dominio propio, SEO por página y redirecciones
+
+**Historia:** Como agencia, quiero mi sitio con mi dominio y una lista clara de qué arreglar para salir en Google, para vender más sin depender de terceros.
+
+**Especificación:** 22 §3.3–§3.5, VT-11
+
+**Tablas:** `cms_site_domains`, `cms_seo_pages`, `cms_redirects`
+
+**Endpoints:** `GET /api/v1/cms/domains`, `POST /api/v1/cms/domains`, `POST /api/v1/cms/domains/{id}/verify`, `DELETE /api/v1/cms/domains/{id}`, `GET /api/v1/cms/seo/pages`, `PATCH /api/v1/cms/seo/pages/{id}`, `POST /api/v1/cms/seo/audit`, `GET /api/v1/cms/redirects`, `POST /api/v1/cms/redirects`, `DELETE /api/v1/cms/redirects/{id}`
+
+**Pantallas:** `(backoffice)/canales/seo` (prototipo `#/canales/seo`)
+
+**Criterios de aceptación:**
+
+1. Verificación por TXT y CNAME, SSL automático y renovación a 30 días; un host pertenece a un solo tenant.
+2. Auditoría nocturna por página: título, descripción, H1, palabras, alt de imágenes, schema, canónica, velocidad móvil y palabra clave; puntaje 0–100.
+3. Redirecciones 301/302 sin cadenas; sitemap y robots generados al publicar.
+4. Permiso `cms.seo.manage` sembrado.
+
+**Pruebas:** Pest: host repetido → 422; redirección en cadena → 422; host inválido → CHECK.
+
+**Depende de:** F2-WEB-17, F2-WEB-15 · **Prioridad:** P1
+
+#### F3-VIT-07 · Blog de aventuras con clientes y consentimiento
+
+**Historia:** Como agencia, quiero publicar historias reales de mis clientes con su permiso, para que otros viajeros confíen y compren el mismo viaje.
+
+**Especificación:** 22 §3.6, VT-12; Ley 29733
+
+**Tablas:** `cms_travel_stories`, `crm_clients`, `booking_reservations`
+
+**Endpoints:** `GET /api/v1/cms/stories`, `POST /api/v1/cms/stories`, `POST /api/v1/cms/stories/{id}/consent-request`, `POST /api/v1/cms/stories/{id}/publish`, `POST /api/v1/cms/stories/{id}/unpublish`, `POST /api/v1/portal/client/stories/{id}/consent`
+
+**Pantallas:** `(backoffice)/canales/aventuras`, `(sitio)/aventuras` (prototipo `#/canales/aventuras` y `#/sitio/aventuras`)
+
+**Criterios de aceptación:**
+
+1. Historia creada desde una reserva; el cliente da o retira el consentimiento desde su portal (quién, cuándo, canal, fotos y forma de mostrar el nombre).
+2. Publicar sin consentimiento vigente → 422 y CHECK en la base; retirar el consentimiento despublica al instante.
+3. Cada historia enlaza al viaje vendido y suma al sitemap.
+
+**Pruebas:** Pest: publicar sin consentimiento → CHECK (smoke test «OK v2.8»); retiro → despublicado.
+
+**Depende de:** F3-VIT-06, F1B-POR-01 · **Prioridad:** P1
+
+### E3.20 · Plantillas web y contenido con IA
+
+#### F3-TPL-01 · Catálogo de plantillas y versiones en la plataforma
+
+**Historia:** Como Super Admin, quiero un catálogo de plantillas del sitio con versiones, precio y plan mínimo, para ofrecer diseños a las agencias y venderlos.
+
+**Especificación:** 23 §3.1–§3.2, TPL-08, TPL-10
+
+**Tablas:** `platform_site_templates`, `platform_site_template_versions`
+
+**Endpoints:** `GET /api/v1/platform/templates`, `POST /api/v1/platform/templates`, `PATCH /api/v1/platform/templates/{code}`
+
+**Pantallas:** `(plataforma)/plantillas` › Catálogo
+
+**Criterios de aceptación:**
+
+1. Migraciones del bloque v2.9 de plataforma; `app_role` sin acceso (REVOKE).
+2. Incluida con precio 0 o premium con precio > 0 (CHECK); una sola plantilla por defecto, publicada e incluida.
+3. Una versión aprobada o publicada exige aprobador y Lighthouse móvil 85/95/95/90 (CHECK).
+4. Retirar una plantilla la quita de la galería sin afectar a quienes la usan; se les avisa.
+
+**Pruebas:** Pest: dos por defecto → unique violation; premium sin precio → CHECK; versión publicada con rendimiento 70 → CHECK.
+
+**Depende de:** F3-PLT-01, F2-WEB-01 · **Prioridad:** P0
+
+#### F3-TPL-02 · SDK del sitio: datos separados de la presentación
+
+**Historia:** Como desarrollador, quiero que el sitio público cargue la plantilla del tenant como un paquete que solo recibe datos tipados, para cambiar de diseño sin tocar tours, precios ni SEO.
+
+**Especificación:** 23 §13.1, §13.3–§13.5, §13.8, TPL-01
+
+**Tablas:** `cms_site_themes`
+
+**Endpoints:** `GET /api/v1/public/site/theme`
+
+**Pantallas:** `(sitio)/*` (todas las páginas del sitio público)
+
+**Criterios de aceptación:**
+
+1. Paquete `@kipu/site-sdk` con tipos, loaders y componentes base (BookingWidget, checkout, reseñas, pie legal con Libro de Reclamaciones).
+2. El sitio resuelve el tenant por host, lee el tema y carga `template_id@version` desde el registro interno; los tokens se inyectan como variables CSS.
+3. La plantilla no hace fetch propios; precios y disponibilidad solo del motor (spec 16).
+4. Andes Clásico migrada al SDK sin cambios visibles (regresión visual a 360, 768 y 1280 px).
+
+**Pruebas:** Playwright: el sitio con Andes Clásico y con Inti Raymi completa una compra (E2E-SIT-07) igual; CSP sin violaciones.
+
+**Depende de:** F2-WEB-01, F2-WEB-15, F3-TPL-01 · **Prioridad:** P0
+
+#### F3-TPL-03 · Galería, vista previa con datos propios y aplicar plantilla
+
+**Historia:** Como administrador de la agencia, quiero ver cada plantilla con mis tours antes de aplicarla y volver a la anterior si no me convence, para cambiar el diseño sin riesgo.
+
+**Especificación:** 23 §2, TPL-01–TPL-03, TPL-05
+
+**Tablas:** `cms_site_themes`
+
+**Endpoints:** `GET /api/v1/cms/templates`, `GET /api/v1/cms/templates/{code}`, `POST /api/v1/cms/templates/{code}/preview`, `GET /api/v1/cms/theme`, `PUT /api/v1/cms/theme`, `POST /api/v1/cms/theme/restore/{id}`
+
+**Pantallas:** `(backoffice)/canales/plantillas`; `(sitio)/?preview=<token>`
+
+**Criterios de aceptación:**
+
+1. Galería con filtro por tipo, plan mínimo, Lighthouse y estado (activa, comprada).
+2. Vista previa con token de 24 h, `noindex` y barra «Aplicar / Salir»; no cambia el sitio publicado.
+3. Aplicar deja la anterior en `anterior`; un solo tema activo (índice parcial); restaurar con un clic.
+4. Plan insuficiente → 422 `TEMPLATE_PLAN_REQUIRED`; aplicar invalida la caché del sitio (`revalidateTag`).
+
+**Pruebas:** Pest: dos temas activos → unique violation; aislamiento A/B. Playwright: vista previa de Inti Raymi y aplicar desde la barra.
+
+**Depende de:** F3-TPL-02 · **Prioridad:** P0
+
+#### F3-TPL-04 · Personalización de colores y plantillas premium
+
+**Historia:** Como administrador de la agencia, quiero ajustar colores, logo y secciones de la plantilla y comprar una premium, para que el sitio se vea como mi marca.
+
+**Especificación:** 23 §5.1, TPL-04, TPL-06
+
+**Tablas:** `cms_site_themes`, `subscription_items`
+
+**Endpoints:** `PATCH /api/v1/cms/theme/tokens`, `POST /api/v1/cms/templates/{code}/purchase`
+
+**Pantallas:** `(backoffice)/canales/plantillas` › Personalizar y Comprar
+
+**Criterios de aceptación:**
+
+1. Colores de botones con contraste ≥ 4,5:1 sobre blanco; si no, 422 `THEME_CONTRAST` con el valor calculado.
+2. Redondeo de 0 a 28 px; orden y visibilidad de secciones según `settings` del manifiesto.
+3. La compra premium crea un ítem de pago único en la factura de plataforma y habilita la plantilla con sus actualizaciones.
+4. Restablecer vuelve a los tokens del manifiesto.
+
+**Pruebas:** Pest: color #F6D38B → 422; compra idempotente con la misma Idempotency-Key.
+
+**Depende de:** F3-TPL-03, F3-VIT-04 · **Prioridad:** P1
+
+#### F3-TPL-05 · Envíos de autores, validaciones automáticas y CLI kipu-tpl
+
+**Historia:** Como desarrollador o partner, quiero enviar una plantilla nueva con una herramienta que la valide antes, para publicarla en la galería sin revisiones manuales largas.
+
+**Especificación:** 23 §3.3, §13.2, §13.6–§13.7, TPL-08, TPL-09
+
+**Tablas:** `platform_template_submissions`, `platform_site_template_versions`
+
+**Endpoints:** `GET /api/v1/platform/template-submissions`, `POST /api/v1/platform/template-submissions`, `POST /api/v1/platform/template-submissions/{code}/decision`
+
+**Pantallas:** `(plataforma)/plantillas` › Envíos a revisión y Para desarrolladores
+
+**Criterios de aceptación:**
+
+1. CLI `kipu-tpl` con `new`, `dev`, `check` y `submit`; `check` valida el manifiesto contra `kit/design/plantillas/template.schema.json`.
+2. Job `ValidateTemplateBundle`: SHA-256, build SSR, Lighthouse (mediana de 3), axe, contraste de tokens, i18n, JSON-LD y CSP; resultado en `checks`.
+3. Aprobar exige validaciones en verde y confirmar la revisión visual; rechazar exige motivo (≥ 10).
+4. Versiones menores se aplican solas a quienes usan la plantilla; mayores se ofrecen.
+
+**Pruebas:** Pest: rechazo sin motivo → CHECK; aprobar con Lighthouse bajo → 422. CI del repositorio de plantillas corre `kipu-tpl check`.
+
+**Depende de:** F3-TPL-01, F3-TPL-02 · **Prioridad:** P0
+
+#### F3-TPL-06 · Plantilla al contratar y asignación desde la plataforma
+
+**Historia:** Como agencia nueva, quiero elegir el diseño de mi sitio al registrarme, y como Super Admin quiero asignarlo en un alta asistida, para salir al aire el mismo día.
+
+**Especificación:** 23 TPL-07
+
+**Tablas:** `cms_site_themes`, `platform_site_templates`
+
+**Endpoints:** `POST /api/v1/platform/tenants/{id}/theme`, `POST /api/v1/showcase/agencies`
+
+**Pantallas:** `(vitrina)/agencias` (registro); `(plataforma)/plantillas` › Por agencia
+
+**Criterios de aceptación:**
+
+1. El registro de la vitrina ofrece las plantillas incluidas publicadas; la elegida se aplica al crear el tenant.
+2. Sin elección se usa la `default_for_new`.
+3. El Super Admin puede asignar cualquier publicada; si es premium queda como cortesía y se registra en auditoría.
+4. La agencia recibe un aviso con la plantilla asignada.
+
+**Pruebas:** Pest: alta sin elección usa la por defecto; asignar premium no crea cargo.
+
+**Depende de:** F3-TPL-03, F3-VIT-02 · **Prioridad:** P1
+
+#### F3-TPL-07 · Plantilla Andes Clásico 3.0 (por defecto) desde el diseño de Stitch
+
+**Historia:** Como agencia que usa la plantilla por defecto, quiero que mi sitio tenga el diseño nuevo de Andes Clásico 3.0 sin perder mis colores ni mi contenido, para vender con un sitio más moderno y confiable.
+
+**Especificación:** 23 §13.2, §13.4, §13.6, §13.9 (caso Andes Clásico 3.0)
+
+**Tablas:** `platform_site_templates`, `platform_site_template_versions`, `cms_site_themes`
+
+**Endpoints:** `GET /api/v1/public/site/theme`, `POST /api/v1/platform/template-submissions`
+
+**Pantallas:** `apps/site` con la plantilla `andes-clasico@3.0.0` (12 páginas obligatorias); `(backoffice)/canales/plantillas`
+
+**Criterios de aceptación:**
+
+1. Paquete `templates/andes-clasico` 3.0.0 con el manifiesto `kit/design/plantillas/andes-clasico.template.json` (válido contra el esquema) y los tokens de `andes-clasico/DESIGN.md`: azul marino #0F2747, azul #0E5DB5, celeste #E3EEFB, dorado #F2B33D, radio 12, Noto Serif en títulos y Plus Jakarta Sans en el texto.
+2. Inicio con las secciones del SDK y sin secciones nuevas: `hero_buscador` centrado con buscador de vidrio, `destinos` en mosaico, `mas_vendidos`, `ofertas`, `salidas` como tabla, `resenas`, `blog` y `boletin`; botón «Cotizar a medida» en la cabecera.
+3. El dorado se usa solo en la acción principal (Buscar, Reservar ahora, Cotizar a medida y el botón de las tarjetas); el Libro de Reclamaciones va destacado en el pie de todas las páginas.
+4. Settings para la agencia: color de botones y enlaces, color de la acción principal, redondeo, títulos con serif, destinos en mosaico y orden de secciones del inicio.
+5. Las agencias con la 2.3 pasan a la 3.0.0 (cambio mayor) conservando sus personalizaciones; pueden volver a la 2.3 desde el historial.
+6. Modo oscuro con los tokens `dark` del manifiesto; las demás plantillas no cambian.
+7. Pasa `kipu-tpl check`: Lighthouse móvil rendimiento ≥ 85, accesibilidad ≥ 95, SEO ≥ 95; WCAG 2.2 AA; 360, 768 y 1280 px sin scroll horizontal.
+
+**Pruebas:** kipu-tpl check en verde; Playwright: inicio, tour, búsqueda, pago, blog, contacto y Libro de Reclamaciones a 390 y 1280 px sin desborde; una agencia con colores propios conserva sus colores tras la actualización. Referencia visual: prototipo #/sitio y docs/prototipo capturas v2.13.
+
+**Depende de:** F3-TPL-02, F3-TPL-04, F3-TPL-05 · **Prioridad:** P1
+
+#### F3-AIC-01 · Créditos de IA: planes, paquetes y libro de movimientos
+
+**Historia:** Como administrador de la agencia, quiero ver mis créditos de IA y comprar más cuando me falten, para usar la IA sin sorpresas en la factura.
+
+**Especificación:** 23 §3.4, §3.8, §5.1, IA-01, IA-06, IA-07
+
+**Tablas:** `platform_ai_credit_packs`, `fin_ai_credit_ledger`
+
+**Endpoints:** `GET /api/v1/cms/ai/credits`, `GET /api/v1/cms/ai/credits/ledger`, `GET /api/v1/cms/ai/packs`, `POST /api/v1/cms/ai/packs/{code}/purchase`, `GET /api/v1/platform/ai/packs`, `PATCH /api/v1/platform/ai/packs/{code}`
+
+**Pantallas:** `(backoffice)/canales/contenido-ia` › Planes y créditos
+
+**Criterios de aceptación:**
+
+1. Créditos del plan (Starter 0, Professional 50, Enterprise 100) y de los add-ons IA Básico (300) e IA Pro (1 000 + 30 imágenes) asignados el día 1; no se acumulan.
+2. Paquetes de pago único suman al momento y vencen a los 12 meses (job `ExpireAiPacks`).
+3. Libro append-only: el saldo es el último `balance_after`; compra exige paquete; consumo exige pedido.
+4. Aviso al 80 % de consumo.
+
+**Pruebas:** Pest: UPDATE sobre el libro como app_role → sin privilegio; consumo positivo → CHECK; aislamiento A/B.
+
+**Depende de:** F3-IA-01, F3-PLT-04 · **Prioridad:** P0
+
+#### F3-AIC-02 · Mejorar contenido con IA con revisión humana
+
+**Historia:** Como responsable de marketing de la agencia, quiero que la IA mejore descripciones, títulos SEO, traducciones, relatos y artículos usando los datos reales del tour, para publicar mejor contenido en menos tiempo.
+
+**Especificación:** 23 §3.6, IA-01–IA-04, IA-08
+
+**Tablas:** `cms_ai_content_jobs`, `sys_ai_requests`, `fin_ai_credit_ledger`
+
+**Endpoints:** `POST /api/v1/cms/ai/jobs`, `GET /api/v1/cms/ai/jobs`, `GET /api/v1/cms/ai/jobs/{id}`, `POST /api/v1/cms/ai/jobs/{id}/apply`, `POST /api/v1/cms/ai/jobs/{id}/discard`, `POST /api/v1/cms/ai/jobs/{id}/regenerate`
+
+**Pantallas:** `(backoffice)/canales/contenido-ia` › Mejorar contenido e Historial
+
+**Criterios de aceptación:**
+
+1. Costo en créditos y saldo antes de generar; sin saldo → 429 `AI_CREDITS_EXHAUSTED` con oferta de paquetes.
+2. El job usa los datos del objeto y un prompt de sistema que prohíbe inventar cifras; el resultado queda en `listo`.
+3. Aplicar actualiza el objeto (producto, página SEO, historia o borrador del blog) con auditoría de antes y después; descartar no reembolsa.
+4. Un fallo no cobra créditos (CHECK); relatos solo de historias con consentimiento.
+
+**Pruebas:** Pest: fallido con créditos → CHECK; aplicar dos veces con la misma clave → una sola versión. Playwright: generar y aplicar una mejora.
+
+**Depende de:** F3-AIC-01, F3-VIT-06, F3-VIT-07 · **Prioridad:** P0
+
+#### F3-AIC-03 · Imágenes con IA con costo y texto alternativo
+
+**Historia:** Como responsable de marketing, quiero crear imágenes para banners, tours y blog pagando por imagen, para tener material visual cuando no tengo fotos propias.
+
+**Especificación:** 23 §3.7, IA-05
+
+**Tablas:** `cms_ai_images`, `cms_ai_content_jobs`, `fin_ai_credit_ledger`
+
+**Endpoints:** `POST /api/v1/cms/ai/images`, `GET /api/v1/cms/ai/images`, `PATCH /api/v1/cms/ai/images/{id}`
+
+**Pantallas:** `(backoffice)/canales/contenido-ia` › Imágenes
+
+**Criterios de aceptación:**
+
+1. Estilo, cantidad (1, 2 o 4) y calidad (estándar 1 crédito, HD 2); costo visible antes de crear.
+2. Moderación: sin personas reales identificables, marcas de terceros ni lugares falsos.
+3. Texto alternativo obligatorio y etiqueta «Imagen generada con IA» en el sitio.
+4. Las imágenes se guardan en el almacenamiento del tenant y se pueden usar en banner, tour, blog o historia.
+
+**Pruebas:** Pest: alt vacío → CHECK; prompt de 5 caracteres → 422. Playwright: comprar paquete al quedarse sin créditos.
+
+**Depende de:** F3-AIC-01 · **Prioridad:** P1
+
+### E3.21 · Blog en Payload, SEO, seguimiento y visitas
+
+#### F3-BLG-01 · Payload CMS dentro de la app de la vitrina
+
+**Historia:** Como equipo de contenidos de Rutas Libres, quiero escribir y publicar el blog en un CMS con borradores, versiones y vista previa, para publicar seguido sin depender de desarrollo.
+
+**Especificación:** 24 §0, §13.1
+
+**Tablas:** `platform_blog_posts`
+
+**Endpoints:** —
+
+**Pantallas:** `(payload)/admin`; `(vitrina)/blog`, `(vitrina)/blog/[slug]`, `(vitrina)/blog/ciudad/[ciudad]`
+
+**Criterios de aceptación:**
+
+1. Payload 3 instalado en `apps/vitrina` (Next.js 15) con `@payloadcms/db-postgres` sobre la base aparte `rutaslibres_cms` y rol `payload_role` sin acceso a la base de KipuControl.
+2. Colecciones Posts, Cities, Authors, Media, Pages y Users; editor Lexical; medios en almacenamiento S3 con CDN.
+3. Borradores con autosave, versiones, publicación programada y vista previa en vivo en `/blog/[slug]?preview=`.
+4. Roles `autor`, `editor`, `seo` y `admin`; el panel `/admin` queda restringido por IP o SSO.
+5. Las migraciones de Payload van en su propio pipeline y respaldo.
+
+**Pruebas:** Playwright: un autor crea un borrador y no puede publicarlo; un editor lo programa y aparece en `/blog` a la hora indicada.
+
+**Depende de:** F3-VIT-03 · **Prioridad:** P0
+
+#### F3-BLG-02 · Bloques de tours y reglas SEO del blog
+
+**Historia:** Como responsable SEO, quiero que cada artículo cumpla reglas mínimas y enlace tours reales de la vitrina, para posicionar y convertir lectores en reservas.
+
+**Especificación:** 24 BLG-01, BLG-02, BLG-04, BLG-05, BLG-06
+
+**Tablas:** `platform_blog_posts`
+
+**Endpoints:** `GET /api/v1/showcase/listings`
+
+**Pantallas:** `(payload)/admin` › Posts; `(vitrina)/blog/[slug]`
+
+**Criterios de aceptación:**
+
+1. Hook `seoGuard`: 800 palabras o más, palabra clave en título, H1, primer párrafo y slug, meta título 30–60, descripción 70–160, imagen con texto alternativo y un solo H1; si falla no se publica.
+2. Bloque `ToursRecomendados` que guarda slugs y resuelve tours en el render (nunca copia precios); los artículos de ciudad exigen 3 o más.
+3. Cambiar el slug de un publicado crea un 301 sin cadenas ni bucles (plugin de redirecciones).
+4. JSON-LD `BlogPosting`, `BreadcrumbList` y `FAQPage`; imagen para redes con `next/og`; `hreflang` es/en y canónica.
+5. Sitemaps por tipo con `lastmod` real; IndexNow y Search Console al publicar.
+
+**Pruebas:** Pest/Vitest del hook: 700 palabras → error; slug cambiado → 301. Lighthouse SEO ≥ 95 en un artículo.
+
+**Depende de:** F3-BLG-01 · **Prioridad:** P0
+
+#### F3-BLG-03 · Sincronización de Payload con KipuControl
+
+**Historia:** Como Super Admin, quiero que KipuControl conozca cada artículo publicado en Payload, para medirlo en el embudo y enlazarlo desde la vitrina.
+
+**Especificación:** 24 §3 (cambio en platform_blog_posts), BLG-03
+
+**Tablas:** `platform_blog_posts`
+
+**Endpoints:** `POST /api/v1/platform/blog/webhooks/payload`, `GET /api/v1/platform/blog/sync-status`
+
+**Pantallas:** `(plataforma)/marketing-vitrina` › Blog en Payload
+
+**Criterios de aceptación:**
+
+1. Hook `afterChange` de Payload llama al webhook con `X-Kipu-Signature` HMAC SHA-256 y tolerancia de 5 minutos; firma inválida → 401 `WEBHOOK_SIGNATURE`.
+2. El webhook es idempotente y actualiza `platform_blog_posts` (`payload_id` único, `synced_at`, `canonical_url`, `noindex`).
+3. Al publicar o despublicar se revalidan la página, el listado y el sitemap.
+4. La pantalla muestra estado en Payload, controles SEO y hora de sincronización, con «Sincronizar ahora».
+
+**Pruebas:** Pest: webhook repetido no duplica; firma vencida → 401; `payload_id` sin `synced_at` → CHECK.
+
+**Depende de:** F3-BLG-01 · **Prioridad:** P1
+
+#### F3-TRK-01 · Etiquetas estándar con banner de cookies y Consent Mode v2
+
+**Historia:** Como administrador de la agencia, quiero conectar Google Analytics, Google Ads, Meta Pixel y otras herramientas sin tocar código, para medir y hacer publicidad respetando la ley.
+
+**Especificación:** 24 §3.5, SEG-01, SEG-02, SEG-06, SEG-11, SEG-12, §13.2
+
+**Tablas:** `mkt_tracking_tags`
+
+**Endpoints:** `GET /api/v1/marketing/tracking/tags`, `POST /api/v1/marketing/tracking/tags`, `GET /api/v1/marketing/tracking/tags/{code}`, `PATCH /api/v1/marketing/tracking/tags/{code}`, `DELETE /api/v1/marketing/tracking/tags/{code}`, `POST /api/v1/marketing/tracking/tags/{code}/pause`, `POST /api/v1/marketing/tracking/tags/{code}/verify`, `GET /api/v1/public/site/tags`, `POST /api/v1/public/consent`
+
+**Pantallas:** `(backoffice)/canales/seguimiento` › Etiquetas; banner de cookies en `(sitio)` y `(vitrina)`
+
+**Criterios de aceptación:**
+
+1. Proveedores GA4, GTM, Google Ads, Meta Pixel, TikTok, Clarity y LinkedIn con formato de ID validado (422 `TAG_ID_INVALID`, CHECK) y sin duplicados (409 `TAG_DUPLICATE`).
+2. Componente `KipuTags`: Consent Mode v2 con todo denegado antes de cualquier etiqueta; cada etiqueta carga solo con su categoría aceptada.
+3. Banner con Aceptar todo, Rechazar y Configurar; la elección se guarda con la versión de la política y se cambia desde el pie.
+4. Proveedores fuera del plan → 422 `TRACKING_PLAN_REQUIRED` (o add-on Marketing Pro).
+5. Verificar instalación con navegador sin interfaz; cambios visibles en menos de 1 minuto y auditados.
+
+**Pruebas:** Playwright: rechazar cookies → no se pide `connect.facebook.net`; aceptar → GA4 envía `page_view` con `consent: granted`.
+
+**Depende de:** F2-WEB-16, F3-MKT-01 · **Prioridad:** P0
+
+#### F3-TRK-02 · Scripts propios con revisión, SRI y CSP
+
+**Historia:** Como administrador de la agencia, quiero agregar el script de una herramienta nueva con una revisión previa, para no depender de desarrollo sin poner en riesgo el sitio ni los pagos.
+
+**Especificación:** 24 SEG-03, SEG-04, SEG-05, SEG-06
+
+**Tablas:** `mkt_tracking_tags`
+
+**Endpoints:** `POST /api/v1/marketing/tracking/tags/{code}/submit`, `POST /api/v1/marketing/tracking/tags/{code}/decision`
+
+**Pantallas:** `(backoffice)/canales/seguimiento` › Scripts propios
+
+**Criterios de aceptación:**
+
+1. Script externo solo `https` y con hash SRI (422 `SCRIPT_SRI_REQUIRED`, CHECK); código en línea de 50 KB como máximo.
+2. Análisis estático rechaza `eval`, `document.write`, `new Function` y lectura de campos de pago.
+3. Activo solo con aprobación de una persona con `marketing.tracking.approve`; con dos o más administradores, el aprobador es otro (403 `SCRIPT_SELF_APPROVAL`).
+4. Nunca carga en `/checkout/*`, `/pagar/*` ni en el iframe de la pasarela (CHECK `exclude_checkout`), con inventario para PCI DSS 6.4.3.
+5. La CSP con `nonce` y `strict-dynamic` suma los dominios declarados.
+
+**Pruebas:** Pest: script con `exclude_checkout = false` → CHECK; script activo sin aprobación → CHECK. Playwright: la página de pago no carga el script.
+
+**Depende de:** F3-TRK-01 · **Prioridad:** P0
+
+#### F3-TRK-03 · Conversiones del navegador y del servidor
+
+**Historia:** Como responsable de marketing, quiero que las compras y leads lleguen a Google Ads, Meta y GA4 aunque haya bloqueadores, sin contarlos dos veces, para optimizar campañas con datos reales.
+
+**Especificación:** 24 §3.6–§3.7, SEG-07–SEG-10, §13.3
+
+**Tablas:** `mkt_conversion_mappings`, `mkt_conversion_dispatches`
+
+**Endpoints:** `GET /api/v1/marketing/tracking/conversions`, `PUT /api/v1/marketing/tracking/conversions/{tag}/{event}`, `DELETE /api/v1/marketing/tracking/conversions/{tag}/{event}`, `GET /api/v1/marketing/tracking/dispatches`, `POST /api/v1/marketing/tracking/dispatches/{id}/retry`
+
+**Pantallas:** `(backoffice)/canales/seguimiento` › Conversiones y Envíos
+
+**Criterios de aceptación:**
+
+1. Matriz de eventos del sitio × etiquetas con nombre del evento del proveedor, etiqueta de conversión de Google Ads, valor y envío del servidor.
+2. Mismo `event_id` en navegador y servidor; `(event_id, mapping_id, channel)` único.
+3. Correo y teléfono solo como SHA-256; `gclid`, `fbclid` y `ttclid` guardados con la UTM del carrito.
+4. La compra se envía con el pago confirmado; sin consentimiento de marketing queda `sin_consentimiento`.
+5. Reintentos exponenciales hasta 10, aviso tras 3 fallos y retención de 90 días.
+
+**Pruebas:** Pest: envío repetido → unique violation; fallido sin error → CHECK. Contrato con sandbox de Meta CAPI y Google Ads.
+
+**Depende de:** F3-TRK-01, F2-WEB-04 · **Prioridad:** P0
+
+#### F3-TRK-04 · Etiquetas y conversiones de la vitrina
+
+**Historia:** Como Super Admin, quiero medir la vitrina y el blog y optimizar campañas para captar viajeros y agencias, con control de cuatro ojos sobre lo que se carga.
+
+**Especificación:** 24 §3.1–§3.3, SEG-04
+
+**Tablas:** `platform_tracking_tags`, `platform_conversion_mappings`, `platform_conversion_dispatches`
+
+**Endpoints:** `GET /api/v1/platform/tracking/tags`, `POST /api/v1/platform/tracking/tags`, `PATCH /api/v1/platform/tracking/tags/{code}`, `POST /api/v1/platform/tracking/tags/{code}/decision`, `PUT /api/v1/platform/tracking/conversions/{tag}/{event}`
+
+**Pantallas:** `(plataforma)/marketing-vitrina` › Etiquetas y conversiones
+
+**Criterios de aceptación:**
+
+1. Tablas de plataforma sin RLS y con REVOKE para `app_role`.
+2. Toda etiqueta de la vitrina se activa con la aprobación de otro Super Admin (CHECK aprobador ≠ autor).
+3. Conversiones registro_agencia y plan_pagado enviadas desde el servidor a Google Ads; reserva_vitrina a Meta.
+4. Etiquetas por sitio: vitrina, blog o ambos.
+
+**Pruebas:** Pest: etiqueta activa sin aprobación → CHECK; `app_role` no lee `platform_tracking_tags`.
+
+**Depende de:** F3-TRK-01, F3-VIT-01 · **Prioridad:** P1
+
+#### F3-VIS-01 · Conteo de visitas sin cookies y agregados diarios
+
+**Historia:** Como dueño de la agencia, quiero saber cuántas personas visitan mi sitio aunque rechacen las cookies, sin guardar datos personales.
+
+**Especificación:** 24 §3.4, §3.8, VIS-01–VIS-04
+
+**Tablas:** `cms_web_analytics_daily`, `platform_web_analytics_daily`, `channel_web_events`, `platform_funnel_events`
+
+**Endpoints:** `POST /api/v1/public/analytics/hit`
+
+**Pantallas:** —
+
+**Criterios de aceptación:**
+
+1. Beacon con hash diario de IP truncada, navegador y sitio; no se guarda la IP.
+2. Visita de 30 minutos, rebote sin interacción en 10 segundos; excluye bots y tráfico interno.
+3. Fuente desde UTM, `gclid`, `fbclid`, `ttclid` o referente.
+4. Job `AggregateWebAnalytics` cada hora (día en curso) y a las 03:00 (día anterior); «en vivo» desde Redis.
+5. CHECK visitantes ≤ visitas, rebotes ≤ visitas y páginas vistas ≥ visitas.
+
+**Pruebas:** Pest: más visitantes que visitas → CHECK; mismo visitante dos días seguidos → dos hashes distintos.
+
+**Depende de:** F2-WEB-16 · **Prioridad:** P0
+
+#### F3-VIS-02 · Vista general de visitas de la agencia y de la vitrina
+
+**Historia:** Como administrador, quiero ver visitas, fuentes, campañas, dispositivos, países y conversiones en una sola pantalla, para decidir dónde invertir.
+
+**Especificación:** 24 §2, VIS-05
+
+**Tablas:** `cms_web_analytics_daily`, `platform_web_analytics_daily`
+
+**Endpoints:** `GET /api/v1/analytics/web/overview`, `GET /api/v1/analytics/web/pages`, `GET /api/v1/analytics/web/sources`, `GET /api/v1/analytics/web/devices`, `GET /api/v1/analytics/web/realtime`, `GET /api/v1/analytics/web/export`, `GET /api/v1/platform/analytics/web/overview`, `GET /api/v1/platform/analytics/web/agencies`
+
+**Pantallas:** `(backoffice)/reportes/visitas`; `(plataforma)/marketing-vitrina` › Visitas y Por agencia
+
+**Criterios de aceptación:**
+
+1. KPIs con comparación con el período anterior (7 o 30 días), tendencia diaria y «en vivo» de 30 minutos.
+2. Páginas, fuentes y campañas, dispositivos, países y conversiones por evento; exportación CSV auditada.
+3. Starter ve 30 días; Professional, Enterprise o Marketing Pro, 13 meses.
+4. Si hay GA4 activo se muestra la diferencia esperada con sus cifras.
+5. Plataforma: visitas de vitrina y blog y visitas, reservas y conversión por agencia.
+
+**Pruebas:** Playwright: Ventas ve `#/reportes/visitas` y recibe 403 en `#/canales/seguimiento`; sin scroll horizontal a 390 px.
+
+**Depende de:** F3-VIS-01 · **Prioridad:** P1
+
+### E3.22 · Landing de KipuControl y alta sin intervención
+
+#### F3-LND-01 · App de la landing, diseño y páginas comerciales
+
+**Historia:** Como agencia que evalúa un ERP, quiero entender el producto y comparar los planes en kipucontrol.com, para decidir si me suscribo.
+
+**Especificación:** 25 §2, §5.1, LND-01, LND-20, §13.1
+
+**Tablas:** `plans`, `plan_limits`, `addons`, `addon_prices`
+
+**Endpoints:** `GET /api/v1/public/plans`
+
+**Pantallas:** `apps/landing`: `/` y `/precios`
+
+**Criterios de aceptación:**
+
+1. App Next.js 15 `apps/landing` en el monorepo, con el preset de Tailwind de `kit/design/kipucontrol/` (azul marino, amarillo sol solo para la acción principal y Plus Jakarta Sans).
+2. Inicio con anuncio, hero con maqueta del panel, logos, módulos, 5 bloques del producto, banda de Rutas Libres, planes, testimonios, blog, preguntas frecuentes y llamada final.
+3. Precios con conmutadores mensual o anual y soles o dólares, comparativo completo, calculadora de ahorro y preguntas de facturación.
+4. Precios, add-ons y límites salen de `GET /public/plans` con ISR; el evento `PlansChanged` revalida `/`, `/precios` y `/llms.txt` (LND-01).
+5. Enterprise abre ventas o el chatbot, sin alta directa.
+6. LCP < 2,5 s y CLS < 0,1 en móvil; chatbot y popups se cargan después de la interacción o a los 3 s (LND-20).
+
+**Pruebas:** Playwright: cambiar a anual y a USD actualiza los precios; a 390 px sin scroll horizontal. Lighthouse móvil: rendimiento ≥ 90.
+
+**Depende de:** F3-PLT-01, F3-BLG-01 · **Prioridad:** P0
+
+#### F3-LND-02 · Alta con prueba de 14 días sin tarjeta
+
+**Historia:** Como agencia, quiero crear mi cuenta y empezar una prueba sin dar mi tarjeta, para probar KipuControl con mis datos.
+
+**Especificación:** 25 §4, LND-03, LND-04, LND-07, LND-08, LND-10, §13.3
+
+**Tablas:** `tenants`, `users`, `subscriptions`, `coupons`, `coupon_redemptions`
+
+**Endpoints:** `POST /api/v1/public/signups`, `GET /api/v1/public/ruc/{ruc}`, `POST /api/v1/public/coupons/validate`
+
+**Pantallas:** `apps/landing`: `/suscribirse/[plan]/prueba`
+
+**Criterios de aceptación:**
+
+1. Paso 1: nombre, correo, agencia, país, RUC opcional y contraseña de 10 caracteres o más que no figure en listas filtradas; opción de continuar con Google Workspace; aceptación de términos con versión.
+2. Correo de otro tenant → 409 `SIGNUP_EMAIL_TAKEN` con enlace a iniciar sesión.
+3. El alta crea usuario, tenant y suscripción `trialing` en una sola transacción, con Idempotency-Key y captcha invisible.
+4. Una sola prueba por RUC o dominio de correo cada 12 meses (422 `TRIAL_ALREADY_USED`).
+5. Si la agencia ya publica en Rutas Libres, se reutiliza su tenant y conserva tours, reservas y reseñas (LND-10).
+6. La prueba sigue los avisos y la suspensión de la spec 13.
+
+**Pruebas:** Pest: dos altas con la misma Idempotency-Key crean un solo tenant; segunda prueba con el mismo RUC → 422. Playwright: alta de prueba hasta la bienvenida.
+
+**Depende de:** F3-SUB-01, F3-SUB-03, F3-TEN-01 · **Prioridad:** P0
+
+#### F3-LND-03 · Alta con pago: tarjeta, Yape o PayPal y comprobante
+
+**Historia:** Como agencia, quiero pagar mi plan en el mismo flujo y recibir mi factura o boleta, para empezar sin hablar con ventas.
+
+**Especificación:** 25 LND-02, LND-04, LND-05, LND-06, LND-07, §13.3
+
+**Tablas:** `subscriptions`, `subscription_items`, `coupon_redemptions`, `platform_invoices`, `platform_invoice_lines`
+
+**Endpoints:** `POST /api/v1/public/signups/{token}/checkout`, `GET /api/v1/public/signups/{token}`
+
+**Pantallas:** `apps/landing`: `/suscribirse/[plan]/[mensual|anual]`
+
+**Criterios de aceptación:**
+
+1. Paso 2: plan, ciclo, add-ons y cupón validado en vivo; resumen fijo con subtotal, cupón, IGV 18 % y total.
+2. Paso 3: tarjeta en los campos alojados de la pasarela (los datos no pasan por KipuControl), Yape o Plin con QR de 10 minutos, o PayPal.
+3. Factura con RUC de 11 dígitos que empieza en 10 o 20 y activo en SUNAT; boleta con DNI o carné de extranjería (422 `RUC_INVALID`).
+4. El servidor recalcula el total y rechaza si cambia (422 `SIGNUP_TOTAL_CHANGED`); el cupón se revalida con bloqueo al pagar.
+5. Con el webhook de pago confirmado, la suscripción pasa a `active`, se emite la factura de la plataforma (F001 o B001) y se dispara `SignupCompleted`.
+6. En `/suscribirse/*` no carga ninguna etiqueta de terceros ni script propio (SEG-05).
+
+**Pruebas:** Pest: Starter anual con cupón del 10 % → total S/ 5,203.80; total alterado → 422; rechazo de la pasarela → 402 `PAYMENT_DECLINED`. Escaneo de la página de pago: cero scripts de terceros.
+
+**Depende de:** F3-LND-02, F3-SUB-05, F3-BIL-04 · **Prioridad:** P0
+
+#### F3-LND-04 · Bienvenida, recuperación de altas abandonadas y embudo de altas
+
+**Historia:** Como Super Admin, quiero ver las altas desde la landing y recuperar las que quedaron a medias, para no perder agencias interesadas.
+
+**Especificación:** 25 §2, §4, LND-09, §8
+
+**Tablas:** `tenants`, `subscriptions`, `platform_conversion_dispatches`
+
+**Endpoints:** `GET /api/v1/public/signups/{token}`, `GET /api/v1/platform/signups`
+
+**Pantallas:** `apps/landing`: `/bienvenido/[token]`; `(plataforma)/marketing-vitrina` › Landing
+
+**Criterios de aceptación:**
+
+1. Bienvenida con comprobante, lista de primeros pasos con avance y acceso al back-office; con Yape consulta el estado cada 3 s durante 10 minutos como máximo.
+2. `SignupStarted` guarda UTM, `gclid` y `fbclid`; `SignupCompleted` envía la conversión `plan_pagado` (spec 24).
+3. Job `SignupRecovery` a la 1 h y a las 24 h con el plan y el cupón guardados, solo con consentimiento de comunicaciones.
+4. Pestaña Landing de la consola: altas activas, en prueba y MRR nuevo, con plan, pago, total, origen, comprobante y estado.
+5. Las altas, pagos, fallos y abandonos quedan auditados con IP truncada y versión de los términos.
+
+**Pruebas:** Pest: alta abandonada sin consentimiento → no se envía correo. Playwright: U16 ve el alta recién pagada en la pestaña Landing.
+
+**Depende de:** F3-LND-03, F3-TRK-03 · **Prioridad:** P1
+
+#### F3-LND-05 · Blog compartido con Rutas Libres y filtros
+
+**Historia:** Como lector, quiero filtrar el blog por sitio y categoría y buscar un tema, para encontrar guías útiles para mi agencia.
+
+**Especificación:** 25 §3, LND-17, LND-18, §13.2
+
+**Tablas:** —
+
+**Endpoints:** —
+
+**Pantallas:** `apps/landing`: `/blog`, `/blog/categoria/[cat]`, `/blog/[slug]`; `(payload)/admin` › Posts y Categories
+
+**Criterios de aceptación:**
+
+1. Campo obligatorio `site` (`kipucontrol` o `rutaslibres`) con índice en `posts` y `categories` del Payload de la vitrina; cada app filtra por su sitio.
+2. Índice con filtro por sitio, categorías con conteo, búsqueda, orden y artículo destacado; un artículo de Rutas Libres enlaza a `rutaslibres.pe`.
+3. Las categorías tienen URL indexable; búsqueda, orden y filtro por sitio usan parámetros con `noindex, follow` y canónica a la página limpia.
+4. Los filtros funcionan sin JavaScript: las categorías son enlaces y la búsqueda es un formulario GET.
+5. Artículo con índice y avance de lectura, tablas, bloque `productMock`, preguntas frecuentes, llamada a la prueba y relacionados; cumple BLG-01 a BLG-06.
+
+**Pruebas:** Playwright: filtrar por categoría y buscar cambia el conteo; `/blog?orden=populares` tiene `noindex` y canónica a `/blog`.
+
+**Depende de:** F3-BLG-02 · **Prioridad:** P1
+
+#### F3-LND-06 · Comentarios moderados en los artículos
+
+**Historia:** Como lector, quiero comentar y preguntar en un artículo, y como moderador quiero aprobar lo que se publica, para tener conversación útil sin spam.
+
+**Especificación:** 25 §3 (comments), §4, LND-11, LND-12
+
+**Tablas:** —
+
+**Endpoints:** —
+
+**Pantallas:** `apps/landing`: `/blog/[slug]` (sección Comentarios); `(payload)/admin` › Comentarios; `(plataforma)/marketing-vitrina` › Landing
+
+**Criterios de aceptación:**
+
+1. Colección `comments` en Payload: nombre, correo (no se publica), texto de 10 a 1500 caracteres, estado, respuestas de un nivel, «útil» y marca del equipo.
+2. Campo trampa invisible, 3 comentarios por hora por IP y 2 enlaces o más → `spam`; el primer comentario de un correo queda `pendiente`.
+3. Aceptación de la publicación del nombre y del tratamiento de datos (Ley 29733).
+4. Rol de Payload `moderador`: aprueba, rechaza y responde, sin publicar artículos; `CommentSubmitted` avisa a los moderadores.
+5. Al aprobar se revalida el artículo y se avisa a quien comentó si recibió respuesta.
+
+**Pruebas:** Vitest del hook: 2 enlaces → spam; trampa llena → descartado. Playwright: comentario nuevo queda pendiente y U16 lo aprueba.
+
+**Depende de:** F3-LND-05 · **Prioridad:** P1
+
+#### F3-LND-07 · Popups de captación y boletín con doble confirmación
+
+**Historia:** Como responsable de marketing, quiero ofrecer la prueba al que se va y el boletín al que lee, sin molestar, para captar más agencias.
+
+**Especificación:** 25 §3 (popups, subscribers), LND-13, LND-14
+
+**Tablas:** —
+
+**Endpoints:** —
+
+**Pantallas:** `apps/landing`: popup al salir, slide-in al 60 % del artículo; `(payload)/admin` › Popups y Suscriptores
+
+**Criterios de aceptación:**
+
+1. Colección `popups` con disparador (salida, scroll al 60 %, 30 segundos), páginas, frecuencia en días y estado; vistas y conversiones.
+2. Un popup por visita, con frecuencia de 7 días por defecto; nunca en el alta, ni al salir en móvil, ni a quien ya tiene cuenta.
+3. Accesible: se cierra con Esc y con el botón, atrapa y devuelve el foco.
+4. Boletín con doble confirmación y baja en 1 clic; `NewsletterSubscribed` envía la conversión `suscripcion_boletin`.
+5. El Super Admin pausa o activa cada popup desde la pestaña Landing.
+
+**Pruebas:** Playwright: el popup de salida no aparece dos veces en 7 días ni en `/suscribirse/*`; con teclado se cierra con Esc.
+
+**Depende de:** F3-LND-01, F3-TRK-01 · **Prioridad:** P2
+
+#### F3-LND-08 · Chatbot «Kipu» y leads comerciales
+
+**Historia:** Como agencia con dudas, quiero preguntar precios o pedir una demo en un chat, y hablar con una persona si hace falta.
+
+**Especificación:** 25 LND-15, LND-16, §3 (leads, chat-sessions)
+
+**Tablas:** —
+
+**Endpoints:** `POST /api/v1/public/sales-leads`
+
+**Pantallas:** `apps/landing`: widget `KipuChat` en todas las páginas salvo el pago
+
+**Criterios de aceptación:**
+
+1. Responde solo con las páginas, precios y preguntas frecuentes publicados (RAG sobre Payload y `GET /public/plans`); si no sabe, ofrece pasar a una persona.
+2. Respuestas rápidas: precios, demo, Rutas Libres, SUNAT, cupos y cobros.
+3. Pide el correo solo cuando la persona pide una demo o hablar con ventas, con aviso de privacidad; nunca pide tarjeta ni contraseñas.
+4. Paso a persona por WhatsApp con resumen de 9:00 a 19:00 (Lima); fuera de horario crea el lead y promete respuesta en menos de 2 horas hábiles.
+5. Las conversaciones se guardan 90 días (`PurgeChatSessions`).
+
+**Pruebas:** Pest: lead sin consentimiento → 422. Playwright: preguntar precios devuelve los planes vigentes; pedir ventas y dar el correo crea el lead.
+
+**Depende de:** F3-IA-01, F3-LND-01 · **Prioridad:** P2
+
+#### F3-LND-09 · SEO de la landing para buscadores e IA
+
+**Historia:** Como responsable SEO, quiero que la landing y el blog se lean bien en Google y en los asistentes de IA, para atraer agencias sin pagar anuncios.
+
+**Especificación:** 25 LND-17, LND-19
+
+**Tablas:** —
+
+**Endpoints:** `GET /api/v1/public/plans`
+
+**Pantallas:** `apps/landing`: metadatos de todas las páginas, `/llms.txt`, `/llms-full.txt`, `sitemap.xml`, `robots.txt`
+
+**Criterios de aceptación:**
+
+1. Título, descripción, canónica y `hreflang` (es-PE, en, pt-BR) en cada página.
+2. Inicio y precios con JSON-LD `Organization`, `SoftwareApplication` con un `Offer` por plan y `FAQPage`.
+3. `/llms.txt` y `/llms-full.txt` con resumen del producto, planes y artículos, regenerados con `PlansChanged` y al publicar.
+4. Todo el contenido se renderiza en el servidor y se lee sin JavaScript; `robots.txt` permite los rastreadores de búsqueda y declara la política para los de entrenamiento.
+5. Sitemaps con `lastmod` real e IndexNow al publicar.
+
+**Pruebas:** Validador de datos estructurados sin errores; `curl` de `/precios` sin JavaScript muestra los precios. Lighthouse SEO ≥ 95.
+
+**Depende de:** F3-LND-01, F3-LND-05 · **Prioridad:** P1
 
 ### E3.11 · Pruebas y salida de Fase 3
 
@@ -1412,6 +2918,141 @@ Cobertura referencial: 154 endpoints, 74 tablas citadas, 55 casos de prueba de l
 **Pruebas:** Pest de seguridad en verde; informe de hallazgos cerrado.
 
 **Depende de:** F3-API-04, F3-MKT-02, F3-RVP-05 · **Prioridad:** P1
+
+#### F3-QA-05 · Pruebas de aceptación del módulo de crecimiento comercial
+
+**Historia:** Como responsable de calidad, quiero una suite que cubra las 13 funciones nuevas, para lanzarlas sin romper lo existente.
+
+**Especificación:** 19 §10
+
+**Tablas:** —
+
+**Endpoints:** —
+
+**Pantallas:** —
+
+**Criterios de aceptación:**
+
+1. Suite Pest de 19 §10 en verde, incluido el aislamiento de tenant de las 19 tablas nuevas y la prueba de privilegios del marketplace.
+2. Playwright de 19 §10 en verde a 1440 y 400 px.
+3. Regresión E2E-01…E2E-10 intacta y prueba de humo de la base 15/15.
+
+**Pruebas:** Suites completas en verde dos veces seguidas en staging.
+
+**Depende de:** F3-IA-05, F3-PAG-02, F3-MKP-02, F3-VEN-03, F3-BKO-02, F3-OTA-02, F3-VEN-02, F3-IA-04, F3-IA-03, F3-WAP-01, F3-VEN-01, F3-BKO-01 · **Prioridad:** P1
+
+#### F3-QA-06 · Pruebas de aceptación del portal corporativo
+
+**Historia:** Como responsable de calidad, quiero una suite que cubra el portal corporativo, para lanzarlo sin romper el portal del cliente.
+
+**Especificación:** 20 §10
+
+**Tablas:** —
+
+**Endpoints:** —
+
+**Pantallas:** —
+
+**Criterios de aceptación:**
+
+1. Suite Pest de 20 §10 en verde, incluido el aislamiento de tenant de las 8 tablas nuevas.
+2. Playwright de 20 §10 en verde a 1440 y 390 px.
+3. Regresión del portal del cliente intacta y prueba de humo de la base 16/16.
+
+**Pruebas:** Suites completas en verde dos veces seguidas en staging.
+
+**Depende de:** F3-CORP-01, F3-CORP-02, F3-CORP-03, F3-CORP-04, F3-CORP-05, F3-CORP-06 · **Prioridad:** P1
+
+#### F3-QA-07 · Pruebas de aceptación de viajes por tramos y vitrina
+
+**Historia:** Como responsable de calidad, quiero una suite que cubra el armador de viajes, la venta en ruta, la vitrina, los pases, PayPal, SEO y aventuras, para lanzarlos sin romper el sitio ni la facturación.
+
+**Especificación:** 21 §10, 22 §10
+
+**Tablas:** —
+
+**Endpoints:** —
+
+**Pantallas:** —
+
+**Criterios de aceptación:**
+
+1. Suites Pest de 21 §10 y 22 §10 en verde, incluido el aislamiento de tenant de las 13 tablas de tenant y el REVOKE de las 6 de plataforma.
+2. Playwright de 21 §10 y 22 §10 en verde a 1440 y 390 px.
+3. Regresión del sitio público, del motor y de la facturación de plataforma intacta; prueba de humo de la base 17/17.
+
+**Pruebas:** Suites completas en verde dos veces seguidas en staging.
+
+**Depende de:** F3-TRP-05, F3-VIT-02, F3-VIT-03, F3-VIT-05, F3-VIT-07 · **Prioridad:** P1
+
+#### F3-QA-08 · Pruebas de aceptación de plantillas web y contenido con IA
+
+**Historia:** Como responsable de calidad, quiero una suite que cubra plantillas, envíos de autores, créditos e IA de contenido, para lanzarlos sin romper el sitio ni la facturación.
+
+**Especificación:** 23 §10
+
+**Tablas:** —
+
+**Endpoints:** —
+
+**Pantallas:** —
+
+**Criterios de aceptación:**
+
+1. Suites Pest de 23 §10 en verde, incluido el aislamiento de las 4 tablas de tenant y el REVOKE de las 4 de plataforma.
+2. Playwright: vista previa y aplicar plantilla, compra premium, personalización con contraste inválido, mejora de texto aplicada, imágenes sin saldo, aprobación de un envío.
+3. Regresión visual del sitio con cada plantilla publicada a 360, 768 y 1280 px en claro y oscuro.
+4. Prueba de carga: 50 pedidos de IA concurrentes sin descontar créditos dos veces.
+
+**Pruebas:** Pest + Playwright + `kipu-tpl check` en CI.
+
+**Depende de:** F3-TPL-05, F3-AIC-02, F3-AIC-03 · **Prioridad:** P0
+
+#### F3-QA-09 · Pruebas de aceptación de blog, seguimiento y visitas
+
+**Historia:** Como responsable de calidad, quiero una suite que cubra el blog en Payload, las etiquetas, el consentimiento, las conversiones y las visitas, para medir y anunciar sin romper el sitio ni la ley.
+
+**Especificación:** 24 §10
+
+**Tablas:** —
+
+**Endpoints:** —
+
+**Pantallas:** —
+
+**Criterios de aceptación:**
+
+1. Suites Pest de 24 §10 en verde, incluido el aislamiento de las 4 tablas de tenant y el REVOKE de las 4 de plataforma.
+2. Playwright: banner (aceptar, rechazar, configurar), etiqueta nueva con ID inválido y válido, conversión de Google Ads sin etiqueta, script sin SRI, aprobación por otra persona, reintento de envío y vista de visitas.
+3. Escaneo de la página de pago: cero scripts de terceros no esenciales.
+4. Lighthouse del blog: SEO ≥ 95 y LCP < 2,5 s con las etiquetas activas.
+
+**Pruebas:** Pest + Playwright + Lighthouse CI.
+
+**Depende de:** F3-BLG-02, F3-TRK-03, F3-VIS-02 · **Prioridad:** P0
+
+#### F3-QA-10 · Pruebas de aceptación de la landing y el alta
+
+**Historia:** Como responsable de calidad, quiero una suite que cubra la landing, el alta con prueba y con pago, el blog, los comentarios y la captación, para vender en línea sin errores de cobro.
+
+**Especificación:** 25 §10
+
+**Tablas:** —
+
+**Endpoints:** —
+
+**Pantallas:** —
+
+**Criterios de aceptación:**
+
+1. Suites Pest de 25 §10 en verde: total con cupón e IGV, total alterado, correo repetido, RUC inválido, segunda prueba, Yape vencido y agencia de Rutas Libres que se suscribe.
+2. Playwright: conmutadores y calculadora, prueba sin tarjeta, pago con tarjeta inválida y válida, factura con RUC, filtros del blog, comentario moderado, chatbot, popup de salida y consola Landing.
+3. Escaneo de `/suscribirse/*`: cero scripts de terceros.
+4. A 390 px sin scroll horizontal y sin errores de JavaScript; Lighthouse móvil con LCP < 2,5 s.
+
+**Pruebas:** Pest + Playwright + Lighthouse CI.
+
+**Depende de:** F3-LND-03, F3-LND-06, F3-LND-08 · **Prioridad:** P0
 
 ## Definición de terminado (toda historia)
 

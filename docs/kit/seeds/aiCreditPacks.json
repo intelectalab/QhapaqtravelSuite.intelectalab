@@ -1,0 +1,34 @@
+[
+  {
+    "code": "IA-CONT-EXTRA-200",
+    "name": "200 créditos de contenido",
+    "kind": "contenido",
+    "credits": 200,
+    "price": 39,
+    "billing": "unico"
+  },
+  {
+    "code": "IA-IMG-20",
+    "name": "20 imágenes",
+    "kind": "imagenes",
+    "credits": 20,
+    "price": 39,
+    "billing": "unico"
+  },
+  {
+    "code": "IA-IMG-60",
+    "name": "60 imágenes",
+    "kind": "imagenes",
+    "credits": 60,
+    "price": 99,
+    "billing": "unico"
+  },
+  {
+    "code": "IA-IMG-MES",
+    "name": "30 imágenes al mes",
+    "kind": "imagenes",
+    "credits": 30,
+    "price": 49,
+    "billing": "mensual"
+  }
+]

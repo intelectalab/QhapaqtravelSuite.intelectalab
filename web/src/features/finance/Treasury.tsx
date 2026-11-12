@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowDownLeft, ArrowUpRight, Ban, Banknote, CreditCard, FileText, Landmark, Plus, Wallet } from "lucide-react";
+import { MOVEMENTS_CSV } from "@/lib/finance-csv";
 import Link from "next/link";
 import { useState } from "react";
 import { DataTable } from "@/components/table/DataTable";
@@ -168,7 +169,7 @@ function MovementDetail({ row }: { row: TreasuryMovement }) {
           )}
         </PanelSection>
       )}
-      {!row.manual && row.status === "posted" && <p className="text-[12.5px] text-fg-3">No se anula aquí: se corrige desde su origen.</p>}
+      {!row.voidable && row.status === "posted" && <p className="text-[12.5px] text-fg-3">No se anula aquí: se corrige desde su origen.</p>}
     </DetailPanel>
   );
 }
@@ -229,7 +230,7 @@ export function MovementsTable({ data }: { data: TreasuryOverview }) {
       cell: (row) => (
         <RowActions>
           <MovementDetail row={row} />
-          {row.status === "voided" ? <Badge tone="bad">Anulado</Badge> : can.manage && (row.manual ? <VoidMovementAction row={row} /> : <RowIcon tone="delete" label="Anular" icon={<Ban size={15} />} disabledHint="Se corrige desde su origen (cobro, pago o caja)" />)}
+          {row.status === "voided" ? <Badge tone="bad">Anulado</Badge> : can.manage && (row.voidable ? <VoidMovementAction row={row} /> : <RowIcon tone="delete" label="Anular" icon={<Ban size={15} />} disabledHint="Se corrige desde su origen (cobro, pago o caja)" />)}
         </RowActions>
       ),
     },
@@ -257,6 +258,7 @@ export function MovementsTable({ data }: { data: TreasuryOverview }) {
   return (
     <DataTable
       screen="finanzas-tesoreria"
+      csv={MOVEMENTS_CSV}
       rows={rows}
       columns={columns}
       getKey={(row) => row.code}

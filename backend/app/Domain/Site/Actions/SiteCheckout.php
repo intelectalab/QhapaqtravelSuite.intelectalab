@@ -15,6 +15,7 @@ use App\Domain\Shared\Tenancy\TenantContext;
 use App\Domain\Site\Support\CardPayments;
 use App\Domain\Site\Support\CheckoutRules;
 use App\Domain\Site\Support\CheckoutTerms;
+use App\Domain\Site\Support\SiteAltitude;
 use App\Domain\Site\Support\SiteBooking;
 use App\Domain\Site\Support\SiteProfile;
 use App\Domain\Site\Support\SiteQuote;
@@ -130,7 +131,7 @@ final class SiteCheckout
                 'amount_due_now' => $mode['amount'],
                 'balance_due_date' => $deposit ? $mode['balance_due'] : $holdUntil?->copy()->setTimezone($this->context->timezone())->toDateString(),
                 'billing' => json_encode($billing, JSON_UNESCAPED_UNICODE),
-                'consents' => json_encode(['terms_at' => $now->toIso8601String(), 'cancellation_at' => $now->toIso8601String(), 'privacy_at' => $now->toIso8601String(), 'marketing_at' => ($payment['marketing'] ?? false) ? $now->toIso8601String() : null, 'policy_version' => CaptureWebLead::POLICY_VERSION], JSON_UNESCAPED_UNICODE),
+                'consents' => json_encode(['terms_at' => $now->toIso8601String(), 'cancellation_at' => $now->toIso8601String(), 'privacy_at' => $now->toIso8601String(), 'marketing_at' => ($payment['marketing'] ?? false) ? $now->toIso8601String() : null, 'altitude_at' => $terms['altitude'] !== [] ? $now->toIso8601String() : null, 'policy_version' => CaptureWebLead::POLICY_VERSION], JSON_UNESCAPED_UNICODE),
                 'access_token_hash' => hash('sha256', $accessToken),
             ]);
 
@@ -587,6 +588,7 @@ final class SiteCheckout
             'balance' => (string) ($deposit ? Decimal::round2($total->minus($depositAmount)) : ($holdUntil ? $total : BigDecimal::zero()->toScale(2))),
             'balance_due' => $deposit ? $termsLine['balance_due'] : $holdUntil?->copy()->setTimezone($this->context->timezone())->toDateString(),
             'companions_pending' => $passengers === [],
+            'altitude_declaration' => ($termsLine['altitude'] ?? null) !== null ? json_encode(['accepted' => true, 'at' => now()->toIso8601String(), 'max_altitude' => $termsLine['altitude'], 'min_altitude' => app(SiteAltitude::class)->threshold()]) : null,
             'rules_applied' => '{'.implode(',', array_keys(array_filter(['R-DEPOSIT' => $deposit, 'R-PAY-LATER' => $holdUntil !== null, 'R-PICKUP' => $termsLine['pickup'] !== null, 'R-COMMENTS' => $termsLine['comments'] !== null]))).'}',
             'source' => 'sitio_web',
             'order_code' => $orderCode,

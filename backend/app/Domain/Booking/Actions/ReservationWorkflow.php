@@ -9,11 +9,13 @@ use App\Domain\Booking\Events\ReservationCancelled;
 use App\Domain\Booking\Models\Reservation;
 use App\Domain\Booking\StateMachines\ReservationStateMachine;
 use App\Domain\Booking\Support\PassengerAgeCheck;
+use App\Domain\Booking\Support\ReservationNotices;
 use App\Domain\Catalog\Support\CancellationTiers;
 use App\Domain\Channels\Support\B2bCredit;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
+use App\Domain\Operations\Support\TravelDocChecklist;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
@@ -91,6 +93,7 @@ final class ReservationWorkflow
             $id = (string) DB::table('booking_passengers')->insertGetId([...$values, 'reservation_id' => $reservation->id, 'seq' => $seq, 'is_lead' => $values['is_lead'] ?? $first, 'created_by' => $actor->getKey()]);
             $this->audit->log('Reserva', $reservation->code, 'agregar_pasajero', null, $data['full_name']);
             $this->touch($reservation->id, $actor);
+            app(TravelDocChecklist::class)->sync((string) $reservation->id);
 
             return $id;
         });
@@ -173,13 +176,24 @@ final class ReservationWorkflow
                 $this->audit->log('Pago', $paymentCode, 'crear_reembolso', null, "{$reservation->currency} {$calc['refund']}");
             }
 
+            $orders = DB::table('ops_orders')->where('reservation_id', $reservation->id)->pluck('id');
+            $released = DB::table('ops_assignments')->whereIn('order_id', $orders)->whereNotIn('status', ['completada', 'cancelada'])
+                ->where(fn ($query) => $query->whereNotNull('guide_id')->orWhereNotNull('driver_id')->orWhereNotNull('vehicle_id'))->update(['status' => 'cancelada', 'updated_by' => $actor->getKey(), 'updated_at' => $now]);
+            if ($released > 0) {
+                $this->audit->log('Asignación de recurso', $reservation->code, 'cancelar', null, "{$released} asignaciones liberadas por la cancelación de la reserva");
+            }
             DB::table('ops_orders')->where('reservation_id', $reservation->id)->whereNotIn('status', ['completada', 'cancelada'])->update(['status' => 'cancelada', 'cancelled_at' => $now, 'cancel_reason' => 'Reserva cancelada']);
 
             $model = Reservation::query()->whereKey($reservation->id)->firstOrFail();
             $this->states->transition($model, ReservationStatus::Cancelada);
             $model->forceFill(['cancel_reason' => $full, 'cancelled_at' => $now, 'penalty_amount' => $calc['penalty'], 'refund_amount' => $calc['refund'], 'updated_by' => $actor->getKey()])->save();
             DB::table('booking_cancellations')->insert(['reservation_id' => $reservation->id, 'total_at_cancel' => $calc['total'], 'paid_at_cancel' => $calc['paid'], 'penalty_services' => $calc['penalty_services'], 'consumed_amount' => $calc['consumed'], 'factor_k' => $calc['factor_k'], 'penalty_amount' => $calc['penalty'], 'refund_amount' => $calc['refund'], 'owed_amount' => $calc['owed'], 'currency' => $reservation->currency, 'lines' => json_encode($calc['lines'], JSON_UNESCAPED_UNICODE), 'refund_payment_id' => $refundPayment, 'penalty_receivable_id' => $penaltyReceivable, 'reason' => $full, 'cancelled_by' => $actor->getKey(), 'cancelled_at' => $now, 'created_by' => $actor->getKey()]);
+            $requesters = DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->where('status', 'pendiente')->pluck('requested_by');
             DB::table('booking_cancel_requests')->where('reservation_id', $reservation->id)->where('status', 'pendiente')->update(['status' => 'aprobada', 'decided_by' => $actor->getKey(), 'decided_at' => $now, 'decision_note' => 'Cancelación procesada']);
+            foreach ($requesters as $requester) {
+                app(ReservationNotices::class)->cancelDecided((string) $reservation->id, (string) $requester, true, 'Cancelación procesada', (string) $actor->getKey());
+            }
+            app(ReservationNotices::class)->cancelled((string) $reservation->id, (string) $actor->getKey());
             $this->payables->handle((string) $reservation->id, $actor);
             ReservationCancelled::dispatch((string) $reservation->id);
 
@@ -202,6 +216,7 @@ final class ReservationWorkflow
 
         $id = (string) DB::table('booking_cancel_requests')->insertGetId(['reservation_id' => $reservation->id, 'reason' => "{$reason}: {$detail}", 'requested_by' => $actor->getKey(), 'requested_at' => now(), 'status' => 'pendiente', 'created_by' => $actor->getKey()]);
         $this->audit->log('Reserva', $reservation->code, 'solicitar_anulacion', null, "{$reason}: {$detail}");
+        app(ReservationNotices::class)->cancelRequested((string) $reservation->id, "{$reason}: {$detail}", (string) $actor->getKey());
 
         return DB::table('booking_cancel_requests')->where('id', $id)->first(['id', 'reservation_id', 'reason', 'requested_by', 'requested_at', 'status']);
     }
@@ -216,6 +231,7 @@ final class ReservationWorkflow
         }
 
         $this->audit->log('Reserva', $reservation->code, 'rechazar_anulacion', null, $note);
+        app(ReservationNotices::class)->cancelDecided((string) $reservation->id, (string) DB::table('booking_cancel_requests')->where('id', $requestId)->value('requested_by'), false, $note, (string) $actor->getKey());
 
         return DB::table('booking_cancel_requests')->where('id', $requestId)->first(['id', 'reservation_id', 'reason', 'requested_by', 'requested_at', 'status', 'decided_by', 'decided_at', 'decision_note']);
     }

@@ -34,7 +34,10 @@ export function statusTone(status: string): Tone {
 }
 
 export function statusLabel(status: string): string {
-  return statusLabels[status] ?? status;
+  const label = statusLabels[status];
+  if (label) return label;
+  const words = status.replace(/_/g, " ").trim().toLowerCase();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : status;
 }
 
 const AVATAR_TONES: Tone[] = ["t1", "t4", "t3", "t2", "accent", "violet"];

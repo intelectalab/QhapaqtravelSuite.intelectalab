@@ -107,7 +107,7 @@ export function DeparturesTable({ overview, availability }: { overview: Departur
   ];
   const metrics: MetricFilter<DepartureRow>[] = [
     { id: "open", label: "Con cupo", tone: "ok", icon: <CircleDot size={19} />, matches: (departure) => departure.available > 0 },
-    { id: "full", label: "Completas", tone: "sun", icon: <Users size={19} />, matches: (departure) => departure.status === "completa" || (departure.status === "abierta" && departure.available === 0) },
+    { id: "full", label: "Completas", tone: "sun", icon: <Users size={19} />, matches: (departure) => departure.status === "completa" },
     { id: "closed", label: "Cerradas", tone: "mute", icon: <CalendarCheck size={19} />, matches: (departure) => departure.status === "cerrada" },
     { id: "cancelled", label: "Canceladas", tone: "bad", icon: <CalendarX size={19} />, matches: (departure) => departure.status === "cancelada" },
   ];

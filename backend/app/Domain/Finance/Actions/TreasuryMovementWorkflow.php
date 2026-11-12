@@ -73,18 +73,35 @@ final class TreasuryMovementWorkflow
     public function void(string $code, string $reason, User $actor): void
     {
         DB::transaction(function () use ($code, $reason, $actor): void {
-            $movement = DB::table('fin_treasury_movements')->where('code', $code)->lockForUpdate()->first(['id', 'code', 'status', 'source_type']);
+            $movement = DB::table('fin_treasury_movements')->where('code', $code)->lockForUpdate()->first(['id', 'code', 'status', 'source_type', 'type', 'replenishment_id', 'transfer_id']);
 
             if ($movement === null) {
                 throw ApiException::notFound('El movimiento no existe.');
             }
 
-            if ($movement->status !== 'posted' || $movement->source_type !== 'manual') {
-                throw ApiException::conflict('TES-BR-02', 'Solo se anulan movimientos manuales vigentes; los demás se corrigen desde su origen.');
+            $expense = $movement->type === 'petty_expense' && $movement->replenishment_id === null;
+            $gateway = in_array($movement->type, ['gateway_settlement', 'gateway_fee'], true);
+            $transfer = $movement->source_type === 'transfer' && $movement->transfer_id !== null;
+
+            if ($movement->status !== 'posted' || ! self::voidable($movement)) {
+                throw ApiException::conflict('TES-BR-02', $movement->type === 'petty_expense' ? 'El gasto ya se rindió en una reposición: anúlalo desde la reposición.' : 'Solo se anulan movimientos manuales, transferencias, gastos de caja sin rendir y liquidaciones de pasarela; los cobros y pagos se corrigen desde su origen.');
             }
 
-            DB::table('fin_treasury_movements')->where('id', $movement->id)->update(['status' => 'voided', 'void_reason' => $reason, 'voided_by' => $actor->getKey(), 'voided_at' => now(), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            $ids = ($gateway || $transfer) && $movement->transfer_id ? DB::table('fin_treasury_movements')->where('transfer_id', $movement->transfer_id)->where('status', 'posted')->pluck('id')->push($movement->id)->unique()->all() : [$movement->id];
+            DB::table('fin_treasury_movements')->whereIn('id', $ids)->update(['status' => 'voided', 'void_reason' => $reason, 'voided_by' => $actor->getKey(), 'voided_at' => now(), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+
+            if ($movement->type === 'replenishment' && $movement->replenishment_id !== null) {
+                DB::table('fin_cash_replenishments')->where('id', $movement->replenishment_id)->where('status', 'paid')->update(['status' => 'approved', 'paid_at' => null, 'paid_by' => null, 'transfer_id' => null, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            }
             $this->audit->log('Movimiento de tesorería', $movement->code, 'anular', 'posted', $reason);
         });
+    }
+
+    public static function voidable(object $movement): bool
+    {
+        return $movement->source_type === 'manual'
+            || ($movement->type === 'petty_expense' && $movement->replenishment_id === null)
+            || in_array($movement->type, ['gateway_settlement', 'gateway_fee'], true)
+            || ($movement->source_type === 'transfer' && $movement->transfer_id !== null);
     }
 }

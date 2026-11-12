@@ -40,7 +40,7 @@ final class ReservationController
         $user = $this->user($request);
 
         return response()->json(['data' => [
-            'clients' => Portfolio::scope(DB::table('crm_clients')->whereNull('deleted_at'), $user, 'owner_id')->orderBy('name')->get(['code', 'name']),
+            'clients' => Portfolio::clients(DB::table('crm_clients')->whereNull('deleted_at'), $user)->orderBy('name')->get(['code', 'name']),
             'advisors' => Portfolio::ownOnly($user) ? [] : $advisors->all(),
             'channels' => DirectBookingPlan::CHANNELS,
             'products' => DB::table('catalog_products')->whereNull('deleted_at')->where('status', 'ACTIVE')->where('is_bookable', true)->orderBy('name')

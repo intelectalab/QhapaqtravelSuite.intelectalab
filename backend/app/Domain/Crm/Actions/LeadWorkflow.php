@@ -9,6 +9,7 @@ use App\Domain\Crm\Support\CatalogInterest;
 use App\Domain\Crm\Support\ClientDocument;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Crm\Support\CrmCatalog;
+use App\Domain\Crm\Support\CrmNotices;
 use App\Domain\Crm\Support\LeadDuplicates;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
@@ -190,6 +191,7 @@ final class LeadWorkflow
             $before = $lead->owner_id ? DB::table('iam_users')->where('id', $lead->owner_id)->value('name') : null;
             $after = DB::table('iam_users')->where('id', $ownerId)->value('name');
             $this->audit->log('Lead', $lead->code, $lead->owner_id ? 'reasignar' : 'asignar', $before, trim($after.($reason ? " · {$reason}" : '')));
+            app(CrmNotices::class)->leadAssigned((string) $lead->code, $ownerId, (string) $actor->getKey());
 
             if ($firstContact) {
                 $activity = $this->activities->scheduleFirstContact(DB::table('crm_leads')->where('id', $lead->id)->first(), $actor);
@@ -208,6 +210,7 @@ final class LeadWorkflow
         }
 
         $this->audit->log('Lead', $code, 'tomar_lead', after: $actor->name);
+        app(CrmNotices::class)->leadTaken($code, (string) $actor->getKey(), (string) $actor->name);
         $this->activities->scheduleFirstContact(DB::table('crm_leads')->where('code', $code)->first(), $actor);
     }
 
@@ -472,6 +475,7 @@ final class LeadWorkflow
 
             $this->audit->log('Oportunidad', $opportunityCode, 'crear', after: "desde {$lead->code}");
             $this->audit->log('Lead', $lead->code, 'convertir', 'calificado', "{$client->code} + {$opportunityCode}");
+            app(CrmNotices::class)->leadConverted((string) $lead->code, $owner ? (string) $owner : null, (string) $opportunityCode, (string) $actor->getKey());
             $activity = ($data['schedule_discovery_meeting'] ?? false) ? $this->scheduleDiscovery($opportunityCode, trim($data['opportunity_title']), $owner, $actor) : null;
 
             return ['client' => $client->code, 'opportunity' => $opportunityCode, 'activity' => $activity];

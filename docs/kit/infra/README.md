@@ -14,7 +14,7 @@
 
 ```bash
 cp docs/kit/infra/docker-compose.yml docs/kit/infra/Makefile . && cp -r docs/kit/infra/docker .
-make setup      # .env, composer install, key, migraciones y datos demo
+make setup      # .env, levanta postgres/redis/api, composer install, key, migraciones, datos demo y el resto del stack
 make up         # API http://localhost:8000 · web http://localhost:3000 · Mailpit http://localhost:8025 · MinIO http://localhost:9001
 make help       # lista de comandos
 ```
@@ -33,8 +33,8 @@ Tenants por subdominio: `andes.localhost` (TNT-0001, datos demo) y `selva.localh
 | web | node 22 | 3000 | Next.js en modo desarrollo |
 | postgres | postgres:17 | 5432 | Base `kipucontrol` y `kipucontrol_test` |
 | redis | redis:8 | 6379 | Caché, sesiones, colas, locks, idempotencia |
-| minio (+ minio-init) | minio | 9000 / 9001 | S3 local; buckets `kipucontrol-private` y `kipucontrol-public` |
-| mailpit | mailpit | 8025 / 1025 | Correo de prueba (enlaces mágicos, notificaciones) |
+| minio (+ minio-init) | quay.io/minio/minio (versión fija) | 9000 / 9001 | S3 local; buckets `kipucontrol-private` y `kipucontrol-public`. MinIO ya no publica en Docker Hub; si el tag fijado no está en su registro, use otro tag `RELEASE.*` de quay.io o un S3 compatible. |
+| mailpit | axllent/mailpit:v1.29 | 8025 / 1025 | Correo de prueba (enlaces mágicos, notificaciones) |
 
 ## Usuarios de base de datos (RLS)
 

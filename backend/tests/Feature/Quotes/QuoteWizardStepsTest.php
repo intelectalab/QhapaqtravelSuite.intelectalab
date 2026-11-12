@@ -34,6 +34,7 @@ it('paso 1 del asistente exige cliente y título y no mira los ítems', function
 
 it('paso 1 rechaza un cliente fuera de la cartera y una oportunidad de otro cliente', function () {
     actingAsSeed('U03');
+    detachFromPortfolio('CLI-0001', 'U03');
 
     $response = $this->postJson('/api/v1/quotes/pricing/preview', quoteStepBody(1, ['client_code' => 'CLI-0001']));
     expect($response)->toBeApiError(422, 'QTE-BR-09');

@@ -258,6 +258,22 @@ it('el sitio público entrega el voucher del pedido solo con su token', function
     expect($this->get('/api/v1/public/orders/WEB-10432/vouchers/VOU-2026-01201.pdf', siteOf('selva', pdfAccept(['X-Order-Token' => 'token-del-pedido']))))->toBeApiError(403, 'FEATURE_NOT_IN_PLAN');
 });
 
+it('genera la ficha comercial del producto, la reutiliza si no cambió y se descarga desde la bitácora de documentos', function () {
+    actingAsSeed('U01');
+
+    $first = $this->postJson('/api/v1/catalog/products/CUS-HUM-FD/sheet', [], critical())->assertOk()->json();
+    $again = $this->postJson('/api/v1/catalog/products/CUS-HUM-FD/sheet', [], critical())->assertOk()->json();
+    $html = documentHtml(ClientDocuments::SHEET, idOf('catalog_products', 'CUS-HUM-FD'));
+
+    expect($first['meta']['file_name'])->toBe('ficha-CUS-HUM-FD.pdf')
+        ->and($again['meta']['document_id'])->toBe($first['meta']['document_id'])
+        ->and($html)->toContain('Ficha comercial')->toContain('Precio desde')->not->toContain('Costo')
+        ->and(withinTenant(tenantA(), fn () => DB::table('audit_events')->where('action', 'generar_ficha')->where('entity_id', 'CUS-HUM-FD')->count()))->toBe(1);
+
+    $this->get("/api/v1/documents/{$first['meta']['document_id']}/download")->assertRedirect();
+    expect($this->postJson('/api/v1/catalog/products/NO-EXISTE/sheet', [], critical()))->toBeApiError(404);
+});
+
 it('otro tenant no alcanza los documentos de la agencia', function () {
     actingAsTenantBAdmin();
 

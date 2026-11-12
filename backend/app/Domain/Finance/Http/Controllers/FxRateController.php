@@ -28,6 +28,7 @@ final class FxRateController
             'sell' => ['nullable', 'numeric', 'gt:0.5', 'lt:20'],
             'rate_date' => ['nullable', 'date', 'before_or_equal:today'],
             'source' => ['required', 'string', 'max:60'],
+            'confirm_variation' => ['nullable', 'boolean'],
         ], [
             'currency.*' => 'Elige la moneda.',
             'rate.*' => 'El tipo de cambio debe estar entre 0.5 y 20 (CFG-BR-04).',

@@ -48,15 +48,21 @@ window.SEED = (function () {
   D.permissionGroups = [
     { module: 'Administración', perms: ['admin.tenant.manage', 'admin.users.manage', 'admin.roles.manage', 'admin.settings.manage', 'admin.audit.view', 'admin.billing.manage', 'admin.api.manage'] },
     { module: 'Colaboración', perms: ['approvals.view', 'inbox.view', 'inbox.manage'] },
-    { module: 'CRM', perms: ['crm.leads.view', 'crm.leads.manage', 'crm.opportunities.manage', 'crm.activities.manage', 'crm.clients.manage', 'crm.targets.view', 'crm.targets.manage', 'crm.claims.manage'] },
+    { module: 'CRM', perms: ['crm.leads.view', 'crm.leads.manage', 'crm.opportunities.manage', 'crm.activities.manage', 'crm.clients.manage', 'crm.records.reassign', 'crm.targets.view', 'crm.targets.manage', 'crm.claims.manage'] },
     { module: 'Marketing', perms: ['marketing.campaigns.manage'] },
-    { module: 'Catálogo', perms: ['catalog.products.view', 'catalog.products.create', 'catalog.products.update', 'catalog.products.activate', 'catalog.products.manage_rates', 'catalog.products.manage_availability', 'catalog.products.view_profitability', 'catalog.products.publish', 'catalog.providers.manage', 'catalog.allotments.manage'] },
-    { module: 'Cotizaciones', perms: ['quotes.view', 'quotes.create', 'quotes.approve_internal', 'quotes.send', 'quotes.discount_override'] },
-    { module: 'Reservas', perms: ['reservations.view', 'reservations.create', 'reservations.modify', 'reservations.cancel'] },
+    { module: 'Catálogo', perms: ['catalog.products.view', 'catalog.products.create', 'catalog.products.update', 'catalog.products.activate', 'catalog.products.manage_rates', 'catalog.products.manage_availability', 'catalog.products.view_profitability', 'catalog.products.publish', 'catalog.products.manage_promotions', 'catalog.providers.manage', 'catalog.allotments.manage'] },
+    { module: 'Cotizaciones', perms: ['quotes.view', 'quotes.create', 'quotes.approve_internal', 'quotes.send', 'quotes.discount_override', 'quotes.reassign'] },
+    { module: 'Reservas', perms: ['reservations.view', 'reservations.create', 'reservations.modify', 'reservations.cancel', 'reservations.approve_changes', 'reservations.reassign'] },
     { module: 'Operaciones', perms: ['operations.view', 'operations.assign', 'operations.vouchers', 'operations.incidents', 'operations.close', 'operations.travel_docs'] },
     { module: 'Finanzas', perms: ['finance.receivables', 'finance.payments.register', 'finance.payments.revert', 'finance.payables', 'finance.commissions', 'finance.profitability', 'finance.invoicing', 'finance.treasury'] },
-    { module: 'Canales', perms: ['channels.b2b.manage', 'channels.ecommerce.manage', 'channels.cms.publish'] },
-    { module: 'Reportes', perms: ['reports.view', 'reports.export'] }
+    { module: 'Canales', perms: ['channels.b2b.manage', 'channels.ecommerce.manage', 'channels.cms.edit', 'channels.cms.publish'] },
+    { module: 'Extranet', perms: ['supplier.portal.view', 'supplier.requests.respond', 'supplier.rooming.manage', 'supplier.vouchers.redeem', 'supplier.payables.view', 'supplier.invoices.upload', 'supplier.incidents.report', 'supplier.rates.request', 'supplier.users.manage'] },
+    { module: 'Reportes', perms: ['reports.view', 'reports.export'] },
+    { module: 'Crecimiento', perms: ['ai.assistant.use', 'ai.insights.view', 'inbox.whatsapp.manage', 'finance.payment_links', 'finance.gift_cards', 'finance.accounting_export', 'catalog.products.import', 'catalog.products.dynamic_pricing', 'channels.ota.manage', 'channels.marketplace.manage', 'operations.checkin', 'quotes.external_offers'] },   // v2.6 · spec 19
+    { module: 'Corporativo', perms: ['crm.corporate.manage', 'finance.corporate_statements'] },   // v2.7 · spec 20
+    { module: 'Marca y vitrina', perms: ['channels.showcase.manage', 'cms.seo.manage', 'finance.gateways.manage'] },   // v2.8 · spec 22
+    { module: 'Plantillas e IA', perms: ['cms.templates.manage', 'ai.content.use'] },   // v2.9 · spec 23
+    { module: 'Seguimiento y visitas', perms: ['marketing.tracking.manage', 'marketing.tracking.approve', 'analytics.web.view'] }   // v2.10 · spec 24
   ];
   const ALL = D.permissionGroups.flatMap(g => g.perms);
   const pick = (pref) => ALL.filter(p => pref.some(x => p.startsWith(x)));
@@ -71,18 +77,18 @@ window.SEED = (function () {
   const EXCL = (list) => ALL.filter(p => !list.some(x => p.startsWith(x)));
   D.rolePerms = {
     super_admin: ['admin.tenant.manage', 'admin.audit.view'],
-    tenant_admin: EXCL(['admin.tenant.']),
-    manager: EXCL(['admin.tenant.', 'admin.roles.', 'admin.settings.', 'admin.users.', 'admin.billing.', 'admin.api.', 'finance.payments.register', 'finance.payments.revert', 'finance.invoicing', 'catalog.providers.manage']),
-    sales: ['crm.leads.view', 'crm.leads.manage', 'crm.opportunities.manage', 'crm.activities.manage', 'crm.clients.manage', 'catalog.products.view', 'quotes.view', 'quotes.create', 'quotes.send', 'reservations.view', 'reservations.create', 'reports.view', 'approvals.view', 'inbox.view', 'inbox.manage', 'crm.targets.view'],
-    operations: ['catalog.products.view', 'catalog.products.manage_availability', 'catalog.providers.manage', 'reservations.view', 'reservations.modify', 'operations.view', 'operations.assign', 'operations.vouchers', 'operations.incidents', 'operations.close', 'reports.view', 'approvals.view', 'inbox.view', 'inbox.manage', 'catalog.allotments.manage', 'operations.travel_docs'],
-    finance: ['finance.receivables', 'finance.payments.register', 'finance.payments.revert', 'finance.payables', 'finance.commissions', 'finance.profitability', 'finance.invoicing', 'reservations.view', 'quotes.view', 'catalog.products.view', 'catalog.products.view_profitability', 'reports.view', 'reports.export', 'finance.treasury', 'approvals.view'],
-    accounting: ['finance.invoicing', 'finance.receivables', 'reservations.view', 'reports.view', 'reports.export', 'finance.treasury'],
-    guide: ['operations.view', 'operations.incidents'],
-    driver: ['operations.view', 'operations.incidents'],
+    tenant_admin: EXCL(['admin.tenant.', 'supplier.']),
+    manager: EXCL(['supplier.', 'admin.tenant.', 'admin.roles.', 'admin.settings.', 'admin.users.', 'admin.billing.', 'admin.api.', 'finance.payments.register', 'finance.payments.revert', 'finance.invoicing', 'catalog.providers.manage', 'finance.accounting_export', 'finance.gateways.manage', 'marketing.tracking.approve']),
+    sales: ['crm.leads.view', 'crm.leads.manage', 'crm.opportunities.manage', 'crm.activities.manage', 'crm.clients.manage', 'catalog.products.view', 'quotes.view', 'quotes.create', 'quotes.send', 'reservations.view', 'reservations.create', 'reports.view', 'approvals.view', 'inbox.view', 'inbox.manage', 'crm.targets.view', 'ai.assistant.use', 'finance.payment_links', 'quotes.external_offers', 'crm.corporate.manage', 'analytics.web.view'],
+    operations: ['catalog.products.view', 'catalog.products.manage_availability', 'catalog.providers.manage', 'reservations.view', 'reservations.modify', 'operations.view', 'operations.assign', 'operations.vouchers', 'operations.incidents', 'operations.close', 'reports.view', 'approvals.view', 'inbox.view', 'inbox.manage', 'catalog.allotments.manage', 'operations.travel_docs', 'ai.assistant.use', 'operations.checkin'],
+    finance: ['finance.receivables', 'finance.gateways.manage', 'finance.payments.register', 'finance.payments.revert', 'finance.payables', 'finance.commissions', 'finance.profitability', 'finance.invoicing', 'reservations.view', 'quotes.view', 'catalog.products.view', 'catalog.products.view_profitability', 'reports.view', 'reports.export', 'finance.treasury', 'approvals.view', 'ai.insights.view', 'finance.payment_links', 'finance.gift_cards', 'finance.accounting_export', 'crm.corporate.manage', 'finance.corporate_statements'],
+    accounting: ['finance.invoicing', 'finance.receivables', 'reservations.view', 'reports.view', 'reports.export', 'finance.treasury', 'finance.accounting_export', 'finance.corporate_statements'],
+    guide: ['operations.view', 'operations.incidents', 'operations.checkin'],
+    driver: ['operations.view', 'operations.incidents', 'operations.checkin'],
     b2b: ['catalog.products.view', 'quotes.create', 'reservations.create', 'reservations.view'],
     customer: ['quotes.view', 'reservations.view'],
     passenger: ['reservations.view'],
-    provider: ['operations.view']
+    provider: ['operations.view', 'supplier.portal.view', 'supplier.requests.respond', 'supplier.rooming.manage', 'supplier.vouchers.redeem', 'supplier.payables.view', 'supplier.invoices.upload', 'supplier.incidents.report', 'supplier.rates.request', 'supplier.users.manage']
   };
   D.users = [
     { id: 'U01', name: 'Mariela Quispe Rojas', email: 'mquispe@andeshorizonte.pe', role: 'tenant_admin', sede: 'SED-01', status: 'activo', lastLogin: '2026-09-29 08:12', mfa: true, phone: '987 112 450', color: '#1560B8' },
@@ -101,7 +107,51 @@ window.SEED = (function () {
     { id: 'U14', clientId: 'CLI-0001', name: 'Gabriela Ríos Montoya', email: 'gabriela.rios@correo.pe', role: 'customer', sede: 'SED-01', status: 'activo', lastLogin: '2026-09-27 21:14', mfa: false, phone: '999 102 334', color: '#1560B8' },
     { id: 'U15', clientId: 'CLI-0003', resId: 'RES-2026-000347', name: 'Thomas Keller', email: 't.keller@mail.de', role: 'passenger', sede: 'SED-02', status: 'activo', lastLogin: '2026-09-29 05:30', mfa: false, phone: '+49 171 5550102', color: '#1E8A55' },
     { id: 'U16', name: 'Superadmin Plataforma', email: 'ops@kipucontrol.com', role: 'super_admin', sede: 'SED-01', status: 'activo', lastLogin: '2026-09-29 07:00', mfa: true, phone: '—', color: '#0A3A73' },
-    { id: 'U17', providerId: 'PRV-001', name: 'Hotel Tambo Real Cusco (Proveedor)', email: 'reservas@tamboreal.pe', role: 'provider', sede: 'SED-02', status: 'activo', lastLogin: '2026-09-28 11:05', mfa: false, phone: '084 25 3300', color: '#1F6FB8' }
+    { id: 'U17', providerId: 'PRV-001', name: 'Hotel Tambo Real Cusco (Proveedor)', email: 'reservas@tamboreal.pe', role: 'provider', sede: 'SED-02', status: 'activo', lastLogin: '2026-09-28 11:05', mfa: false, phone: '084 25 3300', color: '#1F6FB8' },
+    { id: 'U18', clientId: 'CLI-0002', name: 'Úrsula Benavides Lara', email: 'ubenavides@mcblanca.com.pe', role: 'customer', sede: 'SED-01', status: 'activo', lastLogin: '2026-09-30 09:40', mfa: true, phone: '01 705 3312', color: '#6D4BC2' }
+  ];
+
+  /* ---------------- Portal corporativo (v2.7 · spec 20) ----------------
+     Cuenta corporativa de la empresa cliente: centros de costo, viajeros, usuarios del portal con su rol
+     (administrador, aprobador, pagador, viajero), aprobaciones, asignación de costos y estados de cuenta.
+     `history` son las compras de meses anteriores ya cerradas (en producción salen de booking_reservations,
+     fin_payments y las notas de crédito); la reserva viva RES-2026-000348 se lee de las tablas del demo. */
+  D.corpAccounts = [
+    { id: 'CORP-001', clientId: 'CLI-0002', status: 'activa', currency: 'PEN', creditDays: 30, requireApproval: true, approvalThreshold: 5000, defaultCc: 'CC-RRHH',
+      statement: { auto: true, day: 1, recipients: ['ubenavides@mcblanca.com.pe', 'cuentasporpagar@mcblanca.com.pe'], lastSent: '2026-10-01' },
+      costCenters: [
+        { id: 'CC-GER', name: 'Gerencia general', budget: 30000, period: 'anual', active: true },
+        { id: 'CC-OPS', name: 'Operaciones mina', budget: 25000, period: 'anual', active: true },
+        { id: 'CC-SEG', name: 'Seguridad y salud ocupacional', budget: 20000, period: 'anual', active: true },
+        { id: 'CC-RRHH', name: 'RR. HH. · Incentivos y bienestar', budget: 90000, period: 'anual', active: true }
+      ],
+      users: [
+        { id: 'CPU-01', userId: 'U18', name: 'Úrsula Benavides Lara', email: 'ubenavides@mcblanca.com.pe', role: 'administrador', cc: null, active: true },
+        { id: 'CPU-02', userId: null, name: 'Gonzalo Pacheco Ruiz', email: 'gpacheco@mcblanca.com.pe', role: 'aprobador', cc: 'CC-GER', active: true },
+        { id: 'CPU-03', userId: null, name: 'Milagros Tello Ccori', email: 'cuentasporpagar@mcblanca.com.pe', role: 'pagador', cc: null, active: true },
+        { id: 'CPU-04', userId: null, name: 'Ernesto Valdivia Ríos', email: 'evaldivia@mcblanca.com.pe', role: 'viajero', cc: 'CC-OPS', active: true }
+      ],
+      allocations: { 'RES-2026-000348': { cc: 'CC-RRHH' } },
+      history: [
+        { resId: 'RES-2026-000118', title: 'Directorio — reunión en Arequipa', date: '2026-02-09', travelFrom: '2026-02-18', cc: 'CC-GER', amount: 6840, currency: 'PEN', travelers: ['Gonzalo Pacheco Ruiz', 'Úrsula Benavides Lara', 'Raúl Espinoza Llerena'], approvedBy: 'Gonzalo Pacheco Ruiz', invoice: 'F001-00001190',
+          payments: [{ id: 'PAG-01402', date: '2026-03-10', amount: 6840, method: 'Transferencia BCP' }] },
+        { resId: 'RES-2026-000162', title: 'Capacitación SSO en Cusco — 8 pax', date: '2026-04-06', travelFrom: '2026-04-20', cc: 'CC-SEG', amount: 12450, currency: 'PEN', travelers: ['Karla Ugaz Soto', 'Óscar Linares Paz', 'Mónica Farfán Quiroz', 'Sandra Chávez Molina', 'Luis Alberto Huerta', 'Teresa Anaya Cruz', 'Fernando Rivas Olaya', 'Rocío Salinas Tapia'], approvedBy: 'Gonzalo Pacheco Ruiz', invoice: 'F001-00001268',
+          payments: [{ id: 'PAG-01577', date: '2026-05-05', amount: 12450, method: 'Transferencia BBVA' }] },
+        { resId: 'RES-2026-000201', title: 'Visita técnica a Huaraz — 5 pax', date: '2026-06-02', travelFrom: '2026-06-15', cc: 'CC-OPS', amount: 9380, currency: 'PEN', travelers: ['Ernesto Valdivia Ríos', 'Julio César Mena', 'Manuel Oré Guzmán', 'Óscar Linares Paz', 'Raúl Espinoza Llerena'], approvedBy: 'Gonzalo Pacheco Ruiz', invoice: 'F001-00001331',
+          payments: [{ id: 'PAG-01688', date: '2026-07-01', amount: 8180, method: 'Transferencia BCP' }],
+          creditNote: { id: 'F001-00001352', date: '2026-06-20', amount: 1200, reason: 'Traslado no prestado (cierre de vía)' } },
+        { resId: 'RES-2026-000254', title: 'Traslados ejecutivos Lima — julio', date: '2026-07-08', travelFrom: '2026-07-10', cc: 'CC-GER', amount: 3960, currency: 'PEN', travelers: ['Gonzalo Pacheco Ruiz', 'Úrsula Benavides Lara'], approvedBy: 'Úrsula Benavides Lara', invoice: 'F001-00001390',
+          payments: [{ id: 'PAG-01755', date: '2026-08-07', amount: 3960, method: 'Transferencia BCP' }] },
+        { resId: 'RES-2026-000297', title: 'Bienestar — fin de semana en Paracas', date: '2026-08-04', travelFrom: '2026-08-22', cc: 'CC-RRHH', amount: 21700, currency: 'PEN', travelers: ['Karla Ugaz Soto', 'Mónica Farfán Quiroz', 'Teresa Anaya Cruz', 'Rocío Salinas Tapia', 'Sandra Chávez Molina', 'Julio César Mena', 'Fernando Rivas Olaya', 'Manuel Oré Guzmán', 'Luis Alberto Huerta', 'Ernesto Valdivia Ríos'], approvedBy: 'Úrsula Benavides Lara', invoice: 'F001-00001431',
+          payments: [{ id: 'PAG-01840', date: '2026-09-03', amount: 21700, method: 'Transferencia BBVA' }] }
+      ],
+      approvals: [
+        { id: 'APC-0007', ref: 'COT-2026-00201', title: 'Gerencia — visita a planta Trujillo (3 pax)', amount: 7420, currency: 'PEN', cc: 'CC-GER', requestedBy: 'Ernesto Valdivia Ríos', approver: 'Gonzalo Pacheco Ruiz', status: 'pendiente', requestedAt: '2026-09-29 17:05', expiresAt: '2026-10-03', decidedAt: null, reason: '' },
+        { id: 'APC-0006', ref: 'RES-2026-000348', title: 'Incentivo mineros Q4 — Cusco', amount: 58610, currency: 'PEN', cc: 'CC-RRHH', requestedBy: 'Úrsula Benavides Lara', approver: 'Gonzalo Pacheco Ruiz', status: 'aprobada', requestedAt: '2026-09-04 10:12', expiresAt: '2026-09-08', decidedAt: '2026-09-05 11:58', reason: '' },
+        { id: 'APC-0005', ref: 'COT-2026-00171', title: 'Seguridad — congreso en Lima (4 pax)', amount: 6100, currency: 'PEN', cc: 'CC-SEG', requestedBy: 'Karla Ugaz Soto', approver: 'Gonzalo Pacheco Ruiz', status: 'rechazada', requestedAt: '2026-08-18 09:30', expiresAt: '2026-08-22', decidedAt: '2026-08-19 16:40', reason: 'Fuera del presupuesto del trimestre' }
+      ],
+      exports: [{ id: 'EXC-0012', type: 'Estado de cuenta', period: '2026-09', format: 'PDF', status: 'listo', by: 'Sistema (envío automático)', at: '2026-10-01 06:00' }]
+    }
   ];
 
   /* ---------------- Destinos (jerarquía) ---------------- */
@@ -444,6 +494,25 @@ window.SEED = (function () {
 
   /* ---------------- Reservas ---------------- */
   D.reservations = [
+    /* v2.8 · viaje por tramos en curso (spec 21): la pasajera está en Arequipa y puede sumar tours y movilidad de los tramos que faltan */
+    { id: 'RES-2026-000361', quoteId: null, quoteVersion: null, clientId: 'CLI-0001', title: 'Ríos — Perú Clásico 10D/9N (web)', status: 'en_operacion', channel: 'E-commerce', travelFrom: '2026-09-27', travelTo: '2026-10-06', currency: 'USD', total: 2486, owner: 'U03', createdAt: '2026-08-30 20:15', sede: 'SED-01', notes: 'Pedido web con armador de viaje por tramos.', ecomOrderId: 'WEB-2026-00961',
+      passengers: [{ name: 'Gabriela Ríos Montoya', doc: 'DNI 45871236', type: 'ADT', nationality: 'Peruana', birth: '1990-03-14', phone: '987 654 321', diet: '' }, { name: 'Andrés Ríos Montoya', doc: 'DNI 47120988', type: 'ADT', nationality: 'Peruano', birth: '1992-07-02', phone: '', diet: '' }],
+      services: [
+        { id: 'RS-3611', productId: 'PRD-011', name: 'Perú Clásico 10D/9N — 2 pax', date: '2026-09-27', time: '09:00', providerId: 'PRV-004', status: 'confirmado', cost: 980, price: 1290, confirmationCode: 'KC-349-01' },
+        { id: 'RS-3612', productId: null, name: 'Alojamiento Lima · Hotel Miraflores Park Inn · 1 hab. doble × 1 noche(s)', date: '2026-09-27', time: '14:00', providerId: 'PRV-004', status: 'completado', cost: 68, price: 85, confirmationCode: 'MPI-2231', kind: 'alojamiento', extraOf: 'PRD-011' },
+        { id: 'RS-3613', productId: null, name: 'Alojamiento Arequipa · Casona del Sillar · 1 hab. doble × 2 noche(s)', date: '2026-09-28', time: '14:00', providerId: 'PRV-004', status: 'confirmado', cost: 109, price: 136, confirmationCode: 'CDS-7781', kind: 'alojamiento', extraOf: 'PRD-011' },
+        { id: 'RS-3614', productId: null, name: 'Alojamiento Puno · Posada del Titicaca · 1 hab. doble × 2 noche(s)', date: '2026-09-30', time: '14:00', providerId: 'PRV-004', status: 'confirmado', cost: 99, price: 124, confirmationCode: 'PDT-0412', kind: 'alojamiento', extraOf: 'PRD-011' },
+        { id: 'RS-3615', productId: null, name: 'Alojamiento Cusco · Hostal Valle Inka · 1 hab. doble × 4 noche(s)', date: '2026-10-02', time: '14:00', providerId: 'PRV-004', status: 'confirmado', cost: 192, price: 240, confirmationCode: 'HVI-9920', kind: 'alojamiento', extraOf: 'PRD-011' },
+        { id: 'RS-3616', productId: null, tourId: 'TT-LIM-1', name: 'Tour Lima · Tour gastronómico en Barranco (2 adt)', date: '2026-09-27', time: '18:30', providerId: 'PRV-004', status: 'completado', cost: 104, price: 130, confirmationCode: 'KC-349-02', kind: 'tour_tramo', legId: 'LEG-1', extraOf: 'PRD-011' },
+        { id: 'RS-3617', productId: null, transportId: 'TR-LIM-AQP-V', name: 'Movilidad Vuelo Lima → Arequipa (económica)', date: '2026-09-28', time: '07:10', providerId: 'PRV-004', status: 'completado', cost: 152, price: 190, confirmationCode: 'LA2077', kind: 'movilidad', mode: 'Vuelo', extraOf: 'PRD-011' },
+        { id: 'RS-3618', productId: null, transportId: 'TR-AQP-PUN-B', name: 'Movilidad Bus turístico Arequipa → Puno', date: '2026-09-30', time: '07:30', providerId: 'PRV-004', status: 'confirmado', cost: 48, price: 60, confirmationCode: 'BT-5521', kind: 'movilidad', mode: 'Bus', extraOf: 'PRD-011' }
+      ],
+      booking: { productId: 'PRD-011', date: '2026-09-27', pax: { adt: 2, chd: 0, inf: 0 }, currencyDisplay: 'USD', fxRate: 1, chargeCurrency: 'USD', total: 2486, rooms: 4, nights: 9,
+        lodging: [{ legId: 'LEG-1', city: 'Lima', hotel: 'Hotel Miraflores Park Inn', roomType: 'Doble', rooms: 1, nights: 1 }, { legId: 'LEG-2', city: 'Arequipa', hotel: 'Casona del Sillar', roomType: 'Doble', rooms: 1, nights: 2 }, { legId: 'LEG-3', city: 'Puno', hotel: 'Posada del Titicaca', roomType: 'Doble', rooms: 1, nights: 2 }, { legId: 'LEG-4', city: 'Cusco', hotel: 'Hostal Valle Inka', roomType: 'Doble', rooms: 1, nights: 4 }],
+        tripLegs: [{ legId: 'LEG-1', city: 'Lima', nights: 1, checkIn: '2026-09-27', checkOut: '2026-09-28' }, { legId: 'LEG-2', city: 'Arequipa', nights: 2, checkIn: '2026-09-28', checkOut: '2026-09-30' }, { legId: 'LEG-3', city: 'Puno', nights: 2, checkIn: '2026-09-30', checkOut: '2026-10-02' }, { legId: 'LEG-4', city: 'Cusco', nights: 4, checkIn: '2026-10-02', checkOut: '2026-10-06' }],
+        tripEnd: '2026-10-06', byCategory: { base: 1290, lodging: 585, tour: 130, transport: 250, addon: 0, surcharge: 0 },
+        trip: { tours: [{ id: 'TT-LIM-1', legId: 'LEG-1', date: '2026-09-27', amount: 130 }], transport: [{ id: 'TR-LIM-AQP-V', mode: 'Vuelo', date: '2026-09-28', amount: 190 }, { id: 'TR-AQP-PUN-B', mode: 'Bus', date: '2026-09-30', amount: 60 }] },
+        addons: [], payment: { mode: 'total', depositPct: 100, deposit: 2486, balance: 0 }, rulesApplied: ['R-LODGING', 'R-TRIP-BUILDER', 'R-IN-TRIP-SALES'], lang: 'es' } },
     { id: 'RES-2026-000348', quoteId: 'COT-2026-00187', quoteVersion: 2, clientId: 'CLI-0002', title: 'Incentivo mineros Q4 — Cusco', status: 'confirmada', channel: 'Corporativo', travelFrom: '2026-10-01', travelTo: '2026-10-05', currency: 'PEN', total: 58610, owner: 'U02', createdAt: '2026-09-05 12:20', sede: 'SED-01', notes: 'Grupo corporativo. Factura a nombre de la empresa. Crédito 30 días.',
       passengers: [
         { name: 'Ernesto Valdivia Ríos', doc: 'DNI 40112233', type: 'ADT', nationality: 'Peruana', birth: '1979-03-11', phone: '987 100 201', diet: '' },
@@ -806,20 +875,41 @@ window.SEED = (function () {
       { id: 'ADD-1106', name: 'Entrada a Huayna Picchu', category: 'Entrada', price: 75, currency: 'PEN', per: 'pax', appliesTo: ['ADT', 'CHD'], optional: true }
     ],
     accommodation: { optional: true, note: 'Precio por habitación y noche, desayuno incluido. Los infantes comparten cama.', legs: [
-      { id: 'LEG-1', city: 'Lima', destId: 'D14', nights: 1, hotels: [
+      { id: 'LEG-1', city: 'Lima', destId: 'D14', nights: 1, minNights: 1, maxNights: 3, hotels: [
         { id: 'H-LIM-3', name: 'Hotel Miraflores Park Inn (3*)', category: '3 estrellas', rooms: [{ type: 'Simple', capacity: 1, price: 70 }, { type: 'Doble', capacity: 2, price: 85 }, { type: 'Triple', capacity: 3, price: 110 }] },
-        { id: 'H-LIM-4', name: 'Hotel Costa Verde Suites (4*)', category: '4 estrellas', rooms: [{ type: 'Simple', capacity: 1, price: 115 }, { type: 'Doble', capacity: 2, price: 135 }, { type: 'Triple', capacity: 3, price: 170 }] }] },
-      { id: 'LEG-2', city: 'Arequipa', destId: 'D11', nights: 2, hotels: [
+        { id: 'H-LIM-4', name: 'Hotel Costa Verde Suites (4*)', category: '4 estrellas', seasonRates: [{ from: '2026-12-20', to: '2027-01-05', pct: 20, label: 'Fiestas' }], rooms: [{ type: 'Simple', capacity: 1, price: 115 }, { type: 'Doble', capacity: 2, price: 135 }, { type: 'Triple', capacity: 3, price: 170 }] }] },
+      { id: 'LEG-2', city: 'Arequipa', destId: 'D11', nights: 2, minNights: 1, maxNights: 4, hotels: [
         { id: 'H-AQP-3', name: 'Casona del Sillar (3*)', category: '3 estrellas', rooms: [{ type: 'Simple', capacity: 1, price: 55 }, { type: 'Doble', capacity: 2, price: 68 }, { type: 'Triple', capacity: 3, price: 90 }] },
         { id: 'H-AQP-4', name: 'Hotel Misti Colonial (4*)', category: '4 estrellas', rooms: [{ type: 'Simple', capacity: 1, price: 90 }, { type: 'Doble', capacity: 2, price: 105 }, { type: 'Triple', capacity: 3, price: 135 }] }] },
-      { id: 'LEG-3', city: 'Puno', destId: 'D09', nights: 2, hotels: [
-        { id: 'H-PUN-3', name: 'Posada del Titicaca (3*)', category: '3 estrellas', rooms: [{ type: 'Simple', capacity: 1, price: 50 }, { type: 'Doble', capacity: 2, price: 62 }, { type: 'Triple', capacity: 3, price: 80 }] },
-        { id: 'H-PUN-4', name: 'Titicaca Lodge Uros (4*)', category: '4 estrellas', providerId: 'PRV-011', rooms: [{ type: 'Doble', capacity: 2, price: 120 }, { type: 'Triple', capacity: 3, price: 150 }] }] },
-      { id: 'LEG-4', city: 'Cusco', destId: 'D04', nights: 4, hotels: [
-        { id: 'H-CUS-3', name: 'Hostal Valle Inka (3*)', category: '3 estrellas', providerId: 'PRV-003', rooms: [{ type: 'Simple', capacity: 1, price: 48 }, { type: 'Doble', capacity: 2, price: 60 }, { type: 'Triple', capacity: 3, price: 78 }] },
-        { id: 'H-CUS-4', name: 'Hotel Tambo Real Cusco (4*)', category: '4 estrellas', providerId: 'PRV-001', rooms: [{ type: 'Simple', capacity: 1, price: 85 }, { type: 'Doble', capacity: 2, price: 95 }, { type: 'Triple', capacity: 3, price: 125 }] },
-        { id: 'H-CUS-5', name: 'Hotel Piedra Viva Boutique (5*)', category: '5 estrellas', providerId: 'PRV-002', rooms: [{ type: 'Doble', capacity: 2, price: 180 }, { type: 'Triple', capacity: 3, price: 230 }] }] }
+      { id: 'LEG-3', city: 'Puno', destId: 'D09', nights: 2, minNights: 1, maxNights: 3, hotels: [
+        { id: 'H-PUN-3', name: 'Posada del Titicaca (3*)', category: '3 estrellas', seasonRates: [{ from: '2027-02-01', to: '2027-02-15', pct: 35, label: 'Fiesta de la Candelaria' }], rooms: [{ type: 'Simple', capacity: 1, price: 50 }, { type: 'Doble', capacity: 2, price: 62 }, { type: 'Triple', capacity: 3, price: 80 }] },
+        { id: 'H-PUN-4', name: 'Titicaca Lodge Uros (4*)', category: '4 estrellas', providerId: 'PRV-011', seasonRates: [{ from: '2027-02-01', to: '2027-02-15', pct: 35, label: 'Fiesta de la Candelaria' }], rooms: [{ type: 'Doble', capacity: 2, price: 120 }, { type: 'Triple', capacity: 3, price: 150 }] }] },
+      { id: 'LEG-4', city: 'Cusco', destId: 'D04', nights: 4, minNights: 3, maxNights: 6, hotels: [
+        { id: 'H-CUS-3', name: 'Hostal Valle Inka (3*)', category: '3 estrellas', providerId: 'PRV-003', seasonRates: [{ from: '2026-06-01', to: '2026-08-31', pct: 20, label: 'Temporada alta' }], rooms: [{ type: 'Simple', capacity: 1, price: 48 }, { type: 'Doble', capacity: 2, price: 60 }, { type: 'Triple', capacity: 3, price: 78 }] },
+        { id: 'H-CUS-4', name: 'Hotel Tambo Real Cusco (4*)', category: '4 estrellas', providerId: 'PRV-001', seasonRates: [{ from: '2026-06-01', to: '2026-08-31', pct: 25, label: 'Temporada alta' }, { from: '2026-12-20', to: '2027-01-05', pct: 30, label: 'Fiestas' }], rooms: [{ type: 'Simple', capacity: 1, price: 85 }, { type: 'Doble', capacity: 2, price: 95 }, { type: 'Triple', capacity: 3, price: 125 }] },
+        { id: 'H-CUS-5', name: 'Hotel Piedra Viva Boutique (5*)', category: '5 estrellas', providerId: 'PRV-002', seasonRates: [{ from: '2026-06-01', to: '2026-08-31', pct: 25, label: 'Temporada alta' }, { from: '2026-12-20', to: '2027-01-05', pct: 30, label: 'Fiestas' }], rooms: [{ type: 'Doble', capacity: 2, price: 180 }, { type: 'Triple', capacity: 3, price: 230 }] }] }
     ], currency: 'USD' },
+    /* v2.8 · Viaje por tramos (spec 21): tours opcionales por ciudad y movilidad entre ciudades y local.
+       dayOffset = día dentro del tramo (0 = día de llegada). pricing 'pax' (adulto/niño) o 'vehiculo' (por tamaño de grupo). */
+    trip: { currency: 'USD', note: 'Elija noches y hotel por ciudad, sume tours y movilidad. Los infantes no pagan tours ni movilidad.', tours: [
+        { id: 'TT-LIM-1', legId: 'LEG-1', name: 'Tour gastronómico en Barranco', dayOffset: 0, time: '18:30', hours: 3, priceAdt: 65, priceChd: 40, capacity: 12, providerId: 'PRV-004', inTrip: true },
+        { id: 'TT-AQP-1', legId: 'LEG-2', name: 'Campiña de Arequipa y Mansión del Fundador', dayOffset: 1, time: '09:00', hours: 4, priceAdt: 35, priceChd: 22, capacity: 20, inTrip: true },
+        { id: 'TT-AQP-2', legId: 'LEG-2', name: 'Rafting en el río Chili', dayOffset: 1, time: '14:00', hours: 3, priceAdt: 45, priceChd: 0, minAge: 12, capacity: 10, inTrip: true },
+        { id: 'TT-PUN-1', legId: 'LEG-3', name: 'Kayak al amanecer en el Titicaca', dayOffset: 1, time: '06:00', hours: 2.5, priceAdt: 40, priceChd: 25, capacity: 8, inTrip: true },
+        { id: 'TT-PUN-2', legId: 'LEG-3', name: 'Islas Amantaní y Taquile (día completo)', dayOffset: 1, time: '07:30', hours: 9, priceAdt: 55, priceChd: 35, capacity: 25, inTrip: false },
+        { id: 'TT-CUS-1', legId: 'LEG-4', name: 'Montaña de Colores (Vinicunca)', dayOffset: 2, time: '04:00', hours: 12, priceAdt: 48, priceChd: 30, minAge: 8, capacity: 16, providerId: 'PRV-004', inTrip: true },
+        { id: 'TT-CUS-2', legId: 'LEG-4', name: 'Valle Sagrado VIP con almuerzo', dayOffset: 1, time: '08:00', hours: 10, priceAdt: 60, priceChd: 42, capacity: 18, inTrip: true },
+        { id: 'TT-CUS-3', legId: 'LEG-4', name: 'Clase de cocina andina y mercado San Pedro', dayOffset: 3, time: '10:00', hours: 3.5, priceAdt: 50, priceChd: 30, capacity: 10, inTrip: true }
+      ], transport: [
+        { id: 'TR-LIM-AQP-V', fromLegId: 'LEG-1', toLegId: 'LEG-2', kind: 'Vuelo', name: 'Vuelo Lima → Arequipa (económica)', pricing: 'pax', priceAdt: 95, priceChd: 85, hours: 1.5 },
+        { id: 'TR-LIM-AQP-B', fromLegId: 'LEG-1', toLegId: 'LEG-2', kind: 'Bus', name: 'Bus cama Lima → Arequipa (nocturno)', pricing: 'pax', priceAdt: 45, priceChd: 35, hours: 16 },
+        { id: 'TR-AQP-PUN-B', fromLegId: 'LEG-2', toLegId: 'LEG-3', kind: 'Bus', name: 'Bus turístico Arequipa → Puno (con paradas)', pricing: 'pax', priceAdt: 40, priceChd: 30, hours: 6 },
+        { id: 'TR-AQP-PUN-P', fromLegId: 'LEG-2', toLegId: 'LEG-3', kind: 'Privado', name: 'Movilidad privada Arequipa → Puno', pricing: 'vehiculo', vehicles: [{ name: 'Auto (1–3)', maxPax: 3, price: 220 }, { name: 'Van (4–10)', maxPax: 10, price: 340 }], hours: 5.5 },
+        { id: 'TR-PUN-CUS-T', fromLegId: 'LEG-3', toLegId: 'LEG-4', kind: 'Tren', name: 'Tren Titicaca Puno → Cusco', pricing: 'pax', priceAdt: 290, priceChd: 220, hours: 10 },
+        { id: 'TR-PUN-CUS-B', fromLegId: 'LEG-3', toLegId: 'LEG-4', kind: 'Bus', name: 'Bus turístico Ruta del Sol Puno → Cusco', pricing: 'pax', priceAdt: 55, priceChd: 40, hours: 10 },
+        { id: 'TL-LIM-APT', fromLegId: 'LEG-1', toLegId: null, kind: 'Traslado', name: 'Traslado aeropuerto ↔ hotel en Lima', pricing: 'vehiculo', vehicles: [{ name: 'Auto (1–3)', maxPax: 3, price: 30 }, { name: 'Van (4–10)', maxPax: 10, price: 55 }], hours: 1 },
+        { id: 'TL-CUS-DAY', fromLegId: 'LEG-4', toLegId: null, kind: 'Movilidad local', name: 'Movilidad privada en Cusco por un día (8 h)', pricing: 'vehiculo', vehicles: [{ name: 'Auto (1–3)', maxPax: 3, price: 90 }, { name: 'Van (4–10)', maxPax: 10, price: 150 }], hours: 8 }
+      ] },
     payment: { modes: ['total', 'adelanto'], depositPct: 30, balanceDueDays: 30, note: 'El saldo se cobra 30 días antes de la salida.' },
     pickup: { required: true, askFlight: true, points: ['Aeropuerto Jorge Chávez, Lima (indique vuelo)', 'Hotel en Miraflores o Barranco', 'Hotel en el Centro de Lima'] },
     related: [{ productId: 'PRD-001', relation: 'Complementario' }], channels: { erp: true, crm: true, quotes: true, b2b: true, portal: true, cms: true, ecommerce: true, mobile: true },
@@ -871,11 +961,473 @@ window.SEED = (function () {
     'R-MAX-PAX': 'Starter', 'R-COMPANIONS': 'Starter', 'R-PROMO': 'Starter', 'R-SEASON': 'Starter', 'R-DEPOSIT': 'Starter', 'R-PREVIEW-REMOVE': 'Starter', 'R-PICKUP': 'Starter', 'R-COMMENTS': 'Starter',
     'R-MIN-GROUP': 'Professional', 'R-ALTITUDE': 'Professional', 'R-LODGING': 'Professional', 'R-LODGING-CAPACITY': 'Professional', 'R-SINGLE-SUPP': 'Professional', 'R-ADDONS': 'Professional',
     'R-GROUP-DISC': 'Professional', 'R-EARLY-BIRD': 'Professional', 'R-LAST-MINUTE': 'Professional', 'R-MULTICURRENCY': 'Professional', 'R-NOMINATIVE': 'Professional', 'R-PAX-MESSAGES': 'Professional', 'R-PAX-FEEDBACK': 'Professional', 'R-OWN-REVIEWS': 'Professional',
-    'R-PAY-LATER': 'Enterprise', 'R-PAY-FEE': 'Enterprise', 'R-REVIEW-INVITE': 'Enterprise'
+    'R-PAY-LATER': 'Enterprise', 'R-PAY-FEE': 'Enterprise', 'R-REVIEW-INVITE': 'Enterprise', 'R-TRIP-BUILDER': 'Professional', 'R-IN-TRIP-SALES': 'Professional'
   };
   D.settings.bookingRules.push({ id: 'R-OWN-REVIEWS', group: 'Comunicación', name: 'Reseñas propias verificadas', desc: 'Solicita calificación y reseña a los pasajeros después del viaje; se moderan y publican en el sitio y el widget con sello de «viaje verificado».', enabled: true, params: { daysAfter: 1, minStarsAutoPublish: 4, moderation: true }, scope: ['Portal pasajero', 'Sitio web', 'Widget', 'Reseñas'], productOverride: true });
+  D.settings.bookingRules.push({ id: 'R-TRIP-BUILDER', group: 'Alojamiento', name: 'Viaje por tramos', desc: 'El cliente elige cuántas noches pasa en cada ciudad (dentro del mínimo y máximo del tramo), el hotel con tarifa por fecha y suma tours y movilidad por ciudad. El total se separa en alojamiento, tours, movilidad y adicionales.', enabled: true, params: {}, scope: ['Sitio web', 'Widget', 'Cotizaciones'], productOverride: true });   // v2.8 · spec 21
+  D.settings.bookingRules.push({ id: 'R-IN-TRIP-SALES', group: 'Comunicación', name: 'Venta durante el viaje', desc: 'El pasajero ve y compra tours y movilidad de los tramos que le quedan desde su portal o por WhatsApp con un link de pago; el proveedor confirma desde la extranet.', enabled: true, params: { minHoursBefore: 12 }, scope: ['Portal pasajero', 'WhatsApp'], productOverride: true });   // v2.8 · spec 21
   D.settings.bookingRules.forEach(r => { r.minPlan = minPlan[r.id] || 'Starter'; });
   D.planCatalogDemo = { isDemo: true, note: 'Planes, precios y límites de PRUEBA para validar el modelo; se reemplazarán por los definitivos.', order: PLAN_ORDER };
+
+  /* ---------------- v2.8 · Vitrina gratuita, pases, add-ons, pasarelas, SEO y aventuras (spec 22) ----------------
+     La vitrina es de la PLATAFORMA (dominio propio, multi-agencia); lo demás es del tenant. */
+  D.showcase = {
+    brand: 'Rutas Libres Perú', domain: 'rutaslibres.pe', domainNote: 'Nombre y dominio provisionales: se eligen con el equipo SEO antes del lanzamiento.',
+    rules: { freeMonthlyBookings: 30, feePerAttendee: 2, feeCurrency: 'PEN', commissionPct: { none: 8, Starter: 5, Professional: 4, Enterprise: 3 } },
+    cities: [
+      { id: 'lima', name: 'Lima', zones: ['Centro Histórico', 'Miraflores', 'Barranco'] },
+      { id: 'cusco', name: 'Cusco', zones: ['Centro Histórico', 'San Blas', 'Valle Sagrado'] },
+      { id: 'arequipa', name: 'Arequipa', zones: ['Centro Histórico', 'Yanahuara'] },
+      { id: 'puno', name: 'Puno', zones: ['Puerto', 'Centro'] }
+    ],
+    themes: ['Historia', 'Gastronomía', 'Arte urbano', 'Naturaleza', 'Mercados', 'Nocturno'],
+    agencies: [
+      { id: 'SHA-01', tenantId: 'TNT-0001', name: 'Andes Horizonte Travel', city: 'lima', plan: 'Enterprise', verified: true, rating: 4.8, reviews: 412, since: '2026-06-01', color: '#1560B8', site: 'reservas.andeshorizonte.pe' },
+      { id: 'SHA-02', tenantId: 'TNT-0005', name: 'Ruta Norte Turismo', city: 'lima', plan: 'Pase 30 días', verified: true, rating: 4.6, reviews: 38, since: '2026-09-12', color: '#0E8A6A', site: null },
+      { id: 'SHA-03', tenantId: null, name: 'Lima a Pie Free Walking', city: 'lima', plan: 'Vitrina gratis', verified: true, rating: 4.7, reviews: 1290, since: '2026-07-04', color: '#C2410C', site: null },
+      { id: 'SHA-04', tenantId: null, name: 'Cusco Libre Tours', city: 'cusco', plan: 'Vitrina gratis', verified: true, rating: 4.9, reviews: 2210, since: '2026-06-20', color: '#7C3AED', site: null },
+      { id: 'SHA-05', tenantId: null, name: 'Misti Walkers Arequipa', city: 'arequipa', plan: 'Vitrina gratis', verified: false, rating: 4.5, reviews: 186, since: '2026-08-18', color: '#B45309', site: null },
+      { id: 'SHA-06', tenantId: null, name: 'Titicaca Andino', city: 'puno', plan: 'Vitrina gratis', verified: true, rating: 4.6, reviews: 97, since: '2026-09-02', color: '#0369A1', site: null }
+    ],
+    listings: [
+      { id: 'SHL-001', agencyId: 'SHA-03', slug: 'centro-historico-de-lima-gratis', title: 'Free tour Centro Histórico de Lima', city: 'lima', zone: 'Centro Histórico', theme: 'Historia', langs: ['es', 'en'], times: ['10:00', '15:00'], hours: 2.5, meeting: 'Parque Kennedy, frente a la iglesia Virgen Milagrosa (salida en bus público)', model: 'propina', price: 0, rating: 4.8, reviews: 860, status: 'publicado', featured: true, capacity: 25, highlights: ['Plaza Mayor y Palacio de Gobierno', 'Catacumbas por fuera y balcones coloniales', 'Degustación de pisco sour (opcional)'] },
+      { id: 'SHL-002', agencyId: 'SHA-03', slug: 'barranco-arte-urbano-gratis', title: 'Free tour Barranco y arte urbano', city: 'lima', zone: 'Barranco', theme: 'Arte urbano', langs: ['es', 'en'], times: ['16:00'], hours: 2, meeting: 'Plaza de Barranco, junto a la biblioteca municipal', model: 'propina', price: 0, rating: 4.7, reviews: 430, status: 'publicado', featured: false, capacity: 20, highlights: ['Puente de los Suspiros', 'Murales y galerías', 'Atardecer en el mirador'] },
+      { id: 'SHL-003', agencyId: 'SHA-01', slug: 'miraflores-malecon-gratis', title: 'Free tour Miraflores y malecón', city: 'lima', zone: 'Miraflores', theme: 'Historia', langs: ['es', 'en', 'pt'], times: ['09:30'], hours: 2, meeting: 'Parque del Amor, junto a la escultura El Beso', model: 'propina', price: 0, rating: 4.8, reviews: 212, status: 'publicado', featured: true, capacity: 20, highlights: ['Huaca Pucllana por fuera', 'Malecón y parapentes', 'Recomendaciones de cevicherías'] },
+      { id: 'SHL-004', agencyId: 'SHA-01', slug: 'tour-gastronomico-barranco', title: 'Tour gastronómico en Barranco (de pago)', city: 'lima', zone: 'Barranco', theme: 'Gastronomía', langs: ['es', 'en'], times: ['18:30'], hours: 3, meeting: 'Plaza de Barranco', model: 'pago', price: 243, currency: 'PEN', rating: 4.9, reviews: 96, status: 'publicado', featured: false, capacity: 12, productId: 'PRD-011', highlights: ['5 paradas con degustación', 'Cevichería, picantería y bar de pisco', 'Grupo reducido'] },
+      { id: 'SHL-005', agencyId: 'SHA-02', slug: 'lima-nocturna-gratis', title: 'Lima nocturna: plazas iluminadas', city: 'lima', zone: 'Centro Histórico', theme: 'Nocturno', langs: ['es'], times: ['19:00'], hours: 2, meeting: 'Plaza San Martín, frente al monumento', model: 'propina', price: 0, rating: 4.6, reviews: 38, status: 'publicado', featured: false, capacity: 20, highlights: ['Circuito Mágico del Agua (entrada aparte)', 'Barrio Chino', 'Historias de la Lima virreinal'] },
+      { id: 'SHL-006', agencyId: 'SHA-04', slug: 'cusco-centro-historico-gratis', title: 'Free tour Cusco: Centro Histórico y San Blas', city: 'cusco', zone: 'Centro Histórico', theme: 'Historia', langs: ['es', 'en'], times: ['10:00', '13:30', '16:00'], hours: 2.5, meeting: 'Plaza de Armas, bajo el portal de Panes (paraguas amarillo)', model: 'propina', price: 0, rating: 4.9, reviews: 1810, status: 'publicado', featured: true, capacity: 30, highlights: ['Muro de los 12 ángulos', 'Barrio de San Blas', 'Mirador y tienda de textiles'] },
+      { id: 'SHL-007', agencyId: 'SHA-04', slug: 'mercado-san-pedro-gratis', title: 'Mercado San Pedro y comida local', city: 'cusco', zone: 'Centro Histórico', theme: 'Mercados', langs: ['es', 'en'], times: ['11:00'], hours: 2, meeting: 'Puerta principal del mercado San Pedro', model: 'propina', price: 0, rating: 4.8, reviews: 400, status: 'publicado', featured: false, capacity: 15, highlights: ['Frutas andinas', 'Jugos y caldos', 'Cacao y café'] },
+      { id: 'SHL-008', agencyId: 'SHA-01', slug: 'valle-sagrado-vip', title: 'Valle Sagrado VIP con almuerzo (de pago)', city: 'cusco', zone: 'Valle Sagrado', theme: 'Naturaleza', langs: ['es', 'en'], times: ['08:00'], hours: 10, meeting: 'Recojo en hotel del centro de Cusco', model: 'pago', price: 448, currency: 'PEN', rating: 4.8, reviews: 140, status: 'publicado', featured: true, capacity: 16, productId: 'PRD-011', highlights: ['Pisac y Ollantaytambo', 'Almuerzo buffet', 'Guía bilingüe'] },
+      { id: 'SHL-009', agencyId: 'SHA-05', slug: 'arequipa-ciudad-blanca-gratis', title: 'Free tour Arequipa, la Ciudad Blanca', city: 'arequipa', zone: 'Centro Histórico', theme: 'Historia', langs: ['es', 'en'], times: ['10:00', '15:00'], hours: 2.5, meeting: 'Plaza de Armas, junto a la fuente', model: 'propina', price: 0, rating: 4.5, reviews: 150, status: 'publicado', featured: false, capacity: 25, highlights: ['Monasterio de Santa Catalina por fuera', 'Sillar y casonas', 'Mirador de Yanahuara'] },
+      { id: 'SHL-010', agencyId: 'SHA-05', slug: 'picanterias-arequipa', title: 'Ruta de picanterías arequipeñas', city: 'arequipa', zone: 'Yanahuara', theme: 'Gastronomía', langs: ['es'], times: ['12:30'], hours: 3, meeting: 'Mirador de Yanahuara', model: 'propina', price: 0, rating: 4.4, reviews: 36, status: 'en_revision', featured: false, capacity: 12, highlights: ['Rocoto relleno', 'Chicha de guiñapo', 'Historia de las picanteras'] },
+      { id: 'SHL-011', agencyId: 'SHA-06', slug: 'puno-lago-titicaca-gratis', title: 'Free tour Puno y bahía del Titicaca', city: 'puno', zone: 'Puerto', theme: 'Naturaleza', langs: ['es', 'en'], times: ['09:00'], hours: 2, meeting: 'Muelle de Puno, caseta de información', model: 'propina', price: 0, rating: 4.6, reviews: 97, status: 'publicado', featured: false, capacity: 20, highlights: ['Malecón Bahía de los Incas', 'Mirador Kuntur Wasi', 'Leyendas del lago'] },
+      { id: 'SHL-012', agencyId: 'SHA-06', slug: 'puno-noche-folklorica', title: 'Noche folclórica en Puno', city: 'puno', zone: 'Centro', theme: 'Nocturno', langs: ['es'], times: ['19:30'], hours: 2, meeting: 'Jr. Lima, frente a la catedral', model: 'propina', price: 0, rating: 0, reviews: 0, status: 'rechazado', rejectReason: 'Fotos con marca de agua de otra agencia. Suba fotos propias.', featured: false, capacity: 30, highlights: ['Danzas de la Candelaria', 'Música en vivo'] }
+    ],
+    bookings: [
+      { id: 'SHB-0141', listingId: 'SHL-003', date: '2026-09-28', time: '09:30', name: 'Laura Gómez', email: 'laura.g@correo.com', pax: 2, lang: 'es', status: 'asistio', fee: 0, createdAt: '2026-09-25 21:10', source: 'Google orgánico' },
+      { id: 'SHB-0142', listingId: 'SHL-004', date: '2026-09-28', time: '18:30', name: 'Tom Becker', email: 'tbecker@mail.de', pax: 2, lang: 'en', status: 'asistio', amount: 486, currency: 'PEN', commissionPct: 3, fee: 14.58, createdAt: '2026-09-26 10:02', source: 'Blog: qué comer en Lima' },
+      { id: 'SHB-0143', listingId: 'SHL-003', date: '2026-09-30', time: '09:30', name: 'Ana Paula Ribeiro', email: 'apr@mail.br', pax: 3, lang: 'pt', status: 'confirmada', fee: 0, createdAt: '2026-09-27 18:44', source: 'Google orgánico' },
+      { id: 'SHB-0144', listingId: 'SHL-008', date: '2026-10-02', time: '08:00', name: 'Marco Rossi', email: 'mrossi@mail.it', pax: 2, lang: 'en', status: 'confirmada', amount: 896, currency: 'PEN', commissionPct: 3, fee: 26.88, createdAt: '2026-09-28 09:15', source: 'Instagram' },
+      { id: 'SHB-0145', listingId: 'SHL-003', date: '2026-09-27', time: '09:30', name: 'Diego Paredes', email: 'dparedes@correo.pe', pax: 1, lang: 'es', status: 'no_show', fee: 0, createdAt: '2026-09-26 22:30', source: 'Directo' },
+      { id: 'SHB-0146', listingId: 'SHL-005', date: '2026-09-29', time: '19:00', name: 'Sofía Herrera', email: 'sofia.h@correo.com', pax: 4, lang: 'es', status: 'confirmada', fee: 0, createdAt: '2026-09-28 13:00', source: 'Google orgánico' },
+      { id: 'SHB-0147', listingId: 'SHL-006', date: '2026-09-29', time: '10:00', name: 'Emily Clark', email: 'eclark@mail.uk', pax: 2, lang: 'en', status: 'confirmada', fee: 4, createdAt: '2026-09-27 08:20', source: 'Google orgánico' }
+    ],
+    posts: [
+      { id: 'SHP-001', slug: 'free-tours-en-lima-guia', title: 'Free tours en Lima: guía 2026 por barrio', excerpt: 'Centro, Miraflores y Barranco a pie: horarios, puntos de encuentro y cuánta propina dejar.', city: 'lima', keyword: 'free tour lima', status: 'publicado', publishedAt: '2026-08-20', author: 'Equipo SEO', words: 1850, seoScore: 92, clicks: 3120, impressions: 48200, position: 6.4 },
+      { id: 'SHP-002', slug: 'que-comer-en-lima-en-un-dia', title: 'Qué comer en Lima en un día (sin gastar de más)', excerpt: 'Ruta de mercados, cevicherías y picanterías, con tours gastronómicos recomendados.', city: 'lima', keyword: 'qué comer en lima', status: 'publicado', publishedAt: '2026-09-05', author: 'Equipo SEO', words: 1420, seoScore: 88, clicks: 1460, impressions: 30100, position: 9.1 },
+      { id: 'SHP-003', slug: 'cusco-en-3-dias-a-pie', title: 'Cusco en 3 días a pie: free tours y miradores', excerpt: 'Itinerario para aclimatarse, con free tours por San Blas y el mercado San Pedro.', city: 'cusco', keyword: 'free walking tour cusco', status: 'publicado', publishedAt: '2026-09-15', author: 'Equipo SEO', words: 2100, seoScore: 90, clicks: 980, impressions: 22400, position: 11.3 },
+      { id: 'SHP-004', slug: 'cuanta-propina-free-tour-peru', title: '¿Cuánta propina dejar en un free tour en Perú?', excerpt: 'Montos de referencia por ciudad y por qué el modelo de propina funciona.', city: null, keyword: 'propina free tour', status: 'borrador', publishedAt: null, author: 'Equipo SEO', words: 900, seoScore: 71, clicks: 0, impressions: 0, position: null }
+    ],
+    funnel: [
+      { month: '2026-07', visits: 6400, bookings: 410, agencies: 3, trials: 0, paid: 0 },
+      { month: '2026-08', visits: 14800, bookings: 1120, agencies: 5, trials: 1, paid: 0 },
+      { month: '2026-09', visits: 27300, bookings: 2090, agencies: 6, trials: 2, paid: 1 }
+    ],
+    benefits: [
+      ['Vitrina gratis', 'Publique free tours sin costo y reciba reservas con nombre y correo.'],
+      ['Su propio sitio web', 'Dominio propio con SSL, blog y herramientas SEO para que Google lo encuentre.'],
+      ['Venda más en cada viaje', 'Armador de viajes por tramos, venta en ruta y paquetes con hotel por ciudad.'],
+      ['Cobre como quiera', 'Tarjeta, Yape o PayPal; el reporte muestra la comisión de cada pasarela y su neto.'],
+      ['Todo en un panel', 'Reservas, proveedores, pagos y rentabilidad en un mismo lugar.']
+    ]
+  };
+  D.accessPasses = [
+    { id: 'PASE-0001', tenantId: 'TNT-0005', name: 'Pase Básico 30 días', from: '2026-09-12', to: '2026-10-12', price: 0, currency: 'PEN', reason: 'Agencia captada en la vitrina (Lima nocturna)', features: ['crm', 'catalog', 'quotes', 'reservations', 'finance_basic', 'portal_client', 'cms', 'custom_domain'], status: 'activo', createdBy: 'U16', createdAt: '2026-09-12 10:30', convertTo: 'Starter' },
+    { id: 'PASE-0002', tenantId: 'TNT-0006', name: 'Pase Básico 30 días', from: '2026-07-01', to: '2026-07-31', price: 149, currency: 'PEN', reason: 'Prueba pagada antes de suscribirse', features: ['crm', 'catalog', 'quotes', 'reservations', 'finance_basic'], status: 'vencido', createdBy: 'U16', createdAt: '2026-07-01 09:00', convertTo: 'Starter' }
+  ];
+  D.addonCatalogV28 = [
+    { key: 'paypal_gateway', label: 'Cobros con PayPal', billing: 'unico', price: 149, priceMonth: null, desc: 'Conexión de la cuenta PayPal de la agencia, conciliación y reporte de comisiones. Pago único.' },
+    { key: 'trip_builder', label: 'Armador de viajes por tramos', billing: 'ambos', price: 690, priceMonth: 89, desc: 'Noches por ciudad, tarifas por fecha, tours y movilidad por tramo, venta en ruta.' },
+    { key: 'seo_pro', label: 'SEO y blog de aventuras', billing: 'ambos', price: 490, priceMonth: 69, desc: 'Auditoría SEO por página, redirecciones, sitemap, datos estructurados y blog de aventuras con clientes.' },
+    { key: 'showcase_boost', label: 'Destacado en la vitrina', billing: 'mensual', price: null, priceMonth: 39, desc: 'Sus tours aparecen primero en su ciudad y en el blog de la vitrina.' },
+    { key: 'custom_domain', label: 'Dominio propio + SSL', billing: 'ambos', price: 290, priceMonth: 45, desc: 'Sitio y portales bajo el dominio de la agencia (CNAME + SSL automático).' }
+  ];
+  D.gateways = [
+    { id: 'GW-01', provider: 'Pasarela local (tarjetas)', status: 'activo', mode: 'producción', account: 'Comercio 4402118', currency: 'PEN', feePct: 3.99, feeFixed: 0, feeCurrency: 'PEN', taxOnFee: true, settleDays: 2, passFee: false },
+    { id: 'GW-02', provider: 'PayPal', status: 'activo', mode: 'producción', account: 'pagos@andeshorizonte.pe', currency: 'USD', feePct: 5.4, feeFixed: 0.3, feeCurrency: 'USD', fxSpreadPct: 3.5, taxOnFee: false, settleDays: 0, passFee: false, note: 'Comisión referencial para cobros internacionales; se toma del reporte de PayPal en cada transacción.' },
+    { id: 'GW-03', provider: 'Yape / Plin (QR)', status: 'activo', mode: 'producción', account: 'Cuenta empresa BCP', currency: 'PEN', feePct: 0, feeFixed: 0, feeCurrency: 'PEN', taxOnFee: false, settleDays: 0, passFee: false }
+  ];
+  D.gatewayTxns = [
+    { id: 'GTX-0101', gatewayId: 'GW-01', paymentId: 'PAG-01912', resId: 'RES-2026-000346', date: '2026-09-10', gross: 431, currency: 'USD', fee: 17.2, tax: 3.1, net: 410.7, status: 'liquidado', ref: 'TXN 7710-CC12' },
+    { id: 'GTX-0102', gatewayId: 'GW-01', paymentId: 'PAG-01915', resId: 'RES-2026-000347', date: '2026-08-28', gross: 2716, currency: 'USD', fee: 108.37, tax: 19.51, net: 2588.12, status: 'liquidado', ref: 'TXN 8812-AA90' },
+    { id: 'GTX-0103', gatewayId: 'GW-02', paymentId: 'PAG-01930', resId: 'RES-2026-000361', date: '2026-08-30', gross: 2486, currency: 'USD', fee: 134.54, tax: 0, net: 2351.46, status: 'liquidado', ref: 'PAYID-NB7Q2KA' },
+    { id: 'GTX-0104', gatewayId: 'GW-03', paymentId: 'PAG-01921', resId: 'RES-2026-000344', date: '2026-09-25', gross: 400, currency: 'USD', fee: 0, tax: 0, net: 400, status: 'liquidado', ref: 'YP 44910022' }
+  ];
+  D.siteDomains = [
+    { id: 'DOM-01', host: 'www.andeshorizonte.pe', kind: 'principal', status: 'verificado', dns: 'CNAME → sites.kipucontrol.com', ssl: 'emitido', sslUntil: '2026-12-28', verifiedAt: '2026-04-03' },
+    { id: 'DOM-02', host: 'reservas.andeshorizonte.pe', kind: 'reservas', status: 'verificado', dns: 'CNAME → sites.kipucontrol.com', ssl: 'emitido', sslUntil: '2026-12-28', verifiedAt: '2026-04-03' },
+    { id: 'DOM-03', host: 'blog.andeshorizonte.pe', kind: 'blog', status: 'pendiente_dns', dns: 'TXT kipu-verify=ah-7f21c9 · CNAME → sites.kipucontrol.com', ssl: 'pendiente', sslUntil: null, verifiedAt: null }
+  ];
+  D.seoPages = [
+    { id: 'SEO-01', path: '/', title: 'Andes Horizonte Travel | Tours y paquetes por el Perú', desc: 'Tours, paquetes y viajes a medida por el Perú con precios web y disponibilidad en línea.', h1: 1, words: 820, images: 14, alt: 14, schema: 'TravelAgency', canonical: true, indexable: true, speed: 91, keyword: 'agencia de viajes perú', clicks: 2210, position: 8.2 },
+    { id: 'SEO-02', path: '/tour/peru-clasico-10d9n', title: 'Perú Clásico 10D/9N: Lima, Arequipa, Puno y Cusco', desc: 'Circuito de 10 días con hotel por ciudad, tours y movilidad a elección.', h1: 1, words: 1240, images: 9, alt: 9, schema: 'TouristTrip, Offer', canonical: true, indexable: true, speed: 86, keyword: 'paquete perú 10 días', clicks: 640, position: 12.5 },
+    { id: 'SEO-03', path: '/tour/machu-picchu-full-day', title: 'Machu Picchu Full Day', desc: '', h1: 1, words: 610, images: 8, alt: 5, schema: 'TouristTrip', canonical: true, indexable: true, speed: 74, keyword: 'machu picchu full day', clicks: 1890, position: 7.4 },
+    { id: 'SEO-04', path: '/blog/que-llevar-a-machu-picchu', title: 'Qué llevar a Machu Picchu: lista completa', desc: 'Lista de equipaje por temporada, documentos y altura.', h1: 2, words: 1600, images: 6, alt: 6, schema: 'Article', canonical: true, indexable: true, speed: 88, keyword: 'qué llevar a machu picchu', clicks: 920, position: 5.9 },
+    { id: 'SEO-05', path: '/ofertas-old', title: 'Ofertas', desc: '', h1: 0, words: 90, images: 2, alt: 0, schema: '', canonical: false, indexable: true, speed: 62, keyword: '', clicks: 12, position: 48 }
+  ];
+  D.redirects = [
+    { id: 'RED-01', from: '/ofertas-old', to: '/ofertas', code: 301, hits: 214, status: 'activo' },
+    { id: 'RED-02', from: '/tours/machupicchu', to: '/tour/machu-picchu-full-day', code: 301, hits: 1880, status: 'activo' }
+  ];
+  D.travelStories = [
+    { id: 'AVT-001', slug: 'familia-rios-peru-clasico', title: 'Diez días, cuatro ciudades: la familia Ríos en el Perú Clásico', clientId: 'CLI-0001', resId: 'RES-2026-000361', city: 'Arequipa', status: 'publicado', consent: { at: '2026-09-29 08:40', by: 'Gabriela Ríos Montoya', channel: 'Portal cliente', photos: true, name: 'solo nombre' }, photos: 6, quote: 'El bus con paradas a Puno fue lo mejor: vimos vicuñas y la laguna Lagunillas.', publishedAt: '2026-09-29', seoScore: 84, views: 312, linkedProduct: 'PRD-011' },
+    { id: 'AVT-002', slug: 'sophie-humantay', title: 'Sophie y la laguna Humantay al amanecer', clientId: 'CLI-0006', resId: 'RES-2026-000346', city: 'Cusco', status: 'pendiente_consentimiento', consent: null, photos: 4, quote: 'Subir a 4 200 m valió cada paso.', publishedAt: null, seoScore: 62, views: 0, linkedProduct: 'PRD-004' },
+    { id: 'AVT-003', slug: 'incentivo-mineros-cusco', title: 'Incentivo corporativo: 12 colaboradores en Cusco', clientId: 'CLI-0002', resId: 'RES-2026-000348', city: 'Cusco', status: 'borrador', consent: { at: '2026-09-20 11:00', by: 'Úrsula Benavides Lara', channel: 'Correo firmado', photos: true, name: 'sin nombres de personas' }, photos: 10, quote: 'Organización impecable de principio a fin.', publishedAt: null, seoScore: 70, views: 0, linkedProduct: null }
+  ];
+  D.receivables.push({ id: 'CXC-00730', resId: 'RES-2026-000361', clientId: 'CLI-0001', concept: 'Pago total — pedido web WEB-2026-00961', amount: 2486, currency: 'USD', due: '2026-08-30', paid: 2486, status: 'pagada', kind: 'total' });
+  D.payments.push({ id: 'PAG-01930', receivableId: 'CXC-00730', resId: 'RES-2026-000361', method: 'PayPal', amount: 2486, currency: 'USD', date: '2026-08-30', status: 'aplicado', ref: 'PAYID-NB7Q2KA', by: 'Sistema', gatewayFee: 134.54, net: 2351.46 });
+  /* ---------------------------------------------------------------- v2.9 · Plantillas web y contenido con IA (spec 23) */
+  D.addonCatalogV28.push(
+    { key: 'ai_content', label: 'Contenido con IA', billing: 'mensual', price: null, priceMonth: 59, desc: '300 créditos al mes: mejorar descripciones de tours, metadatos SEO, traducciones, relatos de aventura y artículos del blog. Usted revisa antes de publicar.' },
+    { key: 'ai_images', label: 'Imágenes con IA', billing: 'ambos', price: 39, priceMonth: 49, desc: 'Paquete de 20 imágenes (pago único) o 30 al mes, para tours, banners y blog, con texto alternativo y etiqueta «Imagen generada con IA».' },
+    { key: 'premium_template', label: 'Plantilla premium', billing: 'unico', price: 290, priceMonth: null, desc: 'Diseño de autor para el sitio web (p. ej. Nazca Noche). Pago único por plantilla; las incluidas no tienen costo.' }
+  );
+  D.aiPlans = [
+    { code: 'IA-BASICO', name: 'IA Básico', price: 59, billing: 'mensual', content: 300, images: 0, addon: 'ai_content', features: ['300 créditos de contenido al mes', 'Mejorar textos, SEO y traducciones (ES, EN, PT)', 'Relatos de aventura desde la reserva'] },
+    { code: 'IA-PRO', name: 'IA Pro', price: 149, billing: 'mensual', content: 1000, images: 30, addon: 'ai_content', features: ['1 000 créditos de contenido al mes', '30 imágenes al mes', 'Artículos de blog completos con enlaces a sus tours', 'Tono de marca guardado'] }
+  ];
+  D.aiCreditPacks = [
+    { code: 'IA-CONT-EXTRA-200', name: '200 créditos de contenido', kind: 'contenido', credits: 200, price: 39, billing: 'unico' },
+    { code: 'IA-IMG-20', name: '20 imágenes', kind: 'imagenes', credits: 20, price: 39, billing: 'unico' },
+    { code: 'IA-IMG-60', name: '60 imágenes', kind: 'imagenes', credits: 60, price: 99, billing: 'unico' },
+    { code: 'IA-IMG-MES', name: '30 imágenes al mes', kind: 'imagenes', credits: 30, price: 49, billing: 'mensual' }
+  ];
+  D.aiCreditCost = { mejorar_texto: 2, meta_seo: 1, traducir: 3, relato_aventura: 4, articulo: 8, imagen: 1, imagen_hd: 2 };
+  D.aiCredits = {
+    plan: 'Enterprise', planIncluded: { contenido: 100, imagenes: 0 }, addons: ['IA-BASICO'],
+    balance: { contenido: 342, imagenes: 14 },
+    ledger: [
+      { id: 'ICL-0101', at: '2026-10-01 00:00', kind: 'contenido', movement: 'asignacion_plan', credits: 100, balance: 100, note: 'Incluido en el plan Enterprise' },
+      { id: 'ICL-0102', at: '2026-10-01 00:00', kind: 'contenido', movement: 'asignacion_plan', credits: 300, balance: 400, note: 'Add-on IA Básico (mensual)' },
+      { id: 'ICL-0103', at: '2026-10-08 11:20', kind: 'imagenes', movement: 'compra_paquete', credits: 20, balance: 20, note: 'Paquete IA-IMG-20 · S/ 39 · FAC-PLT-2026-0412' },
+      { id: 'ICL-0104', at: '2026-10-21 09:40', kind: 'contenido', movement: 'consumo', credits: -40, balance: 360, note: '18 pedidos de texto y SEO' },
+      { id: 'ICL-0105', at: '2026-10-28 16:05', kind: 'imagenes', movement: 'consumo', credits: -6, balance: 14, note: 'IAC-0043 · 4 imágenes (2 HD)' },
+      { id: 'ICL-0106', at: '2026-10-30 10:12', kind: 'contenido', movement: 'consumo', credits: -18, balance: 342, note: 'IAC-0040 a IAC-0042' }
+    ]
+  };
+  D.aiJobs = [
+    { id: 'IAC-0042', kind: 'meta_seo', target: 'pagina', targetId: '/tours/laguna-humantay-full-day', targetLabel: 'Laguna Humantay Full Day (página)', locale: 'es', tone: 'aventurero', status: 'listo', credits: 1, at: '2026-10-30 10:12', by: 'U02',
+      before: { title: 'Laguna Humantay Full Day', desc: 'Tour a la laguna Humantay.' },
+      after: { title: 'Laguna Humantay Full Day desde Cusco | Andes Horizonte', desc: 'Camine a la laguna turquesa a 4 200 m con guía, desayuno y almuerzo. Salida 4:00 a. m. desde su hotel en Cusco. Reserve en línea.' } },
+    { id: 'IAC-0041', kind: 'mejorar_texto', target: 'producto', targetId: 'PRD-003', targetLabel: 'Machu Picchu 2D/1N con noche en Aguas Calientes', locale: 'es', tone: 'cercano', status: 'aplicado', credits: 2, at: '2026-10-30 09:58', by: 'U02', appliedAt: '2026-10-30 10:03',
+      before: { text: 'Tour de 2 días a Machu Picchu con noche en Aguas Calientes. Incluye tren, bus y entrada.' },
+      after: { text: 'Viva Machu Picchu sin prisas: el primer día viaja en tren por el valle del Urubamba y duerme en Aguas Calientes; al amanecer del segundo sube en el primer bus y recorre la ciudadela con su guía antes de que llegue la multitud. Tren, bus, entrada y hotel incluidos.' } },
+    { id: 'IAC-0040', kind: 'traducir', target: 'producto', targetId: 'PRD-004', targetLabel: 'Laguna Humantay Full Day → inglés', locale: 'en', tone: 'aventurero', status: 'aplicado', credits: 3, at: '2026-10-29 17:30', by: 'U01', appliedAt: '2026-10-29 17:41',
+      before: { text: 'Caminata a la laguna Humantay con desayuno y almuerzo buffet.' }, after: { text: 'Hike to turquoise Humantay Lake with breakfast and buffet lunch included.' } },
+    { id: 'IAC-0043', kind: 'imagen', target: 'libre', targetLabel: 'Banner de temporada (4 imágenes)', locale: 'es', status: 'listo', credits: 6, at: '2026-10-28 16:05', by: 'U01',
+      prompt: 'Grupo de viajeros caminando por el camino inca al amanecer, montañas nevadas al fondo, luz cálida, estilo fotográfico', style: 'fotografico' },
+    { id: 'IAC-0039', kind: 'relato_aventura', target: 'historia', targetId: 'AVT-002', targetLabel: 'Sophie y la laguna Humantay al amanecer', locale: 'es', tone: 'cercano', status: 'descartado', credits: 4, at: '2026-10-27 12:10', by: 'U02',
+      before: { text: 'Notas del guía: clienta francesa, llegó primera a la laguna, foto con el nevado.' }, after: { text: 'A las 9:40, Sophie fue la primera del grupo en llegar…' } }
+  ];
+  D.aiImages = [
+    { id: 'IMG-0014', jobId: 'IAC-0043', alt: 'Viajeros en el camino inca al amanecer con nevados al fondo', style: 'fotografico', hd: true, status: 'en_uso', usedIn: ['Banner de inicio'], hue: 18, credits: 2 },
+    { id: 'IMG-0015', jobId: 'IAC-0043', alt: 'Grupo de caminantes en un sendero andino con luz cálida', style: 'fotografico', hd: true, status: 'generada', usedIn: [], hue: 32, credits: 2 },
+    { id: 'IMG-0016', jobId: 'IAC-0043', alt: 'Vista amplia de montañas nevadas y un sendero de piedra', style: 'fotografico', hd: false, status: 'generada', usedIn: [], hue: 205, credits: 1 },
+    { id: 'IMG-0017', jobId: 'IAC-0043', alt: 'Silueta de viajeros contra el cielo naranja del amanecer', style: 'fotografico', hd: false, status: 'descartada', usedIn: [], hue: 350, credits: 1 }
+  ];
+  D.siteTemplates = [
+    { id: 'TPL-ANDES', slug: 'andes-clasico', name: 'Andes Clásico', category: 'agencia', tier: 'incluida', price: 0, version: '3.0.0', status: 'publicado', author: 'Equipo KipuControl', authorKind: 'equipo', isDefault: true, installs: 41, minPlan: null,
+      desc: 'Versión 3.0 diseñada en Stitch: azul marino y dorado, títulos con serif, hero centrado con buscador de vidrio, destinos en mosaico, salidas en tabla y Libro de Reclamaciones destacado.', tags: ['Paquetes', 'Multidestino', 'Recomendada', 'Nuevo 3.0'],
+      tokens: { side: '#0F2747', accent: '#0E5DB5', soft: '#E3EEFB', sun: '#F2B33D', radius: 12, font: { display: 'Noto Serif', body: 'Plus Jakarta Sans' } }, lh: { perf: 94, a11y: 100, seo: 100, bp: 96 }, sections: ['hero_buscador', 'destinos', 'mas_vendidos', 'salidas', 'ofertas', 'resenas', 'blog', 'boletin'] },
+    { id: 'TPL-INTI', slug: 'inti-raymi', name: 'Inti Raymi', category: 'agencia', tier: 'incluida', price: 0, version: '1.4.0', status: 'publicado', author: 'Equipo KipuControl', authorKind: 'equipo', isDefault: false, installs: 17, minPlan: null,
+      desc: 'Rojo carmín y dorado del sol, bandas textiles y esquinas escalonadas. Para agencias de cultura y fiestas.', tags: ['Cultura', 'Peruano', 'Textil'],
+      tokens: { side: '#7E1526', accent: '#C8102E', soft: '#FBEDE6', sun: '#E3A33B', radius: 18 }, lh: { perf: 92, a11y: 98, seo: 100, bp: 96 }, sections: ['hero_buscador', 'destinos', 'mas_vendidos', 'resenas', 'aventuras', 'blog'] },
+    { id: 'TPL-AMAZONIA', slug: 'amazonia', name: 'Amazonía', category: 'aventura', tier: 'incluida', price: 0, version: '1.1.2', status: 'publicado', author: 'Equipo KipuControl', authorKind: 'equipo', isDefault: false, installs: 9, minPlan: null,
+      desc: 'Verdes profundos y acentos de guacamayo. Foto grande, itinerario día por día y nivel de dificultad visible.', tags: ['Aventura', 'Naturaleza', 'Trekking'],
+      tokens: { side: '#0F3D2E', accent: '#1F7A4D', soft: '#E3F3EA', sun: '#F2A93B', radius: 14 }, lh: { perf: 91, a11y: 97, seo: 100, bp: 96 }, sections: ['hero_video', 'experiencias', 'mas_vendidos', 'salidas', 'resenas', 'blog'] },
+    { id: 'TPL-PACIFICO', slug: 'pacifico', name: 'Pacífico', category: 'corporativo', tier: 'incluida', price: 0, version: '1.0.4', status: 'publicado', author: 'Equipo KipuControl', authorKind: 'equipo', isDefault: false, installs: 6, minPlan: 'Professional',
+      desc: 'Azul océano y arena, tipografía limpia y mucho aire. Para viajes corporativos, incentivos y MICE.', tags: ['Corporativo', 'MICE', 'Minimalista'],
+      tokens: { side: '#0B2E4A', accent: '#1F5F8B', soft: '#E4EFF7', sun: '#D9B27A', radius: 8 }, lh: { perf: 97, a11y: 100, seo: 100, bp: 100 }, sections: ['hero_simple', 'servicios', 'casos', 'cotizar', 'clientes', 'blog'] },
+    { id: 'TPL-CHAKANA', slug: 'chakana-free-tours', name: 'Chakana Free Tours', category: 'free_tour', tier: 'incluida', price: 0, version: '1.0.0', status: 'publicado', author: 'Equipo KipuControl', authorKind: 'equipo', isDefault: false, installs: 4, minPlan: null,
+      desc: 'Pensada para free tours: horarios del día primero, reserva con nombre y correo, punto de encuentro con mapa y propina sugerida.', tags: ['Free tours', 'Guías', 'Móvil primero'],
+      tokens: { side: '#3A1208', accent: '#B8432E', soft: '#FBEAE2', sun: '#E3A33B', radius: 20 }, lh: { perf: 98, a11y: 100, seo: 100, bp: 100 }, sections: ['horarios_hoy', 'tours', 'punto_encuentro', 'resenas', 'blog'] },
+    { id: 'TPL-NAZCA', slug: 'nazca-noche', name: 'Nazca Noche', category: 'lujo', tier: 'premium', price: 290, version: '1.2.0', status: 'publicado', author: 'Estudio Wayra (partner)', authorKind: 'partner', isDefault: false, installs: 3, minPlan: 'Starter',
+      desc: 'Fondo oscuro, líneas geométricas inspiradas en las líneas de Nazca y fotografía a pantalla completa. Para viajes de lujo y a medida.', tags: ['Lujo', 'A medida', 'Premium'],
+      tokens: { side: '#14110F', accent: '#B8935A', soft: '#2A241D', sun: '#D9B27A', radius: 4 }, lh: { perf: 89, a11y: 96, seo: 100, bp: 92 }, sections: ['hero_foto', 'colecciones', 'a_medida', 'testimonios', 'prensa'] },
+    { id: 'TPL-QHAPAQ', slug: 'qhapaq-nan', name: 'Qhapaq Ñan', category: 'multi', tier: 'premium', price: 290, version: '1.0.0', status: 'en_revision', author: 'Estudio Wayra (partner)', authorKind: 'partner', isDefault: false, installs: 0, minPlan: 'Starter',
+      desc: 'Mapa de rutas como protagonista: el viajero arma su circuito sobre el camino inca. Pensada para el armador de viajes por tramos.', tags: ['Circuitos', 'Mapa', 'Tramos'],
+      tokens: { side: '#2B2A1F', accent: '#8C6D2C', soft: '#F3ECDD', sun: '#C9A24A', radius: 10 }, lh: { perf: 88, a11y: 96, seo: 100, bp: 92 }, sections: ['mapa_rutas', 'armar_viaje', 'mas_vendidos', 'resenas'] }
+  ];
+  D.siteTheme = { templateId: 'TPL-ANDES', version: '2.3.0', chosenBy: 'alta', appliedAt: '2026-06-01 10:00', appliedBy: 'U01', overrides: {}, history: [
+    { templateId: 'TPL-ANDES', version: '2.2.0', from: '2026-03-10', to: '2026-06-01', by: 'Plataforma (alta)' }
+  ] };
+  D.templateSubmissions = [
+    { id: 'TSB-0007', templateId: 'TPL-QHAPAQ', version: '1.0.0', by: 'Estudio Wayra (partner)', at: '2026-10-28 15:20', status: 'validando',
+      checks: { manifest: 'ok', build: 'ok', lighthouse: { perf: 88, a11y: 96, seo: 100, bp: 92 }, contraste: 'ok', i18n: 'ok', datos_estructurados: 'ok', seguridad: 'ok', revision_visual: 'pendiente' } },
+    { id: 'TSB-0006', templateId: 'TPL-NAZCA', version: '1.2.0', by: 'Estudio Wayra (partner)', at: '2026-10-12 11:00', status: 'aprobada', decidedAt: '2026-10-14 09:30', reviewer: 'U16',
+      checks: { manifest: 'ok', build: 'ok', lighthouse: { perf: 89, a11y: 96, seo: 100, bp: 92 }, contraste: 'ok', i18n: 'ok', datos_estructurados: 'ok', seguridad: 'ok', revision_visual: 'ok' } },
+    { id: 'TSB-0005', templateId: 'TPL-PACIFICO', version: '1.1.0', by: 'Equipo KipuControl', at: '2026-10-05 18:40', status: 'rechazada', decidedAt: '2026-10-06 10:15', reviewer: 'U16',
+      reason: 'Contraste del botón secundario 3,1:1 (mínimo 4,5:1) y LCP de 3,4 s en móvil (máximo 2,5 s).',
+      checks: { manifest: 'ok', build: 'ok', lighthouse: { perf: 78, a11y: 91, seo: 100, bp: 96 }, contraste: 'falla', i18n: 'ok', datos_estructurados: 'ok', seguridad: 'ok', revision_visual: 'pendiente' } }
+  ];
+  D.tenantThemes = [
+    { tenantId: 'TNT-0001', tenant: 'Andes Horizonte Travel S.A.C.', templateId: 'TPL-ANDES', version: '2.3.0', chosenBy: 'alta' },
+    { tenantId: 'TNT-0002', tenant: 'Selva Viva Expediciones E.I.R.L.', templateId: 'TPL-AMAZONIA', version: '1.1.2', chosenBy: 'agencia' },
+    { tenantId: 'TNT-0003', tenant: 'Costa Sur DMC S.A.C.', templateId: 'TPL-NAZCA', version: '1.2.0', chosenBy: 'agencia' },
+    { tenantId: 'TNT-0004', tenant: 'Altiplano Corporate Travel S.A.', templateId: 'TPL-PACIFICO', version: '1.0.4', chosenBy: 'admin_plataforma' },
+    { tenantId: 'TNT-0005', tenant: 'Ruta Norte Turismo S.A.C.', templateId: 'TPL-INTI', version: '1.4.0', chosenBy: 'alta' },
+    { tenantId: 'TNT-0006', tenant: 'Nevados Tours S.R.L.', templateId: 'TPL-ANDES', version: '2.3.0', chosenBy: 'alta' }
+  ];
+  /* ---------------------------------------------------------------- v2.10 · Blog en Payload, seguimiento, conversiones y visitas (spec 24) */
+  D.addonCatalogV28.push(
+    { key: 'marketing_pro', label: 'Marketing Pro', billing: 'mensual', price: null, priceMonth: 39, desc: 'Para Starter: todos los píxeles (Google Ads, TikTok, LinkedIn, Clarity), conversiones del lado del servidor, scripts propios y visitas de 13 meses con exportación.' }
+  );
+  D.trackingProviders = [
+    { id: 'ga4', name: 'Google Analytics 4', short: 'GA4', idLabel: 'ID de medición', placeholder: 'G-XXXXXXXXXX', re: '^G-[A-Z0-9]{6,12}$', consent: 'analiticas', color: '#E37400', server: 'Measurement Protocol', minPlan: 'Starter' },
+    { id: 'gtm', name: 'Google Tag Manager', short: 'GTM', idLabel: 'ID del contenedor', placeholder: 'GTM-XXXXXXX', re: '^GTM-[A-Z0-9]{4,10}$', consent: 'analiticas', color: '#246FDB', server: null, minPlan: 'Starter' },
+    { id: 'google_ads', name: 'Google Ads', short: 'Ads', idLabel: 'ID de conversión', placeholder: 'AW-123456789', re: '^AW-[0-9]{6,12}$', consent: 'marketing', color: '#1A73E8', server: 'Google Ads API (conversiones mejoradas)', minPlan: 'Professional' },
+    { id: 'meta_pixel', name: 'Meta Pixel (Facebook e Instagram)', short: 'Meta', idLabel: 'ID del píxel', placeholder: '123456789012345', re: '^[0-9]{10,20}$', consent: 'marketing', color: '#0866FF', server: 'Conversions API', minPlan: 'Starter' },
+    { id: 'tiktok', name: 'TikTok Pixel', short: 'TikTok', idLabel: 'ID del píxel', placeholder: 'CXXXXXXXXXXXX', re: '^[A-Za-z0-9_-]{4,40}$', consent: 'marketing', color: '#111111', server: 'Events API', minPlan: 'Professional' },
+    { id: 'clarity', name: 'Microsoft Clarity', short: 'Clarity', idLabel: 'ID del proyecto', placeholder: 'abcd1234ef', re: '^[A-Za-z0-9_-]{4,40}$', consent: 'analiticas', color: '#5E5BE6', server: null, minPlan: 'Professional' },
+    { id: 'linkedin', name: 'LinkedIn Insight Tag', short: 'LinkedIn', idLabel: 'Partner ID', placeholder: '1234567', re: '^[A-Za-z0-9_-]{4,40}$', consent: 'marketing', color: '#0A66C2', server: null, minPlan: 'Professional' },
+    { id: 'script', name: 'Script propio', short: 'Script', idLabel: '', placeholder: '', re: '', consent: 'marketing', color: '#7A5C2E', server: null, minPlan: 'Professional' }
+  ];
+  D.trackingEvents = [
+    { id: 'compra', label: 'Compra confirmada', ga4: 'purchase', value: true },
+    { id: 'compra_pendiente', label: 'Compra pendiente (Yape o transferencia)', ga4: 'purchase_pending', value: true },
+    { id: 'inicio_pago', label: 'Inicio de pago', ga4: 'begin_checkout', value: true },
+    { id: 'lead_cotizacion', label: 'Pedido de viaje a medida', ga4: 'generate_lead', value: false },
+    { id: 'lead_contacto', label: 'Formulario de contacto', ga4: 'generate_lead', value: false },
+    { id: 'chat_web', label: 'Chat web iniciado', ga4: 'generate_lead', value: false },
+    { id: 'registro_cliente', label: 'Cuenta de cliente creada', ga4: 'sign_up', value: false },
+    { id: 'suscripcion_boletin', label: 'Suscripción al boletín', ga4: 'sign_up_newsletter', value: false },
+    { id: 'clic_whatsapp', label: 'Clic en WhatsApp', ga4: 'contact_whatsapp', value: false }
+  ];
+  D.trackingTags = [
+    { id: 'TAG-0001', provider: 'ga4', name: 'Analytics del sitio', mid: 'G-AH7K2M9Q1T', consent: 'analiticas', placement: 'head', pages: '/*', exclude: '', status: 'activo', createdBy: 'U01', approvedBy: null, verifiedAt: '2026-09-28 10:14', verify: 'ok', config: { sendPageView: true } },
+    { id: 'TAG-0002', provider: 'meta_pixel', name: 'Pixel de Meta', mid: '738201945563120', consent: 'marketing', placement: 'head', pages: '/*', exclude: '', status: 'activo', createdBy: 'U01', approvedBy: null, verifiedAt: '2026-09-28 10:15', verify: 'ok', config: { capi: true, secret: 'vault://tenant/TNT-0001/meta-capi' } },
+    { id: 'TAG-0003', provider: 'google_ads', name: 'Google Ads · campañas Cusco', mid: 'AW-11872034561', consent: 'marketing', placement: 'head', pages: '/*', exclude: '', status: 'activo', createdBy: 'U02', approvedBy: null, verifiedAt: '2026-09-27 18:02', verify: 'ok', config: { enhanced: true, server: true, secret: 'vault://tenant/TNT-0001/google-ads' } },
+    { id: 'TAG-0004', provider: 'clarity', name: 'Mapas de calor', mid: 'm3k9x2ah7q', consent: 'analiticas', placement: 'head', pages: '/tours/*', exclude: '', status: 'pausado', createdBy: 'U02', approvedBy: null, verifiedAt: '2026-09-10 09:30', verify: 'ok', config: {} },
+    { id: 'TAG-0005', provider: 'script', name: 'Widget de reseñas de TripAdvisor', src: 'https://www.jscache.com/wejs?wtype=selfserveprop&uniq=412', sri: 'sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC', csp: ['www.jscache.com', 'www.tripadvisor.com'], consent: 'marketing', placement: 'body_fin', pages: '/', exclude: '/checkout/*', status: 'activo', createdBy: 'U02', approvedBy: 'U01', approvedAt: '2026-09-15 16:40', verifiedAt: '2026-09-15 16:45', verify: 'ok', config: {} },
+    { id: 'TAG-0006', provider: 'script', name: 'Chat de ventas por WhatsApp (proveedor nuevo)', src: 'https://cdn.wachat.example/widget.v2.js', sri: 'sha384-Zr8q3uX1mLw0kP2c8N9tYV5Hj7bD4sQeR6aG1fK0oT3yU8iW2xE5nM9vB7cA4dS1', csp: ['cdn.wachat.example', 'api.wachat.example'], consent: 'marketing', placement: 'body_fin', pages: '/*', exclude: '/checkout/*', status: 'en_revision', createdBy: 'U02', approvedBy: null, verifiedAt: null, verify: null, config: {}, submittedAt: '2026-09-29 08:50' }
+  ];
+  D.conversionMappings = [
+    { id: 'CVM-001', tagId: 'TAG-0001', event: 'compra', providerEvent: 'purchase', label: null, value: true, server: true, active: true },
+    { id: 'CVM-002', tagId: 'TAG-0001', event: 'lead_cotizacion', providerEvent: 'generate_lead', label: null, value: false, server: false, active: true },
+    { id: 'CVM-003', tagId: 'TAG-0001', event: 'clic_whatsapp', providerEvent: 'contact_whatsapp', label: null, value: false, server: false, active: true },
+    { id: 'CVM-004', tagId: 'TAG-0002', event: 'compra', providerEvent: 'Purchase', label: null, value: true, server: true, active: true },
+    { id: 'CVM-005', tagId: 'TAG-0002', event: 'lead_cotizacion', providerEvent: 'Lead', label: null, value: false, server: true, active: true },
+    { id: 'CVM-006', tagId: 'TAG-0002', event: 'suscripcion_boletin', providerEvent: 'CompleteRegistration', label: null, value: false, server: false, active: true },
+    { id: 'CVM-007', tagId: 'TAG-0003', event: 'compra', providerEvent: 'conversion', label: 'kQ3nCPvT9YgZEJ2o', value: true, server: true, active: true },
+    { id: 'CVM-008', tagId: 'TAG-0003', event: 'lead_cotizacion', providerEvent: 'conversion', label: 'Xb7mCK2s9YgZEJ2o', value: false, server: false, active: true }
+  ];
+  D.conversionDispatches = [
+    { id: 90412, at: '2026-09-29 09:12', event: 'compra', mappingId: 'CVM-007', channel: 'servidor', status: 'enviado', http: 200, value: 2380, currency: 'PEN', ref: 'WEB-2026-00418', attempts: 1 },
+    { id: 90411, at: '2026-09-29 09:12', event: 'compra', mappingId: 'CVM-004', channel: 'servidor', status: 'enviado', http: 200, value: 2380, currency: 'PEN', ref: 'WEB-2026-00418', attempts: 1 },
+    { id: 90410, at: '2026-09-29 09:12', event: 'compra', mappingId: 'CVM-004', channel: 'navegador', status: 'duplicado', http: 200, value: 2380, currency: 'PEN', ref: 'WEB-2026-00418', attempts: 1, note: 'Meta lo unió con el envío del servidor (mismo event_id).' },
+    { id: 90409, at: '2026-09-29 09:11', event: 'compra', mappingId: 'CVM-001', channel: 'servidor', status: 'enviado', http: 204, value: 2380, currency: 'PEN', ref: 'WEB-2026-00418', attempts: 1 },
+    { id: 90402, at: '2026-09-29 08:40', event: 'lead_cotizacion', mappingId: 'CVM-005', channel: 'servidor', status: 'sin_consentimiento', http: null, value: null, currency: null, ref: 'LEAD-0252', attempts: 0, note: 'El visitante rechazó las cookies de marketing.' },
+    { id: 90398, at: '2026-09-29 07:55', event: 'compra', mappingId: 'CVM-007', channel: 'servidor', status: 'fallido', http: 401, value: 1460, currency: 'PEN', ref: 'WEB-2026-00417', attempts: 3, error: 'UNAUTHENTICATED: el token de Google Ads venció. Reconecte la cuenta.' },
+    { id: 90391, at: '2026-09-28 21:30', event: 'lead_cotizacion', mappingId: 'CVM-008', channel: 'navegador', status: 'enviado', http: 200, value: null, currency: null, ref: 'LEAD-0251', attempts: 1 },
+    { id: 90385, at: '2026-09-28 19:04', event: 'compra', mappingId: 'CVM-004', channel: 'servidor', status: 'enviado', http: 200, value: 890, currency: 'USD', ref: 'WEB-2026-00416', attempts: 2 },
+    { id: 90377, at: '2026-09-28 16:20', event: 'suscripcion_boletin', mappingId: 'CVM-006', channel: 'navegador', status: 'enviado', http: 200, value: null, currency: null, ref: 'SUB-1180', attempts: 1 }
+  ];
+  /* Visitas agregadas por día (deterministas, 60 días hasta TODAY) del sitio de la agencia y de la vitrina */
+  (function () {
+    let s = 11; const r = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+    const days = (base, amp, n) => { const out = []; for (let i = n - 1; i >= 0; i--) { const d = new Date(2026, 8, 29 - i); const wd = d.getDay(); const v = Math.round(base * (1 + (60 - i) / 160) * (wd === 0 || wd === 6 ? 1.18 : 1) * (0.85 + r() * amp));
+      const vis = Math.round(v * (0.78 + r() * 0.06)); const pv = Math.round(v * (2.1 + r() * 0.6)); const conv = Math.max(0, Math.round(v * (0.011 + r() * 0.009)));
+      out.push({ d: d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'), visits: v, visitors: vis, pageviews: pv, bounces: Math.round(v * (0.38 + r() * 0.08)), engaged: Math.round(v * (95 + r() * 40)), conv, rev: Math.round(conv * (1450 + r() * 900)) }); } return out; };
+    D.webAnalytics = {
+      isDemo: true, cookieless: true, ga4Compare: 0.71,
+      days: days(420, 0.3, 60),
+      pages: [['/', 'Inicio', 31], ['/tours/machu-picchu-2d', 'Machu Picchu 2 días', 14], ['/destinos/cusco', 'Destino Cusco', 9], ['/tours/valle-sagrado-vip', 'Valle Sagrado VIP', 7], ['/blog/cuando-ir-a-machu-picchu', 'Blog: cuándo ir a Machu Picchu', 6], ['/tours/montana-de-colores', 'Montaña de 7 Colores', 6], ['/viajes-a-medida', 'Viajes a medida', 5], ['/ofertas', 'Ofertas', 4], ['/aventuras/luna-de-miel-en-cusco', 'Aventura: luna de miel', 3], ['/contacto', 'Contacto', 3]],
+      sources: [['google', 'organic', '', 38], ['google', 'cpc', 'cusco-septiembre', 17], ['(directo)', '(ninguno)', '', 14], ['instagram', 'paid', 'mp-primavera', 9], ['facebook', 'social', '', 6], ['rutaslibres.pe', 'referral', '', 6], ['whatsapp', 'social', '', 4], ['boletin', 'email', 'newsletter-sep', 3], ['tripadvisor.com', 'referral', '', 2], ['bing', 'organic', '', 1]],
+      devices: [['movil', 71], ['escritorio', 25], ['tablet', 4]],
+      countries: [['PE', 'Perú', 46], ['US', 'Estados Unidos', 15], ['ES', 'España', 8], ['MX', 'México', 6], ['CL', 'Chile', 5], ['AR', 'Argentina', 4], ['BR', 'Brasil', 4], ['DE', 'Alemania', 3], ['FR', 'Francia', 3], ['ZZ', 'Otros', 6]],
+      byEvent: [['compra', 46], ['compra_pendiente', 9], ['lead_cotizacion', 31], ['chat_web', 22], ['clic_whatsapp', 64], ['suscripcion_boletin', 18]],
+      live: { now: 17, pages: [['/', 6], ['/tours/machu-picchu-2d', 4], ['/destinos/cusco', 3], ['/ofertas', 2], ['/blog/cuando-ir-a-machu-picchu', 2]] }
+    };
+    D.platformTracking = {
+      tags: [
+        { id: 'PTG-0001', site: 'ambos', provider: 'ga4', name: 'GA4 Rutas Libres', mid: 'G-RL4P8N2X6K', consent: 'analiticas', status: 'activo', createdBy: 'Daniela Ccahuana (marketing)', approvedBy: 'U16', verify: 'ok', verifiedAt: '2026-09-28 09:00' },
+        { id: 'PTG-0002', site: 'ambos', provider: 'google_ads', name: 'Google Ads · captación de agencias', mid: 'AW-16620045123', consent: 'marketing', status: 'activo', createdBy: 'Daniela Ccahuana (marketing)', approvedBy: 'U16', verify: 'ok', verifiedAt: '2026-09-28 09:02', config: { enhanced: true, server: true } },
+        { id: 'PTG-0003', site: 'ambos', provider: 'meta_pixel', name: 'Pixel Meta · viajeros y agencias', mid: '902114577630218', consent: 'marketing', status: 'activo', createdBy: 'Daniela Ccahuana (marketing)', approvedBy: 'U16', verify: 'ok', verifiedAt: '2026-09-28 09:03', config: { capi: true } },
+        { id: 'PTG-0004', site: 'blog', provider: 'clarity', name: 'Clarity del blog', mid: 'rl7blog2qz', consent: 'analiticas', status: 'en_revision', createdBy: 'Daniela Ccahuana (marketing)', approvedBy: null, verify: null, verifiedAt: null },
+        { id: 'PTG-0005', site: 'vitrina', provider: 'tiktok', name: 'TikTok · free tours Lima', mid: 'CRL8K2M4N6P8Q', consent: 'marketing', status: 'borrador', createdBy: 'U16', approvedBy: null, verify: null, verifiedAt: null }
+      ],
+      mappings: [
+        { tagId: 'PTG-0002', event: 'registro_agencia', providerEvent: 'conversion', label: 'Rq1aCJm7-YgZEKOn', value: false, server: true },
+        { tagId: 'PTG-0002', event: 'plan_pagado', providerEvent: 'conversion', label: 'Pt5sCJm7-YgZEKOn', value: true, server: true },
+        { tagId: 'PTG-0003', event: 'reserva_vitrina', providerEvent: 'Schedule', label: null, value: false, server: true },
+        { tagId: 'PTG-0003', event: 'registro_agencia', providerEvent: 'CompleteRegistration', label: null, value: false, server: true },
+        { tagId: 'PTG-0001', event: 'lectura_articulo', providerEvent: 'article_read', label: null, value: false, server: false }
+      ],
+      sites: { vitrina: days(980, 0.35, 60), blog: days(640, 0.4, 60) },
+      agencies: [['SHA-04', 9120, 612], ['SHA-03', 7410, 488], ['SHA-01', 5230, 301], ['SHA-02', 2210, 118], ['SHA-06', 1340, 74], ['SHA-05', 980, 41]],
+      sources: [['google', 'organic', '', 52], ['(directo)', '(ninguno)', '', 13], ['google', 'cpc', 'agencias-lima', 11], ['instagram', 'paid', 'free-tours-lima', 8], ['tiktok', 'paid', 'free-tours-lima', 6], ['facebook', 'social', '', 5], ['chatgpt.com', 'referral', '', 3], ['bing', 'organic', '', 2]],
+      payload: {
+        url: 'https://rutaslibres.pe/admin', version: 'Payload 3 · Next.js 15', db: 'rutaslibres_cms (PostgreSQL)', lastWebhook: '2026-09-29 08:10', webhookOk: true,
+        posts: [
+          { postId: 'SHP-001', payloadId: '66f1a0c2e4b0a1d2c3f40001', status: 'published', syncedAt: '2026-09-20 11:02', checks: { words: 1640, keyword: true, meta: true, alt: true, tours: 4 } },
+          { postId: 'SHP-002', payloadId: '66f1a0c2e4b0a1d2c3f40002', status: 'published', syncedAt: '2026-09-22 15:40', checks: { words: 1210, keyword: true, meta: true, alt: true, tours: 3 } },
+          { postId: 'SHP-003', payloadId: '66f1a0c2e4b0a1d2c3f40003', status: 'scheduled', publishAt: '2026-10-02 08:00', syncedAt: '2026-09-29 08:10', checks: { words: 1380, keyword: true, meta: false, alt: true, tours: 3 } },
+          { postId: 'SHP-004', payloadId: '66f1a0c2e4b0a1d2c3f40004', status: 'draft', syncedAt: '2026-09-27 10:05', checks: { words: 640, keyword: true, meta: true, alt: false, tours: 0 } }
+        ]
+      }
+    };
+  })();
+  D.consentPolicy = { version: 'COOK-2026.2', categories: [['necesarias', 'Necesarias', 'Carrito, sesión, idioma y seguridad. Siempre activas.'], ['analiticas', 'Analíticas', 'Nos ayudan a entender qué páginas sirven (Google Analytics, Clarity).'], ['marketing', 'Marketing', 'Miden campañas y muestran anuncios relevantes (Google Ads, Meta, TikTok).']] };
+  /* ---------------------------------------------------------------- v2.11 · Blog de Rutas Libres con estructura de Payload (spec 24 §13.1) */
+  // Cada entrada replica los campos de la colección `posts` de Payload: categoría, autor, portada con texto
+  // alternativo, tabla de contenidos, secciones (bloques) con tours incrustados, consejos, cita, preguntas
+  // frecuentes y la pestaña SEO (meta título, meta descripción, palabra clave, canónica, noindex).
+  D.showcase.categories = [
+    { id: 'guias-de-barrio', name: 'Guías de barrio' }, { id: 'gastronomia', name: 'Gastronomía' },
+    { id: 'itinerarios', name: 'Itinerarios' }, { id: 'consejos', name: 'Consejos prácticos' }
+  ];
+  D.showcase.authors = [
+    { id: 'AUT-01', name: 'Valeria Méndez', role: 'Historiadora sanmarquina · redactora de rutas urbanas', verified: true, color: '#1D4ED8', bio: 'Guía oficial con carné MINCETUR desde 2016. Ha recorrido a pie más de 40 distritos de Lima y escribe las guías de barrio de Rutas Libres.' },
+    { id: 'AUT-02', name: 'Renzo Quispe', role: 'Cocinero y guía gastronómico', verified: true, color: '#059669', bio: 'Formado en el Cordon Bleu de Lima. Lleva grupos por mercados y picanterías y prueba cada lugar antes de recomendarlo.' },
+    { id: 'AUT-03', name: 'Equipo SEO', role: 'Redacción Rutas Libres', verified: false, color: '#64748B', bio: 'Equipo editorial de la plataforma.' }
+  ];
+  const POSTX = {
+    'SHP-001': {
+      category: 'guias-de-barrio', authorId: 'AUT-01', keyword: 'free tours en lima', readMinutes: 8, reads: 12800, updatedAt: '2026-10-28',
+      kicker: 'Guía de barrio · Lima 2026', titleAccent: 'por barrio',
+      cover: { tone: 'lima', alt: 'Malecón de Barranco al atardecer con el océano Pacífico al fondo', caption: 'Vista del malecón y la brisa del Pacífico al final del recorrido libre por Barranco y Miraflores.', credit: 'Archivo Rutas Libres' },
+      intro: [
+        'Los free tours en Lima son la mejor forma de descubrir una capital que durante décadas fue solo una escala técnica camino al Cusco. Quienes la recorren a pie con historiadores y vecinos encuentran 2 000 años de historia, casonas republicanas y acantilados frente al Pacífico.',
+        'El modelo del free walking tour cambió la forma de conocer la capital: reservas gratis, caminas con un guía local y al final dejas la propina que te parezca justa.'
+      ],
+      sections: [
+        { id: 'centro', kicker: 'Barrio 01 · Patrimonio de la Humanidad', h: 'Centro Histórico: conventos, balcones y catacumbas',
+          paras: ['Los free tours del casco antiguo giran alrededor de dos ejes: la Plaza San Martín y la Plaza Mayor, con la Catedral y el Palacio de Gobierno.', 'El punto alto es el jirón Ucayali, con sus balcones de cajón tallados en cedro, y la parada en el convento de San Francisco para contar la historia de las catacumbas.'],
+          tip: { title: 'Horario recomendado', text: 'Elija la salida de las 10:00: a mediodía verá el cambio de guardia en el Palacio de Gobierno sin el tráfico de la tarde.' }, tours: ['SHL-001', 'SHL-005'] },
+        { id: 'barranco', kicker: 'Barrio 02 · Distrito de poetas y muralistas', h: 'Barranco: murales, poesía y atardecer sobre el mar',
+          paras: ['Si el centro es la memoria virreinal, Barranco es el lado artístico de Lima: antiguo balneario de la élite, hoy galería de arte urbano al aire libre.', 'Los recorridos parten del Parque Municipal y bajan por la Bajada de Baños hasta el Puente de los Suspiros.'],
+          quote: { text: 'El free tour no es un servicio gratis por falta de valor: es la forma de que el viajero premie el conocimiento vivo del guía local.', by: 'Asociación de guías oficiales de turismo del Perú' }, tours: ['SHL-002', 'SHL-004'] },
+        { id: 'miraflores', kicker: 'Barrio 03 · Costa verde', h: 'Miraflores y el malecón: Pacífico y huacas prehispánicas',
+          paras: ['El malecón une el Parque del Amor con el Faro de la Marina en un paseo de 3 km sobre los acantilados.', 'Muchos tours incluyen la Huaca Pucllana, una pirámide de adobe del año 500 en medio del distrito.'],
+          tip: { title: 'Lleve abrigo ligero', text: 'De mayo a octubre la garúa y la brisa marina bajan la temperatura al final de la tarde.' }, tours: ['SHL-003'] },
+        { id: 'callao', kicker: 'Barrio 04 · Puerto y fortaleza', h: 'Callao monumental: fortaleza y galerías portuarias',
+          paras: ['El Callao Monumental pasó de zona de paso a uno de los barrios de arte más vivos de Lima, con casonas recuperadas como galerías.', 'La Fortaleza del Real Felipe completa la visita; vaya siempre con guía y en horario diurno.'], tours: [] },
+        { id: 'consejos', kicker: 'Barrio 05 · Antes de salir', h: 'Consejos prácticos: propina, seguridad y Metropolitano',
+          paras: ['La propina habitual va de S/ 20 a S/ 40 por persona según la duración y la calidad del recorrido.', 'Para moverse entre barrios, el Metropolitano conecta el centro con Miraflores y Barranco en unos 30 minutos.'], tours: [] }
+      ],
+      faq: [
+        ['¿Los free tours en Lima son realmente gratis?', 'La reserva no cuesta nada y no hay pago previo. Al final se deja una propina voluntaria al guía.'],
+        ['¿Cuánta propina se deja?', 'Entre S/ 20 y S/ 40 por persona es lo habitual para un recorrido de 2 a 3 horas.'],
+        ['¿Hay free tours en inglés?', 'Sí. La mayoría de salidas del Centro, Barranco y Miraflores tienen grupos en inglés y algunas en portugués.']
+      ],
+      seo: { metaTitle: 'Free tours en Lima 2026: guía por barrio con horarios', metaDescription: 'Centro, Barranco, Miraflores y Callao a pie: horarios, puntos de encuentro, propina justa y los free tours mejor valorados de Lima.', keyword: 'free tours en lima', canonical: 'https://rutaslibres.pe/blog/free-tours-en-lima-guia', noindex: false, ogImage: 'og/free-tours-en-lima-guia.png' },
+      related: ['SHP-002', 'SHP-003']
+    },
+    'SHP-002': {
+      category: 'gastronomia', authorId: 'AUT-02', readMinutes: 6, reads: 7400, updatedAt: '2026-10-10',
+      kicker: 'Gastronomía · Lima', titleAccent: '',
+      cover: { tone: 'lima', alt: 'Ceviche servido en un mercado de Lima', caption: 'Ceviche de mediodía en el mercado de Surquillo.', credit: 'Archivo Rutas Libres' },
+      intro: ['Qué comer en Lima en un día: la ciudad se come mejor de día y caminando, con mercado por la mañana, cevichería al mediodía y chifa por la tarde.'],
+      sections: [
+        { id: 'mercado', kicker: 'Parada 01', h: 'Mañana en el mercado de Surquillo', paras: ['Frutas que no verá en otro lugar, jugos al paso y el pan con chicharrón del desayuno limeño.'], tours: [] },
+        { id: 'ceviche', kicker: 'Parada 02', h: 'Ceviche al mediodía, nunca de noche', paras: ['El pescado del día se sirve hasta las 4 de la tarde; las cevicherías de barrio cierran temprano.'], tip: { title: 'Presupuesto', text: 'Un menú de cevichería de barrio cuesta entre S/ 18 y S/ 35.' }, tours: ['SHL-004'] },
+        { id: 'tarde', kicker: 'Parada 03', h: 'Tarde de chifa y dulces en el Centro', paras: ['El Barrio Chino junto al Mercado Central concentra los chifas más antiguos de la ciudad.'], tours: ['SHL-005'] }
+      ],
+      faq: [['¿Es seguro comer en los mercados?', 'Sí, en los puestos con más clientes locales y donde preparan al momento.']],
+      seo: { metaTitle: 'Qué comer en Lima en un día: ruta sin gastar de más', metaDescription: 'Mercados, cevicherías y chifas en una ruta de un día por Lima, con precios de referencia y tours gastronómicos recomendados.', keyword: 'qué comer en lima', canonical: 'https://rutaslibres.pe/blog/que-comer-en-lima-en-un-dia', noindex: false },
+      related: ['SHP-001', 'SHP-003']
+    },
+    'SHP-003': {
+      category: 'itinerarios', authorId: 'AUT-01', keyword: 'cusco en 3 días', readMinutes: 9, reads: 5100, updatedAt: '2026-09-30',
+      kicker: 'Itinerario · Cusco', titleAccent: '',
+      cover: { tone: 'cusco', alt: 'Calle empedrada de San Blas en Cusco', caption: 'Cuesta de San Blas a primera hora, antes de los grupos grandes.', credit: 'Archivo Rutas Libres' },
+      intro: ['Recorrer Cusco en 3 días a pie es posible si se respeta la altura (3 400 m): el primer día se camina despacio. Este itinerario combina free tours cortos con miradores para aclimatarse.'],
+      sections: [
+        { id: 'dia1', kicker: 'Día 01', h: 'Plaza de Armas y San Blas, sin prisa', paras: ['Un free tour de 2,5 horas por el centro y San Blas es la mejor forma de empezar.'], tip: { title: 'Mal de altura', text: 'Mate de coca, agua y nada de comidas pesadas la primera noche.' }, tours: ['SHL-006'] },
+        { id: 'dia2', kicker: 'Día 02', h: 'Mercado San Pedro y miradores', paras: ['Desayuno en el mercado y subida al mirador de San Cristóbal al final de la tarde.'], tours: ['SHL-007'] },
+        { id: 'dia3', kicker: 'Día 03', h: 'Valle Sagrado', paras: ['Con el cuerpo ya aclimatado, un día completo por Pisac y Ollantaytambo.'], tours: ['SHL-008'] }
+      ],
+      faq: [['¿Cuántos días necesito en Cusco?', 'Tres días como mínimo, sin contar Machu Picchu.']],
+      seo: { metaTitle: 'Cusco en 3 días a pie: free tours y miradores', metaDescription: 'Itinerario de 3 días en Cusco para aclimatarse caminando: free tours por San Blas, el mercado San Pedro y el Valle Sagrado.', keyword: 'cusco en 3 días', canonical: 'https://rutaslibres.pe/blog/cusco-en-3-dias-a-pie', noindex: false },
+      related: ['SHP-001', 'SHP-002']
+    },
+    'SHP-004': {
+      category: 'consejos', authorId: 'AUT-03', readMinutes: 4, reads: 0, updatedAt: '2026-10-30',
+      kicker: 'Consejos prácticos', titleAccent: '',
+      cover: { tone: 'puno', alt: '', caption: '', credit: '' },
+      intro: ['Borrador: montos de referencia por ciudad.'], sections: [], faq: [],
+      seo: { metaTitle: '', metaDescription: '', keyword: 'propina free tour', canonical: '', noindex: false }, related: []
+    }
+  };
+  D.showcase.posts.forEach(p => Object.assign(p, POSTX[p.id] || {}));
+  /* ---------------------------------------------------------------- v2.12 · Landing de KipuControl (spec 25) */
+  // Sitio comercial kipucontrol.com: planes y suscripción, blog compartido con Rutas Libres (mismo Payload, campo `site`),
+  // comentarios moderados, popups con reglas y chatbot. Precios de los planes = D.plans; add-ons = catálogo de la v2.8/v2.9.
+  D.landing = {
+    domain: 'kipucontrol.com',
+    announcement: 'Nuevo: contenido con IA para tu web y tu blog',
+    trial: { days: 14, plan: 'Professional', coupon: 'KIPUTURISMO2026', couponPct: 10 },
+    annualFreeMonths: 2,
+    usdRate: 3.78,
+    logos: ['Inca Trail Expeditions', 'Cusco Horizon', 'Rutas Andinas', 'Colca Canyons', 'Amazon Explorer', 'Lima Gastronómica', 'Titicaca Travel', 'Paracas Adventure'],
+    trust: [['shield', 'SSL 256-bit y cifrado'], ['receipt', 'Facturación electrónica SUNAT'], ['lock', 'Ley 29733 de datos personales'], ['zap', '99,9 % disponibilidad']],
+    modules: [
+      ['users', 'CRM y ventas', 'WhatsApp, correo e historial de cada viajero en un solo embudo.'],
+      ['file', 'Cotizaciones', 'Itinerarios día por día y PDF con tu marca en minutos.'],
+      ['calendar', 'Reservas y cupos', 'Fechas, pasajeros y cupos en tiempo real, sin sobreventa.'],
+      ['route', 'Operaciones y guías', 'Movilidad, guías oficiales y boletos de ingreso por salida.'],
+      ['wallet', 'Finanzas y pagos', 'Cobros en soles y dólares con Yape, Plin, tarjeta y PayPal.'],
+      ['chart', 'Rentabilidad', 'Margen real por salida, pasajero y proveedor.'],
+      ['globe', 'Web, SEO y blog', 'Tu sitio con dominio propio, reservas directas y contenido con IA.'],
+      ['phone', 'App móvil', 'Control en ruta para guías, vouchers y check-in sin conexión.']
+    ],
+    testimonials: [
+      { name: 'Carlos Mendoza', role: 'Fundador de Inca Spirit Cusco', city: 'Cusco', metric: '+38 % reservas directas', text: 'Antes perdíamos ventas por tardar horas en armar un itinerario. Hoy cotizamos en 2 minutos y lo mandamos por WhatsApp con Yape.' },
+      { name: 'Mariana Rojas', role: 'Directora de Arequipa Trekking Co.', city: 'Arequipa', metric: 'Cotiza 4x más rápido', text: 'El control de cupos del Cañón del Colca nos salvó la vida. Terminamos con las planillas de cálculo.' },
+      { name: 'Jorge Villanueva', role: 'Gerente de Amazon Puno Exp.', city: 'Puno', metric: 'Cero sobreventas en 2026', text: 'La facturación SUNAT ahora es automática. PayPal o tarjeta y la boleta se emite sin intervención manual.' },
+      { name: 'Patricia Quispe', role: 'Líder de Lima Bici & Tours', city: 'Lima', metric: 'Posicionamiento #1', text: 'Nuestra web creada con KipuControl empezó a rankear en Google para tours gastronómicos en Miraflores y Barranco.' },
+      { name: 'Diego Alarcón', role: 'Fundador de Paracas Adventure', city: 'Ica', metric: 'WhatsApp 24/7 activo', text: 'El asistente IA contesta las preguntas de la madrugada y deja la reserva lista para el equipo.' },
+      { name: 'Fiorella Beltrán', role: 'Gerente de Operaciones en Moche Tours', city: 'Trujillo', metric: 'Control total en ruta', text: 'Los guías escanean los vouchers desde el teléfono, incluso sin cobertura en Huanchaco.' }
+    ],
+    faq: [
+      ['¿Necesito tarjeta de crédito para crear mi cuenta?', 'No. La prueba de 14 días del plan Professional y la vitrina gratis en Rutas Libres no piden tarjeta.'],
+      ['¿Cómo funciona la emisión de comprobantes con la SUNAT?', 'KipuControl emite boletas y facturas electrónicas al confirmar cada pago y te envía el XML y el CDR.'],
+      ['¿Puedo usar mi propio dominio web?', 'Sí. Conectas tu dominio .pe o .com, el SSL se activa solo y tu web recibe reservas directas.'],
+      ['¿Cómo evita KipuControl que sobrevenda cupos?', 'Cada reserva descuenta el cupo de la salida en el momento y bloquea la venta cuando se llena, en todos tus canales.'],
+      ['¿Qué es la integración con Rutas Libres?', 'Rutas Libres es nuestra vitrina gratuita de free tours. Publicas sin costo y, cuando quieras más, pasas a un plan con tus datos.'],
+      ['¿Cuánto tiempo toma migrar desde hojas de Excel?', 'Entre uno y tres días. Importas tours y clientes desde Excel y un especialista te acompaña en una sesión de puesta en marcha.']
+    ],
+    // Blog B2B de KipuControl (en producción: colección `posts` de Payload con site = 'kipucontrol').
+    categories: [{ id: 'ventas', name: 'Ventas' }, { id: 'marketing-seo', name: 'Marketing y SEO' }, { id: 'operaciones', name: 'Operaciones' }, { id: 'finanzas', name: 'Finanzas' }, { id: 'ia', name: 'IA para turismo' }],
+    posts: [
+      { id: 'KCP-001', site: 'kipucontrol', slug: 'como-cotizar-un-paquete-a-cusco-en-10-minutos', title: 'Cómo cotizar un paquete a Cusco en 10 minutos', titleAccent: '(y cerrar la venta el mismo día)', category: 'ventas', status: 'publicado', publishedAt: '2026-10-18', readMinutes: 8, reads: 2400, featured: true, author: 'Carlos Mendoza', authorRole: 'Head of Product · ex operador receptivo en Cusco', excerpt: 'Guía paso a paso para agencias receptivas: márgenes con trenes y boletos, exoneración del IGV y envío del itinerario por WhatsApp con cobro en soles y dólares.', keyword: 'cotizar paquete cusco',
+        sections: [
+          { id: 'cuello', h: 'El cuello de botella tradicional', paras: ['Un viajero de São Paulo pide un Cusco clásico de 5 días para 4 personas. En muchas agencias eso abre 4 a 6 horas de hojas de Excel, portales de trenes y consultas de cupos.', 'Cuando llega el PDF al final de la tarde, el viajero ya reservó con quien respondió en 15 minutos.'], tip: ['Consejo de temporada alta', 'No congeles cotizaciones con más de 48 horas de vigencia entre junio y agosto sin pre-reservar el tren.'] },
+          { id: 'matriz', h: 'Tu matriz de costos y márgenes en 3 pasos', paras: ['Separa los componentes en tres bolsas: costos fijos no comisionables (entradas), servicios escalonados por volumen (transporte y guías) y tarifas netas negociadas (hoteles y trenes).'], table: [['Tren Vistadome ida y vuelta', 'USD 142,00', '+25 %', 'USD 177,50'], ['Boleto Machu Picchu circuito 2', 'USD 41,00', '0 %', 'USD 41,00'], ['Guía oficial bilingüe', 'USD 35,00', '+35 %', 'USD 47,25'], ['Hotel boutique 4★ (noche)', 'USD 85,00', '+30 %', 'USD 110,50']] },
+          { id: 'cotizador', h: 'El cotizador de KipuControl', paras: ['El cotizador toma las tarifas vigentes, aplica la exoneración para no domiciliados y calcula el margen por pasajero antes de enviar.'], product: true },
+          { id: 'cierre', h: 'Cierre inmediato: itinerario interactivo y cobro multimoneda', paras: ['Un PDF por correo se abre menos de la mitad de las veces. Un enlace con el itinerario, las fotos del hotel y un botón para pagar el 20 % elimina la fricción.'], tip: ['Dato de conversión', 'Las agencias que responden en los primeros 15 minutos con enlace y pasarela cierran 38 % más que las que tardan más de 2 horas.'] }
+        ],
+        faq: [['¿Cómo aplica la exoneración del IGV para turistas no domiciliados?', 'Los servicios de hospedaje y alimentación a no domiciliados con pasaporte se tratan como exportación de servicios (DL 1125). KipuControl la aplica por ítem al emitir.'], ['¿Puedo cotizar en dólares y cobrar en soles con Yape?', 'Sí. La cotización guarda el tipo de cambio y el enlace de pago acepta soles o dólares.'], ['¿Qué pasa si el pasajero reprograma Machu Picchu?', 'La reserva pasa a reprogramación, libera los cupos y recalcula diferencias de tarifa.']] },
+      { id: 'KCP-002', site: 'kipucontrol', slug: 'guia-sunat-2026-facturacion-electronica-tours-receptivos', title: 'Guía SUNAT 2026: facturación electrónica para tours receptivos', category: 'finanzas', status: 'publicado', publishedAt: '2026-10-14', readMinutes: 9, reads: 4800, author: 'Renzo Quispe', authorRole: 'Contador tributario', excerpt: 'Requisitos del DL 1125, validación de pasaporte y emisión de facturas sin IGV para turistas no domiciliados.', keyword: 'facturación electrónica turismo' },
+      { id: 'KCP-003', site: 'kipucontrol', slug: 'seo-local-para-operadores-en-cusco', title: 'SEO local para operadores en Cusco: tu web #1 en Google para Inca Trail', category: 'marketing-seo', status: 'publicado', publishedAt: '2026-10-11', readMinutes: 6, reads: 3900, author: 'Lucía Barreda', authorRole: 'Especialista SEO', excerpt: 'Web bilingüe, reseñas verificadas y datos estructurados de turismo para aparecer sin pagar publicidad.', keyword: 'seo agencia de viajes' },
+      { id: 'KCP-004', site: 'kipucontrol', slug: 'checklist-de-operaciones-de-campo', title: 'Checklist de operaciones de campo: guías, transportistas y manifiestos', category: 'operaciones', status: 'publicado', publishedAt: '2026-10-08', readMinutes: 5, reads: 2100, author: 'Diego Rivas', authorRole: 'Jefe de operaciones', excerpt: 'Planillas de contingencia, comunicación con guías y auditorías en puestos de control de Ollantaytambo y Aguas Calientes.', keyword: 'operaciones turisticas' },
+      { id: 'KCP-005', site: 'kipucontrol', slug: 'embudo-de-ventas-por-whatsapp', title: 'De lead frío a voucher confirmado: el embudo de ventas por WhatsApp', category: 'ventas', status: 'publicado', publishedAt: '2026-10-05', readMinutes: 7, reads: 3200, author: 'Carlos Mendoza', authorRole: 'Head of Product', excerpt: 'Mensajes con botones de pago, recordatorios y seguimiento para no perder consultas en temporada alta.', keyword: 'ventas por whatsapp turismo' },
+      { id: 'KCP-006', site: 'kipucontrol', slug: 'prompts-de-ia-para-itinerarios', title: '15 prompts de IA para redactar itinerarios turísticos que venden', category: 'ia', status: 'publicado', publishedAt: '2026-10-01', readMinutes: 6, reads: 2900, author: 'Mateo Salcedo', authorRole: 'Producto e IA', excerpt: 'Plantillas para describir tours, traducir al inglés y portugués y escribir títulos SEO con revisión humana.', keyword: 'ia para agencias de viaje' },
+      { id: 'KCP-007', site: 'kipucontrol', slug: 'precios-dinamicos-temporada-alta', title: 'Precios por temporada sin hojas de cálculo', category: 'finanzas', status: 'borrador', publishedAt: null, readMinutes: 5, reads: 0, author: 'Renzo Quispe', authorRole: 'Contador tributario', excerpt: 'Borrador.', keyword: 'precios turismo' }
+    ],
+    // Comentarios: entran como `pendiente`; los aprueba la plataforma (admin/marketing-vitrina › Landing). Anti-spam: honeypot, límite por IP y enlaces bloqueados.
+    comments: [
+      { id: 'CMT-0001', postId: 'KCP-001', parentId: null, name: 'Rosa Huamán', email: 'rosa@cuscoandino.pe', text: '¿El cotizador toma el tipo de cambio del día o uno fijo por cotización?', status: 'aprobado', createdAt: '2026-10-19 09:12', useful: 6, staff: false },
+      { id: 'CMT-0002', postId: 'KCP-001', parentId: 'CMT-0001', name: 'Equipo KipuControl', email: 'hola@kipucontrol.com', text: 'Toma el del día y lo guarda en la cotización, así el monto no cambia aunque el viajero pague después.', status: 'aprobado', createdAt: '2026-10-19 10:40', useful: 9, staff: true },
+      { id: 'CMT-0003', postId: 'KCP-001', parentId: null, name: 'Luis Ccori', email: 'luis@salkantay.pe', text: 'Lo de responder en 15 minutos es real: en julio duplicamos cierres solo con eso.', status: 'aprobado', createdAt: '2026-10-20 18:05', useful: 4, staff: false },
+      { id: 'CMT-0004', postId: 'KCP-001', parentId: null, name: 'promo-seo', email: 'x@spam.biz', text: 'Compra enlaces baratos en mi sitio', status: 'spam', createdAt: '2026-10-21 03:10', useful: 0, staff: false },
+      { id: 'CMT-0005', postId: 'SHP-001', parentId: null, name: 'Ana Paula', email: 'apr@mail.br', text: '¿El tour de Barranco tiene grupo en portugués los sábados?', status: 'pendiente', createdAt: '2026-10-30 21:44', useful: 0, staff: false }
+    ],
+    signups: [
+      { id: 'SUB-0001', agency: 'Andean Explorers SAC', ruc: '20608912345', contact: 'Carlos Mendoza', email: 'carlos@andeanexplorers.pe', plan: 'Professional', cycle: 'anual', addons: ['ai_content', 'custom_domain'], coupon: 'KIPUTURISMO2026', method: 'tarjeta', total: 14620.55, currency: 'PEN', status: 'activa', source: 'landing/precios', createdAt: '2026-10-28 11:20', invoice: 'F001-0004291' },
+      { id: 'SUB-0002', agency: 'Puno Lago Azul', ruc: '', contact: 'Gisela Mamani', email: 'gisela@lagoazul.pe', plan: 'Starter', cycle: 'mensual', addons: [], coupon: null, method: 'yape', total: 578.20, currency: 'PEN', status: 'prueba', source: 'popup/salida', createdAt: '2026-10-31 16:02', invoice: null },
+      { id: 'SUB-0003', agency: 'Lima a Pie Free Walking', ruc: '20555123456', contact: 'Rocío Paredes', email: 'rocio@limaapie.pe', plan: 'Starter', cycle: 'mensual', addons: ['paypal_gateway'], coupon: null, method: 'paypal', total: 578.20, currency: 'PEN', status: 'activa', source: 'rutaslibres/agencias', createdAt: '2026-11-01 09:30', invoice: 'F001-0004302' }
+    ],
+    popups: [
+      { id: 'POP-01', name: 'Prueba de 14 días al salir', trigger: 'salida', pages: 'Inicio y precios', freqDays: 7, status: 'activo', views: 1840, conversions: 96 },
+      { id: 'POP-02', name: 'Boletín al 60 % del artículo', trigger: 'scroll_60', pages: 'Artículos del blog', freqDays: 14, status: 'activo', views: 3120, conversions: 212 },
+      { id: 'POP-03', name: 'Demo en 30 segundos (precios)', trigger: 'tiempo_30s', pages: 'Precios', freqDays: 7, status: 'pausado', views: 410, conversions: 9 }
+    ],
+    newsletter: 1284,
+    chatbot: { name: 'Kipu', handoff: 'WhatsApp +51 980 123 456', answered: 812, handoffs: 64, leads: 141 }
+  };
+  // Las guías de Rutas Libres también aparecen en el blog de la landing con su sitio y categoría.
+  D.showcase.posts.forEach(p => { p.site = 'rutaslibres'; });
   D.plans.forEach(pl => { pl.isDemo = true; pl.rules = D.settings.bookingRules.filter(r => PLAN_ORDER.indexOf(r.minPlan) <= PLAN_ORDER.indexOf(pl.id)).map(r => r.id); });
   /* Tipos de cambio DEMO: historial de 30 días (soles por unidad) generado de forma determinista */
   (function () {

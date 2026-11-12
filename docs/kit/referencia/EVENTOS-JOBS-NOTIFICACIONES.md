@@ -2,7 +2,7 @@
 
 > Generado por `kit-ia/referencia/tools/extract_events.py` desde la §8 de `proto/docs/especificaciones/*.md`, `kit-ia/api/openapi.json` (`x-realtime-channels`) y las semillas `jobs.json`, `settings.json` (`notifications`, `notifRules`) y `webhooks.json`. Texto literal de las especificaciones; cuando un dato no está definido se indica «Por definir».
 
-**Cifras:** 144 eventos de dominio · 89 jobs · 115 notificaciones · 4 push móviles · 16 eventos de webhook saliente · 8 canales Reverb.
+**Cifras:** 180 eventos de dominio · 119 jobs · 115 notificaciones · 4 push móviles · 16 eventos de webhook saliente · 8 canales Reverb.
 
 ## 1. Marco común (spec 00 §8, CONVENCIONES §4)
 
@@ -161,6 +161,42 @@
 | 18 | `OwnReviewPublished/Hidden/Rejected` | — | Invalida cache `public:reviews:{product}` y feed del widget | default | — |
 | 18 | `OwnReviewReplied` | — | Correo al pasajero + mensaje en portal (`pax_messages`) | notifications | — |
 | 18 | Prototipo | — | `Notify.push('resena.nueva'\|'resena.respuesta'\|'resena.invitacion', …)` | — | — |
+| 19 | `AiRequestQueued` → `RunAiRequest` | — | Llama al adaptador LLM, guarda la salida, tokens y costo; emite `AiRequestCompleted` por Reverb | ai | — |
+| 19 | `PaymentLinkPaid` (webhook) | — | Registra el pago y aplica a la CxC; notifica al vendedor | payments | — |
+| 19 | `OtaBookingReceived` | — | Crea o rechaza la reserva y responde a la OTA | channels | — |
+| 19 | `MarketplaceOrderConfirmed` | — | Crea las reservas en ambos tenants y registra comisión y tarifa | platform | — |
+| 19 | `IssueCheckinPasses` (al confirmar la reserva) | — | Crea los pases y los deja en el portal del pasajero | default | — |
+| 20 | `CorporateApprovalRequested` | — | Avisa por correo y portal a los aprobadores del centro de costo y al administrador | notifications | — |
+| 20 | `CorporateApprovalDecided` | — | Avisa al vendedor; si fue aprobada, la cotización ya puede convertirse | notifications | — |
+| 20 | `CostCenterBudgetThreshold` | — | Aviso al 80 % y al 100 % del presupuesto (CP-10) | notifications | — |
+| 21 | `InTripOfferCreated` | — | Envía el link de pago por el canal elegido | notifications | — |
+| 21 | `InTripOfferPaid` | — | Pide confirmación al proveedor (spec 06) | default | — |
+| 21 | `InTripOfferConfirmed` | — | Crea `booking_trip_items`, el servicio, la orden operativa y el voucher | default | — |
+| 22 | `ShowcaseBookingCreated` | — | Confirmación al viajero y aviso a la agencia | notifications | — |
+| 22 | `ShowcaseMonthlyFees` (día 1) | — | Calcula cargos y comisiones del mes por agencia y los factura | billing | — |
+| 22 | `AccessPassReminder` | — | Aviso 7, 3 y 1 día antes del fin del pase | notifications | — |
+| 22 | `StoryConsentRevoked` | — | Despublica la historia y avisa al equipo | default | — |
+| 23 | `TemplateSubmitted` | — | Lanza `ValidateTemplateBundle` | default | — |
+| 23 | `ValidateTemplateBundle` | — | Verifica SHA-256, manifiesto contra `template.schema.json`, build SSR, Lighthouse móvil (3 corridas, mediana), axe, contraste de tokens, i18n, JSON-LD y CSP; guarda `checks` | integrations | — |
+| 23 | `TemplateVersionPublished` | — | Aviso a las agencias que la usan; las menores se aplican solas (TPL-09) | notifications | — |
+| 23 | `ThemeApplied` | — | Invalida la caché del sitio (ISR `revalidateTag('theme:<tenant>')`) y registra auditoría | default | — |
+| 23 | `GrantMonthlyAiCredits` (día 1) | — | Asigna créditos del plan y del add-on; vence los no usados del mes anterior | billing | — |
+| 23 | `AiCreditsLow` | — | Aviso al 80 % de consumo | notifications | — |
+| 24 | `TrackingTagChanged` | — | Revalida la caché de etiquetas y la CSP del sitio y registra auditoría | default | — |
+| 24 | `VerifyTags` | — | Abre el sitio con Playwright, acepta cookies y confirma la carga de cada etiqueta | integrations | — |
+| 24 | `ConversionFailuresAlert` | — | Aviso tras 3 fallos seguidos de una etiqueta | notifications | — |
+| 24 | `PayloadPostPublished` | — | Sincroniza `platform_blog_posts`, revalida páginas y sitemaps y lanza `PingSearchEngines` | default | — |
+| 24 | `PingSearchEngines` | — | IndexNow y aviso del sitemap a Search Console | integrations | — |
+| 24 | `ScriptReviewRequested` | — | Aviso a quien puede aprobar | notifications | — |
+| 25 | `SignupStarted` | — | Guarda la atribución (UTM, `gclid` y `fbclid`) y programa `SignupRecovery` | default | — |
+| 25 | `SignupCompleted` | — | Correo de bienvenida, inicio del onboarding, conversión `plan_pagado` (spec 24) y lead convertido en Payload | default | — |
+| 25 | `SignupRecovery` (1 h y 24 h) | — | Correo para retomar un alta abandonada (LND-09) | notifications | — |
+| 25 | `TrialSignupCreated` | — | Avisos de la prueba de la spec 13 (7, 3 y 1 día) | notifications | — |
+| 25 | `PlansChanged` | — | Revalida `/`, `/precios` y `/llms.txt` de la landing | default | — |
+| 25 | `CommentSubmitted` | — | Aviso a los moderadores si queda `pendiente` | notifications | — |
+| 25 | `CommentApproved` | — | Revalida el artículo y avisa a quien comentó si recibió respuesta | default | — |
+| 25 | `NewsletterSubscribed` | — | Correo de doble confirmación y conversión `suscripcion_boletin` | notifications | — |
+| 25 | `ChatHandoff` | — | Mensaje a WhatsApp del equipo comercial con el resumen (LND-16) | notifications | — |
 
 ## 3. Jobs y scheduler
 
@@ -255,6 +291,36 @@
 | 17 | `SchedulePaxMessages` (scheduler cada 15 min + tras `ReservationConfirmed`, `PaymentApplied`, cambio de plantilla/regla) | notifications | cada 15 min + tras | Calcula (reserva × plantilla × canal) y hace upsert de `programado` futuros; retira pendientes si R-PAX-MESSAGES está apagada | Política general (§1) |
 | 18 | `ReservationCompleted` → `ScheduleReviewRequest` | default | on-demand / evento | Crea solicitud en `travel_to + daysAfter` | Política general (§1) |
 | 18 | `SendDueReviewRequests` (cada 15 min) | notifications | cada 15 min | Envía invitaciones vencidas de programación; recordatorio a `reminder_days`; vence a `expire_days` | Política general (§1) |
+| 19 | `GenerateAiInsights` (diario 06:00) | ai | diario 06:00 | Calcula alertas por tenant y avisa a su audiencia | Política general (§1) |
+| 19 | `ExpirePaymentLinks` (cada hora) | default | cada hora | `activo → vencido` | Política general (§1) |
+| 19 | `ScheduleRecoveryAttempts` (cada 15 min) | marketing | cada 15 min | Detecta carritos o cotizaciones sin avance y programa intentos | Política general (§1) |
+| 19 | `SendRecoveryAttempt` | notifications | on-demand / evento | Envía por el canal con plantilla y link de pago opcional | Política general (§1) |
+| 19 | `ProcessCatalogImport` | ai | on-demand / evento | Extrae productos del origen y deja la importación en `revision` | Política general (§1) |
+| 19 | `SyncOtaAvailability` (cada 15 min y tras cada venta) | channels | cada 15 min y tras cada venta | Publica disponibilidad y precios a cada conexión `conectado` | Política general (§1) |
+| 19 | `ExpireGiftCards` (diario) | default | diario | `activa → vencida` con movimiento de vencimiento | Política general (§1) |
+| 19 | `DeliverGiftCard` | notifications | on-demand / evento | Envía el vale al destinatario en `deliver_at` | Política general (§1) |
+| 19 | `BuildAccountingExport` | reports | on-demand / evento | Genera el archivo en el formato del destino | Política general (§1) |
+| 19 | `ExpireExternalOffers` (cada 30 min) | default | cada 30 min | `cotizada\|retenida → vencida` | Política general (§1) |
+| 20 | `ExpireCorporateApprovals` (cada 30 min) | default | cada 30 min | `pendiente → vencida` y aviso al vendedor | Política general (§1) |
+| 20 | `GenerateCorporateStatements` (diario 05:00) | reports | diario 05:00 | Para cada cuenta con `statement_auto` y `statement_day` = hoy, genera el estado del mes anterior y lo envía | Política general (§1) |
+| 20 | `BuildCorporateExport` | reports | on-demand / evento | Genera el archivo, lo guarda en `sys_documents` y avisa al usuario | Política general (§1) |
+| 20 | `ExpireCorporateExports` (diario) | default | diario | `listo → vencido` a los 7 días | Política general (§1) |
+| 21 | `ExpireInTripOffers` (cada 15 min) | default | cada 15 min | `→ vencida` al pasar `expires_at` | Política general (§1) |
+| 21 | `SuggestInTripSales` (diario 18:00) | notifications | diario 18:00 | Con la regla activa, recuerda al pasajero lo disponible para mañana y pasado | Política general (§1) |
+| 22 | `ShowcaseReminder` (diario 18:00) | notifications | diario 18:00 | Recordatorio al viajero de las salidas de mañana | Política general (§1) |
+| 22 | `ExpireAccessPasses` (diario) | default | diario | `activo → vencido`, solo lectura y oferta del plan sugerido | Política general (§1) |
+| 22 | `VerifyDomains` (cada 10 min) | default | cada 10 min | Verifica DNS pendientes y emite SSL | Política general (§1) |
+| 22 | `RenewCertificates` (diario) | default | diario | Renueva SSL a 30 días del vencimiento | Política general (§1) |
+| 22 | `SeoNightlyAudit` (diario 02:00) | reports | diario 02:00 | Recalcula puntaje e issues de cada página | Política general (§1) |
+| 22 | `ImportGatewaySettlements` (diario) | integrations | diario | Trae la liquidación de PayPal y la pasarela local y ajusta las comisiones | Política general (§1) |
+| 23 | `GenerateAiContent` | ai | on-demand / evento | Llama al proveedor de LLM con los datos del objeto; `listo` o `fallido`; descuenta créditos solo si está listo | Política general (§1) |
+| 23 | `GenerateAiImages` | ai | on-demand / evento | Genera, guarda en el almacenamiento del tenant, crea `cms_ai_images` y descuenta créditos | Política general (§1) |
+| 23 | `ExpireAiPacks` (diario) | billing | diario | Vence créditos de paquetes con más de 12 meses | Política general (§1) |
+| 24 | `DispatchConversion` | integrations | on-demand / evento | Envía al proveedor (Meta CAPI, Google Ads API, GA4 Measurement Protocol o TikTok Events API) con el `event_id` | Política general (§1) |
+| 24 | `RetryFailedConversions` (cada 15 min) | integrations | cada 15 min | Reintenta los `fallido` con espera exponencial | Reintenta los `fallido` con espera exponencial |
+| 24 | `AggregateWebAnalytics` (cada hora y 03:00) | reports | cada hora y 03:00 | Calcula `*_web_analytics_daily` | Política general (§1) |
+| 24 | `PurgeConversionDispatches` (diario) | default | diario | Borra los envíos de más de 90 días | Política general (§1) |
+| 25 | `PurgeChatSessions` (diario) | default | diario | Borra las conversaciones de más de 90 días | Política general (§1) |
 
 ### 3.1 Jobs de la semilla (`kit-ia/seeds/jobs.json`, pantalla Administración › Jobs)
 

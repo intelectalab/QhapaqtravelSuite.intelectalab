@@ -11,7 +11,7 @@ Cada archivo `fase-N.md` tiene: **Resumen** (épicas e historias), **Cómo usar 
 
 **Especificación:** 04 §5 RES-BR-01…04, 03 §4
 
-**Tablas:** booking_reservations, booking_reservation_services, booking_reservation_passengers
+**Tablas:** booking_reservations, booking_reservation_services, booking_passengers
 
 **Endpoints:** POST /api/v1/quotes/{quote}/convert
 

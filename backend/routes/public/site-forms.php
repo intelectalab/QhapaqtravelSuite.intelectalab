@@ -10,5 +10,8 @@ Route::middleware(['public.site', ScopeSiteTenant::class, 'throttle:10,1', 'capt
     Route::post('leads', [SiteFormController::class, 'lead'])->name('leads');
     Route::post('contact', [SiteFormController::class, 'contact'])->name('contact');
     Route::post('newsletter', [SiteFormController::class, 'newsletter'])->name('newsletter');
-    Route::post('claims', [SiteFormController::class, 'claim'])->name('claims');
+});
+
+Route::middleware(['public.site', ScopeSiteTenant::class, 'throttle:5,1', 'captcha'])->name('site.forms.')->group(function (): void {
+    Route::post('claim-book', [SiteFormController::class, 'claim'])->name('claims');
 });

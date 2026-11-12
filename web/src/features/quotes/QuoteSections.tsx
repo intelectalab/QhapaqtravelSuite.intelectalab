@@ -1,4 +1,4 @@
-import { CalendarCheck, CheckCircle2, CircleAlert, ClipboardList, Eye, FileText, History, ListChecks, Map as MapIcon, MessagesSquare, Route, Send, ShieldCheck, ThumbsDown, ThumbsUp, TrendingUp } from "lucide-react";
+import { CalendarCheck, Camera, CheckCircle2, ChevronDown, CircleAlert, ClipboardList, Coins, Eye, FileText, History, ListChecks, Lock, Map as MapIcon, MessagesSquare, PencilLine, Route, Send, ShieldCheck, ThumbsDown, ThumbsUp, TrendingUp, Users } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { AuditWhen, AuditWho } from "@/components/table/AuditCells";
@@ -7,7 +7,9 @@ import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { DownloadButton } from "@/components/ui/DownloadButton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { MiniTable, ProgressBar } from "@/components/ui/MiniTable";
+import { ThresholdGauge } from "@/components/ui/ThresholdGauge";
 import { SOFT_TINT, TintCardTitle } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
@@ -41,16 +43,28 @@ export function DetailSection({ quote }: { quote: QuoteDetail }) {
         <Card>
           <TintCardTitle icon={FileText} title="Condiciones de la versión vigente" />
           {current ? (
-            <FieldList
-              fields={[
-                { label: "Moneda", value: quote.currency === "PEN" ? "Soles" : `${quote.currency} · cambio ${current.fx_rate ?? quote.fx_rate}` },
-                { label: "Pasajeros", value: [quote.pax.adt && `${quote.pax.adt} adultos`, quote.pax.chd && `${quote.pax.chd} niños`, quote.pax.inf && `${quote.pax.inf} infantes`].filter(Boolean).join(" · ") },
-                { label: "Copia del catálogo", value: <span className="whitespace-normal">{current.snapshot}</span> },
-                { label: "Condiciones comerciales", value: <span className="whitespace-normal">{current.conditions || "Las de cada producto"}</span> },
-                ...(current.markup_pct ? [{ label: "Markup aplicado", value: `${Number(current.markup_pct)} %` }] : []),
-                { label: "Edición", value: current.frozen_at ? `Congelada el ${formatDateTime(current.frozen_at)}` : current.status === "borrador" ? "Aún editable" : "Congelada al enviarse" },
-              ]}
-            />
+            <div className="flex flex-col gap-3">
+              <ul className="flex flex-wrap gap-2">
+                {[
+                  { icon: Coins, label: quote.currency === "PEN" ? "Soles" : `${quote.currency} · TC ${current.fx_rate ?? quote.fx_rate}` },
+                  { icon: Users, label: [quote.pax.adt && `${quote.pax.adt} adultos`, quote.pax.chd && `${quote.pax.chd} niños`, quote.pax.inf && `${quote.pax.inf} infantes`].filter(Boolean).join(" · ") },
+                  ...(current.markup_pct ? [{ icon: TrendingUp, label: `Markup ${Number(current.markup_pct)} %` }] : []),
+                  { icon: current.frozen_at || current.status !== "borrador" ? Lock : PencilLine, label: current.frozen_at ? `Congelada el ${formatDateTime(current.frozen_at)}` : current.status === "borrador" ? "Aún editable" : "Congelada al enviarse" },
+                  { icon: Camera, label: current.snapshot },
+                ].map((chip) => (
+                  <li key={chip.label} className="lift inline-flex max-w-full items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-[12.5px]">
+                    <chip.icon size={14} className="flex-none text-[var(--tint,var(--t1))]" />
+                    <span className="truncate">{chip.label}</span>
+                  </li>
+                ))}
+              </ul>
+              <details className="group rounded-tile bg-surface-2 px-3 py-2">
+                <summary className="flex cursor-pointer list-none items-center gap-1.5 text-[12.5px] font-semibold text-fg-2">
+                  <ChevronDown size={14} className="transition group-open:rotate-180" /> Condiciones comerciales
+                </summary>
+                <p className="mt-1.5 whitespace-pre-line text-[12.5px] text-fg-3">{current.conditions || "Se aplican las condiciones de cada producto."}</p>
+              </details>
+            </div>
           ) : (
             <p className="text-[13.5px] text-fg-3">Sin versión vigente.</p>
           )}
@@ -94,7 +108,16 @@ export function DetailSection({ quote }: { quote: QuoteDetail }) {
 export function VersionsSection({ quote }: { quote: QuoteDetail }) {
   return (
     <Card>
-      <TintCardTitle icon={History} title="Versiones" aside={<QuoteCompare code={quote.code} versions={quote.versions.map((version) => version.number)} currency={quote.currency} />} />
+      <TintCardTitle
+        icon={History}
+        title="Versiones"
+        aside={
+          <span className="flex items-center gap-1.5">
+            <InfoTip label="Versiones congeladas">Las versiones enviadas quedan congeladas: las reservas y los documentos conservan la copia del catálogo con la que se emitieron.</InfoTip>
+            <QuoteCompare code={quote.code} versions={quote.versions.map((version) => version.number)} currency={quote.currency} />
+          </span>
+        }
+      />
       <MiniTable head={["Versión", "Emitida", "Autor", "Ítems", "Total", ...(quote.see_margin ? ["Margen"] : []), "Desc.", "Estado", ""]} align={["left", "left", "left", "right", "right", ...(quote.see_margin ? ["right" as const] : []), "right", "left", "right"]} minWidth={680}>
         {quote.versions.map((version) => (
           <tr key={version.number}>
@@ -121,20 +144,7 @@ export function VersionsSection({ quote }: { quote: QuoteDetail }) {
           </tr>
         ))}
       </MiniTable>
-      <p className="mt-3 text-[12.5px] text-fg-3">Las versiones enviadas quedan congeladas: las reservas y los documentos conservan la copia del catálogo con la que se emitieron.</p>
     </Card>
-  );
-}
-
-function Check({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
-  return (
-    <li className={cn("flex items-start gap-2.5 rounded-[12px] px-3 py-2.5 text-[13px]", ok ? "bg-[color-mix(in_srgb,var(--ok)_8%,transparent)]" : "bg-[color-mix(in_srgb,var(--warn)_10%,transparent)]")}>
-      {ok ? <CheckCircle2 size={16} className="mt-0.5 flex-none text-ok" /> : <CircleAlert size={16} className="mt-0.5 flex-none text-warn" />}
-      <span>
-        <b className="block font-semibold">{label}</b>
-        <span className="text-fg-2">{detail}</span>
-      </span>
-    </li>
   );
 }
 
@@ -199,12 +209,15 @@ export function PricingSection({ quote }: { quote: QuoteDetail }) {
       </Card>
       <Card>
         <TintCardTitle icon={ShieldCheck} title="Control de aprobación interna" aside={internal ? <StatusBadge status={internal.status} /> : undefined} />
-        <ul className="grid gap-2 md:grid-cols-3">
-          <Check ok={discount <= Number(rules.discount_limit)} label={`Descuento hasta ${rules.discount_limit} %`} detail={discount > 0 ? `Esta versión tiene ${discount} %.` : "Sin descuento."} />
-          <Check ok={margin === null || margin >= Number(rules.margin_floor)} label={`Margen desde ${rules.margin_floor} %`} detail={margin === null ? "Sin datos de costo." : `Esta versión deja ${margin} %.`} />
-          <Check ok={discount <= Number(rules.max_discount)} label={`Tope de ${rules.max_discount} %`} detail={discount > Number(rules.max_discount) ? "Supera el tope: solo Gerencia puede autorizarlo." : "Dentro del tope de la agencia."} />
-        </ul>
-        <p className="mt-3 text-[12.5px] text-fg-3">{quote.internal?.required ? "Por estas reglas, Gerencia debe aprobarla antes de enviarla al cliente." : "Cumple las reglas: se puede enviar sin aprobación de Gerencia."}</p>
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <ThresholdGauge label="Descuento" value={discount} threshold={Number(rules.discount_limit)} mode="max" detail={`Libre hasta ${rules.discount_limit} %`} />
+          <ThresholdGauge label="Margen" value={margin} threshold={Number(rules.margin_floor)} mode="min" detail={margin === null ? "Sin datos de costo" : `Mínimo ${rules.margin_floor} %`} />
+          <ThresholdGauge label="Tope de descuento" value={discount} threshold={Number(rules.max_discount)} mode="max" detail={discount > Number(rules.max_discount) ? "Solo Gerencia lo autoriza" : `Máximo ${rules.max_discount} %`} />
+        </div>
+        <p className={cn("mt-3 flex items-center gap-2 rounded-tile px-3 py-2 text-[12.5px] font-medium", quote.internal?.required ? "bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] text-fg" : "bg-[color-mix(in_srgb,var(--ok)_8%,transparent)] text-fg")}>
+          {quote.internal?.required ? <CircleAlert size={15} className="flex-none text-warn" /> : <CheckCircle2 size={15} className="flex-none text-ok" />}
+          {quote.internal?.required ? "Requiere aprobación de Gerencia antes de enviarla." : "Se puede enviar sin aprobación de Gerencia."}
+        </p>
       </Card>
     </div>
   );

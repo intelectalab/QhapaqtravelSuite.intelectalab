@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Domain\Catalog\Support\AllotmentConsumption;
+use App\Domain\Catalog\Support\AllotmentNotices;
 use App\Domain\Finance\Support\Consolidation;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Money\Decimal;
@@ -44,6 +45,10 @@ final class ReleaseAllotments extends TenantJob
                 'message' => mb_substr("Release automático: {$day->free} unidad(es) liberadas del {$day->service_date} (JOB-10)", 0, 300),
             ]);
             $units += (int) $day->free;
+        }
+
+        foreach ($days->groupBy('allotment_id') as $allotmentId => $released) {
+            app(AllotmentNotices::class)->toProvider((string) $allotmentId, 'cupo.release', 'Release automático de cupo', 'Se liberaron por fecha límite de release: '.$released->map(fn (object $day): string => "{$day->service_date} ({$day->free})")->implode(', ').'.');
         }
 
         [$charges, $chargedTotal] = $this->charge($today, $audit);

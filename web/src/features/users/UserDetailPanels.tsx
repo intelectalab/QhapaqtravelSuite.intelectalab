@@ -1,8 +1,9 @@
-import { Activity, Briefcase, IdCard, KeyRound, ShieldCheck } from "lucide-react";
+import { Activity, Briefcase, ChevronDown, IdCard, KeyRound, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { TintCardTitle } from "@/components/ui/Tinted";
 import { actionLabel } from "@/lib/admin";
 import { formatDateTime } from "@/lib/format";
@@ -79,26 +80,48 @@ export function UserWorkloadCard({ user }: { user: UserDetail }) {
 export function UserPermissionsCard({ user }: { user: UserDetail }) {
   return (
     <Card>
-      <TintCardTitle icon={KeyRound} title="Permisos efectivos" aside={`${user.permissions.length}`} />
+      <TintCardTitle
+        icon={KeyRound}
+        title="Permisos efectivos"
+        aside={
+          <span className="flex items-center gap-1.5 text-[12.5px] text-fg-3">
+            {user.permissions.length}
+            <InfoTip label="De dónde vienen">Vienen del rol. Para cambiarlos, edita el rol o asígnale otro.</InfoTip>
+          </span>
+        }
+      />
       {user.permission_modules.length === 0 ? (
         <p className="text-[13px] text-fg-3">Este usuario no tiene permisos.</p>
       ) : (
-        <div className="flex flex-col gap-3">
-          {user.permission_modules.map((group) => (
-            <div key={group.module}>
-              <p className="mb-1.5 text-[12px] font-semibold text-fg-2">{group.module}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {group.permissions.map((permission) => (
-                  <span key={permission} title={permission} className="rounded-[8px] bg-surface-2 px-2 py-1 text-[12px] text-fg-2 transition-colors hover:bg-accent/10 hover:text-accent">
-                    {PERMISSION_LABEL[permission] ?? permission}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <ul className="grid gap-1">
+          {user.permission_modules.map((group) => {
+            const total = Math.max(group.total ?? group.permissions.length, group.permissions.length);
+            return (
+              <li key={group.module}>
+                <details className="group/module rounded-lg px-1.5 py-1 transition hover:bg-surface-2">
+                  <summary className="grid cursor-pointer list-none grid-cols-[130px_1fr_44px_16px] items-center gap-2 text-[12.5px]">
+                    <span className="truncate text-fg-2">{group.module}</span>
+                    <span className="block h-1.5 overflow-hidden rounded-full bg-surface-2">
+                      <span className="block h-full rounded-full bg-[var(--tint,var(--t1))]" style={{ width: `${(group.permissions.length / total) * 100}%` }} />
+                    </span>
+                    <span className="text-right font-mono text-[12px] text-fg-3">
+                      {group.permissions.length}/{total}
+                    </span>
+                    <ChevronDown size={14} className="text-fg-3 transition group-open/module:rotate-180" />
+                  </summary>
+                  <ul className="mt-1.5 flex flex-wrap gap-1 pb-1 pl-1">
+                    {group.permissions.map((permission) => (
+                      <li key={permission} title={permission} className="rounded-md bg-surface px-2 py-0.5 text-[11.5px] text-fg-2">
+                        {PERMISSION_LABEL[permission] ?? permission}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </li>
+            );
+          })}
+        </ul>
       )}
-      <p className="mt-3 text-[12px] text-fg-3">Vienen del rol. Para cambiarlos, edita el rol o asígnale otro.</p>
     </Card>
   );
 }

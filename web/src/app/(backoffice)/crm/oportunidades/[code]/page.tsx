@@ -33,8 +33,10 @@ export default async function OportunidadPage({ params }: PageProps<"/crm/oportu
   const lost = opportunity.stage === "perdida";
   const open = OPEN_STAGES.includes(opportunity.stage);
   const order = [...OPEN_STAGES, "ganada"];
+  const moves = opportunity.history.filter((event) => event.entity === "Oportunidad" && event.entity_id === opportunity.code && ["cambio_etapa", "reabrir"].includes(event.action));
+  const visited = new Set([opportunity.stage, ...moves.flatMap((event) => [event.before, event.after]).filter((value): value is string => Boolean(value))]);
   const reached = order.indexOf(opportunity.stage);
-  const steps = order.map((stage, index) => ({ label: stageName(stage), at: stage === "ganada" ? opportunity.closed_at : null, done: !lost && index <= reached }));
+  const steps = order.map((stage, index) => ({ label: stageName(stage), at: stage === "ganada" ? opportunity.closed_at : null, done: !lost && index <= reached && visited.has(stage), skipped: !lost && index < reached && !visited.has(stage) }));
   const weighted = (opportunity.amount_pen * opportunity.probability) / 100;
   const canQuote = open && me.permissions.includes("quotes.create");
   const card = opportunity.client_card;
@@ -105,7 +107,7 @@ export default async function OportunidadPage({ params }: PageProps<"/crm/oportu
                 </span>
               </p>
             ) : (
-              <Journey steps={steps} formatAt={(iso) => formatDate(iso).replace(/ \d{4}$/, "")} />
+              <Journey steps={steps} skippedLabel="Omitida" formatAt={(iso) => formatDate(iso).replace(/ \d{4}$/, "")} />
             )}
           </HeroPanel>
         </div>

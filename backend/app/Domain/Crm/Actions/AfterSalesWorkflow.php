@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Crm\Actions;
 
 use App\Domain\Crm\Support\CodeSequence;
+use App\Domain\Crm\Support\CrmNotices;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -73,6 +74,7 @@ final class AfterSalesWorkflow
                     'due_at' => Carbon::now($this->context->timezone())->addDay()->setTime(10, 0)->toIso8601String(),
                 ], $actor);
                 DB::table('crm_activities')->where('code', $activity)->update(['owner_id' => $client->owner_id]);
+                app(CrmNotices::class)->detractor($case, $client->owner_id, (string) $client->name, $score, $data['comment'] ?? null);
             }
 
             return $code;
@@ -137,8 +139,7 @@ final class AfterSalesWorkflow
         [$allowed, $target] = match ($step) {
             'start' => [['abierta'], 'en_proceso'],
             'resolve' => [['abierta', 'en_proceso'], 'resuelta'],
-            'close' => [['resuelta', 'abierta', 'en_proceso'], 'cerrada'],
-            'reopen' => [['resuelta', 'cerrada'], 'en_proceso'],
+            'close' => [['resuelta'], 'cerrada'],
             default => [['abierta', 'en_proceso'], $case->status],
         };
 
@@ -156,10 +157,7 @@ final class AfterSalesWorkflow
                 $values += ['resolution' => $note, 'resolved_at' => now()];
             }
             if ($step === 'close') {
-                $values += ['closed_at' => now(), 'resolution' => $case->resolution ?? ($note ?: 'Cerrado sin observaciones.')];
-            }
-            if ($step === 'reopen') {
-                $values += ['closed_at' => null];
+                $values += ['closed_at' => now()];
             }
 
             DB::table('crm_cases')->where('id', $case->id)->update($values);
@@ -172,13 +170,16 @@ final class AfterSalesWorkflow
                 'message' => $note ?: match ($step) {
                     'start' => 'Atención iniciada',
                     'close' => 'Caso cerrado',
-                    'reopen' => 'Caso reabierto',
                     default => 'Caso resuelto',
                 },
                 'user_id' => $actor->getKey(),
                 'created_by' => $actor->getKey(),
             ]);
             $this->audit->log('Reclamo (caso)', $case->code, $step === 'followup' ? 'seguimiento' : 'cambio_estado', $case->status, $target.($note ? ' · '.mb_substr($note, 0, 60) : ''));
+
+            if ($step === 'close') {
+                app(CrmNotices::class)->caseClosed((string) $case->id);
+            }
         });
     }
 
@@ -209,6 +210,10 @@ final class AfterSalesWorkflow
         ]);
         $this->audit->log('Reclamo (caso)', $code, 'crear', null, "{$values['type_code']} · {$values['priority']}");
 
+        if (! $praise) {
+            app(CrmNotices::class)->caseAssigned($code, $values['owner_id'] ?? null, (string) $actor->getKey());
+        }
+
         return $code;
     }
 
@@ -220,7 +225,7 @@ final class AfterSalesWorkflow
 
     private function client(string $code, User $actor): object
     {
-        return Portfolio::scope(DB::table('crm_clients')->whereNull('deleted_at'), $actor, 'owner_id')->where('code', $code)->first(['id', 'code', 'name', 'owner_id', 'nps_last'])
+        return Portfolio::clients(DB::table('crm_clients')->whereNull('deleted_at'), $actor)->where('code', $code)->first(['id', 'code', 'name', 'owner_id', 'nps_last'])
             ?? throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige un cliente de tu cartera.');
     }
 

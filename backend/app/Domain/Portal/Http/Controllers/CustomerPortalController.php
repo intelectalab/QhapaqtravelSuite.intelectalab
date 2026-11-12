@@ -9,7 +9,6 @@ use App\Domain\Portal\Actions\PassengerTripActions;
 use App\Domain\Portal\Support\PortalAccount;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
-use App\Domain\Site\Actions\SiteAccountPayment;
 use App\Domain\Site\Support\SiteAccountDirectory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -58,11 +57,6 @@ final class CustomerPortalController
         $version = $request->header('If-Match');
 
         return response()->json(['data' => $actions->updateCompanions($account, $code, $request->only(['passengers', 'pickup']), is_numeric($version) ? (int) $version : null)]);
-    }
-
-    public function pay(Request $request, string $code, SiteAccountPayment $payments): JsonResponse
-    {
-        return response()->json(['data' => $payments->pay($this->customer($request), $code, $request->only(['method', 'card_token', 'card_holder', 'operation_ref']))]);
     }
 
     private function customer(Request $request): PortalAccount

@@ -592,3 +592,27 @@ comment on table sys_scheduled_jobs is '[Spec 09 §3.14] [Fase 0] Jobs programad
 comment on table sys_job_runs is '[Spec 09 §3.14 + CONVENCIONES §4] [Fase 0] Ejecuciones de jobs.';
 comment on table integration_errors is '[Spec 09 §3.15] [Fase 0] Errores de jobs/notificaciones/integraciones (jobLog).';
 
+-- ---------------------------------------------------------------- v2.5: fin_fx_rates pasa a Fase 0
+-- La configuración de moneda del tenant (F0-33, 09 §3.9) guarda el historial de TC desde la Fase 0.
+create table fin_fx_rates (
+  id uuid not null default app_uuid_v7(),
+  tenant_id uuid not null default app_current_tenant_id(),
+  currency_code char(3) not null,
+  base_currency char(3) not null default 'PEN',
+  rate_pen numeric(14,6) not null check (rate_pen > 0),
+  buy numeric(12,6),
+  sell numeric(12,6),
+  previous_rate numeric(14,6),
+  rate_date date not null,
+  source varchar(80) not null,
+  effective_at timestamptz not null default now(),
+  created_by uuid,
+  created_at timestamptz not null default now(),
+  constraint pk_fin_fx_rates primary key (id)
+);
+
+alter table fin_fx_rates add constraint fk_fin_fx_rates_tenant_id foreign key (tenant_id) references tenants (id);
+create index ix_fin_fx_rates_tenant_id_currency_code_effective_at_desc on fin_fx_rates (tenant_id, currency_code, effective_at desc);
+create index ix_fin_fx_rates_tenant_id_currency_code_rate_date_desc on fin_fx_rates (tenant_id, currency_code, rate_date desc);
+create trigger trg_fin_fx_rates_append_only before update or delete on fin_fx_rates for each row execute function app_forbid_update_delete();
+comment on table fin_fx_rates is '[Spec 07 §3.19 + 09 §3.9 + 17 §3.6] [Fase 0] Histórico de tipo de cambio (append-only). En Fase 0 por la configuración de moneda del tenant (09 §3.9, F0-33).';

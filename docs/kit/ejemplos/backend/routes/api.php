@@ -13,14 +13,15 @@ declare(strict_types=1);
 | (compare_contract.py no compara nombres de parámetros). El modelo acepta uuid o código (COT-2026-00191).
 |
 | Pila de middleware del grupo autenticado (spec 00 §11 fila 1):
-|   correlation → auth:sanctum → tenant (ResolveTenant) → tenant.active → mfa → tenant.db (SetPostgresTenant)
+|   correlation → tenant (ResolveTenant) → tenant.db (SetPostgresTenant) → auth:sanctum → tenant.active → mfa
 |   → permissions.team (setPermissionsTeamId) → experience:backoffice → [idempotent] → permission:x → controlador
+|   (el tenant va antes de auth:sanctum porque personal_access_tokens e iam_users tienen RLS)
 */
 
 use App\Domain\Quotes\Http\Controllers\QuoteConversionController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth:sanctum', 'tenant', 'tenant.active', 'mfa', 'tenant.db', 'permissions.team', 'throttle:api'])
+Route::middleware(['tenant', 'tenant.db', 'auth:sanctum', 'tenant.active', 'mfa', 'permissions.team', 'throttle:api'])
     ->group(function (): void {
 
         // ------------------------------------------------------------ Back-office (experiencia backoffice)

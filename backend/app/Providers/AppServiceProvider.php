@@ -13,6 +13,7 @@ use App\Domain\Crm\Events\SalesTargetClosed;
 use App\Domain\Finance\Listeners\CreateTargetBonus;
 use App\Domain\Finance\Listeners\TreasurySyncListener;
 use App\Domain\Iam\Models\AccessToken;
+use App\Domain\Operations\Listeners\CreateTravelDocChecklist;
 use App\Domain\Quotes\Models\Quote;
 use App\Domain\Quotes\Policies\QuotePolicy;
 use App\Domain\Shared\Tenancy\TenantContext;
@@ -41,6 +42,7 @@ final class AppServiceProvider extends ServiceProvider
         Gate::policy(Quote::class, QuotePolicy::class);
         Gate::policy(Reservation::class, ReservationPolicy::class);
         Event::listen(ReservationConfirmed::class, NotifyReservationConfirmed::class);
+        Event::listen(ReservationConfirmed::class, CreateTravelDocChecklist::class);
         Event::listen(ConsumeAllotmentOnServiceChange::EVENTS, ConsumeAllotmentOnServiceChange::class);
         Event::listen(TreasurySyncListener::EVENTS, TreasurySyncListener::class);
         Event::listen(SalesTargetClosed::class, CreateTargetBonus::class);

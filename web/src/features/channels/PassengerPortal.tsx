@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, BellRing, CheckCheck, Eye, Forward, Mail, MessageCircle, MessageSquareHeart, MessageSquareReply, Phone, Send, Smartphone } from "lucide-react";
+import { AlertCircle, BellRing, CheckCheck, Eye, Mail, MessageCircle, MessageSquareHeart, MessageSquareReply, Phone, Send, Smartphone } from "lucide-react";
 import { markFeedback, replyFeedback } from "@/app/(backoffice)/canales/portal-pasajero/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -12,6 +12,7 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { Tabs } from "@/components/ui/Tabs";
 import { TextArea } from "@/components/ui/TextArea";
 import { TintTile } from "@/components/ui/Tinted";
+import { FeedbackIncidentAction } from "@/features/operations/FeedbackIncidentAction";
 import { channelStatus, FEEDBACK_TYPES, MESSAGE_CHANNELS, type PassengerPortalOverview, type PaxFeedback, type PaxMessage } from "@/lib/channels";
 import { formatDateTime } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
@@ -58,23 +59,22 @@ function ReplyAction({ feedback }: { feedback: PaxFeedback }) {
   );
 }
 
-function MarkAction({ feedback, status }: { feedback: PaxFeedback; status: "leido" | "derivado" }) {
-  const read = status === "leido";
+function MarkAction({ feedback }: { feedback: PaxFeedback }) {
   return (
     <PanelAction<StepResult>
-      label={read ? "Marcar leído" : "Derivar"}
-      formId={`fb-${feedback.code}-${status}`}
-      title={read ? "Marcar como leído" : "Derivar a operaciones"}
-      description={read ? "Queda registrado que el equipo lo revisó." : "Operaciones lo atiende como incidencia del viaje."}
-      submitLabel={read ? "Marcar leído" : "Derivar"}
+      label="Marcar leído"
+      formId={`fb-${feedback.code}-leido`}
+      title="Marcar como leído"
+      description="Queda registrado que el equipo lo revisó."
+      submitLabel="Marcar leído"
       action={markFeedback}
       initial={initial}
-      trigger={(open) => <RowIcon tone={read ? "view" : "neutral"} label={read ? "Marcar leído" : "Derivar"} icon={read ? <Eye size={15} /> : <Forward size={15} />} onClick={open} />}
+      trigger={(open) => <RowIcon tone="view" label="Marcar leído" icon={<Eye size={15} />} onClick={open} />}
     >
       {() => (
         <>
           <input type="hidden" name="code" value={feedback.code} />
-          <input type="hidden" name="status" value={status} />
+          <input type="hidden" name="status" value="leido" />
         </>
       )}
     </PanelAction>
@@ -110,9 +110,9 @@ function FeedbackBoard({ rows, canReply }: { rows: PaxFeedback[]; canReply: bool
             </span>
             {canReply && (
               <RowActions>
-                <ReplyAction feedback={feedback} />
-                {feedback.status === "nuevo" && <MarkAction feedback={feedback} status="leido" />}
-                {feedback.status !== "respondido" && feedback.status !== "derivado" && <MarkAction feedback={feedback} status="derivado" />}
+                {feedback.status !== "derivado" && <ReplyAction feedback={feedback} />}
+                {feedback.status === "nuevo" && <MarkAction feedback={feedback} />}
+                <FeedbackIncidentAction feedback={{ code: feedback.code, type: feedback.type, text: feedback.text, rating: feedback.rating, status: feedback.status, passenger_name: feedback.passenger, service_name: feedback.service }} />
               </RowActions>
             )}
           </div>

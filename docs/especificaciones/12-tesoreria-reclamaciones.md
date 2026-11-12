@@ -290,7 +290,7 @@ Estado de plazo (derivado): `en_plazo`, `por_vencer` (≤ `alert_days` hábiles)
 | GET | `/api/v1/crm/claim-book/{id}` | crm.claims.manage / consumidor dueño | Detalle | — |
 | POST | `/api/v1/crm/claim-book` | crm.claims.manage (presencial) | Registro por personal | Idempotency-Key |
 | POST | `/api/v1/portal/claim-book` | sesión cliente/pasajero | Registro desde el portal; `client_id` desde el token | Idempotency-Key |
-| POST | `/api/v1/public/{tenant}/claim-book` | público (rate limit 5/min por IP + captcha) | Registro desde el sitio web | Idempotency-Key |
+| POST | `/api/v1/public/claim-book` | público (rate limit 5/min por IP + captcha) | Registro desde el sitio web; el tenant sale de `X-KipuControl-Key` / host, nunca de la ruta (v2.5) | Idempotency-Key |
 | GET | `/api/v1/portal/claim-book` | sesión cliente/pasajero | "Mis hojas" | — |
 | POST | `/api/v1/crm/claim-book/{id}/review` | crm.claims.manage | → in_review + responsable | lock_version |
 | POST | `/api/v1/crm/claim-book/{id}/response` | crm.claims.manage | Responder y enviar | Idempotency-Key |

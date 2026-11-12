@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Actions;
 
+use App\Domain\Admin\Support\TenantSettings;
 use App\Domain\Booking\Actions\Support\ServicesFromQuoteItem;
+use App\Domain\Booking\Support\ReservationNotices;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Finance\Support\ReceivableLedger;
@@ -56,6 +58,13 @@ final class ReservationChanges
     {
         DB::transaction(function () use ($code, $data, $applyNow, $actor): void {
             $reservation = $this->open($code, $actor, true);
+            $minHours = (int) (app(TenantSettings::class)->section('operations')['modify_min_hours'] ?? 48);
+            $start = CarbonImmutable::parse((string) $reservation->travel_from, $this->context->timezone())->startOfDay();
+
+            if ($minHours > 0 && CarbonImmutable::now($this->context->timezone())->diffInHours($start, false) < $minHours && ! $actor->can('quotes.approve_internal')) {
+                throw ApiException::conflict('RES-BR-30', "Los cambios se piden con al menos {$minHours} h de anticipación al viaje. Pide a Gerencia que lo gestione.");
+            }
+
             $impact = $this->impact($reservation, $data);
 
             if (! $impact['available']) {
@@ -84,6 +93,8 @@ final class ReservationChanges
                     throw ApiException::forbidden('FORBIDDEN', 'Solo un supervisor aplica la modificación al momento.', ['quotes.approve_internal']);
                 }
                 $this->apply($reservation, $changeId, $actor);
+            } else {
+                app(ReservationNotices::class)->changeRequested((string) $reservation->id, (string) $data['description'], (string) $actor->getKey());
             }
         });
     }
@@ -93,6 +104,7 @@ final class ReservationChanges
         DB::transaction(function () use ($code, $changeId, $actor): void {
             $reservation = $this->open($code, $actor, true);
             $this->apply($reservation, $changeId, $actor);
+            app(ReservationNotices::class)->changeDecided((string) $reservation->id, (string) DB::table('booking_changes')->where('id', $changeId)->value('requested_by'), true, null, (string) $actor->getKey());
         });
     }
 
@@ -107,6 +119,7 @@ final class ReservationChanges
         }
 
         $this->audit->log('Reserva', $reservation->code, 'rechazar_modificacion', null, $note);
+        app(ReservationNotices::class)->changeDecided((string) $reservation->id, (string) DB::table('booking_changes')->where('id', $changeId)->value('requested_by'), false, $note, (string) $actor->getKey());
     }
 
     public function pending(string $reservationId): Collection

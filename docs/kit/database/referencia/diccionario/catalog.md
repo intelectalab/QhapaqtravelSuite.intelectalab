@@ -1,16 +1,16 @@
 # Diccionario de datos · Catálogo (catalog_)
 
-_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras cargar `00`→`90`. No editar a mano._
+_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.15 tras cargar `00`→`90`. No editar a mano._
 
 Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y reglas por producto.
 
-50 tablas · 732 columnas · 133 claves foráneas. Diagrama ER: [`../er/catalog.svg`](../er/catalog.svg) (fuente [`../er/catalog.mmd`](../er/catalog.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
+56 tablas · 826 columnas · 152 claves foráneas. Diagrama ER: [`../er/catalog.svg`](../er/catalog.svg) (fuente [`../er/catalog.mmd`](../er/catalog.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
 
 ## Tablas
 
 | Tabla | Fase | RLS | Columnas | FKs | Descripción |
 |---|---|---|---|---|---|
-| [`catalog_availability_holds`](#catalog_availability_holds) | Fase 1 · MVP | tenant | 19 | 3 | [Spec 02 §3.9 + 15 §3.13–3.14] [Fase 1] Retenciones de cupo (hold → confirmada/liberada/expirada/consumida). |
+| [`catalog_availability_holds`](#catalog_availability_holds) | Fase 1 · MVP | tenant | 19 | 3 | [Spec 02 §3.9 + 15 §3.13–3.14] [Fase 1] Retenciones de cupo (hold → confirmada/liberada/expirada/consumida). v2.5: fuente única de retenciones para el cálculo d |
 | [`catalog_availability_ranges`](#catalog_availability_ranges) | Fase 1 · MVP | tenant | 14 | 2 | [Spec 16 §3.3] [Fase 1] Rangos de disponibilidad por producto (motor básico). |
 | [`catalog_destinations`](#catalog_destinations) | Fase 1 · MVP | tenant | 16 | 2 | [Spec 02 §3.3] [Fase 1] Árbol de destinos (País → Atracción/Ruta). |
 | [`catalog_itineraries`](#catalog_itineraries) | Fase 1 · MVP | tenant | 9 | 2 | [Spec 02 §3.7] [Fase 1] Itinerario del producto. |
@@ -44,7 +44,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | [`catalog_seasons`](#catalog_seasons) | Fase 1 · MVP | tenant | 15 | 1 | [Spec 02 §3.8] [Fase 1] Temporadas (factor de precio). |
 | [`catalog_services`](#catalog_services) | Fase 1 · MVP | tenant | 20 | 2 | [Spec 02 §3.5] [Fase 1] Servicios de proveedor (componentes de costo). |
 | [`catalog_accommodation_hotels`](#catalog_accommodation_hotels) | Fase 2 · Canales y campo | tenant | 11 | 3 | [Spec 16 §3.6] [Fase 2] Hoteles por tramo. |
-| [`catalog_accommodation_legs`](#catalog_accommodation_legs) | Fase 2 · Canales y campo | tenant | 12 | 3 | [Spec 16 §3.6] [Fase 2] Tramos de alojamiento del circuito. |
+| [`catalog_accommodation_legs`](#catalog_accommodation_legs) | Fase 2 · Canales y campo | tenant | 14 | 3 | [Spec 16 §3.6] [Fase 2] Tramos de alojamiento del circuito. |
 | [`catalog_accommodation_room_types`](#catalog_accommodation_room_types) | Fase 2 · Canales y campo | tenant | 10 | 2 | [Spec 16 §3.6] [Fase 2] Tipos de habitación y precio por noche. |
 | [`catalog_allotment_charges`](#catalog_allotment_charges) | Fase 2 · Canales y campo | tenant | 13 | 3 | [Spec 11 §3.5] [Fase 2] Penalidades por cupo no usado. |
 | [`catalog_allotment_consumptions`](#catalog_allotment_consumptions) | Fase 2 · Canales y campo | tenant | 11 | 4 | [Spec 11 §3.3] [Fase 2] Consumo de cupo por servicio de reserva (idempotente). |
@@ -60,12 +60,18 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | [`catalog_product_rule_overrides`](#catalog_product_rule_overrides) | Fase 2 · Canales y campo | tenant | 10 | 3 | [Spec 17 §3.2 + 16 §3.2] [Fase 2] Excepción de regla por producto. |
 | [`catalog_product_translations`](#catalog_product_translations) | Fase 2 · Canales y campo | tenant | 19 | 2 | [Spec 15 §3.11] [Fase 2] Traducciones del producto para el sitio. |
 | [`catalog_service_cost_history`](#catalog_service_cost_history) | Fase 2 · Canales y campo | tenant | 12 | 4 | [Spec 10 §3.11 + 06 §3.4] [Fase 2] Historial de costos/vigencias de servicios de proveedor (tarifas aprobadas). |
+| [`catalog_dynamic_price_rules`](#catalog_dynamic_price_rules) | Fase 3 · SaaS y crecimiento | tenant | 20 | 2 | [Spec 19 §3.8] [Fase 3] Ajustes de precio dinámicos por ocupación, anticipación, día, temporada o demanda (regla R-DYNAMIC-PRICING). |
+| [`catalog_hotel_season_rates`](#catalog_hotel_season_rates) | Fase 3 · SaaS y crecimiento | tenant | 10 | 3 | [Spec 21 §3.1] [Fase 3] Ajuste porcentual de la tarifa de un hotel del tramo por rango de fechas (temporada); sin solapes por hotel. |
+| [`catalog_import_jobs`](#catalog_import_jobs) | Fase 3 · SaaS y crecimiento | tenant | 16 | 2 | [Spec 19 §3.5] [Fase 3] Importación de productos desde una web, PDF o planilla con IA; revisión humana antes de crear. |
+| [`catalog_leg_tours`](#catalog_leg_tours) | Fase 3 · SaaS y crecimiento | tenant | 19 | 4 | [Spec 21 §3.2] [Fase 3] Tours opcionales de un tramo (ciudad) con precio adulto/niño, día relativo, edad mínima y cupo. |
+| [`catalog_transport_options`](#catalog_transport_options) | Fase 3 · SaaS y crecimiento | tenant | 19 | 6 | [Spec 21 §3.3] [Fase 3] Movilidad del circuito: entre tramos (elegir una por par) o local, por pasajero o por vehículo. |
+| [`catalog_transport_vehicles`](#catalog_transport_vehicles) | Fase 3 · SaaS y crecimiento | tenant | 8 | 2 | [Spec 21 §3.3] [Fase 3] Vehículos y capacidad de una opción de movilidad cobrada por vehículo. |
 
 ## Detalle por tabla
 
 ### `catalog_availability_holds`
 
-[Spec 02 §3.9 + 15 §3.13–3.14] [Fase 1] Retenciones de cupo (hold → confirmada/liberada/expirada/consumida).
+[Spec 02 §3.9 + 15 §3.13–3.14] [Fase 1] Retenciones de cupo (hold → confirmada/liberada/expirada/consumida). v2.5: fuente única de retenciones para el cálculo de disponibilidad (carrito, checkout, cotización y motor).
 
 | Dominio | Fase (archivo) | RLS | Políticas | Particionado |
 |---|---|---|---|---|
@@ -76,7 +82,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_product_departures.tenant_id, catalog_products.tenant_id, tenants.id. |
 | 3 | `ref` | `character varying(20)` | no |  |  |
 | 4 | `departure_id` | `uuid` | sí |  | FK → catalog_product_departures.id. |
 | 5 | `product_id` | `uuid` | sí |  | FK → catalog_products.id. |
@@ -101,14 +107,15 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `departure_id` | `catalog_product_departures.id` | NO ACTION | `fk_catalog_availability_holds_departure_id` |
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_catalog_availability_holds_product_id` |
+| `tenant_id, departure_id` | `catalog_product_departures.tenant_id, id` | NO ACTION | `fk_catalog_availability_holds_departure_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_catalog_availability_holds_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_availability_holds_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_availability_holds_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_availability_holds_tenant_id_ref` | `tenant_id, ref` |  | índice único |
 
 **CHECK**
@@ -154,7 +161,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `code` | `character varying(20)` | no |  |  |
 | 5 | `date_from` | `date` | no |  |  |
@@ -174,7 +181,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_availability_ranges_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_availability_ranges_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_availability_ranges_tenant_id` |
 
 **UNIQUE**
@@ -228,7 +235,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_destinations.tenant_id, tenants.id. |
 | 3 | `ref` | `character varying(20)` | no |  |  |
 | 4 | `parent_id` | `uuid` | sí |  | FK → catalog_destinations.id. |
 | 5 | `name` | `character varying(120)` | no |  |  |
@@ -250,13 +257,14 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `parent_id` | `catalog_destinations.id` | NO ACTION | `fk_catalog_destinations_parent_id` |
+| `tenant_id, parent_id` | `catalog_destinations.tenant_id, id` | NO ACTION | `fk_catalog_destinations_parent_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_destinations_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_destinations_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_destinations_tenant_id_coalesce_parent_id_000_334257` | `tenant_id, COALESCE(parent_id, '00000000-0000-0000-0000-000000000000'::uuid), lower((name)::text)` |  | índice único |
 | `uq_catalog_destinations_tenant_id_ref` | `tenant_id, ref` |  | índice único |
 
@@ -301,7 +309,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `name` | `character varying(120)` | no | `'Principal'::character varying` |  |
 | 5 | `is_default` | `boolean` | no | `true` |  |
@@ -316,13 +324,14 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_itineraries_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_itineraries_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_itineraries_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_itineraries_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_itineraries_product_id_p` | `product_id` | `is_default` | índice único |
 
 **Índices**
@@ -353,7 +362,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_itineraries.tenant_id, tenants.id. |
 | 3 | `itinerary_id` | `uuid` | no |  | FK → catalog_itineraries.id. |
 | 4 | `day_number` | `smallint` | no |  |  |
 | 5 | `title` | `character varying(160)` | no |  |  |
@@ -368,13 +377,14 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `itinerary_id` | `catalog_itineraries.id` | CASCADE | `fk_catalog_itinerary_days_itinerary_id` |
+| `tenant_id, itinerary_id` | `catalog_itineraries.tenant_id, id` | CASCADE | `fk_catalog_itinerary_days_itinerary_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_itinerary_days_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_itinerary_days_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_itinerary_days_itinerary_id_day_number` | `itinerary_id, day_number` |  | índice único |
 
 **Índices**
@@ -404,7 +414,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_itinerary_days.tenant_id, catalog_services.tenant_id, tenants.id. |
 | 3 | `day_id` | `uuid` | no |  | FK → catalog_itinerary_days.id. |
 | 4 | `start_time` | `time without time zone` | sí |  |  |
 | 5 | `activity` | `character varying(200)` | no |  |  |
@@ -426,8 +436,8 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `day_id` | `catalog_itinerary_days.id` | CASCADE | `fk_catalog_itinerary_items_day_id` |
-| `service_id` | `catalog_services.id` | NO ACTION | `fk_catalog_itinerary_items_service_id` |
+| `tenant_id, day_id` | `catalog_itinerary_days.tenant_id, id` | CASCADE | `fk_catalog_itinerary_items_day_id` |
+| `tenant_id, service_id` | `catalog_services.tenant_id, id` | NO ACTION | `fk_catalog_itinerary_items_service_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_itinerary_items_tenant_id` |
 
 **CHECK**
@@ -465,7 +475,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `adult_min_age` | `smallint` | no |  |  |
 | 5 | `child_min_age` | `smallint` | no |  |  |
@@ -490,7 +500,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_pax_rules_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_pax_rules_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_pax_rules_tenant_id` |
 
 **UNIQUE**
@@ -536,7 +546,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, tenants.id. |
 | 3 | `ref` | `character varying(20)` | no |  |  |
 | 4 | `name` | `character varying(120)` | no |  |  |
 | 5 | `kind` | `character varying(20)` | no |  | Valores: `Markup %`, `Markup fijo`, `Descuento %`, `Descuento fijo`, `Impuesto %`, `Comisión %`, `Redondeo`, `Precio mínimo`, `Precio máximo`. |
@@ -560,7 +570,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_catalog_price_rules_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_catalog_price_rules_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_price_rules_tenant_id` |
 
 **UNIQUE**
@@ -627,6 +637,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_product_categories_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_product_categories_tenant_id_lower_name` | `tenant_id, lower((name)::text)` |  | índice único |
 | `uq_catalog_product_categories_tenant_id_ref` | `tenant_id, ref` |  | índice único |
 
@@ -657,7 +668,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `channel` | `character varying(12)` | no |  | Valores: `erp`, `crm`, `quotes`, `b2b`, `portal`, `portal_pax`, `cms`, `ecommerce`, `mobile`. |
 | 5 | `is_published` | `boolean` | no | `false` |  |
@@ -674,8 +685,8 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_channels_product_id` |
-| `published_by` | `iam_users.id` | NO ACTION | `fk_catalog_product_channels_published_by` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_channels_product_id` |
+| `tenant_id, published_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_catalog_product_channels_published_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_channels_tenant_id` |
 
 **UNIQUE**
@@ -718,7 +729,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `name` | `character varying(60)` | no |  |  |
 | 5 | `sort_order` | `smallint` | no | `0` |  |
@@ -733,13 +744,14 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_config_groups_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_config_groups_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_config_groups_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_product_config_groups_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_product_config_groups_product_id_lower_name` | `product_id, lower((name)::text)` |  | índice único |
 
 **Índices**
@@ -769,7 +781,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_product_config_groups.tenant_id, tenants.id. |
 | 3 | `group_id` | `uuid` | no |  | FK → catalog_product_config_groups.id. |
 | 4 | `label` | `character varying(80)` | no |  |  |
 | 5 | `price_delta` | `numeric(14,2)` | no | `0` |  |
@@ -785,7 +797,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `group_id` | `catalog_product_config_groups.id` | CASCADE | `fk_catalog_product_config_options_group_id` |
+| `tenant_id, group_id` | `catalog_product_config_groups.tenant_id, id` | CASCADE | `fk_catalog_product_config_options_group_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_config_options_tenant_id` |
 
 **Índices**
@@ -816,7 +828,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → ops_guides.tenant_id, catalog_products.tenant_id, catalog_providers.tenant_id, tenants.id, ops_vehicles.tenant_id. |
 | 3 | `ref` | `character varying(20)` | no |  |  |
 | 4 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 5 | `departure_date` | `date` | no |  |  |
@@ -842,16 +854,17 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `guide_id` | `ops_guides.id` | NO ACTION | `fk_catalog_product_departures_guide_id` |
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_catalog_product_departures_product_id` |
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_catalog_product_departures_provider_id` |
+| `tenant_id, guide_id` | `ops_guides.tenant_id, id` | NO ACTION | `fk_catalog_product_departures_guide_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_catalog_product_departures_product_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_catalog_product_departures_provider_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_departures_tenant_id` |
-| `vehicle_id` | `ops_vehicles.id` | NO ACTION | `fk_catalog_product_departures_vehicle_id` |
+| `tenant_id, vehicle_id` | `ops_vehicles.tenant_id, id` | NO ACTION | `fk_catalog_product_departures_vehicle_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_product_departures_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_product_departures_tenant_id_ref` | `tenant_id, ref` |  | índice único |
 
 **CHECK**
@@ -896,7 +909,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_destinations.tenant_id, catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `destination_id` | `uuid` | no |  | FK → catalog_destinations.id. |
 | 5 | `role` | `character varying(10)` | no | `'secondary'::character varying` |  |
@@ -911,8 +924,8 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `destination_id` | `catalog_destinations.id` | NO ACTION | `fk_catalog_product_destinations_destination_id` |
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_destinations_product_id` |
+| `tenant_id, destination_id` | `catalog_destinations.tenant_id, id` | NO ACTION | `fk_catalog_product_destinations_destination_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_destinations_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_destinations_tenant_id` |
 
 **UNIQUE**
@@ -955,7 +968,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `question` | `character varying(300)` | no |  |  |
 | 5 | `answer` | `text` | no |  |  |
@@ -971,7 +984,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_faqs_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_faqs_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_faqs_tenant_id` |
 
 **Índices**
@@ -1002,7 +1015,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `kind` | `character varying(10)` | no |  | Valores: `include`, `exclude`. |
 | 5 | `text` | `character varying(200)` | no |  |  |
@@ -1018,7 +1031,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_inclusions_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_inclusions_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_inclusions_tenant_id` |
 
 **UNIQUE**
@@ -1060,7 +1073,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, catalog_products.tenant_id, catalog_providers.tenant_id, catalog_services.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `service_id` | `uuid` | sí |  | FK → catalog_services.id. |
 | 5 | `component_product_id` | `uuid` | sí |  | FK → catalog_products.id. |
@@ -1083,10 +1096,10 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `component_product_id` | `catalog_products.id` | NO ACTION | `fk_catalog_product_items_component_product_id` |
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_items_product_id` |
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_catalog_product_items_provider_id` |
-| `service_id` | `catalog_services.id` | NO ACTION | `fk_catalog_product_items_service_id` |
+| `tenant_id, component_product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_catalog_product_items_component_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_items_product_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_catalog_product_items_provider_id` |
+| `tenant_id, service_id` | `catalog_services.tenant_id, id` | NO ACTION | `fk_catalog_product_items_service_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_items_tenant_id` |
 
 **CHECK**
@@ -1129,7 +1142,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `kind` | `character varying(10)` | no | `'image'::character varying` |  |
 | 5 | `storage_path` | `character varying(400)` | no |  |  |
@@ -1152,13 +1165,14 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_media_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_media_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_media_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_product_media_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_product_media_product_id_p` | `product_id` | `is_main` | índice único |
 
 **CHECK**
@@ -1195,7 +1209,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `cancellation` | `text` | no |  |  |
 | 5 | `modification` | `text` | no |  |  |
@@ -1217,7 +1231,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_policies_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_policies_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_policies_tenant_id` |
 
 **UNIQUE**
@@ -1253,7 +1267,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → mkt_campaigns.tenant_id, catalog_products.tenant_id, tenants.id. |
 | 3 | `ref` | `character varying(20)` | no |  |  |
 | 4 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 5 | `name` | `character varying(120)` | no |  |  |
@@ -1278,14 +1292,15 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `campaign_id` | `mkt_campaigns.id` | NO ACTION | `fk_catalog_product_promotions_campaign_id` |
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_promotions_product_id` |
+| `tenant_id, campaign_id` | `mkt_campaigns.tenant_id, id` | NO ACTION | `fk_catalog_product_promotions_campaign_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_promotions_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_promotions_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_product_promotions_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_product_promotions_tenant_id_promo_code_p` | `tenant_id, promo_code` | `((promo_code IS NOT NULL) AND (deleted_at IS NULL))` | índice único |
 | `uq_catalog_product_promotions_tenant_id_ref` | `tenant_id, ref` |  | índice único |
 
@@ -1330,7 +1345,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `related_product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 5 | `relation` | `character varying(20)` | no |  | Valores: `Complementario`, `Alternativo`, `Upgrade`, `Cross-sell`, `Upsell`. |
@@ -1345,8 +1360,8 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_related_product_id` |
-| `related_product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_related_related_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_related_product_id` |
+| `tenant_id, related_product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_related_related_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_related_tenant_id` |
 
 **UNIQUE**
@@ -1390,7 +1405,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `category` | `character varying(30)` | sí |  | Valores: `Condición física`, `Documentos`, `Nacionalidad`, `Restricción`, `Recomendación`, `Equipamiento`, `Requisito especial`. |
 | 5 | `text` | `character varying(300)` | no |  |  |
@@ -1405,7 +1420,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_requirements_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_requirements_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_requirements_tenant_id` |
 
 **CHECK**
@@ -1442,7 +1457,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, catalog_seasons.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `season_id` | `uuid` | no |  | FK → catalog_seasons.id. |
 | 5 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
@@ -1456,8 +1471,8 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_seasons_product_id` |
-| `season_id` | `catalog_seasons.id` | NO ACTION | `fk_catalog_product_seasons_season_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_seasons_product_id` |
+| `tenant_id, season_id` | `catalog_seasons.tenant_id, id` | NO ACTION | `fk_catalog_product_seasons_season_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_seasons_tenant_id` |
 
 **UNIQUE**
@@ -1494,7 +1509,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_product_categories.tenant_id, tenants.id. |
 | 3 | `category_id` | `uuid` | no |  | FK → catalog_product_categories.id. |
 | 4 | `name` | `character varying(80)` | no |  |  |
 | 5 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
@@ -1509,13 +1524,14 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `category_id` | `catalog_product_categories.id` | NO ACTION | `fk_catalog_product_subcategories_category_id` |
+| `tenant_id, category_id` | `catalog_product_categories.tenant_id, id` | NO ACTION | `fk_catalog_product_subcategories_category_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_subcategories_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_product_subcategories_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_product_subcategories_category_id_lower_name` | `category_id, lower((name)::text)` |  | índice único |
 
 **Índices**
@@ -1568,6 +1584,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_product_types_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_product_types_tenant_id_lower_name` | `tenant_id, lower((name)::text)` |  | índice único |
 
 **Triggers**
@@ -1591,7 +1608,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `version` | `character varying(10)` | no |  |  |
 | 5 | `status` | `character varying(15)` | no | `'borrador'::character varying` | Valores: `borrador`, `en_revision`, `vigente`, `historica`. |
@@ -1607,13 +1624,14 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_versions_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_versions_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_versions_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_product_versions_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_product_versions_product_id_p` | `product_id` | `((status)::text = 'vigente'::text)` | índice único |
 | `uq_catalog_product_versions_product_id_version` | `product_id, version` |  | índice único |
 
@@ -1650,7 +1668,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_product_categories.tenant_id, catalog_product_versions.tenant_id, catalog_providers.tenant_id, catalog_destinations.tenant_id, catalog_product_types.tenant_id, catalog_product_subcategories.tenant_id, tenants.id. |
 | 3 | `ref` | `character varying(20)` | no |  |  |
 | 4 | `code` | `character varying(30)` | no |  |  |
 | 5 | `sku` | `character varying(40)` | no |  |  |
@@ -1715,18 +1733,19 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `category_id` | `catalog_product_categories.id` | NO ACTION | `fk_catalog_products_category_id` |
-| `current_version_id` | `catalog_product_versions.id` | NO ACTION · DEFERRABLE | `fk_catalog_products_current_version_id` |
-| `main_provider_id` | `catalog_providers.id` | NO ACTION | `fk_catalog_products_main_provider_id` |
-| `primary_destination_id` | `catalog_destinations.id` | NO ACTION | `fk_catalog_products_primary_destination_id` |
-| `product_type_id` | `catalog_product_types.id` | NO ACTION | `fk_catalog_products_product_type_id` |
-| `subcategory_id` | `catalog_product_subcategories.id` | NO ACTION | `fk_catalog_products_subcategory_id` |
+| `tenant_id, category_id` | `catalog_product_categories.tenant_id, id` | NO ACTION | `fk_catalog_products_category_id` |
+| `tenant_id, current_version_id` | `catalog_product_versions.tenant_id, id` | NO ACTION · DEFERRABLE | `fk_catalog_products_current_version_id` |
+| `tenant_id, main_provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_catalog_products_main_provider_id` |
+| `tenant_id, primary_destination_id` | `catalog_destinations.tenant_id, id` | NO ACTION | `fk_catalog_products_primary_destination_id` |
+| `tenant_id, product_type_id` | `catalog_product_types.tenant_id, id` | NO ACTION | `fk_catalog_products_product_type_id` |
+| `tenant_id, subcategory_id` | `catalog_product_subcategories.tenant_id, id` | NO ACTION | `fk_catalog_products_subcategory_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_products_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_products_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_products_tenant_id_lower_code` | `tenant_id, lower((code)::text)` |  | índice único |
 | `uq_catalog_products_tenant_id_ref` | `tenant_id, ref` |  | índice único |
 | `uq_catalog_products_tenant_id_slug_p` | `tenant_id, slug` | `(slug IS NOT NULL)` | índice único |
@@ -1788,7 +1807,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_providers.tenant_id, tenants.id. |
 | 3 | `provider_id` | `uuid` | no |  | FK → catalog_providers.id. |
 | 4 | `name` | `character varying(120)` | no |  |  |
 | 5 | `role` | `character varying(80)` | sí |  |  |
@@ -1805,7 +1824,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `provider_id` | `catalog_providers.id` | CASCADE | `fk_catalog_provider_contacts_provider_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | CASCADE | `fk_catalog_provider_contacts_provider_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_provider_contacts_tenant_id` |
 
 **Índices**
@@ -1871,6 +1890,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_providers_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_providers_tenant_id_ref` | `tenant_id, ref` |  | índice único |
 | `uq_catalog_providers_tenant_id_ruc` | `tenant_id, ruc` |  | índice único |
 
@@ -1916,7 +1936,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_rates.tenant_id, tenants.id. |
 | 3 | `rate_id` | `uuid` | no |  | FK → catalog_rates.id. |
 | 4 | `kind` | `character varying(20)` | no |  | Valores: `weekday`, `min_pax`, `max_pax`, `min_age`, `max_age`, `advance_days_min`, `advance_days_max`, `customer_type`, `occupancy`, `duration`. |
 | 5 | `operator` | `character varying(4)` | no |  |  |
@@ -1932,7 +1952,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `rate_id` | `catalog_rates.id` | CASCADE | `fk_catalog_rate_conditions_rate_id` |
+| `tenant_id, rate_id` | `catalog_rates.tenant_id, id` | CASCADE | `fk_catalog_rate_conditions_rate_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_rate_conditions_tenant_id` |
 
 **CHECK**
@@ -1969,7 +1989,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, catalog_seasons.tenant_id, tenants.id. |
 | 3 | `ref` | `character varying(20)` | no |  |  |
 | 4 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 5 | `rate_type` | `character varying(15)` | no |  | Valores: `Proveedor`, `Costo`, `Venta`, `Retail`, `B2B`, `Mayorista`, `Corporativa`, `VIP`, `Promocional`, `Especial`, `Grupal`. |
@@ -1998,14 +2018,15 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_catalog_rates_product_id` |
-| `season_id` | `catalog_seasons.id` | NO ACTION | `fk_catalog_rates_season_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_catalog_rates_product_id` |
+| `tenant_id, season_id` | `catalog_seasons.tenant_id, id` | NO ACTION | `fk_catalog_rates_season_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_rates_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_rates_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_rates_tenant_id_ref` | `tenant_id, ref` |  | índice único |
 
 **CHECK**
@@ -2084,6 +2105,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_seasons_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_seasons_tenant_id_ref` | `tenant_id, ref` |  | índice único |
 
 **CHECK**
@@ -2128,7 +2150,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_providers.tenant_id, tenants.id. |
 | 3 | `ref` | `character varying(20)` | no |  |  |
 | 4 | `provider_id` | `uuid` | no |  | FK → catalog_providers.id. |
 | 5 | `name` | `character varying(200)` | no |  |  |
@@ -2154,13 +2176,14 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_catalog_services_provider_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_catalog_services_provider_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_services_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_services_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_services_tenant_id_ref` | `tenant_id, ref` |  | índice único |
 
 **CHECK**
@@ -2205,7 +2228,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_accommodation_legs.tenant_id, catalog_providers.tenant_id, tenants.id. |
 | 3 | `leg_id` | `uuid` | no |  | FK → catalog_accommodation_legs.id. |
 | 4 | `code` | `character varying(20)` | no |  |  |
 | 5 | `name` | `character varying(150)` | no |  |  |
@@ -2222,14 +2245,15 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `leg_id` | `catalog_accommodation_legs.id` | CASCADE | `fk_catalog_accommodation_hotels_leg_id` |
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_catalog_accommodation_hotels_provider_id` |
+| `tenant_id, leg_id` | `catalog_accommodation_legs.tenant_id, id` | CASCADE | `fk_catalog_accommodation_hotels_leg_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_catalog_accommodation_hotels_provider_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_accommodation_hotels_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_accommodation_hotels_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_accommodation_hotels_leg_id_lower_name` | `leg_id, lower((name)::text)` |  | índice único |
 
 **Índices**
@@ -2260,7 +2284,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_destinations.tenant_id, catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `code` | `character varying(20)` | no |  |  |
 | 5 | `sequence` | `smallint` | no |  |  |
@@ -2271,6 +2295,8 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | 10 | `updated_by` | `uuid` | sí |  | Usuario de la última actualización (sin FK). |
 | 11 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
 | 12 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+| 13 | `min_nights` | `smallint` | sí |  | [Agregada en `40_fase3.sql`] |
+| 14 | `max_nights` | `smallint` | sí |  | [Agregada en `40_fase3.sql`] |
 
 **PK:** `id`
 
@@ -2278,8 +2304,8 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `destination_id` | `catalog_destinations.id` | NO ACTION | `fk_catalog_accommodation_legs_destination_id` |
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_accommodation_legs_product_id` |
+| `tenant_id, destination_id` | `catalog_destinations.tenant_id, id` | NO ACTION | `fk_catalog_accommodation_legs_destination_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_accommodation_legs_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_accommodation_legs_tenant_id` |
 
 **UNIQUE**
@@ -2287,6 +2313,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
 | `uq_catalog_accommodation_legs_seq` | `product_id, sequence` |  | restricción DEFERRABLE |
+| `uq_tid_catalog_accommodation_legs_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_accommodation_legs_tenant_id_product_id_code` | `tenant_id, product_id, code` |  | índice único |
 
 **CHECK**
@@ -2294,6 +2321,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | Nombre | Definición | Valores permitidos |
 |---|---|---|
 | `catalog_accommodation_legs_nights_check` | `CHECK (((nights >= 1) AND (nights <= 30)))` |  |
+| `ck_catalog_accommodation_legs_nights_range` | `CHECK ((((min_nights IS NULL) AND (max_nights IS NULL)) OR (((min_nights >= 1) AND (min_nights <= 30)) AND ((max_nights >= min_nights) AND (max_nights <= 30)) AND ((nights >= min_nights) AND (nights <= max_nights)))))` |  |
 
 **Índices**
 
@@ -2324,7 +2352,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_accommodation_hotels.tenant_id, tenants.id. |
 | 3 | `hotel_id` | `uuid` | no |  | FK → catalog_accommodation_hotels.id. |
 | 4 | `room_type` | `character varying(20)` | no |  |  |
 | 5 | `capacity` | `smallint` | no |  |  |
@@ -2340,7 +2368,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `hotel_id` | `catalog_accommodation_hotels.id` | CASCADE | `fk_catalog_accommodation_room_types_hotel_id` |
+| `tenant_id, hotel_id` | `catalog_accommodation_hotels.tenant_id, id` | CASCADE | `fk_catalog_accommodation_room_types_hotel_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_accommodation_room_types_tenant_id` |
 
 **UNIQUE**
@@ -2383,7 +2411,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_allotment_days.tenant_id, fin_payables.tenant_id, tenants.id. |
 | 3 | `allotment_day_id` | `uuid` | no |  | FK → catalog_allotment_days.id. |
 | 4 | `qty` | `integer` | no |  |  |
 | 5 | `amount` | `numeric(14,2)` | no |  |  |
@@ -2402,8 +2430,8 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `allotment_day_id` | `catalog_allotment_days.id` | NO ACTION | `fk_catalog_allotment_charges_allotment_day_id` |
-| `payable_id` | `fin_payables.id` | NO ACTION | `fk_catalog_allotment_charges_payable_id` |
+| `tenant_id, allotment_day_id` | `catalog_allotment_days.tenant_id, id` | NO ACTION | `fk_catalog_allotment_charges_allotment_day_id` |
+| `tenant_id, payable_id` | `fin_payables.tenant_id, id` | NO ACTION | `fk_catalog_allotment_charges_payable_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_allotment_charges_tenant_id` |
 
 **UNIQUE**
@@ -2446,7 +2474,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_allotment_days.tenant_id, booking_reservation_services.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `allotment_day_id` | `uuid` | no |  | FK → catalog_allotment_days.id. |
 | 4 | `booking_service_id` | `uuid` | no |  | FK → booking_reservation_services.id. |
 | 5 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
@@ -2463,9 +2491,9 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `allotment_day_id` | `catalog_allotment_days.id` | NO ACTION | `fk_catalog_allotment_consumptions_allotment_day_id` |
-| `booking_service_id` | `booking_reservation_services.id` | NO ACTION | `fk_catalog_allotment_consumptions_booking_service_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_catalog_allotment_consumptions_reservation_id` |
+| `tenant_id, allotment_day_id` | `catalog_allotment_days.tenant_id, id` | NO ACTION | `fk_catalog_allotment_consumptions_allotment_day_id` |
+| `tenant_id, booking_service_id` | `booking_reservation_services.tenant_id, id` | NO ACTION | `fk_catalog_allotment_consumptions_booking_service_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_catalog_allotment_consumptions_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_allotment_consumptions_tenant_id` |
 
 **UNIQUE**
@@ -2510,7 +2538,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_allotments.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `allotment_id` | `uuid` | no |  | FK → catalog_allotments.id. |
 | 4 | `service_date` | `date` | no |  |  |
 | 5 | `blocked_qty` | `integer` | no |  |  |
@@ -2534,14 +2562,15 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `allotment_id` | `catalog_allotments.id` | CASCADE | `fk_catalog_allotment_days_allotment_id` |
-| `retained_by` | `iam_users.id` | NO ACTION | `fk_catalog_allotment_days_retained_by` |
+| `tenant_id, allotment_id` | `catalog_allotments.tenant_id, id` | CASCADE | `fk_catalog_allotment_days_allotment_id` |
+| `tenant_id, retained_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_catalog_allotment_days_retained_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_allotment_days_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_allotment_days_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_allotment_days_allotment_id_service_date` | `allotment_id, service_date` |  | índice único |
 
 **CHECK**
@@ -2581,7 +2610,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_allotments.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `allotment_id` | `uuid` | no |  | FK → catalog_allotments.id. |
 | 4 | `occurred_at` | `timestamp with time zone` | no | `now()` |  |
 | 5 | `user_id` | `uuid` | sí |  | FK → iam_users.id. |
@@ -2593,9 +2622,9 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `allotment_id` | `catalog_allotments.id` | NO ACTION | `fk_catalog_allotment_events_allotment_id` |
+| `tenant_id, allotment_id` | `catalog_allotments.tenant_id, id` | NO ACTION | `fk_catalog_allotment_events_allotment_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_allotment_events_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_catalog_allotment_events_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_catalog_allotment_events_user_id` |
 
 **Índices**
 
@@ -2620,7 +2649,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_allotments.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `allotment_id` | `uuid` | no |  | FK → catalog_allotments.id. |
 | 5 | `date_from` | `date` | no |  |  |
@@ -2642,8 +2671,8 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `allotment_id` | `catalog_allotments.id` | NO ACTION | `fk_catalog_allotment_requests_allotment_id` |
-| `responded_by` | `iam_users.id` | NO ACTION | `fk_catalog_allotment_requests_responded_by` |
+| `tenant_id, allotment_id` | `catalog_allotments.tenant_id, id` | NO ACTION | `fk_catalog_allotment_requests_allotment_id` |
+| `tenant_id, responded_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_catalog_allotment_requests_responded_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_allotment_requests_tenant_id` |
 
 **UNIQUE**
@@ -2690,7 +2719,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, catalog_providers.tenant_id, catalog_services.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `provider_id` | `uuid` | no |  | FK → catalog_providers.id. |
 | 5 | `service_id` | `uuid` | no |  | FK → catalog_services.id. |
@@ -2722,15 +2751,16 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `owner_id` | `iam_users.id` | NO ACTION | `fk_catalog_allotments_owner_id` |
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_catalog_allotments_provider_id` |
-| `service_id` | `catalog_services.id` | NO ACTION | `fk_catalog_allotments_service_id` |
+| `tenant_id, owner_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_catalog_allotments_owner_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_catalog_allotments_provider_id` |
+| `tenant_id, service_id` | `catalog_services.tenant_id, id` | NO ACTION | `fk_catalog_allotments_service_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_allotments_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_allotments_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_allotments_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -2785,7 +2815,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_destinations.tenant_id, catalog_product_media.tenant_id, tenants.id. |
 | 3 | `destination_id` | `uuid` | no |  | FK → catalog_destinations.id. |
 | 4 | `locale` | `character varying(5)` | no |  |  |
 | 5 | `slug` | `character varying(160)` | no |  |  |
@@ -2806,8 +2836,8 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `destination_id` | `catalog_destinations.id` | CASCADE | `fk_catalog_destination_contents_destination_id` |
-| `hero_media_id` | `catalog_product_media.id` | NO ACTION | `fk_catalog_destination_contents_hero_media_id` |
+| `tenant_id, destination_id` | `catalog_destinations.tenant_id, id` | CASCADE | `fk_catalog_destination_contents_destination_id` |
+| `tenant_id, hero_media_id` | `catalog_product_media.tenant_id, id` | NO ACTION | `fk_catalog_destination_contents_hero_media_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_destination_contents_tenant_id` |
 
 **UNIQUE**
@@ -2844,7 +2874,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `modes` | `character varying(15)[]` | no | `'{total}'::character varying[]` |  |
 | 5 | `deposit_pct` | `numeric(5,2)` | sí |  |  |
@@ -2861,7 +2891,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_payment_policies_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_payment_policies_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_payment_policies_tenant_id` |
 
 **UNIQUE**
@@ -2905,7 +2935,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `sequence` | `smallint` | no | `0` |  |
 | 5 | `label` | `character varying(150)` | no |  |  |
@@ -2922,7 +2952,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_pickup_points_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_pickup_points_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_pickup_points_tenant_id` |
 
 **UNIQUE**
@@ -2964,7 +2994,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, catalog_providers.tenant_id, catalog_services.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `code` | `character varying(20)` | no |  |  |
 | 5 | `name` | `character varying(150)` | no |  |  |
@@ -2989,15 +3019,16 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_addons_product_id` |
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_catalog_product_addons_provider_id` |
-| `service_id` | `catalog_services.id` | NO ACTION | `fk_catalog_product_addons_service_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_addons_product_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_catalog_product_addons_provider_id` |
+| `tenant_id, service_id` | `catalog_services.tenant_id, id` | NO ACTION | `fk_catalog_product_addons_service_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_addons_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_catalog_product_addons_id` | `tenant_id, id` |  | restricción |
 | `uq_catalog_product_addons_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_catalog_product_addons_tenant_id_product_id_lower_name` | `tenant_id, product_id, lower((name)::text)` |  | índice único |
 
@@ -3040,7 +3071,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → channel_b2b_agencies.tenant_id, channel_b2b_price_lists.tenant_id, catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `agency_id` | `uuid` | no |  | FK → channel_b2b_agencies.id. |
 | 5 | `price_list_id` | `uuid` | sí |  | FK → channel_b2b_price_lists.id. |
@@ -3064,9 +3095,9 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `agency_id` | `channel_b2b_agencies.id` | NO ACTION | `fk_catalog_product_b2b_rates_agency_id` |
-| `price_list_id` | `channel_b2b_price_lists.id` | NO ACTION | `fk_catalog_product_b2b_rates_price_list_id` |
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_b2b_rates_product_id` |
+| `tenant_id, agency_id` | `channel_b2b_agencies.tenant_id, id` | NO ACTION | `fk_catalog_product_b2b_rates_agency_id` |
+| `tenant_id, price_list_id` | `channel_b2b_price_lists.tenant_id, id` | NO ACTION | `fk_catalog_product_b2b_rates_price_list_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_b2b_rates_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_b2b_rates_tenant_id` |
 
 **UNIQUE**
@@ -3113,7 +3144,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → sys_booking_rules.tenant_id, tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, sys_booking_rules.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `rule_code` | `character varying(40)` | no |  | FK → sys_booking_rules.code. |
 | 5 | `disabled` | `boolean` | no | `false` |  |
@@ -3129,7 +3160,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_rule_overrides_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_rule_overrides_product_id` |
 | `tenant_id, rule_code` | `sys_booking_rules.tenant_id, code` | CASCADE | `fk_catalog_product_rule_overrides_rule` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_rule_overrides_tenant_id` |
 
@@ -3167,7 +3198,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, tenants.id. |
 | 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 4 | `locale` | `character varying(5)` | no |  |  |
 | 5 | `name` | `character varying(160)` | no |  |  |
@@ -3192,7 +3223,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | CASCADE | `fk_catalog_product_translations_product_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_product_translations_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_product_translations_tenant_id` |
 
 **UNIQUE**
@@ -3223,7 +3254,7 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → collab_approval_requests.tenant_id, supplier_rate_requests.tenant_id, catalog_services.tenant_id, tenants.id. |
 | 3 | `service_id` | `uuid` | no |  | FK → catalog_services.id. |
 | 4 | `cost` | `numeric(14,2)` | no |  |  |
 | 5 | `currency` | `character(3)` | no |  | Valores: `PEN`, `USD`. |
@@ -3241,10 +3272,16 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `approval_request_id` | `collab_approval_requests.id` | NO ACTION | `fk_catalog_service_cost_history_approval_request_id` |
-| `rate_request_id` | `supplier_rate_requests.id` | NO ACTION | `fk_catalog_service_cost_history_rate_request_id` |
-| `service_id` | `catalog_services.id` | NO ACTION | `fk_catalog_service_cost_history_service_id` |
+| `tenant_id, approval_request_id` | `collab_approval_requests.tenant_id, id` | NO ACTION | `fk_catalog_service_cost_history_approval_request_id` |
+| `tenant_id, rate_request_id` | `supplier_rate_requests.tenant_id, id` | NO ACTION | `fk_catalog_service_cost_history_rate_request_id` |
+| `tenant_id, service_id` | `catalog_services.tenant_id, id` | NO ACTION | `fk_catalog_service_cost_history_service_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_service_cost_history_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_catalog_service_cost_history_id` | `tenant_id, id` |  | restricción |
 
 **CHECK**
 
@@ -3261,5 +3298,424 @@ Productos, versiones, servicios, proveedores, tarifas, salidas, holds, cupos y r
 | `ix_catalog_service_cost_history_rate_request_id` | `USING btree (rate_request_id)` |
 | `ix_catalog_service_cost_history_service_id` | `USING btree (service_id)` |
 | `ix_catalog_service_cost_history_tenant_id_service_id_eff_aefef2` | `USING btree (tenant_id, service_id, effective_from DESC)` |
+
+[↑ Índice del dominio](#tablas)
+
+### `catalog_dynamic_price_rules`
+
+[Spec 19 §3.8] [Fase 3] Ajustes de precio dinámicos por ocupación, anticipación, día, temporada o demanda (regla R-DYNAMIC-PRICING).
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Catálogo (catalog_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, tenants.id. |
+| 3 | `code` | `character varying(30)` | no |  |  |
+| 4 | `name` | `character varying(120)` | no |  |  |
+| 5 | `product_id` | `uuid` | sí |  | FK → catalog_products.id. |
+| 6 | `basis` | `character varying(15)` | no |  | Valores: `ocupacion`, `anticipacion`, `dia_semana`, `temporada`, `demanda`. |
+| 7 | `conditions` | `jsonb` | no |  |  |
+| 8 | `adjust_pct` | `numeric(6,2)` | no |  |  |
+| 9 | `floor_pct` | `numeric(6,2)` | no | `'-30'::integer` |  |
+| 10 | `ceiling_pct` | `numeric(6,2)` | no | `50` |  |
+| 11 | `priority` | `smallint` | no | `100` |  |
+| 12 | `channels` | `text[]` | no | `'{web,b2b,ota,interno}'::text[]` |  |
+| 13 | `valid_from` | `date` | sí |  |  |
+| 14 | `valid_to` | `date` | sí |  |  |
+| 15 | `active` | `boolean` | no | `false` |  |
+| 16 | `lock_version` | `integer` | no | `0` | Bloqueo optimista: UPDATE … WHERE lock_version = ? (409 si no afecta filas). |
+| 17 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
+| 18 | `updated_by` | `uuid` | sí |  | Usuario de la última actualización (sin FK). |
+| 19 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 20 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_catalog_dynamic_price_rules_product_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_dynamic_price_rules_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_catalog_dynamic_price_rules_tenant_id_code` | `tenant_id, code` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `catalog_dynamic_price_rules_adjust_pct_check` | `CHECK (((adjust_pct >= ('-50'::integer)::numeric) AND (adjust_pct <= (100)::numeric)))` |  |
+| `catalog_dynamic_price_rules_basis_check` | `CHECK (((basis)::text = ANY ((ARRAY['ocupacion'::character varying, 'anticipacion'::character varying, 'dia_semana'::character varying, 'temporada'::character varying, 'demanda'::character varying])::text[])))` | `basis`: `ocupacion`, `anticipacion`, `dia_semana`, `temporada`, `demanda` |
+| `catalog_dynamic_price_rules_ceiling_pct_check` | `CHECK (((ceiling_pct >= (0)::numeric) AND (ceiling_pct <= (100)::numeric)))` |  |
+| `catalog_dynamic_price_rules_floor_pct_check` | `CHECK (((floor_pct >= ('-50'::integer)::numeric) AND (floor_pct <= (0)::numeric)))` |  |
+| `ck_catalog_dynamic_price_rules_1` | `CHECK (((valid_to IS NULL) OR (valid_from IS NULL) OR (valid_to >= valid_from)))` |  |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_catalog_dynamic_price_rules_product_id` | `USING btree (product_id)` |
+| `ix_catalog_dynamic_price_rules_tenant_id_active_priority` | `USING btree (tenant_id, active, priority)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_catalog_dynamic_price_rules_lock_version` | BEFORE UPDATE | `app_bump_lock_version` |
+| `trg_catalog_dynamic_price_rules_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `catalog_hotel_season_rates`
+
+[Spec 21 §3.1] [Fase 3] Ajuste porcentual de la tarifa de un hotel del tramo por rango de fechas (temporada); sin solapes por hotel.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Catálogo (catalog_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, catalog_accommodation_hotels.tenant_id, tenants.id. |
+| 3 | `hotel_id` | `uuid` | no |  | FK → catalog_accommodation_hotels.id. |
+| 4 | `label` | `character varying(60)` | no |  |  |
+| 5 | `date_from` | `date` | no |  |  |
+| 6 | `date_to` | `date` | no |  |  |
+| 7 | `adjust_pct` | `numeric(6,2)` | no |  |  |
+| 8 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). FK → iam_users.id. |
+| 9 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 10 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, created_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_catalog_hotel_season_rates_created_by` |
+| `tenant_id, hotel_id` | `catalog_accommodation_hotels.tenant_id, id` | CASCADE | `fk_catalog_hotel_season_rates_hotel_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_hotel_season_rates_tenant_id` |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `catalog_hotel_season_rates_adjust_pct_check` | `CHECK (((adjust_pct >= ('-50'::integer)::numeric) AND (adjust_pct <= (300)::numeric)))` |  |
+| `ck_catalog_hotel_season_rates_1` | `CHECK ((date_to >= date_from))` |  |
+
+**EXCLUDE**
+
+- `ex_catalog_hotel_season_rates_overlap`: `EXCLUDE USING gist (tenant_id WITH =, hotel_id WITH =, daterange(date_from, date_to, '[]'::text) WITH &&)`
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_catalog_hotel_season_rates_created_by` | `USING btree (created_by)` |
+| `ix_catalog_hotel_season_rates_hotel_id` | `USING btree (hotel_id, date_from)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_catalog_hotel_season_rates_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `catalog_import_jobs`
+
+[Spec 19 §3.5] [Fase 3] Importación de productos desde una web, PDF o planilla con IA; revisión humana antes de crear.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Catálogo (catalog_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → sys_ai_requests.tenant_id, tenants.id. |
+| 3 | `code` | `character varying(30)` | no |  |  |
+| 4 | `source_type` | `character varying(10)` | no |  | Valores: `url`, `pdf`, `csv`, `xlsx`. |
+| 5 | `source_url` | `text` | sí |  |  |
+| 6 | `file_path` | `text` | sí |  |  |
+| 7 | `status` | `character varying(12)` | no | `'en_cola'::character varying` | Valores: `en_cola`, `procesando`, `revision`, `importado`, `fallido`, `cancelado`. |
+| 8 | `extracted` | `jsonb` | no | `'[]'::jsonb` |  |
+| 9 | `products_detected` | `integer` | no | `0` |  |
+| 10 | `products_created` | `integer` | no | `0` |  |
+| 11 | `ai_request_id` | `uuid` | sí |  | FK → sys_ai_requests.id. |
+| 12 | `error` | `text` | sí |  |  |
+| 13 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
+| 14 | `updated_by` | `uuid` | sí |  | Usuario de la última actualización (sin FK). |
+| 15 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 16 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, ai_request_id` | `sys_ai_requests.tenant_id, id` | NO ACTION | `fk_catalog_import_jobs_ai_request_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_import_jobs_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_catalog_import_jobs_tenant_id_code` | `tenant_id, code` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `catalog_import_jobs_source_type_check` | `CHECK (((source_type)::text = ANY ((ARRAY['url'::character varying, 'pdf'::character varying, 'csv'::character varying, 'xlsx'::character varying])::text[])))` | `source_type`: `url`, `pdf`, `csv`, `xlsx` |
+| `catalog_import_jobs_status_check` | `CHECK (((status)::text = ANY ((ARRAY['en_cola'::character varying, 'procesando'::character varying, 'revision'::character varying, 'importado'::character varying, 'fallido'::character varying, 'cancelado'::character varying])::text[])))` | `status`: `en_cola`, `procesando`, `revision`, `importado`, `fallido`, `cancelado` |
+| `ck_catalog_import_jobs_1` | `CHECK (((source_url IS NOT NULL) OR (file_path IS NOT NULL)))` |  |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_catalog_import_jobs_ai_request_id` | `USING btree (ai_request_id)` |
+| `ix_catalog_import_jobs_tenant_id_status` | `USING btree (tenant_id, status)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_catalog_import_jobs_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `catalog_leg_tours`
+
+[Spec 21 §3.2] [Fase 3] Tours opcionales de un tramo (ciudad) con precio adulto/niño, día relativo, edad mínima y cupo.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Catálogo (catalog_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, catalog_accommodation_legs.tenant_id, catalog_providers.tenant_id, tenants.id. |
+| 3 | `leg_id` | `uuid` | no |  | FK → catalog_accommodation_legs.id. |
+| 4 | `code` | `character varying(20)` | no |  |  |
+| 5 | `name` | `character varying(160)` | no |  |  |
+| 6 | `day_offset` | `smallint` | no | `0` |  |
+| 7 | `start_time` | `time without time zone` | no |  |  |
+| 8 | `duration_hours` | `numeric(4,1)` | no |  |  |
+| 9 | `currency` | `character(3)` | no |  |  |
+| 10 | `price_adult` | `numeric(14,2)` | no |  |  |
+| 11 | `price_child` | `numeric(14,2)` | no | `0` |  |
+| 12 | `min_age` | `smallint` | sí |  |  |
+| 13 | `capacity` | `smallint` | sí |  |  |
+| 14 | `provider_id` | `uuid` | sí |  | FK → catalog_providers.id. |
+| 15 | `in_trip_sale` | `boolean` | no | `true` |  |
+| 16 | `active` | `boolean` | no | `true` |  |
+| 17 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). FK → iam_users.id. |
+| 18 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 19 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, created_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_catalog_leg_tours_created_by` |
+| `tenant_id, leg_id` | `catalog_accommodation_legs.tenant_id, id` | CASCADE | `fk_catalog_leg_tours_leg_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_catalog_leg_tours_provider_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_leg_tours_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_catalog_leg_tours_id` | `tenant_id, id` |  | restricción |
+| `uq_catalog_leg_tours_leg_id_code` | `tenant_id, leg_id, code` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `catalog_leg_tours_capacity_check` | `CHECK (((capacity IS NULL) OR (capacity > 0)))` |  |
+| `catalog_leg_tours_currency_check` | `CHECK ((currency ~ '^[A-Z]{3}$'::text))` |  |
+| `catalog_leg_tours_day_offset_check` | `CHECK (((day_offset >= 0) AND (day_offset <= 30)))` |  |
+| `catalog_leg_tours_duration_hours_check` | `CHECK (((duration_hours > (0)::numeric) AND (duration_hours <= (24)::numeric)))` |  |
+| `catalog_leg_tours_min_age_check` | `CHECK (((min_age IS NULL) OR ((min_age >= 0) AND (min_age <= 99))))` |  |
+| `catalog_leg_tours_price_adult_check` | `CHECK ((price_adult >= (0)::numeric))` |  |
+| `catalog_leg_tours_price_child_check` | `CHECK ((price_child >= (0)::numeric))` |  |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_catalog_leg_tours_created_by` | `USING btree (created_by)` |
+| `ix_catalog_leg_tours_leg_id` | `USING btree (leg_id)` |
+| `ix_catalog_leg_tours_provider_id` | `USING btree (provider_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_catalog_leg_tours_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `catalog_transport_options`
+
+[Spec 21 §3.3] [Fase 3] Movilidad del circuito: entre tramos (elegir una por par) o local, por pasajero o por vehículo.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Catálogo (catalog_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, catalog_accommodation_legs.tenant_id, catalog_products.tenant_id, catalog_providers.tenant_id, tenants.id, catalog_accommodation_legs.tenant_id. |
+| 3 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
+| 4 | `code` | `character varying(20)` | no |  |  |
+| 5 | `from_leg_id` | `uuid` | no |  | FK → catalog_accommodation_legs.id. |
+| 6 | `to_leg_id` | `uuid` | sí |  | FK → catalog_accommodation_legs.id. |
+| 7 | `mode` | `character varying(12)` | no |  | Valores: `vuelo`, `bus`, `tren`, `traslado`, `movilidad`. |
+| 8 | `name` | `character varying(160)` | no |  |  |
+| 9 | `pricing` | `character varying(10)` | no |  | Valores: `pax`, `vehiculo`. |
+| 10 | `currency` | `character(3)` | no |  |  |
+| 11 | `price_adult` | `numeric(14,2)` | sí |  |  |
+| 12 | `price_child` | `numeric(14,2)` | sí |  |  |
+| 13 | `duration_hours` | `numeric(4,1)` | sí |  |  |
+| 14 | `provider_id` | `uuid` | sí |  | FK → catalog_providers.id. |
+| 15 | `in_trip_sale` | `boolean` | no | `true` |  |
+| 16 | `active` | `boolean` | no | `true` |  |
+| 17 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). FK → iam_users.id. |
+| 18 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 19 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, created_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_catalog_transport_options_created_by` |
+| `tenant_id, from_leg_id` | `catalog_accommodation_legs.tenant_id, id` | NO ACTION | `fk_catalog_transport_options_from_leg_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_catalog_transport_options_product_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_catalog_transport_options_provider_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_transport_options_tenant_id` |
+| `tenant_id, to_leg_id` | `catalog_accommodation_legs.tenant_id, id` | NO ACTION | `fk_catalog_transport_options_to_leg_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_catalog_transport_options_id` | `tenant_id, id` |  | restricción |
+| `uq_catalog_transport_options_product_id_code` | `tenant_id, product_id, code` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `catalog_transport_options_currency_check` | `CHECK ((currency ~ '^[A-Z]{3}$'::text))` |  |
+| `catalog_transport_options_duration_hours_check` | `CHECK (((duration_hours IS NULL) OR (duration_hours > (0)::numeric)))` |  |
+| `catalog_transport_options_mode_check` | `CHECK (((mode)::text = ANY ((ARRAY['vuelo'::character varying, 'bus'::character varying, 'tren'::character varying, 'traslado'::character varying, 'movilidad'::character varying])::text[])))` | `mode`: `vuelo`, `bus`, `tren`, `traslado`, `movilidad` |
+| `catalog_transport_options_price_adult_check` | `CHECK (((price_adult IS NULL) OR (price_adult >= (0)::numeric)))` |  |
+| `catalog_transport_options_price_child_check` | `CHECK (((price_child IS NULL) OR (price_child >= (0)::numeric)))` |  |
+| `catalog_transport_options_pricing_check` | `CHECK (((pricing)::text = ANY ((ARRAY['pax'::character varying, 'vehiculo'::character varying])::text[])))` | `pricing`: `pax`, `vehiculo` |
+| `ck_catalog_transport_options_1` | `CHECK (((to_leg_id IS NULL) OR (to_leg_id <> from_leg_id)))` |  |
+| `ck_catalog_transport_options_2` | `CHECK ((((pricing)::text = 'pax'::text) = (price_adult IS NOT NULL)))` |  |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_catalog_transport_options_created_by` | `USING btree (created_by)` |
+| `ix_catalog_transport_options_from_leg_id` | `USING btree (from_leg_id)` |
+| `ix_catalog_transport_options_product_id` | `USING btree (product_id)` |
+| `ix_catalog_transport_options_provider_id` | `USING btree (provider_id)` |
+| `ix_catalog_transport_options_to_leg_id` | `USING btree (to_leg_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_catalog_transport_options_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `catalog_transport_vehicles`
+
+[Spec 21 §3.3] [Fase 3] Vehículos y capacidad de una opción de movilidad cobrada por vehículo.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Catálogo (catalog_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_transport_options.tenant_id, tenants.id. |
+| 3 | `option_id` | `uuid` | no |  | FK → catalog_transport_options.id. |
+| 4 | `name` | `character varying(60)` | no |  |  |
+| 5 | `max_pax` | `smallint` | no |  |  |
+| 6 | `price` | `numeric(14,2)` | no |  |  |
+| 7 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 8 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, option_id` | `catalog_transport_options.tenant_id, id` | CASCADE | `fk_catalog_transport_vehicles_option_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_catalog_transport_vehicles_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_catalog_transport_vehicles_id` | `tenant_id, id` |  | restricción |
+| `uq_catalog_transport_vehicles_option_id_name` | `tenant_id, option_id, name` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `catalog_transport_vehicles_max_pax_check` | `CHECK (((max_pax >= 1) AND (max_pax <= 60)))` |  |
+| `catalog_transport_vehicles_price_check` | `CHECK ((price >= (0)::numeric))` |  |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_catalog_transport_vehicles_option_id` | `USING btree (option_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_catalog_transport_vehicles_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
 
 [↑ Índice del dominio](#tablas)

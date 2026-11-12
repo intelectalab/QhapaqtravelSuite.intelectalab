@@ -95,7 +95,8 @@
     overlaps(p, from, to, exceptId) { return ((p.availability && p.availability.ranges) || []).filter(r => r.id !== exceptId && !(to < r.from || from > r.to)); },
 
     /* ---------------- Precio ----------------
-       sel = { date, pax:{adt,chd,inf}, addons:[{id, qty}], lodging:[{legId, hotelId, rooms:[{type, qty}]}], options:[{group, label}], currency, paymentMode, removed:[lineKey] } */
+       sel = { date, pax:{adt,chd,inf}, addons:[{id, qty}], lodging:[{legId, hotelId, rooms:[{type, qty}]}], options:[{group, label}], currency, paymentMode, removed:[lineKey],
+             nights:{legId:n}, tours:[{id}], transport:[{id}] (v2.8 · R-TRIP-BUILDER) } */
     baseRate(p, segment, channel) {
       const ok = (r) => r.status === 'vigente' && (!channel || r.channel === channel || r.channel === 'Directo');
       return (p.rates || []).find(r => ok(r) && r.segment === segment) || null;
@@ -126,17 +127,43 @@
       /* Alojamiento por ciudad */
       let rooms = 0, nights = 0, beds = 0;
       const legs = (p.accommodation && p.accommodation.legs) || [];
+      /* v2.8 · Viaje por tramos (R-TRIP-BUILDER): noches por ciudad dentro de [minNights, maxNights] y fechas reales de cada tramo */
+      const tripOn = BE.on('R-TRIP-BUILDER', p);
+      const nightsOf = (leg) => { if (!tripOn) return leg.nights; const v = sel.nights && sel.nights[leg.id]; if (v == null) return leg.nights; return Math.max(leg.minNights || leg.nights, Math.min(leg.maxNights || leg.nights, +v)); };
+      const sched = BE.tripSchedule(p, sel);
+      const nightPrice = (h, base, d) => { if (!tripOn) return base; const hit = (h.seasonRates || []).find(r => d >= r.from && d <= r.to); return hit ? round2(base * (1 + hit.pct / 100)) : base; };
       (BE.on('R-LODGING', p) ? (sel.lodging || []) : []).forEach(l => {
         const leg = legs.find(x => x.id === l.legId); if (!leg) return; const h = leg.hotels.find(x => x.id === l.hotelId); if (!h) return;
         let legRooms = 0, legBeds = 0;
-        (l.rooms || []).forEach(rm => { const t = h.rooms.find(x => x.type === rm.type); if (!t || !rm.qty) return; legRooms += rm.qty; legBeds += rm.qty * t.capacity; add('lodge-' + leg.id + '-' + rm.type, 'lodging', leg.city + ' · ' + h.name + ' · ' + rm.qty + ' hab. ' + rm.type.toLowerCase() + ' × ' + leg.nights + ' noche(s)', rm.qty * leg.nights, t.price, p.accommodation.currency || 'USD', true, { legId: leg.id, city: leg.city, hotel: h.name, roomType: rm.type, rooms: rm.qty, nights: leg.nights }); });
+        const ln = nightsOf(leg); const sc = sched.find(x => x.legId === leg.id) || {};
+        (l.rooms || []).forEach(rm => { const t = h.rooms.find(x => x.type === rm.type); if (!t || !rm.qty) return; legRooms += rm.qty; legBeds += rm.qty * t.capacity;
+          /* Tarifa por noche según la fecha real de cada noche del tramo (temporadas del hotel) */
+          let sumN = 0; const hits = new Set(); for (let i = 0; i < ln; i++) { const d = sc.checkIn ? addDays(sc.checkIn, i) : null; const pr = d ? nightPrice(h, t.price, d) : t.price; sumN += pr; if (pr !== t.price) { const r = (h.seasonRates || []).find(z => d >= z.from && d <= z.to); if (r) hits.add(r.label + ' +' + r.pct + ' %'); } }
+          const avg = ln ? round2(sumN / ln) : t.price;
+          add('lodge-' + leg.id + '-' + rm.type, 'lodging', leg.city + ' · ' + h.name + ' · ' + rm.qty + ' hab. ' + rm.type.toLowerCase() + ' × ' + ln + ' noche(s)' + (hits.size ? ' · ' + [...hits].join(', ') : ''), rm.qty * ln, avg, p.accommodation.currency || 'USD', true, { legId: leg.id, city: leg.city, hotel: h.name, roomType: rm.type, rooms: rm.qty, nights: ln, checkIn: sc.checkIn || null, checkOut: sc.checkOut || null, seasonal: hits.size > 0 }); });
         const need = (+pax.adt || 0) + (+pax.chd || 0);
         if (BE.on('R-LODGING-CAPACITY', p) && legRooms && legBeds < need) warnings.push(leg.city + ': las habitaciones elegidas alojan ' + legBeds + ' persona(s) y el grupo necesita ' + need + ' camas (los infantes comparten).');
-        if (!(sel.removed || []).some(k => k.startsWith('lodge-' + leg.id))) { rooms += legRooms; nights += legRooms ? leg.nights : 0; }
+        if (!(sel.removed || []).some(k => k.startsWith('lodge-' + leg.id))) { rooms += legRooms; nights += legRooms ? ln : 0; }
         beds += legBeds;
       });
       /* Suplemento simple */
       if (BE.on('R-SINGLE-SUPP', p)) lines.filter(l => l.kind === 'lodging' && l.roomType === 'Simple' && !l.removed).forEach(l => { const pct = BE.param('R-SINGLE-SUPP', 'pct', p); lines.push({ key: 'supp-' + l.key, kind: 'surcharge', label: 'Suplemento habitación simple ' + l.city + ' (' + pct + ' %)', qty: 1, unit: round2(l.amount * pct / 100), amount: round2(l.amount * pct / 100), removable: false, removed: false }); });
+      /* v2.8 · Tours por ciudad y movilidad (R-TRIP-BUILDER). Infantes no pagan; el tour respeta la edad mínima con advertencia. */
+      const trip = p.trip || {}; const tc = trip.currency || rc;
+      if (tripOn) {
+        (sel.tours || []).forEach(o => { const t = (trip.tours || []).find(x => x.id === (o.id || o)); if (!t) return; const sc = sched.find(x => x.legId === t.legId) || {};
+          const a = +pax.adt || 0, c = t.priceChd > 0 || !t.minAge ? (+pax.chd || 0) : 0; const amt = a * t.priceAdt + c * (t.priceChd || 0);
+          if (t.minAge && (+pax.chd || 0)) warnings.push(t.name + ': edad mínima ' + t.minAge + ' años; los niños menores no participan.');
+          const d = sc.checkIn ? addDays(sc.checkIn, Math.min(t.dayOffset || 0, Math.max(0, (sc.nights || 1) - 1))) : null;
+          add('tour-' + t.id, 'tour', (sc.city ? sc.city + ' · ' : '') + t.name + (d ? ' · ' + d.slice(8) + '/' + d.slice(5, 7) + ' ' + t.time : ''), 1, amt, tc, true, { tourId: t.id, legId: t.legId, date: d, time: t.time, adt: a, chd: c }); });
+        const people = (+pax.adt || 0) + (+pax.chd || 0);
+        (sel.transport || []).forEach(o => { const t = (trip.transport || []).find(x => x.id === (o.id || o)); if (!t) return; let amt = 0, unitLbl = '';
+          if (t.pricing === 'vehiculo') { const vs = (t.vehicles || []).slice().sort((a, b) => a.maxPax - b.maxPax); let v = vs.find(x => x.maxPax >= people); let units = 1; if (!v) { v = vs[vs.length - 1]; units = Math.ceil(people / v.maxPax); } amt = v.price * units; unitLbl = ' · ' + (units > 1 ? units + ' × ' : '') + v.name; }
+          else amt = (+pax.adt || 0) * t.priceAdt + (+pax.chd || 0) * (t.priceChd || t.priceAdt);
+          const from = sched.find(x => x.legId === t.fromLegId) || {}; const to = t.toLegId ? sched.find(x => x.legId === t.toLegId) || {} : null;
+          const d = to ? to.checkIn : from.checkIn;
+          add('trans-' + t.id, 'transport', t.name + unitLbl + (d ? ' · ' + d.slice(8) + '/' + d.slice(5, 7) : ''), 1, amt, tc, true, { transportId: t.id, mode: t.kind, date: d, pricing: t.pricing }); });
+      }
       const active = lines.filter(l => !l.removed);
       const subtotal = round2(active.reduce((a, l) => a + l.amount, 0));
       const adjustments = [];
@@ -158,7 +185,20 @@
       const dueDays = pay.balanceDueDays != null ? pay.balanceDueDays : BE.param('R-DEPOSIT', 'balanceDueDays') || BE.cfg().balanceDueDaysDefault || 15;
       let balanceDue = sel.date && mode !== 'total' ? addDays(sel.date, -dueDays) : null;
       if (balanceDue && balanceDue < window.TODAY) { balanceDue = window.TODAY; warnings.push('La salida es cercana: el saldo se cobra de inmediato.'); }
-      return { currency: cur, lines, adjustments, holdHours: mode === 'pagar_despues' ? BE.param('R-PAY-LATER', 'holdHours', p) : null, subtotal, promo, total, paymentMode: mode, modes, depositPct: pct, deposit, balance: round2(total - deposit), balanceDue, rooms, nights, beds, warnings, ok: !warnings.some(w => /Se requiere|Máximo|no admite|sin tarifa|no tiene tarifa/i.test(w)), season, rateCurrency: rc, note: 'Precio calculado por el servidor al confirmar; tipo de cambio referencial.' };
+      return { currency: cur, lines, adjustments, holdHours: mode === 'pagar_despues' ? BE.param('R-PAY-LATER', 'holdHours', p) : null, subtotal, promo, total, paymentMode: mode, modes, depositPct: pct, deposit, balance: round2(total - deposit), balanceDue, rooms, nights, beds, warnings, legs: sched, tripEnd: sched.length ? sched[sched.length - 1].checkOut : null, byCategory: BE.byCategory(lines),  ok: !warnings.some(w => /Se requiere|Máximo|no admite|sin tarifa|no tiene tarifa/i.test(w)), season, rateCurrency: rc, note: 'Precio calculado por el servidor al confirmar; tipo de cambio referencial.' };
+    },
+    /* v2.8 · Calendario del viaje por tramos: fecha de llegada y salida de cada ciudad según las noches elegidas */
+    tripSchedule(p, sel) {
+      const legs = (p.accommodation && p.accommodation.legs) || []; if (!legs.length) return [];
+      const on = BE.on('R-TRIP-BUILDER', p); let d = sel && sel.date ? sel.date : null;
+      return legs.map(leg => { let n = leg.nights; if (on && sel && sel.nights && sel.nights[leg.id] != null) n = Math.max(leg.minNights || leg.nights, Math.min(leg.maxNights || leg.nights, +sel.nights[leg.id]));
+        const o = { legId: leg.id, city: leg.city, nights: n, minNights: leg.minNights || leg.nights, maxNights: leg.maxNights || leg.nights, checkIn: d, checkOut: d ? addDays(d, n) : null }; if (d) d = addDays(d, n); return o; });
+    },
+    /* Total por categoría (base del tour, alojamiento, tours, movilidad, adicionales, recargos) sin líneas quitadas */
+    byCategory(lines) {
+      const m = { base: 0, lodging: 0, tour: 0, transport: 0, addon: 0, surcharge: 0 };
+      lines.filter(l => !l.removed && m[l.kind] != null).forEach(l => { m[l.kind] = round2(m[l.kind] + l.amount); });
+      return m;
     },
     /* Totales de alojamiento de un itinerario multi-ciudad */
     lodgingTotals(p, lodging) { const q = BE.quote(p, { pax: { adt: 1 }, lodging }); return { rooms: q.rooms, nights: q.nights }; },

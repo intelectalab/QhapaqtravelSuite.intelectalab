@@ -15,7 +15,7 @@ export function FeedbackReplyActions({ feedback }: { feedback: { code: string; s
   const excerpt = feedback.text.length > 90 ? `${feedback.text.slice(0, 90)}…` : feedback.text;
   return (
     <>
-      {!feedback.reply && (
+      {!feedback.reply && feedback.status !== "derivado" && (
         <PanelAction<StepResult>
           label="Responder"
           formId={`feedback-reply-${feedback.code}`}

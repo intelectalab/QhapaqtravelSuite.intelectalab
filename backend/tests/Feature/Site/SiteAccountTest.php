@@ -181,12 +181,21 @@ it('SIT-BR-17: cuando Finanzas valida el Yape del sitio, se aplica a su cuota y 
         ->and(acctAudit(['entity' => 'Reserva', 'entity_id' => $reservation->code, 'action' => 'confirmar']))->toBeTrue();
 });
 
-it('SIT-BR-17: si Finanzas rechaza el pago del sitio, el pedido vuelve a pago rechazado para reintentar', function () {
+it('SIT-BR-17: si Finanzas rechaza el abono del sitio, el pedido se cancela, la reserva también y los cupos vuelven a la salida', function () {
     $order = acctOrder('CUS-HUM-FD', 'yape.rechaza@viajes.pe', ['pay_mode' => 'total', 'method' => 'transferencia', 'operation_ref' => 'TR-800800']);
     $payment = withinTenant(tenantA(), fn () => DB::table('fin_payments')->where('reference', 'TR-800800')->first());
+    $row = withinTenant(tenantA(), fn () => DB::table('channel_ecom_orders')->where('code', $order['code'])->first());
+    $hold = withinTenant(tenantA(), fn () => DB::table('catalog_availability_holds')->where('reference_id', $row->id)->first(['departure_id', 'quantity', 'status']));
+    $soldBefore = (int) withinTenant(tenantA(), fn () => DB::table('catalog_product_departures')->where('id', $hold->departure_id)->value('sold'));
 
     actingAsSeed('U07');
     $this->postJson("/api/v1/finance/payments/{$payment->code}/reject", ['reason' => 'No encontramos la operación en el banco'], critical((int) $payment->lock_version))->assertOk();
 
-    expect(withinTenant(tenantA(), fn () => DB::table('channel_ecom_orders')->where('code', $order['code'])->value('status')))->toBe('pago_rechazado');
+    $after = withinTenant(tenantA(), fn () => DB::table('channel_ecom_orders')->where('id', $row->id)->first());
+    expect($hold->status)->toBe('confirmada')
+        ->and($after->status)->toBe('cancelado')
+        ->and($after->cancel_reason)->toContain('No encontramos la operación')
+        ->and(withinTenant(tenantA(), fn () => DB::table('booking_reservations')->where('ecom_order_id', $row->id)->value('status')))->toBe('cancelada')
+        ->and(withinTenant(tenantA(), fn () => DB::table('catalog_availability_holds')->where('reference_id', $row->id)->value('status')))->toBe('liberada')
+        ->and((int) withinTenant(tenantA(), fn () => DB::table('catalog_product_departures')->where('id', $hold->departure_id)->value('sold')))->toBe($soldBefore - (int) $hold->quantity);
 });

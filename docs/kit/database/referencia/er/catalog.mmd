@@ -1,13 +1,15 @@
 erDiagram
   catalog_accommodation_hotels {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid leg_id FK
     varchar code
     varchar name
     uuid provider_id FK
   }
   catalog_accommodation_legs {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid product_id FK
     varchar code
     uuid destination_id FK
@@ -31,7 +33,8 @@ erDiagram
     varchar state
   }
   catalog_allotment_days {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid allotment_id FK
     date service_date
     uuid retained_by FK
@@ -50,7 +53,7 @@ erDiagram
     uuid responded_by FK
   }
   catalog_allotments {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid provider_id FK
@@ -64,7 +67,7 @@ erDiagram
     uuid owner_id FK
   }
   catalog_availability_holds {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar ref UK
     uuid departure_id FK
@@ -86,20 +89,43 @@ erDiagram
     uuid hero_media_id FK
   }
   catalog_destinations {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar ref UK
     uuid parent_id FK
     varchar name
     varchar type
   }
-  catalog_itineraries {
+  catalog_dynamic_price_rules {
     uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    varchar name
+    uuid product_id FK
+    date valid_from
+    date valid_to
+  }
+  catalog_hotel_season_rates {
+    uuid id PK
+    uuid hotel_id FK
+    uuid created_by FK
+  }
+  catalog_import_jobs {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    varchar status
+    uuid ai_request_id FK
+  }
+  catalog_itineraries {
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid product_id FK
     varchar name
   }
   catalog_itinerary_days {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid itinerary_id FK
     varchar title
   }
@@ -107,6 +133,16 @@ erDiagram
     uuid id PK
     uuid day_id FK
     uuid service_id FK
+  }
+  catalog_leg_tours {
+    uuid id PK,UK
+    uuid tenant_id UK
+    uuid leg_id FK
+    varchar code
+    varchar name
+    char currency
+    uuid provider_id FK
+    uuid created_by FK
   }
   catalog_pax_rules {
     uuid id PK
@@ -133,7 +169,7 @@ erDiagram
     varchar status
   }
   catalog_product_addons {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     uuid product_id FK
     varchar code UK
@@ -151,7 +187,7 @@ erDiagram
     date valid_to
   }
   catalog_product_categories {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar ref UK
     varchar name
@@ -162,7 +198,8 @@ erDiagram
     uuid published_by FK
   }
   catalog_product_config_groups {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid product_id FK
     varchar name
   }
@@ -171,7 +208,7 @@ erDiagram
     uuid group_id FK
   }
   catalog_product_departures {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar ref UK
     uuid product_id FK
@@ -202,7 +239,8 @@ erDiagram
     uuid provider_id FK
   }
   catalog_product_media {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid product_id FK
     varchar kind
   }
@@ -211,7 +249,7 @@ erDiagram
     uuid product_id FK,UK
   }
   catalog_product_promotions {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar ref UK
     uuid product_id FK
@@ -240,7 +278,8 @@ erDiagram
     uuid season_id FK
   }
   catalog_product_subcategories {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid category_id FK
     varchar name
   }
@@ -251,18 +290,19 @@ erDiagram
     varchar slug
   }
   catalog_product_types {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar name
   }
   catalog_product_versions {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid product_id FK
     varchar status
     date valid_from
   }
   catalog_products {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar ref UK
     varchar code
@@ -283,7 +323,7 @@ erDiagram
     varchar email
   }
   catalog_providers {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar ref UK
     varchar name
@@ -299,7 +339,7 @@ erDiagram
     varchar kind
   }
   catalog_rates {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar ref UK
     uuid product_id FK
@@ -310,7 +350,7 @@ erDiagram
     varchar status
   }
   catalog_seasons {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar ref UK
     varchar name
@@ -318,14 +358,15 @@ erDiagram
     varchar status
   }
   catalog_service_cost_history {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid service_id FK
     char currency
     uuid rate_request_id FK
     uuid approval_request_id FK
   }
   catalog_services {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar ref UK
     uuid provider_id FK
@@ -335,6 +376,24 @@ erDiagram
     date valid_from
     date valid_to
     varchar status
+  }
+  catalog_transport_options {
+    uuid id PK,UK
+    uuid tenant_id UK
+    uuid product_id FK
+    varchar code
+    uuid from_leg_id FK
+    uuid to_leg_id FK
+    varchar name
+    char currency
+    uuid provider_id FK
+    uuid created_by FK
+  }
+  catalog_transport_vehicles {
+    uuid id PK,UK
+    uuid tenant_id UK
+    uuid option_id FK
+    varchar name
   }
   booking_reservation_services {
     uuid id PK
@@ -369,87 +428,102 @@ erDiagram
   supplier_rate_requests {
     uuid id PK
   }
+  sys_ai_requests {
+    uuid id PK
+  }
   sys_booking_rules {
     uuid id PK
   }
-  booking_reservation_services ||--o{ catalog_allotment_consumptions : "booking_service_id"
-  booking_reservations ||--o{ catalog_allotment_consumptions : "reservation_id"
-  catalog_accommodation_hotels ||--o{ catalog_accommodation_room_types : "hotel_id"
-  catalog_accommodation_legs ||--o{ catalog_accommodation_hotels : "leg_id"
-  catalog_allotment_days ||--o| catalog_allotment_charges : "allotment_day_id"
-  catalog_allotment_days ||--o{ catalog_allotment_consumptions : "allotment_day_id"
-  catalog_allotments ||--o{ catalog_allotment_days : "allotment_id"
-  catalog_allotments ||--o{ catalog_allotment_events : "allotment_id"
-  catalog_allotments ||--o{ catalog_allotment_requests : "allotment_id"
-  catalog_destinations |o--o{ catalog_accommodation_legs : "destination_id"
-  catalog_destinations ||--o{ catalog_destination_contents : "destination_id"
-  catalog_destinations |o--o{ catalog_destinations : "parent_id"
-  catalog_destinations ||--o{ catalog_product_destinations : "destination_id"
-  catalog_destinations ||--o{ catalog_products : "primary_destination_id"
-  catalog_itineraries ||--o{ catalog_itinerary_days : "itinerary_id"
-  catalog_itinerary_days ||--o{ catalog_itinerary_items : "day_id"
-  catalog_product_categories ||--o{ catalog_product_subcategories : "category_id"
-  catalog_product_categories ||--o{ catalog_products : "category_id"
-  catalog_product_config_groups ||--o{ catalog_product_config_options : "group_id"
-  catalog_product_departures |o--o{ catalog_availability_holds : "departure_id"
-  catalog_product_media |o--o{ catalog_destination_contents : "hero_media_id"
-  catalog_product_subcategories |o--o{ catalog_products : "subcategory_id"
-  catalog_product_types ||--o{ catalog_products : "product_type_id"
-  catalog_product_versions |o--o{ catalog_products : "current_version_id"
-  catalog_products ||--o{ catalog_accommodation_legs : "product_id"
-  catalog_products |o--o{ catalog_availability_holds : "product_id"
-  catalog_products ||--o{ catalog_availability_ranges : "product_id"
-  catalog_products ||--o{ catalog_itineraries : "product_id"
-  catalog_products ||--o{ catalog_pax_rules : "product_id"
-  catalog_products ||--o| catalog_payment_policies : "product_id"
-  catalog_products ||--o{ catalog_pickup_points : "product_id"
-  catalog_products |o--o{ catalog_price_rules : "product_id"
-  catalog_products ||--o{ catalog_product_addons : "product_id"
-  catalog_products ||--o{ catalog_product_b2b_rates : "product_id"
-  catalog_products ||--o{ catalog_product_channels : "product_id"
-  catalog_products ||--o{ catalog_product_config_groups : "product_id"
-  catalog_products ||--o{ catalog_product_departures : "product_id"
-  catalog_products ||--o{ catalog_product_destinations : "product_id"
-  catalog_products ||--o{ catalog_product_faqs : "product_id"
-  catalog_products ||--o{ catalog_product_inclusions : "product_id"
-  catalog_products ||--o{ catalog_product_items : "component_product_id, product_id"
-  catalog_products ||--o{ catalog_product_media : "product_id"
-  catalog_products ||--o| catalog_product_policies : "product_id"
-  catalog_products ||--o{ catalog_product_promotions : "product_id"
-  catalog_products ||--o{ catalog_product_related : "product_id, related_product_id"
-  catalog_products ||--o{ catalog_product_requirements : "product_id"
-  catalog_products ||--o{ catalog_product_rule_overrides : "product_id"
-  catalog_products ||--o{ catalog_product_seasons : "product_id"
-  catalog_products ||--o{ catalog_product_translations : "product_id"
-  catalog_products ||--o{ catalog_product_versions : "product_id"
-  catalog_products ||--o{ catalog_rates : "product_id"
-  catalog_providers |o--o{ catalog_accommodation_hotels : "provider_id"
-  catalog_providers ||--o{ catalog_allotments : "provider_id"
-  catalog_providers |o--o{ catalog_product_addons : "provider_id"
-  catalog_providers |o--o{ catalog_product_departures : "provider_id"
-  catalog_providers |o--o{ catalog_product_items : "provider_id"
-  catalog_providers |o--o{ catalog_products : "main_provider_id"
-  catalog_providers ||--o{ catalog_provider_contacts : "provider_id"
-  catalog_providers ||--o{ catalog_services : "provider_id"
-  catalog_rates ||--o{ catalog_rate_conditions : "rate_id"
-  catalog_seasons ||--o{ catalog_product_seasons : "season_id"
-  catalog_seasons |o--o{ catalog_rates : "season_id"
-  catalog_services ||--o{ catalog_allotments : "service_id"
-  catalog_services |o--o{ catalog_itinerary_items : "service_id"
-  catalog_services |o--o{ catalog_product_addons : "service_id"
-  catalog_services |o--o{ catalog_product_items : "service_id"
-  catalog_services ||--o{ catalog_service_cost_history : "service_id"
-  channel_b2b_agencies ||--o{ catalog_product_b2b_rates : "agency_id"
-  channel_b2b_price_lists |o--o{ catalog_product_b2b_rates : "price_list_id"
-  collab_approval_requests |o--o{ catalog_service_cost_history : "approval_request_id"
-  fin_payables |o--o{ catalog_allotment_charges : "payable_id"
-  iam_users |o--o{ catalog_allotment_days : "retained_by"
-  iam_users |o--o{ catalog_allotment_events : "user_id"
-  iam_users |o--o{ catalog_allotment_requests : "responded_by"
-  iam_users ||--o{ catalog_allotments : "owner_id"
-  iam_users |o--o{ catalog_product_channels : "published_by"
-  mkt_campaigns |o--o{ catalog_product_promotions : "campaign_id"
-  ops_guides |o--o{ catalog_product_departures : "guide_id"
-  ops_vehicles |o--o{ catalog_product_departures : "vehicle_id"
-  supplier_rate_requests |o--o{ catalog_service_cost_history : "rate_request_id"
+  booking_reservation_services ||--o{ catalog_allotment_consumptions : "booking_service_id, tenant_id"
+  booking_reservations ||--o{ catalog_allotment_consumptions : "reservation_id, tenant_id"
+  catalog_accommodation_hotels ||--o{ catalog_accommodation_room_types : "hotel_id, tenant_id"
+  catalog_accommodation_hotels ||--o{ catalog_hotel_season_rates : "hotel_id, tenant_id"
+  catalog_accommodation_legs ||--o{ catalog_accommodation_hotels : "leg_id, tenant_id"
+  catalog_accommodation_legs ||--o{ catalog_leg_tours : "leg_id, tenant_id"
+  catalog_accommodation_legs ||--o{ catalog_transport_options : "from_leg_id, tenant_id, to_leg_id"
+  catalog_allotment_days ||--o{ catalog_allotment_charges : "allotment_day_id, tenant_id"
+  catalog_allotment_days ||--o{ catalog_allotment_consumptions : "allotment_day_id, tenant_id"
+  catalog_allotments ||--o{ catalog_allotment_days : "allotment_id, tenant_id"
+  catalog_allotments ||--o{ catalog_allotment_events : "allotment_id, tenant_id"
+  catalog_allotments ||--o{ catalog_allotment_requests : "allotment_id, tenant_id"
+  catalog_destinations ||--o{ catalog_accommodation_legs : "destination_id, tenant_id"
+  catalog_destinations ||--o{ catalog_destination_contents : "destination_id, tenant_id"
+  catalog_destinations ||--o{ catalog_destinations : "parent_id, tenant_id"
+  catalog_destinations ||--o{ catalog_product_destinations : "destination_id, tenant_id"
+  catalog_destinations ||--o{ catalog_products : "primary_destination_id, tenant_id"
+  catalog_itineraries ||--o{ catalog_itinerary_days : "itinerary_id, tenant_id"
+  catalog_itinerary_days ||--o{ catalog_itinerary_items : "day_id, tenant_id"
+  catalog_product_categories ||--o{ catalog_product_subcategories : "category_id, tenant_id"
+  catalog_product_categories ||--o{ catalog_products : "category_id, tenant_id"
+  catalog_product_config_groups ||--o{ catalog_product_config_options : "group_id, tenant_id"
+  catalog_product_departures ||--o{ catalog_availability_holds : "departure_id, tenant_id"
+  catalog_product_media ||--o{ catalog_destination_contents : "hero_media_id, tenant_id"
+  catalog_product_subcategories ||--o{ catalog_products : "subcategory_id, tenant_id"
+  catalog_product_types ||--o{ catalog_products : "product_type_id, tenant_id"
+  catalog_product_versions ||--o{ catalog_products : "current_version_id, tenant_id"
+  catalog_products ||--o{ catalog_accommodation_legs : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_availability_holds : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_availability_ranges : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_dynamic_price_rules : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_itineraries : "product_id, tenant_id"
+  catalog_products ||--o| catalog_pax_rules : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_payment_policies : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_pickup_points : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_price_rules : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_addons : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_b2b_rates : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_channels : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_config_groups : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_departures : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_destinations : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_faqs : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_inclusions : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_items : "component_product_id, product_id, ten..."
+  catalog_products ||--o{ catalog_product_media : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_policies : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_promotions : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_related : "product_id, related_product_id, tenan..."
+  catalog_products ||--o{ catalog_product_requirements : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_rule_overrides : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_seasons : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_translations : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_product_versions : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_rates : "product_id, tenant_id"
+  catalog_products ||--o{ catalog_transport_options : "product_id, tenant_id"
+  catalog_providers ||--o{ catalog_accommodation_hotels : "provider_id, tenant_id"
+  catalog_providers ||--o{ catalog_allotments : "provider_id, tenant_id"
+  catalog_providers ||--o{ catalog_leg_tours : "provider_id, tenant_id"
+  catalog_providers ||--o{ catalog_product_addons : "provider_id, tenant_id"
+  catalog_providers ||--o{ catalog_product_departures : "provider_id, tenant_id"
+  catalog_providers ||--o{ catalog_product_items : "provider_id, tenant_id"
+  catalog_providers ||--o{ catalog_products : "main_provider_id, tenant_id"
+  catalog_providers ||--o{ catalog_provider_contacts : "provider_id, tenant_id"
+  catalog_providers ||--o{ catalog_services : "provider_id, tenant_id"
+  catalog_providers ||--o{ catalog_transport_options : "provider_id, tenant_id"
+  catalog_rates ||--o{ catalog_rate_conditions : "rate_id, tenant_id"
+  catalog_seasons ||--o{ catalog_product_seasons : "season_id, tenant_id"
+  catalog_seasons ||--o{ catalog_rates : "season_id, tenant_id"
+  catalog_services ||--o{ catalog_allotments : "service_id, tenant_id"
+  catalog_services ||--o{ catalog_itinerary_items : "service_id, tenant_id"
+  catalog_services ||--o{ catalog_product_addons : "service_id, tenant_id"
+  catalog_services ||--o{ catalog_product_items : "service_id, tenant_id"
+  catalog_services ||--o{ catalog_service_cost_history : "service_id, tenant_id"
+  catalog_transport_options ||--o{ catalog_transport_vehicles : "option_id, tenant_id"
+  channel_b2b_agencies ||--o{ catalog_product_b2b_rates : "agency_id, tenant_id"
+  channel_b2b_price_lists ||--o{ catalog_product_b2b_rates : "price_list_id, tenant_id"
+  collab_approval_requests ||--o{ catalog_service_cost_history : "approval_request_id, tenant_id"
+  fin_payables ||--o{ catalog_allotment_charges : "payable_id, tenant_id"
+  iam_users ||--o{ catalog_allotment_days : "retained_by, tenant_id"
+  iam_users ||--o{ catalog_allotment_events : "tenant_id, user_id"
+  iam_users ||--o{ catalog_allotment_requests : "responded_by, tenant_id"
+  iam_users ||--o{ catalog_allotments : "owner_id, tenant_id"
+  iam_users ||--o{ catalog_hotel_season_rates : "created_by, tenant_id"
+  iam_users ||--o{ catalog_leg_tours : "created_by, tenant_id"
+  iam_users ||--o{ catalog_product_channels : "published_by, tenant_id"
+  iam_users ||--o{ catalog_transport_options : "created_by, tenant_id"
+  mkt_campaigns ||--o{ catalog_product_promotions : "campaign_id, tenant_id"
+  ops_guides ||--o{ catalog_product_departures : "guide_id, tenant_id"
+  ops_vehicles ||--o{ catalog_product_departures : "tenant_id, vehicle_id"
+  supplier_rate_requests ||--o{ catalog_service_cost_history : "rate_request_id, tenant_id"
+  sys_ai_requests ||--o{ catalog_import_jobs : "ai_request_id, tenant_id"
   sys_booking_rules ||--o{ catalog_product_rule_overrides : "rule_code, tenant_id"

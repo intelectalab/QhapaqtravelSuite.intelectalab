@@ -119,6 +119,7 @@ final class CampaignDirectory
                 'match' => $row->match,
                 'rules' => $rules,
                 'rules_text' => $this->contacts->describe($rules, $row->match),
+                'rules_parts' => $this->contacts->parts($rules),
                 'matched' => $email['matched'],
                 'email' => $email['eligible'],
                 'whatsapp' => $whatsapp['eligible'],

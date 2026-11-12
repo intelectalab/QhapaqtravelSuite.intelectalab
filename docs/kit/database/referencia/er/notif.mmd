@@ -5,7 +5,8 @@ erDiagram
     varchar event_code UK
   }
   notif_messages {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     varchar code
     uuid recipient_user_id FK
     uuid template_id FK
@@ -15,7 +16,7 @@ erDiagram
     uuid fallback_of_id FK
   }
   notif_pax_message_templates {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar name
@@ -49,13 +50,13 @@ erDiagram
   iam_users {
     uuid id PK
   }
-  booking_reservations |o--o{ notif_messages : "reservation_id"
-  booking_reservations |o--o{ notif_pax_messages : "reservation_id"
-  channel_pax_feedback |o--o{ notif_pax_messages : "feedback_id"
-  crm_clients |o--o{ notif_messages : "client_id"
-  iam_users |o--o{ notif_messages : "recipient_user_id"
-  iam_users ||--o{ notif_reads : "user_id"
-  notif_messages |o--o{ notif_messages : "fallback_of_id"
-  notif_messages ||--o{ notif_reads : "notification_id"
-  notif_pax_message_templates |o--o{ notif_pax_messages : "template_id"
+  booking_reservations ||--o{ notif_messages : "reservation_id, tenant_id"
+  booking_reservations ||--o{ notif_pax_messages : "reservation_id, tenant_id"
+  channel_pax_feedback ||--o{ notif_pax_messages : "feedback_id, tenant_id"
+  crm_clients ||--o{ notif_messages : "client_id, tenant_id"
+  iam_users ||--o{ notif_messages : "recipient_user_id, tenant_id"
+  iam_users ||--o{ notif_reads : "tenant_id, user_id"
+  notif_messages ||--o{ notif_messages : "fallback_of_id, tenant_id"
+  notif_messages ||--o{ notif_reads : "notification_id, tenant_id"
+  notif_pax_message_templates ||--o{ notif_pax_messages : "template_id, tenant_id"
   notif_templates |o--o{ notif_messages : "template_id"

@@ -54,6 +54,7 @@ final class LeadDirectory
             'discard_reason' => $this->catalog->label('discard_reason', $row->discard_reason_code),
             'discard_detail' => $row->discard_detail,
             'discarded_at' => $this->iso($row->discarded_at),
+            'discarded_from' => [2 => 'nuevo', 4 => 'contactado', 6 => 'calificado'][(int) $row->discarded_at_step] ?? null,
             'duplicate_of' => $duplicate ? ['type' => $row->duplicate_of_type, 'code' => $duplicate->code, 'name' => $duplicate->name] : null,
             'duplicates' => $open ? collect($this->matcher->find($row->email, $row->phone, $row->id))->map(fn (array $match) => [
                 ...$match,

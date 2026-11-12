@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Support;
 
+use App\Domain\Catalog\Support\CancellationTiers;
 use App\Domain\Iam\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -134,8 +135,8 @@ final class ReservationSections
         $items = DB::table('booking_reservation_services as s')->join('catalog_products as p', 'p.id', '=', 's.product_id')
             ->join('catalog_product_policies as pp', 'pp.product_id', '=', 'p.id')
             ->where('s.reservation_id', $row->id)->distinct()
-            ->get(['p.name as product', 'pp.cancellation', 'pp.modification', 'pp.no_show', 'pp.refund'])
-            ->map(fn (object $item): array => (array) $item)->values()->all();
+            ->get(['p.name as product', 'pp.cancellation', 'pp.modification', 'pp.no_show', 'pp.refund', 'pp.penalty_tiers'])
+            ->map(fn (object $item): array => [...array_diff_key((array) $item, ['penalty_tiers' => true]), 'tiers' => CancellationTiers::resolve($item->penalty_tiers, $item->cancellation)])->values()->all();
 
         return ['source' => $items === [] ? 'none' : 'product', 'items' => $items];
     }
@@ -150,6 +151,7 @@ final class ReservationSections
             'modification' => $item['modification'] ?? $item['modify'] ?? null,
             'no_show' => $item['no_show'] ?? $item['noshow'] ?? null,
             'refund' => $item['refund'] ?? null,
+            'tiers' => CancellationTiers::resolve($item['penalty_tiers'] ?? null, $item['cancellation'] ?? $item['cancel'] ?? null),
         ], $list);
     }
 

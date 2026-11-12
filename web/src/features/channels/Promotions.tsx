@@ -78,7 +78,7 @@ function PromotionForm({ catalog, promotion, product, trigger }: { catalog: Prom
 function StateAction({ promotion }: { promotion: Promotion }) {
   const router = useRouter();
   const pause = promotion.status === "activa";
-  if (!pause && promotion.state === "vencida") return <RowIcon tone="neutral" label="Activar" icon={<CirclePlay size={15} />} disabledHint="Venció: extiende la vigencia para activarla" />;
+  if (promotion.state === "vencida") return <RowIcon tone="neutral" label={pause ? "Pausar" : "Activar"} icon={pause ? <CirclePause size={15} /> : <CirclePlay size={15} />} disabledHint="Venció: extiende la vigencia para volver a usarla" />;
   return (
     <PanelAction<StepResult>
       label={pause ? "Pausar" : "Activar"}

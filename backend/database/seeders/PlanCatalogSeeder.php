@@ -135,20 +135,20 @@ final class PlanCatalogSeeder
         $ids = fn (array $names) => '{'.implode(',', array_map(fn (string $name) => $plans[$name]->getKey(), $names)).'}';
 
         foreach (self::ADDONS as [$code, $label, $unit, $quantity, $price, $available, $included, $grants]) {
+            $byPlan = array_map(fn (string $name): float => (float) ($price ?? ($seeds[$name]['limits']['extraUserPrice'] ?? 0)), $available);
             DB::table('addons')->updateOrInsert(['code' => $code], [
                 'label' => $label,
                 'unit' => $unit,
                 'quantity_allowed' => $quantity,
-                'price_month' => $price,
+                'price_month' => $price ?? min($byPlan),
                 'available_plans' => $ids($available),
                 'included_plans' => $ids($included),
                 'grants' => json_encode($grants),
             ]);
 
             DB::table('addon_prices')->where('addon_code', $code)->delete();
-            foreach ($available as $name) {
-                $amount = $price ?? ($seeds[$name]['limits']['extraUserPrice'] ?? 0);
-                DB::table('addon_prices')->insert(['addon_code' => $code, 'plan_id' => $plans[$name]->getKey(), 'price' => $amount]);
+            foreach ($available as $index => $name) {
+                DB::table('addon_prices')->insert(['addon_code' => $code, 'plan_id' => $plans[$name]->getKey(), 'price' => $byPlan[$index]]);
             }
         }
     }

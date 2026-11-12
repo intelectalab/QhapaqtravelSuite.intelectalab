@@ -81,7 +81,7 @@ function RuleEditAction({ overview, rule }: { overview: PricingOverview; rule: P
   );
 }
 
-function ResultView({ result }: { result: PricingResult }) {
+export function ResultView({ result }: { result: PricingResult }) {
   const money = (value: number) => formatMoney(value, result.currency);
   return (
     <div className="flex flex-col gap-4">

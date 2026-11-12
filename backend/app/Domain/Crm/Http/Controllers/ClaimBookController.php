@@ -10,6 +10,7 @@ use App\Domain\Crm\Support\ClaimConsumer;
 use App\Domain\Iam\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 final class ClaimBookController
 {
@@ -34,18 +35,24 @@ final class ClaimBookController
 
     public function evaluate(Request $request, string $code, ClaimBookWorkflow $workflow): JsonResponse
     {
-        $workflow->evaluate($code, $this->user($request));
+        $data = $request->validate(['owner_id' => ['nullable', 'uuid'], 'note' => ['nullable', 'string', 'max:500']], ['owner_id.*' => 'Elige un responsable de la lista.']);
+        $workflow->evaluate($code, $this->user($request), $data['owner_id'] ?? null, $data['note'] ?? null);
 
         return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function resend(Request $request, string $code, ClaimBookWorkflow $workflow): JsonResponse
+    {
+        return response()->json(['data' => ['code' => $code, 'sent_to' => $workflow->resend($code, $this->user($request))]]);
     }
 
     public function respond(Request $request, string $code, ClaimBookWorkflow $workflow): JsonResponse
     {
         $data = $request->validate([
             'decision' => ['required', 'in:Procedente,Procedente en parte,No procedente'],
-            'text' => ['required', 'string', 'min:20', 'max:4000'],
-            'actions' => ['nullable', 'string', 'max:1000'],
-        ], ['decision.*' => 'Elige la decisión.', 'text.*' => 'Escribe la respuesta al consumidor (mínimo 20 caracteres).']);
+            'text' => ['required', 'string', 'min:40', 'max:4000'],
+            'actions' => ['required', 'string', 'min:10', 'max:1000'],
+        ], ['decision.*' => 'Elige la decisión.', 'text.*' => 'Escribe una respuesta motivada al consumidor (mínimo 40 caracteres).', 'actions.*' => 'Describe las acciones adoptadas (mínimo 10 caracteres).']);
         $workflow->respond($code, $data, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
@@ -54,13 +61,20 @@ final class ClaimBookController
     public function settings(Request $request, ClaimBookWorkflow $workflow): JsonResponse
     {
         $data = $request->validate([
-            'response_days' => ['required', 'integer', 'between:1,30'],
-            'alert_days' => ['required', 'integer', 'between:0,10'],
-            'retention_years' => ['required', 'integer', 'between:2,20'],
+            'response_days' => [Rule::requiredIf(! $request->has('holidays')), 'integer', 'between:1,30'],
+            'alert_days' => [Rule::requiredIf(! $request->has('holidays')), 'integer', 'between:0,10'],
+            'retention_years' => [Rule::requiredIf(! $request->has('holidays')), 'integer', 'between:2,20'],
+            'holidays' => ['sometimes', 'present', 'array', 'max:80'],
+            'holidays.*.date' => ['required', 'date_format:Y-m-d', 'distinct'],
+            'holidays.*.name' => ['required', 'string', 'min:3', 'max:120'],
         ], [
             'response_days.*' => 'El plazo de respuesta va de 1 a 30 días hábiles.',
             'alert_days.*' => 'La alerta previa va de 0 a 10 días hábiles.',
             'retention_years.*' => 'Las hojas se conservan entre 2 y 20 años.',
+            'holidays.max' => 'Registra hasta 80 feriados.',
+            'holidays.*.date.distinct' => 'Esa fecha ya es feriado.',
+            'holidays.*.date.*' => 'Indica la fecha del feriado.',
+            'holidays.*.name.*' => 'Indica el nombre del feriado.',
         ]);
 
         return response()->json(['data' => $workflow->saveSettings($data, $this->user($request))]);

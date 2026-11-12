@@ -86,7 +86,7 @@ export function AgencyFormAction({ agency, catalogs, iconOnly = false }: { agenc
 }
 
 const STATUS_COPY = {
-  bloquear: { status: "bloqueada", title: "Bloquear agencia", label: "Bloquear", icon: <Lock size={15} />, tone: "delete" as const, hint: "No podrá reservar a crédito ni con prepago hasta que la desbloquees." },
+  bloquear: { status: "bloqueada", title: "Bloquear agencia", label: "Bloquear", icon: <Lock size={15} />, tone: "delete" as const, hint: "Solo podrá reservar con prepago hasta que la desbloquees." },
   desbloquear: { status: "activa", title: "Desbloquear agencia", label: "Desbloquear", icon: <LockOpen size={15} />, tone: "neutral" as const, hint: "Vuelve a reservar con su línea de crédito." },
   desactivar: { status: "inactiva", title: "Desactivar agencia", label: "Desactivar", icon: <Ban size={15} />, tone: "delete" as const, hint: "Se conserva con sus reservas y movimientos; ya no puede ingresar al portal." },
   reactivar: { status: "activa", title: "Reactivar agencia", label: "Reactivar", icon: <RotateCcw size={15} />, tone: "neutral" as const, hint: "Recupera su convenio y su acceso al portal." },

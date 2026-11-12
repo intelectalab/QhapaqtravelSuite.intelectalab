@@ -7,7 +7,7 @@ import type { Column, FilterConfig, MetricFilter, SortOption } from "@/component
 import { Badge } from "@/components/ui/Badge";
 import { BOOK_STATUS_TONE, DEADLINE, type ClaimSheet, type ClaimsOverview } from "@/lib/claims";
 import { formatDate } from "@/lib/format";
-import { ClaimCloseAction, ClaimDetailAction, ClaimFormAction } from "./ClaimForms";
+import { ClaimCloseAction, ClaimDetailAction, ClaimFormAction, ClaimResendAction } from "./ClaimForms";
 
 const unique = (values: (string | null)[]) => [...new Set(values.filter((value): value is string => Boolean(value)))];
 
@@ -59,8 +59,10 @@ export function ClaimsTable({ overview }: { overview: ClaimsOverview }) {
       mobile: "hidden",
       cell: (row) => (
         <RowActions>
-          <ClaimDetailAction sheet={row} canManage={overview.can.manage} />
+          <ClaimDetailAction sheet={row} canManage={overview.can.manage} owners={overview.options.owners ?? []} />
+          {overview.can.manage && row.book_status === "received" && <ClaimDetailAction sheet={row} canManage owners={overview.options.owners ?? []} respondNow />}
           <ClaimFormAction overview={overview} sheet={row} />
+          {row.book_status === "answered" ? <ClaimResendAction sheet={row} /> : null}
           <ClaimCloseAction sheet={row} />
         </RowActions>
       ),
@@ -69,7 +71,7 @@ export function ClaimsTable({ overview }: { overview: ClaimsOverview }) {
   const metrics: MetricFilter<ClaimSheet>[] = [
     { id: "open", label: "Sin respuesta", tone: "info", icon: <Inbox size={19} />, matches: (row) => row.book_status === "received" || row.book_status === "in_review" },
     { id: "soon", label: "Por vencer", tone: "warn", icon: <Hourglass size={19} />, matches: (row) => row.deadline === "por_vencer" },
-    { id: "late", label: "Vencidas", tone: "bad", icon: <AlarmClock size={19} />, matches: (row) => row.deadline === "vencido" || row.deadline === "respondido_fuera_de_plazo" },
+    { id: "late", label: "Vencidas", tone: "bad", icon: <AlarmClock size={19} />, matches: (row) => row.deadline === "vencido" },
   ];
   const filters: FilterConfig<ClaimSheet>[] = [
     { id: "type", label: "Tipo", options: unique(rows.map((row) => row.type)).map((value) => ({ value, label: value })), value: (row) => row.type },

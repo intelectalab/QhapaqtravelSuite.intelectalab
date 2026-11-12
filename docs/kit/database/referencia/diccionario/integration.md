@@ -1,6 +1,6 @@
 # Diccionario de datos · Integraciones (integration_)
 
-_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras cargar `00`→`90`. No editar a mano._
+_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.15 tras cargar `00`→`90`. No editar a mano._
 
 Adaptadores, errores, API keys, webhooks, OAuth y fuentes de reseñas.
 
@@ -93,6 +93,7 @@ Adaptadores, errores, API keys, webhooks, OAuth y fuentes de reseñas.
 
 | Nombre | Momento y evento | Función |
 |---|---|---|
+| `trg_fk_tenant_integration_adapters_owner_user_id` | BEFORE INSERT OR UPDATE OF owner_user_id, tenant_id | `app_check_fk_tenant` |
 | `trg_integration_adapters_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
 
 [↑ Índice del dominio](#tablas)
@@ -157,6 +158,7 @@ Adaptadores, errores, API keys, webhooks, OAuth y fuentes de reseñas.
 
 | Nombre | Momento y evento | Función |
 |---|---|---|
+| `trg_fk_tenant_integration_errors_resolved_by` | BEFORE INSERT OR UPDATE OF resolved_by, tenant_id | `app_check_fk_tenant` |
 | `trg_integration_errors_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
 
 [↑ Índice del dominio](#tablas)
@@ -174,7 +176,7 @@ Adaptadores, errores, API keys, webhooks, OAuth y fuentes de reseñas.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `name` | `character varying(120)` | no |  |  |
 | 5 | `environment` | `character varying(10)` | no |  | Valores: `live`, `test`. |
@@ -199,7 +201,7 @@ Adaptadores, errores, API keys, webhooks, OAuth y fuentes de reseñas.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `revoked_by` | `iam_users.id` | NO ACTION | `fk_integration_api_keys_revoked_by` |
+| `tenant_id, revoked_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_integration_api_keys_revoked_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_integration_api_keys_tenant_id` |
 
 **UNIQUE**
@@ -239,7 +241,7 @@ Adaptadores, errores, API keys, webhooks, OAuth y fuentes de reseñas.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → oauth_clients.tenant_id, tenants.id. |
 | 3 | `client_id` | `uuid` | no |  | FK → oauth_clients.id. |
 | 4 | `vendor` | `character varying(120)` | no |  |  |
 | 5 | `allowed_scopes` | `text[]` | no | `'{}'::text[]` |  |
@@ -253,7 +255,7 @@ Adaptadores, errores, API keys, webhooks, OAuth y fuentes de reseñas.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `client_id` | `oauth_clients.id` | NO ACTION | `fk_integration_oauth_apps_client_id` |
+| `tenant_id, client_id` | `oauth_clients.tenant_id, id` | NO ACTION | `fk_integration_oauth_apps_client_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_integration_oauth_apps_tenant_id` |
 
 **UNIQUE**
@@ -289,7 +291,7 @@ Adaptadores, errores, API keys, webhooks, OAuth y fuentes de reseñas.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `provider` | `character varying(20)` | no |  | Valores: `tripadvisor`, `trustpilot`, `google`, `facebook`, `getyourguide`, `viator`. |
 | 4 | `status` | `character varying(20)` | no | `'no_conectado'::character varying` | Valores: `no_conectado`, `pendiente`, `conectado`, `error`. |
 | 5 | `account_ref` | `character varying(120)` | sí |  |  |
@@ -316,14 +318,15 @@ Adaptadores, errores, API keys, webhooks, OAuth y fuentes de reseñas.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `connected_by` | `iam_users.id` | NO ACTION | `fk_integration_review_sources_connected_by` |
-| `contract_ack_by` | `iam_users.id` | NO ACTION | `fk_integration_review_sources_contract_ack_by` |
+| `tenant_id, connected_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_integration_review_sources_connected_by` |
+| `tenant_id, contract_ack_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_integration_review_sources_contract_ack_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_integration_review_sources_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_integration_review_sources_id` | `tenant_id, id` |  | restricción |
 | `uq_integration_review_sources_tenant_id_provider` | `tenant_id, provider` |  | índice único |
 
 **CHECK**
@@ -362,7 +365,7 @@ Adaptadores, errores, API keys, webhooks, OAuth y fuentes de reseñas.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id, integration_webhooks.tenant_id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `webhook_id` | `uuid` | no |  | FK → integration_webhooks.id. |
 | 5 | `event_type` | `character varying(50)` | no |  |  |
@@ -386,7 +389,7 @@ Adaptadores, errores, API keys, webhooks, OAuth y fuentes de reseñas.
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_integration_webhook_deliveries_tenant_id` |
-| `webhook_id` | `integration_webhooks.id` | NO ACTION | `fk_integration_webhook_deliveries_webhook_id` |
+| `tenant_id, webhook_id` | `integration_webhooks.tenant_id, id` | NO ACTION | `fk_integration_webhook_deliveries_webhook_id` |
 
 **CHECK**
 
@@ -451,6 +454,7 @@ Adaptadores, errores, API keys, webhooks, OAuth y fuentes de reseñas.
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_integration_webhooks_id` | `tenant_id, id` |  | restricción |
 | `uq_integration_webhooks_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -510,6 +514,12 @@ Adaptadores, errores, API keys, webhooks, OAuth y fuentes de reseñas.
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_oauth_clients_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_oauth_clients_id` | `tenant_id, id` |  | restricción |
 
 **Índices**
 

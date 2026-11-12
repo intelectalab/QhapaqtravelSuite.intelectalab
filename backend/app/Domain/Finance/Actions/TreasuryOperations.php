@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Finance\Actions;
 
+use App\Domain\Admin\Support\StaffNotices;
 use App\Domain\Finance\Support\Consolidation;
 use App\Domain\Finance\Support\ExpenseReceiptFiles;
 use App\Domain\Iam\Models\User;
@@ -104,8 +105,16 @@ final class TreasuryOperations
             ]);
             $type = $kind === 'replenishment' ? 'replenishment' : ($kind === 'gateway_settlement' ? 'gateway_settlement' : 'transfer');
             $description = $data['description'] ?? "Transferencia {$code}";
-            $this->movement($from, 'out', $type, $amountFrom, $data['date'], $kind === 'replenishment' ? 'replenishment' : ($kind === 'gateway_settlement' ? 'gateway' : 'transfer'), $transferId, $description, $data['reference'] ?? null, $actor, ['transfer_id' => $transferId, 'replenishment_id' => $replenishmentId]);
-            $this->movement($to, 'in', $type, $amountTo, $data['date'], $kind === 'replenishment' ? 'replenishment' : ($kind === 'gateway_settlement' ? 'gateway' : 'transfer'), $transferId, $description, $data['reference'] ?? null, $actor, ['transfer_id' => $transferId, 'replenishment_id' => $replenishmentId]);
+            $source = $kind === 'replenishment' ? 'replenishment' : ($kind === 'gateway_settlement' ? 'gateway' : 'transfer');
+            $cross = $from->currency !== $to->currency;
+            $fxFrom = $cross && $from->currency === 'USD' ? ['fx_rate' => (string) $rate] : [];
+            $fxTo = $cross ? [...($to->currency === 'USD' ? ['fx_rate' => (string) $rate] : []), 'orig_amount' => (string) $amountFrom, 'orig_currency' => $from->currency, 'orig_fx_rate' => (string) $rate] : [];
+            $this->movement($from, 'out', $type, $amountFrom, $data['date'], $source, $transferId, $description, $data['reference'] ?? null, $actor, ['transfer_id' => $transferId, 'replenishment_id' => $replenishmentId, ...$fxFrom]);
+            $this->movement($to, 'in', $type, $amountTo, $data['date'], $source, $transferId, $description, $data['reference'] ?? null, $actor, ['transfer_id' => $transferId, 'replenishment_id' => $replenishmentId, ...$fxTo]);
+
+            if ($kind === 'cash_deposit') {
+                $this->markDeposited($from, $amountFrom, $transferId);
+            }
             $this->audit->log('Transferencia de tesorería', $code, 'registrar', null, "{$from->code} → {$to->code} · {$from->currency} {$amountFrom}");
 
             return $code;
@@ -145,6 +154,12 @@ final class TreasuryOperations
                 throw ApiException::conflict('TES-BR-03', 'La caja ya tiene una sesión abierta. Ciérrala con su arqueo antes de abrir otra.');
             }
 
+            $expected = $this->balance($account);
+
+            if (! Decimal::money($data['counted'])->isEqualTo($expected)) {
+                throw ApiException::conflict('TES-BR-07', 'El conteo de apertura (S/ '.Decimal::money($data['counted']).") no coincide con el saldo del último cierre (S/ {$expected}). Revisa el efectivo o registra un arqueo antes de abrir.");
+            }
+
             $code = $this->sequences->next('cash_session');
             DB::table('fin_cash_sessions')->insert([
                 'id' => (string) Str::uuid7(), 'tenant_id' => $this->context->idOrFail(), 'code' => $code, 'account_id' => $account->id,
@@ -171,8 +186,14 @@ final class TreasuryOperations
                 $settings = DB::table('fin_treasury_settings')->first(['max_petty_expense', 'sworn_statement_max']);
                 $amount = Decimal::money($data['amount']);
 
-                if (DB::table('fin_cash_sessions')->where('account_id', $account->id)->where('status', 'open')->doesntExist()) {
+                $today = $this->money->today();
+
+                if (DB::table('fin_cash_sessions')->where('account_id', $account->id)->where('status', 'open')->where('session_date', $today)->doesntExist()) {
                     throw ApiException::conflict('TES-BR-04', 'Abre la caja del día antes de registrar gastos.');
+                }
+
+                if (filled($data['date'] ?? null) && $data['date'] !== $today) {
+                    throw ApiException::unprocessable('TES-BR-05', 'El gasto de caja chica se registra el mismo día de la sesión abierta.');
                 }
 
                 if ($settings && $amount->isGreaterThan((string) $settings->max_petty_expense)) {
@@ -192,6 +213,8 @@ final class TreasuryOperations
                     'receipt_type' => $data['receipt_type'], 'series_number' => $data['series_number'] ?? null, 'issuer_ruc' => $data['issuer_ruc'] ?? null, 'supplier_name' => $data['supplier'],
                     'file_path' => $stored, 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey(),
                 ]);
+
+                $this->warnLowBalance($account, $actor);
 
                 return $movementCode;
             });
@@ -240,6 +263,15 @@ final class TreasuryOperations
                 'signed_by' => $actor->getKey(), 'signed_at' => now(), 'witness_id' => $data['witness_id'] ?? null,
                 'status' => $difference->abs()->isGreaterThan($tolerance) ? 'pending_approval' : 'signed', 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey(),
             ]);
+
+            if (! $difference->isZero() && ! $difference->abs()->isGreaterThan($tolerance)) {
+                $adjustment = $this->movement($account, $difference->isPositive() ? 'in' : 'out', 'count_adjustment', $difference->abs(), $this->money->today(), 'cash_count', $id, "Ajuste del arqueo {$code} (dentro de la tolerancia)", $code, $actor, [], false);
+                DB::table('fin_cash_counts')->where('id', $id)->update(['adjustment_movement_id' => DB::table('fin_treasury_movements')->where('code', $adjustment)->value('id')]);
+            }
+
+            if ($difference->abs()->isGreaterThan($tolerance)) {
+                app(StaffNotices::class)->toManagers('arqueo.diferencia', "Arqueo {$code} con diferencia de S/ {$difference}", "{$account->name}: contado S/ {$counted}, esperado S/ {$expected}. Necesita tu aprobación.", 'fin_cash_count', $id, null, (string) $actor->getKey());
+            }
 
             if ($kind === 'closing') {
                 DB::table('fin_cash_sessions')->where('id', $session->id)->update(['status' => 'closed', 'closed_at' => now(), 'closed_by' => $actor->getKey(), 'closing_count_id' => $id, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
@@ -295,18 +327,20 @@ final class TreasuryOperations
                 throw ApiException::conflict('TES-BR-09', 'La caja ya tiene una reposición en curso.');
             }
 
-            $suggested = Decimal::of($account->fund_amount)->minus($this->balance($account));
-            $amount = filled($data['amount'] ?? null) ? Decimal::money($data['amount']) : $suggested;
+            $expenses = DB::table('fin_treasury_movements')->where('account_id', $account->id)->where('type', 'petty_expense')->where('status', 'posted')->whereNull('replenishment_id')->lockForUpdate()->get(['id', 'amount']);
+            $amount = $expenses->reduce(fn (BigDecimal $sum, object $row): BigDecimal => $sum->plus(Decimal::of($row->amount)), BigDecimal::zero());
 
             if (! $amount->isPositive()) {
-                throw ApiException::unprocessable('TES-BR-09', 'La caja está completa: no necesita reposición.');
+                throw ApiException::unprocessable('TES-BR-09', 'No hay gastos por rendir: la reposición se calcula con los gastos de la caja.');
             }
 
             $code = $this->sequences->next('cash_replenishment');
             $id = (string) Str::uuid7();
             DB::table('fin_cash_replenishments')->insert(['id' => $id, 'tenant_id' => $this->context->idOrFail(), 'code' => $code, 'account_id' => $account->id, 'amount' => (string) $amount->toScale(2, RoundingMode::HALF_UP), 'status' => 'requested', 'requested_by' => $actor->getKey(), 'requested_at' => now(), 'note' => $data['note'] ?? null, 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
+            DB::table('fin_treasury_movements')->whereIn('id', $expenses->pluck('id'))->update(['replenishment_id' => $id]);
             $this->event($id, null, 'requested', $data['note'] ?? null, $actor);
-            $this->audit->log('Reposición de caja', $code, 'solicitar', null, "{$account->code} · S/ {$amount}");
+            $this->audit->log('Reposición de caja', $code, 'solicitar', null, "{$account->code} · S/ {$amount} · {$expenses->count()} gastos");
+            app(StaffNotices::class)->toRoles(['finance', 'manager'], 'reposicion.solicitada', "Reposición {$code} por aprobar", "{$account->name}: S/ {$amount} en {$expenses->count()} gasto(s) rendido(s).", 'fin_cash_replenishment', $id, null, [], (string) $actor->getKey());
 
             return $code;
         });
@@ -329,6 +363,12 @@ final class TreasuryOperations
             DB::table('fin_cash_replenishments')->where('id', $replenishment->id)->update([...($status === 'approved' ? ['approved_by' => $actor->getKey(), 'approved_at' => now()] : ['reject_reason' => $note]), 'status' => $status, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             $this->event($replenishment->id, 'requested', $status, $note, $actor);
             $this->audit->log('Reposición de caja', $code, $status === 'approved' ? 'aprobar' : 'rechazar', 'requested', $note);
+
+            if ($status === 'rejected') {
+                DB::table('fin_treasury_movements')->where('replenishment_id', $replenishment->id)->where('type', 'petty_expense')->update(['replenishment_id' => null]);
+            }
+
+            app(StaffNotices::class)->toUser((string) $replenishment->requested_by, "reposicion.{$status}", "Reposición {$code} ".($status === 'approved' ? 'aprobada' : 'rechazada'), $note, 'fin_cash_replenishment', (string) $replenishment->id, null, (string) $actor->getKey());
         });
     }
 
@@ -352,6 +392,7 @@ final class TreasuryOperations
             DB::table('fin_cash_replenishments')->where('id', $replenishment->id)->update(['status' => 'paid', 'paid_by' => $actor->getKey(), 'paid_at' => now(), 'paid_from_account_id' => $from->id, 'transfer_id' => DB::table('fin_treasury_transfers')->where('code', $transfer)->value('id'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             $this->event($replenishment->id, 'approved', 'paid', $transfer, $actor);
             $this->audit->log('Reposición de caja', $code, 'pagar', 'approved', $transfer);
+            app(StaffNotices::class)->toUser((string) $replenishment->requested_by, 'reposicion.pagada', "Reposición {$code} pagada", "S/ {$replenishment->amount} transferidos a la caja.", 'fin_cash_replenishment', (string) $replenishment->id, null, (string) $actor->getKey());
 
             return $transfer;
         });
@@ -381,6 +422,32 @@ final class TreasuryOperations
         }
 
         return $code;
+    }
+
+    private function warnLowBalance(object $account, User $actor): void
+    {
+        $threshold = (int) (DB::table('fin_treasury_settings')->value('replenish_threshold_pct') ?? 40);
+        $fund = Decimal::of($account->fund_amount ?? 0);
+
+        if (! $fund->isPositive() || $this->balance($account)->multipliedBy(100)->isGreaterThanOrEqualTo($fund->multipliedBy($threshold))) {
+            return;
+        }
+
+        app(StaffNotices::class)->toRoles(['finance'], 'caja.bajo_umbral', "{$account->name} bajo el {$threshold} % del fondo", 'Saldo S/ '.$this->balance($account)." de un fondo de S/ {$fund}. Solicita la reposición.", 'fin_treasury_account', (string) $account->id, null, $account->custodian_id ? [(string) $account->custodian_id] : [], (string) $actor->getKey());
+    }
+
+    private function markDeposited(object $account, BigDecimal $amount, string $transferId): void
+    {
+        $left = $amount;
+
+        foreach (DB::table('fin_treasury_movements')->where('account_id', $account->id)->where('type', 'collection')->where('direction', 'in')->where('status', 'posted')->whereNull('deposited_transfer_id')->orderBy('movement_date')->orderBy('code')->get(['id', 'amount']) as $collection) {
+            if ($left->isLessThan(Decimal::of($collection->amount))) {
+                break;
+            }
+
+            DB::table('fin_treasury_movements')->where('id', $collection->id)->update(['deposited_transfer_id' => $transferId]);
+            $left = $left->minus(Decimal::of($collection->amount));
+        }
     }
 
     private function ensureFunds(object $account, BigDecimal $amount): void

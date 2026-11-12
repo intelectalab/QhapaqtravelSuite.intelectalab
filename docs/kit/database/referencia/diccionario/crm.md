@@ -1,10 +1,10 @@
 # Diccionario de datos · CRM (crm_)
 
-_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras cargar `00`→`90`. No editar a mano._
+_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.15 tras cargar `00`→`90`. No editar a mano._
 
 Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y reseñas propias.
 
-20 tablas · 368 columnas · 71 claves foráneas. Diagrama ER: [`../er/crm.svg`](../er/crm.svg) (fuente [`../er/crm.mmd`](../er/crm.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
+24 tablas · 423 columnas · 85 claves foráneas. Diagrama ER: [`../er/crm.svg`](../er/crm.svg) (fuente [`../er/crm.mmd`](../er/crm.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
 
 ## Tablas
 
@@ -22,6 +22,10 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | [`crm_opportunities`](#crm_opportunities) | Fase 1 · MVP | tenant | 27 | 5 | [Spec 01 §3.7] [Fase 1] Oportunidades de venta. |
 | [`crm_pipeline_stages`](#crm_pipeline_stages) | Fase 1 · MVP | tenant | 11 | 1 | [Spec 01 §3.6] [Fase 1] Etapas del embudo de oportunidades. |
 | [`crm_surveys`](#crm_surveys) | Fase 1 · MVP | tenant | 15 | 4 | [Spec 01 §3.9] [Fase 1] Encuestas NPS. |
+| [`crm_corporate_accounts`](#crm_corporate_accounts) | Fase 3 · SaaS y crecimiento | tenant | 19 | 4 | [Spec 20 §3.1] [Fase 3] Cuenta corporativa de una empresa cliente: crédito, aprobación previa y envío automático del estado de cuenta. |
+| [`crm_corporate_cost_centers`](#crm_corporate_cost_centers) | Fase 3 · SaaS y crecimiento | tenant | 10 | 2 | [Spec 20 §3.2] [Fase 3] Centros de costo de la empresa cliente con presupuesto por período. |
+| [`crm_corporate_portal_users`](#crm_corporate_portal_users) | Fase 3 · SaaS y crecimiento | tenant | 14 | 5 | [Spec 20 §3.4] [Fase 3] Usuarios del portal corporativo con su rol (administrador, aprobador, pagador, viajero). |
+| [`crm_corporate_travelers`](#crm_corporate_travelers) | Fase 3 · SaaS y crecimiento | tenant | 12 | 3 | [Spec 20 §3.3] [Fase 3] Empleados que viajan por cuenta de la empresa cliente. |
 | [`crm_own_review_log`](#crm_own_review_log) | Fase 3 · SaaS y crecimiento | tenant | 7 | 3 | [Spec 18 §3.2] [Fase 3] Historial de moderación de la reseña. |
 | [`crm_own_reviews`](#crm_own_reviews) | Fase 3 · SaaS y crecimiento | tenant | 36 | 8 | [Spec 18 §3.1] [Fase 3] Reseñas propias verificadas por reserva. |
 | [`crm_review_requests`](#crm_review_requests) | Fase 3 · SaaS y crecimiento | tenant | 20 | 3 | [Spec 18 §3.3] [Fase 3] Solicitudes de reseña post-viaje. |
@@ -46,7 +50,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, crm_leads.tenant_id, iam_users.tenant_id, crm_activities.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `type` | `character varying(20)` | no |  | Valores: `llamada`, `email`, `whatsapp`, `reunion`, `tarea`, `postventa`. |
 | 5 | `subject` | `character varying(200)` | no |  |  |
@@ -73,16 +77,17 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `completed_by` | `iam_users.id` | NO ACTION | `fk_crm_activities_completed_by` |
-| `merged_from_lead_id` | `crm_leads.id` | NO ACTION | `fk_crm_activities_merged_from_lead_id` |
-| `owner_id` | `iam_users.id` | NO ACTION | `fk_crm_activities_owner_id` |
-| `previous_activity_id` | `crm_activities.id` | NO ACTION | `fk_crm_activities_previous_activity_id` |
+| `tenant_id, completed_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_activities_completed_by` |
+| `tenant_id, merged_from_lead_id` | `crm_leads.tenant_id, id` | NO ACTION | `fk_crm_activities_merged_from_lead_id` |
+| `tenant_id, owner_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_activities_owner_id` |
+| `tenant_id, previous_activity_id` | `crm_activities.tenant_id, id` | NO ACTION | `fk_crm_activities_previous_activity_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_activities_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_crm_activities_id` | `tenant_id, id` |  | restricción |
 | `uq_crm_activities_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -131,7 +136,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_cases.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `case_id` | `uuid` | no |  | FK → crm_cases.id. |
 | 4 | `event` | `character varying(20)` | no |  | Valores: `registro`, `estado`, `seguimiento`. |
 | 5 | `from_status` | `character varying(20)` | sí |  |  |
@@ -147,9 +152,9 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `case_id` | `crm_cases.id` | NO ACTION | `fk_crm_case_events_case_id` |
+| `tenant_id, case_id` | `crm_cases.tenant_id, id` | NO ACTION | `fk_crm_case_events_case_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_case_events_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_crm_case_events_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_case_events_user_id` |
 
 **CHECK**
 
@@ -186,7 +191,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_clients.tenant_id, iam_users.tenant_id, booking_reservations.tenant_id, iam_sedes.tenant_id, iam_users.tenant_id, crm_surveys.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `client_id` | `uuid` | sí |  | FK → crm_clients.id. |
 | 5 | `reservation_id` | `uuid` | sí |  | FK → booking_reservations.id. |
@@ -229,18 +234,19 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `client_id` | `crm_clients.id` | NO ACTION | `fk_crm_cases_client_id` |
-| `owner_id` | `iam_users.id` | NO ACTION | `fk_crm_cases_owner_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_crm_cases_reservation_id` |
-| `sede_id` | `iam_sedes.id` | NO ACTION | `fk_crm_cases_sede_id` |
-| `submitted_by` | `iam_users.id` | NO ACTION | `fk_crm_cases_submitted_by` |
-| `survey_id` | `crm_surveys.id` | NO ACTION | `fk_crm_cases_survey_id` |
+| `tenant_id, client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_crm_cases_client_id` |
+| `tenant_id, owner_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_cases_owner_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_crm_cases_reservation_id` |
+| `tenant_id, sede_id` | `iam_sedes.tenant_id, id` | NO ACTION | `fk_crm_cases_sede_id` |
+| `tenant_id, submitted_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_cases_submitted_by` |
+| `tenant_id, survey_id` | `crm_surveys.tenant_id, id` | NO ACTION | `fk_crm_cases_survey_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_cases_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_crm_cases_id` | `tenant_id, id` |  | restricción |
 | `uq_crm_cases_tenant_id_book_number_p` | `tenant_id, book_number` | `(book_number IS NOT NULL)` | índice único |
 | `uq_crm_cases_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_crm_cases_tenant_id_survey_id_p` | `tenant_id, survey_id` | `(survey_id IS NOT NULL)` | índice único |
@@ -408,7 +414,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_clients.tenant_id, crm_leads.tenant_id, tenants.id. |
 | 3 | `client_id` | `uuid` | no |  | FK → crm_clients.id. |
 | 4 | `name` | `character varying(160)` | no |  |  |
 | 5 | `role` | `character varying(120)` | sí |  |  |
@@ -427,8 +433,8 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `client_id` | `crm_clients.id` | NO ACTION | `fk_crm_client_contacts_client_id` |
-| `source_lead_id` | `crm_leads.id` | NO ACTION | `fk_crm_client_contacts_source_lead_id` |
+| `tenant_id, client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_crm_client_contacts_client_id` |
+| `tenant_id, source_lead_id` | `crm_leads.tenant_id, id` | NO ACTION | `fk_crm_client_contacts_source_lead_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_client_contacts_tenant_id` |
 
 **UNIQUE**
@@ -466,7 +472,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → channel_b2b_agencies.tenant_id, iam_users.tenant_id, crm_leads.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `kind` | `character varying(10)` | no |  | Valores: `persona`, `empresa`. |
 | 5 | `name` | `character varying(200)` | no |  |  |
@@ -498,15 +504,16 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `b2b_agency_id` | `channel_b2b_agencies.id` | NO ACTION | `fk_crm_clients_b2b_agency_id` |
-| `owner_id` | `iam_users.id` | NO ACTION | `fk_crm_clients_owner_id` |
-| `source_lead_id` | `crm_leads.id` | NO ACTION | `fk_crm_clients_source_lead_id` |
+| `tenant_id, b2b_agency_id` | `channel_b2b_agencies.tenant_id, id` | NO ACTION | `fk_crm_clients_b2b_agency_id` |
+| `tenant_id, owner_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_clients_owner_id` |
+| `tenant_id, source_lead_id` | `crm_leads.tenant_id, id` | NO ACTION | `fk_crm_clients_source_lead_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_clients_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_crm_clients_id` | `tenant_id, id` |  | restricción |
 | `uq_crm_clients_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_crm_clients_tenant_id_doc_type_doc_number_p` | `tenant_id, doc_type, doc_number` | `(deleted_at IS NULL)` | índice único |
 
@@ -556,7 +563,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_leads.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `lead_id` | `uuid` | no |  | FK → crm_leads.id. |
 | 4 | `budget` | `smallint` | no |  | Valores: `0`, `10`, `18`, `25`. |
 | 5 | `authority` | `smallint` | no |  | Valores: `0`, `10`, `18`, `25`. |
@@ -579,8 +586,8 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `lead_id` | `crm_leads.id` | NO ACTION | `fk_crm_lead_qualifications_lead_id` |
-| `qualified_by` | `iam_users.id` | NO ACTION | `fk_crm_lead_qualifications_qualified_by` |
+| `tenant_id, lead_id` | `crm_leads.tenant_id, id` | NO ACTION | `fk_crm_lead_qualifications_lead_id` |
+| `tenant_id, qualified_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_lead_qualifications_qualified_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_lead_qualifications_tenant_id` |
 
 **CHECK**
@@ -623,7 +630,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, crm_clients.tenant_id, crm_opportunities.tenant_id, catalog_destinations.tenant_id, crm_clients.tenant_id, iam_users.tenant_id, catalog_products.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `full_name` | `character varying(160)` | no |  |  |
 | 5 | `company` | `character varying(160)` | sí |  |  |
@@ -675,20 +682,21 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `converted_by` | `iam_users.id` | NO ACTION | `fk_crm_leads_converted_by` |
-| `converted_client_id` | `crm_clients.id` | NO ACTION | `fk_crm_leads_converted_client_id` |
-| `converted_opportunity_id` | `crm_opportunities.id` | NO ACTION | `fk_crm_leads_converted_opportunity_id` |
-| `destination_id` | `catalog_destinations.id` | NO ACTION | `fk_crm_leads_destination_id` |
-| `matched_client_id` | `crm_clients.id` | NO ACTION | `fk_crm_leads_matched_client_id` |
-| `owner_id` | `iam_users.id` | NO ACTION | `fk_crm_leads_owner_id` |
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_crm_leads_product_id` |
-| `taken_by` | `iam_users.id` | NO ACTION | `fk_crm_leads_taken_by` |
+| `tenant_id, converted_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_leads_converted_by` |
+| `tenant_id, converted_client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_crm_leads_converted_client_id` |
+| `tenant_id, converted_opportunity_id` | `crm_opportunities.tenant_id, id` | NO ACTION | `fk_crm_leads_converted_opportunity_id` |
+| `tenant_id, destination_id` | `catalog_destinations.tenant_id, id` | NO ACTION | `fk_crm_leads_destination_id` |
+| `tenant_id, matched_client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_crm_leads_matched_client_id` |
+| `tenant_id, owner_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_leads_owner_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_crm_leads_product_id` |
+| `tenant_id, taken_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_leads_taken_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_leads_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_crm_leads_id` | `tenant_id, id` |  | restricción |
 | `uq_crm_leads_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -748,7 +756,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_clients.tenant_id, crm_leads.tenant_id, iam_users.tenant_id, catalog_products.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `client_id` | `uuid` | no |  | FK → crm_clients.id. |
 | 5 | `title` | `character varying(200)` | no |  |  |
@@ -781,16 +789,17 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `client_id` | `crm_clients.id` | NO ACTION | `fk_crm_opportunities_client_id` |
-| `lead_id` | `crm_leads.id` | NO ACTION | `fk_crm_opportunities_lead_id` |
-| `owner_id` | `iam_users.id` | NO ACTION | `fk_crm_opportunities_owner_id` |
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_crm_opportunities_product_id` |
+| `tenant_id, client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_crm_opportunities_client_id` |
+| `tenant_id, lead_id` | `crm_leads.tenant_id, id` | NO ACTION | `fk_crm_opportunities_lead_id` |
+| `tenant_id, owner_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_opportunities_owner_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_crm_opportunities_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_opportunities_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_crm_opportunities_id` | `tenant_id, id` |  | restricción |
 | `uq_crm_opportunities_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_crm_opportunities_tenant_id_lead_id_p` | `tenant_id, lead_id` | `(lead_id IS NOT NULL)` | índice único |
 
@@ -901,7 +910,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_clients.tenant_id, iam_users.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `client_id` | `uuid` | no |  | FK → crm_clients.id. |
 | 5 | `reservation_id` | `uuid` | sí |  | FK → booking_reservations.id. |
@@ -922,15 +931,16 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `client_id` | `crm_clients.id` | NO ACTION | `fk_crm_surveys_client_id` |
-| `recorded_by` | `iam_users.id` | NO ACTION | `fk_crm_surveys_recorded_by` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_crm_surveys_reservation_id` |
+| `tenant_id, client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_crm_surveys_client_id` |
+| `tenant_id, recorded_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_surveys_recorded_by` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_crm_surveys_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_surveys_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_crm_surveys_id` | `tenant_id, id` |  | restricción |
 | `uq_crm_surveys_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_crm_surveys_tenant_id_reservation_id_p` | `tenant_id, reservation_id` | `(reservation_id IS NOT NULL)` | índice único |
 
@@ -957,6 +967,286 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 [↑ Índice del dominio](#tablas)
 
+### `crm_corporate_accounts`
+
+[Spec 20 §3.1] [Fase 3] Cuenta corporativa de una empresa cliente: crédito, aprobación previa y envío automático del estado de cuenta.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| CRM (crm_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_clients.tenant_id, iam_users.tenant_id, crm_corporate_cost_centers.tenant_id, tenants.id. |
+| 3 | `client_id` | `uuid` | no |  | FK → crm_clients.id. |
+| 4 | `status` | `character varying(12)` | no | `'activa'::character varying` | Valores: `activa`, `suspendida`, `cerrada`. |
+| 5 | `currency` | `character(3)` | no | `'PEN'::bpchar` |  |
+| 6 | `credit_days` | `smallint` | no | `0` |  |
+| 7 | `require_approval` | `boolean` | no | `false` |  |
+| 8 | `approval_threshold` | `numeric(14,2)` | sí |  |  |
+| 9 | `approval_ttl_hours` | `smallint` | no | `72` |  |
+| 10 | `default_cost_center_id` | `uuid` | sí |  | FK → crm_corporate_cost_centers.id. |
+| 11 | `statement_auto` | `boolean` | no | `false` |  |
+| 12 | `statement_day` | `smallint` | no | `1` |  |
+| 13 | `statement_recipients` | `text[]` | no | `'{}'::text[]` |  |
+| 14 | `statement_last_sent_at` | `timestamp with time zone` | sí |  |  |
+| 15 | `notes` | `text` | sí |  |  |
+| 16 | `lock_version` | `integer` | no | `0` | Bloqueo optimista: UPDATE … WHERE lock_version = ? (409 si no afecta filas). |
+| 17 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). FK → iam_users.id. |
+| 18 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 19 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_crm_corporate_accounts_client_id` |
+| `tenant_id, created_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_corporate_accounts_created_by` |
+| `tenant_id, default_cost_center_id` | `crm_corporate_cost_centers.tenant_id, id` | NO ACTION | `fk_crm_corporate_accounts_default_cost_center_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_corporate_accounts_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_crm_corporate_accounts_id` | `tenant_id, id` |  | restricción |
+| `uq_crm_corporate_accounts_tenant_id_client_id` | `tenant_id, client_id` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `ck_crm_corporate_accounts_1` | `CHECK (((NOT require_approval) OR (approval_threshold IS NOT NULL)))` |  |
+| `ck_crm_corporate_accounts_2` | `CHECK (((NOT statement_auto) OR (cardinality(statement_recipients) > 0)))` |  |
+| `crm_corporate_accounts_approval_threshold_check` | `CHECK (((approval_threshold IS NULL) OR (approval_threshold >= (0)::numeric)))` |  |
+| `crm_corporate_accounts_approval_ttl_hours_check` | `CHECK (((approval_ttl_hours >= 1) AND (approval_ttl_hours <= 720)))` |  |
+| `crm_corporate_accounts_credit_days_check` | `CHECK (((credit_days >= 0) AND (credit_days <= 120)))` |  |
+| `crm_corporate_accounts_currency_check` | `CHECK ((currency ~ '^[A-Z]{3}$'::text))` |  |
+| `crm_corporate_accounts_statement_day_check` | `CHECK (((statement_day >= 1) AND (statement_day <= 28)))` |  |
+| `crm_corporate_accounts_status_check` | `CHECK (((status)::text = ANY ((ARRAY['activa'::character varying, 'suspendida'::character varying, 'cerrada'::character varying])::text[])))` | `status`: `activa`, `suspendida`, `cerrada` |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_crm_corporate_accounts_client_id` | `USING btree (client_id)` |
+| `ix_crm_corporate_accounts_created_by` | `USING btree (created_by)` |
+| `ix_crm_corporate_accounts_default_cost_center_id` | `USING btree (default_cost_center_id)` |
+| `ix_crm_corporate_accounts_tenant_id_statement` | `USING btree (tenant_id, statement_day) WHERE statement_auto` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_crm_corporate_accounts_lock_version` | BEFORE UPDATE | `app_bump_lock_version` |
+| `trg_crm_corporate_accounts_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `crm_corporate_cost_centers`
+
+[Spec 20 §3.2] [Fase 3] Centros de costo de la empresa cliente con presupuesto por período.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| CRM (crm_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_corporate_accounts.tenant_id, tenants.id. |
+| 3 | `account_id` | `uuid` | no |  | FK → crm_corporate_accounts.id. |
+| 4 | `code` | `character varying(20)` | no |  |  |
+| 5 | `name` | `character varying(120)` | no |  |  |
+| 6 | `budget_amount` | `numeric(14,2)` | sí |  |  |
+| 7 | `budget_period` | `character varying(12)` | no | `'anual'::character varying` | Valores: `mensual`, `trimestral`, `anual`. |
+| 8 | `active` | `boolean` | no | `true` |  |
+| 9 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 10 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, account_id` | `crm_corporate_accounts.tenant_id, id` | CASCADE | `fk_crm_corporate_cost_centers_account_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_corporate_cost_centers_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_crm_corporate_cost_centers_id` | `tenant_id, id` |  | restricción |
+| `uq_crm_corporate_cost_centers_account_id_code` | `tenant_id, account_id, code` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `crm_corporate_cost_centers_budget_amount_check` | `CHECK (((budget_amount IS NULL) OR (budget_amount >= (0)::numeric)))` |  |
+| `crm_corporate_cost_centers_budget_period_check` | `CHECK (((budget_period)::text = ANY ((ARRAY['mensual'::character varying, 'trimestral'::character varying, 'anual'::character varying])::text[])))` | `budget_period`: `mensual`, `trimestral`, `anual` |
+| `crm_corporate_cost_centers_code_check` | `CHECK (((code)::text ~ '^[A-Z0-9-]{2,20}$'::text))` |  |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_crm_corporate_cost_centers_account_id` | `USING btree (account_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_crm_corporate_cost_centers_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `crm_corporate_portal_users`
+
+[Spec 20 §3.4] [Fase 3] Usuarios del portal corporativo con su rol (administrador, aprobador, pagador, viajero).
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| CRM (crm_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_corporate_accounts.tenant_id, crm_corporate_cost_centers.tenant_id, tenants.id, crm_corporate_travelers.tenant_id, iam_users.tenant_id. |
+| 3 | `account_id` | `uuid` | no |  | FK → crm_corporate_accounts.id. |
+| 4 | `user_id` | `uuid` | sí |  | FK → iam_users.id. |
+| 5 | `email` | `character varying(160)` | no |  |  |
+| 6 | `full_name` | `character varying(160)` | no |  |  |
+| 7 | `portal_role` | `character varying(15)` | no |  | Valores: `administrador`, `aprobador`, `pagador`, `viajero`. |
+| 8 | `cost_center_id` | `uuid` | sí |  | FK → crm_corporate_cost_centers.id. |
+| 9 | `traveler_id` | `uuid` | sí |  | FK → crm_corporate_travelers.id. |
+| 10 | `status` | `character varying(10)` | no | `'invitado'::character varying` | Valores: `invitado`, `activo`, `inactivo`. |
+| 11 | `invited_at` | `timestamp with time zone` | no | `now()` |  |
+| 12 | `accepted_at` | `timestamp with time zone` | sí |  |  |
+| 13 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 14 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, account_id` | `crm_corporate_accounts.tenant_id, id` | CASCADE | `fk_crm_corporate_portal_users_account_id` |
+| `tenant_id, cost_center_id` | `crm_corporate_cost_centers.tenant_id, id` | NO ACTION | `fk_crm_corporate_portal_users_cost_center_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_corporate_portal_users_tenant_id` |
+| `tenant_id, traveler_id` | `crm_corporate_travelers.tenant_id, id` | NO ACTION | `fk_crm_corporate_portal_users_traveler_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_corporate_portal_users_user_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_crm_corporate_portal_users_id` | `tenant_id, id` |  | restricción |
+| `uq_crm_corporate_portal_users_account_id_email` | `tenant_id, account_id, lower((email)::text)` |  | índice único |
+| `uq_crm_corporate_portal_users_account_id_user_id` | `tenant_id, account_id, user_id` | `(user_id IS NOT NULL)` | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `ck_crm_corporate_portal_users_1` | `CHECK ((((portal_role)::text <> 'aprobador'::text) OR (cost_center_id IS NOT NULL)))` |  |
+| `ck_crm_corporate_portal_users_2` | `CHECK ((((status)::text <> 'activo'::text) OR ((user_id IS NOT NULL) AND (accepted_at IS NOT NULL))))` |  |
+| `crm_corporate_portal_users_portal_role_check` | `CHECK (((portal_role)::text = ANY ((ARRAY['administrador'::character varying, 'aprobador'::character varying, 'pagador'::character varying, 'viajero'::character varying])::text[])))` | `portal_role`: `administrador`, `aprobador`, `pagador`, `viajero` |
+| `crm_corporate_portal_users_status_check` | `CHECK (((status)::text = ANY ((ARRAY['invitado'::character varying, 'activo'::character varying, 'inactivo'::character varying])::text[])))` | `status`: `invitado`, `activo`, `inactivo` |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_crm_corporate_portal_users_account_id` | `USING btree (account_id)` |
+| `ix_crm_corporate_portal_users_cost_center_id` | `USING btree (cost_center_id)` |
+| `ix_crm_corporate_portal_users_traveler_id` | `USING btree (traveler_id)` |
+| `ix_crm_corporate_portal_users_user_id` | `USING btree (user_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_crm_corporate_portal_users_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `crm_corporate_travelers`
+
+[Spec 20 §3.3] [Fase 3] Empleados que viajan por cuenta de la empresa cliente.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| CRM (crm_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_corporate_accounts.tenant_id, crm_corporate_cost_centers.tenant_id, tenants.id. |
+| 3 | `account_id` | `uuid` | no |  | FK → crm_corporate_accounts.id. |
+| 4 | `cost_center_id` | `uuid` | sí |  | FK → crm_corporate_cost_centers.id. |
+| 5 | `full_name` | `character varying(160)` | no |  |  |
+| 6 | `email` | `character varying(160)` | sí |  |  |
+| 7 | `doc_type` | `character varying(10)` | sí |  | Valores: `DNI`, `CE`, `PAS`, `RUC`, `OTRO`. |
+| 8 | `doc_number` | `character varying(20)` | sí |  |  |
+| 9 | `employee_code` | `character varying(30)` | sí |  |  |
+| 10 | `active` | `boolean` | no | `true` |  |
+| 11 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 12 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, account_id` | `crm_corporate_accounts.tenant_id, id` | CASCADE | `fk_crm_corporate_travelers_account_id` |
+| `tenant_id, cost_center_id` | `crm_corporate_cost_centers.tenant_id, id` | NO ACTION | `fk_crm_corporate_travelers_cost_center_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_corporate_travelers_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_crm_corporate_travelers_id` | `tenant_id, id` |  | restricción |
+| `uq_crm_corporate_travelers_account_id_doc` | `tenant_id, account_id, doc_type, doc_number` | `(doc_number IS NOT NULL)` | índice único |
+| `uq_crm_corporate_travelers_account_id_employee_code` | `tenant_id, account_id, employee_code` | `(employee_code IS NOT NULL)` | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `ck_crm_corporate_travelers_1` | `CHECK (((doc_type IS NULL) = (doc_number IS NULL)))` |  |
+| `crm_corporate_travelers_doc_type_check` | `CHECK (((doc_type IS NULL) OR ((doc_type)::text = ANY ((ARRAY['DNI'::character varying, 'CE'::character varying, 'PAS'::character varying, 'RUC'::character varying, 'OTRO'::character varying])::text[]))))` | `doc_type`: `DNI`, `CE`, `PAS`, `RUC`, `OTRO` |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_crm_corporate_travelers_account_id` | `USING btree (account_id)` |
+| `ix_crm_corporate_travelers_cost_center_id` | `USING btree (cost_center_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_crm_corporate_travelers_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
 ### `crm_own_review_log`
 
 [Spec 18 §3.2] [Fase 3] Historial de moderación de la reseña.
@@ -970,7 +1260,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_own_reviews.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `review_id` | `uuid` | no |  | FK → crm_own_reviews.id. |
 | 4 | `action` | `character varying(30)` | no |  | Valores: `crear`, `publicar`, `rechazar`, `ocultar`, `responder`, `editar_respuesta`, `autopublicar`. |
 | 5 | `note` | `text` | sí |  |  |
@@ -983,9 +1273,9 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `review_id` | `crm_own_reviews.id` | NO ACTION | `fk_crm_own_review_log_review_id` |
+| `tenant_id, review_id` | `crm_own_reviews.tenant_id, id` | NO ACTION | `fk_crm_own_review_log_review_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_own_review_log_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_crm_own_review_log_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_own_review_log_user_id` |
 
 **CHECK**
 
@@ -1016,7 +1306,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_clients.tenant_id, iam_users.tenant_id, booking_passengers.tenant_id, catalog_products.tenant_id, iam_users.tenant_id, crm_review_requests.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 5 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
@@ -1058,19 +1348,20 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `client_id` | `crm_clients.id` | NO ACTION | `fk_crm_own_reviews_client_id` |
-| `moderated_by` | `iam_users.id` | NO ACTION | `fk_crm_own_reviews_moderated_by` |
-| `passenger_id` | `booking_passengers.id` | NO ACTION | `fk_crm_own_reviews_passenger_id` |
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_crm_own_reviews_product_id` |
-| `reply_by` | `iam_users.id` | NO ACTION | `fk_crm_own_reviews_reply_by` |
-| `request_id` | `crm_review_requests.id` | NO ACTION | `fk_crm_own_reviews_request_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_crm_own_reviews_reservation_id` |
+| `tenant_id, client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_crm_own_reviews_client_id` |
+| `tenant_id, moderated_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_own_reviews_moderated_by` |
+| `tenant_id, passenger_id` | `booking_passengers.tenant_id, id` | NO ACTION | `fk_crm_own_reviews_passenger_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_crm_own_reviews_product_id` |
+| `tenant_id, reply_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_own_reviews_reply_by` |
+| `tenant_id, request_id` | `crm_review_requests.tenant_id, id` | NO ACTION | `fk_crm_own_reviews_request_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_crm_own_reviews_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_own_reviews_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_crm_own_reviews_id` | `tenant_id, id` |  | restricción |
 | `uq_crm_own_reviews_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_crm_own_reviews_tenant_id_reservation_id_product_id_p_7ca549` | `tenant_id, reservation_id, product_id, passenger_id)` | `(deleted_at IS NULL)` | índice único |
 
@@ -1123,7 +1414,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_clients.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 5 | `client_id` | `uuid` | no |  | FK → crm_clients.id. |
@@ -1149,14 +1440,15 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `client_id` | `crm_clients.id` | NO ACTION | `fk_crm_review_requests_client_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_crm_review_requests_reservation_id` |
+| `tenant_id, client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_crm_review_requests_client_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_crm_review_requests_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_review_requests_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_crm_review_requests_id` | `tenant_id, id` |  | restricción |
 | `uq_crm_review_requests_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_crm_review_requests_tenant_id_reservation_id` | `tenant_id, reservation_id` |  | índice único |
 | `uq_crm_review_requests_token_hash` | `token_hash` |  | índice único |
@@ -1198,7 +1490,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, crm_sales_targets.tenant_id, tenants.id. |
 | 3 | `target_id` | `uuid` | no |  | FK → crm_sales_targets.id. |
 | 4 | `action` | `character varying(20)` | no |  | Valores: `crear`, `activar`, `ajustar`, `anular`, `cerrar`, `bono`. |
 | 5 | `before` | `jsonb` | sí |  |  |
@@ -1213,8 +1505,8 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `actor_id` | `iam_users.id` | NO ACTION | `fk_crm_sales_target_adjustments_actor_id` |
-| `target_id` | `crm_sales_targets.id` | NO ACTION | `fk_crm_sales_target_adjustments_target_id` |
+| `tenant_id, actor_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_sales_target_adjustments_actor_id` |
+| `tenant_id, target_id` | `crm_sales_targets.tenant_id, id` | NO ACTION | `fk_crm_sales_target_adjustments_target_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_sales_target_adjustments_tenant_id` |
 
 **CHECK**
@@ -1292,7 +1584,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_commissions.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `scope_type` | `character varying(10)` | no |  | Valores: `asesor`, `sede`, `equipo`. |
 | 5 | `scope_id` | `uuid` | no |  |  |
@@ -1321,13 +1613,14 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `bonus_commission_id` | `fin_commissions.id` | NO ACTION | `fk_crm_sales_targets_bonus_commission_id` |
+| `tenant_id, bonus_commission_id` | `fin_commissions.tenant_id, id` | NO ACTION | `fk_crm_sales_targets_bonus_commission_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_sales_targets_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_crm_sales_targets_id` | `tenant_id, id` |  | restricción |
 | `uq_crm_sales_targets_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_crm_sales_targets_tenant_id_scope_type_scope_id_period_key_p` | `tenant_id, scope_type, scope_id, period_key` | `((status)::text <> 'anulada'::text)` | índice único |
 
@@ -1377,7 +1670,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_sales_teams.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `team_id` | `uuid` | no |  | FK → crm_sales_teams.id. |
 | 4 | `user_id` | `uuid` | no |  | FK → iam_users.id. |
 | 5 | `valid_from` | `date` | no |  |  |
@@ -1393,9 +1686,9 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `team_id` | `crm_sales_teams.id` | NO ACTION | `fk_crm_sales_team_members_team_id` |
+| `tenant_id, team_id` | `crm_sales_teams.tenant_id, id` | NO ACTION | `fk_crm_sales_team_members_team_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_sales_team_members_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_crm_sales_team_members_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_sales_team_members_user_id` |
 
 **UNIQUE**
 
@@ -1431,7 +1724,7 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `name` | `character varying(120)` | no |  |  |
 | 5 | `leader_id` | `uuid` | sí |  | FK → iam_users.id. |
@@ -1446,13 +1739,14 @@ Clientes, leads, oportunidades, actividades, postventa, reclamaciones, metas y r
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `leader_id` | `iam_users.id` | NO ACTION | `fk_crm_sales_teams_leader_id` |
+| `tenant_id, leader_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_crm_sales_teams_leader_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_crm_sales_teams_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_crm_sales_teams_id` | `tenant_id, id` |  | restricción |
 | `uq_crm_sales_teams_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **Índices**

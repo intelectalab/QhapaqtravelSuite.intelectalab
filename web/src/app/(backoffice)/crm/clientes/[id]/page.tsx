@@ -44,7 +44,7 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
       { group: "Cliente", id: "resumen", label: "Resumen", icon: <LayoutDashboard size={15} /> },
       { group: "Cliente", id: "contactos", label: "Contactos y datos", icon: <UserRound size={15} />, count: client.contacts.length || undefined },
       { group: "Comercial", id: "leads", label: "Leads", icon: <Target size={15} /> },
-      { group: "Comercial", id: "oportunidades", label: "Oportunidades", icon: <Target size={15} />, count: client.openOpportunities.length || undefined },
+      { group: "Comercial", id: "oportunidades", label: "Oportunidades", icon: <Target size={15} /> },
       { group: "Comercial", id: "cotizaciones", label: "Cotizaciones", icon: <FileText size={15} />, count: client.quotes.length },
       { group: "Viajes", id: "reservas", label: "Reservas", icon: <Route size={15} />, count: client.history.length },
       { group: "Viajes", id: "pasajeros", label: "Pasajeros", icon: <Users size={15} /> },
@@ -164,6 +164,13 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
         />
         <StatCard label="Satisfacción" value={client.satisfaction === null ? "Sin encuesta" : `${client.satisfaction} / 10`} />
       </div>
+
+      {client.partial && (
+        <p className="mb-4 flex items-center gap-2 rounded-xl border border-line bg-surface-2 px-3.5 py-2.5 text-[13px] text-fg-2">
+          <UserRound size={15} className="shrink-0 text-accent" />
+          Vista parcial: el cliente es de otro asesor, así que solo ves tus oportunidades, cotizaciones, reservas y sus movimientos.
+        </p>
+      )}
 
       <SectionLayout nav={<SectionNav label="Secciones del cliente" groups={groups} active={active} testId="client-sections" />}>{body}</SectionLayout>
     </>

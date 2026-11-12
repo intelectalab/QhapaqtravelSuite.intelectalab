@@ -1,8 +1,10 @@
 <?php
 
+use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->withoutMiddleware(ThrottleRequests::class);
@@ -48,7 +50,8 @@ it('CAN-V21-04: un reclamo o incidencia abre una conversación en la bandeja y s
 
     expect($claim['conversation'])->toStartWith('CNV-')
         ->and($claim['claims_book'])->toBeTrue()
-        ->and($row->status)->toBe('derivado')
+        ->and($row->status)->toBe('nuevo')
+        ->and($row->incident_id)->toBeNull()
         ->and($row->conversation_id)->not->toBeNull()
         ->and(withinTenant(tenantA(), fn () => DB::table('collab_conversations')->where('code', $claim['conversation'])->value('channel')))->toBe('portal');
 });
@@ -79,6 +82,23 @@ it('RVW-06: una reseña con datos personales queda pendiente con el motivo y una
     $review = withinTenant(tenantA(), fn () => DB::table('crm_own_reviews')->where('code', $data['code'])->first());
 
     expect($data['status'])->toBe('pendiente')->and($review->moderation_reason)->toContain('datos personales');
+});
+
+it('la reseña del pasajero guarda hasta 4 fotos y rechaza archivos que no son imagen', function () {
+    Storage::fake(config('filesystems.default'));
+    actingAsSeed('U15');
+    paxService();
+    $base = ['product' => 'CUS-HUM-FD', 'stars' => 5, 'title' => 'Con fotos', 'body' => 'La laguna estaba turquesa y el grupo llegó completo a la cima.', 'consent_publish' => '1'];
+
+    expect($this->post('/api/v1/portal/passenger/reviews', [...$base, 'photos' => [UploadedFile::fake()->create('nota.pdf', 20, 'application/pdf')]], [...critical(), 'Accept' => 'application/json']))->toBeApiError(422);
+
+    $data = $this->post('/api/v1/portal/passenger/reviews', [...$base, 'photos' => [UploadedFile::fake()->image('laguna.jpg'), UploadedFile::fake()->image('grupo.png')]], [...critical(), 'Accept' => 'application/json'])->assertCreated()->json('data');
+    $photos = json_decode((string) withinTenant(tenantA(), fn () => DB::table('crm_own_reviews')->where('code', $data['code'])->value('photos')), true);
+
+    expect($photos)->toHaveCount(2);
+    foreach ($photos as $path) {
+        Storage::disk(config('filesystems.default'))->assertExists($path);
+    }
 });
 
 it('RVW-02: no se califica un servicio que aún no termina', function () {

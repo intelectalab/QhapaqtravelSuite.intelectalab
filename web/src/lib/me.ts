@@ -18,6 +18,7 @@ export interface Me {
   mfa_required: boolean;
   sede: { id: string | null; name: string | null };
   tenant: { id: string; code: string; name: string; legal_name: string; initials: string; base_currency: string; timezone: string; branding?: Branding };
+  read_only?: { until: string; reason: "trial" | "canceled" } | null;
   permissions: string[];
 }
 

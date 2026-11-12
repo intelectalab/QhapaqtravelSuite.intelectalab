@@ -12,6 +12,7 @@ use App\Domain\Quotes\Enums\QuoteStatus;
 use App\Domain\Quotes\Models\Quote;
 use App\Domain\Quotes\StateMachines\QuoteStateMachine;
 use App\Domain\Quotes\Support\QuoteApprovalPolicy;
+use App\Domain\Quotes\Support\QuoteNotices;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Mail\QueuedMail;
@@ -37,6 +38,7 @@ final class QuoteLifecycle
         private readonly TenantContext $context,
         private readonly QuoteStateMachine $states,
         private readonly SequenceService $sequences,
+        private readonly QuoteNotices $notices,
     ) {}
 
     public static function discountNeedsApproval(BigDecimal|string|int $discountPct, ?string $limit = null): bool
@@ -157,6 +159,7 @@ final class QuoteLifecycle
             $after = (string) DB::table('iam_users')->where('id', $ownerId)->value('name');
             $quote->forceFill(['owner_id' => $ownerId, 'updated_by' => $actor->getKey()])->save();
             $this->audit->log('Cotización', (string) $quote->code, 'reasignar', $before, trim($after.' '.(string) $note));
+            $this->notices->reassigned($quote, $ownerId, (string) $actor->getKey());
         });
     }
 
@@ -199,6 +202,7 @@ final class QuoteLifecycle
                 'created_by' => $actor->getKey(),
             ]);
             $this->audit->log('Cotización', (string) $quote->code, 'solicitar_aprobacion', after: $note);
+            $this->notices->approvalRequested($quote, (string) $actor->getKey(), $note);
         });
     }
 
@@ -235,6 +239,7 @@ final class QuoteLifecycle
 
             DB::table('quote_versions')->where('id', $version->id)->update(['internal_approval_id' => $id]);
             $this->audit->log('Cotización', (string) $quote->code, $approve ? 'aprobar_interna' : 'rechazar_interna', after: $note);
+            $this->notices->approvalDecided($quote, $approve, $note, (string) $actor->getKey());
         });
     }
 
@@ -333,6 +338,10 @@ final class QuoteLifecycle
 
             $quote->forceFill(['viewed_at' => $quote->viewed_at ?? now(), 'updated_by' => $actor->getKey()])->save();
             $this->audit->log('Cotización', (string) $quote->code, 'registrar_vista', $before, $note ?: 'Vista registrada manualmente');
+
+            if ($before === QuoteStatus::Enviada->value) {
+                $this->notices->viewed($quote, (string) $actor->getKey());
+            }
         });
     }
 
@@ -412,6 +421,7 @@ final class QuoteLifecycle
                 'updated_by' => $actor->getKey(),
             ])->save();
             $this->audit->log('Cotización', (string) $quote->code, 'aprobar', $before, "{$data['approved_by_name']} · {$data['channel']}");
+            $this->notices->approved($quote, (string) $data['approved_by_name'], $data['channel'] === 'Portal' ? null : (string) $actor->getKey());
         });
     }
 
@@ -428,6 +438,7 @@ final class QuoteLifecycle
             $before = $this->states->transition($quote, QuoteStatus::Rechazada);
             $quote->forceFill(['rejected_at' => now(), 'rejected_reason' => $reason, 'updated_by' => $actor->getKey()])->save();
             $this->audit->log('Cotización', (string) $quote->code, 'rechazar', $before, $reason);
+            $this->notices->rejected($quote, $reason, (string) $actor->getKey());
         });
     }
 

@@ -23,7 +23,7 @@ final class IssueAccessToken
             'token' => hash('sha256', $plain),
             'abilities' => $user->needsMfa() ? ['mfa:verify'] : ['*'],
             'experience' => $experience,
-            'expires_at' => now()->addHours((int) config("access.session_hours.{$experience}", 12)),
+            'expires_at' => AccessToken::expiresAfter(60 * (int) config("access.session_hours.{$experience}", 12)),
             'device_name' => $deviceName,
             'ip' => Request::ip(),
         ]);

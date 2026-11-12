@@ -1,6 +1,7 @@
 "use client";
 
 import { CircleCheck, CircleX, Hourglass, Landmark, RotateCcw, Undo2 } from "lucide-react";
+import { PAYMENTS_CSV } from "@/lib/finance-csv";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
@@ -26,6 +27,21 @@ function paymentSummary(row: PaymentRow) {
 }
 
 export function ConfirmPaymentAction({ row }: { row: PaymentRow }) {
+  if (row.kind === "reembolso") {
+    return (
+      <FinanceStep
+        step="payment_confirm"
+        itemKey={row.code}
+        label="Registrar reembolso hecho"
+        title="Registrar reembolso hecho"
+        description="Márcalo cuando la devolución al cliente ya salió del banco. No se aplica a ninguna cuota."
+        submitLabel="Registrar"
+        trigger={(open) => <RowIcon tone="edit" label="Registrar reembolso hecho" icon={<CircleCheck size={15} />} onClick={open} />}
+      >
+        <SummaryBox rows={paymentSummary(row)} />
+      </FinanceStep>
+    );
+  }
   const options = row.apply_to.map((option) => ({ value: option.code, label: `${option.code} · ${option.concept} · saldo ${formatMoney(option.balance, row.currency)}` }));
   return (
     <FinanceStep
@@ -130,7 +146,7 @@ export function PaymentsTable({ data }: { data: PaymentsOverview }) {
       mobile: "hidden",
       align: "right",
       cell: (row) => {
-        const validable = row.status === "pendiente" || (row.status === "confirmado" && row.apply_to.length > 0);
+        const validable = row.status === "pendiente" || (row.kind !== "reembolso" && row.status === "confirmado" && row.apply_to.length > 0);
         const revertible = row.status === "confirmado" || row.status === "aplicado";
         return (
           <RowActions>
@@ -165,6 +181,7 @@ export function PaymentsTable({ data }: { data: PaymentsOverview }) {
   return (
     <DataTable
       screen="finanzas-pagos"
+      csv={PAYMENTS_CSV}
       rows={rows}
       columns={columns}
       getKey={(row) => row.code}

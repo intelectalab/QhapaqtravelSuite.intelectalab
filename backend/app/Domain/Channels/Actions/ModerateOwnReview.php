@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Channels\Actions;
 
+use App\Domain\Admin\Support\StaffNotices;
 use App\Domain\Channels\Support\ChannelKit;
 use App\Domain\Channels\Support\OwnReviewSettings;
 use App\Domain\Channels\Support\ReviewLinks;
@@ -68,6 +69,25 @@ final class ModerateOwnReview
         $action = $review->reply_text ? 'editar_respuesta' : 'responder';
         $this->log($review->id, $action, null, $actor);
         $this->audit->log('Reseña propia', $code, $action, $review->reply_text, $text);
+
+        if ($review->reply_text === null) {
+            $this->notifyAuthor((string) $review->id, $text, $actor);
+        }
+    }
+
+    private function notifyAuthor(string $reviewId, string $text, User $actor): void
+    {
+        $row = DB::table('crm_own_reviews as r')->join('crm_clients as c', 'c.id', '=', 'r.client_id')->leftJoin('booking_passengers as p', 'p.id', '=', 'r.passenger_id')
+            ->where('r.id', $reviewId)->first(['r.reservation_id', 'r.client_id', 'r.title', 'r.author_name', 'c.email as client_email', 'p.email as passenger_email']);
+
+        if ($row === null) {
+            return;
+        }
+
+        $message = "Respondimos tu opinión «{$row->title}»:\n\n{$text}";
+        DB::table('channel_trip_messages')->insert(['reservation_id' => $row->reservation_id, 'sender_type' => 'agency', 'sender_user_id' => $actor->getKey(), 'body' => $message]);
+        $notices = app(StaffNotices::class);
+        $notices->email($row->passenger_email ?: $row->client_email, 'resena.respondida', 'Respondimos tu opinión · '.$notices->agency(), "Hola, {$row->author_name}:\n\n{$message}\n\nGracias por viajar con nosotros.\n\n".$notices->agency(), 'crm_own_review', $reviewId, 'passenger', ['client_id' => $row->client_id, 'reservation_id' => $row->reservation_id]);
     }
 
     public function sendRequest(string $code, User $actor): void

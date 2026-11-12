@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Channels\Actions;
 
+use App\Domain\Iam\Models\AccessToken;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -30,7 +31,7 @@ final class B2bPortalPreview
         }
 
         $plain = Str::random(48);
-        $expires = now()->addMinutes(self::MINUTES);
+        $expires = AccessToken::expiresAfter(self::MINUTES);
         $token = $agent->tokens()->create([
             'tenant_id' => $agent->tenant_id,
             'name' => 'previsualizacion',

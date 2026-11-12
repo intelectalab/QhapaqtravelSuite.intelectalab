@@ -1,12 +1,14 @@
 <?php
 
 use App\Domain\Platform\Support\Entitlements;
+use App\Jobs\ExportTenantData;
 use App\Jobs\SendPlainMail;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
@@ -248,4 +250,28 @@ it('reenviar factura por correo y resumen: próximo cargo estimado y módulos co
         ->and($data['next_charge']['total'])->toBeGreaterThan($data['next_charge']['net'])
         ->and($data['modules'])->not->toBeEmpty()
         ->and($data['modules'][0])->toHaveKeys(['label', 'enabled', 'source']);
+});
+
+it('cancelar pidiendo la exportación genera el Excel completo de la agencia', function () {
+    subSetPlan('professional');
+    actingAsSeed('U01');
+
+    $this->postJson('/api/v1/billing/subscription/cancel', ['reason' => 'Precio', 'score' => 7, 'accept' => true, 'export' => true])->assertOk();
+
+    $export = withinTenant(tenantA(), fn () => DB::table('report_exports')->where('report_key', 'datos_agencia')->orderByDesc('created_at')->first(['id', 'status', 'format', 'requested_by']));
+
+    expect($export)->not->toBeNull()
+        ->and($export->status)->toBe('en_cola')
+        ->and($export->format)->toBe('XLSX')
+        ->and((string) $export->requested_by)->toBe((string) seedUser('U01')->getKey());
+    Queue::assertPushed(ExportTenantData::class, fn (ExportTenantData $job) => $job->exportId === (string) $export->id);
+
+    $job = (new ExportTenantData((string) $export->id))->forTenant((string) tenantA()->getKey());
+    withinTenant(tenantA(), fn () => app()->call([$job, 'handle']));
+    $done = withinTenant(tenantA(), fn () => DB::table('report_exports')->where('id', $export->id)->first(['status', 'rows_count', 'file_path']));
+
+    expect($done->status)->toBe('disponible')
+        ->and((int) $done->rows_count)->toBeGreaterThan(0)
+        ->and(Storage::disk('local')->exists($done->file_path))->toBeTrue();
+    Storage::disk('local')->delete($done->file_path);
 });

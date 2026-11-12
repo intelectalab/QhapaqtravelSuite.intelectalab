@@ -1,0 +1,119 @@
+[
+  {
+    "id": "TAG-0001",
+    "provider": "ga4",
+    "name": "Analytics del sitio",
+    "mid": "G-AH7K2M9Q1T",
+    "consent": "analiticas",
+    "placement": "head",
+    "pages": "/*",
+    "exclude": "",
+    "status": "activo",
+    "createdBy": "U01",
+    "approvedBy": null,
+    "verifiedAt": "2026-09-28 10:14",
+    "verify": "ok",
+    "config": {
+      "sendPageView": true
+    }
+  },
+  {
+    "id": "TAG-0002",
+    "provider": "meta_pixel",
+    "name": "Pixel de Meta",
+    "mid": "738201945563120",
+    "consent": "marketing",
+    "placement": "head",
+    "pages": "/*",
+    "exclude": "",
+    "status": "activo",
+    "createdBy": "U01",
+    "approvedBy": null,
+    "verifiedAt": "2026-09-28 10:15",
+    "verify": "ok",
+    "config": {
+      "capi": true,
+      "secret": "vault://tenant/TNT-0001/meta-capi"
+    }
+  },
+  {
+    "id": "TAG-0003",
+    "provider": "google_ads",
+    "name": "Google Ads · campañas Cusco",
+    "mid": "AW-11872034561",
+    "consent": "marketing",
+    "placement": "head",
+    "pages": "/*",
+    "exclude": "",
+    "status": "activo",
+    "createdBy": "U02",
+    "approvedBy": null,
+    "verifiedAt": "2026-09-27 18:02",
+    "verify": "ok",
+    "config": {
+      "enhanced": true,
+      "server": true,
+      "secret": "vault://tenant/TNT-0001/google-ads"
+    }
+  },
+  {
+    "id": "TAG-0004",
+    "provider": "clarity",
+    "name": "Mapas de calor",
+    "mid": "m3k9x2ah7q",
+    "consent": "analiticas",
+    "placement": "head",
+    "pages": "/tours/*",
+    "exclude": "",
+    "status": "pausado",
+    "createdBy": "U02",
+    "approvedBy": null,
+    "verifiedAt": "2026-09-10 09:30",
+    "verify": "ok",
+    "config": {}
+  },
+  {
+    "id": "TAG-0005",
+    "provider": "script",
+    "name": "Widget de reseñas de TripAdvisor",
+    "src": "https://www.jscache.com/wejs?wtype=selfserveprop&uniq=412",
+    "sri": "sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC",
+    "csp": [
+      "www.jscache.com",
+      "www.tripadvisor.com"
+    ],
+    "consent": "marketing",
+    "placement": "body_fin",
+    "pages": "/",
+    "exclude": "/checkout/*",
+    "status": "activo",
+    "createdBy": "U02",
+    "approvedBy": "U01",
+    "approvedAt": "2026-09-15 16:40",
+    "verifiedAt": "2026-09-15 16:45",
+    "verify": "ok",
+    "config": {}
+  },
+  {
+    "id": "TAG-0006",
+    "provider": "script",
+    "name": "Chat de ventas por WhatsApp (proveedor nuevo)",
+    "src": "https://cdn.wachat.example/widget.v2.js",
+    "sri": "sha384-Zr8q3uX1mLw0kP2c8N9tYV5Hj7bD4sQeR6aG1fK0oT3yU8iW2xE5nM9vB7cA4dS1",
+    "csp": [
+      "cdn.wachat.example",
+      "api.wachat.example"
+    ],
+    "consent": "marketing",
+    "placement": "body_fin",
+    "pages": "/*",
+    "exclude": "/checkout/*",
+    "status": "en_revision",
+    "createdBy": "U02",
+    "approvedBy": null,
+    "verifiedAt": null,
+    "verify": null,
+    "config": {},
+    "submittedAt": "2026-09-29 08:50"
+  }
+]

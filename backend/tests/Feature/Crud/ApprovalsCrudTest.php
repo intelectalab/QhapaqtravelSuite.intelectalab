@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Iam\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -139,6 +140,15 @@ it('solo quien pidió la aprobación la retira y una solicitud resuelta no se re
 
     actingAsSeed('U06');
     expect($this->postJson('/api/v1/approvals/APR-2026-0003/withdraw', [], critical((int) rowOf('collab_approval_requests', 'APR-2026-0003')->lock_version)))->toBeApiError(409, 'APR-BR-08');
+});
+
+it('una solicitud de cuenta por pagar no se retira desde la bandeja: se resuelve en su origen', function () {
+    $request = rowOf('collab_approval_requests', 'APR-2026-0009');
+    actingAsUser(withinTenant(tenantA(), fn () => User::query()->findOrFail($request->requester_id)), tenantA());
+
+    expect($request->request_type)->toBe('payable')
+        ->and($this->postJson('/api/v1/approvals/APR-2026-0009/withdraw', [], critical((int) $request->lock_version)))->toBeApiError(409, 'APR-WITHDRAW-ORIGIN')
+        ->and(rowOf('collab_approval_requests', 'APR-2026-0009')->status)->toBe('pendiente');
 });
 
 it('editar una regla cambia el plazo y el permiso que deciden las solicitudes nuevas de ese tipo', function () {

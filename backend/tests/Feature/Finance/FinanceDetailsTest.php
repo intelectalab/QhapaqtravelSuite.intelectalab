@@ -26,7 +26,7 @@ it('la liquidación muestra el estado de resultados y solo se cierra cuando todo
 
     $open = $this->getJson('/api/v1/finance/reservations/RES-2026-000350/settlement')->assertOk()->json('data');
     expect($open['statement'])->toHaveKeys(['income', 'cost', 'commissions', 'net', 'margin_pct'])
-        ->and($open['checks'])->toHaveCount(4)
+        ->and($open['checks'])->toHaveCount(6)
         ->and($open['can_close'])->toBeFalse();
     expect($this->postJson('/api/v1/finance/reservations/RES-2026-000350/settlement'))->toBeApiError(409, 'FIN-BR-20');
 

@@ -77,6 +77,11 @@ final class ProductSectionRules
             "{$prefix}.activity" => [$partial ? 'sometimes' : 'required', 'string', 'min:2', 'max:200'],
             "{$prefix}.type" => ['nullable', Rule::in(self::ITEM_TYPES)],
             "{$prefix}.location" => ['nullable', 'string', 'max:160'],
+            "{$prefix}.service_id" => ['nullable', 'uuid'],
+            "{$prefix}.note" => ['nullable', 'string', 'max:1000'],
+            "{$prefix}.image_ref" => ['nullable', 'string', 'max:300'],
+            "{$prefix}.cost" => ['nullable', 'numeric', 'min:0', 'max:9999999'],
+            "{$prefix}.price" => ['nullable', 'numeric', 'min:0', 'max:9999999'],
         ];
     }
 
@@ -177,6 +182,11 @@ final class ProductSectionRules
             'itinerary.*.items.*.activity.*' => 'Describe la actividad.',
             'itinerary.*.items.*.type.*' => 'Elige el tipo de actividad.',
             'itinerary.*.items.*.location.*' => 'La ubicación admite hasta 160 caracteres.',
+            'itinerary.*.items.*.service_id.*' => 'Elige un servicio del proveedor.',
+            'itinerary.*.items.*.note.*' => 'La nota admite hasta 1000 caracteres.',
+            'itinerary.*.items.*.image_ref.*' => 'La imagen no es válida.',
+            'itinerary.*.items.*.cost.*' => 'El costo debe ser un número positivo.',
+            'itinerary.*.items.*.price.*' => 'El precio debe ser un número positivo.',
             'itinerary.*' => 'Revisa el itinerario.',
             'rates.*.rate_type.*' => 'Elige el tipo de tarifa.',
             'rates.*.segment.*' => 'Elige el segmento de la tarifa.',

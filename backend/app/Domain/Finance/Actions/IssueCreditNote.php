@@ -33,7 +33,7 @@ final class IssueCreditNote
                 throw ApiException::conflict('FIN-BR-41', 'La nota de crédito solo se emite sobre una factura o boleta aceptada por el OSE.');
             }
 
-            $credited = Decimal::of(DB::table('fin_invoices')->where('ref_invoice_id', $invoice->id)->where('doc_type', '07')->where('status', '<>', 'anulado')->sum('total_amount'));
+            $credited = Decimal::of(DB::table('fin_invoices')->where('ref_invoice_id', $invoice->id)->where('doc_type', '07')->whereNotIn('status', InvoiceDirectory::VOID)->sum('total_amount'));
             $available = Decimal::money($invoice->total_amount)->minus($credited);
             $total = isset($data['amount']) ? Decimal::money($data['amount']) : $available;
 

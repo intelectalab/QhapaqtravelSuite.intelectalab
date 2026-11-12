@@ -1,0 +1,47 @@
+[
+  {
+    "id": "PASE-0001",
+    "tenantId": "TNT-0005",
+    "name": "Pase Básico 30 días",
+    "from": "2026-09-12",
+    "to": "2026-10-12",
+    "price": 0,
+    "currency": "PEN",
+    "reason": "Agencia captada en la vitrina (Lima nocturna)",
+    "features": [
+      "crm",
+      "catalog",
+      "quotes",
+      "reservations",
+      "finance_basic",
+      "portal_client",
+      "cms",
+      "custom_domain"
+    ],
+    "status": "activo",
+    "createdBy": "U16",
+    "createdAt": "2026-09-12 10:30",
+    "convertTo": "Starter"
+  },
+  {
+    "id": "PASE-0002",
+    "tenantId": "TNT-0006",
+    "name": "Pase Básico 30 días",
+    "from": "2026-07-01",
+    "to": "2026-07-31",
+    "price": 149,
+    "currency": "PEN",
+    "reason": "Prueba pagada antes de suscribirse",
+    "features": [
+      "crm",
+      "catalog",
+      "quotes",
+      "reservations",
+      "finance_basic"
+    ],
+    "status": "vencido",
+    "createdBy": "U16",
+    "createdAt": "2026-07-01 09:00",
+    "convertTo": "Starter"
+  }
+]

@@ -7,6 +7,8 @@ import { FieldList } from "@/components/ui/Details";
 import { SimpleTable } from "@/components/ui/SimpleTable";
 import { AVAILABILITY_HINT, AVAILABILITY_LABEL, durationLabel, PRODUCT_STATUS, type ProductDetail, type ProductEditorState, type ProductFormOptions, type ProductOverview, type ProductStatus, type ProductTranslations } from "@/lib/catalog";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { statusLabel } from "@/lib/tone";
+import { DEPARTURE_STATUS } from "@/lib/catalog-departures";
 import { PromotionsTable } from "@/features/channels/Promotions";
 import type { PromotionCatalog } from "@/lib/channels";
 import type { BookingSectionId, ProductBookingConfig } from "@/lib/catalog-booking";
@@ -15,6 +17,8 @@ import { PenaltyTiersView } from "../PenaltyTiers";
 import { ProductTranslationsCard } from "../ProductTranslations";
 import { EditStepButton } from "../wizard/ProductWizard";
 import { ChannelSwitches, ChecklistLinks } from "./ProductInteractive";
+import { ProductProfitability } from "./ProductProfitability";
+import { CompareVersions, NewVersionAction, ResolveRate } from "./ProductVersionTools";
 
 export interface ProductTabContext {
   product: ProductDetail;
@@ -33,7 +37,6 @@ export interface ProductTab {
   render: () => ReactNode;
 }
 
-const DEPARTURE_STATUS: Record<string, "ok" | "sun" | "mute" | "bad" | "info"> = { abierta: "ok", completa: "sun", cerrada: "mute", cancelada: "bad", realizada: "info" };
 
 function Panel({ title, hint, action, children }: { title: string; hint?: ReactNode; action?: ReactNode; children: ReactNode }) {
   return (
@@ -184,7 +187,14 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
                         <li key={item.id ?? position} className="py-1.5 text-[13px]">
                           {item.time && <span className="mr-2 font-mono text-[12px] font-semibold text-fg-2">{item.time}</span>}
                           {item.activity}
-                          <span className="block text-[12px] text-fg-3">{[item.type, item.location].filter(Boolean).join(" · ")}</span>
+                          <span className="block text-[12px] text-fg-3">{[item.type, item.location, item.service ? `Servicio: ${item.service}` : null].filter(Boolean).join(" · ")}</span>
+                          {item.note && <span className="mt-0.5 block text-[12px] italic text-fg-3">{item.note}</span>}
+                          {(Number(item.price ?? 0) > 0 || (overview.profitability !== null && Number(item.cost ?? 0) > 0)) && (
+                            <span className="mt-1 flex flex-wrap gap-1.5 text-[11.5px]">
+                              {overview.profitability !== null && Number(item.cost ?? 0) > 0 && <span className="rounded-full bg-surface-2 px-2 py-0.5 text-fg-2">Costo {formatMoney(item.cost ?? "0")}</span>}
+                              {Number(item.price ?? 0) > 0 && <span className="rounded-full bg-surface-2 px-2 py-0.5 text-fg-2">Precio {formatMoney(item.price ?? "0")}</span>}
+                            </span>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -202,6 +212,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       count: editor.rates.length,
       render: () => (
         <Panel title="Tarifas" hint="Toda tarifa tiene moneda y vigencia (PRD-BR-004); las vencidas no se aplican (PRD-BR-005)." action={<span className="flex gap-2">{editAt(ctx, 5, "Agregar o desactivar")}<ModuleLink href="/catalogo/tarifas" label="Tarifas y temporadas" /></span>}>
+          <ResolveRate code={product.code} />
           <SimpleTable
             columns={[{ header: "Tarifa" }, { header: "Tipo · segmento · canal" }, { header: "Vigencia" }, ...(options.sees_cost ? [{ header: "Costo", align: "right" as const }] : []), { header: "Venta", align: "right" }, { header: "Estado" }]}
             rows={editor.rates.map((rate) => ({
@@ -269,7 +280,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
             rows={overview.departures.map((row) => ({
               key: row.ref,
               muted: !row.future,
-              cells: [<span key="ref" className="font-mono text-[12.5px]">{row.ref}</span>, `${formatDate(row.date)}${row.time ? ` · ${row.time}` : ""}`, row.meeting_point ?? "—", `${row.sold} de ${row.capacity}`, <Badge key="status" tone={DEPARTURE_STATUS[row.status] ?? "mute"}>{row.status}</Badge>],
+              cells: [<span key="ref" className="font-mono text-[12.5px]">{row.ref}</span>, `${formatDate(row.date)}${row.time ? ` · ${row.time}` : ""}`, row.meeting_point ?? "—", `${row.sold} de ${row.capacity}`, <Badge key="status" tone={DEPARTURE_STATUS[row.status as keyof typeof DEPARTURE_STATUS]?.tone ?? "mute"}>{DEPARTURE_STATUS[row.status as keyof typeof DEPARTURE_STATUS]?.label ?? statusLabel(row.status)}</Badge>],
             }))}
             empty="Sin salidas programadas."
           />
@@ -385,7 +396,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
           ) : (
           <SimpleTable
             columns={[{ header: "Promoción" }, { header: "Descuento" }, { header: "Canal" }, { header: "Vigencia" }, { header: "Estado" }]}
-            rows={overview.promotions.map((row) => ({ key: row.ref, cells: [<span key="name"><b className="block font-semibold">{row.name}</b><span className="font-mono text-[12px] text-fg-3">{row.promo_code ?? row.ref}</span></span>, `${row.kind} ${row.value}`, row.channel ?? "Todos", `${formatDate(row.date_from)} al ${formatDate(row.date_to)}`, <Badge key="status" tone={row.status === "activa" ? "ok" : "mute"}>{row.status}</Badge>] }))}
+            rows={overview.promotions.map((row) => ({ key: row.ref, cells: [<span key="name"><b className="block font-semibold">{row.name}</b><span className="font-mono text-[12px] text-fg-3">{row.promo_code ?? row.ref}</span></span>, `${row.kind} ${row.value}`, row.channel ?? "Todos", `${formatDate(row.date_from)} al ${formatDate(row.date_to)}`, <Badge key="status" tone={row.status === "activa" && row.date_to >= options.today ? "ok" : "mute"}>{row.date_to < options.today ? "Vencida" : row.status === "activa" ? "Activa" : "Pausada"}</Badge>] }))}
             empty="Sin promociones."
           />
           )}
@@ -396,13 +407,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       id: "rentabilidad",
       label: "Costos y rentabilidad",
       render: () => (
-        <Panel title="Rentabilidad por tarifa" hint={`Venta menos costo de la tarifa. Costo de componentes: ${overview.kpis.components_cost !== null ? formatMoney(overview.kpis.components_cost) : "—"}.`}>
-          <SimpleTable
-            columns={[{ header: "Tarifa" }, { header: "Tipo · segmento · canal" }, { header: "Costo", align: "right" }, { header: "Venta", align: "right" }, { header: "Utilidad", align: "right" }, { header: "Margen", align: "right" }]}
-            rows={(overview.profitability ?? []).map((row) => ({ key: row.ref, muted: row.status !== "vigente", cells: [<span key="ref" className="font-mono text-[12.5px]">{row.ref}</span>, `${row.rate_type} · ${row.segment} · ${row.channel}`, formatMoney(row.cost, row.currency), formatMoney(row.price, row.currency), formatMoney(row.margin, row.currency), row.margin_pct !== null ? `${row.margin_pct} %` : "—"] }))}
-            empty="Sin tarifas para analizar."
-          />
-        </Panel>
+        <ProductProfitability code={product.code} rates={overview.profitability ?? []} today={options.today} markup={product.raw.markup_pct} componentsCost={overview.kpis.components_cost} canSave={options.can_update && options.can_manage_rates && product.status !== "ARCHIVED"} />
       ),
     },
     {
@@ -468,8 +473,9 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       label: "Versiones",
       count: overview.versions.length,
       render: () => (
-        <Panel title="Versiones" hint="Las versiones no vigentes se consultan pero no se editan (PRD-BR-017).">
-          <SimpleTable columns={[{ header: "Versión" }, { header: "Estado" }, { header: "Vigente desde" }, { header: "Motivo" }, { header: "Autor" }]} rows={overview.versions.map((row) => ({ key: `${row.version}-${row.created_at}`, cells: [<b key="v" className="font-mono">{row.version}</b>, <Badge key="s" tone={row.status === "vigente" ? "ok" : row.status === "borrador" ? "info" : "mute"}>{row.status}</Badge>, row.valid_from ? formatDate(row.valid_from) : "—", row.reason ?? "—", row.author ?? "—"] }))} empty="Sin versiones." />
+        <Panel title="Versiones" hint="Las versiones no vigentes se consultan pero no se editan (PRD-BR-017)." action={options.can_update && product.status !== "ARCHIVED" ? <NewVersionAction code={product.code} /> : undefined}>
+          <SimpleTable columns={[{ header: "Versión" }, { header: "Estado" }, { header: "Vigente desde" }, { header: "Motivo" }, { header: "Autor" }]} rows={overview.versions.map((row) => ({ key: `${row.version}-${row.created_at}`, cells: [<b key="v" className="font-mono">{row.version}</b>, <Badge key="s" tone={row.status === "vigente" ? "ok" : row.status === "borrador" ? "info" : "mute"}>{statusLabel(row.status)}</Badge>, row.valid_from ? formatDate(row.valid_from) : "—", row.reason ?? "—", row.author ?? "—"] }))} empty="Sin versiones." />
+          <CompareVersions code={product.code} versions={overview.versions.map((row) => row.version)} />
         </Panel>
       ),
     },

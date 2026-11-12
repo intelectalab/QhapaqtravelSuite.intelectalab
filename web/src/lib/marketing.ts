@@ -54,6 +54,7 @@ export interface Segment {
   match: "all" | "any";
   rules: SegmentRule[];
   rules_text: string;
+  rules_parts?: string[];
   matched: number;
   email: number;
   whatsapp: number;

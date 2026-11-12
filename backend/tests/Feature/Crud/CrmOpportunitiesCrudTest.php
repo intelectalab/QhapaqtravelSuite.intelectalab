@@ -170,6 +170,18 @@ it('perder exige motivo y detalle cuando es otro, y guarda la etapa donde se per
     expect((int) $row->probability)->toBe(0)->and($row->closed_at)->toBe(BUSINESS_TODAY);
 });
 
+it('una oportunidad ganada pasa a perdida con motivo y vuelve a ganada sin reabrirla', function () {
+    actingAsSeed('U04');
+    $this->postJson('/api/v1/crm/opportunities/OPP-0117/stage', ['stage' => 'ganada'], critical(crmOportunidadVersion('OPP-0117')))->assertOk();
+
+    expect($this->postJson('/api/v1/crm/opportunities/OPP-0117/stage', ['stage' => 'perdida', 'lost_reason' => 'precio', 'confirm_reopen' => true], critical(crmOportunidadVersion('OPP-0117')))->assertOk()->json('data.stage'))->toBe('perdida');
+    expect((int) rowOf('crm_opportunities', 'OPP-0117')->probability)->toBe(0);
+
+    $this->postJson('/api/v1/crm/opportunities/OPP-0117/stage', ['stage' => 'ganada', 'confirm_reopen' => true], critical(crmOportunidadVersion('OPP-0117')))->assertOk();
+    $row = rowOf('crm_opportunities', 'OPP-0117');
+    expect($row->stage)->toBe('ganada')->and($row->lost_reason_code)->toBeNull()->and((int) $row->probability)->toBe(100);
+});
+
 it('reabrir una oportunidad cerrada pide confirmación y limpia el cierre', function () {
     actingAsSeed('U04');
 

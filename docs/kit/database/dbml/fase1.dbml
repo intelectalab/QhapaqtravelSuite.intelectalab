@@ -1,4 +1,4 @@
-// Fase 1 · MVP — 94 tablas. Solo refs internas a la fase.
+// Fase 1 · MVP — 93 tablas. Solo refs internas a la fase.
 
 
 Table catalog_product_types {
@@ -1182,7 +1182,7 @@ Table booking_passengers {
   seq smallint [not null]
   full_name varchar(150) [not null]
   doc_type varchar(12) [note: 'in (DNI, Pasaporte, CE, Passport)']
-  doc_number varchar(30)
+  doc_number text [note: 'cifrado (cast encrypted)']
   pax_type char(3) [not null, note: 'in (ADT, CHD, INF)']
   nationality varchar(60)
   birth_date date
@@ -1464,7 +1464,7 @@ Table ops_assignments {
   guide_id uuid
   driver_id uuid
   vehicle_id uuid
-  status varchar(30) [not null, note: 'in (pendiente, asignada, confirmada, en_curso, completada)']
+  status varchar(30) [not null, note: 'in (pendiente, asignada, confirmada, en_curso, completada, cancelada)']
   confirmed_at timestamptz
   confirmed_via varchar(10) [note: 'in (web, app)']
   started_at timestamptz
@@ -1936,27 +1936,6 @@ Table fin_settlements {
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
   Note: '07 §3.12 · Liquidación / cierre financiero de la reserva.'
-}
-
-Table fin_fx_rates {
-  id uuid [pk, not null]
-  tenant_id uuid [not null]
-  currency_code char(3) [not null]
-  base_currency char(3) [not null]
-  rate_pen numeric(14,6) [not null]
-  buy numeric(12,6)
-  sell numeric(12,6)
-  previous_rate numeric(14,6)
-  rate_date date [not null]
-  source varchar(80) [not null]
-  effective_at timestamptz [not null]
-  created_by uuid
-  created_at timestamptz [not null]
-  provider_id uuid
-  daily_change_pct numeric(7,3)
-  alert_raised boolean [not null]
-  is_demo boolean [not null]
-  Note: '07 §3.19 + 09 §3.9 + 17 §3.6 · Histórico de tipo de cambio (append-only).'
 }
 
 Table channel_support_tickets {

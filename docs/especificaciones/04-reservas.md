@@ -70,7 +70,7 @@ Todas las tablas con `tenant_id uuid not null`, RLS, `created_by/updated_by`, `c
 | seq | smallint | no | orden |
 | full_name | varchar(150) | no | placeholder "Pasajero ADT 1 (por completar)" |
 | doc_type | varchar(12) | sí | `CHECK IN ('DNI','Pasaporte','CE','Passport')` |
-| doc_number | varchar(30) | sí | |
+| doc_number | text | sí | Cifrado en la aplicación (cast `encrypted`); v2.5: `text` porque el valor cifrado no cabe en varchar(30). |
 | pax_type | char(3) | no | `CHECK IN ('ADT','CHD','INF')` |
 | nationality | varchar(60) | sí | |
 | birth_date | date | sí | |
@@ -224,9 +224,12 @@ Todas las tablas con `tenant_id uuid not null`, RLS, `created_by/updated_by`, `c
 | `en_operacion` | `completada` | "Completar viaje" · `reservations.modify` | — | — |
 | no cerrada (≠ `cancelada`,`completada`) | `reprogramada` | Reprogramar · `reservations.modify` | §5 RES-BR-20…24 | §4.5 |
 | no cerrada | `cancelada` | Cancelar · `reservations.cancel` | — | §4.6 |
+| `confirmada`/`en_operacion` | `parcial` | Cancelar parte de los servicios · `reservations.cancel` (v2.5) | Quedan servicios activos | §4.6 por servicio; CxC recalculadas |
+| `confirmada`/`en_operacion`/`parcial` | `incidencia` | Incidencia de severidad alta abierta en un servicio (automático, v2.5) | — | Aviso al coordinador |
+| `incidencia` | `en_operacion` | Última incidencia de severidad alta resuelta (automático, v2.5) | — | Audita |
 | cualquiera | (sin cambio) | Modificar · `reservations.modify` | — | §4.4 |
 
-`pendiente_pago`, `parcial` e `incidencia` existen en `STATUS` pero este módulo no los asigna (los usan B2B/e-commerce/operaciones). Estados terminales: `completada`, `cancelada` (se ocultan Modificar/Reprogramar/Cancelar y la edición de pasajeros/servicios).
+`pendiente_pago` lo asignan B2B y e-commerce; `parcial` e `incidencia` quedan definidos en la v2.5 (filas anteriores). Estados terminales: `completada`, `cancelada` (se ocultan Modificar/Reprogramar/Cancelar y la edición de pasajeros/servicios).
 
 ### 4.2 Servicio de reserva (`booking_services.status`)
 `pendiente` → `solicitado` (Solicitar; proveedor debe estar `activo`, PRD-BR-007) → `confirmado` (código obligatorio, hora y "confirmado por" opcionales) → `completado` (operaciones). `solicitado`/`confirmado` → `rechazado` (motivo + detalle obligatorios; alternativa opcional: otro proveedor activo del mismo tipo o "mismo proveedor, otra fecha" → nuevo servicio `pendiente` con `alt_of`, el rechazado queda con `replaced_by`). Cualquier no completado → `cancelado` (cancelación de reserva). Reprogramación → todos los activos vuelven a `pendiente` sin código.

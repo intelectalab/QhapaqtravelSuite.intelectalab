@@ -96,7 +96,7 @@ export function OperationsPanel({ data, can }: { data: OperationsData; can: CanO
               icon: BedDouble,
               tone: "t3",
               title: row.hotel ?? "Hotel",
-              detail: `${shortDate(row.check_in)} al ${shortDate(row.check_out)} · ${plural(row.rooms, "habitación", "habitaciones")} · ${row.reservation}`,
+              detail: `${shortDate(row.check_in)} al ${shortDate(row.check_out)} · ${plural(row.rooms, "habitación", "habitaciones")} · ${row.reservation}${row.hotel_confirmed ? " · el hotel acusó recibo" : ""}`,
               aside: <StatusBadge status={row.status} />,
             }))}
           />

@@ -9,6 +9,7 @@ use App\Domain\Iam\Models\User;
 use App\Domain\Iam\Support\Invitations;
 use App\Domain\Iam\Support\StaffSeats;
 use App\Domain\Iam\Support\UserCodes;
+use App\Domain\Platform\Support\EffectiveLimits;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Mail\QueuedMail;
@@ -159,7 +160,7 @@ final class UserAdmin
 
         DB::transaction(function () use ($user, $reason, $actor): void {
             DB::table('iam_mfa_factors')->where('user_id', $user->getKey())->delete();
-            $user->forceFill(['mfa_enabled' => false, 'updated_by' => $actor->getKey()])->save();
+            $user->forceFill(['mfa_enabled' => false, 'mfa_required' => true, 'updated_by' => $actor->getKey()])->save();
             DB::table('personal_access_tokens')->where('tokenable_id', $user->getKey())->delete();
             $this->audit->log('Usuario', $user->code, 'resetear_mfa', after: $reason);
         });
@@ -189,7 +190,7 @@ final class UserAdmin
     private function assertSeats(): void
     {
         $tenant = $this->context->tenant();
-        $limit = DB::connection('pgsql_platform')->table('plan_limits')->where('plan_id', $tenant->plan_id)->where('metric', 'users')->value('value');
+        $limit = EffectiveLimits::limit((string) $tenant->getKey(), (string) $tenant->plan_id, 'users');
         $used = StaffSeats::count(DB::table('iam_users'));
 
         if ($limit !== null && $used >= (int) $limit) {

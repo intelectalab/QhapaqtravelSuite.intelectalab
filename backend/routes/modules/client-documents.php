@@ -14,4 +14,6 @@ Route::controller(DocumentController::class)->group(function (): void {
     Route::get('portal/client/quotes/{code}/pdf', 'portalQuote')->middleware('permission:quotes.view')->name('portal.quotes.pdf');
     Route::get('portal/client/reservations/{code}/itinerary.pdf', 'portalItinerary')->middleware('permission:reservations.view')->name('portal.trips.itinerary');
     Route::get('b2b/vouchers/{code}/pdf', 'b2bVoucher')->name('b2b.vouchers.pdf');
+    Route::get('documents/{id}/download', 'download')->name('documents.download');
+    Route::post('catalog/products/{code}/sheet', 'productSheet')->middleware(['permission:catalog.products.view', 'throttle:20,1'])->name('catalog.products.sheet');
 });

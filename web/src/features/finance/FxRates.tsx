@@ -17,6 +17,8 @@ import { FX_SOURCES, type FxCurrency, type FxEntry } from "@/lib/finance";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { toneStyle, type Tone } from "@/lib/tone";
+import { SwitchField } from "@/components/ui/SwitchField";
+import { useState } from "react";
 
 const TONES: Tone[] = ["t1", "violet", "sun"];
 
@@ -92,6 +94,7 @@ export function FxRegisterAction({ currencies }: { currencies: FxCurrency[] }) {
           </div>
           <TextField label="Fecha" name="rate_date" type="date" hint="Si la dejas vacía, se registra con la fecha de hoy." />
           <SelectField label="Fuente" name="source" options={FX_SOURCES.map((value) => ({ value, label: value }))} defaultValue="SBS referencial" />
+          <ConfirmVariation hint="Márcalo solo si el sistema te avisó que el cambio supera la alerta de variación y verificaste el valor." />
         </>
       )}
     </PanelAction>
@@ -230,4 +233,9 @@ export function FxSettingsAction({ settings }: { settings: CurrenciesOverview["s
       )}
     </PanelAction>
   );
+}
+
+function ConfirmVariation({ hint }: { hint: string }) {
+  const [checked, setChecked] = useState(false);
+  return <SwitchField label="Confirmo una variación grande" name="confirm_variation" checked={checked} onCheckedChange={setChecked} hint={hint} />;
 }

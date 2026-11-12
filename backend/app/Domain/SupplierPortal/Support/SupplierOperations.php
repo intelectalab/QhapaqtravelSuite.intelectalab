@@ -76,7 +76,7 @@ final class SupplierOperations
                 'nights' => (int) Carbon::parse($list->check_in)->diffInDays(Carbon::parse($list->check_out)),
                 'days_to' => (int) Carbon::parse($today)->diffInDays(Carbon::parse($list->check_in), false),
                 'in_house' => $list->check_in <= $today && $list->check_out > $today,
-                'state' => $list->hotel_confirmed_at !== null ? 'confirmada' : ($list->hotel_ack_at !== null ? 'recibida' : 'por_acusar'),
+                'state' => $list->status === 'modificada' ? ($list->hotel_ack_at !== null && $list->hotel_confirmed_at === null ? 'recibida' : 'por_acusar') : ($list->hotel_confirmed_at !== null ? 'confirmada' : ($list->hotel_ack_at !== null ? 'recibida' : 'por_acusar')),
                 'modified' => $list->status === 'modificada',
                 'sent_at' => $this->iso($list->sent_at),
                 'sent_version' => (int) $list->sent_version,

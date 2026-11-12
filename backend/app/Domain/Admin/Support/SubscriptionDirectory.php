@@ -6,6 +6,7 @@ namespace App\Domain\Admin\Support;
 
 use App\Domain\Iam\Models\User;
 use App\Domain\Iam\Support\StaffSeats;
+use App\Domain\Platform\Support\EffectiveLimits;
 use App\Domain\Platform\Support\Entitlements;
 use App\Domain\Platform\Support\PlatformInvoicer;
 use App\Domain\Platform\Support\PlatformSettings;
@@ -58,7 +59,7 @@ final class SubscriptionDirectory
         $month = Carbon::today()->startOfMonth();
         $metered = $platform->table('usage_monthly')->where('tenant_id', $tenant->getKey())->where('month', '>=', $month->copy()->subMonths(5)->toDateString())->get(['metric', 'month', 'value']);
         $current = $metered->filter(fn (object $row): bool => Carbon::parse($row->month)->isSameMonth($month))->pluck('value', 'metric');
-        $whatsappExtra = (int) $items->where('addon_code', 'whatsapp_pack')->sum('quantity') * 1000;
+        $extras = EffectiveLimits::extras((string) $tenant->getKey());
         $used = [
             'users' => StaffSeats::count(DB::table('iam_users')),
             'sedes' => DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->count(),
@@ -126,12 +127,8 @@ final class SubscriptionDirectory
                 'included' => in_array((string) $planId, self::uuids($addon->included_plans), true),
                 'available' => in_array((string) $planId, self::uuids($addon->available_plans), true),
             ])->values(),
-            'usage' => collect(self::METRICS)->map(function (array $meta, string $metric) use ($limits, $used, $whatsappExtra): array {
-                $limit = isset($limits[$metric]) && $limits[$metric]->value !== null ? (int) $limits[$metric]->value : null;
-
-                if ($metric === 'whatsapp_month' && $limit !== null) {
-                    $limit += $whatsappExtra;
-                }
+            'usage' => collect(self::METRICS)->map(function (array $meta, string $metric) use ($limits, $used, $extras): array {
+                $limit = isset($limits[$metric]) && $limits[$metric]->value !== null ? (int) $limits[$metric]->value + (int) ($extras[$metric] ?? 0) : null;
 
                 return [
                     'metric' => $metric,

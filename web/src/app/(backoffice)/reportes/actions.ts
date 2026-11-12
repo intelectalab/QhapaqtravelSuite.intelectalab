@@ -27,6 +27,20 @@ export async function scheduleReport(_state: AdminActionState, form: FormData): 
   );
 }
 
+export async function updateReportSchedule(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
+  const recipients = (text(form, "recipients") ?? "")
+    .split(/[\s,;]+/)
+    .map((email) => email.trim())
+    .filter(Boolean);
+  return sendAdmin(
+    `/reports/schedules/${encodeURIComponent(text(form, "code") ?? "")}`,
+    "PATCH",
+    { frequency: text(form, "frequency"), time: text(form, "time"), format: text(form, "format"), recipients },
+    "/reportes",
+    "No pudimos guardar el envío.",
+  );
+}
+
 export async function toggleReportSchedule(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
   const code = encodeURIComponent(text(form, "code") ?? "");
   return sendAdmin(`/reports/schedules/${code}/${text(form, "mode") === "resume" ? "resume" : "pause"}`, "POST", {}, "/reportes", "No pudimos cambiar el envío programado.");

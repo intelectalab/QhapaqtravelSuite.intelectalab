@@ -1,4 +1,4 @@
-import { Check, type LucideIcon } from "lucide-react";
+import { Check, Minus, type LucideIcon } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { toneStyle, type Tone } from "@/lib/tone";
@@ -44,10 +44,11 @@ export interface JourneyStep {
   at: string | null;
   done: boolean;
   status?: string;
+  skipped?: boolean;
 }
 
-export function Journey({ steps, formatAt }: { steps: JourneyStep[]; formatAt: (iso: string) => string }) {
-  const current = steps.findIndex((step) => !step.done);
+export function Journey({ steps, formatAt, skippedLabel = "Omitido" }: { steps: JourneyStep[]; formatAt: (iso: string) => string; skippedLabel?: string }) {
+  const current = steps.findIndex((step) => !step.done && !step.skipped);
   const delay = (index: number, base = 0) => ({ animationDelay: `${base + index * 240}ms` });
 
   return (
@@ -56,10 +57,10 @@ export function Journey({ steps, formatAt }: { steps: JourneyStep[]; formatAt: (
         const next = steps[index + 1];
         const isCurrent = index === current;
         return (
-          <li key={step.label} data-testid={step.status ? `status-step:${step.status}` : undefined} data-state={step.done ? "done" : isCurrent ? "current" : "todo"} className="group/step relative flex cursor-default flex-col items-center gap-1.5 text-center">
+          <li key={step.label} data-testid={step.status ? `status-step:${step.status}` : undefined} data-state={step.done ? "done" : step.skipped ? "skipped" : isCurrent ? "current" : "todo"} className="group/step relative flex cursor-default flex-col items-center gap-1.5 text-center">
             {next && (
               <span aria-hidden className="absolute left-1/2 top-[15px] h-[3px] w-full overflow-hidden rounded-full bg-line">
-                {next.done && <span className="block h-full w-full origin-left rounded-full bg-[var(--tint)] motion-safe:animate-[fill-x_520ms_cubic-bezier(0.4,0,0.2,1)_backwards]" style={delay(index, 180)} />}
+                {(next.done || (next.skipped && steps.slice(index + 1).some((later) => later.done))) && <span className="block h-full w-full origin-left rounded-full bg-[var(--tint)] motion-safe:animate-[fill-x_520ms_cubic-bezier(0.4,0,0.2,1)_backwards]" style={delay(index, 180)} />}
               </span>
             )}
             <span className="relative grid h-8 w-8 place-items-center">
@@ -67,15 +68,15 @@ export function Journey({ steps, formatAt }: { steps: JourneyStep[]; formatAt: (
               <span
                 className={cn(
                   "relative grid h-8 w-8 place-items-center rounded-full ring-4 ring-surface transition-transform duration-300 ease-out group-hover/step:-translate-y-0.5 group-hover/step:scale-115",
-                  step.done ? "bg-[var(--tint)] text-white motion-safe:animate-[pop-in_420ms_cubic-bezier(0.34,1.56,0.64,1)_backwards]" : isCurrent ? "bg-[color-mix(in_srgb,var(--tint)_16%,var(--surface))] text-[var(--tint)]" : "bg-surface-2 text-fg-3",
+                  step.done ? "bg-[var(--tint)] text-white motion-safe:animate-[pop-in_420ms_cubic-bezier(0.34,1.56,0.64,1)_backwards]" : step.skipped ? "border-2 border-dashed border-line bg-surface text-fg-3" : isCurrent ? "bg-[color-mix(in_srgb,var(--tint)_16%,var(--surface))] text-[var(--tint)]" : "bg-surface-2 text-fg-3",
                 )}
                 style={step.done ? delay(index) : undefined}
               >
-                {step.done ? <Check size={15} strokeWidth={3} /> : <span className={cn("h-2 w-2 rounded-full bg-current", isCurrent && "motion-safe:animate-pulse")} />}
+                {step.done ? <Check size={15} strokeWidth={3} /> : step.skipped ? <Minus size={13} /> : <span className={cn("h-2 w-2 rounded-full bg-current", isCurrent && "motion-safe:animate-pulse")} />}
               </span>
             </span>
             <span className={cn("text-[12.5px] font-semibold transition-colors duration-200", step.done ? "text-fg" : isCurrent ? "text-[var(--tint)]" : "text-fg-3 group-hover/step:text-fg-2")}>{step.label}</span>
-            <span className="text-[11.5px] text-fg-2">{step.done && step.at ? formatAt(step.at) : step.done ? "Hecho" : isCurrent ? "Siguiente" : "Pendiente"}</span>
+            <span className="text-[11.5px] text-fg-2">{step.done && step.at ? formatAt(step.at) : step.done ? "Hecho" : step.skipped ? skippedLabel : isCurrent ? "Siguiente" : "Pendiente"}</span>
           </li>
         );
       })}

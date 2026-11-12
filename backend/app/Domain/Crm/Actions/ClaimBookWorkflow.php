@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\Crm\Actions;
 
+use App\Domain\Admin\Support\StaffNotices;
 use App\Domain\Crm\Support\BusinessDays;
 use App\Domain\Crm\Support\ClaimBookDirectory;
 use App\Domain\Crm\Support\ClaimConsumer;
+use App\Domain\Crm\Support\ClaimNotices;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -27,6 +29,7 @@ final class ClaimBookWorkflow
         private readonly TenantContext $context,
         private readonly BusinessDays $days,
         private readonly ClaimBookDirectory $directory,
+        private readonly ClaimNotices $notices,
     ) {}
 
     public function register(array $data, User $actor): string
@@ -74,6 +77,10 @@ final class ClaimBookWorkflow
             $this->log($id, 'registro', null, 'abierta', "Hoja registrada en {$sede->name} (presencial){$minor}. El consumidor aceptó recibir la respuesta en {$data['consumer_email']}", $actor);
             $this->audit->log('Libro de reclamaciones', $number, 'registrar', null, "{$data['type']} · {$data['consumer_name']}");
 
+            if ($this->notices->acknowledge($id, (string) $actor->getKey()) === null) {
+                DB::table('crm_cases')->where('id', $id)->update(['ack_sent_at' => null]);
+            }
+
             return $code;
         });
     }
@@ -110,7 +117,7 @@ final class ClaimBookWorkflow
         $this->audit->log('Libro de reclamaciones', $claim->book_number, 'vincular', null, $data['type']);
     }
 
-    public function evaluate(string $code, User $actor): void
+    public function evaluate(string $code, User $actor, ?string $ownerId = null, ?string $note = null): void
     {
         $claim = $this->find($code);
 
@@ -118,10 +125,18 @@ final class ClaimBookWorkflow
             throw ApiException::conflict('LR-STATE', 'La hoja ya está en evaluación o respondida.');
         }
 
-        DB::transaction(function () use ($claim, $actor): void {
-            DB::table('crm_cases')->where('id', $claim->id)->update(['book_status' => 'in_review', 'status' => 'en_proceso', 'owner_id' => $actor->getKey(), 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
-            $this->log($claim->id, 'estado', $claim->status, 'en_proceso', 'En evaluación', $actor);
-            $this->audit->log('Libro de reclamaciones', $claim->book_number, 'evaluar', 'received', 'in_review');
+        $owner = $ownerId ?? (string) $actor->getKey();
+
+        if ($ownerId !== null && ! DB::table('iam_users')->where('id', $ownerId)->where('status', 'activo')->whereNull('deleted_at')->exists()) {
+            throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige un responsable activo de la agencia.');
+        }
+
+        DB::transaction(function () use ($claim, $actor, $owner, $note): void {
+            DB::table('crm_cases')->where('id', $claim->id)->update(['book_status' => 'in_review', 'status' => 'en_proceso', 'owner_id' => $owner, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            $name = (string) DB::table('iam_users')->where('id', $owner)->value('name');
+            $this->log($claim->id, 'estado', $claim->status, 'en_proceso', "En evaluación · responsable {$name}".($note ? " · {$note}" : ''), $actor);
+            $this->audit->log('Libro de reclamaciones', $claim->book_number, 'evaluar', 'received', "in_review · {$name}");
+            app(StaffNotices::class)->toUser($owner, 'reclamacion.asignada', "{$claim->book_number} · hoja a tu cargo", trim('Responde dentro del plazo legal.'.($note ? " {$note}" : '')), 'crm_case', (string) $claim->id, null, (string) $actor->getKey());
         });
     }
 
@@ -138,6 +153,7 @@ final class ClaimBookWorkflow
         $late = $claim->due_date && $now->copy()->startOfDay()->gt(Carbon::parse($claim->due_date));
 
         DB::transaction(function () use ($claim, $data, $actor, $consumer, $now, $late): void {
+            $notification = $this->notices->respond($claim->id, $data['decision'], $data['text'], $data['actions'] ?? null, (string) $actor->getKey());
             DB::table('crm_cases')->where('id', $claim->id)->update([
                 'book_status' => 'answered',
                 'status' => 'resuelta',
@@ -149,26 +165,59 @@ final class ClaimBookWorkflow
                     'actions' => $data['actions'] ?? null,
                     'answered_at' => $now->toIso8601String(),
                     'answered_by' => $actor->getKey(),
-                    'sent_at' => $now->toIso8601String(),
-                    'sent_to' => $consumer['email'] ?? null,
+                    'sent_at' => $notification ? $now->toIso8601String() : null,
+                    'sent_to' => $notification ? ($consumer['email'] ?? null) : null,
+                    'notification_id' => $notification,
                 ], JSON_UNESCAPED_UNICODE),
                 'lock_version' => DB::raw('lock_version + 1'),
                 'updated_by' => $actor->getKey(),
                 'updated_at' => now(),
             ]);
-            $this->log($claim->id, 'estado', $claim->status, 'resuelta', 'Respuesta enviada'.($consumer['email'] ?? null ? " a {$consumer['email']}" : '').($late ? ' · fuera de plazo' : ''), $actor);
+            $this->log($claim->id, 'estado', $claim->status, 'resuelta', ($notification ? "Respuesta enviada a {$consumer['email']}" : 'Respuesta registrada; el consumidor no dejó correo').($late ? ' · fuera de plazo' : ''), $actor);
             $this->audit->log('Libro de reclamaciones', $claim->book_number, 'responder', $claim->book_status, 'answered'.($late ? ' · FUERA DE PLAZO' : ''));
+        });
+    }
+
+    public function resend(string $code, User $actor): string
+    {
+        $claim = $this->find($code);
+        $response = json_decode((string) $claim->response, true) ?: [];
+
+        if ($claim->book_status !== 'answered' || ($response['text'] ?? null) === null) {
+            throw ApiException::conflict('LR-STATE', 'La hoja todavía no tiene una respuesta para reenviar.');
+        }
+
+        return DB::transaction(function () use ($claim, $response, $actor): string {
+            $notification = $this->notices->respond((string) $claim->id, (string) ($response['decision'] ?? ''), (string) $response['text'], $response['actions'] ?? null, (string) $actor->getKey())
+                ?? throw ApiException::unprocessable('LR-BR-06', 'El consumidor no dejó un correo válido: entrega la respuesta por otro medio.');
+            $consumer = ClaimConsumer::read(json_decode((string) $claim->consumer, true) ?: []);
+            DB::table('crm_cases')->where('id', $claim->id)->update(['response' => json_encode([...$response, 'sent_at' => now()->toIso8601String(), 'sent_to' => $consumer['email'] ?? null, 'notification_id' => $notification, 'resent' => (int) ($response['resent'] ?? 0) + 1], JSON_UNESCAPED_UNICODE), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            $this->log($claim->id, 'seguimiento', $claim->status, $claim->status, 'Respuesta reenviada a '.($consumer['email'] ?? ''), $actor);
+            $this->audit->log('Libro de reclamaciones', $claim->book_number, 'reenviar_respuesta', null, (string) ($consumer['email'] ?? ''));
+
+            return (string) ($consumer['email'] ?? '');
         });
     }
 
     public function saveSettings(array $data, User $actor): array
     {
+        $current = DB::table('crm_claim_book_settings')->first(['id', 'response_days', 'alert_days', 'retention_years']);
+
+        if (! isset($data['response_days']) && array_key_exists('holidays', $data)) {
+            $this->saveHolidays($data['holidays'], $actor);
+
+            return ['response_days' => (int) ($current->response_days ?? 15), 'alert_days' => (int) ($current->alert_days ?? 3), 'retention_years' => (int) ($current->retention_years ?? 2)];
+        }
+
         if ((int) $data['alert_days'] >= (int) $data['response_days']) {
             throw ValidationException::withMessages(['alert_days' => 'La alerta debe llegar antes de que venza el plazo de respuesta.']);
         }
 
-        $current = DB::table('crm_claim_book_settings')->first(['id', 'response_days', 'alert_days', 'retention_years']);
         $values = ['response_days' => (int) $data['response_days'], 'alert_days' => (int) $data['alert_days'], 'retention_years' => (int) $data['retention_years']];
+
+        if (array_key_exists('holidays', $data)) {
+            $this->saveHolidays($data['holidays'], $actor);
+        }
 
         DB::transaction(function () use ($current, $values, $actor): void {
             if ($current === null) {
@@ -182,6 +231,35 @@ final class ClaimBookWorkflow
         });
 
         return $values;
+    }
+
+    private function saveHolidays(array $holidays, User $actor): void
+    {
+        $wanted = collect($holidays)->mapWithKeys(fn (array $row): array => [(string) $row['date'] => trim((string) $row['name'])]);
+
+        DB::transaction(function () use ($wanted, $actor): void {
+            $existing = DB::table('sys_holidays')->where('date', '>=', now(app(TenantContext::class)->timezone())->startOfYear()->toDateString())->get(['id', 'date', 'name'])->keyBy(fn (object $row): string => substr((string) $row->date, 0, 10));
+            $removed = $existing->keys()->diff($wanted->keys());
+            $added = $wanted->keys()->diff($existing->keys());
+
+            DB::table('sys_holidays')->whereIn('id', $existing->only($removed->all())->pluck('id')->all())->delete();
+
+            foreach ($wanted as $date => $name) {
+                if (isset($existing[$date])) {
+                    if ($existing[$date]->name !== $name) {
+                        DB::table('sys_holidays')->where('id', $existing[$date]->id)->update(['name' => $name, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+                    }
+
+                    continue;
+                }
+
+                DB::table('sys_holidays')->insert(['date' => $date, 'name' => $name, 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
+            }
+
+            if ($removed->isNotEmpty() || $added->isNotEmpty()) {
+                $this->audit->log('Libro de reclamaciones', 'feriados', 'actualizar_feriados', $existing->count().' feriados', $wanted->count().' feriados'.($added->isNotEmpty() ? ' · agrega '.$added->implode(', ') : '').($removed->isNotEmpty() ? ' · quita '.$removed->implode(', ') : ''));
+            }
+        });
     }
 
     public function close(string $code, string $note, User $actor): void

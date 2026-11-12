@@ -141,7 +141,7 @@ export interface OperationsData {
   assignments: { date: string; time: string | null; service: string; order: string; missing: string[] }[];
   vouchers: ServiceRow[];
   incidents: IncidentRow[];
-  arrivals: { hotel: string | null; check_in: string; check_out: string; rooms: number; reservation: string; status: string }[];
+  arrivals: { hotel: string | null; check_in: string; check_out: string; rooms: number; reservation: string; status: string; hotel_confirmed?: boolean }[];
   departures: DepartureRow[];
 }
 

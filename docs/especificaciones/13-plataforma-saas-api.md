@@ -388,7 +388,7 @@ Autenticación de la consola: Sanctum. Autenticación de la API pública: guard 
 | POST | `/api/v1/platform/invoices/{id}/retry` | super_admin | Reintento manual (no mueve el calendario) | Idempotency-Key |
 | POST | `/api/v1/platform/invoices/{id}/manual-payment` | super_admin | Transferencia/depósito. Reactiva el tenant si no queda deuda | Idempotency-Key |
 | POST | `/api/v1/platform/invoices/{id}/void` | super_admin | Nota de crédito NQ01 (+ reembolso si estaba pagada) | Idempotency-Key |
-| POST | `/api/v1/platform/invoices/{id}/dunning/extend` | super_admin | Prórroga de 7 días | — |
+| POST | `/api/v1/platform/invoices/{id}/dunning/extend` | super_admin | Prórroga de 7 días (un reintento con la misma clave no suma otra prórroga) | Idempotency-Key |
 | POST | `/api/v1/platform/tenants/{id}/suspend` · `/reactivate` | super_admin | Manual. `reason` obligatorio | — |
 | GET/PATCH | `/api/v1/platform/dunning-policy` | super_admin | `retry_days[]`, `suspend_after_last` | — |
 | GET/POST | `/api/v1/platform/trials` · `/{tenant}/extend` · `/{tenant}/convert` | super_admin | Trials | — |

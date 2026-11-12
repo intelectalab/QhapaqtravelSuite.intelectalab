@@ -461,7 +461,8 @@ export function PaxMessagesTable({ messages, channels, mode, data }: { messages:
       ]
     : [
         { id: "read", label: "Leídos", tone: "ok", icon: <Eye size={19} />, matches: (message) => message.status === "leido" },
-        { id: "delivered", label: "Entregados sin leer", tone: "t1", icon: <CheckCheck size={19} />, matches: (message) => message.status === "entregado" || message.status === "enviado" },
+        { id: "delivered", label: "Entregados sin leer", tone: "t1", icon: <CheckCheck size={19} />, matches: (message) => message.status === "entregado" },
+        { id: "sent", label: "Enviados sin confirmar entrega", tone: "info", icon: <Send size={19} />, matches: (message) => message.status === "enviado" },
         { id: "failed", label: "Fallidos", tone: "bad", icon: <XCircle size={19} />, matches: (message) => message.status === "fallido" },
         { id: "canceled", label: "Cancelados", tone: "mute", icon: <CircleOff size={19} />, matches: (message) => message.status === "cancelado" },
       ];

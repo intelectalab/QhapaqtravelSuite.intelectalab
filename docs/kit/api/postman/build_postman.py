@@ -29,7 +29,7 @@ HERE = Path(__file__).resolve().parent
 KIT = HERE.parent.parent
 OPENAPI = KIT / "api" / "openapi.json"
 SEEDS = KIT / "seeds"
-EXPECTED_REQUESTS = 1006
+EXPECTED_REQUESTS = 1242
 
 METHODS = ("get", "post", "put", "patch", "delete")
 PHASE_NAMES = {

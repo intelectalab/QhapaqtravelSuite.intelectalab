@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Site\Support;
 
+use App\Domain\Channels\Support\EcommerceOrderRelease;
 use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -13,7 +14,7 @@ final class WebOrderSettlement
 {
     private const OPEN_ORDER = ['pago_pendiente', 'pago_por_validar', 'pago_rechazado'];
 
-    public function __construct(private readonly AuditLogger $audit, private readonly SyncServicePayables $payables) {}
+    public function __construct(private readonly AuditLogger $audit, private readonly SyncServicePayables $payables, private readonly EcommerceOrderRelease $release) {}
 
     public static function ready(string $reservationId): bool
     {
@@ -63,9 +64,12 @@ final class WebOrderSettlement
             return;
         }
 
-        DB::table('channel_ecom_orders')->where('id', $order->id)->update(['status' => 'pago_rechazado', 'updated_at' => now()]);
+        $note = "Abono no validado por Finanzas: {$reason}";
+        $this->release->releaseConsumed((string) $order->id, $note);
+        $this->release->release((string) $order->id, 'liberada', $note, 'abono no validado');
+        DB::table('channel_ecom_orders')->where('id', $order->id)->update(['status' => 'cancelado', 'cancel_reason' => mb_substr($note, 0, 300), 'updated_at' => now()]);
         DB::table('channel_ecom_payment_attempts')->where('payment_id', $payment->id)->update(['result' => 'rechazado', 'message' => "Pago no validado: {$reason}"]);
-        $this->audit->log('Pedido web', $order->code, 'pago_rechazado', 'pago_por_validar', $reason);
+        $this->audit->log('Pedido web', $order->code, 'cancelar', 'pago_por_validar', "cancelado · {$note}");
     }
 
     private function closeOrder(string $orderId): void

@@ -61,9 +61,10 @@ final class ProductEditorState
             'components' => array_map(fn (array $item, int $index) => [...$item, 'unit_cost' => $seesCost ? ($costs[$index + 1]['unit_cost'] ?? null) : null, 'cost_currency' => $costs[$index + 1]['currency'] ?? null, 'subtotal_pen' => $seesCost && isset($costs[$index + 1]) ? (string) $costs[$index + 1]['subtotal_pen'] : null], $components = $this->sections->currentComponents($product->id), array_keys($components)),
             'fx_usd' => $seesCost ? (string) $this->review->fx() : null,
             'itinerary_id' => $this->sections->itineraryId($product->id),
-            'itinerary' => $this->sections->currentItinerary($product->id),
+            'itinerary' => array_map(fn (array $day): array => [...$day, 'items' => array_map(fn (array $item): array => [...$item, 'cost' => $seesCost ? $item['cost'] : null], $day['items'])], $this->sections->currentItinerary($product->id)),
             'rates' => DB::table('catalog_rates')->where('product_id', $product->id)->orderByDesc('status')->orderBy('valid_from')
                 ->get(['ref', 'rate_type', 'segment', 'channel', 'currency', 'price_basis', 'cost', 'price', 'min_price', 'max_price', 'conditions', 'valid_from', 'valid_to', 'season_id', 'status', 'lock_version'])
+                ->filter(fn (object $rate) => CatalogAccess::seesNetRates($viewer) || ! RateDirectory::isNet($rate->rate_type, $rate->channel))->values()
                 ->map(fn (object $rate) => [
                     'ref' => $rate->ref,
                     'rate_type' => $rate->rate_type,

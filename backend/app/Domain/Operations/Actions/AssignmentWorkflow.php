@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Operations\Actions;
 
+use App\Domain\Admin\Support\TenantSettings;
 use App\Domain\Iam\Models\User;
 use App\Domain\Operations\Support\OpsCommon;
 use App\Domain\Operations\Support\OpsNotices;
@@ -51,8 +52,8 @@ final class AssignmentWorkflow
     {
         $assignment = $this->assignment($id);
 
-        if (! in_array($assignment->status, ['asignada', 'confirmada', 'en_curso', 'completada'], true)) {
-            throw ApiException::conflict('OPS-BR-50', 'Asigna los recursos antes de registrar el check-in.');
+        if (! in_array($assignment->status, ['en_curso', 'completada'], true)) {
+            throw ApiException::conflict('OPS-BR-50', 'El check-in se registra cuando el servicio ya inició.');
         }
 
         if ($assignment->service_date > $this->common->today()) {
@@ -95,6 +96,10 @@ final class AssignmentWorkflow
         $assignment = $this->assignment($id);
         $resources = $this->resourcesOf($data);
 
+        if (! in_array($assignment->status, ['pendiente', 'asignada', 'confirmada'], true)) {
+            throw ApiException::conflict('OPS-BR-29', 'El servicio ya empezó o terminó: sus recursos no se cambian.');
+        }
+
         if (array_filter($resources) === []) {
             throw ApiException::unprocessable('OPS-BR-20', 'Elige al menos un guía, conductor o vehículo.');
         }
@@ -109,6 +114,7 @@ final class AssignmentWorkflow
             throw ApiException::unprocessable('OPS-BR-28', 'Revisa las advertencias y confirma que las asumes: '.implode(' ', $warnings), ['warnings' => $warnings]);
         }
 
+        $previous = $this->recipients($this->resourcesOf((array) $assignment));
         DB::table('ops_assignments')->where('id', $assignment->id)->update([
             ...$resources,
             'status' => 'asignada',
@@ -121,9 +127,34 @@ final class AssignmentWorkflow
         $this->recompute($assignment->order_id);
         $this->audit->log('Asignación', $assignment->order_code.' · '.$assignment->service_label, 'asignar', $assignment->status, 'asignada'.($warnings === [] ? '' : ' · '.count($warnings).' advertencias'));
         $channels = array_values(array_intersect(OpsNotices::CHANNELS, (array) ($data['notify'] ?? [])));
-        $notified = $channels === [] ? 0 : $this->notify($assignment, $this->recipients($resources));
+        $current = $this->recipients($resources);
+        $notified = $channels === [] ? 0 : $this->notify($assignment, $current);
+        $this->notifyRemoved($assignment, $previous->diff($current), 'asignacion.reasignada', 'Tu servicio pasó a otro operador');
 
         return ['warnings' => $warnings, 'notified' => $notified, 'channels' => $channels, 'delivery' => $channels === [] ? null : 'portal'];
+    }
+
+    public function notifySchedule(string $reservationId, string $note): int
+    {
+        $sent = 0;
+
+        foreach (DB::table('ops_assignments as a')->join('ops_orders as o', 'o.id', '=', 'a.order_id')->where('o.reservation_id', $reservationId)->whereNotIn('a.status', ['pendiente', 'completada'])
+            ->get(['a.id', 'a.guide_id', 'a.driver_id', 'a.vehicle_id', 'a.service_label', 'a.service_date', 'a.service_time', 'o.code as order_code', 'o.reservation_id']) as $assignment) {
+            $users = $this->recipients($this->resourcesOf((array) $assignment));
+            $sent += $users->isEmpty() ? 0 : $this->notices->toUsers($users, 'asignacion.cambio_horario', "Cambió la fecha u hora de {$assignment->service_label}", $note, 'ops_assignment', (string) $assignment->id, (string) $assignment->reservation_id);
+        }
+
+        return $sent;
+    }
+
+    private function notifyRemoved(object $assignment, Collection $users, string $event, string $title): void
+    {
+        if ($users->isEmpty()) {
+            return;
+        }
+
+        $date = CarbonImmutable::parse($assignment->service_date)->format('d/m/Y');
+        $this->notices->toUsers($users, $event, "{$title}: {$assignment->service_label}", "{$assignment->service_label} del {$date} ({$assignment->order_code}) ya no está a tu cargo.", 'ops_assignment', (string) $assignment->id, $assignment->reservation_id);
     }
 
     private function notify(object $assignment, Collection $recipients): int
@@ -172,9 +203,11 @@ final class AssignmentWorkflow
             throw ApiException::conflict('OPS-BR-05', 'Esta asignación no tiene recursos que liberar.');
         }
 
+        $previous = $this->recipients($this->resourcesOf((array) $assignment));
         DB::table('ops_assignments')->where('id', $assignment->id)->update(['guide_id' => null, 'driver_id' => null, 'vehicle_id' => null, 'status' => 'pendiente', 'confirmed_at' => null, 'confirmed_via' => null, 'warnings_ack' => null, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         $this->recompute($assignment->order_id);
         $this->audit->log('Asignación', $assignment->order_code.' · '.$assignment->service_label, 'liberar', $assignment->status, 'pendiente');
+        $this->notifyRemoved($assignment, $previous, 'asignacion.liberada', 'Se liberó tu servicio');
     }
 
     public function recompute(string $orderId): void
@@ -225,6 +258,12 @@ final class AssignmentWorkflow
             }
 
             $this->overlaps('guide_id', $guide->id, $guide->full_name, $assignment, $blocks, $warnings);
+            $perGuide = (int) (app(TenantSettings::class)->section('operations')['max_pax_per_guide'] ?? 16);
+            $pax = DB::table('booking_passengers')->where('reservation_id', $assignment->reservation_id)->count();
+
+            if ($perGuide > 0 && $pax > $perGuide) {
+                $warnings[] = "El grupo tiene {$pax} pasajeros y el máximo por guía es {$perGuide}: considera un segundo guía.";
+            }
         }
 
         if ($resources['driver_id']) {
@@ -272,7 +311,7 @@ final class AssignmentWorkflow
     {
         $others = DB::table('ops_assignments as a')->join('ops_orders as o', 'o.id', '=', 'a.order_id')
             ->where("a.{$column}", $resourceId)->where('a.id', '<>', $assignment->id)->where('a.service_date', $assignment->service_date)
-            ->where('a.status', '<>', 'completada')->where('o.status', '<>', 'cancelada')->whereNull('o.deleted_at')
+            ->whereNotIn('a.status', ['completada', 'cancelada'])->where('o.status', '<>', 'cancelada')->whereNull('o.deleted_at')
             ->get(['a.order_id', 'a.service_time', 'a.service_label', 'o.code']);
 
         foreach ($others as $other) {
@@ -285,6 +324,25 @@ final class AssignmentWorkflow
                 $warnings[] = "{$name} tiene otro servicio de esta orden a menos de 6 horas: verifica el encadenamiento.";
             } else {
                 $warnings[] = "{$name} tiene otro servicio ese día ({$other->code}): verifica los tiempos de retorno.";
+            }
+        }
+
+        if (! in_array($column, ['guide_id', 'vehicle_id'], true)) {
+            return;
+        }
+
+        $own = DB::table('booking_reservation_services')->where('id', $assignment->reservation_service_id ?? null)->first(['departure_id', 'product_id']);
+        $departures = DB::table('catalog_product_departures as d')->join('catalog_products as p', 'p.id', '=', 'd.product_id')
+            ->where("d.{$column}", $resourceId)->where('d.departure_date', $assignment->service_date)->where('d.status', '<>', 'cancelada')
+            ->when($own?->departure_id !== null, fn ($query) => $query->where('d.id', '<>', $own->departure_id))
+            ->when($own?->product_id !== null, fn ($query) => $query->where('d.product_id', '<>', $own->product_id))
+            ->get(['d.ref', 'd.departure_time', 'p.name']);
+
+        foreach ($departures as $departure) {
+            if ($this->gap($assignment->service_time, $departure->departure_time) < self::GAP_MINUTES) {
+                $blocks[] = "{$name} ya está en la salida programada {$departure->ref} ({$departure->name}) a menos de 6 horas.";
+            } else {
+                $warnings[] = "{$name} tiene la salida programada {$departure->ref} ese día: verifica los tiempos de retorno.";
             }
         }
     }

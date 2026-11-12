@@ -44,12 +44,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
         ]);
 
-        // Prioridad: el tenant y la transacción deben existir antes de idempotencia y permisos.
+        // Prioridad: el tenant y la transacción deben existir antes de autenticar, de la idempotencia y de los permisos.
         $middleware->priority([
             AssignCorrelationId::class,
-            \Illuminate\Auth\Middleware\Authenticate::class,
-            ResolveTenant::class,
+            ResolveTenant::class,          // antes de auth: token y usuario tienen RLS (C-08 v2.5)
             SetPostgresTenant::class,
+            \Illuminate\Auth\Middleware\Authenticate::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             IdempotencyMiddleware::class,
         ]);

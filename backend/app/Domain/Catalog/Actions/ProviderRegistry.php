@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog\Actions;
 
+use App\Domain\Admin\Support\StaffNotices;
 use App\Domain\Catalog\Support\CatalogAccess;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Iam\Models\User;
@@ -55,6 +56,9 @@ final class ProviderRegistry
             DB::table('catalog_providers')->where('id', $provider->id)->update(['status' => $active ? 'activo' : 'inactivo', 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             $this->audit->log('Proveedor', $ref, $active ? 'activar' : 'desactivar', $provider->status, trim(($active ? 'activo' : 'inactivo').($reason ? " · {$reason}" : '')));
             $affected = $active ? 0 : DB::table('catalog_products')->where('main_provider_id', $provider->id)->where('status', 'ACTIVE')->whereNull('deleted_at')->count();
+            $active
+                ? app(StaffNotices::class)->toRoles(['operations'], 'proveedor.activado', "{$provider->name} activo", 'Ya se puede asignar en servicios y vouchers.', 'catalog_provider', (string) $provider->id, null, [], (string) $actor->getKey())
+                : app(StaffNotices::class)->toManagers('proveedor.desactivado', "{$provider->name} desactivado", trim(($affected > 0 ? "{$affected} producto(s) activo(s) lo tienen como proveedor principal. " : '').($reason ?? '')), 'catalog_provider', (string) $provider->id, null, (string) $actor->getKey());
 
             return ['ref' => $ref, 'warning' => $affected > 0 ? "{$affected} productos activos usan a este proveedor como principal." : null];
         });

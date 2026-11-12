@@ -55,9 +55,10 @@ final class UserDirectory
         $permissions = $user->getAllPermissions()->pluck('name')->sort()->values()->all();
         $modules = DB::table('permissions')->whereIn('name', $permissions)->where('guard_name', 'api')->orderBy('module')->orderBy('name')->get(['name', 'module'])->groupBy('module');
         $grouped = [];
+        $totals = DB::table('permissions')->where('guard_name', 'api')->selectRaw('module, count(*) as total')->groupBy('module')->pluck('total', 'module');
 
         foreach ($modules as $module => $items) {
-            $grouped[] = ['module' => (string) $module, 'permissions' => $items->pluck('name')->values()->all()];
+            $grouped[] = ['module' => (string) $module, 'permissions' => $items->pluck('name')->values()->all(), 'total' => (int) ($totals[$module] ?? $items->count())];
         }
 
         return [

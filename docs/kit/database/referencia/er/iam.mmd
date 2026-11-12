@@ -11,7 +11,7 @@ erDiagram
     varchar type
   }
   iam_sedes {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar name
@@ -25,7 +25,7 @@ erDiagram
     uuid invited_by FK
   }
   iam_users {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code
     varchar name
@@ -87,18 +87,18 @@ erDiagram
   ops_guides {
     uuid id PK
   }
-  booking_reservations |o--o{ iam_users : "reservation_id"
-  catalog_providers |o--o{ iam_users : "provider_id"
-  channel_b2b_agencies |o--o{ iam_users : "agency_id"
-  crm_clients |o--o{ iam_users : "client_id"
-  iam_sedes ||--o{ iam_users : "sede_id"
-  iam_users ||--o{ iam_access_requests : "resolved_by, user_id"
-  iam_users ||--o| iam_mfa_factors : "user_id"
-  iam_users |o--o{ iam_sedes : "manager_user_id"
-  iam_users ||--o{ iam_user_invitations : "invited_by, user_id"
-  iam_users |o--o{ iam_users : "invited_by"
-  ops_drivers |o--o{ iam_users : "driver_id"
-  ops_guides |o--o{ iam_users : "guide_id"
+  booking_reservations ||--o{ iam_users : "reservation_id, tenant_id"
+  catalog_providers ||--o{ iam_users : "provider_id, tenant_id"
+  channel_b2b_agencies ||--o{ iam_users : "agency_id, tenant_id"
+  crm_clients ||--o{ iam_users : "client_id, tenant_id"
+  iam_sedes ||--o{ iam_users : "sede_id, tenant_id"
+  iam_users ||--o{ iam_access_requests : "resolved_by, tenant_id, user_id"
+  iam_users ||--o{ iam_mfa_factors : "tenant_id, user_id"
+  iam_users ||--o{ iam_sedes : "manager_user_id, tenant_id"
+  iam_users ||--o{ iam_user_invitations : "invited_by, tenant_id, user_id"
+  iam_users ||--o{ iam_users : "invited_by, tenant_id"
+  ops_drivers ||--o{ iam_users : "driver_id, tenant_id"
+  ops_guides ||--o{ iam_users : "guide_id, tenant_id"
   permissions ||--o{ model_has_permissions : "permission_id"
   permissions ||--o{ role_has_permissions : "permission_id"
   roles ||--o{ model_has_roles : "role_id"

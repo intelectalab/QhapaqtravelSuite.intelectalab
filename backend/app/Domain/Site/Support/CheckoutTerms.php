@@ -80,6 +80,7 @@ final class CheckoutTerms
                     'text' => $product->pickup_text ?? null,
                 ] : null,
                 'comments' => $this->rules->on('R-COMMENTS') ? (int) ($this->rules->param('R-COMMENTS', 'maxChars') ?? 1000) : null,
+                'altitude' => app(SiteAltitude::class)->requires((string) $product->id),
                 'cancellation' => $policies ? ['text' => $policies->cancellation, 'tiers' => CancellationTiers::describe(CancellationTiers::resolve($policies->penalty_tiers, $policies->cancellation))] : null,
             ];
         }
@@ -107,6 +108,7 @@ final class CheckoutTerms
             'group' => $group,
             'first_date' => $lines->min(fn (array $line): string => (string) $line['item']->service_date),
             'companions' => ['when' => $companions, 'require_document' => (bool) ($this->rules->param('R-COMPANIONS', 'requireDocument') ?? true)],
+            'altitude' => collect($items)->filter(fn (array $item): bool => $item['altitude'] !== null)->map(fn (array $item): array => ['product' => $item['product']['name'], 'max_altitude' => $item['altitude']])->values()->all(),
             'items' => $items,
         ];
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Briefcase, CalendarClock, Download, FileText, Gauge, Layers, Percent, Plane, ShieldCheck, Star, Truck, UsersRound, Wallet } from "lucide-react";
+import { BarChart3, Briefcase, CalendarClock, Download, FileText, Gauge, Layers, Lock, Percent, Plane, ShieldCheck, Star, Truck, UsersRound, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
@@ -8,6 +8,7 @@ import { exportReport, scheduleReport } from "@/app/(backoffice)/reportes/action
 import { DataTable } from "@/components/table/DataTable";
 import type { Column, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
@@ -111,7 +112,16 @@ function Hidden({ report }: { report: ReportPayload }) {
 function Actions({ report }: { report: ReportPayload }) {
   const router = useRouter();
   if (!report.can_export) {
-    return <span className="text-[12.5px] text-fg-3" title="Requiere el permiso reports.export">Exportar y programar requieren el permiso de exportación</span>;
+    return (
+      <div className="flex flex-wrap gap-2" title="Requiere permiso de exportación">
+        <Button size="sm" icon={<Lock size={14} />} disabled>
+          Programar envío
+        </Button>
+        <Button size="sm" icon={<Lock size={14} />} disabled>
+          Exportar
+        </Button>
+      </div>
+    );
   }
   return (
     <div className="flex flex-wrap gap-2">
@@ -167,17 +177,21 @@ function ReportTable({ report }: { report: ReportPayload }) {
   const sorts: SortOption<Row>[] = report.table.columns.filter((column) => numeric.includes(column.format) || column.format === "date").map((column) => ({ id: column.key, label: column.label, type: column.format === "date" ? "date" : "number", value: (row) => row[column.key] }));
   return (
     <div>
-      <DataTable screen={`reporte-${report.key}`} rows={report.table.rows} columns={columns} getKey={(row) => String(row.code ?? row.id ?? row.name ?? row.seller ?? JSON.stringify(row))} entityLabel="filas" searchText={(row) => Object.values(row).join(" ")} searchPlaceholder="Buscar en el detalle" sorts={sorts} />
-      {report.table.totals && (
-        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 rounded-[12px] bg-surface-2 px-4 py-2.5 text-[12.5px]">
-          {report.table.columns.slice(1).map((column) => (
-            <span key={column.key}>
-              <span className="text-fg-3">{column.label}: </span>
-              <b className="font-mono">{formatReportValue(report.table.totals?.[column.key] ?? null, column.format)}</b>
-            </span>
-          ))}
-        </div>
-      )}
+      <DataTable
+        screen={`reporte-${report.key}`}
+        rows={report.table.rows}
+        columns={columns}
+        getKey={(row) => String(row.code ?? row.id ?? row.name ?? row.seller ?? JSON.stringify(row))}
+        entityLabel="filas"
+        searchText={(row) => Object.values(row).join(" ")}
+        searchPlaceholder="Buscar en el detalle"
+        sorts={sorts}
+        footer={
+          report.table.totals
+            ? Object.fromEntries(report.table.columns.map((column, index) => [column.key, index === 0 ? "Total" : report.table.totals?.[column.key] !== undefined && report.table.totals?.[column.key] !== null ? <span className="font-mono">{formatReportValue(report.table.totals[column.key] ?? null, column.format)}</span> : null]))
+            : undefined
+        }
+      />
     </div>
   );
 }

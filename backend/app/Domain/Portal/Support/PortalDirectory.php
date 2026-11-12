@@ -7,6 +7,7 @@ namespace App\Domain\Portal\Support;
 use App\Domain\Channels\Support\ChannelKit;
 use App\Domain\Channels\Support\CustomerPortalPreview;
 use App\Domain\Crm\Actions\ArcoRequests;
+use App\Domain\Crm\Support\ClaimConsumer;
 use App\Domain\Finance\Support\PaymentMethods;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
@@ -43,7 +44,7 @@ final class PortalDirectory
 
     public function documents(PortalAccount $account): array
     {
-        return ['items' => $this->base($account, $this->kit->today())['documents']];
+        return app(PortalDocuments::class)->list($account);
     }
 
     public function paymentHistory(PortalAccount $account): array
@@ -83,6 +84,7 @@ final class PortalDirectory
             'quotes' => collect($base['quotes'])->whereIn('status', self::LIVE)->where('expired', false)->values(),
             'balance' => $base['kpis']['balance'],
             'documents' => count($base['documents']),
+            'banners' => app(PortalContent::class)->for(PortalContent::audience($account), ['Banner', 'Landing']),
         ];
     }
 
@@ -235,7 +237,8 @@ final class PortalDirectory
         $client = $account->client;
         $consents = DB::table('mkt_consents')->where('subject_type', 'client')->where('subject_id', $client->id)->get(['channel', 'status', 'granted_at', 'revoked_at', 'source', 'policy_version'])->keyBy('channel');
         $claims = DB::table('crm_cases as c')->leftJoin('booking_reservations as r', 'r.id', '=', 'c.reservation_id')->where('c.client_id', $client->id)->where('c.is_book', true)->orderByDesc('c.received_at')
-            ->get(['c.code', 'c.book_number', 'c.type_code', 'c.status', 'c.book_status', 'c.received_at', 'c.due_date', 'c.subject', 'r.code as reservation']);
+            ->leftJoin('iam_sedes as s', 's.id', '=', 'c.sede_id')
+            ->get(['c.code', 'c.book_number', 'c.type_code', 'c.status', 'c.book_status', 'c.received_at', 'c.due_date', 'c.subject', 'c.detail', 'c.request', 'c.response', 'c.response_days', 'c.consumer', 'c.good', 's.name as sede', 'r.code as reservation']);
         $arco = DB::table('crm_cases')->where('client_id', $client->id)->where('type_code', ArcoRequests::CASE_TYPE)->when($account->isPassenger(), fn ($query) => $query->whereRaw('false'))
             ->orderByDesc('created_at')->limit(10)->get(['code', 'subject', 'status', 'due_date', 'created_at', 'resolution']);
 
@@ -270,7 +273,11 @@ final class PortalDirectory
                 'due_date' => $row->due_date,
                 'subject' => $row->subject,
                 'reservation' => $row->reservation,
+                'book_status' => $row->book_status,
+                'response' => $this->claimResponse($row->response),
+                'receipt' => $this->claimReceipt($row),
             ])->values(),
+            'claims_book' => '/sitio/'.$this->context->tenant()->subdomain.'/libro-reclamaciones',
             'arco_requests' => $arco->map(fn (object $row): array => [
                 'code' => $row->code,
                 'subject' => $row->subject,
@@ -458,5 +465,32 @@ final class PortalDirectory
             $from <= $today => 'en_curso',
             default => 'proximo',
         };
+    }
+
+    private function claimResponse(mixed $value): ?array
+    {
+        $response = json_decode((string) $value, true);
+
+        if (! is_array($response) || ($response['text'] ?? null) === null) {
+            return null;
+        }
+
+        return ['decision' => $response['decision'] ?? null, 'text' => (string) $response['text'], 'actions' => $response['actions'] ?? null, 'answered_at' => $response['answered_at'] ?? null];
+    }
+
+    private function claimReceipt(object $row): array
+    {
+        $consumer = ClaimConsumer::read(json_decode((string) $row->consumer, true) ?: []);
+        $good = json_decode((string) $row->good, true) ?: [];
+
+        return [
+            'agency' => (string) ($this->context->tenant()->commercial_name ?? ''),
+            'sede' => $row->sede,
+            'response_days' => $row->response_days === null ? null : (int) $row->response_days,
+            'consumer' => ['name' => $consumer['name'] ?? null, 'document' => trim(strtoupper((string) ($consumer['doc_type'] ?? '')).' '.($consumer['doc_number'] ?? '')) ?: null, 'email' => $consumer['email'] ?? null],
+            'good' => ['kind' => $good['kind'] ?? null, 'description' => $good['description'] ?? null, 'amount' => isset($good['amount']) ? (float) $good['amount'] : null, 'currency' => $good['currency'] ?? null],
+            'detail' => (string) $row->detail,
+            'request' => (string) $row->request,
+        ];
     }
 }

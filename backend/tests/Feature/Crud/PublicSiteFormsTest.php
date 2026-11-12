@@ -324,7 +324,7 @@ it('el boletín exige correo válido y consentimiento', function () {
 });
 
 it('la hoja de reclamación del sitio aparece en el libro de reclamaciones con su número y plazo', function () {
-    $data = $this->postJson('/api/v1/public/claims', sitioReclamo(['sede_id' => sitioSedeLima()]), siteOf(extra: critical()))->assertCreated()->json('data');
+    $data = $this->postJson('/api/v1/public/claim-book', sitioReclamo(['sede_id' => sitioSedeLima()]), siteOf(extra: critical()))->assertCreated()->json('data');
     $case = withinTenant(tenantA(), fn () => DB::table('crm_cases')->where('book_number', $data['number'])->first());
 
     expect($data['number'])->toStartWith('LR-LIM-2026-')
@@ -335,7 +335,8 @@ it('la hoja de reclamación del sitio aparece en el libro de reclamaciones con s
         ->and($case->priority)->toBe('alta')
         ->and($case->client_id)->toBe(idOf('crm_clients', 'CLI-0001'))
         ->and($case->due_date)->toBe($data['due_date'])
-        ->and(withinTenant(tenantA(), fn () => DB::table('crm_case_events')->where('case_id', $case->id)->where('event', 'registro')->exists()))->toBeTrue();
+        ->and(withinTenant(tenantA(), fn () => DB::table('crm_case_events')->where('case_id', $case->id)->where('event', 'registro')->exists()))->toBeTrue()
+        ->and(withinTenant(tenantA(), fn () => DB::table('notif_messages')->where('source_id', $case->id)->where('event_code', 'reclamacion.constancia')->value('recipient_address')))->toBe($data['email']);
 
     actingAsSeed('U02');
     $book = $this->getJson('/api/v1/crm/claim-book')->assertOk()->json('data.claims');
@@ -343,13 +344,13 @@ it('la hoja de reclamación del sitio aparece en el libro de reclamaciones con s
 });
 
 it('la hoja de reclamación valida el documento, el apoderado del menor y la declaración', function () {
-    sitioPost('/api/v1/public/claims', sitioReclamo(['sede_id' => sitioSedeLima(), 'doc_number' => '123', 'is_minor' => true, 'declaration' => false]))
+    sitioPost('/api/v1/public/claim-book', sitioReclamo(['sede_id' => sitioSedeLima(), 'doc_number' => '123', 'is_minor' => true, 'declaration' => false]))
         ->assertStatus(422)->assertJsonValidationErrors(['doc_number', 'guardian_name', 'guardian_doc_type', 'guardian_doc_number', 'guardian_relation', 'declaration']);
-    expect(sitioPost('/api/v1/public/claims', sitioReclamo(['sede_id' => '00000000-0000-0000-0000-000000000000'])))->toBeApiError(422, 'VALIDATION_ERROR');
+    expect(sitioPost('/api/v1/public/claim-book', sitioReclamo(['sede_id' => '00000000-0000-0000-0000-000000000000'])))->toBeApiError(422, 'VALIDATION_ERROR');
 });
 
 it('la hoja del sitio de un menor guarda al apoderado con el formato del kit', function () {
-    $data = $this->postJson('/api/v1/public/claims', sitioReclamo(['sede_id' => sitioSedeLima(), 'is_minor' => true, 'guardian_name' => 'Rosa Carpio Delgado', 'guardian_doc_type' => 'DNI', 'guardian_doc_number' => '29654102', 'guardian_relation' => 'Madre']), siteOf(extra: critical()))->assertCreated()->json('data');
+    $data = $this->postJson('/api/v1/public/claim-book', sitioReclamo(['sede_id' => sitioSedeLima(), 'is_minor' => true, 'guardian_name' => 'Rosa Carpio Delgado', 'guardian_doc_type' => 'DNI', 'guardian_doc_number' => '29654102', 'guardian_relation' => 'Madre']), siteOf(extra: critical()))->assertCreated()->json('data');
     $consumer = json_decode((string) withinTenant(tenantA(), fn () => DB::table('crm_cases')->where('book_number', $data['number'])->value('consumer')), true);
 
     expect($consumer)->toMatchArray(['doc_type' => 'DNI', 'doc_number' => '41523698', 'is_minor' => true])

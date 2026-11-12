@@ -1,10 +1,28 @@
 erDiagram
-  fin_bank_accounts {
+  fin_account_mappings {
     uuid id PK
+  }
+  fin_accounting_exports {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    varchar status
+  }
+  fin_ai_credit_ledger {
+    uuid id PK
+    varchar kind
+    uuid pack_id FK
+    uuid job_id FK
+    uuid invoice_id FK
+    uuid created_by FK
+  }
+  fin_bank_accounts {
+    uuid id PK,UK
+    uuid tenant_id UK
     char currency
   }
   fin_bank_lines {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid statement_id FK
@@ -17,13 +35,14 @@ erDiagram
     uuid closure_id FK
   }
   fin_bank_statements {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid bank_account_id FK
     uuid document_id FK
     uuid imported_by FK
   }
   fin_cash_counts {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid account_id FK
@@ -42,7 +61,7 @@ erDiagram
     uuid user_id FK
   }
   fin_cash_replenishments {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid account_id FK
@@ -55,7 +74,7 @@ erDiagram
     uuid transfer_id FK
   }
   fin_cash_sessions {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid account_id FK
@@ -65,12 +84,13 @@ erDiagram
     varchar status
   }
   fin_commission_rules {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     date valid_from
     date valid_to
   }
   fin_commissions {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid reservation_id FK
@@ -84,6 +104,16 @@ erDiagram
     uuid approved_by FK
     uuid settlement_request_id FK
     uuid sales_target_id FK
+  }
+  fin_corporate_statements {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    uuid account_id FK
+    char currency
+    varchar status
+    uuid document_id FK
+    uuid generated_by FK
   }
   fin_currencies {
     uuid id PK
@@ -118,12 +148,37 @@ erDiagram
     uuid account_id FK
     char period
   }
+  fin_gateway_accounts {
+    uuid id PK,UK
+    uuid tenant_id UK
+    varchar status
+    char currency
+    uuid created_by FK
+  }
+  fin_gift_card_movements {
+    uuid id PK
+    uuid gift_card_id FK
+    varchar kind
+    numeric amount
+    uuid reservation_id FK
+    uuid receivable_id FK
+  }
+  fin_gift_cards {
+    uuid id PK,UK
+    uuid tenant_id UK
+    varchar code UK
+    char redeem_code_hash UK
+    char currency
+    uuid buyer_client_id FK
+    varchar status
+    uuid payment_id FK
+  }
   fin_invoice_lines {
     uuid id PK
     uuid invoice_id FK
   }
   fin_invoices {
-    uuid id PK
+    uuid id PK,UK
     uuid client_id FK
     uuid reservation_id FK
     uuid receivable_id FK
@@ -148,7 +203,7 @@ erDiagram
     uuid bank_line_id FK
   }
   fin_payables {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid provider_id FK
@@ -170,13 +225,34 @@ erDiagram
     uuid applied_by FK
     uuid reversed_by FK
   }
+  fin_payment_fees {
+    uuid id PK
+    uuid tenant_id UK
+    uuid payment_id FK,UK
+    uuid gateway_account_id FK
+    char currency
+    varchar status
+  }
+  fin_payment_links {
+    uuid id PK,UK
+    uuid tenant_id UK
+    varchar code UK
+    uuid reservation_id FK
+    uuid receivable_id FK
+    uuid gift_card_id FK
+    numeric amount
+    char currency
+    char token_hash UK
+    varchar status
+    uuid payment_id FK
+  }
   fin_payment_methods {
     uuid id PK
     uuid tenant_id UK
     varchar code UK
   }
   fin_payments {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid reservation_id FK
@@ -196,7 +272,7 @@ erDiagram
     uuid checked_by FK
   }
   fin_period_closes {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     char period UK
     varchar status
@@ -208,7 +284,7 @@ erDiagram
     uuid sent_by FK
   }
   fin_receivables {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid reservation_id FK
@@ -219,7 +295,7 @@ erDiagram
     varchar status
   }
   fin_reconciliation_closures {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     char period
@@ -237,7 +313,7 @@ erDiagram
     uuid user_id FK
   }
   fin_treasury_accounts {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar kind
@@ -249,7 +325,7 @@ erDiagram
     varchar status
   }
   fin_treasury_movements {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid account_id FK
@@ -269,7 +345,7 @@ erDiagram
     uuid tenant_id UK
   }
   fin_treasury_transfers {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid from_account_id FK
@@ -277,7 +353,7 @@ erDiagram
     varchar kind
   }
   fx_rate_providers {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar name
@@ -299,10 +375,16 @@ erDiagram
   channel_b2b_settlement_requests {
     uuid id PK
   }
+  cms_ai_content_jobs {
+    uuid id PK
+  }
   collab_approval_requests {
     uuid id PK
   }
   crm_clients {
+    uuid id PK
+  }
+  crm_corporate_accounts {
     uuid id PK
   }
   crm_sales_targets {
@@ -314,82 +396,107 @@ erDiagram
   iam_users {
     uuid id PK
   }
+  platform_ai_credit_packs {
+    uuid id PK
+  }
+  platform_invoices {
+    uuid id PK
+  }
   sys_documents {
     uuid id PK
   }
-  booking_reservation_services |o--o{ fin_payables : "reservation_service_id"
-  booking_reservations |o--o{ fin_commissions : "reservation_id"
-  booking_reservations ||--o{ fin_invoices : "reservation_id"
-  booking_reservations |o--o{ fin_payables : "reservation_id"
-  booking_reservations ||--o{ fin_payments : "reservation_id"
-  booking_reservations ||--o{ fin_receivables : "reservation_id"
-  booking_reservations ||--o{ fin_settlements : "reservation_id"
-  booking_reservations |o--o{ fin_treasury_movements : "reservation_id"
-  catalog_providers ||--o{ fin_payables : "provider_id"
-  channel_b2b_agencies |o--o{ fin_commissions : "beneficiary_agency_id"
-  channel_b2b_settlement_requests |o--o{ fin_commissions : "settlement_request_id"
-  collab_approval_requests |o--o{ fin_payments : "reversal_request_id"
-  crm_clients ||--o{ fin_invoices : "client_id"
-  crm_clients ||--o{ fin_receivables : "client_id"
-  crm_sales_targets |o--o{ fin_commissions : "sales_target_id"
-  fin_bank_accounts |o--o{ fin_bank_statements : "bank_account_id"
-  fin_bank_accounts |o--o{ fin_payable_payouts : "bank_account_id"
-  fin_bank_accounts |o--o{ fin_payables : "scheduled_bank_account_id"
-  fin_bank_lines |o--o{ fin_payable_payouts : "bank_line_id"
-  fin_bank_statements |o--o{ fin_bank_lines : "statement_id"
-  fin_cash_counts |o--o{ fin_cash_sessions : "closing_count_id"
-  fin_cash_replenishments ||--o{ fin_cash_replenishment_events : "replenishment_id"
-  fin_cash_replenishments |o--o{ fin_treasury_movements : "replenishment_id"
-  fin_cash_sessions |o--o{ fin_cash_counts : "session_id"
-  fin_commission_rules |o--o{ fin_commissions : "rule_id"
-  fin_invoices ||--o{ fin_fiscal_events : "invoice_id"
-  fin_invoices ||--o{ fin_invoice_lines : "invoice_id"
-  fin_invoices |o--o{ fin_invoices : "ref_invoice_id"
-  fin_payables |o--o{ fin_bank_lines : "matched_payable_id"
-  fin_payables ||--o{ fin_payable_payouts : "payable_id"
-  fin_payments |o--o{ fin_bank_lines : "matched_payment_id"
-  fin_payments ||--o{ fin_payment_applications : "payment_id"
-  fin_period_closes ||--o{ fin_period_close_checks : "period_close_id"
-  fin_receivables |o--o{ fin_invoices : "receivable_id"
-  fin_receivables ||--o{ fin_payment_applications : "receivable_id"
-  fin_receivables |o--o{ fin_payments : "receivable_id"
-  fin_receivables ||--o{ fin_receivable_reminders : "receivable_id"
-  fin_reconciliation_closures |o--o{ fin_bank_lines : "closure_id"
-  fin_treasury_accounts ||--o{ fin_cash_counts : "account_id"
-  fin_treasury_accounts ||--o{ fin_cash_replenishments : "account_id, paid_from_account_id"
-  fin_treasury_accounts ||--o{ fin_cash_sessions : "account_id"
-  fin_treasury_accounts ||--o{ fin_fx_revaluations : "account_id"
-  fin_treasury_accounts |o--o{ fin_treasury_accounts : "settle_to_account_id"
-  fin_treasury_accounts ||--o{ fin_treasury_movements : "account_id"
-  fin_treasury_accounts ||--o{ fin_treasury_transfers : "from_account_id, to_account_id"
-  fin_treasury_movements |o--o{ fin_cash_counts : "adjustment_movement_id"
-  fin_treasury_movements ||--o| fin_expense_receipts : "movement_id"
-  fin_treasury_transfers |o--o{ fin_cash_replenishments : "transfer_id"
-  fin_treasury_transfers |o--o{ fin_treasury_movements : "deposited_transfer_id, transfer_id"
-  fx_rate_providers |o--o{ fin_fx_rates : "provider_id"
-  iam_sedes |o--o{ fin_document_series : "sede_id"
-  iam_sedes ||--o{ fin_treasury_accounts : "sede_id"
-  iam_sedes |o--o{ fin_treasury_movements : "sede_id"
-  iam_users |o--o{ fin_bank_lines : "resolved_by"
-  iam_users ||--o{ fin_bank_statements : "imported_by"
-  iam_users ||--o{ fin_cash_counts : "approved_by, signed_by, validated_by,..."
-  iam_users |o--o{ fin_cash_replenishment_events : "user_id"
-  iam_users |o--o{ fin_cash_replenishments : "approved_by, paid_by, requested_by"
-  iam_users ||--o{ fin_cash_sessions : "closed_by, opened_by"
-  iam_users |o--o{ fin_commissions : "approved_by, beneficiary_user_id"
-  iam_users ||--o{ fin_invoices : "issued_by"
-  iam_users |o--o{ fin_payables : "approved_by, scheduled_by"
-  iam_users |o--o{ fin_payment_applications : "applied_by, reversed_by"
-  iam_users |o--o{ fin_payments : "registered_by, reverted_by"
-  iam_users ||--o{ fin_period_close_checks : "checked_by"
-  iam_users |o--o{ fin_period_closes : "closed_by"
-  iam_users |o--o{ fin_receivable_reminders : "sent_by"
-  iam_users ||--o{ fin_reconciliation_closures : "closed_by"
-  iam_users ||--o{ fin_settlements : "closed_by"
-  iam_users |o--o{ fin_status_history : "user_id"
-  iam_users |o--o{ fin_treasury_accounts : "custodian_id"
-  iam_users |o--o{ fin_treasury_movements : "voided_by"
-  sys_documents |o--o{ fin_bank_statements : "document_id"
-  sys_documents |o--o{ fin_fiscal_events : "payload_document_id"
-  sys_documents |o--o{ fin_invoices : "cdr_document_id, pdf_document_id, xml..."
-  sys_documents |o--o{ fin_payments : "evidence_document_id"
+  booking_reservation_services ||--o{ fin_payables : "reservation_service_id, tenant_id"
+  booking_reservations ||--o{ fin_commissions : "reservation_id, tenant_id"
+  booking_reservations ||--o{ fin_gift_card_movements : "reservation_id, tenant_id"
+  booking_reservations ||--o{ fin_invoices : "reservation_id, tenant_id"
+  booking_reservations ||--o{ fin_payables : "reservation_id, tenant_id"
+  booking_reservations ||--o{ fin_payment_links : "reservation_id, tenant_id"
+  booking_reservations ||--o{ fin_payments : "reservation_id, tenant_id"
+  booking_reservations ||--o{ fin_receivables : "reservation_id, tenant_id"
+  booking_reservations ||--o| fin_settlements : "reservation_id, tenant_id"
+  booking_reservations ||--o{ fin_treasury_movements : "reservation_id, tenant_id"
+  catalog_providers ||--o{ fin_payables : "provider_id, tenant_id"
+  channel_b2b_agencies ||--o{ fin_commissions : "beneficiary_agency_id, tenant_id"
+  channel_b2b_settlement_requests ||--o{ fin_commissions : "settlement_request_id, tenant_id"
+  cms_ai_content_jobs ||--o{ fin_ai_credit_ledger : "job_id, tenant_id"
+  collab_approval_requests ||--o{ fin_payments : "reversal_request_id, tenant_id"
+  crm_clients ||--o{ fin_gift_cards : "buyer_client_id, tenant_id"
+  crm_clients ||--o{ fin_invoices : "client_id, tenant_id"
+  crm_clients ||--o{ fin_receivables : "client_id, tenant_id"
+  crm_corporate_accounts ||--o{ fin_corporate_statements : "account_id, tenant_id"
+  crm_sales_targets ||--o{ fin_commissions : "sales_target_id, tenant_id"
+  fin_bank_accounts ||--o{ fin_bank_statements : "bank_account_id, tenant_id"
+  fin_bank_accounts ||--o{ fin_payable_payouts : "bank_account_id, tenant_id"
+  fin_bank_accounts ||--o{ fin_payables : "scheduled_bank_account_id, tenant_id"
+  fin_bank_lines ||--o{ fin_payable_payouts : "bank_line_id, tenant_id"
+  fin_bank_statements ||--o{ fin_bank_lines : "statement_id, tenant_id"
+  fin_cash_counts ||--o{ fin_cash_sessions : "closing_count_id, tenant_id"
+  fin_cash_replenishments ||--o{ fin_cash_replenishment_events : "replenishment_id, tenant_id"
+  fin_cash_replenishments ||--o{ fin_treasury_movements : "replenishment_id, tenant_id"
+  fin_cash_sessions ||--o{ fin_cash_counts : "session_id, tenant_id"
+  fin_commission_rules ||--o{ fin_commissions : "rule_id, tenant_id"
+  fin_gateway_accounts ||--o{ fin_payment_fees : "gateway_account_id, tenant_id"
+  fin_gift_cards ||--o{ fin_gift_card_movements : "gift_card_id, tenant_id"
+  fin_gift_cards ||--o{ fin_payment_links : "gift_card_id, tenant_id"
+  fin_invoices ||--o{ fin_fiscal_events : "invoice_id, tenant_id"
+  fin_invoices ||--o{ fin_invoice_lines : "invoice_id, tenant_id"
+  fin_invoices ||--o{ fin_invoices : "ref_invoice_id, tenant_id"
+  fin_payables ||--o{ fin_bank_lines : "matched_payable_id, tenant_id"
+  fin_payables ||--o{ fin_payable_payouts : "payable_id, tenant_id"
+  fin_payments ||--o{ fin_bank_lines : "matched_payment_id, tenant_id"
+  fin_payments ||--o{ fin_gift_cards : "payment_id, tenant_id"
+  fin_payments ||--o{ fin_payment_applications : "payment_id, tenant_id"
+  fin_payments ||--o| fin_payment_fees : "payment_id, tenant_id"
+  fin_payments ||--o{ fin_payment_links : "payment_id, tenant_id"
+  fin_period_closes ||--o{ fin_period_close_checks : "period_close_id, tenant_id"
+  fin_receivables ||--o{ fin_gift_card_movements : "receivable_id, tenant_id"
+  fin_receivables ||--o{ fin_invoices : "receivable_id, tenant_id"
+  fin_receivables ||--o{ fin_payment_applications : "receivable_id, tenant_id"
+  fin_receivables ||--o{ fin_payment_links : "receivable_id, tenant_id"
+  fin_receivables ||--o{ fin_payments : "receivable_id, tenant_id"
+  fin_receivables ||--o{ fin_receivable_reminders : "receivable_id, tenant_id"
+  fin_reconciliation_closures ||--o{ fin_bank_lines : "closure_id, tenant_id"
+  fin_treasury_accounts ||--o{ fin_cash_counts : "account_id, tenant_id"
+  fin_treasury_accounts ||--o{ fin_cash_replenishments : "account_id, paid_from_account_id, ten..."
+  fin_treasury_accounts ||--o{ fin_cash_sessions : "account_id, tenant_id"
+  fin_treasury_accounts ||--o{ fin_fx_revaluations : "account_id, tenant_id"
+  fin_treasury_accounts ||--o{ fin_treasury_accounts : "settle_to_account_id, tenant_id"
+  fin_treasury_accounts ||--o{ fin_treasury_movements : "account_id, tenant_id"
+  fin_treasury_accounts ||--o{ fin_treasury_transfers : "from_account_id, tenant_id, to_accoun..."
+  fin_treasury_movements ||--o{ fin_cash_counts : "adjustment_movement_id, tenant_id"
+  fin_treasury_movements ||--o{ fin_expense_receipts : "movement_id, tenant_id"
+  fin_treasury_transfers ||--o{ fin_cash_replenishments : "tenant_id, transfer_id"
+  fin_treasury_transfers ||--o{ fin_treasury_movements : "deposited_transfer_id, tenant_id, tra..."
+  fx_rate_providers ||--o{ fin_fx_rates : "provider_id, tenant_id"
+  iam_sedes ||--o{ fin_document_series : "sede_id, tenant_id"
+  iam_sedes ||--o{ fin_treasury_accounts : "sede_id, tenant_id"
+  iam_sedes ||--o{ fin_treasury_movements : "sede_id, tenant_id"
+  iam_users ||--o{ fin_ai_credit_ledger : "created_by, tenant_id"
+  iam_users ||--o{ fin_bank_lines : "resolved_by, tenant_id"
+  iam_users ||--o{ fin_bank_statements : "imported_by, tenant_id"
+  iam_users ||--o{ fin_cash_counts : "approved_by, signed_by, tenant_id, va..."
+  iam_users ||--o{ fin_cash_replenishment_events : "tenant_id, user_id"
+  iam_users ||--o{ fin_cash_replenishments : "approved_by, paid_by, requested_by, t..."
+  iam_users ||--o{ fin_cash_sessions : "closed_by, opened_by, tenant_id"
+  iam_users ||--o{ fin_commissions : "approved_by, beneficiary_user_id, ten..."
+  iam_users ||--o{ fin_corporate_statements : "generated_by, tenant_id"
+  iam_users ||--o{ fin_gateway_accounts : "created_by, tenant_id"
+  iam_users ||--o{ fin_invoices : "issued_by, tenant_id"
+  iam_users ||--o{ fin_payables : "approved_by, scheduled_by, tenant_id"
+  iam_users ||--o{ fin_payment_applications : "applied_by, reversed_by, tenant_id"
+  iam_users ||--o{ fin_payments : "registered_by, reverted_by, tenant_id"
+  iam_users ||--o{ fin_period_close_checks : "checked_by, tenant_id"
+  iam_users ||--o{ fin_period_closes : "closed_by, tenant_id"
+  iam_users ||--o{ fin_receivable_reminders : "sent_by, tenant_id"
+  iam_users ||--o{ fin_reconciliation_closures : "closed_by, tenant_id"
+  iam_users ||--o{ fin_settlements : "closed_by, tenant_id"
+  iam_users ||--o{ fin_status_history : "tenant_id, user_id"
+  iam_users ||--o{ fin_treasury_accounts : "custodian_id, tenant_id"
+  iam_users ||--o{ fin_treasury_movements : "tenant_id, voided_by"
+  platform_ai_credit_packs |o--o{ fin_ai_credit_ledger : "pack_id"
+  platform_invoices ||--o{ fin_ai_credit_ledger : "invoice_id, tenant_id"
+  sys_documents ||--o{ fin_bank_statements : "document_id, tenant_id"
+  sys_documents ||--o{ fin_corporate_statements : "document_id, tenant_id"
+  sys_documents ||--o{ fin_fiscal_events : "payload_document_id, tenant_id"
+  sys_documents ||--o{ fin_invoices : "cdr_document_id, pdf_document_id, ten..."
+  sys_documents ||--o{ fin_payments : "evidence_document_id, tenant_id"

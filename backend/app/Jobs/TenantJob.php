@@ -98,4 +98,11 @@ abstract class TenantJob implements ShouldBeUnique, ShouldQueue
     {
         return $count.' '.($count === 1 ? $one : $many);
     }
+
+    protected static function summary(array $parts, string $empty): string
+    {
+        $parts = array_values(array_filter($parts));
+
+        return $parts === [] ? $empty : implode(' · ', $parts);
+    }
 }

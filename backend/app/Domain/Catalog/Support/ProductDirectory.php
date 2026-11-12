@@ -13,7 +13,8 @@ final class ProductDirectory
 {
     public function list(): Collection
     {
-        $from = DB::table('catalog_rates')->where('status', 'vigente')->where('rate_type', 'Venta')->whereIn('segment', ['Adulto', 'Pasajero'])
+        $today = CatalogAccess::today();
+        $from = DB::table('catalog_rates')->where('status', 'vigente')->where('valid_from', '<=', $today)->where('valid_to', '>=', $today)->where('rate_type', 'Venta')->whereIn('segment', ['Adulto', 'Pasajero'])
             ->orderBy('price')->get(['product_id', 'price', 'currency'])->groupBy('product_id');
 
         return $this->rows()->orderBy('p.name')->get()->map(fn (object $row) => [
@@ -78,6 +79,7 @@ final class ProductDirectory
             'policies' => $policy === null ? null : [...(array) $policy, 'penalty_tiers' => CancellationTiers::resolve($policy->penalty_tiers, $policy->cancellation)],
             'rates' => DB::table('catalog_rates')->where('product_id', $row->id)->orderBy('status', 'desc')->orderBy('rate_type')->orderBy('segment')
                 ->get(['ref', 'rate_type', 'segment', 'channel', 'currency', 'price_basis', 'cost', 'price', 'valid_from', 'valid_to', 'status'])
+                ->filter(fn (object $rate) => CatalogAccess::seesNetRates($viewer) || ! RateDirectory::isNet($rate->rate_type, $rate->channel))->values()
                 ->map(fn (object $rate) => [
                     'ref' => $rate->ref,
                     'type' => $rate->rate_type,
@@ -90,7 +92,7 @@ final class ProductDirectory
                     'margin_pct' => $showCost && (float) $rate->price > 0 ? round(((float) $rate->price - (float) $rate->cost) / (float) $rate->price * 100, 1) : null,
                     'valid_from' => $rate->valid_from,
                     'valid_to' => $rate->valid_to,
-                    'active' => $rate->status === 'vigente',
+                    'active' => RateDirectory::state($rate, CatalogAccess::today()) === 'vigente',
                 ]),
         ];
     }

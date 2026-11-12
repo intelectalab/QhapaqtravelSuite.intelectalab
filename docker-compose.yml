@@ -61,11 +61,12 @@ services:
 
   postgres:
     image: postgres:17
+    command: ["postgres", "-c", "max_locks_per_transaction=256"]
     environment:
       POSTGRES_DB: kipucontrol
       POSTGRES_USER: kipucontrol_owner          # dueño del esquema: SOLO para migraciones
       POSTGRES_PASSWORD: owner_local_only
-    ports: [ "5432:5432" ]
+    ports: [ "127.0.0.1:5432:5432" ]
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -77,7 +78,7 @@ services:
   redis:
     image: redis:8
     command: ["redis-server", "--appendonly", "yes"]
-    ports: [ "6379:6379" ]
+    ports: [ "127.0.0.1:6379:6379" ]
     volumes: [ "redis_data:/data" ]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

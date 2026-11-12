@@ -4,6 +4,13 @@ erDiagram
     bigint code
     timestamptz occurred_at PK
   }
+  sys_ai_requests {
+    uuid id PK,UK
+    uuid tenant_id UK
+    varchar kind
+    uuid user_id FK
+    varchar status
+  }
   sys_booking_rule_catalog {
     uuid id PK
     varchar code UK
@@ -16,7 +23,8 @@ erDiagram
     varchar name
   }
   sys_documents {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
   }
   sys_holidays {
     uuid id PK
@@ -63,6 +71,7 @@ erDiagram
   iam_users {
     uuid id PK
   }
+  iam_users ||--o{ sys_ai_requests : "tenant_id, user_id"
   iam_users |o--o{ sys_idempotency_keys : "user_id"
   iam_users |o--o{ sys_job_runs : "triggered_by"
   iam_users |o--o{ sys_scheduled_jobs : "owner_user_id"

@@ -13,6 +13,7 @@ No son un proyecto ejecutable: son las piezas transversales y **un caso de uso c
 | `ejemplos/backend/database/migrations/*` | `backend/database/migrations/` | **Generadas** desde el SQL con `tools/generar_migracion.py` (no editar a mano). |
 | `ejemplos/web/src/**` | `web/src/**` | Alias `@/*` → `src/*`. Copiar además `kit-ia/design/tokens.json` y `tailwind.preset.ts` a `web/src/design/`. |
 | `ejemplos/web/src/lib/api/schema.d.ts` | (generado) | `npm run api:gen` = `openapi-typescript docs/kit/api/openapi.yaml -o src/lib/api/schema.d.ts`. |
+| `ejemplos/vitrina-payload/**` | `apps/vitrina/**` | Payload 3 + Next.js 15: colecciones, bloques, hooks SEO y páginas del blog. Ver su [README](vitrina-payload/README.md). |
 | `ejemplos/mobile/src/**` | `mobile/src/**` | Expo SDK con `expo-sqlite` (API asíncrona) y `@react-native-community/netinfo`. |
 
 Dependencias que asumen los ejemplos: backend `laravel/sanctum`, `spatie/laravel-permission` (teams), `brick/money`, `laravel/horizon`; web `next@15`, `react@19`, `@tanstack/react-query@5`, `@tanstack/react-table@8`, `react-hook-form@7`, `zod@3`, `@hookform/resolvers`, `openapi-fetch`, `openapi-typescript` (dev), `tailwindcss@3`; mobile `expo-sqlite`, `@react-native-community/netinfo`, `expo-secure-store`, `expo-crypto`.
@@ -95,7 +96,7 @@ Los ejemplos referencian, sin incluirlas: `App\Domain\Iam\Models\User` (`iam_use
 | 2 | Código de `If-Match` desactualizado | `STALE_VERSION` en spec 00, contrato y Pest. | Resuelto en la v2.4 del kit. |
 | 3 | Respuesta de `POST /quotes/{id}/convert` | 201 con la reserva; 200 con la misma reserva si ya estaba convertida (spec 04 §4.3, contrato y `ConvertQuoteIdempotencyTest`). | Resuelto en la v2.4 del kit. |
 | 4 | `audit_events.code` (bigint sin default en el SQL) | Contador Redis por tenant (`AuditCodeGenerator`). | Decidir: secuencia PostgreSQL o contador. |
-| 5 | `sys_sequences.year_reset` vs trigger «next_number no decrece» | No se reinicia la numeración; se usa el prefijo guardado. | Por definir (serie por año o ajuste del trigger). |
+| 5 | `sys_sequences.year_reset` vs trigger «next_number no decrece» | Serie por año: con `year_reset` el servicio abre la serie del año (`series = '2027'`, prefijo con el año nuevo, `next_number = 1`); el trigger y el UNIQUE no cambian. | Resuelto en la v2.5 del kit. |
 | 6 | Códigos de CxC y de servicios de reserva | `doc_type = 'receivable'` (prefijo `CXC-`, como la semilla) y `RS-{nº reserva}{nn}` (como el prototipo). | Confirmar y sembrar la serie. |
 | 7 | `service_kind` / `requires_assignment` desde `catalog_services.type` | Mapeo propuesto en `ServicesFromQuoteItem::kindFor()`. | Validar con Operaciones (spec 05 §11-24). |
 | 8 | Canal de la reserva desde el segmento del cliente | `crm_clients.segment_code` comparado sin mayúsculas con Corporativo/B2B/Grupos. | Confirmar códigos del catálogo de segmentos. |

@@ -94,7 +94,7 @@ export function AgencyHomeView({ home, session }: { home: Home; session: AgencyS
                           )}
                         </span>
                       </span>
-                      <AgencyBadge status={row.status} />
+                      <AgencyBadge status={row.status} scope="trip" />
                       <ArrowRight size={16} className="flex-none text-fg-3 transition-transform group-hover:translate-x-0.5" />
                     </Link>
                   </li>

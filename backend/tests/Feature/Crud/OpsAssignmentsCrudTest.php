@@ -67,6 +67,22 @@ it('bloquea recursos de vacaciones, sin datos o con choque de horario en otra or
     $this->putJson("/api/v1/ops/assignments/{$assignment->id}/resources", ['guide_id' => idOf('ops_guides', 'G05')], critical((int) opsAsgRow($assignment->id)->lock_version + 4))->assertStatus(409);
 });
 
+it('el guía recibe aviso cuando le liberan o reasignan el servicio', function () {
+    actingAsSeed('U05');
+    $busy = opsAsgFind('OP-2026-0413', '2026-10-02', '07:30:00');
+    $guideUser = idOf('iam_users', 'U09');
+    $notice = fn (string $event, string $user) => withinTenant(tenantA(), fn () => DB::table('notif_messages')->where('event_code', $event)->where('recipient_user_id', $user)->where('source_id', $busy->id)->count());
+
+    $this->postJson("/api/v1/ops/assignments/{$busy->id}/release", [], critical((int) $busy->lock_version))->assertOk();
+    expect($notice('asignacion.liberada', $guideUser))->toBe(1);
+
+    $this->putJson("/api/v1/ops/assignments/{$busy->id}/resources", ['guide_id' => idOf('ops_guides', 'G01'), 'ack_warnings' => true], critical((int) opsAsgRow($busy->id)->lock_version))->assertOk();
+    $this->putJson("/api/v1/ops/assignments/{$busy->id}/resources", ['guide_id' => idOf('ops_guides', 'G02'), 'ack_warnings' => true], critical((int) opsAsgRow($busy->id)->lock_version))->assertOk();
+
+    expect($notice('asignacion.reasignada', $guideUser))->toBe(1)
+        ->and($notice('asignacion.reasignada', idOf('iam_users', 'U10')))->toBe(0);
+});
+
 it('liberar la asignación deja al guía libre para otra orden el mismo día', function () {
     actingAsSeed('U05');
     $guide = idOf('ops_guides', 'G01');
@@ -149,4 +165,17 @@ it('no toca asignaciones de órdenes cerradas ni deja asignar a quien no gestion
     actingAsTenantBAdmin();
     $this->putJson("/api/v1/ops/assignments/{$assignment->id}/resources", ['guide_id' => idOf('ops_guides', 'G05')], critical((int) $assignment->lock_version))->assertNotFound();
     expect(opsAsgRow($assignment->id)->status)->toBe('pendiente');
+});
+
+it('una salida programada del mismo guía a menos de 6 horas bloquea la asignación (OPS-BR-21)', function () {
+    actingAsSeed('U05');
+    $assignment = opsAsgFind('OP-2026-0414', '2026-10-02', '04:30:00');
+    $guide = idOf('ops_guides', 'G05');
+    $departure = withinTenant(tenantA(), fn () => DB::table('catalog_product_departures')->where('status', '<>', 'cancelada')->orderBy('departure_date')->first(['id']));
+    withinTenant(tenantA(), fn () => DB::table('catalog_product_departures')->where('id', $departure->id)->update(['departure_date' => '2026-10-02', 'departure_time' => '07:00', 'guide_id' => $guide]));
+
+    $response = $this->putJson("/api/v1/ops/assignments/{$assignment->id}/resources", ['guide_id' => $guide, 'ack_warnings' => true], critical((int) $assignment->lock_version));
+
+    expect($response)->toBeApiError(409, 'OPS-BR-21')
+        ->and(json_encode($response->json(), JSON_UNESCAPED_UNICODE))->toContain('salida programada');
 });

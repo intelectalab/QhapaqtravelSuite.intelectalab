@@ -8,6 +8,7 @@ import { rememberScreen } from "@/lib/recentScreens";
 import { useStoredValue } from "@/lib/useStoredValue";
 import { FeatureLocked } from "./FeatureLocked";
 import { NoAccess } from "./NoAccess";
+import { ReadOnlyBar } from "./ReadOnlyBar";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { useWorkspace } from "./Workspace";
@@ -43,7 +44,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="relative flex min-w-0 flex-1 flex-col overflow-y-auto">
         <div className="ambient-glow pointer-events-none absolute inset-x-0 top-0 h-[420px]" />
-        <Topbar onOpenMenu={() => setMobileOpen(true)} />
+        <div className="sticky top-0 z-30">
+          {navigation === "agency" && <ReadOnlyBar />}
+          <Topbar onOpenMenu={() => setMobileOpen(true)} />
+        </div>
         <main className="relative w-full flex-1 px-4 pb-12 sm:px-6 xl:px-8">
           {!allows(pathname) ? <NoAccess home={home} path={pathname} requestable={navigation === "agency"} /> : locked ? <FeatureLocked feature={locked} home={home} canManagePlan={allows("/admin/suscripcion")} /> : children}
         </main>

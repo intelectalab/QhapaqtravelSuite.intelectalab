@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Operations\Actions;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Operations\Support\OpsMail;
 use App\Domain\Operations\Support\RoomTypes;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -132,6 +133,7 @@ final class RoomingWorkflow
         $this->ensureConsistent($list);
         DB::table('ops_rooming_lists')->where('id', $list->id)->update(['status' => 'enviada', 'sent_at' => now(), 'sent_by' => $actor->getKey(), 'sent_version' => (int) $list->sent_version + 1, 'hotel_ack_at' => null, 'hotel_ack_by' => null, 'hotel_confirmed_at' => null, 'hotel_confirmed_by' => null, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         $this->audit->log('Rooming list', $list->reservation_code, 'enviar_hotel', $list->status, 'enviada v'.((int) $list->sent_version + 1));
+        app(OpsMail::class)->rooming((string) $list->id);
     }
 
     public function archive(string $listId, User $actor): void

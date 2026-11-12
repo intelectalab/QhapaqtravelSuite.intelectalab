@@ -1,0 +1,17 @@
+{
+  "templateId": "TPL-ANDES",
+  "version": "2.3.0",
+  "chosenBy": "alta",
+  "appliedAt": "2026-06-01 10:00",
+  "appliedBy": "U01",
+  "overrides": {},
+  "history": [
+    {
+      "templateId": "TPL-ANDES",
+      "version": "2.2.0",
+      "from": "2026-03-10",
+      "to": "2026-06-01",
+      "by": "Plataforma (alta)"
+    }
+  ]
+}

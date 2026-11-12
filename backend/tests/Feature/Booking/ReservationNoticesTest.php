@@ -1,39 +1,34 @@
 <?php
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 
-it('la ficha avisa que la solicitud de anulación fue rechazada, con quién, cuándo y la nota', function () {
-    lockSeededBookings();
+function reservationNotices(string $code, string $event): array
+{
+    $id = reservationRow($code)->id;
+
+    return withinTenant(tenantA(), fn () => DB::table('notif_messages')->where('source_type', 'booking_reservation')->where('source_id', $id)->where('event_code', $event)->pluck('recipient_user_id')->map(fn ($user) => (string) $user)->all());
+}
+
+it('la anulación: rechazarla avisa a quien la pidió y pedirla avisa a Gerencia (04 §8)', function () {
+    Queue::fake();
     $request = withinTenant(tenantA(), fn () => DB::table('booking_cancel_requests')->where('reservation_id', reservationRow('RES-2026-000349')->id)->where('status', 'pendiente')->first());
+
     actingAsSeed('U02');
     $this->postJson("/api/v1/reservations/RES-2026-000349/cancel-requests/{$request->id}/reject", ['note' => 'El cliente confirmó que viaja'])->assertOk();
+    expect(reservationNotices('RES-2026-000349', 'reserva.anulacion_rechazada'))->toBe([(string) $request->requested_by]);
 
-    $data = $this->getJson('/api/v1/reservations/RES-2026-000349')->assertOk()->json('data');
-
-    expect($data['cancel_request'])->toBeNull()
-        ->and($data['cancel_rejected']['decision_note'])->toBe('El cliente confirmó que viaja')
-        ->and($data['cancel_rejected']['decided_by'])->toBe(seedUser('U02')->name)
-        ->and($data['cancel_rejected']['decided_at'])->not->toBeNull()
-        ->and($data)->toHaveKey('rescheduled_at');
-});
-
-it('los servicios traen la salida asociada y el historial la IP y la correlación', function () {
-    $quote = approvedQuote('COT-2026-00188');
     actingAsSeed('U03');
-    $code = $this->postJson("/api/v1/quotes/{$quote->code}/convert", [], critical((int) $quote->lock_version, idem('conv')))->assertCreated()->json('data.code');
-
-    $services = collect($this->getJson("/api/v1/reservations/{$code}")->assertOk()->json('data.services'));
-    $history = collect($this->getJson("/api/v1/reservations/{$code}/history")->assertOk()->json('data'));
-
-    expect($services->pluck('departure')->filter()->first())->toStartWith('SAL-')
-        ->and($history->first())->toHaveKeys(['ip', 'correlation']);
+    $this->postJson('/api/v1/reservations/RES-2026-000349/cancel-requests', ['reason' => 'Cambio de planes', 'detail' => 'Pospone el viaje a diciembre'])->assertCreated();
+    expect(reservationNotices('RES-2026-000349', 'reserva.anulacion_solicitada'))->toContain(idOf('iam_users', 'U02'))->not->toContain(idOf('iam_users', 'U03'));
 });
 
-it('la reserva directa muestra en la ficha del producto el mínimo de pasajeros y la edad mínima', function () {
+it('reasignar la reserva avisa al nuevo responsable', function () {
+    Queue::fake();
     actingAsSeed('U01');
+    $target = seedUser('U04')->id;
 
-    $product = collect($this->getJson('/api/v1/reservations/form-options')->assertOk()->json('data.products'))->first();
+    $this->postJson('/api/v1/reservations/RES-2026-000347/reassign', ['owner_id' => $target, 'note' => 'Vacaciones'], critical(reservationLock('RES-2026-000347')))->assertOk();
 
-    expect($product)->toHaveKeys(['min_pax', 'max_pax', 'min_age'])
-        ->and($product['min_pax'])->toBeGreaterThanOrEqual(1);
+    expect(reservationNotices('RES-2026-000347', 'reserva.reasignada'))->toBe([(string) $target]);
 });

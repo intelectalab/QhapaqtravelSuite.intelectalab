@@ -88,6 +88,11 @@ final class ReservationServiceRequests
         return DB::transaction(function () use ($code, $serviceCode, $data, $actor): object {
             $reservation = $this->lifecycle->open($code, $actor);
             $service = $this->service($reservation, $serviceCode);
+
+            if ($service->status === 'pendiente') {
+                throw ApiException::conflict('RES-SERVICE-NOT-REQUESTED', 'El servicio aún no se pidió al proveedor: solicítalo antes de registrar su respuesta.');
+            }
+
             $late = $service->status === 'confirmado';
             $result = $this->responses->reject($service->id, [
                 'reason' => $data['reason'],

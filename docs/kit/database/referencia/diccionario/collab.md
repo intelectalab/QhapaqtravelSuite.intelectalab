@@ -1,10 +1,10 @@
 # Diccionario de datos · Aprobaciones e inbox (collab_)
 
-_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras cargar `00`→`90`. No editar a mano._
+_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.15 tras cargar `00`→`90`. No editar a mano._
 
 Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 
-11 tablas · 178 columnas · 36 claves foráneas. Diagrama ER: [`../er/collab.svg`](../er/collab.svg) (fuente [`../er/collab.mmd`](../er/collab.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
+12 tablas · 194 columnas · 38 claves foráneas. Diagrama ER: [`../er/collab.svg`](../er/collab.svg) (fuente [`../er/collab.mmd`](../er/collab.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
 
 ## Tablas
 
@@ -21,6 +21,7 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 | [`collab_message_attachments`](#collab_message_attachments) | Fase 2 · Canales y campo | tenant | 11 | 2 | [Spec 10 §3.8] [Fase 2] Adjuntos de mensajes. |
 | [`collab_messages`](#collab_messages) | Fase 2 · Canales y campo | tenant | 14 | 4 | [Spec 10 §3.7] [Fase 2] Mensajes de la conversación. |
 | [`collab_reply_templates`](#collab_reply_templates) | Fase 2 · Canales y campo | tenant | 15 | 1 | [Spec 10 §3.9] [Fase 2] Plantillas de respuesta del inbox. |
+| [`collab_whatsapp_templates`](#collab_whatsapp_templates) | Fase 3 · SaaS y crecimiento | tenant | 16 | 2 | [Spec 19 §3.2] [Fase 3] Plantillas de WhatsApp Business aprobadas por Meta por cuenta de canal. |
 
 ## Detalle por tabla
 
@@ -37,7 +38,7 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, collab_approval_requests.tenant_id, tenants.id. |
 | 3 | `request_id` | `uuid` | no |  | FK → collab_approval_requests.id. |
 | 4 | `event` | `character varying(40)` | no |  | Valores: `creada`, `aprobada_nivel`, `aprobada`, `rechazada`, `info_solicitada`, `info_respondida`, `delegada`, `retirada`, `reenviada`, `cerrada_en_origen`, `sla_advertencia`, `sla_vencido`. |
 | 5 | `actor_id` | `uuid` | sí |  | FK → iam_users.id. |
@@ -51,8 +52,8 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `actor_id` | `iam_users.id` | NO ACTION | `fk_collab_approval_events_actor_id` |
-| `request_id` | `collab_approval_requests.id` | NO ACTION | `fk_collab_approval_events_request_id` |
+| `tenant_id, actor_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_collab_approval_events_actor_id` |
+| `tenant_id, request_id` | `collab_approval_requests.tenant_id, id` | NO ACTION | `fk_collab_approval_events_request_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_collab_approval_events_tenant_id` |
 
 **CHECK**
@@ -90,7 +91,7 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, iam_users.tenant_id, collab_approval_requests.tenant_id, tenants.id. |
 | 3 | `request_id` | `uuid` | no |  | FK → collab_approval_requests.id. |
 | 4 | `asked_by` | `uuid` | no |  | FK → iam_users.id. |
 | 5 | `question` | `text` | no |  |  |
@@ -109,9 +110,9 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `answered_by` | `iam_users.id` | NO ACTION | `fk_collab_approval_info_requests_answered_by` |
-| `asked_by` | `iam_users.id` | NO ACTION | `fk_collab_approval_info_requests_asked_by` |
-| `request_id` | `collab_approval_requests.id` | NO ACTION | `fk_collab_approval_info_requests_request_id` |
+| `tenant_id, answered_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_collab_approval_info_requests_answered_by` |
+| `tenant_id, asked_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_collab_approval_info_requests_asked_by` |
+| `tenant_id, request_id` | `collab_approval_requests.tenant_id, id` | NO ACTION | `fk_collab_approval_info_requests_request_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_collab_approval_info_requests_tenant_id` |
 
 **Índices**
@@ -144,7 +145,7 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, iam_users.tenant_id, iam_users.tenant_id, catalog_providers.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `request_type` | `character varying(30)` | no |  | Valores: `quote`, `cancel`, `reversal`, `payable`, `commission`, `provider_rate`, `credit_b2b`, `refund`, `other`. |
 | 5 | `is_generic` | `boolean` | no | `false` |  |
@@ -185,16 +186,17 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `decided_by` | `iam_users.id` | NO ACTION | `fk_collab_approval_requests_decided_by` |
-| `delegated_to` | `iam_users.id` | NO ACTION | `fk_collab_approval_requests_delegated_to` |
-| `requester_id` | `iam_users.id` | NO ACTION | `fk_collab_approval_requests_requester_id` |
-| `requester_supplier_id` | `catalog_providers.id` | NO ACTION | `fk_collab_approval_requests_requester_supplier_id` |
+| `tenant_id, decided_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_collab_approval_requests_decided_by` |
+| `tenant_id, delegated_to` | `iam_users.tenant_id, id` | NO ACTION | `fk_collab_approval_requests_delegated_to` |
+| `tenant_id, requester_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_collab_approval_requests_requester_id` |
+| `tenant_id, requester_supplier_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_collab_approval_requests_requester_supplier_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_collab_approval_requests_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_collab_approval_requests_id` | `tenant_id, id` |  | restricción |
 | `uq_collab_approval_requests_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_collab_approval_requests_tenant_id_dedupe_key_p` | `tenant_id, dedupe_key` | `((status)::text = ANY ((ARRAY['pendiente'::character varying, 'info'::character varying])::text[]))` | índice único |
 
@@ -276,6 +278,7 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_collab_approval_rules_id` | `tenant_id, id` |  | restricción |
 | `uq_collab_approval_rules_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_collab_approval_rules_tenant_id_request_type_level_mi_868e35` | `tenant_id, request_type, level, min_amount_pen` | `(deleted_at IS NULL)` | índice único |
 
@@ -315,7 +318,7 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, collab_approval_requests.tenant_id, collab_approval_rules.tenant_id, tenants.id. |
 | 3 | `request_id` | `uuid` | no |  | FK → collab_approval_requests.id. |
 | 4 | `level` | `smallint` | no |  |  |
 | 5 | `rule_id` | `uuid` | no |  | FK → collab_approval_rules.id. |
@@ -332,9 +335,9 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `decided_by` | `iam_users.id` | NO ACTION | `fk_collab_approval_steps_decided_by` |
-| `request_id` | `collab_approval_requests.id` | NO ACTION | `fk_collab_approval_steps_request_id` |
-| `rule_id` | `collab_approval_rules.id` | NO ACTION | `fk_collab_approval_steps_rule_id` |
+| `tenant_id, decided_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_collab_approval_steps_decided_by` |
+| `tenant_id, request_id` | `collab_approval_requests.tenant_id, id` | NO ACTION | `fk_collab_approval_steps_request_id` |
+| `tenant_id, rule_id` | `collab_approval_rules.tenant_id, id` | NO ACTION | `fk_collab_approval_steps_rule_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_collab_approval_steps_tenant_id` |
 
 **UNIQUE**
@@ -395,6 +398,12 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 |---|---|---|---|
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_collab_channel_accounts_tenant_id` |
 
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_collab_channel_accounts_id` | `tenant_id, id` |  | restricción |
+
 **CHECK**
 
 | Nombre | Definición | Valores permitidos |
@@ -431,7 +440,7 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, collab_channel_accounts.tenant_id, crm_clients.tenant_id, channel_pax_feedback.tenant_id, crm_leads.tenant_id, quote_quotes.tenant_id, booking_reservations.tenant_id, iam_users.tenant_id, channel_support_tickets.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `channel` | `character varying(20)` | no |  | Valores: `whatsapp`, `email`, `webchat`, `form`, `portal`. |
 | 5 | `channel_account_id` | `uuid` | sí |  | FK → collab_channel_accounts.id. |
@@ -469,21 +478,22 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `assignee_id` | `iam_users.id` | NO ACTION | `fk_collab_conversations_assignee_id` |
-| `channel_account_id` | `collab_channel_accounts.id` | NO ACTION | `fk_collab_conversations_channel_account_id` |
-| `client_id` | `crm_clients.id` | NO ACTION | `fk_collab_conversations_client_id` |
-| `feedback_id` | `channel_pax_feedback.id` | NO ACTION | `fk_collab_conversations_feedback_id` |
-| `lead_id` | `crm_leads.id` | NO ACTION | `fk_collab_conversations_lead_id` |
-| `quote_id` | `quote_quotes.id` | NO ACTION | `fk_collab_conversations_quote_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_collab_conversations_reservation_id` |
-| `resolved_by` | `iam_users.id` | NO ACTION | `fk_collab_conversations_resolved_by` |
-| `support_ticket_id` | `channel_support_tickets.id` | NO ACTION | `fk_collab_conversations_support_ticket_id` |
+| `tenant_id, assignee_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_collab_conversations_assignee_id` |
+| `tenant_id, channel_account_id` | `collab_channel_accounts.tenant_id, id` | NO ACTION | `fk_collab_conversations_channel_account_id` |
+| `tenant_id, client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_collab_conversations_client_id` |
+| `tenant_id, feedback_id` | `channel_pax_feedback.tenant_id, id` | NO ACTION | `fk_collab_conversations_feedback_id` |
+| `tenant_id, lead_id` | `crm_leads.tenant_id, id` | NO ACTION | `fk_collab_conversations_lead_id` |
+| `tenant_id, quote_id` | `quote_quotes.tenant_id, id` | NO ACTION | `fk_collab_conversations_quote_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_collab_conversations_reservation_id` |
+| `tenant_id, resolved_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_collab_conversations_resolved_by` |
+| `tenant_id, support_ticket_id` | `channel_support_tickets.tenant_id, id` | NO ACTION | `fk_collab_conversations_support_ticket_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_collab_conversations_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_collab_conversations_id` | `tenant_id, id` |  | restricción |
 | `uq_collab_conversations_support_ticket_id_p` | `support_ticket_id` | `(support_ticket_id IS NOT NULL)` | índice único |
 | `uq_collab_conversations_tenant_id_channel_external_thread_id_p` | `tenant_id, channel, external_thread_id` | `(external_thread_id IS NOT NULL)` | índice único |
 | `uq_collab_conversations_tenant_id_code` | `tenant_id, code` |  | índice único |
@@ -591,7 +601,7 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → collab_messages.tenant_id, tenants.id. |
 | 3 | `message_id` | `uuid` | no |  | FK → collab_messages.id. |
 | 4 | `file_name` | `character varying(200)` | no |  |  |
 | 5 | `mime` | `character varying(100)` | no |  |  |
@@ -608,7 +618,7 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `message_id` | `collab_messages.id` | NO ACTION | `fk_collab_message_attachments_message_id` |
+| `tenant_id, message_id` | `collab_messages.tenant_id, id` | NO ACTION | `fk_collab_message_attachments_message_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_collab_message_attachments_tenant_id` |
 
 **CHECK**
@@ -640,7 +650,7 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, collab_conversations.tenant_id, collab_reply_templates.tenant_id, tenants.id. |
 | 3 | `conversation_id` | `uuid` | no |  | FK → collab_conversations.id. |
 | 4 | `channel` | `character varying(20)` | no |  | Valores: `whatsapp`, `email`, `webchat`, `form`, `portal`. |
 | 5 | `direction` | `character varying(10)` | no |  | Valores: `in`, `out`, `internal`, `system`. |
@@ -660,15 +670,16 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `author_user_id` | `iam_users.id` | NO ACTION | `fk_collab_messages_author_user_id` |
-| `conversation_id` | `collab_conversations.id` | NO ACTION | `fk_collab_messages_conversation_id` |
-| `template_id` | `collab_reply_templates.id` | NO ACTION | `fk_collab_messages_template_id` |
+| `tenant_id, author_user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_collab_messages_author_user_id` |
+| `tenant_id, conversation_id` | `collab_conversations.tenant_id, id` | NO ACTION | `fk_collab_messages_conversation_id` |
+| `tenant_id, template_id` | `collab_reply_templates.tenant_id, id` | NO ACTION | `fk_collab_messages_template_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_collab_messages_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_collab_messages_id` | `tenant_id, id` |  | restricción |
 | `uq_collab_messages_tenant_id_channel_external_message_id_p` | `tenant_id, channel, external_message_id` | `(external_message_id IS NOT NULL)` | índice único |
 
 **CHECK**
@@ -730,6 +741,7 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_collab_reply_templates_id` | `tenant_id, id` |  | restricción |
 | `uq_collab_reply_templates_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **Índices**
@@ -743,5 +755,72 @@ Reglas y solicitudes de aprobación, conversaciones omnicanal y mensajes.
 | Nombre | Momento y evento | Función |
 |---|---|---|
 | `trg_collab_reply_templates_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `collab_whatsapp_templates`
+
+[Spec 19 §3.2] [Fase 3] Plantillas de WhatsApp Business aprobadas por Meta por cuenta de canal.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Aprobaciones e inbox (collab_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → collab_channel_accounts.tenant_id, tenants.id. |
+| 3 | `channel_account_id` | `uuid` | no |  | FK → collab_channel_accounts.id. |
+| 4 | `name` | `character varying(80)` | no |  |  |
+| 5 | `lang` | `character varying(10)` | no | `'es'::character varying` |  |
+| 6 | `category` | `character varying(20)` | no |  | Valores: `utility`, `marketing`, `authentication`. |
+| 7 | `purpose` | `character varying(30)` | no |  | Valores: `cotizacion`, `link_pago`, `voucher`, `recordatorio`, `recuperacion`, `resena`, `otro`. |
+| 8 | `body` | `text` | no |  |  |
+| 9 | `variables` | `text[]` | no | `'{}'::text[]` |  |
+| 10 | `meta_template_id` | `character varying(60)` | sí |  |  |
+| 11 | `status` | `character varying(12)` | no | `'borrador'::character varying` | Valores: `borrador`, `enviada`, `aprobada`, `rechazada`, `pausada`. |
+| 12 | `rejected_reason` | `text` | sí |  |  |
+| 13 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
+| 14 | `updated_by` | `uuid` | sí |  | Usuario de la última actualización (sin FK). |
+| 15 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 16 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, channel_account_id` | `collab_channel_accounts.tenant_id, id` | NO ACTION | `fk_collab_whatsapp_templates_channel_account_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_collab_whatsapp_templates_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_collab_whatsapp_templates_account_name_lang` | `channel_account_id, name, lang` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `collab_whatsapp_templates_category_check` | `CHECK (((category)::text = ANY ((ARRAY['utility'::character varying, 'marketing'::character varying, 'authentication'::character varying])::text[])))` | `category`: `utility`, `marketing`, `authentication` |
+| `collab_whatsapp_templates_name_check` | `CHECK (((name)::text ~ '^[a-z0-9_]{1,80}$'::text))` |  |
+| `collab_whatsapp_templates_purpose_check` | `CHECK (((purpose)::text = ANY ((ARRAY['cotizacion'::character varying, 'link_pago'::character varying, 'voucher'::character varying, 'recordatorio'::character varying, 'recuperacion'::character varying, 'resena'::character varying, 'otro'::character varying])::text[])))` | `purpose`: `cotizacion`, `link_pago`, `voucher`, `recordatorio`, `recuperacion`, `resena`, `otro` |
+| `collab_whatsapp_templates_status_check` | `CHECK (((status)::text = ANY ((ARRAY['borrador'::character varying, 'enviada'::character varying, 'aprobada'::character varying, 'rechazada'::character varying, 'pausada'::character varying])::text[])))` | `status`: `borrador`, `enviada`, `aprobada`, `rechazada`, `pausada` |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_collab_whatsapp_templates_tenant_id_status` | `USING btree (tenant_id, status)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_collab_whatsapp_templates_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
 
 [↑ Índice del dominio](#tablas)

@@ -44,7 +44,7 @@ final class AfterSalesDirectory
             'trips' => $trips->values(),
             'surveys' => $surveys->values(),
             'cases' => $cases->values(),
-            'clients' => Portfolio::scope(DB::table('crm_clients')->whereNull('deleted_at'), $viewer, 'owner_id')->orderBy('name')->get(['code', 'name'])->map(fn (object $row): array => ['value' => $row->code, 'label' => $row->name])->values(),
+            'clients' => Portfolio::clients(DB::table('crm_clients')->whereNull('deleted_at'), $viewer)->orderBy('name')->get(['code', 'name'])->map(fn (object $row): array => ['value' => $row->code, 'label' => $row->name])->values(),
             'channels' => $this->catalog('survey_channel'),
             'case_types' => $this->catalog('case_type'),
             'owners' => Portfolio::ownOnly($viewer) ? [] : $this->advisors->all()->values(),
@@ -103,7 +103,7 @@ final class AfterSalesDirectory
 
     private function cases(User $viewer): Collection
     {
-        $rows = Portfolio::scope(DB::table('crm_cases as k')->where('k.is_book', false), $viewer, 'k.owner_id')
+        $rows = Portfolio::scope(DB::table('crm_cases as k'), $viewer, 'k.owner_id')
             ->leftJoin('crm_clients as c', 'c.id', '=', 'k.client_id')
             ->leftJoin('booking_reservations as r', 'r.id', '=', 'k.reservation_id')
             ->leftJoin('crm_surveys as s', 's.id', '=', 'k.survey_id')
@@ -111,13 +111,14 @@ final class AfterSalesDirectory
             ->leftJoin('crm_catalog_items as t', fn ($join) => $join->on('t.code', '=', 'k.type_code')->where('t.kind', '=', 'case_type'))
             ->orderByRaw("case k.status when 'abierta' then 0 when 'en_proceso' then 1 when 'resuelta' then 2 else 3 end")
             ->orderByDesc('k.created_at')
-            ->get(['k.id', 'k.code', 'k.lock_version', 'k.type_code', 'k.priority', 'k.subject', 'k.description', 'k.status', 'k.origin', 'k.resolution', 'k.created_at', 'k.resolved_at', 'k.closed_at', 'k.owner_id', 'c.code as client_code', 'c.name as client', 'r.code as reservation', 's.code as survey', 's.score', 'u.name as owner', 't.label as type']);
+            ->get(['k.id', 'k.code', 'k.is_book', 'k.lock_version', 'k.type_code', 'k.priority', 'k.subject', 'k.description', 'k.status', 'k.origin', 'k.resolution', 'k.created_at', 'k.resolved_at', 'k.closed_at', 'k.owner_id', 'c.code as client_code', 'c.name as client', 'r.code as reservation', 's.code as survey', 's.score', 'u.name as owner', 't.label as type']);
         $events = DB::table('crm_case_events as e')->leftJoin('iam_users as u', 'u.id', '=', 'e.user_id')->whereIn('e.case_id', $rows->pluck('id'))->orderBy('e.created_at')
             ->get(['e.case_id', 'e.event', 'e.message', 'e.created_at', 'u.name'])->groupBy('case_id');
 
         return $rows->map(fn (object $row): array => [
             'code' => $row->code,
             'lock_version' => (int) $row->lock_version,
+            'is_book' => (bool) $row->is_book,
             'type_code' => $row->type_code,
             'type' => $row->type ?? $row->type_code,
             'priority' => $row->priority,

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "DOM-01",
+    "host": "www.andeshorizonte.pe",
+    "kind": "principal",
+    "status": "verificado",
+    "dns": "CNAME → sites.kipucontrol.com",
+    "ssl": "emitido",
+    "sslUntil": "2026-12-28",
+    "verifiedAt": "2026-04-03"
+  },
+  {
+    "id": "DOM-02",
+    "host": "reservas.andeshorizonte.pe",
+    "kind": "reservas",
+    "status": "verificado",
+    "dns": "CNAME → sites.kipucontrol.com",
+    "ssl": "emitido",
+    "sslUntil": "2026-12-28",
+    "verifiedAt": "2026-04-03"
+  },
+  {
+    "id": "DOM-03",
+    "host": "blog.andeshorizonte.pe",
+    "kind": "blog",
+    "status": "pendiente_dns",
+    "dns": "TXT kipu-verify=ah-7f21c9 · CNAME → sites.kipucontrol.com",
+    "ssl": "pendiente",
+    "sslUntil": null,
+    "verifiedAt": null
+  }
+]

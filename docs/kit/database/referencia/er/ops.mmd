@@ -7,7 +7,8 @@ erDiagram
     uuid undone_by FK
   }
   ops_assignments {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid order_id FK
     uuid reservation_service_id FK
     date service_date
@@ -16,8 +17,17 @@ erDiagram
     uuid vehicle_id FK
     varchar status
   }
-  ops_drivers {
+  ops_checkin_passes {
     uuid id PK
+    uuid reservation_id FK
+    uuid passenger_id FK
+    uuid service_id FK
+    char token_hash UK
+    varchar status
+    uuid scanned_by FK
+  }
+  ops_drivers {
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid user_id FK
@@ -33,7 +43,7 @@ erDiagram
     uuid removed_by FK
   }
   ops_guides {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid user_id FK
@@ -52,7 +62,7 @@ erDiagram
     uuid user_id FK
   }
   ops_incidents {
-    uuid id PK
+    uuid id PK,UK
     uuid order_id FK
     uuid reservation_id FK
     uuid reservation_service_id FK
@@ -68,7 +78,8 @@ erDiagram
     otras mas_1_columnas
   }
   ops_mobile_devices {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid user_id FK
   }
   ops_order_tasks {
@@ -78,7 +89,7 @@ erDiagram
     uuid done_by FK
   }
   ops_orders {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid reservation_id FK
@@ -94,7 +105,8 @@ erDiagram
     uuid passenger_id FK
   }
   ops_rooming_lists {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid reservation_id FK
     uuid hotel_provider_id FK
     varchar status
@@ -104,14 +116,16 @@ erDiagram
     uuid document_id FK
   }
   ops_rooming_rooms {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid rooming_list_id FK
     uuid hotel_provider_id FK
     varchar status
     uuid incident_id FK
   }
   ops_supplier_requests {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid reservation_service_id FK
     uuid provider_id FK
     varchar status
@@ -148,7 +162,7 @@ erDiagram
     uuid passenger_id FK,UK
   }
   ops_vehicles {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar plate UK
     uuid provider_id FK
@@ -161,7 +175,7 @@ erDiagram
     uuid document_id FK
   }
   ops_vouchers {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid reservation_id FK
@@ -174,6 +188,18 @@ erDiagram
     uuid void_by FK
     varchar qr_token UK
     uuid document_id FK
+  }
+  ops_waiver_signatures {
+    uuid id PK
+    uuid template_id FK
+    uuid reservation_id FK
+    uuid passenger_id FK
+  }
+  ops_waiver_templates {
+    uuid id PK,UK
+    uuid tenant_id UK
+    varchar code
+    varchar name
   }
   booking_passengers {
     uuid id PK
@@ -193,68 +219,75 @@ erDiagram
   sys_documents {
     uuid id PK
   }
-  booking_passengers ||--o{ ops_assignment_checkins : "passenger_id"
-  booking_passengers ||--o{ ops_rooming_guests : "passenger_id"
-  booking_passengers ||--o| ops_travel_doc_contacts : "passenger_id"
-  booking_passengers ||--o{ ops_travel_doc_items : "passenger_id"
-  booking_passengers ||--o| ops_travel_doc_special : "passenger_id"
-  booking_reservation_services ||--o{ ops_assignments : "reservation_service_id"
-  booking_reservation_services |o--o{ ops_evidences : "reservation_service_id"
-  booking_reservation_services |o--o{ ops_incidents : "reservation_service_id"
-  booking_reservation_services ||--o{ ops_supplier_requests : "reservation_service_id"
-  booking_reservation_services ||--o{ ops_vouchers : "reservation_service_id"
-  booking_reservations |o--o{ ops_incidents : "reservation_id"
-  booking_reservations ||--o{ ops_orders : "reservation_id"
-  booking_reservations ||--o{ ops_rooming_lists : "reservation_id"
-  booking_reservations ||--o{ ops_travel_doc_items : "reservation_id"
-  booking_reservations ||--o{ ops_travel_doc_reminders : "reservation_id"
-  booking_reservations ||--o{ ops_vouchers : "reservation_id"
-  catalog_providers |o--o{ ops_drivers : "provider_id"
-  catalog_providers |o--o{ ops_guides : "provider_id"
-  catalog_providers |o--o{ ops_incidents : "provider_id"
-  catalog_providers |o--o{ ops_rooming_lists : "hotel_provider_id"
-  catalog_providers |o--o{ ops_rooming_rooms : "hotel_provider_id"
-  catalog_providers ||--o{ ops_supplier_requests : "provider_id"
-  catalog_providers |o--o{ ops_vehicles : "provider_id"
-  catalog_providers ||--o{ ops_vouchers : "provider_id"
-  iam_users |o--o{ ops_assignment_checkins : "undone_by"
-  iam_users |o--o{ ops_drivers : "user_id"
-  iam_users ||--o{ ops_evidences : "removed_by, uploaded_by"
-  iam_users |o--o{ ops_guides : "user_id"
-  iam_users |o--o{ ops_incident_logs : "user_id"
-  iam_users ||--o{ ops_incident_pax_acks : "user_id"
+  booking_passengers ||--o{ ops_assignment_checkins : "passenger_id, tenant_id"
+  booking_passengers ||--o{ ops_checkin_passes : "passenger_id, tenant_id"
+  booking_passengers ||--o{ ops_rooming_guests : "passenger_id, tenant_id"
+  booking_passengers ||--o{ ops_travel_doc_contacts : "passenger_id, tenant_id"
+  booking_passengers ||--o{ ops_travel_doc_items : "passenger_id, tenant_id"
+  booking_passengers ||--o{ ops_travel_doc_special : "passenger_id, tenant_id"
+  booking_passengers ||--o{ ops_waiver_signatures : "passenger_id, tenant_id"
+  booking_reservation_services ||--o{ ops_assignments : "reservation_service_id, tenant_id"
+  booking_reservation_services ||--o{ ops_checkin_passes : "service_id, tenant_id"
+  booking_reservation_services ||--o{ ops_evidences : "reservation_service_id, tenant_id"
+  booking_reservation_services ||--o{ ops_incidents : "reservation_service_id, tenant_id"
+  booking_reservation_services ||--o{ ops_supplier_requests : "reservation_service_id, tenant_id"
+  booking_reservation_services ||--o{ ops_vouchers : "reservation_service_id, tenant_id"
+  booking_reservations ||--o{ ops_checkin_passes : "reservation_id, tenant_id"
+  booking_reservations ||--o{ ops_incidents : "reservation_id, tenant_id"
+  booking_reservations ||--o{ ops_orders : "reservation_id, tenant_id"
+  booking_reservations ||--o{ ops_rooming_lists : "reservation_id, tenant_id"
+  booking_reservations ||--o{ ops_travel_doc_items : "reservation_id, tenant_id"
+  booking_reservations ||--o{ ops_travel_doc_reminders : "reservation_id, tenant_id"
+  booking_reservations ||--o{ ops_vouchers : "reservation_id, tenant_id"
+  booking_reservations ||--o{ ops_waiver_signatures : "reservation_id, tenant_id"
+  catalog_providers ||--o{ ops_drivers : "provider_id, tenant_id"
+  catalog_providers ||--o{ ops_guides : "provider_id, tenant_id"
+  catalog_providers ||--o{ ops_incidents : "provider_id, tenant_id"
+  catalog_providers ||--o{ ops_rooming_lists : "hotel_provider_id, tenant_id"
+  catalog_providers ||--o{ ops_rooming_rooms : "hotel_provider_id, tenant_id"
+  catalog_providers ||--o{ ops_supplier_requests : "provider_id, tenant_id"
+  catalog_providers ||--o{ ops_vehicles : "provider_id, tenant_id"
+  catalog_providers ||--o{ ops_vouchers : "provider_id, tenant_id"
+  iam_users ||--o{ ops_assignment_checkins : "tenant_id, undone_by"
+  iam_users ||--o{ ops_checkin_passes : "scanned_by, tenant_id"
+  iam_users ||--o{ ops_drivers : "tenant_id, user_id"
+  iam_users ||--o{ ops_evidences : "removed_by, tenant_id, uploaded_by"
+  iam_users ||--o{ ops_guides : "tenant_id, user_id"
+  iam_users ||--o{ ops_incident_logs : "tenant_id, user_id"
+  iam_users ||--o{ ops_incident_pax_acks : "tenant_id, user_id"
   iam_users ||--o{ ops_incidents : "assignee_id, closed_by, reported_by, ..."
-  iam_users ||--o{ ops_mobile_devices : "user_id"
-  iam_users |o--o{ ops_order_tasks : "done_by"
-  iam_users ||--o{ ops_orders : "closed_by, coordinator_id"
-  iam_users |o--o{ ops_rooming_lists : "hotel_ack_by, hotel_confirmed_by, sen..."
-  iam_users ||--o{ ops_supplier_requests : "requested_by, responded_by_user_id"
-  iam_users ||--o{ ops_sync_actions : "user_id"
-  iam_users |o--o{ ops_travel_doc_items : "validated_by"
-  iam_users |o--o{ ops_travel_doc_reminders : "sent_by"
-  iam_users |o--o{ ops_voucher_versions : "issued_by"
-  iam_users |o--o{ ops_vouchers : "issued_by, used_by, void_by"
-  ops_assignments ||--o{ ops_assignment_checkins : "assignment_id"
-  ops_assignments ||--o{ ops_sync_actions : "assignment_id"
-  ops_drivers |o--o{ ops_assignments : "driver_id"
-  ops_guides |o--o{ ops_assignments : "guide_id"
-  ops_incidents |o--o{ ops_evidences : "incident_id"
-  ops_incidents ||--o{ ops_incident_logs : "incident_id"
-  ops_incidents ||--o{ ops_incident_pax_acks : "incident_id"
-  ops_incidents |o--o{ ops_incidents : "related_incident_id"
-  ops_incidents |o--o{ ops_rooming_rooms : "incident_id"
-  ops_mobile_devices |o--o{ ops_assignment_checkins : "device_id"
-  ops_mobile_devices ||--o{ ops_sync_actions : "device_id"
-  ops_orders ||--o{ ops_assignments : "order_id"
-  ops_orders |o--o{ ops_evidences : "order_id"
-  ops_orders |o--o{ ops_incidents : "order_id"
-  ops_orders ||--o{ ops_order_tasks : "order_id"
-  ops_rooming_lists ||--o{ ops_rooming_guests : "rooming_list_id"
-  ops_rooming_lists ||--o{ ops_rooming_rooms : "rooming_list_id"
-  ops_rooming_rooms ||--o{ ops_rooming_guests : "room_id"
-  ops_vehicles |o--o{ ops_assignments : "vehicle_id"
-  ops_vouchers ||--o{ ops_voucher_versions : "voucher_id"
-  sys_documents |o--o{ ops_rooming_lists : "document_id"
-  sys_documents |o--o{ ops_travel_doc_items : "file_id"
-  sys_documents |o--o{ ops_voucher_versions : "document_id"
-  sys_documents |o--o{ ops_vouchers : "document_id"
+  iam_users ||--o{ ops_mobile_devices : "tenant_id, user_id"
+  iam_users ||--o{ ops_order_tasks : "done_by, tenant_id"
+  iam_users ||--o{ ops_orders : "closed_by, coordinator_id, tenant_id"
+  iam_users ||--o{ ops_rooming_lists : "hotel_ack_by, hotel_confirmed_by, sen..."
+  iam_users ||--o{ ops_supplier_requests : "requested_by, responded_by_user_id, t..."
+  iam_users ||--o{ ops_sync_actions : "tenant_id, user_id"
+  iam_users ||--o{ ops_travel_doc_items : "tenant_id, validated_by"
+  iam_users ||--o{ ops_travel_doc_reminders : "sent_by, tenant_id"
+  iam_users ||--o{ ops_voucher_versions : "issued_by, tenant_id"
+  iam_users ||--o{ ops_vouchers : "issued_by, tenant_id, used_by, void_by"
+  ops_assignments ||--o{ ops_assignment_checkins : "assignment_id, tenant_id"
+  ops_assignments ||--o{ ops_sync_actions : "assignment_id, tenant_id"
+  ops_drivers ||--o{ ops_assignments : "driver_id, tenant_id"
+  ops_guides ||--o{ ops_assignments : "guide_id, tenant_id"
+  ops_incidents ||--o{ ops_evidences : "incident_id, tenant_id"
+  ops_incidents ||--o{ ops_incident_logs : "incident_id, tenant_id"
+  ops_incidents ||--o{ ops_incident_pax_acks : "incident_id, tenant_id"
+  ops_incidents ||--o{ ops_incidents : "related_incident_id, tenant_id"
+  ops_incidents ||--o{ ops_rooming_rooms : "incident_id, tenant_id"
+  ops_mobile_devices ||--o{ ops_assignment_checkins : "device_id, tenant_id"
+  ops_mobile_devices ||--o{ ops_sync_actions : "device_id, tenant_id"
+  ops_orders ||--o{ ops_assignments : "order_id, tenant_id"
+  ops_orders ||--o{ ops_evidences : "order_id, tenant_id"
+  ops_orders ||--o{ ops_incidents : "order_id, tenant_id"
+  ops_orders ||--o{ ops_order_tasks : "order_id, tenant_id"
+  ops_rooming_lists ||--o{ ops_rooming_guests : "rooming_list_id, tenant_id"
+  ops_rooming_lists ||--o{ ops_rooming_rooms : "rooming_list_id, tenant_id"
+  ops_rooming_rooms ||--o{ ops_rooming_guests : "room_id, tenant_id"
+  ops_vehicles ||--o{ ops_assignments : "tenant_id, vehicle_id"
+  ops_vouchers ||--o{ ops_voucher_versions : "tenant_id, voucher_id"
+  ops_waiver_templates ||--o{ ops_waiver_signatures : "template_id, tenant_id"
+  sys_documents ||--o{ ops_rooming_lists : "document_id, tenant_id"
+  sys_documents ||--o{ ops_travel_doc_items : "file_id, tenant_id"
+  sys_documents ||--o{ ops_voucher_versions : "document_id, tenant_id"
+  sys_documents ||--o{ ops_vouchers : "document_id, tenant_id"

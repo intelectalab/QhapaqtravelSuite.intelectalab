@@ -1,4 +1,4 @@
-import { Building2, Check, Headset, Hourglass, Infinity as InfinityIcon, Lock, Minus, PackagePlus, Sparkles, Ticket } from "lucide-react";
+import { Building2, Check, ChevronDown, Headset, Hourglass, Infinity as InfinityIcon, Lock, Minus, PackagePlus, Sparkles, Ticket } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -122,23 +122,31 @@ export default async function PlanPage({ params }: PageProps<"/plataforma/planes
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {plan.rules.map((group) => (
             <div key={group.group} className={cn("rounded-[14px] p-3.5", SOFT_TINT)}>
-              <p className="mb-2 flex items-center justify-between text-[13px] font-bold">
+              <p className="flex items-center justify-between text-[13px] font-bold">
                 {group.group}
                 <span className="font-mono text-xs font-semibold text-[var(--tint)]">
                   {group.rules.filter((rule) => rule.included).length}/{group.rules.length}
                 </span>
               </p>
-              <ul className="flex flex-col gap-1.5">
-                {group.rules.map((rule) => (
-                  <li key={rule.code} title={rule.description} className={cn("flex items-start gap-2 text-[12.5px]", !rule.included && "text-fg-3")}>
-                    {rule.included ? <Check size={14} strokeWidth={2.6} className="mt-px flex-none text-[var(--tint)]" /> : <Lock size={13} className="mt-0.5 flex-none" />}
-                    <span>
-                      {rule.name}
-                      {!rule.included && <span className="block text-[11px]">Desde {rule.from}</span>}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-surface">
+                <span className="block h-full rounded-full bg-[var(--tint)]" style={{ width: `${(group.rules.filter((rule) => rule.included).length / Math.max(group.rules.length, 1)) * 100}%` }} />
+              </span>
+              <details className="group/rules mt-2">
+                <summary className="flex cursor-pointer list-none items-center gap-1 text-[12px] font-semibold text-fg-2">
+                  <ChevronDown size={13} className="transition group-open/rules:rotate-180" /> Ver reglas
+                </summary>
+                <ul className="mt-2 flex flex-col gap-1.5">
+                  {group.rules.map((rule) => (
+                    <li key={rule.code} title={rule.description} className={cn("flex items-start gap-2 text-[12.5px]", !rule.included && "text-fg-3")}>
+                      {rule.included ? <Check size={14} strokeWidth={2.6} className="mt-px flex-none text-[var(--tint)]" /> : <Lock size={13} className="mt-0.5 flex-none" />}
+                      <span>
+                        {rule.name}
+                        {!rule.included && <span className="block text-[11px]">Desde {rule.from}</span>}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             </div>
           ))}
         </div>
@@ -188,11 +196,27 @@ function PlanHero({ plan }: { plan: PlanDetail }) {
 function FeatureGroups({ features }: { features: PlanDetail["features"] }) {
   const groups = [...new Set(features.map((feature) => feature.group ?? "Otros"))];
   return (
-    <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
-      {groups.map((group) => (
-        <div key={group}>
-          <span className="mb-1.5 inline-block rounded-md bg-[color-mix(in_srgb,var(--tint)_12%,transparent)] px-2 py-0.5 text-[11.5px] font-bold text-[var(--tint)]">{group}</span>
-          <ul className="flex flex-col">
+    <div className="grid gap-3 md:grid-cols-2">
+      {groups.map((group) => {
+        const own = features.filter((feature) => (feature.group ?? "Otros") === group);
+        const included = own.filter((feature) => feature.value !== null).length;
+        return (
+        <details key={group} className={cn("group/feat rounded-[14px] p-3.5", SOFT_TINT)}>
+          <summary className="cursor-pointer list-none">
+            <span className="flex items-center justify-between text-[13px] font-bold">
+              <span className="flex items-center gap-1.5">
+                <ChevronDown size={13} className="transition group-open/feat:rotate-180" />
+                {group}
+              </span>
+              <span className="font-mono text-xs font-semibold text-[var(--tint)]">
+                {included}/{own.length}
+              </span>
+            </span>
+            <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-surface">
+              <span className="block h-full rounded-full bg-[var(--tint)]" style={{ width: `${(included / Math.max(own.length, 1)) * 100}%` }} />
+            </span>
+          </summary>
+          <ul className="mt-2 flex flex-col">
             {features
               .filter((feature) => (feature.group ?? "Otros") === group)
               .map((feature) => {
@@ -209,8 +233,9 @@ function FeatureGroups({ features }: { features: PlanDetail["features"] }) {
                 );
               })}
           </ul>
-        </div>
-      ))}
+        </details>
+        );
+      })}
     </div>
   );
 }

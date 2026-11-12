@@ -1,10 +1,10 @@
 # Diccionario de datos · Operaciones (ops_)
 
-_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras cargar `00`→`90`. No editar a mano._
+_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.15 tras cargar `00`→`90`. No editar a mano._
 
 Órdenes operativas, asignaciones, recursos, rooming, vouchers, incidencias, móvil y documentos de viaje.
 
-23 tablas · 374 columnas · 98 claves foráneas. Diagrama ER: [`../er/ops.svg`](../er/ops.svg) (fuente [`../er/ops.mmd`](../er/ops.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
+26 tablas · 414 columnas · 108 claves foráneas. Diagrama ER: [`../er/ops.svg`](../er/ops.svg) (fuente [`../er/ops.mmd`](../er/ops.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
 
 ## Tablas
 
@@ -33,6 +33,9 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | [`ops_travel_doc_items`](#ops_travel_doc_items) | Fase 2 · Canales y campo | tenant | 20 | 5 | [Spec 11 §3.7] [Fase 2] Checklist documental por pasajero. |
 | [`ops_travel_doc_reminders`](#ops_travel_doc_reminders) | Fase 2 · Canales y campo | tenant | 12 | 3 | [Spec 11 §3.9] [Fase 2] Recordatorios documentales enviados. |
 | [`ops_travel_doc_special`](#ops_travel_doc_special) | Fase 2 · Canales y campo | tenant | 9 | 2 | [Spec 11 §3.8] [Fase 2] Atención especial (sin datos clínicos; acceso restringido). |
+| [`ops_checkin_passes`](#ops_checkin_passes) | Fase 3 · SaaS y crecimiento | tenant | 13 | 5 | [Spec 19 §3.10] [Fase 3] Pases QR de check-in por pasajero y servicio. |
+| [`ops_waiver_signatures`](#ops_waiver_signatures) | Fase 3 · SaaS y crecimiento | tenant | 14 | 4 | [Spec 19 §3.10] [Fase 3] Firmas del deslinde por pasajero (append-only, con hash del texto firmado). |
+| [`ops_waiver_templates`](#ops_waiver_templates) | Fase 3 · SaaS y crecimiento | tenant | 13 | 1 | [Spec 19 §3.10] [Fase 3] Textos de deslinde de responsabilidad versionados. |
 
 ## Detalle por tabla
 
@@ -49,7 +52,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → ops_assignments.tenant_id, ops_mobile_devices.tenant_id, booking_passengers.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `assignment_id` | `uuid` | no |  | FK → ops_assignments.id. |
 | 4 | `passenger_id` | `uuid` | no |  | FK → booking_passengers.id. |
 | 5 | `checked_at` | `timestamp with time zone` | no |  |  |
@@ -69,11 +72,11 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `assignment_id` | `ops_assignments.id` | NO ACTION | `fk_ops_assignment_checkins_assignment_id` |
-| `device_id` | `ops_mobile_devices.id` | NO ACTION | `fk_ops_assignment_checkins_device_id` |
-| `passenger_id` | `booking_passengers.id` | NO ACTION | `fk_ops_assignment_checkins_passenger_id` |
+| `tenant_id, assignment_id` | `ops_assignments.tenant_id, id` | NO ACTION | `fk_ops_assignment_checkins_assignment_id` |
+| `tenant_id, device_id` | `ops_mobile_devices.tenant_id, id` | NO ACTION | `fk_ops_assignment_checkins_device_id` |
+| `tenant_id, passenger_id` | `booking_passengers.tenant_id, id` | NO ACTION | `fk_ops_assignment_checkins_passenger_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_assignment_checkins_tenant_id` |
-| `undone_by` | `iam_users.id` | NO ACTION | `fk_ops_assignment_checkins_undone_by` |
+| `tenant_id, undone_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_assignment_checkins_undone_by` |
 
 **UNIQUE**
 
@@ -118,7 +121,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → ops_drivers.tenant_id, ops_guides.tenant_id, ops_orders.tenant_id, booking_reservation_services.tenant_id, tenants.id, ops_vehicles.tenant_id. |
 | 3 | `order_id` | `uuid` | no |  | FK → ops_orders.id. |
 | 4 | `reservation_service_id` | `uuid` | no |  | FK → booking_reservation_services.id. |
 | 5 | `service_date` | `date` | no |  |  |
@@ -127,7 +130,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | 8 | `guide_id` | `uuid` | sí |  | FK → ops_guides.id. |
 | 9 | `driver_id` | `uuid` | sí |  | FK → ops_drivers.id. |
 | 10 | `vehicle_id` | `uuid` | sí |  | FK → ops_vehicles.id. |
-| 11 | `status` | `character varying(30)` | no | `'pendiente'::character varying` | Valores: `pendiente`, `asignada`, `confirmada`, `en_curso`, `completada`. |
+| 11 | `status` | `character varying(30)` | no | `'pendiente'::character varying` | Valores: `pendiente`, `asignada`, `confirmada`, `en_curso`, `completada`, `cancelada`. |
 | 12 | `confirmed_at` | `timestamp with time zone` | sí |  |  |
 | 13 | `confirmed_via` | `character varying(10)` | sí |  | Valores: `web`, `app`. |
 | 14 | `started_at` | `timestamp with time zone` | sí |  |  |
@@ -146,17 +149,18 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `driver_id` | `ops_drivers.id` | NO ACTION | `fk_ops_assignments_driver_id` |
-| `guide_id` | `ops_guides.id` | NO ACTION | `fk_ops_assignments_guide_id` |
-| `order_id` | `ops_orders.id` | NO ACTION | `fk_ops_assignments_order_id` |
-| `reservation_service_id` | `booking_reservation_services.id` | NO ACTION | `fk_ops_assignments_reservation_service_id` |
+| `tenant_id, driver_id` | `ops_drivers.tenant_id, id` | NO ACTION | `fk_ops_assignments_driver_id` |
+| `tenant_id, guide_id` | `ops_guides.tenant_id, id` | NO ACTION | `fk_ops_assignments_guide_id` |
+| `tenant_id, order_id` | `ops_orders.tenant_id, id` | NO ACTION | `fk_ops_assignments_order_id` |
+| `tenant_id, reservation_service_id` | `booking_reservation_services.tenant_id, id` | NO ACTION | `fk_ops_assignments_reservation_service_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_assignments_tenant_id` |
-| `vehicle_id` | `ops_vehicles.id` | NO ACTION | `fk_ops_assignments_vehicle_id` |
+| `tenant_id, vehicle_id` | `ops_vehicles.tenant_id, id` | NO ACTION | `fk_ops_assignments_vehicle_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_ops_assignments_id` | `tenant_id, id` |  | restricción |
 | `uq_ops_assignments_tenant_id_order_id_reservation_service_id` | `tenant_id, order_id, reservation_service_id` |  | índice único |
 
 **CHECK**
@@ -165,7 +169,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 |---|---|---|
 | `ck_ops_assignments_1` | `CHECK ((((status)::text = 'pendiente'::text) OR (guide_id IS NOT NULL) OR (driver_id IS NOT NULL) OR (vehicle_id IS NOT NULL)))` |  |
 | `ops_assignments_confirmed_via_check` | `CHECK (((confirmed_via IS NULL) OR ((confirmed_via)::text = ANY ((ARRAY['web'::character varying, 'app'::character varying])::text[]))))` | `confirmed_via`: `web`, `app` |
-| `ops_assignments_status_check` | `CHECK (((status)::text = ANY ((ARRAY['pendiente'::character varying, 'asignada'::character varying, 'confirmada'::character varying, 'en_curso'::character varying, 'completada'::character varying])::text[])))` | `status`: `pendiente`, `asignada`, `confirmada`, `en_curso`, `completada` |
+| `ops_assignments_status_check` | `CHECK (((status)::text = ANY ((ARRAY['pendiente'::character varying, 'asignada'::character varying, 'confirmada'::character varying, 'en_curso'::character varying, 'completada'::character varying, 'cancelada'::character varying])::text[])))` | `status`: `pendiente`, `asignada`, `confirmada`, `en_curso`, `completada`, `cancelada` |
 
 **Índices**
 
@@ -203,7 +207,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_providers.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `user_id` | `uuid` | sí |  | FK → iam_users.id. |
 | 5 | `provider_id` | `uuid` | sí |  | FK → catalog_providers.id. |
@@ -226,14 +230,15 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_ops_drivers_provider_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_ops_drivers_provider_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_drivers_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_ops_drivers_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_drivers_user_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_ops_drivers_id` | `tenant_id, id` |  | restricción |
 | `uq_ops_drivers_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_ops_drivers_tenant_id_user_id_p` | `tenant_id, user_id` | `(user_id IS NOT NULL)` | índice único |
 
@@ -275,7 +280,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → ops_incidents.tenant_id, ops_orders.tenant_id, iam_users.tenant_id, booking_reservation_services.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `order_id` | `uuid` | sí |  | FK → ops_orders.id. |
 | 4 | `reservation_service_id` | `uuid` | sí |  | FK → booking_reservation_services.id. |
 | 5 | `incident_id` | `uuid` | sí |  | FK → ops_incidents.id. |
@@ -303,12 +308,12 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `incident_id` | `ops_incidents.id` | NO ACTION | `fk_ops_evidences_incident_id` |
-| `order_id` | `ops_orders.id` | NO ACTION | `fk_ops_evidences_order_id` |
-| `removed_by` | `iam_users.id` | NO ACTION | `fk_ops_evidences_removed_by` |
-| `reservation_service_id` | `booking_reservation_services.id` | NO ACTION | `fk_ops_evidences_reservation_service_id` |
+| `tenant_id, incident_id` | `ops_incidents.tenant_id, id` | NO ACTION | `fk_ops_evidences_incident_id` |
+| `tenant_id, order_id` | `ops_orders.tenant_id, id` | NO ACTION | `fk_ops_evidences_order_id` |
+| `tenant_id, removed_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_evidences_removed_by` |
+| `tenant_id, reservation_service_id` | `booking_reservation_services.tenant_id, id` | NO ACTION | `fk_ops_evidences_reservation_service_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_evidences_tenant_id` |
-| `uploaded_by` | `iam_users.id` | NO ACTION | `fk_ops_evidences_uploaded_by` |
+| `tenant_id, uploaded_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_evidences_uploaded_by` |
 
 **UNIQUE**
 
@@ -357,7 +362,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_providers.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `user_id` | `uuid` | sí |  | FK → iam_users.id. |
 | 5 | `provider_id` | `uuid` | sí |  | FK → catalog_providers.id. |
@@ -379,14 +384,15 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_ops_guides_provider_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_ops_guides_provider_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_guides_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_ops_guides_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_guides_user_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_ops_guides_id` | `tenant_id, id` |  | restricción |
 | `uq_ops_guides_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_ops_guides_tenant_id_user_id_p` | `tenant_id, user_id` | `(user_id IS NOT NULL)` | índice único |
 
@@ -428,7 +434,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → ops_incidents.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `incident_id` | `uuid` | no |  | FK → ops_incidents.id. |
 | 4 | `user_id` | `uuid` | sí |  | FK → iam_users.id. |
 | 5 | `kind` | `character varying(20)` | no |  | Valores: `registro`, `comentario`, `estado`, `asignacion`, `reclasificacion`, `alerta`, `evidencia`, `resolucion`. |
@@ -443,9 +449,9 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `incident_id` | `ops_incidents.id` | NO ACTION | `fk_ops_incident_logs_incident_id` |
+| `tenant_id, incident_id` | `ops_incidents.tenant_id, id` | NO ACTION | `fk_ops_incident_logs_incident_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_incident_logs_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_ops_incident_logs_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_incident_logs_user_id` |
 
 **CHECK**
 
@@ -483,7 +489,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, iam_users.tenant_id, ops_orders.tenant_id, catalog_providers.tenant_id, ops_incidents.tenant_id, iam_users.tenant_id, booking_reservations.tenant_id, booking_reservation_services.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `order_id` | `uuid` | sí |  | FK → ops_orders.id. |
 | 5 | `reservation_id` | `uuid` | sí |  | FK → booking_reservations.id. |
@@ -520,21 +526,22 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `assignee_id` | `iam_users.id` | NO ACTION | `fk_ops_incidents_assignee_id` |
-| `closed_by` | `iam_users.id` | NO ACTION | `fk_ops_incidents_closed_by` |
-| `order_id` | `ops_orders.id` | NO ACTION | `fk_ops_incidents_order_id` |
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_ops_incidents_provider_id` |
-| `related_incident_id` | `ops_incidents.id` | NO ACTION | `fk_ops_incidents_related_incident_id` |
-| `reported_by` | `iam_users.id` | NO ACTION | `fk_ops_incidents_reported_by` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_ops_incidents_reservation_id` |
-| `reservation_service_id` | `booking_reservation_services.id` | NO ACTION | `fk_ops_incidents_reservation_service_id` |
-| `resolved_by` | `iam_users.id` | NO ACTION | `fk_ops_incidents_resolved_by` |
+| `tenant_id, assignee_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_incidents_assignee_id` |
+| `tenant_id, closed_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_incidents_closed_by` |
+| `tenant_id, order_id` | `ops_orders.tenant_id, id` | NO ACTION | `fk_ops_incidents_order_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_ops_incidents_provider_id` |
+| `tenant_id, related_incident_id` | `ops_incidents.tenant_id, id` | NO ACTION | `fk_ops_incidents_related_incident_id` |
+| `tenant_id, reported_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_incidents_reported_by` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_ops_incidents_reservation_id` |
+| `tenant_id, reservation_service_id` | `booking_reservation_services.tenant_id, id` | NO ACTION | `fk_ops_incidents_reservation_service_id` |
+| `tenant_id, resolved_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_incidents_resolved_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_incidents_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_ops_incidents_id` | `tenant_id, id` |  | restricción |
 | `uq_ops_incidents_tenant_id_client_action_id_p` | `tenant_id, client_action_id` | `(client_action_id IS NOT NULL)` | índice único |
 | `uq_ops_incidents_tenant_id_code` | `tenant_id, code` |  | índice único |
 
@@ -591,7 +598,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, ops_orders.tenant_id, tenants.id. |
 | 3 | `order_id` | `uuid` | no |  | FK → ops_orders.id. |
 | 4 | `title` | `character varying(250)` | no |  |  |
 | 5 | `position` | `smallint` | no | `0` |  |
@@ -610,8 +617,8 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `done_by` | `iam_users.id` | NO ACTION | `fk_ops_order_tasks_done_by` |
-| `order_id` | `ops_orders.id` | NO ACTION | `fk_ops_order_tasks_order_id` |
+| `tenant_id, done_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_order_tasks_done_by` |
+| `tenant_id, order_id` | `ops_orders.tenant_id, id` | NO ACTION | `fk_ops_order_tasks_order_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_order_tasks_tenant_id` |
 
 **Índices**
@@ -643,7 +650,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, iam_users.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 5 | `title` | `character varying(200)` | no |  |  |
@@ -668,15 +675,16 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `closed_by` | `iam_users.id` | NO ACTION | `fk_ops_orders_closed_by` |
-| `coordinator_id` | `iam_users.id` | NO ACTION | `fk_ops_orders_coordinator_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_ops_orders_reservation_id` |
+| `tenant_id, closed_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_orders_closed_by` |
+| `tenant_id, coordinator_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_orders_coordinator_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_ops_orders_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_orders_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_ops_orders_id` | `tenant_id, id` |  | restricción |
 | `uq_ops_orders_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_ops_orders_tenant_id_reservation_id_p` | `tenant_id, reservation_id` | `(deleted_at IS NULL)` | índice único |
 
@@ -721,7 +729,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → booking_passengers.tenant_id, ops_rooming_rooms.tenant_id, ops_rooming_lists.tenant_id, tenants.id. |
 | 3 | `room_id` | `uuid` | no |  | FK → ops_rooming_rooms.id. |
 | 4 | `rooming_list_id` | `uuid` | no |  | FK → ops_rooming_lists.id. |
 | 5 | `passenger_id` | `uuid` | no |  | FK → booking_passengers.id. |
@@ -737,9 +745,9 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `passenger_id` | `booking_passengers.id` | NO ACTION | `fk_ops_rooming_guests_passenger_id` |
-| `room_id` | `ops_rooming_rooms.id` | CASCADE | `fk_ops_rooming_guests_room_id` |
-| `rooming_list_id` | `ops_rooming_lists.id` | NO ACTION | `fk_ops_rooming_guests_rooming_list_id` |
+| `tenant_id, passenger_id` | `booking_passengers.tenant_id, id` | NO ACTION | `fk_ops_rooming_guests_passenger_id` |
+| `tenant_id, room_id` | `ops_rooming_rooms.tenant_id, id` | CASCADE | `fk_ops_rooming_guests_room_id` |
+| `tenant_id, rooming_list_id` | `ops_rooming_lists.tenant_id, id` | NO ACTION | `fk_ops_rooming_guests_rooming_list_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_rooming_guests_tenant_id` |
 
 **UNIQUE**
@@ -781,7 +789,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → sys_documents.tenant_id, iam_users.tenant_id, iam_users.tenant_id, catalog_providers.tenant_id, booking_reservations.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 4 | `hotel_provider_id` | `uuid` | sí |  | FK → catalog_providers.id. |
 | 5 | `leg_id` | `character varying(20)` | sí |  |  |
@@ -813,18 +821,19 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `document_id` | `sys_documents.id` | NO ACTION | `fk_ops_rooming_lists_document_id` |
-| `hotel_ack_by` | `iam_users.id` | NO ACTION | `fk_ops_rooming_lists_hotel_ack_by` |
-| `hotel_confirmed_by` | `iam_users.id` | NO ACTION | `fk_ops_rooming_lists_hotel_confirmed_by` |
-| `hotel_provider_id` | `catalog_providers.id` | NO ACTION | `fk_ops_rooming_lists_hotel_provider_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_ops_rooming_lists_reservation_id` |
-| `sent_by` | `iam_users.id` | NO ACTION | `fk_ops_rooming_lists_sent_by` |
+| `tenant_id, document_id` | `sys_documents.tenant_id, id` | NO ACTION | `fk_ops_rooming_lists_document_id` |
+| `tenant_id, hotel_ack_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_rooming_lists_hotel_ack_by` |
+| `tenant_id, hotel_confirmed_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_rooming_lists_hotel_confirmed_by` |
+| `tenant_id, hotel_provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_ops_rooming_lists_hotel_provider_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_ops_rooming_lists_reservation_id` |
+| `tenant_id, sent_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_rooming_lists_sent_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_rooming_lists_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_ops_rooming_lists_id` | `tenant_id, id` |  | restricción |
 | `uq_ops_rooming_lists_tenant_id_reservation_id_coalesce_l_ee5adb` | `tenant_id, reservation_id, COALESCE(leg_id, ((hotel_provider_id)::text)::character` |  | índice único |
 
 **CHECK**
@@ -870,7 +879,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_providers.tenant_id, ops_incidents.tenant_id, ops_rooming_lists.tenant_id, tenants.id. |
 | 3 | `rooming_list_id` | `uuid` | no |  | FK → ops_rooming_lists.id. |
 | 4 | `hotel_provider_id` | `uuid` | sí |  | FK → catalog_providers.id. |
 | 5 | `stay` | `daterange` | no |  |  |
@@ -891,15 +900,16 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `hotel_provider_id` | `catalog_providers.id` | NO ACTION | `fk_ops_rooming_rooms_hotel_provider_id` |
-| `incident_id` | `ops_incidents.id` | NO ACTION | `fk_ops_rooming_rooms_incident_id` |
-| `rooming_list_id` | `ops_rooming_lists.id` | CASCADE | `fk_ops_rooming_rooms_rooming_list_id` |
+| `tenant_id, hotel_provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_ops_rooming_rooms_hotel_provider_id` |
+| `tenant_id, incident_id` | `ops_incidents.tenant_id, id` | NO ACTION | `fk_ops_rooming_rooms_incident_id` |
+| `tenant_id, rooming_list_id` | `ops_rooming_lists.tenant_id, id` | CASCADE | `fk_ops_rooming_rooms_rooming_list_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_rooming_rooms_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_ops_rooming_rooms_id` | `tenant_id, id` |  | restricción |
 | `uq_ops_rooming_rooms_rooming_list_id_room_number` | `rooming_list_id, room_number` |  | índice único |
 
 **CHECK**
@@ -942,7 +952,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_providers.tenant_id, iam_users.tenant_id, booking_reservation_services.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `reservation_service_id` | `uuid` | no |  | FK → booking_reservation_services.id. |
 | 4 | `provider_id` | `uuid` | no |  | FK → catalog_providers.id. |
 | 5 | `status` | `character varying(30)` | no | `'solicitado'::character varying` | Valores: `solicitado`, `confirmado`, `rechazado`, `alternativa_propuesta`, `anulada`. |
@@ -967,11 +977,17 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_ops_supplier_requests_provider_id` |
-| `requested_by` | `iam_users.id` | NO ACTION | `fk_ops_supplier_requests_requested_by` |
-| `reservation_service_id` | `booking_reservation_services.id` | NO ACTION | `fk_ops_supplier_requests_reservation_service_id` |
-| `responded_by_user_id` | `iam_users.id` | NO ACTION | `fk_ops_supplier_requests_responded_by_user_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_ops_supplier_requests_provider_id` |
+| `tenant_id, requested_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_supplier_requests_requested_by` |
+| `tenant_id, reservation_service_id` | `booking_reservation_services.tenant_id, id` | NO ACTION | `fk_ops_supplier_requests_reservation_service_id` |
+| `tenant_id, responded_by_user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_supplier_requests_responded_by_user_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_supplier_requests_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_ops_supplier_requests_id` | `tenant_id, id` |  | restricción |
 
 **CHECK**
 
@@ -1014,7 +1030,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_providers.tenant_id, tenants.id. |
 | 3 | `plate` | `character varying(12)` | no |  |  |
 | 4 | `vehicle_type` | `character varying(60)` | no |  |  |
 | 5 | `capacity` | `smallint` | no |  |  |
@@ -1033,13 +1049,14 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_ops_vehicles_provider_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_ops_vehicles_provider_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_vehicles_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_ops_vehicles_id` | `tenant_id, id` |  | restricción |
 | `uq_ops_vehicles_tenant_id_plate` | `tenant_id, plate` |  | índice único |
 
 **CHECK**
@@ -1078,7 +1095,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → sys_documents.tenant_id, iam_users.tenant_id, tenants.id, ops_vouchers.tenant_id. |
 | 3 | `voucher_id` | `uuid` | no |  | FK → ops_vouchers.id. |
 | 4 | `version` | `integer` | no |  |  |
 | 5 | `issued_at` | `timestamp with time zone` | no | `now()` |  |
@@ -1095,10 +1112,10 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `document_id` | `sys_documents.id` | NO ACTION | `fk_ops_voucher_versions_document_id` |
-| `issued_by` | `iam_users.id` | NO ACTION | `fk_ops_voucher_versions_issued_by` |
+| `tenant_id, document_id` | `sys_documents.tenant_id, id` | NO ACTION | `fk_ops_voucher_versions_document_id` |
+| `tenant_id, issued_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_voucher_versions_issued_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_voucher_versions_tenant_id` |
-| `voucher_id` | `ops_vouchers.id` | NO ACTION | `fk_ops_voucher_versions_voucher_id` |
+| `tenant_id, voucher_id` | `ops_vouchers.tenant_id, id` | NO ACTION | `fk_ops_voucher_versions_voucher_id` |
 
 **UNIQUE**
 
@@ -1129,7 +1146,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → sys_documents.tenant_id, iam_users.tenant_id, catalog_providers.tenant_id, booking_reservations.tenant_id, booking_reservation_services.tenant_id, tenants.id, iam_users.tenant_id, iam_users.tenant_id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 5 | `reservation_service_id` | `uuid` | no |  | FK → booking_reservation_services.id. |
@@ -1163,19 +1180,20 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `document_id` | `sys_documents.id` | NO ACTION | `fk_ops_vouchers_document_id` |
-| `issued_by` | `iam_users.id` | NO ACTION | `fk_ops_vouchers_issued_by` |
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_ops_vouchers_provider_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_ops_vouchers_reservation_id` |
-| `reservation_service_id` | `booking_reservation_services.id` | NO ACTION | `fk_ops_vouchers_reservation_service_id` |
+| `tenant_id, document_id` | `sys_documents.tenant_id, id` | NO ACTION | `fk_ops_vouchers_document_id` |
+| `tenant_id, issued_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_vouchers_issued_by` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_ops_vouchers_provider_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_ops_vouchers_reservation_id` |
+| `tenant_id, reservation_service_id` | `booking_reservation_services.tenant_id, id` | NO ACTION | `fk_ops_vouchers_reservation_service_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_vouchers_tenant_id` |
-| `used_by` | `iam_users.id` | NO ACTION | `fk_ops_vouchers_used_by` |
-| `void_by` | `iam_users.id` | NO ACTION | `fk_ops_vouchers_void_by` |
+| `tenant_id, used_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_vouchers_used_by` |
+| `tenant_id, void_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_vouchers_void_by` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_ops_vouchers_id` | `tenant_id, id` |  | restricción |
 | `uq_ops_vouchers_qr_token` | `qr_token` |  | índice único |
 | `uq_ops_vouchers_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_ops_vouchers_tenant_id_reservation_service_id_p` | `tenant_id, reservation_service_id` | `((status)::text = 'emitido'::text)` | índice único |
@@ -1227,7 +1245,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → ops_incidents.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `incident_id` | `uuid` | no |  | FK → ops_incidents.id. |
 | 4 | `user_id` | `uuid` | no |  | FK → iam_users.id. |
 | 5 | `acknowledged_at` | `timestamp with time zone` | no | `now()` |  |
@@ -1238,9 +1256,9 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `incident_id` | `ops_incidents.id` | NO ACTION | `fk_ops_incident_pax_acks_incident_id` |
+| `tenant_id, incident_id` | `ops_incidents.tenant_id, id` | NO ACTION | `fk_ops_incident_pax_acks_incident_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_incident_pax_acks_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_ops_incident_pax_acks_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_incident_pax_acks_user_id` |
 
 **UNIQUE**
 
@@ -1270,7 +1288,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id, iam_users.tenant_id. |
 | 3 | `user_id` | `uuid` | no |  | FK → iam_users.id. |
 | 4 | `app` | `character varying(20)` | no |  | Valores: `operador`, `pasajero`. |
 | 5 | `platform` | `character varying(10)` | no |  | Valores: `ios`, `android`. |
@@ -1292,12 +1310,13 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_mobile_devices_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_ops_mobile_devices_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_mobile_devices_user_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_ops_mobile_devices_id` | `tenant_id, id` |  | restricción |
 | `uq_ops_mobile_devices_expo_push_token_p` | `expo_push_token` | `(expo_push_token IS NOT NULL)` | índice único |
 
 **CHECK**
@@ -1335,7 +1354,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → ops_assignments.tenant_id, ops_mobile_devices.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `user_id` | `uuid` | no |  | FK → iam_users.id. |
 | 4 | `device_id` | `uuid` | no |  | FK → ops_mobile_devices.id. |
 | 5 | `resource_type` | `character varying(10)` | no |  | Valores: `guide`, `driver`. |
@@ -1359,10 +1378,10 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `assignment_id` | `ops_assignments.id` | NO ACTION | `fk_ops_sync_actions_assignment_id` |
-| `device_id` | `ops_mobile_devices.id` | NO ACTION | `fk_ops_sync_actions_device_id` |
+| `tenant_id, assignment_id` | `ops_assignments.tenant_id, id` | NO ACTION | `fk_ops_sync_actions_assignment_id` |
+| `tenant_id, device_id` | `ops_mobile_devices.tenant_id, id` | NO ACTION | `fk_ops_sync_actions_device_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_sync_actions_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_ops_sync_actions_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_sync_actions_user_id` |
 
 **UNIQUE**
 
@@ -1402,7 +1421,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → booking_passengers.tenant_id, tenants.id. |
 | 3 | `passenger_id` | `uuid` | no |  | FK → booking_passengers.id. |
 | 4 | `name` | `character varying(150)` | no |  |  |
 | 5 | `phone` | `character varying(30)` | no |  |  |
@@ -1418,7 +1437,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `passenger_id` | `booking_passengers.id` | CASCADE | `fk_ops_travel_doc_contacts_passenger_id` |
+| `tenant_id, passenger_id` | `booking_passengers.tenant_id, id` | CASCADE | `fk_ops_travel_doc_contacts_passenger_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_travel_doc_contacts_tenant_id` |
 
 **UNIQUE**
@@ -1460,7 +1479,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → sys_documents.tenant_id, booking_passengers.tenant_id, booking_reservations.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 4 | `passenger_id` | `uuid` | no |  | FK → booking_passengers.id. |
 | 5 | `doc_type` | `character varying(20)` | no |  | Valores: `id_doc`, `visa`, `insurance`, `yellow_fever`, `minor_auth`, `migration`, `emergency`, `special`. |
@@ -1486,11 +1505,11 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `file_id` | `sys_documents.id` | NO ACTION | `fk_ops_travel_doc_items_file_id` |
-| `passenger_id` | `booking_passengers.id` | CASCADE | `fk_ops_travel_doc_items_passenger_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_ops_travel_doc_items_reservation_id` |
+| `tenant_id, file_id` | `sys_documents.tenant_id, id` | NO ACTION | `fk_ops_travel_doc_items_file_id` |
+| `tenant_id, passenger_id` | `booking_passengers.tenant_id, id` | CASCADE | `fk_ops_travel_doc_items_passenger_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_ops_travel_doc_items_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_travel_doc_items_tenant_id` |
-| `validated_by` | `iam_users.id` | NO ACTION | `fk_ops_travel_doc_items_validated_by` |
+| `tenant_id, validated_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_travel_doc_items_validated_by` |
 
 **UNIQUE**
 
@@ -1538,7 +1557,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → booking_reservations.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 4 | `sent_at` | `timestamp with time zone` | no | `now()` |  |
 | 5 | `sent_on` | `date` | no | `CURRENT_DATE` |  |
@@ -1556,8 +1575,8 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_ops_travel_doc_reminders_reservation_id` |
-| `sent_by` | `iam_users.id` | NO ACTION | `fk_ops_travel_doc_reminders_sent_by` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_ops_travel_doc_reminders_reservation_id` |
+| `tenant_id, sent_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_travel_doc_reminders_sent_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_travel_doc_reminders_tenant_id` |
 
 **UNIQUE**
@@ -1595,7 +1614,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → booking_passengers.tenant_id, tenants.id. |
 | 3 | `passenger_id` | `uuid` | no |  | FK → booking_passengers.id. |
 | 4 | `requires_attention` | `boolean` | no | `false` |  |
 | 5 | `operational_note` | `character varying(300)` | sí |  |  |
@@ -1610,7 +1629,7 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `passenger_id` | `booking_passengers.id` | CASCADE | `fk_ops_travel_doc_special_passenger_id` |
+| `tenant_id, passenger_id` | `booking_passengers.tenant_id, id` | CASCADE | `fk_ops_travel_doc_special_passenger_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_travel_doc_special_tenant_id` |
 
 **UNIQUE**
@@ -1630,5 +1649,187 @@ _Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras c
 | Nombre | Momento y evento | Función |
 |---|---|---|
 | `trg_ops_travel_doc_special_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `ops_checkin_passes`
+
+[Spec 19 §3.10] [Fase 3] Pases QR de check-in por pasajero y servicio.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Operaciones (ops_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → booking_passengers.tenant_id, booking_reservations.tenant_id, iam_users.tenant_id, booking_reservation_services.tenant_id, tenants.id. |
+| 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
+| 4 | `passenger_id` | `uuid` | no |  | FK → booking_passengers.id. |
+| 5 | `service_id` | `uuid` | no |  | FK → booking_reservation_services.id. |
+| 6 | `token_hash` | `character(64)` | no |  |  |
+| 7 | `status` | `character varying(10)` | no | `'emitido'::character varying` | Valores: `emitido`, `usado`, `anulado`. |
+| 8 | `issued_at` | `timestamp with time zone` | no | `now()` |  |
+| 9 | `scanned_at` | `timestamp with time zone` | sí |  |  |
+| 10 | `scanned_by` | `uuid` | sí |  | FK → iam_users.id. |
+| 11 | `scan_device_id` | `character varying(80)` | sí |  |  |
+| 12 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 13 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, passenger_id` | `booking_passengers.tenant_id, id` | NO ACTION | `fk_ops_checkin_passes_passenger_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_ops_checkin_passes_reservation_id` |
+| `tenant_id, scanned_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_ops_checkin_passes_scanned_by` |
+| `tenant_id, service_id` | `booking_reservation_services.tenant_id, id` | NO ACTION | `fk_ops_checkin_passes_service_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_checkin_passes_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_ops_checkin_passes_service_passenger` | `service_id, passenger_id` | `((status)::text <> 'anulado'::text)` | índice único |
+| `uq_ops_checkin_passes_token_hash` | `token_hash` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `ck_ops_checkin_passes_1` | `CHECK ((((status)::text <> 'usado'::text) OR (scanned_at IS NOT NULL)))` |  |
+| `ops_checkin_passes_status_check` | `CHECK (((status)::text = ANY ((ARRAY['emitido'::character varying, 'usado'::character varying, 'anulado'::character varying])::text[])))` | `status`: `emitido`, `usado`, `anulado` |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_ops_checkin_passes_passenger_id` | `USING btree (passenger_id)` |
+| `ix_ops_checkin_passes_reservation_id` | `USING btree (reservation_id)` |
+| `ix_ops_checkin_passes_scanned_by` | `USING btree (scanned_by)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_ops_checkin_passes_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `ops_waiver_signatures`
+
+[Spec 19 §3.10] [Fase 3] Firmas del deslinde por pasajero (append-only, con hash del texto firmado).
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Operaciones (ops_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → booking_passengers.tenant_id, booking_reservations.tenant_id, ops_waiver_templates.tenant_id, tenants.id. |
+| 3 | `template_id` | `uuid` | no |  | FK → ops_waiver_templates.id. |
+| 4 | `template_version` | `smallint` | no |  |  |
+| 5 | `body_sha256` | `character(64)` | no |  |  |
+| 6 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
+| 7 | `passenger_id` | `uuid` | no |  | FK → booking_passengers.id. |
+| 8 | `signed_name` | `character varying(160)` | no |  |  |
+| 9 | `guardian_name` | `character varying(160)` | sí |  |  |
+| 10 | `signature_path` | `text` | no |  |  |
+| 11 | `ip` | `inet` | sí |  |  |
+| 12 | `user_agent` | `character varying(300)` | sí |  |  |
+| 13 | `signed_at` | `timestamp with time zone` | no | `now()` |  |
+| 14 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, passenger_id` | `booking_passengers.tenant_id, id` | NO ACTION | `fk_ops_waiver_signatures_passenger_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_ops_waiver_signatures_reservation_id` |
+| `tenant_id, template_id` | `ops_waiver_templates.tenant_id, id` | NO ACTION | `fk_ops_waiver_signatures_template_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_waiver_signatures_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_ops_waiver_signatures_template_res_pax` | `template_id, template_version, reservation_id, passenger_id` |  | índice único |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_ops_waiver_signatures_passenger_id` | `USING btree (passenger_id)` |
+| `ix_ops_waiver_signatures_reservation_id` | `USING btree (reservation_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_ops_waiver_signatures_append_only` | BEFORE DELETE OR UPDATE | `app_forbid_update_delete` |
+
+[↑ Índice del dominio](#tablas)
+
+### `ops_waiver_templates`
+
+[Spec 19 §3.10] [Fase 3] Textos de deslinde de responsabilidad versionados.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Operaciones (ops_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 3 | `code` | `character varying(30)` | no |  |  |
+| 4 | `name` | `character varying(120)` | no |  |  |
+| 5 | `lang` | `character(2)` | no | `'es'::bpchar` |  |
+| 6 | `version` | `smallint` | no | `1` |  |
+| 7 | `body` | `text` | no |  |  |
+| 8 | `requires_guardian_for_minors` | `boolean` | no | `true` |  |
+| 9 | `active` | `boolean` | no | `true` |  |
+| 10 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
+| 11 | `updated_by` | `uuid` | sí |  | Usuario de la última actualización (sin FK). |
+| 12 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 13 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_ops_waiver_templates_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_ops_waiver_templates_id` | `tenant_id, id` |  | restricción |
+| `uq_ops_waiver_templates_tenant_id_code_version` | `tenant_id, code, version` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `ops_waiver_templates_version_check` | `CHECK ((version >= 1))` |  |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_ops_waiver_templates_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
 
 [↑ Índice del dominio](#tablas)

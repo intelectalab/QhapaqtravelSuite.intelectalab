@@ -166,7 +166,7 @@ function DunningCard({ item, index }: { item: DunningItem; index: number }) {
           <ManualPaymentAction invoice={item} size="sm" />
           <PaymentLinkAction invoice={item} size="sm" />
           {item.status === "failed" && item.extended_days < 7 && <ExtendDunningAction invoice={item} size="sm" />}
-          {item.tenant.status !== "suspendido" && <SuspendForDebtAction invoice={item} size="sm" />}
+          {item.tenant.status !== "suspendido" && item.status === "uncollectible" && <SuspendForDebtAction invoice={item} size="sm" />}
         </div>
       </article>
     </ToneScope>

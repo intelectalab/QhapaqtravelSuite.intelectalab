@@ -232,7 +232,7 @@ CREATE POLICY tenant_isolation ON <t>
 | SEC-BR-14 | Acción no permitida: no se muestra activa (oculta o deshabilitada con “Requiere permiso x.y”); si llega por otra vía → 403 y sin cambios | Frontend + Policy |
 | SEC-BR-15 (RT 16, PRD-BR-014) | Acciones críticas auditadas (lista §9) | `AuditLogger` |
 | SEC-BR-16 (RT 22) | Operaciones críticas exigen `Idempotency-Key`; misma key + mismo cuerpo → misma respuesta; misma key + cuerpo distinto → 422 `IDEMPOTENCY_KEY_REUSED`; key en proceso → 409 `IDEMPOTENCY_IN_PROGRESS` | Middleware `Idempotent` |
-| SEC-BR-17 | Recursos con `lock_version` requieren `If-Match`; desfase → 409 `STALE_VERSION` | Trait `OptimisticLock` |
+| SEC-BR-17 | Recursos con `lock_version` requieren `If-Match`; desfase → 409 `STALE_VERSION`; sin `If-Match` → 422 `IF_MATCH_REQUIRED` (v2.5: 412, 423 y 428 no se usan) | Trait `OptimisticLock` |
 | SEC-BR-18 (RT 5, PRD-BR-010) | Precios calculados en backend con `PricingService` (§5.1); el frontend solo previsualiza | Service |
 | SEC-BR-19 (RT 15) | Moneda y `fx_rate` se congelan en cada documento; conversión a PEN = `monto × fx` si USD | Service |
 | SEC-BR-20 | Correlativos: asignación atómica (`SELECT … FOR UPDATE` en `sys_sequences`), sin huecos por rollback en documentos fiscales (se asigna al confirmar), nunca retroceden | Service + trigger |
@@ -271,13 +271,15 @@ Todo con `numeric` (brick/math `BigDecimal` en PHP), nunca float.
 | POST | `/api/v1/auth/logout` | autenticado | Revoca token actual; audita `logout` | — |
 | POST | `/api/v1/auth/password/forgot` · `/reset` | público | Enlace de un solo uso | rate limit |
 | POST | `/api/v1/auth/invitations/{token}/accept` | público | Ver 09 | Idempotency-Key |
-| POST | `/api/v1/platform/auth/login` · `/mfa/verify` | público | Guard `platform` (MFA siempre) | rate limit |
+| POST | `/api/v1/platform/auth/login` | público | Guard `platform`: devuelve token con ability `mfa:verify` (MFA siempre) | rate limit |
+| POST | `/api/v1/platform/auth/mfa/verify` | token `mfa:verify` (guard platform) | `{code}` TOTP o recovery → token completo de plataforma | rate limit |
 | GET | `/api/v1/me` | autenticado | Usuario, rol, experiencia, sede, tenant, MFA, alcance (`own` \| `tenant` \| `linked`) | — |
 | GET | `/api/v1/me/permissions` | autenticado | Permisos efectivos (lista) | — |
 | GET | `/api/v1/me/access` | autenticado | `{experience, home, routes[], nav[], screens: {ruta: bool}}` calculado con ACCESS + ROLE_UX (misma regla que `Access.check`) | ETag |
 | POST | `/api/v1/me/mfa/enroll` · `/confirm` · `DELETE /me/mfa` | autenticado | Enrolamiento TOTP (secret + QR) | — |
 | GET | `/api/v1/me/tenant` | autenticado back-office | Datos del drawer “Tenant activo” (sin datos de plataforma) | — |
 | GET | `/api/v1/search?q=` | autenticado back-office | ≥ 2 caracteres; máx. 12 resultados; filtra por pantallas permitidas y ownership (SEC-BR-09) | — |
+| GET | `/api/v1/documents/{id}/download` | autenticado (mismo permiso y alcance que el registro de origen del documento) | 302 a URL firmada de S3 (5 min); audita la descarga de documentos sensibles (v2.5, F0-30) | — |
 | GET | `/api/v1/me/notifications` | autenticado | Últimas 25 + `unread_count` | — |
 | POST | `/api/v1/me/notifications/read-all` | autenticado | Marca leídas | — |
 | POST | `/api/v1/access-requests` | autenticado back-office | `{path}` desde pantalla 403 → notifica al Tenant Admin | — |
@@ -294,20 +296,26 @@ Formato de error (todas las API):
 
 ## 7. Permisos y comportamiento por rol
 
-### 7.1 Catálogo de permisos (57, `DB.permissionGroups`)
+### 7.1 Catálogo de permisos (94, `DB.permissionGroups`)
 | Módulo | Permisos |
 |---|---|
 | Administración | `admin.tenant.manage`, `admin.users.manage`, `admin.roles.manage`, `admin.settings.manage`, `admin.audit.view`, `admin.billing.manage`, `admin.api.manage` |
 | Colaboración | `approvals.view`, `inbox.view`, `inbox.manage` |
-| CRM | `crm.leads.view`, `crm.leads.manage`, `crm.opportunities.manage`, `crm.activities.manage`, `crm.clients.manage`, `crm.targets.view`, `crm.targets.manage`, `crm.claims.manage` |
+| CRM | `crm.leads.view`, `crm.leads.manage`, `crm.opportunities.manage`, `crm.activities.manage`, `crm.clients.manage`, `crm.records.reassign`, `crm.targets.view`, `crm.targets.manage`, `crm.claims.manage` |
 | Marketing | `marketing.campaigns.manage` |
-| Catálogo | `catalog.products.view`, `catalog.products.create`, `catalog.products.update`, `catalog.products.activate`, `catalog.products.manage_rates`, `catalog.products.manage_availability`, `catalog.products.view_profitability`, `catalog.products.publish`, `catalog.providers.manage`, `catalog.allotments.manage` |
-| Cotizaciones | `quotes.view`, `quotes.create`, `quotes.approve_internal`, `quotes.send`, `quotes.discount_override` |
-| Reservas | `reservations.view`, `reservations.create`, `reservations.modify`, `reservations.cancel` |
+| Catálogo | `catalog.products.view`, `catalog.products.create`, `catalog.products.update`, `catalog.products.activate`, `catalog.products.manage_rates`, `catalog.products.manage_availability`, `catalog.products.view_profitability`, `catalog.products.publish`, `catalog.products.manage_promotions`, `catalog.providers.manage`, `catalog.allotments.manage` |
+| Cotizaciones | `quotes.view`, `quotes.create`, `quotes.approve_internal`, `quotes.send`, `quotes.discount_override`, `quotes.reassign` |
+| Reservas | `reservations.view`, `reservations.create`, `reservations.modify`, `reservations.cancel`, `reservations.approve_changes`, `reservations.reassign` |
 | Operaciones | `operations.view`, `operations.assign`, `operations.vouchers`, `operations.incidents`, `operations.close`, `operations.travel_docs` |
 | Finanzas | `finance.receivables`, `finance.payments.register`, `finance.payments.revert`, `finance.payables`, `finance.commissions`, `finance.profitability`, `finance.invoicing`, `finance.treasury` |
-| Canales | `channels.b2b.manage`, `channels.ecommerce.manage`, `channels.cms.publish` |
+| Canales | `channels.b2b.manage`, `channels.ecommerce.manage`, `channels.cms.edit`, `channels.cms.publish` |
+| Extranet | `supplier.portal.view`, `supplier.requests.respond`, `supplier.rooming.manage`, `supplier.vouchers.redeem`, `supplier.payables.view`, `supplier.invoices.upload`, `supplier.incidents.report`, `supplier.rates.request`, `supplier.users.manage` |
 | Reportes | `reports.view`, `reports.export` |
+| Crecimiento | `ai.assistant.use`, `ai.insights.view`, `inbox.whatsapp.manage`, `finance.payment_links`, `finance.gift_cards`, `finance.accounting_export`, `catalog.products.import`, `catalog.products.dynamic_pricing`, `channels.ota.manage`, `channels.marketplace.manage`, `operations.checkin`, `quotes.external_offers` |
+| Corporativo | `crm.corporate.manage`, `finance.corporate_statements` |
+| Marca y vitrina | `channels.showcase.manage`, `cms.seo.manage`, `finance.gateways.manage` |
+| Plantillas e IA | `cms.templates.manage`, `ai.content.use` |
+| Seguimiento y visitas | `marketing.tracking.manage`, `marketing.tracking.approve`, `analytics.web.view` |
 Comodín: `Auth.can` acepta permisos terminados en `.` como prefijo (p. ej. `finance.`); ningún rol semilla lo usa. En backend **no** se admiten comodines (permisos explícitos).
 
 ### 7.2 Roles (`DB.roles`)
@@ -332,80 +340,117 @@ SA = Super Admin · TA = Tenant Admin · MG = Manager · VT = Ventas · OP = Ope
 
 | Permiso | SA | TA | MG | VT | OP | FI | CO | GU | CD | B2B | CL | PA | PR |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| admin.tenant.manage | ✓ | | | | | | | | | | | | |
-| admin.users.manage | | ✓ | | | | | | | | | | | |
-| admin.roles.manage | | ✓ | | | | | | | | | | | |
-| admin.settings.manage | | ✓ | | | | | | | | | | | |
-| admin.audit.view | ✓ | ✓ | ✓ | | | | | | | | | | |
-| admin.billing.manage | | ✓ | | | | | | | | | | | |
-| admin.api.manage | | ✓ | | | | | | | | | | | |
-| approvals.view | | ✓ | ✓ | ✓ | ✓ | ✓ | | | | | | | |
-| inbox.view | | ✓ | ✓ | ✓ | ✓ | | | | | | | | |
-| inbox.manage | | ✓ | ✓ | ✓ | ✓ | | | | | | | | |
-| crm.leads.view | | ✓ | ✓ | ✓ | | | | | | | | | |
-| crm.leads.manage | | ✓ | ✓ | ✓ | | | | | | | | | |
-| crm.opportunities.manage | | ✓ | ✓ | ✓ | | | | | | | | | |
-| crm.activities.manage | | ✓ | ✓ | ✓ | | | | | | | | | |
-| crm.clients.manage | | ✓ | ✓ | ✓ | | | | | | | | | |
-| crm.targets.view | | ✓ | ✓ | ✓ | | | | | | | | | |
-| crm.targets.manage | | ✓ | ✓ | | | | | | | | | | |
-| crm.claims.manage | | ✓ | ✓ | | | | | | | | | | |
-| marketing.campaigns.manage | | ✓ | ✓ | | | | | | | | | | |
-| catalog.products.view | | ✓ | ✓ | ✓ | ✓ | ✓ | | | | ✓ | | | |
-| catalog.products.create | | ✓ | ✓ | | | | | | | | | | |
-| catalog.products.update | | ✓ | ✓ | | | | | | | | | | |
-| catalog.products.activate | | ✓ | ✓ | | | | | | | | | | |
-| catalog.products.manage_rates | | ✓ | ✓ | | | | | | | | | | |
-| catalog.products.manage_availability | | ✓ | ✓ | | ✓ | | | | | | | | |
-| catalog.products.view_profitability | | ✓ | ✓ | | | ✓ | | | | | | | |
-| catalog.products.publish | | ✓ | ✓ | | | | | | | | | | |
-| catalog.providers.manage | | ✓ | | | ✓ | | | | | | | | |
-| catalog.allotments.manage | | ✓ | ✓ | | ✓ | | | | | | | | |
-| quotes.view | | ✓ | ✓ | ✓ | | ✓ | | | | | ✓ | | |
-| quotes.create | | ✓ | ✓ | ✓ | | | | | | ✓ | | | |
-| quotes.approve_internal | | ✓ | ✓ | | | | | | | | | | |
-| quotes.send | | ✓ | ✓ | ✓ | | | | | | | | | |
-| quotes.discount_override | | ✓ | ✓ | | | | | | | | | | |
-| reservations.view | | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | | ✓ | ✓ | ✓ | |
-| reservations.create | | ✓ | ✓ | ✓ | | | | | | ✓ | | | |
-| reservations.modify | | ✓ | ✓ | | ✓ | | | | | | | | |
-| reservations.cancel | | ✓ | ✓ | | | | | | | | | | |
-| operations.view | | ✓ | ✓ | | ✓ | | | ✓ | ✓ | | | | ✓ |
-| operations.assign | | ✓ | ✓ | | ✓ | | | | | | | | |
-| operations.vouchers | | ✓ | ✓ | | ✓ | | | | | | | | |
-| operations.incidents | | ✓ | ✓ | | ✓ | | | ✓ | ✓ | | | | |
-| operations.close | | ✓ | ✓ | | ✓ | | | | | | | | |
-| operations.travel_docs | | ✓ | ✓ | | ✓ | | | | | | | | |
-| finance.receivables | | ✓ | ✓ | | | ✓ | ✓ | | | | | | |
-| finance.payments.register | | ✓ | | | | ✓ | | | | | | | |
-| finance.payments.revert | | ✓ | | | | ✓ | | | | | | | |
-| finance.payables | | ✓ | ✓ | | | ✓ | | | | | | | |
-| finance.commissions | | ✓ | ✓ | | | ✓ | | | | | | | |
-| finance.profitability | | ✓ | ✓ | | | ✓ | | | | | | | |
-| finance.invoicing | | ✓ | | | | ✓ | ✓ | | | | | | |
-| finance.treasury | | ✓ | ✓ | | | ✓ | ✓ | | | | | | |
-| channels.b2b.manage | | ✓ | ✓ | | | | | | | | | | |
-| channels.ecommerce.manage | | ✓ | ✓ | | | | | | | | | | |
-| channels.cms.publish | | ✓ | ✓ | | | | | | | | | | |
-| reports.view | | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | | | | | |
-| reports.export | | ✓ | ✓ | | | ✓ | ✓ | | | | | | |
-| **Total** | **2** | **56** | **47** | **16** | **16** | **15** | **6** | **2** | **2** | **4** | **2** | **1** | **1** |
+| admin.tenant.manage | ✓ |  |  |  |  |  |  |  |  |  |  |  |  |
+| admin.users.manage |  | ✓ |  |  |  |  |  |  |  |  |  |  |  |
+| admin.roles.manage |  | ✓ |  |  |  |  |  |  |  |  |  |  |  |
+| admin.settings.manage |  | ✓ |  |  |  |  |  |  |  |  |  |  |  |
+| admin.audit.view | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| admin.billing.manage |  | ✓ |  |  |  |  |  |  |  |  |  |  |  |
+| admin.api.manage |  | ✓ |  |  |  |  |  |  |  |  |  |  |  |
+| approvals.view |  | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |
+| inbox.view |  | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  |
+| inbox.manage |  | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  |
+| crm.leads.view |  | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  |  |
+| crm.leads.manage |  | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  |  |
+| crm.opportunities.manage |  | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  |  |
+| crm.activities.manage |  | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  |  |
+| crm.clients.manage |  | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  |  |
+| crm.records.reassign |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| crm.targets.view |  | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  |  |
+| crm.targets.manage |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| crm.claims.manage |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| marketing.campaigns.manage |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| catalog.products.view |  | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  | ✓ |  |  |  |
+| catalog.products.create |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| catalog.products.update |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| catalog.products.activate |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| catalog.products.manage_rates |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| catalog.products.manage_availability |  | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  |  |
+| catalog.products.view_profitability |  | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  |  |
+| catalog.products.publish |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| catalog.products.manage_promotions |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| catalog.providers.manage |  | ✓ |  |  | ✓ |  |  |  |  |  |  |  |  |
+| catalog.allotments.manage |  | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  |  |
+| quotes.view |  | ✓ | ✓ | ✓ |  | ✓ |  |  |  |  | ✓ |  |  |
+| quotes.create |  | ✓ | ✓ | ✓ |  |  |  |  |  | ✓ |  |  |  |
+| quotes.approve_internal |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| quotes.send |  | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  |  |
+| quotes.discount_override |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| quotes.reassign |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| reservations.view |  | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  | ✓ | ✓ | ✓ |  |
+| reservations.create |  | ✓ | ✓ | ✓ |  |  |  |  |  | ✓ |  |  |  |
+| reservations.modify |  | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  |  |
+| reservations.cancel |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| reservations.approve_changes |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| reservations.reassign |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| operations.view |  | ✓ | ✓ |  | ✓ |  |  | ✓ | ✓ |  |  |  | ✓ |
+| operations.assign |  | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  |  |
+| operations.vouchers |  | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  |  |
+| operations.incidents |  | ✓ | ✓ |  | ✓ |  |  | ✓ | ✓ |  |  |  |  |
+| operations.close |  | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  |  |
+| operations.travel_docs |  | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  |  |
+| finance.receivables |  | ✓ | ✓ |  |  | ✓ | ✓ |  |  |  |  |  |  |
+| finance.payments.register |  | ✓ |  |  |  | ✓ |  |  |  |  |  |  |  |
+| finance.payments.revert |  | ✓ |  |  |  | ✓ |  |  |  |  |  |  |  |
+| finance.payables |  | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  |  |
+| finance.commissions |  | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  |  |
+| finance.profitability |  | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  |  |
+| finance.invoicing |  | ✓ |  |  |  | ✓ | ✓ |  |  |  |  |  |  |
+| finance.treasury |  | ✓ | ✓ |  |  | ✓ | ✓ |  |  |  |  |  |  |
+| channels.b2b.manage |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| channels.ecommerce.manage |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| channels.cms.edit |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| channels.cms.publish |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| supplier.portal.view |  |  |  |  |  |  |  |  |  |  |  |  | ✓ |
+| supplier.requests.respond |  |  |  |  |  |  |  |  |  |  |  |  | ✓ |
+| supplier.rooming.manage |  |  |  |  |  |  |  |  |  |  |  |  | ✓ |
+| supplier.vouchers.redeem |  |  |  |  |  |  |  |  |  |  |  |  | ✓ |
+| supplier.payables.view |  |  |  |  |  |  |  |  |  |  |  |  | ✓ |
+| supplier.invoices.upload |  |  |  |  |  |  |  |  |  |  |  |  | ✓ |
+| supplier.incidents.report |  |  |  |  |  |  |  |  |  |  |  |  | ✓ |
+| supplier.rates.request |  |  |  |  |  |  |  |  |  |  |  |  | ✓ |
+| supplier.users.manage |  |  |  |  |  |  |  |  |  |  |  |  | ✓ |
+| reports.view |  | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  |  |
+| reports.export |  | ✓ | ✓ |  |  | ✓ | ✓ |  |  |  |  |  |  |
+| ai.assistant.use |  | ✓ | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  |
+| ai.insights.view |  | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  |  |
+| inbox.whatsapp.manage |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| finance.payment_links |  | ✓ | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  |
+| finance.gift_cards |  | ✓ | ✓ |  |  | ✓ |  |  |  |  |  |  |  |
+| finance.accounting_export |  | ✓ |  |  |  | ✓ | ✓ |  |  |  |  |  |  |
+| catalog.products.import |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| catalog.products.dynamic_pricing |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| channels.ota.manage |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| channels.marketplace.manage |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| operations.checkin |  | ✓ | ✓ |  | ✓ |  |  | ✓ | ✓ |  |  |  |  |
+| quotes.external_offers |  | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  |  |
+| crm.corporate.manage |  | ✓ | ✓ | ✓ |  | ✓ |  |  |  |  |  |  |  |
+| finance.corporate_statements |  | ✓ | ✓ |  |  | ✓ | ✓ |  |  |  |  |  |  |
+| channels.showcase.manage |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| cms.seo.manage |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| finance.gateways.manage |  | ✓ |  |  |  | ✓ |  |  |  |  |  |  |  |
+| cms.templates.manage |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| ai.content.use |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| marketing.tracking.manage |  | ✓ | ✓ |  |  |  |  |  |  |  |  |  |  |
+| marketing.tracking.approve |  | ✓ |  |  |  |  |  |  |  |  |  |  |  |
+| analytics.web.view |  | ✓ | ✓ | ✓ |  |  |  |  |  |  |  |  |  |
 
-Construcción en data.js: Tenant Admin = todos excepto `admin.tenant.*`; Manager = todos excepto `admin.tenant/roles/settings/users/billing/api`, `finance.payments.register`, `finance.payments.revert`, `finance.invoicing`, `catalog.providers.manage`; el resto, listas explícitas. El seeder debe cargar exactamente esta matriz como plantilla “Estándar”.
+Construcción en data.js: Tenant Admin = todos excepto `admin.tenant.*` y `supplier.*`; Manager = todos excepto `admin.tenant/roles/settings/users/billing/api`, `finance.payments.register`, `finance.payments.revert`, `finance.invoicing`, `catalog.providers.manage`, `finance.accounting_export`, `finance.gateways.manage`, `marketing.tracking.approve` y `supplier.*`; Proveedor = `supplier.*` (9, módulo Extranet, v2.5) más `operations.view`; el resto, listas explícitas. El seeder debe cargar exactamente esta matriz como plantilla “Estándar”.
 
 Lista por rol (para el seeder):
 - **super_admin (2)**: admin.tenant.manage, admin.audit.view
-- **tenant_admin (56)**: todos menos admin.tenant.manage
-- **manager (47)**: admin.audit.view, approvals.view, inbox.view, inbox.manage, crm.* (8), marketing.campaigns.manage, catalog.products.view/create/update/activate/manage_rates/manage_availability/view_profitability/publish, catalog.allotments.manage, quotes.* (5), reservations.* (4), operations.* (6), finance.receivables, finance.payables, finance.commissions, finance.profitability, finance.treasury, channels.* (3), reports.view, reports.export
-- **sales (16)**: crm.leads.view, crm.leads.manage, crm.opportunities.manage, crm.activities.manage, crm.clients.manage, catalog.products.view, quotes.view, quotes.create, quotes.send, reservations.view, reservations.create, reports.view, approvals.view, inbox.view, inbox.manage, crm.targets.view
-- **operations (16)**: catalog.products.view, catalog.products.manage_availability, catalog.providers.manage, reservations.view, reservations.modify, operations.view, operations.assign, operations.vouchers, operations.incidents, operations.close, reports.view, approvals.view, inbox.view, inbox.manage, catalog.allotments.manage, operations.travel_docs
-- **finance (15)**: finance.receivables, finance.payments.register, finance.payments.revert, finance.payables, finance.commissions, finance.profitability, finance.invoicing, reservations.view, quotes.view, catalog.products.view, catalog.products.view_profitability, reports.view, reports.export, finance.treasury, approvals.view
-- **accounting (6)**: finance.invoicing, finance.receivables, reservations.view, reports.view, reports.export, finance.treasury
-- **guide (2)** / **driver (2)**: operations.view, operations.incidents
+- **tenant_admin (84)**: admin.users.manage, admin.roles.manage, admin.settings.manage, admin.audit.view, admin.billing.manage, admin.api.manage, approvals.view, inbox.view, inbox.manage, crm.leads.view, crm.leads.manage, crm.opportunities.manage, crm.activities.manage, crm.clients.manage, crm.records.reassign, crm.targets.view, crm.targets.manage, crm.claims.manage, marketing.campaigns.manage, catalog.products.view, catalog.products.create, catalog.products.update, catalog.products.activate, catalog.products.manage_rates, catalog.products.manage_availability, catalog.products.view_profitability, catalog.products.publish, catalog.products.manage_promotions, catalog.providers.manage, catalog.allotments.manage, quotes.view, quotes.create, quotes.approve_internal, quotes.send, quotes.discount_override, quotes.reassign, reservations.view, reservations.create, reservations.modify, reservations.cancel, reservations.approve_changes, reservations.reassign, operations.view, operations.assign, operations.vouchers, operations.incidents, operations.close, operations.travel_docs, finance.receivables, finance.payments.register, finance.payments.revert, finance.payables, finance.commissions, finance.profitability, finance.invoicing, finance.treasury, channels.b2b.manage, channels.ecommerce.manage, channels.cms.edit, channels.cms.publish, reports.view, reports.export, ai.assistant.use, ai.insights.view, inbox.whatsapp.manage, finance.payment_links, finance.gift_cards, finance.accounting_export, catalog.products.import, catalog.products.dynamic_pricing, channels.ota.manage, channels.marketplace.manage, operations.checkin, quotes.external_offers, crm.corporate.manage, finance.corporate_statements, channels.showcase.manage, cms.seo.manage, finance.gateways.manage, cms.templates.manage, ai.content.use, marketing.tracking.manage, marketing.tracking.approve, analytics.web.view
+- **manager (72)**: admin.audit.view, approvals.view, inbox.view, inbox.manage, crm.leads.view, crm.leads.manage, crm.opportunities.manage, crm.activities.manage, crm.clients.manage, crm.records.reassign, crm.targets.view, crm.targets.manage, crm.claims.manage, marketing.campaigns.manage, catalog.products.view, catalog.products.create, catalog.products.update, catalog.products.activate, catalog.products.manage_rates, catalog.products.manage_availability, catalog.products.view_profitability, catalog.products.publish, catalog.products.manage_promotions, catalog.allotments.manage, quotes.view, quotes.create, quotes.approve_internal, quotes.send, quotes.discount_override, quotes.reassign, reservations.view, reservations.create, reservations.modify, reservations.cancel, reservations.approve_changes, reservations.reassign, operations.view, operations.assign, operations.vouchers, operations.incidents, operations.close, operations.travel_docs, finance.receivables, finance.payables, finance.commissions, finance.profitability, finance.treasury, channels.b2b.manage, channels.ecommerce.manage, channels.cms.edit, channels.cms.publish, reports.view, reports.export, ai.assistant.use, ai.insights.view, inbox.whatsapp.manage, finance.payment_links, finance.gift_cards, catalog.products.import, catalog.products.dynamic_pricing, channels.ota.manage, channels.marketplace.manage, operations.checkin, quotes.external_offers, crm.corporate.manage, finance.corporate_statements, channels.showcase.manage, cms.seo.manage, cms.templates.manage, ai.content.use, marketing.tracking.manage, analytics.web.view
+- **sales (21)**: crm.leads.view, crm.leads.manage, crm.opportunities.manage, crm.activities.manage, crm.clients.manage, catalog.products.view, quotes.view, quotes.create, quotes.send, reservations.view, reservations.create, reports.view, approvals.view, inbox.view, inbox.manage, crm.targets.view, ai.assistant.use, finance.payment_links, quotes.external_offers, crm.corporate.manage, analytics.web.view
+- **operations (18)**: catalog.products.view, catalog.products.manage_availability, catalog.providers.manage, reservations.view, reservations.modify, operations.view, operations.assign, operations.vouchers, operations.incidents, operations.close, reports.view, approvals.view, inbox.view, inbox.manage, catalog.allotments.manage, operations.travel_docs, ai.assistant.use, operations.checkin
+- **finance (22)**: finance.receivables, finance.gateways.manage, finance.payments.register, finance.payments.revert, finance.payables, finance.commissions, finance.profitability, finance.invoicing, reservations.view, quotes.view, catalog.products.view, catalog.products.view_profitability, reports.view, reports.export, finance.treasury, approvals.view, ai.insights.view, finance.payment_links, finance.gift_cards, finance.accounting_export, crm.corporate.manage, finance.corporate_statements
+- **accounting (8)**: finance.invoicing, finance.receivables, reservations.view, reports.view, reports.export, finance.treasury, finance.accounting_export, finance.corporate_statements
+- **guide (3)**: operations.view, operations.incidents, operations.checkin
+- **driver (3)**: operations.view, operations.incidents, operations.checkin
 - **b2b (4)**: catalog.products.view, quotes.create, reservations.create, reservations.view
 - **customer (2)**: quotes.view, reservations.view
 - **passenger (1)**: reservations.view
-- **provider (1)**: operations.view
+- **provider (10)**: operations.view, supplier.portal.view, supplier.requests.respond, supplier.rooming.manage, supplier.vouchers.redeem, supplier.payables.view, supplier.invoices.upload, supplier.incidents.report, supplier.rates.request, supplier.users.manage
 
 Nota: en roles externos los permisos se interpretan **siempre** con el alcance de su vínculo (SEC-BR-12); p. ej. `reservations.view` de un cliente = sus reservas.
 
@@ -417,11 +462,11 @@ Nota: en roles externos los permisos se interpretan **siempre** con el alcance d
 | guide, driver | mobile | App del operador | `#/mobile/operador` | `mobile/operador` | — |
 | passenger | portal | Portal del pasajero | `#/canales/portal-pasajero/viajes` | `canales/portal-pasajero`, `mobile/pasajero`, `libro-reclamaciones` | Mi viaje, Itinerario, Vouchers, Alertas, Contacto, App móvil |
 | b2b | portal | Portal de agencias | `#/canales/b2b/portal/catalogo` | `canales/b2b/portal` | Catálogo y tarifas, Mis reservas, Estado de cuenta |
-| customer | portal | Portal del cliente | `#/canales/portal-cliente/{clientId}/inicio` | `canales/portal-cliente/{clientId}`, `libro-reclamaciones` | Inicio, Cotizaciones, Mis viajes, Documentos, Pagos, Soporte, Libro de reclamaciones |
+| customer | portal | Portal del cliente | `#/canales/portal-cliente/{clientId}/inicio` | `canales/portal-cliente/{clientId}`, `libro-reclamaciones` | Inicio, Cotizaciones, Mis viajes, Documentos, Pagos, Panel corporativo (solo si la empresa tiene cuenta corporativa, spec 20), Soporte, Libro de reclamaciones |
 | provider | portal | Extranet de proveedores | `#/proveedor/solicitudes` | `proveedor` | Solicitudes, Rooming lists, Vouchers, Pagos, Incidencias, Mi contrato |
 Roles personalizados: heredan la experiencia de su `scope` (`tenant` → back-office; `mobile` → app operador; `canal` → requiere definir portal, ver §12). Un rol desconocido cae en back-office con sus permisos.
 
-Vínculos de los usuarios de prueba: U13 (B2B) → agencia AGB-01 y cliente CLI-0007; U14 (Cliente) → CLI-0001; U15 (Pasajero) → CLI-0003 y reserva RES-2026-000347; U09/U10 (Guías) → G01/G02; U11 (Conductor) → C01; U17 (Proveedor) → PRV-001.
+Vínculos de los usuarios de prueba: U13 (B2B) → agencia AGB-01 y cliente CLI-0007; U14 (Cliente) → CLI-0001; U18 (Cliente, administradora del portal corporativo) → CLI-0002; U15 (Pasajero) → CLI-0003 y reserva RES-2026-000347; U09/U10 (Guías) → G01/G02; U11 (Conductor) → C01; U17 (Proveedor) → PRV-001.
 
 ### 7.5 ACCESS: permiso requerido por pantalla y resultado por rol
 Regla (`Access.check`): (1) sin sesión → login; (2) experiencia externa → solo sus prefijos; (3) Super Admin → solo sus 4 rutas; (4) resto: se busca en ACCESS el prefijo **más largo** de la ruta; `*` o sin entrada → permitido; si no, requiere **cualquiera** de los permisos. El menú y la URL usan la misma regla.

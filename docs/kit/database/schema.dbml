@@ -53,13 +53,15 @@ Table addons {
   unit varchar(30)
   quantity_allowed boolean [not null]
   price_month numeric(14,2)
-  available_plans "uuid[]" [not null]
-  included_plans "uuid[]" [not null]
+  available_plans uuid[] [not null]
+  included_plans uuid[] [not null]
   grants jsonb [not null]
   created_by uuid
   updated_by uuid
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
+  billing_mode varchar(8) [not null]
+  price_once numeric(14,2)
   Note: '13 §3.5 · Catálogo de add-ons de suscripción.'
 }
 
@@ -302,6 +304,8 @@ Table subscription_items {
   updated_by uuid
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
+  billing_mode varchar(8) [not null]
+  paid_once_at timestamptz
   Note: '13 §3.6 · Add-ons contratados en la suscripción. [Fase 3]'
 }
 
@@ -2077,7 +2081,7 @@ Table booking_passengers {
   seq smallint [not null]
   full_name varchar(150) [not null]
   doc_type varchar(12) [note: 'in (DNI, Pasaporte, CE, Passport)']
-  doc_number varchar(30)
+  doc_number text [note: 'cifrado (cast encrypted)']
   pax_type char(3) [not null, note: 'in (ADT, CHD, INF)']
   nationality varchar(60)
   birth_date date
@@ -2359,7 +2363,7 @@ Table ops_assignments {
   guide_id uuid
   driver_id uuid
   vehicle_id uuid
-  status varchar(30) [not null, note: 'in (pendiente, asignada, confirmada, en_curso, completada)']
+  status varchar(30) [not null, note: 'in (pendiente, asignada, confirmada, en_curso, completada, cancelada)']
   confirmed_at timestamptz
   confirmed_via varchar(10) [note: 'in (web, app)']
   started_at timestamptz
@@ -4285,6 +4289,8 @@ Table catalog_accommodation_legs {
   updated_by uuid
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
+  min_nights smallint
+  max_nights smallint
   Note: '16 §3.6 · Tramos de alojamiento del circuito.'
 }
 
@@ -5234,6 +5240,1322 @@ Table crm_own_review_log {
   Note: '18 §3.2 · Historial de moderación de la reseña.'
 }
 
+Table sys_ai_requests {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  kind varchar(20) [not null]
+  source_type varchar(40)
+  source_id uuid
+  user_id uuid
+  prompt text [not null]
+  input_ref jsonb [not null]
+  output jsonb
+  provider varchar(40) [not null]
+  model varchar(80)
+  tokens_in integer [not null]
+  tokens_out integer [not null]
+  cost_usd numeric(10,4) [not null]
+  status varchar(12) [not null]
+  error text
+  completed_at timestamptz
+  applied_at timestamptz
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.1 · Pedidos al asistente de IA (itinerario, borrador de cotización o respuesta, resumen, importación, insight): entrada, salida, tokens y costo; base del cupo mensual por plan.'
+}
+
+Table report_ai_insights {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  kind varchar(30) [not null]
+  severity varchar(10) [not null]
+  title varchar(160) [not null]
+  detail text [not null]
+  source_type varchar(40)
+  source_id uuid
+  metric jsonb [not null]
+  audience_user_id uuid
+  status varchar(12) [not null]
+  ai_request_id uuid
+  generated_at timestamptz [not null]
+  resolved_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.13 · Alertas de rentabilidad generadas por IA (margen bajo, proveedor caro, meta en riesgo, cobranza).'
+}
+
+Table collab_whatsapp_templates {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  channel_account_id uuid [not null]
+  name varchar(80) [not null]
+  lang varchar(10) [not null]
+  category varchar(20) [not null]
+  purpose varchar(30) [not null]
+  body text [not null]
+  variables text[] [not null]
+  meta_template_id varchar(60)
+  status varchar(12) [not null]
+  rejected_reason text
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.2 · Plantillas de WhatsApp Business aprobadas por Meta por cuenta de canal.'
+}
+
+Table fin_payment_links {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(30) [not null]
+  reservation_id uuid
+  receivable_id uuid
+  gift_card_id uuid
+  amount numeric(14,2) [not null]
+  currency char(3) [not null]
+  methods text[] [not null]
+  installments_max smallint [not null]
+  provider varchar(30) [not null]
+  provider_ref varchar(120)
+  url text
+  token_hash char(64) [not null]
+  sent_via varchar(10)
+  expires_at timestamptz [not null]
+  status varchar(10) [not null]
+  paid_at timestamptz
+  payment_id uuid
+  lock_version integer [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.3 · Links de pago con medios locales (Yape, Plin, Mercado Pago, cuotas) para reserva, CxC o vale de regalo.'
+}
+
+Table mkt_recovery_flows {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(30) [not null]
+  name varchar(120) [not null]
+  trigger_kind varchar(10) [not null]
+  delay_minutes integer [not null]
+  channel varchar(10) [not null]
+  template_ref varchar(80) [not null]
+  max_attempts smallint [not null]
+  include_payment_link boolean [not null]
+  active boolean [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.4 · Flujos de recuperación de carritos y cotizaciones abandonadas.'
+}
+
+Table mkt_recovery_attempts {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  flow_id uuid [not null]
+  cart_id uuid
+  quote_id uuid
+  client_id uuid
+  to_address varchar(160) [not null]
+  attempt_no smallint [not null]
+  scheduled_at timestamptz [not null]
+  sent_at timestamptz
+  status varchar(12) [not null]
+  recovered_reservation_id uuid
+  recovered_amount numeric(14,2)
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.4 · Intentos de recuperación programados y su resultado.'
+}
+
+Table catalog_import_jobs {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(30) [not null]
+  source_type varchar(10) [not null]
+  source_url text
+  file_path text
+  status varchar(12) [not null]
+  extracted jsonb [not null]
+  products_detected integer [not null]
+  products_created integer [not null]
+  ai_request_id uuid
+  error text
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.5 · Importación de productos desde una web, PDF o planilla con IA; revisión humana antes de crear.'
+}
+
+Table catalog_dynamic_price_rules {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(30) [not null]
+  name varchar(120) [not null]
+  product_id uuid
+  basis varchar(15) [not null]
+  conditions jsonb [not null]
+  adjust_pct numeric(6,2) [not null]
+  floor_pct numeric(6,2) [not null]
+  ceiling_pct numeric(6,2) [not null]
+  priority smallint [not null]
+  channels text[] [not null]
+  valid_from date
+  valid_to date
+  active boolean [not null]
+  lock_version integer [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.8 · Ajustes de precio dinámicos por ocupación, anticipación, día, temporada o demanda (regla R-DYNAMIC-PRICING).'
+}
+
+Table channel_ota_connections {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(30) [not null]
+  ota varchar(20) [not null]
+  name varchar(120) [not null]
+  account_ref varchar(120)
+  credentials_encrypted text
+  webhook_secret_encrypted text
+  commission_pct numeric(5,2) [not null]
+  markup_pct numeric(5,2) [not null]
+  sync_availability boolean [not null]
+  status varchar(12) [not null]
+  last_sync_at timestamptz
+  last_error text
+  lock_version integer [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.6 · Conexiones del tenant con OTAs (Viator, GetYourGuide, Expedia, Google Things to Do).'
+}
+
+Table channel_ota_product_mappings {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  connection_id uuid [not null]
+  product_id uuid [not null]
+  ota_product_ref varchar(120) [not null]
+  ota_option_ref varchar(120)
+  price_mode varchar(10) [not null]
+  fixed_price numeric(14,2)
+  status varchar(12) [not null]
+  last_sync_at timestamptz
+  last_error text
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.6 · Producto del catálogo ↔ producto/opción de la OTA y su modo de precio.'
+}
+
+Table channel_ota_bookings {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  connection_id uuid [not null]
+  ota_booking_ref varchar(120) [not null]
+  mapping_id uuid
+  reservation_id uuid
+  payload jsonb [not null]
+  gross_amount numeric(14,2)
+  net_amount numeric(14,2)
+  currency char(3)
+  travel_date date
+  pax smallint
+  status varchar(12) [not null]
+  error text
+  received_at timestamptz [not null]
+  processed_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.6 · Reservas recibidas de OTAs (idempotentes por referencia de la OTA).'
+}
+
+Table platform_marketplace_listings {
+  id uuid [pk, not null]
+  seller_tenant_id uuid [not null]
+  product_ref uuid [not null]
+  product_code varchar(40) [not null]
+  title varchar(200) [not null]
+  destination varchar(120)
+  summary text
+  currency char(3) [not null]
+  from_price numeric(14,2)
+  reseller_commission_pct numeric(5,2) [not null]
+  status varchar(12) [not null]
+  published_at timestamptz
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.7 · Productos publicados por un tenant en el marketplace B2B (tabla de plataforma).'
+}
+
+Table platform_marketplace_partnerships {
+  id uuid [pk, not null]
+  seller_tenant_id uuid [not null]
+  reseller_tenant_id uuid [not null]
+  status varchar(12) [not null]
+  commission_pct numeric(5,2) [not null]
+  platform_fee_pct numeric(4,2) [not null]
+  credit_limit numeric(14,2) [not null]
+  payment_terms varchar(10) [not null]
+  requested_by uuid
+  decided_by uuid
+  decided_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.7 · Alianzas vendedor ↔ revendedor con comisión y tarifa de plataforma.'
+}
+
+Table platform_marketplace_orders {
+  id uuid [pk, not null]
+  code varchar(30) [not null]
+  partnership_id uuid [not null]
+  listing_id uuid [not null]
+  seller_tenant_id uuid [not null]
+  reseller_tenant_id uuid [not null]
+  seller_reservation_ref uuid
+  reseller_reservation_ref uuid
+  gross_amount numeric(14,2) [not null]
+  commission_amount numeric(14,2) [not null]
+  platform_fee_amount numeric(14,2) [not null]
+  currency char(3) [not null]
+  status varchar(12) [not null]
+  idempotency_key varchar(80) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.7 · Ventas entre tenants por el marketplace; crean la reserva en el vendedor y en el revendedor.'
+}
+
+Table fin_gift_cards {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(30) [not null]
+  redeem_code_hash char(64) [not null]
+  redeem_code_last4 char(4) [not null]
+  initial_amount numeric(14,2) [not null]
+  balance numeric(14,2) [not null]
+  currency char(3) [not null]
+  buyer_client_id uuid
+  recipient_name varchar(160)
+  recipient_email varchar(190)
+  message varchar(500)
+  deliver_at timestamptz
+  expires_at date [not null]
+  status varchar(10) [not null]
+  payment_id uuid
+  lock_version integer [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.9 · Vales y tarjetas de regalo con saldo (código de canje con hash).'
+}
+
+Table fin_gift_card_movements {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  gift_card_id uuid [not null]
+  kind varchar(10) [not null]
+  amount numeric(14,2) [not null]
+  balance_after numeric(14,2) [not null]
+  reservation_id uuid
+  receivable_id uuid
+  note varchar(300)
+  created_by uuid
+  created_at timestamptz [not null]
+  Note: '19 §3.9 · Movimientos del vale (append-only).'
+}
+
+Table ops_waiver_templates {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(30) [not null]
+  name varchar(120) [not null]
+  lang char(2) [not null]
+  version smallint [not null]
+  body text [not null]
+  requires_guardian_for_minors boolean [not null]
+  active boolean [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.10 · Textos de deslinde de responsabilidad versionados.'
+}
+
+Table ops_waiver_signatures {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  template_id uuid [not null]
+  template_version smallint [not null]
+  body_sha256 char(64) [not null]
+  reservation_id uuid [not null]
+  passenger_id uuid [not null]
+  signed_name varchar(160) [not null]
+  guardian_name varchar(160)
+  signature_path text [not null]
+  ip inet
+  user_agent varchar(300)
+  signed_at timestamptz [not null]
+  created_at timestamptz [not null]
+  Note: '19 §3.10 · Firmas del deslinde por pasajero (append-only, con hash del texto firmado).'
+}
+
+Table ops_checkin_passes {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  reservation_id uuid [not null]
+  passenger_id uuid [not null]
+  service_id uuid [not null]
+  token_hash char(64) [not null]
+  status varchar(10) [not null]
+  issued_at timestamptz [not null]
+  scanned_at timestamptz
+  scanned_by uuid
+  scan_device_id varchar(80)
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.10 · Pases QR de check-in por pasajero y servicio.'
+}
+
+Table fin_account_mappings {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  target varchar(15) [not null]
+  concept varchar(30) [not null]
+  account_code varchar(30) [not null]
+  cost_center varchar(30)
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.11 · Plan de cuentas del tenant por sistema contable de destino.'
+}
+
+Table fin_accounting_exports {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(30) [not null]
+  target varchar(15) [not null]
+  period_from date [not null]
+  period_to date [not null]
+  scope text[] [not null]
+  status varchar(10) [not null]
+  rows_count integer [not null]
+  file_path text
+  sha256 char(64)
+  error text
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.11 · Exportaciones contables por período.'
+}
+
+Table quote_external_offers {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  quote_id uuid [not null]
+  version_id uuid
+  reservation_id uuid
+  provider varchar(20) [not null]
+  kind varchar(10) [not null]
+  offer_ref varchar(160) [not null]
+  summary varchar(300) [not null]
+  payload jsonb [not null]
+  net_amount numeric(14,2) [not null]
+  sell_amount numeric(14,2) [not null]
+  currency char(3) [not null]
+  offer_expires_at timestamptz
+  pnr varchar(20)
+  status varchar(12) [not null]
+  created_by uuid
+  updated_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '19 §3.12 · Ofertas de aéreo, hotel, auto o seguro tomadas de un GDS o banco de camas para una cotización.'
+}
+
+Table crm_corporate_accounts {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  client_id uuid [not null]
+  status varchar(12) [not null]
+  currency char(3) [not null]
+  credit_days smallint [not null]
+  require_approval boolean [not null]
+  approval_threshold numeric(14,2)
+  approval_ttl_hours smallint [not null]
+  default_cost_center_id uuid
+  statement_auto boolean [not null]
+  statement_day smallint [not null]
+  statement_recipients text[] [not null]
+  statement_last_sent_at timestamptz
+  notes text
+  lock_version integer [not null]
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '20 §3.1 · Cuenta corporativa de una empresa cliente: crédito, aprobación previa y envío automático del estado de cuenta.'
+}
+
+Table crm_corporate_cost_centers {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  account_id uuid [not null]
+  code varchar(20) [not null]
+  name varchar(120) [not null]
+  budget_amount numeric(14,2)
+  budget_period varchar(12) [not null]
+  active boolean [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '20 §3.2 · Centros de costo de la empresa cliente con presupuesto por período.'
+}
+
+Table crm_corporate_travelers {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  account_id uuid [not null]
+  cost_center_id uuid
+  full_name varchar(160) [not null]
+  email varchar(160)
+  doc_type varchar(10)
+  doc_number varchar(20)
+  employee_code varchar(30)
+  active boolean [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '20 §3.3 · Empleados que viajan por cuenta de la empresa cliente.'
+}
+
+Table crm_corporate_portal_users {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  account_id uuid [not null]
+  user_id uuid
+  email varchar(160) [not null]
+  full_name varchar(160) [not null]
+  portal_role varchar(15) [not null]
+  cost_center_id uuid
+  traveler_id uuid
+  status varchar(10) [not null]
+  invited_at timestamptz [not null]
+  accepted_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '20 §3.4 · Usuarios del portal corporativo con su rol (administrador, aprobador, pagador, viajero).'
+}
+
+Table booking_corporate_approvals {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20) [not null]
+  account_id uuid [not null]
+  quote_id uuid
+  reservation_id uuid
+  cost_center_id uuid [not null]
+  amount numeric(14,2) [not null]
+  currency char(3) [not null]
+  requested_by_portal_user_id uuid
+  requested_by_user_id uuid
+  approver_portal_user_id uuid
+  status varchar(10) [not null]
+  reason text
+  expires_at timestamptz [not null]
+  decided_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  lock_version integer [not null]
+  Note: '20 §3.5 · Aprobación de la empresa cliente para una cotización o reserva que supera el umbral.'
+}
+
+Table booking_cost_allocations {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  reservation_id uuid [not null]
+  account_id uuid [not null]
+  cost_center_id uuid [not null]
+  traveler_id uuid
+  pct numeric(5,2) [not null]
+  amount numeric(14,2) [not null]
+  currency char(3) [not null]
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '20 §3.6 · Reparto del importe de una reserva corporativa por centro de costo y viajero.'
+}
+
+Table fin_corporate_statements {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20) [not null]
+  account_id uuid [not null]
+  period_start date [not null]
+  period_end date [not null]
+  currency char(3) [not null]
+  opening_balance numeric(14,2) [not null]
+  charges numeric(14,2) [not null]
+  payments numeric(14,2) [not null]
+  credits numeric(14,2) [not null]
+  closing_balance numeric(14,2) [not null]
+  lines jsonb [not null]
+  status varchar(10) [not null]
+  document_id uuid
+  generated_by uuid
+  generated_at timestamptz [not null]
+  sent_at timestamptz
+  sent_to text[] [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '20 §3.7 · Estados de cuenta mensuales de la empresa cliente (saldo inicial, compras, pagos, notas de crédito y saldo final).'
+}
+
+Table report_corporate_exports {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20) [not null]
+  account_id uuid [not null]
+  requested_by_portal_user_id uuid
+  requested_by_user_id uuid
+  report_type varchar(20) [not null]
+  filters jsonb [not null]
+  format varchar(5) [not null]
+  status varchar(12) [not null]
+  row_count integer
+  document_id uuid
+  error text
+  completed_at timestamptz
+  expires_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '20 §3.8 · Exportaciones de reportes del portal corporativo en Excel, PDF o CSV.'
+}
+
+Table catalog_hotel_season_rates {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  hotel_id uuid [not null]
+  label varchar(60) [not null]
+  date_from date [not null]
+  date_to date [not null]
+  adjust_pct numeric(6,2) [not null]
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '21 §3.1 · Ajuste porcentual de la tarifa de un hotel del tramo por rango de fechas (temporada); sin solapes por hotel.'
+}
+
+Table catalog_leg_tours {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  leg_id uuid [not null]
+  code varchar(20) [not null]
+  name varchar(160) [not null]
+  day_offset smallint [not null]
+  start_time time [not null]
+  duration_hours numeric(4,1) [not null]
+  currency char(3) [not null]
+  price_adult numeric(14,2) [not null]
+  price_child numeric(14,2) [not null]
+  min_age smallint
+  capacity smallint
+  provider_id uuid
+  in_trip_sale boolean [not null]
+  active boolean [not null]
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '21 §3.2 · Tours opcionales de un tramo (ciudad) con precio adulto/niño, día relativo, edad mínima y cupo.'
+}
+
+Table catalog_transport_options {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  product_id uuid [not null]
+  code varchar(20) [not null]
+  from_leg_id uuid [not null]
+  to_leg_id uuid
+  mode varchar(12) [not null]
+  name varchar(160) [not null]
+  pricing varchar(10) [not null]
+  currency char(3) [not null]
+  price_adult numeric(14,2)
+  price_child numeric(14,2)
+  duration_hours numeric(4,1)
+  provider_id uuid
+  in_trip_sale boolean [not null]
+  active boolean [not null]
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '21 §3.3 · Movilidad del circuito: entre tramos (elegir una por par) o local, por pasajero o por vehículo.'
+}
+
+Table catalog_transport_vehicles {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  option_id uuid [not null]
+  name varchar(60) [not null]
+  max_pax smallint [not null]
+  price numeric(14,2) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '21 §3.3 · Vehículos y capacidad de una opción de movilidad cobrada por vehículo.'
+}
+
+Table booking_trip_legs {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  reservation_id uuid [not null]
+  leg_id uuid [not null]
+  sequence smallint [not null]
+  city varchar(80) [not null]
+  nights smallint [not null]
+  check_in date [not null]
+  check_out date [not null]
+  created_at timestamptz [not null]
+  Note: '21 §3.4 · Tramos del viaje armado en la reserva: noches elegidas y fechas de entrada y salida por ciudad.'
+}
+
+Table booking_trip_items {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  reservation_id uuid [not null]
+  trip_leg_id uuid
+  kind varchar(10) [not null]
+  leg_tour_id uuid
+  transport_option_id uuid
+  vehicle_id uuid
+  vehicle_units smallint
+  service_date date [not null]
+  start_time time
+  adults smallint [not null]
+  children smallint [not null]
+  currency char(3) [not null]
+  amount numeric(14,2) [not null]
+  reservation_service_id uuid
+  sold_in_trip boolean [not null]
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '21 §3.5 · Tours y movilidad del viaje armado, con importe confirmado por el servidor y servicio generado.'
+}
+
+Table booking_in_trip_offers {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20) [not null]
+  reservation_id uuid [not null]
+  kind varchar(10) [not null]
+  leg_tour_id uuid
+  transport_option_id uuid
+  service_date date [not null]
+  currency char(3) [not null]
+  amount numeric(14,2) [not null]
+  status varchar(14) [not null]
+  payment_link_id uuid
+  trip_item_id uuid
+  expires_at timestamptz [not null]
+  channel varchar(12) [not null]
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '21 §3.6 · Venta en ruta: oferta de un tour o movilidad de un tramo pendiente, con link de pago y vencimiento.'
+}
+
+Table fin_gateway_accounts {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  provider varchar(16) [not null]
+  label varchar(80) [not null]
+  status varchar(12) [not null]
+  mode varchar(10) [not null]
+  account_ref varchar(120) [not null]
+  currency char(3) [not null]
+  fee_pct numeric(5,2) [not null]
+  fee_fixed numeric(10,2) [not null]
+  fee_currency char(3) [not null]
+  fx_spread_pct numeric(5,2) [not null]
+  tax_on_fee boolean [not null]
+  settle_days smallint [not null]
+  pass_fee_to_customer boolean [not null]
+  credentials_ref varchar(120)
+  addon_required varchar(40)
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '22 §4.1 · Pasarelas de cobro del tenant (tarjeta local, PayPal, Yape/Plin) con su esquema de comisión.'
+}
+
+Table fin_payment_fees {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  payment_id uuid [not null]
+  gateway_account_id uuid [not null]
+  currency char(3) [not null]
+  gross numeric(14,2) [not null]
+  fee numeric(14,2) [not null]
+  fee_tax numeric(14,2) [not null]
+  fx_spread numeric(14,2) [not null]
+  net numeric(14,2) [not null]
+  status varchar(10) [not null]
+  external_ref varchar(80)
+  settled_on date
+  passed_to_customer boolean [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '22 §4.2 · Comisión real de cada cobro por pasarela: bruto, comisión, IGV de la comisión, margen de cambio y neto.'
+}
+
+Table cms_site_domains {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  host varchar(253) [not null]
+  purpose varchar(12) [not null]
+  status varchar(14) [not null]
+  verify_token varchar(40) [not null]
+  ssl_status varchar(10) [not null]
+  ssl_expires_at timestamptz
+  verified_at timestamptz
+  last_check_at timestamptz
+  last_error text
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '22 §4.3 · Dominios propios del sitio y portales, con verificación DNS y certificado SSL.'
+}
+
+Table cms_seo_pages {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  path varchar(300) [not null]
+  title varchar(120) [not null]
+  meta_description varchar(320)
+  focus_keyword varchar(120)
+  schema_types text[] [not null]
+  canonical_url varchar(400)
+  indexable boolean [not null]
+  h1_count smallint [not null]
+  word_count integer [not null]
+  images smallint [not null]
+  images_with_alt smallint [not null]
+  speed_mobile smallint
+  score smallint
+  issues jsonb [not null]
+  clicks_28d integer [not null]
+  avg_position numeric(5,1)
+  audited_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '22 §4.4 · Auditoría SEO por página publicada: metadatos, contenido, velocidad, puntaje y métricas de búsqueda.'
+}
+
+Table cms_redirects {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  from_path varchar(300) [not null]
+  to_path varchar(400) [not null]
+  code smallint [not null]
+  hits bigint [not null]
+  active boolean [not null]
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '22 §4.5 · Redirecciones 301/302 del sitio del tenant, sin cadenas.'
+}
+
+Table cms_travel_stories {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  slug varchar(160) [not null]
+  title varchar(200) [not null]
+  client_id uuid [not null]
+  reservation_id uuid
+  product_id uuid
+  city varchar(80)
+  quote text
+  body text
+  photo_count smallint [not null]
+  status varchar(24) [not null]
+  consent_at timestamptz
+  consent_by_name varchar(160)
+  consent_channel varchar(20)
+  consent_photos boolean
+  consent_name_mode varchar(16)
+  consent_revoked_at timestamptz
+  published_at timestamptz
+  seo_score smallint
+  views integer [not null]
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '22 §4.6 · Blog de aventuras con clientes: solo se publica con consentimiento vigente (Ley 29733).'
+}
+
+Table platform_access_passes {
+  id uuid [pk, not null]
+  code varchar(20) [not null]
+  tenant_id uuid [not null]
+  name varchar(80) [not null]
+  starts_on date [not null]
+  ends_on date [not null]
+  price numeric(14,2) [not null]
+  currency char(3) [not null]
+  features text[] [not null]
+  reason varchar(200) [not null]
+  status varchar(10) [not null]
+  convert_to_plan_id uuid
+  source varchar(12) [not null]
+  invoice_id uuid
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '22 §5.1 · Pase Básico de hasta 60 días con funciones elegidas por el Super Admin; uno activo por tenant.'
+}
+
+Table platform_showcase_agencies {
+  id uuid [pk, not null]
+  code varchar(12) [not null]
+  tenant_id uuid
+  name varchar(160) [not null]
+  slug varchar(120) [not null]
+  city varchar(40) [not null]
+  ruc char(11)
+  email varchar(160) [not null]
+  phone varchar(30)
+  license_ref varchar(60)
+  status varchar(12) [not null]
+  verified_at timestamptz
+  rating numeric(2,1)
+  reviews integer [not null]
+  marketing_opt_in boolean [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '22 §5.2 · Agencias que publican en la vitrina gratuita (con o sin tenant en KipuControl).'
+}
+
+Table platform_showcase_listings {
+  id uuid [pk, not null]
+  code varchar(12) [not null]
+  agency_id uuid [not null]
+  slug varchar(160) [not null]
+  title varchar(160) [not null]
+  city varchar(40) [not null]
+  zone varchar(80)
+  theme varchar(40)
+  languages text[] [not null]
+  start_times text[] [not null]
+  duration_hours numeric(4,1) [not null]
+  meeting_point varchar(300) [not null]
+  model varchar(8) [not null]
+  price numeric(14,2) [not null]
+  currency char(3) [not null]
+  capacity smallint [not null]
+  highlights text[] [not null]
+  tenant_product_ref uuid
+  status varchar(12) [not null]
+  reject_reason text
+  featured_until date
+  rating numeric(2,1)
+  reviews integer [not null]
+  published_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '22 §5.3 · Tours publicados en la vitrina: free tour (propina) o de pago, con moderación.'
+}
+
+Table platform_showcase_bookings {
+  id uuid [pk, not null]
+  code varchar(12) [not null]
+  listing_id uuid [not null]
+  service_date date [not null]
+  start_time varchar(5) [not null]
+  traveler_name varchar(160) [not null]
+  traveler_email citext [not null]
+  pax smallint [not null]
+  language char(2) [not null]
+  status varchar(10) [not null]
+  amount numeric(14,2)
+  currency char(3) [not null]
+  commission_pct numeric(5,2)
+  fee_amount numeric(14,2) [not null]
+  fee_basis varchar(14) [not null]
+  marketing_consent boolean [not null]
+  source varchar(40)
+  cancel_token varchar(40) [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '22 §5.4 · Reservas de la vitrina con nombre y correo, y el cargo a la agencia (cupo, por asistente o comisión).'
+}
+
+Table platform_blog_posts {
+  id uuid [pk, not null]
+  slug varchar(160) [not null]
+  title varchar(200) [not null]
+  excerpt varchar(320) [not null]
+  body text
+  city varchar(40)
+  focus_keyword varchar(120) [not null]
+  status varchar(12) [not null]
+  word_count integer [not null]
+  seo_score smallint
+  published_at timestamptz
+  author_id uuid
+  linked_listing_ids uuid[] [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  payload_id varchar(40)
+  synced_at timestamptz
+  canonical_url varchar(300)
+  noindex boolean [not null]
+  Note: '22 §5.5 · Artículos del blog SEO de la vitrina, enlazados a tours publicados.'
+}
+
+Table platform_funnel_events {
+  id bigint [pk, not null]
+  occurred_at timestamptz [not null]
+  kind varchar(20) [not null]
+  agency_id uuid
+  tenant_id uuid
+  listing_id uuid
+  session_hash char(64)
+  utm jsonb
+  Note: '22 §5.6 · Eventos del embudo de captación de agencias (visita, reserva, registro, pase, plan). Append-only.'
+}
+
+Table platform_site_templates {
+  id uuid [pk, not null]
+  code varchar(20) [not null]
+  slug varchar(60) [not null]
+  name varchar(80) [not null]
+  description text [not null]
+  category varchar(16) [not null]
+  tier varchar(10) [not null]
+  price_once numeric(12,2) [not null]
+  currency char(3) [not null]
+  min_plan_code varchar(40)
+  author_kind varchar(10) [not null]
+  author_name varchar(120) [not null]
+  repo_url varchar(300)
+  status varchar(12) [not null]
+  current_version_id uuid
+  default_for_new boolean [not null]
+  installs integer [not null]
+  tags text[] [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '23 §3.1 · Catálogo de plantillas del sitio público (equipo o partner), incluidas o premium, con plantilla por defecto para nuevas agencias.'
+}
+
+Table platform_site_template_versions {
+  id uuid [pk, not null]
+  template_id uuid [not null]
+  version varchar(20) [not null]
+  manifest jsonb [not null]
+  bundle_path varchar(300) [not null]
+  bundle_sha256 char(64) [not null]
+  changelog text
+  status varchar(12) [not null]
+  lh_performance smallint
+  lh_accessibility smallint
+  lh_seo smallint
+  lh_best_practices smallint
+  approved_by uuid
+  published_at timestamptz
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '23 §3.2 · Versiones semver de una plantilla con manifiesto, paquete firmado por SHA-256 y puntajes Lighthouse mínimos para publicar.'
+}
+
+Table platform_template_submissions {
+  id uuid [pk, not null]
+  code varchar(20) [not null]
+  template_id uuid [not null]
+  version varchar(20) [not null]
+  submitted_by uuid
+  submitted_by_name varchar(120) [not null]
+  status varchar(12) [not null]
+  checks jsonb [not null]
+  reviewer_id uuid
+  decided_at timestamptz
+  reject_reason text
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '23 §3.3 · Envíos de plantillas a revisión con el resultado de las validaciones automáticas y la decisión.'
+}
+
+Table platform_ai_credit_packs {
+  id uuid [pk, not null]
+  code varchar(30) [not null]
+  name varchar(80) [not null]
+  kind varchar(10) [not null]
+  credits integer [not null]
+  price numeric(12,2) [not null]
+  currency char(3) [not null]
+  billing varchar(8) [not null]
+  addon_code varchar(40)
+  active boolean [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '23 §3.4 · Paquetes de créditos de IA para contenido e imágenes, de pago único o mensual.'
+}
+
+Table cms_site_themes {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  template_id uuid [not null]
+  template_version_id uuid [not null]
+  status varchar(12) [not null]
+  tokens jsonb [not null]
+  sections jsonb [not null]
+  logo_path varchar(300)
+  chosen_by varchar(16) [not null]
+  applied_by uuid
+  applied_at timestamptz
+  preview_token varchar(64)
+  lock_version integer [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '23 §3.5 · Tema del sitio del tenant: plantilla y versión elegidas, tokens y secciones personalizados; uno activo por tenant.'
+}
+
+Table cms_ai_content_jobs {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20) [not null]
+  kind varchar(16) [not null]
+  target_type varchar(12) [not null]
+  target_id uuid
+  locale varchar(5) [not null]
+  tone varchar(16)
+  input jsonb [not null]
+  output jsonb
+  status varchar(12) [not null]
+  credits_used integer [not null]
+  ai_request_id uuid
+  error text
+  applied_at timestamptz
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '23 §3.6 · Pedidos de contenido con IA (mejorar texto, SEO, traducir, relato, artículo, imagen) con resultado revisable y créditos usados.'
+}
+
+Table cms_ai_images {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  job_id uuid [not null]
+  prompt text [not null]
+  style varchar(16) [not null]
+  width smallint [not null]
+  height smallint [not null]
+  file_path varchar(300) [not null]
+  alt_text varchar(200) [not null]
+  ai_label boolean [not null]
+  credits_used integer [not null]
+  status varchar(12) [not null]
+  used_in jsonb [not null]
+  created_by uuid
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '23 §3.7 · Imágenes generadas con IA, con texto alternativo obligatorio, etiqueta IA y créditos cobrados.'
+}
+
+Table fin_ai_credit_ledger {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  kind varchar(10) [not null]
+  movement varchar(16) [not null]
+  credits integer [not null]
+  balance_after integer [not null]
+  pack_id uuid
+  job_id uuid
+  invoice_id uuid
+  note varchar(200)
+  occurred_at timestamptz [not null]
+  created_by uuid
+  Note: '23 §3.8 · Libro de créditos de IA del tenant (asignación del plan, compras, consumo, reembolso, vencimiento). Append-only.'
+}
+
+Table platform_tracking_tags {
+  id uuid [pk, not null]
+  code varchar(20) [not null]
+  site varchar(10) [not null]
+  provider varchar(16) [not null]
+  name varchar(80) [not null]
+  measurement_id varchar(40)
+  config jsonb [not null]
+  secret_ref varchar(200)
+  consent_category varchar(12) [not null]
+  placement varchar(12) [not null]
+  page_rules jsonb [not null]
+  script_body text
+  script_src varchar(400)
+  sri_hash varchar(120)
+  csp_domains text[] [not null]
+  exclude_checkout boolean [not null]
+  status varchar(12) [not null]
+  starts_at timestamptz
+  ends_at timestamptz
+  created_by uuid
+  approved_by uuid
+  approved_at timestamptz
+  reject_reason text
+  lock_version integer [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '24 §3.1 · Etiquetas de medición y publicidad de la vitrina y su blog (GA4, GTM, Google Ads, Meta Pixel, TikTok, Clarity, LinkedIn y scripts propios) con consentimiento, reglas de página y aprobación por otra persona.'
+}
+
+Table platform_conversion_mappings {
+  id uuid [pk, not null]
+  tag_id uuid [not null]
+  internal_event varchar(24) [not null]
+  provider_event varchar(80) [not null]
+  conversion_label varchar(60)
+  send_value boolean [not null]
+  server_side boolean [not null]
+  active boolean [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '24 §3.2 · Qué evento interno de la vitrina se envía a cada etiqueta, con nombre del proveedor, etiqueta de conversión de Google Ads y envío del lado del servidor.'
+}
+
+Table platform_conversion_dispatches {
+  id bigint [pk, not null]
+  event_id uuid [not null]
+  mapping_id uuid [not null]
+  internal_event varchar(24) [not null]
+  channel varchar(10) [not null]
+  status varchar(24) [not null]
+  attempts smallint [not null]
+  http_status smallint
+  error varchar(300)
+  value numeric(14,2)
+  currency char(3)
+  agency_id uuid
+  occurred_at timestamptz [not null]
+  sent_at timestamptz
+  Note: '24 §3.3 · Registro de cada conversión enviada (navegador o servidor) con resultado, reintentos y deduplicación por event_id. Retención 90 días.'
+}
+
+Table platform_web_analytics_daily {
+  id bigint [pk, not null]
+  day date [not null]
+  site varchar(10) [not null]
+  path varchar(300) [not null]
+  agency_id uuid
+  source varchar(80) [not null]
+  medium varchar(40) [not null]
+  campaign varchar(120) [not null]
+  device varchar(8) [not null]
+  country char(2) [not null]
+  visits integer [not null]
+  visitors integer [not null]
+  pageviews integer [not null]
+  bounces integer [not null]
+  engaged_seconds bigint [not null]
+  conversions integer [not null]
+  revenue numeric(14,2) [not null]
+  computed_at timestamptz [not null]
+  Note: '24 §3.4 · Visitas agregadas por día de la vitrina y el blog (página, agencia, fuente, medio, campaña, dispositivo y país), sin datos personales.'
+}
+
+Table mkt_tracking_tags {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  code varchar(20) [not null]
+  provider varchar(16) [not null]
+  name varchar(80) [not null]
+  measurement_id varchar(40)
+  config jsonb [not null]
+  secret_ref varchar(200)
+  consent_category varchar(12) [not null]
+  placement varchar(12) [not null]
+  page_rules jsonb [not null]
+  script_body text
+  script_src varchar(400)
+  sri_hash varchar(120)
+  csp_domains text[] [not null]
+  exclude_checkout boolean [not null]
+  status varchar(12) [not null]
+  starts_at timestamptz
+  ends_at timestamptz
+  created_by uuid
+  approved_by uuid
+  approved_at timestamptz
+  reject_reason text
+  lock_version integer [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '24 §3.5 · Etiquetas de medición y publicidad del sitio de la agencia; los scripts propios exigen aprobación de otra persona y nunca cargan en el pago.'
+}
+
+Table mkt_conversion_mappings {
+  id uuid [pk, not null]
+  tenant_id uuid [not null]
+  tag_id uuid [not null]
+  internal_event varchar(24) [not null]
+  provider_event varchar(80) [not null]
+  conversion_label varchar(60)
+  send_value boolean [not null]
+  server_side boolean [not null]
+  active boolean [not null]
+  created_at timestamptz [not null]
+  updated_at timestamptz [not null]
+  Note: '24 §3.6 · Mapeo de eventos del sitio de la agencia (compra, lead, chat, boletín, WhatsApp) a eventos de cada proveedor.'
+}
+
+Table mkt_conversion_dispatches {
+  tenant_id uuid [not null]
+  id bigint [pk, not null]
+  event_id uuid [not null]
+  mapping_id uuid [not null]
+  internal_event varchar(24) [not null]
+  channel varchar(10) [not null]
+  status varchar(24) [not null]
+  attempts smallint [not null]
+  http_status smallint
+  error varchar(300)
+  value numeric(14,2)
+  currency char(3)
+  order_id uuid
+  occurred_at timestamptz [not null]
+  sent_at timestamptz
+  Note: '24 §3.7 · Registro de conversiones enviadas desde el sitio de la agencia (Meta Conversions API, conversiones mejoradas de Google Ads, GA4 Measurement Protocol). Retención 90 días.'
+}
+
+Table cms_web_analytics_daily {
+  tenant_id uuid [not null]
+  id bigint [pk, not null]
+  day date [not null]
+  path varchar(300) [not null]
+  source varchar(80) [not null]
+  medium varchar(40) [not null]
+  campaign varchar(120) [not null]
+  device varchar(8) [not null]
+  country char(2) [not null]
+  visits integer [not null]
+  visitors integer [not null]
+  pageviews integer [not null]
+  bounces integer [not null]
+  engaged_seconds bigint [not null]
+  conversions integer [not null]
+  revenue numeric(14,2) [not null]
+  computed_at timestamptz [not null]
+  Note: '24 §3.8 · Visitas agregadas por día del sitio de la agencia, calculadas desde channel_web_events y conteo sin cookies.'
+}
+
 Ref: plan_limits.plan_id > plans.id
 Ref: addon_prices.addon_code > addons.code
 Ref: addon_prices.plan_id > plans.id
@@ -5798,6 +7120,149 @@ Ref: crm_own_reviews.moderated_by > iam_users.id
 Ref: crm_own_review_log.review_id > crm_own_reviews.id
 Ref: crm_own_review_log.user_id > iam_users.id
 
+Ref: sys_ai_requests.user_id > iam_users.id
+Ref: report_ai_insights.ai_request_id > sys_ai_requests.id
+Ref: report_ai_insights.audience_user_id > iam_users.id
+Ref: collab_whatsapp_templates.channel_account_id > collab_channel_accounts.id
+Ref: fin_payment_links.gift_card_id > fin_gift_cards.id
+Ref: fin_payment_links.payment_id > fin_payments.id
+Ref: fin_payment_links.receivable_id > fin_receivables.id
+Ref: fin_payment_links.reservation_id > booking_reservations.id
+Ref: mkt_recovery_attempts.cart_id > channel_web_carts.id
+Ref: mkt_recovery_attempts.client_id > crm_clients.id
+Ref: mkt_recovery_attempts.flow_id > mkt_recovery_flows.id
+Ref: mkt_recovery_attempts.quote_id > quote_quotes.id
+Ref: mkt_recovery_attempts.recovered_reservation_id > booking_reservations.id
+Ref: catalog_import_jobs.ai_request_id > sys_ai_requests.id
+Ref: catalog_dynamic_price_rules.product_id > catalog_products.id
+Ref: channel_ota_product_mappings.connection_id > channel_ota_connections.id
+Ref: channel_ota_product_mappings.product_id > catalog_products.id
+Ref: channel_ota_bookings.connection_id > channel_ota_connections.id
+Ref: channel_ota_bookings.mapping_id > channel_ota_product_mappings.id
+Ref: channel_ota_bookings.reservation_id > booking_reservations.id
+Ref: platform_marketplace_listings.seller_tenant_id > tenants.id
+Ref: platform_marketplace_partnerships.reseller_tenant_id > tenants.id
+Ref: platform_marketplace_partnerships.seller_tenant_id > tenants.id
+Ref: platform_marketplace_orders.listing_id > platform_marketplace_listings.id
+Ref: platform_marketplace_orders.partnership_id > platform_marketplace_partnerships.id
+Ref: platform_marketplace_orders.reseller_tenant_id > tenants.id
+Ref: platform_marketplace_orders.seller_tenant_id > tenants.id
+Ref: fin_gift_cards.buyer_client_id > crm_clients.id
+Ref: fin_gift_cards.payment_id > fin_payments.id
+Ref: fin_gift_card_movements.gift_card_id > fin_gift_cards.id
+Ref: fin_gift_card_movements.receivable_id > fin_receivables.id
+Ref: fin_gift_card_movements.reservation_id > booking_reservations.id
+Ref: ops_waiver_signatures.passenger_id > booking_passengers.id
+Ref: ops_waiver_signatures.reservation_id > booking_reservations.id
+Ref: ops_waiver_signatures.template_id > ops_waiver_templates.id
+Ref: ops_checkin_passes.passenger_id > booking_passengers.id
+Ref: ops_checkin_passes.reservation_id > booking_reservations.id
+Ref: ops_checkin_passes.scanned_by > iam_users.id
+Ref: ops_checkin_passes.service_id > booking_reservation_services.id
+Ref: quote_external_offers.quote_id > quote_quotes.id
+Ref: quote_external_offers.reservation_id > booking_reservations.id
+Ref: quote_external_offers.version_id > quote_versions.id
+Ref: crm_corporate_accounts.client_id > crm_clients.id
+Ref: crm_corporate_accounts.created_by > iam_users.id
+Ref: crm_corporate_accounts.default_cost_center_id > crm_corporate_cost_centers.id
+Ref: crm_corporate_cost_centers.account_id > crm_corporate_accounts.id
+Ref: crm_corporate_travelers.account_id > crm_corporate_accounts.id
+Ref: crm_corporate_travelers.cost_center_id > crm_corporate_cost_centers.id
+Ref: crm_corporate_portal_users.account_id > crm_corporate_accounts.id
+Ref: crm_corporate_portal_users.cost_center_id > crm_corporate_cost_centers.id
+Ref: crm_corporate_portal_users.traveler_id > crm_corporate_travelers.id
+Ref: crm_corporate_portal_users.user_id > iam_users.id
+Ref: booking_corporate_approvals.account_id > crm_corporate_accounts.id
+Ref: booking_corporate_approvals.approver_portal_user_id > crm_corporate_portal_users.id
+Ref: booking_corporate_approvals.cost_center_id > crm_corporate_cost_centers.id
+Ref: booking_corporate_approvals.quote_id > quote_quotes.id
+Ref: booking_corporate_approvals.requested_by_portal_user_id > crm_corporate_portal_users.id
+Ref: booking_corporate_approvals.requested_by_user_id > iam_users.id
+Ref: booking_corporate_approvals.reservation_id > booking_reservations.id
+Ref: booking_cost_allocations.account_id > crm_corporate_accounts.id
+Ref: booking_cost_allocations.cost_center_id > crm_corporate_cost_centers.id
+Ref: booking_cost_allocations.created_by > iam_users.id
+Ref: booking_cost_allocations.reservation_id > booking_reservations.id
+Ref: booking_cost_allocations.traveler_id > crm_corporate_travelers.id
+Ref: fin_corporate_statements.account_id > crm_corporate_accounts.id
+Ref: fin_corporate_statements.document_id > sys_documents.id
+Ref: fin_corporate_statements.generated_by > iam_users.id
+Ref: report_corporate_exports.account_id > crm_corporate_accounts.id
+Ref: report_corporate_exports.document_id > sys_documents.id
+Ref: report_corporate_exports.requested_by_portal_user_id > crm_corporate_portal_users.id
+Ref: report_corporate_exports.requested_by_user_id > iam_users.id
+Ref: catalog_hotel_season_rates.created_by > iam_users.id
+Ref: catalog_hotel_season_rates.hotel_id > catalog_accommodation_hotels.id
+Ref: catalog_leg_tours.created_by > iam_users.id
+Ref: catalog_leg_tours.leg_id > catalog_accommodation_legs.id
+Ref: catalog_leg_tours.provider_id > catalog_providers.id
+Ref: catalog_transport_options.created_by > iam_users.id
+Ref: catalog_transport_options.from_leg_id > catalog_accommodation_legs.id
+Ref: catalog_transport_options.product_id > catalog_products.id
+Ref: catalog_transport_options.provider_id > catalog_providers.id
+Ref: catalog_transport_options.to_leg_id > catalog_accommodation_legs.id
+Ref: catalog_transport_vehicles.option_id > catalog_transport_options.id
+Ref: booking_trip_legs.leg_id > catalog_accommodation_legs.id
+Ref: booking_trip_legs.reservation_id > booking_reservations.id
+Ref: booking_trip_items.created_by > iam_users.id
+Ref: booking_trip_items.leg_tour_id > catalog_leg_tours.id
+Ref: booking_trip_items.reservation_id > booking_reservations.id
+Ref: booking_trip_items.reservation_service_id > booking_reservation_services.id
+Ref: booking_trip_items.transport_option_id > catalog_transport_options.id
+Ref: booking_trip_items.trip_leg_id > booking_trip_legs.id
+Ref: booking_trip_items.vehicle_id > catalog_transport_vehicles.id
+Ref: booking_in_trip_offers.created_by > iam_users.id
+Ref: booking_in_trip_offers.leg_tour_id > catalog_leg_tours.id
+Ref: booking_in_trip_offers.payment_link_id > fin_payment_links.id
+Ref: booking_in_trip_offers.reservation_id > booking_reservations.id
+Ref: booking_in_trip_offers.transport_option_id > catalog_transport_options.id
+Ref: booking_in_trip_offers.trip_item_id > booking_trip_items.id
+Ref: fin_gateway_accounts.created_by > iam_users.id
+Ref: fin_payment_fees.gateway_account_id > fin_gateway_accounts.id
+Ref: fin_payment_fees.payment_id > fin_payments.id
+Ref: cms_site_domains.created_by > iam_users.id
+Ref: cms_redirects.created_by > iam_users.id
+Ref: cms_travel_stories.client_id > crm_clients.id
+Ref: cms_travel_stories.created_by > iam_users.id
+Ref: cms_travel_stories.product_id > catalog_products.id
+Ref: cms_travel_stories.reservation_id > booking_reservations.id
+Ref: platform_access_passes.convert_to_plan_id > plans.id
+Ref: platform_access_passes.created_by > platform_users.id
+Ref: platform_access_passes.invoice_id > platform_invoices.id
+Ref: platform_showcase_listings.agency_id > platform_showcase_agencies.id
+Ref: platform_showcase_bookings.listing_id > platform_showcase_listings.id
+Ref: platform_blog_posts.author_id > platform_users.id
+Ref: platform_funnel_events.agency_id > platform_showcase_agencies.id
+Ref: platform_funnel_events.listing_id > platform_showcase_listings.id
+Ref: platform_site_templates.current_version_id > platform_site_template_versions.id
+Ref: platform_site_template_versions.approved_by > platform_users.id
+Ref: platform_site_template_versions.template_id > platform_site_templates.id
+Ref: platform_template_submissions.reviewer_id > platform_users.id
+Ref: platform_template_submissions.submitted_by > platform_users.id
+Ref: platform_template_submissions.template_id > platform_site_templates.id
+Ref: cms_site_themes.applied_by > iam_users.id
+Ref: cms_site_themes.template_id > platform_site_templates.id
+Ref: cms_site_themes.template_version_id > platform_site_template_versions.id
+Ref: cms_ai_content_jobs.ai_request_id > sys_ai_requests.id
+Ref: cms_ai_content_jobs.created_by > iam_users.id
+Ref: cms_ai_images.created_by > iam_users.id
+Ref: cms_ai_images.job_id > cms_ai_content_jobs.id
+Ref: fin_ai_credit_ledger.created_by > iam_users.id
+Ref: fin_ai_credit_ledger.invoice_id > platform_invoices.id
+Ref: fin_ai_credit_ledger.job_id > cms_ai_content_jobs.id
+Ref: fin_ai_credit_ledger.pack_id > platform_ai_credit_packs.id
+Ref: platform_tracking_tags.approved_by > platform_users.id
+Ref: platform_tracking_tags.created_by > platform_users.id
+Ref: platform_conversion_mappings.tag_id > platform_tracking_tags.id
+Ref: platform_conversion_dispatches.agency_id > platform_showcase_agencies.id
+Ref: platform_conversion_dispatches.mapping_id > platform_conversion_mappings.id
+Ref: platform_web_analytics_daily.agency_id > platform_showcase_agencies.id
+Ref: mkt_tracking_tags.approved_by > iam_users.id
+Ref: mkt_tracking_tags.created_by > iam_users.id
+Ref: mkt_conversion_mappings.tag_id > mkt_tracking_tags.id
+Ref: mkt_conversion_dispatches.mapping_id > mkt_conversion_mappings.id
+Ref: mkt_conversion_dispatches.order_id > channel_ecom_orders.id
+
 TableGroup plataforma {
   platform_users
   plans
@@ -5855,6 +7320,7 @@ TableGroup fase0 {
   sys_scheduled_jobs
   sys_job_runs
   integration_errors
+  fin_fx_rates
 }
 TableGroup fase1 {
   catalog_product_types
@@ -5947,7 +7413,6 @@ TableGroup fase1 {
   fin_commission_rules
   fin_commissions
   fin_settlements
-  fin_fx_rates
   channel_support_tickets
   channel_support_ticket_events
   report_exports
@@ -6069,4 +7534,69 @@ TableGroup fase3 {
   crm_review_requests
   crm_own_reviews
   crm_own_review_log
+  sys_ai_requests
+  report_ai_insights
+  collab_whatsapp_templates
+  fin_payment_links
+  mkt_recovery_flows
+  mkt_recovery_attempts
+  catalog_import_jobs
+  catalog_dynamic_price_rules
+  channel_ota_connections
+  channel_ota_product_mappings
+  channel_ota_bookings
+  platform_marketplace_listings
+  platform_marketplace_partnerships
+  platform_marketplace_orders
+  fin_gift_cards
+  fin_gift_card_movements
+  ops_waiver_templates
+  ops_waiver_signatures
+  ops_checkin_passes
+  fin_account_mappings
+  fin_accounting_exports
+  quote_external_offers
+  crm_corporate_accounts
+  crm_corporate_cost_centers
+  crm_corporate_travelers
+  crm_corporate_portal_users
+  booking_corporate_approvals
+  booking_cost_allocations
+  fin_corporate_statements
+  report_corporate_exports
+  catalog_hotel_season_rates
+  catalog_leg_tours
+  catalog_transport_options
+  catalog_transport_vehicles
+  booking_trip_legs
+  booking_trip_items
+  booking_in_trip_offers
+  fin_gateway_accounts
+  fin_payment_fees
+  cms_site_domains
+  cms_seo_pages
+  cms_redirects
+  cms_travel_stories
+  platform_access_passes
+  platform_showcase_agencies
+  platform_showcase_listings
+  platform_showcase_bookings
+  platform_blog_posts
+  platform_funnel_events
+  platform_site_templates
+  platform_site_template_versions
+  platform_template_submissions
+  platform_ai_credit_packs
+  cms_site_themes
+  cms_ai_content_jobs
+  cms_ai_images
+  fin_ai_credit_ledger
+  platform_tracking_tags
+  platform_conversion_mappings
+  platform_conversion_dispatches
+  platform_web_analytics_daily
+  mkt_tracking_tags
+  mkt_conversion_mappings
+  mkt_conversion_dispatches
+  cms_web_analytics_daily
 }

@@ -288,7 +288,8 @@ Sin cambios respecto a PROC-020 (spec 02 §4.5): Disponible → Hold → Confirm
 | POST | `/api/v1/catalog/products/{id}/pax-rules/simulate` | view | `{adt,chd,inf,ages[]}` → `validatePax` + líneas base |
 | GET/POST/PATCH/DELETE | `/api/v1/catalog/products/{id}/addons[/{addonId}]` | view / `manage_rates` | CRUD adicionales |
 | PUT | `/api/v1/catalog/products/{id}/accommodation` | `manage_rates` | `{enabled, optional, currency, note}` |
-| POST/PATCH/DELETE | `/api/v1/catalog/products/{id}/accommodation/legs[/{legId}]` | `manage_rates` | Tramos; `POST …/legs/reorder {ids[]}` |
+| POST/PATCH/DELETE | `/api/v1/catalog/products/{id}/accommodation/legs[/{legId}]` | `manage_rates` | Tramos |
+| POST | `/api/v1/catalog/products/{id}/accommodation/legs/reorder` | `manage_rates` | Reordenar tramos `{ids[]}` (v2.5: antes solo se mencionaba en la descripción) |
 | POST/PATCH/DELETE | `/api/v1/catalog/products/{id}/accommodation/legs/{legId}/hotels[/{hotelId}]` | `manage_rates` | Hotel + `room_types[]` en el mismo payload (reemplazo completo) |
 | GET/PUT | `/api/v1/catalog/products/{id}/payment-policy` | view / `manage_rates` | `{modes[], deposit_pct, balance_due_days, note, pay_later_enabled}` (este último escribe el override de `R-PAY-LATER`) |
 | GET/PUT | `/api/v1/catalog/products/{id}/pickup` | view / `update` ∨ `manage_availability` | `{required, ask_flight, points[]}` |

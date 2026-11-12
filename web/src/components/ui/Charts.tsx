@@ -59,6 +59,47 @@ export function Sparkline({ values, labels, className }: { values: number[]; lab
   );
 }
 
+export interface PairedDatum {
+  label: string;
+  first: number;
+  second: number;
+}
+
+export function PairedBarChart({ data, labels, height = 110 }: { data: PairedDatum[]; labels: [string, string]; height?: number }) {
+  const [active, setActive] = useState<string | null>(null);
+  const max = Math.max(...data.flatMap((item) => [item.first, item.second])) || 1;
+  const bar = (value: number) => `${Math.max(4, (value / max) * height)}px`;
+
+  return (
+    <div>
+      <div className="mb-3 flex gap-4 text-[12px] text-fg-3">
+        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-t1" />{labels[0]}</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-t2" />{labels[1]}</span>
+      </div>
+      <div className="grid items-end gap-3" style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }} onPointerLeave={() => setActive(null)}>
+        {data.map((item, index) => {
+          const isActive = active === item.label;
+          return (
+            <div key={item.label} className="flex flex-col items-center gap-1.5" onPointerEnter={() => setActive(item.label)}>
+              <div className="relative flex w-full items-end justify-center gap-1" style={{ height }}>
+                {isActive && (
+                  <span className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg bg-fg px-2 py-1 text-[11.5px] font-semibold text-bg shadow-lg">
+                    {item.first} {labels[0].toLowerCase()} · {item.second} {labels[1].toLowerCase()}
+                  </span>
+                )}
+                {[{ value: item.first, tone: "bg-t1" }, { value: item.second, tone: "bg-t2" }].map((serie, position) => (
+                  <span key={position} className={cn("w-full max-w-[18px] origin-bottom rounded-t-[6px] motion-safe:animate-[grow-up_700ms_cubic-bezier(0.2,0.8,0.2,1)_backwards]", serie.tone, active !== null && !isActive && "opacity-45")} style={{ height: bar(serie.value), animationDelay: `${index * 70 + position * 40}ms` }} />
+                ))}
+              </div>
+              <span className={cn("font-mono text-[11.5px] text-fg-3", isActive && "text-fg")}>{item.label.charAt(0).toUpperCase() + item.label.slice(1)}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export interface BarDatum {
   label: string;
   value: number;

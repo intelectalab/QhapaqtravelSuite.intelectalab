@@ -74,6 +74,7 @@ function issueToken(User $user, Tenant $tenant, bool $mfaVerified = true): strin
 function useToken(string $token): void
 {
     app('auth')->forgetGuards();
+    app(TenantContext::class)->clear();
     test()->withToken($token);
 }
 
@@ -295,9 +296,10 @@ function sequenceOf(string $docType, ?int $year = null): object
 
 function actingAsPlatform(): void
 {
+    app(TenantContext::class)->clear();
     $platform = platformUser();
     $plain = DB::connection('pgsql_platform')->transaction(function () use ($platform) {
-        $token = AccessToken::query()->forceCreate([
+        $token = AccessToken::on('pgsql_platform')->forceCreate([
             'tokenable_type' => $platform->getMorphClass(),
             'tokenable_id' => $platform->getKey(),
             'name' => 'pest',
@@ -352,4 +354,17 @@ function webTravelers(int $adults, int $children = 0, int $infants = 0): array
 function siteOf(string $subdomain = 'andes', array $extra = []): array
 {
     return ['X-Forwarded-Host' => $subdomain.'.'.config('sites.domain'), ...$extra];
+}
+
+function detachFromPortfolio(string $clientCode, string $userCode): void
+{
+    withinTenant(tenantA(), function () use ($clientCode, $userCode): void {
+        $client = DB::table('crm_clients')->where('code', $clientCode)->value('id');
+        $user = DB::table('iam_users')->where('code', $userCode)->value('id');
+        $other = DB::table('iam_users')->where('code', 'U02')->value('id');
+
+        foreach (['crm_opportunities', 'quote_quotes', 'booking_reservations'] as $table) {
+            DB::table($table)->where('client_id', $client)->where('owner_id', $user)->update(['owner_id' => $other]);
+        }
+    });
 }

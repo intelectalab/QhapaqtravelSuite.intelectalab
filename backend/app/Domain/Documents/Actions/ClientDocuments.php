@@ -7,6 +7,7 @@ namespace App\Domain\Documents\Actions;
 use App\Domain\Documents\Support\DocumentDraft;
 use App\Domain\Documents\Support\DocumentStore;
 use App\Domain\Documents\Support\InvoiceSheet;
+use App\Domain\Documents\Support\ProductSheet;
 use App\Domain\Documents\Support\QuoteProposalSheet;
 use App\Domain\Documents\Support\ReservationSheet;
 use App\Domain\Documents\Support\StoredDocument;
@@ -29,6 +30,8 @@ final class ClientDocuments
 
     public const INVOICE = 'invoice';
 
+    public const SHEET = 'sheet';
+
     public function __construct(
         private readonly DocumentStore $store,
         private readonly QuoteProposalSheet $quotes,
@@ -36,6 +39,7 @@ final class ClientDocuments
         private readonly VoucherSheet $vouchers,
         private readonly InvoiceSheet $invoices,
         private readonly AuditLogger $audit,
+        private readonly ProductSheet $sheets,
     ) {}
 
     public function draft(string $kind, string $entityId): DocumentDraft
@@ -46,6 +50,7 @@ final class ClientDocuments
             self::ITINERARY => $this->reservations->itinerary($entityId),
             self::VOUCHER => $this->vouchers->draft($entityId),
             self::INVOICE => $this->invoices->draft($entityId),
+            self::SHEET => $this->sheets->draft($entityId),
             default => throw new InvalidArgumentException("Documento {$kind} desconocido."),
         };
     }

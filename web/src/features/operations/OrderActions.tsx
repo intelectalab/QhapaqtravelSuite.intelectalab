@@ -234,6 +234,7 @@ export function AssignAction({ assignment, options, trigger }: { assignment: Ass
 export function CheckinAction({ assignment, passengers, today }: { assignment: Assignment; passengers: OrderDetail["passengers"]; today: string }) {
   if (assignment.status === "pendiente") return null;
   const checked = assignment.checked_in ?? [];
+  if (!["en_curso", "completada"].includes(assignment.status)) return <RowIcon tone="neutral" label="Check-in de pasajeros" icon={<ClipboardCheck size={15} />} disabledHint="El check-in se registra cuando el servicio inicia" />;
   if (assignment.date > today) return <RowIcon tone="neutral" label="Check-in de pasajeros" icon={<ClipboardCheck size={15} />} disabledHint={`El check-in se registra desde el ${formatDate(assignment.date)}`} />;
   return (
     <OpsStep

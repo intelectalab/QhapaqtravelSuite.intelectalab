@@ -14,6 +14,7 @@ final class ReservationStateMachine extends StateMachine
         S::Borrador->value,
         S::PendienteDisponibilidad->value,
         S::PendientePago->value,
+        S::PendienteProveedor->value,
     ];
 
     public function states(): array
@@ -33,9 +34,11 @@ final class ReservationStateMachine extends StateMachine
             S::PendienteDisponibilidad->value => [S::Confirmada->value],
             S::PendienteProveedor->value => [S::Confirmada->value, S::EnOperacion->value],
             S::Reprogramada->value => [S::Confirmada->value, S::EnOperacion->value],
-            S::Confirmada->value => [S::PendienteProveedor->value, S::EnOperacion->value],
-            S::PendientePago->value => [S::Confirmada->value, S::EnOperacion->value],
-            S::EnOperacion->value => [S::Completada->value],
+            S::Confirmada->value => [S::PendienteProveedor->value, S::EnOperacion->value, S::Parcial->value, S::Incidencia->value],
+            S::PendientePago->value => [S::Confirmada->value, S::PendienteProveedor->value, S::EnOperacion->value],
+            S::EnOperacion->value => [S::Completada->value, S::Parcial->value, S::Incidencia->value],
+            S::Parcial->value => [S::Incidencia->value],
+            S::Incidencia->value => [S::EnOperacion->value],
             '*' => [S::Reprogramada->value, S::Cancelada->value],
         ];
     }

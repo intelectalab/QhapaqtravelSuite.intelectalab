@@ -108,7 +108,7 @@ export function ReservationsTable({ rows, today, can, prices = true, costs = fal
 
   const filters: FilterConfig<ReservationRow>[] = [
     { id: "status", label: "Estado", options: unique(rows.map((row) => row.status)).map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status },
-    { id: "origin", label: "Origen", options: [{ value: "cotizacion", label: "Desde cotización" }, { value: "directa", label: "Directa" }, { value: "web", label: "Sitio web" }], value: (row) => row.origin.kind },
+    { id: "origin", label: "Origen", options: [{ value: "cotizacion", label: "Desde cotización" }, { value: "directa", label: "Directa" }, { value: "web", label: "Sitio web" }, { value: "b2b", label: "Agencia B2B" }, { value: "corporativo", label: "Corporativo" }], value: (row) => row.origin.kind },
     { id: "channel", label: "Canal", options: unique(rows.map((row) => row.channel)).map((value) => ({ value, label: value })), value: (row) => row.channel },
   ];
 
@@ -142,7 +142,7 @@ export function ReservationsTable({ rows, today, can, prices = true, costs = fal
           { header: "Reserva", value: (row) => row.title },
           { header: "Cliente", value: (row) => row.client.name },
           { header: "Origen", value: (row) => row.origin.label },
-          { header: "Asesor", value: (row) => row.owner.name },
+          { header: "Responsable", value: (row) => row.owner.name },
           { header: "Desde", value: (row) => row.travel_from },
           { header: "Hasta", value: (row) => row.travel_to },
           { header: "Pasajeros", value: (row) => row.passengers },

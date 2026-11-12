@@ -46,7 +46,7 @@ final class CreateDirectReservation
 
     public function parties(array $data, User $actor): array
     {
-        $client = Portfolio::scope(DB::table('crm_clients')->whereNull('deleted_at'), $actor, 'owner_id')
+        $client = Portfolio::clients(DB::table('crm_clients')->whereNull('deleted_at'), $actor)
             ->where(preg_match('/^[0-9a-f-]{36}$/i', (string) $data['client_id']) === 1 ? 'id' : 'code', $data['client_id'])
             ->first(['id', 'code', 'name'])
             ?? throw ApiException::unprocessable('RES-BR-04', 'Elige un cliente de tu cartera.', ['client_id' => ['Elige un cliente de tu cartera.']]);

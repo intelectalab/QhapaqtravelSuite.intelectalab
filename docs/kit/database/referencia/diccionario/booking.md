@@ -1,10 +1,10 @@
 # Diccionario de datos · Reservas (booking_)
 
-_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras cargar `00`→`90`. No editar a mano._
+_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.15 tras cargar `00`→`90`. No editar a mano._
 
 Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 
-10 tablas · 233 columnas · 51 claves foráneas. Diagrama ER: [`../er/booking.svg`](../er/booking.svg) (fuente [`../er/booking.mmd`](../er/booking.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
+15 tablas · 312 columnas · 83 claves foráneas. Diagrama ER: [`../er/booking.svg`](../er/booking.svg) (fuente [`../er/booking.mmd`](../er/booking.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
 
 ## Tablas
 
@@ -13,13 +13,18 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 | [`booking_cancel_requests`](#booking_cancel_requests) | Fase 1 · MVP | tenant | 14 | 4 | [Spec 04 §3 + 10 §3.11] [Fase 1] Solicitudes de anulación de reserva. |
 | [`booking_cancellations`](#booking_cancellations) | Fase 1 · MVP | tenant | 23 | 6 | [Spec 04 §3] [Fase 1] Resultado de la cancelación (penalidad, reembolso). |
 | [`booking_changes`](#booking_changes) | Fase 1 · MVP | tenant | 21 | 5 | [Spec 04 §3] [Fase 1] Modificaciones y reprogramaciones de la reserva. |
-| [`booking_inventory_holds`](#booking_inventory_holds) | Fase 1 · MVP | tenant | 13 | 4 | [Spec 04 §3] [Fase 1] Cupos retenidos por la reserva en salidas. |
+| [`booking_inventory_holds`](#booking_inventory_holds) | Fase 1 · MVP | tenant | 13 | 4 | [Spec 04 §3] [Fase 1] Cupo consumido por la reserva en una salida (registro por reserva). v2.5: no entra en el cálculo de disponibilidad; la disponibilidad = ca |
 | [`booking_passengers`](#booking_passengers) | Fase 1 · MVP | tenant | 22 | 2 | [Spec 04 §3 (+ v2.1)] [Fase 1] Pasajeros de la reserva. |
 | [`booking_reservation_services`](#booking_reservation_services) | Fase 1 · MVP | tenant | 40 | 12 | [Spec 04 §3 + 05 §3.3 + 08 §3.15] [Fase 1] Servicios de la reserva (estado de proveedor y operativo). |
 | [`booking_reservations`](#booking_reservations) | Fase 1 · MVP | tenant | 36 | 9 | [Spec 04 §3] [Fase 1] Reserva. |
 | [`booking_reservation_web_addons`](#booking_reservation_web_addons) | Fase 2 · Canales y campo | tenant | 12 | 3 | [Spec 04 §3 v2.1] [Fase 2] Adicionales elegidos en la reserva web. |
 | [`booking_reservation_web_lodging`](#booking_reservation_web_lodging) | Fase 2 · Canales y campo | tenant | 14 | 3 | [Spec 04 §3 v2.1] [Fase 2] Alojamiento elegido en la reserva web. |
 | [`booking_reservation_web_snapshots`](#booking_reservation_web_snapshots) | Fase 2 · Canales y campo | tenant | 38 | 3 | [Spec 04 §3 v2.1] [Fase 2] Snapshot 1:1 de la reserva web (motor de reservas). |
+| [`booking_corporate_approvals`](#booking_corporate_approvals) | Fase 3 · SaaS y crecimiento | tenant | 19 | 8 | [Spec 20 §3.5] [Fase 3] Aprobación de la empresa cliente para una cotización o reserva que supera el umbral. |
+| [`booking_cost_allocations`](#booking_cost_allocations) | Fase 3 · SaaS y crecimiento | tenant | 12 | 6 | [Spec 20 §3.6] [Fase 3] Reparto del importe de una reserva corporativa por centro de costo y viajero. |
+| [`booking_in_trip_offers`](#booking_in_trip_offers) | Fase 3 · SaaS y crecimiento | tenant | 18 | 7 | [Spec 21 §3.6] [Fase 3] Venta en ruta: oferta de un tour o movilidad de un tramo pendiente, con link de pago y vencimiento. |
+| [`booking_trip_items`](#booking_trip_items) | Fase 3 · SaaS y crecimiento | tenant | 20 | 8 | [Spec 21 §3.5] [Fase 3] Tours y movilidad del viaje armado, con importe confirmado por el servidor y servicio generado. |
+| [`booking_trip_legs`](#booking_trip_legs) | Fase 3 · SaaS y crecimiento | tenant | 10 | 3 | [Spec 21 §3.4] [Fase 3] Tramos del viaje armado en la reserva: noches elegidas y fechas de entrada y salida por ciudad. |
 
 ## Detalle por tabla
 
@@ -36,7 +41,7 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, iam_users.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 4 | `reason` | `text` | no |  |  |
 | 5 | `requested_by` | `uuid` | no |  | FK → iam_users.id. |
@@ -56,15 +61,16 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `decided_by` | `iam_users.id` | NO ACTION | `fk_booking_cancel_requests_decided_by` |
-| `requested_by` | `iam_users.id` | NO ACTION | `fk_booking_cancel_requests_requested_by` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_booking_cancel_requests_reservation_id` |
+| `tenant_id, decided_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_booking_cancel_requests_decided_by` |
+| `tenant_id, requested_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_booking_cancel_requests_requested_by` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_booking_cancel_requests_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_booking_cancel_requests_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_booking_cancel_requests_id` | `tenant_id, id` |  | restricción |
 | `uq_booking_cancel_requests_reservation_id_p` | `reservation_id` | `((status)::text = 'pendiente'::text)` | índice único |
 
 **CHECK**
@@ -103,7 +109,7 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, fin_invoices.tenant_id, fin_receivables.tenant_id, fin_payments.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 4 | `total_at_cancel` | `numeric(14,2)` | no |  |  |
 | 5 | `paid_at_cancel` | `numeric(14,2)` | no |  |  |
@@ -132,11 +138,11 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `cancelled_by` | `iam_users.id` | NO ACTION | `fk_booking_cancellations_cancelled_by` |
-| `credit_note_id` | `fin_invoices.id` | NO ACTION | `fk_booking_cancellations_credit_note_id` |
-| `penalty_receivable_id` | `fin_receivables.id` | NO ACTION | `fk_booking_cancellations_penalty_receivable_id` |
-| `refund_payment_id` | `fin_payments.id` | NO ACTION | `fk_booking_cancellations_refund_payment_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_booking_cancellations_reservation_id` |
+| `tenant_id, cancelled_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_booking_cancellations_cancelled_by` |
+| `tenant_id, credit_note_id` | `fin_invoices.tenant_id, id` | NO ACTION | `fk_booking_cancellations_credit_note_id` |
+| `tenant_id, penalty_receivable_id` | `fin_receivables.tenant_id, id` | NO ACTION | `fk_booking_cancellations_penalty_receivable_id` |
+| `tenant_id, refund_payment_id` | `fin_payments.tenant_id, id` | NO ACTION | `fk_booking_cancellations_refund_payment_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_booking_cancellations_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_booking_cancellations_tenant_id` |
 
 **UNIQUE**
@@ -182,7 +188,7 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, catalog_products.tenant_id, iam_users.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 4 | `type` | `character varying(20)` | no |  | Valores: `pax`, `servicio`, `upgrade`, `otro`, `reprogramacion`. |
 | 5 | `description` | `text` | no |  |  |
@@ -209,10 +215,10 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `decided_by` | `iam_users.id` | NO ACTION | `fk_booking_changes_decided_by` |
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_booking_changes_product_id` |
-| `requested_by` | `iam_users.id` | NO ACTION | `fk_booking_changes_requested_by` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_booking_changes_reservation_id` |
+| `tenant_id, decided_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_booking_changes_decided_by` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_booking_changes_product_id` |
+| `tenant_id, requested_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_booking_changes_requested_by` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_booking_changes_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_booking_changes_tenant_id` |
 
 **CHECK**
@@ -242,7 +248,7 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 
 ### `booking_inventory_holds`
 
-[Spec 04 §3] [Fase 1] Cupos retenidos por la reserva en salidas.
+[Spec 04 §3] [Fase 1] Cupo consumido por la reserva en una salida (registro por reserva). v2.5: no entra en el cálculo de disponibilidad; la disponibilidad = capacity − sold − holds vigentes de catalog_availability_holds (fuente única de retenciones).
 
 | Dominio | Fase (archivo) | RLS | Políticas | Particionado |
 |---|---|---|---|---|
@@ -253,7 +259,7 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → booking_reservation_services.tenant_id, catalog_product_departures.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `departure_id` | `uuid` | no |  | FK → catalog_product_departures.id. |
 | 4 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 5 | `booking_service_id` | `uuid` | sí |  | FK → booking_reservation_services.id. |
@@ -272,9 +278,9 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `booking_service_id` | `booking_reservation_services.id` | NO ACTION | `fk_booking_inventory_holds_booking_service_id` |
-| `departure_id` | `catalog_product_departures.id` | NO ACTION | `fk_booking_inventory_holds_departure_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_booking_inventory_holds_reservation_id` |
+| `tenant_id, booking_service_id` | `booking_reservation_services.tenant_id, id` | NO ACTION | `fk_booking_inventory_holds_booking_service_id` |
+| `tenant_id, departure_id` | `catalog_product_departures.tenant_id, id` | NO ACTION | `fk_booking_inventory_holds_departure_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_booking_inventory_holds_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_booking_inventory_holds_tenant_id` |
 
 **CHECK**
@@ -315,12 +321,12 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → booking_reservations.tenant_id, tenants.id. |
 | 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 4 | `seq` | `smallint` | no |  |  |
 | 5 | `full_name` | `character varying(150)` | no |  |  |
 | 6 | `doc_type` | `character varying(12)` | sí |  | Valores: `DNI`, `Pasaporte`, `CE`, `Passport`. |
-| 7 | `doc_number` | `character varying(30)` | sí |  |  |
+| 7 | `doc_number` | `text` | sí |  |  |
 | 8 | `pax_type` | `character(3)` | no | `'ADT'::bpchar` | Valores: `ADT`, `CHD`, `INF`. |
 | 9 | `nationality` | `character varying(60)` | sí |  |  |
 | 10 | `birth_date` | `date` | sí |  |  |
@@ -343,13 +349,14 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_booking_passengers_reservation_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_booking_passengers_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_booking_passengers_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_booking_passengers_id` | `tenant_id, id` |  | restricción |
 | `uq_booking_passengers_reservation_id_p` | `reservation_id` | `is_lead` | índice único |
 | `uq_booking_passengers_reservation_id_seq` | `reservation_id, seq` |  | índice único |
 
@@ -388,7 +395,7 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_product_addons.tenant_id, booking_reservation_services.tenant_id, catalog_services.tenant_id, iam_users.tenant_id, catalog_product_departures.tenant_id, catalog_products.tenant_id, catalog_providers.tenant_id, quote_items.tenant_id, booking_reservation_services.tenant_id, iam_users.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 4 | `code` | `character varying(20)` | no |  |  |
 | 5 | `product_id` | `uuid` | sí |  | FK → catalog_products.id. |
@@ -434,23 +441,24 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `addon_id` | `catalog_product_addons.id` | NO ACTION | `fk_booking_reservation_services_addon_id` |
-| `alt_of_id` | `booking_reservation_services.id` | NO ACTION | `fk_booking_reservation_services_alt_of_id` |
-| `catalog_service_id` | `catalog_services.id` | NO ACTION | `fk_booking_reservation_services_catalog_service_id` |
-| `confirmed_by` | `iam_users.id` | NO ACTION | `fk_booking_reservation_services_confirmed_by` |
-| `departure_id` | `catalog_product_departures.id` | NO ACTION | `fk_booking_reservation_services_departure_id` |
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_booking_reservation_services_product_id` |
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_booking_reservation_services_provider_id` |
-| `quote_item_id` | `quote_items.id` | NO ACTION | `fk_booking_reservation_services_quote_item_id` |
-| `replaced_by_id` | `booking_reservation_services.id` | NO ACTION | `fk_booking_reservation_services_replaced_by_id` |
-| `requested_by` | `iam_users.id` | NO ACTION | `fk_booking_reservation_services_requested_by` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_booking_reservation_services_reservation_id` |
+| `tenant_id, addon_id` | `catalog_product_addons.tenant_id, id` | NO ACTION | `fk_booking_reservation_services_addon_id` |
+| `tenant_id, alt_of_id` | `booking_reservation_services.tenant_id, id` | NO ACTION | `fk_booking_reservation_services_alt_of_id` |
+| `tenant_id, catalog_service_id` | `catalog_services.tenant_id, id` | NO ACTION | `fk_booking_reservation_services_catalog_service_id` |
+| `tenant_id, confirmed_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_booking_reservation_services_confirmed_by` |
+| `tenant_id, departure_id` | `catalog_product_departures.tenant_id, id` | NO ACTION | `fk_booking_reservation_services_departure_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_booking_reservation_services_product_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_booking_reservation_services_provider_id` |
+| `tenant_id, quote_item_id` | `quote_items.tenant_id, id` | NO ACTION | `fk_booking_reservation_services_quote_item_id` |
+| `tenant_id, replaced_by_id` | `booking_reservation_services.tenant_id, id` | NO ACTION | `fk_booking_reservation_services_replaced_by_id` |
+| `tenant_id, requested_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_booking_reservation_services_requested_by` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_booking_reservation_services_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_booking_reservation_services_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_booking_reservation_services_id` | `tenant_id, id` |  | restricción |
 | `uq_booking_reservation_services_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -504,7 +512,7 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → channel_b2b_agencies.tenant_id, booking_cancel_requests.tenant_id, crm_clients.tenant_id, channel_ecom_orders.tenant_id, iam_users.tenant_id, quote_quotes.tenant_id, quote_versions.tenant_id, iam_sedes.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `quote_id` | `uuid` | sí |  | FK → quote_quotes.id. |
 | 5 | `quote_version_id` | `uuid` | sí |  | FK → quote_versions.id. |
@@ -546,20 +554,21 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `agency_id` | `channel_b2b_agencies.id` | NO ACTION | `fk_booking_reservations_agency_id` |
-| `cancel_request_id` | `booking_cancel_requests.id` | NO ACTION | `fk_booking_reservations_cancel_request_id` |
-| `client_id` | `crm_clients.id` | NO ACTION | `fk_booking_reservations_client_id` |
-| `ecom_order_id` | `channel_ecom_orders.id` | NO ACTION | `fk_booking_reservations_ecom_order_id` |
-| `owner_id` | `iam_users.id` | NO ACTION | `fk_booking_reservations_owner_id` |
-| `quote_id` | `quote_quotes.id` | NO ACTION | `fk_booking_reservations_quote_id` |
-| `quote_version_id` | `quote_versions.id` | NO ACTION | `fk_booking_reservations_quote_version_id` |
-| `sede_id` | `iam_sedes.id` | NO ACTION | `fk_booking_reservations_sede_id` |
+| `tenant_id, agency_id` | `channel_b2b_agencies.tenant_id, id` | NO ACTION | `fk_booking_reservations_agency_id` |
+| `tenant_id, cancel_request_id` | `booking_cancel_requests.tenant_id, id` | NO ACTION | `fk_booking_reservations_cancel_request_id` |
+| `tenant_id, client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_booking_reservations_client_id` |
+| `tenant_id, ecom_order_id` | `channel_ecom_orders.tenant_id, id` | NO ACTION | `fk_booking_reservations_ecom_order_id` |
+| `tenant_id, owner_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_booking_reservations_owner_id` |
+| `tenant_id, quote_id` | `quote_quotes.tenant_id, id` | NO ACTION | `fk_booking_reservations_quote_id` |
+| `tenant_id, quote_version_id` | `quote_versions.tenant_id, id` | NO ACTION | `fk_booking_reservations_quote_version_id` |
+| `tenant_id, sede_id` | `iam_sedes.tenant_id, id` | NO ACTION | `fk_booking_reservations_sede_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_booking_reservations_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_booking_reservations_id` | `tenant_id, id` |  | restricción |
 | `uq_booking_reservations_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_booking_reservations_tenant_id_quote_id_p` | `tenant_id, quote_id` | `(quote_id IS NOT NULL)` | índice único |
 
@@ -613,7 +622,7 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_product_addons.tenant_id, booking_reservation_web_snapshots.tenant_id, tenants.id. |
 | 3 | `snapshot_id` | `uuid` | no |  | FK → booking_reservation_web_snapshots.id. |
 | 4 | `addon_id` | `uuid` | sí |  | FK → catalog_product_addons.id. |
 | 5 | `name` | `character varying(150)` | no |  |  |
@@ -631,8 +640,8 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `addon_id` | `catalog_product_addons.id` | NO ACTION | `fk_booking_reservation_web_addons_addon_id` |
-| `snapshot_id` | `booking_reservation_web_snapshots.id` | CASCADE | `fk_booking_reservation_web_addons_snapshot_id` |
+| `tenant_id, addon_id` | `catalog_product_addons.tenant_id, id` | NO ACTION | `fk_booking_reservation_web_addons_addon_id` |
+| `tenant_id, snapshot_id` | `booking_reservation_web_snapshots.tenant_id, id` | CASCADE | `fk_booking_reservation_web_addons_snapshot_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_booking_reservation_web_addons_tenant_id` |
 
 **Índices**
@@ -664,7 +673,7 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_accommodation_hotels.tenant_id, booking_reservation_web_snapshots.tenant_id, tenants.id. |
 | 3 | `snapshot_id` | `uuid` | no |  | FK → booking_reservation_web_snapshots.id. |
 | 4 | `leg_id` | `character varying(20)` | sí |  |  |
 | 5 | `city` | `character varying(80)` | no |  |  |
@@ -684,8 +693,8 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `hotel_id` | `catalog_accommodation_hotels.id` | NO ACTION | `fk_booking_reservation_web_lodging_hotel_id` |
-| `snapshot_id` | `booking_reservation_web_snapshots.id` | CASCADE | `fk_booking_reservation_web_lodging_snapshot_id` |
+| `tenant_id, hotel_id` | `catalog_accommodation_hotels.tenant_id, id` | NO ACTION | `fk_booking_reservation_web_lodging_hotel_id` |
+| `tenant_id, snapshot_id` | `booking_reservation_web_snapshots.tenant_id, id` | CASCADE | `fk_booking_reservation_web_lodging_snapshot_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_booking_reservation_web_lodging_tenant_id` |
 
 **CHECK**
@@ -724,7 +733,7 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 4 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 5 | `service_date` | `date` | no |  |  |
@@ -768,14 +777,15 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_booking_reservation_web_snapshots_product_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_booking_reservation_web_snapshots_reservation_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_booking_reservation_web_snapshots_product_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_booking_reservation_web_snapshots_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_booking_reservation_web_snapshots_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_booking_reservation_web_snapshots_id` | `tenant_id, id` |  | restricción |
 | `uq_booking_reservation_web_snapshots_tenant_id_reservation_id` | `tenant_id, reservation_id` |  | índice único |
 
 **CHECK**
@@ -799,5 +809,393 @@ Reservas, pasajeros, servicios, holds, cambios, cancelaciones y snapshots web.
 | Nombre | Momento y evento | Función |
 |---|---|---|
 | `trg_booking_reservation_web_snapshots_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `booking_corporate_approvals`
+
+[Spec 20 §3.5] [Fase 3] Aprobación de la empresa cliente para una cotización o reserva que supera el umbral.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Reservas (booking_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_corporate_accounts.tenant_id, crm_corporate_portal_users.tenant_id, crm_corporate_cost_centers.tenant_id, quote_quotes.tenant_id, crm_corporate_portal_users.tenant_id, iam_users.tenant_id, booking_reservations.tenant_id, tenants.id. |
+| 3 | `code` | `character varying(20)` | no |  |  |
+| 4 | `account_id` | `uuid` | no |  | FK → crm_corporate_accounts.id. |
+| 5 | `quote_id` | `uuid` | sí |  | FK → quote_quotes.id. |
+| 6 | `reservation_id` | `uuid` | sí |  | FK → booking_reservations.id. |
+| 7 | `cost_center_id` | `uuid` | no |  | FK → crm_corporate_cost_centers.id. |
+| 8 | `amount` | `numeric(14,2)` | no |  |  |
+| 9 | `currency` | `character(3)` | no |  |  |
+| 10 | `requested_by_portal_user_id` | `uuid` | sí |  | FK → crm_corporate_portal_users.id. |
+| 11 | `requested_by_user_id` | `uuid` | sí |  | FK → iam_users.id. |
+| 12 | `approver_portal_user_id` | `uuid` | sí |  | FK → crm_corporate_portal_users.id. |
+| 13 | `status` | `character varying(10)` | no | `'pendiente'::character varying` | Valores: `pendiente`, `aprobada`, `rechazada`, `vencida`, `cancelada`. |
+| 14 | `reason` | `text` | sí |  |  |
+| 15 | `expires_at` | `timestamp with time zone` | no |  |  |
+| 16 | `decided_at` | `timestamp with time zone` | sí |  |  |
+| 17 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 18 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+| 19 | `lock_version` | `integer` | no | `0` | Bloqueo optimista: UPDATE … WHERE lock_version = ? (409 si no afecta filas). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, account_id` | `crm_corporate_accounts.tenant_id, id` | NO ACTION | `fk_booking_corporate_approvals_account_id` |
+| `tenant_id, approver_portal_user_id` | `crm_corporate_portal_users.tenant_id, id` | NO ACTION | `fk_booking_corporate_approvals_approver_portal_user_id` |
+| `tenant_id, cost_center_id` | `crm_corporate_cost_centers.tenant_id, id` | NO ACTION | `fk_booking_corporate_approvals_cost_center_id` |
+| `tenant_id, quote_id` | `quote_quotes.tenant_id, id` | NO ACTION | `fk_booking_corporate_approvals_quote_id` |
+| `tenant_id, requested_by_portal_user_id` | `crm_corporate_portal_users.tenant_id, id` | NO ACTION | `fk_booking_corporate_approvals_requested_by_portal_user_id` |
+| `tenant_id, requested_by_user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_booking_corporate_approvals_requested_by_user_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_booking_corporate_approvals_reservation_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_booking_corporate_approvals_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_booking_corporate_approvals_pending_quote` | `tenant_id, quote_id` | `(((status)::text = 'pendiente'::text) AND (quote_id IS NOT NULL))` | índice único |
+| `uq_booking_corporate_approvals_pending_reservation` | `tenant_id, reservation_id` | `(((status)::text = 'pendiente'::text) AND (reservation_id IS NOT NULL))` | índice único |
+| `uq_booking_corporate_approvals_tenant_id_code` | `tenant_id, code` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `booking_corporate_approvals_amount_check` | `CHECK ((amount >= (0)::numeric))` |  |
+| `booking_corporate_approvals_currency_check` | `CHECK ((currency ~ '^[A-Z]{3}$'::text))` |  |
+| `booking_corporate_approvals_status_check` | `CHECK (((status)::text = ANY ((ARRAY['pendiente'::character varying, 'aprobada'::character varying, 'rechazada'::character varying, 'vencida'::character varying, 'cancelada'::character varying])::text[])))` | `status`: `pendiente`, `aprobada`, `rechazada`, `vencida`, `cancelada` |
+| `ck_booking_corporate_approvals_1` | `CHECK ((num_nonnulls(quote_id, reservation_id) = 1))` |  |
+| `ck_booking_corporate_approvals_2` | `CHECK ((((status)::text <> ALL ((ARRAY['aprobada'::character varying, 'rechazada'::character varying])::text[])) OR ((decided_at IS NOT NULL) AND (approver_portal_user_id IS NOT NULL))))` |  |
+| `ck_booking_corporate_approvals_3` | `CHECK ((((status)::text <> 'rechazada'::text) OR (COALESCE(btrim(reason), ''::text) <> ''::text)))` |  |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_booking_corporate_approvals_account_id_status` | `USING btree (tenant_id, account_id, status, expires_at)` |
+| `ix_booking_corporate_approvals_approver_portal_user_id` | `USING btree (approver_portal_user_id)` |
+| `ix_booking_corporate_approvals_cost_center_id` | `USING btree (cost_center_id)` |
+| `ix_booking_corporate_approvals_quote_id` | `USING btree (quote_id)` |
+| `ix_booking_corporate_approvals_requested_by_portal_user_id` | `USING btree (requested_by_portal_user_id)` |
+| `ix_booking_corporate_approvals_requested_by_user_id` | `USING btree (requested_by_user_id)` |
+| `ix_booking_corporate_approvals_reservation_id` | `USING btree (reservation_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_booking_corporate_approvals_lock_version` | BEFORE UPDATE | `app_bump_lock_version` |
+| `trg_booking_corporate_approvals_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `booking_cost_allocations`
+
+[Spec 20 §3.6] [Fase 3] Reparto del importe de una reserva corporativa por centro de costo y viajero.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Reservas (booking_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_corporate_accounts.tenant_id, crm_corporate_cost_centers.tenant_id, iam_users.tenant_id, booking_reservations.tenant_id, tenants.id, crm_corporate_travelers.tenant_id. |
+| 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
+| 4 | `account_id` | `uuid` | no |  | FK → crm_corporate_accounts.id. |
+| 5 | `cost_center_id` | `uuid` | no |  | FK → crm_corporate_cost_centers.id. |
+| 6 | `traveler_id` | `uuid` | sí |  | FK → crm_corporate_travelers.id. |
+| 7 | `pct` | `numeric(5,2)` | no |  |  |
+| 8 | `amount` | `numeric(14,2)` | no |  |  |
+| 9 | `currency` | `character(3)` | no |  |  |
+| 10 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). FK → iam_users.id. |
+| 11 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 12 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, account_id` | `crm_corporate_accounts.tenant_id, id` | NO ACTION | `fk_booking_cost_allocations_account_id` |
+| `tenant_id, cost_center_id` | `crm_corporate_cost_centers.tenant_id, id` | NO ACTION | `fk_booking_cost_allocations_cost_center_id` |
+| `tenant_id, created_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_booking_cost_allocations_created_by` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | CASCADE | `fk_booking_cost_allocations_reservation_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_booking_cost_allocations_tenant_id` |
+| `tenant_id, traveler_id` | `crm_corporate_travelers.tenant_id, id` | NO ACTION | `fk_booking_cost_allocations_traveler_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_booking_cost_allocations_res_cc_traveler` | `tenant_id, reservation_id, cost_center_id, COALESCE(traveler_id, '00000000-0000-0000-0000-000000000000'::uuid)` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `booking_cost_allocations_amount_check` | `CHECK ((amount >= (0)::numeric))` |  |
+| `booking_cost_allocations_currency_check` | `CHECK ((currency ~ '^[A-Z]{3}$'::text))` |  |
+| `booking_cost_allocations_pct_check` | `CHECK (((pct > (0)::numeric) AND (pct <= (100)::numeric)))` |  |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_booking_cost_allocations_account_id` | `USING btree (account_id)` |
+| `ix_booking_cost_allocations_cost_center_id` | `USING btree (cost_center_id)` |
+| `ix_booking_cost_allocations_created_by` | `USING btree (created_by)` |
+| `ix_booking_cost_allocations_reservation_id` | `USING btree (reservation_id)` |
+| `ix_booking_cost_allocations_traveler_id` | `USING btree (traveler_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_booking_cost_allocations_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `booking_in_trip_offers`
+
+[Spec 21 §3.6] [Fase 3] Venta en ruta: oferta de un tour o movilidad de un tramo pendiente, con link de pago y vencimiento.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Reservas (booking_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, catalog_leg_tours.tenant_id, fin_payment_links.tenant_id, booking_reservations.tenant_id, tenants.id, catalog_transport_options.tenant_id, booking_trip_items.tenant_id. |
+| 3 | `code` | `character varying(20)` | no |  |  |
+| 4 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
+| 5 | `kind` | `character varying(10)` | no |  | Valores: `tour`, `transporte`. |
+| 6 | `leg_tour_id` | `uuid` | sí |  | FK → catalog_leg_tours.id. |
+| 7 | `transport_option_id` | `uuid` | sí |  | FK → catalog_transport_options.id. |
+| 8 | `service_date` | `date` | no |  |  |
+| 9 | `currency` | `character(3)` | no |  |  |
+| 10 | `amount` | `numeric(14,2)` | no |  |  |
+| 11 | `status` | `character varying(14)` | no | `'ofrecida'::character varying` | Valores: `ofrecida`, `link_enviado`, `pagada`, `confirmada`, `vencida`, `cancelada`, `reembolsada`. |
+| 12 | `payment_link_id` | `uuid` | sí |  | FK → fin_payment_links.id. |
+| 13 | `trip_item_id` | `uuid` | sí |  | FK → booking_trip_items.id. |
+| 14 | `expires_at` | `timestamp with time zone` | no |  |  |
+| 15 | `channel` | `character varying(12)` | no | `'portal'::character varying` | Valores: `portal`, `whatsapp`, `email`, `app`, `asesor`. |
+| 16 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). FK → iam_users.id. |
+| 17 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 18 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, created_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_booking_in_trip_offers_created_by` |
+| `tenant_id, leg_tour_id` | `catalog_leg_tours.tenant_id, id` | NO ACTION | `fk_booking_in_trip_offers_leg_tour_id` |
+| `tenant_id, payment_link_id` | `fin_payment_links.tenant_id, id` | NO ACTION | `fk_booking_in_trip_offers_payment_link_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_booking_in_trip_offers_reservation_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_booking_in_trip_offers_tenant_id` |
+| `tenant_id, transport_option_id` | `catalog_transport_options.tenant_id, id` | NO ACTION | `fk_booking_in_trip_offers_transport_option_id` |
+| `tenant_id, trip_item_id` | `booking_trip_items.tenant_id, id` | NO ACTION | `fk_booking_in_trip_offers_trip_item_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_booking_in_trip_offers_tenant_id_code` | `tenant_id, code` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `booking_in_trip_offers_amount_check` | `CHECK ((amount > (0)::numeric))` |  |
+| `booking_in_trip_offers_channel_check` | `CHECK (((channel)::text = ANY ((ARRAY['portal'::character varying, 'whatsapp'::character varying, 'email'::character varying, 'app'::character varying, 'asesor'::character varying])::text[])))` | `channel`: `portal`, `whatsapp`, `email`, `app`, `asesor` |
+| `booking_in_trip_offers_currency_check` | `CHECK ((currency ~ '^[A-Z]{3}$'::text))` |  |
+| `booking_in_trip_offers_kind_check` | `CHECK (((kind)::text = ANY ((ARRAY['tour'::character varying, 'transporte'::character varying])::text[])))` | `kind`: `tour`, `transporte` |
+| `booking_in_trip_offers_status_check` | `CHECK (((status)::text = ANY ((ARRAY['ofrecida'::character varying, 'link_enviado'::character varying, 'pagada'::character varying, 'confirmada'::character varying, 'vencida'::character varying, 'cancelada'::character varying, 'reembolsada'::character varying])::text[])))` | `status`: `ofrecida`, `link_enviado`, `pagada`, `confirmada`, `vencida`, `cancelada`, `reembolsada` |
+| `ck_booking_in_trip_offers_1` | `CHECK (((((kind)::text = 'tour'::text) = (leg_tour_id IS NOT NULL)) AND (((kind)::text = 'transporte'::text) = (transport_option_id IS NOT NULL))))` |  |
+| `ck_booking_in_trip_offers_2` | `CHECK ((((status)::text <> ALL ((ARRAY['pagada'::character varying, 'confirmada'::character varying])::text[])) OR (payment_link_id IS NOT NULL)))` |  |
+| `ck_booking_in_trip_offers_3` | `CHECK ((((status)::text <> 'confirmada'::text) OR (trip_item_id IS NOT NULL)))` |  |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_booking_in_trip_offers_created_by` | `USING btree (created_by)` |
+| `ix_booking_in_trip_offers_expires` | `USING btree (tenant_id, expires_at) WHERE ((status)::text = ANY ((ARRAY['ofrecida'::character varying, 'link_enviado'::character varying])::text[]))` |
+| `ix_booking_in_trip_offers_leg_tour_id` | `USING btree (leg_tour_id)` |
+| `ix_booking_in_trip_offers_payment_link_id` | `USING btree (payment_link_id)` |
+| `ix_booking_in_trip_offers_reservation_id` | `USING btree (reservation_id, status)` |
+| `ix_booking_in_trip_offers_transport_option_id` | `USING btree (transport_option_id)` |
+| `ix_booking_in_trip_offers_trip_item_id` | `USING btree (trip_item_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_booking_in_trip_offers_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `booking_trip_items`
+
+[Spec 21 §3.5] [Fase 3] Tours y movilidad del viaje armado, con importe confirmado por el servidor y servicio generado.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Reservas (booking_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, catalog_leg_tours.tenant_id, booking_reservations.tenant_id, booking_reservation_services.tenant_id, tenants.id, catalog_transport_options.tenant_id, booking_trip_legs.tenant_id, catalog_transport_vehicles.tenant_id. |
+| 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
+| 4 | `trip_leg_id` | `uuid` | sí |  | FK → booking_trip_legs.id. |
+| 5 | `kind` | `character varying(10)` | no |  | Valores: `tour`, `transporte`. |
+| 6 | `leg_tour_id` | `uuid` | sí |  | FK → catalog_leg_tours.id. |
+| 7 | `transport_option_id` | `uuid` | sí |  | FK → catalog_transport_options.id. |
+| 8 | `vehicle_id` | `uuid` | sí |  | FK → catalog_transport_vehicles.id. |
+| 9 | `vehicle_units` | `smallint` | sí |  |  |
+| 10 | `service_date` | `date` | no |  |  |
+| 11 | `start_time` | `time without time zone` | sí |  |  |
+| 12 | `adults` | `smallint` | no | `0` |  |
+| 13 | `children` | `smallint` | no | `0` |  |
+| 14 | `currency` | `character(3)` | no |  |  |
+| 15 | `amount` | `numeric(14,2)` | no |  |  |
+| 16 | `reservation_service_id` | `uuid` | sí |  | FK → booking_reservation_services.id. |
+| 17 | `sold_in_trip` | `boolean` | no | `false` |  |
+| 18 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). FK → iam_users.id. |
+| 19 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 20 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, created_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_booking_trip_items_created_by` |
+| `tenant_id, leg_tour_id` | `catalog_leg_tours.tenant_id, id` | NO ACTION | `fk_booking_trip_items_leg_tour_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | CASCADE | `fk_booking_trip_items_reservation_id` |
+| `tenant_id, reservation_service_id` | `booking_reservation_services.tenant_id, id` | NO ACTION | `fk_booking_trip_items_reservation_service_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_booking_trip_items_tenant_id` |
+| `tenant_id, transport_option_id` | `catalog_transport_options.tenant_id, id` | NO ACTION | `fk_booking_trip_items_transport_option_id` |
+| `tenant_id, trip_leg_id` | `booking_trip_legs.tenant_id, id` | NO ACTION | `fk_booking_trip_items_trip_leg_id` |
+| `tenant_id, vehicle_id` | `catalog_transport_vehicles.tenant_id, id` | NO ACTION | `fk_booking_trip_items_vehicle_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_booking_trip_items_id` | `tenant_id, id` |  | restricción |
+| `uq_booking_trip_items_res_tour_date` | `tenant_id, reservation_id, leg_tour_id, service_date` | `(leg_tour_id IS NOT NULL)` | índice único |
+| `uq_booking_trip_items_res_transport` | `tenant_id, reservation_id, transport_option_id` | `(transport_option_id IS NOT NULL)` | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `booking_trip_items_adults_check` | `CHECK ((adults >= 0))` |  |
+| `booking_trip_items_amount_check` | `CHECK ((amount >= (0)::numeric))` |  |
+| `booking_trip_items_children_check` | `CHECK ((children >= 0))` |  |
+| `booking_trip_items_currency_check` | `CHECK ((currency ~ '^[A-Z]{3}$'::text))` |  |
+| `booking_trip_items_kind_check` | `CHECK (((kind)::text = ANY ((ARRAY['tour'::character varying, 'transporte'::character varying])::text[])))` | `kind`: `tour`, `transporte` |
+| `booking_trip_items_vehicle_units_check` | `CHECK (((vehicle_units IS NULL) OR ((vehicle_units >= 1) AND (vehicle_units <= 20))))` |  |
+| `ck_booking_trip_items_1` | `CHECK (((((kind)::text = 'tour'::text) AND (leg_tour_id IS NOT NULL) AND (transport_option_id IS NULL)) OR (((kind)::text = 'transporte'::text) AND (transport_option_id IS NOT NULL) AND (leg_tour_id IS NULL))))` |  |
+| `ck_booking_trip_items_2` | `CHECK (((vehicle_id IS NULL) = (vehicle_units IS NULL)))` |  |
+| `ck_booking_trip_items_3` | `CHECK (((adults + children) > 0))` |  |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_booking_trip_items_created_by` | `USING btree (created_by)` |
+| `ix_booking_trip_items_leg_tour_id` | `USING btree (leg_tour_id)` |
+| `ix_booking_trip_items_reservation_id` | `USING btree (reservation_id, service_date)` |
+| `ix_booking_trip_items_reservation_service_id` | `USING btree (reservation_service_id)` |
+| `ix_booking_trip_items_transport_option_id` | `USING btree (transport_option_id)` |
+| `ix_booking_trip_items_trip_leg_id` | `USING btree (trip_leg_id)` |
+| `ix_booking_trip_items_vehicle_id` | `USING btree (vehicle_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_booking_trip_items_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `booking_trip_legs`
+
+[Spec 21 §3.4] [Fase 3] Tramos del viaje armado en la reserva: noches elegidas y fechas de entrada y salida por ciudad.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Reservas (booking_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_accommodation_legs.tenant_id, booking_reservations.tenant_id, tenants.id. |
+| 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
+| 4 | `leg_id` | `uuid` | no |  | FK → catalog_accommodation_legs.id. |
+| 5 | `sequence` | `smallint` | no |  |  |
+| 6 | `city` | `character varying(80)` | no |  |  |
+| 7 | `nights` | `smallint` | no |  |  |
+| 8 | `check_in` | `date` | no |  |  |
+| 9 | `check_out` | `date` | no |  |  |
+| 10 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, leg_id` | `catalog_accommodation_legs.tenant_id, id` | NO ACTION | `fk_booking_trip_legs_leg_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | CASCADE | `fk_booking_trip_legs_reservation_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_booking_trip_legs_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_booking_trip_legs_id` | `tenant_id, id` |  | restricción |
+| `uq_booking_trip_legs_reservation_id_sequence` | `tenant_id, reservation_id, sequence` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `booking_trip_legs_nights_check` | `CHECK (((nights >= 1) AND (nights <= 30)))` |  |
+| `booking_trip_legs_sequence_check` | `CHECK ((sequence >= 1))` |  |
+| `ck_booking_trip_legs_1` | `CHECK ((check_out = (check_in + (nights)::integer)))` |  |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_booking_trip_legs_leg_id` | `USING btree (leg_id)` |
+| `ix_booking_trip_legs_reservation_id` | `USING btree (reservation_id)` |
 
 [↑ Índice del dominio](#tablas)

@@ -29,12 +29,14 @@ export default async function IncidenciaPage({ params }: PageProps<"/operaciones
   const { code } = await params;
   const incident = await getIncident(code);
   const open = OPEN_INCIDENT.includes(incident.status);
+  const workedOn = incident.status === "en_proceso" || incident.logs.some((entry) => entry.kind === "estado" && entry.message.startsWith("En proceso"));
+  const resolved = incident.status === "resuelta" || (incident.status === "cerrada" && incident.logs.some((entry) => entry.kind === "resolucion"));
+  const closed = incident.status === "cerrada";
   const steps = [
-    { label: "Registrada", at: incident.created_at, done: true },
-    { label: "Asignada", at: null, done: incident.assignee !== null },
-    { label: "En proceso", at: null, done: incident.status !== "abierta" },
-    { label: "Resuelta", at: incident.resolved_at, done: ["resuelta", "cerrada"].includes(incident.status) },
-    { label: "Cerrada", at: incident.closed_at, done: incident.status === "cerrada" },
+    { label: "Abierta", at: incident.created_at, done: true },
+    { label: "En proceso", at: null, done: workedOn, skipped: !workedOn && incident.status !== "abierta" },
+    { label: "Resuelta", at: incident.resolved_at, done: resolved, skipped: closed && !resolved },
+    { label: "Cerrada", at: incident.closed_at, done: closed },
   ];
 
   return (
@@ -72,7 +74,7 @@ export default async function IncidenciaPage({ params }: PageProps<"/operaciones
           </div>
           <HeroPanel solid>
             <p className="mb-3 text-[13.5px] font-semibold">Seguimiento</p>
-            <Journey steps={steps} formatAt={(iso) => formatDateTime(iso, false)} />
+            <Journey steps={steps} skippedLabel="Omitida" formatAt={(iso) => formatDateTime(iso, false)} />
             <div className="mt-4">
               <SlaBar pct={incident.sla_pct} overdue={incident.overdue} closed={!open} />
             </div>

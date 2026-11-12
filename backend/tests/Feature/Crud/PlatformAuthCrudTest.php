@@ -14,7 +14,7 @@ beforeEach(function () {
 function platPendingLogin(): string
 {
     $platform = platformUser();
-    $token = AccessToken::query()->forceCreate([
+    $token = AccessToken::on('pgsql_platform')->forceCreate([
         'tokenable_type' => $platform->getMorphClass(),
         'tokenable_id' => $platform->getKey(),
         'name' => 'plataforma',
@@ -47,7 +47,7 @@ it('platform/auth/mfa/verify completa el acceso del Super Admin y registra el in
     $this->postJson('/api/v1/platform/auth/mfa/verify', ['code' => platOtp()])->assertOk()->assertJsonPath('data.mfa_required', false)->assertJsonPath('data.home', '/plataforma/inicio');
     app('auth')->forgetGuards();
 
-    expect(AccessToken::query()->find(strtok($token, '|'))->mfa_verified_at)->not->toBeNull()
+    expect(AccessToken::on('pgsql_platform')->find(strtok($token, '|'))->mfa_verified_at)->not->toBeNull()
         ->and(platformUser()->last_login_at)->not->toBeNull()
         ->and(platAudit(['entity' => 'Sesión de plataforma', 'entity_id' => 'ops@kipucontrol.com', 'action' => 'login', 'after_value' => 'MFA OK']))->toBeTrue();
     $this->getJson('/api/v1/platform/tenants')->assertOk();

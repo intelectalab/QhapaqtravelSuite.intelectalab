@@ -63,7 +63,7 @@ export function ProductLifecycle({ product, overview, seesCost, seesMargin }: { 
         <ol className="flex flex-wrap items-center gap-2" aria-label="Ciclo de vida">
           {FLOW.map((step, position) => {
             const current = position === index;
-            const past = index === -1 || position < index;
+            const past = index === -1 ? product.status !== "ARCHIVED" : position < index;
             return (
               <Fragment key={step.status}>
                 {position > 0 && <li aria-hidden className={cn("h-0.5 w-8 rounded-full", past || current ? "bg-accent" : "bg-line")} />}

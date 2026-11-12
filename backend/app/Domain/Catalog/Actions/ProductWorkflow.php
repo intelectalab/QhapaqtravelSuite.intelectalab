@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog\Actions;
 
+use App\Domain\Admin\Support\StaffNotices;
 use App\Domain\Catalog\Support\CancellationTiers;
 use App\Domain\Catalog\Support\CatalogAccess;
 use App\Domain\Catalog\Support\ProductChecklist;
@@ -106,14 +107,14 @@ final class ProductWorkflow
             ]);
             DB::table('catalog_product_policies')->insert([...self::DEFAULT_POLICIES, ...array_filter($data['policies'] ?? [], fn ($text, $field) => $field !== 'penalty_tiers' && trim((string) $text) !== '', ARRAY_FILTER_USE_BOTH), 'penalty_tiers' => json_encode(CancellationTiers::normalize($data['policies']['penalty_tiers'] ?? null) ?: CancellationTiers::STANDARD), 'id' => (string) Str::uuid7(), 'tenant_id' => $tenantId, 'product_id' => $id, 'created_by' => $actor->getKey()]);
             DB::table('catalog_product_channels')->insert(['id' => (string) Str::uuid7(), 'tenant_id' => $tenantId, 'product_id' => $id, 'channel' => 'erp', 'is_published' => true, 'published_at' => now(), 'published_by' => $actor->getKey(), 'created_by' => $actor->getKey()]);
+            $this->audit->log('Producto', $values['code'], 'crear', after: $values['name']);
+            $this->applySections($id, $data, $actor);
             $versionId = (string) Str::uuid7();
             DB::table('catalog_product_versions')->insert([
                 'id' => $versionId, 'tenant_id' => $tenantId, 'product_id' => $id, 'version' => '0.1', 'status' => 'borrador',
-                'valid_from' => now()->toDateString(), 'reason' => 'Alta del producto', 'snapshot' => json_encode($values, JSON_UNESCAPED_UNICODE), 'created_by' => $actor->getKey(),
+                'valid_from' => now()->toDateString(), 'reason' => 'Alta del producto', 'snapshot' => json_encode(app(ProductVersions::class)->snapshot($id), JSON_UNESCAPED_UNICODE), 'created_by' => $actor->getKey(),
             ]);
             DB::table('catalog_products')->where('id', $id)->update(['current_version_id' => $versionId]);
-            $this->audit->log('Producto', $values['code'], 'crear', after: $values['name']);
-            $this->applySections($id, $data, $actor);
 
             return $values['code'];
         });
@@ -235,6 +236,14 @@ final class ProductWorkflow
             }
 
             $this->audit->log('Producto', $product->code, 'cambio_estado', $product->status, trim($rule['to'].($reason ? " · {$reason}" : '')));
+            $notices = app(StaffNotices::class);
+            $label = "{$product->code} · {$product->name}";
+            match (true) {
+                $action === 'submit-review' => $notices->toRoles(['product_manager', 'manager', 'tenant_admin'], 'producto.revision', "{$product->code} enviado a revisión", $label, 'catalog_product', (string) $product->id, null, [], (string) $actor->getKey()),
+                $action === 'activate' => $notices->toRoles(['sales', 'operations', 'manager'], 'producto.activado', "{$product->code} ya se puede vender", $label, 'catalog_product', (string) $product->id, null, [$product->created_by ?? null], (string) $actor->getKey()),
+                $product->status === 'ACTIVE' && $rule['to'] !== 'ACTIVE' => $notices->toRoles(['sales', 'operations', 'manager'], 'producto.no_vendible', "{$product->code} dejó de estar a la venta", trim($label.($reason ? " · {$reason}" : '')), 'catalog_product', (string) $product->id, null, [], (string) $actor->getKey()),
+                default => 0,
+            };
         });
     }
 

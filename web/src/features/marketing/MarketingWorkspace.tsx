@@ -1,12 +1,13 @@
 "use client";
 
-import { CalendarClock, Clock3, FilePen, Mail, MessageCircle, Send, Users } from "lucide-react";
+import { CalendarClock, Clock3, FilePen, Filter, Mail, MessageCircle, Send, Users } from "lucide-react";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { formatDate, formatDateTime, formatMoney, formatPercent } from "@/lib/format";
 import { rate, TEMPLATE_STATUS, type Campaign, type MarketingOverview, type MarketingTemplate } from "@/lib/marketing";
 import { toneStyle } from "@/lib/tone";
@@ -86,13 +87,36 @@ function CampaignsTable({ overview }: { overview: MarketingOverview }) {
   return <DataTable screen="marketing-campanas" rows={rows} columns={columns} getKey={(row) => row.code} entityLabel="campañas" searchText={(row) => `${row.code} ${row.name} ${row.segment?.name ?? ""}`} searchPlaceholder="Buscar campaña o segmento" metrics={metrics} filters={filters} sorts={sorts} />;
 }
 
+function RuleChips({ parts, match, fallback }: { parts: string[]; match: "all" | "any"; fallback: string }) {
+  if (parts.length === 0) return <p className="mt-1 text-[12.5px] text-fg-2">{fallback}</p>;
+  const shown = parts.slice(0, 3);
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+      {shown.map((part, index) => (
+        <span key={part} className="flex items-center gap-1.5">
+          {index > 0 && <span className="text-[11px] text-fg-3">{match === "any" ? "o" : "y"}</span>}
+          <span className="inline-flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-0.5 text-[12px] text-fg-2">
+            <Filter size={11} className="text-[var(--tint,var(--t1))]" />
+            {part}
+          </span>
+        </span>
+      ))}
+      {parts.length > shown.length && (
+        <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[12px] font-semibold text-fg-3" title={parts.slice(3).join(" · ")}>
+          +{parts.length - shown.length}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function SegmentsGrid({ overview }: { overview: MarketingOverview }) {
   const manage = overview.can.manage;
   return (
     <>
       {manage && (
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <p className="text-[13px] text-fg-3">Reglas que se evalúan en cada envío. Un segmento usado por campañas se conserva como evidencia.</p>
+        <div className="mb-4 flex items-center justify-end gap-2">
+          <InfoTip label="Cómo funcionan">Las reglas se evalúan en cada envío. Un segmento usado por campañas se conserva como evidencia.</InfoTip>
           <SegmentFormAction fields={overview.segment_fields} />
         </div>
       )}
@@ -106,7 +130,7 @@ function SegmentsGrid({ overview }: { overview: MarketingOverview }) {
                 <b className="text-[14px]">{segment.name}</b>
                 <span className="font-mono text-[11.5px] text-fg-3">{segment.code}</span>
               </div>
-              <p className="mt-1 text-[12.5px] text-fg-2">{segment.rules_text}</p>
+              <RuleChips parts={segment.rules_parts ?? []} match={segment.match} fallback={segment.rules_text} />
               <div className="mt-3 grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-lg bg-surface-2 py-2" title="Contactos que cumplen las reglas">
                   <b className="block text-[16px]">{segment.matched}</b>

@@ -39,10 +39,12 @@ final class ClientDirectory
         }
 
         $today = $this->today();
-        $trips = $this->trips($row->id);
+        $only = ClientTabs::partialFor($row, $viewer);
+        $trips = $this->trips($row->id, $only);
         $current = $trips->first(fn (array $trip) => $trip['from'] <= $today && $trip['to'] >= $today && $trip['status'] !== 'cancelada');
-        $pending = DB::table('fin_receivables')->where('client_id', $row->id)->whereNull('deleted_at')->whereNotIn('status', ['pagada', 'cancelada'])
-            ->get(['amount', 'paid_amount', 'fx_rate', 'status']);
+        $pending = DB::table('fin_receivables as f')->where('f.client_id', $row->id)->whereNull('f.deleted_at')->whereNotIn('f.status', ['pagada', 'cancelada'])
+            ->when($only, fn ($query) => $query->join('booking_reservations as r', 'r.id', '=', 'f.reservation_id')->where('r.owner_id', $only))
+            ->get(['f.amount', 'f.paid_amount', 'f.fx_rate', 'f.status']);
         $toPen = fn (object $receivable) => ((float) $receivable->amount - (float) $receivable->paid_amount) * (float) ($receivable->fx_rate ?: 1);
 
         return [
@@ -53,8 +55,9 @@ final class ClientDirectory
             'doc_number' => $row->doc_number,
             'owner_id' => $row->owner_id,
             'trips' => $trips->values(),
-            'quotes' => DB::table('quote_quotes')->where('client_id', $row->id)->whereNull('deleted_at')->orderByDesc('created_at')
+            'quotes' => DB::table('quote_quotes')->where('client_id', $row->id)->whereNull('deleted_at')->when($only, fn ($query) => $query->where('owner_id', $only))->orderByDesc('created_at')
                 ->get(['code', 'title', 'status', 'valid_until']),
+            'partial' => $only !== null,
             'balance_pen' => (int) round($pending->sum($toPen)),
             'overdue_pen' => (int) round($pending->where('status', 'vencida')->sum($toPen)),
             'companions' => $this->companions($row->id, $row->name),
@@ -62,7 +65,7 @@ final class ClientDirectory
             'portal_access' => $this->portal->forClient($row->id),
             'contacts' => app(ClientTabs::class)->contacts($row->id),
             'source_lead' => DB::table('crm_clients as c')->join('crm_leads as l', 'l.id', '=', 'c.source_lead_id')->where('c.id', $row->id)->first(['l.code', 'l.full_name', 'l.source_code']),
-            ...app(ClientTabs::class)->summary($row),
+            ...app(ClientTabs::class)->scopedTo($only)->summary($row),
             'arco_requests' => DB::table('crm_cases')->where('client_id', $row->id)->where('type_code', ArcoRequests::CASE_TYPE)->whereIn('status', ['abierta', 'en_proceso'])->orderBy('due_date')
                 ->get(['code', 'subject', 'due_date']),
         ];
@@ -96,7 +99,7 @@ final class ClientDirectory
             ->selectRaw("(select coalesce(sum((f.amount - f.paid_amount) * coalesce(nullif(f.fx_rate, 0), 1)), 0) from fin_receivables f where f.client_id = c.id and f.deleted_at is null and f.status not in ('pagada', 'cancelada')) as open_balance_pen")
             ->selectRaw("coalesce(bool_or({$counted} and r.travel_from <= ?::date and r.travel_to >= ?::date), false) as on_trip", [$today, $today]);
 
-        return Portfolio::scope($query, $viewer, 'c.owner_id');
+        return Portfolio::clients($query, $viewer, 'c');
     }
 
     private function summary(object $row): array
@@ -124,9 +127,9 @@ final class ClientDirectory
         ];
     }
 
-    private function trips(string $clientId): Collection
+    private function trips(string $clientId, ?string $only = null): Collection
     {
-        $reservations = DB::table('booking_reservations')->where('client_id', $clientId)->whereNull('deleted_at')->where('status', '<>', 'borrador')
+        $reservations = DB::table('booking_reservations')->where('client_id', $clientId)->whereNull('deleted_at')->where('status', '<>', 'borrador')->when($only, fn ($query) => $query->where('owner_id', $only))
             ->orderByDesc('travel_from')->get(['id', 'code', 'title', 'status', 'travel_from', 'travel_to', 'total_amount', 'fx_rate']);
         $passengers = DB::table('booking_passengers')->whereIn('reservation_id', $reservations->pluck('id'))->orderBy('seq')->get(['reservation_id', 'full_name'])->groupBy('reservation_id');
 

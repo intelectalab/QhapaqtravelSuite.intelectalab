@@ -352,6 +352,7 @@
     /* Traslado privado: se cotiza por vehículo (unidades = pax / capacidad), el grupo se valida aparte con BE.validatePax */
     const pax = perVehicle(p) ? { adt: Math.max(1, Math.ceil((it.pax.adt + it.pax.chd + it.pax.inf) / Math.max(1, p.maxPax))), chd: 0, inf: 0 } : it.pax;
     return { date: it.date, pax, options: optsOf(p, it), addons: BE.on('R-ADDONS', p) ? addonQty(it) : [], lodging: BE.on('R-LODGING', p) && !it.noLodging ? (it.lodging || []) : [],
+      nights: BE.on('R-TRIP-BUILDER', p) ? (it.nights || {}) : {}, tours: BE.on('R-TRIP-BUILDER', p) ? (it.tours || []).map(id => ({ id })) : [], transport: BE.on('R-TRIP-BUILDER', p) ? (it.transport || []).map(id => ({ id })) : [],
       removed: BE.on('R-PREVIEW-REMOVE', p) ? (it.removed || []) : [], currency: cur || prefs.cur, promoPct: o.promoPct || 0, paymentMode: o.mode, paymentMethod: o.method === 'card' ? 'tarjeta' : o.method, channel: 'E-commerce' };
   }
   function promoFor(p, code) { if (!code || !BE.on('R-PROMO', p)) return null; return activePromos(p).find(x => x.code && x.code.toUpperCase() === String(code).toUpperCase()) || null; }
@@ -377,7 +378,7 @@
     return { cur, lines, modes, mode, total, deposit, balance: rnd2(total - deposit), balanceDue: dues[0] || null, holdHours: Math.min(...lines.map(x => x.q.holdHours || 999)), promoOk: c.promo ? lines.some(x => x.q.promoLbl) : null, promoDisc, depositPct: lines.length ? lines[0].q.depositPct : 100, ok: lines.every(x => x.q.ok) };
   }
   /* Compatibilidad con carritos antiguos (adt/chd/inf sueltos) */
-  function normItem(it) { if (!it.pax) it.pax = { adt: it.adt || 1, chd: it.chd || 0, inf: it.inf || 0 }; if (!it.addons) it.addons = []; if (!it.lodging) it.lodging = []; if (!it.removed) it.removed = []; if (it.noLodging == null) it.noLodging = !it.lodging.length; return it; }
+  function normItem(it) { if (!it.pax) it.pax = { adt: it.adt || 1, chd: it.chd || 0, inf: it.inf || 0 }; if (!it.addons) it.addons = []; if (!it.lodging) it.lodging = []; if (!it.removed) it.removed = []; if (it.noLodging == null) it.noLodging = !it.lodging.length; if (!it.nights) it.nights = {}; if (!it.tours) it.tours = []; if (!it.transport) it.transport = []; return it; }
 
   /* ---------------- Analítica (eventos de embudo; en producción: GA4/GTM + tabla de eventos) ---------------- */
   function track(event, params) {
@@ -437,6 +438,7 @@
       '@media (max-width:980px){.ws-head .ws-wrap{flex-wrap:nowrap;padding-top:0}.ws-nav{display:none;margin-left:0;border-top:0;position:absolute;top:100%;left:0;right:0;flex-direction:column;background:var(--surface);border-bottom:1px solid var(--line);padding:8px 16px 14px;box-shadow:var(--shadow-m)}.ws-nav.open{display:flex}.ws-nav a{padding:11px 10px;font-size:.92rem}.ws-burger{display:inline-flex!important}}',
       '@media (max-width:700px){.ws-ib .lbl{display:none}.ws-ib{padding:0 9px}.ws-head .ws-wrap{gap:8px}.ws-logo .sub{display:none}.ws-hact .wa{display:none}}',
       '@media (max-width:480px){.ws-head .ws-wrap{gap:6px}.ws-logo{flex:1 1 auto;min-width:0;gap:8px}.ws-logo>span:last-child{min-width:0}.ws-logo b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.95rem}.ws-logo .mk{width:34px;height:34px}.ws-hact{gap:6px}.ws-ib{height:38px;min-width:38px;padding:0 8px}.ws-hact a[href="#/sitio/cuenta/deseos"]{display:none}.ws-util .ws-wrap{font-size:.72rem}.ws-util select{height:30px}}',
+      '.ws-kick,.ws-cta{display:none}',
       '.ws-hero{background:var(--side);color:#fff;position:relative;overflow:hidden}',
       '.ws-hero svg.bg{position:absolute;left:0;right:0;bottom:0;width:100%;height:78%;pointer-events:none}',
       '.ws-hero .ws-wrap{position:relative;padding-top:60px;padding-bottom:64px}',
@@ -607,7 +609,7 @@
       '<header class="ws-head"><div class="ws-wrap"><button class="ws-ib ws-burger" data-a="burger" aria-label="Menú">' + ic('menu') + '</button>' +
       '<a class="ws-logo" href="#/sitio"><span class="mk">' + ic('logo') + '</span><span><b>Andes Horizonte</b><span class="sub">Travel · Tour operator</span></span></a>' +
       '<nav class="ws-nav" id="ws-nav" aria-label="Principal">' + NAVI.map(([k, h]) => '<a href="' + h + '"' + (active === k ? ' class="on"' : '') + '>' + t(k) + '</a>').join('') + '</nav>' +
-      '<div class="ws-hact"><a class="ws-ib wa" href="#/sitio/contacto" title="WhatsApp ' + WA + '">' + ic('msg') + '<span class="lbl">WhatsApp</span></a>' +
+      '<div class="ws-hact"><a class="ws-cta" href="#/sitio/a-medida">' + (EN() ? 'Tailor-made quote' : 'Cotizar a medida') + '</a><a class="ws-ib wa" href="#/sitio/contacto" title="WhatsApp ' + WA + '">' + ic('msg') + '<span class="lbl">WhatsApp</span></a>' +
       '<a class="ws-ib" href="#/sitio/cuenta/deseos" title="' + t('wish') + '" aria-label="' + t('wish') + '">' + ic('heart') + (wishList().length ? '<span class="n">' + wishList().length + '</span>' : '') + '</a>' +
       '<a class="ws-ib" href="#/sitio/carrito" aria-label="' + t('cart') + '">' + ic('cart') + '<span class="lbl">' + t('cart') + '</span>' + (n ? '<span class="n" id="ws-cartn">' + n + '</span>' : '') + '</a>' +
       (internal ? '<a class="ws-ib" href="' + Access.ux().home + '" title="Volver al sistema">' + ic('dashboard') + '<span class="lbl">' + t('backoffice') + '</span></a>'
@@ -619,7 +621,7 @@
     return '<footer class="ws-foot"><div class="ws-wrap"><div class="cols">' +
       '<div><a class="ws-logo" href="#/sitio" style="color:#fff;display:flex;padding:0;margin-bottom:10px"><span class="mk">' + ic('logo') + '</span><span><b>Andes Horizonte Travel</b></span></a><p>' + t('footer_about') + '</p>' +
       '<div style="margin-top:10px">' + esc(tn.name) + '<br>RUC ' + esc(tn.ruc) + '</div><h4 style="margin-top:14px">' + t('f_social') + '</h4><div>Facebook: /andeshorizontetravel · Instagram: @andeshorizonte · TikTok: @andeshorizonte · YouTube: Andes Horizonte Travel</div></div>' +
-      '<div><h4>' + t('f_company') + '</h4><a href="#/sitio/nosotros">' + t('nosotros') + '</a><a href="#/sitio/destinos">' + t('destinos') + '</a><a href="#/sitio/ofertas">' + t('ofertas') + '</a><a href="#/sitio/blog">' + t('blog') + '</a><a href="#/sitio/a-medida">' + t('medida') + '</a>' +
+      '<div><h4>' + t('f_company') + '</h4><a href="#/sitio/nosotros">' + t('nosotros') + '</a><a href="#/sitio/destinos">' + t('destinos') + '</a><a href="#/sitio/ofertas">' + t('ofertas') + '</a><a href="#/sitio/blog">' + t('blog') + '</a><a href="#/sitio/aventuras">' + (EN() ? 'Traveler stories' : 'Aventuras de viajeros') + '</a><a href="#/sitio/a-medida">' + t('medida') + '</a>' +
       '<h4 style="margin-top:14px">' + t('f_legal') + '</h4><a href="#/sitio/legal/terminos">' + t('terms') + '</a><a href="#/sitio/legal/privacidad">' + t('privacy') + '</a><a href="#/sitio/legal/cancelacion">' + t('cancel') + '</a><a href="#/sitio/legal/cookies">' + (EN() ? 'Cookie policy' : 'Política de cookies') + '</a></div>' +
       '<div><h4>' + t('f_help') + '</h4><a href="#/sitio/cuenta">' + t('account') + '</a><a href="#/sitio/cuenta/reserva">' + (EN() ? 'Manage my booking' : 'Gestionar mi reserva') + '</a><a href="#/sitio/contacto">' + t('contacto') + '</a><a href="#/sitio/legal/cancelacion">' + (EN() ? 'Changes and refunds' : 'Cambios y reembolsos') + '</a>' +
       '<a class="ws-lr" href="' + claimsHref() + '">' + ic('clipboard') + t('claims') + '</a></div>' +
@@ -698,6 +700,7 @@
       case 'ofertas': pg = pOfertas(); break;
       case 'a-medida': pg = pMedida(); break;
       case 'blog': pg = b ? pPost(b) : pBlog(); break;
+      case 'aventuras': pg = (window.KipuStories && window.KipuStories.page(b)) || { title: 'Historia no disponible', desc: '', html: '<div class="ws-wrap ws-sec">' + UI.empty('La historia no está publicada.', 'camera') + '</div>' }; break;
       case 'nosotros': pg = pNosotros(); break;
       case 'contacto': pg = pContacto(); break;
       case 'legal': pg = pLegal(b); break;
@@ -708,8 +711,8 @@
       case 'cuenta': pg = pCuenta(b, c); break;
       default: pg = { title: 'Página no encontrada', desc: '', html: '<div class="ws-wrap ws-sec">' + UI.empty('La página solicitada no existe.', 'compass') + '<div class="center"><a class="btn primary" href="#/sitio">Ir al inicio</a></div></div>' };
     }
-    el.innerHTML = '<div class="ws' + (pg.bar ? ' has-bar' : '') + '">' + header(pg.nav || '') + '<main>' + pg.html + '</main>' + footer() + chatWidget() + '</div>';
-    bindFrame(el);
+    el.innerHTML = (window.KipuTpl ? KipuTpl.css() : '') + '<div class="ws' + (pg.bar ? ' has-bar' : '') + (window.KipuTpl ? ' ' + KipuTpl.cls() : '') + '">' + header(pg.nav || '') + '<main>' + pg.html + '</main>' + footer() + chatWidget() + '</div>' + (window.KipuTpl ? KipuTpl.bar() : '') + (window.KipuTags ? KipuTags.banner('sitio') : '');
+    bindFrame(el); if (window.KipuTags) KipuTags.bind(el, 'sitio');
     if (pg.after) pg.after(el);
     setSEO(pg.title, pg.desc || (EN() ? 'Tours, packages and tailor-made trips in Peru.' : 'Tours, paquetes y viajes a medida por el Perú con Andes Horizonte Travel.'), pg.ld);
     track('page_view', { page: '/' + ['sitio'].concat(segs).join('/'), title: pg.title });
@@ -781,12 +784,12 @@
     const html = '<section class="ws-hero">' + heroSvg + '<div class="ws-wrap"><div class="k">' + t('hero_k') + '</div><h1>' + t('hero_t') + '</h1><p class="l">' + t('hero_s') + '</p>' +
       '<form class="ws-search" id="ws-sf"><div class="field"><label for="sf-d">' + t('s_dest') + '</label><select class="input" id="sf-d"><option value="">' + t('s_any') + '</option>' + destOpts + '</select></div><div class="field"><label for="sf-f">' + t('s_date') + '</label><input class="input" type="date" id="sf-f" min="' + addDays(T(), 1) + '"></div><div class="field"><label for="sf-p">' + t('s_pax') + '</label><select class="input" id="sf-p">' + [1, 2, 3, 4, 5, 6, 8, 10].map(n => '<option' + (n === 2 ? ' selected' : '') + '>' + n + '</option>').join('') + '</select></div><button class="btn sun" type="button" data-a="search">' + ic('search') + t('s_btn') + '</button></form>' +
       '<div class="ws-trust"><span>' + ic('checkCircle') + t('instant') + '</span><span>' + ic('shield') + (EN() ? 'Secure payment' : 'Pago seguro') + '</span><span>' + ic('award') + (EN() ? 'Licensed guides' : 'Guías oficiales') + '</span><span>' + ic('phoneCall') + (EN() ? '24/7 assistance' : 'Asistencia 24/7') + '</span></div></div></section>' +
-      '<section class="ws-sec"><div class="ws-wrap"><div class="ws-sech"><div><h2 class="ws-h2">' + t('f_dest') + '</h2><p class="ws-subt">' + t('f_dest_s') + '</p></div><a class="btn" href="#/sitio/destinos">' + t('all') + ic('arrowRight') + '</a></div><div class="ws-grid g3">' +
+      '<section class="ws-sec"><div class="ws-wrap"><div class="ws-sech"><div><span class="ws-kick">' + (EN() ? 'Explore by region' : 'Explora por región') + '</span><h2 class="ws-h2">' + t('f_dest') + '</h2><p class="ws-subt">' + t('f_dest_s') + '</p></div><a class="btn" href="#/sitio/destinos">' + t('all') + ic('arrowRight') + '</a></div><div class="ws-grid g3 ws-bento">' +
       DEST.slice(0, 6).map((d, i) => '<a class="ws-dest" href="#/sitio/destinos/' + d.slug + '">' + art(d.hue, i, '') + '<div class="in"><b>' + esc(destName(d)) + '</b><span>' + esc(EN() ? d.tagEn : d.tag) + ' · ' + prodsInDest(d.id).length + ' ' + (EN() ? 'experiences' : 'experiencias') + '</span></div></a>').join('') + '</div></div></section>' +
-      '<section class="ws-sec alt"><div class="ws-wrap"><div class="ws-sech"><div><h2 class="ws-h2">' + t('f_pk') + '</h2><p class="ws-subt">' + t('f_pk_s') + '</p></div><a class="btn" href="#/sitio/buscar">' + t('all') + ic('arrowRight') + '</a></div><div class="ws-grid g3">' + feat.map(card).join('') + '</div></div></section>' +
-      (offs.length ? '<section class="ws-sec"><div class="ws-wrap"><div class="ws-sech"><div><h2 class="ws-h2">' + t('offers_t') + '</h2><p class="ws-subt">' + t('offers_s') + '</p></div><a class="btn" href="#/sitio/ofertas">' + t('ofertas') + ic('arrowRight') + '</a></div><div class="ws-grid g3">' + offs.map(offerCard).join('') + '</div></div></section>' : '') +
-      '<section class="ws-sec alt"><div class="ws-wrap"><div class="ws-sech"><div><h2 class="ws-h2">' + t('deps_t') + '</h2><p class="ws-subt">' + t('deps_s') + '</p></div></div><div class="ws-deps">' + (deps.length ? deps.map(depRow).join('') : UI.empty('Sin salidas garantizadas próximas.', 'calendar')) + '</div></div></section>' +
-      '<section class="ws-sec"><div class="ws-wrap"><h2 class="ws-h2" style="margin-bottom:20px">' + t('why_t') + '</h2><div class="ws-why">' +
+      '<section class="ws-sec alt"><div class="ws-wrap"><div class="ws-sech"><div><span class="ws-kick">' + (EN() ? 'Featured experiences' : 'Experiencias destacadas') + '</span><h2 class="ws-h2">' + t('f_pk') + '</h2><p class="ws-subt">' + t('f_pk_s') + '</p></div><a class="btn" href="#/sitio/buscar">' + t('all') + ic('arrowRight') + '</a></div><div class="ws-grid g3">' + feat.map(card).join('') + '</div></div></section>' +
+      (offs.length ? '<section class="ws-sec"><div class="ws-wrap"><div class="ws-sech"><div><span class="ws-kick">' + (EN() ? 'Limited time' : 'Por tiempo limitado') + '</span><h2 class="ws-h2">' + t('offers_t') + '</h2><p class="ws-subt">' + t('offers_s') + '</p></div><a class="btn" href="#/sitio/ofertas">' + t('ofertas') + ic('arrowRight') + '</a></div><div class="ws-grid g3">' + offs.map(offerCard).join('') + '</div></div></section>' : '') +
+      '<section class="ws-sec alt"><div class="ws-wrap"><div class="ws-sech"><div><span class="ws-kick">' + (EN() ? 'Upcoming departures' : 'Próximas salidas programadas') + '</span><h2 class="ws-h2">' + t('deps_t') + '</h2><p class="ws-subt">' + t('deps_s') + '</p></div></div><div class="ws-deps">' + (deps.length ? deps.map(depRow).join('') : UI.empty('Sin salidas garantizadas próximas.', 'calendar')) + '</div></div></section>' +
+      '<section class="ws-sec"><div class="ws-wrap"><span class="ws-kick">' + (EN() ? 'Our commitment' : 'Nuestro compromiso') + '</span><h2 class="ws-h2" style="margin-bottom:20px">' + t('why_t') + '</h2><div class="ws-why">' +
       [['compass', EN() ? 'Local operator' : 'Operador local', EN() ? 'Our own team in Cusco and Arequipa, not intermediaries.' : 'Equipo propio en Cusco y Arequipa, sin intermediarios.'], ['checkCircle', t('instant'), EN() ? 'Scheduled departures confirmed online with seats held for you.' : 'Salidas programadas confirmadas en línea con cupos bloqueados para usted.'], ['phoneCall', EN() ? 'Assistance 24/7' : 'Asistencia 24/7', EN() ? 'Emergency line during your whole trip.' : 'Línea de emergencia durante todo su viaje.'], ['heart', EN() ? 'Flexible booking' : 'Reserva flexible', EN() ? 'Pay a deposit and the balance later; free cancellation on many tours.' : 'Pague un anticipo y el saldo después; cancelación gratis en muchos tours.']].map(w => '<div class="it"><div class="ib">' + ic(w[0]) + '</div><div><b>' + esc(w[1]) + '</b><p>' + esc(w[2]) + '</p></div></div>').join('') + '</div></div></section>' +
       ownHome() +
       extReviewsBlock(null, true) +
@@ -923,10 +926,11 @@
   const legsOf = (p) => (p.accommodation && p.accommodation.legs) || [];
   const lodgingOn = (p) => BE.on('R-LODGING', p) && legsOf(p).length > 0;
   const addonsOn = (p) => BE.on('R-ADDONS', p) && (p.addons || []).length > 0;
+  const tripOn = (p) => BE.on('R-TRIP-BUILDER', p) && !!p.trip && legsOf(p).length > 0;
   const smallIc = (n, s) => ic(n).replace('<svg', '<svg style="width:' + (s || 14) + 'px;height:' + (s || 14) + 'px;vertical-align:-2px"');
   function freshPS(p) {
     const r = BE.paxRules(p);
-    const ps = { pid: p.id, date: null, month: null, pax: { adt: Math.max(r.minAdults || 0, 1, Math.min(2, p.maxPax), p.minPax || 1), chd: 0, inf: 0 }, opts: {}, addons: {}, lodgeOn: false, lodging: {} };
+    const ps = { pid: p.id, date: null, month: null, pax: { adt: Math.max(r.minAdults || 0, 1, Math.min(2, p.maxPax), p.minPax || 1), chd: 0, inf: 0 }, opts: {}, addons: {}, lodgeOn: false, lodging: {}, nights: {}, tours: [], transport: [] };
     (p.config || []).forEach((g, i) => { ps.opts[i] = Math.max(0, g.options.findIndex(o => o.delta === 0)); });
     ps.date = nextOk(p, ps.pax.adt);
     return ps;
@@ -934,7 +938,7 @@
   /* Ítem de carrito equivalente a la selección actual de la ficha */
   function itemFromPS(p) {
     const lodging = lodgingOn(p) && PS.lodgeOn ? legsOf(p).map(l => { const s = PS.lodging[l.id]; if (!s || !s.hotelId) return null; const rooms = Object.entries(s.rooms || {}).filter(([, q]) => q > 0).map(([type, qty]) => ({ type, qty })); return rooms.length ? { legId: l.id, hotelId: s.hotelId, rooms } : null; }).filter(Boolean) : [];
-    return normItem({ pid: p.id, date: PS.date, pax: Object.assign({}, PS.pax), opts: Object.assign({}, PS.opts), addons: addonsOn(p) ? Object.entries(PS.addons).map(([id, by]) => ({ id, by: Object.assign({}, by) })).filter(a => sum(Object.values(a.by), v => v) > 0) : [], lodging, noLodging: !lodging.length, removed: [] });
+    return normItem({ pid: p.id, date: PS.date, pax: Object.assign({}, PS.pax), opts: Object.assign({}, PS.opts), addons: addonsOn(p) ? Object.entries(PS.addons).map(([id, by]) => ({ id, by: Object.assign({}, by) })).filter(a => sum(Object.values(a.by), v => v) > 0) : [], lodging, noLodging: !lodging.length, nights: Object.assign({}, PS.nights || {}), tours: (PS.tours || []).slice(), transport: (PS.transport || []).slice(), removed: [] });
   }
   function suggestRooms(h, need) {
     const has = (t2) => h.rooms.some(r => r.type === t2); const out = {};
@@ -966,6 +970,7 @@
       sec('ws-paxw', EN() ? 'Travelers' : 'Pasajeros', EN() ? 'Ages are checked against each traveler’s date of birth at checkout.' : 'Las edades se validan con la fecha de nacimiento de cada pasajero en el checkout.') +
       ((p.config || []).length ? sec('ws-optw', t('options')) : '') +
       (lodgingOn(p) ? sec('ws-lodw', EN() ? 'Accommodation (optional)' : 'Alojamiento (opcional)', esc((p.accommodation && p.accommodation.note) || '')) : '') +
+      (tripOn(p) ? sec('ws-tripw', EN() ? 'Tours and transport by city' : 'Tours y movilidad por ciudad', esc((p.trip && p.trip.note) || '')) : '') +
       (addonsOn(p) ? sec('ws-addw', EN() ? 'Add-ons: museum tickets and more' : 'Adicionales: entradas a museos y otros', EN() ? 'Choose the quantity per traveler type.' : 'Elija la cantidad por tipo de pasajero.') : '') + '</div>';
     const html = crumbs([[t(kindOf(p) === 'traslados' ? 'tours' : kindOf(p)), '#/sitio/' + (kindOf(p) === 'traslados' ? 'tours' : kindOf(p))], [destName(dest), '#/sitio/destinos/' + dest.slug], [pName(p)]]) +
       '<div class="ws-wrap"><div class="row between top" style="margin:4px 0 14px"><div style="min-width:0;flex:1 1 420px"><h1 style="font-size:clamp(1.3rem,3vw,1.85rem);font-weight:750">' + esc(pName(p)) + '</h1><div class="row" style="gap:10px;margin-top:6px">' + stars(x.rating) + '<span class="small"><b>' + fmtN(x.rating, 1) + '</b> · ' + x.reviews + ' ' + (EN() ? 'reviews' : 'opiniones') + '</span>' + (ownStats(p) ? '<a class="small" href="#/sitio/tour/' + slugOf(p) + '" data-a="toown" style="display:inline-flex;gap:6px;align-items:center">' + ownTag() + '<b>' + fmtN(ownStats(p).avg, 1) + '</b> (' + ownStats(p).count + ')</a>' : '') + '<span class="small muted">' + smallIc('pin') + ' ' + esc(Q.destPath(p.destId)) + '</span>' + flags(p).map(f => '<span class="ws-flag ' + f[0] + '" style="border:1px solid var(--line)">' + esc(f[1]) + '</span>').join('') + '</div></div>' +
@@ -991,14 +996,17 @@
     return { nav: kindOf(p) === 'traslados' ? 'tours' : kindOf(p), bar: true, title: (!EN() && p.seo && p.seo.title) ? p.seo.title : pName(p), desc: (p.seo && p.seo.description && !EN() ? p.seo.description : pShort(p)), ld, html,
       after: (el) => {
         track('view_item', { item_id: p.id, item_name: p.name, price: fp ? fp.price : null, currency: fp ? fp.cur : null });
-        const all = () => { drawCal(el, p); drawPax(el, p); drawOpts(el, p); drawLodging(el, p); drawAddons(el, p); drawBook(el, p); };
+        const all = () => { drawCal(el, p); drawPax(el, p); drawOpts(el, p); drawLodging(el, p); drawTrip(el, p); drawAddons(el, p); drawBook(el, p); };
         all();
-        on('day', (b) => { PS.date = b.dataset.d; PS.month = PS.date.slice(0, 7); drawCal(el, p); drawBook(el, p); track('select_date', { item_id: p.id, date: PS.date }); });
+        on('day', (b) => { PS.date = b.dataset.d; PS.month = PS.date.slice(0, 7); drawCal(el, p); drawLodging(el, p); drawTrip(el, p); drawBook(el, p); track('select_date', { item_id: p.id, date: PS.date }); });
         on('mon', (b) => { const [y, m] = PS.month.split('-').map(Number); const d = new Date(y, m - 1 + (+b.dataset.d), 1); PS.month = d.getFullYear() + '-' + pad(d.getMonth() + 1); drawCal(el, p); });
-        on('q', (b) => { const k = b.dataset.k, d = +b.dataset.d; PS.pax[k] = Math.max(0, PS.pax[k] + d); clampAddons(p); drawPax(el, p); drawCal(el, p); drawLodging(el, p); drawAddons(el, p); drawBook(el, p); });
+        on('q', (b) => { const k = b.dataset.k, d = +b.dataset.d; PS.pax[k] = Math.max(0, PS.pax[k] + d); clampAddons(p); drawPax(el, p); drawCal(el, p); drawLodging(el, p); drawTrip(el, p); drawAddons(el, p); drawBook(el, p); });
         on('opt', (b) => { const [g, o] = b.dataset.v.split(':').map(Number); PS.opts[g] = o; drawOpts(el, p); drawBook(el, p); });
         on('lodge', (b) => { PS.lodgeOn = b.dataset.v === '1'; if (PS.lodgeOn) legsOf(p).forEach(l => { if (!PS.lodging[l.id]) { const h = l.hotels[0]; PS.lodging[l.id] = { hotelId: h.id, rooms: suggestRooms(h, PS.pax.adt + PS.pax.chd) }; } }); drawLodging(el, p); drawBook(el, p); });
         on('room', (b) => { const s = PS.lodging[b.dataset.leg]; if (!s) return; s.rooms[b.dataset.t] = Math.max(0, (s.rooms[b.dataset.t] || 0) + (+b.dataset.d)); drawLodging(el, p); drawBook(el, p); });
+        on('nights', (b) => { const l = legsOf(p).find(x => x.id === b.dataset.leg); if (!l) return; const cur0 = PS.nights[l.id] != null ? PS.nights[l.id] : l.nights; PS.nights[l.id] = Math.max(l.minNights || l.nights, Math.min(l.maxNights || l.nights, cur0 + (+b.dataset.d))); drawLodging(el, p); drawTrip(el, p); drawBook(el, p); });
+        on('ttour', (b) => { const id = b.dataset.id; PS.tours = PS.tours.includes(id) ? PS.tours.filter(x => x !== id) : PS.tours.concat(id); drawTrip(el, p); drawBook(el, p); });
+        on('ttrans', (b) => { const id = b.dataset.id; const t = p.trip.transport.find(x => x.id === id); const same = t.toLegId ? p.trip.transport.filter(x => x.fromLegId === t.fromLegId && x.toLegId === t.toLegId).map(x => x.id) : [id]; const had = PS.transport.includes(id); PS.transport = PS.transport.filter(x => !same.includes(x)); if (!had) PS.transport.push(id); drawTrip(el, p); drawBook(el, p); });
         on('suggest', (b) => { const s = PS.lodging[b.dataset.leg]; const l = legsOf(p).find(x => x.id === b.dataset.leg); const h = l && l.hotels.find(x => x.id === s.hotelId); if (h) s.rooms = suggestRooms(h, PS.pax.adt + PS.pax.chd); drawLodging(el, p); drawBook(el, p); });
         onc('hotel', (s) => { const leg = s.dataset.leg; const l = legsOf(p).find(x => x.id === leg); const h = l.hotels.find(x => x.id === s.value); PS.lodging[leg] = { hotelId: s.value, rooms: h ? suggestRooms(h, PS.pax.adt + PS.pax.chd) : {} }; drawLodging(el, p); drawBook(el, p); });
         on('addq', (b) => { const id = b.dataset.id, ty = b.dataset.t; const by = PS.addons[id] || (PS.addons[id] = {}); by[ty] = Math.max(0, Math.min(PS.pax[tyKey(ty)], (by[ty] || 0) + (+b.dataset.d))); drawAddons(el, p); drawBook(el, p); });
@@ -1091,7 +1099,10 @@
         const beds = h ? sum(h.rooms, r => (s.rooms[r.type] || 0) * r.capacity) : 0; const nRooms = h ? sum(Object.values(s.rooms), v => v) : 0;
         const legAmt = sum(q.lines.filter(x => x.kind === 'lodging' && x.legId === l.id), 'amount');
         const capOk = !h || !nRooms || beds >= need || !BE.on('R-LODGING-CAPACITY', p);
-        return '<div class="ws-leg-c"><div class="row between" style="flex-wrap:nowrap;gap:8px"><div style="min-width:0"><b>' + esc(l.city) + '</b> <span class="xs faint">· ' + l.nights + ' ' + (l.nights === 1 ? (EN() ? 'night' : 'noche') : (EN() ? 'nights' : 'noches')) + '</span></div>' + (h && nRooms ? '<b class="small nowrap">' + fmtC(legAmt) + '</b>' : '') + '</div>' +
+        const sc = (q.legs || []).find(x => x.legId === l.id) || { nights: l.nights }; const nN = sc.nights;
+        return '<div class="ws-leg-c"><div class="row between" style="flex-wrap:nowrap;gap:8px"><div style="min-width:0"><b>' + esc(l.city) + '</b> <span class="xs faint">· ' + nN + ' ' + (nN === 1 ? (EN() ? 'night' : 'noche') : (EN() ? 'nights' : 'noches')) + (sc.checkIn ? ' · ' + dt(sc.checkIn) + ' → ' + dt(sc.checkOut) : '') + '</span></div>' + (h && nRooms ? '<b class="small nowrap">' + fmtC(legAmt) + '</b>' : '') + '</div>' +
+          (tripOn(p) && (l.maxNights || l.nights) > (l.minNights || l.nights) ? '<div class="ws-prow" style="margin-top:6px"><small>' + (EN() ? 'Nights in ' : 'Noches en ') + esc(l.city) + ' <span class="faint">(' + (l.minNights || l.nights) + '–' + (l.maxNights || l.nights) + ')</span></small><div class="ws-qty sm"><button type="button" data-a="nights" data-leg="' + l.id + '" data-d="-1"' + (nN <= (l.minNights || l.nights) ? ' disabled' : '') + ' aria-label="Menos noches">−</button><b>' + nN + '</b><button type="button" data-a="nights" data-leg="' + l.id + '" data-d="1"' + (nN >= (l.maxNights || l.nights) ? ' disabled' : '') + ' aria-label="Más noches">+</button></div></div>' : '') +
+          (h && (h.seasonRates || []).length && tripOn(p) ? '<div class="xs faint" style="margin-top:4px">' + smallIc('calendar') + ' ' + (EN() ? 'Rate by date: ' : 'Tarifa por fecha: ') + h.seasonRates.map(r => esc(r.label) + ' +' + r.pct + ' %').join(' · ') + '</div>' : '') +
           '<select class="input sm" data-c="hotel" data-leg="' + l.id + '" aria-label="Hotel en ' + esc(l.city) + '" style="margin-top:8px"><option value="">' + (EN() ? 'No accommodation in ' : 'Sin alojamiento en ') + esc(l.city) + '</option>' + l.hotels.map(x => '<option value="' + x.id + '"' + (x.id === s.hotelId ? ' selected' : '') + '>' + esc(x.name) + '</option>').join('') + '</select>' +
           (h ? '<div class="ws-rooms">' + h.rooms.map(r => '<div class="ws-prow"><div><b class="small">' + esc(r.type) + '</b><small>' + r.capacity + ' ' + (r.capacity === 1 ? (EN() ? 'bed' : 'cama') : (EN() ? 'beds' : 'camas')) + ' · ' + pm(r.price, cur) + (EN() ? '/night' : '/noche') + '</small></div><div class="ws-qty"><button type="button" data-a="room" data-leg="' + l.id + '" data-t="' + esc(r.type) + '" data-d="-1"' + (!(s.rooms[r.type] > 0) ? ' disabled' : '') + ' aria-label="Menos">−</button><b>' + (s.rooms[r.type] || 0) + '</b><button type="button" data-a="room" data-leg="' + l.id + '" data-t="' + esc(r.type) + '" data-d="1"' + ((s.rooms[r.type] || 0) >= 8 ? ' disabled' : '') + ' aria-label="Más">+</button></div></div>').join('') + '</div>' +
             '<div class="ws-beds ' + (capOk ? 'ok' : 'bad') + '">' + smallIc('bed') + ' <span>' + (EN() ? 'Beds ' : 'Camas ') + '<b>' + beds + '</b> · ' + (EN() ? 'people ' : 'personas ') + '<b>' + need + '</b>' + (PS.pax.inf ? ' <span class="faint">(+' + PS.pax.inf + ' ' + (EN() ? 'infant(s) share' : 'infante(s) comparten') + ')</span>' : '') + '</span>' + (!capOk || !nRooms ? '<button class="btn xs" data-a="suggest" data-leg="' + l.id + '">' + (EN() ? 'Suggest rooms' : 'Sugerir habitaciones') + '</button>' : '') + '</div>' : '') + '</div>';
@@ -1099,6 +1110,27 @@
         '<div class="ws-lodtot">' + smallIc('bed', 16) + ' <b>' + q.rooms + ' ' + (q.rooms === 1 ? (EN() ? 'room' : 'habitación') : (EN() ? 'rooms' : 'habitaciones')) + ' · ' + q.nights + ' ' + (q.nights === 1 ? (EN() ? 'night' : 'noche') : (EN() ? 'nights' : 'noches')) + '</b><span class="xs faint">' + (EN() ? 'Total rooms across cities · nights with hotel' : 'Total de habitaciones en todas las ciudades · noches con hotel') + '</span></div>';
     }
     w.innerHTML = html;
+  }
+  /* v2.8 · Tours y movilidad por ciudad (spec 21). El precio lo calcula BookingEngine; aquí solo se elige. */
+  function drawTrip(el, p) {
+    const w = el.querySelector('#ws-tripw'); if (!w || !tripOn(p)) return;
+    const tr = p.trip; const cur = tr.currency || 'USD'; const it = itemFromPS(p); const q = BE.quote(p, selOf(it, prefs.cur));
+    const legs = legsOf(p); const people = PS.pax.adt + PS.pax.chd;
+    const amt = (key) => { const l = q.lines.find(x => x.key === key); return l ? fmtC(l.amount) : ''; };
+    const vehOf = (t) => { const vs = (t.vehicles || []).slice().sort((a, b) => a.maxPax - b.maxPax); return vs.find(x => x.maxPax >= people) || vs[vs.length - 1]; };
+    const priceTxt = (t) => t.pricing === 'vehiculo' ? (vehOf(t) ? pm(vehOf(t).price, cur) + ' · ' + esc(vehOf(t).name) : '') : pm(t.priceAdt, cur) + (EN() ? ' adult' : ' adulto') + (t.priceChd != null ? ' · ' + (t.priceChd ? pm(t.priceChd, cur) : (EN() ? 'n/a' : 'no aplica')) + (EN() ? ' child' : ' niño') : '');
+    const opt = (t, kind) => { const on = (kind === 'tour' ? PS.tours : PS.transport).includes(t.id); const key = (kind === 'tour' ? 'tour-' : 'trans-') + t.id;
+      return '<button type="button" class="ws-addon' + (on ? ' on' : '') + '" data-a="' + (kind === 'tour' ? 'ttour' : 'ttrans') + '" data-id="' + t.id + '" style="text-align:left;width:100%;cursor:pointer" aria-pressed="' + on + '"><div class="row between top" style="gap:8px;flex-wrap:nowrap"><div style="min-width:0"><b class="small">' + (on ? '✓ ' : '') + esc(t.name) + '</b><div class="xs faint">' + (kind === 'tour' ? (EN() ? 'Day ' : 'Día ') + ((t.dayOffset || 0) + 1) + ' · ' + esc(t.time) + ' · ' + t.hours + ' h' + (t.minAge ? ' · ' + (EN() ? 'min. age ' : 'edad mín. ') + t.minAge : '') + ' · ' : esc(t.kind) + ' · ' + t.hours + ' h · ') + priceTxt(t) + '</div></div>' + (on ? '<b class="small nowrap">' + amt(key) + '</b>' : '<span class="xs" style="color:var(--accent);font-weight:700">' + (EN() ? 'Add' : 'Añadir') + '</span>') + '</div></button>'; };
+    w.innerHTML = '<div class="ws-legs">' + legs.map((l, i) => {
+      const sc = (q.legs || []).find(x => x.legId === l.id) || {};
+      const tours = (tr.tours || []).filter(t => t.legId === l.id); const local = (tr.transport || []).filter(t => t.fromLegId === l.id && !t.toLegId);
+      const next = legs[i + 1]; const inter = next ? (tr.transport || []).filter(t => t.fromLegId === l.id && t.toLegId === next.id) : [];
+      return '<div class="ws-leg-c"><div class="row between" style="flex-wrap:nowrap;gap:8px"><b>' + esc(l.city) + '</b><span class="xs faint">' + (sc.checkIn ? dt(sc.checkIn) + ' → ' + dt(sc.checkOut) : '') + '</span></div>' +
+        (tours.length ? '<div class="upper xs" style="margin:10px 0 6px">' + (EN() ? 'Optional tours' : 'Tours opcionales') + '</div><div class="ws-addons">' + tours.map(t => opt(t, 'tour')).join('') + '</div>' : '') +
+        (local.length ? '<div class="upper xs" style="margin:10px 0 6px">' + (EN() ? 'Local transport' : 'Movilidad local') + '</div><div class="ws-addons">' + local.map(t => opt(t, 'trans')).join('') + '</div>' : '') +
+        (inter.length ? '<div class="upper xs" style="margin:10px 0 6px">' + (EN() ? 'Getting to ' : 'Cómo llegar a ') + esc(next.city) + ' <span class="faint">(' + (EN() ? 'choose one' : 'elija una') + ')</span></div><div class="ws-addons">' + inter.map(t => opt(t, 'trans')).join('') + '</div>' : '') + '</div>';
+    }).join('') + '</div>' +
+      '<div class="ws-lodtot">' + smallIc('route', 16) + ' <b>' + (EN() ? 'Trip ends ' : 'El viaje termina el ') + (q.tripEnd ? dt(q.tripEnd) : '—') + '</b><span class="xs faint">' + (EN() ? 'Infants do not pay tours or transport. Private transport is priced by group size.' : 'Los infantes no pagan tours ni movilidad. La movilidad privada se cobra según el tamaño del grupo.') + '</span></div>';
   }
   function drawAddons(el, p) {
     const w = el.querySelector('#ws-addw'); if (!w) return;
@@ -1128,7 +1160,7 @@
     b.innerHTML = '<div class="hd"><span class="xs faint">' + (q ? t('total') + ' · ' + nPax + ' pax' : t('from')) + '</span><div class="row" style="gap:8px;align-items:baseline"><b style="font-size:1.5rem;font-family:var(--f-display)">' + (q ? fmtC(q.total) : fp ? pm(fp.price, fp.cur) : '—') + '</b>' + (q ? '' : '<span class="small muted">' + t('pp') + '</span>') + '</div></div><div class="bd">' +
       '<div class="field"><label>' + t('date') + '</label><button type="button" class="input" data-a="tocal" style="text-align:left;cursor:pointer;height:auto;min-height:38px">' + (PS.date ? dtw(PS.date) + (di && di.dep ? ' · ' + di.dep.time : '') : (EN() ? 'Choose a date in the calendar' : 'Elija una fecha en el calendario')) + '</button>' + (di && di.ok ? '<div class="xs ok" style="font-weight:600;margin-top:4px">' + (di.onRequest ? t('onreq') : di.free != null ? di.free + ' ' + (EN() ? 'seats left' : 'cupos disponibles') : 'Disponible') + '</div>' : '') + '</div>' +
       '<div class="small">' + paxTxt(PS.pax, ' · ') + ' <button class="btn xs ghost" data-a="tocal">' + ic('edit') + (EN() ? 'Edit' : 'Editar') + '</button></div>' +
-      (q ? '<div class="ws-sum">' + linesHtml(q) + (q.rooms ? '<div class="l xs"><span>' + smallIc('bed') + ' ' + q.rooms + ' ' + (EN() ? 'rooms' : 'habitaciones') + ' · ' + q.nights + ' ' + (EN() ? 'nights' : 'noches') + '</span><span></span></div>' : '') + '<div class="l tot"><span>' + t('total') + '</span><span>' + fmtC(q.total) + '</span></div>' +
+      (q ? '<div class="ws-sum">' + linesHtml(q) + catSummary(q) + (q.rooms ? '<div class="l xs"><span>' + smallIc('bed') + ' ' + q.rooms + ' ' + (EN() ? 'rooms' : 'habitaciones') + ' · ' + q.nights + ' ' + (EN() ? 'nights' : 'noches') + '</span><span></span></div>' : '') + '<div class="l tot"><span>' + t('total') + '</span><span>' + fmtC(q.total) + '</span></div>' +
         '</div>' : '') +
       (q && q.modes.length > 1 ? '<div class="ws-paymodes">' + q.modes.map(m => { const qq = quoteItem(it, prefs.cur, { mode: m }); return '<div><b class="xs">' + modeLbl(m) + '</b><span class="xs">' + (m === 'total' ? fmtC(qq.total) : m === 'adelanto' ? fmtC(qq.deposit) + (EN() ? ' today' : ' hoy') + (qq.balanceDue ? ' · ' + (EN() ? 'balance by ' : 'saldo al ') + dt(qq.balanceDue) : '') : (EN() ? 'S/ 0 today · held ' : '0 hoy · bloqueo ') + qq.holdHours + ' h') + '</span></div>'; }).join('') + '</div>' : '') +
       (warn.length ? UI.alert('warn', warn.map(esc).join('<br>')) : '') +
@@ -1137,6 +1169,12 @@
       '<div class="ws-2btn"><button class="btn sm" data-a="wa">' + ic('msg') + 'WhatsApp</button><button class="btn sm" data-a="quote">' + ic('edit') + t('quote') + '</button></div>' +
       '<p class="ws-note">' + (BE.on('R-HOLD', p) && di && di.free != null ? (EN() ? 'Seats are held for ' : 'Al añadir al carrito bloqueamos sus cupos por ') + (BE.param('R-HOLD', 'minutes', p) || 30) + ' min. ' : '') + (EN() ? 'You will review every line before paying. Final price is calculated by the server.' : 'Antes de pagar revisará cada línea del pedido. El precio final lo calcula el servidor al confirmar.') + '</p></div>';
     const mb = el.querySelector('#ws-mbp'); if (mb && q) { mb.textContent = fmtC(q.total); el.querySelector('#ws-mbl').textContent = t('total'); el.querySelector('#ws-mbs').textContent = '· ' + nPax + ' pax'; }
+  }
+  /* v2.8 · Resumen de gastos del viaje por categoría (solo si hay tramos con tours o movilidad) */
+  function catSummary(q) {
+    const c = q.byCategory || {}; if (!(c.tour || c.transport)) return '';
+    const rows = [['base', EN() ? 'Tour' : 'Tour base'], ['lodging', EN() ? 'Accommodation' : 'Alojamiento'], ['tour', EN() ? 'Tours' : 'Tours'], ['transport', EN() ? 'Transport' : 'Movilidad'], ['addon', EN() ? 'Add-ons' : 'Adicionales'], ['surcharge', EN() ? 'Surcharges' : 'Recargos']].filter(r => c[r[0]]);
+    return '<div class="l xs" style="margin-top:6px;border-top:1px dashed var(--line);padding-top:6px"><span><b>' + (EN() ? 'Trip costs by category' : 'Gastos del viaje por categoría') + '</b></span><span></span></div>' + rows.map(r => '<div class="l xs"><span>' + r[1] + '</span><span>' + fmtC(c[r[0]], q.currency) + '</span></div>').join('');
   }
   const modeLbl = (m) => ({ total: EN() ? 'Full payment' : 'Pago total', adelanto: EN() ? 'Deposit' : 'Adelanto', pagar_despues: EN() ? 'Pay later' : 'Pagar después' })[m] || m;
   function addToCart(p, go) {
@@ -1531,13 +1569,15 @@
         const seats = BE.validatePax(p, it.pax).seats; const di = dayInfo(p, it.date, seats); const dep = di.dep;
         const rate = (p.rates || []).find(r => r.status === 'vigente' && ['Adulto', 'Pasajero'].includes(r.segment)) || { cost: 0, price: 1 };
         const act = q.lines.filter(l => !l.removed);
-        const legs = legsOf(p); const legStart = (legId) => { let off = 0; for (const l of legs) { if (l.id === legId) return addDays(it.date, off); off += l.nights; } return it.date; };
+        const legs = legsOf(p); const legStart = (legId) => { const sl = (q.legs || []).find(z => z.legId === legId); if (sl && sl.checkIn) return sl.checkIn; let off = 0; for (const l of legs) { if (l.id === legId) return addDays(it.date, off); off += l.nights; } return it.date; };
         const svc = [];
         const baseAmt = rnd2(sum(act.filter(l => l.kind === 'base'), 'amount'));
         const instant = !!(di.free != null && !di.onRequest);
         svc.push({ id: 'RS-' + String(svcN++).padStart(4, '0'), productId: p.id, name: p.name + ' — ' + (it.pax.adt + it.pax.chd + it.pax.inf) + ' pax' + (dep ? ' (salida ' + dep.id + ')' : ''), date: it.date, time: dep ? dep.time : (p.itinerary[0] && p.itinerary[0].items[0] ? p.itinerary[0].items[0].time : '—'), providerId: p.mainProviderId, status: 'solicitado', cost: rnd2(baseAmt * (rate.cost / rate.price)), price: baseAmt, confirmationCode: '', pax: seats, paxDetail: Object.assign({}, it.pax), options: optsOf(p, it).map(o => o.group + ': ' + o.label), depId: dep ? dep.id : null, holdId: it.holdId || null, instant });
         act.filter(l => l.kind === 'addon').forEach(l => svc.push({ id: 'RS-' + String(svcN++).padStart(4, '0'), productId: null, addonId: l.addonId, name: l.label + ' × ' + l.qty, date: it.date, time: '—', providerId: p.mainProviderId, status: 'solicitado', cost: rnd2(l.amount / (1 + (p.markupPct || 25) / 100)), price: rnd2(l.amount), confirmationCode: '', pax: l.qty, extraOf: p.id, kind: 'adicional' }));
         act.filter(l => l.kind === 'lodging').forEach(l => { const leg = legs.find(z => z.id === l.legId); const h = leg && leg.hotels.find(z => z.name === l.hotel); svc.push({ id: 'RS-' + String(svcN++).padStart(4, '0'), productId: null, name: 'Alojamiento ' + l.city + ' · ' + l.hotel + ' · ' + l.rooms + ' hab. ' + l.roomType.toLowerCase() + ' × ' + l.nights + ' noche(s)', date: legStart(l.legId), time: '14:00', providerId: (h && h.providerId) || p.mainProviderId, status: 'solicitado', cost: rnd2(l.amount / (1 + (p.markupPct || 25) / 100)), price: rnd2(l.amount), confirmationCode: '', pax: seats, extraOf: p.id, kind: 'alojamiento', rooms: l.rooms, nights: l.nights }); });
+        act.filter(l => l.kind === 'tour').forEach(l => svc.push({ id: 'RS-' + String(svcN++).padStart(4, '0'), productId: null, tourId: l.tourId, name: 'Tour ' + l.label + ' (' + l.adt + ' adt' + (l.chd ? ' + ' + l.chd + ' chd' : '') + ')', date: l.date || it.date, time: l.time || '—', providerId: p.mainProviderId, status: 'solicitado', cost: rnd2(l.amount / (1 + (p.markupPct || 25) / 100)), price: rnd2(l.amount), confirmationCode: '', pax: (l.adt || 0) + (l.chd || 0), extraOf: p.id, kind: 'tour_tramo', legId: l.legId }));
+        act.filter(l => l.kind === 'transport').forEach(l => svc.push({ id: 'RS-' + String(svcN++).padStart(4, '0'), productId: null, transportId: l.transportId, name: 'Movilidad ' + l.label, date: l.date || it.date, time: '—', providerId: p.mainProviderId, status: 'solicitado', cost: rnd2(l.amount / (1 + (p.markupPct || 25) / 100)), price: rnd2(l.amount), confirmationCode: '', pax: seats, extraOf: p.id, kind: 'movilidad', mode: l.mode }));
         act.filter(l => l.kind === 'surcharge').forEach(l => svc.push({ id: 'RS-' + String(svcN++).padStart(4, '0'), productId: null, name: l.label, date: it.date, time: '—', providerId: p.mainProviderId, status: 'confirmado', cost: 0, price: rnd2(l.amount), confirmationCode: '', pax: 1, extraOf: p.id, kind: 'recargo' }));
         const pk = CO.pick[it.key] || {};
         const lodging = act.filter(l => l.kind === 'lodging').map(l => ({ legId: l.legId, city: l.city, hotel: l.hotel, roomType: l.roomType, rooms: l.rooms, nights: l.nights }));
@@ -1546,7 +1586,8 @@
         const compP = BE.on('R-COMPANIONS', p);
         const booking = { productId: p.id, date: it.date, pax: Object.assign({}, it.pax), currencyDisplay: prefs.cur, fxRate, chargeCurrency: cc,
           lines: act.map(l => Object.assign({}, l)), adjustments: q.adjustments.map(a => Object.assign({}, a)), total: q.total, totalDisplay: qd.total,
-          lodging, rooms: q.rooms, nights: q.nights,
+          lodging, rooms: q.rooms, nights: q.nights, tripLegs: (q.legs || []).map(z => Object.assign({}, z)), tripEnd: q.tripEnd || null, byCategory: q.byCategory || null,
+          trip: { tours: act.filter(l => l.kind === 'tour').map(l => ({ id: l.tourId, legId: l.legId, date: l.date, amount: rnd2(l.amount) })), transport: act.filter(l => l.kind === 'transport').map(l => ({ id: l.transportId, mode: l.mode, date: l.date, amount: rnd2(l.amount) })) },
           addons: act.filter(l => l.kind === 'addon').map(l => { const a = (it.addons || []).find(z => z.id === l.addonId) || {}; return { id: l.addonId, name: l.label, qty: l.qty, amount: rnd2(l.amount), byType: a.by || null }; }),
           removedLines: q.lines.filter(l => l.removed).map(l => ({ key: l.key, label: l.label, amount: rnd2(l.amount) })),
           pickup: BE.on('R-PICKUP', p) && p.pickup ? { point: pk.point === '__otro' ? 'Otra dirección' : (pk.point || ''), address: pk.address || '', flight: pk.flight || '', arrival: pk.arrival ? pk.arrival.replace('T', ' ') : '' } : null,
@@ -1555,7 +1596,7 @@
           companionsPending: compP && pendComp, companionsDue: compP && pendComp ? addDays(it.date, -(BE.param('R-COMPANIONS', 'daysBeforeIfLater', p) || 7)) : null,
           altitudeDeclaration: needAlt(p) ? { accepted: true, at: now, maxAltitude: maxAlt(p) } : null,
           rulesApplied: USED_RULES.filter(id => BE.rule(id) && BE.on(id, p)), promoCode: q.promoLbl ? c.promo : '', lang: prefs.lang };
-        const r = { id: resId, quoteId: null, quoteVersion: null, clientId: cli.id, title: fullName.split(' ').slice(0, 2).join(' ') + ' — ' + p.name + ' (web)', status: 'pendiente_pago', channel: 'E-commerce', travelFrom: it.date, travelTo: addDays(it.date, durDays(p) - 1), currency: cc, fxRate: BE.currency('USD').rate, total: q.total, owner: 'U03', createdAt: now, sede: destSubtree('D03').has(p.destId) ? 'SED-02' : 'SED-01',
+        const r = { id: resId, quoteId: null, quoteVersion: null, clientId: cli.id, title: fullName.split(' ').slice(0, 2).join(' ') + ' — ' + p.name + ' (web)', status: 'pendiente_pago', channel: 'E-commerce', travelFrom: it.date, travelTo: q.tripEnd || addDays(it.date, durDays(p) - 1), currency: cc, fxRate: BE.currency('USD').rate, total: q.total, owner: 'U03', createdAt: now, sede: destSubtree('D03').has(p.destId) ? 'SED-02' : 'SED-01',
           notes: 'Pedido web ' + oid + ' desde el sitio público (' + prefs.lang.toUpperCase() + ', moneda ' + prefs.cur + ').' + (booking.comments ? ' Comentario del cliente: ' + booking.comments : ''), passengers, services: svc, ecomOrderId: oid,
           billing: { type: b.receipt, doc: b.receipt === 'Factura' ? 'RUC ' + b.ruc : b.doctype + ' ' + b.doc, name: b.receipt === 'Factura' ? b.company : fullName, address: b.fiscal || '' },
           paymentPlan: { mode: mode === 'adelanto' ? 'anticipo' : mode, depositPct: q.depositPct, balanceDue: q.balanceDue }, consents: { terms: now, cancellation: now, privacy: now, marketing: CO.accept.marketing ? now : null, altitude: booking.altitudeDeclaration ? now : null }, webCartId: c.id, booking };

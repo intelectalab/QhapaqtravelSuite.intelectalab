@@ -7,8 +7,10 @@ import { Faq, LocationMap, SeasonStrip } from "@/features/site/Content";
 import { ContentLocaleNotice } from "@/features/site/ContentLocaleNotice";
 import { Breadcrumbs, PageHero } from "@/features/site/Hero";
 import { ReviewsSection } from "@/features/site/Reviews";
+import { StructuredData, breadcrumbNode, destinationNode, faqNode } from "@/features/site/StructuredData";
 import { formatMoney } from "@/lib/format";
 import { getSiteDestination, siteBase, siteLocale } from "@/lib/server/site";
+import { siteOrigin } from "@/lib/server/site-seo";
 import { siteHref } from "@/lib/site";
 import { siteText } from "@/lib/site-i18n";
 
@@ -20,7 +22,7 @@ export async function generateMetadata({ params }: PageProps<"/sitio/[agencia]/d
 
 export default async function DestinationPage({ params }: PageProps<"/sitio/[agencia]/destinos/[slug]">) {
   const { agencia, slug } = await params;
-  const [data, base, locale] = await Promise.all([getSiteDestination(agencia, slug), siteBase(agencia), siteLocale()]);
+  const [data, base, locale, origin] = await Promise.all([getSiteDestination(agencia, slug), siteBase(agencia), siteLocale(), siteOrigin(agencia)]);
   const site = siteText(locale);
   const t = site.destinations;
   const { destination } = data;
@@ -30,8 +32,17 @@ export default async function DestinationPage({ params }: PageProps<"/sitio/[age
     destination.from && { icon: Sparkles, label: site.common.from, value: formatMoney(destination.from.amount, destination.from.currency) },
   ].filter((fact): fact is { icon: typeof Mountain; label: string; value: string } => Boolean(fact));
 
+  const faq = faqNode(destination.faqs);
+
   return (
     <>
+      <StructuredData
+        data={[
+          destinationNode(data, `${origin}/destinos/${destination.slug}`),
+          breadcrumbNode([{ name: site.common.home, url: origin || undefined }, { name: site.common.destinations, url: `${origin}/destinos` }, { name: destination.name }]),
+          ...(faq ? [faq] : []),
+        ]}
+      />
       <PageHero
         eyebrow={destination.region || t.fallbackEyebrow}
         title={destination.name}

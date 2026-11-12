@@ -64,14 +64,23 @@ export function CasesTable({ overview }: { overview: AfterSalesOverview }) {
       mobile: "hidden",
       cell: (row) => (
         <RowActions>
-          <CaseDetailAction item={row} />
-          {overview.can.manage && row.status !== "cerrada" ? <CaseFormAction overview={overview} item={row} /> : <RowIcon tone="edit" label="Editar" disabledHint="El caso está cerrado" />}
+          {row.is_book ? (
+            <>
+              <RowIcon tone="view" label="Ver en el Libro de Reclamaciones" href="/crm/reclamaciones" />
+              <RowIcon tone="edit" label="Editar" disabledHint="Hoja del Libro de Reclamaciones: se atiende en su módulo" />
+            </>
+          ) : (
+            <>
+              <CaseDetailAction item={row} />
+              {overview.can.manage && row.status !== "cerrada" ? <CaseFormAction overview={overview} item={row} /> : <RowIcon tone="edit" label="Editar" disabledHint="El caso está cerrado" />}
+            </>
+          )}
         </RowActions>
       ),
     },
   ];
   const metrics: MetricFilter<CaseItem>[] = [
-    { id: "high", label: "Prioridad alta", tone: "warn", icon: <CircleAlert size={19} />, matches: (row) => row.priority === "alta" && (row.status === "abierta" || row.status === "en_proceso") },
+    { id: "high", label: "Prioridad alta o crítica", tone: "warn", icon: <CircleAlert size={19} />, matches: (row) => (row.priority === "alta" || row.priority === "critica") && (row.status === "abierta" || row.status === "en_proceso") },
     { id: "nps", label: "Por NPS de detractor", tone: "bad", icon: <Bot size={19} />, matches: (row) => row.origin === "nps_auto" },
   ];
   const filters: FilterConfig<CaseItem>[] = [

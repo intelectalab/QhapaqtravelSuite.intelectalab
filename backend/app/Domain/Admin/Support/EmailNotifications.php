@@ -14,6 +14,7 @@ final class EmailNotifications
         private readonly NotificationTemplates $templates,
         private readonly NotificationLog $log,
         private readonly TenantContext $context,
+        private readonly NotificationRules $rules,
     ) {}
 
     public function enabled(string $event): bool
@@ -25,10 +26,11 @@ final class EmailNotifications
 
     public function queue(string $event, string $address, array $values, array $link = [], string $audience = 'client'): ?string
     {
-        if (! str_contains($address, '@') || ! $this->enabled($event)) {
+        if (! str_contains($address, '@') || ! $this->enabled($event) || ! $this->rules->allows($event, $link)) {
             return null;
         }
 
+        $link = NotificationRules::withoutFacts($link);
         $template = $this->templates->current($event, 'email');
         $values = array_filter($values, fn (mixed $value): bool => $value !== null && $value !== '');
         $values += ['agencia' => (string) $this->context->tenant()->commercial_name, 'vendedor' => 'El equipo'];
@@ -46,7 +48,7 @@ final class EmailNotifications
             ...$link,
         ]);
 
-        dispatch((new SendNotificationEmail((string) $message->id))->forTenant($this->context->idOrFail()))->afterCommit();
+        dispatch((new SendNotificationEmail((string) $message->id))->forTenant($this->context->idOrFail())->delay($this->rules->releaseAt($event)))->afterCommit();
 
         return (string) $message->id;
     }

@@ -41,7 +41,7 @@ final class InvoiceRules
 
     public function invoiced(string $receivableId): BigDecimal
     {
-        return DB::table('fin_invoices')->where('receivable_id', $receivableId)->where('status', '<>', 'anulado')->get(['doc_type', 'total_amount'])
+        return DB::table('fin_invoices')->where('receivable_id', $receivableId)->whereNotIn('status', InvoiceDirectory::VOID)->get(['doc_type', 'total_amount'])
             ->reduce(fn (BigDecimal $sum, object $row): BigDecimal => $row->doc_type === '07' ? $sum->minus((string) $row->total_amount) : $sum->plus((string) $row->total_amount), BigDecimal::zero());
     }
 

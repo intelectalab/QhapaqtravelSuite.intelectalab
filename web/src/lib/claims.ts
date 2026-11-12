@@ -42,15 +42,21 @@ export interface ClaimSheet {
   log: { message: string; at: string; by: string }[];
 }
 
+export interface ClaimHoliday {
+  date: string;
+  name: string;
+}
+
 export interface ClaimsOverview {
   today: string;
   settings: { response_days: number; alert_days: number; retention_years: number };
+  holidays: ClaimHoliday[];
   kpis: { month: number; open: number; due_soon: number; overdue: number; avg_days: number | null; on_time_pct: number | null };
   by_type: { label: string; count: number }[];
   by_sede: { label: string; count: number }[];
   claims: ClaimSheet[];
   sequences: { sede: string; year_count: number; last: string | null; next: string }[];
-  options: { sedes: { value: string; label: string }[]; clients: { value: string; label: string }[]; reservations: { value: string; label: string; hint?: string }[] };
+  options: { sedes: { value: string; label: string }[]; clients: { value: string; label: string }[]; reservations: { value: string; label: string; hint?: string }[]; owners?: { value: string; label: string }[] };
   can: { manage: boolean; settings: boolean };
 }
 

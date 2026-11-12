@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Site\Actions;
 
+use App\Domain\Marketing\Support\UnsubscribeConfirmation;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
@@ -20,6 +21,16 @@ final class NewsletterLifecycle
     public static function token(string $subscriberCode, string $email): string
     {
         return $subscriberCode.'.'.hash_hmac('sha256', 'newsletter|'.$subscriberCode.'|'.Str::lower($email), (string) config('app.key'));
+    }
+
+    public static function campaignToken(string $recipientId): string
+    {
+        return 'c'.$recipientId.'.'.hash_hmac('sha256', 'campaign|'.$recipientId, (string) config('app.key'));
+    }
+
+    public static function unsubscribeUrl(string $subdomain, string $token): string
+    {
+        return rtrim((string) config('app.frontend_url'), '/').'/sitio/'.$subdomain.'/boletin/baja?token='.$token;
     }
 
     public function confirm(string $token): array
@@ -42,6 +53,10 @@ final class NewsletterLifecycle
 
     public function unsubscribe(string $token): array
     {
+        if (preg_match('/^c([0-9a-f-]{36})\./', $token, $match) === 1) {
+            return $this->unsubscribeRecipient($match[1], $token);
+        }
+
         [$subscriber, $consent] = $this->resolve($token);
         $now = Carbon::now($this->context->timezone());
 
@@ -49,9 +64,40 @@ final class NewsletterLifecycle
             DB::table('mkt_consents')->where('id', $consent->id)->update(['status' => 'revocado', 'revoked_at' => $now, 'revoke_source' => 'Enlace de baja del boletín']);
             $this->event((string) $consent->id, 'revocado', 'Enlace de baja del boletín', $now);
             $this->audit->log('Suscriptor', (string) $subscriber->email, 'baja', 'otorgado', 'revocado');
+            app(UnsubscribeConfirmation::class)->send('subscriber', (string) $subscriber->id, 'email', (string) $consent->id);
         }
 
         return ['email' => $subscriber->email, 'status' => 'baja'];
+    }
+
+    private function unsubscribeRecipient(string $recipientId, string $token): array
+    {
+        $recipient = DB::table('mkt_campaign_recipients as r')->join('mkt_campaigns as c', 'c.id', '=', 'r.campaign_id')->where('r.id', $recipientId)
+            ->first(['r.id', 'r.campaign_id', 'r.subject_type', 'r.subject_id', 'r.address', 'r.unsubscribed_at', 'c.code as campaign']);
+
+        if (! $recipient instanceof stdClass || ! hash_equals(self::campaignToken($recipientId), $token)) {
+            throw ApiException::notFound('El enlace no es válido.');
+        }
+
+        $now = Carbon::now($this->context->timezone());
+        $source = "Enlace de baja de la campaña {$recipient->campaign}";
+
+        DB::transaction(function () use ($recipient, $now, $source): void {
+            $consent = DB::table('mkt_consents')->where('subject_type', $recipient->subject_type)->where('subject_id', $recipient->subject_id)->where('channel', 'email')->lockForUpdate()->first(['id', 'code', 'status']);
+
+            if ($consent !== null && $consent->status !== 'revocado') {
+                DB::table('mkt_consents')->where('id', $consent->id)->update(['status' => 'revocado', 'revoked_at' => $now, 'revoke_source' => $source, 'revoke_campaign_id' => $recipient->campaign_id, 'lock_version' => DB::raw('lock_version + 1'), 'updated_at' => $now]);
+                $this->event((string) $consent->id, 'revocado', $source, $now);
+                $this->audit->log('Consentimiento', (string) $consent->code, 'baja_email', 'otorgado', "revocado · {$source}");
+                app(UnsubscribeConfirmation::class)->send((string) $recipient->subject_type, (string) $recipient->subject_id, 'email', (string) $consent->id);
+            }
+
+            if ($recipient->unsubscribed_at === null) {
+                DB::table('mkt_campaign_recipients')->where('id', $recipient->id)->update(['unsubscribed_at' => $now, 'updated_at' => $now]);
+            }
+        });
+
+        return ['email' => $recipient->address, 'status' => 'baja'];
     }
 
     private function resolve(string $token): array

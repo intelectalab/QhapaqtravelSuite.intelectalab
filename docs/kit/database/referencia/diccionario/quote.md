@@ -1,10 +1,10 @@
 # Diccionario de datos · Cotizaciones (quote_)
 
-_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras cargar `00`→`90`. No editar a mano._
+_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.15 tras cargar `00`→`90`. No editar a mano._
 
 Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 
-9 tablas · 168 columnas · 39 claves foráneas. Diagrama ER: [`../er/quote.svg`](../er/quote.svg) (fuente [`../er/quote.mmd`](../er/quote.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
+10 tablas · 188 columnas · 43 claves foráneas. Diagrama ER: [`../er/quote.svg`](../er/quote.svg) (fuente [`../er/quote.mmd`](../er/quote.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
 
 ## Tablas
 
@@ -19,6 +19,7 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 | [`quote_sends`](#quote_sends) | Fase 1 · MVP | tenant | 12 | 4 | [Spec 03 §3] [Fase 1] Envíos de la cotización por canal. |
 | [`quote_versions`](#quote_versions) | Fase 1 · MVP | tenant | 35 | 6 | [Spec 03 §3] [Fase 1] Versiones de cotización (congeladas al enviar). |
 | [`quote_views`](#quote_views) | Fase 1 · MVP | tenant | 9 | 3 | [Spec 03 §3] [Fase 1] Aperturas de la cotización (portal o registro manual). |
+| [`quote_external_offers`](#quote_external_offers) | Fase 3 · SaaS y crecimiento | tenant | 20 | 4 | [Spec 19 §3.12] [Fase 3] Ofertas de aéreo, hotel, auto o seguro tomadas de un GDS o banco de camas para una cotización. |
 
 ## Detalle por tabla
 
@@ -35,7 +36,7 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → quote_quotes.tenant_id, tenants.id. |
 | 3 | `quote_id` | `uuid` | no |  | FK → quote_quotes.id. |
 | 4 | `token_hash` | `character varying(80)` | no |  |  |
 | 5 | `expires_at` | `date` | no |  |  |
@@ -49,13 +50,14 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `quote_id` | `quote_quotes.id` | NO ACTION | `fk_quote_access_tokens_quote_id` |
+| `tenant_id, quote_id` | `quote_quotes.tenant_id, id` | NO ACTION | `fk_quote_access_tokens_quote_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_quote_access_tokens_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_quote_access_tokens_id` | `tenant_id, id` |  | restricción |
 | `uq_quote_access_tokens_token_hash` | `token_hash` |  | índice único |
 
 **Índices**
@@ -80,7 +82,7 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → quote_quotes.tenant_id, quote_versions.tenant_id, tenants.id, quote_access_tokens.tenant_id. |
 | 3 | `quote_id` | `uuid` | no |  | FK → quote_quotes.id. |
 | 4 | `quote_version_id` | `uuid` | sí |  | FK → quote_versions.id. |
 | 5 | `version_no` | `smallint` | no |  |  |
@@ -102,10 +104,10 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `quote_id` | `quote_quotes.id` | NO ACTION | `fk_quote_approvals_quote_id` |
-| `quote_version_id` | `quote_versions.id` | NO ACTION | `fk_quote_approvals_quote_version_id` |
+| `tenant_id, quote_id` | `quote_quotes.tenant_id, id` | NO ACTION | `fk_quote_approvals_quote_id` |
+| `tenant_id, quote_version_id` | `quote_versions.tenant_id, id` | NO ACTION | `fk_quote_approvals_quote_version_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_quote_approvals_tenant_id` |
-| `token_id` | `quote_access_tokens.id` | NO ACTION | `fk_quote_approvals_token_id` |
+| `tenant_id, token_id` | `quote_access_tokens.tenant_id, id` | NO ACTION | `fk_quote_approvals_token_id` |
 
 **CHECK**
 
@@ -138,7 +140,7 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, quote_versions.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `quote_version_id` | `uuid` | no |  | FK → quote_versions.id. |
 | 4 | `reasons` | `jsonb` | no | `'[]'::jsonb` |  |
 | 5 | `over_cap` | `boolean` | no | `false` |  |
@@ -161,15 +163,16 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `decided_by` | `iam_users.id` | NO ACTION | `fk_quote_internal_approvals_decided_by` |
-| `quote_version_id` | `quote_versions.id` | NO ACTION | `fk_quote_internal_approvals_quote_version_id` |
-| `requested_by` | `iam_users.id` | NO ACTION | `fk_quote_internal_approvals_requested_by` |
+| `tenant_id, decided_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_quote_internal_approvals_decided_by` |
+| `tenant_id, quote_version_id` | `quote_versions.tenant_id, id` | NO ACTION | `fk_quote_internal_approvals_quote_version_id` |
+| `tenant_id, requested_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_quote_internal_approvals_requested_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_quote_internal_approvals_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_quote_internal_approvals_id` | `tenant_id, id` |  | restricción |
 | `uq_quote_internal_approvals_tenant_id_quote_version_id_p` | `tenant_id, quote_version_id` | `((status)::text = 'pendiente'::text)` | índice único |
 
 **CHECK**
@@ -208,7 +211,7 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_products.tenant_id, quote_versions.tenant_id, catalog_rates.tenant_id, catalog_seasons.tenant_id, tenants.id. |
 | 3 | `quote_version_id` | `uuid` | no |  | FK → quote_versions.id. |
 | 4 | `line_no` | `smallint` | no |  |  |
 | 5 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
@@ -237,16 +240,17 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_quote_items_product_id` |
-| `quote_version_id` | `quote_versions.id` | CASCADE | `fk_quote_items_quote_version_id` |
-| `rate_id` | `catalog_rates.id` | NO ACTION | `fk_quote_items_rate_id` |
-| `season_id` | `catalog_seasons.id` | NO ACTION | `fk_quote_items_season_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_quote_items_product_id` |
+| `tenant_id, quote_version_id` | `quote_versions.tenant_id, id` | CASCADE | `fk_quote_items_quote_version_id` |
+| `tenant_id, rate_id` | `catalog_rates.tenant_id, id` | NO ACTION | `fk_quote_items_rate_id` |
+| `tenant_id, season_id` | `catalog_seasons.tenant_id, id` | NO ACTION | `fk_quote_items_season_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_quote_items_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_quote_items_id` | `tenant_id, id` |  | restricción |
 | `uq_quote_items_quote_version_id_line_no` | `quote_version_id, line_no` |  | índice único |
 
 **CHECK**
@@ -291,7 +295,7 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → quote_quotes.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `quote_id` | `uuid` | no |  | FK → quote_quotes.id. |
 | 4 | `channel` | `character varying(15)` | no |  | Valores: `Llamada`, `Reunión`, `Email`, `WhatsApp`. |
 | 5 | `note` | `text` | no |  |  |
@@ -307,8 +311,8 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `quote_id` | `quote_quotes.id` | NO ACTION | `fk_quote_negotiations_quote_id` |
-| `recorded_by` | `iam_users.id` | NO ACTION | `fk_quote_negotiations_recorded_by` |
+| `tenant_id, quote_id` | `quote_quotes.tenant_id, id` | NO ACTION | `fk_quote_negotiations_quote_id` |
+| `tenant_id, recorded_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_quote_negotiations_recorded_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_quote_negotiations_tenant_id` |
 
 **CHECK**
@@ -340,7 +344,7 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, crm_clients.tenant_id, quote_versions.tenant_id, quote_quotes.tenant_id, crm_opportunities.tenant_id, iam_users.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `client_id` | `uuid` | no |  | FK → crm_clients.id. |
 | 5 | `opportunity_id` | `uuid` | sí |  | FK → crm_opportunities.id. |
@@ -384,19 +388,20 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `approval_recorded_by` | `iam_users.id` | NO ACTION | `fk_quote_quotes_approval_recorded_by` |
-| `client_id` | `crm_clients.id` | NO ACTION | `fk_quote_quotes_client_id` |
-| `current_version_id` | `quote_versions.id` | NO ACTION · DEFERRABLE | `fk_quote_quotes_current_version_id` |
-| `duplicated_from_id` | `quote_quotes.id` | NO ACTION | `fk_quote_quotes_duplicated_from_id` |
-| `opportunity_id` | `crm_opportunities.id` | NO ACTION | `fk_quote_quotes_opportunity_id` |
-| `owner_id` | `iam_users.id` | NO ACTION | `fk_quote_quotes_owner_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_quote_quotes_reservation_id` |
+| `tenant_id, approval_recorded_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_quote_quotes_approval_recorded_by` |
+| `tenant_id, client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_quote_quotes_client_id` |
+| `tenant_id, current_version_id` | `quote_versions.tenant_id, id` | NO ACTION · DEFERRABLE | `fk_quote_quotes_current_version_id` |
+| `tenant_id, duplicated_from_id` | `quote_quotes.tenant_id, id` | NO ACTION | `fk_quote_quotes_duplicated_from_id` |
+| `tenant_id, opportunity_id` | `crm_opportunities.tenant_id, id` | NO ACTION | `fk_quote_quotes_opportunity_id` |
+| `tenant_id, owner_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_quote_quotes_owner_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_quote_quotes_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_quote_quotes_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_quote_quotes_id` | `tenant_id, id` |  | restricción |
 | `uq_quote_quotes_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_quote_quotes_tenant_id_reservation_id_p` | `tenant_id, reservation_id` | `(reservation_id IS NOT NULL)` | índice único |
 
@@ -451,7 +456,7 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → notif_messages.tenant_id, quote_quotes.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `quote_id` | `uuid` | no |  | FK → quote_quotes.id. |
 | 4 | `version_no` | `smallint` | no |  |  |
 | 5 | `channel` | `character varying(15)` | no |  | Valores: `Email`, `WhatsApp`, `Portal`. |
@@ -469,9 +474,9 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `notification_id` | `notif_messages.id` | NO ACTION | `fk_quote_sends_notification_id` |
-| `quote_id` | `quote_quotes.id` | NO ACTION | `fk_quote_sends_quote_id` |
-| `sent_by` | `iam_users.id` | NO ACTION | `fk_quote_sends_sent_by` |
+| `tenant_id, notification_id` | `notif_messages.tenant_id, id` | NO ACTION | `fk_quote_sends_notification_id` |
+| `tenant_id, quote_id` | `quote_quotes.tenant_id, id` | NO ACTION | `fk_quote_sends_quote_id` |
+| `tenant_id, sent_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_quote_sends_sent_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_quote_sends_tenant_id` |
 
 **CHECK**
@@ -504,7 +509,7 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → collab_approval_requests.tenant_id, iam_users.tenant_id, quote_internal_approvals.tenant_id, sys_documents.tenant_id, quote_quotes.tenant_id, tenants.id. |
 | 3 | `quote_id` | `uuid` | no |  | FK → quote_quotes.id. |
 | 4 | `version_no` | `smallint` | no |  |  |
 | 5 | `status` | `character varying(30)` | no | `'borrador'::character varying` | Valores: `borrador`, `enviada`, `aprobada`, `rechazada`, `reemplazada`, `vencida`. |
@@ -545,17 +550,18 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `approval_request_id` | `collab_approval_requests.id` | NO ACTION | `fk_quote_versions_approval_request_id` |
-| `author_id` | `iam_users.id` | NO ACTION | `fk_quote_versions_author_id` |
-| `internal_approval_id` | `quote_internal_approvals.id` | NO ACTION | `fk_quote_versions_internal_approval_id` |
-| `pdf_document_id` | `sys_documents.id` | NO ACTION | `fk_quote_versions_pdf_document_id` |
-| `quote_id` | `quote_quotes.id` | NO ACTION | `fk_quote_versions_quote_id` |
+| `tenant_id, approval_request_id` | `collab_approval_requests.tenant_id, id` | NO ACTION | `fk_quote_versions_approval_request_id` |
+| `tenant_id, author_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_quote_versions_author_id` |
+| `tenant_id, internal_approval_id` | `quote_internal_approvals.tenant_id, id` | NO ACTION | `fk_quote_versions_internal_approval_id` |
+| `tenant_id, pdf_document_id` | `sys_documents.tenant_id, id` | NO ACTION | `fk_quote_versions_pdf_document_id` |
+| `tenant_id, quote_id` | `quote_quotes.tenant_id, id` | NO ACTION | `fk_quote_versions_quote_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_quote_versions_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_quote_versions_id` | `tenant_id, id` |  | restricción |
 | `uq_quote_versions_tenant_id_quote_id_version_no` | `tenant_id, quote_id, version_no` |  | índice único |
 
 **CHECK**
@@ -600,7 +606,7 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → quote_quotes.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `quote_id` | `uuid` | no |  | FK → quote_quotes.id. |
 | 4 | `version_no` | `smallint` | no |  |  |
 | 5 | `viewed_at` | `timestamp with time zone` | no | `now()` |  |
@@ -615,8 +621,8 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `quote_id` | `quote_quotes.id` | NO ACTION | `fk_quote_views_quote_id` |
-| `recorded_by` | `iam_users.id` | NO ACTION | `fk_quote_views_recorded_by` |
+| `tenant_id, quote_id` | `quote_quotes.tenant_id, id` | NO ACTION | `fk_quote_views_quote_id` |
+| `tenant_id, recorded_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_quote_views_recorded_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_quote_views_tenant_id` |
 
 **CHECK**
@@ -632,5 +638,83 @@ Cotizaciones, versiones, ítems, aprobaciones, envíos y vistas.
 | `ix_quote_views_quote_id` | `USING btree (quote_id)` |
 | `ix_quote_views_recorded_by` | `USING btree (recorded_by)` |
 | `ix_quote_views_tenant_id` | `USING btree (tenant_id)` |
+
+[↑ Índice del dominio](#tablas)
+
+### `quote_external_offers`
+
+[Spec 19 §3.12] [Fase 3] Ofertas de aéreo, hotel, auto o seguro tomadas de un GDS o banco de camas para una cotización.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Cotizaciones (quote_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → quote_quotes.tenant_id, booking_reservations.tenant_id, tenants.id, quote_versions.tenant_id. |
+| 3 | `quote_id` | `uuid` | no |  | FK → quote_quotes.id. |
+| 4 | `version_id` | `uuid` | sí |  | FK → quote_versions.id. |
+| 5 | `reservation_id` | `uuid` | sí |  | FK → booking_reservations.id. |
+| 6 | `provider` | `character varying(20)` | no |  | Valores: `amadeus`, `sabre`, `travelport`, `hotelbeds`, `otro`. |
+| 7 | `kind` | `character varying(10)` | no |  | Valores: `aereo`, `hotel`, `auto`, `seguro`. |
+| 8 | `offer_ref` | `character varying(160)` | no |  |  |
+| 9 | `summary` | `character varying(300)` | no |  |  |
+| 10 | `payload` | `jsonb` | no |  |  |
+| 11 | `net_amount` | `numeric(14,2)` | no |  |  |
+| 12 | `sell_amount` | `numeric(14,2)` | no |  |  |
+| 13 | `currency` | `character(3)` | no |  |  |
+| 14 | `offer_expires_at` | `timestamp with time zone` | sí |  |  |
+| 15 | `pnr` | `character varying(20)` | sí |  |  |
+| 16 | `status` | `character varying(12)` | no | `'cotizada'::character varying` | Valores: `cotizada`, `retenida`, `emitida`, `vencida`, `cancelada`, `error`. |
+| 17 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
+| 18 | `updated_by` | `uuid` | sí |  | Usuario de la última actualización (sin FK). |
+| 19 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 20 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, quote_id` | `quote_quotes.tenant_id, id` | NO ACTION | `fk_quote_external_offers_quote_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_quote_external_offers_reservation_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_quote_external_offers_tenant_id` |
+| `tenant_id, version_id` | `quote_versions.tenant_id, id` | NO ACTION | `fk_quote_external_offers_version_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_quote_external_offers_tenant_provider_ref` | `tenant_id, provider, offer_ref` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `ck_quote_external_offers_1` | `CHECK ((((status)::text <> 'emitida'::text) OR (pnr IS NOT NULL)))` |  |
+| `quote_external_offers_kind_check` | `CHECK (((kind)::text = ANY ((ARRAY['aereo'::character varying, 'hotel'::character varying, 'auto'::character varying, 'seguro'::character varying])::text[])))` | `kind`: `aereo`, `hotel`, `auto`, `seguro` |
+| `quote_external_offers_net_amount_check` | `CHECK ((net_amount >= (0)::numeric))` |  |
+| `quote_external_offers_provider_check` | `CHECK (((provider)::text = ANY ((ARRAY['amadeus'::character varying, 'sabre'::character varying, 'travelport'::character varying, 'hotelbeds'::character varying, 'otro'::character varying])::text[])))` | `provider`: `amadeus`, `sabre`, `travelport`, `hotelbeds`, `otro` |
+| `quote_external_offers_sell_amount_check` | `CHECK ((sell_amount >= (0)::numeric))` |  |
+| `quote_external_offers_status_check` | `CHECK (((status)::text = ANY ((ARRAY['cotizada'::character varying, 'retenida'::character varying, 'emitida'::character varying, 'vencida'::character varying, 'cancelada'::character varying, 'error'::character varying])::text[])))` | `status`: `cotizada`, `retenida`, `emitida`, `vencida`, `cancelada`, `error` |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_quote_external_offers_quote_id` | `USING btree (quote_id)` |
+| `ix_quote_external_offers_reservation_id` | `USING btree (reservation_id)` |
+| `ix_quote_external_offers_tenant_id_status_offer_expires_at` | `USING btree (tenant_id, status, offer_expires_at)` |
+| `ix_quote_external_offers_version_id` | `USING btree (version_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_quote_external_offers_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
 
 [↑ Índice del dominio](#tablas)

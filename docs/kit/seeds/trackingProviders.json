@@ -1,0 +1,98 @@
+[
+  {
+    "id": "ga4",
+    "name": "Google Analytics 4",
+    "short": "GA4",
+    "idLabel": "ID de medición",
+    "placeholder": "G-XXXXXXXXXX",
+    "re": "^G-[A-Z0-9]{6,12}$",
+    "consent": "analiticas",
+    "color": "#E37400",
+    "server": "Measurement Protocol",
+    "minPlan": "Starter"
+  },
+  {
+    "id": "gtm",
+    "name": "Google Tag Manager",
+    "short": "GTM",
+    "idLabel": "ID del contenedor",
+    "placeholder": "GTM-XXXXXXX",
+    "re": "^GTM-[A-Z0-9]{4,10}$",
+    "consent": "analiticas",
+    "color": "#246FDB",
+    "server": null,
+    "minPlan": "Starter"
+  },
+  {
+    "id": "google_ads",
+    "name": "Google Ads",
+    "short": "Ads",
+    "idLabel": "ID de conversión",
+    "placeholder": "AW-123456789",
+    "re": "^AW-[0-9]{6,12}$",
+    "consent": "marketing",
+    "color": "#1A73E8",
+    "server": "Google Ads API (conversiones mejoradas)",
+    "minPlan": "Professional"
+  },
+  {
+    "id": "meta_pixel",
+    "name": "Meta Pixel (Facebook e Instagram)",
+    "short": "Meta",
+    "idLabel": "ID del píxel",
+    "placeholder": "123456789012345",
+    "re": "^[0-9]{10,20}$",
+    "consent": "marketing",
+    "color": "#0866FF",
+    "server": "Conversions API",
+    "minPlan": "Starter"
+  },
+  {
+    "id": "tiktok",
+    "name": "TikTok Pixel",
+    "short": "TikTok",
+    "idLabel": "ID del píxel",
+    "placeholder": "CXXXXXXXXXXXX",
+    "re": "^[A-Za-z0-9_-]{4,40}$",
+    "consent": "marketing",
+    "color": "#111111",
+    "server": "Events API",
+    "minPlan": "Professional"
+  },
+  {
+    "id": "clarity",
+    "name": "Microsoft Clarity",
+    "short": "Clarity",
+    "idLabel": "ID del proyecto",
+    "placeholder": "abcd1234ef",
+    "re": "^[A-Za-z0-9_-]{4,40}$",
+    "consent": "analiticas",
+    "color": "#5E5BE6",
+    "server": null,
+    "minPlan": "Professional"
+  },
+  {
+    "id": "linkedin",
+    "name": "LinkedIn Insight Tag",
+    "short": "LinkedIn",
+    "idLabel": "Partner ID",
+    "placeholder": "1234567",
+    "re": "^[A-Za-z0-9_-]{4,40}$",
+    "consent": "marketing",
+    "color": "#0A66C2",
+    "server": null,
+    "minPlan": "Professional"
+  },
+  {
+    "id": "script",
+    "name": "Script propio",
+    "short": "Script",
+    "idLabel": "",
+    "placeholder": "",
+    "re": "",
+    "consent": "marketing",
+    "color": "#7A5C2E",
+    "server": null,
+    "minPlan": "Professional"
+  }
+]

@@ -3,10 +3,15 @@
 use App\Domain\Integrations\Mail\SmtpConnector;
 use App\Domain\Platform\Support\OutgoingMail;
 use Illuminate\Mail\Transport\ArrayTransport;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Symfony\Component\Mailer\Exception\TransportException;
 use Symfony\Component\Mailer\Transport\TransportInterface;
+
+beforeEach(function () {
+    $this->withoutMiddleware(ThrottleRequests::class);
+});
 
 function fakeSmtp(?string $problem = null, bool $failSend = false): object
 {

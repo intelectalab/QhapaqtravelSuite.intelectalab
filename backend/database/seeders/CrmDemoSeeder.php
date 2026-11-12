@@ -169,6 +169,7 @@ final class CrmDemoSeeder
                 'discard_reason_code' => $status === 'descartado' ? CrmCatalogSeeder::code(CrmCatalogSeeder::ITEMS['discard_reason'][0]) : null,
                 'discard_detail' => $status === 'descartado' ? ($seed['notes'] ?? null) : null,
                 'discarded_at' => $status === 'descartado' ? $created : null,
+                'discarded_at_step' => $status === 'descartado' ? 2 : null,
                 'converted_client_id' => $status === 'convertido' ? $this->clients[$seed['convertedClientId']] : null,
                 'converted_opportunity_id' => $status === 'convertido' ? ($this->opportunities[$seed['convertedOppId']] ?? null) : null,
                 'converted_at' => $status === 'convertido' ? $created : null,

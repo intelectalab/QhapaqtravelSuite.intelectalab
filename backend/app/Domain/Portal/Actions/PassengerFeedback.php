@@ -92,7 +92,7 @@ final class PassengerFeedback
                 'rating' => $data['rating'] ?? null,
                 'reservation_service_id' => $serviceId,
                 'text' => trim((string) $data['text']),
-                'status' => $escalate ? 'derivado' : 'nuevo',
+                'status' => 'nuevo',
                 'conversation_id' => $conversation ? DB::table('collab_conversations')->where('code', $conversation)->value('id') : null,
                 'channel' => 'Portal pasajero',
                 'contact_email' => $account->user->email,

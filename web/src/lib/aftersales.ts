@@ -34,6 +34,7 @@ export interface TripItem {
 export interface CaseItem {
   code: string;
   lock_version: number;
+  is_book?: boolean;
   type_code: string;
   type: string;
   priority: string;

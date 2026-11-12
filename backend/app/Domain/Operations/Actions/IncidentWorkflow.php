@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domain\Operations\Actions;
 
+use App\Domain\Admin\Support\StaffNotices;
+use App\Domain\Booking\Support\ReservationIncidents;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Iam\Models\User;
 use App\Domain\Operations\Support\IncidentDirectory;
 use App\Domain\Operations\Support\OpsCommon;
+use App\Domain\Operations\Support\OpsNotices;
+use App\Domain\Portal\Support\PassengerNotices;
+use App\Domain\Portal\Support\PassengerTrip;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use Carbon\CarbonImmutable;
@@ -16,7 +21,26 @@ use Illuminate\Support\Str;
 
 final class IncidentWorkflow
 {
-    public function __construct(private readonly CodeSequence $sequence, private readonly AuditLogger $audit, private readonly OpsCommon $common) {}
+    public function __construct(private readonly CodeSequence $sequence, private readonly AuditLogger $audit, private readonly OpsCommon $common, private readonly ReservationIncidents $reservations, private readonly OpsNotices $notices) {}
+
+    private function notify(string $id, string $code, string $severity, string $title, string $body, ?string $reservationId, ?string $assignee): void
+    {
+        $critical = $severity === 'critica';
+        $this->notices->toOperations($critical ? 'incidencia.critica' : 'incidencia.creada', "{$code} · {$title}", $body, 'ops_incident', $id, $reservationId, $assignee, $critical);
+    }
+
+    private function notifyField(string $id, string $orderId, string $code, array $data, ?string $reservationId): void
+    {
+        if ($data['severity'] === 'critica') {
+            $operators = DB::table('ops_assignments as a')->join('iam_users as u', fn ($join) => $join->on('u.guide_id', '=', 'a.guide_id')->orOn('u.driver_id', '=', 'a.driver_id'))
+                ->where('a.order_id', $orderId)->whereNull('u.deleted_at')->where('u.status', 'activo')->distinct()->pluck('u.id');
+            app(StaffNotices::class)->toUsers($operators, 'incidencia.critica', "Alerta crítica en tu servicio · {$code}", (string) $data['title'], 'ops_incident', $id, $reservationId);
+        }
+
+        if ($reservationId !== null && in_array($data['type'], PassengerTrip::ALERT_TYPES, true)) {
+            app(PassengerNotices::class)->send($reservationId, 'viaje.alerta', (string) ($data['public_title'] ?? 'Cambio en tu viaje'), (string) ($data['public_message'] ?? 'Revisa los avisos de tu viaje en la app.'), 'ops_incident', $id);
+        }
+    }
 
     public function create(array $data, User $actor): string
     {
@@ -58,6 +82,8 @@ final class IncidentWorkflow
             }
 
             $this->audit->log('Incidencia', $code, 'crear', null, "{$data['severity']} · {$data['title']}");
+            $this->notify($id, $code, $data['severity'], $data['title'], "Registrada por {$actor->name} desde la web.", $order->reservation_id, $assignee);
+            $this->notifyField($id, (string) $order->id, $code, $data, $order->reservation_id);
 
             return $code;
         });
@@ -106,6 +132,7 @@ final class IncidentWorkflow
             DB::table('channel_pax_feedback')->where('id', $feedback->id)->update(['status' => 'derivado', 'incident_id' => $id, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             $this->audit->log('Incidencia', $code, 'crear', "Comentario {$feedback->code}", "abierta / {$data['severity']}");
             $this->audit->log('Comentario pasajero', (string) $feedback->code, 'derivar', (string) $feedback->status, "derivado · {$code}");
+            $this->notify($id, $code, $data['severity'], $data['title'], "Derivada del comentario del pasajero {$feedback->code}.", $feedback->reservation_id, $assignee);
 
             return ['code' => $code, 'feedback' => $feedback->code, 'order' => $order !== null];
         });
@@ -141,6 +168,14 @@ final class IncidentWorkflow
         }
 
         $this->audit->log('Incidencia', $code, 'editar', $incident->severity, $data['severity']);
+
+        if (isset($values['assignee_id'])) {
+            app(StaffNotices::class)->toUser((string) $values['assignee_id'], 'incidencia.asignada', "{$code} · incidencia asignada a ti", $data['title'], 'ops_incident', (string) $incident->id, $incident->reservation_id, (string) $actor->getKey());
+        }
+
+        if ($data['severity'] === 'critica' && $incident->severity !== 'critica') {
+            $this->notify($incident->id, $code, 'critica', $data['title'], "Escalada a crítica por {$actor->name}.", $incident->reservation_id ?? null, $values['assignee_id'] ?? $incident->assignee_id);
+        }
     }
 
     public function take(string $code, User $actor): void
@@ -198,17 +233,21 @@ final class IncidentWorkflow
         ]);
         $this->log($incident->id, $actor, 'estado', 'Cerrada'.($comment ? ": {$comment}" : '.'));
         $this->audit->log('Incidencia', $code, 'cerrar', $incident->status, 'cerrada');
+
+        if ($incident->severity === 'critica') {
+            app(StaffNotices::class)->toManagers('incidencia.cerrada', "{$code} · incidencia crítica cerrada", (string) ($resolution ?? $comment), 'ops_incident', (string) $incident->id, $incident->reservation_id, (string) $actor->getKey());
+        }
     }
 
     public function reopen(string $code, string $reason, User $actor): void
     {
         $incident = $this->incident($code);
 
-        if (! in_array($incident->status, ['cerrada', 'resuelta'], true)) {
-            throw ApiException::conflict('OPS-BR-63', 'Solo se reabre una incidencia resuelta o cerrada.');
+        if ($incident->status !== 'cerrada') {
+            throw ApiException::conflict('OPS-BR-63', 'Solo se reabre una incidencia cerrada.');
         }
 
-        DB::table('ops_incidents')->where('id', $incident->id)->update(['status' => 'en_proceso', 'closed_at' => null, 'closed_by' => null, 'resolution' => null, 'resolved_at' => null, 'resolved_by' => null, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+        DB::table('ops_incidents')->where('id', $incident->id)->update(['status' => 'en_proceso', 'closed_at' => null, 'closed_by' => null, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         $this->log($incident->id, $actor, 'estado', "Reabierta: {$reason}");
         $this->audit->log('Incidencia', $code, 'reabrir', $incident->status, $reason);
     }
@@ -222,6 +261,7 @@ final class IncidentWorkflow
     private function log(string $incidentId, ?User $actor, string $kind, string $message): void
     {
         DB::table('ops_incident_logs')->insert(['incident_id' => $incidentId, 'user_id' => $actor?->getKey(), 'kind' => $kind, 'message' => $message, 'visibility' => 'interna', 'created_by' => $actor?->getKey()]);
+        $this->reservations->syncForIncident($incidentId);
     }
 
     private function incident(string $code): object

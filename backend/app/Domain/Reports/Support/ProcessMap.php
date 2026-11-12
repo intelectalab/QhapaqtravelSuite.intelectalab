@@ -96,11 +96,14 @@ final class ProcessMap
         ];
 
         $leadsTotal = max(1, (int) $leads->except(['duplicado'])->sum());
+        $quoted = Portfolio::scope(DB::table('crm_opportunities as o')->whereNull('o.deleted_at'), $viewer, 'o.owner_id')
+            ->whereExists(fn ($query) => $query->from('quote_quotes as q')->whereColumn('q.opportunity_id', 'o.id')->whereNull('q.deleted_at'))->count();
 
         return [
             'stages' => $stages,
             'conversion' => [
                 'lead_to_opportunity' => round((int) ($leads['convertido'] ?? 0) / $leadsTotal * 100, 1),
+                'opportunity_to_quote' => $opportunities->isEmpty() ? null : round($quoted / $opportunities->count() * 100, 1),
                 'opportunity_win' => $opportunities->whereIn('stage', ['ganada', 'perdida'])->isEmpty() ? null : round($opportunities->where('stage', 'ganada')->count() / $opportunities->whereIn('stage', ['ganada', 'perdida'])->count() * 100, 1),
                 'quote_to_reservation' => (int) $quotes->sum() === 0 ? null : round((int) ($quotes['convertida'] ?? 0) / (int) $quotes->sum() * 100, 1),
             ],

@@ -168,7 +168,7 @@
     }
     if (!DB.widgetConfig) {
       DB.widgetConfig = {
-        tenantSlug: 'andes-horizonte', publicKey: 'pk_live_ah_7Qm2x9LkR4', keyCreatedAt: '2026-06-01 09:00', keyCreatedBy: 'U01', cdn: 'https://cdn.kipucontrol.app/widget/v1', host: 'https://reservas.andeshorizonte.pe',
+        tenantSlug: 'andes-horizonte', publicKey: 'pk_live_ah_7Qm2x9LkR4', keyCreatedAt: '2026-06-01 09:00', keyCreatedBy: 'U01', cdn: 'https://cdn.kipucontrol.com/widget/v1', host: 'https://reservas.andeshorizonte.pe',
         defaults: { product: 'PRD-011', mode: 'producto', category: 'Cultural', lang: 'es', currency: 'USD', theme: '#0A3A73', radius: 10, reviews: true, method: 'webcomponent', domain: 'blog.andeshorizonte.pe' },
         domains: [
           { id: 'DOM-001', domain: 'www.andeshorizonte.pe', cms: 'Sitio propio (Next.js)', status: 'verificado', token: 'kipucontrol-verify=ah-19c2', addedAt: '2026-02-02 16:45', addedBy: 'U01', verifiedAt: '2026-02-02 17:10' },

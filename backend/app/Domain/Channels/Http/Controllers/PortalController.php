@@ -63,8 +63,8 @@ final class PortalController
 
     public function mark(Request $request, string $code, AnswerPaxFeedback $answer): JsonResponse
     {
-        $data = $request->validate(['status' => ['required', 'in:leido,derivado']], ['status.*' => 'Elige el nuevo estado.']);
-        $answer->mark($code, $data['status'], $this->user($request));
+        $request->validate(['status' => ['required', 'in:leido']], ['status.*' => 'Para derivarlo, crea la incidencia desde el comentario.']);
+        $answer->markRead($code, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
     }

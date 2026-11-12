@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Ban, CircleAlert, Mail, Minus, Plus, RotateCcw, Sparkles, Ticket, Undo2, XCircle } from "lucide-react";
+import { ArrowUpRight, Ban, CalendarCheck, CalendarPlus, CalendarX2, CircleAlert, Lock, Mail, Minus, Plus, Receipt, RotateCcw, Sparkles, Ticket, Undo2, XCircle } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
 import { addAddon, cancelSubscription, changePlan, payInvoice, previewPlanChange, redeemCoupon, removeAddon, resumeSubscription, sendInvoice, setAutoRenew, updateAddon, voidScheduledChange } from "@/app/(backoffice)/admin/suscripcion/actions";
 import { Badge } from "@/components/ui/Badge";
@@ -121,9 +121,24 @@ export function AutoRenewToggle({ subscription }: { subscription: Subscription }
 
 export function CancelAction({ periodEnd, coupon }: { periodEnd: string; coupon?: Subscription["coupon"] }) {
   return (
-    <PanelAction<AdminActionState> label="Cancelar suscripción" icon={<Ban size={15} />} variant="ghost" size="sm" formId="subscription-cancel" title="Cancelar suscripción" description={`Sigues usando todo hasta el ${formatDate(periodEnd)}. Después la cuenta queda en solo lectura 30 días para exportar tus datos.`} submitLabel="Programar cancelación" action={cancelSubscription} initial={ADMIN_INITIAL}>
+    <PanelAction<AdminActionState> label="Cancelar suscripción" icon={<Ban size={15} />} variant="ghost" size="sm" formId="subscription-cancel" title="Cancelar suscripción" submitLabel="Programar cancelación" action={cancelSubscription} initial={ADMIN_INITIAL}>
       {() => (
         <>
+          <ol className="grid grid-cols-3 gap-2 text-center">
+            {[
+              { icon: CalendarCheck, title: "Hoy", text: "Se programa la cancelación" },
+              { icon: CalendarX2, title: formatDate(periodEnd), text: "Último día con todo activo" },
+              { icon: Lock, title: "30 días más", text: "Solo lectura para exportar" },
+            ].map((step, index) => (
+              <li key={step.title} className="relative flex flex-col items-center gap-1 rounded-tile border border-line px-2 py-2.5">
+                <span className={cn("grid h-8 w-8 place-items-center rounded-full", index === 2 ? "bg-surface-2 text-fg-2" : "bg-accent/10 text-accent")}>
+                  <step.icon size={15} />
+                </span>
+                <b className="text-[12.5px] font-semibold">{step.title}</b>
+                <span className="text-[11.5px] leading-snug text-fg-3">{step.text}</span>
+              </li>
+            ))}
+          </ol>
           <div className="flex items-start justify-between gap-3 rounded-[12px] bg-accent/5 px-3.5 py-3 text-[12.5px] text-fg-2">
             <p>
               <b className="text-fg">Antes de irte:</b> puedes pasar a un plan menor, retirar complementos o aplicar un cupón de retención.
@@ -252,7 +267,23 @@ export function AddonsTable({ data, manage }: { data: SubscriptionOverview; mana
   const billable = data.addons.reduce((sum, addon) => sum + addon.quantity * addon.unit_price, 0);
   return (
     <div>
-      <p className="mb-4 rounded-[12px] bg-accent/5 px-3.5 py-2.5 text-[12.5px] text-fg-2">Los complementos se facturan con la suscripción. Al contratar se cobra la parte proporcional de los días que quedan; al retirar, siguen activos hasta el cierre del periodo, sin reembolso parcial.</p>
+      <ul className="mb-4 grid gap-2 xl:grid-cols-3">
+        {[
+          { icon: CalendarPlus, title: "Hoy, lo proporcional", text: "Se cobran solo los días que quedan del periodo." },
+          { icon: Receipt, title: "En tu factura mensual", text: "Desde el siguiente periodo van con el plan." },
+          { icon: CalendarX2, title: "Al retirar, hasta el cierre", text: "Sigue activo hasta fin de periodo, sin reembolso parcial." },
+        ].map((item) => (
+          <li key={item.title} className="lift flex items-start gap-2.5 rounded-tile border border-line px-3 py-2.5">
+            <span className="grid h-8 w-8 flex-none place-items-center rounded-lg bg-accent/10 text-accent">
+              <item.icon size={15} />
+            </span>
+            <span className="min-w-0 text-[12px] text-fg-3">
+              <b className="block text-[12.5px] font-semibold text-fg">{item.title}</b>
+              {item.text}
+            </span>
+          </li>
+        ))}
+      </ul>
       <div className="scroll-thin overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead>

@@ -311,9 +311,15 @@ it('rechazar la solicitud de anulación exige nota y el permiso de cancelar', fu
     expect(rowOf('booking_cancel_requests', $request->id, column: 'id')->status)->toBe('pendiente');
 });
 
+function attachTravelDocFile(string $itemId): void
+{
+    withinTenant(tenantA(), fn () => DB::table('ops_travel_doc_items')->where('id', $itemId)->update(['file_id' => DB::table('sys_documents')->insertGetId(['doc_type' => 'travel_doc', 'storage_path' => 'pruebas/documento.pdf', 'file_name' => 'documento.pdf', 'mime_type' => 'application/pdf', 'sha256' => str_repeat('b', 64)])]));
+}
+
 it('validar un documento de viaje lo deja completo con quien lo validó y se ve en el checklist', function () {
     actingAsSeed('U05');
     $item = withinTenant(tenantA(), fn () => DB::table('ops_travel_doc_items')->where('reservation_id', reservationRow('RES-2026-000345')->id)->where('doc_type', 'id_doc')->orderBy('doc_number')->first());
+    attachTravelDocFile($item->id);
 
     $this->postJson("/api/v1/reservations/RES-2026-000345/travel-docs/{$item->passenger_id}/id_doc/validate", ['doc_number' => '71022330', 'expiry_date' => '2031-01-01'], critical())
         ->assertOk()->assertJsonPath('data.id', $item->id);
@@ -331,6 +337,7 @@ it('validar un documento de viaje lo deja completo con quien lo validó y se ve 
 it('no se valida un documento que vence antes del regreso ni uno inexistente', function () {
     actingAsSeed('U05');
     $item = withinTenant(tenantA(), fn () => DB::table('ops_travel_doc_items')->where('reservation_id', reservationRow('RES-2026-000345')->id)->where('doc_type', 'id_doc')->orderBy('doc_number')->first());
+    attachTravelDocFile($item->id);
 
     expect($this->postJson("/api/v1/reservations/RES-2026-000345/travel-docs/{$item->passenger_id}/id_doc/validate", ['expiry_date' => '2026-10-01'], critical()))->toBeApiError(422, 'DOC-BR-002');
     expect($this->postJson("/api/v1/reservations/RES-2026-000345/travel-docs/{$item->passenger_id}/insurance/validate", [], critical()))->toBeApiError(404);

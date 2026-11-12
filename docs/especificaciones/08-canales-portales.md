@@ -4,7 +4,7 @@ Fuente: `proto/assets/js/modules/canales.js` (+ `core.js`, `data.js`). Documento
 
 > **Relación con el sitio web público (especificación 15, `sitio.js`).** Otro equipo construye el sitio web público completo, que **reemplaza como escaparate** a la "Tienda (vista pública)" de este módulo (`#/canales/ecommerce/tienda…`). Este documento:
 > - especifica la **gestión e-commerce** (pedidos, publicación, promociones, embudo) que sigue viviendo en el back-office;
-> - documenta la tienda actual **como flujo de checkout de referencia** (reglas de precio, disponibilidad, promociones, pago, creación de pedido/reserva/voucher). La especificación 15 debe consumir los mismos endpoints públicos `/api/v1/public/shop/*` definidos aquí (sección 6.3) y no duplicar reglas (RT-18). Las pantallas de catálogo/detalle/checkout de la tienda del prototipo **no deben construirse en Next.js dentro del back-office**; su equivalente público es responsabilidad de la especificación 15.
+> - documenta la tienda actual **como flujo de checkout de referencia** (reglas de precio, disponibilidad, promociones, pago, creación de pedido/reserva/voucher). Los endpoints públicos del escaparate y el checkout están en la especificación 15 §6 (`/api/v1/public/*`), que reutiliza los mismos servicios y reglas (RT-18); v2.5 retiró los alias `/api/v1/public/shop/*`. Las pantallas de catálogo/detalle/checkout de la tienda del prototipo **no deben construirse en Next.js dentro del back-office**; su equivalente público es responsabilidad de la especificación 15.
 > - El contenido del CMS (banners, páginas, legales) es la fuente de contenido del sitio público y de los portales.
 
 ---
@@ -49,6 +49,7 @@ Las rutas externas se resuelven por la experiencia del rol (`ROLE_UX`, core.js).
 | `…/{clientId}/pagos` | `(portal-cliente)/pagos` | Obligaciones con saldo, "Pagar en línea" (parcial permitido), historial. | Idem |
 | `…/{clientId}/notificaciones` | `(portal-cliente)/notificaciones` | Notificaciones del cliente + eventos de sus cotizaciones. | Idem (no está en la nav externa de `ROLE_UX.customer`, sí en la del portal) |
 | `…/{clientId}/soporte` | `(portal-cliente)/soporte` | Crear solicitud (ticket) y ver las propias. | Idem |
+| `…/{clientId}/corporativo` | `(portal-cliente)/corporativo` | **v2.7.** Panel corporativo de la empresa cliente: resumen de compras, movimientos, estado de cuenta, aprobaciones y usuarios. Detalle en `20-portal-corporativo.md`. | Cliente con cuenta corporativa activa (rol del portal en `crm_corporate_portal_users`); internos en vista previa |
 | `#/canales/portal-pasajero/viajes` (y login simulado interno) | Externo: `(portal-pasajero)/viajes`; interno: `(backoffice)/canales/portal-pasajero/viajes` | Tarjeta del viaje (día n de N), servicios de hoy, próximo servicio, accesos rápidos, emergencias. | Pasajero (su reserva); interno con `channels.b2b.manage` \| `channels.cms.publish` \| `operations.assign` |
 | `…/portal-pasajero/itinerario` | `(portal-pasajero)/itinerario` | Día a día con estado por servicio y asignaciones; descarga itinerario. | Idem |
 | `…/hoteles` · `/transporte` · `/actividades` | `(portal-pasajero)/hoteles` etc. | Hotel (dirección, check-in/out, habitación, confirmación, voucher); traslados con vehículo/conductor; actividades con guía y requisitos. | Idem |
@@ -578,14 +579,9 @@ Guardas: `sanctum` + contexto tenant. Externos usan el mismo API con policies po
 | GET | `/api/v1/channels/ecommerce/promotions` | channels.ecommerce.manage | Promociones de todos los productos | — |
 | POST | `/api/v1/catalog/products/{id}/promotions` | channels.ecommerce.manage \| catalog.products.manage_promotions | Crear | — |
 | POST | `/api/v1/catalog/promotions/{id}/activate` · `/deactivate` | idem | Cambiar estado | — |
-| GET | `/api/v1/public/shop/products` | público (tenant por host) | Catálogo publicado (q, category, sort) — **consumido por espec. 15** | cache Redis |
-| GET | `/api/v1/public/shop/products/{slug}` | público | Detalle (contenido, config, salidas, promos visibles) | cache |
-| POST | `/api/v1/public/shop/price` | público | Cálculo de precio (pax, opciones, fecha/salida, código) → líneas, descuento, total, `promo_state` | rate limit |
-| POST | `/api/v1/public/shop/availability` | público | Valida disponibilidad (ECO-BR-07) | — |
-| POST | `/api/v1/public/shop/orders` | público | Crea pedido + hold (comprador, pasajeros, snapshot) | **Idempotency-Key**; lock salida |
-| POST | `/api/v1/public/shop/orders/{code}/payments` | público (token del pedido) | Intento de pago con token de pasarela | **Idempotency-Key** |
-| GET | `/api/v1/public/shop/orders/{code}` | público (token del pedido) | Estado, reserva, voucher | — |
 | POST | `/api/v1/webhooks/payments/{provider}` | firma del proveedor | Confirmación de pago (aprobado/rechazado) | Idempotente por `gateway_txn_id` |
+
+v2.5: el escaparate y el checkout públicos (catálogo, precio, disponibilidad, pedido y pago) se definen **solo** en la especificación 15 §6 (`/api/v1/public/products`, `/public/price-quote`, `/public/availability`, `/public/carts`, `/public/checkout/orders`, `/public/orders/{code}/payments`). Se retiran los alias `/api/v1/public/shop/*` para que haya un único contrato público.
 
 ### 6.4 CMS
 
@@ -651,9 +647,10 @@ Errores de regla: `422 {code:'B2B-BR-04', message}`; conflictos de cupo/estado: 
 | POST | `/api/v1/portal/passenger/messages/{id}/read` · `/read-all` | passenger | Marca leído | idempotente |
 | GET · POST | `/api/v1/portal/passenger/feedback` | passenger | Historial / alta de comentario | POST con `Idempotency-Key` |
 | GET · PUT | `/api/v1/portal/passenger/companions` | passenger | Acompañantes y recojo (R-COMPANIONS `antes_de_viaje`) | `lock_version` de la reserva |
-| GET | `/api/v1/portal/customer/reservations/{code}/web-summary` | customer | Resumen web + plan de pago + CxC abiertas | — |
-| PUT | `/api/v1/portal/customer/reservations/{code}/companions` | customer | Completar acompañantes (R-COMPANIONS cualquier modo) | `lock_version` |
-| POST | `/api/v1/portal/customer/receivables/{code}/pay` | customer | Pago del saldo (pasarela) | `Idempotency-Key` |
+| GET | `/api/v1/portal/client/reservations/{code}/web-summary` | customer | Resumen web + plan de pago + CxC abiertas | — |
+| PUT | `/api/v1/portal/client/reservations/{code}/companions` | customer | Completar acompañantes (R-COMPANIONS cualquier modo) | `lock_version` |
+
+v2.5: el portal del cliente usa un solo prefijo, `/api/v1/portal/client/*`. El pago del saldo es `POST /api/v1/portal/client/receivables/{id}/payments` (§6.5); se retira el duplicado `/portal/customer/receivables/{code}/pay`.
 
 ### 6.8 v2.2 — Endpoints de reseñas del pasajero
 | Método | Endpoint | Permiso | Descripción |
@@ -867,7 +864,7 @@ Playwright (`e2e_resenas.js`): U15 ve el aviso, califica PRD-002 → pendiente; 
 | 10 | Agregado | Estados del pedido web `pago_pendiente/pago_rechazado/confirmado/cancelado` + `expirado` (job). | El prototipo anuncia hold de 30 min pero no lo expira; excepción "Pago rechazado" de DOC-PROC-001 §24 implementada (obligación se mantiene, reintento). |
 | 11 | Precisado | Pricing web: tarifa canal E-commerce con fallback a Directo; niño con tarifa propia o precio adulto; deltas de personalización por persona; promociones no acumulables (mayor descuento), código o automática por cantidad (≥4). | PRD §23/§25: "cada selección recalcula el precio mediante backend"; se fija el algoritmo. |
 | 12 | Agregado | Cliente CRM creado/reutilizado por email desde el checkout; owner por defecto configurable (prototipo: U03 fijo). | Integración e-commerce → CRM/Customer 360. |
-| 13 | Cambiado | La "Tienda (vista pública)" deja de ser pantalla del back-office: el escaparate lo construye la **especificación 15 (sitio público)**, que consume `/api/v1/public/shop/*` y `/api/v1/public/cms/*` definidos aquí. | Evitar dos tiendas y duplicación de reglas (RT-18). |
+| 13 | Cambiado | La "Tienda (vista pública)" deja de ser pantalla del back-office: el escaparate lo construye la **especificación 15 (sitio público)**, que consume `/api/v1/public/*` (15 §6) y `/api/v1/public/cms/*` (aquí). | Evitar dos tiendas y duplicación de reglas (RT-18). |
 | 14 | Agregado | Gestión e-commerce: KPIs, embudo, pedidos con intentos de pago, enviar enlace de pago, anular; publicación por producto; promociones y códigos. | PROC-054 solo describía el recorrido del comprador. |
 | 15 | Precisado | PROC-055: estados `borrador → en_revision → aprobado → publicado → despublicado`, devolver a borrador con motivo, republicación vía reenvío a revisión; publicar exige SEO title; slug único; bitácora. | "Contenido → Revisión → Aprobación → Publicación → Canal → Despublicación" sin reglas. |
 | 16 | Agregado | Contenido CMS con canal destino (Web, Web/E-commerce, Web/Portal, Portal cliente, Portal pasajero, App pasajero), tipo, SEO y vista previa SERP; agregados `placement` y vigencia para banners. | El prototipo enlaza contenidos por ID fijo (CMS-02 banner en tienda, CMS-05 política en portal pasajero). |
@@ -934,5 +931,5 @@ Este módulo expone 17 rutas que no están en el contrato: 9 lectura de pantalla
 | 19 | Portal del pasajero en la demo solo acepta RES-2026-000347 y usa email del titular. | Producción: acceso por pasajero (email propio) y multi-reserva ("Mis viajes"). |
 | 20 | Textos de alerta al pasajero redactados por operaciones. | Agregar `public_message` en incidencias con aprobación antes de publicar al pasajero. |
 | 21 | Idiomas: el portal del pasajero menciona inglés/alemán. | Definir i18n de portales y de contenidos CMS (versión por idioma). |
-| 22 | Relación con espec. 15: el sitio público reemplaza la tienda. | Confirmar que la espec. 15 usa exactamente `/api/v1/public/shop/*` y `/api/v1/public/cms/*`; la ruta `#/canales/ecommerce/tienda` del prototipo queda como referencia funcional, no como pantalla a construir. |
+| 22 | Relación con espec. 15: el sitio público reemplaza la tienda. | Resuelto en v2.5: la espec. 15 es el único contrato público (`/api/v1/public/*` + `/api/v1/public/cms/*`); la ruta `#/canales/ecommerce/tienda` del prototipo queda como referencia funcional, no como pantalla a construir. |
 | 23 | B2B sin API ni XML para agencias. | ¿Se requiere API B2B (disponibilidad/reserva) para agencias integradas? (P1/Futuro según DOC-PROC-001 §34–35.) |

@@ -34,9 +34,9 @@ return [
     'platform_permissions' => ['admin.tenant.manage', 'admin.audit.view'],
 
     'experience_routes' => [
-        'shared' => ['me', 'me.access', 'me.counts', 'me.permissions', 'me.notifications.index', 'me.notifications.read-all'],
-        'portal' => ['b2b.', 'supplier.', 'portal.', 'public.me.'],
-        'mobile' => ['mobile.operator.', 'mobile.devices.'],
+        'shared' => ['me', 'me.access', 'me.counts', 'me.permissions', 'me.notifications.index', 'me.notifications.read-all', 'ops.evidences.presign', 'mobile.devices.', 'documents.download'],
+        'portal' => ['b2b.', 'supplier.', 'portal.', 'public.me.', 'mobile.passenger.'],
+        'mobile' => ['mobile.operator.'],
     ],
 
     'routes' => [

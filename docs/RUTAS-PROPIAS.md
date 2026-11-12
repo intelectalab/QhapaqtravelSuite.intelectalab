@@ -7,8 +7,8 @@ Registro del 6 de noviembre de 2026. Son las rutas que el código expone y que n
 | Alinear con el contrato | 0 | Ninguna. Las 109 que tenían equivalente en el contrato se movieron a su ruta el 6 de noviembre (sitio público, portales y back-office). |
 | Lectura de pantalla | 67 | Se quedan. Evitan varias llamadas por pantalla; se propone sumarlas al contrato como lecturas de interfaz. |
 | Editar, borrar o cambiar estado | 73 | Se quedan. Se propone sumarlas al contrato. |
-| Acción propia | 20 | Se quedan mientras negocio no las retire; se propone sumarlas al contrato. |
-| **Total** | **160** | |
+| Acción propia | 21 | Se quedan mientras negocio no las retire; se propone sumarlas al contrato. |
+| **Total** | **161** | |
 
 Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=storage/openapi.generated.json`) y correr `python3 docs/kit/api/compare_contract.py backend/storage/openapi.generated.json --phase 3`; las rutas nuevas fuera del contrato deben agregarse a este registro. Cuando el registro esté vacío de rutas «Alinear», la CI puede correr con `--strict-extra`.
 
@@ -37,7 +37,6 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `PATCH /crm/surveys/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `PATCH /crm/clients/{}/contacts/{}` | Editar, borrar o cambiar estado | Editar un contacto del cliente. El contrato tiene alta (`POST contacts`) y «hacer principal», pero no edición; lo exige el criterio de CRUD completo. |
 | `DELETE /crm/clients/{}/contacts/{}` | Editar, borrar o cambiar estado | Quitar un contacto del cliente; si era el principal, el siguiente pasa a serlo. Lo exige el criterio de CRUD completo. |
-| `POST /crm/cases/{}/reopen` | Acción propia | Reabrir un caso de postventa; la pantalla lo ofrece y el contrato no tiene esa transición. |
 | `POST /crm/clients/{}/portal-access` | Acción propia | Invitar al cliente a su portal: crea o reutiliza el usuario con rol `customer`, lo vincula por `iam_users.client_id` (spec 08 §3.15, PCL-BR-01) y le envía la invitación de `auth/invitations`. El contrato solo tiene la invitación del personal (`POST /iam/users`, `admin.users.manage`); esta va bajo el cliente con `crm.clients.manage` y respeta la cartera del asesor. Exige Idempotency-Key. |
 | `POST /crm/clients/{}/portal-access/resend` | Acción propia | Reenviar la invitación al portal mientras el cliente no la acepta; equivale a `POST /iam/users/{id}/resend-invitation` con el permiso de clientes. |
 | `POST /crm/clients/{}/portal-access/revoke` | Acción propia | Revocar el acceso al portal: desactiva el usuario sin borrarlo, cierra sus sesiones y vence la invitación pendiente. El estado se lee en `GET /crm/clients/{code}` (`portal_access`). |
@@ -98,7 +97,6 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `GET /mobile/passenger` | Lectura de pantalla | Vista previa de la app del pasajero desde el back-office; la ruta del contrato es la de la app con la sesión del propio pasajero. |
 | `PATCH /ops/incidents/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `PATCH /ops/orders/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
-| `POST /ops/orders/{}/cancel` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `DELETE /ops/resources/{}/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `PATCH /ops/resources/{}/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `DELETE /ops/rooming-lists/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
@@ -144,7 +142,7 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `POST /finance/commission-rules` | Editar, borrar o cambiar estado | Alta de una regla de comisión (criterio de CRUD completo). |
 | `PATCH /finance/commission-rules/{}` | Editar, borrar o cambiar estado | Editar, cambiar vigencia o desactivar una regla de comisión, sin superposición. |
 
-### Canales y portales · spec 08 (19)
+### Canales y portales · spec 08 (20)
 
 | Ruta | Grupo | Equivalente en el contrato o motivo |
 | --- | --- | --- |
@@ -167,6 +165,7 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `POST /channels/passenger-portal/feedback/{}/status` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `PATCH /portal/client/profile` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `PUT /portal/client/profile/consents/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
+| `POST /portal/client/receivables/{}/payment-reports` | Acción propia | «Informar pago» del cliente (transferencia o depósito ya hecho): crea un pago `pendiente` que valida Finanzas. El contrato reserva `POST /portal/client/receivables/{id}/payments` para el pago en línea (08 §6.5); se separa siguiendo el modelo del portal B2B (`POST /b2b/receivables/{id}/payment-reports`, 08:564). Agregada el 11/11/2026. |
 
 ### Administración y reportes · spec 09 (16)
 
@@ -179,6 +178,7 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `GET /dashboard/home` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `GET /health` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `GET /me/counts` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
+| `POST /me/data-exports` | Acción propia | Registra en la auditoría cada lista que se exporta a Excel o CSV (formato, filas, filtros y columnas). El archivo se arma en el navegador con las filas filtradas y ordenadas, como en ErpSaas. |
 | `GET /reports/kpis` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `GET /reports/process-map` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `PUT /admin/branding` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |

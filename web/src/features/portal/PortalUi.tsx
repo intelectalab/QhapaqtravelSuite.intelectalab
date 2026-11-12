@@ -8,7 +8,7 @@ import { TintCardTitle } from "@/components/ui/Tinted";
 import { UsageBar } from "@/features/channels/ChannelUi";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
-import { PHASES, portalStatus, type PortalAdvisor, type PortalAlert, type PortalTripSummary } from "@/lib/portal";
+import { PHASES, portalStatus, type PortalAdvisor, type PortalStatusScope, type PortalAlert, type PortalTripSummary } from "@/lib/portal";
 import { toneStyle } from "@/lib/tone";
 
 export const RISE = "animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]";
@@ -17,7 +17,7 @@ export function rise(index: number) {
   return { animationDelay: `${index * 60}ms` };
 }
 
-export function PortalBadge({ status, scope }: { status: string; scope?: "message" }) {
+export function PortalBadge({ status, scope }: { status: string; scope?: PortalStatusScope }) {
   const meta = portalStatus(status, scope);
   return <Badge tone={meta.tone}>{meta.label}</Badge>;
 }
@@ -131,7 +131,7 @@ export function TripCard({ trip, index }: { trip: PortalTripSummary; index: numb
               <CalendarDays size={13} /> {formatDate(trip.from)} – {formatDate(trip.to)}
             </span>
           </div>
-          <PortalBadge status={trip.status} />
+          <PortalBadge status={trip.status} scope="trip" />
         </div>
         <div className="flex items-center gap-2" title={`${trip.confirmed} de ${trip.services} servicios confirmados`}>
           <UsageBar pct={pct} tone="ok" />

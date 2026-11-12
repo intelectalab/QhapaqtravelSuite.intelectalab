@@ -1247,9 +1247,9 @@ Cobertura referencial: 121 endpoints, 56 tablas citadas, 51 casos de prueba de l
 
 **Especificación:** 16 §3.1, §5.1, §8.1 (`RuleResolver`), §8.3 (caché de reglas); D-11
 
-**Tablas:** `platform_booking_rule_templates`, `sys_booking_rules`
+**Tablas:** `sys_rule_templates`, `sys_booking_rules`
 
-**Endpoints:** — (administración `GET/PATCH /api/v1/admin/booking-rules` y overrides por producto quedan para Fase 2)
+**Endpoints:** — (administración `GET /api/v1/admin/booking-rules · PATCH /api/v1/admin/booking-rules/{code}` y overrides por producto quedan para Fase 2)
 
 **Pantallas:** —
 
@@ -1365,7 +1365,7 @@ Cobertura referencial: 121 endpoints, 56 tablas citadas, 51 casos de prueba de l
 
 **Especificación:** 16 §1 (principio), §8.1 (algoritmo de precio pasos 1–7, 11–16), §5.2 CAT-PX-03; 02 CAT-BR-15; H-09, H-13
 
-**Tablas:** Lectura `catalog_rates`, `catalog_seasons`, `catalog_pax_rules`, `sys_booking_rules`, `sys_fx_rates`
+**Tablas:** Lectura `catalog_rates`, `catalog_seasons`, `catalog_pax_rules`, `sys_booking_rules`, `fin_fx_rates`
 
 **Endpoints:** Servicio de dominio (consumido por `price-quote` F1A-CAT-16 y `pax-rules/simulate`)
 
@@ -1450,7 +1450,7 @@ Cobertura referencial: 121 endpoints, 56 tablas citadas, 51 casos de prueba de l
 
 **Pruebas:** Suite en CI.
 
-**Depende de:** Historias de backend de E1A.1–E1A.4 · **Prioridad:** P0
+**Depende de:** F1A-CRM-02, F1A-CRM-07, F1A-CRM-11, F1A-CRM-17, F1A-CRM-19, F1A-CRM-21, F1A-CRM-22, F1A-CRM-23 · **Prioridad:** P0
 
 #### F1A-QA-02 · Suite Pest de Catálogo y Motor (PRD-T01…T15, 02 §10.2, 16 §10.1–10.2)
 
@@ -1473,7 +1473,7 @@ Cobertura referencial: 121 endpoints, 56 tablas citadas, 51 casos de prueba de l
 
 **Pruebas:** Suite en CI.
 
-**Depende de:** Historias de backend de E1A.5–E1A.9 · **Prioridad:** P0
+**Depende de:** F1A-CAT-02, F1A-CAT-09, F1A-CAT-14, F1A-CAT-16, F1A-CAT-17, F1A-CAT-18, F1A-CAT-23, F1A-MOT-07 · **Prioridad:** P0
 
 #### F1A-QA-03 · Playwright Fase 1-A
 
@@ -1495,7 +1495,7 @@ Cobertura referencial: 121 endpoints, 56 tablas citadas, 51 casos de prueba de l
 
 **Pruebas:** Suite nightly.
 
-**Depende de:** Historias de UI de E1A.1–E1A.9 · **Prioridad:** P1
+**Depende de:** F1A-CRM-08, F1A-CRM-13, F1A-CRM-14, F1A-CRM-18, F1A-CRM-24, F1A-CAT-03, F1A-CAT-07, F1A-CAT-24, F1A-CAT-27, F1A-MOT-08 · **Prioridad:** P1
 
 ## Definición de terminado (toda historia)
 

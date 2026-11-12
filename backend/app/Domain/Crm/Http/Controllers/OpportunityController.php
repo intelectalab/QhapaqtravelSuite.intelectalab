@@ -45,7 +45,7 @@ final class OpportunityController
     public function formOptions(Request $request, Advisors $advisors, CatalogInterest $interest): JsonResponse
     {
         $user = $this->user($request);
-        $clients = Portfolio::scope(DB::table('crm_clients')->whereNull('deleted_at'), $user, 'owner_id')->orderBy('name')->get(['code', 'name', 'kind']);
+        $clients = Portfolio::clients(DB::table('crm_clients')->whereNull('deleted_at'), $user)->orderBy('name')->get(['code', 'name', 'kind']);
 
         return response()->json(['data' => [
             'clients' => $clients,

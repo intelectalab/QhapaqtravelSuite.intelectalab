@@ -193,7 +193,9 @@ final class CheckoutRules
             'terms' => ['accepted'],
             'privacy' => ['accepted'],
             'marketing' => ['nullable', 'boolean'],
+            'altitude_accepted' => [($terms['altitude'] ?? []) !== [] ? 'accepted' : 'nullable'],
         ], [
+            'altitude_accepted.*' => 'Debes aceptar la declaración para viajes de altura (R-ALTITUDE).',
             'pay_mode.*' => 'Elige cómo quieres pagar.',
             'method.prohibited' => 'Con «pagar después» no se cobra ahora: elige el medio de pago cuando pagues la reserva.',
             'method.*' => 'Elige el medio de pago.',

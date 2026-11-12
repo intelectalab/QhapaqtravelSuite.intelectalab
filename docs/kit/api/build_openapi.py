@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 build_openapi.py — Genera el contrato OpenAPI 3.1 de KipuControl a partir de las
-19 especificaciones de módulo (proto/docs/especificaciones/00…18-*.md).
+25 especificaciones de módulo (docs/especificaciones/00…24-*.md).
 
 Entradas:
   - §6 (API REST) de cada especificación: tablas markdown «Método | Endpoint | Permiso | Descripción | Idempotente/lock».
@@ -38,8 +38,8 @@ import os as _os
 SPECS_DIR = Path(_os.environ["KIPUCONTROL_SPECS_DIR"]) if _os.environ.get("KIPUCONTROL_SPECS_DIR") else next(
     (d for d in (ROOT / "proto" / "docs" / "especificaciones", ROOT / "especificaciones") if d.is_dir()),
     ROOT / "proto" / "docs" / "especificaciones")
-CONTRACT_VERSION = "1.0.0"
-SOURCE_DOCS_VERSION = "v2.2"
+CONTRACT_VERSION = "2.10.0"
+SOURCE_DOCS_VERSION = "v2.10"
 
 HTTP_METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE")
 
@@ -67,6 +67,13 @@ TAGS = OrderedDict([
     ("16", ("Motor de reservas", "Disponibilidad, cotización y reserva pública; configuración del motor por producto (spec 16).")),
     ("17", ("Reglas, comunicaciones y monedas", "Centro de reglas, mensajes al pasajero, monedas, reseñas externas e integración web/widget (spec 17).")),
     ("18", ("Reseñas propias", "Reseñas verificadas: moderación, solicitudes y alta del pasajero (spec 18).")),
+    ("19", ("Crecimiento comercial", "IA de ventas, WhatsApp, links de pago, recuperación, importador, OTAs, marketplace, precios dinámicos, vales, check-in QR, exportación contable y ofertas externas (spec 19).")),
+    ("20", ("Portal corporativo", "Cuenta corporativa de la empresa cliente: reportes de compras y movimientos, estado de cuenta mensual, aprobaciones, centros de costo y usuarios del portal (spec 20).")),
+    ("21", ("Viajes por tramos", "Noches por ciudad, temporadas de hotel, tours y movilidad por tramo, y venta en ruta (spec 21).")),
+    ("22", ("Vitrina, monetización y marca", "Vitrina gratuita multi-agencia, pases de 30 días, add-ons, pasarelas con comisión, dominio propio, SEO y blog de aventuras (spec 22).")),
+    ("23", ("Plantillas web y contenido con IA", "Plantillas del sitio con vista previa, premium y personalización; envíos de autores con validaciones; contenido e imágenes con IA por créditos (spec 23).")),
+    ("24", ("Seguimiento, conversiones y visitas", "Etiquetas GA4, GTM, Google Ads, Meta Pixel y scripts propios con consentimiento; conversiones del lado del servidor; visitas sin cookies; webhook del blog en Payload CMS (spec 24).")),
+    ("25", ("Landing de KipuControl", "Alta sin intervención desde kipucontrol.com: planes públicos, cupón, RUC, alta con prueba o pago, leads y embudo de altas (spec 25).")),
 ])
 
 PHASES = {
@@ -86,15 +93,13 @@ PATH_ALIASES = [
      "06 §6 usa `/fin/supplier-invoices`; 07 §6 fija el prefijo `/api/v1/finance`."),
     ("/api/v1/operations/", "/api/v1/ops/",
      "05 §6.9 (v2.1) usa `/operations/…`; 05 §6.1–6.6 fija `/ops/…`."),
-    ("/api/v1/customer/reservations/", "/api/v1/portal/customer/reservations/",
-     "15 §6.6 usa `/customer/reservations/{code}/companions`; 08 §6.7 define la misma operación en `/portal/customer/…`."),
+    ("/api/v1/customer/reservations/", "/api/v1/portal/client/reservations/",
+     "Rutas antiguas `/customer/reservations/…`: el portal del cliente usa solo `/portal/client/…` (v2.5)."),
 ]
 
 # Expansiones de celdas con varias rutas que la heurística general no resuelve bien.
 # clave = (spec, texto crudo de la celda Endpoint) → lista de (método|None, ruta absoluta o relativa)
 CELL_OVERRIDES = {
-    ("00", "`/api/v1/platform/auth/login` · `/mfa/verify`"): [
-        (None, "/api/v1/platform/auth/login"), (None, "/api/v1/platform/auth/mfa/verify")],
     ("10", "`/api/v1/integrations/whatsapp/webhook` · `/email/inbound` · `/public/contact`"): [
         (None, "/api/v1/integrations/whatsapp/webhook"), (None, "/api/v1/integrations/email/inbound"),
         (None, "/api/v1/public/contact")],
@@ -148,6 +153,7 @@ SPEC_DOMAINS = {
     "10": {"approvals", "approval-rules", "inbox"}, "11": set(), "12": {"treasury"},
     "13": {"billing", "platform", "integrations", "docs"}, "14": {"marketing"},
     "15": {"public", "webhooks"}, "16": set(), "17": {"admin"}, "18": {"reviews", "review-requests", "passenger"},
+    "19": {"ai", "marketplace"}, "20": set(), "21": set(), "22": {"showcase"}, "23": set(), "24": {"analytics"}, "25": set(),
 }
 
 # Scopes de API key / OAuth (catálogo SCOPES del prototipo, modules/plataforma.js) y rutas que los aceptan
@@ -856,6 +862,8 @@ def phase_of(spec: str, path: str, section_: str) -> int:
     if spec == "08":
         if p.startswith("/passenger/reviews"):
             return 3
+        if "v2.1" in section_:
+            return 2  # v2.1: endpoints de portales ligados al sitio público (web-summary, acompañantes)
         if p.startswith(("/portal/client", "/channels/portal-preview")):
             return 1
         return 2
@@ -863,7 +871,7 @@ def phase_of(spec: str, path: str, section_: str) -> int:
         return 2
     if spec == "12":
         return 1 if "claim-book" in p else 2
-    if spec in ("13", "14", "18"):
+    if spec in ("13", "14", "18", "19", "20", "21", "22", "23", "24", "25"):
         return 3
     if spec == "15":
         return 3 if p.startswith("/public/reviews") else 2
@@ -933,8 +941,10 @@ def security_for(row: dict) -> tuple[list, str]:
         if row["method"] == "GET" and "verify" in perm:
             return [{}], "verify-token"
         return [{"providerSignature": []}], "webhook"
-    if p.startswith("/platform/auth"):
+    if p == "/platform/auth/login":
         return [{}], "public"
+    if p == "/platform/auth/mfa/verify":
+        return [{"platformSanctum": []}], "platform"  # token con ability mfa:verify (v2.5: antes quedaba público)
     if p.startswith("/platform"):
         return [{"platformSanctum": []}], "platform"
     if p.startswith("/public/me") or (p.startswith("/public/auth/logout")):
@@ -1107,8 +1117,8 @@ def base_document() -> dict:
             "version": CONTRACT_VERSION,
             "summary": "Contrato REST del SaaS multi-tenant para agencias de viajes y operadores turísticos.",
             "description": (
-                "Contrato generado por `kit-ia/api/build_openapi.py` a partir de la §6 (API REST) y la §3 (modelo de datos) "
-                f"de las 19 especificaciones ({SOURCE_DOCS_VERSION}). No editar a mano: corregir la spec o las reglas del script.\n\n"
+                "Contrato generado por `docs/kit/api/build_openapi.py` a partir de la §6 (API REST) y la §3 (modelo de datos) "
+                f"de las 25 especificaciones ({SOURCE_DOCS_VERSION}). No editar a mano: corregir la spec o las reglas del script.\n\n"
                 "Convenciones (CONVENCIONES.md §3): prefijo `/api/v1`; listados con `filter[...]`, `sort`, `include`, "
                 "`page[size]`, `page[cursor]`; montos como string decimal + `currency`; errores 422 con `errors` y 409/422 "
                 "con `code` de regla; `Idempotency-Key` en operaciones críticas (TTL 24 h); `If-Match` con `lock_version` "
@@ -1289,7 +1299,7 @@ def main(argv: list[str]) -> int:
     tables: dict = {}
     rows: list = []
     spec_files = sorted(SPECS_DIR.glob("[0-9][0-9]-*.md"))
-    assert len(spec_files) == 19, f"se esperaban 19 specs, hay {len(spec_files)}"
+    assert len(spec_files) == 26, f"se esperaban 26 specs, hay {len(spec_files)}"
     for f in spec_files:
         spec = f.name[:2]
         text = f.read_text(encoding="utf-8")
@@ -1608,7 +1618,7 @@ def write_endpoints_md(endpoints, conflicts, alias_log, override_log, param_rena
     total = len(endpoints)
     L.append("# Índice de endpoints — KipuControl API v" + CONTRACT_VERSION)
     L.append("")
-    L.append("> Generado por `build_openapi.py` desde la §6 de las 19 especificaciones. No editar a mano.")
+    L.append("> Generado por `build_openapi.py` desde la §6 de las 25 especificaciones. No editar a mano.")
     L.append("")
     L.append("## Resumen")
     L.append("")

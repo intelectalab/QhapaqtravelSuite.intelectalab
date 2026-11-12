@@ -1,5 +1,5 @@
 permiso,modulo,descripcion,pantallas_que_habilita,super_admin,tenant_admin,manager,sales,operations,finance,accounting,guide,driver,b2b,customer,passenger,provider
-admin.tenant.manage,Administración,tenants y planes de la plataforma,admin/tenants | admin/integraciones | admin/plataforma | admin,1,0,0,0,0,0,0,0,0,0,0,0,0
+admin.tenant.manage,Administración,tenants y planes de la plataforma,admin/vitrina | admin/pases | admin/plantillas | admin/marketing-vitrina | admin/tenants | admin/integraciones | admin/plataforma | admin,1,0,0,0,0,0,0,0,0,0,0,0,0
 admin.users.manage,Administración,usuarios y sedes,admin/usuarios | admin,0,1,0,0,0,0,0,0,0,0,0,0,0
 admin.roles.manage,Administración,roles y permisos,admin/roles,0,1,0,0,0,0,0,0,0,0,0,0,0
 admin.settings.manage,Administración,"configuración, notificaciones e integraciones",admin/configuracion | admin/notificaciones | admin/integraciones | admin/reglas | admin/comunicaciones | admin/monedas,0,1,0,0,0,0,0,0,0,0,0,0,0
@@ -14,6 +14,7 @@ crm.leads.manage,CRM,gestionar leads,,0,1,1,1,0,0,0,0,0,0,0,0,0
 crm.opportunities.manage,CRM,oportunidades,crm/oportunidades,0,1,1,1,0,0,0,0,0,0,0,0,0
 crm.activities.manage,CRM,actividades,crm/actividades,0,1,1,1,0,0,0,0,0,0,0,0,0
 crm.clients.manage,CRM,clientes 360 y postventa,crm/clientes | crm/postventa | canales/portal-cliente | canales/resenas-propias | canales/resenas,0,1,1,1,0,0,0,0,0,0,0,0,0
+crm.records.reassign,CRM,,,0,1,1,0,0,0,0,0,0,0,0,0,0
 crm.targets.view,CRM,consultar metas comerciales (crm/metas) — derivada de la pantalla (supuesto),crm/metas,0,1,1,1,0,0,0,0,0,0,0,0,0
 crm.targets.manage,CRM,crear y ajustar metas comerciales — derivada de la pantalla (supuesto),crm/metas,0,1,1,0,0,0,0,0,0,0,0,0,0
 crm.claims.manage,CRM,reclamaciones y libro de reclamaciones — derivada de la pantalla (supuesto),crm/reclamaciones | libro-reclamaciones,0,1,1,0,0,0,0,0,0,0,0,0,0
@@ -26,6 +27,7 @@ catalog.products.manage_rates,Catálogo,tarifas y temporadas,,0,1,1,0,0,0,0,0,0,
 catalog.products.manage_availability,Catálogo,"salidas, cupos y holds",,0,1,1,0,1,0,0,0,0,0,0,0,0
 catalog.products.view_profitability,Catálogo,ver costos y márgenes,catalogo/cupos,0,1,1,0,0,1,0,0,0,0,0,0,0
 catalog.products.publish,Catálogo,publicar en canales,,0,1,1,0,0,0,0,0,0,0,0,0,0
+catalog.products.manage_promotions,Catálogo,,,0,1,1,0,0,0,0,0,0,0,0,0,0
 catalog.providers.manage,Catálogo,gestionar proveedores y servicios,catalogo/proveedores,0,1,0,0,1,0,0,0,0,0,0,0,0
 catalog.allotments.manage,Catálogo,contratos de cupos (allotments) y liberaciones — derivada de la pantalla (supuesto),catalogo/cupos,0,1,1,0,1,0,0,0,0,0,0,0,0
 quotes.view,Cotizaciones,consultar,cotizaciones,0,1,1,1,0,1,0,0,0,0,1,0,0
@@ -33,10 +35,13 @@ quotes.create,Cotizaciones,crear,,0,1,1,1,0,0,0,0,0,1,0,0,0
 quotes.approve_internal,Cotizaciones,aprobar internamente,,0,1,1,0,0,0,0,0,0,0,0,0,0
 quotes.send,Cotizaciones,enviar al cliente,,0,1,1,1,0,0,0,0,0,0,0,0,0
 quotes.discount_override,Cotizaciones,autorizar descuentos,,0,1,1,0,0,0,0,0,0,0,0,0,0
+quotes.reassign,Cotizaciones,,,0,1,1,0,0,0,0,0,0,0,0,0,0
 reservations.view,Reservas,consultar,reservas,0,1,1,1,1,1,1,0,0,1,1,1,0
 reservations.create,Reservas,crear,operaciones/documentos-viaje,0,1,1,1,0,0,0,0,0,1,0,0,0
 reservations.modify,Reservas,modificar,,0,1,1,0,1,0,0,0,0,0,0,0,0
 reservations.cancel,Reservas,cancelar,,0,1,1,0,0,0,0,0,0,0,0,0,0
+reservations.approve_changes,Reservas,,,0,1,1,0,0,0,0,0,0,0,0,0,0
+reservations.reassign,Reservas,,,0,1,1,0,0,0,0,0,0,0,0,0,0
 operations.view,Operaciones,consultar,operaciones,0,1,1,0,1,0,0,1,1,0,0,0,1
 operations.assign,Operaciones,asignar recursos,canales/portal-pasajero | mobile | admin/comunicaciones,0,1,1,0,1,0,0,0,0,0,0,0,0
 operations.vouchers,Operaciones,emitir vouchers,,0,1,1,0,1,0,0,0,0,0,0,0,0
@@ -53,7 +58,39 @@ finance.invoicing,Finanzas,facturación electrónica,finanzas/facturacion | fina
 finance.treasury,Finanzas,"tesorería: cuentas, caja chica y movimientos — derivada de la pantalla (supuesto)",finanzas/tesoreria | admin/monedas,0,1,1,0,0,1,1,0,0,0,0,0,0
 channels.b2b.manage,Canales,canal B2B,canales/b2b | canales/portal-cliente | canales/portal-pasajero,0,1,1,0,0,0,0,0,0,0,0,0,0
 channels.ecommerce.manage,Canales,e-commerce,canales/ecommerce | canales/resenas-propias | canales/resenas | canales/integracion-web,0,1,1,0,0,0,0,0,0,0,0,0,0
-channels.cms.publish,Canales,CMS,canales/cms | canales/portal-cliente | canales/portal-pasajero,0,1,1,0,0,0,0,0,0,0,0,0,0
+channels.cms.edit,Canales,,,0,1,1,0,0,0,0,0,0,0,0,0,0
+channels.cms.publish,Canales,CMS,canales/cms | canales/aventuras | canales/portal-cliente | canales/portal-pasajero,0,1,1,0,0,0,0,0,0,0,0,0,0
+supplier.portal.view,Extranet,,,0,0,0,0,0,0,0,0,0,0,0,0,1
+supplier.requests.respond,Extranet,,,0,0,0,0,0,0,0,0,0,0,0,0,1
+supplier.rooming.manage,Extranet,,,0,0,0,0,0,0,0,0,0,0,0,0,1
+supplier.vouchers.redeem,Extranet,,,0,0,0,0,0,0,0,0,0,0,0,0,1
+supplier.payables.view,Extranet,,,0,0,0,0,0,0,0,0,0,0,0,0,1
+supplier.invoices.upload,Extranet,,,0,0,0,0,0,0,0,0,0,0,0,0,1
+supplier.incidents.report,Extranet,,,0,0,0,0,0,0,0,0,0,0,0,0,1
+supplier.rates.request,Extranet,,,0,0,0,0,0,0,0,0,0,0,0,0,1
+supplier.users.manage,Extranet,,,0,0,0,0,0,0,0,0,0,0,0,0,1
 reports.view,Reportes,consultar reportes,reportes,0,1,1,1,1,1,1,0,0,0,0,0,0
 reports.export,Reportes,exportar y programar,,0,1,1,0,0,1,1,0,0,0,0,0,0
-TOTAL,,,,2,56,47,16,16,15,6,2,2,4,2,1,1
+ai.assistant.use,Crecimiento,,,0,1,1,1,1,0,0,0,0,0,0,0,0
+ai.insights.view,Crecimiento,,,0,1,1,0,0,1,0,0,0,0,0,0,0
+inbox.whatsapp.manage,Crecimiento,,,0,1,1,0,0,0,0,0,0,0,0,0,0
+finance.payment_links,Crecimiento,,,0,1,1,1,0,1,0,0,0,0,0,0,0
+finance.gift_cards,Crecimiento,,,0,1,1,0,0,1,0,0,0,0,0,0,0
+finance.accounting_export,Crecimiento,,,0,1,0,0,0,1,1,0,0,0,0,0,0
+catalog.products.import,Crecimiento,,,0,1,1,0,0,0,0,0,0,0,0,0,0
+catalog.products.dynamic_pricing,Crecimiento,,,0,1,1,0,0,0,0,0,0,0,0,0,0
+channels.ota.manage,Crecimiento,,,0,1,1,0,0,0,0,0,0,0,0,0,0
+channels.marketplace.manage,Crecimiento,,,0,1,1,0,0,0,0,0,0,0,0,0,0
+operations.checkin,Crecimiento,,,0,1,1,0,1,0,0,1,1,0,0,0,0
+quotes.external_offers,Crecimiento,,,0,1,1,1,0,0,0,0,0,0,0,0,0
+crm.corporate.manage,Corporativo,,,0,1,1,1,0,1,0,0,0,0,0,0,0
+finance.corporate_statements,Corporativo,,,0,1,1,0,0,1,1,0,0,0,0,0,0
+channels.showcase.manage,Marca y vitrina,,canales/vitrina,0,1,1,0,0,0,0,0,0,0,0,0,0
+cms.seo.manage,Marca y vitrina,,canales/seo | canales/aventuras,0,1,1,0,0,0,0,0,0,0,0,0,0
+finance.gateways.manage,Marca y vitrina,,finanzas/pasarelas,0,1,0,0,0,1,0,0,0,0,0,0,0
+cms.templates.manage,Plantillas e IA,,canales/plantillas,0,1,1,0,0,0,0,0,0,0,0,0,0
+ai.content.use,Plantillas e IA,,canales/contenido-ia,0,1,1,0,0,0,0,0,0,0,0,0,0
+marketing.tracking.manage,Seguimiento y visitas,,canales/seguimiento,0,1,1,0,0,0,0,0,0,0,0,0,0
+marketing.tracking.approve,Seguimiento y visitas,,canales/seguimiento,0,1,0,0,0,0,0,0,0,0,0,0,0
+analytics.web.view,Seguimiento y visitas,,reportes/visitas,0,1,1,1,0,0,0,0,0,0,0,0,0
+TOTAL,,,,2,84,72,21,18,22,8,3,3,4,2,1,10

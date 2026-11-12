@@ -108,3 +108,52 @@ it('el flujo proyectado agrupa cobros, pagos y egresos fijos en 30, 60 y 90 día
         ->and($flow['horizons'][0])->toHaveKeys(['label', 'in', 'out', 'net', 'closing'])
         ->and(collect($flow['items'])->pluck('source'))->toContain('Egreso fijo');
 });
+
+it('TES-BR-07 la apertura debe coincidir con el saldo del último cierre y el gasto va el mismo día', function () {
+    actingAsSeed('U01');
+    $cash = newPettyCash($this);
+
+    expect($this->postJson("/api/v1/treasury/petty-cash/{$cash}/sessions", ['counted' => 480]))->toBeApiError(409, 'TES-BR-07');
+    $this->postJson("/api/v1/treasury/petty-cash/{$cash}/sessions", ['counted' => 500])->assertCreated();
+    expect($this->postJson("/api/v1/treasury/petty-cash/{$cash}/expenses", ['amount' => 10, 'category' => 'Movilidad', 'description' => 'Taxi', 'receipt_type' => 'ticket', 'series_number' => 'T-9', 'supplier' => 'Taxi', 'date' => now()->subDays(3)->toDateString()]))->toBeApiError(422, 'TES-BR-05');
+});
+
+it('una diferencia dentro de la tolerancia se ajusta al firmar el arqueo', function () {
+    actingAsSeed('U01');
+    $cash = newPettyCash($this);
+    $this->postJson("/api/v1/treasury/petty-cash/{$cash}/sessions", ['counted' => 500])->assertCreated();
+
+    $this->postJson("/api/v1/treasury/petty-cash/{$cash}/counts", ['kind' => 'closing', 'denominations' => ['200' => 2, '50' => 1, '20' => 2, '5' => 1], 'note' => 'Faltan 5 soles'])->assertCreated();
+
+    expect($this->getJson("/api/v1/treasury/accounts/{$cash}/movements")->json('data.balance'))->toBe('495.00');
+});
+
+it('la reposición rinde los gastos pendientes, el rechazo los libera y un gasto rendido no se anula', function () {
+    actingAsSeed('U01');
+    $cash = newPettyCash($this);
+    $this->postJson("/api/v1/treasury/petty-cash/{$cash}/sessions", ['counted' => 500])->assertCreated();
+    $expense = $this->postJson("/api/v1/treasury/petty-cash/{$cash}/expenses", ['amount' => 80, 'category' => 'Útiles', 'description' => 'Papel', 'receipt_type' => 'sales_receipt', 'series_number' => 'B003-1', 'supplier' => 'Librería'])->assertCreated()->json('data.code');
+
+    $code = $this->postJson("/api/v1/treasury/petty-cash/{$cash}/replenishments")->assertCreated()->json('data.code');
+    $replenishment = withinTenant(tenantA(), fn () => DB::table('fin_cash_replenishments')->where('code', $code)->first(['id', 'amount']));
+    expect((string) $replenishment->amount)->toBe('80.00')
+        ->and(withinTenant(tenantA(), fn () => DB::table('fin_treasury_movements')->where('code', $expense)->value('replenishment_id')))->toBe($replenishment->id);
+    expect($this->postJson("/api/v1/treasury/movements/{$expense}/void", ['reason' => 'Error de registro']))->toBeApiError(409, 'TES-BR-02');
+
+    actingAsSeed('U07');
+    $this->postJson("/api/v1/treasury/replenishments/{$code}/reject", ['reason' => 'Falta un comprobante'])->assertOk();
+    expect(withinTenant(tenantA(), fn () => DB::table('fin_treasury_movements')->where('code', $expense)->value('replenishment_id')))->toBeNull();
+});
+
+it('anular una transferencia anula sus dos partidas, también la que paga una reposición', function () {
+    actingAsSeed('U07');
+    $transfer = rowOf('fin_treasury_movements', 'MOV-000004');
+
+    $this->postJson('/api/v1/treasury/movements/MOV-000004/void', ['reason' => 'Se registró dos veces'])->assertOk();
+    $legs = withinTenant(tenantA(), fn () => DB::table('fin_treasury_movements')->where('transfer_id', $transfer->transfer_id)->pluck('status')->unique()->values()->all());
+    expect($legs)->toBe(['voided']);
+
+    $payment = rowOf('fin_treasury_movements', 'MOV-000016');
+    $this->postJson('/api/v1/treasury/movements/MOV-000016/void', ['reason' => 'Transferencia equivocada'])->assertOk();
+    expect(withinTenant(tenantA(), fn () => DB::table('fin_treasury_movements')->where('transfer_id', $payment->transfer_id)->pluck('status')->unique()->values()->all()))->toBe(['voided']);
+});

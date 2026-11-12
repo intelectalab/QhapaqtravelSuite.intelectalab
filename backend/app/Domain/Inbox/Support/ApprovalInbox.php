@@ -32,8 +32,8 @@ final class ApprovalInbox
 
     private const EFFECTS = [
         'reversal' => 'Al aprobar el último nivel, el pago pasa a revertido, se devuelve el crédito B2B si corresponde y se recalcula la cuota por cobrar.',
-        'credit_b2b' => 'Al aprobar, la gerencia queda autorizada a ampliar la línea de la agencia desde Canales.',
-        'refund' => 'Al aprobar, Finanzas queda autorizada a registrar el reembolso.',
+        'credit_b2b' => 'Al aprobar, la línea de crédito de la agencia sube por el monto aprobado y, si estaba bloqueada por crédito, se reactiva.',
+        'refund' => 'Al aprobar, se crea el reembolso pendiente en Pagos y Finanzas recibe el aviso.',
         'other' => 'Al aprobar, la excepción queda autorizada y registrada en la trazabilidad.',
     ];
 
@@ -63,7 +63,7 @@ final class ApprovalInbox
             ->values();
 
         $pending = $items->whereIn('status', ['pendiente', 'info']);
-        $resolved = $items->filter(fn (array $item): bool => $item['decided_at'] !== null && Carbon::parse($item['decided_at'])->greaterThanOrEqualTo($now->copy()->subDays(7)));
+        $resolved = $items->filter(fn (array $item): bool => in_array($item['status'], ['aprobada', 'rechazada'], true) && $item['decided_at'] !== null && Carbon::parse($item['decided_at'])->greaterThanOrEqualTo($now->copy()->subDays(7)));
         $hours = $resolved->map(fn (array $item): float => Carbon::parse($item['created_at'])->diffInMinutes(Carbon::parse($item['decided_at'])) / 60);
 
         return [
@@ -490,10 +490,11 @@ final class ApprovalInbox
                 'permission' => $levelPermission,
                 'can_decide' => $approver && $row->status === 'pendiente' && $reversible,
                 'can_edit' => $open && $mine && (bool) $row->is_generic,
+                'can_withdraw' => $open && $mine && ((bool) $row->is_generic || in_array($row->request_type, ApprovalRules::WITHDRAWABLE, true)),
                 'can_delegate' => $approver && $row->status === 'pendiente',
                 'can_ask' => $approver && $row->status === 'pendiente',
                 'can_answer' => $pending !== null && $pending->asked_by !== $viewer->getKey() && ($mine || $viewer->can('crm.records.reassign')),
-                'can_resubmit' => $row->status === 'rechazada' && ! $resubmitted->has($row->code) && ($mine || ($payablePermission !== null && $viewer->can($payablePermission))),
+                'can_resubmit' => $row->status === 'rechazada' && $payablePermission !== null && ! $resubmitted->has($row->code) && ($mine || $viewer->can($payablePermission)),
                 'delegated_to' => $row->delegated_to ? ['id' => $row->delegated_to, 'name' => $this->name($row->delegated_to)] : null,
                 'resubmitted_from' => (json_decode((string) $row->origin_snapshot, true) ?: [])['resubmitted_from'] ?? null,
             ], $viewer);
@@ -537,6 +538,7 @@ final class ApprovalInbox
             'questions' => [],
             'delegates' => [],
             'can_edit' => $item['can_edit'] ?? false,
+            'can_withdraw' => $item['can_withdraw'] ?? false,
             'can_delegate' => $item['can_delegate'] ?? false,
             'can_ask' => $item['can_ask'] ?? false,
             'can_answer' => $item['can_answer'] ?? false,

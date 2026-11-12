@@ -58,10 +58,13 @@ final class ClaimBookDirectory
             'by_sede' => $this->group($claims, 'sede'),
             'claims' => $claims->values(),
             'sequences' => $this->sequences($today),
+            'holidays' => DB::table('sys_holidays')->where('date', '>=', $today->copy()->startOfYear()->toDateString())->orderBy('date')->get(['date', 'name'])
+                ->map(fn (object $row): array => ['date' => substr((string) $row->date, 0, 10), 'name' => (string) $row->name])->values(),
             'options' => [
                 'sedes' => DB::table('iam_sedes')->orderBy('code')->get(['id', 'name'])->map(fn (object $row): array => ['value' => $row->id, 'label' => $row->name])->values(),
                 'clients' => DB::table('crm_clients')->whereNull('deleted_at')->orderBy('name')->get(['code', 'name'])->map(fn (object $row): array => ['value' => $row->code, 'label' => $row->name])->values(),
                 'reservations' => DB::table('booking_reservations')->whereNull('deleted_at')->orderByDesc('created_at')->limit(100)->get(['code', 'title'])->map(fn (object $row): array => ['value' => $row->code, 'label' => $row->title, 'hint' => $row->code])->values(),
+                'owners' => app(Advisors::class)->all()->map(fn (array $user): array => ['value' => $user['id'], 'label' => $user['name']])->values(),
             ],
             'can' => ['manage' => $viewer->can('crm.claims.manage'), 'settings' => $viewer->can('admin.settings.manage')],
         ];

@@ -97,5 +97,17 @@
     "due": "2026-10-05",
     "paid": 0,
     "status": "abierta"
+  },
+  {
+    "id": "CXC-00730",
+    "resId": "RES-2026-000361",
+    "clientId": "CLI-0001",
+    "concept": "Pago total — pedido web WEB-2026-00961",
+    "amount": 2486,
+    "currency": "USD",
+    "due": "2026-08-30",
+    "paid": 2486,
+    "status": "pagada",
+    "kind": "total"
   }
 ]

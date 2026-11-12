@@ -11,7 +11,7 @@ erDiagram
     uuid validated_by FK
   }
   supplier_rate_requests {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid provider_id FK
@@ -57,16 +57,16 @@ erDiagram
   sys_documents {
     uuid id PK
   }
-  booking_reservation_services ||--o{ supplier_request_responses : "reservation_service_id"
-  catalog_providers ||--o{ supplier_invoices : "provider_id"
-  catalog_providers ||--o{ supplier_rate_requests : "provider_id"
-  catalog_providers ||--o{ supplier_request_responses : "provider_id"
-  catalog_service_cost_history |o--o{ supplier_rate_requests : "resulting_rate_id"
-  catalog_services ||--o{ supplier_rate_requests : "service_id"
-  catalog_services |o--o{ supplier_request_responses : "alt_service_id"
-  fin_payables ||--o{ supplier_invoices : "payable_id"
-  iam_users ||--o{ supplier_invoices : "uploaded_by, validated_by"
-  iam_users ||--o{ supplier_rate_requests : "requested_by, reviewed_by"
-  iam_users ||--o{ supplier_request_responses : "responded_by_user_id, reviewed_by"
-  ops_supplier_requests ||--o{ supplier_request_responses : "supplier_request_id"
-  sys_documents ||--o{ supplier_invoices : "document_id"
+  booking_reservation_services ||--o{ supplier_request_responses : "reservation_service_id, tenant_id"
+  catalog_providers ||--o{ supplier_invoices : "provider_id, tenant_id"
+  catalog_providers ||--o{ supplier_rate_requests : "provider_id, tenant_id"
+  catalog_providers ||--o{ supplier_request_responses : "provider_id, tenant_id"
+  catalog_service_cost_history ||--o{ supplier_rate_requests : "resulting_rate_id, tenant_id"
+  catalog_services ||--o{ supplier_rate_requests : "service_id, tenant_id"
+  catalog_services ||--o{ supplier_request_responses : "alt_service_id, tenant_id"
+  fin_payables ||--o{ supplier_invoices : "payable_id, tenant_id"
+  iam_users ||--o{ supplier_invoices : "tenant_id, uploaded_by, validated_by"
+  iam_users ||--o{ supplier_rate_requests : "requested_by, reviewed_by, tenant_id"
+  iam_users ||--o{ supplier_request_responses : "responded_by_user_id, reviewed_by, te..."
+  ops_supplier_requests ||--o{ supplier_request_responses : "supplier_request_id, tenant_id"
+  sys_documents ||--o{ supplier_invoices : "document_id, tenant_id"

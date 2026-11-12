@@ -7,7 +7,6 @@ import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { LiveTag, StatusBadge } from "@/components/ui/Badge";
 import { SelectField } from "@/components/ui/SelectField";
-import { TextArea } from "@/components/ui/TextArea";
 import { formatDate } from "@/lib/format";
 import type { OrderCandidate, OrderList, OrderRow, Person } from "@/lib/operations";
 import { statusLabel } from "@/lib/tone";
@@ -52,24 +51,6 @@ export function OrderEditAction({ code, title, coordinator, coordinators, iconOn
   );
 }
 
-export function OrderCancelAction({ code, title, iconOnly = false }: { code: string; title: string; iconOnly?: boolean }) {
-  return (
-    <OpsStep
-      step="order_cancel"
-      target={code}
-      label="Cancelar orden"
-      icon={<Ban size={16} />}
-      title="Cancelar orden operativa"
-      description={`${title} · ${code}`}
-      submitLabel="Cancelar orden"
-      trigger={iconOnly ? (open) => <RowIcon tone="delete" label="Cancelar orden" icon={<Ban size={15} />} onClick={open} /> : undefined}
-    >
-      <ConfirmNote tone="warn">Se liberan los guías, conductores y vehículos asignados. La orden queda en el historial como cancelada.</ConfirmNote>
-      <TextArea label="Motivo" name="reason" rows={3} minLength={5} maxLength={500} required placeholder="Reserva anulada por el cliente, cambio de operador…" />
-    </OpsStep>
-  );
-}
-
 export function OrdersTable({ data }: { data: OrderList }) {
   const { items, today, can, coordinators } = data;
   const running = (row: OrderRow) => row.date_from <= today && row.date_to >= today && !CLOSED.includes(row.status);
@@ -86,7 +67,7 @@ export function OrdersTable({ data }: { data: OrderList }) {
           </Link>
           {running(row) && (
             <span className="ml-2">
-              <LiveTag>En curso</LiveTag>
+              <LiveTag>Viaje en curso</LiveTag>
             </span>
           )}
           <small className="block text-xs text-fg-3">
@@ -130,7 +111,7 @@ export function OrdersTable({ data }: { data: OrderList }) {
           <RowActions>
             <RowIcon tone="view" label="Ver orden" href={href(row.code)} />
             {can.assign && (closed ? <RowIcon tone="edit" label="Editar" disabledHint={hint} /> : <OrderEditAction code={row.code} title={row.title} coordinator={row.coordinator.id} coordinators={coordinators} iconOnly />)}
-            {can.assign && (closed || row.status === "en_ejecucion" ? <RowIcon tone="delete" label="Cancelar" icon={<Ban size={15} />} disabledHint={closed ? hint : "En ejecución: registra una incidencia"} /> : <OrderCancelAction code={row.code} title={row.title} iconOnly />)}
+            {can.assign && <RowIcon tone="delete" label="Cancelar" icon={<Ban size={15} />} disabledHint={closed ? hint : row.status === "en_ejecucion" ? "En ejecución: registra una incidencia" : "Se cancela al anular su reserva"} />}
           </RowActions>
         );
       },

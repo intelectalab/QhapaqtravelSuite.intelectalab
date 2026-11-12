@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Inbox\Actions;
 
+use App\Domain\Admin\Support\StaffNotices;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Finance\Actions\PaymentWorkflow;
 use App\Domain\Iam\Models\User;
@@ -12,6 +13,7 @@ use App\Domain\Inbox\Support\ApprovalRules;
 use App\Domain\Inbox\Support\OriginClosure;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Sequences\SequenceService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -64,6 +66,7 @@ final class ApprovalWorkflow
             ]);
             $this->event($id, 'creada', $actor, $data['justification']);
             $this->audit->log('Aprobación', $code, 'crear', null, "{$data['title']} · {$data['currency']} {$data['amount']}");
+            $this->notifyApprovers($id, (string) $actor->getKey());
 
             return $code;
         });
@@ -101,6 +104,10 @@ final class ApprovalWorkflow
 
         if ($request->requester_id !== $actor->getKey()) {
             throw ApiException::forbidden('APR-BR-03', 'Solo quien pidió la aprobación puede retirarla.');
+        }
+
+        if (! $request->is_generic && ! in_array($request->request_type, ApprovalRules::WITHDRAWABLE, true)) {
+            throw ApiException::conflict('APR-WITHDRAW-ORIGIN', 'Esta solicitud se resuelve en su módulo de origen; no se retira desde la bandeja.');
         }
 
         DB::transaction(function () use ($request, $note, $actor): void {
@@ -161,8 +168,22 @@ final class ApprovalWorkflow
                 DB::table('fin_payments')->where('code', $request->subject_code)->update(['reversal_request_id' => $request->id]);
             }
 
+            if ($approve && $final && $request->request_type === 'credit_b2b') {
+                $this->extendCredit($request, $actor);
+            }
+
+            if ($approve && $final && $request->request_type === 'refund') {
+                $this->registerRefund($request, $actor);
+            }
+
             $this->event($request->id, $approve ? ($final ? 'aprobada' : 'aprobada_nivel') : 'rechazada', $actor, $note);
             $this->audit->log('Aprobación', $request->code, $approve ? ($final ? 'aprobar' : "aprobar_nivel_{$level}") : 'rechazar', $request->status, $status);
+
+            if ($final) {
+                $this->notifyRequester($request, 'aprobacion.resultado', $approve ? 'aprobada' : 'rechazada', $note, (string) $actor->getKey());
+            } else {
+                $this->notifyApprovers((string) $request->id, (string) $actor->getKey());
+            }
 
             return $status;
         });
@@ -187,6 +208,7 @@ final class ApprovalWorkflow
             $this->touch($request, ['delegated_to' => $userId], $actor);
             $this->event($request->id, 'delegada', $actor, trim("Delegada a {$target['name']}. ".($note ?? '')));
             $this->audit->log('Aprobación', $request->code, 'delegar', $previous ?? 'Sin delegar', $target['name']);
+            app(StaffNotices::class)->toUser($userId, 'aprobacion.delegada', "{$request->code} · te delegaron una aprobación", trim("{$request->title} ".($note ?? '')), 'collab_approval_request', (string) $request->id, null, (string) $actor->getKey());
         });
     }
 
@@ -212,6 +234,7 @@ final class ApprovalWorkflow
             $this->touch($request, ['status' => 'info', 'paused_at' => now()], $actor);
             $this->event($request->id, 'info_solicitada', $actor, $question);
             $this->audit->log('Aprobación', $request->code, 'pedir_informacion', $request->status, 'info');
+            $this->notifyRequester($request, 'aprobacion.informacion', 'te piden más información', $question, (string) $actor->getKey());
         });
     }
 
@@ -257,8 +280,12 @@ final class ApprovalWorkflow
             throw ApiException::conflict('APR-BR-08', 'Solo se reenvía una solicitud rechazada.');
         }
 
-        if ($request->requester_id !== $actor->getKey() && ! ($permission && $actor->can($permission))) {
-            throw ApiException::forbidden('APR-BR-03', 'Solo quien pidió la aprobación puede reenviarla.', array_filter([$permission]));
+        if ($permission === null) {
+            throw ApiException::conflict('APR-RESUBMIT-TYPE', 'Solo se reenvían las solicitudes de cuentas por pagar y de comisiones; las demás se piden de nuevo desde su origen.');
+        }
+
+        if ($request->requester_id !== $actor->getKey() && ! $actor->can($permission)) {
+            throw ApiException::forbidden('APR-BR-03', 'Solo quien pidió la aprobación puede reenviarla.', [$permission]);
         }
 
         if (DB::table('collab_approval_requests')->whereRaw("origin_snapshot->>'resubmitted_from' = ?", [$code])->exists()) {
@@ -302,6 +329,7 @@ final class ApprovalWorkflow
             ]);
             $this->event($id, 'reenviada', $actor, "Ronda {$round} de {$request->code}. {$note}");
             $this->event($request->id, 'reenviada', $actor, "Reenviada como {$newCode}. {$note}");
+            $this->notifyApprovers($id, (string) $actor->getKey());
             $this->audit->log('Aprobación', $newCode, 'reenviar', $request->code, "ronda {$round}");
 
             return $newCode;
@@ -451,6 +479,24 @@ final class ApprovalWorkflow
         return $request;
     }
 
+    private function notifyApprovers(string $requestId, ?string $exceptUser): void
+    {
+        $request = DB::table('collab_approval_requests')->where('id', $requestId)->first();
+        $rule = $request ? $this->rules->rule($request->request_type, (int) $request->current_level, $this->amountPen($request)) : null;
+
+        if ($request === null || $rule === null) {
+            return;
+        }
+
+        $users = collect($this->rules->eligible($rule->permission))->pluck('id')->reject(fn ($id): bool => (string) $id === (string) $request->requester_id);
+        app(StaffNotices::class)->toUsers($users->reject(fn ($id): bool => (string) $id === (string) $exceptUser), 'aprobacion.solicitada', "{$request->code} · aprobación por decidir (nivel {$request->current_level})", "{$request->title} · {$request->currency} {$request->amount}", 'collab_approval_request', (string) $request->id);
+    }
+
+    private function notifyRequester(object $request, string $event, string $subject, ?string $body, string $actorId): void
+    {
+        app(StaffNotices::class)->toUser($request->requester_id ? (string) $request->requester_id : null, $event, "{$request->code} · {$subject}", $body, 'collab_approval_request', (string) $request->id, null, $actorId);
+    }
+
     private function levelRule(object $request): object
     {
         return $this->rules->rule($request->request_type, (int) $request->current_level, $this->amountPen($request)) ?? throw ApiException::conflict('APR-BR-15', 'No hay una regla activa para este nivel.');
@@ -486,6 +532,35 @@ final class ApprovalWorkflow
             'subject_code' => $main[1]?->code,
             'origin_snapshot' => json_encode(array_filter(['reservation' => $agency && $reservation ? $reservation->code : null])),
         ];
+    }
+
+    private function extendCredit(object $request, User $actor): void
+    {
+        $agency = DB::table('channel_b2b_agencies')->where('id', $request->subject_id)->lockForUpdate()->first(['id', 'code', 'credit_limit', 'credit_used', 'status', 'block_reason']);
+
+        if ($agency === null) {
+            return;
+        }
+
+        $limit = round((float) $agency->credit_limit + (float) $request->amount, 2);
+        $unblock = $agency->status === 'bloqueada' && $agency->block_reason === 'credito_excedido' && (float) $agency->credit_used <= $limit;
+        DB::table('channel_b2b_agencies')->where('id', $agency->id)->update(['credit_limit' => $limit, ...($unblock ? ['status' => 'activa', 'block_reason' => null] : []), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+        DB::table('channel_b2b_credit_exceptions')->insert(['agency_id' => $agency->id, 'approval_request_id' => $request->id, 'amount' => $request->amount, 'valid_until' => null, 'created_by' => $actor->getKey()]);
+        $this->audit->log('Agencia B2B', (string) $agency->code, 'ampliar_credito', (string) $agency->credit_limit, $limit.' · '.$request->code.($unblock ? ' · reactivada' : ''));
+    }
+
+    private function registerRefund(object $request, User $actor): void
+    {
+        $reservation = $request->subject_type === 'booking_reservations' ? DB::table('booking_reservations')->where('id', $request->subject_id)->first(['id', 'code', 'currency', 'fx_rate']) : null;
+
+        if ($reservation === null) {
+            return;
+        }
+
+        $code = app(SequenceService::class)->next('payment');
+        DB::table('fin_payments')->insert(['code' => $code, 'reservation_id' => $reservation->id, 'kind' => 'reembolso', 'source' => 'sistema', 'method' => 'Reembolso aprobado', 'amount' => $request->amount, 'currency' => $request->currency, 'fx_rate' => $request->currency === 'USD' ? $request->fx_rate : null, 'paid_on' => now()->toDateString(), 'reference' => "Aprobación {$request->code}", 'status' => 'pendiente', 'registered_by' => $actor->getKey(), 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
+        $this->audit->log('Pago', $code, 'crear', null, "reembolso pendiente · {$request->currency} {$request->amount} · {$request->code}");
+        app(StaffNotices::class)->toRoles(['finance'], 'reembolso.por_pagar', "{$code} · reembolso aprobado por registrar", "{$reservation->code} · {$request->currency} {$request->amount}", 'fin_payment', null, $reservation->id);
     }
 
     private function assertReversible(object $request): void

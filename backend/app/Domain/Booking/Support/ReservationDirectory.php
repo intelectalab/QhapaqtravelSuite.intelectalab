@@ -51,7 +51,12 @@ final class ReservationDirectory
                 'open_incidents' => (int) $row->open_incidents,
                 'services' => ['confirmed' => (int) $row->services_confirmed, 'total' => (int) $row->services_total],
                 ...($view['cost'] ? ['supplier_cost_pen' => (int) round((float) $row->supplier_cost_pen)] : []),
-                'origin' => $row->quote_code !== null ? ['kind' => 'cotizacion', 'label' => $row->quote_code.($row->quote_version ? " v{$row->quote_version}" : '')] : ['kind' => $row->channel === 'E-commerce' ? 'web' : 'directa', 'label' => $row->channel === 'E-commerce' ? 'Sitio web' : 'Directa'],
+                'origin' => $row->quote_code !== null ? ['kind' => 'cotizacion', 'label' => $row->quote_code.($row->quote_version ? " v{$row->quote_version}" : '')] : match ($row->channel) {
+                    'E-commerce' => ['kind' => 'web', 'label' => 'Sitio web'],
+                    'B2B' => ['kind' => 'b2b', 'label' => 'Agencia B2B'],
+                    'Corporativo' => ['kind' => 'corporativo', 'label' => 'Corporativo'],
+                    default => ['kind' => 'directa', 'label' => 'Directa'],
+                },
                 'cancel_requested' => (bool) $row->cancel_requested,
             ];
         }, [

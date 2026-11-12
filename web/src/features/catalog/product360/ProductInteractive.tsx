@@ -76,7 +76,7 @@ export function ChannelSwitches({ code, active, chosen, canPublish }: { code: st
                 router.refresh();
               }}
             />
-            <Badge tone={on ? (active ? "ok" : "info") : "mute"}>{on ? (active ? "Publicado" : "Solicitado") : "Apagado"}</Badge>
+            <Badge tone={on ? (active ? "ok" : "info") : "mute"}>{on ? (active ? "Publicado" : "Pendiente de activación") : "Apagado"}</Badge>
           </div>
         );
       })}

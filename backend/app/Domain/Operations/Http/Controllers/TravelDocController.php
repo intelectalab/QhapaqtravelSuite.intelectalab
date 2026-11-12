@@ -11,6 +11,7 @@ use App\Domain\Operations\Actions\SaveTravelDocSettings;
 use App\Domain\Operations\Actions\TravelDocWorkflow;
 use App\Domain\Operations\Support\TravelDocDirectory;
 use App\Domain\Operations\Support\TravelDocRules;
+use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Jobs\RemindTravelDocuments;
 use Illuminate\Http\JsonResponse;
@@ -96,8 +97,13 @@ final class TravelDocController
 
     public function file(Request $request, string $code, string $passenger, string $type, TravelDocWorkflow $workflow): StreamedResponse
     {
+        if (! $this->user($request)->can('operations.travel_docs')) {
+            throw ApiException::forbidden('FORBIDDEN', 'Solo Operaciones abre los documentos de identidad de los pasajeros.', ['operations.travel_docs']);
+        }
+
         $this->directory->find($this->user($request), $code) ?? throw ApiException::notFound('La reserva no tiene checklist documental.');
         $document = $workflow->file($code, $passenger, $type);
+        app(AuditLogger::class)->log('Documento de viaje', "{$code} · {$passenger}", 'ver_documento', null, "{$type} · {$document->file_name}");
         $disk = Storage::disk((string) $document->storage_disk);
 
         if (! $disk->exists((string) $document->storage_path)) {

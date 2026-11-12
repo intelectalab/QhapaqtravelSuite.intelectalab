@@ -98,13 +98,26 @@ final class PassengerTripActions
     {
         $reservation = $this->trips->reservation($account, $code);
         $query = DB::table('channel_trip_messages')->where('reservation_id', $reservation->id)->where('sender_type', '<>', 'passenger')->whereNull('read_at');
+        $notices = DB::table('notif_pax_messages')->where('reservation_id', $reservation->id)->whereIn('status', ['enviado', 'entregado']);
+        $readNotice = ['status' => 'leido', 'read_at' => now(), 'updated_at' => now()];
 
-        if ($id !== null) {
-            if (! Str::isUuid($id) || ! DB::table('channel_trip_messages')->where('id', $id)->where('reservation_id', $reservation->id)->exists()) {
+        if ($id !== null && ! Str::isUuid($id)) {
+            if (! DB::table('notif_pax_messages')->where('reservation_id', $reservation->id)->where('code', $id)->exists()) {
                 throw ApiException::notFound('No encontramos ese mensaje en tu viaje.');
             }
-            $query->where('id', $id);
+
+            return $notices->where('code', $id)->update($readNotice);
         }
+
+        if ($id === null) {
+            return $query->update(['read_at' => now()]) + $notices->update($readNotice);
+        }
+
+        if (! DB::table('channel_trip_messages')->where('id', $id)->where('reservation_id', $reservation->id)->exists()) {
+            throw ApiException::notFound('No encontramos ese mensaje en tu viaje.');
+        }
+
+        $query->where('id', $id);
 
         return $query->update(['read_at' => now()]);
     }

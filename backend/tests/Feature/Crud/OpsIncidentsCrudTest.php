@@ -113,17 +113,22 @@ it('reabre una incidencia cerrada con motivo y vuelve a contar como abierta en l
     actingAsSeed('U05');
 
     $this->postJson('/api/v1/ops/incidents/INC-0086/reopen', ['reason' => 'No'], critical(opsIncLock('INC-0086')))->assertStatus(422)->assertJsonValidationErrors('reason');
+    $before = rowOf('ops_incidents', 'INC-0086');
     $this->postJson('/api/v1/ops/incidents/INC-0086/reopen', ['reason' => 'El cliente volvió a reclamar.'], critical(opsIncLock('INC-0086')))->assertOk();
 
     $row = rowOf('ops_incidents', 'INC-0086');
     expect($row->status)->toBe('en_proceso')
-        ->and($row->resolution)->toBeNull()
+        ->and($row->resolution)->toBe($before->resolution)
         ->and($row->closed_at)->toBeNull()
         ->and(collect(opsIncLogs('INC-0086'))->last()->message)->toBe('Reabierta: El cliente volvió a reclamar.')
         ->and(collect($this->getJson('/api/v1/ops/orders/OP-2026-0411')->json('data.checks'))->firstWhere('id', 'incidents')['ok'])->toBeFalse()
         ->and(opsIncAudit(['entity' => 'Incidencia', 'entity_id' => 'INC-0086', 'action' => 'reabrir']))->toBeTrue();
 
     expect($this->postJson('/api/v1/ops/incidents/INC-0087/reopen', ['reason' => 'Reabrir una abierta.'], critical(opsIncLock('INC-0087'))))->toBeApiError(409, 'OPS-BR-63');
+
+    withinTenant(tenantA(), fn () => DB::table('ops_incidents')->where('code', 'INC-0087')->update(['status' => 'resuelta', 'resolution' => 'Se cambió el vehículo.', 'resolved_at' => now()]));
+    expect($this->postJson('/api/v1/ops/incidents/INC-0087/reopen', ['reason' => 'Reabrir una resuelta.'], critical(opsIncLock('INC-0087'))))->toBeApiError(409, 'OPS-BR-63')
+        ->and(rowOf('ops_incidents', 'INC-0087')->resolution)->toBe('Se cambió el vehículo.');
     $this->postJson('/api/v1/ops/incidents/INC-0086/reopen', ['reason' => 'Versión antigua.'], critical(opsIncLock('INC-0086') + 2))->assertStatus(409);
 });
 

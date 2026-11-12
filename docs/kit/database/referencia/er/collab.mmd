@@ -11,7 +11,7 @@ erDiagram
     uuid answered_by FK
   }
   collab_approval_requests {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar title
@@ -24,7 +24,7 @@ erDiagram
     uuid decided_by FK
   }
   collab_approval_rules {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
   }
@@ -35,12 +35,13 @@ erDiagram
     uuid decided_by FK
   }
   collab_channel_accounts {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     varchar name
     varchar status
   }
   collab_conversations {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid channel_account_id FK
@@ -63,16 +64,23 @@ erDiagram
     uuid message_id FK
   }
   collab_messages {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid conversation_id FK
     uuid author_user_id FK
     uuid template_id FK
   }
   collab_reply_templates {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar name
+  }
+  collab_whatsapp_templates {
+    uuid id PK
+    uuid channel_account_id FK
+    varchar name
+    varchar status
   }
   booking_reservations {
     uuid id PK
@@ -98,24 +106,25 @@ erDiagram
   quote_quotes {
     uuid id PK
   }
-  booking_reservations |o--o{ collab_conversations : "reservation_id"
-  catalog_providers |o--o{ collab_approval_requests : "requester_supplier_id"
-  channel_pax_feedback |o--o{ collab_conversations : "feedback_id"
-  channel_support_tickets |o--o{ collab_conversations : "support_ticket_id"
-  collab_approval_requests ||--o{ collab_approval_events : "request_id"
-  collab_approval_requests ||--o{ collab_approval_info_requests : "request_id"
-  collab_approval_requests ||--o{ collab_approval_steps : "request_id"
-  collab_approval_rules ||--o{ collab_approval_steps : "rule_id"
-  collab_channel_accounts |o--o{ collab_conversations : "channel_account_id"
-  collab_conversations ||--o{ collab_messages : "conversation_id"
-  collab_messages ||--o{ collab_message_attachments : "message_id"
-  collab_reply_templates |o--o{ collab_messages : "template_id"
-  crm_clients |o--o{ collab_conversations : "client_id"
-  crm_leads |o--o{ collab_conversations : "lead_id"
-  iam_users |o--o{ collab_approval_events : "actor_id"
-  iam_users ||--o{ collab_approval_info_requests : "answered_by, asked_by"
-  iam_users |o--o{ collab_approval_requests : "decided_by, delegated_to, requester_id"
-  iam_users ||--o{ collab_approval_steps : "decided_by"
-  iam_users |o--o{ collab_conversations : "assignee_id, resolved_by"
-  iam_users |o--o{ collab_messages : "author_user_id"
-  quote_quotes |o--o{ collab_conversations : "quote_id"
+  booking_reservations ||--o{ collab_conversations : "reservation_id, tenant_id"
+  catalog_providers ||--o{ collab_approval_requests : "requester_supplier_id, tenant_id"
+  channel_pax_feedback ||--o{ collab_conversations : "feedback_id, tenant_id"
+  channel_support_tickets ||--o{ collab_conversations : "support_ticket_id, tenant_id"
+  collab_approval_requests ||--o{ collab_approval_events : "request_id, tenant_id"
+  collab_approval_requests ||--o{ collab_approval_info_requests : "request_id, tenant_id"
+  collab_approval_requests ||--o{ collab_approval_steps : "request_id, tenant_id"
+  collab_approval_rules ||--o{ collab_approval_steps : "rule_id, tenant_id"
+  collab_channel_accounts ||--o{ collab_conversations : "channel_account_id, tenant_id"
+  collab_channel_accounts ||--o{ collab_whatsapp_templates : "channel_account_id, tenant_id"
+  collab_conversations ||--o{ collab_messages : "conversation_id, tenant_id"
+  collab_messages ||--o{ collab_message_attachments : "message_id, tenant_id"
+  collab_reply_templates ||--o{ collab_messages : "template_id, tenant_id"
+  crm_clients ||--o{ collab_conversations : "client_id, tenant_id"
+  crm_leads ||--o{ collab_conversations : "lead_id, tenant_id"
+  iam_users ||--o{ collab_approval_events : "actor_id, tenant_id"
+  iam_users ||--o{ collab_approval_info_requests : "answered_by, asked_by, tenant_id"
+  iam_users ||--o{ collab_approval_requests : "decided_by, delegated_to, requester_i..."
+  iam_users ||--o{ collab_approval_steps : "decided_by, tenant_id"
+  iam_users ||--o{ collab_conversations : "assignee_id, resolved_by, tenant_id"
+  iam_users ||--o{ collab_messages : "author_user_id, tenant_id"
+  quote_quotes ||--o{ collab_conversations : "quote_id, tenant_id"

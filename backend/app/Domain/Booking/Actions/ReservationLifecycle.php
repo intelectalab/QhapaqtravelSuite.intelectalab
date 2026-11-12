@@ -8,6 +8,7 @@ use App\Domain\Booking\Enums\ReservationStatus as S;
 use App\Domain\Booking\Events\ReservationConfirmed;
 use App\Domain\Booking\Models\Reservation;
 use App\Domain\Booking\StateMachines\ReservationStateMachine;
+use App\Domain\Booking\Support\ReservationNotices;
 use App\Domain\Booking\Support\ReservationReceivables;
 use App\Domain\Catalog\Listeners\ConsumeAllotmentOnServiceChange;
 use App\Domain\Crm\Support\Advisors;
@@ -229,6 +230,7 @@ final class ReservationLifecycle
 
             $reservation->forceFill(['owner_id' => $ownerId, 'updated_by' => $actor->getKey()])->save();
             $this->audit->log('Reserva', $reservation->code, 'reasignar', $before, $ownerId.($note ? " · {$note}" : ''), actor: $actor);
+            app(ReservationNotices::class)->reassigned((string) $reservation->id, $ownerId, (string) $actor->getKey());
 
             return $reservation;
         });

@@ -1,8 +1,12 @@
 "use client";
 
-import { CalendarClock, CheckCircle2, Clock, Download, FileSpreadsheet, FileText, FileType, Mail, PauseCircle, PlayCircle, Trash2 } from "lucide-react";
+import { CalendarClock, CheckCircle2, Clock, Download, FileSpreadsheet, FileText, FileType, Mail, PauseCircle, Pencil, PlayCircle, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { deleteReportSchedule, toggleReportSchedule } from "@/app/(backoffice)/reportes/actions";
+import { deleteReportSchedule, toggleReportSchedule, updateReportSchedule } from "@/app/(backoffice)/reportes/actions";
+import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
+import { SelectField } from "@/components/ui/SelectField";
+import { TextArea } from "@/components/ui/TextArea";
+import { TextField } from "@/components/ui/TextField";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -24,10 +28,28 @@ function size(bytes: number | null): string {
   return bytes > 1_048_576 ? `${(bytes / 1_048_576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
+function scheduleDefaults(label: string): { frequency: string; time: string } {
+  const lower = label.toLowerCase();
+  const time = /(\d{2}:\d{2})\s*$/.exec(label)?.[1] ?? "07:00";
+  return { frequency: lower.startsWith("diar") ? "daily" : lower.startsWith("mens") ? "monthly" : "weekly", time };
+}
+
 function ScheduleActions({ item }: { item: ReportSchedule }) {
   const mode = item.paused ? "resume" : "pause";
+  const defaults = scheduleDefaults(item.label);
   return (
     <RowActions>
+      <PanelAction<AdminActionState> label="Editar" variant="ghost" size="sm" formId={`schedule-edit-${item.code}`} trigger={(open) => <RowIcon tone="edit" label="Editar envío" icon={<Pencil size={15} />} onClick={open} />} title={`Editar el envío de ${item.title}`} description="Cambia la frecuencia, la hora, el formato o los destinatarios. El próximo envío ya usa lo nuevo." submitLabel="Guardar" action={updateReportSchedule} initial={ADMIN_INITIAL}>
+        {() => (
+          <>
+            <input type="hidden" name="code" value={item.code} />
+            <SelectField label="Frecuencia" name="frequency" options={[{ value: "weekly", label: "Semanal (lunes)" }, { value: "daily", label: "Diaria" }, { value: "monthly", label: "Mensual (día 1)" }]} defaultValue={defaults.frequency} />
+            <TextField label="Hora" name="time" required defaultValue={defaults.time} maxLength={5} placeholder="HH:MM" hint="Hora de Lima." />
+            <ChoiceGroup label="Formato" name="format" options={[{ value: "PDF", label: "PDF" }, { value: "XLSX", label: "Excel" }, { value: "CSV", label: "CSV" }]} defaultValue={item.format} />
+            <TextArea label="Destinatarios" name="recipients" rows={3} required defaultValue={item.recipients.join(", ")} hint="Hasta 10 correos, separados por coma o en líneas." />
+          </>
+        )}
+      </PanelAction>
       <PanelAction<AdminActionState> label={item.paused ? "Reanudar" : "Pausar"} variant="ghost" size="sm" formId={`schedule-${mode}-${item.code}`} trigger={(open) => <RowIcon tone="neutral" label={item.paused ? "Reanudar envío" : "Pausar envío"} icon={item.paused ? <PlayCircle size={15} /> : <PauseCircle size={15} />} onClick={open} />} title={item.paused ? "Reanudar envío" : "Pausar envío"} description={item.paused ? `${item.title} vuelve a enviarse ${item.label.toLowerCase()}.` : `${item.title} deja de enviarse hasta que lo reanudes. No se pierde la configuración.`} submitLabel={item.paused ? "Reanudar" : "Pausar"} action={toggleReportSchedule} initial={ADMIN_INITIAL}>
         {() => (
           <>

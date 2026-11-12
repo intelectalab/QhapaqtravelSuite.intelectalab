@@ -38,6 +38,8 @@ final class ApprovalRules
         ['code' => 'RA-14', 'type' => 'other', 'level' => 1, 'permission' => 'quotes.approve_internal', 'min' => 0, 'sla' => 48],
     ];
 
+    public const WITHDRAWABLE = ['quote', 'cancel', 'reversal', 'other'];
+
     public const ORIGIN_LOCKED = ['quote', 'cancel', 'reversal', 'payable', 'commission', 'provider_rate'];
 
     public const RULE_TYPES = ['quote', 'cancel', 'reversal', 'payable', 'commission', 'provider_rate', 'credit_b2b', 'refund', 'other'];

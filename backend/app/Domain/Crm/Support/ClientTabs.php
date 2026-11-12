@@ -11,10 +11,29 @@ use Illuminate\Support\Facades\DB;
 
 final class ClientTabs
 {
+    private ?string $only = null;
+
+    public static function partialFor(object $client, User $viewer): ?string
+    {
+        return Portfolio::ownOnly($viewer) && (string) $client->owner_id !== (string) $viewer->getKey() ? (string) $viewer->getKey() : null;
+    }
+
+    public function scopedTo(?string $userId): self
+    {
+        $copy = clone $this;
+        $copy->only = $userId;
+
+        return $copy;
+    }
+
     public const TABS = ['leads', 'opportunities', 'quotes', 'reservations', 'passengers', 'receivables', 'payments', 'invoices', 'vouchers', 'communications', 'activities', 'timeline', 'audit'];
 
     public function read(object $client, string $tab, User $viewer): Collection|array
     {
+        if (self::partialFor($client, $viewer) !== null && $this->only === null) {
+            return $this->scopedTo(self::partialFor($client, $viewer))->read($client, $tab, $viewer);
+        }
+
         return match ($tab) {
             'leads' => $this->leads($client->id),
             'opportunities' => $this->opportunities($client->id),
@@ -44,12 +63,13 @@ final class ClientTabs
         $destinations = DB::table('booking_reservation_services as s')->join('booking_reservations as r', 'r.id', '=', 's.reservation_id')
             ->join('catalog_products as p', 'p.id', '=', 's.product_id')->join('catalog_destinations as d', 'd.id', '=', 'p.primary_destination_id')
             ->where('r.client_id', $client->id)->whereNull('r.deleted_at')->whereNotIn('r.status', ['borrador', 'cancelada'])
-            ->distinct()->orderBy('d.name')->pluck('d.name');
+            ->selectRaw('d.name, count(distinct r.id) as trips')->groupBy('d.name')->orderByDesc('trips')->orderBy('d.name')->get()
+            ->map(fn (object $row): array => ['name' => (string) $row->name, 'trips' => (int) $row->trips]);
 
         return [
-            'open_opportunities' => DB::table('crm_opportunities')->where('client_id', $client->id)->whereNull('deleted_at')->whereNotIn('stage', ['ganada', 'perdida'])
+            'open_opportunities' => DB::table('crm_opportunities')->where('client_id', $client->id)->whereNull('deleted_at')->whereNotIn('stage', ['ganada', 'perdida'])->when($this->only, fn ($query) => $query->where('owner_id', $this->only))
                 ->orderBy('expected_close_date')->get(['code', 'title', 'stage', 'amount', 'currency', 'expected_close_date']),
-            'next_activities' => $this->activityQuery($client->id)->whereNotIn('a.status', ['completada', 'cancelada'])->orderBy('a.due_at')->limit(5)
+            'next_activities' => $this->activityQuery($client->id)->where('a.status', '<>', 'completada')->orderBy('a.due_at')->limit(5)
                 ->get(['a.code', 'a.type', 'a.subject', 'a.status', 'a.due_at', 'u.name as owner']),
             'satisfaction_detail' => $surveys->isEmpty() ? null : [
                 'last' => (int) $surveys->first()->score,
@@ -58,7 +78,7 @@ final class ClientTabs
                 'comment' => $surveys->first(fn (object $survey) => filled($survey->comment))?->comment,
             ],
             'destinations' => $destinations->values(),
-            'open_cases' => DB::table('crm_cases')->where('client_id', $client->id)->whereIn('status', ['abierta', 'abierto', 'en_proceso'])->where('type_code', '<>', 'arco')
+            'open_cases' => DB::table('crm_cases')->where('client_id', $client->id)->whereIn('status', ['abierta', 'en_proceso'])->where('type_code', '<>', 'arco')
                 ->orderByDesc('created_at')->get(['code', 'subject', 'priority', 'status']),
             'cancelled_trips' => DB::table('booking_reservations')->where('client_id', $client->id)->whereNull('deleted_at')->where('status', 'cancelada')->count(),
         ];
@@ -72,19 +92,19 @@ final class ClientTabs
 
     private function opportunities(string $clientId): Collection
     {
-        return DB::table('crm_opportunities as o')->leftJoin('iam_users as u', 'u.id', '=', 'o.owner_id')->where('o.client_id', $clientId)->whereNull('o.deleted_at')
+        return DB::table('crm_opportunities as o')->leftJoin('iam_users as u', 'u.id', '=', 'o.owner_id')->where('o.client_id', $clientId)->whereNull('o.deleted_at')->when($this->only, fn ($query) => $query->where('o.owner_id', $this->only))
             ->orderByDesc('o.created_at')->get(['o.code', 'o.title', 'o.stage', 'o.amount', 'o.currency', 'o.probability', 'o.expected_close_date', 'o.closed_at', 'u.name as owner']);
     }
 
     private function quotes(string $clientId): Collection
     {
-        return DB::table('quote_quotes as q')->leftJoin('quote_versions as v', 'v.id', '=', 'q.current_version_id')->where('q.client_id', $clientId)->whereNull('q.deleted_at')
+        return DB::table('quote_quotes as q')->leftJoin('quote_versions as v', 'v.id', '=', 'q.current_version_id')->where('q.client_id', $clientId)->whereNull('q.deleted_at')->when($this->only, fn ($query) => $query->where('q.owner_id', $this->only))
             ->orderByDesc('q.created_at')->get(['q.code', 'q.title', 'q.status', 'q.current_version_no as version', 'q.valid_until', 'q.currency', 'v.grand_total as total', 'q.created_at']);
     }
 
     private function reservations(string $clientId): Collection
     {
-        return DB::table('booking_reservations as r')->where('r.client_id', $clientId)->whereNull('r.deleted_at')->orderByDesc('r.travel_from')
+        return DB::table('booking_reservations as r')->where('r.client_id', $clientId)->whereNull('r.deleted_at')->when($this->only, fn ($query) => $query->where('r.owner_id', $this->only))->orderByDesc('r.travel_from')
             ->selectSub(DB::table('booking_passengers as p')->whereColumn('p.reservation_id', 'r.id')->selectRaw('count(*)'), 'pax')
             ->selectSub(DB::table('fin_receivables as f')->whereColumn('f.reservation_id', 'r.id')->whereNull('f.deleted_at')->where('f.status', '<>', 'cancelada')->selectRaw('coalesce(sum(f.paid_amount), 0)'), 'paid')
             ->addSelect(['r.code', 'r.title', 'r.status', 'r.channel', 'r.travel_from', 'r.travel_to', 'r.total_amount as total', 'r.currency'])->get();
@@ -110,26 +130,26 @@ final class ClientTabs
 
     private function receivables(string $clientId): Collection
     {
-        return DB::table('fin_receivables as f')->join('booking_reservations as r', 'r.id', '=', 'f.reservation_id')->where('f.client_id', $clientId)->whereNull('f.deleted_at')
+        return DB::table('fin_receivables as f')->join('booking_reservations as r', 'r.id', '=', 'f.reservation_id')->where('f.client_id', $clientId)->whereNull('f.deleted_at')->when($this->only, fn ($query) => $query->where('r.owner_id', $this->only))
             ->orderBy('f.due_date')->get(['f.code', 'f.concept', 'f.amount', 'f.paid_amount', 'f.currency', 'f.due_date', 'f.status', 'r.code as reservation']);
     }
 
     private function payments(string $clientId): Collection
     {
-        return DB::table('fin_payments as p')->join('booking_reservations as r', 'r.id', '=', 'p.reservation_id')->where('r.client_id', $clientId)
+        return DB::table('fin_payments as p')->join('booking_reservations as r', 'r.id', '=', 'p.reservation_id')->where('r.client_id', $clientId)->when($this->only, fn ($query) => $query->where('r.owner_id', $this->only))
             ->orderByDesc('p.paid_on')->get(['p.code', 'p.paid_on', 'p.method', 'p.reference', 'p.amount', 'p.currency', 'p.status', 'r.code as reservation']);
     }
 
     private function invoices(string $clientId): Collection
     {
-        return DB::table('fin_invoices as i')->leftJoin('booking_reservations as r', 'r.id', '=', 'i.reservation_id')->where('i.client_id', $clientId)
+        return DB::table('fin_invoices as i')->leftJoin('booking_reservations as r', 'r.id', '=', 'i.reservation_id')->where('i.client_id', $clientId)->when($this->only, fn ($query) => $query->where('r.owner_id', $this->only))
             ->orderByDesc('i.issue_date')->get(['i.number', 'i.doc_type', 'i.issue_date', 'i.total_amount', 'i.currency', 'i.status', 'r.code as reservation']);
     }
 
     private function vouchers(string $clientId): Collection
     {
         return DB::table('ops_vouchers as v')->join('booking_reservations as r', 'r.id', '=', 'v.reservation_id')->leftJoin('catalog_providers as p', 'p.id', '=', 'v.provider_id')
-            ->where('r.client_id', $clientId)->where('v.status', '<>', 'anulado')->orderByDesc('v.service_date')
+            ->where('r.client_id', $clientId)->where('v.status', '<>', 'anulado')->when($this->only, fn ($query) => $query->where('r.owner_id', $this->only))->orderByDesc('v.service_date')
             ->get(['v.code', 'v.service_label', 'v.service_date', 'v.pax', 'v.status', 'v.version', 'p.name as provider', 'r.code as reservation']);
     }
 
@@ -153,7 +173,8 @@ final class ClientTabs
         return DB::table('crm_activities as a')->leftJoin('iam_users as u', 'u.id', '=', 'a.owner_id')
             ->where(fn ($where) => $where->where(fn ($own) => $own->where('a.related_type', 'client')->where('a.related_id', $clientId))
                 ->orWhere(fn ($opp) => $opp->where('a.related_type', 'opportunity')->whereIn('a.related_id', $opportunities ?: ['00000000-0000-0000-0000-000000000000']))
-                ->orWhere(fn ($quote) => $quote->where('a.related_type', 'quote')->whereIn('a.related_id', $quotes ?: ['00000000-0000-0000-0000-000000000000'])));
+                ->orWhere(fn ($quote) => $quote->where('a.related_type', 'quote')->whereIn('a.related_id', $quotes ?: ['00000000-0000-0000-0000-000000000000'])))
+            ->when($this->only, fn ($query) => $query->where('a.owner_id', $this->only));
     }
 
     private function timeline(object $client): array

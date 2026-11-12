@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Mobile\Actions;
 
+use App\Domain\Booking\Support\ReservationIncidents;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Mobile\Support\OperatorDirectory;
 use App\Domain\Mobile\Support\OperatorResource;
@@ -28,6 +29,7 @@ final class OperatorActions
         private readonly CodeSequence $sequence,
         private readonly AuditLogger $audit,
         private readonly OpsNotices $notices,
+        private readonly ReservationIncidents $reservations,
     ) {}
 
     public function sync(OperatorResource $resource, array $actions): array
@@ -116,6 +118,10 @@ final class OperatorActions
             return ['result' => 'conflict_resolved', 'conflict_rule' => 'MOB-BR-05', 'message' => 'La asignación ya estaba confirmada.'];
         }
 
+        if ($assignment->status !== 'asignada') {
+            throw ApiException::conflict('MOB-BR-10', 'La asignación aún no tiene recursos: no hay nada que confirmar.');
+        }
+
         DB::table('ops_assignments')->where('id', $assignment->id)->update(['status' => 'confirmada', 'confirmed_at' => $at, 'confirmed_via' => 'app', 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $resource->user->getKey(), 'updated_at' => now()]);
         $this->recompute((string) $assignment->order_id);
         $this->log($assignment, 'confirmar_recurso', $assignment->status, 'confirmada', $at, $offline);
@@ -139,13 +145,13 @@ final class OperatorActions
 
         DB::table('ops_assignments')->where('id', $assignment->id)->update(['status' => 'en_curso', 'started_at' => $at, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $resource->user->getKey(), 'updated_at' => now()]);
         DB::table('booking_reservation_services')->where('id', $assignment->reservation_service_id)->where('status', 'confirmado')->update(['status' => 'en_curso', 'lock_version' => DB::raw('lock_version + 1'), 'updated_at' => now()]);
-        $movedOrder = DB::table('ops_orders')->where('id', $assignment->order_id)->whereIn('status', ['pendiente_asignacion', 'asignada', 'confirmada'])->update(['status' => 'en_ejecucion', 'lock_version' => DB::raw('lock_version + 1'), 'updated_at' => now()]);
+        $movedOrder = DB::table('ops_orders')->where('id', $assignment->order_id)->where('status', 'confirmada')->update(['status' => 'en_ejecucion', 'lock_version' => DB::raw('lock_version + 1'), 'updated_at' => now()]);
 
         if ($movedOrder > 0) {
-            $this->audit->log('Orden operativa', (string) $assignment->order_code, 'cambio_estado', (string) $assignment->order_status, 'en_ejecucion', actor: $resource->user);
+            $this->audit->log('Orden operativa', (string) $assignment->order_code, 'cambio_estado', 'confirmada', 'en_ejecucion', actor: $resource->user);
         }
 
-        if (DB::table('booking_reservations')->where('id', $assignment->reservation_id)->where('status', 'confirmada')->update(['status' => 'en_operacion', 'updated_at' => now()]) > 0) {
+        if ($movedOrder > 0 && DB::table('booking_reservations')->where('id', $assignment->reservation_id)->where('status', 'confirmada')->update(['status' => 'en_operacion', 'updated_at' => now()]) > 0) {
             $this->audit->log('Reserva', (string) $assignment->reservation_code, 'iniciar_operacion', 'confirmada', 'en_operacion', actor: $resource->user);
         }
 
@@ -275,6 +281,7 @@ final class OperatorActions
         }
 
         $this->audit->log('Incidencia', $code, 'crear', null, "{$severity} · {$title}".(($action['offline'] ?? false) ? ' · offline' : ''), actor: $resource->user);
+        $this->reservations->syncForIncident($id);
         $this->notices->toOperations($severity === 'critica' ? 'incidencia.critica' : 'incidencia.creada', "{$code} · {$title}", "Reportada por {$resource->row->full_name} en {$assignment->service_label}.", 'ops_incident', $id, (string) $assignment->reservation_id, $assignment->coordinator_id, $severity === 'critica');
 
         return $related !== null

@@ -11,7 +11,7 @@ import { dayDistance, deadlineLabel, PAX_TYPES, scheduleLabel, SERVICE_KINDS, su
 import { AlternativePanel, ConfirmPanel, RejectPanel } from "./RequestActions";
 import { KindIcon, requestTone, SupplierBadge } from "./SupplierUi";
 
-const PROPOSAL_STATUS: Record<string, string> = { pendiente: "En revisión", aceptada: "Aceptada", rechazada: "No aceptada", expirada: "Venció el bloqueo" };
+const PROPOSAL_STATUS: Record<string, string> = { pendiente: "En revisión", aceptada: "Aceptada", rechazada: "No aceptada", expirada: "Expirada" };
 
 export function SupplierRequestDetailView({ detail }: { detail: SupplierRequestDetail }) {
   const open = detail.state === "por_responder" || detail.state === "alternativa_propuesta";

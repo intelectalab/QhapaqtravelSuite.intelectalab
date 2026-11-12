@@ -6,16 +6,20 @@ namespace App\Domain\Operations\Actions;
 
 use App\Domain\Iam\Models\User;
 use App\Domain\Operations\Support\OpsCommon;
+use App\Domain\Operations\Support\OpsMail;
+use App\Domain\Operations\Support\TravelDocChecklist;
 use App\Domain\Operations\Support\VoucherToken;
+use App\Domain\Portal\Support\PassengerNotices;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Sequences\SequenceService;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class VoucherWorkflow
 {
-    public function __construct(private readonly SequenceService $sequences, private readonly AuditLogger $audit) {}
+    public function __construct(private readonly SequenceService $sequences, private readonly AuditLogger $audit, private readonly TravelDocChecklist $travelDocs) {}
 
     public function issue(string $serviceCode, ?string $providerId, ?string $note, User $actor): string
     {
@@ -50,6 +54,8 @@ final class VoucherWorkflow
                 throw ApiException::unprocessable('OPS-BR-42', "{$provider->name} no tiene contrato vigente: no se puede emitir el voucher.");
             }
 
+            $this->travelDocs->assertCanIssue((string) $service->reservation_id, (string) $service->name);
+
             $pax = DB::table('booking_passengers')->where('reservation_id', $service->reservation_id)->count();
             $code = $this->sequences->next('voucher', year: (int) substr((string) $service->service_date, 0, 4));
             $voucherId = (string) Str::uuid7();
@@ -73,6 +79,8 @@ final class VoucherWorkflow
             ]);
             $this->snapshot($voucherId, 1, 'Emisión inicial', $service, $provider->name, $pax, $actor);
             $this->audit->log('Voucher', $code, 'emitir', null, "{$service->reservation_code} · {$service->name}");
+            app(OpsMail::class)->voucher($voucherId, 'issued');
+            app(PassengerNotices::class)->send((string) $service->reservation_id, 'voucher.emitido', "Tu voucher de {$service->name} está listo", 'Ya puedes verlo en la app con su código QR. Preséntalo al proveedor el '.CarbonImmutable::parse((string) $service->service_date)->format('d/m/Y').'.', 'ops_voucher', $voucherId);
 
             return $code;
         });
@@ -108,6 +116,7 @@ final class VoucherWorkflow
         });
 
         $this->audit->log('Voucher', $code, 'versionar', 'v'.$voucher->version, "v{$version} · {$reason}");
+        app(OpsMail::class)->voucher((string) $voucher->id, 'updated', $reason);
     }
 
     public function redeem(string $code, User $actor): void
@@ -122,6 +131,7 @@ final class VoucherWorkflow
         $voucher = $this->current($code);
         DB::table('ops_vouchers')->where('id', $voucher->id)->update(['status' => 'anulado', 'void_reason' => $reason, 'void_at' => now(), 'void_by' => $actor->getKey(), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         $this->audit->log('Voucher', $code, 'anular', 'emitido', $reason);
+        app(OpsMail::class)->voucher((string) $voucher->id, 'voided', $reason);
     }
 
     private function current(string $code): object

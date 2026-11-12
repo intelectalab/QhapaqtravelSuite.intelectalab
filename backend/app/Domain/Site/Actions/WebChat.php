@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Site\Actions;
 
 use App\Domain\Crm\Support\CodeSequence;
+use App\Domain\Inbox\Support\InboxNotices;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
@@ -53,6 +54,8 @@ final class WebChat
         $this->message($id, 'system', self::AUTO_REPLY, $now->copy()->addSecond());
         $this->audit->log('Conversación', $code, 'crear', after: 'webchat');
 
+        app(InboxNotices::class)->created($id);
+
         return ['session' => $code, 'token' => self::token($id), 'messages' => $this->visible($id)];
     }
 
@@ -70,6 +73,7 @@ final class WebChat
             'unread_count' => DB::raw('unread_count + 1'),
             'updated_at' => $now,
         ]);
+        app(InboxNotices::class)->inbound((string) $conversation->id);
 
         return ['session' => $conversation->code, 'messages' => $this->visible((string) $conversation->id)];
     }

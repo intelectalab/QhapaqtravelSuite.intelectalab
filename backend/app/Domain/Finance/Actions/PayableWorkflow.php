@@ -7,6 +7,7 @@ namespace App\Domain\Finance\Actions;
 use App\Domain\Finance\Events\SupplierPaymentRegistered;
 use App\Domain\Finance\Support\Consolidation;
 use App\Domain\Finance\Support\FinanceHistory;
+use App\Domain\Finance\Support\FinanceNotices;
 use App\Domain\Finance\Support\PayableDirectory;
 use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Iam\Models\User;
@@ -249,6 +250,7 @@ final class PayableWorkflow
             FinanceHistory::record('payable', $payable->id, $settled ? 'pagada' : 'parcial', "{$payoutCode} · {$data['operation_ref']}", $actor);
             $this->audit->log('Cuenta por pagar', $payable->code, 'pagar', (string) Decimal::round2($balance), (string) Decimal::round2($balance->minus($amount)));
             SupplierPaymentRegistered::dispatch($payoutId, (string) $actor->getKey());
+            app(FinanceNotices::class)->supplierPaid((string) $payable->code, (string) Decimal::round2($amount));
 
             return $payoutCode;
         });

@@ -67,7 +67,7 @@ Cobertura referencial: 364 endpoints, 100 tablas y vistas citadas (92 nuevas, el
 | 15 §6.2 vs 15 §6.6 / 16 §6.1 | `POST /public/price-quote` y `POST /public/quote` | Motor único `/public/quote`; `price-quote` como alias deprecado | F2-WEB-05 |
 | 15 §3.13 vs 15 §3.14 | `channel_ecom_orders.reservation_id UNIQUE` vs una reserva por línea | `reservation_ids uuid[]`; quitar el UNIQUE | F2-WEB-07 |
 | 05 §6.8 vs 05 §6.9 | `GET /mobile/passenger/messages` para chat y para la bandeja de mensajes | Bandeja en `/mobile/passenger/pax-messages` | F2-MOV-13 |
-| 12 §6 vs 15 §6.4 | `POST /public/{tenant}/claim-book` y `POST /public/claims` | Un endpoint (tenant por host) con alias | F2-WEB-14 |
+| 12 §6 vs 15 §6.4 | `POST /public/claim-book` y `POST /public/claims` | Un endpoint (tenant por host) con alias | F2-WEB-14 |
 | 10 §6 vs 15 §6.4 | `POST /public/contact` en dos specs | Un solo endpoint | F2-INB-02 |
 | 05 §3.14 vs 10 §3.7 | `channel_trip_messages` y `collab_messages` para el chat del pasajero | Adaptador sobre `collab_messages` | F2-MOV-12 |
 
@@ -142,7 +142,7 @@ Fuente: 05 §2.1–2.3, §3.13–3.14, §4.8, §5 (MOB-BR, PAX-BR), §6.7–6.9,
 
 **Pruebas:** Unit: cliente API adjunta token y maneja 401/426.
 
-**Depende de:** F0 auth Sanctum · **Prioridad:** P0
+**Depende de:** F0-11 · **Prioridad:** P0
 
 #### F2-MOV-02 · Registro de dispositivo, sesión móvil y revocación remota
 
@@ -188,7 +188,7 @@ Fuente: 05 §2.1–2.3, §3.13–3.14, §4.8, §5 (MOB-BR, PAX-BR), §6.7–6.9,
 
 **Pruebas:** Pest T-16: guía no actúa sobre asignación de otro recurso → 403; Pest: usuario sin recurso → 403 MOB-BR-13.
 
-**Depende de:** F2-MOV-02; F1B-OPS-05 · **Prioridad:** P0
+**Depende de:** F2-MOV-02, F1B-OPS-05 · **Prioridad:** P0
 
 #### F2-MOV-04 · Sincronización delta (bootstrap) para la app del operador
 
@@ -235,7 +235,7 @@ Fuente: 05 §2.1–2.3, §3.13–3.14, §4.8, §5 (MOB-BR, PAX-BR), §6.7–6.9,
 
 **Pruebas:** Pest T-17: misma client_action_id → duplicate; Pest T-18: check-in offline conserva la marca más temprana; Pest T-19: finish sin check-in/evidencia o sobre asignación liberada → rejected; Pest T-20: start cambia orden y reserva; Pest: lote de 50 en orden causal.
 
-**Depende de:** F2-MOV-04; F1 máquina de estados de asignación · **Prioridad:** P0
+**Depende de:** F2-MOV-04, F1B-OPS-04 · **Prioridad:** P0
 
 #### F2-MOV-06 · Evidencias fotográficas desde el móvil con deduplicación por hash
 
@@ -257,7 +257,7 @@ Fuente: 05 §2.1–2.3, §3.13–3.14, §4.8, §5 (MOB-BR, PAX-BR), §6.7–6.9,
 
 **Pruebas:** Pest: presign rechaza mime/tamaño no permitido; Pest: hash duplicado no crea segunda evidencia.
 
-**Depende de:** F2-MOV-05; F1B-OPS-10 · **Prioridad:** P0
+**Depende de:** F2-MOV-05, F1B-OPS-10 · **Prioridad:** P0
 
 #### F2-MOV-07 · App operador: pantallas Hoy, Detalle, Calendario, Incidencias y Perfil
 
@@ -528,7 +528,7 @@ Fuente: 08 §2, §2.1, §3.13–3.16, §5.5–5.6, §6.6–6.7.
 
 **Pruebas:** Pest T21: login con email/código incorrecto → 422; Pest: token reutilizado → 410/422.
 
-**Depende de:** F0 auth · **Prioridad:** P1
+**Depende de:** F0-11 · **Prioridad:** P1
 
 #### F2-PAX-02 · Mi viaje, itinerario, hoteles, transporte y actividades
 
@@ -614,7 +614,7 @@ Fuente: 08 §2, §2.1, §3.13–3.16, §5.5–5.6, §6.6–6.7.
 
 **Pruebas:** Pest: tema Salud → prioridad alta; Pest: ticket crea conversación.
 
-**Depende de:** F2-PAX-02, F2-INB-02; F1B-POR-03 · **Prioridad:** P1
+**Depende de:** F2-INB-02, F1B-POR-03 · **Prioridad:** P1
 
 #### F2-PAX-06 · Bandeja de mensajes al pasajero en el portal
 
@@ -668,7 +668,7 @@ Fuente: 08 §2, §2.1, §3.13–3.16, §5.5–5.6, §6.6–6.7.
 
 **Tablas:** —
 
-**Endpoints:** `GET /api/v1/portal/passenger/companions`, `PUT /api/v1/portal/passenger/companions`, `GET /api/v1/portal/customer/reservations/{code}/web-summary`, `PUT /api/v1/portal/customer/reservations/{code}/companions`, `POST /api/v1/portal/customer/receivables/{code}/pay`
+**Endpoints:** `GET /api/v1/portal/passenger/companions`, `PUT /api/v1/portal/passenger/companions`, `GET /api/v1/portal/client/reservations/{code}/web-summary`, `PUT /api/v1/portal/client/reservations/{code}/companions`, `POST /api/v1/portal/client/receivables/{id}/payments`
 
 **Pantallas:** `(portal-pasajero)/acompanantes`, `(portal-cliente)/viajes/[code]`
 
@@ -702,7 +702,7 @@ Fuente: 08 §2, §2.1, §3.13–3.16, §5.5–5.6, §6.6–6.7.
 
 **Pruebas:** Pest T19: previsualización no muta; Playwright P07: externos no ven «Vista del canal».
 
-**Depende de:** F2-PAX-02, F2-B2B-04; F1B-POR-05 · **Prioridad:** P1
+**Depende de:** F2-B2B-04, F1B-POR-05 · **Prioridad:** P1
 
 ### E2.3 · Canal B2B con crédito
 
@@ -729,7 +729,7 @@ Fuente: 08 §3.1–3.5, §4.1, §5.1, §6.1–6.2.
 
 **Pruebas:** Pest T08: desbloqueo con crédito excedido → 409; Pest T03: roles sin `channels.b2b.manage` → 403.
 
-**Depende de:** F1 CRM clientes · **Prioridad:** P1
+**Depende de:** F1A-CRM-15 · **Prioridad:** P1
 
 #### F2-B2B-02 · Libro único de crédito B2B
 
@@ -752,7 +752,7 @@ Fuente: 08 §3.1–3.5, §4.1, §5.1, §6.1–6.2.
 
 **Pruebas:** Pest T10: pago aplicado libera crédito sin doble conteo; Pest: reversión vuelve a consumir.
 
-**Depende de:** F2-B2B-01; F1 pagos · **Prioridad:** P1
+**Depende de:** F2-B2B-01, F1B-FIN-03 · **Prioridad:** P1
 
 #### F2-B2B-03 · Tarifas netas por agencia y producto
 
@@ -774,7 +774,7 @@ Fuente: 08 §3.1–3.5, §4.1, §5.1, §6.1–6.2.
 
 **Pruebas:** Pest T04: sin tarifa o vencida → 422 RT-14; Pest: neto > público → 422.
 
-**Depende de:** F2-B2B-01; F1 catálogo · **Prioridad:** P1
+**Depende de:** F2-B2B-01, F1A-CAT-21 · **Prioridad:** P1
 
 #### F2-B2B-04 · Usuarios B2B y sesión de la agencia
 
@@ -840,7 +840,7 @@ Fuente: 08 §3.1–3.5, §4.1, §5.1, §6.1–6.2.
 
 **Pruebas:** Pest T05; Pest T06; Pest T07 (concurrencia último cupo); Pest T22 (idempotencia); Playwright P01, P02.
 
-**Depende de:** F2-B2B-02, F2-B2B-05; F1 reservas y salidas · **Prioridad:** P1
+**Depende de:** F2-B2B-05, F1B-RES-04, F1A-CAT-25 · **Prioridad:** P1
 
 #### F2-B2B-07 · Mis reservas y vouchers de la agencia
 
@@ -951,7 +951,7 @@ Fuente: 06 completa.
 
 **Pruebas:** Pest S-12; Pest S-02.
 
-**Depende de:** F0 IAM; F1 proveedores · **Prioridad:** P1
+**Depende de:** F0-17, F1A-CAT-05 · **Prioridad:** P1
 
 #### F2-EXT-02 · Vistas de lectura con lista blanca de columnas
 
@@ -959,7 +959,7 @@ Fuente: 06 completa.
 
 **Especificación:** 06 §3.5, SUP-BR-02/03
 
-**Tablas:** `supplier_v_requests`, `supplier_v_rooming`, `supplier_v_vouchers`, `supplier_v_payables`, `supplier_v_incidents`
+**Tablas:** `supplier_v_requests`, `supplier_v_rooming`, `supplier_v_vouchers`, `supplier_v_payables`, `supplier_v_incidents` (objetos nuevos de esta historia: vistas supplier_v_*; agregarlos a database/ y regenerar el diccionario antes de programar)
 
 **Endpoints:** —
 
@@ -994,7 +994,7 @@ Fuente: 06 completa.
 
 **Pruebas:** Pest S-01, S-04, S-05, S-06; Playwright SUP-E2E-01 (parte).
 
-**Depende de:** F2-EXT-02; F1 `ops_supplier_requests` · **Prioridad:** P1
+**Depende de:** F2-EXT-02, F1B-OPS-03 · **Prioridad:** P1
 
 #### F2-EXT-04 · Bandeja interna de alternativas del proveedor
 
@@ -1038,7 +1038,7 @@ Fuente: 06 completa.
 
 **Pruebas:** Pest S-07; Playwright SUP-E2E-02.
 
-**Depende de:** F2-EXT-02; F1 rooming · **Prioridad:** P1
+**Depende de:** F2-EXT-02, F1B-OPS-07 · **Prioridad:** P1
 
 #### F2-EXT-06 · Validación de vouchers en recepción
 
@@ -1070,7 +1070,7 @@ Fuente: 06 completa.
 
 **Tablas:** `supplier_invoices`
 
-**Endpoints:** `GET /api/v1/supplier/payables`, `POST /api/v1/supplier/payables/{id}/invoices`, `POST /api/v1/fin/supplier-invoices/{id}/validate`, `POST /api/v1/fin/supplier-invoices/{id}/observe`, `POST /api/v1/fin/supplier-invoices/{id}/reject`
+**Endpoints:** `GET /api/v1/supplier/payables`, `POST /api/v1/supplier/payables/{id}/invoices`, `POST /api/v1/finance/supplier-invoices/{id}/validate`, `POST /api/v1/finance/supplier-invoices/{id}/observe`, `POST /api/v1/finance/supplier-invoices/{id}/reject`
 
 **Pantallas:** `/proveedor/pagos`; Finanzas › CxP (factura del proveedor)
 
@@ -1084,7 +1084,7 @@ Fuente: 06 completa.
 
 **Pruebas:** Pest S-09; Playwright SUP-E2E-03.
 
-**Depende de:** F2-EXT-02; F1 CxP · **Prioridad:** P1
+**Depende de:** F2-EXT-02, F1B-FIN-04 · **Prioridad:** P1
 
 #### F2-EXT-08 · Incidencias reportadas por el proveedor
 
@@ -1197,7 +1197,7 @@ Fuente: 15 completa (salvo reseñas v2.2); 08 §3.6–3.11, §5.2–5.3, §6.3�
 
 **Pruebas:** Pest 1 (parte): host de B no ve productos de A.
 
-**Depende de:** F0 shell Next.js · **Prioridad:** P0
+**Depende de:** F0-39 · **Prioridad:** P0
 
 #### F2-WEB-02 · Contenido de producto y destino para el sitio
 
@@ -1220,7 +1220,7 @@ Fuente: 15 completa (salvo reseñas v2.2); 08 §3.6–3.11, §5.2–5.3, §6.3�
 
 **Pruebas:** Pest: publicar con < 3 imágenes → 422.
 
-**Depende de:** F1 catálogo · **Prioridad:** P0
+**Depende de:** F1A-CAT-15 · **Prioridad:** P0
 
 #### F2-WEB-03 · Gestión del canal e-commerce: publicación y promociones
 
@@ -1311,7 +1311,7 @@ Fuente: 15 completa (salvo reseñas v2.2); 08 §3.6–3.11, §5.2–5.3, §6.3�
 
 **Pruebas:** Pest 4 (dos carritos por los últimos cupos); Pest 5; Pest 6; Pest v2.1 RemovedLineTest.
 
-**Depende de:** F2-WEB-05; F1A-CAT-26 · **Prioridad:** P0
+**Depende de:** F2-WEB-05, F1A-CAT-26 · **Prioridad:** P0
 
 #### F2-WEB-07 · Checkout: pedido, reservas por línea y cuentas por cobrar
 
@@ -1334,7 +1334,7 @@ Fuente: 15 completa (salvo reseñas v2.2); 08 §3.6–3.11, §5.2–5.3, §6.3�
 
 **Pruebas:** Pest 7, 8, 11; Pest v2.1 QuoteParityTest, CompanionAgeTest.
 
-**Depende de:** F2-WEB-06, F2-MOT-10; F1 reservas y CxC · **Prioridad:** P0
+**Depende de:** F2-MOT-10, F1B-RES-04, F1B-FIN-02 · **Prioridad:** P0
 
 #### F2-WEB-08 · Pasarela de pagos: adaptador, 3-D Secure y webhook
 
@@ -1357,7 +1357,7 @@ Fuente: 15 completa (salvo reseñas v2.2); 08 §3.6–3.11, §5.2–5.3, §6.3�
 
 **Pruebas:** Pest 9; Pest T13, T14 (08); Playwright P03.
 
-**Depende de:** F2-WEB-07; F1B-POR-04 · **Prioridad:** P0
+**Depende de:** F2-WEB-07, F1B-POR-04 · **Prioridad:** P0
 
 #### F2-WEB-09 · Pagos por transferencia, Yape o Plin por validar
 
@@ -1465,7 +1465,7 @@ Fuente: 15 completa (salvo reseñas v2.2); 08 §3.6–3.11, §5.2–5.3, §6.3�
 
 **Pruebas:** Pest 13, 15; Playwright E2E-SIT-03.
 
-**Depende de:** F2-INB-02; F1 CRM leads · **Prioridad:** P1
+**Depende de:** F2-INB-02, F1A-CRM-03 · **Prioridad:** P1
 
 #### F2-WEB-14 · Libro de Reclamaciones público en el sitio
 
@@ -1475,18 +1475,18 @@ Fuente: 15 completa (salvo reseñas v2.2); 08 §3.6–3.11, §5.2–5.3, §6.3�
 
 **Tablas:** —
 
-**Endpoints:** `POST /api/v1/public/claims`
+**Endpoints:** `POST /api/v1/public/claim-book`
 
 **Pantallas:** `/libro-reclamaciones`
 
 **Criterios de aceptación:**
 
 1. Formulario público con captcha que reutiliza el servicio de Fase 1 (correlativo por sede, plazo hábil, constancia).
-2. Supuesto / nota: `/public/claims` (15) y `/public/{tenant}/claim-book` (12) son el mismo caso: exponer uno y documentar el alias.
+2. Supuesto / nota: `/public/claims` (15) y `/public/claim-book` (12) son el mismo caso: exponer uno y documentar el alias.
 
 **Pruebas:** Pest 14.
 
-**Depende de:** F1 Libro de Reclamaciones · **Prioridad:** P1
+**Depende de:** F1B-LRC-02 · **Prioridad:** P1
 
 #### F2-WEB-15 · CMS editorial y consumo en el sitio
 
@@ -1517,7 +1517,7 @@ Fuente: 15 completa (salvo reseñas v2.2); 08 §3.6–3.11, §5.2–5.3, §6.3�
 
 **Especificación:** 15 §3.8, §8.4, §6.4 analytics
 
-**Tablas:** `channel_web_events`, `channel_web_funnel_daily`
+**Tablas:** `channel_web_events`, `channel_web_funnel_daily` (objetos nuevos de esta historia: channel_web_funnel_daily; agregarlos a database/ y regenerar el diccionario antes de programar)
 
 **Endpoints:** `POST /api/v1/public/analytics/events`
 
@@ -1649,7 +1649,7 @@ Fuente: 07 §1.1, §3.13–3.19, §4.6–4.8, §5.7–5.9, §6.6–6.8.
 
 **Tablas:** —
 
-**Endpoints:** `GET /api/v1/invoices`, `GET /api/v1/invoices/summary`, `GET /api/v1/invoices/{number}`, `GET /api/v1/receivables/{code}/invoice-draft`, `POST /api/v1/invoices/validate`, `POST /api/v1/invoices`
+**Endpoints:** `GET /api/v1/finance/invoices`, `GET /api/v1/finance/invoices/summary`, `GET /api/v1/finance/invoices/{number}`, `GET /api/v1/finance/receivables/{code}/invoice-draft`, `POST /api/v1/finance/invoices/validate`, `POST /api/v1/finance/invoices`
 
 **Pantallas:** `/finanzas/facturacion`, panel de Contabilidad
 
@@ -1663,7 +1663,7 @@ Fuente: 07 §1.1, §3.13–3.19, §4.6–4.8, §5.7–5.9, §6.6–6.8.
 
 **Pruebas:** Pest T16; Pest T20 (parte); Pest T02 (Contabilidad emite 202).
 
-**Depende de:** F2-FIS-02; F1 CxC · **Prioridad:** P0
+**Depende de:** F2-FIS-02, F1B-FIN-02 · **Prioridad:** P0
 
 #### F2-FIS-04 · Adaptador OSE/PSE con outbox, reintentos y consulta de estado
 
@@ -1673,7 +1673,7 @@ Fuente: 07 §1.1, §3.13–3.19, §4.6–4.8, §5.7–5.9, §6.6–6.8.
 
 **Tablas:** —
 
-**Endpoints:** `POST /api/v1/invoices/{number}/status-check`, `POST /api/v1/integrations/fiscal/{provider}/webhook`
+**Endpoints:** `POST /api/v1/finance/invoices/{number}/status-check`, `POST /api/v1/integrations/fiscal/{provider}/webhook`
 
 **Pantallas:** —
 
@@ -1697,7 +1697,7 @@ Fuente: 07 §1.1, §3.13–3.19, §4.6–4.8, §5.7–5.9, §6.6–6.8.
 
 **Tablas:** —
 
-**Endpoints:** `POST /api/v1/invoices/{number}/resend`, `POST /api/v1/invoices/{number}/deliver`, `GET /api/v1/invoices/{number}/pdf`, `GET /api/v1/invoices/{number}/xml`, `GET /api/v1/invoices/{number}/cdr`
+**Endpoints:** `POST /api/v1/finance/invoices/{number}/resend`, `POST /api/v1/finance/invoices/{number}/deliver`, `GET /api/v1/finance/invoices/{number}/pdf`, `GET /api/v1/finance/invoices/{number}/xml`, `GET /api/v1/finance/invoices/{number}/cdr`
 
 **Pantallas:** `/finanzas/facturacion/[number]`
 
@@ -1762,7 +1762,7 @@ Fuente: 07 §1.1, §3.13–3.19, §4.6–4.8, §5.7–5.9, §6.6–6.8.
 
 **Tablas:** —
 
-**Endpoints:** `POST /api/v1/invoices/{number}/void`
+**Endpoints:** `POST /api/v1/finance/invoices/{number}/void`
 
 **Pantallas:** —
 
@@ -1782,7 +1782,7 @@ Fuente: 07 §1.1, §3.13–3.19, §4.6–4.8, §5.7–5.9, §6.6–6.8.
 
 **Tablas:** `fin_bank_statements`, `fin_bank_lines`, `fin_reconciliation_closures`
 
-**Endpoints:** `GET /api/v1/bank-lines`, `POST /api/v1/bank-statements`, `POST /api/v1/reconciliation/matching`, `POST /api/v1/bank-lines/{code}/confirm`, `POST /api/v1/bank-lines/{code}/reject`, `POST /api/v1/bank-lines/{code}/resolve`, `GET /api/v1/reconciliation/closures`, `POST /api/v1/reconciliation/closures`
+**Endpoints:** `GET /api/v1/finance/bank-lines`, `POST /api/v1/finance/bank-statements`, `POST /api/v1/finance/reconciliation/matching`, `POST /api/v1/finance/bank-lines/{code}/confirm`, `POST /api/v1/finance/bank-lines/{code}/reject`, `POST /api/v1/finance/bank-lines/{code}/resolve`, `GET /api/v1/finance/reconciliation/closures`, `POST /api/v1/finance/reconciliation/closures`
 
 **Pantallas:** `/finanzas/conciliacion`
 
@@ -1796,7 +1796,7 @@ Fuente: 07 §1.1, §3.13–3.19, §4.6–4.8, §5.7–5.9, §6.6–6.8.
 
 **Pruebas:** Pest T19; Playwright FIN-E2E-A, FIN-E2E-D.
 
-**Depende de:** F1 pagos y CxP · **Prioridad:** P1
+**Depende de:** F1B-FIN-03, F1B-FIN-04 · **Prioridad:** P1
 
 #### F2-FIS-10 · Cierre contable de periodo
 
@@ -1806,7 +1806,7 @@ Fuente: 07 §1.1, §3.13–3.19, §4.6–4.8, §5.7–5.9, §6.6–6.8.
 
 **Tablas:** `fin_period_closes`, `fin_period_close_checks`
 
-**Endpoints:** `GET /api/v1/dashboards/accounting`, `GET /api/v1/period-closes/{period}`, `PUT /api/v1/period-closes/{period}/checks/{check}`, `DELETE /api/v1/period-closes/{period}/checks/{check}`, `POST /api/v1/period-closes/{period}/close`
+**Endpoints:** `GET /api/v1/finance/dashboards/accounting`, `GET /api/v1/finance/period-closes/{period}`, `PUT /api/v1/finance/period-closes/{period}/checks/{check}`, `DELETE /api/v1/finance/period-closes/{period}/checks/{check}`, `POST /api/v1/finance/period-closes/{period}/close`
 
 **Pantallas:** Panel de Contabilidad › Cierre de periodo
 
@@ -1987,7 +1987,7 @@ Fuente: 16 completa; 17 §3.1–3.6, §3.8 (sin reseñas externas).
 
 **Tablas:** `catalog_pickup_points`
 
-**Endpoints:** `GET /api/v1/catalog/products/{id}/pickup`, `PUT /api/v1/catalog/products/{id}/pickup`, `POST /api/v1/operations/rooming/prefill`
+**Endpoints:** `GET /api/v1/catalog/products/{id}/pickup`, `PUT /api/v1/catalog/products/{id}/pickup`, `POST /api/v1/ops/rooming/prefill`
 
 **Pantallas:** `/catalogo/productos/[code]/reservas/recojo`; `/operaciones/ordenes/[code]`; `/operaciones/rooming/[reservationCode]`
 
@@ -1999,7 +1999,7 @@ Fuente: 16 completa; 17 §3.1–3.6, §3.8 (sin reseñas externas).
 
 **Pruebas:** Pest: prefill dos veces no duplica listas; Pest: rooming excluye INF de la capacidad.
 
-**Depende de:** F2-MOT-10; F1B-OPS-07 · **Prioridad:** P1
+**Depende de:** F2-MOT-10, F1B-OPS-07 · **Prioridad:** P1
 
 #### F2-MOT-08 · Ajustes de precio configurables y quitar ítems en la previsualización
 
@@ -2050,7 +2050,7 @@ Fuente: 16 completa; 17 §3.1–3.6, §3.8 (sin reseñas externas).
 
 **Especificación:** 16 §3.9; 15 §3.14
 
-**Tablas:** `booking_reservations` (booking jsonb), `booking_lodging_rooms`, `booking_addons`, `booking_passengers` (relationship, age, …), `fin_receivables` (kind)
+**Tablas:** `booking_reservations` (booking jsonb), `booking_reservation_web_lodging`, `booking_reservation_web_addons`, `booking_passengers` (relationship, age, …), `fin_receivables` (kind)
 
 **Endpoints:** —
 
@@ -2110,7 +2110,7 @@ Fuente: 16 completa; 17 §3.1–3.6, §3.8 (sin reseñas externas).
 
 **Pruebas:** Pest 17 §10 #7 (MSG-01).
 
-**Depende de:** F0 notificaciones · **Prioridad:** P1
+**Depende de:** F0-29 · **Prioridad:** P1
 
 #### F2-MOT-13 · Programación, envío y acuses de mensajes al pasajero
 
@@ -2204,7 +2204,7 @@ Fuente: 10 §3.1–3.5, §4.1, §4.3, APR-BR, §6.
 
 **Pruebas:** Pest 10 §10 #13.
 
-**Depende de:** F0 IAM · **Prioridad:** P1
+**Depende de:** F0-16, F0-17 · **Prioridad:** P1
 
 #### F2-APR-02 · Solicitudes de aprobación y enrutamiento desde los módulos
 
@@ -2226,7 +2226,7 @@ Fuente: 10 §3.1–3.5, §4.1, §4.3, APR-BR, §6.
 
 **Pruebas:** Pest 10 §10 #1, #2.
 
-**Depende de:** F2-APR-01; F1 cotizaciones, reservas, pagos, CxP, comisiones · **Prioridad:** P1
+**Depende de:** F2-APR-01, F1B-COT-05, F1B-RES-08, F1B-FIN-03, F1B-FIN-04, F1B-FIN-06 · **Prioridad:** P1
 
 #### F2-APR-03 · Decisión por niveles y ejecución del efecto en el origen
 
@@ -2319,7 +2319,7 @@ Fuente: 10 §3.6–3.11, §4.2, INB-BR, §6.
 
 **Pruebas:** Pest: transición inválida → 409.
 
-**Depende de:** F0 · **Prioridad:** P1
+**Depende de:** F0-48 · **Prioridad:** P1
 
 #### F2-INB-02 · Ingesta de canales: WhatsApp, email, formulario, chat web y tickets
 
@@ -2406,7 +2406,7 @@ Fuente: 10 §3.6–3.11, §4.2, INB-BR, §6.
 
 **Pruebas:** Pest 10 §10 #18.
 
-**Depende de:** F2-INB-04; F1 CRM · **Prioridad:** P1
+**Depende de:** F2-INB-04, F1A-CRM-16 · **Prioridad:** P1
 
 #### F2-INB-06 · Pantalla del inbox en tres columnas con tiempo real
 
@@ -2472,7 +2472,7 @@ Fuente: 11 completa.
 
 **Pruebas:** Pest 11 §10 #1, #2, #4.
 
-**Depende de:** F1 catálogo y proveedores · **Prioridad:** P1
+**Depende de:** F1A-CAT-05, F1A-CAT-25 · **Prioridad:** P1
 
 #### F2-CUP-02 · Consumo derivado de las reservas
 
@@ -2494,7 +2494,7 @@ Fuente: 11 completa.
 
 **Pruebas:** Pest 11 §10 #6.
 
-**Depende de:** F2-CUP-01; F1 reservas · **Prioridad:** P1
+**Depende de:** F2-CUP-01, F1B-RES-04 · **Prioridad:** P1
 
 #### F2-CUP-03 · Liberación, retención, penalidades y job de release
 
@@ -2516,7 +2516,7 @@ Fuente: 11 completa.
 
 **Pruebas:** Pest 11 §10 #5, #7.
 
-**Depende de:** F2-CUP-02; F1 CxP · **Prioridad:** P1
+**Depende de:** F2-CUP-02, F1B-FIN-04 · **Prioridad:** P1
 
 #### F2-CUP-04 · Ampliaciones de cupo
 
@@ -2581,7 +2581,7 @@ Fuente: 11 completa.
 
 **Pruebas:** Pest 11 §10 #1, #3.
 
-**Depende de:** F1 reservas · **Prioridad:** P1
+**Depende de:** F1B-RES-06 · **Prioridad:** P1
 
 #### F2-DOC-02 · Carga, validación y observación de documentos
 
@@ -2689,7 +2689,7 @@ Fuente: 12 §3.1–3.9, §4, TES-BR, §6 (sin Libro de Reclamaciones).
 
 **Pruebas:** Pest 12 §10 #1, #2.
 
-**Depende de:** F1 finanzas · **Prioridad:** P1
+**Depende de:** F1B-FIN-03 · **Prioridad:** P1
 
 #### F2-TES-02 · Sincronización idempotente con pagos y CxP
 
@@ -2944,7 +2944,7 @@ Fuente: 03-PLAN §2 (criterio de salida Fase 2).
 
 **Pruebas:** E2E-08 extendido; Barrido responsive.
 
-**Depende de:** Todas las épicas · **Prioridad:** P0
+**Depende de:** F2-MOV-17, F2-PAX-09, F2-B2B-10, F2-EXT-11, F2-WEB-19, F2-FIS-11, F2-MOT-15, F2-APR-05, F2-INB-07, F2-CUP-06, F2-TES-10, F2-CIE-02 (última historia de cada épica de la Fase 2) · **Prioridad:** P0
 
 ## Definición de terminado (toda historia)
 

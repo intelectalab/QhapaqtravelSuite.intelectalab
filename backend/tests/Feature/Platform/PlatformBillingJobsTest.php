@@ -1,5 +1,7 @@
 <?php
 
+use App\Domain\Platform\Support\ReadOnlyWindow;
+use App\Domain\Platform\Support\UsageMeter;
 use App\Jobs\CloseTrials;
 use App\Jobs\ConsolidateUsage;
 use App\Jobs\ExpireApiKeys;
@@ -7,6 +9,7 @@ use App\Jobs\PurgeWebhookDeliveries;
 use App\Jobs\RenewSubscriptions;
 use App\Jobs\WarnExpiringCards;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -112,13 +115,19 @@ it('PLT-01 con la tarjeta rechazada deja la factura en cobranza y la suscripció
         ->and(subscriptionOfA()->status)->toBe('past_due');
 });
 
-it('PLT-01 cierra la suscripción con cancelación programada y suspende la agencia', function () {
+it('PLT-01 cierra la suscripción con cancelación programada: 30 días de solo lectura y luego suspende', function () {
     endPeriodYesterday(['status' => 'cancel_scheduled']);
 
     $result = runPlatformJob(RenewSubscriptions::class);
 
     expect($result)->toBe('1 cancelación aplicada')
         ->and(subscriptionOfA()->status)->toBe('canceled')
+        ->and(platformDb()->table('tenants')->where('id', tenantA()->getKey())->value('status'))->not->toBe('suspendido')
+        ->and(ReadOnlyWindow::until((string) tenantA()->getKey(), Carbon::parse('2026-09-29')))->toBe(Carbon::parse(subscriptionOfA()->current_period_end)->addDays(30)->toDateString());
+
+    platformDb()->table('subscriptions')->where('tenant_id', tenantA()->getKey())->update(['current_period_start' => '2026-07-01', 'current_period_end' => '2026-08-01']);
+
+    expect(runPlatformJob(RenewSubscriptions::class))->toBe('1 cuenta cancelada cerrada tras la solo lectura')
         ->and(platformDb()->table('tenants')->where('id', tenantA()->getKey())->value('status'))->toBe('suspendido');
 });
 
@@ -130,8 +139,37 @@ it('PLT-03 avisa a 3 días del fin de la prueba y suspende la prueba vencida sin
     platformDb()->table('subscriptions')->where('tenant_id', tenantA()->getKey())->update(['trial_ends_at' => '2026-09-28']);
     platformDb()->table('payment_methods')->where('tenant_id', tenantA()->getKey())->update(['status' => 'removed']);
 
-    expect(runPlatformJob(CloseTrials::class))->toBe('1 agencia suspendida sin tarjeta')
+    expect(runPlatformJob(CloseTrials::class))->toBe('1 prueba en solo lectura sin tarjeta')
         ->and(subscriptionOfA()->status)->toBe('suspended')
+        ->and(platformDb()->table('tenants')->where('id', tenantA()->getKey())->value('status'))->not->toBe('suspendido');
+
+    platformDb()->table('subscriptions')->where('tenant_id', tenantA()->getKey())->update(['trial_ends_at' => '2026-09-01']);
+
+    expect(runPlatformJob(CloseTrials::class))->toBe('1 agencia suspendida sin tarjeta')
+        ->and(platformDb()->table('tenants')->where('id', tenantA()->getKey())->value('status'))->toBe('suspendido');
+});
+
+it('SUB-BR prueba vencida sin tarjeta: la agencia entra, consulta y puede pagar, pero no opera', function () {
+    platformDb()->table('subscriptions')->where('tenant_id', tenantA()->getKey())->update(['status' => 'suspended', 'trial_ends_at' => Carbon::today('America/Lima')->subDays(2)->toDateString()]);
+    actingAsSeed('U01');
+
+    $this->getJson('/api/v1/crm/claim-book')->assertOk();
+    expect($this->getJson('/api/v1/me')->json('data.read_only'))->toBe(['until' => Carbon::today('America/Lima')->addDays(5)->toDateString(), 'reason' => 'trial']);
+    expect($this->postJson('/api/v1/crm/claim-book', ['sede_id' => 'x'], critical()))->toBeApiError(403, 'TENANT_READ_ONLY');
+    expect($this->postJson('/api/v1/billing/payment-methods/setup-intent', [], critical())->json('error.code'))->not->toBe('TENANT_READ_ONLY');
+
+    platformDb()->table('subscriptions')->where('tenant_id', tenantA()->getKey())->update(['status' => 'active']);
+    expect($this->postJson('/api/v1/crm/claim-book', ['sede_id' => 'x'], critical())->json('error.code'))->not->toBe('TENANT_READ_ONLY')
+        ->and($this->getJson('/api/v1/me')->json('data.read_only'))->toBeNull();
+});
+
+it('SUB-BR prueba vencida sin tarjeta: al terminar los 7 días de solo lectura la suscripción pasa a cancelada y la agencia queda suspendida', function () {
+    platformDb()->table('payment_methods')->where('tenant_id', tenantA()->getKey())->delete();
+    platformDb()->table('subscriptions')->where('tenant_id', tenantA()->getKey())->update(['status' => 'suspended', 'trial_ends_at' => Carbon::today('America/Lima')->subDays(10)->toDateString()]);
+
+    runPlatformJob(CloseTrials::class);
+
+    expect(subscriptionOfA()->status)->toBe('canceled')
         ->and(platformDb()->table('tenants')->where('id', tenantA()->getKey())->value('status'))->toBe('suspendido');
 });
 
@@ -158,14 +196,17 @@ it('PLT-04 marca la tarjeta vencida y avisa de la que vence en 30 días', functi
 
 it('PLT-05 consolida el uso del mes y avisa una sola vez al pasar el 80 %', function () {
     $tenant = (string) tenantA()->getKey();
-    $limit = (int) platformDb()->table('plan_limits')->where('plan_id', platformDb()->table('tenants')->where('id', $tenant)->value('plan_id'))->where('metric', 'reservations_month')->value('value');
-    platformDb()->table('usage_counters')->where('tenant_id', $tenant)->where('metric', 'reservations_month')->delete();
-    platformDb()->table('usage_counters')->insert([['tenant_id' => $tenant, 'metric' => 'reservations_month', 'day' => '2026-09-10', 'value' => intdiv($limit * 50, 100)], ['tenant_id' => $tenant, 'metric' => 'reservations_month', 'day' => '2026-09-20', 'value' => intdiv($limit * 35, 100)]]);
+    $limit = (int) platformDb()->table('plan_limits')->where('plan_id', platformDb()->table('tenants')->where('id', $tenant)->value('plan_id'))->where('metric', 'email_month')->value('value');
+    platformDb()->table('usage_counters')->where('tenant_id', $tenant)->where('metric', 'email_month')->delete();
+    platformDb()->table('usage_events')->where('tenant_id', $tenant)->where('metric', 'email_month')->delete();
+    platformDb()->table('usage_counters')->insert(['tenant_id' => $tenant, 'metric' => 'email_month', 'day' => '2026-09-10', 'value' => intdiv($limit * 50, 100)]);
+    UsageMeter::record($tenant, 'email_month', intdiv($limit * 35, 100));
+    platformDb()->table('usage_events')->where('tenant_id', $tenant)->where('metric', 'email_month')->update(['day' => '2026-09-20']);
     platformDb()->table('usage_monthly')->where('tenant_id', $tenant)->where('month', '2026-09-01')->delete();
 
     $first = runPlatformJob(ConsolidateUsage::class);
     $second = runPlatformJob(ConsolidateUsage::class);
-    $row = platformDb()->table('usage_monthly')->where('tenant_id', $tenant)->where('metric', 'reservations_month')->where('month', '2026-09-01')->first();
+    $row = platformDb()->table('usage_monthly')->where('tenant_id', $tenant)->where('metric', 'email_month')->where('month', '2026-09-01')->first();
 
     expect($first)->toContain('1 aviso de límite')
         ->and($second)->not->toContain('aviso de límite')
@@ -173,6 +214,18 @@ it('PLT-05 consolida el uso del mes y avisa una sola vez al pasar el 80 %', func
         ->and((int) $row->limit_value)->toBe($limit)
         ->and($row->alert_80_sent_at)->not->toBeNull()
         ->and($row->alert_100_sent_at)->toBeNull();
+});
+
+it('SUB-BR-05 la consolidación mide el almacenamiento real y las reservas del mes', function () {
+    $tenant = (string) tenantA()->getKey();
+    $bytes = collect(UsageMeter::STORAGE_TABLES)->sum(fn (string $table): int => (int) platformDb()->table($table)->where('tenant_id', $tenant)->sum('size_bytes'));
+    platformDb()->table('tenants')->where('id', $tenant)->update(['storage_used_bytes' => 1]);
+
+    runPlatformJob(ConsolidateUsage::class);
+
+    $reservations = (int) platformDb()->table('booking_reservations')->where('tenant_id', $tenant)->whereNull('deleted_at')->where('created_at', '>=', '2026-09-01')->where('created_at', '<', '2026-10-01')->count();
+    expect((int) platformDb()->table('tenants')->where('id', $tenant)->value('storage_used_bytes'))->toBe($bytes)
+        ->and((int) platformDb()->table('usage_monthly')->where('tenant_id', $tenant)->where('metric', 'reservations_month')->where('month', '2026-09-01')->value('value'))->toBe($reservations);
 });
 
 it('PLT-07 vence la llave de API con fecha cumplida', function () {

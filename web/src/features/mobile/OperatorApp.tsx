@@ -89,7 +89,7 @@ export function OperatorSide({ preview }: { preview: OperatorPreview }) {
       <section className="grid gap-3 sm:grid-cols-2">
         <TintTile icon={ListChecks} tone="t1" label="Servicios del día" value={preview.kpis.services} note={`${preview.kpis.pax} pasajeros en campo`} />
         <TintTile icon={User} tone="violet" label="Con guía o conductor" value={`${preview.kpis.assigned} de ${preview.kpis.services}`} note={preview.kpis.services - preview.kpis.assigned > 0 ? "Hay servicios por asignar" : "Todo asignado"} />
-        <TintTile icon={CircleCheck} tone="ok" label="Confirmados en la app" value={preview.kpis.confirmed} note={`${preview.kpis.done} completados`} />
+        <TintTile icon={CircleCheck} tone="ok" label="Confirmados" value={preview.kpis.confirmed} note={`${preview.kpis.done} completados`} />
         <TintTile icon={Smartphone} tone="sun" label="Equipos activos" value={preview.devices.active} note={preview.devices.last_sync_at ? `Última sincronización ${formatDateTime(preview.devices.last_sync_at, false)}` : "Ninguno ha sincronizado"} />
       </section>
       <Card>

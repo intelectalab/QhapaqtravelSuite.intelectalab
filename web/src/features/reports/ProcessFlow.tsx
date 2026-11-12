@@ -67,7 +67,7 @@ function Connector({ label }: { label: string | null }) {
 export function ProcessFlow({ data }: { data: ProcessMapData }) {
   const rates: (string | null)[] = [
     `${data.conversion.lead_to_opportunity} %`,
-    data.conversion.opportunity_win !== null ? `${data.conversion.opportunity_win} %` : null,
+    data.conversion.opportunity_to_quote != null ? `${data.conversion.opportunity_to_quote} %` : null,
     data.conversion.quote_to_reservation !== null ? `${data.conversion.quote_to_reservation} %` : null,
     null,
     null,

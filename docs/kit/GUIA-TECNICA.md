@@ -71,7 +71,7 @@ flowchart LR
 |---|---|---|
 | Repositorios | `backend/` (Laravel), `web/` (Next.js, todas las experiencias y el sitio), `mobile/` (Expo, dos apps), `docs/` (specs + kit) | `02-ARQUITECTURA.md` §2 · [`00-LEEME-KIT.md`](00-LEEME-KIT.md) §2 |
 | Backend | `app/Domain/{Shared,Iam,Platform,Crm,Catalog,Quotes,Bookings,Operations,Finance,Channels,Collaboration,Marketing,Supplier,Integrations}` con `Models/ Actions/ StateMachines/ Policies/ Http/ Events/ Listeners/ Jobs/ Data/` | [`claude/backend/CLAUDE.md`](claude/backend/CLAUDE.md) |
-| Base de datos | Una base, esquema compartido, `tenant_id` + RLS con `FORCE` en 230 tablas; 262 tablas en total | [`database/README.md`](database/README.md) |
+| Base de datos | Una base, esquema compartido, `tenant_id` + RLS con `FORCE` en 279 tablas; 327 tablas en total | [`database/README.md`](database/README.md) |
 | Contrato | OpenAPI 3.1 generado desde las specs; el código se compara con él en CI (Scramble + `compare_contract.py`) | [`api/README.md`](api/README.md) §3 |
 | Frontend | Next.js App Router; el navegador habla con un BFF; tipos generados del contrato | §11 de esta guía |
 | Móvil | Expo + expo-sqlite + outbox idempotente | §12 |
@@ -96,8 +96,9 @@ sequenceDiagram
   B->>F: POST /bff/api/v1/quotes/{id}/convert (Idempotency-Key, If-Match)
   F->>M: + Authorization: Bearer (cookie httpOnly)
   M->>M: X-Request-Id → correlation_id
-  M->>M: auth:sanctum → ResolveTenant (token / host)
+  M->>M: ResolveTenant (app_resolve_access_token / host)
   M->>P: BEGIN + select app_set_tenant(tenant)
+  M->>M: auth:sanctum (token y usuario bajo RLS)
   M->>R: Idempotency-Key ya completada? → repetir respuesta
   M->>C: permission:reservations.create → binding (scope + RLS)
   C->>C: Policy: ownership de Ventas (SEC-BR-09)
@@ -136,10 +137,10 @@ Doble barrera: Eloquent filtra por tenant **y** PostgreSQL vuelve a filtrar con 
 
 | # | Qué hacer | Cómo | Archivo |
 |---|---|---|---|
-| 1 | Resolver el tenant | Del token Sanctum (`personal_access_tokens.tenant_id`, tabla sin RLS a propósito, C-08) o del host con `app_resolve_tenant_by_host()`. Nunca de `X-Tenant-Id`, `?tenant=` ni del cuerpo; si llegan distintos → 403 `TENANT_SCOPE_VIOLATION`. | `ResolveTenant.php` |
+| 1 | Resolver el tenant | Del token Bearer con la función `app_resolve_access_token(hash)` (C-08 v2.5: `personal_access_tokens` tiene RLS, así que `ResolveTenant` y `SetPostgresTenant` van antes de `auth:sanctum`) o del host con `app_resolve_tenant_by_host()`. Nunca de `X-Tenant-Id`, `?tenant=` ni del cuerpo; si llegan distintos → 403 `TENANT_SCOPE_VIOLATION`. | `ResolveTenant.php` |
 | 2 | Fijarlo en PostgreSQL | `BEGIN; select app_set_tenant('<uuid>')` (= `set_config('app.tenant_id', …, true)`, es decir `SET LOCAL`). Nunca `SET` sin `LOCAL`: el valor quedaría en la conexión y lo heredaría la siguiente solicitud (PgBouncer, Octane). | `SetPostgresTenant.php`, `TenantDatabase.php` |
 | 3 | Modelos | `use BelongsToTenant;` en TODO modelo de negocio: global scope + `tenant_id` asignado en `creating` (y protegido contra asignación masiva). | `BelongsToTenant.php`, `TenantScope.php` |
-| 4 | Validaciones `exists` | `Rule::exists(Model::class)` pasa por el global scope; las FKs de SQL no impiden apuntar al id de otro tenant (database/README §5). | FormRequest |
+| 4 | Validaciones `exists` | `Rule::exists(Model::class)` pasa por el global scope; desde v2.5 las FKs son compuestas `(tenant_id, col)` y la BD también rechaza apuntar al id de otro tenant (database/README §5), pero la validación debe dar 422 antes de llegar al 23503. | FormRequest |
 | 5 | Jobs y listeners | `TenantAware::captureTenant()` al despachar; middleware `RestoreTenantContext` abre transacción y fija el tenant. Listeners en cola: pasar el tenant al construir el middleware. | `Tenancy/Jobs/*`, `NotifyReservationConfirmed.php` |
 | 6 | Scheduler multi-tenant | Un job coordinador con la conexión `pgsql_platform` recorre `tenants` y despacha **un job por tenant**. | 02-ARQUITECTURA §4 |
 | 7 | Caché, locks, contadores | Prefijo `t:{tenant_id}:` (`TenantContext::key()`). | `TenantContext.php` |

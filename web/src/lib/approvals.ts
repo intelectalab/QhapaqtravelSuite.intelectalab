@@ -56,6 +56,7 @@ export interface ApprovalItem {
   is_generic?: boolean;
   can_decide: boolean;
   can_edit: boolean;
+  can_withdraw?: boolean;
   can_delegate: boolean;
   can_ask: boolean;
   can_answer: boolean;

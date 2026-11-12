@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Clock, Loader2, Lock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Loader2, Lock, Mountain } from "lucide-react";
 import { useActionState, useCallback, useMemo, useState, useTransition } from "react";
 import { placeOrder, validateCheckoutStep } from "@/app/(sitio)/sitio/[agencia]/actions";
 import { Captcha } from "@/components/ui/Captcha";
@@ -53,7 +53,8 @@ export function CheckoutWizard({ terms, walletPhone, cart }: { terms: CheckoutTe
   const [buyerTravels, setBuyerTravels] = useState(true);
   const [travelers, setTravelers] = useState<Traveler[]>(() => travelerTypes.map(() => emptyTraveler()));
   const [lines, setLines] = useState<Line[]>(() => terms.items.map((item) => ({ line: item.line, pickup_point: "", pickup_address: "", pickup_flight: "", pickup_arrival: "", comments: "" })));
-  const [consents, setConsents] = useState({ terms: false, privacy: false, marketing: false });
+  const [consents, setConsents] = useState({ terms: false, privacy: false, marketing: false, altitude_accepted: false });
+  const altitude = terms.altitude ?? [];
   const [mode, setMode] = useState<string>(terms.modes[0]?.value ?? "total");
   const [payment, setPayment] = useState<PaymentValue>({ method: "tarjeta", ready: false });
   const [state, action, pending] = useActionState(placeOrder.bind(null, agencia), IDLE);
@@ -84,8 +85,13 @@ export function CheckoutWizard({ terms, walletPhone, cart }: { terms: CheckoutTe
   const next = () => {
     const key = keys[step];
     if (key === "revision") {
-      if (!consents.terms || !consents.privacy) {
-        setErrors({ terms: consents.terms ? "" : "Debes aceptar los términos y las políticas de cancelación.", privacy: consents.privacy ? "" : "Debes autorizar el tratamiento de tus datos." });
+      const altitudeMissing = altitude.length > 0 && !consents.altitude_accepted;
+      if (!consents.terms || !consents.privacy || altitudeMissing) {
+        setErrors({
+          terms: consents.terms ? "" : "Debes aceptar los términos y las políticas de cancelación.",
+          privacy: consents.privacy ? "" : "Debes autorizar el tratamiento de tus datos.",
+          altitude_accepted: altitudeMissing ? "Debes aceptar la declaración para viajes de altura." : "",
+        });
         return;
       }
       setErrors({});
@@ -279,6 +285,28 @@ export function CheckoutWizard({ terms, walletPhone, cart }: { terms: CheckoutTe
             <CheckBox name="privacy" defaultChecked={consents.privacy} onChange={(checked) => setConsents((current) => ({ ...current, privacy: checked }))} error={allErrors.privacy || undefined} label={<>Autorizo a <b className="font-semibold text-fg">{agencyName}</b> a tratar mis datos para gestionar la reserva, incluida su transferencia a los proveedores del servicio (Ley 29733).</>} />
             <CheckBox name="marketing" defaultChecked={consents.marketing} onChange={(checked) => setConsents((current) => ({ ...current, marketing: checked }))} label="Quiero recibir novedades y ofertas por correo (opcional)." />
           </Panel>
+          {altitude.length > 0 && (
+            <Panel title="Declaración para viajes de altura">
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {altitude.map((item) => (
+                  <li key={item.product} className="flex items-center gap-3 rounded-xl bg-surface-2 px-3.5 py-2.5">
+                    <Mountain size={18} className="flex-none text-t3" />
+                    <span className="min-w-0 text-[12.5px] text-fg-2">
+                      <b className="block truncate text-[13px] text-fg">{item.product}</b>
+                      Hasta {item.max_altitude.toLocaleString("es-PE")} m s. n. m.
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <CheckBox
+                name="altitude_accepted"
+                defaultChecked={consents.altitude_accepted}
+                onChange={(checked) => setConsents((current) => ({ ...current, altitude_accepted: checked }))}
+                error={allErrors.altitude_accepted || undefined}
+                label="Declaro que los viajeros conocen la altitud de este itinerario, que consultaron a su médico y que no tienen una condición que les impida viajar a esa altura."
+              />
+            </Panel>
+          )}
         </>
       )}
 

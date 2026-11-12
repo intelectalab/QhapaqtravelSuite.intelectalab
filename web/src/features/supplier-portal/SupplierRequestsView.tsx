@@ -100,7 +100,8 @@ export function SupplierRequestsView({ data, contact }: { data: SupplierRequests
     { id: "pending", label: "Por responder", icon: <Hourglass size={16} />, tone: "warn", matches: (row) => row.state === "por_responder" },
     { id: "overdue", label: "Fuera de plazo", icon: <AlarmClock size={16} />, tone: "bad", matches: (row) => row.state === "por_responder" && row.overdue },
     { id: "confirmed", label: "Confirmados", icon: <CheckCircle2 size={16} />, tone: "ok", matches: (row) => ["confirmado", "en_curso", "completado"].includes(row.state) },
-    { id: "rejected", label: "Rechazados", icon: <XCircle size={16} />, tone: "mute", matches: (row) => row.state === "rechazado" || row.state === "cancelado" },
+    { id: "rejected", label: "Rechazados", icon: <XCircle size={16} />, tone: "mute", matches: (row) => row.state === "rechazado" },
+    { id: "cancelled", label: "Cancelados por la agencia", icon: <XCircle size={16} />, tone: "bad", matches: (row) => row.state === "cancelado" },
   ];
 
   const states = [...new Set(data.rows.map((row) => row.state))];

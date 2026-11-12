@@ -4,7 +4,9 @@
  *
  * - Reenvía método, cuerpo y SOLO los headers permitidos (Idempotency-Key, If-Match, X-Request-Id, Accept-Language).
  * - Solo rutas /api/v1/*; cualquier otra → 404 (no es un proxy abierto: evita SSRF).
- * - CSRF: el BFF solo acepta solicitudes del mismo origen (header Origin = host) en métodos que escriben.
+ * - CSRF: en métodos que escriben, el header Origin es obligatorio y debe coincidir con el host (sin Origin → 403).
+ * - Path traversal: se rechazan segmentos `..`, `.`, vacíos o con separadores codificados, y se comprueba que el
+ *   destino final siga bajo /api/v1/ del API interno.
  * - Los Server Components NO pasan por aquí: usan serverApi() directo a la API interna.
  */
 import { cookies, headers } from "next/headers";
@@ -16,18 +18,34 @@ const FORWARD_RESPONSE_HEADERS = ["content-type", "etag", "x-request-id", "retry
 
 async function proxy(req: NextRequest, ctx: { params: Promise<{ path: string[] }> }): Promise<Response> {
   const { path } = await ctx.params;
-  if (path[0] !== "api" || path[1] !== "v1") return NextResponse.json({ error: "RESOURCE_NOT_FOUND" }, { status: 404 });
+  // Segmentos ya decodificados por Next.js: rechazar "..", ".", vacíos y separadores codificados (%2F, %5C)
+  // para que el destino no salga de /api/v1 al normalizar la URL (path traversal hacia /horizon, /up, etc.).
+  const unsafe = path.some((s) => s === "" || s === "." || s === ".." || s.includes("/") || s.includes("\\"));
+  if (unsafe || path[0] !== "api" || path[1] !== "v1") {
+    return NextResponse.json({ error: "RESOURCE_NOT_FOUND" }, { status: 404 });
+  }
 
   if (req.method !== "GET" && req.method !== "HEAD") {
+    // CSRF: en métodos que escriben, Origin es OBLIGATORIO y debe ser el mismo host (antes se aceptaba sin Origin).
     const origin = req.headers.get("origin");
     const host = (await headers()).get("host");
-    if (origin && host && new URL(origin).host !== host) {
+    let sameOrigin = false;
+    try {
+      sameOrigin = origin !== null && host !== null && new URL(origin).host === host;
+    } catch {
+      sameOrigin = false;
+    }
+    if (!sameOrigin) {
       return NextResponse.json({ error: "FORBIDDEN", message: "Origen no permitido." }, { status: 403 });
     }
   }
 
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  const target = new URL(`/${path.join("/")}${req.nextUrl.search}`, process.env.API_INTERNAL_URL ?? "http://localhost:8000");
+  const base = process.env.API_INTERNAL_URL ?? "http://localhost:8000";
+  const target = new URL(`/${path.map(encodeURIComponent).join("/")}${req.nextUrl.search}`, base);
+  if (!target.pathname.startsWith("/api/v1/") || target.origin !== new URL(base).origin) {
+    return NextResponse.json({ error: "RESOURCE_NOT_FOUND" }, { status: 404 });
+  }
 
   const forward = new Headers();
   for (const h of FORWARD_REQUEST_HEADERS) {

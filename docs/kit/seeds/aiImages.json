@@ -1,0 +1,48 @@
+[
+  {
+    "id": "IMG-0014",
+    "jobId": "IAC-0043",
+    "alt": "Viajeros en el camino inca al amanecer con nevados al fondo",
+    "style": "fotografico",
+    "hd": true,
+    "status": "en_uso",
+    "usedIn": [
+      "Banner de inicio"
+    ],
+    "hue": 18,
+    "credits": 2
+  },
+  {
+    "id": "IMG-0015",
+    "jobId": "IAC-0043",
+    "alt": "Grupo de caminantes en un sendero andino con luz cálida",
+    "style": "fotografico",
+    "hd": true,
+    "status": "generada",
+    "usedIn": [],
+    "hue": 32,
+    "credits": 2
+  },
+  {
+    "id": "IMG-0016",
+    "jobId": "IAC-0043",
+    "alt": "Vista amplia de montañas nevadas y un sendero de piedra",
+    "style": "fotografico",
+    "hd": false,
+    "status": "generada",
+    "usedIn": [],
+    "hue": 205,
+    "credits": 1
+  },
+  {
+    "id": "IMG-0017",
+    "jobId": "IAC-0043",
+    "alt": "Silueta de viajeros contra el cielo naranja del amanecer",
+    "style": "fotografico",
+    "hd": false,
+    "status": "descartada",
+    "usedIn": [],
+    "hue": 350,
+    "credits": 1
+  }
+]

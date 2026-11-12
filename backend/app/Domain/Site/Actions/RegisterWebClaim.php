@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\Site\Actions;
 
+use App\Domain\Admin\Support\StaffNotices;
 use App\Domain\Crm\Support\BusinessDays;
 use App\Domain\Crm\Support\ClaimBookDirectory;
 use App\Domain\Crm\Support\ClaimConsumer;
+use App\Domain\Crm\Support\ClaimNotices;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -25,6 +27,7 @@ final class RegisterWebClaim
         private readonly BusinessDays $days,
         private readonly ClaimBookDirectory $directory,
         private readonly AuditLogger $audit,
+        private readonly ClaimNotices $notices,
     ) {}
 
     public function handle(array $data): array
@@ -88,6 +91,8 @@ final class RegisterWebClaim
             'message' => "Hoja registrada en el sitio web ({$sede->name})".(($data['is_minor'] ?? false) ? " · menor de edad, apoderado {$data['guardian_name']} ({$data['guardian_relation']})" : '').". El consumidor aceptó recibir la respuesta en {$email}; constancia enviada",
         ]);
         $this->audit->log('Libro de reclamaciones', $number, 'registrar', null, "{$data['type']} · web");
+        $this->notices->acknowledge($id);
+        app(StaffNotices::class)->toRoles(['manager', 'tenant_admin'], 'reclamacion.nueva', "{$number} · nueva hoja del Libro de Reclamaciones", "Registrada desde el sitio web ({$sede->name}). Plazo de respuesta: {$due}.", 'crm_case', $id, null, [$owner]);
 
         return ['number' => $number, 'received_at' => $now->toIso8601String(), 'due_date' => $due, 'response_days' => $responseDays, 'email' => $email, 'sede' => $sede->name];
     }

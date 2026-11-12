@@ -330,7 +330,7 @@ La multiplicidad por carrito: la modalidad de pago ofrecida es la **intersecció
 
 ## 6. API REST
 
-Namespace público `/api/v1/public/*`: sin Sanctum de usuario; tenant por `Host`; **rate limit** (Redis) por IP y por token de carrito; CORS solo para dominios del tenant; respuestas cacheables con `Cache-Control` + `ETag` y tags de cache por producto. Operaciones que crean o cobran: `Idempotency-Key` obligatorio (RT-22). Endpoints de cuenta: Sanctum con token de cliente (`abilities: customer`). Los endpoints `/api/v1/public/shop/*` de 08 §6.3 quedan como alias de estos (mismos servicios).
+Namespace público `/api/v1/public/*`: sin Sanctum de usuario; tenant por `Host`; **rate limit** (Redis) por IP y por token de carrito; CORS solo para dominios del tenant; respuestas cacheables con `Cache-Control` + `ETag` y tags de cache por producto. Operaciones que crean o cobran: `Idempotency-Key` obligatorio (RT-22). Endpoints de cuenta: Sanctum con token de cliente (`abilities: customer`). Desde v2.5 no existen los alias `/api/v1/public/shop/*` de 08 §6.3: este es el único contrato público.
 
 ### 6.1 Catálogo y contenido (GET, cache)
 | Método | Endpoint | Permiso | Descripción | Idempotente/lock |
@@ -406,7 +406,7 @@ Namespace público `/api/v1/public/*`: sin Sanctum de usuario; tenant por `Host`
 | POST | `/public/carts/current/items` | token carrito | Acepta `addons`, `lodging`, `no_lodging`, `source=widget` (mismo contrato que `window.SiteCart.add`) | Idempotency-Key; lock producto/fecha |
 | PATCH | `/public/carts/current/items/{line}/removed-lines` | token carrito | Quitar/restaurar ítem removible en la previsualización (422 si `removable=false` o R-PREVIEW-REMOVE apagada) | lock_version carrito |
 | POST | `/public/checkout/orders` | token carrito | Añade `lead`, `companions[]` (+`complete_later`), `pickup{}`/`comments` por línea, `pay_mode`, `altitude_accepted`; recotiza en servidor y rechaza si difiere | Idempotency-Key |
-| PUT | `/customer/reservations/{code}/companions` | cliente dueño | Completar acompañantes pendientes (valida edad por tipo) | lock_version reserva |
+| PUT | `/portal/client/reservations/{code}/companions` | cliente dueño | Completar acompañantes pendientes (valida edad por tipo) | lock_version reserva |
 
 ### 6.7 v2.2 — Reseñas públicas
 | Método | Endpoint | Descripción |
@@ -549,7 +549,7 @@ Usuario de auditoría = cliente autenticado o `web` (anónimo) + IP + user agent
 | Agregado | Contenido editorial por producto (dificultad, idiomas del guía, recojo, galería, traducciones) y por destino | Necesario para filtros y fichas; hoy en constantes `PX`/`DEST` del módulo |
 | Agregado | Multidioma ES/EN y multimoneda PEN/USD | Turismo receptivo |
 | Agregado | SEO, datos estructurados, sitemaps, SSR/ISR, analítica de embudo | Canal de adquisición orgánica y medición |
-| Cambiado | Endpoints públicos: se consolida `/api/v1/public/*` (este documento); `/api/v1/public/shop/*` de 08 queda como alias | Un solo contrato para Next.js y apps |
+| Cambiado | Endpoints públicos: se consolida `/api/v1/public/*` (este documento); v2.5 retira los alias `/api/v1/public/shop/*` de 08 | Un solo contrato para Next.js y apps |
 | Cambiado | `channel_ecom_orders` admite pedidos multiproducto y estado “por validar” | Ver §3.3 |
 | Precisado | Conversaciones creadas por el sitio usan el formato del inbox (`from:'contact'`, `type:'msg'`, canal `Web chat`/`Formulario`, `slaDueAt`) | Compatibilidad con 10 (la instrucción inicial indicaba `cliente/agente`) |
 
@@ -629,7 +629,7 @@ Desviaciones temporales de la implementación respecto al kit, detectadas en la 
 
 ### v3.0 — Rutas del contrato en el sitio (06/11/2026)
 
-El sitio público usa las rutas del contrato: `/public/site`, `/public/destinations`, `/public/products` (con `{slug}` y `/calendar`), `/public/price-quote`, `/public/carts/current` (con `items`, `items/{line}` y `items/{line}/hold`), `/public/checkout/orders`, `/public/orders/{code}` (con `/payments`), `/public/leads`, `/public/contact`, `/public/newsletter` y `/public/claims`. La agencia ya no va en la URL:
+El sitio público usa las rutas del contrato: `/public/site`, `/public/destinations`, `/public/products` (con `{slug}` y `/calendar`), `/public/price-quote`, `/public/carts/current` (con `items`, `items/{line}` y `items/{line}/hold`), `/public/checkout/orders`, `/public/orders/{code}` (con `/payments`), `/public/leads`, `/public/contact`, `/public/newsletter` y `/public/claim-book` (v2.5). La agencia ya no va en la URL:
 
 - **Widgets externos:** la identifica `X-KipuControl-Key`, la clave pública de `channel_widget_config`. Si llega `Origin`, debe ser un dominio verificado de la agencia; si no, responde 403 `WIDGET_ORIGIN_NOT_ALLOWED`. Una clave inválida responde 401 `WIDGET_KEY_INVALID`.
 - **Sitio alojado:** la identifica el dominio: `{subdominio}.SITES_DOMAIN`, el dominio propio de la agencia o un dominio verificado del widget. El servidor de Next envía `X-Forwarded-Host`.

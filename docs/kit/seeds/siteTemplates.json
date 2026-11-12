@@ -1,0 +1,294 @@
+[
+  {
+    "id": "TPL-ANDES",
+    "slug": "andes-clasico",
+    "name": "Andes Clásico",
+    "category": "agencia",
+    "tier": "incluida",
+    "price": 0,
+    "version": "2.3.0",
+    "status": "publicado",
+    "author": "Equipo KipuControl",
+    "authorKind": "equipo",
+    "isDefault": true,
+    "installs": 41,
+    "minPlan": null,
+    "desc": "El diseño actual: azul marino y dorado, hero con montañas, buscador y salidas programadas. Sobrio y probado.",
+    "tags": [
+      "Paquetes",
+      "Multidestino",
+      "Recomendada"
+    ],
+    "tokens": {
+      "side": "#0F2747",
+      "accent": "#1560B8",
+      "soft": "#E3EEFB",
+      "sun": "#F2B33D",
+      "radius": 12
+    },
+    "lh": {
+      "perf": 94,
+      "a11y": 100,
+      "seo": 100,
+      "bp": 96
+    },
+    "sections": [
+      "hero_buscador",
+      "destinos",
+      "mas_vendidos",
+      "salidas",
+      "ofertas",
+      "resenas",
+      "blog",
+      "boletin"
+    ]
+  },
+  {
+    "id": "TPL-INTI",
+    "slug": "inti-raymi",
+    "name": "Inti Raymi",
+    "category": "agencia",
+    "tier": "incluida",
+    "price": 0,
+    "version": "1.4.0",
+    "status": "publicado",
+    "author": "Equipo KipuControl",
+    "authorKind": "equipo",
+    "isDefault": false,
+    "installs": 17,
+    "minPlan": null,
+    "desc": "Rojo carmín y dorado del sol, bandas textiles y esquinas escalonadas. Para agencias de cultura y fiestas.",
+    "tags": [
+      "Cultura",
+      "Peruano",
+      "Textil"
+    ],
+    "tokens": {
+      "side": "#7E1526",
+      "accent": "#C8102E",
+      "soft": "#FBEDE6",
+      "sun": "#E3A33B",
+      "radius": 18
+    },
+    "lh": {
+      "perf": 92,
+      "a11y": 98,
+      "seo": 100,
+      "bp": 96
+    },
+    "sections": [
+      "hero_buscador",
+      "destinos",
+      "mas_vendidos",
+      "resenas",
+      "aventuras",
+      "blog"
+    ]
+  },
+  {
+    "id": "TPL-AMAZONIA",
+    "slug": "amazonia",
+    "name": "Amazonía",
+    "category": "aventura",
+    "tier": "incluida",
+    "price": 0,
+    "version": "1.1.2",
+    "status": "publicado",
+    "author": "Equipo KipuControl",
+    "authorKind": "equipo",
+    "isDefault": false,
+    "installs": 9,
+    "minPlan": null,
+    "desc": "Verdes profundos y acentos de guacamayo. Foto grande, itinerario día por día y nivel de dificultad visible.",
+    "tags": [
+      "Aventura",
+      "Naturaleza",
+      "Trekking"
+    ],
+    "tokens": {
+      "side": "#0F3D2E",
+      "accent": "#1F7A4D",
+      "soft": "#E3F3EA",
+      "sun": "#F2A93B",
+      "radius": 14
+    },
+    "lh": {
+      "perf": 91,
+      "a11y": 97,
+      "seo": 100,
+      "bp": 96
+    },
+    "sections": [
+      "hero_video",
+      "experiencias",
+      "mas_vendidos",
+      "salidas",
+      "resenas",
+      "blog"
+    ]
+  },
+  {
+    "id": "TPL-PACIFICO",
+    "slug": "pacifico",
+    "name": "Pacífico",
+    "category": "corporativo",
+    "tier": "incluida",
+    "price": 0,
+    "version": "1.0.4",
+    "status": "publicado",
+    "author": "Equipo KipuControl",
+    "authorKind": "equipo",
+    "isDefault": false,
+    "installs": 6,
+    "minPlan": "Professional",
+    "desc": "Azul océano y arena, tipografía limpia y mucho aire. Para viajes corporativos, incentivos y MICE.",
+    "tags": [
+      "Corporativo",
+      "MICE",
+      "Minimalista"
+    ],
+    "tokens": {
+      "side": "#0B2E4A",
+      "accent": "#1F5F8B",
+      "soft": "#E4EFF7",
+      "sun": "#D9B27A",
+      "radius": 8
+    },
+    "lh": {
+      "perf": 97,
+      "a11y": 100,
+      "seo": 100,
+      "bp": 100
+    },
+    "sections": [
+      "hero_simple",
+      "servicios",
+      "casos",
+      "cotizar",
+      "clientes",
+      "blog"
+    ]
+  },
+  {
+    "id": "TPL-CHAKANA",
+    "slug": "chakana-free-tours",
+    "name": "Chakana Free Tours",
+    "category": "free_tour",
+    "tier": "incluida",
+    "price": 0,
+    "version": "1.0.0",
+    "status": "publicado",
+    "author": "Equipo KipuControl",
+    "authorKind": "equipo",
+    "isDefault": false,
+    "installs": 4,
+    "minPlan": null,
+    "desc": "Pensada para free tours: horarios del día primero, reserva con nombre y correo, punto de encuentro con mapa y propina sugerida.",
+    "tags": [
+      "Free tours",
+      "Guías",
+      "Móvil primero"
+    ],
+    "tokens": {
+      "side": "#3A1208",
+      "accent": "#B8432E",
+      "soft": "#FBEAE2",
+      "sun": "#E3A33B",
+      "radius": 20
+    },
+    "lh": {
+      "perf": 98,
+      "a11y": 100,
+      "seo": 100,
+      "bp": 100
+    },
+    "sections": [
+      "horarios_hoy",
+      "tours",
+      "punto_encuentro",
+      "resenas",
+      "blog"
+    ]
+  },
+  {
+    "id": "TPL-NAZCA",
+    "slug": "nazca-noche",
+    "name": "Nazca Noche",
+    "category": "lujo",
+    "tier": "premium",
+    "price": 290,
+    "version": "1.2.0",
+    "status": "publicado",
+    "author": "Estudio Wayra (partner)",
+    "authorKind": "partner",
+    "isDefault": false,
+    "installs": 3,
+    "minPlan": "Starter",
+    "desc": "Fondo oscuro, líneas geométricas inspiradas en las líneas de Nazca y fotografía a pantalla completa. Para viajes de lujo y a medida.",
+    "tags": [
+      "Lujo",
+      "A medida",
+      "Premium"
+    ],
+    "tokens": {
+      "side": "#14110F",
+      "accent": "#B8935A",
+      "soft": "#2A241D",
+      "sun": "#D9B27A",
+      "radius": 4
+    },
+    "lh": {
+      "perf": 89,
+      "a11y": 96,
+      "seo": 100,
+      "bp": 92
+    },
+    "sections": [
+      "hero_foto",
+      "colecciones",
+      "a_medida",
+      "testimonios",
+      "prensa"
+    ]
+  },
+  {
+    "id": "TPL-QHAPAQ",
+    "slug": "qhapaq-nan",
+    "name": "Qhapaq Ñan",
+    "category": "multi",
+    "tier": "premium",
+    "price": 290,
+    "version": "1.0.0",
+    "status": "en_revision",
+    "author": "Estudio Wayra (partner)",
+    "authorKind": "partner",
+    "isDefault": false,
+    "installs": 0,
+    "minPlan": "Starter",
+    "desc": "Mapa de rutas como protagonista: el viajero arma su circuito sobre el camino inca. Pensada para el armador de viajes por tramos.",
+    "tags": [
+      "Circuitos",
+      "Mapa",
+      "Tramos"
+    ],
+    "tokens": {
+      "side": "#2B2A1F",
+      "accent": "#8C6D2C",
+      "soft": "#F3ECDD",
+      "sun": "#C9A24A",
+      "radius": 10
+    },
+    "lh": {
+      "perf": 88,
+      "a11y": 96,
+      "seo": 100,
+      "bp": 92
+    },
+    "sections": [
+      "mapa_rutas",
+      "armar_viaje",
+      "mas_vendidos",
+      "resenas"
+    ]
+  }
+]

@@ -35,6 +35,7 @@ export interface LeadDetail extends LeadRow {
   discard_reason: string | null;
   discard_detail: string | null;
   discarded_at: string | null;
+  discarded_from: "nuevo" | "contactado" | "calificado" | null;
   duplicate_of: { type: "lead" | "client"; code: string; name: string } | null;
   duplicates: LeadMatch[];
   absorbed: { code: string; name: string }[];

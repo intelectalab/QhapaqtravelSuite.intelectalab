@@ -64,10 +64,18 @@ function RejectPanel({ quote }: { quote: PortalQuote }) {
   );
 }
 
-function ChangesPanel({ quote }: { quote: PortalQuote }) {
+function ChangesPanel({ quote, expired = false }: { quote: PortalQuote; expired?: boolean }) {
   return (
-    <PanelAction label="Pedir cambios" icon={<MessageSquareText size={16} />} title="Pedir cambios a la propuesta" description="Tu asesor recibe tu pedido como un mensaje y te envía una versión actualizada." submitLabel="Enviar pedido" action={requestQuoteChanges.bind(null, quote.code)} initial={initial}>
-      {() => <TextArea label="¿Qué te gustaría cambiar?" name="message" rows={5} required minLength={5} maxLength={2000} placeholder="Por ejemplo: otro hotel en Cusco, sumar un día en el Valle Sagrado o cambiar la fecha de salida." />}
+    <PanelAction
+      label={expired ? "Pedir actualización" : "Pedir cambios"}
+      icon={<MessageSquareText size={16} />}
+      title={expired ? "Pedir una propuesta actualizada" : "Pedir cambios a la propuesta"}
+      description="Tu asesor recibe tu pedido como un mensaje y te envía una versión actualizada."
+      submitLabel="Enviar pedido"
+      action={requestQuoteChanges.bind(null, quote.code)}
+      initial={initial}
+    >
+      {() => <TextArea label={expired ? "¿Algo que cambiar en la nueva versión?" : "¿Qué te gustaría cambiar?"} name="message" rows={5} required minLength={5} maxLength={2000} placeholder="Por ejemplo: otro hotel en Cusco, sumar un día en el Valle Sagrado o cambiar la fecha de salida." />}
     </PanelAction>
   );
 }
@@ -136,7 +144,12 @@ export function PortalQuoteDetail({ quote, clientName }: { quote: PortalQuote; c
           <XCircle size={17} /> No aceptada el {formatDateTime(quote.rejection.at)} · {quote.rejection.reason}
         </p>
       )}
-      {!quote.can_decide && quote.status === "vencida" && <EmptyLine>Esta propuesta venció. Pide a tu asesor una versión actualizada desde Mensajes.</EmptyLine>}
+      {!quote.can_decide && quote.status === "vencida" && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-card bg-surface-2 px-5 py-3.5">
+          <p className="text-[13.5px] text-fg-2">Esta propuesta venció. Tu asesor puede enviarte una versión con precios y espacios al día.</p>
+          <ChangesPanel quote={quote} expired />
+        </div>
+      )}
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex flex-col gap-5">

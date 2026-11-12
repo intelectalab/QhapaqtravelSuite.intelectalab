@@ -34,7 +34,7 @@ export default async function ConciliacionPage() {
     { label: "Importar", at: data.last_import?.imported_at ?? null, done: open.length > 0 },
     { label: "Matching", at: null, done: open.length > 0 && kpis.pending === 0 },
     { label: "Resolver", at: null, done: open.length > 0 && kpis.pending + kpis.suggested + kpis.exceptions === 0 },
-    { label: "Cerrar", at: data.closures[0]?.closed_at ?? null, done: open.length === 0 && data.closures.length > 0 },
+    { label: "Cerrar", at: null, done: false },
   ];
 
   return (
@@ -48,7 +48,7 @@ export default async function ConciliacionPage() {
             <>
               <ImportStatementAction data={data} />
               {kpis.pending > 0 && <MatchingAction pending={kpis.pending} />}
-              {open.length > 0 && <CloseReconciliationAction data={data} />}
+              {open.length > 0 && kpis.pending + kpis.suggested + kpis.exceptions === 0 && <CloseReconciliationAction data={data} />}
             </>
           ) : undefined
         }

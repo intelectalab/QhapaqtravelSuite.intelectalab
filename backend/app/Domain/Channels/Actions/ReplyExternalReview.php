@@ -17,19 +17,21 @@ final class ReplyExternalReview
     {
         $review = $this->find($id);
 
-        if ($review->response_status === 'no_admite') {
-            throw ApiException::conflict('REV-BR-02', 'Esta plataforma no admite respuestas.');
+        if ($review->response_status === 'publicada') {
+            throw ApiException::conflict('REV-BR-04', 'La respuesta ya está publicada y no se cambia.');
         }
+
+        $target = $review->response_status === 'no_admite' ? 'no_admite' : 'pendiente_publicar';
 
         DB::table('channel_external_reviews')->where('id', $id)->update([
             'reply' => $text,
-            'response_status' => 'pendiente_publicar',
+            'response_status' => $target,
             'replied_at' => now(),
             'replied_by' => $actor->getKey(),
             'updated_by' => $actor->getKey(),
             'updated_at' => now(),
         ]);
-        $this->audit->log('Reseña externa', $review->external_id, 'responder', $review->response_status, 'pendiente_publicar');
+        $this->audit->log('Reseña externa', $review->external_id, 'responder', $review->response_status, $target);
     }
 
     public function markPublished(string $id, User $actor): void

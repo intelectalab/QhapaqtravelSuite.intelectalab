@@ -3,6 +3,8 @@
   const { esc, money, fmtN, date, dateShort, datetime, sum, toPEN, daysFromToday, addDays, nowStr } = Util;
   const ic = UI.icon;
   const T = () => window.TODAY;
+  const MESES_CORTO = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
+  const MESES_LARGO = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
   /* ---------------- Estilos propios del módulo (solo variables del tema) ---------------- */
   (function css() {
@@ -158,6 +160,7 @@
      ===================================================================================== */
   const BEX = () => window.BookingEngine;
   if (!DB.paxFeedback) { DB.paxFeedback = []; Store.save(); }
+  if (!DB.corpAccounts) { DB.corpAccounts = JSON.parse(JSON.stringify(window.SEED.corpAccounts || [])); Store.save(); }
   const FB_TYPES = [['comentario', 'Comentario'], ['sugerencia', 'Sugerencia'], ['felicitacion', 'Felicitación'], ['reclamo', 'Reclamo'], ['incidencia', 'Incidencia']];
   const FB_TONE = { comentario: 'borrador', sugerencia: 'abierta', felicitacion: 'ok', reclamo: 'rechazado', incidencia: 'alta' };
   const FB_ST = { nuevo: ['pendiente', 'Nuevo'], leido: ['abierta', 'Leído por la agencia'], respondido: ['ok', 'Respondido'], derivado: ['en_proceso', 'Derivado a operaciones'] };
@@ -1201,7 +1204,7 @@
     const isCustomer = Auth.role === 'customer';
     const list = isCustomer ? [] : pcClients();
     if (isCustomer && !Auth.clientId) { el.innerHTML = '<div class="page">' + UI.card('', UI.empty('Su usuario no está vinculado a una cuenta de cliente.', 'user')) + '</div>'; return; }
-    if (isCustomer && params[0] !== Auth.clientId) { location.replace('#/canales/portal-cliente/' + Auth.clientId + '/inicio'); return; }
+    if (isCustomer && params[0] !== Auth.clientId) { location.replace('#/canales/portal-cliente/' + Auth.clientId + '/inicio'); return; }   // sin id o id ajeno: el router ya respondió 403 al id ajeno
     if (!isCustomer && !list.length) { el.innerHTML = '<div class="page">' + UI.card('', UI.empty('No tiene clientes en su cartera con cotizaciones o reservas para previsualizar el portal.', 'user')) + '</div>'; return; }
     if (!isCustomer && params[0] && !list.includes(params[0])) { if (Scope.ownOnly() && Q.client(params[0])) { Scope.denied(el, 'El cliente ' + params[0]); return; } location.replace('#/canales/portal-cliente/' + list[0] + '/' + (params[1] || 'inicio')); return; }
     const cid = isCustomer ? Auth.clientId : (params[0] || list[0]);
@@ -1214,7 +1217,7 @@
     const pendQ = quotes.filter(q => ['enviada', 'vista', 'negociacion'].includes(q.status) && q.validUntil >= T());
     const notes = DB.notifications.filter(n => [cl.email, cl.phone, cid].includes(n.to));
     const saldo = rcv.filter(x => x.amount - x.paid > 0.004);
-    const nav = [{ id: 'inicio', label: 'Inicio', href: base + 'inicio' }, { id: 'cotizaciones', label: 'Cotizaciones', href: base + 'cotizaciones', count: pendQ.length }, { id: 'reservas', label: 'Mis viajes', href: base + 'reservas' }, { id: 'documentos', label: 'Documentos', href: base + 'documentos' }, { id: 'pagos', label: 'Pagos', href: base + 'pagos', count: saldo.length }, { id: 'notificaciones', label: 'Notificaciones', href: base + 'notificaciones' }, { id: 'soporte', label: 'Soporte', href: base + 'soporte' }];
+    const nav = [{ id: 'inicio', label: 'Inicio', href: base + 'inicio' }, { id: 'cotizaciones', label: 'Cotizaciones', href: base + 'cotizaciones', count: pendQ.length }, { id: 'reservas', label: 'Mis viajes', href: base + 'reservas' }, { id: 'documentos', label: 'Documentos', href: base + 'documentos' }, { id: 'pagos', label: 'Pagos', href: base + 'pagos', count: saldo.length }, ].concat(corpAcc(cid) ? [{ id: 'corporativo', label: 'Panel corporativo', href: base + 'corporativo' }] : []).concat([{ id: 'notificaciones', label: 'Notificaciones', href: base + 'notificaciones' }, { id: 'soporte', label: 'Soporte', href: base + 'soporte' }]);
     const sel = isCustomer ? '' : '<label class="row" style="gap:8px;flex-wrap:nowrap"><span class="chv-d">Ver como cliente</span><select id="pc-as" aria-label="Ver como cliente">' + list.map(id => '<option value="' + id + '"' + (id === cid ? ' selected' : '') + '>' + id + ' · ' + esc(Q.clientName(id)) + '</option>').join('') + '</select></label>';
     const who = cl.kind === 'Empresa' && cl.contactName ? cl.contactName.replace(/\s*\(.*\)/, '') : cl.name;
     el.innerHTML = '<div class="page chv-page">' + frame(chBar('Portal del cliente', 'Experiencia que ve ' + cl.name, sel), { sub: 'Portal del cliente', nav, active: section, user: userChip(who, cl.kind === 'Empresa' ? cl.name : cl.email), body: '<div id="pc-b" class="stack"></div>' }) + '</div>';
@@ -1227,8 +1230,173 @@
     else if (section === 'pagos') pcPays(b, ctx);
     else if (section === 'notificaciones') pcNotes(b, ctx);
     else if (section === 'soporte') pcSupport(b, ctx);
+    else if (section === 'corporativo' && corpAcc(cid)) pcCorp(b, ctx, corpAcc(cid), itemId);
     else pcHome(b, ctx);
   });
+  /* ---------------- Panel corporativo de la empresa cliente (v2.7 · spec 20) ----------------
+     Reportes de compras y movimientos por período, centro de costo y viajero; estado de cuenta mensual;
+     aprobaciones; usuarios del portal con rol (administrador, aprobador, pagador, viajero). */
+  const corpAcc = (cid) => (DB.corpAccounts || []).find(a => a.clientId === cid && a.status !== 'suspendida');
+  const CORP_ROLES = { administrador: 'Administrador', aprobador: 'Aprobador', pagador: 'Pagador', viajero: 'Viajero' };
+  function corpRole(acc) {
+    if (Auth.role !== 'customer') return 'administrador';   // vista previa interna
+    const u = acc.users.find(x => x.userId === Auth.user.id && x.active); return u ? u.role : 'viajero';
+  }
+  function corpData(x, acc) {
+    const pen = (n, c) => Math.round(toPEN(n, c) * 100) / 100;
+    const live = x.res.filter(r => !['cancelada', 'borrador'].includes(r.status)).map(r => {
+      const al = (acc.allocations || {})[r.id] || {};
+      return { resId: r.id, title: r.title, date: r.createdAt.split(' ')[0], travelFrom: r.travelFrom, cc: al.cc || acc.defaultCc, amount: pen(r.total, r.currency), currency: acc.currency, travelers: (r.passengers || []).map(p => p.name), live: true };
+    });
+    const trips = (acc.history || []).concat(live);
+    const ccOf = (resId) => (trips.find(t => t.resId === resId) || {}).cc || acc.defaultCc;
+    const mov = [];
+    trips.forEach(t => mov.push({ id: 'M-' + t.resId, date: t.date, kind: 'Compra', doc: t.resId, detail: t.title, cc: t.cc, charge: t.amount, credit: 0 }));
+    (acc.history || []).forEach(t => {
+      (t.payments || []).forEach(p => mov.push({ id: 'M-' + p.id, date: p.date, kind: 'Pago', doc: p.id, detail: p.method + ' · ' + t.resId, cc: t.cc, charge: 0, credit: p.amount }));
+      if (t.creditNote) mov.push({ id: 'M-' + t.creditNote.id, date: t.creditNote.date, kind: 'Nota de crédito', doc: t.creditNote.id, detail: t.creditNote.reason + ' · ' + t.resId, cc: t.cc, charge: 0, credit: t.creditNote.amount });
+    });
+    DB.payments.filter(p => x.resIds.includes(p.resId) && p.status === 'aplicado').forEach(p => mov.push({ id: 'M-' + p.id, date: p.date, kind: 'Pago', doc: p.id, detail: p.method + ' · ' + p.resId, cc: ccOf(p.resId), charge: 0, credit: pen(p.amount, p.currency) }));
+    DB.invoices.filter(i => i.clientId === x.cid && /cr[eé]dito/i.test(i.type) && i.status !== 'rechazado').forEach(i => mov.push({ id: 'M-' + i.id, date: i.date, kind: 'Nota de crédito', doc: i.id, detail: i.detail + ' · ' + i.resId, cc: ccOf(i.resId), charge: 0, credit: pen(i.amount, i.currency) }));
+    mov.sort((a, c) => a.date.localeCompare(c.date) || (c.charge - a.charge));
+    let bal = 0; mov.forEach(m => { bal = Math.round((bal + m.charge - m.credit) * 100) / 100; m.balance = bal; });
+    return { trips, mov, balance: bal };
+  }
+  const CORP_PERIODS = [['2026', 'Año 2026'], ['2026-Q1', 'Ene–mar 2026'], ['2026-Q2', 'Abr–jun 2026'], ['2026-Q3', 'Jul–set 2026'], ['2026-Q4', 'Oct–dic 2026']];
+  const inPeriod = (d, per) => { if (!per.includes('Q')) return d.startsWith(per); const q = Number(per.slice(-1)); const m = Number(d.slice(5, 7)); return d.startsWith(per.slice(0, 4)) && Math.ceil(m / 3) === q; };
+  function pcCorp(b, x, acc, tab) {
+    const role = corpRole(acc); const cur = acc.currency;
+    const can = { users: role === 'administrador', statement: ['administrador', 'pagador'].includes(role), approve: ['administrador', 'aprobador'].includes(role) };
+    const st = pcCorp.st = pcCorp.st || { per: '2026' };
+    const data = corpData(x, acc);
+    const own = role === 'viajero' && Auth.role === 'customer' ? (Auth.user.name || '') : null;   // el viajero solo ve sus viajes
+    const trips = own ? data.trips.filter(t => (t.travelers || []).includes(own)) : data.trips;
+    const pend = acc.approvals.filter(a => a.status === 'pendiente');
+    b.innerHTML = '<div class="row between" style="gap:12px;flex-wrap:wrap"><div><h2>Panel corporativo</h2><div class="small muted">' + esc(x.cl.name) + ' · ' + esc(x.cl.doc) + ' · crédito ' + acc.creditDays + ' días · su rol: <b>' + CORP_ROLES[role] + '</b></div></div>' +
+      '<label class="row" style="gap:8px"><span class="small muted">Período</span><select class="input sm" id="corp-per" style="width:auto">' + CORP_PERIODS.map(p => '<option value="' + p[0] + '"' + (p[0] === st.per ? ' selected' : '') + '>' + p[1] + '</option>').join('') + '</select></label></div><div id="corp-tabs"></div>';
+    b.querySelector('#corp-per').onchange = (e) => { st.per = e.target.value; pcCorp(b, x, acc, tabs.current); };
+    const tabs = UI.tabs(b.querySelector('#corp-tabs'), [
+      { id: 'resumen', label: 'Resumen de compras', render: (el) => corpSummary(el, x, acc, trips, data, st.per) },
+      { id: 'movimientos', label: 'Movimientos', render: (el) => corpMoves(el, x, acc, own ? data.mov.filter(m => trips.some(t => m.detail.includes(t.resId) || m.doc === t.resId)) : data.mov, st.per) },
+      { id: 'estado', label: 'Estado de cuenta', render: (el) => corpStatement(el, x, acc, data, can) },
+      { id: 'aprobaciones', label: 'Aprobaciones', count: pend.length || null, render: (el) => corpApprovals(el, x, acc, can) },
+      { id: 'usuarios', label: 'Usuarios y centros de costo', render: (el) => corpUsers(el, x, acc, can, trips) }
+    ], tab || 'resumen');
+  }
+  function corpSummary(el, x, acc, trips, data, per) {
+    const cur = acc.currency; const T2 = trips.filter(t => inPeriod(t.date, per));
+    const total = sum(T2, 'amount'); const pax = new Set(T2.flatMap(t => t.travelers || []));
+    const months = MESES_CORTO.map((m, i) => ({ m, v: sum(trips.filter(t => t.date.startsWith('2026-' + String(i + 1).padStart(2, '0'))), 'amount') }));
+    const byCc = acc.costCenters.map(c => { const v = sum(T2.filter(t => t.cc === c.id), 'amount'); const yr = sum(trips.filter(t => t.cc === c.id && t.date.startsWith('2026')), 'amount'); return { c, v, yr, pct: c.budget ? yr / c.budget * 100 : 0 }; });
+    const tv = {}; T2.forEach(t => { const n = (t.travelers || []).length || 1; (t.travelers || []).forEach(p => { tv[p] = tv[p] || { name: p, trips: 0, amount: 0 }; tv[p].trips++; tv[p].amount += t.amount / n; }); });
+    const top = Object.values(tv).sort((a, c) => c.amount - a.amount);
+    el.innerHTML = '<div class="stack">' +
+      '<div class="grid g4">' + UI.kpi({ label: 'Total comprado', value: money(total, cur, 0), sub: T2.length + ' compras en el período', icon: 'cart', tone: 'accent' }) +
+      UI.kpi({ label: 'Saldo por pagar', value: money(data.balance, cur, 0), sub: 'A la fecha, todas las compras', icon: 'wallet', tone: data.balance > 0 ? 'sun' : 'ok' }) +
+      UI.kpi({ label: 'Viajeros', value: String(pax.size), sub: 'Personas distintas que viajaron', icon: 'users', tone: 'info' }) +
+      UI.kpi({ label: 'Ticket promedio', value: T2.length ? money(total / T2.length, cur, 0) : '—', sub: 'Por compra', icon: 'chart', tone: 'violet' }) + '</div>' +
+      UI.card('Gasto por mes · 2026', UI.chart.bars({ labels: months.map(z => z.m), series: [{ name: 'Compras (' + cur + ')', values: months.map(z => Math.round(z.v)) }], height: 200 })) +
+      '<div class="grid g2">' +
+      UI.card('Gasto por centro de costo', '<div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>Centro de costo</th><th class="num">Período</th><th class="num">Acumulado 2026</th><th class="num">Presupuesto</th><th>Uso</th></tr></thead><tbody>' +
+        byCc.map(r => '<tr><td><b class="mono small">' + esc(r.c.id) + '</b> ' + esc(r.c.name) + '</td><td class="num nowrap">' + money(r.v, cur, 0) + '</td><td class="num nowrap">' + money(r.yr, cur, 0) + '</td><td class="num nowrap">' + money(r.c.budget, cur, 0) + '</td><td style="min-width:110px"><div class="progress"><span style="width:' + Math.min(100, r.pct).toFixed(1) + '%;background:' + (r.pct > 100 ? 'var(--bad)' : r.pct > 80 ? 'var(--sun)' : 'var(--accent)') + '"></span></div><div class="cell-sub' + (r.pct > 100 ? ' bad' : '') + '">' + fmtN(r.pct, 0) + ' %' + (r.pct > 100 ? ' · excedido' : '') + '</div></td></tr>').join('') + '</tbody></table></div>', { tight: true }) +
+      UI.card('Gasto por viajero', top.length ? '<div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>Viajero</th><th class="num">Viajes</th><th class="num">Gasto asignado</th></tr></thead><tbody>' + top.slice(0, 10).map(t => '<tr><td>' + esc(t.name) + '</td><td class="num">' + t.trips + '</td><td class="num">' + money(t.amount, cur) + '</td></tr>').join('') + '</tbody></table></div><div class="small muted" style="padding:8px 12px">El costo de cada compra se reparte en partes iguales entre sus viajeros.</div>' : UI.empty('Sin viajes en el período', 'users'), { tight: true }) +
+      '</div>' +
+      UI.card('Compras del período', '<div id="corp-trips"></div>', { tight: true }) + '</div>';
+    UI.dataTable(el.querySelector('#corp-trips'), { exportName: 'compras_' + per, rows: T2, search: ['resId', 'title', 'cc'], pageSize: 8, defaultSort: 'date', defaultDir: -1,
+      filters: [{ label: 'Centro de costo', key: 'cc', options: acc.costCenters.map(c => [c.id, c.id + ' · ' + c.name]) }],
+      columns: [{ key: 'date', label: 'Compra', render: t => date(t.date) }, { key: 'resId', label: 'Reserva', render: t => '<span class="mono small">' + esc(t.resId) + '</span>' }, { key: 'title', label: 'Viaje', render: t => esc(t.title) + '<div class="cell-sub">Viaja ' + date(t.travelFrom) + ' · ' + (t.travelers || []).length + ' viajeros</div>' }, { key: 'cc', label: 'Centro de costo', render: t => '<span class="mono small">' + esc(t.cc) + '</span>' }, { key: 'amount', label: 'Importe', align: 'num', render: t => money(t.amount, acc.currency) }],
+      empty: 'Sin compras en el período' });
+  }
+  function corpMoves(el, x, acc, mov, per) {
+    const rows = mov.filter(m => inPeriod(m.date, per)); const cur = acc.currency;
+    el.innerHTML = '<div class="stack"><div class="row" style="gap:8px;flex-wrap:wrap"><span class="small muted grow">Compras, pagos y notas de crédito con el saldo acumulado. «Exportar» descarga CSV; Excel y PDF se generan en segundo plano.</span>' +
+      '<button class="btn sm" data-x="Excel">' + ic('download') + 'Excel</button><button class="btn sm" data-x="PDF">' + ic('file') + 'PDF</button></div><div id="corp-mov"></div>' +
+      UI.card('Exportaciones recientes', '<div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>Código</th><th>Reporte</th><th>Período</th><th>Formato</th><th>Solicitado</th><th>Estado</th></tr></thead><tbody>' + acc.exports.slice(0, 6).map(e => '<tr><td class="mono small">' + esc(e.id) + '</td><td>' + esc(e.type) + '</td><td>' + esc(e.period) + '</td><td>' + esc(e.format) + '</td><td class="small">' + datetime(e.at) + ' · ' + esc(e.by) + '</td><td>' + UI.badge(e.status) + '</td></tr>').join('') + '</tbody></table></div>', { tight: true }) + '</div>';
+    UI.dataTable(el.querySelector('#corp-mov'), { exportName: 'movimientos_' + per, rows, search: ['doc', 'detail', 'cc'], pageSize: 12, defaultSort: 'date', defaultDir: -1,
+      filters: [{ label: 'Tipo', key: 'kind', options: [['Compra', 'Compra'], ['Pago', 'Pago'], ['Nota de crédito', 'Nota de crédito']] }, { label: 'Centro de costo', key: 'cc', options: acc.costCenters.map(c => [c.id, c.id]) }],
+      columns: [{ key: 'date', label: 'Fecha', render: m => date(m.date) }, { key: 'kind', label: 'Tipo', render: m => UI.badge(m.kind === 'Compra' ? 'abierta' : m.kind === 'Pago' ? 'pagada' : 'anulado', m.kind) }, { key: 'doc', label: 'Documento', render: m => '<span class="mono small">' + esc(m.doc) + '</span>' }, { key: 'detail', label: 'Detalle' }, { key: 'cc', label: 'C. costo', render: m => '<span class="mono small">' + esc(m.cc) + '</span>' },
+        { key: 'charge', label: 'Cargo', align: 'num', render: m => m.charge ? money(m.charge, cur) : '' }, { key: 'credit', label: 'Abono', align: 'num', render: m => m.credit ? money(m.credit, cur) : '' }, { key: 'balance', label: 'Saldo', align: 'num', render: m => '<b>' + money(m.balance, cur) + '</b>' }],
+      footer: (r) => '<tr><td colspan="5"><b>Total del período</b></td><td class="num"><b>' + money(sum(r, 'charge'), cur) + '</b></td><td class="num"><b>' + money(sum(r, 'credit'), cur) + '</b></td><td></td></tr>',
+      empty: 'Sin movimientos en el período' });
+    el.querySelectorAll('[data-x]').forEach(bt => bt.onclick = () => {
+      const e = { id: 'EXC-' + String(13 + acc.exports.length).padStart(4, '0'), type: 'Movimientos', period: per, format: bt.dataset.x, status: 'listo', by: x.who, at: nowStr() };
+      acc.exports.unshift(e); Store.save(); Audit.log('Exportación corporativa', e.id, 'solicitar', '', e.format + ' · ' + per);
+      UI.toast('Exportación ' + e.id + ' lista (' + e.format + '). En producción se genera en segundo plano y llega por correo.', 'ok'); corpMoves(el, x, acc, mov, per);
+    });
+  }
+  function corpStmt(data, month) {
+    const before = data.mov.filter(m => m.date < month + '-01'); const inM = data.mov.filter(m => m.date.startsWith(month));
+    const open = before.length ? before[before.length - 1].balance : 0;
+    const charges = sum(inM, 'charge'); const pays = sum(inM.filter(m => m.kind === 'Pago'), 'credit'); const credits = sum(inM.filter(m => m.kind !== 'Pago'), 'credit');
+    return { month, open, charges, pays, credits, close: Math.round((open + charges - pays - credits) * 100) / 100, rows: inM };
+  }
+  function corpStatement(el, x, acc, data, can) {
+    const months = ['2026-02', '2026-03', '2026-04', '2026-05', '2026-06', '2026-07', '2026-08', '2026-09'];
+    const cur = acc.currency; const s0 = acc.statement;
+    const sts = months.map(m => corpStmt(data, m)).reverse();
+    el.innerHTML = '<div class="stack">' +
+      UI.card('Envío automático', '<div class="row between" style="gap:12px;flex-wrap:wrap"><div class="small">' + (s0.auto ? 'Activo: el día <b>' + s0.day + '</b> de cada mes se envía el estado de cuenta del mes anterior a <b>' + s0.recipients.map(esc).join(', ') + '</b>. Último envío: ' + date(s0.lastSent) + '.' : 'Desactivado. El estado de cuenta se descarga desde esta pantalla.') + '</div>' +
+        '<button class="btn sm" id="corp-auto"' + (can.statement ? '' : ' disabled title="Solo administrador o pagador"') + '>' + ic('settings') + 'Configurar</button></div>') +
+      UI.card('Estados de cuenta mensuales', '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Mes</th><th class="num">Saldo inicial</th><th class="num">Compras</th><th class="num">Pagos</th><th class="num">Notas de crédito</th><th class="num">Saldo final</th><th></th></tr></thead><tbody>' +
+        sts.map(s => '<tr><td>' + MESES_LARGO[Number(s.month.slice(5)) - 1] + ' ' + s.month.slice(0, 4) + '</td><td class="num">' + money(s.open, cur) + '</td><td class="num">' + money(s.charges, cur) + '</td><td class="num">' + money(s.pays, cur) + '</td><td class="num">' + money(s.credits, cur) + '</td><td class="num"><b>' + money(s.close, cur) + '</b></td><td class="nowrap"><button class="btn xs" data-v="' + s.month + '">' + ic('eye') + 'Ver PDF</button> <button class="btn xs" data-s="' + s.month + '"' + (can.statement ? '' : ' disabled') + '>' + ic('mail') + 'Enviar</button></td></tr>').join('') + '</tbody></table></div>', { tight: true }) + '</div>';
+    const doc = (s) => '<div class="doc">' + docHead('ESTADO DE CUENTA', x.cl.name, '<div class="muted" style="margin-top:4px">' + MESES_LARGO[Number(s.month.slice(5)) - 1] + ' ' + s.month.slice(0, 4) + ' · ' + esc(x.cl.doc) + '</div>') +
+      '<table class="tot"><tbody><tr><td>Saldo inicial</td><td style="text-align:right">' + money(s.open, cur) + '</td></tr><tr><td>(+) Compras</td><td style="text-align:right">' + money(s.charges, cur) + '</td></tr><tr><td>(−) Pagos</td><td style="text-align:right">' + money(s.pays, cur) + '</td></tr><tr><td>(−) Notas de crédito</td><td style="text-align:right">' + money(s.credits, cur) + '</td></tr><tr><td><b>Saldo final</b></td><td style="text-align:right"><b>' + money(s.close, cur) + '</b></td></tr></tbody></table>' +
+      '<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Documento</th><th>Detalle</th><th>C. costo</th><th style="text-align:right">Cargo</th><th style="text-align:right">Abono</th></tr></thead><tbody>' + (s.rows.length ? s.rows.map(m => '<tr><td>' + date(m.date) + '</td><td>' + esc(m.kind) + '</td><td>' + esc(m.doc) + '</td><td>' + esc(m.detail) + '</td><td>' + esc(m.cc) + '</td><td style="text-align:right">' + (m.charge ? money(m.charge, cur) : '') + '</td><td style="text-align:right">' + (m.credit ? money(m.credit, cur) : '') + '</td></tr>').join('') : '<tr><td colspan="7" class="muted">Sin movimientos en el mes</td></tr>') + '</tbody></table>' +
+      '<p class="muted" style="font-size:.74rem">Condición de pago: crédito ' + acc.creditDays + ' días desde la emisión del comprobante. Consultas: ' + esc((Q.user(x.cl.owner) || {}).email || '') + '</p></div>';
+    el.querySelectorAll('[data-v]').forEach(bt => bt.onclick = () => showDoc('Estado de cuenta ' + bt.dataset.v, doc(corpStmt(data, bt.dataset.v))));
+    el.querySelectorAll('[data-s]').forEach(bt => bt.onclick = () => { const m = bt.dataset.s; s0.recipients.forEach(r => Notify.push('estado_cuenta.corporativo', 'Email', r, 'Estado de cuenta ' + m + ' — ' + x.cl.name)); Audit.log('Estado de cuenta corporativo', acc.id + '/' + m, 'enviar', '', s0.recipients.join(', ')); Store.save(); UI.toast('Estado de cuenta de ' + m + ' enviado a ' + s0.recipients.length + ' destinatarios.', 'ok'); });
+    const ab = el.querySelector('#corp-auto'); if (ab && can.statement) ab.onclick = () => UI.modal({ title: 'Envío automático del estado de cuenta', body: UI.form([
+      { id: 'ca_on', label: 'Envío automático', type: 'select', options: [['1', 'Activo'], ['0', 'Desactivado']], value: s0.auto ? '1' : '0', col: 6 },
+      { id: 'ca_day', label: 'Día del mes (1–28)', type: 'number', min: 1, max: 28, value: s0.day, required: true, col: 6 },
+      { id: 'ca_to', label: 'Destinatarios (separados por coma)', value: s0.recipients.join(', '), required: true, col: 12 }]),
+      actions: [{ label: 'Cancelar' }, { label: 'Guardar', cls: 'primary', onClick: (m) => {
+        if (!UI.validate(m)) return false; const f = UI.formData(m); const day = Number(f.ca_day); const to = f.ca_to.split(',').map(z => z.trim()).filter(Boolean);
+        if (!(day >= 1 && day <= 28)) { UI.toast('El día debe estar entre 1 y 28 (CP-05).', 'bad'); return false; }
+        if (!to.length || to.some(z => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(z))) { UI.toast('Revise los correos de destino.', 'bad'); return false; }
+        const bf = JSON.stringify(s0); s0.auto = f.ca_on === '1'; s0.day = day; s0.recipients = to; Store.save(); Audit.log('Cuenta corporativa', acc.id, 'config_estado_cuenta', bf, JSON.stringify(s0)); UI.toast('Configuración guardada.', 'ok'); corpStatement(el, x, acc, data, can);
+      } }] });
+  }
+  function corpApprovals(el, x, acc, can) {
+    const cur = acc.currency;
+    el.innerHTML = '<div class="stack"><div class="small muted">' + (acc.requireApproval ? 'Las compras desde ' + money(acc.approvalThreshold, cur, 0) + ' necesitan la aprobación de un aprobador de la empresa antes de que la agencia confirme la reserva.' : 'La empresa no exige aprobación previa.') + '</div><div id="corp-ap"></div></div>';
+    UI.dataTable(el.querySelector('#corp-ap'), { exportName: 'aprobaciones', rows: acc.approvals, search: ['id', 'ref', 'title', 'requestedBy'], pageSize: 10, defaultSort: 'requestedAt', defaultDir: -1,
+      filters: [{ label: 'Estado', key: 'status', options: ['pendiente', 'aprobada', 'rechazada', 'vencida'] }],
+      columns: [{ key: 'id', label: 'Solicitud', render: a => '<span class="mono small">' + esc(a.id) + '</span><div class="cell-sub mono">' + esc(a.ref) + '</div>' }, { key: 'title', label: 'Viaje', render: a => esc(a.title) + '<div class="cell-sub">' + esc(a.cc) + ' · pide ' + esc(a.requestedBy) + '</div>' }, { key: 'amount', label: 'Importe', align: 'num', render: a => money(a.amount, a.currency) },
+        { key: 'requestedAt', label: 'Solicitada', render: a => datetime(a.requestedAt) + (a.status === 'pendiente' ? '<div class="cell-sub">Vence ' + date(a.expiresAt) + '</div>' : '') }, { key: 'status', label: 'Estado', render: a => UI.badge(a.status) + (a.reason ? '<div class="cell-sub">' + esc(a.reason) + '</div>' : '') },
+        { key: 'act', label: '', sort: false, render: a => a.status === 'pendiente' ? '<span class="nowrap"><button class="btn xs primary" data-ok="' + a.id + '"' + (can.approve ? '' : ' disabled title="Solo aprobador o administrador"') + '>Aprobar</button> <button class="btn xs" data-no="' + a.id + '"' + (can.approve ? '' : ' disabled') + '>Rechazar</button></span>' : '' }] });
+    const decide = (a, ok, reason) => { const bf = a.status; a.status = ok ? 'aprobada' : 'rechazada'; a.decidedAt = nowStr(); a.reason = reason || ''; Store.save(); Audit.log('Aprobación corporativa', a.id, ok ? 'aprobar' : 'rechazar', bf, a.status + (reason ? ' · ' + reason : '')); Notify.push('aprobacion.corporativa', 'Portal', x.cl.owner, (ok ? 'Aprobada ' : 'Rechazada ') + a.ref + ' — ' + x.cl.name); UI.toast(ok ? 'Solicitud aprobada. La agencia ya puede confirmar la reserva.' : 'Solicitud rechazada.', ok ? 'ok' : 'warn'); corpApprovals(el, x, acc, can); };
+    el.querySelectorAll('[data-ok]').forEach(bt => bt.onclick = (e) => { e.stopPropagation(); decide(acc.approvals.find(a => a.id === bt.dataset.ok), true); });
+    el.querySelectorAll('[data-no]').forEach(bt => bt.onclick = (e) => { e.stopPropagation(); const a = acc.approvals.find(z => z.id === bt.dataset.no);
+      UI.modal({ title: 'Rechazar ' + a.id, body: UI.form([{ id: 'ap_r', label: 'Motivo', required: true, col: 12 }]), actions: [{ label: 'Cancelar' }, { label: 'Rechazar', cls: 'danger', onClick: (m) => { if (!UI.validate(m)) return false; decide(a, false, UI.formData(m).ap_r); } }] }); });
+  }
+  function corpUsers(el, x, acc, can, trips) {
+    const cur = acc.currency;
+    el.innerHTML = '<div class="grid g2">' +
+      UI.card('Usuarios del portal', '<div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>Usuario</th><th>Rol</th><th>Centro de costo</th><th>Estado</th></tr></thead><tbody>' + acc.users.map(u => '<tr><td><b>' + esc(u.name) + '</b><div class="cell-sub">' + esc(u.email) + '</div></td><td>' + CORP_ROLES[u.role] + '</td><td class="mono small">' + esc(u.cc || 'Todos') + '</td><td>' + UI.badge(u.active ? 'activo' : 'inactivo') + '</td></tr>').join('') + '</tbody></table></div>' +
+        '<div class="row" style="padding:10px 12px"><button class="btn sm" id="corp-nu"' + (can.users ? '' : ' disabled title="Solo el administrador de la empresa"') + '>' + ic('plus') + 'Invitar usuario</button></div>', { tight: true }) +
+      UI.card('Centros de costo', '<div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>Código</th><th>Nombre</th><th class="num">Presupuesto ' + esc(acc.costCenters[0] ? acc.costCenters[0].period : '') + '</th><th class="num">Compras</th></tr></thead><tbody>' + acc.costCenters.map(c => '<tr><td class="mono small">' + esc(c.id) + '</td><td>' + esc(c.name) + '</td><td class="num">' + money(c.budget, cur, 0) + '</td><td class="num">' + trips.filter(t => t.cc === c.id).length + '</td></tr>').join('') + '</tbody></table></div>' +
+        '<div class="row" style="padding:10px 12px"><button class="btn sm" id="corp-nc"' + (can.users ? '' : ' disabled') + '>' + ic('plus') + 'Nuevo centro de costo</button></div>', { tight: true }) + '</div>' +
+      '<div class="small muted" style="margin-top:10px">Roles: <b>Administrador</b> gestiona usuarios, centros de costo y todo el panel · <b>Aprobador</b> aprueba compras de su centro de costo · <b>Pagador</b> ve saldos, paga y recibe el estado de cuenta · <b>Viajero</b> ve solo sus viajes.</div>';
+    const ccOpts = [['', 'Todos']].concat(acc.costCenters.map(c => [c.id, c.id + ' · ' + c.name]));
+    const nu = el.querySelector('#corp-nu'); if (nu && can.users) nu.onclick = () => UI.modal({ title: 'Invitar usuario de la empresa', body: UI.form([
+      { id: 'cu_n', label: 'Nombre', required: true, col: 6 }, { id: 'cu_e', label: 'Correo corporativo', type: 'email', required: true, col: 6 },
+      { id: 'cu_r', label: 'Rol', type: 'select', options: Object.entries(CORP_ROLES), value: 'viajero', col: 6 }, { id: 'cu_c', label: 'Centro de costo', type: 'select', options: ccOpts, col: 6 }]),
+      actions: [{ label: 'Cancelar' }, { label: 'Invitar', cls: 'primary', onClick: (m) => {
+        if (!UI.validate(m)) return false; const f = UI.formData(m); const em = f.cu_e.trim().toLowerCase();
+        if (acc.users.some(u => u.email.toLowerCase() === em)) { UI.toast('Ese correo ya tiene acceso al portal (CP-06).', 'bad'); return false; }
+        if (f.cu_r === 'aprobador' && !f.cu_c) { UI.toast('El aprobador necesita un centro de costo.', 'bad'); return false; }
+        const u = { id: 'CPU-' + String(acc.users.length + 1).padStart(2, '0'), userId: null, name: f.cu_n.trim(), email: em, role: f.cu_r, cc: f.cu_c || null, active: true };
+        acc.users.push(u); Store.save(); Audit.log('Usuario corporativo', u.id, 'invitar', '', u.role + ' · ' + u.email); Notify.push('portal.invitacion', 'Email', u.email, 'Invitación al portal corporativo de ' + x.cl.name);
+        UI.toast('Invitación enviada a ' + u.email + '.', 'ok'); corpUsers(el, x, acc, can, trips);
+      } }] });
+    const nc = el.querySelector('#corp-nc'); if (nc && can.users) nc.onclick = () => UI.modal({ title: 'Nuevo centro de costo', body: UI.form([
+      { id: 'cc_id', label: 'Código', required: true, col: 4, hint: 'Ej. CC-MKT' }, { id: 'cc_n', label: 'Nombre', required: true, col: 8 }, { id: 'cc_b', label: 'Presupuesto anual (' + cur + ')', type: 'number', min: 0, step: '100', value: 0, col: 6 }]),
+      actions: [{ label: 'Cancelar' }, { label: 'Crear', cls: 'primary', onClick: (m) => {
+        if (!UI.validate(m)) return false; const f = UI.formData(m); const id = f.cc_id.trim().toUpperCase();
+        if (!/^[A-Z0-9-]{2,20}$/.test(id) || acc.costCenters.some(c => c.id === id)) { UI.toast('Código inválido o repetido.', 'bad'); return false; }
+        acc.costCenters.push({ id, name: f.cc_n.trim(), budget: Math.max(0, Number(f.cc_b) || 0), period: 'anual', active: true }); Store.save(); Audit.log('Centro de costo', id, 'crear', '', f.cc_n); UI.toast('Centro de costo ' + id + ' creado.', 'ok'); corpUsers(el, x, acc, can, trips);
+      } }] });
+  }
   const qTotal = (q) => Pricing.quoteTotals(q.versions.find(x => x.v === q.currentVersion)).total;
   const qExpired = (q) => q.status === 'vencida' || (q.validUntil < T() && !['aprobada', 'convertida', 'rechazada', 'cancelada'].includes(q.status));
   function pcHome(b, x) {
@@ -1316,16 +1484,55 @@
     const r = x.res.find(y => y.id === rid); if (!r) { b.innerHTML = UI.card('', UI.empty('Reserva no disponible.', 'suitcase')); return; }
     const vs = DB.vouchers.filter(v => v.resId === r.id && v.status !== 'anulado');
     const idx = { pendiente_pago: 0, pendiente_proveedor: 0, pendiente_disponibilidad: 0, confirmada: 1, en_operacion: 2, completada: 4 }[r.status];
-    const web = pcWebSummary(r, x);
+    const web = pcWebSummary(r, x); const inTrip = pcInTrip(r, x);
     b.innerHTML = '<div class="crumbs"><a href="' + x.base + 'reservas">Mis viajes</a><span>/</span><span>' + esc(r.id) + '</span></div><div class="row between"><div><h2>' + esc(r.title) + '</h2><div class="small muted">' + date(r.travelFrom) + ' — ' + date(r.travelTo) + '</div></div>' + UI.badge(r.status) + '</div>' +
-      UI.card('', UI.flow(['Registrada', 'Confirmada', 'En viaje', 'Finalizada'], idx == null ? 0 : idx, r.status === 'cancelada' ? 1 : undefined)) + web.html +
+      UI.card('', UI.flow(['Registrada', 'Confirmada', 'En viaje', 'Finalizada'], idx == null ? 0 : idx, r.status === 'cancelada' ? 1 : undefined)) + web.html + inTrip.html +
       (r.status === 'pendiente_proveedor' ? UI.alert('warn', 'Algunos servicios esperan confirmación del proveedor. Le avisaremos por correo y en este portal.') : '') +
       '<div class="grid g-2-1" style="align-items:start">' + UI.card('Servicios', '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Fecha</th><th>Servicio</th><th>Estado</th></tr></thead><tbody>' + r.services.slice().sort((a, c) => (a.date + a.time).localeCompare(c.date + c.time)).map(s => '<tr><td class="nowrap">' + dateShort(s.date) + ' <span class="faint">' + esc(s.time) + '</span></td><td>' + esc(s.name) + '</td><td>' + UI.badge(s.status) + '</td></tr>').join('') + '</tbody></table></div>', { tight: true }) +
       '<div class="stack">' + UI.card('Pasajeros (' + r.passengers.length + ')', '<div class="list">' + r.passengers.map(p => '<div class="list-item" style="padding:8px 0">' + UI.avatar({ name: p.name, color: 'var(--fg-3)' }) + '<div class="grow"><div class="small">' + esc(p.name) + '</div><div class="xs faint">' + [p.relationship, p.doc, p.type, p.age != null ? p.age + ' años' : ''].filter(Boolean).map(esc).join(' · ') + '</div></div></div>').join('') + '</div>') +
       UI.card('Documentos del viaje', vs.length ? '<div class="col">' + vs.map(v => '<button class="btn sm" data-v="' + v.id + '">' + ic('ticket') + esc(v.service) + '</button>').join('') + '</div>' : '<div class="small muted">Los vouchers estarán disponibles cuando los servicios estén confirmados.</div>', { footer: '<button class="btn sm ghost" id="pr-it">' + ic('download') + 'Itinerario PDF</button>' }) + '</div></div>';
     b.querySelectorAll('[data-v]').forEach(bt => bt.onclick = () => showDoc('Voucher ' + bt.dataset.v, voucherDoc(DB.vouchers.find(v => v.id === bt.dataset.v))));
     b.querySelector('#pr-it').onclick = () => showDoc('Itinerario ' + r.id, tripDoc(r));
-    web.bind(b);
+    web.bind(b); inTrip.bind(b);
+  }
+  /* v2.8 · Venta en ruta (spec 21 · R-IN-TRIP-SALES): tours y movilidad de los tramos que faltan, con link de pago.
+     El precio final lo confirma el servidor (BookingEngine en el prototipo); aquí solo se lista la oferta vigente. */
+  function inTripOffers(r) {
+    const p = PX.product(r); const k = r.booking; if (!p || !p.trip || !k || !k.tripLegs) return null;
+    if (!PX.on('R-IN-TRIP-SALES', r) || !['confirmada', 'en_operacion', 'pendiente_proveedor'].includes(r.status)) return null;
+    const minH = PX.param('R-IN-TRIP-SALES', 'minHoursBefore', r) || 12;
+    const have = new Set(r.services.map(s => s.tourId || s.transportId).filter(Boolean));
+    const legOf = (id) => k.tripLegs.find(l => l.legId === id);
+    const pax = k.pax || { adt: r.passengers.length, chd: 0 }; const people = (pax.adt || 0) + (pax.chd || 0);
+    const cutoff = Util.parseD(nowStr()); cutoff.setHours(cutoff.getHours() + minH);
+    const startOf = (d, t) => Util.parseD(d + ' ' + (t || '08:00'));
+    const out = [];
+    p.trip.tours.filter(t => t.inTrip !== false && !have.has(t.id)).forEach(t => { const l = legOf(t.legId); if (!l) return; const d = addDays(l.checkIn, t.dayOffset || 0); if (startOf(d, t.time) < cutoff) return;
+      out.push({ id: t.id, kind: 'tour', city: l.city, name: t.name, date: d, time: t.time, amount: Math.round(((pax.adt || 0) * t.priceAdt + (pax.chd || 0) * (t.priceChd || 0)) * 100) / 100, legId: t.legId }); });
+    const pairs = new Set(r.services.filter(s => s.transportId).map(s => { const t = p.trip.transport.find(z => z.id === s.transportId); return t ? t.fromLegId + '>' + t.toLegId : ''; }));
+    p.trip.transport.filter(t => !have.has(t.id) && !(t.toLegId && pairs.has(t.fromLegId + '>' + t.toLegId))).forEach(t => { const l = legOf(t.fromLegId); if (!l) return; const d = t.toLegId ? l.checkOut : l.checkIn; if (startOf(d, '08:00') < cutoff) return;
+      let amount; if (t.pricing === 'vehiculo') { const v = (t.vehicles || []).slice().sort((a, c) => a.maxPax - c.maxPax).find(z => z.maxPax >= people) || (t.vehicles || [])[t.vehicles.length - 1]; amount = v ? v.price * Math.ceil(people / v.maxPax) : 0; } else amount = (pax.adt || 0) * t.priceAdt + (pax.chd || 0) * (t.priceChd || 0);
+      out.push({ id: t.id, kind: 'transport', city: l.city, name: t.name, mode: t.kind, date: d, time: '—', amount: Math.round(amount * 100) / 100, legId: t.fromLegId }); });
+    return { p, list: out.sort((a, c) => a.date.localeCompare(c.date)), minH, cur: (p.trip.currency || r.currency) };
+  }
+  function pcInTrip(r, x) {
+    const o = inTripOffers(r); if (!o) return { html: '', bind: () => { } };
+    const rows = o.list.length ? '<div class="tbl-wrap"><table class="tbl compact"><thead><tr><th>Fecha</th><th>Ciudad</th><th>Servicio</th><th class="num">Precio</th><th></th></tr></thead><tbody>' + o.list.map(z => '<tr><td class="nowrap">' + dateShort(z.date) + (z.time !== '—' ? ' <span class="faint">' + esc(z.time) + '</span>' : '') + '</td><td>' + esc(z.city) + '</td><td>' + (z.kind === 'tour' ? 'Tour · ' : 'Movilidad · ') + esc(z.name) + '</td><td class="num nowrap">' + money(z.amount, o.cur) + '</td><td style="text-align:right"><button class="btn xs primary" data-itb="' + z.id + '">' + ic('card') + 'Agregar y pagar</button></td></tr>').join('') + '</tbody></table></div>' : '<div class="small muted">Ya tiene todo lo disponible para los tramos que faltan.</div>';
+    const html = UI.card('Agregar en ruta', '<div class="small muted" style="margin-bottom:8px">Sume tours y movilidad de las ciudades que le faltan. Se reservan hasta ' + o.minH + ' h antes; el pago se hace con un link seguro y el voucher llega al confirmar el proveedor.</div>' + rows, { tight: false });
+    const bind = (b) => b.querySelectorAll('[data-itb]').forEach(bt => bt.onclick = () => {
+      const z = o.list.find(y => y.id === bt.dataset.itb); if (!z) return;
+      UI.modal({ title: 'Agregar en ruta', sub: esc(z.name) + ' · ' + date(z.date), body: UI.dl([['Ciudad', esc(z.city)], ['Pasajeros', String(r.passengers.length)], ['Precio', '<b>' + money(z.amount, o.cur) + '</b>'], ['Pago', 'Link de pago (tarjeta, PayPal o Yape según la pasarela activa de la agencia)']]) + '<div class="xs faint" style="margin-top:8px">El precio lo vuelve a calcular el servidor al confirmar. Si el proveedor no confirma, se devuelve el pago completo.</div>',
+        actions: [{ label: 'Cancelar' }, { label: 'Generar link de pago', cls: 'primary', icon: 'card', onClick: () => {
+          const sid = nextId(allServices(), 'RS-', 4);
+          r.services.push({ id: sid, productId: null, tourId: z.kind === 'tour' ? z.id : undefined, transportId: z.kind === 'transport' ? z.id : undefined, name: (z.kind === 'tour' ? 'Tour ' + z.city + ' · ' : 'Movilidad ') + z.name, date: z.date, time: z.time, providerId: o.p.mainProviderId, status: 'solicitado', cost: Math.round(z.amount / 1.25 * 100) / 100, price: z.amount, confirmationCode: '', kind: z.kind === 'tour' ? 'tour_tramo' : 'movilidad', legId: z.legId, extraOf: o.p.id, soldInTrip: true });
+          const rc = { id: nextId(DB.receivables, 'CXC-', 5), resId: r.id, clientId: r.clientId, concept: 'Venta en ruta — ' + z.name, amount: z.amount, currency: o.cur, due: T(), paid: 0, status: 'abierta', kind: 'en_ruta' };
+          DB.receivables.unshift(rc); r.total = Math.round((r.total + z.amount) * 100) / 100;
+          (DB.inTripOffers = DB.inTripOffers || []).unshift({ id: 'ITO-' + String((DB.inTripOffers.length || 0) + 1).padStart(4, '0'), resId: r.id, itemId: z.id, kind: z.kind, date: z.date, amount: z.amount, currency: o.cur, status: 'link_enviado', serviceId: sid, receivableId: rc.id, createdAt: nowStr() });
+          Store.save(); Audit.log('Venta en ruta', r.id, 'agregar', '', z.kind + ' ' + z.id + ' · ' + money(z.amount, o.cur)); Notify.push('venta_ruta.link', 'Email', x.cl.email, 'Link de pago — ' + z.name);
+          setTimeout(() => payOnline(x, rc), 50);
+        } }] });
+    });
+    return { html, bind };
   }
   /* v2.1 · Resumen de la reserva web en el portal del cliente. Cada bloque depende de su regla (BookingEngine.on). */
   function pcWebSummary(r, x) {

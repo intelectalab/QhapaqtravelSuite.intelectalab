@@ -47,9 +47,35 @@ export function OpportunityActions({ opportunity, lostReasons }: { opportunity: 
     <div className="flex flex-col items-end gap-2">
       <div className="flex flex-wrap items-center justify-end gap-2">
         {closed ? (
-          <PanelAction label="Reabrir" icon={<RotateCcw size={16} />} title="Reabrir oportunidad" description="Vuelve al embudo y se limpia el motivo de cierre." submitLabel="Reabrir" action={changeStage} initial={initial} onDone={remember}>
-            {() => <ReopenFields opportunity={opportunity} />}
-          </PanelAction>
+          <>
+            {opportunity.stage === "ganada" ? (
+              <PanelAction label="Pasar a perdida" icon={<CircleX size={16} />} variant="ghost" title="Pasar a perdida" description="Para un cierre que al final no se concretó." submitLabel="Marcar como perdida" action={changeStage} initial={initial} onDone={remember}>
+                {() => (
+                  <>
+                    <Code code={opportunity.code} version={opportunity.lock_version} stage="perdida" />
+                    <input type="hidden" name="confirm_reopen" value="on" />
+                    <SelectField label="Motivo" name="lost_reason" options={lostReasons.map((item) => ({ value: item.code, label: item.label }))} placeholder="Elegir" />
+                    <TextArea label="Detalle" name="lost_detail" rows={3} hint="Obligatorio si eliges Otro." />
+                  </>
+                )}
+              </PanelAction>
+            ) : (
+              <PanelAction label="Pasar a ganada" icon={<Trophy size={16} />} variant="ghost" title="Pasar a ganada" description="Se limpia el motivo de pérdida y la probabilidad pasa a 100 %." submitLabel="Marcar como ganada" action={changeStage} initial={initial} onDone={remember}>
+                {() => (
+                  <>
+                    <Code code={opportunity.code} version={opportunity.lock_version} stage="ganada" />
+                    <input type="hidden" name="confirm_reopen" value="on" />
+                    <p className="text-[13.5px] text-fg-2">
+                      Confirma que <b className="text-fg">{opportunity.client.name}</b> aceptó la propuesta.
+                    </p>
+                  </>
+                )}
+              </PanelAction>
+            )}
+            <PanelAction label="Reabrir" icon={<RotateCcw size={16} />} title="Reabrir oportunidad" description="Vuelve al embudo y se limpia el motivo de cierre." submitLabel="Reabrir" action={changeStage} initial={initial} onDone={remember}>
+              {() => <ReopenFields opportunity={opportunity} />}
+            </PanelAction>
+          </>
         ) : (
           <>
             <PanelAction label="Mover" icon={<ArrowRightLeft size={16} />} title="Mover de etapa" description="La probabilidad se ajusta sola según la etapa." submitLabel="Mover" action={changeStage} initial={initial} onDone={remember}>

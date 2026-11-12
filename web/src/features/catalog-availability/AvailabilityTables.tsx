@@ -130,8 +130,8 @@ export function HoldsTable({ overview }: { overview: AvailabilityOverview }) {
   ];
   const metrics: MetricFilter<HoldRow>[] = [
     { id: "hold", label: "En hold", tone: "sun", icon: <Hourglass size={19} />, matches: (hold) => hold.status === "hold" && !hold.expired },
-    { id: "expired", label: "Vencidos", tone: "bad", icon: <TimerOff size={19} />, matches: (hold) => hold.expired || hold.status === "expirada" },
-    { id: "confirmed", label: "Confirmados", tone: "ok", icon: <CircleCheck size={19} />, matches: (hold) => hold.status === "confirmada" || hold.status === "consumida" },
+    { id: "expired", label: "Vencidos sin liberar", tone: "bad", icon: <TimerOff size={19} />, matches: (hold) => hold.status === "hold" && hold.expired },
+    { id: "confirmed", label: "Confirmados", tone: "ok", icon: <CircleCheck size={19} />, matches: (hold) => hold.status === "confirmada" },
     { id: "released", label: "Liberados", tone: "mute", icon: <Undo2 size={19} />, matches: (hold) => hold.status === "liberada" },
   ];
   const filters: FilterConfig<HoldRow>[] = [{ id: "status", label: "Estado", options: Object.entries(HOLD_STATUS).map(([value, item]) => ({ value, label: item.label })), value: (hold) => hold.status }];

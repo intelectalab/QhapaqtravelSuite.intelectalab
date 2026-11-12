@@ -542,6 +542,7 @@ export interface TravelDocDetail {
   settings: TravelDocSettings;
   relations: string[];
   request: { email: string | null; phone: string | null; channels: string[]; pending: number };
+  mapi: { services: { code: string; name: string; date: string; pax: number | null }[]; used: boolean; blocked: boolean; missing: { name: string; documents: string[] }[] } | null;
   passengers: TravelDocDetailPassenger[];
   reminders: { at: string; channel: string; to: string; trigger: string; days_before: number | null; items: number; by: string | null }[];
 }

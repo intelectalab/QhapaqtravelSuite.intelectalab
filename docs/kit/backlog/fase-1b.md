@@ -1651,7 +1651,7 @@ Orden sugerido: migraciones (COT-01, RES-01, OPS-01, FIN-01, LRC-01, INT-01) →
 
 **Especificación:** 09 §3.17; reglas REP-BR-06, H-21
 
-**Tablas:** `rpt_monthly_sales`, `rpt_seller_performance`, `rpt_funnel`, `rpt_sales_by_channel`
+**Tablas:** `rpt_monthly_sales`, `rpt_seller_performance`, `rpt_funnel`, `rpt_sales_by_channel` (objetos nuevos de esta historia: rpt_monthly_sales, rpt_seller_performance, rpt_funnel, rpt_sales_by_channel; agregarlos a database/ y regenerar el diccionario antes de programar)
 
 **Endpoints:** —
 
@@ -1815,7 +1815,7 @@ Orden sugerido: migraciones (COT-01, RES-01, OPS-01, FIN-01, LRC-01, INT-01) →
 
 **Tablas:** `crm_cases`, `crm_case_events`
 
-**Endpoints:** `POST /api/v1/crm/claim-book`, `POST /api/v1/portal/claim-book`, `POST /api/v1/public/{tenant}/claim-book`, `GET /api/v1/portal/claim-book`
+**Endpoints:** `POST /api/v1/crm/claim-book`, `POST /api/v1/portal/claim-book`, `POST /api/v1/public/claim-book`, `GET /api/v1/portal/claim-book`
 
 **Pantallas:** —
 

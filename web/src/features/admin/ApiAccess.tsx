@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Ban, BarChart3, CheckCircle2, Gauge, KeyRound, KeySquare, Link2, Pause, Play, Plus, Radar, RotateCw, Send, ShieldCheck, Trash2, Webhook as WebhookIcon, XCircle } from "lucide-react";
+import { Activity, Ban, BarChart3, Check, CheckCircle2, Gauge, KeyRound, KeySquare, Link2, Minus, Pause, Play, Plus, Radar, RotateCw, Send, ShieldCheck, Trash2, Webhook as WebhookIcon, XCircle } from "lucide-react";
 import { createContext, useContext, useState, useTransition, type ReactNode } from "react";
 import { createApiKey, createWebhook, deleteWebhook, loadDelivery, pingWebhook, redeliverWebhook, revokeApiKey, rotateWebhookSecret, setWebhookStatus, updateWebhook } from "@/app/(backoffice)/admin/api/actions";
 import { DataTable } from "@/components/table/DataTable";
@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/Card";
 import { BarChart } from "@/components/ui/Charts";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { FieldList } from "@/components/ui/Details";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SidePanel } from "@/components/ui/SidePanel";
 import { TextArea } from "@/components/ui/TextArea";
@@ -104,6 +105,51 @@ export function WebhookCreateAction({ events, full }: { events: Option[]; full: 
   );
 }
 
+const SCOPE_RESOURCES: { key: string; label: string }[] = [
+  { key: "catalog", label: "Catálogo" },
+  { key: "availability", label: "Disponibilidad" },
+  { key: "quotes", label: "Cotizaciones" },
+  { key: "reservations", label: "Reservas" },
+  { key: "crm", label: "CRM" },
+  { key: "payments", label: "Pagos" },
+  { key: "invoices", label: "Comprobantes" },
+  { key: "webhooks", label: "Webhooks" },
+];
+
+function ScopeMatrix({ granted, labels, compact = false }: { granted: string[]; labels: Option[]; compact?: boolean }) {
+  const resources = SCOPE_RESOURCES.filter((resource) => !compact || granted.some((scope) => scope.startsWith(`${resource.key}:`)));
+  const known = new Set(SCOPE_RESOURCES.map((resource) => resource.key));
+  const others = granted.filter((scope) => !known.has(scope.split(":")[0]));
+  const cell = (scope: string) => (granted.includes(scope) ? <Check size={14} className="mx-auto text-ok" aria-label="Sí" /> : <Minus size={14} className="mx-auto text-fg-3/50" aria-label="No" />);
+  return (
+    <div className="overflow-hidden rounded-[12px] border border-line">
+      <table className="w-full text-[12.5px]">
+        <thead>
+          <tr className="bg-surface-2 text-[11.5px] text-fg-3">
+            <th className="px-3 py-1.5 text-left font-medium">Recurso</th>
+            <th className="w-20 px-2 py-1.5 text-center font-medium">Lectura</th>
+            <th className="w-20 px-2 py-1.5 text-center font-medium">Escritura</th>
+          </tr>
+        </thead>
+        <tbody>
+          {resources.map((resource) => (
+            <tr key={resource.key} className="border-t border-line-2">
+              <td className="px-3 py-1.5">{resource.label}</td>
+              <td className="px-2 py-1.5">{cell(`${resource.key}:read`)}</td>
+              <td className="px-2 py-1.5">{resource.key === "webhooks" ? cell("webhooks:manage") : cell(`${resource.key}:write`)}</td>
+            </tr>
+          ))}
+          {others.map((scope) => (
+            <tr key={scope} className="border-t border-line-2">
+              <td colSpan={3} className="px-3 py-1.5 text-[12px] text-fg-2">{label(labels, scope)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function KeyDetail({ apiKey, scopes }: { apiKey: ApiKey; scopes: Option[] }) {
   const [open, setOpen] = useState(false);
   return (
@@ -112,11 +158,7 @@ function KeyDetail({ apiKey, scopes }: { apiKey: ApiKey; scopes: Option[] }) {
       <SidePanel open={open} onOpenChange={setOpen} title={apiKey.name} description={`${apiKey.code} · ${apiKey.environment === "live" ? "Producción" : "Pruebas"}`}>
         <div className="flex flex-col gap-4">
           <code className="rounded-[12px] bg-surface-2 px-3 py-2.5 font-mono text-[13px]">{apiKey.masked}</code>
-          <div className="flex flex-wrap gap-1.5">
-            {apiKey.scopes.map((scope) => (
-              <Badge key={scope} tone="t1">{label(scopes, scope)}</Badge>
-            ))}
-          </div>
+          <ScopeMatrix granted={apiKey.scopes} labels={scopes} />
           <FieldList
             fields={[
               { label: "Estado", value: <Badge tone={KEY_STATUS[apiKey.status].tone}>{KEY_STATUS[apiKey.status].label}</Badge> },
@@ -227,12 +269,15 @@ function WebhookCard({ hook, data, index }: { hook: Webhook; data: ApiOverview; 
           </div>
           <Badge tone={HOOK_STATUS[hook.status].tone}>{HOOK_STATUS[hook.status].label}</Badge>
         </div>
-        <div className="mt-3 flex flex-wrap gap-1">
-          {hook.events.map((event) => (
-            <span key={event} className="rounded-md bg-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-fg-2" title={label(data.events, event)}>
-              {event}
+        <div className="mt-3 flex items-center gap-1.5">
+          <Badge tone="t1">{hook.events.length === 1 ? "1 evento" : `${hook.events.length} eventos`}</Badge>
+          <InfoTip label="Eventos suscritos">
+            <span className="flex flex-col gap-1 text-left">
+              {hook.events.map((event) => (
+                <span key={event}>{label(data.events, event)}</span>
+              ))}
             </span>
-          ))}
+          </InfoTip>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2 text-[12px]">
           <span className="rounded-[10px] bg-surface-2 px-2.5 py-1.5">
@@ -436,7 +481,9 @@ export function OAuthApps({ apps, scopes }: { apps: ApiOverview["apps"]; scopes:
           <div className="min-w-0">
             <p className="text-[13.5px] font-semibold">{app.name}</p>
             <p className="text-[12px] text-fg-3">{app.vendor}</p>
-            <p className="mt-1 text-[12px] text-fg-2">{app.scopes.map((scope) => label(scopes, scope)).join(" · ")}</p>
+            <div className="mt-2 max-w-[360px]">
+              <ScopeMatrix granted={app.scopes} labels={scopes} compact />
+            </div>
           </div>
           <span className="flex flex-none flex-col items-end gap-1">
             <Badge tone={app.status === "active" ? "ok" : "mute"}>{app.status === "active" ? "Autorizada" : "Revocada"}</Badge>

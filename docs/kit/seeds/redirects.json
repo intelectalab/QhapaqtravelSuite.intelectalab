@@ -1,0 +1,18 @@
+[
+  {
+    "id": "RED-01",
+    "from": "/ofertas-old",
+    "to": "/ofertas",
+    "code": 301,
+    "hits": 214,
+    "status": "activo"
+  },
+  {
+    "id": "RED-02",
+    "from": "/tours/machupicchu",
+    "to": "/tour/machu-picchu-full-day",
+    "code": 301,
+    "hits": 1880,
+    "status": "activo"
+  }
+]

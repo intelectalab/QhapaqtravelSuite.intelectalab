@@ -19,7 +19,7 @@ export function PortalQuotes({ quotes }: { quotes: PortalQuoteSummary[] }) {
       <PortalTitle title="Propuestas" subtitle="Las cotizaciones que tu asesor preparó para ti. Acéptalas o cuéntanos qué cambiar." />
       <section className="mb-6 grid gap-3 sm:grid-cols-3">
         <TintTile icon={Clock} tone="violet" label="Por responder" value={open.length} note={open.length ? "Esperan tu decisión" : "Nada pendiente"} />
-        <TintTile icon={CheckCircle2} tone="ok" label="Aceptadas" value={accepted.length} note="Convertidas en viaje" />
+        <TintTile icon={CheckCircle2} tone="ok" label="Aceptadas" value={accepted.length} note={`${accepted.filter((quote) => quote.status === "convertida").length} ya convertidas en viaje`} />
         <TintTile icon={XCircle} tone="mute" label="Cerradas" value={closed.length} note="No aceptadas o vencidas" />
       </section>
       {quotes.length === 0 ? (

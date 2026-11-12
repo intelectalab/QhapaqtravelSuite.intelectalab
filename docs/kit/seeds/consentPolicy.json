@@ -1,0 +1,20 @@
+{
+  "version": "COOK-2026.2",
+  "categories": [
+    [
+      "necesarias",
+      "Necesarias",
+      "Carrito, sesión, idioma y seguridad. Siempre activas."
+    ],
+    [
+      "analiticas",
+      "Analíticas",
+      "Nos ayudan a entender qué páginas sirven (Google Analytics, Clarity)."
+    ],
+    [
+      "marketing",
+      "Marketing",
+      "Miden campañas y muestran anuncios relevantes (Google Ads, Meta, TikTok)."
+    ]
+  ]
+}

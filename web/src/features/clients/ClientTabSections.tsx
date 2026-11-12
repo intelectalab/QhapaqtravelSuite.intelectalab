@@ -26,6 +26,10 @@ function Empty({ icon, title, description }: { icon: ReactNode; title: string; d
   );
 }
 
+function activityState(activity: { status: string; due_at?: string | null }): string {
+  return activity.status === "pendiente" && activity.due_at && new Date(activity.due_at).getTime() < Date.now() ? "vencida" : activity.status;
+}
+
 export function ClientSummaryExtras({ client }: { client: ClientDetail }) {
   const satisfaction = client.satisfactionDetail;
   return (
@@ -70,7 +74,7 @@ export function ClientSummaryExtras({ client }: { client: ClientDetail }) {
                     {activity.owner && ` · ${activity.owner}`}
                   </span>
                 </span>
-                <StatusBadge status={activity.status} />
+                <StatusBadge status={activityState(activity)} />
               </li>
             ))}
           </ul>
@@ -99,18 +103,29 @@ export function ClientSummaryExtras({ client }: { client: ClientDetail }) {
         )}
       </Card>
       <Card>
-        <TintCardTitle icon={Globe2} title="Destinos visitados" />
+        <TintCardTitle icon={Globe2} title="Destinos visitados" aside={client.destinations.length > 0 ? <span className="text-[12.5px] text-fg-3">{client.destinations.length}</span> : undefined} />
         {client.destinations.length === 0 ? (
           <p className="text-[13.5px] text-fg-3">Aún no viajó con la agencia.</p>
         ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {client.destinations.map((destination) => (
-              <span key={destination} className="lift inline-flex items-center gap-1 rounded-full bg-surface-2 px-2.5 py-1 text-[12.5px] font-medium">
-                <MapPin size={12} className="text-[var(--tint)]" />
-                {destination}
-              </span>
-            ))}
-          </div>
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {client.destinations.map((destination, index) => {
+              const most = Math.max(...client.destinations.map((item) => item.trips));
+              return (
+                <li key={destination.name} style={{ animationDelay: `${index * 50}ms` }} className="lift flex animate-[rise-in_380ms_cubic-bezier(0.22,1,0.36,1)_backwards] flex-col gap-1.5 rounded-tile border border-line px-3 py-2.5">
+                  <span className="flex items-center gap-1.5">
+                    <MapPin size={14} className="flex-none text-[var(--tint,var(--t1))]" />
+                    <b className="truncate text-[13px] font-semibold">{destination.name}</b>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+                      <span className="block h-full rounded-full bg-[var(--tint,var(--t1))]" style={{ width: `${Math.max(12, (destination.trips / most) * 100)}%` }} />
+                    </span>
+                    <span className="flex-none text-[12px] text-fg-3">{destination.trips === 1 ? "1 viaje" : `${destination.trips} viajes`}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </Card>
     </div>
@@ -477,7 +492,7 @@ export function ActivitiesSection({ rows, action }: { rows: ClientTabData["activ
             <td className="whitespace-nowrap">{activity.due_at ? formatDateTime(activity.due_at) : "—"}</td>
             <td>{activity.owner ?? "—"}</td>
             <td>
-              <StatusBadge status={activity.status} />
+              <StatusBadge status={activityState(activity)} />
             </td>
           </tr>
         ))}

@@ -88,5 +88,19 @@
     "status": "revertido",
     "ref": "Reembolso TXN 6610",
     "by": "U07"
+  },
+  {
+    "id": "PAG-01930",
+    "receivableId": "CXC-00730",
+    "resId": "RES-2026-000361",
+    "method": "PayPal",
+    "amount": 2486,
+    "currency": "USD",
+    "date": "2026-08-30",
+    "status": "aplicado",
+    "ref": "PAYID-NB7Q2KA",
+    "by": "Sistema",
+    "gatewayFee": 134.54,
+    "net": 2351.46
   }
 ]

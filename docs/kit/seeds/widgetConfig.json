@@ -3,7 +3,7 @@
   "publicKey": "pk_live_ah_7Qm2x9LkR4",
   "keyCreatedAt": "2026-06-01 09:00",
   "keyCreatedBy": "U01",
-  "cdn": "https://cdn.kipucontrol.app/widget/v1",
+  "cdn": "https://cdn.kipucontrol.com/widget/v1",
   "host": "https://reservas.andeshorizonte.pe",
   "defaults": {
     "product": "PRD-011",

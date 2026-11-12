@@ -12,7 +12,7 @@ import { SwitchField } from "@/components/ui/SwitchField";
 import { TextField } from "@/components/ui/TextField";
 import { SeasonCreateAction } from "@/features/catalog-rates/RateForms";
 import { cn } from "@/lib/cn";
-import { AVAILABILITY_HINT, AVAILABILITY_LABEL, type ProductComponentDraft, type ProductRateDraft, type ProductReview } from "@/lib/catalog";
+import { AVAILABILITY_HINT, AVAILABILITY_LABEL, type ItineraryItemDraft, type ProductComponentDraft, type ProductRateDraft, type ProductReview } from "@/lib/catalog";
 import { formatDate, formatMoney } from "@/lib/format";
 import { emptyRate } from "./draft";
 import { ErrorList, Group, ManageLink, numberValue, rowError, type StepProps } from "./fields";
@@ -89,8 +89,43 @@ export function ComponentsStep({ draft, set, options, errors, review }: StepProp
   );
 }
 
+function ItineraryItemDetails({ item, base, services, seesCost, errors, change }: { item: ItineraryItemDraft; base: string; services: StepProps["options"]["services"]; seesCost: boolean; errors: Record<string, string>; change: (patch: Partial<ItineraryItemDraft>) => void }) {
+  const filled = Boolean(item.service_id || item.note || item.image_ref || Number(item.cost ?? 0) > 0 || Number(item.price ?? 0) > 0);
+  const [open, setOpen] = useState(filled);
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="self-start text-[12.5px] font-semibold text-t1 hover:underline">
+        Agregar servicio, costo, nota o imagen
+      </button>
+    );
+  }
+  return (
+    <div className="grid gap-3 rounded-[10px] bg-surface-2 p-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_140px_140px]">
+      <SelectField
+        label="Servicio vinculado"
+        name={`${base}.service_id`}
+        searchable
+        value={item.service_id ?? ""}
+        options={[{ value: "", label: "Sin servicio" }, ...services.map((service) => ({ value: service.id, label: service.name, hint: `${service.provider} · ${service.type}` }))]}
+        onChange={(value) => {
+          const service = services.find((row) => row.id === value);
+          change({ service_id: value || null, service: service?.name ?? null, ...(service && !Number(item.cost ?? 0) && service.cost ? { cost: service.cost } : {}) });
+        }}
+      />
+      {seesCost && <TextField label="Costo" name={`${base}.cost`} type="number" min={0} step="0.01" value={item.cost ?? ""} error={errors[`${base}.cost`]} placeholder="0.00" onChange={(event) => change({ cost: event.target.value })} />}
+      <TextField label="Precio" name={`${base}.price`} type="number" min={0} step="0.01" value={item.price ?? ""} error={errors[`${base}.price`]} placeholder="0.00" onChange={(event) => change({ price: event.target.value })} />
+      <TextField label="Nota" name={`${base}.note`} value={item.note ?? ""} error={errors[`${base}.note`]} placeholder="Indicaciones para el guía o el pasajero" maxLength={1000} onChange={(event) => change({ note: event.target.value })} />
+      <div className="sm:col-span-1 lg:col-span-2">
+        <TextField label="Imagen (URL)" name={`${base}.image_ref`} value={item.image_ref ?? ""} error={errors[`${base}.image_ref`]} placeholder="https://… o referencia de la galería" maxLength={300} onChange={(event) => change({ image_ref: event.target.value })} />
+      </div>
+    </div>
+  );
+}
+
 export function ItineraryStep({ draft, set, options, errors }: StepProps) {
   const type = options.types.find((item) => item.id === draft.master.type_id);
+  const componentServices = new Set(draft.components.map((component) => component.service_id).filter(Boolean));
+  const linkedServices = componentServices.size > 0 ? options.services.filter((service) => componentServices.has(service.id)) : options.services;
 
   return (
     <Group title="Días y actividades" hint={type?.requires_itinerary ? `El tipo ${type.name.toLocaleLowerCase("es")} requiere itinerario con actividades cada día para activarse.` : "El itinerario es opcional para este tipo, pero ayuda a Ventas y al pasajero."}>
@@ -117,11 +152,14 @@ export function ItineraryStep({ draft, set, options, errors }: StepProps) {
                 render={(item, change, itemIndex) => {
                   const base = `itinerary.${dayIndex}.items.${itemIndex}`;
                   return (
-                    <div className="grid gap-3 sm:grid-cols-[120px_minmax(0,1fr)] lg:grid-cols-[120px_minmax(0,1.4fr)_180px_minmax(0,1fr)]">
-                      <TextField label="Hora" name={`${base}.time`} type="time" value={item.time ?? ""} error={errors[`${base}.time`]} onChange={(event) => change({ time: event.target.value || null })} />
-                      <TextField label="Actividad" name={`${base}.activity`} value={item.activity} error={errors[`${base}.activity`]} placeholder="Qué se hace" onChange={(event) => change({ activity: event.target.value })} />
-                      <SelectField label="Tipo" name={`${base}.type`} value={item.type ?? ""} options={options.item_types.map((value) => ({ value, label: value }))} onChange={(value) => change({ type: value })} />
-                      <TextField label="Ubicación" name={`${base}.location`} value={item.location ?? ""} placeholder="Opcional" onChange={(event) => change({ location: event.target.value })} />
+                    <div className="flex flex-col gap-3">
+                      <div className="grid gap-3 sm:grid-cols-[120px_minmax(0,1fr)] lg:grid-cols-[120px_minmax(0,1.4fr)_180px_minmax(0,1fr)]">
+                        <TextField label="Hora" name={`${base}.time`} type="time" value={item.time ?? ""} error={errors[`${base}.time`]} onChange={(event) => change({ time: event.target.value || null })} />
+                        <TextField label="Actividad" name={`${base}.activity`} value={item.activity} error={errors[`${base}.activity`]} placeholder="Qué se hace" onChange={(event) => change({ activity: event.target.value })} />
+                        <SelectField label="Tipo" name={`${base}.type`} value={item.type ?? ""} options={options.item_types.map((value) => ({ value, label: value }))} onChange={(value) => change({ type: value })} />
+                        <TextField label="Ubicación" name={`${base}.location`} value={item.location ?? ""} placeholder="Opcional" onChange={(event) => change({ location: event.target.value })} />
+                      </div>
+                      <ItineraryItemDetails item={item} base={base} services={linkedServices} seesCost={options.sees_cost} errors={errors} change={change} />
                     </div>
                   );
                 }}

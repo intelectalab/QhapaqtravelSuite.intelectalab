@@ -1,8 +1,10 @@
 import { ArrowRight, BellRing, CalendarHeart, Clock, FileText, Moon, Plane, ScrollText, Users, Wallet } from "lucide-react";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
+import { RichText } from "@/components/ui/RichText";
 import { HeroBand, HeroChip, HeroPanel, TintTile, ToneScope } from "@/components/ui/Tinted";
 import { MoneyLines } from "@/features/channels/ChannelUi";
+import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
 import { countdownLabel, type PortalHome as Home, type PortalSession } from "@/lib/portal";
 import { AdvisorCard, AlertList, EmptyLine, PortalBadge, RISE, rise, SectionCard, TripCard } from "./PortalUi";
@@ -53,7 +55,7 @@ function Countdown({ trip }: { trip: NonNullable<Home["next_trip"]> }) {
                 <span className="block h-full origin-left rounded-full bg-[var(--tint)] motion-safe:animate-[fill-x_900ms_cubic-bezier(0.22,1,0.36,1)_backwards]" style={{ width: `${Math.max(4, pct)}%` }} />
               </span>
               <div className="mt-2">
-                <PortalBadge status={trip.status} />
+                <PortalBadge status={trip.status} scope="trip" />
               </div>
             </div>
           </HeroPanel>
@@ -72,6 +74,18 @@ export function PortalHomeView({ home, session }: { home: Home; session: PortalS
         <h1 className="text-[26px] font-bold leading-tight tracking-tight sm:text-[30px]">Hola, {firstName}</h1>
         <p className="mt-1 text-[14px] text-fg-2">{home.next_trip ? "Aquí tienes todo lo de tu viaje en un solo lugar." : "Cuando reserves tu próximo viaje lo verás aquí."}</p>
       </div>
+
+      {home.banners.length > 0 && (
+        <div className={cn("grid gap-3", home.banners.length > 1 && "md:grid-cols-2")}>
+          {home.banners.slice(0, 2).map((banner, index) => (
+            <section key={banner.code} style={rise(index)} className={cn("lift relative overflow-hidden rounded-card border border-line bg-[color-mix(in_srgb,var(--t1)_7%,var(--surface))] px-5 py-4", RISE)}>
+              <span aria-hidden className="weave-line absolute inset-x-0 top-0 h-[3px]" />
+              <b className="block text-[15px] font-semibold tracking-tight">{banner.title}</b>
+              <RichText body={banner.body} size="sm" className="mt-1 line-clamp-3 text-fg-2" />
+            </section>
+          ))}
+        </div>
+      )}
 
       {home.next_trip ? (
         <Countdown trip={home.next_trip} />

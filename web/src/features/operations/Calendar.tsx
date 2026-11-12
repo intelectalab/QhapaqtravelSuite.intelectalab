@@ -14,7 +14,7 @@ import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatDateTime, monthName } from "@/lib/format";
 import type { CalendarEvent, CalendarMonth, ResourceOptions } from "@/lib/operations";
 import { SERVICE_KIND } from "@/lib/reservations";
-import { toneStyle, type Tone } from "@/lib/tone";
+import { statusLabel, toneStyle, type Tone } from "@/lib/tone";
 import { AssignAction } from "./OrderActions";
 import { Meter, TimeSlot } from "./OpsBits";
 
@@ -111,7 +111,7 @@ function EventRow({ event, index, onOpen }: { event: CalendarEvent; index: numbe
             <CircleAlert size={16} />
           </span>
         )}
-        <StatusBadge status={event.assignment?.status ?? event.status} />
+        {event.assignment ? <StatusBadge status={event.assignment.status} /> : <StatusBadge status={event.status} label={`Proveedor: ${statusLabel(event.status).toLowerCase()}`} />}
       </button>
     </li>
   );

@@ -20,7 +20,8 @@ Route::prefix('portal/client')->name('portal.')->controller(PortalController::cl
     Route::post('quotes/{code}/approve', 'approve')->middleware('permission:quotes.view')->name('quotes.approve');
     Route::post('quotes/{code}/reject', 'reject')->middleware('permission:quotes.view')->name('quotes.reject');
     Route::get('receivables', 'billing')->name('billing');
-    Route::post('receivables/{code}/payments', 'reportPayment')->name('billing.payments.store');
+    Route::post('receivables/{code}/payments', 'pay')->middleware('throttle:10,1')->name('billing.payments.store');
+    Route::post('receivables/{code}/payment-reports', 'reportPayment')->middleware('throttle:10,1')->name('billing.payment-reports.store');
     Route::get('profile', 'profile')->name('profile');
     Route::patch('profile', 'updateProfile')->name('profile.update');
     Route::put('profile/consents/{channel}', 'consent')->name('profile.consents.update');

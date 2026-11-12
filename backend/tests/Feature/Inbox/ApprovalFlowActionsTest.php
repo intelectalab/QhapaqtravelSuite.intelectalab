@@ -88,7 +88,14 @@ it('pedir información pausa el plazo y responderla lo extiende por el tiempo en
     expect($this->postJson("/api/v1/approvals/APR-2026-0002/info-requests/{$info}/answer", ['answer' => 'De nuevo']))->toBeApiError(409, 'APR-BR-10');
 });
 
+it('una solicitud rechazada que no es de CxP ni de comisiones no se reenvía: se pide de nuevo en su origen', function () {
+    actingAsSeed('U04');
+    expect(flujoAprItem('APR-2026-0004')['can_resubmit'])->toBeFalse()
+        ->and($this->postJson('/api/v1/approvals/APR-2026-0004/resubmit', ['note' => 'Adjunté la cotización del proveedor.'], critical()))->toBeApiError(409, 'APR-RESUBMIT-TYPE');
+});
+
 it('reenviar una solicitud rechazada crea una nueva ronda y no se reenvía dos veces', function () {
+    withinTenant(tenantA(), fn () => DB::table('collab_approval_requests')->where('code', 'APR-2026-0004')->update(['request_type' => 'payable']));
     actingAsSeed('U04');
     expect(flujoAprItem('APR-2026-0004')['can_resubmit'])->toBeTrue();
 
@@ -109,6 +116,7 @@ it('reenviar una solicitud rechazada crea una nueva ronda y no se reenvía dos v
 });
 
 it('solo quien la pidió reenvía y solo lo rechazado', function () {
+    withinTenant(tenantA(), fn () => DB::table('collab_approval_requests')->where('code', 'APR-2026-0004')->update(['request_type' => 'payable']));
     actingAsSeed('U03');
     expect($this->postJson('/api/v1/approvals/APR-2026-0004/resubmit', ['note' => 'No es mía pero la reenvío'], critical()))->toBeApiError(403, 'APR-BR-03');
     expect($this->postJson('/api/v1/approvals/APR-2026-0002/resubmit', ['note' => 'Aún está pendiente'], critical()))->toBeApiError(409, 'APR-BR-08');

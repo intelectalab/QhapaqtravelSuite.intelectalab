@@ -1,0 +1,56 @@
+[
+  {
+    "id": "compra",
+    "label": "Compra confirmada",
+    "ga4": "purchase",
+    "value": true
+  },
+  {
+    "id": "compra_pendiente",
+    "label": "Compra pendiente (Yape o transferencia)",
+    "ga4": "purchase_pending",
+    "value": true
+  },
+  {
+    "id": "inicio_pago",
+    "label": "Inicio de pago",
+    "ga4": "begin_checkout",
+    "value": true
+  },
+  {
+    "id": "lead_cotizacion",
+    "label": "Pedido de viaje a medida",
+    "ga4": "generate_lead",
+    "value": false
+  },
+  {
+    "id": "lead_contacto",
+    "label": "Formulario de contacto",
+    "ga4": "generate_lead",
+    "value": false
+  },
+  {
+    "id": "chat_web",
+    "label": "Chat web iniciado",
+    "ga4": "generate_lead",
+    "value": false
+  },
+  {
+    "id": "registro_cliente",
+    "label": "Cuenta de cliente creada",
+    "ga4": "sign_up",
+    "value": false
+  },
+  {
+    "id": "suscripcion_boletin",
+    "label": "Suscripción al boletín",
+    "ga4": "sign_up_newsletter",
+    "value": false
+  },
+  {
+    "id": "clic_whatsapp",
+    "label": "Clic en WhatsApp",
+    "ga4": "contact_whatsapp",
+    "value": false
+  }
+]

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Portal\Actions;
 
 use App\Domain\Crm\Support\CodeSequence;
+use App\Domain\Inbox\Support\InboxNotices;
 use App\Domain\Portal\Support\PortalAccount;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -71,6 +72,7 @@ final class PortalMessages
                 'created_by' => $user->getKey(),
             ]);
             $this->audit->log('Conversación', $code, 'mensaje_portal', $before, 'abierta');
+            $before === null ? app(InboxNotices::class)->created($id) : app(InboxNotices::class)->inbound($id);
 
             return $code;
         });

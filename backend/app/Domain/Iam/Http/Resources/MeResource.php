@@ -7,6 +7,7 @@ namespace App\Domain\Iam\Http\Resources;
 use App\Domain\Admin\Support\Branding;
 use App\Domain\Iam\Models\User;
 use App\Domain\Iam\Support\RoleExperience;
+use App\Domain\Platform\Support\ReadOnlyWindow;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -43,6 +44,7 @@ final class MeResource extends JsonResource
                 'timezone' => $tenant->timezone,
                 'branding' => app(Branding::class)->current(),
             ],
+            'read_only' => ReadOnlyWindow::state((string) $tenant->getKey()),
             'permissions' => $user->getAllPermissions()->pluck('name')->sort()->values(),
         ];
     }

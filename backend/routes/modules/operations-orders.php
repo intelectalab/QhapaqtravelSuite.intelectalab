@@ -19,7 +19,6 @@ Route::middleware('permission:operations.view')->prefix('ops')->group(function (
         foreach (array_keys(OrderFlow::ACTIONS) as $action) {
             Route::post("orders/{code}/{$action}", [OrderController::class, 'advance'])->defaults('action', $action)->name("ops.orders.{$action}");
         }
-        Route::post('orders/{code}/cancel', [OrderController::class, 'cancel'])->name('ops.orders.cancel');
         Route::post('orders/{code}/tasks', [OrderController::class, 'addTask'])->name('ops.orders.tasks.store');
         Route::patch('order-tasks/{task}', [OrderController::class, 'updateTask'])->name('ops.tasks.update');
         Route::delete('order-tasks/{task}', [OrderController::class, 'deleteTask'])->name('ops.tasks.destroy');

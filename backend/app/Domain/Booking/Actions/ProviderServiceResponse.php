@@ -6,6 +6,7 @@ namespace App\Domain\Booking\Actions;
 
 use App\Domain\Booking\Events\BookingServiceCancelled;
 use App\Domain\Booking\Events\BookingServiceConfirmed;
+use App\Domain\Booking\Support\ReservationNotices;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
@@ -116,6 +117,7 @@ final class ProviderServiceResponse
         }
 
         $this->payables->handle((string) $service->reservation_id, $actor);
+        app(ReservationNotices::class)->providerRejected((string) $service->reservation_id, (string) ($service->name ?? 'Servicio'), "{$reason}: ".trim((string) $data['note']), (string) $actor->getKey());
 
         return (object) ['service' => $service, 'request_id' => $request, 'code' => null, 'alternative' => $alternative];
     }

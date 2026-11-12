@@ -1,7 +1,7 @@
 import { BarChart3, Briefcase, FileText, Radio, UsersRound, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import { Card } from "@/components/ui/Card";
-import { BarChart } from "@/components/ui/Charts";
+import { BarChart, PairedBarChart } from "@/components/ui/Charts";
 import { KpiTile } from "@/components/ui/KpiTile";
 import { TintCardTitle } from "@/components/ui/Tinted";
 import { Ratio, ShareBars, StatusStrip } from "@/features/reports/ReportBlocks";
@@ -46,8 +46,7 @@ export default async function ReportesPage() {
       <section className="mb-5 grid gap-4 lg:grid-cols-2">
         <Card>
           <TintCardTitle icon={UsersRound} title="Leads y cotizaciones por mes" />
-          <BarChart data={months.map((month) => ({ label: month.label, value: month.leads + month.quotes, caption: `${month.leads}/${month.quotes}`, detail: `${month.leads} leads · ${month.quotes} cotizaciones` }))} height={110} />
-          <p className="mt-2 text-[12px] text-fg-3">Cada barra: leads / cotizaciones creadas en el mes.</p>
+          <PairedBarChart data={months.map((month) => ({ label: month.label, first: month.leads, second: month.quotes }))} labels={["Leads", "Cotizaciones"]} />
         </Card>
         <Card>
           <TintCardTitle icon={FileText} title="Embudo de cotizaciones" aside={report.quotes.avg_margin !== null ? `Margen promedio ${formatPercent(report.quotes.avg_margin)}` : undefined} />

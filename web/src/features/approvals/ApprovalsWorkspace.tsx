@@ -88,7 +88,7 @@ function ApprovalTable({ rows, screen, overview }: { rows: ApprovalItem[]; scree
             <ApprovalDetailAction item={row} cancelReasons={overview.cancel_reasons} />
             <ApprovalFlowActions item={row} />
             {generic && row.can_edit ? <ApprovalFormAction item={row} overview={overview} /> : <RowIcon tone="edit" label="Editar" disabledHint={generic ? "Solo quien la pidió la edita mientras está pendiente" : "Se edita en el módulo de origen"} />}
-            {generic && row.mine && open ? <ApprovalWithdrawAction item={row} /> : <RowIcon tone="delete" label="Retirar" disabledHint={open ? "Solo quien la pidió puede retirarla" : "Ya está resuelta"} />}
+            {row.can_withdraw ? <ApprovalWithdrawAction item={row} /> : <RowIcon tone="delete" label="Retirar" disabledHint={!open ? "Ya está resuelta" : row.mine ? "Se resuelve en su módulo de origen" : "Solo quien la pidió puede retirarla"} />}
           </RowActions>
         );
       },

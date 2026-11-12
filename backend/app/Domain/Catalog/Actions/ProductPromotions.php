@@ -84,8 +84,8 @@ final class ProductPromotions
             $product = $this->product($productCode);
             $promotion = $this->promotion($product, $ref);
 
-            if ($status === 'activa' && $promotion->date_to < CatalogAccess::today()) {
-                throw ApiException::unprocessable('CAT-BR-27', 'La promoción ya venció. Extiende su vigencia antes de activarla.');
+            if ($promotion->date_to < CatalogAccess::today()) {
+                throw ApiException::unprocessable('CAT-BR-27', 'La promoción ya venció y no se activa ni se pausa. Extiende su vigencia para volver a usarla.');
             }
 
             DB::table('catalog_product_promotions')->where('id', $promotion->id)->update(['status' => $status, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);

@@ -17,7 +17,7 @@ export interface ReservationRow {
   open_incidents: number;
   services: { confirmed: number; total: number };
   supplier_cost_pen?: number;
-  origin: { kind: "cotizacion" | "web" | "directa"; label: string };
+  origin: { kind: "cotizacion" | "web" | "directa" | "b2b" | "corporativo"; label: string };
   cancel_requested: boolean;
 }
 
@@ -129,6 +129,7 @@ export interface ReservationPolicy {
   modification: string | null;
   no_show: string | null;
   refund: string | null;
+  tiers?: { min_days: number; pct: number }[];
 }
 
 export interface ReservationChangeLog {

@@ -11,6 +11,7 @@ use App\Domain\Platform\Models\Tenant;
 use App\Domain\Platform\Support\DowngradeValidator;
 use App\Domain\Platform\Support\Entitlements;
 use App\Domain\Platform\Support\PlatformInvoicer;
+use App\Domain\Platform\Support\ReadOnlyWindow;
 use App\Domain\Platform\Support\TenantNotice;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +25,7 @@ final class RenewSubscriptions extends PlatformJob
         $db = DB::connection('pgsql_platform');
         $today = $this->today()->toDateString();
         $due = $db->table('subscriptions')->whereIn('status', ['active', 'cancel_scheduled'])->where('current_period_end', '<', $today)->orderBy('current_period_end')->pluck('id');
-        $count = ['renewed' => 0, 'paid' => 0, 'failed' => 0, 'canceled' => 0, 'changed' => 0, 'blocked' => 0];
+        $count = ['renewed' => 0, 'paid' => 0, 'failed' => 0, 'canceled' => 0, 'changed' => 0, 'blocked' => 0, 'closed' => 0];
 
         foreach ($due as $id) {
             $result = $db->transaction(fn (): ?string => $this->renew((string) $id, $today));
@@ -46,7 +47,24 @@ final class RenewSubscriptions extends PlatformJob
             $charge['result'] === 'succeeded' ? $count['paid']++ : $count['failed']++;
         }
 
+        $closed = $db->table('subscriptions as s')->join('tenants as t', 't.id', '=', 's.tenant_id')->where('s.status', 'canceled')->where('t.status', '<>', 'suspendido')
+            ->get(['s.status', 's.tenant_id', 's.trial_ends_at', 's.current_period_end']);
+
+        foreach ($closed as $subscription) {
+            if (! ReadOnlyWindow::expired($subscription, Carbon::parse($today, 'America/Lima'))) {
+                continue;
+            }
+
+            $model = Tenant::on('pgsql_platform')->find($subscription->tenant_id);
+
+            if ($model !== null && ! $model->isSuspended()) {
+                app(ChangeTenantStatus::class)->suspend($model, 'Suscripción cancelada: venció el periodo de solo lectura.');
+                $count['closed']++;
+            }
+        }
+
         $text = self::summary([
+            $count['closed'] ? self::plural($count['closed'], 'cuenta cancelada cerrada tras la solo lectura', 'cuentas canceladas cerradas tras la solo lectura') : null,
             $count['renewed'] ? self::plural($count['renewed'], 'suscripción renovada', 'suscripciones renovadas') : null,
             $count['paid'] ? self::plural($count['paid'], 'cobro aprobado', 'cobros aprobados') : null,
             $count['failed'] ? self::plural($count['failed'], 'cobro rechazado (pasa a cobranza)', 'cobros rechazados (pasan a cobranza)') : null,
@@ -69,14 +87,8 @@ final class RenewSubscriptions extends PlatformJob
 
         if ($subscription->status === 'cancel_scheduled' || ! $subscription->auto_renew) {
             $db->table('subscriptions')->where('id', $id)->update(['status' => 'canceled', 'updated_at' => now(), 'lock_version' => DB::raw('lock_version + 1')]);
-            $model = Tenant::on('pgsql_platform')->find($subscription->tenant_id);
-
-            if ($model !== null && ! $model->isSuspended()) {
-                app(ChangeTenantStatus::class)->suspend($model, 'Suscripción cancelada al cierre del periodo.');
-            }
-
-            app(PlatformSession::class)->log('Suscripción', (string) $subscription->code, 'cancelar', $subscription->status, 'canceled · fin del periodo');
-            app(TenantNotice::class)->send((string) $subscription->tenant_id, 'Tu suscripción terminó', 'La suscripción llegó al final del periodo y quedó cancelada, como lo pediste. Si quieres volver, escríbenos y reactivamos tu cuenta con tus datos intactos.');
+            app(PlatformSession::class)->log('Suscripción', (string) $subscription->code, 'cancelar', $subscription->status, 'canceled · solo lectura '.ReadOnlyWindow::CANCELED_DAYS.' días');
+            app(TenantNotice::class)->send((string) $subscription->tenant_id, 'Tu suscripción terminó', 'La suscripción llegó al final del periodo y quedó cancelada, como lo pediste. Durante '.ReadOnlyWindow::CANCELED_DAYS.' días puedes entrar en modo de solo lectura para consultar y exportar tus datos. Si quieres volver, escríbenos y reactivamos tu cuenta.');
 
             return 'canceled';
         }

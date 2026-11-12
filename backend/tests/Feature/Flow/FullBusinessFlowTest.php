@@ -226,7 +226,7 @@ function flujoCobros(array $flow): array
     useToken($flow['portal_token']);
     $billing = test()->getJson('/api/v1/portal/client/receivables')->assertOk()->json('data');
     expect(collect($billing['installments'])->pluck('code'))->toContain($anticipo->code);
-    $payment = test()->postJson("/api/v1/portal/client/receivables/{$anticipo->code}/payments", [
+    $payment = test()->postJson("/api/v1/portal/client/receivables/{$anticipo->code}/payment-reports", [
         'amount' => (string) $anticipo->amount,
         'method' => 'transferencia_bcp',
         'reference' => 'OP-778812',

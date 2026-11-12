@@ -14,7 +14,7 @@ import { PAX_TYPE, SERVICE_KIND } from "@/lib/reservations";
 import { EvidenceSection, ServiceCompleteAction } from "./Evidence";
 import { OrderIncidentCreateAction } from "./Incidents";
 import { TimeSlot } from "./OpsBits";
-import { AssignmentControls, CloseChecklist, TaskList } from "./OrderActions";
+import { AssignmentControls, CheckinAction, CloseChecklist, TaskList } from "./OrderActions";
 import { RoomingPrefillAction } from "./Rooming";
 import { PendingVouchers } from "./Vouchers";
 
@@ -87,6 +87,7 @@ export function ServicesSection({ order, editable }: { order: OrderDetail; edita
                   </span>
                   <StatusBadge status={assignment.status} />
                   {editable && order.options && !["completada", "en_curso"].includes(assignment.status) && <AssignmentControls assignment={assignment} options={order.options} passengers={order.passengers} today={order.today} />}
+                  {editable && ["completada", "en_curso"].includes(assignment.status) && <CheckinAction assignment={assignment} passengers={order.passengers} today={order.today} />}
                 </li>
               );
             })}
@@ -94,7 +95,7 @@ export function ServicesSection({ order, editable }: { order: OrderDetail; edita
         )}
       </Card>
       <Card>
-        <TintCardTitle icon={ShieldCheck} title="Servicios y proveedores" aside={`${order.services.filter((service) => ["confirmado", "completado", "en_curso"].includes(service.status)).length} de ${order.services.length} confirmados`} />
+        <TintCardTitle icon={ShieldCheck} title="Servicios y proveedores" aside={`${order.services.filter((service) => ["confirmado", "completado", "en_curso"].includes(service.status)).length} de ${order.services.filter((service) => service.status !== "cancelado" && !service.replaced).length} confirmados`} />
         <ul className="flex flex-col">
           {order.services.map((service) => (
             <li key={service.code} className={cn("flex items-center gap-3 border-t border-line-2 py-2.5 text-[13px] first:border-t-0", (service.status === "cancelado" || service.replaced) && "opacity-50")}>

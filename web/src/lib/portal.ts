@@ -59,6 +59,16 @@ export interface PortalQuoteSummary {
   can_decide?: boolean;
 }
 
+export interface PortalContentItem {
+  code: string;
+  title: string;
+  type: string;
+  slug: string;
+  body: string;
+  placement: string | null;
+  updated_at: string | null;
+}
+
 export interface PortalHome {
   today: string;
   advisor: PortalAdvisor | null;
@@ -81,6 +91,7 @@ export interface PortalHome {
   quotes: PortalQuoteSummary[];
   balance: Money;
   documents: number;
+  banners: PortalContentItem[];
 }
 
 export type ServiceState = "completado" | "en_curso" | "hoy" | "proximo";
@@ -170,13 +181,36 @@ export interface PortalBilling {
   methods: { value: string; label: string; requires_reference: boolean }[];
 }
 
+export interface PortalClaim {
+  code: string;
+  number: string | null;
+  type: string;
+  status: string;
+  book_status: "received" | "in_review" | "answered" | "closed" | null;
+  received_at: string | null;
+  due_date: string | null;
+  subject: string;
+  reservation: string | null;
+  response: { decision: string | null; text: string; actions: string | null; answered_at: string | null } | null;
+  receipt: {
+    agency: string;
+    sede: string | null;
+    response_days: number | null;
+    consumer: { name: string | null; document: string | null; email: string | null };
+    good: { kind: string | null; description: string | null; amount: number | null; currency: string | null };
+    detail: string;
+    request: string;
+  };
+}
+
 export interface PortalProfile {
   client: { code: string; name: string; kind: string; document: string | null; email: string | null; phone: string | null; country: string | null; city: string | null; birth_date: string | null };
   login_email: string;
   locale: string;
   editable: boolean;
   consents: { channel: "email" | "whatsapp"; granted: boolean; since: string | null; source: string | null; policy: string | null }[];
-  claims: { code: string; number: string | null; type: string; status: string; received_at: string | null; due_date: string | null; subject: string; reservation: string | null }[];
+  claims: PortalClaim[];
+  claims_book: string;
   arco_requests: { code: string; subject: string; status: string; due_date: string | null; created_at: string; resolution: string | null }[];
 }
 
@@ -225,11 +259,29 @@ const CUSTOMER_STATUS: Record<string, { label: string; tone: Tone }> = {
   cerrada: { label: "Cerrada", tone: "mute" },
 };
 
-export function portalStatus(status: string, scope?: "message"): { label: string; tone: Tone } {
+export type PortalStatusScope = "message" | "trip" | "service";
+
+const TRIP_STATUS: Record<string, { label: string; tone: Tone }> = {
+  parcial: { label: "Cancelado en parte", tone: "warn" },
+  reprogramada: { label: "Reprogramado", tone: "info" },
+  cancelada: { label: "Cancelado", tone: "bad" },
+};
+
+const SERVICE_STATUS: Record<string, { label: string; tone: Tone }> = {
+  pendiente: { label: "Por confirmar", tone: "warn" },
+  rechazado: { label: "Sin cupo, buscando alternativa", tone: "warn" },
+  en_curso: { label: "En curso", tone: "info" },
+  completado: { label: "Realizado", tone: "mute" },
+  cancelado: { label: "Cancelado", tone: "bad" },
+};
+
+export function portalStatus(status: string, scope?: PortalStatusScope): { label: string; tone: Tone } {
   if (scope === "message") {
     if (status === "abierta") return { label: "Esperando respuesta", tone: "warn" };
     if (status === "pendiente") return { label: "Respondida", tone: "ok" };
   }
+  if (scope === "trip" && TRIP_STATUS[status]) return TRIP_STATUS[status];
+  if (scope === "service" && SERVICE_STATUS[status]) return SERVICE_STATUS[status];
   return CUSTOMER_STATUS[status] ?? channelStatus(status);
 }
 
@@ -317,7 +369,7 @@ export const REVIEW_STATUS: Record<string, { label: string; tone: Tone }> = {
 export interface PaxAlerts {
   code: string;
   alerts: { id: string; code: string; type: string; severity: string; title: string; message: string | null; at: string; acked: boolean }[];
-  notices: { code: string; subject: string; body: string; at: string; channel: string }[];
+  notices: { code: string; subject: string; body: string; at: string; channel: string; read: boolean }[];
 }
 
 export interface PaxContacts {

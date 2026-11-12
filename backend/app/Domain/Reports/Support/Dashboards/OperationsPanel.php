@@ -105,7 +105,8 @@ final class OperationsPanel
             'check_out' => $row->check_out,
             'rooms' => (int) ($rooms[$row->id] ?? 0),
             'reservation' => $row->reservation,
-            'status' => $row->hotel_confirmed_at !== null ? 'confirmada' : $row->status,
+            'status' => $row->status,
+            'hotel_confirmed' => $row->hotel_confirmed_at !== null,
         ])->all();
     }
 }

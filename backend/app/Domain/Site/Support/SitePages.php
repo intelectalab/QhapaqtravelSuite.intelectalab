@@ -198,7 +198,10 @@ final class SitePages
             'itinerary' => $this->translated($product, 'itinerary') ?? $this->itinerary($product->id),
             'inclusions' => $this->translated($product, 'inclusions') ?? DB::table('catalog_product_inclusions')->where('product_id', $product->id)->where('kind', 'include')->orderBy('sort_order')->pluck('text')->all(),
             'exclusions' => $this->translated($product, 'exclusions') ?? DB::table('catalog_product_inclusions')->where('product_id', $product->id)->where('kind', 'exclude')->orderBy('sort_order')->pluck('text')->all(),
-            'requirements' => $this->translated($product, 'requirements') ?? DB::table('catalog_product_requirements')->where('product_id', $product->id)->orderBy('created_at')->get(['category', 'text'])->all(),
+            'requirements' => [
+                ...($this->translated($product, 'requirements') ?? DB::table('catalog_product_requirements')->where('product_id', $product->id)->orderBy('created_at')->get(['category', 'text'])->all()),
+                ...(($altitude = app(SiteAltitude::class)->requires((string) $product->id)) !== null ? [['category' => 'Salud', 'text' => 'Itinerario de altura: hasta '.number_format($altitude, 0, ',', ' ').' m s. n. m. Consulta a tu médico antes de viajar; al reservar se pide una declaración.']] : []),
+            ],
             'policies' => array_filter([
                 'Cancelación' => $policy->cancellation ?? $profilePolicies['cancel'],
                 'Cambios de fecha' => $policy->date_change ?? $policy->modification ?? $profilePolicies['modify'],

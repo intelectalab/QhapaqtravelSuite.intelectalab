@@ -10,22 +10,22 @@ Stack: **Laravel 12 / PHP 8.4** · **PostgreSQL 17** (RLS por tenant) · **Redis
 
 | Carpeta | Qué contiene | Cifras |
 |---|---|---|
-| `database/` | SQL de PostgreSQL por fase (extensiones y funciones, plataforma, fases 0–3, RLS), DBML para diagramas, prueba de humo y validador. Conflictos entre especificaciones resueltos y documentados. | 262 tablas · validado en PostgreSQL |
-| `api/` | Contrato OpenAPI 3.1 (`openapi.yaml`/`.json`), índice `ENDPOINTS.md`, generador desde las especificaciones y comparador contra el código. Cada operación trae permiso (`x-permission`), fase (`x-phase`), spec de origen e idempotencia. | 1 006 endpoints en 852 rutas (F0 84 · F1 411 · F2 371 · F3 140) |
-| `backlog/` | Historias por fase en Markdown y CSV, con especificación, tablas, endpoints, pantallas, criterios, pruebas, dependencias y prioridad. `README.md` (resumen y épicas) y `FORMATO.md`. | 378 historias · 49 épicas |
-| `tests/` | Playwright (TypeScript) con fixtures por rol y contrato de `data-testid`; plantillas Pest para aislamiento de tenant, 403 por rol, ownership, máquinas de estado, idempotencia y motor de reservas. | 91 pruebas E2E · 72 pruebas Pest · 138 selectores |
-| `seeds/` | Datos demo del prototipo en JSON (tenants, usuarios por rol, productos, tarifas, reservas, pagos, reglas, monedas, reseñas…), base del `DemoSeeder` y del `E2ESeeder`. | 108 colecciones |
-| `design/` | Tokens (claro/oscuro, tono por estado), `globals.css`, preset de Tailwind v3 / tema v4, tema para Expo y `COMPONENTES.md`. | 102 estados con color |
-| `infra/` | Docker Compose (php-fpm, nginx, Horizon, scheduler, Reverb, Next.js, PostgreSQL 17, Redis 8, MinIO, Mailpit), `.env` de ejemplo, `Makefile` y CI de GitHub Actions. | 10 servicios |
+| `database/` | SQL de PostgreSQL por fase (extensiones y funciones, plataforma, fases 0–3, RLS), DBML para diagramas, prueba de humo y validador. Conflictos entre especificaciones resueltos y documentados. | 327 tablas · validado en PostgreSQL |
+| `api/` | Contrato OpenAPI 3.1 (`openapi.yaml`/`.json`), índice `ENDPOINTS.md`, generador desde las especificaciones y comparador contra el código. Cada operación trae permiso (`x-permission`), fase (`x-phase`), spec de origen e idempotencia. | 1 242 endpoints en 1 045 rutas (F0 85 · F1 411 · F2 364 · F3 382) · contrato 2.10.0 |
+| `backlog/` | Historias por fase en Markdown y CSV, con especificación, tablas, endpoints, pantallas, criterios, pruebas, dependencias y prioridad. `README.md` (resumen y épicas) y `FORMATO.md`. | 447 historias · 60 épicas |
+| `tests/` | Playwright (TypeScript) con fixtures por rol y contrato de `data-testid`; plantillas Pest para aislamiento de tenant, 403 por rol, ownership, máquinas de estado, idempotencia y motor de reservas. | 44 casos E2E (`test()`, varios parametrizados) · 73 pruebas Pest · 138 selectores |
+| `seeds/` | Datos demo del prototipo en JSON (tenants, usuarios por rol, productos, tarifas, reservas, pagos, reglas, monedas, reseñas…), base del `DemoSeeder` y del `E2ESeeder`. | 136 colecciones (+ `_indice.json`) · 94 permisos |
+| `design/` | Tokens (claro/oscuro, tono por estado), `globals.css`, preset de Tailwind v3 / tema v4, tema para Expo y `COMPONENTES.md`; esquema del manifiesto de plantillas web (`plantillas/template.schema.json` + ejemplo) y, desde la v2.11, el sistema de diseño de Rutas Libres «Luminous Nomad» y, desde la v2.12, el de la landing de KipuControl «Andean Operations Modernity» (`design/kipucontrol/`) (`design/rutaslibres/`: DESIGN.md de Stitch, tokens y preset de Tailwind). | 102 estados con color |
+| `infra/` | Docker Compose (php-fpm, nginx, Horizon, scheduler, Reverb, Next.js, PostgreSQL 17, Redis 8, MinIO, Mailpit), `.env` de ejemplo, `Makefile` y CI de GitHub Actions. Imágenes con versión fija y puertos de datos solo en `127.0.0.1`. | 10 servicios + `minio-init` (tarea de arranque) |
 | `claude/` | `CLAUDE.md` raíz y por repositorio (backend, web, mobile), 10 comandos, 3 subagentes y permisos para Claude Code. | — |
 | `PROMPTS.md` | Prompts listos para pegar, por fase y de uso diario. | — |
 | `GUIA-TECNICA.md` | Guía de arranque para el programador: arquitectura, ciclo de vida de una petición, tenancy y RLS paso a paso, permisos y experiencias, dinero y monedas, idempotencia y concurrencia, motor de reservas y centro de reglas, integraciones, colas y tiempo real, frontend y móvil, pruebas, seguridad, observabilidad, rendimiento, despliegue y preguntas frecuentes. | 18 secciones |
-| `ejemplos/` | Código de referencia listo para copiar: backend Laravel (tenancy, RLS, idempotencia, `lock_version`, máquina de estados, caso completo `ConvertQuoteToReservation`, recursos que ocultan costos, `BookingEngine` y `RuleResolver`, adaptadores Fake, auditoría, secuencias, migración con RLS), web Next.js (cliente tipado, hooks, `middleware.ts`, `PermissionGate`, formulario con errores 422, `DataTable` responsive, `AppShell` móvil) y app Expo (outbox offline). Verificado: `php -l`, columnas contra el SQL, migración idéntica al esquema y `tsc` estricto. | 81 PHP · 19 TS web · 5 TS móvil |
-| `database/referencia/` | Diccionario de datos generado desde el catálogo de PostgreSQL (por dominio y fase; columnas, FKs, UNIQUE parciales, CHECK, índices, triggers, RLS), `diccionario.csv` y diagramas entidad-relación por dominio (Mermaid + SVG + visor HTML). | 262 tablas · 4 146 columnas · 804 FKs · 18 diagramas |
-| `referencia/` | `MAQUINAS-DE-ESTADO.md` (valores, transiciones, permisos, guardas y diagrama por entidad), `REGLAS-DE-NEGOCIO.md/.csv`, `CODIGOS-DE-ERROR.md`, `EVENTOS-JOBS-NOTIFICACIONES.md`, `PERMISOS.md` + matrices rol × permiso y rol × pantalla, `GLOSARIO.md`. | 108 columnas de estado · 747 reglas · 144 eventos · 89 jobs · 115 notificaciones · 105 términos |
-| `api/postman/` | Colección Postman v2.1 generada del contrato (login que guarda el token, `Idempotency-Key` e `If-Match` donde corresponde, cuerpos de ejemplo) y entornos `local` y `tenant-b`. Importable en Postman, Insomnia y Bruno. | 1 006 requests |
+| `ejemplos/` | Código de referencia listo para copiar: backend Laravel (tenancy, RLS, idempotencia, `lock_version`, máquina de estados, caso completo `ConvertQuoteToReservation`, recursos que ocultan costos, `BookingEngine` y `RuleResolver`, adaptadores Fake, auditoría, secuencias, migración con RLS), web Next.js (cliente tipado, hooks, `middleware.ts`, `PermissionGate`, formulario con errores 422, `DataTable` responsive, `AppShell` móvil) y app Expo (outbox offline); desde la v2.11, el blog de Rutas Libres en Payload CMS con la configuración de entradas y SEO (`ejemplos/vitrina-payload/`). Verificado: `php -l`, columnas contra el SQL, migración idéntica al esquema y `tsc` estricto. | 81 PHP · 19 TS web · 5 TS móvil |
+| `database/referencia/` | Diccionario de datos generado desde el catálogo de PostgreSQL (por dominio y fase; columnas, FKs, UNIQUE parciales, CHECK, índices, triggers, RLS), `diccionario.csv` y diagramas entidad-relación por dominio (Mermaid + SVG + visor HTML). | 284 tablas · 4 503 columnas · 865 FKs · 18 diagramas |
+| `referencia/` | `MAQUINAS-DE-ESTADO.md` (valores, transiciones, permisos, guardas y diagrama por entidad), `REGLAS-DE-NEGOCIO.md/.csv`, `CODIGOS-DE-ERROR.md`, `EVENTOS-JOBS-NOTIFICACIONES.md`, `PERMISOS.md` + matrices rol × permiso y rol × pantalla, `GLOSARIO.md`. | 124 columnas de estado · 764 reglas · 149 eventos · 99 jobs · 115 notificaciones · 105 términos |
+| `api/postman/` | Colección Postman v2.1 generada del contrato (login que guarda el token, `Idempotency-Key` e `If-Match` donde corresponde, cuerpos de ejemplo) y entornos `local` y `tenant-b`. Importable en Postman, Insomnia y Bruno. | 1 065 requests |
 
-El kit se usa junto con la documentación funcional (`docs/`): `CONVENCIONES.md`, `02-ARQUITECTURA.md`, `03-PLAN-DE-IMPLEMENTACION.md`, `04-HALLAZGOS-Y-DECISIONES.md`, las 19 especificaciones de `especificaciones/` y el prototipo navegable.
+El kit se usa junto con la documentación funcional (`docs/`): `CONVENCIONES.md`, `02-ARQUITECTURA.md`, `03-PLAN-DE-IMPLEMENTACION.md`, `04-HALLAZGOS-Y-DECISIONES.md`, las 26 especificaciones de `especificaciones/` y el prototipo navegable.
 
 ## 2. Armar el espacio de trabajo
 
@@ -40,7 +40,7 @@ kipucontrol/                          ← abrir Claude Code aquí para trabajo t
 ├── mobile/    CLAUDE.md         ← kit/claude/mobile/CLAUDE.md    · .env.example ← kit/infra/env/mobile.env.example
 └── docs/
     ├── CONVENCIONES.md  02-ARQUITECTURA.md  03-PLAN…  04-HALLAZGOS…  CHANGELOG.md
-    ├── especificaciones/00…18-*.md
+    ├── especificaciones/00…25-*.md
     ├── prototipo/               ← carpeta del prototipo (index.html + assets/)
     └── kit/                     ← esta carpeta completa
 ```
@@ -93,8 +93,8 @@ Comandos incluidos: `implementar-historia`, `siguiente-historia`, `nueva-migraci
 | 1A · MVP comercial | CRM, catálogo, motor de reservas básico (rangos, pasajeros, tarifas, temporadas, salidas, holds), cotizaciones | 62 | E2E-01 en verde; PRD-011 exacto al céntimo |
 | 1B · MVP operativo | Reservas, operaciones sin apps, finanzas básicas, portal del cliente, reportes básicos, Libro de Reclamaciones | 83 | E2E-02, 03, 05 y 09 en verde; uso interno |
 | 2 · Canales y campo | Apps móviles, portal del pasajero y B2B, extranet, sitio público y pagos, OSE y conciliación, centro de reglas completo, widget/CMS, mensajes al pasajero, monedas, aprobaciones e inbox, cupos, documentos de viaje, tesorería | 127 | E2E-04, 06, 07 y 10 en verde; venta en línea |
-| 3 · SaaS y crecimiento | Suscripciones, planes × reglas, facturación de plataforma, API keys y webhooks, marketing y metas, reseñas propias y externas, reportes avanzados | 57 | Nuevas agencias dadas de alta y facturadas desde la consola de plataforma |
-| **Total** | | **378** | |
+| 3 · SaaS y crecimiento | Suscripciones, planes × reglas, facturación de plataforma, API keys y webhooks, marketing y metas, reseñas propias y externas, reportes avanzados y, desde la v2.6, crecimiento comercial (IA de ventas, WhatsApp oficial, links de pago, recuperación, importador, OTAs, marketplace, precios dinámicos, vales, check-in QR, exportación contable, aéreo y hotel) y, desde la v2.7, el portal corporativo de la empresa cliente y, desde la v2.8, viajes por tramos con venta en ruta, vitrina gratuita, pases de 30 días, add-ons, pasarelas con comisión y dominio propio con SEO y blog y, desde la v2.9, plantillas web del sitio (incluidas, premium y de autores) y contenido e imágenes con IA por créditos y, desde la v2.10, blog de la vitrina en Payload CMS, etiquetas de seguimiento y píxeles con consentimiento, conversiones del servidor y vista de visitas | 126 | Nuevas agencias dadas de alta y facturadas desde la consola de plataforma |
+| **Total** | | **447** | |
 
 El kit no incluye equipo, plazos ni estimaciones de tiempo: la planificación la definen la empresa y el proyectista. El orden lo dan las fases, las dependencias y la prioridad de cada historia.
 
@@ -118,16 +118,20 @@ El kit toma supuestos donde las especificaciones dejan algo abierto; están marc
 
 | Antes de | Decisión |
 |---|---|
-| Fase 0 | Cifrado de documentos de identidad de pasajeros: la columna es `varchar(30)` y un valor cifrado no cabe (ampliar a `text` o cifrar a nivel de disco). |
-| Fase 0 | Reinicio anual de correlativos: `sys_sequences.year_reset` choca con el trigger que impide que el número baje. |
-| Fase 0 | Uso de los códigos HTTP 412, 423 y 428 (hoy no los usa ninguna especificación). |
-| Fase 1B | Unificar `catalog_availability_holds` y `booking_inventory_holds` en una sola fuente de cupos. |
-| Fase 1B | Estados sin origen documentado: `cancelada` en asignaciones operativas (no está en el CHECK de `ops_assignments`), `anulado` en `fin_invoices`, `parcial` e `incidencia` en `booking_reservations`. |
+| Fase 1B | Origen de `anulado` en `fin_invoices`: el kit supone nota de crédito total o comunicación de baja desde `aceptado`/`observado`; confirmar con el OSE (07 §12 P-03). |
 | Fase 2 | Proveedor OSE/PSE, pasarela de pago, proveedor de WhatsApp y fuente de tipo de cambio (hoy: adaptadores `Fake` y tasas demo). |
 | Fase 2 | GPS en la app del operador (D-10): finalidad y consentimiento. |
 | Fase 2 | Relación entre `fin_bank_accounts` y `fin_treasury_accounts`. |
 | Fase 3 | Planes comerciales y reglas incluidas en cada uno (hoy: planes y reglas de prueba, editables). El catálogo tiene 32 reglas activables (31 en las especificaciones + `R-OWN-REVIEWS` de la v2.2). |
 | Fase 3 | Cuentas y acuerdos con TripAdvisor, Trustpilot y Google para reseñas externas. |
+
+Resueltas en la v2.5 del kit (ver `docs/CHANGELOG.md`):
+
+- Documento de identidad del pasajero: `booking_passengers.doc_number` pasa a `text` para el cast `encrypted`.
+- Reinicio anual de correlativos: serie por año en `SequenceService` (el trigger «no decrece» y el UNIQUE se mantienen).
+- Códigos HTTP: 412, 423 y 428 no se usan; sin `If-Match` → 422 `IF_MATCH_REQUIRED` (00 SEC-BR-17).
+- Cupos: `catalog_availability_holds` es la única fuente de retenciones para la disponibilidad; `booking_inventory_holds` solo registra lo consumido por cada reserva.
+- Estados: `cancelada` entra al CHECK de `ops_assignments`; `parcial` e `incidencia` de la reserva quedan con transiciones en 04 §4.1.
 
 ## 8. Mantener el kit al día
 

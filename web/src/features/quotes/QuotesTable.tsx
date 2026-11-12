@@ -77,6 +77,7 @@ export function QuotesTable({ rows, canManage }: { rows: QuoteRow[]; canManage: 
           <StatusBadge status={row.status} />
           {row.internal_status === "pend" && <span className="text-[11.5px] font-semibold text-warn">Pend. aprobación gerencia</span>}
           {row.internal_status === "req" && <span className="text-[11.5px] text-fg-3">Requiere aprobación</span>}
+          {row.internal_status === "rejected" && <span className="text-[11.5px] font-semibold text-bad">Gerencia no la aprobó</span>}
         </span>
       ),
     },
@@ -108,8 +109,8 @@ export function QuotesTable({ rows, canManage }: { rows: QuoteRow[]; canManage: 
 
   const filters: FilterConfig<QuoteRow>[] = [
     { id: "status", label: "Estado", options: [...new Set(rows.map((row) => row.status))].map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status },
-    { id: "internal", label: "Aprobación interna", options: [{ value: "pend", label: "Pendiente de Gerencia" }, { value: "req", label: "Requiere aprobación" }, { value: "ok", label: "Aprobada" }], value: (row) => row.internal_status ?? "" },
-    { id: "owner", label: "Asesor", options: [...new Set(rows.map((row) => row.owner.name))].map((value) => ({ value, label: value })), value: (row) => row.owner.name },
+    { id: "internal", label: "Aprobación interna", options: [{ value: "pend", label: "Pendiente de Gerencia" }, { value: "req", label: "Requiere aprobación" }, { value: "rejected", label: "No aprobada" }, { value: "ok", label: "Aprobada" }], value: (row) => row.internal_status ?? "" },
+    { id: "owner", label: "Responsable", options: [...new Set(rows.map((row) => row.owner.name))].map((value) => ({ value, label: value })), value: (row) => row.owner.name },
   ];
 
   const sorts: SortOption<QuoteRow>[] = [
@@ -135,7 +136,7 @@ export function QuotesTable({ rows, canManage }: { rows: QuoteRow[]; canManage: 
           { header: "Cotización", value: (row) => row.title },
           { header: "Cliente", value: (row) => row.client.name },
           { header: "Oportunidad", value: (row) => row.opportunity?.code ?? "" },
-          { header: "Asesor", value: (row) => row.owner.name },
+          { header: "Responsable", value: (row) => row.owner.name },
           { header: "Versión", value: (row) => `v${row.version} de ${row.version_count}` },
           { header: "Estado", value: (row) => statusLabel(row.status) },
           { header: "Desde", value: (row) => row.travel_from },

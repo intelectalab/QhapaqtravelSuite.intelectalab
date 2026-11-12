@@ -315,6 +315,6 @@ Todo valor DEMO se reemplazará por el definitivo sin cambios de modelo: basta e
 5. Recargo por tarjeta (R-PAY-FEE): verificar normativa de protección al consumidor y contrato con la pasarela antes de activarlo.
 6. Fuente oficial del TC (SBS, BCRP o proveedor comercial) y frecuencia; margen máximo 15 %; umbral de alerta definitivo (demo 3 %). Los tipos de cambio, historial y proveedores actuales son **DEMO**.
 7. Reseñas: estado real de contratos con Google, TripAdvisor y Trustpilot (fase 1) y luego Meta, GetYourGuide y Viator; los datos mostrados en el prototipo son **de ejemplo**.
-8. Widget: dominio del CDN (`cdn.kipucontrol.app`) y del host de reservas por tenant; política de cookies/consentimiento en sitios de terceros.
+8. Widget: dominio del CDN (`cdn.kipucontrol.com`) y del host de reservas por tenant; política de cookies/consentimiento en sitios de terceros.
 9. Integración final con el checkout de sitio.js (carrito unificado basado en BE) — pendiente de alinear con el responsable de `sitio.js`.
 10. Plan mínimo de cada regla (matriz DEMO): validar con negocio antes de publicar precios.

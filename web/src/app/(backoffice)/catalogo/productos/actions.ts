@@ -60,3 +60,40 @@ export async function removeProductTranslation(_state: ProductActionState, form:
   revalidatePath("/catalogo/productos", "layout");
   return { message: null, done: true };
 }
+
+export async function createProductVersion(_state: ProductActionState, form: FormData): Promise<ProductActionState> {
+  return send(`/catalog/products/${encodeURIComponent(text(form, "code") ?? "")}/versions`, "POST", { kind: text(form, "kind"), valid_from: text(form, "valid_from"), reason: text(form, "reason") });
+}
+
+export async function duplicateProduct(_state: ProductActionState, form: FormData): Promise<ProductActionState> {
+  return send(`/catalog/products/${encodeURIComponent(text(form, "code") ?? "")}/duplicate`, "POST", {});
+}
+
+export interface VersionChange {
+  field: string;
+  before: string | number | boolean | null;
+  after: string | number | boolean | null;
+}
+
+export async function compareProductVersions(code: string, from: string, to: string): Promise<{ changes: VersionChange[] } | { error: string }> {
+  const result = await apiFetch<{ changes: VersionChange[] }>(`/catalog/products/${encodeURIComponent(code)}/versions/compare?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+  return result.ok && result.data ? result.data : { error: result.error?.message ?? "No pudimos comparar las versiones." };
+}
+
+export interface ResolvedRate {
+  ref: string;
+  type: string;
+  segment: string;
+  channel: string;
+  currency: string;
+  price: string;
+  selectable: boolean;
+  reason: string | null;
+  season: boolean;
+}
+
+export async function resolveProductRate(code: string, date: string, segment: string, channel: string): Promise<{ chosen: string | null; rates: ResolvedRate[] } | { error: string }> {
+  const query = new URLSearchParams({ date, segment, channel }).toString();
+  const result = await apiFetch<{ chosen: string | null; rates: ResolvedRate[] }>(`/catalog/products/${encodeURIComponent(code)}/rates/resolve?${query}`);
+  return result.ok && result.data ? result.data : { error: result.error?.message ?? "No pudimos resolver la tarifa." };
+}

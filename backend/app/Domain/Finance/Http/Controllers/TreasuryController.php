@@ -106,9 +106,10 @@ final class TreasuryController
             'date' => ['required', 'date', 'before_or_equal:today'],
             'reference' => ['required', 'string', 'max:80'],
             'description' => ['required', 'string', 'min:3', 'max:255'],
+            'cash_deposit' => ['nullable', 'boolean'],
         ], ['to.different' => 'Elige cuentas distintas.', 'amount.*' => 'El importe debe ser mayor que cero.', 'reference.*' => 'Escribe el número de operación.', 'description.*' => 'Describe la transferencia.', 'date.*' => 'Indica una fecha válida, no futura.']);
 
-        return response()->json(['data' => ['code' => $operations->transfer($data, $this->actor($request))]], 201);
+        return response()->json(['data' => ['code' => $operations->transfer($data, $this->actor($request), ! empty($data['cash_deposit']) ? 'cash_deposit' : 'transfer')]], 201);
     }
 
     public function settle(Request $request, string $account, TreasuryOperations $operations): JsonResponse

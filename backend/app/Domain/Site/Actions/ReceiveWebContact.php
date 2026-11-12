@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Site\Actions;
 
 use App\Domain\Crm\Support\CodeSequence;
+use App\Domain\Inbox\Support\InboxNotices;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
@@ -73,6 +74,8 @@ final class ReceiveWebContact
             'sent_at' => $now,
         ]);
         $this->audit->log('Conversación', $code, 'crear', after: 'form');
+
+        app(InboxNotices::class)->created($id);
 
         return ['code' => $code, 'lead' => $lead['code'] ?? null];
     }

@@ -69,4 +69,34 @@ final class ScheduleReport
 
         return ['code' => $code, 'cron' => $cron, 'label' => $label];
     }
+
+    public function update(User $actor, string $code, array $data): array
+    {
+        $job = DB::table('sys_scheduled_jobs')->where('code', $code)->where('is_system', false)->where('job_class', SendReportExport::class)->first() ?? throw ApiException::notFound('El envío programado no existe.');
+
+        if (! $actor->can('reports.export')) {
+            throw ApiException::forbidden('REP-BR-05', 'Editar envíos requiere el permiso reports.export.');
+        }
+
+        [$hour, $minute] = array_map('intval', explode(':', $data['time']));
+        $cron = match ($data['frequency']) {
+            'daily' => "{$minute} {$hour} * * *",
+            'weekly' => "{$minute} {$hour} * * 1",
+            default => "{$minute} {$hour} 1 * *",
+        };
+        $label = mb_strtolower(self::FREQUENCIES[$data['frequency']]).' '.str_pad((string) $hour, 2, '0', STR_PAD_LEFT).':'.str_pad((string) $minute, 2, '0', STR_PAD_LEFT);
+        $recipients = array_values(array_unique(array_map(fn (string $email): string => Str::lower(trim($email)), $data['recipients'])));
+        $previous = (array) json_decode((string) $job->recipients, true);
+        DB::table('sys_scheduled_jobs')->where('id', $job->id)->update([
+            'cron' => $cron,
+            'cron_label' => $label,
+            'report_format' => $data['format'],
+            'recipients' => json_encode(['emails' => $recipients, 'period' => $data['period'] ?? ($previous['period'] ?? 'month'), 'sede' => $data['sede'] ?? ($previous['sede'] ?? null)], JSON_UNESCAPED_UNICODE),
+            'updated_by' => $actor->getKey(),
+            'updated_at' => now(),
+        ]);
+        $this->audit->log('Proceso programado', $code, 'editar_envio', "{$job->cron_label} · {$job->report_format}", "{$label} · {$data['format']} · ".count($recipients).' destinatarios');
+
+        return ['code' => $code, 'cron' => $cron, 'label' => $label];
+    }
 }

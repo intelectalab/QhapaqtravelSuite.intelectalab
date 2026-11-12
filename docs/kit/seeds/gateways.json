@@ -1,0 +1,46 @@
+[
+  {
+    "id": "GW-01",
+    "provider": "Pasarela local (tarjetas)",
+    "status": "activo",
+    "mode": "producción",
+    "account": "Comercio 4402118",
+    "currency": "PEN",
+    "feePct": 3.99,
+    "feeFixed": 0,
+    "feeCurrency": "PEN",
+    "taxOnFee": true,
+    "settleDays": 2,
+    "passFee": false
+  },
+  {
+    "id": "GW-02",
+    "provider": "PayPal",
+    "status": "activo",
+    "mode": "producción",
+    "account": "pagos@andeshorizonte.pe",
+    "currency": "USD",
+    "feePct": 5.4,
+    "feeFixed": 0.3,
+    "feeCurrency": "USD",
+    "fxSpreadPct": 3.5,
+    "taxOnFee": false,
+    "settleDays": 0,
+    "passFee": false,
+    "note": "Comisión referencial para cobros internacionales; se toma del reporte de PayPal en cada transacción."
+  },
+  {
+    "id": "GW-03",
+    "provider": "Yape / Plin (QR)",
+    "status": "activo",
+    "mode": "producción",
+    "account": "Cuenta empresa BCP",
+    "currency": "PEN",
+    "feePct": 0,
+    "feeFixed": 0,
+    "feeCurrency": "PEN",
+    "taxOnFee": false,
+    "settleDays": 0,
+    "passFee": false
+  }
+]

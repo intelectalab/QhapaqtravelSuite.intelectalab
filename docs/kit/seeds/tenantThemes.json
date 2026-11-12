@@ -1,0 +1,44 @@
+[
+  {
+    "tenantId": "TNT-0001",
+    "tenant": "Andes Horizonte Travel S.A.C.",
+    "templateId": "TPL-ANDES",
+    "version": "2.3.0",
+    "chosenBy": "alta"
+  },
+  {
+    "tenantId": "TNT-0002",
+    "tenant": "Selva Viva Expediciones E.I.R.L.",
+    "templateId": "TPL-AMAZONIA",
+    "version": "1.1.2",
+    "chosenBy": "agencia"
+  },
+  {
+    "tenantId": "TNT-0003",
+    "tenant": "Costa Sur DMC S.A.C.",
+    "templateId": "TPL-NAZCA",
+    "version": "1.2.0",
+    "chosenBy": "agencia"
+  },
+  {
+    "tenantId": "TNT-0004",
+    "tenant": "Altiplano Corporate Travel S.A.",
+    "templateId": "TPL-PACIFICO",
+    "version": "1.0.4",
+    "chosenBy": "admin_plataforma"
+  },
+  {
+    "tenantId": "TNT-0005",
+    "tenant": "Ruta Norte Turismo S.A.C.",
+    "templateId": "TPL-INTI",
+    "version": "1.4.0",
+    "chosenBy": "alta"
+  },
+  {
+    "tenantId": "TNT-0006",
+    "tenant": "Nevados Tours S.R.L.",
+    "templateId": "TPL-ANDES",
+    "version": "2.3.0",
+    "chosenBy": "alta"
+  }
+]

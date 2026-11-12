@@ -1,4 +1,4 @@
-import { BellRing, FileCheck2, HeartPulse, Phone, ShieldCheck, Users } from "lucide-react";
+import { BellRing, CalendarX2, FileCheck2, FileWarning, HeartPulse, Phone, ShieldCheck, Ticket, TicketX, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -30,6 +30,8 @@ export default async function DocumentosReservaPage({ params }: PageProps<"/oper
   const contacts = data.passengers.filter((passenger) => passenger.contact).length;
   const passengerTarget = (id: string) => `${encodeURIComponent(data.code)}/travel-docs/${id}`;
   const attention = data.passengers.filter((passenger) => passenger.attention?.flag).length;
+  const observed = documents.filter((document) => document.status === "observado").length;
+  const expired = documents.filter((document) => document.status === "vencido").length;
 
   return (
     <ToneScope tone={complete === documents.length ? "ok" : "warn"}>
@@ -55,8 +57,23 @@ export default async function DocumentosReservaPage({ params }: PageProps<"/oper
         actions={data.can.request ? <RequestDocsAction data={data} /> : undefined}
       />
 
-      <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {data.mapi && !data.mapi.used && (
+        <section className={cn("mb-5 flex items-start gap-3 rounded-tile border px-4 py-3", data.mapi.blocked ? "border-[color-mix(in_srgb,var(--bad)_35%,transparent)] bg-[color-mix(in_srgb,var(--bad)_7%,transparent)]" : "border-[color-mix(in_srgb,var(--ok)_35%,transparent)] bg-[color-mix(in_srgb,var(--ok)_7%,transparent)]")}>
+          <span className={cn("grid h-9 w-9 flex-none place-items-center rounded-xl text-white", data.mapi.blocked ? "bg-bad" : "bg-ok")}>
+            {data.mapi.blocked ? <TicketX size={17} /> : <Ticket size={17} />}
+          </span>
+          <div className="min-w-0 text-[13px]">
+            <b className="block text-[14px] font-semibold">{data.mapi.blocked ? "Emisión de entradas nominativas bloqueada (DOC-BR-010)" : "Entradas nominativas listas para emitir"}</b>
+            <span className="block text-fg-2">{data.mapi.services.map((service) => `${service.name} · ingreso ${formatDate(service.date)}`).join(" · ")}</span>
+            {data.mapi.blocked && <span className="mt-1 block text-fg-3">Falta: {data.mapi.missing.map((person) => `${person.name} (${person.documents.join(", ")})`).join("; ")}</span>}
+          </div>
+        </section>
+      )}
+
+      <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-6">
         <TintTile icon={ShieldCheck} tone="ok" label="Documentos completos" value={`${complete} de ${documents.length}`} info="Documentos que aplican a los pasajeros de la reserva y Operaciones ya validó. Los que no aplican por nacionalidad, edad o programa no se cuentan." />
+        <TintTile icon={FileWarning} tone={observed > 0 ? "bad" : "ok"} label="Observados" value={observed} note={observed > 0 ? "Esperan corrección del cliente" : "Sin observaciones"} info="Documentos que Operaciones observó por ilegibles, datos incorrectos o archivo equivocado. El cliente recibe el motivo y debe volver a enviarlo." />
+        <TintTile icon={CalendarX2} tone={expired > 0 ? "bad" : "ok"} label="Vencidos" value={expired} note="Vigencia insuficiente" info="Documentos cuya fecha de vencimiento no cubre el viaje con el margen que piden las reglas (por ejemplo, pasaporte con seis meses de vigencia)." />
         <TintTile icon={Users} tone="t1" label="Pasajeros" value={data.passengers.length} note={`${data.passengers.filter((passenger) => passenger.foreign).length} extranjeros`} info="Pasajeros registrados en la reserva. La nota cuenta a los extranjeros, que necesitan pasaporte con vigencia extendida y registro migratorio." />
         <TintTile icon={Phone} tone="t4" label="Contactos de emergencia" value={`${contacts} de ${data.passengers.length}`} info="Pasajeros con contacto de emergencia (nombre y teléfono). Es obligatorio para todos (DOC-BR-008)." />
         <TintTile icon={HeartPulse} tone="violet" label="Atención especial" value={attention} note="Indicaciones operativas" info="Pasajeros marcados con atención especial en la operación. Solo guarda la indicación operativa, sin datos clínicos." />

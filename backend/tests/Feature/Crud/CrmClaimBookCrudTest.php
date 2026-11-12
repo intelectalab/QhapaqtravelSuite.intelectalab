@@ -89,6 +89,11 @@ it('registrar una hoja le asigna correlativo de la sede, plazo hábil y aparece 
         ->and(crmHojaEventos($code))->toBe(['registro'])
         ->and(crmHojaAuditoria('LR-LIM-2026-000008', 'registrar'))->not->toBeNull()
         ->and(collect($this->getJson('/api/v1/crm/claim-book')->assertOk()->json('data.claims'))->pluck('code'))->toContain($code);
+
+    $ack = DB::table('notif_messages')->where('source_id', $claim->id)->where('event_code', 'reclamacion.constancia')->first();
+    expect($ack)->not->toBeNull()
+        ->and($ack->recipient_address)->toBe(json_decode((string) $claim->consumer, true)['email'])
+        ->and($ack->body_rendered)->toContain('LR-LIM-2026-000008')->toContain('41553200')->toContain((string) $claim->request);
 });
 
 it('una queja sin cliente vinculado toma la reserva para ubicar al cliente', function () {
@@ -175,6 +180,15 @@ it('una hoja respondida ya no se edita', function () {
     expect($this->patchJson('/api/v1/crm/claim-book/REC-0018', crmHojaEdicion('REC-0018', ['good_description' => 'Cambio tardío'])))->toBeApiError(409, 'LR-STATE');
 });
 
+it('una hoja recibida se responde directo, sin pasar por evaluación, y aparece en Postventa', function () {
+    actingAsSeed('U01');
+
+    expect(collect($this->getJson('/api/v1/crm/after-sales')->assertOk()->json('data.cases'))->firstWhere('code', 'REC-0020')['is_book'] ?? null)->toBeTrue();
+
+    $this->postJson('/api/v1/crm/claim-book/REC-0020/response', ['decision' => 'Procedente', 'text' => 'Se reconoce el reclamo y se devolverá el importe del traslado.', 'actions' => 'Devolución del traslado'], critical())->assertOk();
+    expect(rowOf('crm_cases', 'REC-0020')->book_status)->toBe('answered');
+});
+
 it('responder una hoja en evaluación la deja respondida con la decisión y el envío al consumidor', function () {
     actingAsSeed('U01');
 
@@ -189,12 +203,42 @@ it('responder una hoja en evaluación la deja respondida con la decisión y el e
         ->and($response['decision'])->toBe('Procedente en parte')
         ->and($response['sent_at'])->not->toBeNull()
         ->and(crmHojaAuditoria($claim->book_number, 'responder')->after_value)->toBe('answered');
+
+    $message = DB::table('notif_messages')->where('id', $response['notification_id'])->first();
+    expect($message->event_code)->toBe('reclamacion.respuesta')
+        ->and($message->recipient_address)->toBe($response['sent_to'])
+        ->and($message->body_rendered)->toContain('Procedente en parte')->toContain('Nota de crédito');
+});
+
+it('reenviar la respuesta vuelve a mandar el correo y queda en el historial', function () {
+    actingAsSeed('U01');
+    $this->postJson('/api/v1/crm/claim-book/REC-0019/response', ['decision' => 'Procedente en parte', 'text' => 'Se reconoce la demora y se devolverá el 30 % del servicio.', 'actions' => 'Nota de crédito'], critical())->assertOk();
+    $first = json_decode((string) rowOf('crm_cases', 'REC-0019')->response, true)['notification_id'];
+
+    $this->postJson('/api/v1/crm/claim-book/REC-0019/response/resend', [], critical())->assertOk();
+
+    $response = json_decode((string) rowOf('crm_cases', 'REC-0019')->response, true);
+    expect($response['notification_id'])->not->toBe($first)
+        ->and($response['resent'])->toBe(1)
+        ->and(crmHojaAuditoria(rowOf('crm_cases', 'REC-0019')->book_number, 'reenviar_respuesta'))->not->toBeNull();
+    expect($this->postJson('/api/v1/crm/claim-book/REC-0021/response/resend', [], critical()))->toBeApiError(409, 'LR-STATE');
+});
+
+it('pasar a evaluación permite elegir el responsable y le avisa', function () {
+    actingAsSeed('U01');
+    $owner = seedUser('U02')->id;
+
+    $this->postJson('/api/v1/crm/claim-book/REC-0021/review', ['owner_id' => $owner, 'note' => 'Revisar con el hotel'], critical((int) rowOf('crm_cases', 'REC-0021')->lock_version))->assertOk();
+
+    $claim = rowOf('crm_cases', 'REC-0021');
+    expect($claim->owner_id)->toBe($owner)
+        ->and(withinTenant(tenantA(), fn () => DB::table('notif_messages')->where('event_code', 'reclamacion.asignada')->where('source_id', $claim->id)->value('recipient_user_id')))->toBe($owner);
 });
 
 it('responder fuera de plazo queda marcado en la auditoría', function () {
     actingAsSeed('U01');
 
-    $this->postJson('/api/v1/crm/claim-book/REC-0017/response', ['decision' => 'No procedente', 'text' => 'El servicio se prestó según lo contratado y documentado.'], critical())->assertOk();
+    $this->postJson('/api/v1/crm/claim-book/REC-0017/response', ['decision' => 'No procedente', 'text' => 'El servicio se prestó según lo contratado y quedó documentado en la orden.', 'actions' => 'Se revisó la orden de servicio con el guía.'], critical())->assertOk();
 
     expect(crmHojaAuditoria('LR-AQP-2026-000003', 'responder')->after_value)->toContain('FUERA DE PLAZO');
 });
@@ -202,8 +246,8 @@ it('responder fuera de plazo queda marcado en la auditoría', function () {
 it('responder valida la decisión y el texto, y una hoja cerrada no se responde', function () {
     actingAsSeed('U01');
 
-    $this->postJson('/api/v1/crm/claim-book/REC-0019/response', ['decision' => 'Tal vez', 'text' => 'Corto'], critical())->assertStatus(422)->assertJsonValidationErrors(['decision', 'text']);
-    expect($this->postJson('/api/v1/crm/claim-book/REC-0015/response', ['decision' => 'Procedente', 'text' => 'Respuesta que llega cuando la hoja ya fue cerrada.'], critical()))->toBeApiError(409, 'LR-STATE');
+    $this->postJson('/api/v1/crm/claim-book/REC-0019/response', ['decision' => 'Tal vez', 'text' => 'Corto'], critical())->assertStatus(422)->assertJsonValidationErrors(['decision', 'text', 'actions']);
+    expect($this->postJson('/api/v1/crm/claim-book/REC-0015/response', ['decision' => 'Procedente', 'text' => 'Respuesta que llega cuando la hoja ya fue cerrada hace varios días.', 'actions' => 'Ninguna, la hoja ya estaba cerrada.'], critical()))->toBeApiError(409, 'LR-STATE');
 });
 
 it('cerrar una hoja respondida guarda la nota y la deja cerrada', function () {

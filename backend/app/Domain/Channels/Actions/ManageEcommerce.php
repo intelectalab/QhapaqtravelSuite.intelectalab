@@ -53,6 +53,14 @@ final class ManageEcommerce
             throw ApiException::conflict('ECO-BR-01', 'Solo se publican productos activos en el catálogo.');
         }
 
+        $today = now(app(TenantContext::class)->timezone())->toDateString();
+        $priced = DB::table('catalog_rates')->where('product_id', $product->id)->where('status', 'vigente')->where('valid_from', '<=', $today)->where('valid_to', '>=', $today)
+            ->whereIn('channel', ['E-commerce', 'Todos', 'Directo'])->whereNotIn('rate_type', ['Proveedor', 'Costo', 'B2B', 'Mayorista'])->exists();
+
+        if ($published && ! $priced) {
+            throw ApiException::conflict('ECO-BR-01', 'El producto no tiene una tarifa web o pública vigente: créala antes de publicarlo en la tienda.');
+        }
+
         $current = DB::table('catalog_product_channels')->where('product_id', $product->id)->where('channel', 'ecommerce')->first(['id', 'is_published']);
         $values = ['is_published' => $published, 'published_at' => $published ? now() : null, 'published_by' => $published ? $actor->getKey() : null, 'updated_by' => $actor->getKey(), 'updated_at' => now()];
 
@@ -62,6 +70,7 @@ final class ManageEcommerce
             DB::table('catalog_product_channels')->where('id', $current->id)->update($values);
         }
 
+        DB::table('catalog_products')->where('id', $product->id)->update(['is_ecommerce' => $published, 'updated_at' => now()]);
         $this->audit->log('Producto en e-commerce', $productCode, $published ? 'publicar' : 'despublicar', $current && $current->is_published ? 'publicado' : 'no publicado', $published ? 'publicado' : 'no publicado');
     }
 
@@ -70,7 +79,7 @@ final class ManageEcommerce
         DB::transaction(function () use ($code, $reason, $actor): void {
             $order = DB::table('channel_ecom_orders')->where('code', $code)->lockForUpdate()->first(['id', 'status', 'lock_version']) ?? throw ApiException::notFound();
 
-            if (! in_array($order->status, EcommerceDirectory::OPEN_STATUSES, true)) {
+            if (! in_array($order->status, EcommerceDirectory::CANCELLABLE, true)) {
                 throw ApiException::conflict('ECO-BR-04', 'Solo se anulan pedidos con el pago pendiente o rechazado.');
             }
 

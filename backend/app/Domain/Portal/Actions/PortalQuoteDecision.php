@@ -34,19 +34,15 @@ final class PortalQuoteDecision
     {
         $quote = $account->quote($code);
 
-        if (! in_array($quote->status, ['enviada', 'vista', 'negociacion'], true)) {
-            throw ApiException::conflict('PCL-BR-11', 'Solo se piden cambios sobre una propuesta enviada que aún no aprobaste ni rechazaste.');
+        if (! in_array($quote->status, ['enviada', 'vista', 'negociacion', 'vencida'], true)) {
+            throw ApiException::conflict('PCL-BR-11', 'Solo se piden cambios sobre una propuesta que aún no aprobaste ni rechazaste.');
         }
 
-        $ticket = $messages->send($account, ['subject' => "Cambios en la propuesta {$quote->code}", 'topic' => 'cambios', 'body' => $message]);
+        $expired = $quote->status === 'vencida' || ($quote->valid_until !== null && (string) $quote->valid_until < now('America/Lima')->toDateString());
+        $ticket = $messages->send($account, ['subject' => ($expired ? 'Actualizar la propuesta ' : 'Cambios en la propuesta ').$quote->code, 'topic' => 'cambios', 'body' => $message]);
+        $this->audit->log('Cotización', (string) $quote->code, $expired ? 'solicitar_actualizacion_portal' : 'solicitar_cambios_portal', $quote->status, "{$quote->status} · {$ticket}");
 
-        if ($quote->status !== 'negociacion') {
-            DB::table('quote_quotes')->where('id', $quote->id)->update(['status' => 'negociacion', 'lock_version' => DB::raw('lock_version + 1'), 'updated_at' => now()]);
-        }
-
-        $this->audit->log('Cotización', (string) $quote->code, 'solicitar_cambios_portal', $quote->status, "negociacion · {$ticket}");
-
-        return ['code' => $quote->code, 'status' => 'negociacion', 'ticket' => $ticket];
+        return ['code' => $quote->code, 'status' => $quote->status, 'ticket' => $ticket];
     }
 
     public function approve(PortalAccount $account, string $code, array $data, ?string $ip): void

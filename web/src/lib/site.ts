@@ -478,6 +478,7 @@ export interface CheckoutTerms {
   group: { adt: number; chd: number; inf: number };
   first_date: string;
   companions: { when: string; require_document: boolean };
+  altitude: { product: string; max_altitude: number }[];
   items: {
     line: number;
     product: { id: string; slug: string; name: string; min_age: number };

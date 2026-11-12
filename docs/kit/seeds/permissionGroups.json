@@ -27,6 +27,7 @@
       "crm.opportunities.manage",
       "crm.activities.manage",
       "crm.clients.manage",
+      "crm.records.reassign",
       "crm.targets.view",
       "crm.targets.manage",
       "crm.claims.manage"
@@ -49,6 +50,7 @@
       "catalog.products.manage_availability",
       "catalog.products.view_profitability",
       "catalog.products.publish",
+      "catalog.products.manage_promotions",
       "catalog.providers.manage",
       "catalog.allotments.manage"
     ]
@@ -60,7 +62,8 @@
       "quotes.create",
       "quotes.approve_internal",
       "quotes.send",
-      "quotes.discount_override"
+      "quotes.discount_override",
+      "quotes.reassign"
     ]
   },
   {
@@ -69,7 +72,9 @@
       "reservations.view",
       "reservations.create",
       "reservations.modify",
-      "reservations.cancel"
+      "reservations.cancel",
+      "reservations.approve_changes",
+      "reservations.reassign"
     ]
   },
   {
@@ -101,7 +106,22 @@
     "perms": [
       "channels.b2b.manage",
       "channels.ecommerce.manage",
+      "channels.cms.edit",
       "channels.cms.publish"
+    ]
+  },
+  {
+    "module": "Extranet",
+    "perms": [
+      "supplier.portal.view",
+      "supplier.requests.respond",
+      "supplier.rooming.manage",
+      "supplier.vouchers.redeem",
+      "supplier.payables.view",
+      "supplier.invoices.upload",
+      "supplier.incidents.report",
+      "supplier.rates.request",
+      "supplier.users.manage"
     ]
   },
   {
@@ -109,6 +129,53 @@
     "perms": [
       "reports.view",
       "reports.export"
+    ]
+  },
+  {
+    "module": "Crecimiento",
+    "perms": [
+      "ai.assistant.use",
+      "ai.insights.view",
+      "inbox.whatsapp.manage",
+      "finance.payment_links",
+      "finance.gift_cards",
+      "finance.accounting_export",
+      "catalog.products.import",
+      "catalog.products.dynamic_pricing",
+      "channels.ota.manage",
+      "channels.marketplace.manage",
+      "operations.checkin",
+      "quotes.external_offers"
+    ]
+  },
+  {
+    "module": "Corporativo",
+    "perms": [
+      "crm.corporate.manage",
+      "finance.corporate_statements"
+    ]
+  },
+  {
+    "module": "Marca y vitrina",
+    "perms": [
+      "channels.showcase.manage",
+      "cms.seo.manage",
+      "finance.gateways.manage"
+    ]
+  },
+  {
+    "module": "Plantillas e IA",
+    "perms": [
+      "cms.templates.manage",
+      "ai.content.use"
+    ]
+  },
+  {
+    "module": "Seguimiento y visitas",
+    "perms": [
+      "marketing.tracking.manage",
+      "marketing.tracking.approve",
+      "analytics.web.view"
     ]
   }
 ]

@@ -195,7 +195,9 @@ final class ResourceDirectory
             ->leftJoin('ops_guides as g', 'g.id', '=', 'a.guide_id')
             ->leftJoin('ops_drivers as d', 'd.id', '=', 'a.driver_id')
             ->leftJoin('ops_vehicles as v', 'v.id', '=', 'a.vehicle_id')
-            ->whereNull('o.deleted_at');
+            ->whereNull('o.deleted_at')
+            ->where('o.status', '<>', 'cancelada')
+            ->where('a.status', '<>', 'cancelada');
 
         foreach ($where as $column => $value) {
             $query->where($column, $value);

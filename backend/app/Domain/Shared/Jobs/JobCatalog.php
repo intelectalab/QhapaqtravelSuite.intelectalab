@@ -5,16 +5,21 @@ declare(strict_types=1);
 namespace App\Domain\Shared\Jobs;
 
 use App\Jobs\AlertClaimDeadlines;
+use App\Jobs\ApprovalSlaCheck;
+use App\Jobs\CashDepositAlerts;
+use App\Jobs\CatalogValidityAlerts;
 use App\Jobs\CloseTrials;
 use App\Jobs\ConsolidateUsage;
 use App\Jobs\DetectPendingSupplierServices;
 use App\Jobs\DispatchScheduledCampaigns;
+use App\Jobs\EvaluateMinimumGroup;
 use App\Jobs\ExpireApiKeys;
 use App\Jobs\ExpireAvailabilityHolds;
 use App\Jobs\ExpireQuotes;
 use App\Jobs\ExpireSupplierAlternativeHolds;
 use App\Jobs\ExpireUnconfirmedAssignments;
 use App\Jobs\ExpireWidgetHandoffs;
+use App\Jobs\InboxFirstResponseSla;
 use App\Jobs\MaintainMonthlyPartitions;
 use App\Jobs\MarkExpiredProviderContracts;
 use App\Jobs\MarkOverdueReceivables;
@@ -23,17 +28,23 @@ use App\Jobs\NotifyUpcomingTrips;
 use App\Jobs\PurgeWebhookDeliveries;
 use App\Jobs\RelayOutbox;
 use App\Jobs\ReleaseAllotments;
+use App\Jobs\ReleaseDueAlerts;
 use App\Jobs\ReleasePayLaterHolds;
 use App\Jobs\RemindCrmActivities;
+use App\Jobs\RemindPendingSupplierRequests;
 use App\Jobs\RemindTravelDocuments;
 use App\Jobs\RenewSubscriptions;
+use App\Jobs\ResourceDocumentAlerts;
 use App\Jobs\RetryFailedCharges;
+use App\Jobs\RetryIntegrationErrors;
+use App\Jobs\RunAutomations;
 use App\Jobs\SchedulePaxMessages;
 use App\Jobs\SendDueReviewRequests;
 use App\Jobs\SendPaymentReminders;
 use App\Jobs\SendScheduledReports;
 use App\Jobs\SnapshotPlatformMetrics;
 use App\Jobs\SyncSupplierAdapters;
+use App\Jobs\VoucherDeadlineAlerts;
 use App\Jobs\WarnExpiringCards;
 
 final class JobCatalog
@@ -61,6 +72,17 @@ final class JobCatalog
         'JOB-20' => ['class' => SendDueReviewRequests::class, 'name' => 'Enviar invitaciones a reseñar', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'notifications'],
         'JOB-21' => ['class' => ExpireWidgetHandoffs::class, 'name' => 'Vencer traspasos del widget', 'cron' => '0 * * * *', 'label' => 'cada hora', 'queue' => 'low'],
         'JOB-22' => ['class' => DispatchScheduledCampaigns::class, 'name' => 'Enviar campañas programadas', 'cron' => '* * * * *', 'label' => 'cada minuto', 'queue' => 'default'],
+        'JOB-23' => ['class' => ReleaseDueAlerts::class, 'name' => 'Avisar releases de cupos próximos', 'cron' => '0 7 * * *', 'label' => 'diario 07:00', 'queue' => 'notifications'],
+        'JOB-24' => ['class' => ResourceDocumentAlerts::class, 'name' => 'Licencias y SOAT por vencer', 'cron' => '30 7 * * *', 'label' => 'diario 07:30', 'queue' => 'notifications'],
+        'JOB-25' => ['class' => CatalogValidityAlerts::class, 'name' => 'Contratos, servicios y tarifas por vencer', 'cron' => '45 7 * * *', 'label' => 'diario 07:45', 'queue' => 'notifications'],
+        'JOB-26' => ['class' => RemindPendingSupplierRequests::class, 'name' => 'Recordar solicitudes a proveedores', 'cron' => '0 9,15 * * *', 'label' => 'diario 09:00 y 15:00', 'queue' => 'notifications'],
+        'JOB-27' => ['class' => ApprovalSlaCheck::class, 'name' => 'Plazos de aprobaciones', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'notifications'],
+        'JOB-28' => ['class' => InboxFirstResponseSla::class, 'name' => 'Primera respuesta de la bandeja', 'cron' => '*/5 * * * *', 'label' => 'cada 5 min', 'queue' => 'notifications'],
+        'JOB-29' => ['class' => RunAutomations::class, 'name' => 'Ejecutar automatizaciones de marketing', 'cron' => '15 * * * *', 'label' => 'cada hora', 'queue' => 'notifications'],
+        'JOB-32' => ['class' => VoucherDeadlineAlerts::class, 'name' => 'Servicios próximos sin voucher', 'cron' => '0 8 * * *', 'label' => 'diario 08:00', 'queue' => 'notifications'],
+        'JOB-31' => ['class' => CashDepositAlerts::class, 'name' => 'Efectivo sin depositar', 'cron' => '0 10 * * *', 'label' => 'diario 10:00', 'queue' => 'notifications'],
+        'JOB-30' => ['class' => EvaluateMinimumGroup::class, 'name' => 'Evaluar grupo mínimo de salidas', 'cron' => '0 6 * * *', 'label' => 'diario 06:00', 'queue' => 'default'],
+        'JOB-33' => ['class' => RetryIntegrationErrors::class, 'name' => 'Reintentar errores de integración', 'cron' => '*/5 * * * *', 'label' => 'cada 5 min', 'queue' => 'integrations'],
     ];
 
     public const PLATFORM = [

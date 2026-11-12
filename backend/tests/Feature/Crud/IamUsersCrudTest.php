@@ -120,6 +120,18 @@ it('USR-BR-02: con el cupo de usuarios del plan lleno no se invita ni se reactiv
         ->and(iamUserRow('U12')->status)->toBe('inactivo');
 });
 
+it('el complemento «Usuarios adicionales» sube el cupo del plan', function () {
+    Queue::fake();
+    actingAsSeed('U01');
+    iamSetUserLimit(withinTenant(tenantA(), fn () => StaffSeats::count(DB::table('iam_users'))));
+    $subscription = DB::connection('pgsql_platform')->table('subscriptions')->where('tenant_id', tenantA()->getKey())->orderByDesc('created_at')->value('id');
+    DB::connection('pgsql_platform')->table('subscription_items')->where('subscription_id', $subscription)->where('addon_code', 'extra_users')->delete();
+    DB::connection('pgsql_platform')->table('subscription_items')->insert(['subscription_id' => $subscription, 'addon_code' => 'extra_users', 'quantity' => 1, 'starts_at' => '2026-01-01', 'unit_price' => 39]);
+
+    iamInvite()->assertCreated();
+    expect(iamInvite(['email' => 'otra.persona@andeshorizonte.pe']))->toBeApiError(409, 'USR-BR-02');
+});
+
 it('edita nombre, teléfono y sede; el cambio de rol revoca las sesiones y se audita', function () {
     actingAsSeed('U03');
     $this->getJson('/api/v1/me')->assertOk();

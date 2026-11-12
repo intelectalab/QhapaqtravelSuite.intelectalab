@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Finance\Support;
 
+use App\Domain\Finance\Actions\TreasuryMovementWorkflow;
 use App\Domain\Finance\Actions\TreasuryOperations;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Money\Decimal;
@@ -98,6 +99,7 @@ final class TreasuryDirectory
                 'fx_rate' => $row->fx_rate !== null ? (float) $row->fx_rate : null,
                 'pen' => $this->money->pen($row->amount, $row->currency, $row->fx_rate),
                 'manual' => $row->source_type === 'manual',
+                'voidable' => TreasuryMovementWorkflow::voidable((object) ['source_type' => $row->source_type, 'type' => $row->type, 'replenishment_id' => $row->replenishment_code, 'transfer_id' => $row->transfer_code]),
                 'category' => $row->category,
                 'description' => $row->description,
                 'reference' => $row->reference,
@@ -198,7 +200,8 @@ final class TreasuryDirectory
         $settings = DB::table('fin_treasury_settings')->first(['recurring_outflows']);
         $recurring = json_decode((string) ($settings->recurring_outflows ?? '[]'), true) ?: [];
         $receivables = DB::table('fin_receivables')->whereNull('deleted_at')->whereNotIn('status', ['pagada', 'cancelada'])->get(['code', 'concept', 'amount', 'paid_amount', 'fx_rate', 'due_date']);
-        $payables = DB::table('fin_payables')->whereNull('deleted_at')->whereNotIn('status', ['pagada', 'anulada', 'cancelada'])->get(['code', 'concept', 'amount', 'paid_amount', 'fx_rate', 'due_date']);
+        $payables = DB::table('fin_payables')->whereNull('deleted_at')->whereNotIn('status', ['pagada', 'anulada', 'cancelada'])->get(['code', 'concept', 'amount', 'paid_amount', 'fx_rate', 'due_date', 'scheduled_date']);
+        $commissions = DB::table('fin_commissions')->whereNull('deleted_at')->where('status', 'aprobada')->get(['code', 'kind', 'amount', 'fx_rate', 'approved_at']);
         $items = collect();
 
         foreach ($receivables as $row) {
@@ -206,7 +209,16 @@ final class TreasuryDirectory
         }
 
         foreach ($payables as $row) {
-            $items->push(['kind' => 'out', 'source' => 'Cuenta por pagar', 'code' => $row->code, 'concept' => $row->concept, 'date' => max((string) $row->due_date, $today->toDateString()), 'overdue' => (string) $row->due_date < $today->toDateString(), 'pen' => round(((float) $row->amount - (float) $row->paid_amount) * (float) ($row->fx_rate ?: 1), 2)]);
+            $due = (string) ($row->scheduled_date ?? $row->due_date);
+            $items->push(['kind' => 'out', 'source' => $row->scheduled_date ? 'Pago programado' : 'Cuenta por pagar', 'code' => $row->code, 'concept' => $row->concept, 'date' => max($due, $today->toDateString()), 'overdue' => $due < $today->toDateString(), 'pen' => round(((float) $row->amount - (float) $row->paid_amount) * (float) ($row->fx_rate ?: 1), 2)]);
+        }
+
+        foreach ($commissions as $row) {
+            $items->push(['kind' => 'out', 'source' => 'Comisión aprobada', 'code' => $row->code, 'concept' => match ($row->kind) {
+                'agencia_b2b' => 'Comisión de agencia B2B',
+                'vendedor' => 'Comisión de asesor',
+                default => (string) $row->kind,
+            }, 'date' => $today->toDateString(), 'overdue' => false, 'pen' => round((float) $row->amount * (float) ($row->fx_rate ?: 1), 2)]);
         }
 
         for ($month = 0; $month < 3; $month++) {

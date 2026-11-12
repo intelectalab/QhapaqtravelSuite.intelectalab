@@ -61,8 +61,8 @@ final class PromotionDirectory
     private function row(object $row, array $uses, string $today): array
     {
         $state = match (true) {
-            $row->status !== 'activa' => 'pausada',
             $row->date_to < $today => 'vencida',
+            $row->status !== 'activa' => 'pausada',
             $row->date_from > $today => 'programada',
             default => 'vigente',
         };

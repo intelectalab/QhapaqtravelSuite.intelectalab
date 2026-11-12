@@ -32,7 +32,6 @@ const STEPS: Record<string, Step> = {
   order_create: { path: () => "/ops/orders", method: "POST", fields: ["reservation_code", "coordinator_id"], failure: "No pudimos crear la orden." },
   order_update: { path: (code) => `/ops/orders/${id(code)}`, method: "PATCH", fields: ["coordinator_id"], failure: "No pudimos guardar el coordinador." },
   order_status: { path: orderAction, method: "POST", failure: "No pudimos cambiar el estado." },
-  order_cancel: { path: (code) => `/ops/orders/${id(code)}/cancel`, method: "POST", fields: ["reason"], failure: "No pudimos cancelar la orden." },
   task_add: { path: (code) => `/ops/orders/${id(code)}/tasks`, method: "POST", fields: ["title"], failure: "No pudimos agregar la tarea." },
   task_toggle: { path: (task) => `/ops/order-tasks/${id(task)}`, method: "PATCH", flags: ["done"], failure: "No pudimos actualizar la tarea." },
   task_delete: { path: (task) => `/ops/order-tasks/${id(task)}`, method: "DELETE", failure: "No pudimos eliminar la tarea." },

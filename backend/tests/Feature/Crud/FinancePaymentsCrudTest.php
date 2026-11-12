@@ -37,6 +37,24 @@ it('rechazar un pago pendiente lo deja rechazado con su motivo y la cuota conser
         ->and(finPagAudit('PAG-01922', 'rechazar'))->toBeTrue();
 });
 
+it('un reembolso pendiente se registra como hecho, no se aplica a una cuota y no cuenta como pago por validar', function () {
+    actingAsSeed('U07');
+    $base = rowOf('fin_payments', 'PAG-01922');
+    $receivable = withinTenant(tenantA(), fn () => DB::table('fin_receivables')->where('id', $base->receivable_id)->first());
+    $before = $this->getJson('/api/v1/finance/payments')->assertOk()->json('data.kpis.pending_count');
+    withinTenant(tenantA(), fn () => DB::table('fin_payments')->insert(['code' => 'PAG-REEMB-1', 'reservation_id' => $base->reservation_id, 'kind' => 'reembolso', 'source' => 'sistema', 'method' => 'Reembolso aprobado', 'amount' => 50, 'currency' => $base->currency, 'fx_rate' => $base->fx_rate, 'paid_on' => now()->toDateString(), 'status' => 'pendiente', 'registered_by' => seedUser('U07')->getKey()]));
+
+    $listed = $this->getJson('/api/v1/finance/payments')->assertOk()->json('data');
+    expect($listed['kpis']['pending_count'])->toBe($before)
+        ->and(collect($listed['rows'])->firstWhere('code', 'PAG-REEMB-1')['apply_to'])->toBe([])
+        ->and($this->postJson('/api/v1/finance/payments/PAG-REEMB-1/confirm', ['receivable' => $receivable->code], critical()))->toBeApiError(409, 'FIN-REFUND');
+
+    $this->postJson('/api/v1/finance/payments/PAG-REEMB-1/confirm', [], critical())->assertOk();
+    expect(rowOf('fin_payments', 'PAG-REEMB-1')->status)->toBe('confirmado')
+        ->and(withinTenant(tenantA(), fn () => DB::table('fin_payment_applications')->where('payment_id', idOf('fin_payments', 'PAG-REEMB-1'))->exists()))->toBeFalse()
+        ->and((string) withinTenant(tenantA(), fn () => DB::table('fin_receivables')->where('id', $receivable->id)->value('paid_amount')))->toBe((string) $receivable->paid_amount);
+});
+
 it('FIN-BR-13: solo se rechazan pagos pendientes', function () {
     actingAsSeed('U07');
     $this->postJson('/api/v1/finance/payments/PAG-01922/reject', ['reason' => 'Comprobante ilegible'], critical(finPagLock('PAG-01922')))->assertOk();

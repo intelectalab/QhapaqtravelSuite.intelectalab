@@ -14,6 +14,23 @@ final class EcommerceOrderRelease
 {
     public function __construct(private readonly ReservationStateMachine $states, private readonly AuditLogger $audit) {}
 
+    public function releaseConsumed(string $orderId, string $reason): void
+    {
+        foreach (DB::table('catalog_availability_holds')->where('reference_id', $orderId)->where('status', 'confirmada')->orderBy('departure_id')->get(['id', 'departure_id', 'quantity']) as $hold) {
+            if ($hold->departure_id) {
+                $quantity = (int) $hold->quantity;
+                DB::table('catalog_product_departures')->where('id', $hold->departure_id)->lock('for no key update')->first(['id']);
+                DB::table('catalog_product_departures')->where('id', $hold->departure_id)->update([
+                    'sold' => DB::raw("greatest(0, sold - {$quantity})"),
+                    'status' => DB::raw("case when status = 'completa' and sold - {$quantity} < capacity then 'abierta' else status end"),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            DB::table('catalog_availability_holds')->where('id', $hold->id)->update(['status' => 'liberada', 'released_reason' => mb_substr($reason, 0, 200), 'updated_at' => now()]);
+        }
+    }
+
     public function release(string $orderId, string $holdStatus, string $reason, string $note): void
     {
         DB::table('catalog_availability_holds')->where('reference_id', $orderId)->where('status', 'hold')

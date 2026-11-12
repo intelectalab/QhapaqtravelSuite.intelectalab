@@ -1,5 +1,286 @@
 [
   {
+    "id": "RES-2026-000361",
+    "quoteId": null,
+    "quoteVersion": null,
+    "clientId": "CLI-0001",
+    "title": "Ríos — Perú Clásico 10D/9N (web)",
+    "status": "en_operacion",
+    "channel": "E-commerce",
+    "travelFrom": "2026-09-27",
+    "travelTo": "2026-10-06",
+    "currency": "USD",
+    "total": 2486,
+    "owner": "U03",
+    "createdAt": "2026-08-30 20:15",
+    "sede": "SED-01",
+    "notes": "Pedido web con armador de viaje por tramos.",
+    "ecomOrderId": "WEB-2026-00961",
+    "passengers": [
+      {
+        "name": "Gabriela Ríos Montoya",
+        "doc": "DNI 45871236",
+        "type": "ADT",
+        "nationality": "Peruana",
+        "birth": "1990-03-14",
+        "phone": "987 654 321",
+        "diet": ""
+      },
+      {
+        "name": "Andrés Ríos Montoya",
+        "doc": "DNI 47120988",
+        "type": "ADT",
+        "nationality": "Peruano",
+        "birth": "1992-07-02",
+        "phone": "",
+        "diet": ""
+      }
+    ],
+    "services": [
+      {
+        "id": "RS-3611",
+        "productId": "PRD-011",
+        "name": "Perú Clásico 10D/9N — 2 pax",
+        "date": "2026-09-27",
+        "time": "09:00",
+        "providerId": "PRV-004",
+        "status": "confirmado",
+        "cost": 980,
+        "price": 1290,
+        "confirmationCode": "KC-349-01"
+      },
+      {
+        "id": "RS-3612",
+        "productId": null,
+        "name": "Alojamiento Lima · Hotel Miraflores Park Inn · 1 hab. doble × 1 noche(s)",
+        "date": "2026-09-27",
+        "time": "14:00",
+        "providerId": "PRV-004",
+        "status": "completado",
+        "cost": 68,
+        "price": 85,
+        "confirmationCode": "MPI-2231",
+        "kind": "alojamiento",
+        "extraOf": "PRD-011"
+      },
+      {
+        "id": "RS-3613",
+        "productId": null,
+        "name": "Alojamiento Arequipa · Casona del Sillar · 1 hab. doble × 2 noche(s)",
+        "date": "2026-09-28",
+        "time": "14:00",
+        "providerId": "PRV-004",
+        "status": "confirmado",
+        "cost": 109,
+        "price": 136,
+        "confirmationCode": "CDS-7781",
+        "kind": "alojamiento",
+        "extraOf": "PRD-011"
+      },
+      {
+        "id": "RS-3614",
+        "productId": null,
+        "name": "Alojamiento Puno · Posada del Titicaca · 1 hab. doble × 2 noche(s)",
+        "date": "2026-09-30",
+        "time": "14:00",
+        "providerId": "PRV-004",
+        "status": "confirmado",
+        "cost": 99,
+        "price": 124,
+        "confirmationCode": "PDT-0412",
+        "kind": "alojamiento",
+        "extraOf": "PRD-011"
+      },
+      {
+        "id": "RS-3615",
+        "productId": null,
+        "name": "Alojamiento Cusco · Hostal Valle Inka · 1 hab. doble × 4 noche(s)",
+        "date": "2026-10-02",
+        "time": "14:00",
+        "providerId": "PRV-004",
+        "status": "confirmado",
+        "cost": 192,
+        "price": 240,
+        "confirmationCode": "HVI-9920",
+        "kind": "alojamiento",
+        "extraOf": "PRD-011"
+      },
+      {
+        "id": "RS-3616",
+        "productId": null,
+        "tourId": "TT-LIM-1",
+        "name": "Tour Lima · Tour gastronómico en Barranco (2 adt)",
+        "date": "2026-09-27",
+        "time": "18:30",
+        "providerId": "PRV-004",
+        "status": "completado",
+        "cost": 104,
+        "price": 130,
+        "confirmationCode": "KC-349-02",
+        "kind": "tour_tramo",
+        "legId": "LEG-1",
+        "extraOf": "PRD-011"
+      },
+      {
+        "id": "RS-3617",
+        "productId": null,
+        "transportId": "TR-LIM-AQP-V",
+        "name": "Movilidad Vuelo Lima → Arequipa (económica)",
+        "date": "2026-09-28",
+        "time": "07:10",
+        "providerId": "PRV-004",
+        "status": "completado",
+        "cost": 152,
+        "price": 190,
+        "confirmationCode": "LA2077",
+        "kind": "movilidad",
+        "mode": "Vuelo",
+        "extraOf": "PRD-011"
+      },
+      {
+        "id": "RS-3618",
+        "productId": null,
+        "transportId": "TR-AQP-PUN-B",
+        "name": "Movilidad Bus turístico Arequipa → Puno",
+        "date": "2026-09-30",
+        "time": "07:30",
+        "providerId": "PRV-004",
+        "status": "confirmado",
+        "cost": 48,
+        "price": 60,
+        "confirmationCode": "BT-5521",
+        "kind": "movilidad",
+        "mode": "Bus",
+        "extraOf": "PRD-011"
+      }
+    ],
+    "booking": {
+      "productId": "PRD-011",
+      "date": "2026-09-27",
+      "pax": {
+        "adt": 2,
+        "chd": 0,
+        "inf": 0
+      },
+      "currencyDisplay": "USD",
+      "fxRate": 1,
+      "chargeCurrency": "USD",
+      "total": 2486,
+      "rooms": 4,
+      "nights": 9,
+      "lodging": [
+        {
+          "legId": "LEG-1",
+          "city": "Lima",
+          "hotel": "Hotel Miraflores Park Inn",
+          "roomType": "Doble",
+          "rooms": 1,
+          "nights": 1
+        },
+        {
+          "legId": "LEG-2",
+          "city": "Arequipa",
+          "hotel": "Casona del Sillar",
+          "roomType": "Doble",
+          "rooms": 1,
+          "nights": 2
+        },
+        {
+          "legId": "LEG-3",
+          "city": "Puno",
+          "hotel": "Posada del Titicaca",
+          "roomType": "Doble",
+          "rooms": 1,
+          "nights": 2
+        },
+        {
+          "legId": "LEG-4",
+          "city": "Cusco",
+          "hotel": "Hostal Valle Inka",
+          "roomType": "Doble",
+          "rooms": 1,
+          "nights": 4
+        }
+      ],
+      "tripLegs": [
+        {
+          "legId": "LEG-1",
+          "city": "Lima",
+          "nights": 1,
+          "checkIn": "2026-09-27",
+          "checkOut": "2026-09-28"
+        },
+        {
+          "legId": "LEG-2",
+          "city": "Arequipa",
+          "nights": 2,
+          "checkIn": "2026-09-28",
+          "checkOut": "2026-09-30"
+        },
+        {
+          "legId": "LEG-3",
+          "city": "Puno",
+          "nights": 2,
+          "checkIn": "2026-09-30",
+          "checkOut": "2026-10-02"
+        },
+        {
+          "legId": "LEG-4",
+          "city": "Cusco",
+          "nights": 4,
+          "checkIn": "2026-10-02",
+          "checkOut": "2026-10-06"
+        }
+      ],
+      "tripEnd": "2026-10-06",
+      "byCategory": {
+        "base": 1290,
+        "lodging": 585,
+        "tour": 130,
+        "transport": 250,
+        "addon": 0,
+        "surcharge": 0
+      },
+      "trip": {
+        "tours": [
+          {
+            "id": "TT-LIM-1",
+            "legId": "LEG-1",
+            "date": "2026-09-27",
+            "amount": 130
+          }
+        ],
+        "transport": [
+          {
+            "id": "TR-LIM-AQP-V",
+            "mode": "Vuelo",
+            "date": "2026-09-28",
+            "amount": 190
+          },
+          {
+            "id": "TR-AQP-PUN-B",
+            "mode": "Bus",
+            "date": "2026-09-30",
+            "amount": 60
+          }
+        ]
+      },
+      "addons": [],
+      "payment": {
+        "mode": "total",
+        "depositPct": 100,
+        "deposit": 2486,
+        "balance": 0
+      },
+      "rulesApplied": [
+        "R-LODGING",
+        "R-TRIP-BUILDER",
+        "R-IN-TRIP-SALES"
+      ],
+      "lang": "es"
+    }
+  },
+  {
     "id": "RES-2026-000350",
     "quoteId": null,
     "quoteVersion": null,

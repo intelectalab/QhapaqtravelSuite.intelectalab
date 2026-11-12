@@ -1,10 +1,10 @@
 # Diccionario de datos · Canales (channel_)
 
-_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras cargar `00`→`90`. No editar a mano._
+_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.15 tras cargar `00`→`90`. No editar a mano._
 
 B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y eventos web.
 
-22 tablas · 373 columnas · 78 claves foráneas. Diagrama ER: [`../er/channel.svg`](../er/channel.svg) (fuente [`../er/channel.mmd`](../er/channel.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
+25 tablas · 425 columnas · 86 claves foráneas. Diagrama ER: [`../er/channel.svg`](../er/channel.svg) (fuente [`../er/channel.mmd`](../er/channel.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
 
 ## Tablas
 
@@ -32,6 +32,9 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | [`channel_widget_handoffs`](#channel_widget_handoffs) | Fase 2 · Canales y campo | tenant | 23 | 3 | [Spec 17 §3.8] [Fase 2] Traspaso del widget al checkout (TTL 24 h). |
 | [`channel_wishlist_items`](#channel_wishlist_items) | Fase 2 · Canales y campo | tenant | 4 | 3 | [Spec 15 §3.7] [Fase 2] Favoritos del cliente. |
 | [`channel_external_reviews`](#channel_external_reviews) | Fase 3 · SaaS y crecimiento | tenant | 22 | 5 | [Spec 17 §3.7] [Fase 3] Reseñas importadas (texto inmutable). |
+| [`channel_ota_bookings`](#channel_ota_bookings) | Fase 3 · SaaS y crecimiento | tenant | 18 | 4 | [Spec 19 §3.6] [Fase 3] Reservas recibidas de OTAs (idempotentes por referencia de la OTA). |
+| [`channel_ota_connections`](#channel_ota_connections) | Fase 3 · SaaS y crecimiento | tenant | 19 | 1 | [Spec 19 §3.6] [Fase 3] Conexiones del tenant con OTAs (Viator, GetYourGuide, Expedia, Google Things to Do). |
+| [`channel_ota_product_mappings`](#channel_ota_product_mappings) | Fase 3 · SaaS y crecimiento | tenant | 15 | 3 | [Spec 19 §3.6] [Fase 3] Producto del catálogo ↔ producto/opción de la OTA y su modo de precio. |
 
 ## Detalle por tabla
 
@@ -48,7 +51,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id, channel_support_tickets.tenant_id, iam_users.tenant_id. |
 | 3 | `ticket_id` | `uuid` | no |  | FK → channel_support_tickets.id. |
 | 4 | `occurred_at` | `timestamp with time zone` | no | `now()` |  |
 | 5 | `user_id` | `uuid` | sí |  | FK → iam_users.id. |
@@ -63,8 +66,8 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_support_ticket_events_tenant_id` |
-| `ticket_id` | `channel_support_tickets.id` | NO ACTION | `fk_channel_support_ticket_events_ticket_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_channel_support_ticket_events_user_id` |
+| `tenant_id, ticket_id` | `channel_support_tickets.tenant_id, id` | NO ACTION | `fk_channel_support_ticket_events_ticket_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_channel_support_ticket_events_user_id` |
 
 **Índices**
 
@@ -89,7 +92,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, crm_clients.tenant_id, iam_users.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `crm_client_id` | `uuid` | no |  | FK → crm_clients.id. |
 | 5 | `reservation_id` | `uuid` | sí |  | FK → booking_reservations.id. |
@@ -114,16 +117,17 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `created_by_user_id` | `iam_users.id` | NO ACTION | `fk_channel_support_tickets_created_by_user_id` |
-| `crm_client_id` | `crm_clients.id` | NO ACTION | `fk_channel_support_tickets_crm_client_id` |
-| `owner_id` | `iam_users.id` | NO ACTION | `fk_channel_support_tickets_owner_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_channel_support_tickets_reservation_id` |
+| `tenant_id, created_by_user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_channel_support_tickets_created_by_user_id` |
+| `tenant_id, crm_client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_channel_support_tickets_crm_client_id` |
+| `tenant_id, owner_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_channel_support_tickets_owner_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_channel_support_tickets_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_support_tickets_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_channel_support_tickets_id` | `tenant_id, id` |  | restricción |
 | `uq_channel_support_tickets_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -167,7 +171,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_clients.tenant_id, channel_b2b_price_lists.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `legal_name` | `character varying(200)` | no |  |  |
 | 5 | `ruc` | `character(11)` | no |  |  |
@@ -196,14 +200,15 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `crm_client_id` | `crm_clients.id` | NO ACTION | `fk_channel_b2b_agencies_crm_client_id` |
-| `price_list_id` | `channel_b2b_price_lists.id` | NO ACTION | `fk_channel_b2b_agencies_price_list_id` |
+| `tenant_id, crm_client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_channel_b2b_agencies_crm_client_id` |
+| `tenant_id, price_list_id` | `channel_b2b_price_lists.tenant_id, id` | NO ACTION | `fk_channel_b2b_agencies_price_list_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_b2b_agencies_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_channel_b2b_agencies_id` | `tenant_id, id` |  | restricción |
 | `uq_channel_b2b_agencies_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_channel_b2b_agencies_tenant_id_ruc_p` | `tenant_id, ruc` | `(deleted_at IS NULL)` | índice único |
 
@@ -253,7 +258,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → channel_b2b_agencies.tenant_id, collab_approval_requests.tenant_id, tenants.id. |
 | 3 | `agency_id` | `uuid` | no |  | FK → channel_b2b_agencies.id. |
 | 4 | `approval_request_id` | `uuid` | sí |  | FK → collab_approval_requests.id. |
 | 5 | `amount` | `numeric(14,2)` | no |  |  |
@@ -267,8 +272,8 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `agency_id` | `channel_b2b_agencies.id` | NO ACTION | `fk_channel_b2b_credit_exceptions_agency_id` |
-| `approval_request_id` | `collab_approval_requests.id` | NO ACTION | `fk_channel_b2b_credit_exceptions_approval_request_id` |
+| `tenant_id, agency_id` | `channel_b2b_agencies.tenant_id, id` | NO ACTION | `fk_channel_b2b_credit_exceptions_agency_id` |
+| `tenant_id, approval_request_id` | `collab_approval_requests.tenant_id, id` | NO ACTION | `fk_channel_b2b_credit_exceptions_approval_request_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_b2b_credit_exceptions_tenant_id` |
 
 **Índices**
@@ -294,7 +299,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → channel_b2b_agencies.tenant_id, fin_payments.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `agency_id` | `uuid` | no |  | FK → channel_b2b_agencies.id. |
 | 4 | `movement_type` | `character varying(30)` | no |  | Valores: `cargo_reserva`, `pago_aplicado`, `reversion_pago`, `anulacion_reserva`, `ajuste`. |
 | 5 | `reservation_id` | `uuid` | sí |  | FK → booking_reservations.id. |
@@ -315,9 +320,9 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `agency_id` | `channel_b2b_agencies.id` | NO ACTION | `fk_channel_b2b_credit_movements_agency_id` |
-| `payment_id` | `fin_payments.id` | NO ACTION | `fk_channel_b2b_credit_movements_payment_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_channel_b2b_credit_movements_reservation_id` |
+| `tenant_id, agency_id` | `channel_b2b_agencies.tenant_id, id` | NO ACTION | `fk_channel_b2b_credit_movements_agency_id` |
+| `tenant_id, payment_id` | `fin_payments.tenant_id, id` | NO ACTION | `fk_channel_b2b_credit_movements_payment_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_channel_b2b_credit_movements_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_b2b_credit_movements_tenant_id` |
 
 **CHECK**
@@ -377,6 +382,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_channel_b2b_price_lists_id` | `tenant_id, id` |  | restricción |
 | `uq_channel_b2b_price_lists_tenant_id_name` | `tenant_id, name` |  | índice único |
 
 **CHECK**
@@ -412,7 +418,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → channel_b2b_agencies.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `agency_id` | `uuid` | no |  | FK → channel_b2b_agencies.id. |
 | 5 | `amount_pen` | `numeric(14,2)` | no |  |  |
@@ -431,14 +437,15 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `agency_id` | `channel_b2b_agencies.id` | NO ACTION | `fk_channel_b2b_settlement_requests_agency_id` |
-| `requested_by` | `iam_users.id` | NO ACTION | `fk_channel_b2b_settlement_requests_requested_by` |
+| `tenant_id, agency_id` | `channel_b2b_agencies.tenant_id, id` | NO ACTION | `fk_channel_b2b_settlement_requests_agency_id` |
+| `tenant_id, requested_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_channel_b2b_settlement_requests_requested_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_b2b_settlement_requests_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_channel_b2b_settlement_requests_id` | `tenant_id, id` |  | restricción |
 | `uq_channel_b2b_settlement_requests_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -477,7 +484,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_product_departures.tenant_id, catalog_availability_holds.tenant_id, channel_ecom_orders.tenant_id, catalog_products.tenant_id, catalog_product_promotions.tenant_id, catalog_rates.tenant_id, booking_reservation_services.tenant_id, catalog_seasons.tenant_id, tenants.id. |
 | 3 | `order_id` | `uuid` | no |  | FK → channel_ecom_orders.id. |
 | 4 | `line_no` | `smallint` | no |  |  |
 | 5 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
@@ -514,14 +521,14 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `departure_id` | `catalog_product_departures.id` | NO ACTION | `fk_channel_ecom_order_lines_departure_id` |
-| `hold_id` | `catalog_availability_holds.id` | NO ACTION | `fk_channel_ecom_order_lines_hold_id` |
-| `order_id` | `channel_ecom_orders.id` | NO ACTION | `fk_channel_ecom_order_lines_order_id` |
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_channel_ecom_order_lines_product_id` |
-| `promotion_id` | `catalog_product_promotions.id` | NO ACTION | `fk_channel_ecom_order_lines_promotion_id` |
-| `rate_id` | `catalog_rates.id` | NO ACTION | `fk_channel_ecom_order_lines_rate_id` |
-| `reservation_service_id` | `booking_reservation_services.id` | NO ACTION | `fk_channel_ecom_order_lines_reservation_service_id` |
-| `season_id` | `catalog_seasons.id` | NO ACTION | `fk_channel_ecom_order_lines_season_id` |
+| `tenant_id, departure_id` | `catalog_product_departures.tenant_id, id` | NO ACTION | `fk_channel_ecom_order_lines_departure_id` |
+| `tenant_id, hold_id` | `catalog_availability_holds.tenant_id, id` | NO ACTION | `fk_channel_ecom_order_lines_hold_id` |
+| `tenant_id, order_id` | `channel_ecom_orders.tenant_id, id` | NO ACTION | `fk_channel_ecom_order_lines_order_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_channel_ecom_order_lines_product_id` |
+| `tenant_id, promotion_id` | `catalog_product_promotions.tenant_id, id` | NO ACTION | `fk_channel_ecom_order_lines_promotion_id` |
+| `tenant_id, rate_id` | `catalog_rates.tenant_id, id` | NO ACTION | `fk_channel_ecom_order_lines_rate_id` |
+| `tenant_id, reservation_service_id` | `booking_reservation_services.tenant_id, id` | NO ACTION | `fk_channel_ecom_order_lines_reservation_service_id` |
+| `tenant_id, season_id` | `catalog_seasons.tenant_id, id` | NO ACTION | `fk_channel_ecom_order_lines_season_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_ecom_order_lines_tenant_id` |
 
 **UNIQUE**
@@ -570,7 +577,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → channel_web_carts.tenant_id, crm_clients.tenant_id, catalog_product_departures.tenant_id, catalog_products.tenant_id, catalog_product_promotions.tenant_id, fin_receivables.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `ordered_at` | `timestamp with time zone` | no | `now()` |  |
 | 5 | `crm_client_id` | `uuid` | no |  | FK → crm_clients.id. |
@@ -624,19 +631,20 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `cart_id` | `channel_web_carts.id` | NO ACTION | `fk_channel_ecom_orders_cart_id` |
-| `crm_client_id` | `crm_clients.id` | NO ACTION | `fk_channel_ecom_orders_crm_client_id` |
-| `departure_id` | `catalog_product_departures.id` | NO ACTION | `fk_channel_ecom_orders_departure_id` |
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_channel_ecom_orders_product_id` |
-| `promotion_id` | `catalog_product_promotions.id` | NO ACTION | `fk_channel_ecom_orders_promotion_id` |
-| `receivable_id` | `fin_receivables.id` | NO ACTION | `fk_channel_ecom_orders_receivable_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_channel_ecom_orders_reservation_id` |
+| `tenant_id, cart_id` | `channel_web_carts.tenant_id, id` | NO ACTION | `fk_channel_ecom_orders_cart_id` |
+| `tenant_id, crm_client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_channel_ecom_orders_crm_client_id` |
+| `tenant_id, departure_id` | `catalog_product_departures.tenant_id, id` | NO ACTION | `fk_channel_ecom_orders_departure_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_channel_ecom_orders_product_id` |
+| `tenant_id, promotion_id` | `catalog_product_promotions.tenant_id, id` | NO ACTION | `fk_channel_ecom_orders_promotion_id` |
+| `tenant_id, receivable_id` | `fin_receivables.tenant_id, id` | NO ACTION | `fk_channel_ecom_orders_receivable_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_channel_ecom_orders_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_ecom_orders_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_channel_ecom_orders_id` | `tenant_id, id` |  | restricción |
 | `uq_channel_ecom_orders_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -690,7 +698,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → channel_ecom_orders.tenant_id, tenants.id. |
 | 3 | `order_id` | `uuid` | no |  | FK → channel_ecom_orders.id. |
 | 4 | `position` | `smallint` | no |  |  |
 | 5 | `first_name` | `character varying(80)` | no |  |  |
@@ -713,7 +721,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `order_id` | `channel_ecom_orders.id` | NO ACTION | `fk_channel_ecom_passengers_order_id` |
+| `tenant_id, order_id` | `channel_ecom_orders.tenant_id, id` | NO ACTION | `fk_channel_ecom_passengers_order_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_ecom_passengers_tenant_id` |
 
 **UNIQUE**
@@ -756,7 +764,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → channel_ecom_orders.tenant_id, fin_payments.tenant_id, tenants.id. |
 | 3 | `order_id` | `uuid` | no |  | FK → channel_ecom_orders.id. |
 | 4 | `attempted_at` | `timestamp with time zone` | no | `now()` |  |
 | 5 | `method` | `character varying(20)` | no | `'tarjeta'::character varying` | Valores: `tarjeta`, `transferencia`, `yape`, `plin`. |
@@ -779,8 +787,8 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `order_id` | `channel_ecom_orders.id` | NO ACTION | `fk_channel_ecom_payment_attempts_order_id` |
-| `payment_id` | `fin_payments.id` | NO ACTION | `fk_channel_ecom_payment_attempts_payment_id` |
+| `tenant_id, order_id` | `channel_ecom_orders.tenant_id, id` | NO ACTION | `fk_channel_ecom_payment_attempts_order_id` |
+| `tenant_id, payment_id` | `fin_payments.tenant_id, id` | NO ACTION | `fk_channel_ecom_payment_attempts_payment_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_ecom_payment_attempts_tenant_id` |
 
 **UNIQUE**
@@ -820,7 +828,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → collab_conversations.tenant_id, ops_incidents.tenant_id, iam_users.tenant_id, booking_reservations.tenant_id, booking_reservation_services.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(12)` | no |  |  |
 | 4 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 5 | `passenger_name` | `character varying(150)` | no |  |  |
@@ -848,17 +856,18 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `conversation_id` | `collab_conversations.id` | NO ACTION | `fk_channel_pax_feedback_conversation_id` |
-| `incident_id` | `ops_incidents.id` | NO ACTION | `fk_channel_pax_feedback_incident_id` |
-| `replied_by` | `iam_users.id` | NO ACTION | `fk_channel_pax_feedback_replied_by` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_channel_pax_feedback_reservation_id` |
-| `reservation_service_id` | `booking_reservation_services.id` | NO ACTION | `fk_channel_pax_feedback_reservation_service_id` |
+| `tenant_id, conversation_id` | `collab_conversations.tenant_id, id` | NO ACTION | `fk_channel_pax_feedback_conversation_id` |
+| `tenant_id, incident_id` | `ops_incidents.tenant_id, id` | NO ACTION | `fk_channel_pax_feedback_incident_id` |
+| `tenant_id, replied_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_channel_pax_feedback_replied_by` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_channel_pax_feedback_reservation_id` |
+| `tenant_id, reservation_service_id` | `booking_reservation_services.tenant_id, id` | NO ACTION | `fk_channel_pax_feedback_reservation_service_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_pax_feedback_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_channel_pax_feedback_id` | `tenant_id, id` |  | restricción |
 | `uq_channel_pax_feedback_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -903,7 +912,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → booking_passengers.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 4 | `passenger_id` | `uuid` | sí |  | FK → booking_passengers.id. |
 | 5 | `email` | `character varying(190)` | no |  |  |
@@ -919,8 +928,8 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `passenger_id` | `booking_passengers.id` | NO ACTION | `fk_channel_portal_access_links_passenger_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_channel_portal_access_links_reservation_id` |
+| `tenant_id, passenger_id` | `booking_passengers.tenant_id, id` | NO ACTION | `fk_channel_portal_access_links_passenger_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_channel_portal_access_links_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_portal_access_links_tenant_id` |
 
 **UNIQUE**
@@ -952,7 +961,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → booking_reservations.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 4 | `sender_type` | `character varying(10)` | no |  | Valores: `passenger`, `agency`, `system`. |
 | 5 | `sender_user_id` | `uuid` | sí |  | FK → iam_users.id. |
@@ -968,8 +977,8 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_channel_trip_messages_reservation_id` |
-| `sender_user_id` | `iam_users.id` | NO ACTION | `fk_channel_trip_messages_sender_user_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_channel_trip_messages_reservation_id` |
+| `tenant_id, sender_user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_channel_trip_messages_sender_user_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_trip_messages_tenant_id` |
 
 **CHECK**
@@ -1001,7 +1010,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → channel_web_carts.tenant_id, catalog_product_departures.tenant_id, catalog_availability_holds.tenant_id, catalog_products.tenant_id, tenants.id. |
 | 3 | `cart_id` | `uuid` | no |  | FK → channel_web_carts.id. |
 | 4 | `line_no` | `smallint` | no |  |  |
 | 5 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
@@ -1031,10 +1040,10 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `cart_id` | `channel_web_carts.id` | CASCADE | `fk_channel_web_cart_items_cart_id` |
-| `departure_id` | `catalog_product_departures.id` | NO ACTION | `fk_channel_web_cart_items_departure_id` |
-| `hold_id` | `catalog_availability_holds.id` | NO ACTION | `fk_channel_web_cart_items_hold_id` |
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_channel_web_cart_items_product_id` |
+| `tenant_id, cart_id` | `channel_web_carts.tenant_id, id` | CASCADE | `fk_channel_web_cart_items_cart_id` |
+| `tenant_id, departure_id` | `catalog_product_departures.tenant_id, id` | NO ACTION | `fk_channel_web_cart_items_departure_id` |
+| `tenant_id, hold_id` | `catalog_availability_holds.tenant_id, id` | NO ACTION | `fk_channel_web_cart_items_hold_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_channel_web_cart_items_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_web_cart_items_tenant_id` |
 
 **UNIQUE**
@@ -1081,7 +1090,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_clients.tenant_id, channel_ecom_orders.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `token_hash` | `character(64)` | no |  |  |
 | 5 | `crm_client_id` | `uuid` | sí |  | FK → crm_clients.id. |
@@ -1104,14 +1113,15 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `crm_client_id` | `crm_clients.id` | NO ACTION | `fk_channel_web_carts_crm_client_id` |
-| `order_id` | `channel_ecom_orders.id` | NO ACTION | `fk_channel_web_carts_order_id` |
+| `tenant_id, crm_client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_channel_web_carts_crm_client_id` |
+| `tenant_id, order_id` | `channel_ecom_orders.tenant_id, id` | NO ACTION | `fk_channel_web_carts_order_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_web_carts_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_channel_web_carts_id` | `tenant_id, id` |  | restricción |
 | `uq_channel_web_carts_order_id_p` | `order_id` | `(order_id IS NOT NULL)` | índice único |
 | `uq_channel_web_carts_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_channel_web_carts_tenant_id_token_hash` | `tenant_id, token_hash` |  | índice único |
@@ -1305,7 +1315,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → channel_web_carts.tenant_id, catalog_products.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
 | 5 | `service_date` | `date` | no |  |  |
@@ -1334,8 +1344,8 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `cart_id` | `channel_web_carts.id` | NO ACTION | `fk_channel_widget_handoffs_cart_id` |
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_channel_widget_handoffs_product_id` |
+| `tenant_id, cart_id` | `channel_web_carts.tenant_id, id` | NO ACTION | `fk_channel_widget_handoffs_cart_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_channel_widget_handoffs_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_widget_handoffs_tenant_id` |
 
 **UNIQUE**
@@ -1380,7 +1390,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
-| 1 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). PK. FK → tenants.id. |
+| 1 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). PK. FK → crm_clients.tenant_id, catalog_products.tenant_id, tenants.id. |
 | 2 | `crm_client_id` | `uuid` | no |  | PK. FK → crm_clients.id. |
 | 3 | `product_id` | `uuid` | no |  | PK. FK → catalog_products.id. |
 | 4 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
@@ -1391,8 +1401,8 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `crm_client_id` | `crm_clients.id` | CASCADE | `fk_channel_wishlist_items_crm_client_id` |
-| `product_id` | `catalog_products.id` | CASCADE | `fk_channel_wishlist_items_product_id` |
+| `tenant_id, crm_client_id` | `crm_clients.tenant_id, id` | CASCADE | `fk_channel_wishlist_items_crm_client_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | CASCADE | `fk_channel_wishlist_items_product_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_wishlist_items_tenant_id` |
 
 **Índices**
@@ -1417,7 +1427,7 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → collab_conversations.tenant_id, catalog_products.tenant_id, iam_users.tenant_id, integration_review_sources.tenant_id, tenants.id. |
 | 3 | `source_id` | `uuid` | no |  | FK → integration_review_sources.id. |
 | 4 | `external_id` | `character varying(120)` | no |  |  |
 | 5 | `author_display` | `character varying(120)` | no |  |  |
@@ -1445,10 +1455,10 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `conversation_id` | `collab_conversations.id` | NO ACTION | `fk_channel_external_reviews_conversation_id` |
-| `product_id` | `catalog_products.id` | NO ACTION | `fk_channel_external_reviews_product_id` |
-| `replied_by` | `iam_users.id` | NO ACTION | `fk_channel_external_reviews_replied_by` |
-| `source_id` | `integration_review_sources.id` | NO ACTION | `fk_channel_external_reviews_source_id` |
+| `tenant_id, conversation_id` | `collab_conversations.tenant_id, id` | NO ACTION | `fk_channel_external_reviews_conversation_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_channel_external_reviews_product_id` |
+| `tenant_id, replied_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_channel_external_reviews_replied_by` |
+| `tenant_id, source_id` | `integration_review_sources.tenant_id, id` | NO ACTION | `fk_channel_external_reviews_source_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_external_reviews_tenant_id` |
 
 **UNIQUE**
@@ -1479,5 +1489,216 @@ B2B, e-commerce, sitio web, widget, portales, tickets, reseñas externas y event
 | Nombre | Momento y evento | Función |
 |---|---|---|
 | `trg_channel_external_reviews_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `channel_ota_bookings`
+
+[Spec 19 §3.6] [Fase 3] Reservas recibidas de OTAs (idempotentes por referencia de la OTA).
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Canales (channel_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → channel_ota_connections.tenant_id, channel_ota_product_mappings.tenant_id, booking_reservations.tenant_id, tenants.id. |
+| 3 | `connection_id` | `uuid` | no |  | FK → channel_ota_connections.id. |
+| 4 | `ota_booking_ref` | `character varying(120)` | no |  |  |
+| 5 | `mapping_id` | `uuid` | sí |  | FK → channel_ota_product_mappings.id. |
+| 6 | `reservation_id` | `uuid` | sí |  | FK → booking_reservations.id. |
+| 7 | `payload` | `jsonb` | no |  |  |
+| 8 | `gross_amount` | `numeric(14,2)` | sí |  |  |
+| 9 | `net_amount` | `numeric(14,2)` | sí |  |  |
+| 10 | `currency` | `character(3)` | sí |  |  |
+| 11 | `travel_date` | `date` | sí |  |  |
+| 12 | `pax` | `smallint` | sí |  |  |
+| 13 | `status` | `character varying(12)` | no | `'recibida'::character varying` | Valores: `recibida`, `confirmada`, `rechazada`, `cancelada`, `error`. |
+| 14 | `error` | `text` | sí |  |  |
+| 15 | `received_at` | `timestamp with time zone` | no | `now()` |  |
+| 16 | `processed_at` | `timestamp with time zone` | sí |  |  |
+| 17 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 18 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, connection_id` | `channel_ota_connections.tenant_id, id` | NO ACTION | `fk_channel_ota_bookings_connection_id` |
+| `tenant_id, mapping_id` | `channel_ota_product_mappings.tenant_id, id` | NO ACTION | `fk_channel_ota_bookings_mapping_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_channel_ota_bookings_reservation_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_ota_bookings_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_channel_ota_bookings_conn_ref` | `connection_id, ota_booking_ref` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `channel_ota_bookings_pax_check` | `CHECK (((pax IS NULL) OR (pax > 0)))` |  |
+| `channel_ota_bookings_status_check` | `CHECK (((status)::text = ANY ((ARRAY['recibida'::character varying, 'confirmada'::character varying, 'rechazada'::character varying, 'cancelada'::character varying, 'error'::character varying])::text[])))` | `status`: `recibida`, `confirmada`, `rechazada`, `cancelada`, `error` |
+| `ck_channel_ota_bookings_1` | `CHECK ((((status)::text <> 'confirmada'::text) OR (reservation_id IS NOT NULL)))` |  |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_channel_ota_bookings_mapping_id` | `USING btree (mapping_id)` |
+| `ix_channel_ota_bookings_reservation_id` | `USING btree (reservation_id)` |
+| `ix_channel_ota_bookings_tenant_id_status_received_at_desc` | `USING btree (tenant_id, status, received_at DESC)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_channel_ota_bookings_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `channel_ota_connections`
+
+[Spec 19 §3.6] [Fase 3] Conexiones del tenant con OTAs (Viator, GetYourGuide, Expedia, Google Things to Do).
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Canales (channel_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 3 | `code` | `character varying(30)` | no |  |  |
+| 4 | `ota` | `character varying(20)` | no |  | Valores: `viator`, `getyourguide`, `expedia`, `google_ttd`, `civitatis`, `otro`. |
+| 5 | `name` | `character varying(120)` | no |  |  |
+| 6 | `account_ref` | `character varying(120)` | sí |  |  |
+| 7 | `credentials_encrypted` | `text` | sí |  |  |
+| 8 | `webhook_secret_encrypted` | `text` | sí |  |  |
+| 9 | `commission_pct` | `numeric(5,2)` | no | `0` |  |
+| 10 | `markup_pct` | `numeric(5,2)` | no | `0` |  |
+| 11 | `sync_availability` | `boolean` | no | `true` |  |
+| 12 | `status` | `character varying(12)` | no | `'borrador'::character varying` | Valores: `borrador`, `conectado`, `pausado`, `error`, `desconectado`. |
+| 13 | `last_sync_at` | `timestamp with time zone` | sí |  |  |
+| 14 | `last_error` | `text` | sí |  |  |
+| 15 | `lock_version` | `integer` | no | `0` | Bloqueo optimista: UPDATE … WHERE lock_version = ? (409 si no afecta filas). |
+| 16 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
+| 17 | `updated_by` | `uuid` | sí |  | Usuario de la última actualización (sin FK). |
+| 18 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 19 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_ota_connections_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_channel_ota_connections_id` | `tenant_id, id` |  | restricción |
+| `uq_channel_ota_connections_tenant_id_code` | `tenant_id, code` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `channel_ota_connections_commission_pct_check` | `CHECK (((commission_pct >= (0)::numeric) AND (commission_pct <= (60)::numeric)))` |  |
+| `channel_ota_connections_markup_pct_check` | `CHECK (((markup_pct >= ('-20'::integer)::numeric) AND (markup_pct <= (100)::numeric)))` |  |
+| `channel_ota_connections_ota_check` | `CHECK (((ota)::text = ANY ((ARRAY['viator'::character varying, 'getyourguide'::character varying, 'expedia'::character varying, 'google_ttd'::character varying, 'civitatis'::character varying, 'otro'::character varying])::text[])))` | `ota`: `viator`, `getyourguide`, `expedia`, `google_ttd`, `civitatis`, `otro` |
+| `channel_ota_connections_status_check` | `CHECK (((status)::text = ANY ((ARRAY['borrador'::character varying, 'conectado'::character varying, 'pausado'::character varying, 'error'::character varying, 'desconectado'::character varying])::text[])))` | `status`: `borrador`, `conectado`, `pausado`, `error`, `desconectado` |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_channel_ota_connections_tenant_id_status` | `USING btree (tenant_id, status)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_channel_ota_connections_lock_version` | BEFORE UPDATE | `app_bump_lock_version` |
+| `trg_channel_ota_connections_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `channel_ota_product_mappings`
+
+[Spec 19 §3.6] [Fase 3] Producto del catálogo ↔ producto/opción de la OTA y su modo de precio.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Canales (channel_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → channel_ota_connections.tenant_id, catalog_products.tenant_id, tenants.id. |
+| 3 | `connection_id` | `uuid` | no |  | FK → channel_ota_connections.id. |
+| 4 | `product_id` | `uuid` | no |  | FK → catalog_products.id. |
+| 5 | `ota_product_ref` | `character varying(120)` | no |  |  |
+| 6 | `ota_option_ref` | `character varying(120)` | sí |  |  |
+| 7 | `price_mode` | `character varying(10)` | no | `'markup'::character varying` | Valores: `markup`, `fijo`, `neto`. |
+| 8 | `fixed_price` | `numeric(14,2)` | sí |  |  |
+| 9 | `status` | `character varying(12)` | no | `'pendiente'::character varying` | Valores: `pendiente`, `activo`, `pausado`, `error`. |
+| 10 | `last_sync_at` | `timestamp with time zone` | sí |  |  |
+| 11 | `last_error` | `text` | sí |  |  |
+| 12 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
+| 13 | `updated_by` | `uuid` | sí |  | Usuario de la última actualización (sin FK). |
+| 14 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 15 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, connection_id` | `channel_ota_connections.tenant_id, id` | NO ACTION | `fk_channel_ota_product_mappings_connection_id` |
+| `tenant_id, product_id` | `catalog_products.tenant_id, id` | NO ACTION | `fk_channel_ota_product_mappings_product_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_channel_ota_product_mappings_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_channel_ota_product_mappings_id` | `tenant_id, id` |  | restricción |
+| `uq_channel_ota_product_mappings_conn_product` | `connection_id, product_id, COALESCE(ota_option_ref, ''::character` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `channel_ota_product_mappings_fixed_price_check` | `CHECK (((fixed_price IS NULL) OR (fixed_price > (0)::numeric)))` |  |
+| `channel_ota_product_mappings_price_mode_check` | `CHECK (((price_mode)::text = ANY ((ARRAY['markup'::character varying, 'fijo'::character varying, 'neto'::character varying])::text[])))` | `price_mode`: `markup`, `fijo`, `neto` |
+| `channel_ota_product_mappings_status_check` | `CHECK (((status)::text = ANY ((ARRAY['pendiente'::character varying, 'activo'::character varying, 'pausado'::character varying, 'error'::character varying])::text[])))` | `status`: `pendiente`, `activo`, `pausado`, `error` |
+| `ck_channel_ota_product_mappings_1` | `CHECK ((((price_mode)::text <> 'fijo'::text) OR (fixed_price IS NOT NULL)))` |  |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_channel_ota_product_mappings_product_id` | `USING btree (product_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_channel_ota_product_mappings_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
 
 [↑ Índice del dominio](#tablas)

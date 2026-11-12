@@ -19,12 +19,14 @@ logs:            ## Logs de la API y las colas
 sh:              ## Shell en el contenedor PHP
 	$(DC) exec api bash
 
-setup:           ## Primera vez: dependencias, clave, migraciones y datos demo
+setup:           ## Primera vez: .env, levanta el stack, dependencias, clave, migraciones y datos demo
 	cp -n docs/kit/infra/env/backend.env.example backend/.env || true
 	cp -n docs/kit/infra/env/web.env.example web/.env.local || true
+	$(DC) up -d --build --wait postgres redis api
 	$(PHP) composer install
 	$(PHP) php artisan key:generate
 	$(MAKE) fresh
+	$(DC) up -d
 
 migrate:         ## Migraciones (con el usuario dueño del esquema)
 	$(PHP) php artisan migrate --database=pgsql_owner --force

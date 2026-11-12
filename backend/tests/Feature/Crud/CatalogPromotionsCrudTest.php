@@ -53,6 +53,22 @@ it('crea, edita, pausa, activa y elimina una promoción del producto', function 
         ->and(collect($this->getJson('/api/v1/channels/ecommerce/promotions')->assertOk()->json('data.rows'))->pluck('ref'))->not->toContain($ref);
 });
 
+it('una promoción vencida se lista como vencida aunque esté pausada y no se activa ni se pausa', function () {
+    actingAsSeed('U01');
+    $ref = $this->postJson('/api/v1/catalog/products/CUS-HUM-FD/promotions', promoBody(['promo_code' => null]), critical())->assertCreated()->json('data.ref');
+    $past = ['date_from' => now('America/Lima')->subDays(10)->toDateString(), 'date_to' => now('America/Lima')->subDay()->toDateString()];
+
+    foreach (['inactiva', 'activa'] as $status) {
+        withinTenant(tenantA(), fn () => DB::table('catalog_product_promotions')->where('ref', $ref)->update([...$past, 'status' => $status]));
+        $listed = collect($this->getJson('/api/v1/catalog/products/CUS-HUM-FD/promotions')->assertOk()->json('data'))->firstWhere('ref', $ref);
+        $action = $status === 'activa' ? 'pause' : 'activate';
+
+        expect($listed['state'])->toBe('vencida')
+            ->and($this->postJson("/api/v1/catalog/products/CUS-HUM-FD/promotions/{$ref}/{$action}", [], critical()))->toBeApiError(422, 'CAT-BR-27')
+            ->and(promoRow($ref)->status)->toBe($status);
+    }
+});
+
 it('CAT-BR-27: valida el tope porcentual, la vigencia, el código único y el precio sobre la tarifa pública', function () {
     actingAsSeed('U01');
     $this->postJson('/api/v1/catalog/products/CUS-HUM-FD/promotions', promoBody(['promo_code' => 'UNICO10']), critical())->assertCreated();

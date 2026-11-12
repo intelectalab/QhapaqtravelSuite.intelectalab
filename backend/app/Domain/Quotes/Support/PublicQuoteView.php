@@ -127,6 +127,7 @@ final class PublicQuoteView
 
         if ($before === QuoteStatus::Enviada->value) {
             $this->audit->log('Cotización', (string) $quote->code, 'vista_portal', $before, 'vista (enlace con token)');
+            app(QuoteNotices::class)->viewed($quote);
         }
     }
 }

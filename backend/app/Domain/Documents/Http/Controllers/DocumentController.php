@@ -8,6 +8,7 @@ use App\Domain\B2bPortal\Support\B2bAccount;
 use App\Domain\Channels\Support\ChannelKit;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Documents\Actions\ClientDocuments;
+use App\Domain\Documents\Actions\DownloadDocument;
 use App\Domain\Documents\Support\DocumentStore;
 use App\Domain\Iam\Models\User;
 use App\Domain\Portal\Support\PortalAccount;
@@ -15,6 +16,7 @@ use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Site\Actions\SiteCheckout;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +45,14 @@ final class DocumentController
         return $this->respond($request, ClientDocuments::CONFIRMATION, (string) $reservation->id);
     }
 
+    public function download(Request $request, string $id, DownloadDocument $download): RedirectResponse
+    {
+        $user = $request->user();
+        assert($user instanceof User);
+
+        return redirect()->away($download->url($user, $id), 302, ['Cache-Control' => 'private, no-store']);
+    }
+
     public function opsVoucher(Request $request, string $code): Response|JsonResponse
     {
         $voucher = DB::table('ops_vouchers')->where('code', $code)->first() ?? throw ApiException::notFound('El voucher no existe.');
@@ -61,6 +71,22 @@ final class DocumentController
         return $response;
     }
 
+    public function productSheet(Request $request, string $code, AuditLogger $audit): Response|JsonResponse
+    {
+        $product = DB::table('catalog_products')->where('code', $code)->whereNull('deleted_at')->first(['id', 'code', 'name']) ?? throw ApiException::notFound('El producto no existe.');
+        $document = $this->documents->generate(ClientDocuments::SHEET, (string) $product->id);
+
+        if ($document->fresh) {
+            $audit->log('Producto', (string) $product->code, 'generar_ficha', null, $document->fileName);
+        }
+
+        if ($request->prefers(['application/json', DocumentStore::MIME]) === DocumentStore::MIME) {
+            return $this->store->respond($document, $request);
+        }
+
+        return response()->json(['data' => ['code' => $product->code, 'name' => $product->name], 'meta' => ['document_id' => $document->id, 'file_name' => $document->fileName, 'generated_at' => $document->createdAt]]);
+    }
+
     public function portalQuote(Request $request, string $code): Response|JsonResponse
     {
         $account = PortalAccount::of($this->user($request));
@@ -76,6 +102,27 @@ final class DocumentController
         }
 
         return $this->respond($request, ClientDocuments::QUOTE, (string) $quote->current_version_id);
+    }
+
+    public function passengerDocument(Request $request, string $id): Response|JsonResponse
+    {
+        $account = PortalAccount::of($this->user($request));
+        $reservation = $account->reservations()->first() ?? throw ApiException::notFound('No encontramos tu viaje.');
+
+        if ($id === ClientDocuments::ITINERARY || $id === ClientDocuments::CONFIRMATION) {
+            if ($id === ClientDocuments::CONFIRMATION && in_array($reservation->status, ['borrador', 'pendiente_pago'], true)) {
+                throw ApiException::conflict('DOCUMENT_UNAVAILABLE', 'La confirmación estará disponible cuando la reserva esté confirmada.');
+            }
+            $this->documents->printableReservation($reservation);
+
+            return $this->respond($request, $id, (string) $reservation->id);
+        }
+
+        $voucher = DB::table('ops_vouchers')->where('code', $id)->where('reservation_id', $reservation->id)->where('status', '<>', 'anulado')->first()
+            ?? throw ApiException::notFound('No encontramos ese documento en tu viaje.');
+        $this->documents->liveVoucher($voucher);
+
+        return $this->respond($request, ClientDocuments::VOUCHER, (string) $voucher->id);
     }
 
     public function portalItinerary(Request $request, string $code): Response|JsonResponse

@@ -20,7 +20,7 @@ final class AccountingPanel
     public function build(User $viewer): array
     {
         $start = $this->data->monthStart();
-        $month = DB::table('fin_invoices')->whereBetween('issue_date', [$start->toDateString(), $start->copy()->endOfMonth()->toDateString()])->whereNotIn('status', ['anulado', 'borrador'])->get(['doc_type', 'total_amount', 'fx_rate']);
+        $month = DB::table('fin_invoices')->whereBetween('issue_date', [$start->toDateString(), $start->copy()->endOfMonth()->toDateString()])->where('doc_type', '<>', self::CREDIT_NOTE)->whereNotIn('status', ['anulado', 'rechazado', 'pendiente_envio'])->get(['doc_type', 'total_amount', 'fx_rate']);
         $observed = DB::table('fin_invoices')->whereIn('status', self::OBSERVED)->get(['number', 'ose_response_message']);
         $undocumented = $this->undocumented();
         $receivables = $this->data->receivables($viewer);
@@ -59,7 +59,7 @@ final class AccountingPanel
 
     private function undocumented(): Collection
     {
-        $payments = DB::table('fin_payments as p')->leftJoin('booking_reservations as r', 'r.id', '=', 'p.reservation_id')->whereIn('p.status', ['aplicado', 'confirmado'])
+        $payments = DB::table('fin_payments as p')->leftJoin('booking_reservations as r', 'r.id', '=', 'p.reservation_id')->where('p.kind', 'cobro')->whereIn('p.status', ['aplicado', 'confirmado'])
             ->orderByDesc('p.paid_on')->get(['p.code', 'p.method', 'p.amount', 'p.currency', 'p.fx_rate', 'p.paid_on', 'p.reservation_id', 'r.code as reservation']);
         $invoices = DB::table('fin_invoices')->whereIn('reservation_id', $payments->pluck('reservation_id')->filter())->where('doc_type', '<>', self::CREDIT_NOTE)->whereNotIn('status', ['anulado', 'rechazado'])
             ->get(['reservation_id', 'total_amount', 'fx_rate'])->groupBy('reservation_id');

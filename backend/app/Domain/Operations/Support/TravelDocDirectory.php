@@ -84,6 +84,21 @@ final class TravelDocDirectory
         ];
     }
 
+    public function blocking(string $reservationId): array
+    {
+        $reservation = DB::table('booking_reservations')->where('id', $reservationId)->first(['id', 'code', 'title', 'travel_from', 'travel_to']);
+
+        if ($reservation === null) {
+            return [];
+        }
+
+        $reservations = collect([$reservation]);
+
+        return $this->passengers($reservations, $this->effective($reservations))
+            ->map(fn (array $person): array => ['name' => $person['name'], 'documents' => $person['blocking'] !== [] ? $person['blocking'] : ($person['identity'] === null ? [self::LABELS['id_doc']] : [])])
+            ->filter(fn (array $person): bool => $person['documents'] !== [])->values()->all();
+    }
+
     public function rules(): array
     {
         return [...$this->settings(), 'job' => $this->job(), 'rules' => $this->ruleTexts($this->settings())];
@@ -103,6 +118,7 @@ final class TravelDocDirectory
             ['code' => 'DOC-BR-002', 'text' => 'Peruano: el DNI o pasaporte debe estar vigente al terminar el viaje.'],
             ['code' => 'DOC-BR-003', 'text' => "La visa solo se pide a las nacionalidades configuradas ({$visa})."],
             ['code' => 'DOC-BR-004', 'text' => 'El seguro de viaje es obligatorio para extranjeros'.($settings['insurance_trekking'] ? ' y para todo pasajero en programas de trekking o altura (categoría Aventura).' : '.')],
+            ['code' => 'DOC-BR-005', 'text' => 'La vacuna contra la fiebre amarilla es obligatoria si la reserva incluye un programa en la Amazonía (Loreto o Madre de Dios) o si el producto la pide como requisito.'],
             ['code' => 'DOC-BR-006', 'text' => 'Los menores necesitan autorización de viaje; validarla exige el archivo.'],
             ['code' => 'DOC-BR-008', 'text' => 'Cada pasajero tiene un contacto de emergencia con nombre y teléfono.'],
             ['code' => 'DOC-BR-009', 'text' => 'La atención especial registra solo la indicación operativa, sin diagnósticos ni términos clínicos.'],
@@ -127,20 +143,21 @@ final class TravelDocDirectory
         $contacts = DB::table('ops_travel_doc_contacts')->whereIn('passenger_id', $people->keys())->pluck('passenger_id')->flip();
         $special = DB::table('ops_travel_doc_special')->whereIn('passenger_id', $people->keys())->pluck('passenger_id')->flip();
         $trekking = $this->rules->trekking($byId->keys());
+        $amazon = $this->rules->amazon($byId->keys());
 
-        return $items->map(function (object $item) use ($byId, $people, $contacts, $special, $trekking, $settings): object {
+        return $items->map(function (object $item) use ($byId, $people, $contacts, $special, $trekking, $amazon, $settings): object {
             $reservation = $byId[$item->reservation_id];
             $person = $people[$item->passenger_id] ?? (object) [];
-            $item->state = $this->state($item, $person, $reservation, $trekking->has($item->reservation_id), $settings, $contacts->has($item->passenger_id), $special->has($item->passenger_id));
+            $item->state = $this->state($item, $person, $reservation, $trekking->has($item->reservation_id), $settings, $contacts->has($item->passenger_id), $special->has($item->passenger_id), $amazon->has($item->reservation_id));
             $item->min_expiry = $item->doc_type === 'id_doc' ? $this->rules->minExpiry($person, (string) $reservation->travel_to, $settings) : null;
 
             return $item;
         });
     }
 
-    private function state(object $item, object $person, object $reservation, bool $trekking, array $settings, bool $contact, bool $special): string
+    private function state(object $item, object $person, object $reservation, bool $trekking, array $settings, bool $contact, bool $special, bool $amazon = false): string
     {
-        if (! $this->rules->applies((string) $item->doc_type, $person, $reservation->travel_from, $trekking, $settings)) {
+        if (! $this->rules->applies((string) $item->doc_type, $person, $reservation->travel_from, $trekking, $settings, $amazon)) {
             return 'no_aplica';
         }
 
@@ -184,7 +201,6 @@ final class TravelDocDirectory
                     $docs->contains('state', 'vencido') => 'vencido',
                     $docs->contains('state', 'observado') => 'observado',
                     $docs->every(fn (object $item): bool => $item->state === 'completo') => 'completo',
-                    $docs->contains('state', 'recibido') => 'recibido',
                     default => 'pendiente',
                 },
                 'reservation' => $reservation->code,
@@ -193,6 +209,20 @@ final class TravelDocDirectory
                 'blocking' => $blocking,
             ];
         });
+    }
+
+    private function mapiFor(object $reservation): ?array
+    {
+        $entries = DB::table('booking_reservation_services')->where('reservation_id', $reservation->id)->where('status', '<>', 'cancelado')->where('name', '~*', self::NOMINATIVE)
+            ->orderBy('service_date')->get(['reservation_id', 'code', 'name', 'service_date', 'pax']);
+
+        if ($entries->isEmpty()) {
+            return null;
+        }
+
+        $reservations = DB::table('booking_reservations')->where('id', $reservation->id)->get(['id', 'code', 'title', 'travel_from', 'travel_to']);
+
+        return $this->mapi($entries, $this->passengers($reservations, $this->effective($reservations)), $this->common->today());
     }
 
     private function mapi(Collection $entries, Collection $people, string $today): ?array
@@ -241,6 +271,7 @@ final class TravelDocDirectory
             'settings' => $settings,
             'relations' => TravelDocRules::RELATIONS,
             'request' => ['email' => $reservation->client_email, 'phone' => $reservation->client_phone, 'channels' => $settings['channels'], 'pending' => $pending],
+            'mapi' => $this->mapiFor($reservation),
             'passengers' => $passengers->map(fn (object $passenger): array => [
                 'id' => $passenger->id,
                 'name' => $passenger->full_name,

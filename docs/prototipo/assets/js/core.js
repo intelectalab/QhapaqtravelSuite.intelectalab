@@ -6,7 +6,7 @@
   'use strict';
 
   /* ---------------- Store (persistencia local de la demo) ---------------- */
-  const KEY = 'kipucontrol_demo_db_v5';
+  const KEY = 'kipucontrol_demo_db_v10';
   const clone = (o) => JSON.parse(JSON.stringify(o));
   let DB;
   try { const raw = localStorage.getItem(KEY); DB = raw ? JSON.parse(raw) : clone(window.SEED); } catch (e) { DB = clone(window.SEED); }
@@ -217,6 +217,8 @@
     home: '<path d="M3 11l9-7.5L21 11v9.5a.5.5 0 0 1-.5.5H15v-6H9v6H3.5a.5.5 0 0 1-.5-.5z"/>',
     kanban: '<rect x="3" y="3" width="5" height="14" rx="1"/><rect x="10" y="3" width="5" height="9" rx="1"/><rect x="17" y="3" width="4" height="17" rx="1"/>',
     link: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>',
+    sparkles: '<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2 2.2.8-2.2.8L19 21l-.8-2.2-2.2-.8 2.2-.8z"/><path d="M5 3l.6 1.4L7 5l-1.4.6L5 7l-.6-1.4L3 5l1.4-.6z"/>',
+    palette: '<path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.7-.8 1.7-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/>',
     image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="M21 16l-5-5-9 9"/>',
     heart: '<path d="M12 20s-8-4.7-8-10.5A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5C20 15.3 12 20 12 20z"/>',
     award: '<circle cx="12" cy="9" r="6"/><path d="M8.5 14l-1.5 7.5 5-2.5 5 2.5-1.5-7.5"/>',
@@ -521,6 +523,9 @@
     'finanzas/comisiones': ['finance.commissions'], 'finanzas/rentabilidad': ['finance.profitability'], 'finanzas/facturacion': ['finance.invoicing', 'finance.profitability'],
     'finanzas/conciliacion': ['finance.payments.register', 'finance.profitability'], 'proveedor': ['__solo_extranet__'], 'finanzas': ['finance.receivables', 'finance.invoicing'],
     'canales/b2b': ['channels.b2b.manage'], 'canales/ecommerce': ['channels.ecommerce.manage'], 'canales/cms': ['channels.cms.publish'],
+    'canales/vitrina': ['channels.showcase.manage'], 'canales/seo': ['cms.seo.manage'], 'canales/aventuras': ['cms.seo.manage', 'channels.cms.publish'], 'finanzas/pasarelas': ['finance.gateways.manage'], 'admin/vitrina': ['admin.tenant.manage'], 'admin/pases': ['admin.tenant.manage'],
+    'canales/plantillas': ['cms.templates.manage'], 'canales/contenido-ia': ['ai.content.use'], 'admin/plantillas': ['admin.tenant.manage'],
+    'canales/seguimiento': ['marketing.tracking.manage', 'marketing.tracking.approve'], 'reportes/visitas': ['analytics.web.view'], 'admin/marketing-vitrina': ['admin.tenant.manage'],
     'canales/portal-cliente': ['channels.b2b.manage', 'channels.cms.publish', 'crm.clients.manage'], 'canales/portal-pasajero': ['channels.b2b.manage', 'channels.cms.publish', 'operations.assign'],
     'mobile': ['operations.assign'],
     'reportes': ['reports.view'],
@@ -552,7 +557,7 @@
     b2b: { layout: 'portal', label: 'Portal de agencias', home: '#/canales/b2b/portal/catalogo', routes: ['canales/b2b/portal'], nav: [['Catálogo y tarifas', '#/canales/b2b/portal/catalogo'], ['Mis reservas', '#/canales/b2b/portal/reservas'], ['Estado de cuenta', '#/canales/b2b/portal/cuenta']] },
     provider: { layout: 'portal', label: 'Extranet de proveedores', home: '#/proveedor/solicitudes', routes: ['proveedor'], nav: [['Solicitudes', '#/proveedor/solicitudes'], ['Rooming lists', '#/proveedor/rooming'], ['Vouchers', '#/proveedor/vouchers'], ['Pagos', '#/proveedor/pagos'], ['Incidencias', '#/proveedor/incidencias'], ['Mi contrato', '#/proveedor/contrato']] }
   };
-  ROLE_UX.customer = { layout: 'portal', label: 'Portal del cliente', get home() { return '#/canales/portal-cliente/' + ((Auth.user && Auth.user.clientId) || 'CLI-0001') + '/inicio'; }, get routes() { return ['canales/portal-cliente/' + ((Auth.user && Auth.user.clientId) || 'CLI-0001'), 'libro-reclamaciones']; }, get nav() { const b = '#/canales/portal-cliente/' + ((Auth.user && Auth.user.clientId) || 'CLI-0001') + '/'; return [['Inicio', b + 'inicio'], ['Cotizaciones', b + 'cotizaciones'], ['Mis viajes', b + 'reservas'], ['Documentos', b + 'documentos'], ['Pagos', b + 'pagos'], ['Soporte', b + 'soporte'], ['Libro de reclamaciones', '#/libro-reclamaciones']]; } };
+  ROLE_UX.customer = { layout: 'portal', label: 'Portal del cliente', get home() { return '#/canales/portal-cliente/' + ((Auth.user && Auth.user.clientId) || '_sin-vinculo') + '/inicio'; }, get routes() { return ['canales/portal-cliente/' + ((Auth.user && Auth.user.clientId) || '_sin-vinculo'), 'libro-reclamaciones']; }, get nav() { const b = '#/canales/portal-cliente/' + ((Auth.user && Auth.user.clientId) || '_sin-vinculo') + '/'; return [['Inicio', b + 'inicio'], ['Cotizaciones', b + 'cotizaciones'], ['Mis viajes', b + 'reservas'], ['Documentos', b + 'documentos'], ['Pagos', b + 'pagos']].concat((DB.corpAccounts || []).some(a => a.clientId === (Auth.user && Auth.user.clientId) && a.status !== 'suspendida') ? [['Panel corporativo', b + 'corporativo']] : []).concat([['Soporte', b + 'soporte'], ['Libro de reclamaciones', '#/libro-reclamaciones']]); } };
   const Access = {
     ux(role) { return ROLE_UX[role || Auth.role] || ROLE_UX.tenant_admin; },
     isExternal(role) { return Access.ux(role).layout !== 'backoffice'; },
@@ -562,10 +567,14 @@
       const ux = Access.ux();
       if (ux.layout !== 'backoffice') {
         const ok = ux.routes.some(r => path === r || path.startsWith(r + '/'));
-        return ok ? { ok: true } : { ok: false, reason: 'Esta pantalla pertenece al back-office interno de la agencia y no está disponible para usuarios externos (' + Q.roleName(Auth.role) + ').' };
+        if (ok) return { ok: true };
+        // Portal propio de otra cuenta (p. ej. un cliente que abre /canales/portal-cliente/CLI-0002): 403 de pertenencia, no de back-office
+        const own = ux.routes.find(r => r.split('/').length > 2 && path.startsWith(r.split('/').slice(0, -1).join('/') + '/'));
+        if (own) return { ok: false, reason: 'Este portal pertenece a otra cuenta. Con el rol ' + Q.roleName(Auth.role) + ' solo puede ver los datos vinculados a su propia cuenta.' };
+        return { ok: false, reason: 'Esta pantalla pertenece al back-office interno de la agencia y no está disponible para usuarios externos (' + Q.roleName(Auth.role) + ').' };
       }
       if (Auth.role === 'super_admin') {
-        const ok = ['admin/tenants', 'admin/plataforma', 'admin/integraciones', 'admin/auditoria'].some(r => path === r || path.startsWith(r + '/'));
+        const ok = ['admin/tenants', 'admin/plataforma', 'admin/pases', 'admin/vitrina', 'admin/plantillas', 'admin/marketing-vitrina', 'admin/integraciones', 'admin/auditoria'].some(r => path === r || path.startsWith(r + '/'));
         return ok ? { ok: true } : { ok: false, reason: 'El Super Admin SaaS administra la plataforma (tenants, planes, jobs y auditoría). Por aislamiento multi-tenant no opera los datos comerciales de las agencias.' };
       }
       const segs = path.split('/'); let need = null;
@@ -578,7 +587,7 @@
     checkFor(role, path) {
       const ux = Access.ux(role); const perms = DB.rolePerms[role] || [];
       if (ux.layout !== 'backoffice') return ux.routes.some(r => path === r || path.startsWith(r + '/'));
-      if (role === 'super_admin') return ['admin/tenants', 'admin/plataforma', 'admin/integraciones', 'admin/auditoria'].some(r => path === r || path.startsWith(r + '/'));
+      if (role === 'super_admin') return ['admin/tenants', 'admin/plataforma', 'admin/pases', 'admin/vitrina', 'admin/plantillas', 'admin/marketing-vitrina', 'admin/integraciones', 'admin/auditoria'].some(r => path === r || path.startsWith(r + '/'));
       const segs = path.split('/'); let need = null;
       for (let i = segs.length; i > 0; i--) { const k = segs.slice(0, i).join('/'); if (ACCESS[k]) { need = ACCESS[k]; break; } }
       return !need || need[0] === '*' || need.some(p => perms.includes(p));
@@ -645,12 +654,19 @@
       { r: 'finanzas/rentabilidad', label: 'Rentabilidad', icon: 'trending' },
       { r: 'finanzas/facturacion', label: 'Facturación', icon: 'receipt' },
       { r: 'finanzas/tesoreria', label: 'Tesorería (caja y bancos)', icon: 'database' },
-      { r: 'finanzas/conciliacion', label: 'Conciliación bancaria', icon: 'scale' }
+      { r: 'finanzas/conciliacion', label: 'Conciliación bancaria', icon: 'scale' },
+      { r: 'finanzas/pasarelas', label: 'Pasarelas y comisiones', icon: 'card' }
     ] },
-    { group: 'Canales', perm: ['channels.b2b.manage', 'channels.cms.publish', 'channels.ecommerce.manage'], items: [
+    { group: 'Canales', perm: ['channels.b2b.manage', 'channels.cms.publish', 'channels.ecommerce.manage', 'channels.showcase.manage', 'cms.seo.manage', 'cms.templates.manage', 'ai.content.use', 'marketing.tracking.manage', 'marketing.tracking.approve'], items: [
       { r: 'canales/b2b', label: 'B2B agencias', icon: 'handshake' },
       { r: 'canales/ecommerce', label: 'E-commerce', icon: 'cart' },
       { r: 'canales/cms', label: 'CMS', icon: 'layout' },
+      { r: 'canales/plantillas', label: 'Plantillas del sitio', icon: 'palette' },
+      { r: 'canales/seo', label: 'Dominio y SEO', icon: 'search' },
+      { r: 'canales/contenido-ia', label: 'Contenido con IA', icon: 'sparkles' },
+      { r: 'canales/seguimiento', label: 'Seguimiento y píxeles', icon: 'target' },
+      { r: 'canales/aventuras', label: 'Blog de aventuras', icon: 'camera' },
+      { r: 'canales/vitrina', label: 'Vitrina Rutas Libres', icon: 'star' },
       { r: 'canales/integracion-web', label: 'Integración web y CMS', icon: 'link' },
       { r: 'canales/resenas-propias', label: 'Reseñas de clientes', icon: 'award' },
       { r: 'canales/resenas', label: 'Reseñas externas', icon: 'star' },
@@ -661,12 +677,17 @@
       { r: 'mobile/operador', label: 'App operador', icon: 'phone' },
       { r: 'mobile/pasajero', label: 'App pasajero', icon: 'phone' }
     ] },
-    { group: 'Inteligencia', perm: ['reports.view'], items: [
-      { r: 'reportes', label: 'Reportes y KPIs', icon: 'chart' }
+    { group: 'Inteligencia', perm: ['reports.view', 'analytics.web.view'], items: [
+      { r: 'reportes', label: 'Reportes y KPIs', icon: 'chart' },
+      { r: 'reportes/visitas', label: 'Visitas del sitio', icon: 'eye' }
     ] },
     { group: 'Administración', perm: ['admin.users.manage', 'admin.audit.view'], items: [
       { r: 'admin/tenants', label: 'Tenants y planes', icon: 'server', perm: 'admin.tenant.manage' },
       { r: 'admin/plataforma', label: 'Facturación de plataforma', icon: 'receipt' },
+      { r: 'admin/pases', label: 'Pases 30 días y add-ons', icon: 'ticket', perm: 'admin.tenant.manage' },
+      { r: 'admin/vitrina', label: 'Vitrina y blog SEO', icon: 'globe', perm: 'admin.tenant.manage' },
+      { r: 'admin/plantillas', label: 'Plantillas web', icon: 'palette', perm: 'admin.tenant.manage' },
+      { r: 'admin/marketing-vitrina', label: 'Marketing de la vitrina', icon: 'trending', perm: 'admin.tenant.manage' },
       { r: 'admin/usuarios', label: 'Usuarios y sedes', icon: 'users' },
       { r: 'admin/roles', label: 'Roles y permisos', icon: 'key' },
       { r: 'admin/configuracion', label: 'Configuración', icon: 'settings' },
@@ -691,7 +712,7 @@
     render() {
       UI.closeModal(); UI.closeDrawer(); UI.closeMenu();
       const h = (location.hash || '#/dashboard').replace(/^#\/?/, '');
-      const isSite = h === 'sitio' || h.startsWith('sitio/');
+      const isSite = h === 'sitio' || h.startsWith('sitio/') || h === 'vitrina' || h.startsWith('vitrina/') || h === 'web' || h.startsWith('web/');
       if (!Auth.user && h !== 'login' && !isSite) { location.hash = '#/login'; return; }
       if (h === 'login') { Shell.renderLogin(); return; }
       if (!h) { location.hash = Access.ux().home; return; }
@@ -866,7 +887,7 @@
     },
     renderLogin() {
       this.built = false;
-      const demo = [['U01', 'Back-office completo'], ['U02', 'Supervisión y aprobaciones'], ['U03', 'Su cartera comercial'], ['U05', 'Reservas en ejecución'], ['U07', 'Cobros, pagos y márgenes'], ['U08', 'Comprobantes y CxC'], ['U09', 'App móvil de campo'], ['U13', 'Portal de agencias'], ['U14', 'Portal del cliente'], ['U15', 'Portal del pasajero'], ['U17', 'Extranet de proveedores'], ['U16', 'Consola de plataforma']];
+      const demo = [['U01', 'Back-office completo'], ['U02', 'Supervisión y aprobaciones'], ['U03', 'Su cartera comercial'], ['U05', 'Reservas en ejecución'], ['U07', 'Cobros, pagos y márgenes'], ['U08', 'Comprobantes y CxC'], ['U09', 'App móvil de campo'], ['U13', 'Portal de agencias'], ['U14', 'Portal del cliente'], ['U18', 'Portal corporativo'], ['U15', 'Portal del pasajero'], ['U17', 'Extranet de proveedores'], ['U16', 'Consola de plataforma']];
       let sel = 'U01';
       const root = document.getElementById('app');
       root.innerHTML = '<div class="login"><section class="login-art"><div class="brand" style="padding:0"><div class="brand-mark">' + icon('logo') + '</div><div><div class="brand-name">KipuControl</div><div class="brand-sub">SaaS multi-tenant para agencias y operadores</div></div></div>' +

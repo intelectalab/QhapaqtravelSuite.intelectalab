@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Crm\Support\LoyaltySegments;
+use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Facades\DB;
 
@@ -58,13 +59,13 @@ it('filtra por segmento, última compra y destino visitado (CRM-BR-46)', functio
 
 it('Ventas solo ve su cartera y la propuesta queda a su nombre', function () {
     $seller = actingAsSeed('U03');
-    $own = withinTenant(tenantA(), fn () => DB::table('crm_clients')->whereNull('deleted_at')->where('owner_id', $seller->id)->pluck('code')->sort()->values()->all());
+    $own = withinTenant(tenantA(), fn () => Portfolio::clients(DB::table('crm_clients')->whereNull('deleted_at'), $seller)->pluck('code')->sort()->values()->all());
     $rows = collect(loyaltyRows());
 
     expect($rows->pluck('code')->sort()->values()->all())->toBe($own)
         ->and($rows->every(fn (array $row): bool => $row['proposal']['owner_id'] === $seller->id))->toBeTrue();
 
-    $foreign = withinTenant(tenantA(), fn () => DB::table('crm_clients')->whereNull('deleted_at')->where('owner_id', '<>', $seller->id)->value('code'));
+    $foreign = withinTenant(tenantA(), fn () => DB::table('crm_clients')->whereNull('deleted_at')->whereNotIn('code', $own)->value('code'));
     expect($this->getJson("/api/v1/crm/clients/{$foreign}/rebuy-proposal"))->toBeApiError(403);
 });
 

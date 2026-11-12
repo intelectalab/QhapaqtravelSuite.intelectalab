@@ -10,6 +10,8 @@ import { AvailabilityCalendar, BookingPanel, BookingProvider, MobileBookingBar }
 import { ReviewsSection } from "@/features/site/Reviews";
 import { Scenery } from "@/features/site/Scenery";
 import { TrackEvent } from "@/features/site/SiteAnalytics";
+import { StructuredData, breadcrumbNode, faqNode, tripNode } from "@/features/site/StructuredData";
+import { siteOrigin } from "@/lib/server/site-seo";
 import { WishButton } from "@/features/site/Account";
 import { accountFetch, accountToken, getSiteProduct, siteBase, siteLocale } from "@/lib/server/site";
 import { siteHref } from "@/lib/site";
@@ -24,7 +26,7 @@ export async function generateMetadata({ params }: PageProps<"/sitio/[agencia]/t
 export default async function ProductPage({ params, searchParams }: PageProps<"/sitio/[agencia]/tours/[slug]">) {
   const [{ agencia, slug }, search] = await Promise.all([params, searchParams]);
   const fecha = typeof search.fecha === "string" ? search.fecha : undefined;
-  const [detail, base, locale, token] = await Promise.all([getSiteProduct(agencia, slug), siteBase(agencia), siteLocale(), accountToken(agencia)]);
+  const [detail, base, locale, token, origin] = await Promise.all([getSiteProduct(agencia, slug), siteBase(agencia), siteLocale(), accountToken(agencia), siteOrigin(agencia)]);
   const wishlist = token ? await accountFetch<{ items: { slug: string }[] }>(agencia, "/me/wishlist") : null;
   const signedIn = wishlist?.ok === true;
   const site = siteText(locale);
@@ -43,6 +45,18 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   return (
     <BookingProvider key={fecha ?? "sin-fecha"} detail={detail} initialDate={fecha}>
       <TrackEvent event="view_item" params={{ item_id: product.slug, item_name: product.name }} />
+      <StructuredData
+        data={[
+          tripNode(detail, origin, `${origin}/tours/${product.slug}`),
+          breadcrumbNode([
+            { name: site.common.home, url: origin || undefined },
+            { name: site.common.destinations, url: `${origin}/destinos` },
+            ...product.breadcrumbs.map((crumb) => ({ name: crumb.name, url: `${origin}/destinos/${crumb.slug}` })),
+            { name: product.name },
+          ]),
+          ...(faqNode(detail.faqs) ? [faqNode(detail.faqs) as Record<string, unknown>] : []),
+        ]}
+      />
       <section className="relative">
         <Scenery seed={product.slug} label={product.name} image={product.media[0] ?? null} className="h-[340px] sm:h-[400px]">
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10" />

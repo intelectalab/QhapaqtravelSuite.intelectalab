@@ -30,7 +30,7 @@ final class PaymentDirectory
             ->orderByDesc('p.created_at')
             ->get(['p.id', 'p.code', 'p.lock_version', 'p.kind', 'p.source', 'p.method', 'p.amount', 'p.currency', 'p.fx_rate', 'p.paid_on', 'p.reference', 'p.note', 'p.status', 'p.reject_reason', 'p.revert_reason', 'p.reverted_at', 'p.retries', 'p.reservation_id', 'b.code as reservation_code', 'b.title as reservation_title', 'c.name as client_name', 'r.code as receivable_code', 'u.name as registered_by'])
             ->map(function (object $row) use ($labels, $open, $today, $lines): array {
-                $candidates = in_array($row->status, ['pendiente', 'confirmado'], true) ? $this->candidates($open->get($row->reservation_id.'|'.$row->currency)?->all() ?? [], (float) $row->amount, $today) : [];
+                $candidates = $row->kind === 'cobro' && in_array($row->status, ['pendiente', 'confirmado'], true) ? $this->candidates($open->get($row->reservation_id.'|'.$row->currency)?->all() ?? [], (float) $row->amount, $today) : [];
 
                 return [
                     'code' => $row->code,
@@ -62,8 +62,8 @@ final class PaymentDirectory
         return [
             'rows' => $rows,
             'kpis' => [
-                'pending_count' => $rows->where('status', 'pendiente')->count(),
-                'pending_pen' => round($rows->where('status', 'pendiente')->sum('pen'), 2),
+                'pending_count' => $rows->where('kind', 'cobro')->where('status', 'pendiente')->count(),
+                'pending_pen' => round($rows->where('kind', 'cobro')->where('status', 'pendiente')->sum('pen'), 2),
                 'applied_month_pen' => round($month->where('status', 'aplicado')->sum('pen'), 2),
                 'applied_month_count' => $month->where('status', 'aplicado')->count(),
                 'reverted_count' => $rows->where('status', 'revertido')->count(),

@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Plus, UserRound } from "lucide-react";
+import { Archive, Plus, Reply, Send, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { claimStep, saveClaim } from "@/app/(backoffice)/crm/reclamaciones/actions";
@@ -110,19 +110,42 @@ export function ClaimFormAction({ overview, sheet }: { overview: ClaimsOverview;
   );
 }
 
-export function ClaimDetailAction({ sheet, canManage }: { sheet: ClaimSheet; canManage: boolean }) {
-  const step = !canManage ? null : sheet.book_status === "received" ? "evaluate" : sheet.book_status === "in_review" ? "respond" : null;
+export function ClaimResendAction({ sheet }: { sheet: ClaimSheet }) {
+  const ready = Boolean(sheet.response) && Boolean(sheet.consumer.email);
+  return (
+    <PanelAction<StepResult>
+      label="Reenviar respuesta"
+      formId={`reenviar-${sheet.code}`}
+      title={`Reenviar la respuesta de ${sheet.book_number}`}
+      description={sheet.consumer.email ? `Se vuelve a enviar a ${sheet.consumer.email} y queda en el historial.` : ""}
+      submitLabel="Reenviar"
+      action={claimStep}
+      initial={initial}
+      trigger={(open) => <RowIcon tone="edit" label="Reenviar respuesta" icon={<Send size={15} />} onClick={open} disabledHint={ready ? undefined : sheet.response ? "El consumidor no dejó correo" : "Primero responde la hoja"} />}
+    >
+      {() => (
+        <>
+          <input type="hidden" name="code" value={sheet.code} />
+          <input type="hidden" name="step" value="resend" />
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+export function ClaimDetailAction({ sheet, canManage, owners = [], respondNow = false }: { sheet: ClaimSheet; canManage: boolean; owners?: { value: string; label: string }[]; respondNow?: boolean }) {
+  const step = !canManage ? null : respondNow || sheet.book_status === "in_review" ? "respond" : sheet.book_status === "received" ? "evaluate" : null;
   const deadline = DEADLINE[sheet.deadline];
   return (
     <PanelAction<StepResult>
-      label="Ver hoja"
-      formId={`ver-${sheet.code}`}
+      label={respondNow ? "Responder" : "Ver hoja"}
+      formId={`${respondNow ? "responder" : "ver"}-${sheet.code}`}
       title={sheet.book_number}
       description={`${sheet.type} · ${sheet.sede ?? ""} · ${sheet.channel_label}`}
       submitLabel={step === "evaluate" ? "Pasar a evaluación" : step === "respond" ? "Enviar respuesta" : "Listo"}
       action={claimStep}
       initial={initial}
-      trigger={(open) => <RowIcon tone="view" label="Ver hoja" onClick={open} />}
+      trigger={(open) => (respondNow ? <RowIcon tone="edit" label="Responder sin pasar por evaluación" icon={<Reply size={15} />} onClick={open} /> : <RowIcon tone="view" label="Ver hoja" onClick={open} />)}
     >
       {() => (
         <>
@@ -178,11 +201,17 @@ export function ClaimDetailAction({ sheet, canManage }: { sheet: ClaimSheet; can
               </li>
             ))}
           </ol>
+          {step === "evaluate" && (
+            <div className="flex flex-col gap-3 rounded-xl bg-surface-2 p-3.5">
+              <SelectField label="Responsable" name="owner_id" options={owners} placeholder="Yo mismo" hint="Recibe un aviso con el plazo de respuesta." />
+              <TextArea label="Nota para el responsable (opcional)" name="note" rows={2} maxLength={500} />
+            </div>
+          )}
           {step === "respond" && (
             <div className="flex flex-col gap-3 rounded-xl bg-surface-2 p-3.5">
               <ChoiceGroup label="Decisión" name="decision" options={DECISIONS} defaultValue="Procedente" />
-              <TextArea label="Respuesta al consumidor" name="text" rows={5} required minLength={20} maxLength={4000} hint={sheet.consumer.email ? `Se envía a ${sheet.consumer.email}.` : "El consumidor no dejó correo: entrega la respuesta por otro medio."} />
-              <TextArea label="Acciones tomadas (opcional)" name="actions" rows={2} maxLength={1000} />
+              <TextArea label="Respuesta al consumidor" name="text" rows={5} required minLength={40} maxLength={4000} hint={sheet.consumer.email ? `Se envía a ${sheet.consumer.email}.` : "El consumidor no dejó correo: entrega la respuesta por otro medio."} />
+              <TextArea label="Acciones adoptadas" name="actions" rows={2} required minLength={10} maxLength={1000} />
             </div>
           )}
         </>

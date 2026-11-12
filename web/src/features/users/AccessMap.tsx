@@ -4,6 +4,7 @@ import { Check, Minus } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { SelectField } from "@/components/ui/SelectField";
 import { NAV_GROUPS, screenFor } from "@/config/navigation";
 import { cn } from "@/lib/cn";
@@ -56,7 +57,11 @@ export function AccessMap({ data }: { data: AccessMapData }) {
       <div className="grid gap-3 sm:grid-cols-[240px_240px_1fr] sm:items-end">
         <SelectField label="Módulo" name="group" options={groups.map((value) => ({ value, label: value }))} value={group} placeholder="Todos los módulos" clearable onChange={setGroup} />
         <SelectField label="Tipo de rol" name="scope" options={(Object.keys(SCOPE_LABEL) as RoleScope[]).map((value) => ({ value, label: SCOPE_LABEL[value] }))} value={scope} placeholder="Todos los roles" clearable onChange={setScope} />
-        <p className="text-[12.5px] text-fg-3 sm:pb-2.5">Cada columna es un rol: toca su nombre para ver el resumen. Los roles de portal o app móvil no entran al back-office.</p>
+        <p className="flex items-center gap-3 whitespace-nowrap text-[12.5px] text-fg-3 sm:pb-2.5">
+          <span className="inline-flex items-center gap-1"><Check size={13} className="text-ok" /> Ve</span>
+          <span className="inline-flex items-center gap-1"><Minus size={13} /> No ve</span>
+          <InfoTip label="Cómo leer el mapa">Cada columna es un rol: toca su nombre para ver el resumen por módulo. Los roles de portal o app móvil no entran al back-office.</InfoTip>
+        </p>
       </div>
 
       {selected && (
@@ -73,16 +78,33 @@ export function AccessMap({ data }: { data: AccessMapData }) {
               Editar permisos del rol
             </Link>
           </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div>
-              <h3 className="text-[12.5px] font-semibold text-ok">Puede entrar a</h3>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-fg-2">{rows.filter((row) => selected.screens[row.path]).map((row) => row.label).join(", ") || "Ninguna pantalla del back-office."}</p>
-            </div>
-            <div>
-              <h3 className="text-[12.5px] font-semibold text-fg-3">No ve</h3>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-fg-3">{rows.filter((row) => !selected.screens[row.path]).map((row) => row.label).join(", ") || "Ve todas las pantallas."}</p>
-            </div>
-          </div>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {groups.map((name) => {
+              const own = rows.filter((row) => row.group === name);
+              const allowed = own.filter((row) => selected.screens[row.path]);
+              const pct = own.length ? (allowed.length / own.length) * 100 : 0;
+              return (
+                <li key={name} className={cn("lift rounded-tile border px-3 py-2.5", allowed.length ? "border-line" : "border-dashed border-line opacity-60")}>
+                  <span className="flex items-center justify-between gap-2 text-[12.5px]">
+                    <b className="truncate font-semibold">{name}</b>
+                    <span className="flex-none font-mono text-[12px] text-fg-3">
+                      {allowed.length}/{own.length}
+                    </span>
+                  </span>
+                  <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-surface-2">
+                    <span className={cn("block h-full rounded-full", pct === 100 ? "bg-ok" : "bg-[var(--t1)]")} style={{ width: `${pct}%` }} />
+                  </span>
+                  <span className="mt-1.5 flex flex-wrap gap-1">
+                    {own.map((row) => (
+                      <span key={row.path} title={row.path} className={cn("rounded-md px-1.5 py-0.5 text-[11px]", selected.screens[row.path] ? "bg-[color-mix(in_srgb,var(--ok)_10%,transparent)] text-fg-2" : "bg-surface-2 text-fg-3 line-through decoration-fg-3/40")}>
+                        {row.label}
+                      </span>
+                    ))}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
         </Card>
       )}
 

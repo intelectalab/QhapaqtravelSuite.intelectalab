@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, CircleAlert, CircleCheck } from "lucide-react";
+import { CalendarDays, Check, CircleAlert, CircleCheck, FilePen, Minus, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { FieldError } from "@/components/ui/FieldError";
@@ -11,6 +11,11 @@ import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { amountAttr, formatDate, formatMoney } from "@/lib/format";
 import type { DirectFormOptions, DirectPayload, DirectPlan } from "@/lib/reservations";
+
+const SAVE_MODES: { title: string; icon: LucideIcon; tone: string; facts: [string, string, boolean | null][] }[] = [
+  { title: "Crear y confirmar", icon: CircleCheck, tone: "bg-[color-mix(in_srgb,var(--ok)_14%,transparent)] text-ok", facts: [["Retiene cupos", "Sí", true], ["Estado", "Confirmada", null], ["Cuotas", "Anticipo y saldo", true]] },
+  { title: "Guardar borrador", icon: FilePen, tone: "bg-surface-2 text-fg-2", facts: [["Retiene cupos", "Solo si hay", null], ["Estado", "Borrador o pendiente", null], ["Cuotas", "Anticipo y saldo", true]] },
+];
 
 const MODEL_HINT: Record<string, string> = {
   POR_SALIDA: "Por salida programada",
@@ -245,7 +250,29 @@ export function SummaryStep({ form, options, plan, checkError, checking }: Direc
             </div>
           ))}
         </dl>
-        <p className="text-[12.5px] text-fg-3">«Crear y confirmar» retiene los cupos y deja la reserva confirmada. «Guardar borrador» también retiene si hay cupo; si no lo hay, queda pendiente de disponibilidad y no retiene la salida.</p>
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {SAVE_MODES.map((mode) => (
+            <div key={mode.title} className="lift rounded-tile border border-line p-3">
+              <span className="flex items-center gap-2">
+                <span className={cn("grid h-8 w-8 flex-none place-items-center rounded-lg", mode.tone)}>
+                  <mode.icon size={16} />
+                </span>
+                <b className="text-[13.5px] font-semibold">{mode.title}</b>
+              </span>
+              <ul className="mt-2.5 grid gap-1.5 text-[12.5px]">
+                {mode.facts.map(([label, value, ok]) => (
+                  <li key={label} className="flex items-center justify-between gap-2">
+                    <span className="text-fg-3">{label}</span>
+                    <span className={cn("inline-flex items-center gap-1 font-medium", ok === true && "text-ok", ok === false && "text-fg-3")}>
+                      {ok === true ? <Check size={13} /> : ok === false ? <Minus size={13} /> : null}
+                      {value}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
       </Section>
       <Aside title="Disponibilidad y precio">
         <PlanState plan={plan} checkError={checkError} checking={checking} perDeparture={product?.model === "POR_SALIDA"} chosen={Boolean(product)} />

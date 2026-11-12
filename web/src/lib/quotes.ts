@@ -15,7 +15,7 @@ export interface QuoteRow extends QuoteContractFields {
   total: string;
   total_pen: string;
   margin_pct: string | null;
-  internal_status: "pend" | "req" | "ok" | null;
+  internal_status: "pend" | "req" | "ok" | "rejected" | null;
   version_count: number;
   days_left: number | null;
   pax: { adt: number; chd: number; inf: number };

@@ -18,6 +18,10 @@ final class AnswerPaxFeedback
     {
         $row = $this->kit->row('channel_pax_feedback', $code, ['id', 'status']);
 
+        if ($row->status === 'derivado') {
+            throw ApiException::conflict('PAX-FB-02', 'El comentario ya se derivó a una incidencia; la respuesta se da desde la incidencia.');
+        }
+
         DB::table('channel_pax_feedback')->where('id', $row->id)->update([
             'reply' => $text,
             'status' => 'respondido',
@@ -29,15 +33,15 @@ final class AnswerPaxFeedback
         $this->audit->log('Comentario del pasajero', $code, 'responder', $row->status, 'respondido');
     }
 
-    public function mark(string $code, string $status, User $actor): void
+    public function markRead(string $code, User $actor): void
     {
         $row = $this->kit->row('channel_pax_feedback', $code, ['id', 'status']);
 
-        if ($row->status === 'respondido' || $row->status === $status) {
-            throw ApiException::conflict('PAX-FB-01', $row->status === 'respondido' ? 'Este comentario ya fue respondido.' : 'El comentario ya está en ese estado.');
+        if ($row->status !== 'nuevo') {
+            throw ApiException::conflict('PAX-FB-01', 'Solo un comentario nuevo se marca como leído.');
         }
 
-        DB::table('channel_pax_feedback')->where('id', $row->id)->update(['status' => $status, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
-        $this->audit->log('Comentario del pasajero', $code, $status === 'derivado' ? 'derivar' : 'marcar_leido', $row->status, $status);
+        DB::table('channel_pax_feedback')->where('id', $row->id)->update(['status' => 'leido', 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+        $this->audit->log('Comentario del pasajero', $code, 'marcar_leido', $row->status, 'leido');
     }
 }

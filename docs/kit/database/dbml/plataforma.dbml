@@ -53,13 +53,15 @@ Table addons {
   unit varchar(30)
   quantity_allowed boolean [not null]
   price_month numeric(14,2)
-  available_plans "uuid[]" [not null]
-  included_plans "uuid[]" [not null]
+  available_plans uuid[] [not null]
+  included_plans uuid[] [not null]
   grants jsonb [not null]
   created_by uuid
   updated_by uuid
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
+  billing_mode varchar(8) [not null]
+  price_once numeric(14,2)
   Note: '13 §3.5 · Catálogo de add-ons de suscripción.'
 }
 
@@ -302,6 +304,8 @@ Table subscription_items {
   updated_by uuid
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
+  billing_mode varchar(8) [not null]
+  paid_once_at timestamptz
   Note: '13 §3.6 · Add-ons contratados en la suscripción. [Fase 3]'
 }
 

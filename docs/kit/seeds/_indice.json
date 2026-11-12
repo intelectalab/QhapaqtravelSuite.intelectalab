@@ -21,7 +21,7 @@
  ],
  [
   "permissionGroups",
-  11
+  15
  ],
  [
   "rolePerms",
@@ -29,7 +29,7 @@
  ],
  [
   "users",
-  17
+  18
  ],
  [
   "destinations",
@@ -97,7 +97,7 @@
  ],
  [
   "reservations",
-  8
+  9
  ],
  [
   "operations",
@@ -117,11 +117,11 @@
  ],
  [
   "receivables",
-  9
+  10
  ],
  [
   "payments",
-  7
+  8
  ],
  [
   "payables",
@@ -430,5 +430,117 @@
  [
   "webEvents",
   1
+ ],
+ [
+  "corpAccounts",
+  1
+ ],
+ [
+  "showcase",
+  "objeto"
+ ],
+ [
+  "accessPasses",
+  2
+ ],
+ [
+  "addonCatalogV28",
+  9
+ ],
+ [
+  "gateways",
+  3
+ ],
+ [
+  "gatewayTxns",
+  4
+ ],
+ [
+  "siteDomains",
+  3
+ ],
+ [
+  "seoPages",
+  5
+ ],
+ [
+  "redirects",
+  2
+ ],
+ [
+  "travelStories",
+  3
+ ],
+ [
+  "aiPlans",
+  2
+ ],
+ [
+  "aiCreditPacks",
+  4
+ ],
+ [
+  "aiCreditCost",
+  "objeto"
+ ],
+ [
+  "aiCredits",
+  "objeto"
+ ],
+ [
+  "aiJobs",
+  5
+ ],
+ [
+  "aiImages",
+  4
+ ],
+ [
+  "siteTemplates",
+  7
+ ],
+ [
+  "siteTheme",
+  "objeto"
+ ],
+ [
+  "templateSubmissions",
+  3
+ ],
+ [
+  "tenantThemes",
+  6
+ ],
+ [
+  "trackingProviders",
+  8
+ ],
+ [
+  "trackingEvents",
+  9
+ ],
+ [
+  "trackingTags",
+  6
+ ],
+ [
+  "conversionMappings",
+  8
+ ],
+ [
+  "conversionDispatches",
+  9
+ ],
+ [
+  "webAnalytics",
+  "objeto"
+ ],
+ [
+  "platformTracking",
+  "objeto"
+ ],
+ [
+  "consentPolicy",
+  "objeto"
  ]
 ]

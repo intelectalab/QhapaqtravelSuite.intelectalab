@@ -1,0 +1,95 @@
+[
+  {
+    "id": "IAC-0042",
+    "kind": "meta_seo",
+    "target": "pagina",
+    "targetId": "/tours/laguna-humantay-full-day",
+    "targetLabel": "Laguna Humantay Full Day (página)",
+    "locale": "es",
+    "tone": "aventurero",
+    "status": "listo",
+    "credits": 1,
+    "at": "2026-10-30 10:12",
+    "by": "U02",
+    "before": {
+      "title": "Laguna Humantay Full Day",
+      "desc": "Tour a la laguna Humantay."
+    },
+    "after": {
+      "title": "Laguna Humantay Full Day desde Cusco | Andes Horizonte",
+      "desc": "Camine a la laguna turquesa a 4 200 m con guía, desayuno y almuerzo. Salida 4:00 a. m. desde su hotel en Cusco. Reserve en línea."
+    }
+  },
+  {
+    "id": "IAC-0041",
+    "kind": "mejorar_texto",
+    "target": "producto",
+    "targetId": "PRD-003",
+    "targetLabel": "Machu Picchu 2D/1N con noche en Aguas Calientes",
+    "locale": "es",
+    "tone": "cercano",
+    "status": "aplicado",
+    "credits": 2,
+    "at": "2026-10-30 09:58",
+    "by": "U02",
+    "appliedAt": "2026-10-30 10:03",
+    "before": {
+      "text": "Tour de 2 días a Machu Picchu con noche en Aguas Calientes. Incluye tren, bus y entrada."
+    },
+    "after": {
+      "text": "Viva Machu Picchu sin prisas: el primer día viaja en tren por el valle del Urubamba y duerme en Aguas Calientes; al amanecer del segundo sube en el primer bus y recorre la ciudadela con su guía antes de que llegue la multitud. Tren, bus, entrada y hotel incluidos."
+    }
+  },
+  {
+    "id": "IAC-0040",
+    "kind": "traducir",
+    "target": "producto",
+    "targetId": "PRD-004",
+    "targetLabel": "Laguna Humantay Full Day → inglés",
+    "locale": "en",
+    "tone": "aventurero",
+    "status": "aplicado",
+    "credits": 3,
+    "at": "2026-10-29 17:30",
+    "by": "U01",
+    "appliedAt": "2026-10-29 17:41",
+    "before": {
+      "text": "Caminata a la laguna Humantay con desayuno y almuerzo buffet."
+    },
+    "after": {
+      "text": "Hike to turquoise Humantay Lake with breakfast and buffet lunch included."
+    }
+  },
+  {
+    "id": "IAC-0043",
+    "kind": "imagen",
+    "target": "libre",
+    "targetLabel": "Banner de temporada (4 imágenes)",
+    "locale": "es",
+    "status": "listo",
+    "credits": 6,
+    "at": "2026-10-28 16:05",
+    "by": "U01",
+    "prompt": "Grupo de viajeros caminando por el camino inca al amanecer, montañas nevadas al fondo, luz cálida, estilo fotográfico",
+    "style": "fotografico"
+  },
+  {
+    "id": "IAC-0039",
+    "kind": "relato_aventura",
+    "target": "historia",
+    "targetId": "AVT-002",
+    "targetLabel": "Sophie y la laguna Humantay al amanecer",
+    "locale": "es",
+    "tone": "cercano",
+    "status": "descartado",
+    "credits": 4,
+    "at": "2026-10-27 12:10",
+    "by": "U02",
+    "before": {
+      "text": "Notas del guía: clienta francesa, llegó primera a la laguna, foto con el nevado."
+    },
+    "after": {
+      "text": "A las 9:40, Sophie fue la primera del grupo en llegar…"
+    }
+  }
+]

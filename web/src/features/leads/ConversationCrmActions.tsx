@@ -15,7 +15,7 @@ const LEAD_SOURCE: Record<string, string> = { whatsapp: "whatsapp", email: "emai
 function relationNote(thread: ConversationThread) {
   if (thread.card.lead) return `Queda ligada al lead ${thread.card.lead.name}.`;
   if (thread.card.client) return `Queda ligada al cliente ${thread.card.client.name}.`;
-  return "Vincula un cliente o un lead para ligarla; si no, queda solo en la agenda.";
+  return "Elige el lead o el cliente al que pertenece: la actividad siempre queda ligada a uno.";
 }
 
 export function ConversationCrmActions({ thread, catalogs, advisors, activityOptions }: { thread: ConversationThread; catalogs: CrmCatalogs | null; advisors: Advisor[]; activityOptions: RelatedOptions | null }) {

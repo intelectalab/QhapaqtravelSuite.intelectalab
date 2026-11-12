@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Domain\Platform\Support\EffectiveLimits;
 use App\Domain\Platform\Support\PlatformSettings;
 use App\Domain\Platform\Support\TenantNotice;
+use App\Domain\Platform\Support\UsageMeter;
 use Illuminate\Support\Facades\DB;
 
 final class ConsolidateUsage extends PlatformJob
@@ -37,6 +39,8 @@ final class ConsolidateUsage extends PlatformJob
             return $pending->count();
         });
 
+        UsageMeter::snapshot($this->today());
+
         $totals = $db->table('usage_counters')->where('day', '>=', $month)->where('day', '<', $this->today()->startOfMonth()->addMonth()->toDateString())
             ->selectRaw("tenant_id, metric, case when metric like '%\\_month' escape '\\' then sum(value) else max(value) end as total")->groupBy('tenant_id', 'metric')->get();
         $limits = $db->table('tenants as t')->join('plan_limits as l', 'l.plan_id', '=', 't.plan_id')->whereNotNull('l.value')->get(['t.id as tenant_id', 'l.metric', 'l.value'])
@@ -45,7 +49,8 @@ final class ConsolidateUsage extends PlatformJob
 
         foreach ($totals as $row) {
             $limit = $limits->get("{$row->tenant_id}|{$row->metric}")?->value;
-            $alerts += $db->transaction(fn (): int => $this->store($row, $month, $limit === null ? null : (int) $limit));
+            $limit = $limit === null ? null : (int) $limit + (int) (EffectiveLimits::extras((string) $row->tenant_id)[$row->metric] ?? 0);
+            $alerts += $db->transaction(fn (): int => $this->store($row, $month, $limit));
         }
 
         $tenants = $totals->pluck('tenant_id')->unique()->count();

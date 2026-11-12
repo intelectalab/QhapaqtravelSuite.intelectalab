@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Operations\Actions;
 
 use App\Domain\Admin\Support\EmailNotifications;
+use App\Domain\Admin\Support\StaffNotices;
 use App\Domain\Iam\Models\User;
 use App\Domain\Integrations\Support\AttachmentGuard;
 use App\Domain\Operations\Support\TravelDocDirectory;
@@ -39,7 +40,15 @@ final class TravelDocWorkflow
             throw ApiException::unprocessable('DOC-BR-006', 'Carga la partida de nacimiento o el permiso notarial antes de validar.');
         }
 
+        if ($item->file_id === null) {
+            throw ApiException::unprocessable('DOC-BR-013', 'Carga el archivo del documento antes de validarlo.');
+        }
+
         $expiry = $data['expiry_date'] ?? $item->expiry_date;
+
+        if ($item->doc_type === 'id_doc' && blank($expiry)) {
+            throw ApiException::unprocessable('DOC-BR-001', 'Registra la fecha de vencimiento del documento de identidad.');
+        }
 
         if ($expiry !== null && $expiry < $item->travel_to) {
             throw ApiException::unprocessable('DOC-BR-002', 'El documento vence antes de que termine el viaje.');
@@ -75,6 +84,10 @@ final class TravelDocWorkflow
         $this->assertFileType($item);
         DB::table('ops_travel_doc_items')->where('id', $item->id)->update(['status' => 'observado', 'observation' => $reason, 'validated_by' => null, 'validated_at' => null, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         $this->audit->log('Documento de viaje', "{$item->reservation_code} · {$item->full_name}", 'observar', $item->status, $reason);
+        $client = DB::table('booking_reservations as r')->join('crm_clients as c', 'c.id', '=', 'r.client_id')->where('r.id', $item->reservation_id)->first(['c.id', 'c.name', 'c.email']);
+        $label = TravelDocDirectory::LABELS[$item->doc_type] ?? $item->doc_type;
+        $notices = app(StaffNotices::class);
+        $notices->email($client?->email, 'documentos.observado', "Revisa un documento de tu viaje {$item->reservation_code} · ".$notices->agency(), "Hola, {$client?->name}:\n\nRevisamos el documento «{$label}» de {$item->full_name} y necesitamos que lo corrijas:\n{$reason}\n\nPuedes cargar el documento corregido desde tu portal.\n\n".$notices->agency(), 'ops_travel_doc', (string) $item->id, 'client', ['client_id' => $client?->id, 'reservation_id' => $item->reservation_id]);
 
         return (string) $item->id;
     }

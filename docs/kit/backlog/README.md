@@ -12,8 +12,8 @@ El backlog no incluye estimaciones de tiempo ni asignaciones: la planificación 
 | Fase 1A · MVP comercial (CRM, catálogo, motor básico, cotizaciones) | [fase-1a.md](fase-1a.md) · `fase-1a.csv` | 62 |
 | Fase 1B · MVP operativo (reservas, operaciones, finanzas básicas, portal cliente, reportes, reclamaciones) | [fase-1b.md](fase-1b.md) · `fase-1b.csv` | 83 |
 | Fase 2 · Canales y campo | [fase-2.md](fase-2.md) · `fase-2.csv` | 127 |
-| Fase 3 · SaaS y crecimiento | [fase-3.md](fase-3.md) · `fase-3.csv` | 57 |
-| **Total** | `backlog-completo.csv` | **378** |
+| Fase 3 · SaaS y crecimiento | [fase-3.md](fase-3.md) · `fase-3.csv` | 126 |
+| **Total** | `backlog-completo.csv` | **447** |
 
 Prioridades: P0 = sin esto la fase no cierra · P1 = parte del alcance de la fase · P2 = puede pasar a la fase siguiente sin romper nada.
 
@@ -69,7 +69,18 @@ Prioridades: P0 = sin esto la fase no cierra · P1 = parte del alcance de la fas
 | 3 | E3.8 · Reseñas propias verificadas | 5 |
 | 3 | E3.9 · Reseñas externas | 3 |
 | 3 | E3.10 · Reportes avanzados | 3 |
-| 3 | E3.11 · Pruebas y salida de Fase 3 | 4 |
+| 3 | E3.12 · Asistente IA de ventas y alertas | 5 |
+| 3 | E3.13 · WhatsApp oficial, cobro local y recuperación de ventas | 3 |
+| 3 | E3.14 · Distribución: OTAs y marketplace B2B | 4 |
+| 3 | E3.15 · Venta y operación: precios dinámicos, vales y check-in QR | 3 |
+| 3 | E3.16 · Back office: exportación contable y aéreo/hotel | 2 |
+| 3 | E3.17 · Portal corporativo de la empresa cliente | 6 |
+| 3 | E3.18 · Viajes por tramos y venta en ruta | 5 |
+| 3 | E3.19 · Vitrina gratuita, monetización y marca propia | 7 |
+| 3 | E3.20 · Plantillas web y contenido con IA | 10 |
+| 3 | E3.21 · Blog en Payload, SEO, seguimiento y visitas | 9 |
+| 3 | E3.22 · Landing de KipuControl y alta sin intervención | 9 |
+| 3 | E3.11 · Pruebas y salida de Fase 3 | 10 |
 
 ## Cómo se usa
 

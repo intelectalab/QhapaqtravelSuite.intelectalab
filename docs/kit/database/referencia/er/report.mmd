@@ -1,4 +1,22 @@
 erDiagram
+  report_ai_insights {
+    uuid id PK
+    varchar kind
+    varchar title
+    uuid audience_user_id FK
+    varchar status
+    uuid ai_request_id FK
+  }
+  report_corporate_exports {
+    uuid id PK
+    uuid tenant_id UK
+    varchar code UK
+    uuid account_id FK
+    uuid requested_by_portal_user_id FK
+    uuid requested_by_user_id FK
+    varchar status
+    uuid document_id FK
+  }
   report_exports {
     uuid id PK
     varchar code
@@ -6,11 +24,29 @@ erDiagram
     uuid requested_by FK
     uuid scheduled_job_id FK
   }
+  crm_corporate_accounts {
+    uuid id PK
+  }
+  crm_corporate_portal_users {
+    uuid id PK
+  }
   iam_users {
+    uuid id PK
+  }
+  sys_ai_requests {
+    uuid id PK
+  }
+  sys_documents {
     uuid id PK
   }
   sys_scheduled_jobs {
     uuid id PK
   }
-  iam_users |o--o{ report_exports : "requested_by"
+  crm_corporate_accounts ||--o{ report_corporate_exports : "account_id, tenant_id"
+  crm_corporate_portal_users ||--o{ report_corporate_exports : "requested_by_portal_user_id, tenant_id"
+  iam_users ||--o{ report_ai_insights : "audience_user_id, tenant_id"
+  iam_users ||--o{ report_corporate_exports : "requested_by_user_id, tenant_id"
+  iam_users ||--o{ report_exports : "requested_by, tenant_id"
+  sys_ai_requests ||--o{ report_ai_insights : "ai_request_id, tenant_id"
+  sys_documents ||--o{ report_corporate_exports : "document_id, tenant_id"
   sys_scheduled_jobs |o--o{ report_exports : "scheduled_job_id"

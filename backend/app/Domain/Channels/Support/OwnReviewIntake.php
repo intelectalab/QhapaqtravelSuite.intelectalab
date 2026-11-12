@@ -8,8 +8,12 @@ use App\Domain\Booking\Rules\RuleResolver;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 final class OwnReviewIntake
 {
@@ -33,7 +37,22 @@ final class OwnReviewIntake
             'lang' => ['nullable', 'in:es,en,de,fr,pt'],
             'country' => ['nullable', 'string', 'max:60'],
             'consent_publish' => ['nullable', 'boolean'],
+            'photos' => ['nullable', 'array', 'max:'.self::MAX_PHOTOS],
+            'photos.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:'.self::MAX_PHOTO_KB],
         ];
+    }
+
+    public const MAX_PHOTOS = 4;
+
+    public const MAX_PHOTO_KB = 5120;
+
+    private function storePhotos(array $files): array
+    {
+        $folder = 'reviews/'.app(TenantContext::class)->idOrFail().'/'.Str::uuid7();
+
+        return collect($files)->filter(fn (mixed $file): bool => $file instanceof UploadedFile && $file->isValid())->take(self::MAX_PHOTOS)->values()
+            ->map(fn (UploadedFile $file, int $index): string => (string) Storage::disk(config('filesystems.default'))->putFileAs($folder, $file, ($index + 1).'.'.strtolower($file->extension() ?: 'jpg')))
+            ->filter()->values()->all();
     }
 
     public static function messages(): array
@@ -137,7 +156,9 @@ final class OwnReviewIntake
         $parts = preg_split('/\s+/', trim($author['name'])) ?: [$author['name']];
         $display = count($parts) > 1 ? $parts[0].' '.mb_substr((string) end($parts), 0, 1).'.' : $parts[0];
 
-        return DB::transaction(function () use ($reservation, $item, $data, $subratings, $title, $body, $consent, $stars, $status, $alerts, $display, $author): array {
+        $photos = $this->storePhotos((array) ($data['photos'] ?? []));
+
+        return DB::transaction(function () use ($reservation, $item, $data, $subratings, $title, $body, $consent, $stars, $status, $alerts, $display, $author, $photos): array {
             $code = $this->codes->next('crm_own_reviews', 'RVO-', 4);
             $requestId = $author['request_id'] ?? DB::table('crm_review_requests')->where('reservation_id', $reservation->id)->whereIn('status', ['programada', 'enviada', 'abierta'])->value('id');
             $id = (string) DB::table('crm_own_reviews')->insertGetId([
@@ -158,6 +179,7 @@ final class OwnReviewIntake
                 'consent_publish' => $consent,
                 'status' => $status,
                 'moderation_reason' => $alerts === [] ? null : implode(' · ', $alerts),
+                'photos' => json_encode($photos),
                 'source' => $author['source'],
                 'request_id' => $requestId,
                 'published_at' => $status === 'publicada' ? now() : null,

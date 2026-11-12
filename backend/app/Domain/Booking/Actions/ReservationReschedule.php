@@ -8,6 +8,7 @@ use App\Domain\Booking\Events\ReservationRescheduled;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
+use App\Domain\Operations\Actions\AssignmentWorkflow;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
@@ -104,6 +105,7 @@ final class ReservationReschedule
             ReservationRescheduled::dispatch((string) $reservation->id);
             $this->audit->log('Reserva', $reservation->code, 'reprogramar', "{$reservation->travel_from} → {$reservation->travel_to}", "{$plan['new_from']} → {$plan['new_to']} · {$reason}");
             $this->mailer->send($reservation->id, 'Tu viaje cambió de fecha', "Tu viaje {$reservation->title} ahora es del {$plan['new_from']} al {$plan['new_to']}.".($diff->isPositive() ? " La diferencia de tarifa es {$reservation->currency} {$diff}." : ''));
+            app(AssignmentWorkflow::class)->notifySchedule((string) $reservation->id, "{$reservation->code} se reprogramó: ahora va del ".CarbonImmutable::parse($plan['new_from'])->format('d/m/Y').' al '.CarbonImmutable::parse($plan['new_to'])->format('d/m/Y').'. Revisa la nueva fecha en tu agenda.');
         });
     }
 

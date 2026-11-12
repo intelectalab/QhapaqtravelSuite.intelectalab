@@ -8,6 +8,7 @@ use App\Domain\Crm\Support\Advisors;
 use App\Domain\Crm\Support\CatalogInterest;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Crm\Support\CrmCatalog;
+use App\Domain\Crm\Support\CrmNotices;
 use App\Domain\Crm\Support\LoyaltySegments;
 use App\Domain\Crm\Support\OpportunityDirectory;
 use App\Domain\Crm\Support\Portfolio;
@@ -58,6 +59,7 @@ final class OpportunityWorkflow
         $before = DB::table('iam_users')->where('id', $opportunity->owner_id)->value('name');
         $after = DB::table('iam_users')->where('id', $ownerId)->value('name');
         $this->audit->log('Oportunidad', $code, 'reasignar', $before, trim($after.($note ? " · {$note}" : '')));
+        app(CrmNotices::class)->opportunityAssigned($code, $ownerId, (string) $actor->getKey());
     }
 
     public function changeStage(string $code, array $data, User $actor): array
@@ -100,7 +102,11 @@ final class OpportunityWorkflow
         }
 
         DB::table('crm_opportunities')->where('id', $opportunity->id)->update([...$values, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
-        $this->audit->log('Oportunidad', $code, $closed ? 'reabrir' : 'cambio_etapa', $opportunity->stage, $target);
+        $this->audit->log('Oportunidad', $code, $closed && ! in_array($target, ['ganada', 'perdida'], true) ? 'reabrir' : 'cambio_etapa', $opportunity->stage, $target);
+
+        if (in_array($target, ['ganada', 'perdida'], true)) {
+            app(CrmNotices::class)->opportunityClosed($code, $target === 'ganada', (string) $actor->getKey());
+        }
 
         return $warnings;
     }
@@ -139,6 +145,7 @@ final class OpportunityWorkflow
                 'created_by' => $actor->getKey(),
             ]);
             $this->audit->log('Oportunidad', $code, 'crear', after: "{$client->code} · ".trim($data['title']));
+            app(CrmNotices::class)->opportunityAssigned($code, (string) $owner, (string) $actor->getKey());
             if ($origin === LoyaltySegments::ORIGIN) {
                 $this->loyalty->record($client->code, $code);
             }

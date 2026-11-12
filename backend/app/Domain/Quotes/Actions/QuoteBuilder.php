@@ -74,7 +74,7 @@ final class QuoteBuilder
     public function options(User $actor): array
     {
         $today = $this->today();
-        $clients = Portfolio::scope(DB::table('crm_clients')->whereNull('deleted_at'), $actor, 'owner_id')->orderBy('name')->get(['code', 'name', 'country', 'segment_code'])
+        $clients = Portfolio::clients(DB::table('crm_clients')->whereNull('deleted_at'), $actor)->orderBy('name')->get(['code', 'name', 'country', 'segment_code'])
             ->map(fn (object $client): array => ['code' => $client->code, 'name' => $client->name, 'country' => $client->country, 'domestic' => self::domestic($client->country), 'channel' => LineRates::channelFor($client->segment_code)]);
         $opportunities = Portfolio::scope(DB::table('crm_opportunities as o')->join('crm_clients as c', 'c.id', '=', 'o.client_id')->whereNull('o.deleted_at')->whereNotIn('o.stage', ['ganada', 'perdida']), $actor, 'o.owner_id')
             ->orderBy('o.title')->get(['o.code', 'o.title', 'o.currency', 'o.pax', 'c.code as client_code']);
@@ -436,7 +436,7 @@ final class QuoteBuilder
 
     private function client(string $code, User $actor): object
     {
-        return Portfolio::scope(DB::table('crm_clients')->whereNull('deleted_at'), $actor, 'owner_id')->where('code', $code)->first(['id', 'code', 'country', 'segment_code'])
+        return Portfolio::clients(DB::table('crm_clients')->whereNull('deleted_at'), $actor)->where('code', $code)->first(['id', 'code', 'country', 'segment_code'])
             ?? throw ApiException::unprocessable('QTE-BR-09', 'Elige un cliente de tu cartera.');
     }
 

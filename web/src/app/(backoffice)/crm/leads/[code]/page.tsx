@@ -29,8 +29,7 @@ function journey(lead: LeadDetail) {
   const order = ["nuevo", "contactado", "calificado", "convertido"];
   const reached = order.indexOf(lead.status);
   return [
-    { label: "Recibido", at: lead.validated_at ?? lead.created_at, done: true },
-    { label: "Asignado", at: lead.assigned_at, done: lead.assigned_at !== null },
+    { label: "Nuevo", at: lead.validated_at ?? lead.created_at, done: true },
     { label: "Contactado", at: lead.first_contact_at, done: reached >= 1 },
     { label: "Calificado", at: lead.bant?.qualified_at ?? null, done: reached >= 2 },
     { label: "Convertido", at: lead.converted?.at ?? null, done: reached >= 3 },
@@ -96,7 +95,16 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/crm
                     .
                   </span>
                 ) : (
-                  [lead.discard_reason, lead.discard_detail].filter(Boolean).join(". ") || "Se descartó."
+                  <span>
+                    {["Se descartó", lead.discarded_from ? `estando en ${statusLabel(lead.discarded_from)}` : null, lead.discarded_at ? `el ${formatDate(lead.discarded_at)}` : null].filter(Boolean).join(" ")}
+                    {lead.discard_reason ? (
+                      <>
+                        {": "}
+                        <b className="font-semibold text-fg">{lead.discard_reason}</b>
+                      </>
+                    ) : null}
+                    .{lead.discard_detail ? ` ${lead.discard_detail}` : ""}
+                  </span>
                 )}
               </p>
             ) : (

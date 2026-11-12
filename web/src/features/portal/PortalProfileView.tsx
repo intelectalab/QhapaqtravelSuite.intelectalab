@@ -1,21 +1,75 @@
 "use client";
 
-import { BookOpenCheck, FileLock2, Languages, Pencil, ShieldCheck, UserRound } from "lucide-react";
+import { BookOpenCheck, FileLock2, FileText, Languages, Pencil, Printer, ShieldCheck, UserRound } from "lucide-react";
 import { useState, useTransition } from "react";
+import { Button } from "@/components/ui/Button";
 import { FieldList } from "@/components/ui/Details";
 import { PanelAction, type PanelActionState } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
+import { SidePanel } from "@/components/ui/SidePanel";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { requestDataRights, setConsent, updateProfile } from "@/app/(portal)/portal/actions";
 import { FormError } from "@/features/auth/AuthForms";
 import { cn } from "@/lib/cn";
-import { formatDate } from "@/lib/format";
-import { ARCO_RIGHTS, CONSENT_CHANNELS, LOCALES, type PortalProfile } from "@/lib/portal";
+import { formatDate, formatMoney } from "@/lib/format";
+import { ARCO_RIGHTS, CONSENT_CHANNELS, LOCALES, type PortalClaim, type PortalProfile } from "@/lib/portal";
 import { EmptyLine, PortalBadge, PortalTitle, RISE, rise, SectionCard } from "./PortalUi";
 
 const initial: PanelActionState = { message: null, done: false };
+
+function ClaimReceipt({ claim }: { claim: PortalClaim }) {
+  const [open, setOpen] = useState(false);
+  const { receipt } = claim;
+  const kind = claim.type === "queja" ? "Queja" : "Reclamo";
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[12.5px] font-semibold text-t1 transition hover:bg-surface-2">
+        <FileText size={14} /> Ver constancia
+      </button>
+      <SidePanel
+        open={open}
+        onOpenChange={setOpen}
+        title={`Constancia ${claim.number ?? claim.code}`}
+        description={`${kind} registrado${claim.received_at ? ` el ${formatDate(claim.received_at)}` : ""}`}
+        footer={
+          <Button variant="secondary" icon={<Printer size={15} />} onClick={() => window.print()}>
+            Imprimir o guardar en PDF
+          </Button>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <FieldList
+            fields={[
+              { label: "Agencia", value: receipt.agency },
+              { label: "Sede", value: receipt.sede ?? "—" },
+              { label: "Tipo", value: kind },
+              { label: "Respuesta hasta", value: claim.due_date ? `${formatDate(claim.due_date)}${receipt.response_days ? ` · ${receipt.response_days} días hábiles` : ""}` : "—" },
+            ]}
+          />
+          <FieldList
+            fields={[
+              { label: "Consumidor", value: receipt.consumer.name ?? "—" },
+              { label: "Documento", value: receipt.consumer.document ?? "—" },
+              { label: "Correo", value: receipt.consumer.email ?? "—" },
+              { label: "Bien contratado", value: [receipt.good.kind, receipt.good.description].filter(Boolean).join(" · ") || "—" },
+              ...(receipt.good.amount ? [{ label: "Monto", value: formatMoney(receipt.good.amount, receipt.good.currency ?? "PEN") }] : []),
+            ]}
+          />
+          <div>
+            <b className="mb-1 block text-[12.5px] font-semibold text-fg-2">Detalle</b>
+            <p className="whitespace-pre-line text-[13px] text-fg-2">{receipt.detail || "—"}</p>
+          </div>
+          <div>
+            <b className="mb-1 block text-[12.5px] font-semibold text-fg-2">Pedido</b>
+            <p className="whitespace-pre-line text-[13px] text-fg-2">{receipt.request || "—"}</p>
+          </div>
+        </div>
+      </SidePanel>
+    </>
+  );
+}
 
 function EditProfile({ profile }: { profile: PortalProfile }) {
   const { client } = profile;
@@ -166,11 +220,28 @@ export function PortalProfileView({ profile }: { profile: PortalProfile }) {
                         <PortalBadge status={claim.status} />
                       </div>
                       <p className="mt-1.5 line-clamp-2 text-[12.5px] text-fg-2">{claim.subject}</p>
+                      {claim.response && (
+                        <div className="mt-2.5 rounded-tile border border-line bg-surface-2 px-3 py-2.5">
+                          <span className="flex flex-wrap items-center gap-2 text-[12px] text-fg-3">
+                            <b className="font-semibold text-fg-2">Respuesta de la agencia</b>
+                            {claim.response.decision && <span className={cn("rounded-full px-2 py-0.5 text-[11.5px] font-semibold", claim.response.decision === "No procedente" ? "bg-bad/10 text-bad" : "bg-ok/10 text-ok")}>{claim.response.decision}</span>}
+                            {claim.response.answered_at && <span>{formatDate(claim.response.answered_at)}</span>}
+                          </span>
+                          <p className="mt-1 whitespace-pre-line text-[12.5px] text-fg-2">{claim.response.text}</p>
+                          {claim.response.actions && <p className="mt-1 text-[12px] text-fg-3">Acciones: {claim.response.actions}</p>}
+                        </div>
+                      )}
+                      <div className="mt-2 flex justify-end">
+                        <ClaimReceipt claim={claim} />
+                      </div>
                     </li>
                   ))}
                 </ul>
               )}
-              <p className="mt-3 text-[12px] text-fg-3">Atendemos cada hoja en el plazo de la Ley 29571. Para registrar una nueva, escríbenos desde Mensajes.</p>
+              <p className="mt-3 text-[12px] text-fg-3">
+                Atendemos cada hoja en el plazo de la Ley 29571. Para registrar una nueva, usa el{" "}
+                <a href={profile.claims_book} target="_blank" rel="noreferrer" className="font-semibold text-t1 hover:underline">Libro de Reclamaciones</a>.
+              </p>
             </SectionCard>
           )}
         </div>

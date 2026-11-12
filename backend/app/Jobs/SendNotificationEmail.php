@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Domain\Admin\Support\IntegrationErrors;
+use App\Domain\Platform\Support\UsageMeter;
 use App\Domain\Shared\Tenancy\Jobs\RestoreTenantContext;
 use App\Domain\Shared\Tenancy\Jobs\TenantAware;
 use App\Domain\Shared\Tenancy\TenantDatabase;
@@ -41,7 +43,7 @@ final class SendNotificationEmail implements ShouldQueue
 
     public function handle(): void
     {
-        $message = DB::table('notif_messages')->where('id', $this->messageId)->lockForUpdate()->first(['id', 'status', 'recipient_address', 'subject', 'body_rendered']);
+        $message = DB::table('notif_messages')->where('id', $this->messageId)->lockForUpdate()->first(['id', 'code', 'status', 'recipient_address', 'subject', 'body_rendered']);
 
         if ($message === null || $message->status !== 'pendiente' || ! str_contains((string) $message->recipient_address, '@')) {
             return;
@@ -56,6 +58,11 @@ final class SendNotificationEmail implements ShouldQueue
         }
 
         DB::table('notif_messages')->where('id', $message->id)->update(['status' => 'enviado', 'sent_at' => now(), 'last_error' => null]);
+        IntegrationErrors::resolve($this->tenantId, 'notification', $this->ref($message));
+
+        if ($this->tenantId !== null) {
+            UsageMeter::record((string) $this->tenantId, 'email_month');
+        }
     }
 
     public function failed(Throwable $e): void
@@ -64,7 +71,20 @@ final class SendNotificationEmail implements ShouldQueue
             return;
         }
 
-        app(TenantDatabase::class)->run($this->tenantId, fn () => DB::table('notif_messages')->where('id', $this->messageId)->where('status', 'pendiente')
-            ->update(['status' => 'fallido', 'last_error' => mb_substr($e->getMessage(), 0, 500)]));
+        $message = app(TenantDatabase::class)->run($this->tenantId, function () use ($e): ?object {
+            DB::table('notif_messages')->where('id', $this->messageId)->where('status', 'pendiente')
+                ->update(['status' => 'fallido', 'last_error' => mb_substr($e->getMessage(), 0, 500)]);
+
+            return DB::table('notif_messages')->where('id', $this->messageId)->first(['id', 'code', 'recipient_address']);
+        });
+
+        if ($message !== null) {
+            IntegrationErrors::record($this->tenantId, 'notification', $this->ref($message), 'Correo · '.$message->recipient_address, IntegrationErrors::describe($e), $this->tries, $this->tries);
+        }
+    }
+
+    private function ref(object $message): string
+    {
+        return (string) ($message->code ?: 'MSG-'.substr((string) $message->id, -8));
     }
 }

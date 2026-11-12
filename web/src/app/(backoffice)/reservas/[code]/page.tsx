@@ -4,6 +4,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { LiveTag, StatusBadge } from "@/components/ui/Badge";
 import { DownloadButton } from "@/components/ui/DownloadButton";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { SectionLayout, SectionNav } from "@/components/ui/SectionNav";
 import { resolveSections } from "@/lib/sections";
 import { HeroBand, HeroChip, HeroPanel, TintTile, ToneScope } from "@/components/ui/Tinted";
@@ -16,7 +17,7 @@ import { ReservationLockScope } from "@/features/reservations/ReservationLock";
 import { DocumentsSection, FeedbackSection, HistorySection, IncidentsSection, OperationSection, PassengersSection, PaymentsSection, ServicesSection, SummarySection, WebSection } from "@/features/reservations/ReservationSections";
 import type { ReceivablesOverview, SettlementDetail } from "@/lib/finance";
 import { SettlementSection } from "@/features/finance/Settlement";
-import { CLOSED_RESERVATION } from "@/lib/reservations";
+import { CLOSED_RESERVATION, type ReservationService } from "@/lib/reservations";
 import { getAdvisors } from "@/lib/server/leads";
 import { currentUser } from "@/lib/server/me";
 import { getChangeOptions, getReservation, getReservationCancellation, getReservationFeedback, getReservationHistory, getReservationPaxMessages, getReservationWebSnapshot } from "@/lib/server/reservations";
@@ -53,6 +54,36 @@ const ACTION_LABEL: Record<string, string> = {
   confirmar_proveedor: "Confirmado por el proveedor",
   rechazar: "Rechazado por el proveedor",
 };
+
+const CONFIRMED_SERVICE = ["confirmado", "en_curso", "completado"];
+
+function OperationsFigures({ services, currency }: { services: ReservationService[]; currency: string }) {
+  const live = services.filter((service) => !service.replaced && !["cancelado", "rechazado"].includes(service.status));
+  const confirmed = live.filter((service) => CONFIRMED_SERVICE.includes(service.status)).length;
+  const cost = live.reduce((sum, service) => sum + Number(service.cost ?? 0), 0);
+  const pct = live.length > 0 ? Math.round((confirmed / live.length) * 100) : 0;
+  return (
+    <div className="grid max-w-md grid-cols-2 gap-5">
+      <div>
+        <p className="flex items-center gap-1.5 text-[13px] font-medium text-white/70">
+          Costo de proveedores
+          <InfoTip label="Vista de Operaciones">Servicios, pasajeros y costo de proveedores. Los importes de venta y los cobros los lleva Finanzas.</InfoTip>
+        </p>
+        <p className="mt-1 text-[30px] font-bold leading-none tracking-[-0.03em]">{formatMoney(cost, currency)}</p>
+      </div>
+      <div>
+        <p className="text-[13px] font-medium text-white/70">Servicios confirmados</p>
+        <p className="mt-1 text-[30px] font-bold leading-none tracking-[-0.03em]">
+          {confirmed}
+          <span className="text-[18px] font-semibold text-white/60"> de {live.length}</span>
+        </p>
+        <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-white/20">
+          <span className="block h-full rounded-full bg-white" style={{ width: `${pct}%` }} />
+        </span>
+      </div>
+    </div>
+  );
+}
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value) ?? "";
 
@@ -168,10 +199,7 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
                   {reservation.currency !== "PEN" && reservation.total_pen !== undefined && <p className="mt-2 text-[13.5px] text-white/75">{formatMoney(reservation.total_pen)} al cambio de la reserva</p>}
                 </>
               ) : (
-                <>
-                  <p className="text-[13px] font-medium text-white/70">Vista de Operaciones</p>
-                  <p className="mt-1 max-w-sm text-[15px] leading-snug text-white/85">Servicios, pasajeros y costo de proveedores. Los importes de venta y los cobros los lleva Finanzas.</p>
-                </>
+                <OperationsFigures services={reservation.services} currency={reservation.currency} />
               )}
               <div className="mt-4 flex flex-wrap gap-2">
                 <HeroChip icon={<CalendarDays size={14} />}>
@@ -250,7 +278,7 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
           <TintTile icon={UserRound} tone="t1" label="Cliente" value={<Link href={`/crm/clientes/${reservation.client.code}`} className="text-[16px] hover:underline">{reservation.client.name}</Link>} />
           <TintTile icon={Users} tone="t4" label="Responsable" value={<span className="text-[16px]">{shortName(reservation.owner.name)}</span>} note={reservation.sede ?? undefined} />
           <TintTile icon={FileText} tone="violet" label="Cotización" value={<span className="text-[16px]">{reservation.quote ? <Link href={`/cotizaciones/${reservation.quote.code}`} className="hover:underline">{reservation.quote.code}</Link> : "Venta directa"}</span>} />
-          <TintTile icon={reservation.margin_pct === undefined ? ClipboardCheck : Receipt} tone="sun" label={reservation.margin_pct === undefined ? "Servicios confirmados" : "Margen"} value={reservation.margin_pct === undefined ? `${reservation.services.filter((service) => service.status === "confirmado").length} de ${reservation.services.filter((service) => service.status !== "cancelado" && !service.replaced).length}` : reservation.margin_pct === null ? <span className="text-[14px] text-fg-3">Sin servicios activos</span> : `${reservation.margin_pct} %`} />
+          <TintTile icon={reservation.margin_pct === undefined ? ClipboardCheck : Receipt} tone="sun" label={reservation.margin_pct === undefined ? "Servicios confirmados" : "Margen"} value={reservation.margin_pct === undefined ? `${reservation.services.filter((service) => !service.replaced && CONFIRMED_SERVICE.includes(service.status)).length} de ${reservation.services.filter((service) => !service.replaced && !["cancelado", "rechazado"].includes(service.status)).length}` : reservation.margin_pct === null ? <span className="text-[14px] text-fg-3">Sin servicios activos</span> : `${reservation.margin_pct} %`} />
         </section>
 
         <SectionLayout nav={<SectionNav label="Secciones de la reserva" groups={groups} active={current} testId="reservation-sections" />}>{body}</SectionLayout>

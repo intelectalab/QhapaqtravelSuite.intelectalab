@@ -1,0 +1,98 @@
+{
+  "id": "andes-clasico",
+  "name": "Andes Clásico",
+  "version": "3.0.0",
+  "kipu": "^2.13",
+  "category": "agencia",
+  "tier": "incluida",
+  "author": {
+    "name": "Equipo KipuControl",
+    "email": "plantillas@kipucontrol.com"
+  },
+  "tokens": {
+    "side": "#0F2747",
+    "accent": "#0E5DB5",
+    "soft": "#E3EEFB",
+    "sun": "#F2B33D",
+    "radius": 12,
+    "font": {
+      "display": "Noto Serif",
+      "body": "Plus Jakarta Sans"
+    },
+    "dark": {
+      "side": "#0A1A30",
+      "accent": "#6AA3FF",
+      "soft": "#132A47",
+      "sun": "#F2B33D"
+    }
+  },
+  "sections": [
+    "hero_buscador",
+    "destinos",
+    "mas_vendidos",
+    "ofertas",
+    "salidas",
+    "resenas",
+    "blog",
+    "boletin"
+  ],
+  "pages": [
+    "inicio",
+    "buscar",
+    "destino",
+    "tour",
+    "carrito",
+    "checkout",
+    "blog",
+    "articulo",
+    "aventuras",
+    "contacto",
+    "legal",
+    "libro_reclamaciones"
+  ],
+  "locales": [
+    "es",
+    "en",
+    "pt"
+  ],
+  "darkMode": true,
+  "settings": [
+    {
+      "key": "accent",
+      "type": "color",
+      "label": "Botones y enlaces",
+      "default": "#0E5DB5"
+    },
+    {
+      "key": "sun",
+      "type": "color",
+      "label": "Acción principal (Reservar, Cotizar)",
+      "default": "#F2B33D"
+    },
+    {
+      "key": "radius",
+      "type": "range",
+      "label": "Redondeo de tarjetas",
+      "default": 12,
+      "min": 0,
+      "max": 24
+    },
+    {
+      "key": "serif_titles",
+      "type": "toggle",
+      "label": "Títulos con serif",
+      "default": true
+    },
+    {
+      "key": "destinations_bento",
+      "type": "toggle",
+      "label": "Destinos en mosaico",
+      "default": true
+    },
+    {
+      "key": "home_sections",
+      "type": "sections",
+      "label": "Secciones del inicio y su orden"
+    }
+  ]
+}

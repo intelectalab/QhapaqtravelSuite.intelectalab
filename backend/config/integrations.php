@@ -10,6 +10,7 @@ return [
         'reviews' => env('REVIEWS_PROVIDER', 'fake'),
         'fx' => env('FX_RATE_PROVIDER', 'fake'),
         'antivirus' => env('ANTIVIRUS_PROVIDER', 'fake'),
+        'push' => env('PUSH_PROVIDER', 'fake'),
     ],
 
     'retry' => [

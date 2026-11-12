@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Finance\Actions;
 
+use App\Domain\Admin\Support\StaffNotices;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -32,6 +33,13 @@ final class RegisterFxRate
             throw ApiException::unprocessable('VALIDATION_ERROR', 'El precio de compra no puede ser mayor que el de venta.');
         }
 
+        $alert = (float) app(ManageCurrencies::class)->settings()['alert_pct'];
+        $variation = $previous && Decimal::of($previous->rate_pen)->isPositive() ? abs(((float) (string) $rate - (float) $previous->rate_pen) / (float) $previous->rate_pen * 100) : 0.0;
+
+        if ($variation > $alert && empty($data['confirm_variation'])) {
+            throw ApiException::conflict('FX_VARIATION', 'El tipo de cambio varía '.number_format($variation, 2).' % respecto al anterior ('.$previous->rate_pen.'), más que la alerta de '.$alert.' %. Revisa el valor y confírmalo si es correcto.', ['variation_pct' => round($variation, 2), 'alert_pct' => $alert, 'previous' => (string) $previous->rate_pen]);
+        }
+
         DB::table('fin_fx_rates')->insert([
             'currency_code' => $code,
             'base_currency' => 'PEN',
@@ -45,6 +53,10 @@ final class RegisterFxRate
             'created_by' => $actor->getKey(),
         ]);
 
-        $this->audit->log('Tipo de cambio', $code, 'registrar', $previous ? (string) $previous->rate_pen : null, "{$rate->strippedOfTrailingZeros()} · {$date} · {$data['source']}");
+        $this->audit->log('Tipo de cambio', $code, 'registrar', $previous ? (string) $previous->rate_pen : null, "{$rate->strippedOfTrailingZeros()} · {$date} · {$data['source']}".($variation > $alert ? ' · variación '.number_format($variation, 2).' % confirmada' : ''));
+
+        if ($variation > $alert) {
+            app(StaffNotices::class)->toRoles(['finance', 'manager'], 'tipo_cambio.variacion', "Tipo de cambio {$code} con variación de ".number_format($variation, 2).' %', "Nuevo {$rate->strippedOfTrailingZeros()} · anterior {$previous->rate_pen} · {$date}", 'fin_fx_rate', null, null, [], (string) $actor->getKey());
+        }
     }
 }

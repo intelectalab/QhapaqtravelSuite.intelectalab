@@ -1,10 +1,12 @@
 <?php
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 
 require_once __DIR__.'/../../Datasets/prd011.php';
 
 beforeEach(function () {
+    Queue::fake();
     requireRoute('POST', '/api/v1/public/quote');
     requireRoute('PATCH', '/api/v1/admin/booking-rules/R-LODGING');
 });

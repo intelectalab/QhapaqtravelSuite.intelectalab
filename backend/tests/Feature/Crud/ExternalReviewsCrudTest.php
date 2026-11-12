@@ -45,22 +45,27 @@ it('REV-BR-03: no se marca publicada una reseña sin respuesta guardada', functi
         ->and(extReview('XRV-0013')->response_status)->toBe('sin_responder');
 });
 
-it('editar la respuesta de una reseña ya publicada la vuelve a dejar pendiente de publicar', function () {
+it('REV-BR-04: una respuesta publicada es final y no se edita', function () {
     actingAsSeed('U01');
     $id = extReview('XRV-0009')->id;
+    $before = extReview('XRV-0009');
 
-    $this->putJson("/api/v1/channels/external-reviews/{$id}/reply", ['text' => 'Actualizamos la respuesta con la nueva política.'])->assertOk();
-
-    expect(extReview('XRV-0009')->response_status)->toBe('pendiente_publicar');
+    expect($before->response_status)->toBe('publicada')
+        ->and($this->putJson("/api/v1/channels/external-reviews/{$id}/reply", ['text' => 'Actualizamos la respuesta con la nueva política.']))->toBeApiError(409, 'REV-BR-04')
+        ->and(extReview('XRV-0009')->reply)->toBe($before->reply);
 });
 
-it('REV-BR-02: una plataforma que no admite respuestas no se responde', function () {
+it('en una plataforma sin respuestas por API se guarda el texto y se marca publicada a mano', function () {
     actingAsSeed('U01');
     withinTenant(tenantA(), fn () => DB::table('channel_external_reviews')->where('external_id', 'XRV-0012')->update(['response_status' => 'no_admite']));
     $id = extReview('XRV-0012')->id;
 
-    expect($this->putJson("/api/v1/channels/external-reviews/{$id}/reply", ['text' => 'Gracias por tu comentario.']))->toBeApiError(409, 'REV-BR-02')
-        ->and(extReview('XRV-0012')->reply)->toBeNull();
+    $this->putJson("/api/v1/channels/external-reviews/{$id}/reply", ['text' => 'Gracias por tu comentario.'])->assertOk();
+    expect(extReview('XRV-0012')->response_status)->toBe('no_admite')
+        ->and(extReview('XRV-0012')->reply)->toBe('Gracias por tu comentario.');
+
+    $this->postJson("/api/v1/channels/external-reviews/{$id}/mark-published", [], critical())->assertOk();
+    expect(extReview('XRV-0012')->response_status)->toBe('publicada');
 });
 
 it('valida la respuesta, exige Idempotency-Key al marcar y una reseña inexistente responde 404', function () {

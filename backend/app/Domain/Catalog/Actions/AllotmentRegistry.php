@@ -7,6 +7,7 @@ namespace App\Domain\Catalog\Actions;
 use App\Domain\Admin\Actions\ManageIntegrations;
 use App\Domain\Catalog\Support\AllotmentConsumption;
 use App\Domain\Catalog\Support\AllotmentDirectory;
+use App\Domain\Catalog\Support\AllotmentNotices;
 use App\Domain\Catalog\Support\CatalogAccess;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Iam\Models\User;
@@ -128,6 +129,7 @@ final class AllotmentRegistry
             DB::table('catalog_allotments')->where('id', $contract->id)->update(['status' => 'liberado', 'released_at' => now(), 'release_reason' => $reason, 'lock_version' => $contract->lock_version + 1, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             $this->event($contract, "Contrato liberado ({$units} unidades): {$reason}", $actor);
             $this->audit->log('Cupo', $code, 'liberar_contrato', $contract->status, "liberado · {$units} unidades · {$reason}");
+            app(AllotmentNotices::class)->toProvider((string) $contract->id, 'cupo.liberacion', 'Liberamos el contrato de cupo', "Liberamos todas las fechas futuras del contrato ({$units} unidades sin usar).\nMotivo: {$reason}");
 
             return $units;
         });
@@ -159,6 +161,7 @@ final class AllotmentRegistry
             $this->settle($contract);
             $this->event($contract, "Liberación manual de {$qty} unidades del {$date}", $actor);
             $this->audit->log('Cupo', $code, 'liberar', "{$date} · cupo ".((int) $day->blocked_qty - (int) $day->released_qty), 'cupo '.((int) $day->blocked_qty - (int) $day->released_qty - $qty));
+            app(AllotmentNotices::class)->toProvider((string) $contract->id, 'cupo.release', 'Liberamos unidades de cupo', "Liberamos {$qty} unidad(es) del {$date}. Quedan disponibles para tu venta.");
         });
     }
 
@@ -219,6 +222,7 @@ final class AllotmentRegistry
             ]);
             $this->event($contract, "Ampliación {$request} solicitada: +{$data['extra_qty']} del {$data['date_from']} al {$data['date_to']}", $actor);
             $this->audit->log('Cupo', $code, 'solicitar_ampliacion', after: "{$request} · +{$data['extra_qty']} · {$data['date_from']} a {$data['date_to']}");
+            app(AllotmentNotices::class)->toProvider((string) $contract->id, 'cupo.ampliacion', "Solicitud de ampliación {$request}", "Te pedimos ampliar el cupo en {$data['extra_qty']} unidad(es) del {$data['date_from']} al {$data['date_to']}.\nNota: ".trim($data['note'])."\n\nResponde la solicitud desde la extranet de proveedores.");
 
             return $request;
         });

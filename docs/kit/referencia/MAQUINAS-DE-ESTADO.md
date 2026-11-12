@@ -2,7 +2,7 @@
 
 _Generado por `tools/build_state_machines.py`: valores tomados del catálogo de PostgreSQL (CHECK de cada columna de estado) y transiciones de la §4 de `proto/docs/especificaciones/00…18-*.md` (tablas «Desde | Hacia» leídas automáticamente y prosa transcrita en `tools/estados_fuentes.py`), más los endpoints de escritura de `api/openapi.yaml` por tabla (`x-resource`). No editar a mano: corregir la fuente o `estados_fuentes.py` y regenerar con `python3 kit-ia/referencia/tools/build_state_machines.py` (requiere PostgreSQL 16/17; Node + Playwright + mermaid para validar los diagramas, o `--no-check`)._
 
-**108 columnas de estado** con CHECK de lista de valores · 87 con transiciones documentadas · 21 con «Transiciones por definir» · 456 filas de transición · 665 pares desde→hacia distintos.
+**150 columnas de estado** con CHECK de lista de valores · 125 con transiciones documentadas · 25 con «Transiciones por definir» · 650 filas de transición · 888 pares desde→hacia distintos.
 
 Convenciones de las tablas: «— (alta)» = creación del registro (estado inicial). Cuando la spec usa una expresión («cualquiera ≠ …», «no cerrada», «abierta», etiquetas de la extranet), la celda muestra los estados resueltos y debajo el texto original. «Ref.» indica la sección de origen; «(prosa)» = transcrito de un párrafo, no de una tabla. Lo marcado «Supuesto» o «Por definir» no está fijado por la spec.
 
@@ -55,9 +55,9 @@ Convenciones de las tablas: «— (alta)» = creación del registro (estado inic
 | 22 | [Solicitud de anulación](#m-booking-cancel-requests-status) | `booking_cancel_requests.status` | Fase 1 · MVP | 4 | 4 | 04, 10 |
 | 23 | [Modificación / reprogramación de reserva](#m-booking-changes-status) | `booking_changes.status` | Fase 1 · MVP | 3 | 4 | 04 |
 | 24 | [Servicio de reserva](#m-booking-reservation-services-status) | `booking_reservation_services.status` | Fase 1 · MVP | 7 | 15 | 04, 05, 06 |
-| 25 | [Reserva](#m-booking-reservations-status) | `booking_reservations.status` | Fase 1 · MVP | 11 | 18 | 04, 07, 08, 15 |
+| 25 | [Reserva](#m-booking-reservations-status) | `booking_reservations.status` | Fase 1 · MVP | 11 | 21 | 04, 07, 08, 15 |
 | 26 | [Comentario del pasajero](#m-channel-pax-feedback-status) | `channel_pax_feedback.status` | Fase 2 · Canales y campo | 4 | 5 | 04 |
-| 27 | [Asignación de recurso](#m-ops-assignments-status) | `ops_assignments.status` | Fase 1 · MVP | 5 | 6 | 04, 05 |
+| 27 | [Asignación de recurso](#m-ops-assignments-status) | `ops_assignments.status` | Fase 1 · MVP | 6 | 7 | 04, 05 |
 | 28 | [Conductor (recurso)](#m-ops-drivers-status) | `ops_drivers.status` | Fase 1 · MVP | 4 | 1 | 05 |
 | 29 | [Guía (recurso)](#m-ops-guides-status) | `ops_guides.status` | Fase 1 · MVP | 4 | 1 | 05 |
 | 30 | [Incidencia](#m-ops-incidents-status) | `ops_incidents.status` | Fase 1 · MVP | 4 | 6 | 05, 06 |
@@ -120,25 +120,67 @@ Convenciones de las tablas: «— (alta)» = creación del registro (estado inic
 | 87 | [Mensaje al pasajero](#m-notif-pax-messages-status) | `notif_pax_messages.status` | Fase 2 · Canales y campo | 6 | 7 | 17 |
 | 88 | [Reseña propia](#m-crm-own-reviews-status) | `crm_own_reviews.status` | Fase 3 · SaaS y crecimiento | 4 | 6 | 18 |
 | 89 | [Solicitud de reseña](#m-crm-review-requests-status) | `crm_review_requests.status` | Fase 3 · SaaS y crecimiento | 6 | 7 | 18 |
-| 90 | [Consumo de cupo por servicio de reserva (idempotente)](#m-catalog-allotment-consumptions-state) | `catalog_allotment_consumptions.state` | Fase 2 · Canales y campo | 3 | Por definir | — |
-| 91 | [Listas de precios B2B](#m-channel-b2b-price-lists-status) | `channel_b2b_price_lists.status` | Fase 2 · Canales y campo | 2 | Por definir | — |
-| 92 | [Solicitudes de liquidación de comisiones B2B](#m-channel-b2b-settlement-requests-status) | `channel_b2b_settlement_requests.status` | Fase 2 · Canales y campo | 4 | Por definir | — |
-| 93 | [Cuentas de canal del inbox (WhatsApp, email, webchat)](#m-collab-channel-accounts-status) | `collab_channel_accounts.status` | Fase 2 · Canales y campo | 3 | Por definir | — |
-| 94 | [Eventos entrantes de webhooks (idempotencia, retención 30 días)](#m-collab-inbound-events-status) | `collab_inbound_events.status` | Fase 2 · Canales y campo | 4 | Por definir | — |
-| 95 | [Adjuntos de mensajes](#m-collab-message-attachments-scan-status) | `collab_message_attachments.scan_status` | Fase 2 · Canales y campo | 3 | Por definir | — |
-| 96 | [Mensajes de la conversación](#m-collab-messages-delivery-status) | `collab_messages.delivery_status` | Fase 2 · Canales y campo | 5 | Por definir | — |
-| 97 | [Cupones de suscripción](#m-coupons-status) | `coupons.status` | Plataforma | 2 | Por definir | — |
-| 98 | [Bitácora de integración fiscal OSE/PSE](#m-fin-fiscal-events-status) | `fin_fiscal_events.status` | Fase 2 · Canales y campo | 3 | Por definir | — |
-| 99 | [Cuentas de tesorería (banco, caja chica, pasarela)](#m-fin-treasury-accounts-status) | `fin_treasury_accounts.status` | Fase 2 · Canales y campo | 2 | Por definir | — |
-| 100 | [Proveedores de tipo de cambio](#m-fx-rate-providers-status) | `fx_rate_providers.status` | Fase 2 · Canales y campo | 4 | Por definir | — |
-| 101 | [Apps OAuth de terceros autorizadas (Authorization Code + PKCE)](#m-integration-oauth-apps-status) | `integration_oauth_apps.status` | Fase 3 · SaaS y crecimiento | 2 | Por definir | — |
-| 102 | [Disparos procesados por automatización (idempotencia)](#m-mkt-automation-enrollments-status) | `mkt_automation_enrollments.status` | Fase 3 · SaaS y crecimiento | 2 | Por definir | — |
-| 103 | [Destinatarios de la campaña y métricas](#m-mkt-campaign-recipients-status) | `mkt_campaign_recipients.status` | Fase 3 · SaaS y crecimiento | 5 | Por definir | — |
-| 104 | [Medios de pago del tenant para la suscripción (solo token)](#m-payment-methods-status) | `payment_methods.status` | Plataforma | 3 | Por definir | — |
-| 105 | [Planes comerciales (Starter/Professional/Enterprise)](#m-plans-status) | `plans.status` | Plataforma | 3 | Por definir | — |
-| 106 | [Notas de crédito de plataforma (serie NQ01)](#m-platform-credit-notes-sunat-status) | `platform_credit_notes.sunat_status` | Plataforma | 4 | Por definir | — |
-| 107 | [Facturas de plataforma (emisor KipuControl Cloud)](#m-platform-invoices-sunat-status) | `platform_invoices.sunat_status` | Plataforma | 4 | Por definir | — |
-| 108 | [Usuarios de plataforma (Super Admin)](#m-platform-users-status) | `platform_users.status` | Plataforma | 2 | Por definir | — |
+| 90 | [Importación de productos](#m-catalog-import-jobs-status) | `catalog_import_jobs.status` | Fase 3 · SaaS y crecimiento | 6 | 6 | 19 |
+| 91 | [Reserva recibida de OTA](#m-channel-ota-bookings-status) | `channel_ota_bookings.status` | Fase 3 · SaaS y crecimiento | 5 | 5 | 19 |
+| 92 | [Conexión OTA](#m-channel-ota-connections-status) | `channel_ota_connections.status` | Fase 3 · SaaS y crecimiento | 5 | 7 | 19 |
+| 93 | [Mapeo de producto OTA](#m-channel-ota-product-mappings-status) | `channel_ota_product_mappings.status` | Fase 3 · SaaS y crecimiento | 4 | 6 | 19 |
+| 94 | [Plantilla de WhatsApp](#m-collab-whatsapp-templates-status) | `collab_whatsapp_templates.status` | Fase 3 · SaaS y crecimiento | 5 | 7 | 19 |
+| 95 | [Exportación contable](#m-fin-accounting-exports-status) | `fin_accounting_exports.status` | Fase 3 · SaaS y crecimiento | 4 | 4 | 19 |
+| 96 | [Vale de regalo](#m-fin-gift-cards-status) | `fin_gift_cards.status` | Fase 3 · SaaS y crecimiento | 5 | 5 | 19 |
+| 97 | [Link de pago](#m-fin-payment-links-status) | `fin_payment_links.status` | Fase 3 · SaaS y crecimiento | 4 | 4 | 19 |
+| 98 | [Intento de recuperación](#m-mkt-recovery-attempts-status) | `mkt_recovery_attempts.status` | Fase 3 · SaaS y crecimiento | 5 | 5 | 19 |
+| 99 | [Pase QR de check-in](#m-ops-checkin-passes-status) | `ops_checkin_passes.status` | Fase 3 · SaaS y crecimiento | 3 | 3 | 19 |
+| 100 | [Publicación en el marketplace](#m-platform-marketplace-listings-status) | `platform_marketplace_listings.status` | Fase 3 · SaaS y crecimiento | 4 | 4 | 19 |
+| 101 | [Venta del marketplace](#m-platform-marketplace-orders-status) | `platform_marketplace_orders.status` | Fase 3 · SaaS y crecimiento | 5 | 5 | 19 |
+| 102 | [Alianza del marketplace](#m-platform-marketplace-partnerships-status) | `platform_marketplace_partnerships.status` | Fase 3 · SaaS y crecimiento | 5 | 6 | 19 |
+| 103 | [Oferta externa (aéreo, hotel)](#m-quote-external-offers-status) | `quote_external_offers.status` | Fase 3 · SaaS y crecimiento | 6 | 6 | 19 |
+| 104 | [Alerta IA](#m-report-ai-insights-status) | `report_ai_insights.status` | Fase 3 · SaaS y crecimiento | 4 | 4 | 19 |
+| 105 | [Pedido al asistente IA](#m-sys-ai-requests-status) | `sys_ai_requests.status` | Fase 3 · SaaS y crecimiento | 5 | 5 | 19 |
+| 106 | [Aprobación corporativa](#m-booking-corporate-approvals-status) | `booking_corporate_approvals.status` | Fase 3 · SaaS y crecimiento | 5 | 5 | 20 |
+| 107 | [Cuenta corporativa](#m-crm-corporate-accounts-status) | `crm_corporate_accounts.status` | Fase 3 · SaaS y crecimiento | 3 | 4 | 20 |
+| 108 | [Usuario del portal corporativo](#m-crm-corporate-portal-users-status) | `crm_corporate_portal_users.status` | Fase 3 · SaaS y crecimiento | 3 | 5 | 20 |
+| 109 | [Estado de cuenta corporativo](#m-fin-corporate-statements-status) | `fin_corporate_statements.status` | Fase 3 · SaaS y crecimiento | 3 | 3 | 20 |
+| 110 | [Exportación corporativa](#m-report-corporate-exports-status) | `report_corporate_exports.status` | Fase 3 · SaaS y crecimiento | 5 | 5 | 20 |
+| 111 | [Oferta de venta en ruta](#m-booking-in-trip-offers-status) | `booking_in_trip_offers.status` | Fase 3 · SaaS y crecimiento | 7 | 7 | 21 |
+| 112 | [Dominio propio](#m-cms-site-domains-status) | `cms_site_domains.status` | Fase 3 · SaaS y crecimiento | 4 | 5 | 22 |
+| 113 | [Historia de aventura](#m-cms-travel-stories-status) | `cms_travel_stories.status` | Fase 3 · SaaS y crecimiento | 4 | 4 | 22 |
+| 114 | [Comisión de cobro por pasarela](#m-fin-payment-fees-status) | `fin_payment_fees.status` | Fase 3 · SaaS y crecimiento | 3 | 3 | 22 |
+| 115 | [Pase de 30 días](#m-platform-access-passes-status) | `platform_access_passes.status` | Fase 3 · SaaS y crecimiento | 4 | 4 | 22 |
+| 116 | [Agencia de la vitrina](#m-platform-showcase-agencies-status) | `platform_showcase_agencies.status` | Fase 3 · SaaS y crecimiento | 4 | 5 | 22 |
+| 117 | [Reserva de la vitrina](#m-platform-showcase-bookings-status) | `platform_showcase_bookings.status` | Fase 3 · SaaS y crecimiento | 4 | 4 | 22 |
+| 118 | [Publicación de la vitrina](#m-platform-showcase-listings-status) | `platform_showcase_listings.status` | Fase 3 · SaaS y crecimiento | 5 | 7 | 22 |
+| 119 | [Pedido de contenido con IA](#m-cms-ai-content-jobs-status) | `cms_ai_content_jobs.status` | Fase 3 · SaaS y crecimiento | 6 | 6 | 23 |
+| 120 | [Imagen generada con IA](#m-cms-ai-images-status) | `cms_ai_images.status` | Fase 3 · SaaS y crecimiento | 3 | 3 | 23 |
+| 121 | [Tema del sitio del tenant](#m-cms-site-themes-status) | `cms_site_themes.status` | Fase 3 · SaaS y crecimiento | 3 | 4 | 23 |
+| 122 | [Versión de plantilla](#m-platform-site-template-versions-status) | `platform_site_template_versions.status` | Fase 3 · SaaS y crecimiento | 4 | 4 | 23 |
+| 123 | [Plantilla del sitio](#m-platform-site-templates-status) | `platform_site_templates.status` | Fase 3 · SaaS y crecimiento | 4 | 5 | 23 |
+| 124 | [Envío de plantilla a revisión](#m-platform-template-submissions-status) | `platform_template_submissions.status` | Fase 3 · SaaS y crecimiento | 4 | 4 | 23 |
+| 125 | [Envío de conversión](#m-mkt-conversion-dispatches-status) | `mkt_conversion_dispatches.status` | Fase 3 · SaaS y crecimiento | 5 | 6 | 24 |
+| 126 | [Etiqueta o script del sitio de la agencia](#m-mkt-tracking-tags-status) | `mkt_tracking_tags.status` | Fase 3 · SaaS y crecimiento | 5 | 8 | 24 |
+| 127 | [Etiqueta de la vitrina y el blog](#m-platform-tracking-tags-status) | `platform_tracking_tags.status` | Fase 3 · SaaS y crecimiento | 5 | 7 | 24 |
+| 128 | [Consumo de cupo por servicio de reserva (idempotente)](#m-catalog-allotment-consumptions-state) | `catalog_allotment_consumptions.state` | Fase 2 · Canales y campo | 3 | Por definir | — |
+| 129 | [Listas de precios B2B](#m-channel-b2b-price-lists-status) | `channel_b2b_price_lists.status` | Fase 2 · Canales y campo | 2 | Por definir | — |
+| 130 | [Solicitudes de liquidación de comisiones B2B](#m-channel-b2b-settlement-requests-status) | `channel_b2b_settlement_requests.status` | Fase 2 · Canales y campo | 4 | Por definir | — |
+| 131 | [Dominios propios del sitio y portales, con verificación DNS y certificado SSL](#m-cms-site-domains-ssl-status) | `cms_site_domains.ssl_status` | Fase 3 · SaaS y crecimiento | 4 | Por definir | — |
+| 132 | [Cuentas de canal del inbox (WhatsApp, email, webchat)](#m-collab-channel-accounts-status) | `collab_channel_accounts.status` | Fase 2 · Canales y campo | 3 | Por definir | — |
+| 133 | [Eventos entrantes de webhooks (idempotencia, retención 30 días)](#m-collab-inbound-events-status) | `collab_inbound_events.status` | Fase 2 · Canales y campo | 4 | Por definir | — |
+| 134 | [Adjuntos de mensajes](#m-collab-message-attachments-scan-status) | `collab_message_attachments.scan_status` | Fase 2 · Canales y campo | 3 | Por definir | — |
+| 135 | [Mensajes de la conversación](#m-collab-messages-delivery-status) | `collab_messages.delivery_status` | Fase 2 · Canales y campo | 5 | Por definir | — |
+| 136 | [Cupones de suscripción](#m-coupons-status) | `coupons.status` | Plataforma | 2 | Por definir | — |
+| 137 | [Bitácora de integración fiscal OSE/PSE](#m-fin-fiscal-events-status) | `fin_fiscal_events.status` | Fase 2 · Canales y campo | 3 | Por definir | — |
+| 138 | [Pasarelas de cobro del tenant (tarjeta local, PayPal, Yape/Plin) con su esquema de comisión](#m-fin-gateway-accounts-status) | `fin_gateway_accounts.status` | Fase 3 · SaaS y crecimiento | 4 | Por definir | — |
+| 139 | [Cuentas de tesorería (banco, caja chica, pasarela)](#m-fin-treasury-accounts-status) | `fin_treasury_accounts.status` | Fase 2 · Canales y campo | 2 | Por definir | — |
+| 140 | [Proveedores de tipo de cambio](#m-fx-rate-providers-status) | `fx_rate_providers.status` | Fase 2 · Canales y campo | 4 | Por definir | — |
+| 141 | [Apps OAuth de terceros autorizadas (Authorization Code + PKCE)](#m-integration-oauth-apps-status) | `integration_oauth_apps.status` | Fase 3 · SaaS y crecimiento | 2 | Por definir | — |
+| 142 | [Disparos procesados por automatización (idempotencia)](#m-mkt-automation-enrollments-status) | `mkt_automation_enrollments.status` | Fase 3 · SaaS y crecimiento | 2 | Por definir | — |
+| 143 | [Destinatarios de la campaña y métricas](#m-mkt-campaign-recipients-status) | `mkt_campaign_recipients.status` | Fase 3 · SaaS y crecimiento | 5 | Por definir | — |
+| 144 | [Medios de pago del tenant para la suscripción (solo token)](#m-payment-methods-status) | `payment_methods.status` | Plataforma | 3 | Por definir | — |
+| 145 | [Planes comerciales (Starter/Professional/Enterprise)](#m-plans-status) | `plans.status` | Plataforma | 3 | Por definir | — |
+| 146 | [Artículos del blog SEO de la vitrina, enlazados a tours publicados](#m-platform-blog-posts-status) | `platform_blog_posts.status` | Fase 3 · SaaS y crecimiento | 4 | Por definir | — |
+| 147 | [Registro de cada conversión enviada (navegador o servidor) con resultado, reintentos y deduplicación por event_id](#m-platform-conversion-dispatches-status) | `platform_conversion_dispatches.status` | Fase 3 · SaaS y crecimiento | 5 | Por definir | — |
+| 148 | [Notas de crédito de plataforma (serie NQ01)](#m-platform-credit-notes-sunat-status) | `platform_credit_notes.sunat_status` | Plataforma | 4 | Por definir | — |
+| 149 | [Facturas de plataforma (emisor KipuControl Cloud)](#m-platform-invoices-sunat-status) | `platform_invoices.sunat_status` | Plataforma | 4 | Por definir | — |
+| 150 | [Usuarios de plataforma (Super Admin)](#m-platform-users-status) | `platform_users.status` | Plataforma | 2 | Por definir | — |
 
 ## Máquinas por entidad
 
@@ -863,7 +905,7 @@ stateDiagram-v2
 - La fila DRAFT/REVIEW → ACTIVE existe en la UI pero el checklist la rechaza siempre (422 + audit `activacion_rechazada`); no se dibuja.
 - «Comercializable» = `status = ACTIVE AND is_bookable`.
 
-<details><summary>Endpoints de escritura del contrato sobre <code>catalog_products</code> (32, de <code>api/openapi.yaml</code>)</summary>
+<details><summary>Endpoints de escritura del contrato sobre <code>catalog_products</code> (33, de <code>api/openapi.yaml</code>)</summary>
 
 | Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
 |---|---|---|---|---|
@@ -899,6 +941,7 @@ stateDiagram-v2
 | PUT | `/api/v1/catalog/products/{id}/operation` | catalog.products.manage_availability | 16-motor-de-reservas-y-reglas.md §6.2 Internas (back-office) |  |
 | PUT | `/api/v1/catalog/products/{id}/accommodation` | catalog.products.manage_rates | 16-motor-de-reservas-y-reglas.md §6.2 Internas (back-office) |  |
 | PUT | `/api/v1/catalog/products/{id}/pickup` | catalog.products.update ∨ catalog.products.manage_availability | 16-motor-de-reservas-y-reglas.md §6.2 Internas (back-office) |  |
+| POST | `/api/v1/catalog/products/{id}/trip/transport` | catalog.products.update | 21-viajes-por-tramos.md §6 |  |
 
 </details>
 
@@ -1209,7 +1252,7 @@ stateDiagram-v2
 - La UI trata como vencida cualquier `enviada`/`vista`/`negociacion` con validez pasada aunque el job no haya corrido.
 - Plantilla de prueba: `kit-ia/tests/pest/Unit/Quotes/QuoteStateMachineTest.php`.
 
-<details><summary>Endpoints de escritura del contrato sobre <code>quote_quotes</code> (15, de <code>api/openapi.yaml</code>)</summary>
+<details><summary>Endpoints de escritura del contrato sobre <code>quote_quotes</code> (18, de <code>api/openapi.yaml</code>)</summary>
 
 | Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
 |---|---|---|---|---|
@@ -1228,6 +1271,9 @@ stateDiagram-v2
 | POST | `/api/v1/portal/client/quotes/{code}/approve` | customer | 08-canales-portales.md §6.5 Portal del cliente (rol `customer`; interno con previsualización) | sí |
 | POST | `/api/v1/portal/client/quotes/{code}/reject` | customer | 08-canales-portales.md §6.5 Portal del cliente (rol `customer`; interno con previsualización) |  |
 | POST | `/api/v1/portal/client/quotes/{code}/update-request` | customer | 08-canales-portales.md §6.5 Portal del cliente (rol `customer`; interno con previsualización) |  |
+| POST | `/api/v1/quotes/{id}/external-offers/search` | quotes.external_offers | 19-crecimiento-comercial.md §6 |  |
+| POST | `/api/v1/quotes/{id}/external-offers` | quotes.external_offers | 19-crecimiento-comercial.md §6 | sí |
+| POST | `/api/v1/quotes/{id}/corporate-approval` | quotes.send | 20-portal-corporativo.md §6 | sí |
 
 </details>
 
@@ -1628,6 +1674,9 @@ stateDiagram-v2
 | `en_operacion` | `completada` | "Completar viaje" · `reservations.modify` | `reservations.modify` | — | — | 04 §4.1 |
 | `borrador`, `pendiente_disponibilidad`, `confirmada`, `pendiente_pago`, `pendiente_proveedor`, `reprogramada`, `parcial`, `incidencia`, `en_operacion` <br>_spec: «no cerrada (≠ cancelada,completada)»_ | `reprogramada` | Reprogramar · `reservations.modify` | `reservations.modify` | §5 RES-BR-20…24 | §4.5 | 04 §4.1 |
 | `borrador`, `pendiente_disponibilidad`, `confirmada`, `pendiente_pago`, `pendiente_proveedor`, `reprogramada`, `parcial`, `incidencia`, `en_operacion` <br>_spec: «no cerrada»_ | `cancelada` | Cancelar · `reservations.cancel` | `reservations.cancel` | — | §4.6 | 04 §4.1 |
+| `confirmada`, `en_operacion` | `parcial` | Cancelar parte de los servicios · `reservations.cancel` (v2.5) | `reservations.cancel` | Quedan servicios activos | §4.6 por servicio; CxC recalculadas | 04 §4.1 |
+| `confirmada`, `en_operacion`, `parcial` | `incidencia` | Incidencia de severidad alta abierta en un servicio (automático, v2.5) |  | — | Aviso al coordinador | 04 §4.1 |
+| `incidencia` | `en_operacion` | Última incidencia de severidad alta resuelta (automático, v2.5) |  | — | Audita | 04 §4.1 |
 | — (alta) | `pendiente_pago` | Reserva B2B prepago o pedido e-commerce / sitio web | Canales (sistema) |  |  | 08 §4.5 · 15 §4.4 (prosa) |
 | — (alta) | `pendiente_proveedor` | Reserva B2B crédito con producto bajo solicitud | Canales (sistema) |  |  | 08 §4.5 (prosa) |
 | `pendiente_pago` | `confirmada` | Todas las CxC no canceladas pagadas (Finanzas o pago rápido) / tarjeta aprobada | Sistema |  |  | 07 §4.9 · 15 §4.4 (prosa) |
@@ -1640,7 +1689,7 @@ stateDiagram-v2
 
 **Notas:**
 
-- `parcial` e `incidencia` existen en el CHECK pero ningún módulo documenta cuándo se asignan (04 §4.1): Por definir.
+- v2.5 [Decisión]: `parcial` = reserva con parte de sus servicios cancelados; `incidencia` = servicio con incidencia de severidad alta abierta (vuelve a `en_operacion` al resolverse).
 - La reversión de un pago no devuelve la reserva a `pendiente_pago` (07 §4.9, P-09).
 
 <details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
@@ -1670,7 +1719,7 @@ _spec 15 §4.4 Reserva creada por el sitio:_
 
 </details>
 
-<details><summary>Endpoints de escritura del contrato sobre <code>booking_reservations</code> (17, de <code>api/openapi.yaml</code>)</summary>
+<details><summary>Endpoints de escritura del contrato sobre <code>booking_reservations</code> (19, de <code>api/openapi.yaml</code>)</summary>
 
 | Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
 |---|---|---|---|---|
@@ -1689,8 +1738,10 @@ _spec 15 §4.4 Reserva creada por el sitio:_
 | POST | `/api/v1/finance/reservations/{code}/account-statement` | finance.payments.register | 07-finanzas.md §6.5 Rentabilidad y liquidación | sí |
 | POST | `/api/v1/b2b/reservations/quote-price` | rol b2b | 08-canales-portales.md §6.2 Portal B2B (usuario `b2b`; agencia del token) |  |
 | POST | `/api/v1/b2b/reservations` | rol b2b | 08-canales-portales.md §6.2 Portal B2B (usuario `b2b`; agencia del token) | sí |
-| PUT | `/api/v1/portal/customer/reservations/{code}/companions` | customer \| cliente dueño | 08-canales-portales.md §6.7 v2.1 — Endpoints de portales |  |
+| PUT | `/api/v1/portal/client/reservations/{code}/companions` | customer \| cliente dueño | 08-canales-portales.md §6.7 v2.1 — Endpoints de portales |  |
 | POST | `/api/v1/reservations/{id}/review-invitations` | channels.ecommerce.manage \| crm.clients.manage | 17-reglas-comunicaciones-monedas-resenas-integracion-web.md §6 | sí |
+| PUT | `/api/v1/reservations/{id}/cost-allocations` | crm.corporate.manage \| reservations.modify | 20-portal-corporativo.md §6 |  |
+| POST | `/api/v1/portal/client/reservations/{code}/in-trip` | customer (titular) | 21-viajes-por-tramos.md §6 | sí |
 
 </details>
 
@@ -1715,14 +1766,18 @@ stateDiagram-v2
   g1 --> reprogramada : Reprogramar · reservations.modify
   state "Desde: no cerrada" as g2
   g2 --> cancelada : Cancelar · reservations.cancel
+  confirmada --> parcial : Cancelar parte de los servicios ·…
+  en_operacion --> parcial : Cancelar parte de los servicios ·…
+  confirmada --> incidencia : Incidencia de severidad alta abier…
+  en_operacion --> incidencia : Incidencia de severidad alta abier…
+  parcial --> incidencia : Incidencia de severidad alta abier…
+  incidencia --> en_operacion : Última incidencia de severidad alt…
   [*] --> pendiente_pago : Reserva B2B prepago o pedido e-com…
   [*] --> pendiente_proveedor : Reserva B2B crédito con producto b…
   pendiente_pago --> pendiente_proveedor : Pago aprobado con servicios bajo s…
   pendiente_pago --> cancelada : Anular o expirar el pedido web
   completada --> [*]
   cancelada --> [*]
-  parcial
-  incidencia
   classDef grupo fill:#FFFFFF,stroke:#8A9BB3,stroke-dasharray:4 3,color:#4A5568,font-style:italic
   class g1 grupo
   class g2 grupo
@@ -1783,10 +1838,10 @@ stateDiagram-v2
 |---|---|---|---|---|
 | `ops_assignments` | `status` | Fase 1 · MVP (`20_fase1.sql`) | no | `'pendiente'::character varying` |
 
-**Valores válidos (CHECK):** `pendiente`, `asignada`, `confirmada`, `en_curso`, `completada`
+**Valores válidos (CHECK):** `pendiente`, `asignada`, `confirmada`, `en_curso`, `completada`, `cancelada`
 
 **Estados iniciales:** `pendiente` (default SQL; la spec no documenta el alta)  
-**Estados terminales:** `completada`  
+**Estados terminales:** `completada`, `cancelada`  
 **Fuentes:** spec 05 §4.2 Asignación (`05-operaciones-movil.md`); spec 04 §4.6 Cancelación y cálculo de penalidad (`04-reservas.md`)
 
 | Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
@@ -1796,12 +1851,13 @@ stateDiagram-v2
 | `confirmada` | `en_curso` |  | Móvil `start` | Solo el recurso asignado | `started_at`; servicio → `en_curso`; orden → `en_ejecucion`; reserva → `en_operacion`; push coordinador | 05 §4.2 |
 | `en_curso` | `completada` |  | Móvil `finish` | ≥1 check-in y ≥1 evidencia del servicio | `finished_at`; servicio → `completado`; pasajeros sin check-in = no-show; push coordinador | 05 §4.2 |
 | `en_curso` <br>_spec: «confirmado/en_curso (servicio)»_ | `completada` |  | Web "Marcar servicio completado" (`operations.assign`) | Fecha del servicio ≤ hoy | Servicio → `completado` | 05 §4.2 |
-| `asignada`, `confirmada`, `en_curso` <br>_spec: «≠ pendiente,completada»_ | `pendiente` |  | Web "Liberar recursos" (`operations.assign`) | Confirmación | Quita guía/conductor/vehículo; WhatsApp "Asignación liberada" a cada recurso; audit `liberar`; recalcula orden | 05 §4.2 |
+| `pendiente`, `asignada`, `confirmada`, `en_curso` | `cancelada` |  | Cancelación de la reserva (04 §4.6 paso 7) | — | Libera el recurso (sale de `ops_resource_occupations`); v2.5 | 05 §4.2 |
+| `asignada`, `confirmada`, `en_curso`, `cancelada` <br>_spec: «≠ pendiente,completada»_ | `pendiente` |  | Web "Liberar recursos" (`operations.assign`) | Confirmación | Quita guía/conductor/vehículo; WhatsApp "Asignación liberada" a cada recurso; audit `liberar`; recalcula orden | 05 §4.2 |
 
 **Notas:**
 
 - La fila «`confirmado`/`en_curso` (servicio) → `completada`» se refiere al estado del servicio de la reserva; la asignación pasa a `completada`.
-- La cancelación de la reserva (04 §4.6 paso 7) pasa las asignaciones no completadas a «cancelada», pero ese valor no está en el CHECK de `ops_assignments.status`: Por definir (agregar el valor o liberar la asignación).
+- v2.5: `cancelada` se agrega al CHECK de `ops_assignments.status`; la cancelación de la reserva (04 §4.6 paso 7) pasa ahí las asignaciones no completadas.
 
 <details><summary>Endpoints de escritura del contrato sobre <code>ops_assignments</code> (5, de <code>api/openapi.yaml</code>)</summary>
 
@@ -1824,11 +1880,17 @@ stateDiagram-v2
   pendiente --> confirmada : Web Registrar confirmación del rec…
   confirmada --> en_curso : Móvil start
   en_curso --> completada : Móvil finish +1
-  asignada --> pendiente : Web Liberar recursos
-  confirmada --> pendiente : Web Liberar recursos
-  en_curso --> pendiente : Web Liberar recursos
+  pendiente --> cancelada : Cancelación de la reserva
+  asignada --> cancelada : Cancelación de la reserva
+  confirmada --> cancelada : Cancelación de la reserva
+  en_curso --> cancelada : Cancelación de la reserva
+  state "Desde: ≠ pendiente,completada" as g1
+  g1 --> pendiente : Web Liberar recursos
   [*] --> pendiente : default SQL
   completada --> [*]
+  cancelada --> [*]
+  classDef grupo fill:#FFFFFF,stroke:#8A9BB3,stroke-dasharray:4 3,color:#4A5568,font-style:italic
+  class g1 grupo
 ```
 
 <a id="m-ops-drivers-status"></a>
@@ -2881,14 +2943,13 @@ stateDiagram-v2
 - En el prototipo el estado es derivado (`cxcStatus`); orden de evaluación: `cancelada` → `pagada` si saldo ≤ 0 → `vencida` si `due < hoy` → `parcial` si pagado > 0 → `abierta`.
 - [Decisión] `vencida` la asigna un scheduler diario.
 
-<details><summary>Endpoints de escritura del contrato sobre <code>fin_receivables</code> (4, de <code>api/openapi.yaml</code>)</summary>
+<details><summary>Endpoints de escritura del contrato sobre <code>fin_receivables</code> (3, de <code>api/openapi.yaml</code>)</summary>
 
 | Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
 |---|---|---|---|---|
 | POST | `/api/v1/reservations/{id}/receivables/generate` | finance.receivables | 04-reservas.md §6 | sí |
 | POST | `/api/v1/finance/receivables/advances` | finance.payments.register | 07-finanzas.md §6.1 Cuentas por cobrar | sí |
 | POST | `/api/v1/b2b/receivables/{id}/payment-reports` | rol b2b | 08-canales-portales.md §6.2 Portal B2B (usuario `b2b`; agencia del token) | sí |
-| POST | `/api/v1/portal/customer/receivables/{code}/pay` | customer | 08-canales-portales.md §6.7 v2.1 — Endpoints de portales | sí |
 
 </details>
 
@@ -2942,7 +3003,7 @@ stateDiagram-v2
 - Estado efectivo (`agStatus`): `vencido` si `valid_to < hoy` (no se persiste); si no, `bloqueada` si `credit_limit > 0 AND credit_used > credit_limit`; si no, `status`.
 - La aprobación de una excepción de crédito (`credit_b2b`, 10 §4.3) reactiva la agencia bloqueada por consumo.
 
-<details><summary>Endpoints de escritura del contrato sobre <code>channel_b2b_agencies</code> (5, de <code>api/openapi.yaml</code>)</summary>
+<details><summary>Endpoints de escritura del contrato sobre <code>channel_b2b_agencies</code> (7, de <code>api/openapi.yaml</code>)</summary>
 
 | Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
 |---|---|---|---|---|
@@ -2951,6 +3012,8 @@ stateDiagram-v2
 | POST | `/api/v1/channels/b2b/agencies/{id}/block` | channels.b2b.manage | 08-canales-portales.md §6.1 Back-office B2B |  |
 | POST | `/api/v1/channels/b2b/agencies/{id}/unblock` | channels.b2b.manage | 08-canales-portales.md §6.1 Back-office B2B |  |
 | POST | `/api/v1/channels/b2b/agencies/{id}/impersonation` | channels.b2b.manage | 08-canales-portales.md §6.1 Back-office B2B |  |
+| POST | `/api/v1/showcase/agencies` | público | 22-vitrina-monetizacion-marca.md §6 | sí |
+| POST | `/api/v1/platform/showcase/agencies/{code}/verify` | super_admin | 22-vitrina-monetizacion-marca.md §6 |  |
 
 </details>
 
@@ -3005,14 +3068,12 @@ stateDiagram-v2
 - Supuesto: el sub-estado `por_validar` de 15 §4.2 se persiste como `pago_por_validar` (valor del CHECK).
 - El vencimiento de validación de 4 h hábiles está marcado como propuesto en la spec.
 
-<details><summary>Endpoints de escritura del contrato sobre <code>channel_ecom_orders</code> (8, de <code>api/openapi.yaml</code>)</summary>
+<details><summary>Endpoints de escritura del contrato sobre <code>channel_ecom_orders</code> (6, de <code>api/openapi.yaml</code>)</summary>
 
 | Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
 |---|---|---|---|---|
 | POST | `/api/v1/channels/ecommerce/orders/{code}/payment-link` | channels.ecommerce.manage | 08-canales-portales.md §6.3 E-commerce | sí |
 | POST | `/api/v1/channels/ecommerce/orders/{code}/cancel` | channels.ecommerce.manage | 08-canales-portales.md §6.3 E-commerce |  |
-| POST | `/api/v1/public/shop/orders` | público | 08-canales-portales.md §6.3 E-commerce | sí |
-| POST | `/api/v1/public/shop/orders/{code}/payments` | público (token del pedido) | 08-canales-portales.md §6.3 E-commerce | sí |
 | POST | `/api/v1/public/checkout/orders` | token carrito | 15-sitio-web-publico.md §6.3 Checkout y pago | sí |
 | POST | `/api/v1/public/orders/{code}/payments` | token del pedido | 15-sitio-web-publico.md §6.3 Checkout y pago | sí |
 | POST | `/api/v1/public/orders/{code}/payment-session` | token del pedido | 15-sitio-web-publico.md §6.3 Checkout y pago | sí |
@@ -3522,7 +3583,7 @@ _spec 09 §4.7 Job programado:_
 
 </details>
 
-<details><summary>Endpoints de escritura del contrato sobre <code>sys_scheduled_jobs</code> (6, de <code>api/openapi.yaml</code>)</summary>
+<details><summary>Endpoints de escritura del contrato sobre <code>sys_scheduled_jobs</code> (10, de <code>api/openapi.yaml</code>)</summary>
 
 | Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
 |---|---|---|---|---|
@@ -3532,6 +3593,10 @@ _spec 09 §4.7 Job programado:_
 | DELETE | `/api/v1/jobs/{id}` | admin.settings.manage \| SA o dueño con reports.export | 09-administracion-reportes.md §6.6 Integraciones, jobs y errores (PROC-064/065) |  |
 | POST | `/api/v1/catalog/allotments/jobs/release` | catalog.allotments.manage | 11-cupos-documentos-viaje.md §6 |  |
 | POST | `/api/v1/ops/travel-docs/jobs/reminders` | operations.travel_docs | 11-cupos-documentos-viaje.md §6 |  |
+| POST | `/api/v1/cms/ai/jobs` | ai.content.use | 23-plantillas-web-contenido-ia.md §6 | sí |
+| POST | `/api/v1/cms/ai/jobs/{id}/apply` | ai.content.use | 23-plantillas-web-contenido-ia.md §6 | sí |
+| POST | `/api/v1/cms/ai/jobs/{id}/discard` | ai.content.use | 23-plantillas-web-contenido-ia.md §6 |  |
+| POST | `/api/v1/cms/ai/jobs/{id}/regenerate` | ai.content.use | 23-plantillas-web-contenido-ia.md §6 | sí |
 
 </details>
 
@@ -3575,7 +3640,7 @@ stateDiagram-v2
 - `prueba → activo` no existe en el prototipo (09 §12).
 - 13 §4.1 indica `tenants.status = suspended` cuando la suscripción pasa a `suspended`; el valor del CHECK es `suspendido`.
 
-<details><summary>Endpoints de escritura del contrato sobre <code>tenants</code> (5, de <code>api/openapi.yaml</code>)</summary>
+<details><summary>Endpoints de escritura del contrato sobre <code>tenants</code> (6, de <code>api/openapi.yaml</code>)</summary>
 
 | Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
 |---|---|---|---|---|
@@ -3584,6 +3649,7 @@ stateDiagram-v2
 | POST | `/api/v1/platform/tenants/{id}/suspend` | admin.tenant.manage \| super_admin | 09-administracion-reportes.md §6.1 Plataforma (PROC-001) |  |
 | POST | `/api/v1/platform/tenants/{id}/reactivate` | admin.tenant.manage \| super_admin | 09-administracion-reportes.md §6.1 Plataforma (PROC-001) |  |
 | POST | `/api/v1/platform/tenants/{id}/change-plan` | admin.tenant.manage | 09-administracion-reportes.md §6.1 Plataforma (PROC-001) |  |
+| POST | `/api/v1/platform/tenants/{id}/theme` | super_admin | 23-plantillas-web-contenido-ia.md §6 |  |
 
 </details>
 
@@ -3628,7 +3694,7 @@ stateDiagram-v2
 
 - Reenviar una solicitud `rechazada` (payable/commission) crea una **nueva** solicitud `pendiente` (ronda + 1); la rechazada no cambia.
 
-<details><summary>Endpoints de escritura del contrato sobre <code>collab_approval_requests</code> (6, de <code>api/openapi.yaml</code>)</summary>
+<details><summary>Endpoints de escritura del contrato sobre <code>collab_approval_requests</code> (8, de <code>api/openapi.yaml</code>)</summary>
 
 | Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
 |---|---|---|---|---|
@@ -3638,6 +3704,8 @@ stateDiagram-v2
 | POST | `/api/v1/approvals/{code}/delegate` | Regla del nivel | 10-aprobaciones-inbox.md §6 |  |
 | POST | `/api/v1/approvals/{code}/withdraw` | Solicitante | 10-aprobaciones-inbox.md §6 |  |
 | POST | `/api/v1/approvals/{code}/resubmit` | Solicitante / finance.payables / finance.commissions | 10-aprobaciones-inbox.md §6 | sí |
+| POST | `/api/v1/portal/client/corporate/approvals/{code}/approve` | customer (administrador, aprobador) | 20-portal-corporativo.md §6 | sí |
+| POST | `/api/v1/portal/client/corporate/approvals/{code}/reject` | customer (administrador, aprobador) | 20-portal-corporativo.md §6 |  |
 
 </details>
 
@@ -3682,7 +3750,7 @@ stateDiagram-v2
 
 - cualquiera → sin cambio: Nota interna · No se envía al cliente (10 §4.2)
 
-<details><summary>Endpoints de escritura del contrato sobre <code>collab_conversations</code> (7, de <code>api/openapi.yaml</code>)</summary>
+<details><summary>Endpoints de escritura del contrato sobre <code>collab_conversations</code> (8, de <code>api/openapi.yaml</code>)</summary>
 
 | Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
 |---|---|---|---|---|
@@ -3693,6 +3761,7 @@ stateDiagram-v2
 | POST | `/api/v1/inbox/conversations/{code}/reopen` | inbox.manage | 10-aprobaciones-inbox.md §6 |  |
 | POST | `/api/v1/inbox/conversations/{code}/link` | inbox.manage + crm.clients.manage | 10-aprobaciones-inbox.md §6 |  |
 | POST | `/api/v1/inbox/conversations/{code}/lead` | crm.leads.manage | 10-aprobaciones-inbox.md §6 | sí |
+| POST | `/api/v1/inbox/conversations/{code}/send-template` | inbox.manage | 19-crecimiento-comercial.md §6 | sí |
 
 </details>
 
@@ -4347,7 +4416,7 @@ _spec 13 §4.3 Dunning:_
 | POST | `/api/v1/platform/invoices/{id}/retry` | super_admin | 13-plataforma-saas-api.md §6 | sí |
 | POST | `/api/v1/platform/invoices/{id}/manual-payment` | super_admin | 13-plataforma-saas-api.md §6 | sí |
 | POST | `/api/v1/platform/invoices/{id}/void` | super_admin | 13-plataforma-saas-api.md §6 | sí |
-| POST | `/api/v1/platform/invoices/{id}/dunning/extend` | super_admin | 13-plataforma-saas-api.md §6 |  |
+| POST | `/api/v1/platform/invoices/{id}/dunning/extend` | super_admin | 13-plataforma-saas-api.md §6 | sí |
 
 </details>
 
@@ -5161,8 +5230,2052 @@ stateDiagram-v2
   cancelada --> [*]
 ```
 
+<a id="m-catalog-import-jobs-status"></a>
+### 90. Importación de productos — `catalog_import_jobs.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `catalog_import_jobs` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'en_cola'::character varying` |
+
+**Valores válidos (CHECK):** `en_cola`, `procesando`, `revision`, `importado`, `fallido`, `cancelado`
+
+**Estados iniciales:** `en_cola`  
+**Estados terminales:** `importado`, `fallido`, `cancelado`  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `en_cola` | Nueva importación | `catalog.products.import` |  |  | 19 §4 (prosa) |
+| `en_cola` | `procesando` | Job | Sistema |  |  | 19 §4 (prosa) |
+| `procesando` | `revision` | Extracción terminada | Sistema |  |  | 19 §4 (prosa) |
+| `procesando` | `fallido` | Error | Sistema |  |  | 19 §4 (prosa) |
+| `revision` | `importado` | Confirmar | `catalog.products.import` | SC-08 |  | 19 §4 (prosa) |
+| `en_cola`, `revision` | `cancelado` | Cancelar | `catalog.products.import` |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> en_cola : Nueva importación
+  en_cola --> procesando : Job
+  procesando --> revision : Extracción terminada
+  procesando --> fallido : Error
+  revision --> importado : Confirmar
+  en_cola --> cancelado : Cancelar
+  revision --> cancelado : Cancelar
+  importado --> [*]
+  fallido --> [*]
+  cancelado --> [*]
+```
+
+<a id="m-channel-ota-bookings-status"></a>
+### 91. Reserva recibida de OTA — `channel_ota_bookings.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `channel_ota_bookings` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'recibida'::character varying` |
+
+**Valores válidos (CHECK):** `recibida`, `confirmada`, `rechazada`, `cancelada`, `error`
+
+**Estados iniciales:** `recibida`  
+**Estados terminales:** `rechazada`, `cancelada`  
+**Sin transiciones de salida documentadas:** `error`  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `recibida` | Webhook de la OTA | Sistema |  |  | 19 §4 (prosa) |
+| `recibida` | `confirmada` | Reserva creada con cupo | Sistema | SC-09 |  | 19 §4 (prosa) |
+| `recibida` | `rechazada` | Sin cupo o sin mapeo | Sistema |  |  | 19 §4 (prosa) |
+| `confirmada` | `cancelada` | Cancelación de la OTA | Sistema |  |  | 19 §4 (prosa) |
+| `recibida` | `error` | Error de proceso | Sistema |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> recibida : Webhook de la OTA
+  recibida --> confirmada : Reserva creada con cupo
+  recibida --> rechazada : Sin cupo o sin mapeo
+  confirmada --> cancelada : Cancelación de la OTA
+  recibida --> error : Error de proceso
+  rechazada --> [*]
+  cancelada --> [*]
+```
+
+<a id="m-channel-ota-connections-status"></a>
+### 92. Conexión OTA — `channel_ota_connections.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `channel_ota_connections` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'borrador'::character varying` |
+
+**Valores válidos (CHECK):** `borrador`, `conectado`, `pausado`, `error`, `desconectado`
+
+**Estados iniciales:** `borrador`  
+**Estados terminales:** `desconectado`  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `borrador` | Crear | `channels.ota.manage` |  |  | 19 §4 (prosa) |
+| `borrador` | `conectado` | Credenciales verificadas | Sistema |  |  | 19 §4 (prosa) |
+| `conectado` | `pausado` | Pausar | `channels.ota.manage` |  |  | 19 §4 (prosa) |
+| `pausado` | `conectado` | Reanudar | `channels.ota.manage` |  |  | 19 §4 (prosa) |
+| `conectado` | `error` | 3 fallos seguidos | Sistema |  |  | 19 §4 (prosa) |
+| `error` | `conectado` | Reintento OK | Sistema |  |  | 19 §4 (prosa) |
+| `borrador`, `conectado`, `pausado`, `error` | `desconectado` | Desconectar | `channels.ota.manage` |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> borrador : Crear
+  borrador --> conectado : Credenciales verificadas
+  conectado --> pausado : Pausar
+  pausado --> conectado : Reanudar
+  conectado --> error : 3 fallos seguidos
+  error --> conectado : Reintento OK
+  borrador --> desconectado : Desconectar
+  conectado --> desconectado : Desconectar
+  pausado --> desconectado : Desconectar
+  error --> desconectado : Desconectar
+  desconectado --> [*]
+```
+
+<a id="m-channel-ota-product-mappings-status"></a>
+### 93. Mapeo de producto OTA — `channel_ota_product_mappings.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `channel_ota_product_mappings` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'pendiente'::character varying` |
+
+**Valores válidos (CHECK):** `pendiente`, `activo`, `pausado`, `error`
+
+**Estados iniciales:** `pendiente`  
+**Estados terminales:** no declarados en la spec  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `pendiente` | Crear mapeo | `channels.ota.manage` |  |  | 19 §4 (prosa) |
+| `pendiente` | `activo` | Primera sincronización OK | Sistema |  |  | 19 §4 (prosa) |
+| `activo` | `pausado` | Pausar | `channels.ota.manage` |  |  | 19 §4 (prosa) |
+| `pausado` | `activo` | Reanudar | `channels.ota.manage` |  |  | 19 §4 (prosa) |
+| `pendiente`, `activo` | `error` | Rechazo de la OTA | Sistema |  |  | 19 §4 (prosa) |
+| `error` | `pendiente` | Corregir | `channels.ota.manage` |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> pendiente : Crear mapeo
+  pendiente --> activo : Primera sincronización OK
+  activo --> pausado : Pausar
+  pausado --> activo : Reanudar
+  pendiente --> error : Rechazo de la OTA
+  activo --> error : Rechazo de la OTA
+  error --> pendiente : Corregir
+```
+
+<a id="m-collab-whatsapp-templates-status"></a>
+### 94. Plantilla de WhatsApp — `collab_whatsapp_templates.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `collab_whatsapp_templates` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'borrador'::character varying` |
+
+**Valores válidos (CHECK):** `borrador`, `enviada`, `aprobada`, `rechazada`, `pausada`
+
+**Estados iniciales:** `borrador`  
+**Estados terminales:** no declarados en la spec  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `borrador` | Crear | `inbox.whatsapp.manage` |  |  | 19 §4 (prosa) |
+| `borrador` | `enviada` | Enviar a Meta | `inbox.whatsapp.manage` |  |  | 19 §4 (prosa) |
+| `enviada` | `aprobada` | Webhook de Meta | Sistema |  |  | 19 §4 (prosa) |
+| `enviada` | `rechazada` | Webhook de Meta | Sistema |  |  | 19 §4 (prosa) |
+| `aprobada` | `enviada` | Editar | `inbox.whatsapp.manage` |  |  | 19 §4 (prosa) |
+| `aprobada` | `pausada` | Meta pausa por calidad | Sistema |  |  | 19 §4 (prosa) |
+| `pausada`, `rechazada` | `enviada` | Corregir y reenviar | `inbox.whatsapp.manage` |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> borrador : Crear
+  borrador --> enviada : Enviar a Meta
+  enviada --> aprobada : Webhook de Meta
+  enviada --> rechazada : Webhook de Meta
+  aprobada --> enviada : Editar
+  aprobada --> pausada : Meta pausa por calidad
+  pausada --> enviada : Corregir y reenviar
+  rechazada --> enviada : Corregir y reenviar
+```
+
+<a id="m-fin-accounting-exports-status"></a>
+### 95. Exportación contable — `fin_accounting_exports.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `fin_accounting_exports` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'en_cola'::character varying` |
+
+**Valores válidos (CHECK):** `en_cola`, `generado`, `enviado`, `fallido`
+
+**Estados iniciales:** `en_cola`  
+**Estados terminales:** `enviado`, `fallido`  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `en_cola` | Generar | `finance.accounting_export` |  |  | 19 §4 (prosa) |
+| `en_cola` | `generado` | Archivo listo | Sistema | SC-15 |  | 19 §4 (prosa) |
+| `en_cola` | `fallido` | Error | Sistema |  |  | 19 §4 (prosa) |
+| `generado` | `enviado` | Envío al sistema contable | Sistema |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> en_cola : Generar
+  en_cola --> generado : Archivo listo
+  en_cola --> fallido : Error
+  generado --> enviado : Envío al sistema contable
+  enviado --> [*]
+  fallido --> [*]
+```
+
+<a id="m-fin-gift-cards-status"></a>
+### 96. Vale de regalo — `fin_gift_cards.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `fin_gift_cards` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'pendiente'::character varying` |
+
+**Valores válidos (CHECK):** `pendiente`, `activa`, `agotada`, `vencida`, `anulada`
+
+**Estados iniciales:** `pendiente`  
+**Estados terminales:** `agotada`, `vencida`, `anulada`  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `pendiente` | Compra o emisión | `finance.gift_cards` / Público |  |  | 19 §4 (prosa) |
+| `pendiente` | `activa` | Pago aprobado o emisión manual | Sistema |  |  | 19 §4 (prosa) |
+| `activa` | `agotada` | Canje deja saldo 0 | Sistema | SC-13 |  | 19 §4 (prosa) |
+| `activa` | `vencida` | Job diario | Sistema |  |  | 19 §4 (prosa) |
+| `pendiente`, `activa` | `anulada` | Anular | `finance.gift_cards` |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> pendiente : Compra o emisión
+  pendiente --> activa : Pago aprobado o emisión manual
+  activa --> agotada : Canje deja saldo 0
+  activa --> vencida : Job diario
+  pendiente --> anulada : Anular
+  activa --> anulada : Anular
+  agotada --> [*]
+  vencida --> [*]
+  anulada --> [*]
+```
+
+<a id="m-fin-payment-links-status"></a>
+### 97. Link de pago — `fin_payment_links.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `fin_payment_links` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'activo'::character varying` |
+
+**Valores válidos (CHECK):** `activo`, `pagado`, `vencido`, `anulado`
+
+**Estados iniciales:** `activo`  
+**Estados terminales:** `pagado`, `vencido`, `anulado`  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `activo` | Crear | `finance.payment_links` |  |  | 19 §4 (prosa) |
+| `activo` | `pagado` | Webhook de la pasarela | Sistema | SC-06 | Pago aplicado a la CxC | 19 §4 (prosa) |
+| `activo` | `vencido` | Job al `expires_at` | Sistema |  |  | 19 §4 (prosa) |
+| `activo` | `anulado` | Anular | `finance.payment_links` |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+<details><summary>Endpoints de escritura del contrato sobre <code>fin_payment_links</code> (3, de <code>api/openapi.yaml</code>)</summary>
+
+| Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
+|---|---|---|---|---|
+| POST | `/api/v1/finance/payment-links` | finance.payment_links | 19-crecimiento-comercial.md §6 | sí |
+| POST | `/api/v1/finance/payment-links/{code}/send` | finance.payment_links | 19-crecimiento-comercial.md §6 |  |
+| POST | `/api/v1/finance/payment-links/{code}/cancel` | finance.payment_links | 19-crecimiento-comercial.md §6 |  |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> activo : Crear
+  activo --> pagado : Webhook de la pasarela
+  activo --> vencido : Job al expires_at
+  activo --> anulado : Anular
+  pagado --> [*]
+  vencido --> [*]
+  anulado --> [*]
+```
+
+<a id="m-mkt-recovery-attempts-status"></a>
+### 98. Intento de recuperación — `mkt_recovery_attempts.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `mkt_recovery_attempts` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'programado'::character varying` |
+
+**Valores válidos (CHECK):** `programado`, `enviado`, `recuperado`, `descartado`, `fallido`
+
+**Estados iniciales:** `programado`  
+**Estados terminales:** `recuperado`, `descartado`, `fallido`  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `programado` | Job de detección | Sistema |  |  | 19 §4 (prosa) |
+| `programado` | `enviado` | Envío | Sistema | SC-07 |  | 19 §4 (prosa) |
+| `enviado` | `recuperado` | Reserva creada desde el carrito o la cotización | Sistema |  |  | 19 §4 (prosa) |
+| `programado`, `enviado` | `descartado` | Cliente ya compró, sin consentimiento o intentos agotados | Sistema |  |  | 19 §4 (prosa) |
+| `programado` | `fallido` | Error del canal | Sistema |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> programado : Job de detección
+  programado --> enviado : Envío
+  enviado --> recuperado : Reserva creada desde el carrito o…
+  programado --> descartado : Cliente ya compró, sin consentimie…
+  enviado --> descartado : Cliente ya compró, sin consentimie…
+  programado --> fallido : Error del canal
+  recuperado --> [*]
+  descartado --> [*]
+  fallido --> [*]
+```
+
+<a id="m-ops-checkin-passes-status"></a>
+### 99. Pase QR de check-in — `ops_checkin_passes.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `ops_checkin_passes` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'emitido'::character varying` |
+
+**Valores válidos (CHECK):** `emitido`, `usado`, `anulado`
+
+**Estados iniciales:** `emitido`  
+**Estados terminales:** `usado`, `anulado`  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `emitido` | Reserva confirmada | Sistema |  |  | 19 §4 (prosa) |
+| `emitido` | `usado` | Escaneo | `operations.checkin` | SC-14 |  | 19 §4 (prosa) |
+| `emitido` | `anulado` | Cancelación del servicio o reemisión | Sistema |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> emitido : Reserva confirmada
+  emitido --> usado : Escaneo
+  emitido --> anulado : Cancelación del servicio o reemisi…
+  usado --> [*]
+  anulado --> [*]
+```
+
+<a id="m-platform-marketplace-listings-status"></a>
+### 100. Publicación en el marketplace — `platform_marketplace_listings.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `platform_marketplace_listings` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'borrador'::character varying` |
+
+**Valores válidos (CHECK):** `borrador`, `publicado`, `pausado`, `retirado`
+
+**Estados iniciales:** `borrador`  
+**Estados terminales:** `retirado`  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `borrador` | Crear | `channels.marketplace.manage` |  |  | 19 §4 (prosa) |
+| `borrador`, `pausado` | `publicado` | Publicar | `channels.marketplace.manage` |  |  | 19 §4 (prosa) |
+| `publicado` | `pausado` | Pausar | `channels.marketplace.manage` |  |  | 19 §4 (prosa) |
+| `borrador`, `publicado`, `pausado` | `retirado` | Retirar | `channels.marketplace.manage` |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> borrador : Crear
+  borrador --> publicado : Publicar
+  pausado --> publicado : Publicar
+  publicado --> pausado : Pausar
+  borrador --> retirado : Retirar
+  publicado --> retirado : Retirar
+  pausado --> retirado : Retirar
+  retirado --> [*]
+```
+
+<a id="m-platform-marketplace-orders-status"></a>
+### 101. Venta del marketplace — `platform_marketplace_orders.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `platform_marketplace_orders` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'solicitada'::character varying` |
+
+**Valores válidos (CHECK):** `solicitada`, `confirmada`, `rechazada`, `cancelada`, `liquidada`
+
+**Estados iniciales:** `solicitada`  
+**Estados terminales:** `rechazada`, `cancelada`, `liquidada`  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `solicitada` | Venta del revendedor | Revendedor |  |  | 19 §4 (prosa) |
+| `solicitada` | `confirmada` | Reservas creadas | Sistema | SC-11 |  | 19 §4 (prosa) |
+| `solicitada` | `rechazada` | Sin cupo | Sistema |  |  | 19 §4 (prosa) |
+| `confirmada` | `cancelada` | Cancelar | Revendedor o vendedor |  |  | 19 §4 (prosa) |
+| `confirmada` | `liquidada` | Cierre mensual | Sistema |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> solicitada : Venta del revendedor
+  solicitada --> confirmada : Reservas creadas
+  solicitada --> rechazada : Sin cupo
+  confirmada --> cancelada : Cancelar
+  confirmada --> liquidada : Cierre mensual
+  rechazada --> [*]
+  cancelada --> [*]
+  liquidada --> [*]
+```
+
+<a id="m-platform-marketplace-partnerships-status"></a>
+### 102. Alianza del marketplace — `platform_marketplace_partnerships.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `platform_marketplace_partnerships` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'solicitada'::character varying` |
+
+**Valores válidos (CHECK):** `solicitada`, `activa`, `rechazada`, `suspendida`, `terminada`
+
+**Estados iniciales:** `solicitada`  
+**Estados terminales:** `rechazada`, `terminada`  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `solicitada` | Solicitar | Revendedor |  |  | 19 §4 (prosa) |
+| `solicitada` | `activa` | Aceptar | Vendedor |  |  | 19 §4 (prosa) |
+| `solicitada` | `rechazada` | Rechazar | Vendedor |  |  | 19 §4 (prosa) |
+| `activa` | `suspendida` | Suspender | Vendedor |  |  | 19 §4 (prosa) |
+| `suspendida` | `activa` | Reactivar | Vendedor |  |  | 19 §4 (prosa) |
+| `activa`, `suspendida` | `terminada` | Terminar | Vendedor o revendedor |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> solicitada : Solicitar
+  solicitada --> activa : Aceptar
+  solicitada --> rechazada : Rechazar
+  activa --> suspendida : Suspender
+  suspendida --> activa : Reactivar
+  activa --> terminada : Terminar
+  suspendida --> terminada : Terminar
+  rechazada --> [*]
+  terminada --> [*]
+```
+
+<a id="m-quote-external-offers-status"></a>
+### 103. Oferta externa (aéreo, hotel) — `quote_external_offers.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `quote_external_offers` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'cotizada'::character varying` |
+
+**Valores válidos (CHECK):** `cotizada`, `retenida`, `emitida`, `vencida`, `cancelada`, `error`
+
+**Estados iniciales:** `cotizada`  
+**Estados terminales:** `emitida`, `vencida`, `cancelada`  
+**Sin transiciones de salida documentadas:** `error`  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `cotizada` | Añadir a la cotización | `quotes.external_offers` |  |  | 19 §4 (prosa) |
+| `cotizada` | `retenida` | Retener | `quotes.external_offers` |  |  | 19 §4 (prosa) |
+| `retenida` | `emitida` | Conversión de la cotización | Sistema | SC-16 |  | 19 §4 (prosa) |
+| `cotizada`, `retenida` | `vencida` | Job | Sistema |  |  | 19 §4 (prosa) |
+| `cotizada`, `retenida`, `emitida` | `cancelada` | Cancelar | `quotes.external_offers` |  |  | 19 §4 (prosa) |
+| `cotizada`, `retenida` | `error` | Error del proveedor | Sistema |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> cotizada : Añadir a la cotización
+  cotizada --> retenida : Retener
+  retenida --> emitida : Conversión de la cotización
+  cotizada --> vencida : Job
+  retenida --> vencida : Job
+  cotizada --> cancelada : Cancelar
+  retenida --> cancelada : Cancelar
+  emitida --> cancelada : Cancelar
+  cotizada --> error : Error del proveedor
+  retenida --> error : Error del proveedor
+  emitida --> [*]
+  vencida --> [*]
+  cancelada --> [*]
+```
+
+<a id="m-report-ai-insights-status"></a>
+### 104. Alerta IA — `report_ai_insights.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `report_ai_insights` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'nueva'::character varying` |
+
+**Valores válidos (CHECK):** `nueva`, `vista`, `resuelta`, `descartada`
+
+**Estados iniciales:** `nueva`  
+**Estados terminales:** `resuelta`, `descartada`  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `nueva` | Job diario | Sistema |  |  | 19 §4 (prosa) |
+| `nueva` | `vista` | Abrir la alerta | `ai.insights.view` |  |  | 19 §4 (prosa) |
+| `nueva`, `vista` | `resuelta` | Marcar resuelta | `ai.insights.view` |  |  | 19 §4 (prosa) |
+| `nueva`, `vista` | `descartada` | Descartar | `ai.insights.view` |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> nueva : Job diario
+  nueva --> vista : Abrir la alerta
+  nueva --> resuelta : Marcar resuelta
+  vista --> resuelta : Marcar resuelta
+  nueva --> descartada : Descartar
+  vista --> descartada : Descartar
+  resuelta --> [*]
+  descartada --> [*]
+```
+
+<a id="m-sys-ai-requests-status"></a>
+### 105. Pedido al asistente IA — `sys_ai_requests.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `sys_ai_requests` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'pending'::character varying` |
+
+**Valores válidos (CHECK):** `pending`, `completed`, `failed`, `applied`, `discarded`
+
+**Estados iniciales:** `pending`  
+**Estados terminales:** `applied`, `discarded`, `failed`  
+**Fuentes:** spec 19 §4 (`19-crecimiento-comercial.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `pending` | Nuevo pedido | `ai.assistant.use` |  |  | 19 §4 (prosa) |
+| `pending` | `completed` | Respuesta del LLM | Sistema |  |  | 19 §4 (prosa) |
+| `pending` | `failed` | Error del proveedor | Sistema |  |  | 19 §4 (prosa) |
+| `completed` | `applied` | Aplicar el borrador | `ai.assistant.use` | SC-03 |  | 19 §4 (prosa) |
+| `completed` | `discarded` | Descartar | `ai.assistant.use` |  |  | 19 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 19 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Link de pago | `activo → pagado` (webhook de la pasarela) · `activo → vencido` (job al `expires_at`) · `activo → anulado` (usuario) |
+> | Intento de recuperación | `programado → enviado → recuperado` (reserva creada desde el carrito o la cotización) · `programado|enviado → descartado` (el cliente ya compró, se dio de baja o se agotaron los intentos) · `programado → fallido` |
+> | Importación | `en_cola → procesando → revision → importado` · `procesando → fallido` · `en_cola|revision → cancelado` |
+> | Conexión OTA | `borrador → conectado` (credenciales verificadas) · `conectado ↔ pausado` · `conectado → error` (3 fallos seguidos) `→ conectado` (reintento OK) · `* → desconectado` |
+> | Reserva OTA | `recibida → confirmada` (reserva creada con cupo) · `recibida → rechazada` (sin cupo o producto sin mapeo) · `confirmada → cancelada` (cancelación de la OTA) · `recibida → error` |
+> | Alianza marketplace | `solicitada → activa | rechazada` (vendedor) · `activa ↔ suspendida` · `activa|suspendida → terminada` |
+> | Venta marketplace | `solicitada → confirmada | rechazada` · `confirmada → cancelada` · `confirmada → liquidada` (cierre mensual) |
+> | Vale de regalo | `pendiente → activa` (pago o emisión manual) · `activa → agotada` (saldo 0) · `activa → vencida` (job) · `pendiente|activa → anulada` |
+> | Pase QR | `emitido → usado` (escaneo) · `emitido → anulado` (cancelación del servicio o reemisión) |
+> | Oferta externa | `cotizada → retenida → emitida` · `cotizada|retenida → vencida` (job) · `* → cancelada` |
+> | Alerta IA | `nueva → vista → resuelta | descartada` |
+> | Pedido IA | `pending → completed → applied | discarded` · `pending → failed` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> pending : Nuevo pedido
+  pending --> completed : Respuesta del LLM
+  pending --> failed : Error del proveedor
+  completed --> applied : Aplicar el borrador
+  completed --> discarded : Descartar
+  applied --> [*]
+  discarded --> [*]
+  failed --> [*]
+```
+
+<a id="m-booking-corporate-approvals-status"></a>
+### 106. Aprobación corporativa — `booking_corporate_approvals.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `booking_corporate_approvals` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'pendiente'::character varying` |
+
+**Valores válidos (CHECK):** `pendiente`, `aprobada`, `rechazada`, `vencida`, `cancelada`
+
+**Estados iniciales:** `pendiente`  
+**Estados terminales:** `aprobada`, `rechazada`, `vencida`, `cancelada`  
+**Fuentes:** spec 20 §4 (`20-portal-corporativo.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `pendiente` | Pedir aprobación | Vendedor (`quotes.send`) o usuario de la empresa | CP-03 |  | 20 §4 (prosa) |
+| `pendiente` | `aprobada` | Aprobar | Aprobador del centro de costo o administrador | CP-07 |  | 20 §4 (prosa) |
+| `pendiente` | `rechazada` | Rechazar con motivo | Aprobador del centro de costo o administrador | CP-07 |  | 20 §4 (prosa) |
+| `pendiente` | `vencida` | Job al `expires_at` | Sistema |  |  | 20 §4 (prosa) |
+| `pendiente` | `cancelada` | Nueva versión o cancelación de la cotización | Sistema | CP-03 |  | 20 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 20 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Cuenta corporativa | `activa ↔ suspendida` (Finanzas o Ventas con `crm.corporate.manage`) · `activa|suspendida → cerrada` |
+> | Usuario del portal | `invitado → activo` (acepta la invitación) · `activo ↔ inactivo` · `invitado → inactivo` (invitación revocada) |
+> | Aprobación corporativa | `pendiente → aprobada | rechazada` (aprobador) · `pendiente → vencida` (job al `expires_at`) · `pendiente → cancelada` (la cotización cambia de versión o se cancela) |
+> | Estado de cuenta | `generado → enviado` · `generado|enviado → anulado` (se regenera el mes) |
+> | Exportación | `en_cola → procesando → listo` · `procesando → fallido` · `listo → vencido` (job a los 7 días) |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> pendiente : Pedir aprobación
+  pendiente --> aprobada : Aprobar
+  pendiente --> rechazada : Rechazar con motivo
+  pendiente --> vencida : Job al expires_at
+  pendiente --> cancelada : Nueva versión o cancelación de la…
+  aprobada --> [*]
+  rechazada --> [*]
+  vencida --> [*]
+  cancelada --> [*]
+```
+
+<a id="m-crm-corporate-accounts-status"></a>
+### 107. Cuenta corporativa — `crm_corporate_accounts.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `crm_corporate_accounts` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'activa'::character varying` |
+
+**Valores válidos (CHECK):** `activa`, `suspendida`, `cerrada`
+
+**Estados iniciales:** `activa`  
+**Estados terminales:** `cerrada`  
+**Fuentes:** spec 20 §4 (`20-portal-corporativo.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `activa` | Alta de la cuenta | `crm.corporate.manage` |  |  | 20 §4 (prosa) |
+| `activa` | `suspendida` | Suspender | `crm.corporate.manage` |  |  | 20 §4 (prosa) |
+| `suspendida` | `activa` | Reactivar | `crm.corporate.manage` |  |  | 20 §4 (prosa) |
+| `activa`, `suspendida` | `cerrada` | Cerrar | `crm.corporate.manage` |  |  | 20 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 20 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Cuenta corporativa | `activa ↔ suspendida` (Finanzas o Ventas con `crm.corporate.manage`) · `activa|suspendida → cerrada` |
+> | Usuario del portal | `invitado → activo` (acepta la invitación) · `activo ↔ inactivo` · `invitado → inactivo` (invitación revocada) |
+> | Aprobación corporativa | `pendiente → aprobada | rechazada` (aprobador) · `pendiente → vencida` (job al `expires_at`) · `pendiente → cancelada` (la cotización cambia de versión o se cancela) |
+> | Estado de cuenta | `generado → enviado` · `generado|enviado → anulado` (se regenera el mes) |
+> | Exportación | `en_cola → procesando → listo` · `procesando → fallido` · `listo → vencido` (job a los 7 días) |
+
+</details>
+
+<details><summary>Endpoints de escritura del contrato sobre <code>crm_corporate_accounts</code> (3, de <code>api/openapi.yaml</code>)</summary>
+
+| Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
+|---|---|---|---|---|
+| POST | `/api/v1/crm/corporate-accounts` | crm.corporate.manage | 20-portal-corporativo.md §6 | sí |
+| PATCH | `/api/v1/crm/corporate-accounts/{id}` | crm.corporate.manage | 20-portal-corporativo.md §6 |  |
+| POST | `/api/v1/crm/corporate-accounts/{id}/suspend` | crm.corporate.manage | 20-portal-corporativo.md §6 |  |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> activa : Alta de la cuenta
+  activa --> suspendida : Suspender
+  suspendida --> activa : Reactivar
+  activa --> cerrada : Cerrar
+  suspendida --> cerrada : Cerrar
+  cerrada --> [*]
+```
+
+<a id="m-crm-corporate-portal-users-status"></a>
+### 108. Usuario del portal corporativo — `crm_corporate_portal_users.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `crm_corporate_portal_users` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'invitado'::character varying` |
+
+**Valores válidos (CHECK):** `invitado`, `activo`, `inactivo`
+
+**Estados iniciales:** `invitado`  
+**Estados terminales:** no declarados en la spec  
+**Fuentes:** spec 20 §4 (`20-portal-corporativo.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `invitado` | Invitar | Administrador de la empresa o `crm.corporate.manage` | CP-06 |  | 20 §4 (prosa) |
+| `invitado` | `activo` | Aceptar la invitación | Usuario invitado |  |  | 20 §4 (prosa) |
+| `activo` | `inactivo` | Desactivar | Administrador | CP-06: queda al menos un administrador |  | 20 §4 (prosa) |
+| `inactivo` | `activo` | Reactivar | Administrador |  |  | 20 §4 (prosa) |
+| `invitado` | `inactivo` | Revocar la invitación | Administrador |  |  | 20 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 20 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Cuenta corporativa | `activa ↔ suspendida` (Finanzas o Ventas con `crm.corporate.manage`) · `activa|suspendida → cerrada` |
+> | Usuario del portal | `invitado → activo` (acepta la invitación) · `activo ↔ inactivo` · `invitado → inactivo` (invitación revocada) |
+> | Aprobación corporativa | `pendiente → aprobada | rechazada` (aprobador) · `pendiente → vencida` (job al `expires_at`) · `pendiente → cancelada` (la cotización cambia de versión o se cancela) |
+> | Estado de cuenta | `generado → enviado` · `generado|enviado → anulado` (se regenera el mes) |
+> | Exportación | `en_cola → procesando → listo` · `procesando → fallido` · `listo → vencido` (job a los 7 días) |
+
+</details>
+
+<details><summary>Endpoints de escritura del contrato sobre <code>crm_corporate_portal_users</code> (3, de <code>api/openapi.yaml</code>)</summary>
+
+| Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
+|---|---|---|---|---|
+| POST | `/api/v1/crm/corporate-accounts/{id}/portal-users` | crm.corporate.manage | 20-portal-corporativo.md §6 | sí |
+| PATCH | `/api/v1/crm/corporate-accounts/{id}/portal-users/{portalUserId}` | crm.corporate.manage | 20-portal-corporativo.md §6 |  |
+| POST | `/api/v1/crm/corporate-accounts/{id}/portal-users/{portalUserId}/resend-invite` | crm.corporate.manage | 20-portal-corporativo.md §6 |  |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> invitado : Invitar
+  invitado --> activo : Aceptar la invitación
+  activo --> inactivo : Desactivar
+  inactivo --> activo : Reactivar
+  invitado --> inactivo : Revocar la invitación
+```
+
+<a id="m-fin-corporate-statements-status"></a>
+### 109. Estado de cuenta corporativo — `fin_corporate_statements.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `fin_corporate_statements` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'generado'::character varying` |
+
+**Valores válidos (CHECK):** `generado`, `enviado`, `anulado`
+
+**Estados iniciales:** `generado`  
+**Estados terminales:** `anulado`  
+**Fuentes:** spec 20 §4 (`20-portal-corporativo.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `generado` | Generar el mes | `finance.corporate_statements` o job | CP-05 |  | 20 §4 (prosa) |
+| `generado` | `enviado` | Enviar por correo | `finance.corporate_statements`, administrador o pagador, o job |  |  | 20 §4 (prosa) |
+| `generado`, `enviado` | `anulado` | Anular para regenerar | `finance.corporate_statements` |  |  | 20 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 20 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Cuenta corporativa | `activa ↔ suspendida` (Finanzas o Ventas con `crm.corporate.manage`) · `activa|suspendida → cerrada` |
+> | Usuario del portal | `invitado → activo` (acepta la invitación) · `activo ↔ inactivo` · `invitado → inactivo` (invitación revocada) |
+> | Aprobación corporativa | `pendiente → aprobada | rechazada` (aprobador) · `pendiente → vencida` (job al `expires_at`) · `pendiente → cancelada` (la cotización cambia de versión o se cancela) |
+> | Estado de cuenta | `generado → enviado` · `generado|enviado → anulado` (se regenera el mes) |
+> | Exportación | `en_cola → procesando → listo` · `procesando → fallido` · `listo → vencido` (job a los 7 días) |
+
+</details>
+
+<details><summary>Endpoints de escritura del contrato sobre <code>fin_corporate_statements</code> (3, de <code>api/openapi.yaml</code>)</summary>
+
+| Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
+|---|---|---|---|---|
+| POST | `/api/v1/finance/corporate-statements` | finance.corporate_statements | 20-portal-corporativo.md §6 | sí |
+| POST | `/api/v1/finance/corporate-statements/{code}/send` | finance.corporate_statements | 20-portal-corporativo.md §6 | sí |
+| POST | `/api/v1/finance/corporate-statements/{code}/void` | finance.corporate_statements | 20-portal-corporativo.md §6 |  |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> generado : Generar el mes
+  generado --> enviado : Enviar por correo
+  generado --> anulado : Anular para regenerar
+  enviado --> anulado : Anular para regenerar
+  anulado --> [*]
+```
+
+<a id="m-report-corporate-exports-status"></a>
+### 110. Exportación corporativa — `report_corporate_exports.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `report_corporate_exports` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'en_cola'::character varying` |
+
+**Valores válidos (CHECK):** `en_cola`, `procesando`, `listo`, `fallido`, `vencido`
+
+**Estados iniciales:** `en_cola`  
+**Estados terminales:** `fallido`, `vencido`  
+**Fuentes:** spec 20 §4 (`20-portal-corporativo.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `en_cola` | Pedir exportación | Usuario del portal | CP-08 |  | 20 §4 (prosa) |
+| `en_cola` | `procesando` | Inicio del job | Sistema |  |  | 20 §4 (prosa) |
+| `procesando` | `listo` | Archivo generado | Sistema |  |  | 20 §4 (prosa) |
+| `procesando` | `fallido` | Error al generar | Sistema |  |  | 20 §4 (prosa) |
+| `listo` | `vencido` | Job a los 7 días | Sistema |  |  | 20 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 20 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Cuenta corporativa | `activa ↔ suspendida` (Finanzas o Ventas con `crm.corporate.manage`) · `activa|suspendida → cerrada` |
+> | Usuario del portal | `invitado → activo` (acepta la invitación) · `activo ↔ inactivo` · `invitado → inactivo` (invitación revocada) |
+> | Aprobación corporativa | `pendiente → aprobada | rechazada` (aprobador) · `pendiente → vencida` (job al `expires_at`) · `pendiente → cancelada` (la cotización cambia de versión o se cancela) |
+> | Estado de cuenta | `generado → enviado` · `generado|enviado → anulado` (se regenera el mes) |
+> | Exportación | `en_cola → procesando → listo` · `procesando → fallido` · `listo → vencido` (job a los 7 días) |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> en_cola : Pedir exportación
+  en_cola --> procesando : Inicio del job
+  procesando --> listo : Archivo generado
+  procesando --> fallido : Error al generar
+  listo --> vencido : Job a los 7 días
+  fallido --> [*]
+  vencido --> [*]
+```
+
+<a id="m-booking-in-trip-offers-status"></a>
+### 111. Oferta de venta en ruta — `booking_in_trip_offers.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `booking_in_trip_offers` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'ofrecida'::character varying` |
+
+**Valores válidos (CHECK):** `ofrecida`, `link_enviado`, `pagada`, `confirmada`, `vencida`, `cancelada`, `reembolsada`
+
+**Estados iniciales:** `ofrecida`  
+**Estados terminales:** `confirmada`, `reembolsada`, `vencida`, `cancelada`  
+**Fuentes:** spec 21 §4 (`21-viajes-por-tramos.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `ofrecida` | Crear oferta | Cliente titular o `reservations.modify` | TB-09 |  | 21 §4 (prosa) |
+| `ofrecida` | `link_enviado` | Generar link de pago | Sistema | TB-10 |  | 21 §4 (prosa) |
+| `link_enviado` | `pagada` | Webhook del link | Sistema |  |  | 21 §4 (prosa) |
+| `pagada` | `confirmada` | Proveedor confirma | Sistema / proveedor |  |  | 21 §4 (prosa) |
+| `pagada` | `reembolsada` | Proveedor rechaza | Sistema | TB-10 |  | 21 §4 (prosa) |
+| `ofrecida`, `link_enviado` | `vencida` | Job al `expires_at` | Sistema |  |  | 21 §4 (prosa) |
+| `ofrecida`, `link_enviado` | `cancelada` | Cancelar | Cliente o `reservations.modify` |  |  | 21 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 21 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Oferta en ruta | `ofrecida → link_enviado` (se genera el link) · `link_enviado → pagada` (webhook del link) · `pagada → confirmada` (proveedor confirma; se crea `booking_trip_items` y el servicio) · `pagada → reembolsada` (proveedor rechaza) · `ofrecida|link_enviado → vencida` (job al `expires_at`) · `ofrecida|link_enviado → cancelada` |
+
+</details>
+
+<details><summary>Endpoints de escritura del contrato sobre <code>booking_in_trip_offers</code> (2, de <code>api/openapi.yaml</code>)</summary>
+
+| Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
+|---|---|---|---|---|
+| POST | `/api/v1/reservations/{id}/in-trip-offers` | reservations.modify | 21-viajes-por-tramos.md §6 | sí |
+| POST | `/api/v1/reservations/{id}/in-trip-offers/{offerCode}/cancel` | reservations.modify | 21-viajes-por-tramos.md §6 |  |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> ofrecida : Crear oferta
+  ofrecida --> link_enviado : Generar link de pago
+  link_enviado --> pagada : Webhook del link
+  pagada --> confirmada : Proveedor confirma
+  pagada --> reembolsada : Proveedor rechaza
+  ofrecida --> vencida : Job al expires_at
+  link_enviado --> vencida : Job al expires_at
+  ofrecida --> cancelada : Cancelar
+  link_enviado --> cancelada : Cancelar
+  confirmada --> [*]
+  reembolsada --> [*]
+  vencida --> [*]
+  cancelada --> [*]
+```
+
+<a id="m-cms-site-domains-status"></a>
+### 112. Dominio propio — `cms_site_domains.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `cms_site_domains` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'pendiente_dns'::character varying` |
+
+**Valores válidos (CHECK):** `pendiente_dns`, `verificado`, `error`, `retirado`
+
+**Estados iniciales:** `pendiente_dns`, `retirado`  
+**Estados terminales:** `retirado`  
+**Sin transiciones de salida documentadas:** `verificado`  
+**Fuentes:** spec 22 §4 (`22-vitrina-monetizacion-marca.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `pendiente_dns` | Agregar dominio | `cms.seo.manage` |  |  | 22 §4 (prosa) |
+| `pendiente_dns` | `verificado` | DNS correcto | Job o `cms.seo.manage` | VT-11 |  | 22 §4 (prosa) |
+| `pendiente_dns` | `error` | DNS incorrecto | Sistema |  |  | 22 §4 (prosa) |
+| `error` | `pendiente_dns` | Reintentar | `cms.seo.manage` |  |  | 22 §4 (prosa) |
+| — (alta) | `retirado` | Retirar | `cms.seo.manage` |  |  | 22 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 22 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Publicación de la vitrina | `borrador → en_revision → publicado | rechazado` · `rechazado → en_revision` (corrige) · `publicado ↔ despublicado` |
+> | Agencia de la vitrina | `en_revision → activa | rechazada` · `activa ↔ suspendida` |
+> | Reserva de la vitrina | `confirmada → asistio | no_show` (la agencia, desde la fecha) · `confirmada → cancelada` (viajero con su token o agencia) |
+> | Pase | `activo → vencido` (job) · `activo → convertido` (se suscribe) · `activo → revocado` |
+> | Dominio | `pendiente_dns → verificado | error` · `error → pendiente_dns` · `* → retirado` |
+> | Historia de aventura | `borrador → pendiente_consentimiento → publicado` · `publicado → despublicado` (incluye retiro del consentimiento) |
+> | Comisión de cobro | `estimado → liquidado → ajustado` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> pendiente_dns : Agregar dominio
+  pendiente_dns --> verificado : DNS correcto
+  pendiente_dns --> error : DNS incorrecto
+  error --> pendiente_dns : Reintentar
+  [*] --> retirado : Retirar
+  retirado --> [*]
+```
+
+<a id="m-cms-travel-stories-status"></a>
+### 113. Historia de aventura — `cms_travel_stories.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `cms_travel_stories` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'borrador'::character varying` |
+
+**Valores válidos (CHECK):** `borrador`, `pendiente_consentimiento`, `publicado`, `despublicado`
+
+**Estados iniciales:** `borrador`  
+**Estados terminales:** no declarados en la spec  
+**Sin transiciones de salida documentadas:** `despublicado`  
+**Fuentes:** spec 22 §4 (`22-vitrina-monetizacion-marca.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `borrador` | Crear desde una reserva | `cms.seo.manage` o `channels.cms.publish` |  |  | 22 §4 (prosa) |
+| `borrador` | `pendiente_consentimiento` | Pedir consentimiento | `cms.seo.manage` o `channels.cms.publish` |  |  | 22 §4 (prosa) |
+| `pendiente_consentimiento` | `publicado` | Publicar con consentimiento | `channels.cms.publish` | VT-12 |  | 22 §4 (prosa) |
+| `publicado` | `despublicado` | Despublicar o retiro del consentimiento | `channels.cms.publish` o cliente | VT-12 |  | 22 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 22 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Publicación de la vitrina | `borrador → en_revision → publicado | rechazado` · `rechazado → en_revision` (corrige) · `publicado ↔ despublicado` |
+> | Agencia de la vitrina | `en_revision → activa | rechazada` · `activa ↔ suspendida` |
+> | Reserva de la vitrina | `confirmada → asistio | no_show` (la agencia, desde la fecha) · `confirmada → cancelada` (viajero con su token o agencia) |
+> | Pase | `activo → vencido` (job) · `activo → convertido` (se suscribe) · `activo → revocado` |
+> | Dominio | `pendiente_dns → verificado | error` · `error → pendiente_dns` · `* → retirado` |
+> | Historia de aventura | `borrador → pendiente_consentimiento → publicado` · `publicado → despublicado` (incluye retiro del consentimiento) |
+> | Comisión de cobro | `estimado → liquidado → ajustado` |
+
+</details>
+
+<details><summary>Endpoints de escritura del contrato sobre <code>cms_travel_stories</code> (4, de <code>api/openapi.yaml</code>)</summary>
+
+| Método | Ruta | Permiso (`x-permission`) | Spec | Idempotente |
+|---|---|---|---|---|
+| POST | `/api/v1/cms/stories` | cms.seo.manage \| channels.cms.publish | 22-vitrina-monetizacion-marca.md §6 |  |
+| POST | `/api/v1/cms/stories/{id}/consent-request` | cms.seo.manage \| channels.cms.publish | 22-vitrina-monetizacion-marca.md §6 |  |
+| POST | `/api/v1/cms/stories/{id}/publish` | channels.cms.publish | 22-vitrina-monetizacion-marca.md §6 |  |
+| POST | `/api/v1/cms/stories/{id}/unpublish` | channels.cms.publish | 22-vitrina-monetizacion-marca.md §6 |  |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> borrador : Crear desde una reserva
+  borrador --> pendiente_consentimiento : Pedir consentimiento
+  pendiente_consentimiento --> publicado : Publicar con consentimiento
+  publicado --> despublicado : Despublicar o retiro del consentim…
+```
+
+<a id="m-fin-payment-fees-status"></a>
+### 114. Comisión de cobro por pasarela — `fin_payment_fees.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `fin_payment_fees` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'estimado'::character varying` |
+
+**Valores válidos (CHECK):** `estimado`, `liquidado`, `ajustado`
+
+**Estados iniciales:** `estimado`  
+**Estados terminales:** no declarados en la spec  
+**Sin transiciones de salida documentadas:** `ajustado`  
+**Fuentes:** spec 22 §4 (`22-vitrina-monetizacion-marca.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `estimado` | Cobro registrado | Sistema | VT-08 |  | 22 §4 (prosa) |
+| `estimado` | `liquidado` | Liquidación de la pasarela | Job | VT-08 |  | 22 §4 (prosa) |
+| `liquidado` | `ajustado` | Ajuste posterior | `finance.gateways.manage` |  |  | 22 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 22 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Publicación de la vitrina | `borrador → en_revision → publicado | rechazado` · `rechazado → en_revision` (corrige) · `publicado ↔ despublicado` |
+> | Agencia de la vitrina | `en_revision → activa | rechazada` · `activa ↔ suspendida` |
+> | Reserva de la vitrina | `confirmada → asistio | no_show` (la agencia, desde la fecha) · `confirmada → cancelada` (viajero con su token o agencia) |
+> | Pase | `activo → vencido` (job) · `activo → convertido` (se suscribe) · `activo → revocado` |
+> | Dominio | `pendiente_dns → verificado | error` · `error → pendiente_dns` · `* → retirado` |
+> | Historia de aventura | `borrador → pendiente_consentimiento → publicado` · `publicado → despublicado` (incluye retiro del consentimiento) |
+> | Comisión de cobro | `estimado → liquidado → ajustado` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> estimado : Cobro registrado
+  estimado --> liquidado : Liquidación de la pasarela
+  liquidado --> ajustado : Ajuste posterior
+```
+
+<a id="m-platform-access-passes-status"></a>
+### 115. Pase de 30 días — `platform_access_passes.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `platform_access_passes` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'activo'::character varying` |
+
+**Valores válidos (CHECK):** `activo`, `vencido`, `convertido`, `revocado`
+
+**Estados iniciales:** `activo`  
+**Estados terminales:** `vencido`, `convertido`, `revocado`  
+**Fuentes:** spec 22 §4 (`22-vitrina-monetizacion-marca.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `activo` | Crear pase | Super Admin | VT-06 |  | 22 §4 (prosa) |
+| `activo` | `vencido` | Job al `ends_on` | Sistema | VT-06 |  | 22 §4 (prosa) |
+| `activo` | `convertido` | Convertir a plan | Super Admin o el tenant al suscribirse |  |  | 22 §4 (prosa) |
+| `activo` | `revocado` | Revocar | Super Admin |  |  | 22 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 22 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Publicación de la vitrina | `borrador → en_revision → publicado | rechazado` · `rechazado → en_revision` (corrige) · `publicado ↔ despublicado` |
+> | Agencia de la vitrina | `en_revision → activa | rechazada` · `activa ↔ suspendida` |
+> | Reserva de la vitrina | `confirmada → asistio | no_show` (la agencia, desde la fecha) · `confirmada → cancelada` (viajero con su token o agencia) |
+> | Pase | `activo → vencido` (job) · `activo → convertido` (se suscribe) · `activo → revocado` |
+> | Dominio | `pendiente_dns → verificado | error` · `error → pendiente_dns` · `* → retirado` |
+> | Historia de aventura | `borrador → pendiente_consentimiento → publicado` · `publicado → despublicado` (incluye retiro del consentimiento) |
+> | Comisión de cobro | `estimado → liquidado → ajustado` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> activo : Crear pase
+  activo --> vencido : Job al ends_on
+  activo --> convertido : Convertir a plan
+  activo --> revocado : Revocar
+  vencido --> [*]
+  convertido --> [*]
+  revocado --> [*]
+```
+
+<a id="m-platform-showcase-agencies-status"></a>
+### 116. Agencia de la vitrina — `platform_showcase_agencies.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `platform_showcase_agencies` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'en_revision'::character varying` |
+
+**Valores válidos (CHECK):** `en_revision`, `activa`, `suspendida`, `rechazada`
+
+**Estados iniciales:** `en_revision`  
+**Estados terminales:** `rechazada`  
+**Fuentes:** spec 22 §4 (`22-vitrina-monetizacion-marca.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `en_revision` | Registro | Público |  |  | 22 §4 (prosa) |
+| `en_revision` | `activa` | Verificar | Super Admin | VT-01 |  | 22 §4 (prosa) |
+| `en_revision` | `rechazada` | Rechazar | Super Admin |  |  | 22 §4 (prosa) |
+| `activa` | `suspendida` | Suspender | Super Admin |  |  | 22 §4 (prosa) |
+| `suspendida` | `activa` | Reactivar | Super Admin |  |  | 22 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 22 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Publicación de la vitrina | `borrador → en_revision → publicado | rechazado` · `rechazado → en_revision` (corrige) · `publicado ↔ despublicado` |
+> | Agencia de la vitrina | `en_revision → activa | rechazada` · `activa ↔ suspendida` |
+> | Reserva de la vitrina | `confirmada → asistio | no_show` (la agencia, desde la fecha) · `confirmada → cancelada` (viajero con su token o agencia) |
+> | Pase | `activo → vencido` (job) · `activo → convertido` (se suscribe) · `activo → revocado` |
+> | Dominio | `pendiente_dns → verificado | error` · `error → pendiente_dns` · `* → retirado` |
+> | Historia de aventura | `borrador → pendiente_consentimiento → publicado` · `publicado → despublicado` (incluye retiro del consentimiento) |
+> | Comisión de cobro | `estimado → liquidado → ajustado` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> en_revision : Registro
+  en_revision --> activa : Verificar
+  en_revision --> rechazada : Rechazar
+  activa --> suspendida : Suspender
+  suspendida --> activa : Reactivar
+  rechazada --> [*]
+```
+
+<a id="m-platform-showcase-bookings-status"></a>
+### 117. Reserva de la vitrina — `platform_showcase_bookings.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `platform_showcase_bookings` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'confirmada'::character varying` |
+
+**Valores válidos (CHECK):** `confirmada`, `asistio`, `no_show`, `cancelada`
+
+**Estados iniciales:** `confirmada`  
+**Estados terminales:** `asistio`, `no_show`, `cancelada`  
+**Fuentes:** spec 22 §4 (`22-vitrina-monetizacion-marca.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `confirmada` | Reservar | Público | VT-02 |  | 22 §4 (prosa) |
+| `confirmada` | `asistio` | Marcar asistencia | `channels.showcase.manage` |  |  | 22 §4 (prosa) |
+| `confirmada` | `no_show` | Marcar no-show | `channels.showcase.manage` |  |  | 22 §4 (prosa) |
+| `confirmada` | `cancelada` | Cancelar | Viajero (token) o agencia |  |  | 22 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 22 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Publicación de la vitrina | `borrador → en_revision → publicado | rechazado` · `rechazado → en_revision` (corrige) · `publicado ↔ despublicado` |
+> | Agencia de la vitrina | `en_revision → activa | rechazada` · `activa ↔ suspendida` |
+> | Reserva de la vitrina | `confirmada → asistio | no_show` (la agencia, desde la fecha) · `confirmada → cancelada` (viajero con su token o agencia) |
+> | Pase | `activo → vencido` (job) · `activo → convertido` (se suscribe) · `activo → revocado` |
+> | Dominio | `pendiente_dns → verificado | error` · `error → pendiente_dns` · `* → retirado` |
+> | Historia de aventura | `borrador → pendiente_consentimiento → publicado` · `publicado → despublicado` (incluye retiro del consentimiento) |
+> | Comisión de cobro | `estimado → liquidado → ajustado` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> confirmada : Reservar
+  confirmada --> asistio : Marcar asistencia
+  confirmada --> no_show : Marcar no-show
+  confirmada --> cancelada : Cancelar
+  asistio --> [*]
+  no_show --> [*]
+  cancelada --> [*]
+```
+
+<a id="m-platform-showcase-listings-status"></a>
+### 118. Publicación de la vitrina — `platform_showcase_listings.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `platform_showcase_listings` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'en_revision'::character varying` |
+
+**Valores válidos (CHECK):** `borrador`, `en_revision`, `publicado`, `rechazado`, `despublicado`
+
+**Estados iniciales:** `borrador`  
+**Estados terminales:** no declarados en la spec  
+**Fuentes:** spec 22 §4 (`22-vitrina-monetizacion-marca.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `borrador` | Crear | `channels.showcase.manage` |  |  | 22 §4 (prosa) |
+| `borrador` | `en_revision` | Enviar a revisión | `channels.showcase.manage` | VT-01 |  | 22 §4 (prosa) |
+| `en_revision` | `publicado` | Aprobar | Super Admin | VT-01 |  | 22 §4 (prosa) |
+| `en_revision` | `rechazado` | Rechazar con motivo | Super Admin | VT-01 |  | 22 §4 (prosa) |
+| `rechazado` | `en_revision` | Corregir y reenviar | `channels.showcase.manage` |  |  | 22 §4 (prosa) |
+| `publicado` | `despublicado` | Pausar | `channels.showcase.manage` o Super Admin |  |  | 22 §4 (prosa) |
+| `despublicado` | `publicado` | Reactivar | `channels.showcase.manage` |  |  | 22 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 22 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Publicación de la vitrina | `borrador → en_revision → publicado | rechazado` · `rechazado → en_revision` (corrige) · `publicado ↔ despublicado` |
+> | Agencia de la vitrina | `en_revision → activa | rechazada` · `activa ↔ suspendida` |
+> | Reserva de la vitrina | `confirmada → asistio | no_show` (la agencia, desde la fecha) · `confirmada → cancelada` (viajero con su token o agencia) |
+> | Pase | `activo → vencido` (job) · `activo → convertido` (se suscribe) · `activo → revocado` |
+> | Dominio | `pendiente_dns → verificado | error` · `error → pendiente_dns` · `* → retirado` |
+> | Historia de aventura | `borrador → pendiente_consentimiento → publicado` · `publicado → despublicado` (incluye retiro del consentimiento) |
+> | Comisión de cobro | `estimado → liquidado → ajustado` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> borrador : Crear
+  borrador --> en_revision : Enviar a revisión
+  en_revision --> publicado : Aprobar
+  en_revision --> rechazado : Rechazar con motivo
+  rechazado --> en_revision : Corregir y reenviar
+  publicado --> despublicado : Pausar
+  despublicado --> publicado : Reactivar
+```
+
+<a id="m-cms-ai-content-jobs-status"></a>
+### 119. Pedido de contenido con IA — `cms_ai_content_jobs.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `cms_ai_content_jobs` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'en_cola'::character varying` |
+
+**Valores válidos (CHECK):** `en_cola`, `procesando`, `listo`, `aplicado`, `descartado`, `fallido`
+
+**Estados iniciales:** `en_cola`  
+**Estados terminales:** `aplicado`, `descartado`, `fallido`  
+**Fuentes:** spec 23 §4 (`23-plantillas-web-contenido-ia.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `en_cola` | Nuevo pedido | `ai.content.use` | IA-01 |  | 23 §4 (prosa) |
+| `en_cola` | `procesando` | Job GenerateAiContent | Sistema |  |  | 23 §4 (prosa) |
+| `procesando` | `listo` | Resultado | Sistema | IA-02 |  | 23 §4 (prosa) |
+| `procesando` | `fallido` | Error del proveedor | Sistema | IA-02 |  | 23 §4 (prosa) |
+| `listo` | `aplicado` | Aplicar | `ai.content.use` | IA-03 |  | 23 §4 (prosa) |
+| `listo` | `descartado` | Descartar | `ai.content.use` |  |  | 23 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 23 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Plantilla | `borrador → en_revision → publicado` · `publicado → retirado → publicado` |
+> | Versión de plantilla | `candidata → aprobada → publicada → retirada` |
+> | Envío a revisión | `recibida → validando → aprobada | rechazada` |
+> | Tema del tenant | `vista_previa → activo` · `activo → anterior` (al aplicar otra) · `anterior → activo` (restaurar) |
+> | Pedido de IA | `en_cola → procesando → listo | fallido` · `listo → aplicado | descartado` |
+> | Imagen IA | `generada → en_uso | descartada` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> en_cola : Nuevo pedido
+  en_cola --> procesando : Job GenerateAiContent
+  procesando --> listo : Resultado
+  procesando --> fallido : Error del proveedor
+  listo --> aplicado : Aplicar
+  listo --> descartado : Descartar
+  aplicado --> [*]
+  descartado --> [*]
+  fallido --> [*]
+```
+
+<a id="m-cms-ai-images-status"></a>
+### 120. Imagen generada con IA — `cms_ai_images.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `cms_ai_images` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'generada'::character varying` |
+
+**Valores válidos (CHECK):** `generada`, `en_uso`, `descartada`
+
+**Estados iniciales:** `generada`  
+**Estados terminales:** `descartada`  
+**Sin transiciones de salida documentadas:** `en_uso`  
+**Fuentes:** spec 23 §4 (`23-plantillas-web-contenido-ia.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `generada` | Job GenerateAiImages | Sistema | IA-05 |  | 23 §4 (prosa) |
+| `generada` | `en_uso` | Usar con texto alternativo | `ai.content.use` | IA-05 |  | 23 §4 (prosa) |
+| `generada` | `descartada` | Descartar | `ai.content.use` |  |  | 23 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 23 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Plantilla | `borrador → en_revision → publicado` · `publicado → retirado → publicado` |
+> | Versión de plantilla | `candidata → aprobada → publicada → retirada` |
+> | Envío a revisión | `recibida → validando → aprobada | rechazada` |
+> | Tema del tenant | `vista_previa → activo` · `activo → anterior` (al aplicar otra) · `anterior → activo` (restaurar) |
+> | Pedido de IA | `en_cola → procesando → listo | fallido` · `listo → aplicado | descartado` |
+> | Imagen IA | `generada → en_uso | descartada` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> generada : Job GenerateAiImages
+  generada --> en_uso : Usar con texto alternativo
+  generada --> descartada : Descartar
+  descartada --> [*]
+```
+
+<a id="m-cms-site-themes-status"></a>
+### 121. Tema del sitio del tenant — `cms_site_themes.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `cms_site_themes` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'vista_previa'::character varying` |
+
+**Valores válidos (CHECK):** `vista_previa`, `activo`, `anterior`
+
+**Estados iniciales:** `vista_previa`  
+**Estados terminales:** no declarados en la spec  
+**Fuentes:** spec 23 §4 (`23-plantillas-web-contenido-ia.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `vista_previa` | Vista previa | `cms.templates.manage` | TPL-03 |  | 23 §4 (prosa) |
+| `vista_previa` | `activo` | Aplicar | `cms.templates.manage` | TPL-02, TPL-05 |  | 23 §4 (prosa) |
+| `activo` | `anterior` | Aplicar otra plantilla | `cms.templates.manage` o Super Admin | TPL-02 |  | 23 §4 (prosa) |
+| `anterior` | `activo` | Restaurar | `cms.templates.manage` | TPL-02 |  | 23 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 23 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Plantilla | `borrador → en_revision → publicado` · `publicado → retirado → publicado` |
+> | Versión de plantilla | `candidata → aprobada → publicada → retirada` |
+> | Envío a revisión | `recibida → validando → aprobada | rechazada` |
+> | Tema del tenant | `vista_previa → activo` · `activo → anterior` (al aplicar otra) · `anterior → activo` (restaurar) |
+> | Pedido de IA | `en_cola → procesando → listo | fallido` · `listo → aplicado | descartado` |
+> | Imagen IA | `generada → en_uso | descartada` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> vista_previa : Vista previa
+  vista_previa --> activo : Aplicar
+  activo --> anterior : Aplicar otra plantilla
+  anterior --> activo : Restaurar
+```
+
+<a id="m-platform-site-template-versions-status"></a>
+### 122. Versión de plantilla — `platform_site_template_versions.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `platform_site_template_versions` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'candidata'::character varying` |
+
+**Valores válidos (CHECK):** `candidata`, `aprobada`, `publicada`, `retirada`
+
+**Estados iniciales:** `candidata`  
+**Estados terminales:** `retirada`  
+**Fuentes:** spec 23 §4 (`23-plantillas-web-contenido-ia.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `candidata` | Envío | Autor |  |  | 23 §4 (prosa) |
+| `candidata` | `aprobada` | Validaciones y revisión | Super Admin | TPL-08 |  | 23 §4 (prosa) |
+| `aprobada` | `publicada` | Publicar | Super Admin | TPL-09 |  | 23 §4 (prosa) |
+| `publicada` | `retirada` | Retirar versión | Super Admin |  |  | 23 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 23 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Plantilla | `borrador → en_revision → publicado` · `publicado → retirado → publicado` |
+> | Versión de plantilla | `candidata → aprobada → publicada → retirada` |
+> | Envío a revisión | `recibida → validando → aprobada | rechazada` |
+> | Tema del tenant | `vista_previa → activo` · `activo → anterior` (al aplicar otra) · `anterior → activo` (restaurar) |
+> | Pedido de IA | `en_cola → procesando → listo | fallido` · `listo → aplicado | descartado` |
+> | Imagen IA | `generada → en_uso | descartada` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> candidata : Envío
+  candidata --> aprobada : Validaciones y revisión
+  aprobada --> publicada : Publicar
+  publicada --> retirada : Retirar versión
+  retirada --> [*]
+```
+
+<a id="m-platform-site-templates-status"></a>
+### 123. Plantilla del sitio — `platform_site_templates.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `platform_site_templates` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'borrador'::character varying` |
+
+**Valores válidos (CHECK):** `borrador`, `en_revision`, `publicado`, `retirado`
+
+**Estados iniciales:** `borrador`  
+**Estados terminales:** no declarados en la spec  
+**Fuentes:** spec 23 §4 (`23-plantillas-web-contenido-ia.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `borrador` | Crear | Super Admin |  |  | 23 §4 (prosa) |
+| `borrador` | `en_revision` | Primer envío | Autor (equipo o partner) |  |  | 23 §4 (prosa) |
+| `en_revision` | `publicado` | Aprobar envío | Super Admin | TPL-08 |  | 23 §4 (prosa) |
+| `publicado` | `retirado` | Retirar | Super Admin | TPL-10 |  | 23 §4 (prosa) |
+| `retirado` | `publicado` | Republicar | Super Admin |  |  | 23 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 23 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Plantilla | `borrador → en_revision → publicado` · `publicado → retirado → publicado` |
+> | Versión de plantilla | `candidata → aprobada → publicada → retirada` |
+> | Envío a revisión | `recibida → validando → aprobada | rechazada` |
+> | Tema del tenant | `vista_previa → activo` · `activo → anterior` (al aplicar otra) · `anterior → activo` (restaurar) |
+> | Pedido de IA | `en_cola → procesando → listo | fallido` · `listo → aplicado | descartado` |
+> | Imagen IA | `generada → en_uso | descartada` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> borrador : Crear
+  borrador --> en_revision : Primer envío
+  en_revision --> publicado : Aprobar envío
+  publicado --> retirado : Retirar
+  retirado --> publicado : Republicar
+```
+
+<a id="m-platform-template-submissions-status"></a>
+### 124. Envío de plantilla a revisión — `platform_template_submissions.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `platform_template_submissions` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'recibida'::character varying` |
+
+**Valores válidos (CHECK):** `recibida`, `validando`, `aprobada`, `rechazada`
+
+**Estados iniciales:** `recibida`  
+**Estados terminales:** `aprobada`, `rechazada`  
+**Fuentes:** spec 23 §4 (`23-plantillas-web-contenido-ia.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `recibida` | kipu-tpl submit | Autor |  |  | 23 §4 (prosa) |
+| `recibida` | `validando` | Job ValidateTemplateBundle | Sistema |  |  | 23 §4 (prosa) |
+| `validando` | `aprobada` | Aprobar y publicar | Super Admin | TPL-08 |  | 23 §4 (prosa) |
+| `validando` | `rechazada` | Rechazar con motivo | Super Admin | TPL-08 |  | 23 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 23 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Plantilla | `borrador → en_revision → publicado` · `publicado → retirado → publicado` |
+> | Versión de plantilla | `candidata → aprobada → publicada → retirada` |
+> | Envío a revisión | `recibida → validando → aprobada | rechazada` |
+> | Tema del tenant | `vista_previa → activo` · `activo → anterior` (al aplicar otra) · `anterior → activo` (restaurar) |
+> | Pedido de IA | `en_cola → procesando → listo | fallido` · `listo → aplicado | descartado` |
+> | Imagen IA | `generada → en_uso | descartada` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> recibida : kipu-tpl submit
+  recibida --> validando : Job ValidateTemplateBundle
+  validando --> aprobada : Aprobar y publicar
+  validando --> rechazada : Rechazar con motivo
+  aprobada --> [*]
+  rechazada --> [*]
+```
+
+<a id="m-mkt-conversion-dispatches-status"></a>
+### 125. Envío de conversión — `mkt_conversion_dispatches.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `mkt_conversion_dispatches` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'pendiente'::character varying` |
+
+**Valores válidos (CHECK):** `pendiente`, `enviado`, `fallido`, `sin_consentimiento`, `duplicado`
+
+**Estados iniciales:** `pendiente`  
+**Estados terminales:** `enviado`, `sin_consentimiento`, `duplicado`  
+**Fuentes:** spec 24 §4 (`24-blog-payload-seo-seguimiento-visitas.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `pendiente` | Evento del sitio o webhook de pago | Sistema | SEG-09 |  | 24 §4 (prosa) |
+| `pendiente` | `enviado` | Job DispatchConversion | Sistema | SEG-07, SEG-08 |  | 24 §4 (prosa) |
+| `pendiente` | `fallido` | Error del proveedor | Sistema | SEG-10 |  | 24 §4 (prosa) |
+| `pendiente` | `sin_consentimiento` | Sin consentimiento de marketing | Sistema | SEG-07 |  | 24 §4 (prosa) |
+| `pendiente` | `duplicado` | Mismo event_id ya enviado | Sistema | SEG-07 |  | 24 §4 (prosa) |
+| `fallido` | `pendiente` | Reintento automático o manual | Sistema o `marketing.tracking.manage` | SEG-10 |  | 24 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 24 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Etiqueta estándar del tenant | `borrador → activo` (al guardar con ID válido) · `activo ↔ pausado` |
+> | Script propio y etiqueta de la plataforma | `borrador → en_revision → activo / rechazado` · `rechazado → borrador` (corrige) · `activo ↔ pausado` · editar un activo crea una nueva revisión y el anterior sigue activo hasta que se apruebe |
+> | Envío de conversión | `pendiente → enviado / fallido / sin_consentimiento / duplicado` · `fallido → pendiente` (reintento, hasta 10 intentos) |
+> | Artículo en Payload | `draft → scheduled → published` · `published → draft` (despublicar). El índice `platform_blog_posts` refleja `borrador / en_revision / publicado / archivado` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> pendiente : Evento del sitio o webhook de pago
+  pendiente --> enviado : Job DispatchConversion
+  pendiente --> fallido : Error del proveedor
+  pendiente --> sin_consentimiento : Sin consentimiento de marketing
+  pendiente --> duplicado : Mismo event_id ya enviado
+  fallido --> pendiente : Reintento automático o manual
+  enviado --> [*]
+  sin_consentimiento --> [*]
+  duplicado --> [*]
+```
+
+<a id="m-mkt-tracking-tags-status"></a>
+### 126. Etiqueta o script del sitio de la agencia — `mkt_tracking_tags.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `mkt_tracking_tags` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'borrador'::character varying` |
+
+**Valores válidos (CHECK):** `borrador`, `en_revision`, `activo`, `pausado`, `rechazado`
+
+**Estados iniciales:** `borrador`, `activo`  
+**Estados terminales:** no declarados en la spec  
+**Fuentes:** spec 24 §4 (`24-blog-payload-seo-seguimiento-visitas.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `borrador` | Crear script propio | `marketing.tracking.manage` | SEG-03 |  | 24 §4 (prosa) |
+| — (alta) | `activo` | Crear etiqueta estándar con ID válido | `marketing.tracking.manage` | SEG-02 |  | 24 §4 (prosa) |
+| `borrador` | `en_revision` | Enviar a revisión | `marketing.tracking.manage` |  |  | 24 §4 (prosa) |
+| `en_revision` | `activo` | Aprobar | `marketing.tracking.approve` | SEG-04, SEG-05 |  | 24 §4 (prosa) |
+| `en_revision` | `rechazado` | Rechazar con motivo | `marketing.tracking.approve` |  |  | 24 §4 (prosa) |
+| `rechazado` | `borrador` | Corregir | `marketing.tracking.manage` |  |  | 24 §4 (prosa) |
+| `activo` | `pausado` | Pausar | `marketing.tracking.manage` | SEG-12 |  | 24 §4 (prosa) |
+| `pausado` | `activo` | Reanudar | `marketing.tracking.manage` | SEG-12 |  | 24 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 24 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Etiqueta estándar del tenant | `borrador → activo` (al guardar con ID válido) · `activo ↔ pausado` |
+> | Script propio y etiqueta de la plataforma | `borrador → en_revision → activo / rechazado` · `rechazado → borrador` (corrige) · `activo ↔ pausado` · editar un activo crea una nueva revisión y el anterior sigue activo hasta que se apruebe |
+> | Envío de conversión | `pendiente → enviado / fallido / sin_consentimiento / duplicado` · `fallido → pendiente` (reintento, hasta 10 intentos) |
+> | Artículo en Payload | `draft → scheduled → published` · `published → draft` (despublicar). El índice `platform_blog_posts` refleja `borrador / en_revision / publicado / archivado` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> borrador : Crear script propio
+  [*] --> activo : Crear etiqueta estándar con ID vál…
+  borrador --> en_revision : Enviar a revisión
+  en_revision --> activo : Aprobar
+  en_revision --> rechazado : Rechazar con motivo
+  rechazado --> borrador : Corregir
+  activo --> pausado : Pausar
+  pausado --> activo : Reanudar
+```
+
+<a id="m-platform-tracking-tags-status"></a>
+### 127. Etiqueta de la vitrina y el blog — `platform_tracking_tags.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `platform_tracking_tags` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'borrador'::character varying` |
+
+**Valores válidos (CHECK):** `borrador`, `en_revision`, `activo`, `pausado`, `rechazado`
+
+**Estados iniciales:** `borrador`  
+**Estados terminales:** no declarados en la spec  
+**Fuentes:** spec 24 §4 (`24-blog-payload-seo-seguimiento-visitas.md`)
+
+| Desde | Hacia | Acción / endpoint | Permiso / quién | Guardas | Efectos | Ref. |
+|---|---|---|---|---|---|---|
+| — (alta) | `borrador` | Crear | Super Admin |  |  | 24 §4 (prosa) |
+| `borrador` | `en_revision` | Enviar a revisión | Super Admin |  |  | 24 §4 (prosa) |
+| `en_revision` | `activo` | Aprobar (otro Super Admin) | Super Admin | SEG-04 |  | 24 §4 (prosa) |
+| `en_revision` | `rechazado` | Rechazar con motivo | Super Admin |  |  | 24 §4 (prosa) |
+| `rechazado` | `borrador` | Corregir | Super Admin |  |  | 24 §4 (prosa) |
+| `activo` | `pausado` | Pausar | Super Admin |  |  | 24 §4 (prosa) |
+| `pausado` | `activo` | Reanudar | Super Admin |  |  | 24 §4 (prosa) |
+
+<details><summary>Texto de la especificación (prosa transcrita arriba)</summary>
+
+_spec 24 §4:_
+
+> ## 4. Máquinas de estado
+> 
+> | Entidad | Transiciones |
+> |---|---|
+> | Etiqueta estándar del tenant | `borrador → activo` (al guardar con ID válido) · `activo ↔ pausado` |
+> | Script propio y etiqueta de la plataforma | `borrador → en_revision → activo / rechazado` · `rechazado → borrador` (corrige) · `activo ↔ pausado` · editar un activo crea una nueva revisión y el anterior sigue activo hasta que se apruebe |
+> | Envío de conversión | `pendiente → enviado / fallido / sin_consentimiento / duplicado` · `fallido → pendiente` (reintento, hasta 10 intentos) |
+> | Artículo en Payload | `draft → scheduled → published` · `published → draft` (despublicar). El índice `platform_blog_posts` refleja `borrador / en_revision / publicado / archivado` |
+
+</details>
+
+```mermaid
+stateDiagram-v2
+  [*] --> borrador : Crear
+  borrador --> en_revision : Enviar a revisión
+  en_revision --> activo : Aprobar
+  en_revision --> rechazado : Rechazar con motivo
+  rechazado --> borrador : Corregir
+  activo --> pausado : Pausar
+  pausado --> activo : Reanudar
+```
+
 <a id="m-catalog-allotment-consumptions-state"></a>
-### 90. Consumo de cupo por servicio de reserva (idempotente) — `catalog_allotment_consumptions.state`
+### 128. Consumo de cupo por servicio de reserva (idempotente) — `catalog_allotment_consumptions.state`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5181,7 +7294,7 @@ stateDiagram-v2
 ```
 
 <a id="m-channel-b2b-price-lists-status"></a>
-### 91. Listas de precios B2B — `channel_b2b_price_lists.status`
+### 129. Listas de precios B2B — `channel_b2b_price_lists.status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5201,7 +7314,7 @@ stateDiagram-v2
 ```
 
 <a id="m-channel-b2b-settlement-requests-status"></a>
-### 92. Solicitudes de liquidación de comisiones B2B — `channel_b2b_settlement_requests.status`
+### 130. Solicitudes de liquidación de comisiones B2B — `channel_b2b_settlement_requests.status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5230,8 +7343,30 @@ stateDiagram-v2
   pagada
 ```
 
+<a id="m-cms-site-domains-ssl-status"></a>
+### 131. Dominios propios del sitio y portales, con verificación DNS y certificado SSL — `cms_site_domains.ssl_status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `cms_site_domains` | `ssl_status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'pendiente'::character varying` |
+
+**Valores válidos (CHECK):** `pendiente`, `emitido`, `renovando`, `error`
+
+**Transiciones por definir (solo valores en SQL).** Ninguna especificación documenta las transiciones de esta columna en su §4.
+
+**Estado inicial:** `pendiente` (default SQL).
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> pendiente : default SQL
+  emitido
+  renovando
+  error
+```
+
 <a id="m-collab-channel-accounts-status"></a>
-### 93. Cuentas de canal del inbox (WhatsApp, email, webchat) — `collab_channel_accounts.status`
+### 132. Cuentas de canal del inbox (WhatsApp, email, webchat) — `collab_channel_accounts.status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5252,7 +7387,7 @@ stateDiagram-v2
 ```
 
 <a id="m-collab-inbound-events-status"></a>
-### 94. Eventos entrantes de webhooks (idempotencia, retención 30 días) — `collab_inbound_events.status`
+### 133. Eventos entrantes de webhooks (idempotencia, retención 30 días) — `collab_inbound_events.status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5274,7 +7409,7 @@ stateDiagram-v2
 ```
 
 <a id="m-collab-message-attachments-scan-status"></a>
-### 95. Adjuntos de mensajes — `collab_message_attachments.scan_status`
+### 134. Adjuntos de mensajes — `collab_message_attachments.scan_status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5295,7 +7430,7 @@ stateDiagram-v2
 ```
 
 <a id="m-collab-messages-delivery-status"></a>
-### 96. Mensajes de la conversación — `collab_messages.delivery_status`
+### 135. Mensajes de la conversación — `collab_messages.delivery_status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5323,7 +7458,7 @@ stateDiagram-v2
 ```
 
 <a id="m-coupons-status"></a>
-### 97. Cupones de suscripción — `coupons.status`
+### 136. Cupones de suscripción — `coupons.status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5343,7 +7478,7 @@ stateDiagram-v2
 ```
 
 <a id="m-fin-fiscal-events-status"></a>
-### 98. Bitácora de integración fiscal OSE/PSE — `fin_fiscal_events.status`
+### 137. Bitácora de integración fiscal OSE/PSE — `fin_fiscal_events.status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5361,8 +7496,30 @@ stateDiagram-v2
   error_definitivo
 ```
 
+<a id="m-fin-gateway-accounts-status"></a>
+### 138. Pasarelas de cobro del tenant (tarjeta local, PayPal, Yape/Plin) con su esquema de comisión — `fin_gateway_accounts.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `fin_gateway_accounts` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'pendiente'::character varying` |
+
+**Valores válidos (CHECK):** `pendiente`, `activa`, `pausada`, `error`
+
+**Transiciones por definir (solo valores en SQL).** Ninguna especificación documenta las transiciones de esta columna en su §4.
+
+**Estado inicial:** `pendiente` (default SQL).
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> pendiente : default SQL
+  activa
+  pausada
+  error
+```
+
 <a id="m-fin-treasury-accounts-status"></a>
-### 99. Cuentas de tesorería (banco, caja chica, pasarela) — `fin_treasury_accounts.status`
+### 139. Cuentas de tesorería (banco, caja chica, pasarela) — `fin_treasury_accounts.status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5391,7 +7548,7 @@ stateDiagram-v2
 ```
 
 <a id="m-fx-rate-providers-status"></a>
-### 100. Proveedores de tipo de cambio — `fx_rate_providers.status`
+### 140. Proveedores de tipo de cambio — `fx_rate_providers.status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5413,7 +7570,7 @@ stateDiagram-v2
 ```
 
 <a id="m-integration-oauth-apps-status"></a>
-### 101. Apps OAuth de terceros autorizadas (Authorization Code + PKCE) — `integration_oauth_apps.status`
+### 141. Apps OAuth de terceros autorizadas (Authorization Code + PKCE) — `integration_oauth_apps.status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5433,7 +7590,7 @@ stateDiagram-v2
 ```
 
 <a id="m-mkt-automation-enrollments-status"></a>
-### 102. Disparos procesados por automatización (idempotencia) — `mkt_automation_enrollments.status`
+### 142. Disparos procesados por automatización (idempotencia) — `mkt_automation_enrollments.status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5451,7 +7608,7 @@ stateDiagram-v2
 ```
 
 <a id="m-mkt-campaign-recipients-status"></a>
-### 103. Destinatarios de la campaña y métricas — `mkt_campaign_recipients.status`
+### 143. Destinatarios de la campaña y métricas — `mkt_campaign_recipients.status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5481,7 +7638,7 @@ stateDiagram-v2
 ```
 
 <a id="m-payment-methods-status"></a>
-### 104. Medios de pago del tenant para la suscripción (solo token) — `payment_methods.status`
+### 144. Medios de pago del tenant para la suscripción (solo token) — `payment_methods.status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5502,7 +7659,7 @@ stateDiagram-v2
 ```
 
 <a id="m-plans-status"></a>
-### 105. Planes comerciales (Starter/Professional/Enterprise) — `plans.status`
+### 145. Planes comerciales (Starter/Professional/Enterprise) — `plans.status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5530,8 +7687,52 @@ stateDiagram-v2
   retired
 ```
 
+<a id="m-platform-blog-posts-status"></a>
+### 146. Artículos del blog SEO de la vitrina, enlazados a tours publicados — `platform_blog_posts.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `platform_blog_posts` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'borrador'::character varying` |
+
+**Valores válidos (CHECK):** `borrador`, `en_revision`, `publicado`, `archivado`
+
+**Transiciones por definir (solo valores en SQL).** Ninguna especificación documenta las transiciones de esta columna en su §4.
+
+**Estado inicial:** `borrador` (default SQL).
+
+```mermaid
+stateDiagram-v2
+  direction LR
+  [*] --> borrador : default SQL
+  en_revision
+  publicado
+  archivado
+```
+
+<a id="m-platform-conversion-dispatches-status"></a>
+### 147. Registro de cada conversión enviada (navegador o servidor) con resultado, reintentos y deduplicación por event_id — `platform_conversion_dispatches.status`
+
+| Tabla | Columna | Fase | Nulo | Default |
+|---|---|---|---|---|
+| `platform_conversion_dispatches` | `status` | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | no | `'pendiente'::character varying` |
+
+**Valores válidos (CHECK):** `pendiente`, `enviado`, `fallido`, `sin_consentimiento`, `duplicado`
+
+**Transiciones por definir (solo valores en SQL).** Ninguna especificación documenta las transiciones de esta columna en su §4.
+
+**Estado inicial:** `pendiente` (default SQL).
+
+```mermaid
+stateDiagram-v2
+  [*] --> pendiente : default SQL
+  enviado
+  fallido
+  sin_consentimiento
+  duplicado
+```
+
 <a id="m-platform-credit-notes-sunat-status"></a>
-### 106. Notas de crédito de plataforma (serie NQ01) — `platform_credit_notes.sunat_status`
+### 148. Notas de crédito de plataforma (serie NQ01) — `platform_credit_notes.sunat_status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5553,7 +7754,7 @@ stateDiagram-v2
 ```
 
 <a id="m-platform-invoices-sunat-status"></a>
-### 107. Facturas de plataforma (emisor KipuControl Cloud) — `platform_invoices.sunat_status`
+### 149. Facturas de plataforma (emisor KipuControl Cloud) — `platform_invoices.sunat_status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|
@@ -5573,7 +7774,7 @@ stateDiagram-v2
 | POST | `/api/v1/platform/invoices/{id}/retry` | super_admin | 13-plataforma-saas-api.md §6 | sí |
 | POST | `/api/v1/platform/invoices/{id}/manual-payment` | super_admin | 13-plataforma-saas-api.md §6 | sí |
 | POST | `/api/v1/platform/invoices/{id}/void` | super_admin | 13-plataforma-saas-api.md §6 | sí |
-| POST | `/api/v1/platform/invoices/{id}/dunning/extend` | super_admin | 13-plataforma-saas-api.md §6 |  |
+| POST | `/api/v1/platform/invoices/{id}/dunning/extend` | super_admin | 13-plataforma-saas-api.md §6 | sí |
 
 </details>
 
@@ -5587,7 +7788,7 @@ stateDiagram-v2
 ```
 
 <a id="m-platform-users-status"></a>
-### 108. Usuarios de plataforma (Super Admin) — `platform_users.status`
+### 150. Usuarios de plataforma (Super Admin) — `platform_users.status`
 
 | Tabla | Columna | Fase | Nulo | Default |
 |---|---|---|---|---|

@@ -50,6 +50,19 @@ it('una exportación vencida responde 410 y la de otra persona no se ve', functi
     expect(collect($this->getJson('/api/v1/reports/exports')->json('data'))->firstWhere('id', $result['id'])['status'])->toBe('expirado');
 });
 
+it('editar un envío programado cambia frecuencia, hora, formato y destinatarios (EXP-BR-03)', function () {
+    actingAsSeed('U01');
+    $schedule = $this->postJson('/api/v1/reports/schedules', ['report_key' => 'finanzas', 'frequency' => 'weekly', 'time' => '07:30', 'format' => 'XLSX', 'recipients' => ['gerencia@andeshorizonte.pe']])->assertCreated()->json('data');
+
+    $updated = $this->patchJson("/api/v1/reports/schedules/{$schedule['code']}", ['frequency' => 'monthly', 'time' => '08:15', 'format' => 'PDF', 'recipients' => ['finanzas@andeshorizonte.pe', 'gerencia@andeshorizonte.pe']])->assertOk()->json('data');
+
+    $job = withinTenant(tenantA(), fn () => DB::table('sys_scheduled_jobs')->where('code', $schedule['code'])->first(['cron', 'report_format', 'recipients']));
+    expect($updated['cron'])->toBe('15 8 1 * *')
+        ->and($job->report_format)->toBe('PDF')
+        ->and(json_decode((string) $job->recipients, true)['emails'])->toHaveCount(2);
+    expect($this->patchJson('/api/v1/reports/schedules/JOB-01', ['frequency' => 'daily', 'time' => '08:00', 'format' => 'PDF', 'recipients' => ['a@b.pe']]))->toBeApiError(404);
+});
+
 it('programar un envío crea el proceso y el job genera el archivo y lo envía a los destinatarios', function () {
     actingAsSeed('U01');
 

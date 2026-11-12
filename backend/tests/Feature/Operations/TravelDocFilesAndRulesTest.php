@@ -89,10 +89,13 @@ it('las reglas guardan los valores del kit y cambian la aplicabilidad y la vigen
     $foreign = withinTenant(tenantA(), function (): ?object {
         return DB::table('ops_travel_doc_items as i')->join('booking_passengers as p', 'p.id', '=', 'i.passenger_id')->join('booking_reservations as r', 'r.id', '=', 'i.reservation_id')
             ->where('i.doc_type', 'id_doc')->where('p.nationality', '!~*', 'peru')->whereNotNull('p.nationality')->whereNull('r.deleted_at')->where('r.status', '<>', 'cancelada')
-            ->first(['i.passenger_id', 'r.code', 'r.travel_to']);
+            ->first(['i.id', 'i.passenger_id', 'r.code', 'r.travel_to']);
     });
 
     if ($foreign !== null) {
+        withinTenant(tenantA(), fn () => DB::table('ops_travel_doc_items')->where('id', $foreign->id)->update(['file_id' => null]));
+        expect($this->postJson("/api/v1/reservations/{$foreign->code}/travel-docs/{$foreign->passenger_id}/id_doc/validate", ['doc_number' => 'X1234567', 'expiry_date' => '2040-01-01'], critical()))->toBeApiError(422, 'DOC-BR-013');
+        withinTenant(tenantA(), fn () => DB::table('ops_travel_doc_items')->where('id', $foreign->id)->update(['file_id' => DB::table('sys_documents')->insertGetId(['doc_type' => 'travel_doc', 'storage_path' => 'pruebas/pasaporte.pdf', 'file_name' => 'pasaporte.pdf', 'mime_type' => 'application/pdf', 'sha256' => str_repeat('a', 64)])]));
         $expiry = CarbonImmutable::parse($foreign->travel_to)->addMonths(2)->toDateString();
         expect($this->postJson("/api/v1/reservations/{$foreign->code}/travel-docs/{$foreign->passenger_id}/id_doc/validate", ['doc_number' => 'X1234567', 'expiry_date' => $expiry], critical()))->toBeApiError(422, 'DOC-BR-001');
     }

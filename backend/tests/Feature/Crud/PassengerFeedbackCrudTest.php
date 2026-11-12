@@ -28,16 +28,23 @@ it('responder un comentario del pasajero guarda la respuesta, quién respondió 
         ->and(paxFeedbackAudit('FB-00002', 'responder'))->toBeTrue();
 });
 
-it('marcar un comentario como leído y luego derivarlo deja la traza en auditoría', function () {
+it('marcar un comentario como leído deja la traza; derivar sin crear la incidencia no existe', function () {
     actingAsSeed('U01');
 
     $this->postJson('/api/v1/channels/passenger-portal/feedback/FB-00002/status', ['status' => 'leido'])->assertOk();
     expect(rowOf('channel_pax_feedback', 'FB-00002')->status)->toBe('leido')
         ->and(paxFeedbackAudit('FB-00002', 'marcar_leido'))->toBeTrue();
 
-    $this->postJson('/api/v1/channels/passenger-portal/feedback/FB-00002/status', ['status' => 'derivado'])->assertOk();
-    expect(rowOf('channel_pax_feedback', 'FB-00002')->status)->toBe('derivado')
-        ->and(paxFeedbackAudit('FB-00002', 'derivar'))->toBeTrue();
+    $this->postJson('/api/v1/channels/passenger-portal/feedback/FB-00002/status', ['status' => 'derivado'])->assertStatus(422)->assertJsonValidationErrors(['status']);
+    expect(rowOf('channel_pax_feedback', 'FB-00002')->status)->toBe('leido');
+});
+
+it('PAX-FB-02: un comentario derivado a una incidencia ya no se responde', function () {
+    actingAsSeed('U01');
+    withinTenant(tenantA(), fn () => DB::table('channel_pax_feedback')->where('code', 'FB-00002')->update(['status' => 'derivado']));
+
+    expect($this->putJson('/api/v1/channels/passenger-portal/feedback/FB-00002/reply', ['text' => 'Gracias por escribirnos.']))->toBeApiError(409, 'PAX-FB-02')
+        ->and(rowOf('channel_pax_feedback', 'FB-00002')->reply)->toBeNull();
 });
 
 it('PAX-FB-01: un comentario respondido o ya en ese estado no cambia de estado', function () {

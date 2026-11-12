@@ -1,0 +1,1468 @@
+{
+  "tags": [
+    {
+      "id": "PTG-0001",
+      "site": "ambos",
+      "provider": "ga4",
+      "name": "GA4 Rutas Libres",
+      "mid": "G-RL4P8N2X6K",
+      "consent": "analiticas",
+      "status": "activo",
+      "createdBy": "Daniela Ccahuana (marketing)",
+      "approvedBy": "U16",
+      "verify": "ok",
+      "verifiedAt": "2026-09-28 09:00"
+    },
+    {
+      "id": "PTG-0002",
+      "site": "ambos",
+      "provider": "google_ads",
+      "name": "Google Ads · captación de agencias",
+      "mid": "AW-16620045123",
+      "consent": "marketing",
+      "status": "activo",
+      "createdBy": "Daniela Ccahuana (marketing)",
+      "approvedBy": "U16",
+      "verify": "ok",
+      "verifiedAt": "2026-09-28 09:02",
+      "config": {
+        "enhanced": true,
+        "server": true
+      }
+    },
+    {
+      "id": "PTG-0003",
+      "site": "ambos",
+      "provider": "meta_pixel",
+      "name": "Pixel Meta · viajeros y agencias",
+      "mid": "902114577630218",
+      "consent": "marketing",
+      "status": "activo",
+      "createdBy": "Daniela Ccahuana (marketing)",
+      "approvedBy": "U16",
+      "verify": "ok",
+      "verifiedAt": "2026-09-28 09:03",
+      "config": {
+        "capi": true
+      }
+    },
+    {
+      "id": "PTG-0004",
+      "site": "blog",
+      "provider": "clarity",
+      "name": "Clarity del blog",
+      "mid": "rl7blog2qz",
+      "consent": "analiticas",
+      "status": "en_revision",
+      "createdBy": "Daniela Ccahuana (marketing)",
+      "approvedBy": null,
+      "verify": null,
+      "verifiedAt": null
+    },
+    {
+      "id": "PTG-0005",
+      "site": "vitrina",
+      "provider": "tiktok",
+      "name": "TikTok · free tours Lima",
+      "mid": "CRL8K2M4N6P8Q",
+      "consent": "marketing",
+      "status": "borrador",
+      "createdBy": "U16",
+      "approvedBy": null,
+      "verify": null,
+      "verifiedAt": null
+    }
+  ],
+  "mappings": [
+    {
+      "tagId": "PTG-0002",
+      "event": "registro_agencia",
+      "providerEvent": "conversion",
+      "label": "Rq1aCJm7-YgZEKOn",
+      "value": false,
+      "server": true
+    },
+    {
+      "tagId": "PTG-0002",
+      "event": "plan_pagado",
+      "providerEvent": "conversion",
+      "label": "Pt5sCJm7-YgZEKOn",
+      "value": true,
+      "server": true
+    },
+    {
+      "tagId": "PTG-0003",
+      "event": "reserva_vitrina",
+      "providerEvent": "Schedule",
+      "label": null,
+      "value": false,
+      "server": true
+    },
+    {
+      "tagId": "PTG-0003",
+      "event": "registro_agencia",
+      "providerEvent": "CompleteRegistration",
+      "label": null,
+      "value": false,
+      "server": true
+    },
+    {
+      "tagId": "PTG-0001",
+      "event": "lectura_articulo",
+      "providerEvent": "article_read",
+      "label": null,
+      "value": false,
+      "server": false
+    }
+  ],
+  "sites": {
+    "vitrina": [
+      {
+        "d": "2026-08-01",
+        "visits": 1302,
+        "visitors": 1028,
+        "pageviews": 3468,
+        "bounces": 517,
+        "engaged": 171134,
+        "conv": 20,
+        "rev": 32956
+      },
+      {
+        "d": "2026-08-02",
+        "visits": 1148,
+        "visitors": 950,
+        "pageviews": 2629,
+        "bounces": 437,
+        "engaged": 119090,
+        "conv": 13,
+        "rev": 26983
+      },
+      {
+        "d": "2026-08-03",
+        "visits": 1190,
+        "visitors": 952,
+        "pageviews": 2989,
+        "bounces": 461,
+        "engaged": 134542,
+        "conv": 14,
+        "rev": 30574
+      },
+      {
+        "d": "2026-08-04",
+        "visits": 1173,
+        "visitors": 944,
+        "pageviews": 2831,
+        "bounces": 537,
+        "engaged": 141663,
+        "conv": 15,
+        "rev": 26543
+      },
+      {
+        "d": "2026-08-05",
+        "visits": 1060,
+        "visitors": 865,
+        "pageviews": 2751,
+        "bounces": 470,
+        "engaged": 101367,
+        "conv": 17,
+        "rev": 32244
+      },
+      {
+        "d": "2026-08-06",
+        "visits": 1100,
+        "visitors": 881,
+        "pageviews": 2749,
+        "bounces": 438,
+        "engaged": 127637,
+        "conv": 18,
+        "rev": 26925
+      },
+      {
+        "d": "2026-08-07",
+        "visits": 895,
+        "visitors": 725,
+        "pageviews": 2099,
+        "bounces": 411,
+        "engaged": 88513,
+        "conv": 12,
+        "rev": 21171
+      },
+      {
+        "d": "2026-08-08",
+        "visits": 1214,
+        "visitors": 986,
+        "pageviews": 2993,
+        "bounces": 474,
+        "engaged": 139861,
+        "conv": 16,
+        "rev": 34651
+      },
+      {
+        "d": "2026-08-09",
+        "visits": 1174,
+        "visitors": 948,
+        "pageviews": 2859,
+        "bounces": 528,
+        "engaged": 155258,
+        "conv": 18,
+        "rev": 27554
+      },
+      {
+        "d": "2026-08-10",
+        "visits": 951,
+        "visitors": 761,
+        "pageviews": 2291,
+        "bounces": 374,
+        "engaged": 97465,
+        "conv": 17,
+        "rev": 26465
+      },
+      {
+        "d": "2026-08-11",
+        "visits": 1208,
+        "visitors": 980,
+        "pageviews": 2960,
+        "bounces": 550,
+        "engaged": 143917,
+        "conv": 22,
+        "rev": 41966
+      },
+      {
+        "d": "2026-08-12",
+        "visits": 1212,
+        "visitors": 988,
+        "pageviews": 2751,
+        "bounces": 554,
+        "engaged": 143462,
+        "conv": 21,
+        "rev": 46487
+      },
+      {
+        "d": "2026-08-13",
+        "visits": 955,
+        "visitors": 792,
+        "pageviews": 2439,
+        "bounces": 396,
+        "engaged": 122437,
+        "conv": 15,
+        "rev": 29584
+      },
+      {
+        "d": "2026-08-14",
+        "visits": 1206,
+        "visitors": 976,
+        "pageviews": 3017,
+        "bounces": 471,
+        "engaged": 125526,
+        "conv": 17,
+        "rev": 33105
+      },
+      {
+        "d": "2026-08-15",
+        "visits": 1164,
+        "visitors": 955,
+        "pageviews": 2972,
+        "bounces": 481,
+        "engaged": 129277,
+        "conv": 14,
+        "rev": 23372
+      },
+      {
+        "d": "2026-08-16",
+        "visits": 1477,
+        "visitors": 1232,
+        "pageviews": 3149,
+        "bounces": 642,
+        "engaged": 196031,
+        "conv": 23,
+        "rev": 46821
+      },
+      {
+        "d": "2026-08-17",
+        "visits": 981,
+        "visitors": 785,
+        "pageviews": 2518,
+        "bounces": 422,
+        "engaged": 104690,
+        "conv": 17,
+        "rev": 37571
+      },
+      {
+        "d": "2026-08-18",
+        "visits": 1028,
+        "visitors": 839,
+        "pageviews": 2710,
+        "bounces": 403,
+        "engaged": 109995,
+        "conv": 17,
+        "rev": 27593
+      },
+      {
+        "d": "2026-08-19",
+        "visits": 1056,
+        "visitors": 854,
+        "pageviews": 2419,
+        "bounces": 474,
+        "engaged": 119013,
+        "conv": 17,
+        "rev": 28425
+      },
+      {
+        "d": "2026-08-20",
+        "visits": 1262,
+        "visitors": 1059,
+        "pageviews": 3279,
+        "bounces": 515,
+        "engaged": 156113,
+        "conv": 24,
+        "rev": 41297
+      },
+      {
+        "d": "2026-08-21",
+        "visits": 1318,
+        "visitors": 1054,
+        "pageviews": 3251,
+        "bounces": 508,
+        "engaged": 135545,
+        "conv": 17,
+        "rev": 33995
+      },
+      {
+        "d": "2026-08-22",
+        "visits": 1286,
+        "visitors": 1040,
+        "pageviews": 3064,
+        "bounces": 577,
+        "engaged": 134786,
+        "conv": 21,
+        "rev": 35832
+      },
+      {
+        "d": "2026-08-23",
+        "visits": 1481,
+        "visitors": 1186,
+        "pageviews": 3769,
+        "bounces": 587,
+        "engaged": 165437,
+        "conv": 25,
+        "rev": 55107
+      },
+      {
+        "d": "2026-08-24",
+        "visits": 1045,
+        "visitors": 861,
+        "pageviews": 2713,
+        "bounces": 405,
+        "engaged": 99546,
+        "conv": 19,
+        "rev": 34661
+      },
+      {
+        "d": "2026-08-25",
+        "visits": 1333,
+        "visitors": 1103,
+        "pageviews": 3140,
+        "bounces": 572,
+        "engaged": 140918,
+        "conv": 23,
+        "rev": 47459
+      },
+      {
+        "d": "2026-08-26",
+        "visits": 1314,
+        "visitors": 1053,
+        "pageviews": 3096,
+        "bounces": 511,
+        "engaged": 141117,
+        "conv": 26,
+        "rev": 46429
+      },
+      {
+        "d": "2026-08-27",
+        "visits": 1352,
+        "visitors": 1115,
+        "pageviews": 3209,
+        "bounces": 530,
+        "engaged": 163480,
+        "conv": 18,
+        "rev": 34591
+      },
+      {
+        "d": "2026-08-28",
+        "visits": 1359,
+        "visitors": 1090,
+        "pageviews": 2937,
+        "bounces": 519,
+        "engaged": 152320,
+        "conv": 22,
+        "rev": 38908
+      },
+      {
+        "d": "2026-08-29",
+        "visits": 1182,
+        "visitors": 987,
+        "pageviews": 3054,
+        "bounces": 543,
+        "engaged": 126989,
+        "conv": 22,
+        "rev": 48183
+      },
+      {
+        "d": "2026-08-30",
+        "visits": 1194,
+        "visitors": 952,
+        "pageviews": 2806,
+        "bounces": 468,
+        "engaged": 115200,
+        "conv": 19,
+        "rev": 42124
+      },
+      {
+        "d": "2026-08-31",
+        "visits": 1122,
+        "visitors": 882,
+        "pageviews": 2635,
+        "bounces": 428,
+        "engaged": 135291,
+        "conv": 14,
+        "rev": 23051
+      },
+      {
+        "d": "2026-09-01",
+        "visits": 1089,
+        "visitors": 911,
+        "pageviews": 2805,
+        "bounces": 479,
+        "engaged": 118151,
+        "conv": 13,
+        "rev": 20052
+      },
+      {
+        "d": "2026-09-02",
+        "visits": 1199,
+        "visitors": 955,
+        "pageviews": 2968,
+        "bounces": 456,
+        "engaged": 118247,
+        "conv": 19,
+        "rev": 32971
+      },
+      {
+        "d": "2026-09-03",
+        "visits": 1408,
+        "visitors": 1175,
+        "pageviews": 3192,
+        "bounces": 593,
+        "engaged": 180046,
+        "conv": 22,
+        "rev": 35694
+      },
+      {
+        "d": "2026-09-04",
+        "visits": 1143,
+        "visitors": 916,
+        "pageviews": 2610,
+        "bounces": 463,
+        "engaged": 122574,
+        "conv": 20,
+        "rev": 31353
+      },
+      {
+        "d": "2026-09-05",
+        "visits": 1255,
+        "visitors": 1025,
+        "pageviews": 3387,
+        "bounces": 540,
+        "engaged": 155622,
+        "conv": 15,
+        "rev": 33023
+      },
+      {
+        "d": "2026-09-06",
+        "visits": 1606,
+        "visitors": 1323,
+        "pageviews": 3964,
+        "bounces": 664,
+        "engaged": 209793,
+        "conv": 25,
+        "rev": 40532
+      },
+      {
+        "d": "2026-09-07",
+        "visits": 1126,
+        "visitors": 884,
+        "pageviews": 2540,
+        "bounces": 482,
+        "engaged": 112978,
+        "conv": 18,
+        "rev": 39434
+      },
+      {
+        "d": "2026-09-08",
+        "visits": 1409,
+        "visitors": 1118,
+        "pageviews": 3341,
+        "bounces": 643,
+        "engaged": 182169,
+        "conv": 19,
+        "rev": 33072
+      },
+      {
+        "d": "2026-09-09",
+        "visits": 1358,
+        "visitors": 1096,
+        "pageviews": 3125,
+        "bounces": 588,
+        "engaged": 170452,
+        "conv": 27,
+        "rev": 42337
+      },
+      {
+        "d": "2026-09-10",
+        "visits": 1430,
+        "visitors": 1117,
+        "pageviews": 3495,
+        "bounces": 604,
+        "engaged": 177964,
+        "conv": 23,
+        "rev": 35347
+      },
+      {
+        "d": "2026-09-11",
+        "visits": 1354,
+        "visitors": 1059,
+        "pageviews": 3578,
+        "bounces": 611,
+        "engaged": 150498,
+        "conv": 26,
+        "rev": 54019
+      },
+      {
+        "d": "2026-09-12",
+        "visits": 1612,
+        "visitors": 1259,
+        "pageviews": 3734,
+        "bounces": 631,
+        "engaged": 176029,
+        "conv": 31,
+        "rev": 70918
+      },
+      {
+        "d": "2026-09-13",
+        "visits": 1368,
+        "visitors": 1075,
+        "pageviews": 3006,
+        "bounces": 520,
+        "engaged": 131670,
+        "conv": 23,
+        "rev": 51309
+      },
+      {
+        "d": "2026-09-14",
+        "visits": 1283,
+        "visitors": 1074,
+        "pageviews": 2902,
+        "bounces": 523,
+        "engaged": 136323,
+        "conv": 25,
+        "rev": 55940
+      },
+      {
+        "d": "2026-09-15",
+        "visits": 1348,
+        "visitors": 1077,
+        "pageviews": 3321,
+        "bounces": 598,
+        "engaged": 159529,
+        "conv": 17,
+        "rev": 32390
+      },
+      {
+        "d": "2026-09-16",
+        "visits": 1137,
+        "visitors": 902,
+        "pageviews": 3032,
+        "bounces": 518,
+        "engaged": 150541,
+        "conv": 20,
+        "rev": 29954
+      },
+      {
+        "d": "2026-09-17",
+        "visits": 1159,
+        "visitors": 966,
+        "pageviews": 2759,
+        "bounces": 463,
+        "engaged": 128954,
+        "conv": 16,
+        "rev": 34327
+      },
+      {
+        "d": "2026-09-18",
+        "visits": 1265,
+        "visitors": 1009,
+        "pageviews": 3406,
+        "bounces": 534,
+        "engaged": 138670,
+        "conv": 23,
+        "rev": 49353
+      },
+      {
+        "d": "2026-09-19",
+        "visits": 1579,
+        "visitors": 1262,
+        "pageviews": 4106,
+        "bounces": 636,
+        "engaged": 173014,
+        "conv": 28,
+        "rev": 54950
+      },
+      {
+        "d": "2026-09-20",
+        "visits": 1645,
+        "visitors": 1360,
+        "pageviews": 3861,
+        "bounces": 691,
+        "engaged": 202083,
+        "conv": 31,
+        "rev": 53513
+      },
+      {
+        "d": "2026-09-21",
+        "visits": 1532,
+        "visitors": 1272,
+        "pageviews": 3605,
+        "bounces": 614,
+        "engaged": 183368,
+        "conv": 24,
+        "rev": 48820
+      },
+      {
+        "d": "2026-09-22",
+        "visits": 1277,
+        "visitors": 1020,
+        "pageviews": 3256,
+        "bounces": 579,
+        "engaged": 133354,
+        "conv": 21,
+        "rev": 36755
+      },
+      {
+        "d": "2026-09-23",
+        "visits": 1507,
+        "visitors": 1223,
+        "pageviews": 3183,
+        "bounces": 577,
+        "engaged": 147191,
+        "conv": 24,
+        "rev": 43318
+      },
+      {
+        "d": "2026-09-24",
+        "visits": 1203,
+        "visitors": 1002,
+        "pageviews": 3123,
+        "bounces": 544,
+        "engaged": 126587,
+        "conv": 17,
+        "rev": 25424
+      },
+      {
+        "d": "2026-09-25",
+        "visits": 1367,
+        "visitors": 1074,
+        "pageviews": 3368,
+        "bounces": 604,
+        "engaged": 155339,
+        "conv": 17,
+        "rev": 28660
+      },
+      {
+        "d": "2026-09-26",
+        "visits": 1716,
+        "visitors": 1343,
+        "pageviews": 3821,
+        "bounces": 757,
+        "engaged": 192884,
+        "conv": 23,
+        "rev": 53050
+      },
+      {
+        "d": "2026-09-27",
+        "visits": 1356,
+        "visitors": 1086,
+        "pageviews": 2943,
+        "bounces": 556,
+        "engaged": 139519,
+        "conv": 18,
+        "rev": 40586
+      },
+      {
+        "d": "2026-09-28",
+        "visits": 1575,
+        "visitors": 1286,
+        "pageviews": 3613,
+        "bounces": 695,
+        "engaged": 210830,
+        "conv": 23,
+        "rev": 38972
+      },
+      {
+        "d": "2026-09-29",
+        "visits": 1188,
+        "visitors": 945,
+        "pageviews": 3135,
+        "bounces": 508,
+        "engaged": 146967,
+        "conv": 24,
+        "rev": 54145
+      }
+    ],
+    "blog": [
+      {
+        "d": "2026-08-01",
+        "visits": 769,
+        "visitors": 607,
+        "pageviews": 1713,
+        "bounces": 329,
+        "engaged": 84091,
+        "conv": 9,
+        "rev": 13832
+      },
+      {
+        "d": "2026-08-02",
+        "visits": 801,
+        "visitors": 661,
+        "pageviews": 2074,
+        "bounces": 356,
+        "engaged": 97539,
+        "conv": 11,
+        "rev": 18710
+      },
+      {
+        "d": "2026-08-03",
+        "visits": 803,
+        "visitors": 630,
+        "pageviews": 1687,
+        "bounces": 334,
+        "engaged": 102990,
+        "conv": 13,
+        "rev": 20521
+      },
+      {
+        "d": "2026-08-04",
+        "visits": 615,
+        "visitors": 487,
+        "pageviews": 1301,
+        "bounces": 258,
+        "engaged": 74584,
+        "conv": 11,
+        "rev": 21637
+      },
+      {
+        "d": "2026-08-05",
+        "visits": 599,
+        "visitors": 483,
+        "pageviews": 1617,
+        "bounces": 267,
+        "engaged": 68307,
+        "conv": 10,
+        "rev": 16303
+      },
+      {
+        "d": "2026-08-06",
+        "visits": 618,
+        "visitors": 498,
+        "pageviews": 1459,
+        "bounces": 248,
+        "engaged": 75835,
+        "conv": 12,
+        "rev": 23986
+      },
+      {
+        "d": "2026-08-07",
+        "visits": 673,
+        "visitors": 541,
+        "pageviews": 1606,
+        "bounces": 307,
+        "engaged": 64155,
+        "conv": 9,
+        "rev": 15030
+      },
+      {
+        "d": "2026-08-08",
+        "visits": 924,
+        "visitors": 755,
+        "pageviews": 2379,
+        "bounces": 405,
+        "engaged": 99160,
+        "conv": 13,
+        "rev": 29998
+      },
+      {
+        "d": "2026-08-09",
+        "visits": 919,
+        "visitors": 728,
+        "pageviews": 1993,
+        "bounces": 417,
+        "engaged": 95336,
+        "conv": 11,
+        "rev": 18064
+      },
+      {
+        "d": "2026-08-10",
+        "visits": 808,
+        "visitors": 663,
+        "pageviews": 1930,
+        "bounces": 366,
+        "engaged": 87406,
+        "conv": 12,
+        "rev": 17651
+      },
+      {
+        "d": "2026-08-11",
+        "visits": 677,
+        "visitors": 535,
+        "pageviews": 1466,
+        "bounces": 281,
+        "engaged": 66537,
+        "conv": 10,
+        "rev": 18578
+      },
+      {
+        "d": "2026-08-12",
+        "visits": 730,
+        "visitors": 585,
+        "pageviews": 1953,
+        "bounces": 298,
+        "engaged": 78846,
+        "conv": 14,
+        "rev": 31267
+      },
+      {
+        "d": "2026-08-13",
+        "visits": 723,
+        "visitors": 606,
+        "pageviews": 1933,
+        "bounces": 292,
+        "engaged": 84221,
+        "conv": 9,
+        "rev": 19753
+      },
+      {
+        "d": "2026-08-14",
+        "visits": 798,
+        "visitors": 624,
+        "pageviews": 2092,
+        "bounces": 358,
+        "engaged": 98633,
+        "conv": 14,
+        "rev": 28083
+      },
+      {
+        "d": "2026-08-15",
+        "visits": 846,
+        "visitors": 699,
+        "pageviews": 2226,
+        "bounces": 354,
+        "engaged": 111828,
+        "conv": 11,
+        "rev": 20872
+      },
+      {
+        "d": "2026-08-16",
+        "visits": 785,
+        "visitors": 620,
+        "pageviews": 2033,
+        "bounces": 299,
+        "engaged": 91790,
+        "conv": 12,
+        "rev": 23598
+      },
+      {
+        "d": "2026-08-17",
+        "visits": 851,
+        "visitors": 669,
+        "pageviews": 2292,
+        "bounces": 386,
+        "engaged": 85047,
+        "conv": 11,
+        "rev": 19547
+      },
+      {
+        "d": "2026-08-18",
+        "visits": 719,
+        "visitors": 578,
+        "pageviews": 1859,
+        "bounces": 286,
+        "engaged": 95580,
+        "conv": 14,
+        "rev": 20432
+      },
+      {
+        "d": "2026-08-19",
+        "visits": 613,
+        "visitors": 485,
+        "pageviews": 1648,
+        "bounces": 280,
+        "engaged": 65081,
+        "conv": 8,
+        "rev": 12889
+      },
+      {
+        "d": "2026-08-20",
+        "visits": 809,
+        "visitors": 647,
+        "pageviews": 1885,
+        "bounces": 342,
+        "engaged": 84104,
+        "conv": 14,
+        "rev": 27943
+      },
+      {
+        "d": "2026-08-21",
+        "visits": 711,
+        "visitors": 560,
+        "pageviews": 1770,
+        "bounces": 298,
+        "engaged": 76024,
+        "conv": 9,
+        "rev": 15700
+      },
+      {
+        "d": "2026-08-22",
+        "visits": 982,
+        "visitors": 823,
+        "pageviews": 2276,
+        "bounces": 380,
+        "engaged": 118694,
+        "conv": 13,
+        "rev": 25399
+      },
+      {
+        "d": "2026-08-23",
+        "visits": 758,
+        "visitors": 618,
+        "pageviews": 2033,
+        "bounces": 326,
+        "engaged": 100309,
+        "conv": 11,
+        "rev": 18566
+      },
+      {
+        "d": "2026-08-24",
+        "visits": 670,
+        "visitors": 557,
+        "pageviews": 1535,
+        "bounces": 265,
+        "engaged": 87653,
+        "conv": 11,
+        "rev": 19550
+      },
+      {
+        "d": "2026-08-25",
+        "visits": 721,
+        "visitors": 580,
+        "pageviews": 1896,
+        "bounces": 291,
+        "engaged": 84862,
+        "conv": 12,
+        "rev": 24231
+      },
+      {
+        "d": "2026-08-26",
+        "visits": 915,
+        "visitors": 759,
+        "pageviews": 2287,
+        "bounces": 355,
+        "engaged": 93080,
+        "conv": 17,
+        "rev": 28520
+      },
+      {
+        "d": "2026-08-27",
+        "visits": 867,
+        "visitors": 705,
+        "pageviews": 2203,
+        "bounces": 347,
+        "engaged": 105165,
+        "conv": 12,
+        "rev": 17796
+      },
+      {
+        "d": "2026-08-28",
+        "visits": 839,
+        "visitors": 677,
+        "pageviews": 1992,
+        "bounces": 352,
+        "engaged": 111862,
+        "conv": 11,
+        "rev": 19059
+      },
+      {
+        "d": "2026-08-29",
+        "visits": 846,
+        "visitors": 708,
+        "pageviews": 1973,
+        "bounces": 380,
+        "engaged": 108968,
+        "conv": 10,
+        "rev": 18904
+      },
+      {
+        "d": "2026-08-30",
+        "visits": 803,
+        "visitors": 632,
+        "pageviews": 2079,
+        "bounces": 343,
+        "engaged": 92354,
+        "conv": 10,
+        "rev": 16867
+      },
+      {
+        "d": "2026-08-31",
+        "visits": 866,
+        "visitors": 725,
+        "pageviews": 1819,
+        "bounces": 372,
+        "engaged": 107746,
+        "conv": 16,
+        "rev": 30704
+      },
+      {
+        "d": "2026-09-01",
+        "visits": 921,
+        "visitors": 767,
+        "pageviews": 1961,
+        "bounces": 414,
+        "engaged": 119945,
+        "conv": 11,
+        "rev": 24761
+      },
+      {
+        "d": "2026-09-02",
+        "visits": 685,
+        "visitors": 552,
+        "pageviews": 1635,
+        "bounces": 267,
+        "engaged": 74413,
+        "conv": 14,
+        "rev": 32387
+      },
+      {
+        "d": "2026-09-03",
+        "visits": 772,
+        "visitors": 644,
+        "pageviews": 1821,
+        "bounces": 328,
+        "engaged": 98536,
+        "conv": 12,
+        "rev": 19239
+      },
+      {
+        "d": "2026-09-04",
+        "visits": 897,
+        "visitors": 728,
+        "pageviews": 2191,
+        "bounces": 412,
+        "engaged": 92105,
+        "conv": 17,
+        "rev": 30337
+      },
+      {
+        "d": "2026-09-05",
+        "visits": 1018,
+        "visitors": 821,
+        "pageviews": 2527,
+        "bounces": 449,
+        "engaged": 100606,
+        "conv": 19,
+        "rev": 28269
+      },
+      {
+        "d": "2026-09-06",
+        "visits": 991,
+        "visitors": 783,
+        "pageviews": 2476,
+        "bounces": 397,
+        "engaged": 98756,
+        "conv": 13,
+        "rev": 20935
+      },
+      {
+        "d": "2026-09-07",
+        "visits": 923,
+        "visitors": 765,
+        "pageviews": 2419,
+        "bounces": 364,
+        "engaged": 113358,
+        "conv": 12,
+        "rev": 26592
+      },
+      {
+        "d": "2026-09-08",
+        "visits": 876,
+        "visitors": 687,
+        "pageviews": 1951,
+        "bounces": 363,
+        "engaged": 107102,
+        "conv": 14,
+        "rev": 25694
+      },
+      {
+        "d": "2026-09-09",
+        "visits": 732,
+        "visitors": 601,
+        "pageviews": 1808,
+        "bounces": 314,
+        "engaged": 85741,
+        "conv": 13,
+        "rev": 24251
+      },
+      {
+        "d": "2026-09-10",
+        "visits": 976,
+        "visitors": 800,
+        "pageviews": 2552,
+        "bounces": 397,
+        "engaged": 104725,
+        "conv": 19,
+        "rev": 31738
+      },
+      {
+        "d": "2026-09-11",
+        "visits": 692,
+        "visitors": 549,
+        "pageviews": 1502,
+        "bounces": 265,
+        "engaged": 66159,
+        "conv": 8,
+        "rev": 11845
+      },
+      {
+        "d": "2026-09-12",
+        "visits": 869,
+        "visitors": 696,
+        "pageviews": 1933,
+        "bounces": 369,
+        "engaged": 84068,
+        "conv": 17,
+        "rev": 38989
+      },
+      {
+        "d": "2026-09-13",
+        "visits": 829,
+        "visitors": 694,
+        "pageviews": 1968,
+        "bounces": 340,
+        "engaged": 110094,
+        "conv": 11,
+        "rev": 20600
+      },
+      {
+        "d": "2026-09-14",
+        "visits": 929,
+        "visitors": 770,
+        "pageviews": 2102,
+        "bounces": 390,
+        "engaged": 88741,
+        "conv": 13,
+        "rev": 27936
+      },
+      {
+        "d": "2026-09-15",
+        "visits": 832,
+        "visitors": 655,
+        "pageviews": 1922,
+        "bounces": 382,
+        "engaged": 95801,
+        "conv": 16,
+        "rev": 30710
+      },
+      {
+        "d": "2026-09-16",
+        "visits": 724,
+        "visitors": 593,
+        "pageviews": 1772,
+        "bounces": 288,
+        "engaged": 83978,
+        "conv": 13,
+        "rev": 24023
+      },
+      {
+        "d": "2026-09-17",
+        "visits": 913,
+        "visitors": 754,
+        "pageviews": 2239,
+        "bounces": 401,
+        "engaged": 108356,
+        "conv": 12,
+        "rev": 23582
+      },
+      {
+        "d": "2026-09-18",
+        "visits": 993,
+        "visitors": 826,
+        "pageviews": 2659,
+        "bounces": 444,
+        "engaged": 128110,
+        "conv": 15,
+        "rev": 23523
+      },
+      {
+        "d": "2026-09-19",
+        "visits": 1209,
+        "visitors": 990,
+        "pageviews": 2645,
+        "bounces": 535,
+        "engaged": 161441,
+        "conv": 19,
+        "rev": 28900
+      },
+      {
+        "d": "2026-09-20",
+        "visits": 1112,
+        "visitors": 867,
+        "pageviews": 2993,
+        "bounces": 483,
+        "engaged": 135382,
+        "conv": 19,
+        "rev": 33331
+      },
+      {
+        "d": "2026-09-21",
+        "visits": 857,
+        "visitors": 696,
+        "pageviews": 2294,
+        "bounces": 328,
+        "engaged": 81424,
+        "conv": 14,
+        "rev": 28910
+      },
+      {
+        "d": "2026-09-22",
+        "visits": 907,
+        "visitors": 755,
+        "pageviews": 1943,
+        "bounces": 416,
+        "engaged": 92598,
+        "conv": 14,
+        "rev": 24040
+      },
+      {
+        "d": "2026-09-23",
+        "visits": 991,
+        "visitors": 798,
+        "pageviews": 2308,
+        "bounces": 394,
+        "engaged": 100473,
+        "conv": 17,
+        "rev": 39802
+      },
+      {
+        "d": "2026-09-24",
+        "visits": 1070,
+        "visitors": 838,
+        "pageviews": 2417,
+        "bounces": 446,
+        "engaged": 138891,
+        "conv": 13,
+        "rev": 19950
+      },
+      {
+        "d": "2026-09-25",
+        "visits": 1015,
+        "visitors": 805,
+        "pageviews": 2296,
+        "bounces": 446,
+        "engaged": 99811,
+        "conv": 16,
+        "rev": 23377
+      },
+      {
+        "d": "2026-09-26",
+        "visits": 1214,
+        "visitors": 1016,
+        "pageviews": 3054,
+        "bounces": 489,
+        "engaged": 162998,
+        "conv": 24,
+        "rev": 44429
+      },
+      {
+        "d": "2026-09-27",
+        "visits": 1084,
+        "visitors": 865,
+        "pageviews": 2788,
+        "bounces": 416,
+        "engaged": 119306,
+        "conv": 12,
+        "rev": 20427
+      },
+      {
+        "d": "2026-09-28",
+        "visits": 979,
+        "visitors": 801,
+        "pageviews": 2445,
+        "bounces": 448,
+        "engaged": 116435,
+        "conv": 16,
+        "rev": 25248
+      },
+      {
+        "d": "2026-09-29",
+        "visits": 1029,
+        "visitors": 834,
+        "pageviews": 2676,
+        "bounces": 457,
+        "engaged": 99868,
+        "conv": 16,
+        "rev": 32145
+      }
+    ]
+  },
+  "agencies": [
+    [
+      "SHA-04",
+      9120,
+      612
+    ],
+    [
+      "SHA-03",
+      7410,
+      488
+    ],
+    [
+      "SHA-01",
+      5230,
+      301
+    ],
+    [
+      "SHA-02",
+      2210,
+      118
+    ],
+    [
+      "SHA-06",
+      1340,
+      74
+    ],
+    [
+      "SHA-05",
+      980,
+      41
+    ]
+  ],
+  "sources": [
+    [
+      "google",
+      "organic",
+      "",
+      52
+    ],
+    [
+      "(directo)",
+      "(ninguno)",
+      "",
+      13
+    ],
+    [
+      "google",
+      "cpc",
+      "agencias-lima",
+      11
+    ],
+    [
+      "instagram",
+      "paid",
+      "free-tours-lima",
+      8
+    ],
+    [
+      "tiktok",
+      "paid",
+      "free-tours-lima",
+      6
+    ],
+    [
+      "facebook",
+      "social",
+      "",
+      5
+    ],
+    [
+      "chatgpt.com",
+      "referral",
+      "",
+      3
+    ],
+    [
+      "bing",
+      "organic",
+      "",
+      2
+    ]
+  ],
+  "payload": {
+    "url": "https://rutaslibres.pe/admin",
+    "version": "Payload 3 · Next.js 15",
+    "db": "rutaslibres_cms (PostgreSQL)",
+    "lastWebhook": "2026-09-29 08:10",
+    "webhookOk": true,
+    "posts": [
+      {
+        "postId": "SHP-001",
+        "payloadId": "66f1a0c2e4b0a1d2c3f40001",
+        "status": "published",
+        "syncedAt": "2026-09-20 11:02",
+        "checks": {
+          "words": 1640,
+          "keyword": true,
+          "meta": true,
+          "alt": true,
+          "tours": 4
+        }
+      },
+      {
+        "postId": "SHP-002",
+        "payloadId": "66f1a0c2e4b0a1d2c3f40002",
+        "status": "published",
+        "syncedAt": "2026-09-22 15:40",
+        "checks": {
+          "words": 1210,
+          "keyword": true,
+          "meta": true,
+          "alt": true,
+          "tours": 3
+        }
+      },
+      {
+        "postId": "SHP-003",
+        "payloadId": "66f1a0c2e4b0a1d2c3f40003",
+        "status": "scheduled",
+        "publishAt": "2026-10-02 08:00",
+        "syncedAt": "2026-09-29 08:10",
+        "checks": {
+          "words": 1380,
+          "keyword": true,
+          "meta": false,
+          "alt": true,
+          "tours": 3
+        }
+      },
+      {
+        "postId": "SHP-004",
+        "payloadId": "66f1a0c2e4b0a1d2c3f40004",
+        "status": "draft",
+        "syncedAt": "2026-09-27 10:05",
+        "checks": {
+          "words": 640,
+          "keyword": true,
+          "meta": true,
+          "alt": false,
+          "tours": 0
+        }
+      }
+    ]
+  }
+}

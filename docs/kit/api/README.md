@@ -1,6 +1,6 @@
 # Contrato API — KipuControl (`/api/v1`)
 
-Contrato **OpenAPI 3.1** de todo el SaaS, generado desde las 19 especificaciones. Es la fuente de verdad para el
+Contrato **OpenAPI 3.1** de todo el SaaS, generado desde las 26 especificaciones. Es la fuente de verdad para el
 backend Laravel (lo que debe exponer) y para el frontend Next.js y las apps Expo (lo que pueden consumir).
 
 | Archivo | Qué es |
@@ -41,6 +41,12 @@ del contrato → se sube la versión (§5). Si el script interpreta mal una fila
 Seguridad: `sanctum` (por defecto), `platformSanctum` (`/platform/*`), `widgetKey` (`X-KipuControl-Key`, para `/public/*`),
 `cartToken` / `orderToken` (carrito y pedido web), `tenantApiKey` y `oauth2` con scopes (`catalog:read`, `reservations:write`…)
 en las rutas de la API pública del tenant, `providerSignature` (webhooks entrantes).
+
+Valores de `x-permission` sin punto (v2.5): no son permisos de spatie sino la **experiencia o ability del token**
+que exige el middleware `EnsureExperience` (`customer`, `passenger`, `rol b2b`, `supplier`, `super_admin`,
+`autenticado`, `token mfa:verify`) o el mecanismo de acceso público (`público`, `token carrito`, `token del pedido`,
+firma del proveedor). En esas rutas la autorización fina es por **vínculo** (`client_id`, `reservation_id`,
+`agency_id`, `provider_id`) en la Policy. Todo valor con punto debe existir en `referencia/PERMISOS-ROL.csv`.
 
 ## 2. Cliente TypeScript para Next.js
 
@@ -132,7 +138,7 @@ Detalle en `ENDPOINTS.md` → «Conflictos y deduplicación». Resumen:
 
 - Endpoints repetidos entre specs se unifican (misma operación = mismo método + plantilla de ruta); se conserva la spec
   dueña del dominio, su fase, la idempotencia/`If-Match` más estricta y, si el permiso difiere, la unión `a | b` (a decidir).
-- Alias: `/fin/…` → `/finance/…`, `/operations/…` → `/ops/…`, `/customer/reservations/…` → `/portal/customer/reservations/…`.
+- Alias: `/fin/…` → `/finance/…`, `/operations/…` → `/ops/…`, `/customer/reservations/…` → `/portal/client/reservations/…`.
 - Parámetros de ruta unificados por prefijo (`/reservations/{id}` en todo el recurso); el backend acepta UUID o `code`.
 - Dominio de staging, `X-Order-Token` y `X-Signature` son nombres propuestos (la spec no los fija).
 - Las tablas de §3 se exponen completas como esquemas (menos `tenant_id` y secretos); las que no usa ninguna operación

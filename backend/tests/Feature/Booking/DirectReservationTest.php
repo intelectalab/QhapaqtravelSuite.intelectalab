@@ -90,6 +90,7 @@ it('el borrador con cupo retiene la salida', function () {
 
 it('Ventas reserva solo para clientes de su cartera y queda como responsable', function () {
     actingAsSeed('U03');
+    detachFromPortfolio('CLI-0001', 'U03');
 
     expect($this->postJson('/api/v1/reservations', directBody(['client_id' => 'CLI-0001']), critical()))->toBeApiError(422, 'RES-BR-04');
     $this->postJson('/api/v1/reservations', directBody(['owner_id' => seedUser('U04')->id]), critical())
@@ -110,6 +111,7 @@ it('cobra la tarifa de niño y respeta la moneda de la tarifa', function () {
 
 it('reservations/form-options solo ofrece productos reservables', function () {
     actingAsSeed('U03');
+    detachFromPortfolio('CLI-0001', 'U03');
 
     $data = $this->getJson('/api/v1/reservations/form-options')->assertOk()->json('data');
     $codes = collect($data['products'])->pluck('code');

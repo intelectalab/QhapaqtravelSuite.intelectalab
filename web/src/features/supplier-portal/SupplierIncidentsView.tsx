@@ -20,7 +20,6 @@ import type { StepResult } from "@/lib/server/resource";
 import { supplierStatus, type SupplierIncident, type SupplierIncidents } from "@/lib/supplier-portal";
 import { SupplierBadge } from "./SupplierUi";
 
-const OPEN = ["abierta", "en_proceso"];
 
 export function ReportIncidentPanel({ data }: { data: SupplierIncidents }) {
   const router = useRouter();
@@ -119,7 +118,8 @@ export function SupplierIncidentsView({ data }: { data: SupplierIncidents }) {
   const metrics: MetricFilter<SupplierIncident>[] = [
     { id: "open", label: "Abiertas", icon: <Siren size={16} />, tone: "bad", matches: (row) => row.status === "abierta" },
     { id: "process", label: "En proceso", icon: <Hourglass size={16} />, tone: "warn", matches: (row) => row.status === "en_proceso" },
-    { id: "done", label: "Resueltas", icon: <CircleCheckBig size={16} />, tone: "ok", matches: (row) => !OPEN.includes(row.status) },
+    { id: "done", label: "Resueltas", icon: <CircleCheckBig size={16} />, tone: "ok", matches: (row) => row.status === "resuelta" },
+    { id: "closed", label: "Cerradas", icon: <CircleCheckBig size={16} />, tone: "mute", matches: (row) => row.status === "cerrada" },
   ];
   const filters: FilterConfig<SupplierIncident>[] = [
     { id: "status", label: "Estado", options: [...new Set(data.items.map((row) => row.status))].map((value) => ({ value, label: supplierStatus(value, "incident").label })), value: (row) => row.status },

@@ -1,6 +1,6 @@
 # Diccionario de datos · Extranet de proveedores (supplier_)
 
-_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras cargar `00`→`90`. No editar a mano._
+_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.15 tras cargar `00`→`90`. No editar a mano._
 
 Respuestas, facturas y solicitudes de tarifa del proveedor.
 
@@ -29,7 +29,7 @@ Respuestas, facturas y solicitudes de tarifa del proveedor.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → sys_documents.tenant_id, fin_payables.tenant_id, catalog_providers.tenant_id, tenants.id, iam_users.tenant_id, iam_users.tenant_id. |
 | 3 | `payable_id` | `uuid` | no |  | FK → fin_payables.id. |
 | 4 | `provider_id` | `uuid` | no |  | FK → catalog_providers.id. |
 | 5 | `number` | `character varying(20)` | no |  |  |
@@ -57,12 +57,12 @@ Respuestas, facturas y solicitudes de tarifa del proveedor.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `document_id` | `sys_documents.id` | NO ACTION | `fk_supplier_invoices_document_id` |
-| `payable_id` | `fin_payables.id` | NO ACTION | `fk_supplier_invoices_payable_id` |
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_supplier_invoices_provider_id` |
+| `tenant_id, document_id` | `sys_documents.tenant_id, id` | NO ACTION | `fk_supplier_invoices_document_id` |
+| `tenant_id, payable_id` | `fin_payables.tenant_id, id` | NO ACTION | `fk_supplier_invoices_payable_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_supplier_invoices_provider_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_supplier_invoices_tenant_id` |
-| `uploaded_by` | `iam_users.id` | NO ACTION | `fk_supplier_invoices_uploaded_by` |
-| `validated_by` | `iam_users.id` | NO ACTION | `fk_supplier_invoices_validated_by` |
+| `tenant_id, uploaded_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_supplier_invoices_uploaded_by` |
+| `tenant_id, validated_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_supplier_invoices_validated_by` |
 
 **UNIQUE**
 
@@ -112,7 +112,7 @@ Respuestas, facturas y solicitudes de tarifa del proveedor.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_providers.tenant_id, iam_users.tenant_id, catalog_service_cost_history.tenant_id, iam_users.tenant_id, catalog_services.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `provider_id` | `uuid` | no |  | FK → catalog_providers.id. |
 | 5 | `service_id` | `uuid` | no |  | FK → catalog_services.id. |
@@ -140,17 +140,18 @@ Respuestas, facturas y solicitudes de tarifa del proveedor.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_supplier_rate_requests_provider_id` |
-| `requested_by` | `iam_users.id` | NO ACTION | `fk_supplier_rate_requests_requested_by` |
-| `resulting_rate_id` | `catalog_service_cost_history.id` | NO ACTION | `fk_supplier_rate_requests_resulting_rate_id` |
-| `reviewed_by` | `iam_users.id` | NO ACTION | `fk_supplier_rate_requests_reviewed_by` |
-| `service_id` | `catalog_services.id` | NO ACTION | `fk_supplier_rate_requests_service_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_supplier_rate_requests_provider_id` |
+| `tenant_id, requested_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_supplier_rate_requests_requested_by` |
+| `tenant_id, resulting_rate_id` | `catalog_service_cost_history.tenant_id, id` | NO ACTION | `fk_supplier_rate_requests_resulting_rate_id` |
+| `tenant_id, reviewed_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_supplier_rate_requests_reviewed_by` |
+| `tenant_id, service_id` | `catalog_services.tenant_id, id` | NO ACTION | `fk_supplier_rate_requests_service_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_supplier_rate_requests_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_supplier_rate_requests_id` | `tenant_id, id` |  | restricción |
 | `uq_supplier_rate_requests_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_supplier_rate_requests_tenant_id_service_id_p` | `tenant_id, service_id` | `((status)::text = 'pendiente'::text)` | índice único |
 
@@ -197,7 +198,7 @@ Respuestas, facturas y solicitudes de tarifa del proveedor.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → catalog_services.tenant_id, catalog_providers.tenant_id, booking_reservation_services.tenant_id, iam_users.tenant_id, iam_users.tenant_id, ops_supplier_requests.tenant_id, tenants.id. |
 | 3 | `supplier_request_id` | `uuid` | no |  | FK → ops_supplier_requests.id. |
 | 4 | `reservation_service_id` | `uuid` | no |  | FK → booking_reservation_services.id. |
 | 5 | `provider_id` | `uuid` | no |  | FK → catalog_providers.id. |
@@ -229,12 +230,12 @@ Respuestas, facturas y solicitudes de tarifa del proveedor.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `alt_service_id` | `catalog_services.id` | NO ACTION | `fk_supplier_request_responses_alt_service_id` |
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_supplier_request_responses_provider_id` |
-| `reservation_service_id` | `booking_reservation_services.id` | NO ACTION | `fk_supplier_request_responses_reservation_service_id` |
-| `responded_by_user_id` | `iam_users.id` | NO ACTION | `fk_supplier_request_responses_responded_by_user_id` |
-| `reviewed_by` | `iam_users.id` | NO ACTION | `fk_supplier_request_responses_reviewed_by` |
-| `supplier_request_id` | `ops_supplier_requests.id` | NO ACTION | `fk_supplier_request_responses_supplier_request_id` |
+| `tenant_id, alt_service_id` | `catalog_services.tenant_id, id` | NO ACTION | `fk_supplier_request_responses_alt_service_id` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_supplier_request_responses_provider_id` |
+| `tenant_id, reservation_service_id` | `booking_reservation_services.tenant_id, id` | NO ACTION | `fk_supplier_request_responses_reservation_service_id` |
+| `tenant_id, responded_by_user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_supplier_request_responses_responded_by_user_id` |
+| `tenant_id, reviewed_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_supplier_request_responses_reviewed_by` |
+| `tenant_id, supplier_request_id` | `ops_supplier_requests.tenant_id, id` | NO ACTION | `fk_supplier_request_responses_supplier_request_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_supplier_request_responses_tenant_id` |
 
 **CHECK**

@@ -1,0 +1,82 @@
+[
+  {
+    "id": "CVM-001",
+    "tagId": "TAG-0001",
+    "event": "compra",
+    "providerEvent": "purchase",
+    "label": null,
+    "value": true,
+    "server": true,
+    "active": true
+  },
+  {
+    "id": "CVM-002",
+    "tagId": "TAG-0001",
+    "event": "lead_cotizacion",
+    "providerEvent": "generate_lead",
+    "label": null,
+    "value": false,
+    "server": false,
+    "active": true
+  },
+  {
+    "id": "CVM-003",
+    "tagId": "TAG-0001",
+    "event": "clic_whatsapp",
+    "providerEvent": "contact_whatsapp",
+    "label": null,
+    "value": false,
+    "server": false,
+    "active": true
+  },
+  {
+    "id": "CVM-004",
+    "tagId": "TAG-0002",
+    "event": "compra",
+    "providerEvent": "Purchase",
+    "label": null,
+    "value": true,
+    "server": true,
+    "active": true
+  },
+  {
+    "id": "CVM-005",
+    "tagId": "TAG-0002",
+    "event": "lead_cotizacion",
+    "providerEvent": "Lead",
+    "label": null,
+    "value": false,
+    "server": true,
+    "active": true
+  },
+  {
+    "id": "CVM-006",
+    "tagId": "TAG-0002",
+    "event": "suscripcion_boletin",
+    "providerEvent": "CompleteRegistration",
+    "label": null,
+    "value": false,
+    "server": false,
+    "active": true
+  },
+  {
+    "id": "CVM-007",
+    "tagId": "TAG-0003",
+    "event": "compra",
+    "providerEvent": "conversion",
+    "label": "kQ3nCPvT9YgZEJ2o",
+    "value": true,
+    "server": true,
+    "active": true
+  },
+  {
+    "id": "CVM-008",
+    "tagId": "TAG-0003",
+    "event": "lead_cotizacion",
+    "providerEvent": "conversion",
+    "label": "Xb7mCK2s9YgZEJ2o",
+    "value": false,
+    "server": false,
+    "active": true
+  }
+]

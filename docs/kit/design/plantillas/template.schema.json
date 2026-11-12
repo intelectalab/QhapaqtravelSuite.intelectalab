@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kipucontrol.com/schemas/site-template.json",
+  "title": "Manifiesto de plantilla del sitio KipuControl (spec 23 §13.2)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "version", "kipu", "category", "tier", "author", "tokens", "sections", "pages", "locales", "darkMode"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "maxLength": 60 },
+    "name": { "type": "string", "minLength": 3, "maxLength": 80 },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "kipu": { "type": "string", "description": "Rango compatible de @kipu/site-sdk, p. ej. ^2.9", "pattern": "^[~^]?[0-9]+\\.[0-9]+(\\.[0-9]+)?$" },
+    "category": { "enum": ["agencia", "free_tour", "aventura", "lujo", "corporativo", "multi"] },
+    "tier": { "enum": ["incluida", "premium"] },
+    "price": { "type": "number", "minimum": 0 },
+    "minPlan": { "enum": ["Starter", "Professional", "Enterprise"] },
+    "author": {
+      "type": "object", "additionalProperties": false, "required": ["name", "email"],
+      "properties": { "name": { "type": "string" }, "email": { "type": "string", "format": "email" }, "url": { "type": "string", "format": "uri" } }
+    },
+    "tokens": {
+      "type": "object", "additionalProperties": false, "required": ["side", "accent", "soft", "sun", "radius", "font"],
+      "properties": {
+        "side": { "$ref": "#/$defs/color" }, "accent": { "$ref": "#/$defs/color" }, "soft": { "$ref": "#/$defs/color" }, "sun": { "$ref": "#/$defs/color" },
+        "radius": { "type": "integer", "minimum": 0, "maximum": 28 },
+        "font": { "type": "object", "required": ["display", "body"], "additionalProperties": false, "properties": { "display": { "type": "string" }, "body": { "type": "string" } } },
+        "dark": { "type": "object", "additionalProperties": false, "properties": { "side": { "$ref": "#/$defs/color" }, "accent": { "$ref": "#/$defs/color" }, "soft": { "$ref": "#/$defs/color" }, "sun": { "$ref": "#/$defs/color" } } }
+      }
+    },
+    "sections": {
+      "type": "array", "minItems": 3, "uniqueItems": true,
+      "items": { "enum": ["hero_buscador", "hero_video", "hero_foto", "hero_simple", "destinos", "experiencias", "mas_vendidos", "salidas", "ofertas", "resenas", "aventuras", "blog", "boletin", "servicios", "casos", "cotizar", "clientes", "colecciones", "a_medida", "testimonios", "prensa", "horarios_hoy", "tours", "punto_encuentro", "mapa_rutas", "armar_viaje"] }
+    },
+    "pages": {
+      "type": "array", "uniqueItems": true,
+      "items": { "enum": ["inicio", "buscar", "destino", "tour", "carrito", "checkout", "blog", "articulo", "aventuras", "contacto", "legal", "libro_reclamaciones"] },
+      "allOf": [
+        { "contains": { "const": "inicio" } }, { "contains": { "const": "tour" } }, { "contains": { "const": "checkout" } },
+        { "contains": { "const": "legal" } }, { "contains": { "const": "libro_reclamaciones" } }
+      ],
+      "minItems": 12
+    },
+    "locales": { "type": "array", "items": { "enum": ["es", "en", "pt"] }, "contains": { "const": "es" }, "uniqueItems": true },
+    "darkMode": { "type": "boolean", "const": true },
+    "settings": {
+      "type": "array", "description": "Opciones que la agencia puede cambiar desde #/canales/plantillas",
+      "items": {
+        "type": "object", "required": ["key", "type", "label"], "additionalProperties": false,
+        "properties": { "key": { "type": "string", "pattern": "^[a-z_]+$" }, "type": { "enum": ["color", "range", "image", "select", "toggle", "sections"] }, "label": { "type": "string" }, "default": {}, "options": { "type": "array" }, "min": { "type": "number" }, "max": { "type": "number" } }
+      }
+    }
+  },
+  "allOf": [
+    { "if": { "properties": { "tier": { "const": "premium" } } }, "then": { "required": ["price"], "properties": { "price": { "exclusiveMinimum": 0 } } } },
+    { "if": { "properties": { "tier": { "const": "incluida" } } }, "then": { "not": { "required": ["price"] } } }
+  ],
+  "$defs": { "color": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" } }
+}

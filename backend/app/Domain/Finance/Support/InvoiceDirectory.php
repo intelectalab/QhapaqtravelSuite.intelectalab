@@ -24,6 +24,8 @@ final class InvoiceDirectory
         '13' => 'Ajuste de montos o fechas de pago',
     ];
 
+    public const VOID = ['rechazado', 'anulado'];
+
     public const STATUSES = ['pendiente_envio', 'emitido', 'aceptado', 'observado', 'rechazado', 'anulado'];
 
     private const SORTS = ['issue_date' => 'i.issue_date', 'number' => 'i.number', 'total' => 'i.total_amount'];
@@ -150,20 +152,21 @@ final class InvoiceDirectory
 
     private function credited(): Collection
     {
-        return DB::table('fin_invoices')->where('doc_type', '07')->where('status', '<>', 'anulado')->whereNotNull('ref_invoice_id')
+        return DB::table('fin_invoices')->where('doc_type', '07')->whereNotIn('status', self::VOID)->whereNotNull('ref_invoice_id')
             ->groupBy('ref_invoice_id')->selectRaw('ref_invoice_id, sum(total_amount) as total')->pluck('total', 'ref_invoice_id');
     }
 
     private function kpis(): array
     {
         $rows = DB::table('fin_invoices')->get(['doc_type', 'status', 'issue_date', 'total_amount', 'currency', 'fx_rate']);
-        $month = $rows->where('issue_date', '>=', $this->money->monthStart())->where('doc_type', '<>', '07');
+        $month = $rows->where('issue_date', '>=', $this->money->monthStart())->where('doc_type', '<>', '07')->whereNotIn('status', [...self::VOID, 'pendiente_envio']);
 
         return [
             'month_count' => $month->count(),
             'month_pen' => round($month->sum(fn (object $row): float => $this->money->pen($row->total_amount, $row->currency, $row->fx_rate)), 2),
             'accepted' => $rows->where('status', 'aceptado')->count(),
-            'observed' => $rows->whereIn('status', ['observado', 'rechazado'])->count(),
+            'observed' => $rows->where('status', 'observado')->count(),
+            'rejected' => $rows->where('status', 'rechazado')->count(),
             'waiting' => $rows->whereIn('status', ['pendiente_envio', 'emitido'])->count(),
             'credit_notes_pen' => round($rows->where('doc_type', '07')->sum(fn (object $row): float => $this->money->pen($row->total_amount, $row->currency, $row->fx_rate)), 2),
             'uninvoiced_pen' => $this->uninvoiced(),
@@ -177,7 +180,7 @@ final class InvoiceDirectory
 
     private function pendingReceivables(): array
     {
-        $invoiced = DB::table('fin_invoices')->where('status', '<>', 'anulado')->whereNotNull('receivable_id')->get(['receivable_id', 'doc_type', 'total_amount'])
+        $invoiced = DB::table('fin_invoices')->whereNotIn('status', self::VOID)->whereNotNull('receivable_id')->get(['receivable_id', 'doc_type', 'total_amount'])
             ->groupBy('receivable_id')->map(fn (Collection $items): float => $items->sum(fn (object $row): float => ($row->doc_type === '07' ? -1 : 1) * (float) $row->total_amount));
 
         return DB::table('fin_receivables as x')->join('booking_reservations as b', 'b.id', '=', 'x.reservation_id')->join('crm_clients as c', 'c.id', '=', 'x.client_id')
@@ -192,7 +195,7 @@ final class InvoiceDirectory
 
     private function invoiceableReceivables(): array
     {
-        $invoiced = DB::table('fin_invoices')->where('status', '<>', 'anulado')->whereNotNull('receivable_id')->get(['receivable_id', 'doc_type', 'total_amount'])
+        $invoiced = DB::table('fin_invoices')->whereNotIn('status', self::VOID)->whereNotNull('receivable_id')->get(['receivable_id', 'doc_type', 'total_amount'])
             ->groupBy('receivable_id')->map(fn (Collection $items): float => $items->sum(fn (object $row): float => ($row->doc_type === '07' ? -1 : 1) * (float) $row->total_amount));
 
         return DB::table('fin_receivables as x')->join('booking_reservations as b', 'b.id', '=', 'x.reservation_id')->join('crm_clients as c', 'c.id', '=', 'x.client_id')
@@ -215,7 +218,7 @@ final class InvoiceDirectory
     {
         $collected = DB::table('fin_payments')->where('status', 'aplicado')->where('kind', 'cobro')->get(['reservation_id', 'amount', 'currency', 'fx_rate'])
             ->groupBy('reservation_id')->map(fn ($items): float => $items->sum(fn (object $row): float => $this->money->pen($row->amount, $row->currency, $row->fx_rate)));
-        $invoiced = DB::table('fin_invoices')->whereIn('doc_type', ['01', '03'])->where('status', '<>', 'anulado')->get(['reservation_id', 'total_amount', 'currency', 'fx_rate'])
+        $invoiced = DB::table('fin_invoices')->whereIn('doc_type', ['01', '03'])->whereNotIn('status', self::VOID)->get(['reservation_id', 'total_amount', 'currency', 'fx_rate'])
             ->groupBy('reservation_id')->map(fn ($items): float => $items->sum(fn (object $row): float => $this->money->pen($row->total_amount, $row->currency, $row->fx_rate)));
 
         return round($collected->map(fn (float $pen, string $reservation): float => max(0, $pen - ($invoiced[$reservation] ?? 0)))->filter(fn (float $gap): bool => $gap > 0.5)->sum(), 2);

@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "KipuControl Operador",
+    "slug": "kipucontrol-operador",
+    "scheme": "kipucontrol-operador",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.kipucontrol.operador",
+      "infoPlist": {
+        "NSCameraUsageDescription": "La cámara se usa para tomar fotos de evidencia del servicio.",
+        "NSPhotoLibraryUsageDescription": "Se usan fotos para adjuntarlas como evidencia del servicio."
+      }
+    },
+    "android": {
+      "package": "com.kipucontrol.operador",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "CAMERA"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-secure-store",
+      "expo-image-picker",
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "color": "#0A3A73"
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#0A3A73"
+        }
+      ],
+      "expo-background-task"
+    ]
+  }
+}

@@ -11,6 +11,7 @@ use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Jobs\RetryNotificationMessage;
 use App\Jobs\SendNotificationEmail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -161,6 +162,7 @@ final class ManageNotifications
             }
 
             DB::table('notif_messages')->where('id', $message->id)->update(['status' => 'pendiente', 'retries' => (int) $message->retries + 1]);
+            RetryNotificationMessage::for($message, $this->context->idOrFail());
             $this->audit->log('Notificación', (string) $message->code, 'reintentar', 'fallido', 'pendiente');
 
             return (string) $message->id;
@@ -170,11 +172,12 @@ final class ManageNotifications
     public function retryFailed(): array
     {
         return DB::transaction(function (): array {
-            $failed = DB::table('notif_messages')->where('status', 'fallido')->lockForUpdate()->get(['id', 'code', 'retries', 'last_error']);
+            $failed = DB::table('notif_messages')->where('status', 'fallido')->lockForUpdate()->get(['id', 'code', 'channel', 'retries', 'last_error']);
             [$permanent, $retryable] = $failed->partition(fn (object $message): bool => $this->permanent($message));
 
             foreach ($retryable as $message) {
                 DB::table('notif_messages')->where('id', $message->id)->update(['status' => 'pendiente', 'retries' => (int) $message->retries + 1]);
+                RetryNotificationMessage::for($message, $this->context->idOrFail());
             }
 
             if ($retryable->isNotEmpty()) {

@@ -41,7 +41,7 @@ end $$;
 
 -- Tablas exclusivas de plataforma (suscripciones, facturación SaaS, medición): sin acceso para app_role.
 do $$ declare t text; begin
-  foreach t in array array['platform_users', 'tenant_onboarding', 'platform_sequences', 'feature_overrides', 'coupons', 'coupon_redemptions', 'subscriptions', 'subscription_items', 'subscription_changes', 'platform_invoices', 'platform_invoice_lines', 'platform_credit_notes', 'payment_methods', 'payment_attempts', 'usage_counters', 'usage_monthly', 'usage_events', 'platform_metrics_daily']::text[] loop
+  foreach t in array array['platform_users', 'tenant_onboarding', 'platform_sequences', 'feature_overrides', 'coupons', 'coupon_redemptions', 'subscriptions', 'subscription_items', 'subscription_changes', 'platform_invoices', 'platform_invoice_lines', 'platform_credit_notes', 'payment_methods', 'payment_attempts', 'usage_counters', 'usage_monthly', 'usage_events', 'platform_metrics_daily', 'platform_marketplace_listings', 'platform_marketplace_partnerships', 'platform_marketplace_orders', 'platform_access_passes', 'platform_showcase_agencies', 'platform_showcase_listings', 'platform_showcase_bookings', 'platform_blog_posts', 'platform_funnel_events', 'platform_site_templates', 'platform_site_template_versions', 'platform_template_submissions', 'platform_ai_credit_packs', 'platform_tracking_tags', 'platform_conversion_mappings', 'platform_conversion_dispatches', 'platform_web_analytics_daily']::text[] loop
     if to_regclass(t) is not null then
       execute format('revoke all on %I from app_role', t);
     end if;
@@ -50,7 +50,7 @@ end $$;
 
 -- Append-only: ni la app ni plataforma pueden modificar/borrar (además del trigger).
 do $$ declare t text; begin
-  foreach t in array array['audit_events', 'crm_case_events', 'ops_incident_logs', 'channel_b2b_credit_movements', 'collab_approval_events', 'mkt_consent_events', 'fin_fx_rates']::text[] loop
+  foreach t in array array['audit_events', 'crm_case_events', 'ops_incident_logs', 'channel_b2b_credit_movements', 'collab_approval_events', 'mkt_consent_events', 'fin_fx_rates', 'fin_gift_card_movements', 'ops_waiver_signatures', 'platform_funnel_events', 'fin_ai_credit_ledger']::text[] loop
     if to_regclass(t) is not null then
       execute format('revoke update, delete, truncate on %I from app_role, platform_role', t);
     end if;
@@ -67,6 +67,11 @@ create policy tenant_self_update on tenants for update using (id = app_current_t
 drop policy if exists platform_access on tenants;
 create policy platform_access on tenants to platform_role using (true) with check (true);
 revoke insert, delete, truncate on tenants from app_role;
+-- El tenant solo edita su perfil. Plan, estado, prueba, suspensión, MRR, módulos, dominio, RUC y razón social
+-- son de plataforma (spec 13): sin este REVOKE un tenant podía reactivarse o extender su prueba con un UPDATE.
+revoke update on tenants from app_role;
+grant update (commercial_name, fiscal_address, legal_rep, logo_initials, logo_path, timezone, locale,
+              alt_currency, admin_email, settings, updated_by, updated_at, lock_version) on tenants to app_role;
 
 -- ---------------------------------------------------------------- RLS por tabla con tenant_id
 -- 'strict' = tenant_id = app_current_tenant_id(); 'shared' = además filas globales (tenant_id NULL) de solo lectura.
@@ -309,11 +314,79 @@ do $$ begin perform app_enable_tenant_rls('channel_external_reviews', 'strict');
 do $$ begin perform app_enable_tenant_rls('crm_review_requests', 'strict'); end $$;
 do $$ begin perform app_enable_tenant_rls('crm_own_reviews', 'strict'); end $$;
 do $$ begin perform app_enable_tenant_rls('crm_own_review_log', 'strict'); end $$;
+-- v2.6 · spec 19 (crecimiento comercial)
+do $$ begin if to_regclass('sys_ai_requests') is not null then perform app_enable_tenant_rls('sys_ai_requests', 'strict'); end if; end $$;
+do $$ begin if to_regclass('report_ai_insights') is not null then perform app_enable_tenant_rls('report_ai_insights', 'strict'); end if; end $$;
+do $$ begin if to_regclass('collab_whatsapp_templates') is not null then perform app_enable_tenant_rls('collab_whatsapp_templates', 'strict'); end if; end $$;
+do $$ begin if to_regclass('fin_payment_links') is not null then perform app_enable_tenant_rls('fin_payment_links', 'strict'); end if; end $$;
+do $$ begin if to_regclass('mkt_recovery_flows') is not null then perform app_enable_tenant_rls('mkt_recovery_flows', 'strict'); end if; end $$;
+do $$ begin if to_regclass('mkt_recovery_attempts') is not null then perform app_enable_tenant_rls('mkt_recovery_attempts', 'strict'); end if; end $$;
+do $$ begin if to_regclass('catalog_import_jobs') is not null then perform app_enable_tenant_rls('catalog_import_jobs', 'strict'); end if; end $$;
+do $$ begin if to_regclass('catalog_dynamic_price_rules') is not null then perform app_enable_tenant_rls('catalog_dynamic_price_rules', 'strict'); end if; end $$;
+do $$ begin if to_regclass('channel_ota_connections') is not null then perform app_enable_tenant_rls('channel_ota_connections', 'strict'); end if; end $$;
+do $$ begin if to_regclass('channel_ota_product_mappings') is not null then perform app_enable_tenant_rls('channel_ota_product_mappings', 'strict'); end if; end $$;
+do $$ begin if to_regclass('channel_ota_bookings') is not null then perform app_enable_tenant_rls('channel_ota_bookings', 'strict'); end if; end $$;
+do $$ begin if to_regclass('fin_gift_cards') is not null then perform app_enable_tenant_rls('fin_gift_cards', 'strict'); end if; end $$;
+do $$ begin if to_regclass('fin_gift_card_movements') is not null then perform app_enable_tenant_rls('fin_gift_card_movements', 'strict'); end if; end $$;
+do $$ begin if to_regclass('ops_waiver_templates') is not null then perform app_enable_tenant_rls('ops_waiver_templates', 'strict'); end if; end $$;
+do $$ begin if to_regclass('ops_waiver_signatures') is not null then perform app_enable_tenant_rls('ops_waiver_signatures', 'strict'); end if; end $$;
+do $$ begin if to_regclass('ops_checkin_passes') is not null then perform app_enable_tenant_rls('ops_checkin_passes', 'strict'); end if; end $$;
+do $$ begin if to_regclass('fin_account_mappings') is not null then perform app_enable_tenant_rls('fin_account_mappings', 'strict'); end if; end $$;
+do $$ begin if to_regclass('fin_accounting_exports') is not null then perform app_enable_tenant_rls('fin_accounting_exports', 'strict'); end if; end $$;
+do $$ begin if to_regclass('quote_external_offers') is not null then perform app_enable_tenant_rls('quote_external_offers', 'strict'); end if; end $$;
+-- v2.7 · portal corporativo (spec 20)
+do $$ begin if to_regclass('crm_corporate_accounts') is not null then perform app_enable_tenant_rls('crm_corporate_accounts', 'strict'); end if; end $$;
+do $$ begin if to_regclass('crm_corporate_cost_centers') is not null then perform app_enable_tenant_rls('crm_corporate_cost_centers', 'strict'); end if; end $$;
+do $$ begin if to_regclass('crm_corporate_travelers') is not null then perform app_enable_tenant_rls('crm_corporate_travelers', 'strict'); end if; end $$;
+do $$ begin if to_regclass('crm_corporate_portal_users') is not null then perform app_enable_tenant_rls('crm_corporate_portal_users', 'strict'); end if; end $$;
+do $$ begin if to_regclass('booking_corporate_approvals') is not null then perform app_enable_tenant_rls('booking_corporate_approvals', 'strict'); end if; end $$;
+do $$ begin if to_regclass('booking_cost_allocations') is not null then perform app_enable_tenant_rls('booking_cost_allocations', 'strict'); end if; end $$;
+do $$ begin if to_regclass('fin_corporate_statements') is not null then perform app_enable_tenant_rls('fin_corporate_statements', 'strict'); end if; end $$;
+do $$ begin if to_regclass('report_corporate_exports') is not null then perform app_enable_tenant_rls('report_corporate_exports', 'strict'); end if; end $$;
+-- v2.8 · viajes por tramos (spec 21) y marca propia (spec 22)
+do $$ begin if to_regclass('catalog_hotel_season_rates') is not null then perform app_enable_tenant_rls('catalog_hotel_season_rates', 'strict'); end if; end $$;
+do $$ begin if to_regclass('catalog_leg_tours') is not null then perform app_enable_tenant_rls('catalog_leg_tours', 'strict'); end if; end $$;
+do $$ begin if to_regclass('catalog_transport_options') is not null then perform app_enable_tenant_rls('catalog_transport_options', 'strict'); end if; end $$;
+do $$ begin if to_regclass('catalog_transport_vehicles') is not null then perform app_enable_tenant_rls('catalog_transport_vehicles', 'strict'); end if; end $$;
+do $$ begin if to_regclass('booking_trip_legs') is not null then perform app_enable_tenant_rls('booking_trip_legs', 'strict'); end if; end $$;
+do $$ begin if to_regclass('booking_trip_items') is not null then perform app_enable_tenant_rls('booking_trip_items', 'strict'); end if; end $$;
+do $$ begin if to_regclass('booking_in_trip_offers') is not null then perform app_enable_tenant_rls('booking_in_trip_offers', 'strict'); end if; end $$;
+do $$ begin if to_regclass('fin_gateway_accounts') is not null then perform app_enable_tenant_rls('fin_gateway_accounts', 'strict'); end if; end $$;
+do $$ begin if to_regclass('fin_payment_fees') is not null then perform app_enable_tenant_rls('fin_payment_fees', 'strict'); end if; end $$;
+do $$ begin if to_regclass('cms_site_domains') is not null then perform app_enable_tenant_rls('cms_site_domains', 'strict'); end if; end $$;
+do $$ begin if to_regclass('cms_seo_pages') is not null then perform app_enable_tenant_rls('cms_seo_pages', 'strict'); end if; end $$;
+do $$ begin if to_regclass('cms_redirects') is not null then perform app_enable_tenant_rls('cms_redirects', 'strict'); end if; end $$;
+do $$ begin if to_regclass('cms_travel_stories') is not null then perform app_enable_tenant_rls('cms_travel_stories', 'strict'); end if; end $$;
+do $$ begin if to_regclass('cms_site_themes') is not null then perform app_enable_tenant_rls('cms_site_themes', 'strict'); end if; end $$;
+do $$ begin if to_regclass('cms_ai_content_jobs') is not null then perform app_enable_tenant_rls('cms_ai_content_jobs', 'strict'); end if; end $$;
+do $$ begin if to_regclass('cms_ai_images') is not null then perform app_enable_tenant_rls('cms_ai_images', 'strict'); end if; end $$;
+do $$ begin if to_regclass('fin_ai_credit_ledger') is not null then perform app_enable_tenant_rls('fin_ai_credit_ledger', 'strict'); end if; end $$;
+do $$ begin if to_regclass('mkt_tracking_tags') is not null then perform app_enable_tenant_rls('mkt_tracking_tags', 'strict'); end if; end $$;
+do $$ begin if to_regclass('mkt_conversion_mappings') is not null then perform app_enable_tenant_rls('mkt_conversion_mappings', 'strict'); end if; end $$;
+do $$ begin if to_regclass('mkt_conversion_dispatches') is not null then perform app_enable_tenant_rls('mkt_conversion_dispatches', 'strict'); end if; end $$;
+do $$ begin if to_regclass('cms_web_analytics_daily') is not null then perform app_enable_tenant_rls('cms_web_analytics_daily', 'strict'); end if; end $$;
 
 -- ---------------------------------------------------------------- excepciones documentadas (tablas con tenant_id SIN RLS)
--- tenant_onboarding, feature_overrides, subscriptions, coupon_redemptions, platform_invoices, payment_methods, usage_counters, usage_monthly, usage_events, personal_access_tokens
--- personal_access_tokens: se lee antes de conocer el tenant (el token ES la fuente del tenant).
--- Resto: tablas de plataforma con tenant_id como dato (spec 13 §3.1); app_role no tiene privilegios sobre ellas.
+-- tenant_onboarding, feature_overrides, subscriptions, coupon_redemptions, platform_invoices, payment_methods, usage_counters, usage_monthly, usage_events
+-- Son tablas de plataforma con tenant_id como dato (spec 13 §3.1); app_role no tiene privilegios sobre ellas.
+
+-- ---------------------------------------------------------------- personal_access_tokens con RLS
+-- Antes quedaba sin RLS y con CRUD para app_role: desde cualquier tenant se podían leer, borrar o reasignar
+-- tokens ajenos. Ahora: RLS estricta (el tenant solo ve sus tokens; los de plataforma tienen tenant_id NULL y solo
+-- los ve platform_role). La búsqueda inicial (cuando aún no hay tenant) usa app_resolve_access_token().
+do $$ begin perform app_enable_tenant_rls('personal_access_tokens', 'strict'); end $$;
+
+create or replace function app_resolve_access_token(p_token_hash varchar)
+returns table (token_id uuid, tenant_id uuid, tokenable_type varchar, tokenable_id uuid, abilities text,
+               experience varchar, expires_at timestamptz, mfa_verified_at timestamptz)
+language sql stable security definer set search_path = public as $$
+  select t.id, t.tenant_id, t.tokenable_type, t.tokenable_id, t.abilities, t.experience, t.expires_at, t.mfa_verified_at
+  from personal_access_tokens t
+  where t.token = p_token_hash and t.tenant_id is not null
+    and (t.expires_at is null or t.expires_at > now())
+$$;
+alter function app_resolve_access_token(varchar) owner to platform_role;
+comment on function app_resolve_access_token(varchar) is 'Sanctum: hash SHA-256 del token → tenant y dueño, antes de fijar app.tenant_id. Solo tokens de tenant (los de plataforma se resuelven con la conexión de plataforma).';
 
 -- ---------------------------------------------------------------- resolución previa al contexto de tenant
 -- Funciones SECURITY DEFINER con dueño platform_role (pasa por platform_access). Devuelven lo mínimo.
@@ -371,6 +444,104 @@ end $$;
 alter function app_resolve_tenant_by_host(text, text) owner to platform_role;
 grant select on tenants to platform_role;
 
+-- ---------------------------------------------------------------- role_has_permissions (pivote sin tenant_id)
+-- Sin RLS, un tenant podía agregar permisos a roles de otro tenant (la FK a roles no pasa por RLS).
+-- Lectura: permisos de roles visibles (propios + plantillas globales). Escritura: solo roles propios.
+do $$ begin
+  if to_regclass('role_has_permissions') is not null then
+    alter table role_has_permissions enable row level security;
+    alter table role_has_permissions force row level security;
+    drop policy if exists rhp_read on role_has_permissions;
+    create policy rhp_read on role_has_permissions for select
+      using (exists (select 1 from roles r where r.id = role_id));
+    drop policy if exists rhp_insert on role_has_permissions;
+    create policy rhp_insert on role_has_permissions for insert
+      with check (exists (select 1 from roles r where r.id = role_id and r.tenant_id = app_current_tenant_id()));
+    drop policy if exists rhp_delete on role_has_permissions;
+    create policy rhp_delete on role_has_permissions for delete
+      using (exists (select 1 from roles r where r.id = role_id and r.tenant_id = app_current_tenant_id()));
+    revoke update on role_has_permissions from app_role;
+    drop policy if exists platform_access on role_has_permissions;
+    create policy platform_access on role_has_permissions to platform_role using (true) with check (true);
+  end if;
+end $$;
+
+-- ---------------------------------------------------------------- FKs con tenant (referencias cruzadas entre tenants)
+-- La validación de una FK NO pasa por RLS: con FKs de una sola columna, un tenant podía enlazar sus filas a
+-- registros de otro tenant si conocía el UUID. Se convierten a FKs compuestas (tenant_id, col) → padre(tenant_id, id),
+-- con UNIQUE (tenant_id, id) en cada padre. Idempotente: solo toca las FKs de una columna entre tablas cuyo
+-- tenant_id es NOT NULL. Para padres o hijos con tenant_id NULL (filas globales) se usa un trigger.
+do $$
+declare
+  r record; def text; uq text; n int := 0;
+begin
+  for r in
+    select k.conname, k.conrelid::regclass::text as child, k.confrelid::regclass::text as parent,
+           ca.attname as col, pa.attname as pcol, pg_get_constraintdef(k.oid) as def
+    from pg_constraint k
+    join pg_attribute ca on ca.attrelid = k.conrelid and ca.attnum = k.conkey[1]
+    join pg_attribute pa on pa.attrelid = k.confrelid and pa.attnum = k.confkey[1]
+    join pg_attribute ct on ct.attrelid = k.conrelid and ct.attname = 'tenant_id' and ct.attnotnull
+    join pg_attribute pt on pt.attrelid = k.confrelid and pt.attname = 'tenant_id' and pt.attnotnull
+    join pg_class cc on cc.oid = k.conrelid
+    join pg_class pc on pc.oid = k.confrelid
+    where k.contype = 'f' and k.connamespace = 'public'::regnamespace
+      and array_length(k.conkey, 1) = 1 and ca.attname <> 'tenant_id'
+      and not cc.relispartition and pc.relkind = 'r'
+  loop
+    uq := left('uq_tid_' || r.parent || '_' || r.pcol, 63);
+    if not exists (select 1 from pg_constraint where conname = uq and conrelid = r.parent::regclass) then
+      execute format('alter table %I add constraint %I unique (tenant_id, %I)', r.parent, uq, r.pcol);
+    end if;
+    def := regexp_replace(r.def, '^FOREIGN KEY \(' || r.col || '\) REFERENCES ([^(]+)\(' || r.pcol || '\)',
+                          'FOREIGN KEY (tenant_id, ' || r.col || ') REFERENCES \1(tenant_id, ' || r.pcol || ')');
+    if def = r.def then raise exception 'No se pudo reescribir la FK % de %: %', r.conname, r.child, r.def; end if;
+    execute format('alter table %I drop constraint %I', r.child, r.conname);
+    execute format('alter table %I add constraint %I %s', r.child, r.conname, def);
+    n := n + 1;
+  end loop;
+  raise notice 'FKs convertidas a (tenant_id, col): %', n;
+end $$;
+
+-- Padres o hijos con filas globales (tenant_id NULL): el padre debe ser global o del mismo tenant que el hijo.
+create or replace function app_check_fk_tenant() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare
+  v_col text := tg_argv[0]; v_parent text := tg_argv[1]; v_pcol text := tg_argv[2];
+  v_ref text; v_ptenant uuid; v_found boolean;
+begin
+  v_ref := to_jsonb(new) ->> v_col;
+  if v_ref is null then return new; end if;
+  execute format('select true, tenant_id from %I where %I::text = $1', v_parent, v_pcol) into v_found, v_ptenant using v_ref;
+  if v_found and v_ptenant is not null and v_ptenant is distinct from new.tenant_id then
+    raise exception 'FK entre tenants no permitida: %.% → %', tg_table_name, v_col, v_parent using errcode = '23503';
+  end if;
+  return new;
+end $$;
+alter function app_check_fk_tenant() owner to platform_role;
+
+do $$
+declare r record; trg text;
+begin
+  for r in
+    select k.conrelid::regclass::text as child, k.confrelid::regclass::text as parent, ca.attname as col, pa.attname as pcol
+    from pg_constraint k
+    join pg_attribute ca on ca.attrelid = k.conrelid and ca.attnum = k.conkey[1]
+    join pg_attribute pa on pa.attrelid = k.confrelid and pa.attnum = k.confkey[1]
+    join pg_attribute ct on ct.attrelid = k.conrelid and ct.attname = 'tenant_id'
+    join pg_attribute pt on pt.attrelid = k.confrelid and pt.attname = 'tenant_id'
+    join pg_class cc on cc.oid = k.conrelid
+    where k.contype = 'f' and k.connamespace = 'public'::regnamespace
+      and array_length(k.conkey, 1) = 1 and ca.attname <> 'tenant_id'
+      and not cc.relispartition and (not ct.attnotnull or not pt.attnotnull)
+  loop
+    trg := left('trg_fk_tenant_' || r.child || '_' || r.col, 63);
+    execute format('drop trigger if exists %I on %I', trg, r.child);
+    execute format('create trigger %I before insert or update of %I, tenant_id on %I for each row execute function app_check_fk_tenant(%L, %L, %L)',
+                   trg, r.col, r.child, r.col, r.parent, r.pcol);
+  end loop;
+end $$;
+
 -- ---------------------------------------------------------------- verificación: ninguna tabla con tenant_id queda sin RLS
 do $$
 declare
@@ -383,8 +554,23 @@ begin
   where c.relkind in ('r', 'p')
     and not c.relispartition
     and not c.relrowsecurity
-    and c.relname <> all (array['tenant_onboarding', 'feature_overrides', 'subscriptions', 'coupon_redemptions', 'platform_invoices', 'payment_methods', 'usage_counters', 'usage_monthly', 'usage_events', 'personal_access_tokens']::text[]);
+    and c.relname <> all (array['tenant_onboarding', 'feature_overrides', 'subscriptions', 'coupon_redemptions', 'platform_invoices', 'payment_methods', 'usage_counters', 'usage_monthly', 'usage_events', 'platform_access_passes', 'platform_showcase_agencies', 'platform_funnel_events']::text[]);
   if missing is not null then
     raise exception 'Tablas con tenant_id sin RLS: %', missing;
   end if;
+end $$;
+
+-- ---------------------------------------------------------------- verificación: ninguna FK de una columna entre tablas de tenant
+do $$
+declare missing text;
+begin
+  select string_agg(k.conrelid::regclass::text || '.' || k.conname, ', ') into missing
+  from pg_constraint k
+  join pg_attribute ct on ct.attrelid = k.conrelid and ct.attname = 'tenant_id' and ct.attnotnull
+  join pg_attribute pt on pt.attrelid = k.confrelid and pt.attname = 'tenant_id' and pt.attnotnull
+  join pg_class cc on cc.oid = k.conrelid
+  join pg_class pc on pc.oid = k.confrelid
+  where k.contype = 'f' and k.connamespace = 'public'::regnamespace and array_length(k.conkey, 1) = 1
+    and not cc.relispartition and pc.relkind = 'r';
+  if missing is not null then raise exception 'FKs sin tenant_id: %', missing; end if;
 end $$;

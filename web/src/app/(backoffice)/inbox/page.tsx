@@ -41,7 +41,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
         info={<InfoTip>Responder una conversación sin responsable te la asigna. Las notas internas nunca llegan al cliente.</InfoTip>}
       />
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <TintTile icon={Inbox} tone="t1" label="Abiertas" value={kpis.open} note={`${kpis.unassigned} sin asignar`} info={<p>Conversaciones a tu alcance que esperan respuesta del equipo. La nota cuenta las que no tienen responsable y no están resueltas.</p>} />
+        <TintTile icon={Inbox} tone="t1" label="Abiertas" value={kpis.open} note={`${kpis.unassigned} sin asignar`} info={<p>Conversaciones a tu alcance que esperan respuesta del equipo. La nota cuenta cuántas de ellas aún no tienen responsable.</p>} />
         <TintTile icon={AlarmClock} tone="bad" label="Primera respuesta vencida" value={kpis.sla_breached} note="Aún sin respuesta" info={<p>Conversaciones sin primera respuesta cuyo plazo por canal ya pasó.</p>} />
         <TintTile icon={Timer} tone="violet" label="Primera respuesta" value={kpis.first_response_minutes !== null ? `${kpis.first_response_minutes} min` : "Sin datos"} note="Promedio" info={<p>Minutos promedio entre el primer mensaje del cliente y la primera respuesta del equipo.</p>} />
         <TintTile icon={CircleCheckBig} tone="ok" label="Resueltas en 7 días" value={kpis.resolved_week} info={<p>Conversaciones marcadas como resueltas en los últimos 7 días.</p>} />

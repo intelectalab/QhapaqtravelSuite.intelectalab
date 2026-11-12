@@ -1,0 +1,70 @@
+{
+  "plan": "Enterprise",
+  "planIncluded": {
+    "contenido": 100,
+    "imagenes": 0
+  },
+  "addons": [
+    "IA-BASICO"
+  ],
+  "balance": {
+    "contenido": 342,
+    "imagenes": 14
+  },
+  "ledger": [
+    {
+      "id": "ICL-0101",
+      "at": "2026-10-01 00:00",
+      "kind": "contenido",
+      "movement": "asignacion_plan",
+      "credits": 100,
+      "balance": 100,
+      "note": "Incluido en el plan Enterprise"
+    },
+    {
+      "id": "ICL-0102",
+      "at": "2026-10-01 00:00",
+      "kind": "contenido",
+      "movement": "asignacion_plan",
+      "credits": 300,
+      "balance": 400,
+      "note": "Add-on IA Básico (mensual)"
+    },
+    {
+      "id": "ICL-0103",
+      "at": "2026-10-08 11:20",
+      "kind": "imagenes",
+      "movement": "compra_paquete",
+      "credits": 20,
+      "balance": 20,
+      "note": "Paquete IA-IMG-20 · S/ 39 · FAC-PLT-2026-0412"
+    },
+    {
+      "id": "ICL-0104",
+      "at": "2026-10-21 09:40",
+      "kind": "contenido",
+      "movement": "consumo",
+      "credits": -40,
+      "balance": 360,
+      "note": "18 pedidos de texto y SEO"
+    },
+    {
+      "id": "ICL-0105",
+      "at": "2026-10-28 16:05",
+      "kind": "imagenes",
+      "movement": "consumo",
+      "credits": -6,
+      "balance": 14,
+      "note": "IAC-0043 · 4 imágenes (2 HD)"
+    },
+    {
+      "id": "ICL-0106",
+      "at": "2026-10-30 10:12",
+      "kind": "contenido",
+      "movement": "consumo",
+      "credits": -18,
+      "balance": 342,
+      "note": "IAC-0040 a IAC-0042"
+    }
+  ]
+}

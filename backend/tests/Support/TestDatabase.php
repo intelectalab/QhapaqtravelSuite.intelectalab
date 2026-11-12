@@ -245,6 +245,7 @@ final class TestDatabase
             glob(database_path('Support/*.php')) ?: [],
             glob(base_path('../docs/kit/database/*.sql')) ?: [],
             glob(base_path('../docs/kit/seeds/*.json')) ?: [],
+            [base_path('app/Domain/Shared/Jobs/JobCatalog.php')],
         );
         sort($files);
 

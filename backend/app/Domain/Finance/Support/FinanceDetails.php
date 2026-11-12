@@ -140,7 +140,9 @@ final class FinanceDetails
         $pen = fn ($amount, ?string $rate = null): BigDecimal => Decimal::of((string) $amount)->multipliedBy($rate ?? $fx)->toScale(2, RoundingMode::HALF_UP);
         $receivables = DB::table('fin_receivables')->where('reservation_id', $reservation->id)->whereNull('deleted_at')->where('status', '<>', 'cancelada')->get(['code', 'concept', 'amount', 'paid_amount', 'fx_rate', 'status', 'due_date']);
         $payables = DB::table('fin_payables as f')->leftJoin('catalog_providers as p', 'p.id', '=', 'f.provider_id')->where('f.reservation_id', $reservation->id)->whereNull('f.deleted_at')->whereNotIn('f.status', ['anulada', 'cancelada'])
-            ->get(['f.code', 'f.concept', 'f.amount', 'f.paid_amount', 'f.currency', 'f.fx_rate', 'f.status', 'p.name as provider']);
+            ->get(['f.code', 'f.kind', 'f.concept', 'f.amount', 'f.paid_amount', 'f.currency', 'f.fx_rate', 'f.status', 'f.approved_at', 'p.name as provider']);
+        $pendingExtras = $payables->filter(fn (object $row): bool => $row->kind === 'costo_adicional' && $row->approved_at === null);
+        $payables = $payables->reject(fn (object $row): bool => $row->kind === 'costo_adicional' && $row->approved_at === null)->values();
         $commissions = DB::table('fin_commissions')->where('reservation_id', $reservation->id)->whereNull('deleted_at')->where('status', '<>', 'anulada')->get(['code', 'kind', 'amount', 'currency', 'fx_rate', 'status']);
         $income = $receivables->reduce(fn (BigDecimal $sum, object $row) => $sum->plus($pen($reservation->currency === 'PEN' ? Decimal::withoutIgv((string) $row->amount) : $row->amount, (string) ($row->fx_rate ?: $fx))), BigDecimal::zero());
         $collectedGross = $receivables->reduce(fn (BigDecimal $sum, object $row) => $sum->plus($pen($row->amount, (string) ($row->fx_rate ?: $fx))), BigDecimal::zero());
@@ -153,7 +155,9 @@ final class FinanceDetails
 
         $checks = [
             ['key' => 'trip', 'label' => 'El viaje terminó', 'ok' => $reservation->status === 'completada', 'detail' => $reservation->status === 'completada' ? 'Reserva completada' : 'Estado actual: '.str_replace('_', ' ', (string) $reservation->status)],
-            ['key' => 'collected', 'label' => 'Todo cobrado', 'ok' => $collected->isGreaterThanOrEqualTo($collectedGross), 'detail' => 'Falta cobrar S/ '.$collectedGross->minus($collected)->toScale(2)],
+            ['key' => 'receivables', 'label' => 'Tiene cuentas por cobrar', 'ok' => $receivables->isNotEmpty(), 'detail' => $receivables->isNotEmpty() ? $receivables->count().' cuota(s)' : 'La reserva no tiene cuotas: créalas antes de liquidar'],
+            ['key' => 'collected', 'label' => 'Todo cobrado', 'ok' => $receivables->isNotEmpty() && $collected->isGreaterThanOrEqualTo($collectedGross), 'detail' => 'Falta cobrar S/ '.$collectedGross->minus($collected)->toScale(2)],
+            ['key' => 'extras', 'label' => 'Costos adicionales aprobados', 'ok' => $pendingExtras->isEmpty(), 'detail' => $pendingExtras->isEmpty() ? 'Sin costos por aprobar' : $pendingExtras->count().' costo(s) adicional(es) por aprobar'],
             ['key' => 'paid', 'label' => 'Proveedores pagados', 'ok' => $paidOut->isGreaterThanOrEqualTo($cost), 'detail' => 'Falta pagar S/ '.$cost->minus($paidOut)->toScale(2)],
             ['key' => 'commissions', 'label' => 'Comisiones aprobadas', 'ok' => $commissions->whereIn('status', ['calculada', 'pendiente'])->isEmpty(), 'detail' => $commissions->whereIn('status', ['calculada', 'pendiente'])->count().' por aprobar'],
         ];

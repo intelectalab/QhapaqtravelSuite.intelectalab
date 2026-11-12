@@ -5,7 +5,7 @@ import { formValues, sendStep, type StepResult } from "@/lib/server/resource";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 
-const CASE_ACTIONS: Record<string, string> = { start: "start", followup: "follow-ups", resolve: "resolve", close: "close", reopen: "reopen" };
+const CASE_ACTIONS: Record<string, string> = { start: "start", followup: "follow-ups", resolve: "resolve", close: "close" };
 
 function refresh(result: StepResult): StepResult {
   if (result.done) {

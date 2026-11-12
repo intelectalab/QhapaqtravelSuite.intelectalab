@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\Jobs;
 
+use App\Domain\Admin\Support\IntegrationErrors;
 use App\Domain\Shared\Tenancy\TenantDatabase;
 use App\Http\Middleware\AssignCorrelationId;
 use Closure;
@@ -31,12 +32,24 @@ final class RecordJobRun
             $warning = property_exists($job, 'runWarning') ? $job->runWarning : null;
             $summary = property_exists($job, 'runResult') ? $job->runResult : null;
             $this->finish($tenantId, $runId, $job, $scheduledJobId, $warning === null ? 'ok' : 'advertencia', $warning ?? $summary);
+            [$ref] = $this->reference($job);
+            IntegrationErrors::resolve($tenantId, 'job', $ref);
 
             return $result;
         } catch (Throwable $e) {
             $this->finish($tenantId, $runId, $job, $scheduledJobId, 'error', class_basename($e).': '.mb_substr($e->getMessage(), 0, 200));
+            [$ref, $target] = $this->reference($job);
+            $max = property_exists($job, 'tries') ? max(1, (int) $job->tries) : 1;
+            IntegrationErrors::record($tenantId, 'job', $ref, $target, IntegrationErrors::describe($e), $attempt, $max);
             throw $e;
         }
+    }
+
+    private function reference(object $job): array
+    {
+        $entry = JobCatalog::forClass($job::class);
+
+        return [$entry['code'] ?? class_basename($job), $entry['name'] ?? class_basename($job)];
     }
 
     private function start(?string $tenantId, object $job, int $attempt, ?string $scheduledJobId): string

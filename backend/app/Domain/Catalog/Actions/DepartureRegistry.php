@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog\Actions;
 
+use App\Domain\Admin\Support\StaffNotices;
 use App\Domain\Catalog\Support\CatalogAccess;
 use App\Domain\Catalog\Support\DepartureDirectory;
 use App\Domain\Crm\Support\CodeSequence;
@@ -95,6 +96,10 @@ final class DepartureRegistry
                 'updated_at' => now(),
             ]);
             $this->audit->log('Salida', $ref, $status === 'cancelada' ? 'cancelar' : 'cerrar', $departure->status, "{$status} · {$reason}");
+
+            if ($status === 'cancelada' && (int) $departure->sold > 0) {
+                app(StaffNotices::class)->toRoles(['operations', 'manager'], 'salida.cancelada', "Salida {$ref} cancelada con {$departure->sold} vendidos", "Reubica o reembolsa a los pasajeros. Motivo: {$reason}", 'catalog_departure', (string) $departure->id, null, [], (string) $actor->getKey());
+            }
 
             return ['ref' => $ref, 'warning' => $this->cancelWarning($departure, $status)];
         });

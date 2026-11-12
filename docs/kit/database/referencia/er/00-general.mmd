@@ -1,38 +1,40 @@
 flowchart LR
   subgraph T["Transversal y plataforma"]
     direction TB
-    plataforma["Plataforma SaaS<br/>plataforma_ · 27 tablas"]
-    iam["Identidad y acceso<br/>iam_ · 11 tablas<br/>← 141 FK desde otros dominios"]
-    sys["Sistema<br/>sys_ · 12 tablas<br/>← 15 FK desde otros dominios"]
+    plataforma["Plataforma SaaS<br/>plataforma_ · 44 tablas"]
+    iam["Identidad y acceso<br/>iam_ · 11 tablas<br/>← 165 FK desde otros dominios"]
+    sys["Sistema<br/>sys_ · 13 tablas<br/>← 20 FK desde otros dominios"]
     notif["Notificaciones<br/>notif_ · 6 tablas"]
     integration["Integraciones<br/>integration_ · 8 tablas"]
   end
   subgraph N["Dominios de negocio"]
-    catalog["Catálogo<br/>catalog_ · 50 tablas"]
-    crm["CRM<br/>crm_ · 20 tablas"]
-    quote["Cotizaciones<br/>quote_ · 9 tablas"]
-    booking["Reservas<br/>booking_ · 10 tablas"]
-    ops["Operaciones<br/>ops_ · 23 tablas"]
+    catalog["Catálogo<br/>catalog_ · 56 tablas"]
+    crm["CRM<br/>crm_ · 24 tablas"]
+    quote["Cotizaciones<br/>quote_ · 10 tablas"]
+    booking["Reservas<br/>booking_ · 15 tablas"]
+    ops["Operaciones<br/>ops_ · 26 tablas"]
     supplier["Extranet de proveedores<br/>supplier_ · 3 tablas"]
-    fin["Finanzas y tesorería<br/>fin_ · 34 tablas"]
-    channel["Canales<br/>channel_ · 22 tablas"]
-    cms["Contenidos<br/>cms_ · 2 tablas"]
-    collab["Aprobaciones e inbox<br/>collab_ · 11 tablas"]
-    mkt["Marketing<br/>mkt_ · 13 tablas"]
-    report["Reportes<br/>report_ · 1 tablas"]
+    fin["Finanzas y tesorería<br/>fin_ · 43 tablas"]
+    channel["Canales<br/>channel_ · 25 tablas"]
+    cms["Contenidos<br/>cms_ · 10 tablas"]
+    collab["Aprobaciones e inbox<br/>collab_ · 12 tablas"]
+    mkt["Marketing<br/>mkt_ · 18 tablas"]
+    report["Reportes<br/>report_ · 3 tablas"]
   end
-  booking ---|12| catalog
-  booking ---|11| channel
+  booking ---|18| catalog
+  booking ---|12| channel
+  booking ---|1| cms
   booking ---|1| collab
-  booking ---|6| crm
-  booking ---|11| fin
+  booking ---|13| crm
+  booking ---|14| fin
   booking ---|1| iam
-  booking ---|1| mkt
+  booking ---|2| mkt
   booking ---|2| notif
-  booking ---|16| ops
-  booking ---|4| quote
+  booking ---|21| ops
+  booking ---|6| quote
   booking ---|1| supplier
-  catalog ---|17| channel
+  catalog ---|18| channel
+  catalog ---|1| cms
   catalog ---|2| collab
   catalog ---|4| crm
   catalog ---|2| fin
@@ -46,19 +48,25 @@ flowchart LR
   channel ---|5| fin
   channel ---|1| iam
   channel ---|1| integration
-  channel ---|1| mkt
+  channel ---|3| mkt
   channel ---|1| notif
   channel ---|1| ops
+  cms ---|1| crm
+  cms ---|1| fin
+  cms ---|2| plataforma
   collab ---|2| crm
   collab ---|1| fin
   collab ---|2| quote
-  crm ---|4| fin
+  crm ---|6| fin
   crm ---|1| iam
-  crm ---|3| mkt
+  crm ---|4| mkt
   crm ---|1| notif
   crm ---|2| quote
+  crm ---|2| report
+  fin ---|2| plataforma
   fin ---|1| supplier
   iam ---|2| ops
+  mkt ---|1| quote
   notif ---|1| quote
   ops ---|1| supplier
   classDef default fill:#EAF3FC,stroke:#0A3A73,color:#15202E

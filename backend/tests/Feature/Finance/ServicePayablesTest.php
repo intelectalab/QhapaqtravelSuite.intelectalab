@@ -222,6 +222,7 @@ it('si el proveedor rechaza un servicio, su obligación se anula y la alternativ
     ['services' => $services, 'payables' => $payables] = cxpServicios($code);
     $service = $services->first(fn (object $row): bool => $payables->has($row->id));
     $alternative = CarbonImmutable::parse($service->service_date)->addDay()->toDateString();
+    withinTenant(tenantA(), fn () => DB::table('booking_reservation_services')->where('id', $service->id)->where('status', 'pendiente')->update(['status' => 'solicitado']));
 
     $this->postJson("/api/v1/reservations/{$code}/services/{$service->code}/reject", ['reason' => 'Sin disponibilidad (sold out)', 'detail' => 'El proveedor no tiene cupo ese día.', 'alternative_date' => $alternative])->assertOk();
 

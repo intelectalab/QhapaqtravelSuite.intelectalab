@@ -56,14 +56,6 @@ final class OrderController
         return response()->json(['data' => ['code' => $code, 'status' => $status]]);
     }
 
-    public function cancel(Request $request, string $code): JsonResponse
-    {
-        $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:500']], ['reason.*' => 'Explica el motivo de la cancelación (mínimo 5 caracteres).']);
-        $this->workflow->cancel($code, $data['reason'], $this->user($request));
-
-        return response()->json(['data' => ['code' => $code]]);
-    }
-
     public function addTask(Request $request, string $code): JsonResponse
     {
         $data = $request->validate(['title' => ['required', 'string', 'min:3', 'max:250']], ['title.*' => 'Escribe la tarea (mínimo 3 caracteres).']);

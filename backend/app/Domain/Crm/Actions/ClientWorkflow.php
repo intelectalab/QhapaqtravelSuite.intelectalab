@@ -8,6 +8,7 @@ use App\Domain\Crm\Support\Advisors;
 use App\Domain\Crm\Support\ClientDocument;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Crm\Support\CrmCatalog;
+use App\Domain\Crm\Support\CrmNotices;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -71,6 +72,7 @@ final class ClientWorkflow
 
             if (isset($changed['owner_id'])) {
                 $this->audit->log('Cliente', $code, 'reasignar', $this->ownerName($client->owner_id), $this->ownerName($values['owner_id']));
+                app(CrmNotices::class)->clientReassigned($code, (string) $values['owner_id'], (string) $actor->getKey());
             }
         });
     }

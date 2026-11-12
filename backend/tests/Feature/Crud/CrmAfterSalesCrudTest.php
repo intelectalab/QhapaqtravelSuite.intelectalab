@@ -80,6 +80,7 @@ it('una reserva admite una sola encuesta y debe ser del mismo cliente y no cance
 
 it('registrar una encuesta valida puntaje, canal y cartera', function () {
     actingAsSeed('U03');
+    detachFromPortfolio('CLI-0001', 'U03');
 
     $this->postJson('/api/v1/crm/surveys', ['client' => 'CLI-0003', 'score' => 11, 'channel' => 'paloma'], critical())->assertStatus(422)->assertJsonValidationErrors(['score', 'channel']);
     expect($this->postJson('/api/v1/crm/surveys', ['client' => 'CLI-0001', 'score' => 8, 'channel' => 'email'], critical()))->toBeApiError(422, 'VALIDATION_ERROR');
@@ -170,24 +171,18 @@ it('un caso cerrado no se edita y Ventas no edita casos de otra cartera', functi
         ->and(rowOf('crm_cases', 'REC-0014')->priority)->not->toBe('baja');
 });
 
-it('reabrir un caso resuelto o cerrado lo devuelve a en proceso y registra el evento', function () {
+it('un caso cerrado es final: no existe la ruta para reabrirlo', function () {
     actingAsSeed('U01');
 
-    $this->postJson('/api/v1/crm/cases/REC-0010/reopen', ['note' => 'El cliente volvió a escribir'])->assertOk();
-
-    $case = rowOf('crm_cases', 'REC-0010');
-    expect($case->status)->toBe('en_proceso')
-        ->and($case->closed_at)->toBeNull()
-        ->and(crmCasoEventos('REC-0010'))->toContain('estado')
-        ->and(crmPostventaAuditada('Reclamo (caso)', 'REC-0010', 'cambio_estado'))->toBeTrue();
-
-    $this->postJson('/api/v1/crm/cases/REC-0012/reopen')->assertOk();
-    expect(rowOf('crm_cases', 'REC-0012')->status)->toBe('en_proceso');
+    expect($this->postJson('/api/v1/crm/cases/REC-0010/reopen', ['note' => 'El cliente volvió a escribir'])->status())->toBe(404)
+        ->and(rowOf('crm_cases', 'REC-0010')->status)->toBe('cerrada');
 });
 
-it('un caso abierto no se reabre', function () {
+it('solo se cierra un caso resuelto', function () {
     actingAsSeed('U01');
 
-    expect($this->postJson('/api/v1/crm/cases/REC-0013/reopen'))->toBeApiError(409, 'CRM-CASE-STATE')
-        ->and(rowOf('crm_cases', 'REC-0013')->status)->toBe('abierta');
+    foreach (['REC-0013' => 'abierta', 'REC-0014' => 'en_proceso'] as $code => $status) {
+        expect($this->postJson("/api/v1/crm/cases/{$code}/close", [], critical((int) rowOf('crm_cases', $code)->lock_version)))->toBeApiError(409, 'CRM-CASE-STATE')
+            ->and(rowOf('crm_cases', $code)->status)->toBe($status);
+    }
 });

@@ -12,6 +12,8 @@ final class EcommerceDirectory
 {
     public const OPEN_STATUSES = ['pago_pendiente', 'pago_por_validar', 'pago_rechazado'];
 
+    public const CANCELLABLE = ['pago_pendiente', 'pago_rechazado'];
+
     public function order(string $code, User $viewer): array
     {
         $order = collect($this->overview($viewer)['orders'])->firstWhere('code', $code) ?? throw ApiException::notFound('El pedido no existe.');
@@ -102,7 +104,7 @@ final class EcommerceDirectory
                 'promo_code' => $row->promo_code,
                 'reservation' => $row->reservation_code,
                 'cancel_reason' => $row->cancel_reason,
-                'can_cancel' => in_array($row->status, self::OPEN_STATUSES, true),
+                'can_cancel' => in_array($row->status, self::CANCELLABLE, true),
                 'can_send_link' => in_array($row->status, ['pago_pendiente', 'pago_rechazado'], true),
                 'attempts' => $attempts[(string) $row->id] ?? [],
                 'links' => $links[(string) $row->code] ?? [],

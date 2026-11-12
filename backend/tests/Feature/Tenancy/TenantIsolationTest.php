@@ -22,7 +22,7 @@ dataset('recursos_de_negocio', [
     'conversación' => ['collab_conversations', '/api/v1/inbox/conversations', null],
 ]);
 
-const PLATFORM_TABLES_WITHOUT_RLS = ['personal_access_tokens'];
+const PLATFORM_TABLES_WITHOUT_RLS = ['platform_access_passes', 'platform_showcase_agencies', 'platform_funnel_events'];
 
 function isolationCode(string $table, ?string $code, string $column): string
 {

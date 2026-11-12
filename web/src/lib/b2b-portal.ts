@@ -1,5 +1,5 @@
 import type { Money } from "@/lib/channels";
-import { portalStatus } from "@/lib/portal";
+import { portalStatus, type PortalStatusScope } from "@/lib/portal";
 import type { Tone } from "@/lib/tone";
 
 export const AGENCY_HOME = "/agencia";
@@ -310,8 +310,8 @@ const AGENCY_STATUS: Record<string, { label: string; tone: Tone }> = {
   retirada: { label: "Retirada", tone: "mute" },
 };
 
-export function agencyStatus(status: string): { label: string; tone: Tone } {
-  return AGENCY_STATUS[status] ?? portalStatus(status);
+export function agencyStatus(status: string, scope?: PortalStatusScope): { label: string; tone: Tone } {
+  return AGENCY_STATUS[status] ?? portalStatus(status, scope);
 }
 
 export const PAY_MODES: Record<PayMode, { label: string; hint: string }> = {

@@ -61,6 +61,7 @@ it('el guía confirma, inicia, hace check-in, sube evidencia y finaliza con no-s
         ->and($this->postJson('/api/v1/mobile/operator/actions', $confirm)->json('data.result'))->toBe('duplicate')
         ->and($this->postJson('/api/v1/mobile/operator/actions', operatorAction($device, $assignment->id, 'confirm'))->json('data.conflict_rule'))->toBe('MOB-BR-05');
 
+    withinTenant(tenantA(), fn () => DB::table('ops_orders')->where('id', $assignment->order_id)->update(['status' => 'confirmada']));
     expect($this->postJson('/api/v1/mobile/operator/actions', operatorAction($device, $assignment->id, 'start'))->json('data.result'))->toBe('applied');
     expect(rowOf('ops_assignments', $assignment->id, column: 'id')->status)->toBe('en_curso')
         ->and(rowOf('ops_orders', $assignment->order_code)->status)->toBe('en_ejecucion');
@@ -84,6 +85,18 @@ it('el guía confirma, inicia, hace check-in, sube evidencia y finaliza con no-s
         ->and(count($finish['data']['no_show']))->toBe(count($passengers) - 1)
         ->and(collect($finish['assignment']['passengers'])->where('no_show', true)->count())->toBe(count($passengers) - 1);
     expect(withinTenant(tenantA(), fn () => DB::table('ops_sync_actions')->where('assignment_id', $assignment->id)->count()))->toBeGreaterThanOrEqual(8);
+});
+
+it('iniciar un servicio desde la app no pone en ejecución una orden que aún no está confirmada', function () {
+    $assignment = operatorAssignment();
+    withinTenant(tenantA(), fn () => DB::table('ops_orders')->where('id', $assignment->order_id)->update(['status' => 'asignada']));
+    actingAsSeed('U09');
+    $device = $this->postJson('/api/v1/mobile/devices', ['platform' => 'android', 'app_version' => '1.0.0'])->assertCreated()->json('data.id');
+
+    $this->postJson('/api/v1/mobile/operator/actions', operatorAction($device, $assignment->id, 'confirm'))->assertOk();
+    expect($this->postJson('/api/v1/mobile/operator/actions', operatorAction($device, $assignment->id, 'start'))->json('data.result'))->toBe('applied')
+        ->and(rowOf('ops_assignments', $assignment->id, column: 'id')->status)->toBe('en_curso')
+        ->and(rowOf('ops_orders', $assignment->order_code)->status)->not->toBe('en_ejecucion');
 });
 
 it('la sincronización del outbox procesa el lote en orden y es idempotente', function () {
@@ -128,4 +141,43 @@ it('un usuario sin recurso vinculado recibe MOB-BR-13', function () {
     actingAsSeed('U10');
 
     expect($this->getJson('/api/v1/mobile/operator/me'))->toBeApiError(403, 'MOB-BR-13');
+});
+
+it('05 §6.6: el guía pide la URL firmada para subir la foto de evidencia desde la app', function () {
+    Storage::fake(EvidenceStore::diskName());
+    Storage::disk(EvidenceStore::diskName())->buildTemporaryUploadUrlsUsing(fn (string $path) => ['url' => "https://storage.test/{$path}?signature=x", 'headers' => []]);
+    actingAsSeed('U09');
+
+    $signed = $this->postJson('/api/v1/ops/evidences/presign', ['file_name' => 'grupo.jpg', 'mime' => 'image/jpeg', 'size' => 2048, 'sha256' => str_repeat('b', 64)])->assertOk()->json('data');
+
+    expect($signed)->toHaveKeys(['upload_id', 'method', 'url', 'expires_at'])
+        ->and($signed['url'])->toStartWith('https://storage.test/');
+});
+
+it('05 §2.1: el detalle trae el punto de encuentro (salida, recojo elegido o el del producto)', function () {
+    $assignment = operatorAssignment();
+    actingAsSeed('U09');
+
+    $point = $this->getJson("/api/v1/mobile/operator/assignments/{$assignment->id}")->assertOk()->json('data.meeting_point');
+    expect($point)->toHaveKeys(['text', 'source'])->and($point['source'])->toBeIn(['salida', 'cliente', 'producto'])->and($point['text'])->not->toBe('');
+
+    withinTenant(tenantA(), function () use ($assignment): void {
+        $departure = DB::table('catalog_product_departures')->value('id');
+        DB::table('catalog_product_departures')->where('id', $departure)->update(['meeting_point' => 'Plaza de Armas, frente a la Catedral']);
+        DB::table('booking_reservation_services')->where('id', $assignment->reservation_service_id)->update(['departure_id' => $departure]);
+    });
+
+    expect($this->getJson("/api/v1/mobile/operator/assignments/{$assignment->id}")->json('data.meeting_point'))->toBe(['text' => 'Plaza de Armas, frente a la Catedral', 'source' => 'salida']);
+});
+
+it('la URL firmada usa AWS_PRESIGN_ENDPOINT cuando el teléfono no ve el host interno del almacenamiento', function () {
+    config([
+        'filesystems.default' => 's3',
+        'filesystems.disks.s3' => ['driver' => 's3', 'key' => 'k', 'secret' => 's', 'region' => 'us-east-1', 'bucket' => 'evidencias', 'endpoint' => 'http://storage:9000', 'use_path_style_endpoint' => true, 'presign_endpoint' => 'http://192.168.1.50:9000'],
+    ]);
+
+    $signed = EvidenceStore::signingDisk()->temporaryUploadUrl('ops/foto.jpg', now()->addMinutes(5), ['ContentType' => 'image/jpeg']);
+
+    expect($signed['url'])->toStartWith('http://192.168.1.50:9000/evidencias/ops/foto.jpg')
+        ->and(EvidenceStore::disk()->temporaryUploadUrl('ops/foto.jpg', now()->addMinutes(5))['url'])->toStartWith('http://storage:9000/');
 });

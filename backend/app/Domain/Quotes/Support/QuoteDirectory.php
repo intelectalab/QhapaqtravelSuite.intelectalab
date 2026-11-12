@@ -405,6 +405,10 @@ final class QuoteDirectory
             return 'ok';
         }
 
+        if ($last === 'rechazada') {
+            return 'rejected';
+        }
+
         if (! isset($row->version_discount) || $row->version_margin === null) {
             return null;
         }

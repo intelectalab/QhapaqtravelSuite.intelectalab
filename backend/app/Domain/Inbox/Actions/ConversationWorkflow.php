@@ -8,6 +8,8 @@ use App\Domain\Crm\Support\Advisors;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Inbox\Support\ConversationDirectory;
+use App\Domain\Inbox\Support\InboxNotices;
+use App\Domain\Portal\Support\PassengerNotices;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Carbon;
@@ -83,6 +85,14 @@ final class ConversationWorkflow
             }
 
             DB::table('collab_conversations')->where('id', $conversation->id)->update($values);
+            $reservationId = $conversation->reservation_id ?? null;
+
+            if (! $internal && $conversation->channel === 'portal' && $reservationId && trim((string) ($data['body'] ?? '')) !== ''
+                && DB::table('channel_trip_messages')->where('reservation_id', $reservationId)->where('sender_type', 'passenger')->exists()) {
+                DB::table('channel_trip_messages')->insert(['reservation_id' => $reservationId, 'sender_type' => 'agency', 'sender_user_id' => $actor->getKey(), 'body' => (string) $data['body'], 'created_by' => $actor->getKey()]);
+                app(PassengerNotices::class)->send((string) $reservationId, 'chat.respuesta', 'Te respondimos tu mensaje', mb_substr((string) $data['body'], 0, 180), 'collab_conversation', (string) $conversation->id);
+            }
+
             $action = $internal ? 'nota_interna' : (($data['resolve'] ?? false) ? 'responder_y_resolver' : 'responder');
             $this->audit->log('Conversación', $conversation->code, $action, $conversation->status, $values['status'] ?? $conversation->status);
 
@@ -110,6 +120,10 @@ final class ConversationWorkflow
 
         DB::table('collab_conversations')->where('id', $conversation->id)->update(['assignee_id' => $target, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         $this->audit->log('Conversación', $conversation->code, 'asignar', $conversation->assignee_id, $target);
+
+        if ($target !== $actor->getKey()) {
+            app(InboxNotices::class)->assigned((string) $conversation->id, (string) $target, (string) $actor->getKey());
+        }
     }
 
     public function status(string $code, string $status, User $actor): void
@@ -141,6 +155,10 @@ final class ConversationWorkflow
                 'created_by' => $actor->getKey(),
             ]);
             $this->audit->log('Conversación', $conversation->code, $resolved ? 'resolver' : 'reabrir', $conversation->status, $status);
+
+            if ($resolved) {
+                app(InboxNotices::class)->resolved((string) $conversation->id);
+            }
         });
     }
 

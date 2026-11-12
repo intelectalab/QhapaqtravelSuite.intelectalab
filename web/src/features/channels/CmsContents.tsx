@@ -32,7 +32,8 @@ export function CmsFlow({ kpis }: { kpis: Record<string, number> }) {
               <span className="text-[12px] font-semibold text-[var(--tint)]">{meta.label}</span>
               <b className="text-[22px] leading-tight tracking-tight">{kpis[status] ?? 0}</b>
             </span>
-            {index < CMS_FLOW.length - 1 && <ArrowRight size={15} className="text-fg-3" />}
+            {index < CMS_FLOW.length - 2 && <ArrowRight size={15} className="text-fg-3" />}
+            {index === CMS_FLOW.length - 2 && <span aria-hidden className="mx-1 h-8 w-px bg-line" />}
           </li>
         );
       })}

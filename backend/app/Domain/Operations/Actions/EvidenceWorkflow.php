@@ -36,7 +36,7 @@ final class EvidenceWorkflow
         $uploadId = (string) Str::uuid7();
         $path = EvidenceStore::path($tenantId, $uploadId, $mime);
         $expires = now()->addMinutes(EvidenceStore::UPLOAD_TTL_MINUTES);
-        $signed = $disk->temporaryUploadUrl($path, $expires, ['ContentType' => $mime]);
+        $signed = EvidenceStore::signingDisk()->temporaryUploadUrl($path, $expires, ['ContentType' => $mime]);
         Cache::put(EvidenceStore::uploadKey($tenantId, $uploadId), [
             'user_id' => $actor->getKey(),
             'path' => $path,

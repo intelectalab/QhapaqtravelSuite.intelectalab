@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheckBig, Clock3, Hand, Lock, MessageSquarePlus, Pencil, Plus, RotateCcw, Siren, TimerOff, Wrench } from "lucide-react";
+import { Clock3, Hand, Lock, MessageSquarePlus, Pencil, Plus, RotateCcw, Siren, TimerOff, Wrench } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { DataTable } from "@/components/table/DataTable";
@@ -75,7 +75,7 @@ export function IncidentFlowActions({ incident }: { incident: IncidentDetail }) 
           <TextArea label={incident.resolution ? "Comentario de cierre (opcional)" : "Comentario de cierre"} name="comment" rows={3} maxLength={1000} placeholder="Sin impacto en el servicio." />
         </OpsStep>
       )}
-      {["resuelta", "cerrada"].includes(incident.status) && (
+      {incident.status === "cerrada" && (
         <OpsStep step="incident_reopen" target={incident.code} version={incident.lock_version} label="Reabrir" icon={<RotateCcw size={16} />} title="Reabrir incidencia" description={incident.title} submitLabel="Reabrir">
           <TextArea label="Motivo" name="reason" rows={3} required minLength={5} maxLength={500} placeholder="El pasajero volvió a presentar síntomas." />
         </OpsStep>
@@ -146,10 +146,10 @@ export function IncidentsTable({ data }: { data: IncidentList }) {
   ];
 
   const metrics: MetricFilter<IncidentRow>[] = [
-    { id: "open", label: "Abiertas", tone: "info", icon: <Clock3 size={19} />, matches: (row) => OPEN_INCIDENT.includes(row.status) },
+    { id: "open", label: "Abiertas", tone: "info", icon: <Clock3 size={19} />, matches: (row) => row.status === "abierta" },
     { id: "critical", label: "Críticas abiertas", tone: "bad", icon: <Siren size={19} />, matches: (row) => OPEN_INCIDENT.includes(row.status) && row.severity === "critica" },
+    { id: "process", label: "En proceso", tone: "sun", icon: <Wrench size={19} />, matches: (row) => row.status === "en_proceso" },
     { id: "overdue", label: "Plazo vencido", tone: "warn", icon: <TimerOff size={19} />, matches: (row) => row.overdue },
-    { id: "closed", label: "Resueltas o cerradas", tone: "ok", icon: <CircleCheckBig size={19} />, matches: (row) => !OPEN_INCIDENT.includes(row.status) },
   ];
 
   const filters: FilterConfig<IncidentRow>[] = [

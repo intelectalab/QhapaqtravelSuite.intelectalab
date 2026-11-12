@@ -1,6 +1,7 @@
 "use client";
 
 import { AlarmClock, Ban, BellRing, CalendarClock, CircleCheck, FilePlus2, HandCoins, Landmark, Wallet } from "lucide-react";
+import { RECEIVABLES_CSV } from "@/lib/finance-csv";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { DataTable } from "@/components/table/DataTable";
@@ -261,6 +262,7 @@ export function ReceivablesTable({ data }: { data: ReceivablesOverview }) {
   return (
     <DataTable
       screen="finanzas-cobros"
+      csv={RECEIVABLES_CSV}
       rows={rows}
       columns={columns}
       getKey={(row) => row.code}

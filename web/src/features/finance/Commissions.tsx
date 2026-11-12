@@ -1,6 +1,7 @@
 "use client";
 
 import { Ban, Calculator, CircleCheck, HandCoins, Hourglass, Plus, RefreshCw, Stamp } from "lucide-react";
+import { COMMISSIONS_CSV } from "@/lib/finance-csv";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { DataTable } from "@/components/table/DataTable";
@@ -203,6 +204,7 @@ export function CommissionsTable({ data }: { data: CommissionsOverview }) {
   return (
     <DataTable
       screen="finanzas-comisiones"
+      csv={COMMISSIONS_CSV}
       rows={rows}
       columns={columns}
       getKey={(row) => row.code}

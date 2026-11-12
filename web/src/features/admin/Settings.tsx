@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, CalendarClock, Coins, Hash, Mail, MapPin, Pencil, Phone, Plus, Radio, ScrollText, Settings2, Timer, Wrench } from "lucide-react";
+import { Ban, Building2, CalendarClock, Coins, Hash, Mail, MapPin, Pencil, Phone, Plus, Radio, ScrollText, Settings2, ShieldCheck, Timer, TrendingUp, Wrench } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { createSequence, updateSequence, updateSettings } from "@/app/(backoffice)/admin/configuracion/actions";
@@ -245,11 +245,16 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
           )
         }
       >
-        <div className="mb-3 grid grid-cols-3 gap-2">
+        <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             { label: "Validez", value: `${policies.quote_validity_days ?? "—"} días`, icon: CalendarClock },
             { label: "Retención", value: `${policies.hold_minutes ?? "—"} min`, icon: Timer },
-            { label: "Descuento sin aprobación", value: `${policies.max_discount_pct ?? "—"} %`, icon: Hash },
+            { label: "Margen sugerido", value: `${policies.markup_pct ?? "—"} %`, icon: TrendingUp },
+            { label: "Margen mínimo", value: `${policies.approval_margin_pct ?? 15} %`, icon: ShieldCheck },
+            { label: "Descuento libre", value: `${policies.max_discount_pct ?? "—"} %`, icon: Hash },
+            { label: "Tope de descuento", value: `${policies.discount_cap_pct ?? 10} %`, icon: Ban },
+            { label: "Anticipo", value: `${policies.advance_pct ?? "—"} %`, icon: Coins },
+            { label: "Saldo", value: `${policies.balance_days_before ?? "—"} días antes`, icon: CalendarClock },
           ].map((item) => (
             <span key={item.label} className="group rounded-[12px] bg-[color-mix(in_srgb,var(--t3)_8%,var(--surface))] px-3 py-2 transition-transform duration-300 hover:-translate-y-0.5">
               <span className="flex items-center gap-1.5 text-[11.5px] font-semibold text-t3">
@@ -262,9 +267,6 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
         </div>
         <FieldList
           fields={[
-            { label: "Aprobación interna", value: `También si el margen baja de ${policies.approval_margin_pct ?? 15} % · tope de descuento ${policies.discount_cap_pct ?? 10} %` },
-            { label: "Margen y anticipo", value: `${policies.markup_pct ?? "—"} % de margen · ${policies.advance_pct ?? "—"} % de anticipo` },
-            { label: "Saldo", value: `Vence ${policies.balance_days_before ?? "—"} días antes del viaje` },
             {
               label: "Cancelación",
               value: (

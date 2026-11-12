@@ -1374,6 +1374,8 @@ Table catalog_accommodation_legs {
   updated_by uuid
   created_at timestamptz [not null]
   updated_at timestamptz [not null]
+  min_nights smallint
+  max_nights smallint
   Note: '16 §3.6 · Tramos de alojamiento del circuito.'
 }
 

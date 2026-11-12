@@ -25,10 +25,27 @@ export async function claimStep(_state: StepResult, form: FormData): Promise<Ste
   const code = encodeURIComponent(text(form, "code"));
   const step = text(form, "step");
   const failure = "No pudimos actualizar la hoja.";
-  if (step === "evaluate") return refresh(await sendStep(`/crm/claim-book/${code}/review`, "POST", formValues(form, ["lock_version"]), failure));
+  if (step === "evaluate") return refresh(await sendStep(`/crm/claim-book/${code}/review`, "POST", formValues(form, ["lock_version", "owner_id", "note"]), failure));
+  if (step === "resend") return refresh(await sendStep(`/crm/claim-book/${code}/response/resend`, "POST", {}, "No pudimos reenviar la respuesta."));
   if (step === "respond") return refresh(await sendStep(`/crm/claim-book/${code}/response`, "POST", formValues(form, ["decision", "text", "actions"]), failure));
   if (step === "close") return refresh(await sendStep(`/crm/claim-book/${code}/close`, "POST", formValues(form, ["note", "lock_version"]), failure));
   return { message: null, done: true };
+}
+
+function holidayList(form: FormData): { date: string; name: string }[] {
+  try {
+    const parsed: unknown = JSON.parse(text(form, "current") || "[]");
+    return Array.isArray(parsed) ? parsed.filter((row): row is { date: string; name: string } => typeof row?.date === "string" && typeof row?.name === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function claimHolidayStep(_state: StepResult, form: FormData): Promise<StepResult> {
+  const current = holidayList(form);
+  const date = text(form, "date");
+  const holidays = text(form, "step") === "remove" ? current.filter((row) => row.date !== date) : [...current.filter((row) => row.date !== text(form, "original")), { date, name: text(form, "name") }];
+  return refresh(await sendStep("/crm/claim-book/settings", "PUT", { holidays }, "No pudimos guardar los feriados."));
 }
 
 export async function saveClaimSettings(_state: StepResult, form: FormData): Promise<StepResult> {

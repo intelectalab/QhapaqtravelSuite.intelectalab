@@ -117,7 +117,7 @@ it('no se cobra ni se registra pago de una factura ya pagada', function () {
 });
 
 it('suspender por cobranza deja la agencia y su suscripción suspendidas y bloquea el ingreso de su equipo', function () {
-    $id = invInDunning();
+    $id = invInDunning(['status' => 'uncollectible', 'dunning_retries_done' => 3, 'dunning_next_retry_at' => null]);
     expect(loginAs('lparedes@andeshorizonte.pe')->status())->toBe(200);
     actingAsPlatform();
 
@@ -132,21 +132,25 @@ it('suspender por cobranza deja la agencia y su suscripción suspendidas y bloqu
     expect($this->postJson("/api/v1/platform/invoices/{$id}/dunning/suspend", ['reason' => 'Otra vez por falta de pago']))->toBeApiError(409, 'TEN-BR-08');
 });
 
-it('solo se suspende por cobranza con una factura en cobranza y con motivo', function () {
+it('solo se suspende por cobranza cuando la factura agotó los reintentos, y con motivo', function () {
     actingAsPlatform();
     $paid = invLatestId();
 
     expect($this->postJson("/api/v1/platform/invoices/{$paid}/dunning/suspend", ['reason' => 'Falta de pago']))->toBeApiError(409, 'DUNNING_INACTIVE');
     expect(invTenantStatus())->toBe('activo');
 
-    $id = invInDunning();
+    $retrying = invInDunning();
+    expect($this->postJson("/api/v1/platform/invoices/{$retrying}/dunning/suspend", ['reason' => 'Falta de pago']))->toBeApiError(409, 'DUNNING_INACTIVE');
+    expect(invTenantStatus())->toBe('activo');
+
+    $id = invInDunning(['status' => 'uncollectible', 'dunning_next_retry_at' => null]);
     $this->postJson("/api/v1/platform/invoices/{$id}/dunning/suspend", ['reason' => 'x'])->assertStatus(422)->assertJsonValidationErrors('reason');
     expect($this->postJson('/api/v1/platform/invoices/no-es-uuid/dunning/suspend', ['reason' => 'Falta de pago']))->toBeApiError(404);
     expect(invTenantStatus())->toBe('activo');
 });
 
 it('el pago manual deja la factura pagada y a la agencia suspendida al día y con acceso', function () {
-    $id = invInDunning();
+    $id = invInDunning(['status' => 'uncollectible', 'dunning_next_retry_at' => null]);
     actingAsPlatform();
     $this->postJson("/api/v1/platform/invoices/{$id}/dunning/suspend", ['reason' => 'Falta de pago tras tres reintentos'])->assertOk();
 
@@ -166,7 +170,7 @@ it('el pago manual deja la factura pagada y a la agencia suspendida al día y co
 });
 
 it('el pago manual no reactiva a la agencia si le queda otra factura en cobranza', function () {
-    $id = invInDunning();
+    $id = invInDunning(['status' => 'uncollectible', 'dunning_next_retry_at' => null]);
     $other = (string) invDb()->table('platform_invoices')->where('tenant_id', tenantA()->getKey())->orderBy('number')->value('id');
     invDb()->table('platform_invoices')->where('id', $other)->update(['status' => 'failed']);
     actingAsPlatform();
@@ -209,7 +213,7 @@ it('anular una factura pagada emite la nota de crédito con reembolso y lo audit
 });
 
 it('anular la única factura en cobranza de una agencia suspendida la reactiva sin reembolso', function () {
-    $id = invInDunning();
+    $id = invInDunning(['status' => 'uncollectible', 'dunning_next_retry_at' => null]);
     actingAsPlatform();
     $this->postJson("/api/v1/platform/invoices/{$id}/dunning/suspend", ['reason' => 'Falta de pago tras tres reintentos'])->assertOk();
 
@@ -233,14 +237,14 @@ it('la prórroga de cobranza mueve 7 días el próximo reintento una sola vez', 
     $id = invInDunning();
     actingAsPlatform();
 
-    $this->postJson("/api/v1/platform/invoices/{$id}/dunning/extend")->assertOk()->assertJsonPath('data.extended', true);
+    $this->postJson("/api/v1/platform/invoices/{$id}/dunning/extend", [], critical())->assertOk()->assertJsonPath('data.extended', true);
     $invoice = invRow($id);
 
     expect((int) $invoice->dunning_extended_days)->toBe(7)
         ->and(Carbon::parse($invoice->dunning_next_retry_at)->utc()->format('Y-m-d H:i'))->toBe('2026-10-07 15:00')
         ->and(invAudit('prorroga_dunning'))->toBe('Próximo reintento 07/10/2026 10:00');
-    expect($this->postJson("/api/v1/platform/invoices/{$id}/dunning/extend"))->toBeApiError(409, 'DUNNING_EXTENDED')
-        ->and($this->postJson('/api/v1/platform/invoices/'.invDb()->table('platform_invoices')->where('tenant_id', tenantA()->getKey())->where('status', 'paid')->value('id').'/dunning/extend'))->toBeApiError(409, 'DUNNING_INACTIVE');
+    expect($this->postJson("/api/v1/platform/invoices/{$id}/dunning/extend", [], critical()))->toBeApiError(409, 'DUNNING_EXTENDED')
+        ->and($this->postJson('/api/v1/platform/invoices/'.invDb()->table('platform_invoices')->where('tenant_id', tenantA()->getKey())->where('status', 'paid')->value('id').'/dunning/extend', [], critical()))->toBeApiError(409, 'DUNNING_INACTIVE');
 });
 
 it('el Tenant Admin no opera la facturación de la plataforma', function (string $path, array $body) {

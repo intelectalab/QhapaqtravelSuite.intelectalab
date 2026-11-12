@@ -1,6 +1,6 @@
 erDiagram
   channel_b2b_agencies {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid crm_client_id FK
@@ -24,13 +24,13 @@ erDiagram
     char currency
   }
   channel_b2b_price_lists {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar name UK
     varchar status
   }
   channel_b2b_settlement_requests {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid agency_id FK
@@ -51,7 +51,7 @@ erDiagram
     uuid reservation_service_id FK
   }
   channel_ecom_orders {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid crm_client_id FK
@@ -84,8 +84,30 @@ erDiagram
     uuid replied_by FK
     uuid conversation_id FK
   }
-  channel_pax_feedback {
+  channel_ota_bookings {
     uuid id PK
+    uuid connection_id FK
+    uuid mapping_id FK
+    uuid reservation_id FK
+    char currency
+    varchar status
+  }
+  channel_ota_connections {
+    uuid id PK,UK
+    uuid tenant_id UK
+    varchar code UK
+    varchar name
+    varchar status
+  }
+  channel_ota_product_mappings {
+    uuid id PK,UK
+    uuid tenant_id UK
+    uuid connection_id FK
+    uuid product_id FK
+    varchar status
+  }
+  channel_pax_feedback {
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid reservation_id FK
@@ -109,7 +131,7 @@ erDiagram
     uuid user_id FK
   }
   channel_support_tickets {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid crm_client_id FK
@@ -132,7 +154,7 @@ erDiagram
     uuid hold_id FK
   }
   channel_web_carts {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     char token_hash UK
@@ -222,58 +244,63 @@ erDiagram
   ops_incidents {
     uuid id PK
   }
-  booking_passengers |o--o{ channel_portal_access_links : "passenger_id"
-  booking_reservation_services |o--o{ channel_ecom_order_lines : "reservation_service_id"
-  booking_reservation_services |o--o{ channel_pax_feedback : "reservation_service_id"
-  booking_reservations |o--o{ channel_b2b_credit_movements : "reservation_id"
-  booking_reservations |o--o{ channel_ecom_orders : "reservation_id"
-  booking_reservations ||--o{ channel_pax_feedback : "reservation_id"
-  booking_reservations ||--o{ channel_portal_access_links : "reservation_id"
-  booking_reservations |o--o{ channel_support_tickets : "reservation_id"
-  booking_reservations ||--o{ channel_trip_messages : "reservation_id"
-  catalog_availability_holds |o--o{ channel_ecom_order_lines : "hold_id"
-  catalog_availability_holds |o--o{ channel_web_cart_items : "hold_id"
-  catalog_product_departures |o--o{ channel_ecom_order_lines : "departure_id"
-  catalog_product_departures |o--o{ channel_ecom_orders : "departure_id"
-  catalog_product_departures |o--o{ channel_web_cart_items : "departure_id"
-  catalog_product_promotions |o--o{ channel_ecom_order_lines : "promotion_id"
-  catalog_product_promotions |o--o{ channel_ecom_orders : "promotion_id"
-  catalog_products ||--o{ channel_ecom_order_lines : "product_id"
-  catalog_products |o--o{ channel_ecom_orders : "product_id"
-  catalog_products |o--o{ channel_external_reviews : "product_id"
-  catalog_products ||--o{ channel_web_cart_items : "product_id"
-  catalog_products ||--o{ channel_widget_handoffs : "product_id"
-  catalog_products ||--o{ channel_wishlist_items : "product_id"
-  catalog_rates ||--o{ channel_ecom_order_lines : "rate_id"
-  catalog_seasons |o--o{ channel_ecom_order_lines : "season_id"
-  channel_b2b_agencies ||--o{ channel_b2b_credit_exceptions : "agency_id"
-  channel_b2b_agencies ||--o{ channel_b2b_credit_movements : "agency_id"
-  channel_b2b_agencies ||--o{ channel_b2b_settlement_requests : "agency_id"
-  channel_b2b_price_lists ||--o{ channel_b2b_agencies : "price_list_id"
-  channel_ecom_orders ||--o{ channel_ecom_order_lines : "order_id"
-  channel_ecom_orders ||--o{ channel_ecom_passengers : "order_id"
-  channel_ecom_orders ||--o{ channel_ecom_payment_attempts : "order_id"
-  channel_ecom_orders |o--o{ channel_web_carts : "order_id"
-  channel_support_tickets ||--o{ channel_support_ticket_events : "ticket_id"
-  channel_web_carts |o--o{ channel_ecom_orders : "cart_id"
-  channel_web_carts ||--o{ channel_web_cart_items : "cart_id"
-  channel_web_carts |o--o{ channel_widget_handoffs : "cart_id"
-  collab_approval_requests |o--o{ channel_b2b_credit_exceptions : "approval_request_id"
-  collab_conversations |o--o{ channel_external_reviews : "conversation_id"
-  collab_conversations |o--o{ channel_pax_feedback : "conversation_id"
-  crm_clients |o--o{ channel_b2b_agencies : "crm_client_id"
-  crm_clients ||--o{ channel_ecom_orders : "crm_client_id"
-  crm_clients ||--o{ channel_support_tickets : "crm_client_id"
-  crm_clients |o--o{ channel_web_carts : "crm_client_id"
-  crm_clients ||--o{ channel_wishlist_items : "crm_client_id"
-  fin_payments |o--o{ channel_b2b_credit_movements : "payment_id"
-  fin_payments |o--o{ channel_ecom_payment_attempts : "payment_id"
-  fin_receivables |o--o{ channel_ecom_orders : "receivable_id"
-  iam_users ||--o{ channel_b2b_settlement_requests : "requested_by"
-  iam_users |o--o{ channel_external_reviews : "replied_by"
-  iam_users |o--o{ channel_pax_feedback : "replied_by"
-  iam_users |o--o{ channel_support_ticket_events : "user_id"
-  iam_users ||--o{ channel_support_tickets : "created_by_user_id, owner_id"
-  iam_users |o--o{ channel_trip_messages : "sender_user_id"
-  integration_review_sources ||--o{ channel_external_reviews : "source_id"
-  ops_incidents |o--o{ channel_pax_feedback : "incident_id"
+  booking_passengers ||--o{ channel_portal_access_links : "passenger_id, tenant_id"
+  booking_reservation_services ||--o{ channel_ecom_order_lines : "reservation_service_id, tenant_id"
+  booking_reservation_services ||--o{ channel_pax_feedback : "reservation_service_id, tenant_id"
+  booking_reservations ||--o{ channel_b2b_credit_movements : "reservation_id, tenant_id"
+  booking_reservations ||--o{ channel_ecom_orders : "reservation_id, tenant_id"
+  booking_reservations ||--o{ channel_ota_bookings : "reservation_id, tenant_id"
+  booking_reservations ||--o{ channel_pax_feedback : "reservation_id, tenant_id"
+  booking_reservations ||--o{ channel_portal_access_links : "reservation_id, tenant_id"
+  booking_reservations ||--o{ channel_support_tickets : "reservation_id, tenant_id"
+  booking_reservations ||--o{ channel_trip_messages : "reservation_id, tenant_id"
+  catalog_availability_holds ||--o{ channel_ecom_order_lines : "hold_id, tenant_id"
+  catalog_availability_holds ||--o{ channel_web_cart_items : "hold_id, tenant_id"
+  catalog_product_departures ||--o{ channel_ecom_order_lines : "departure_id, tenant_id"
+  catalog_product_departures ||--o{ channel_ecom_orders : "departure_id, tenant_id"
+  catalog_product_departures ||--o{ channel_web_cart_items : "departure_id, tenant_id"
+  catalog_product_promotions ||--o{ channel_ecom_order_lines : "promotion_id, tenant_id"
+  catalog_product_promotions ||--o{ channel_ecom_orders : "promotion_id, tenant_id"
+  catalog_products ||--o{ channel_ecom_order_lines : "product_id, tenant_id"
+  catalog_products ||--o{ channel_ecom_orders : "product_id, tenant_id"
+  catalog_products ||--o{ channel_external_reviews : "product_id, tenant_id"
+  catalog_products ||--o{ channel_ota_product_mappings : "product_id, tenant_id"
+  catalog_products ||--o{ channel_web_cart_items : "product_id, tenant_id"
+  catalog_products ||--o{ channel_widget_handoffs : "product_id, tenant_id"
+  catalog_products ||--o{ channel_wishlist_items : "product_id, tenant_id"
+  catalog_rates ||--o{ channel_ecom_order_lines : "rate_id, tenant_id"
+  catalog_seasons ||--o{ channel_ecom_order_lines : "season_id, tenant_id"
+  channel_b2b_agencies ||--o{ channel_b2b_credit_exceptions : "agency_id, tenant_id"
+  channel_b2b_agencies ||--o{ channel_b2b_credit_movements : "agency_id, tenant_id"
+  channel_b2b_agencies ||--o{ channel_b2b_settlement_requests : "agency_id, tenant_id"
+  channel_b2b_price_lists ||--o{ channel_b2b_agencies : "price_list_id, tenant_id"
+  channel_ecom_orders ||--o{ channel_ecom_order_lines : "order_id, tenant_id"
+  channel_ecom_orders ||--o{ channel_ecom_passengers : "order_id, tenant_id"
+  channel_ecom_orders ||--o{ channel_ecom_payment_attempts : "order_id, tenant_id"
+  channel_ecom_orders ||--o{ channel_web_carts : "order_id, tenant_id"
+  channel_ota_connections ||--o{ channel_ota_bookings : "connection_id, tenant_id"
+  channel_ota_connections ||--o{ channel_ota_product_mappings : "connection_id, tenant_id"
+  channel_ota_product_mappings ||--o{ channel_ota_bookings : "mapping_id, tenant_id"
+  channel_support_tickets ||--o{ channel_support_ticket_events : "tenant_id, ticket_id"
+  channel_web_carts ||--o{ channel_ecom_orders : "cart_id, tenant_id"
+  channel_web_carts ||--o{ channel_web_cart_items : "cart_id, tenant_id"
+  channel_web_carts ||--o{ channel_widget_handoffs : "cart_id, tenant_id"
+  collab_approval_requests ||--o{ channel_b2b_credit_exceptions : "approval_request_id, tenant_id"
+  collab_conversations ||--o{ channel_external_reviews : "conversation_id, tenant_id"
+  collab_conversations ||--o{ channel_pax_feedback : "conversation_id, tenant_id"
+  crm_clients ||--o{ channel_b2b_agencies : "crm_client_id, tenant_id"
+  crm_clients ||--o{ channel_ecom_orders : "crm_client_id, tenant_id"
+  crm_clients ||--o{ channel_support_tickets : "crm_client_id, tenant_id"
+  crm_clients ||--o{ channel_web_carts : "crm_client_id, tenant_id"
+  crm_clients ||--o{ channel_wishlist_items : "crm_client_id, tenant_id"
+  fin_payments ||--o{ channel_b2b_credit_movements : "payment_id, tenant_id"
+  fin_payments ||--o{ channel_ecom_payment_attempts : "payment_id, tenant_id"
+  fin_receivables ||--o{ channel_ecom_orders : "receivable_id, tenant_id"
+  iam_users ||--o{ channel_b2b_settlement_requests : "requested_by, tenant_id"
+  iam_users ||--o{ channel_external_reviews : "replied_by, tenant_id"
+  iam_users ||--o{ channel_pax_feedback : "replied_by, tenant_id"
+  iam_users ||--o{ channel_support_ticket_events : "tenant_id, user_id"
+  iam_users ||--o{ channel_support_tickets : "created_by_user_id, owner_id, tenant_id"
+  iam_users ||--o{ channel_trip_messages : "sender_user_id, tenant_id"
+  integration_review_sources ||--o{ channel_external_reviews : "source_id, tenant_id"
+  ops_incidents ||--o{ channel_pax_feedback : "incident_id, tenant_id"

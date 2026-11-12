@@ -211,5 +211,18 @@
     "mfa": false,
     "phone": "084 25 3300",
     "color": "#1F6FB8"
+  },
+  {
+    "id": "U18",
+    "clientId": "CLI-0002",
+    "name": "Úrsula Benavides Lara",
+    "email": "ubenavides@mcblanca.com.pe",
+    "role": "customer",
+    "sede": "SED-01",
+    "status": "activo",
+    "lastLogin": "2026-09-30 09:40",
+    "mfa": true,
+    "phone": "01 705 3312",
+    "color": "#6D4BC2"
   }
 ]

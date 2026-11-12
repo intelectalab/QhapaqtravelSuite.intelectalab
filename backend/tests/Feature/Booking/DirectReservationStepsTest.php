@@ -9,6 +9,7 @@ beforeEach(function () {
 
 it('paso 1 de la reserva directa exige un cliente de la cartera y un responsable activo', function () {
     actingAsSeed('U03');
+    detachFromPortfolio('CLI-0001', 'U03');
 
     $this->postJson('/api/v1/reservations/availability-check', ['step' => 1])
         ->assertStatus(422)->assertJsonValidationErrors('client_id');

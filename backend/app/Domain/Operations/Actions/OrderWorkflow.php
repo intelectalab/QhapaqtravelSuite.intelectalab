@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Operations\Actions;
 
 use App\Domain\Booking\Actions\ReservationLifecycle;
+use App\Domain\Booking\Support\ReservationNotices;
 use App\Domain\Iam\Models\User;
 use App\Domain\Operations\Support\OpsCommon;
 use App\Domain\Operations\Support\OrderDirectory;
@@ -84,6 +85,7 @@ final class OrderWorkflow
             }
 
             $this->audit->log('Orden operativa', $code, 'crear', null, "{$reservation->code} · {$services->count()} servicios");
+            app(ReservationNotices::class)->orderCreated($orderId, $code, DB::table('ops_orders')->where('id', $orderId)->value('coordinator_id'), (string) $actor->getKey());
 
             return $code;
         });
@@ -96,6 +98,10 @@ final class OrderWorkflow
         $this->common->ensureCoordinator($coordinatorId);
         DB::table('ops_orders')->where('id', $order->id)->update(['coordinator_id' => $coordinatorId, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         $this->audit->log('Orden operativa', $code, 'cambiar_coordinador', $order->coordinator_id, $coordinatorId);
+
+        if ((string) $order->coordinator_id !== $coordinatorId) {
+            app(ReservationNotices::class)->orderReassigned((string) $order->id, $code, $coordinatorId, (string) $actor->getKey());
+        }
     }
 
     public function advance(string $code, string $target, User $actor): void
@@ -161,23 +167,6 @@ final class OrderWorkflow
         });
 
         $this->audit->log('Orden operativa', $code, $target === 'completada' ? 'cerrar' : 'cambio_estado', $order->status, $target);
-    }
-
-    public function cancel(string $code, string $reason, User $actor): void
-    {
-        $order = $this->order($code);
-        $this->ensureOpen($order);
-
-        if ($order->status === 'en_ejecucion') {
-            throw ApiException::conflict('OPS-BR-05', 'La operación ya está en ejecución: registra una incidencia en lugar de cancelarla.');
-        }
-
-        DB::transaction(function () use ($order, $reason, $actor): void {
-            DB::table('ops_orders')->where('id', $order->id)->update(['status' => 'cancelada', 'cancelled_at' => now(), 'cancel_reason' => $reason, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
-            DB::table('ops_assignments')->where('order_id', $order->id)->whereNotIn('status', ['completada'])->update(['guide_id' => null, 'driver_id' => null, 'vehicle_id' => null, 'status' => 'pendiente', 'updated_at' => now()]);
-        });
-
-        $this->audit->log('Orden operativa', $code, 'cancelar', $order->status, $reason);
     }
 
     public function addTask(string $code, string $title, User $actor): void

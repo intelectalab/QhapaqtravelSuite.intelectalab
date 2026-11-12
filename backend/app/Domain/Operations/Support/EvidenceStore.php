@@ -34,6 +34,21 @@ final class EvidenceStore
         return (string) config('filesystems.default');
     }
 
+    public static function signingDisk(): FilesystemAdapter
+    {
+        $config = (array) config('filesystems.disks.'.self::diskName(), []);
+        $endpoint = (string) ($config['presign_endpoint'] ?? '');
+
+        if ($endpoint === '' || ($config['driver'] ?? null) !== 's3') {
+            return self::disk();
+        }
+
+        $adapter = Storage::build([...$config, 'endpoint' => $endpoint]);
+        assert($adapter instanceof FilesystemAdapter);
+
+        return $adapter;
+    }
+
     public static function path(string $tenantId, string $id, string $mime): string
     {
         return "tenants/{$tenantId}/ops/evidences/{$id}.".self::MIME[$mime];

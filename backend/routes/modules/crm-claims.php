@@ -12,5 +12,6 @@ Route::middleware('permission:crm.claims.manage')->group(function (): void {
     Route::patch('crm/claim-book/{code}', [ClaimBookController::class, 'update'])->name('crm.claims.update');
     Route::post('crm/claim-book/{code}/review', [ClaimBookController::class, 'evaluate'])->name('crm.claims.evaluate');
     Route::post('crm/claim-book/{code}/response', [ClaimBookController::class, 'respond'])->name('crm.claims.respond');
+    Route::post('crm/claim-book/{code}/response/resend', [ClaimBookController::class, 'resend'])->middleware('throttle:10,1')->name('crm.claims.resend');
     Route::post('crm/claim-book/{code}/close', [ClaimBookController::class, 'close'])->name('crm.claims.close');
 });

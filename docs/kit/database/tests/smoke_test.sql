@@ -2,7 +2,7 @@
 -- Smoke test del esquema (RLS, triggers, CHECK, EXCLUDE, flujo cotización → reserva).
 -- SOLO en una base de datos de prueba recién creada con 00…90. Se ejecuta como superusuario;
 -- cada bloque cambia a app_role / platform_role con SET LOCAL ROLE.
--- Resultado esperado: 12 líneas "NOTICE: OK …" y ningún ERROR.
+-- Resultado esperado: 17 líneas "NOTICE: OK …" y ningún ERROR.
 -- =============================================================================
 \set ON_ERROR_STOP 1
 set search_path = public;
@@ -83,7 +83,7 @@ end $$;
 -- resolución por host antes del contexto
 do $$ declare t uuid; begin
   set local role app_role;
-  select tenant_id into t from app_resolve_tenant_by_host('inca.kipucontrol.app', 'kipucontrol.app');
+  select tenant_id into t from app_resolve_tenant_by_host('inca.kipucontrol.com', 'kipucontrol.com');
   assert t = '22222222-2222-7222-8222-222222222222', 'resolución por host';
   raise notice 'OK resolución por host';
 end $$;
@@ -191,4 +191,188 @@ begin
   insert into fin_receivables (code, reservation_id, client_id, kind, concept, amount, currency, fx_rate, due_date)
     values ('CXC-00710', r, cl, 'anticipo', 'Anticipo 40%', 42.48, 'USD', 3.74, '2026-10-01');
   raise notice 'OK flujo catálogo → cotización → reserva → CxC (con guardas de congelado, idempotencia y nivel de destino)';
+end $$;
+
+-- ---------------------------------------------------------------- v2.5: FKs con tenant, columnas de tenants y tokens
+do $$
+declare b_client uuid; n int;
+begin
+  select id into b_client from crm_clients where tenant_id = '22222222-2222-7222-8222-222222222222' limit 1;
+  set local role app_role;
+  perform app_set_tenant('11111111-1111-7111-8111-111111111111');
+  begin
+    insert into crm_client_contacts (client_id, name) values (b_client, 'cruzado');
+    raise exception 'debió fallar: contacto de A apuntando a cliente de B';
+  exception when foreign_key_violation then null;
+  end;
+  raise notice 'OK FK compuesta impide referencias entre tenants';
+  begin
+    update tenants set status = 'activo', trial_ends_at = '2099-01-01';
+    raise exception 'debió fallar: el tenant no puede cambiar su estado ni su prueba';
+  exception when insufficient_privilege then null;
+  end;
+  update tenants set commercial_name = commercial_name;
+  raise notice 'OK tenants: solo columnas de perfil';
+  select count(*) into n from personal_access_tokens where tenant_id <> '11111111-1111-7111-8111-111111111111';
+  assert n = 0, 'A no debe ver tokens de otros tenants';
+  raise notice 'OK personal_access_tokens con RLS';
+end $$;
+
+-- ---------------------------------------------------------------- v2.7: portal corporativo (spec 20)
+do $$
+declare a_client uuid; b_client uuid; acc uuid; cc uuid; n int;
+begin
+  select id into a_client from crm_clients where tenant_id = '11111111-1111-7111-8111-111111111111' limit 1;
+  select id into b_client from crm_clients where tenant_id = '22222222-2222-7222-8222-222222222222' limit 1;
+  set local role app_role;
+  perform app_set_tenant('11111111-1111-7111-8111-111111111111');
+  insert into crm_corporate_accounts (client_id, credit_days) values (a_client, 30) returning id into acc;
+  insert into crm_corporate_cost_centers (account_id, code, name, budget_amount) values (acc, 'CC-GER', 'Gerencia', 30000) returning id into cc;
+  begin
+    insert into crm_corporate_accounts (client_id) values (b_client);
+    raise exception 'debió fallar: cuenta corporativa de A sobre cliente de B';
+  exception when foreign_key_violation then null;
+  end;
+  begin
+    insert into crm_corporate_portal_users (account_id, email, full_name, portal_role) values (acc, 'aprobador@empresa.pe', 'Sin centro', 'aprobador');
+    raise exception 'debió fallar: aprobador sin centro de costo';
+  exception when check_violation then null;
+  end;
+  begin
+    insert into fin_corporate_statements (code, account_id, period_start, period_end, currency, opening_balance, charges, payments, credits, closing_balance)
+      values ('EC-2026-09', acc, '2026-09-01', '2026-09-30', 'PEN', 100, 50, 30, 0, 999);
+    raise exception 'debió fallar: saldo final inconsistente';
+  exception when check_violation then null;
+  end;
+  perform app_set_tenant('22222222-2222-7222-8222-222222222222');
+  select count(*) into n from crm_corporate_accounts; assert n = 0, 'B no debe ver cuentas corporativas de A';
+  raise notice 'OK portal corporativo: aislamiento, FK compuesta y CHECKs';
+end $$;
+
+-- ---------------------------------------------------------------- v2.8: viajes por tramos, pasarelas, aventuras y vitrina (specs 21 y 22)
+do $$
+declare a_client uuid; gw uuid; n int;
+begin
+  select id into a_client from crm_clients where tenant_id = '11111111-1111-7111-8111-111111111111' limit 1;
+  set local role app_role;
+  perform app_set_tenant('11111111-1111-7111-8111-111111111111');
+  begin
+    insert into cms_travel_stories (slug, title, client_id, status, published_at) values ('sin-permiso', 'Sin permiso', a_client, 'publicado', now());
+    raise exception 'debió fallar: historia publicada sin consentimiento';
+  exception when check_violation then null;
+  end;
+  insert into cms_travel_stories (slug, title, client_id, status, published_at, consent_at, consent_by_name, consent_channel, consent_name_mode, consent_photos, photo_count)
+    values ('con-permiso', 'Con permiso', a_client, 'publicado', now(), now(), 'Cliente a', 'portal', 'solo_nombre', true, 3);
+  insert into fin_gateway_accounts (provider, label, account_ref, currency, fee_pct, fee_fixed, fee_currency) values ('paypal', 'PayPal', 'pagos@a.pe', 'USD', 5.4, 0.3, 'USD') returning id into gw;
+  begin
+    insert into cms_redirects (from_path, to_path) values ('/a', '/a');
+    raise exception 'debió fallar: redirección a sí misma';
+  exception when check_violation then null;
+  end;
+  perform app_set_tenant('22222222-2222-7222-8222-222222222222');
+  select count(*) into n from cms_travel_stories; assert n = 0, 'B no debe ver historias de A';
+  select count(*) into n from fin_gateway_accounts; assert n = 0, 'B no debe ver pasarelas de A';
+  begin
+    perform 1 from platform_showcase_listings limit 1;
+    raise exception 'debió fallar: app_role no lee tablas de la vitrina';
+  exception when insufficient_privilege then null;
+  end;
+  raise notice 'OK v2.8: consentimiento, pasarelas y redirecciones con RLS; vitrina solo plataforma';
+end $$;
+
+-- ---------------------------------------------------------------- v2.9: plantillas web y contenido con IA (spec 23)
+do $$
+declare tpl uuid; ver uuid; job uuid; n int;
+begin
+  insert into platform_site_templates (code, slug, name, description, category, author_name, status)
+    values ('TPL-SMOKE', 'smoke', 'Smoke', 'Plantilla de prueba', 'agencia', 'Equipo KipuControl', 'borrador') returning id into tpl;
+  begin
+    insert into platform_site_template_versions (template_id, version, manifest, bundle_path, bundle_sha256, status, lh_performance, lh_accessibility, lh_seo, lh_best_practices, published_at)
+      values (tpl, '1.0.0', '{"sections":[],"tokens":{}}', 'tpl/smoke-1.0.0.tgz', repeat('a', 64), 'publicada', 70, 99, 99, 99, now());
+    raise exception 'debió fallar: versión publicada con Lighthouse bajo y sin aprobador';
+  exception when check_violation then null;
+  end;
+  insert into platform_site_template_versions (template_id, version, manifest, bundle_path, bundle_sha256)
+    values (tpl, '1.0.0', '{"sections":[],"tokens":{}}', 'tpl/smoke-1.0.0.tgz', repeat('a', 64)) returning id into ver;
+  set local role app_role;
+  perform app_set_tenant('11111111-1111-7111-8111-111111111111');
+  insert into cms_site_themes (template_id, template_version_id, status, chosen_by, applied_at) values (tpl, ver, 'activo', 'agencia', now());
+  begin
+    insert into cms_site_themes (template_id, template_version_id, status, chosen_by, applied_at) values (tpl, ver, 'activo', 'agencia', now());
+    raise exception 'debió fallar: dos temas activos';
+  exception when unique_violation then null;
+  end;
+  insert into cms_ai_content_jobs (code, kind, target_type, input, status, credits_used, output) values ('IAC-0001', 'mejorar_texto', 'libre', '{"text":"x"}', 'listo', 2, '{"text":"y"}') returning id into job;
+  insert into fin_ai_credit_ledger (kind, movement, credits, balance_after, job_id) values ('contenido', 'consumo', -2, 98, job);
+  begin
+    update fin_ai_credit_ledger set credits = -1;
+    raise exception 'debió fallar: libro de créditos es append-only';
+  exception when insufficient_privilege or raise_exception then
+    if sqlerrm like 'debió fallar%' then raise; end if;
+  end;
+  begin
+    perform 1 from platform_site_templates limit 1;
+    raise exception 'debió fallar: app_role no lee el catálogo de plantillas';
+  exception when insufficient_privilege then null;
+  end;
+  perform app_set_tenant('22222222-2222-7222-8222-222222222222');
+  select count(*) into n from cms_site_themes; assert n = 0, 'B no debe ver el tema de A';
+  select count(*) into n from fin_ai_credit_ledger; assert n = 0, 'B no debe ver créditos de A';
+  raise notice 'OK v2.9: plantillas con calidad mínima, un tema activo, créditos de IA append-only y aislados';
+end $$;
+
+-- ---------------------------------------------------------------- v2.10: seguimiento, conversiones y visitas (spec 24)
+do $$
+declare tg uuid; mp uuid; n int;
+begin
+  begin
+    insert into platform_tracking_tags (code, provider, name, measurement_id, consent_category) values ('TAG-SMOKE1', 'ga4', 'GA4 mal', 'UA-12345', 'analiticas');
+    raise exception 'debió fallar: ID de GA4 con formato inválido';
+  exception when check_violation then null;
+  end;
+  begin
+    insert into platform_tracking_tags (code, provider, name, script_src, consent_category) values ('TAG-SMOKE2', 'script', 'Script sin SRI', 'https://cdn.ejemplo.com/x.js', 'marketing');
+    raise exception 'debió fallar: script externo sin hash SRI';
+  exception when check_violation then null;
+  end;
+  begin
+    insert into platform_tracking_tags (code, provider, name, measurement_id, consent_category, status) values ('TAG-SMOKE3', 'meta_pixel', 'Pixel', '123456789012345', 'marketing', 'activo');
+    raise exception 'debió fallar: etiqueta de la vitrina activa sin aprobación';
+  exception when check_violation then null;
+  end;
+  set local role app_role;
+  perform app_set_tenant('11111111-1111-7111-8111-111111111111');
+  insert into mkt_tracking_tags (code, provider, name, measurement_id, consent_category, status) values ('TAG-0001', 'google_ads', 'Google Ads', 'AW-123456789', 'marketing', 'activo') returning id into tg;
+  begin
+    insert into mkt_tracking_tags (code, provider, name, script_body, consent_category, status) values ('TAG-0002', 'script', 'Chat externo', 'console.log(1)', 'marketing', 'activo');
+    raise exception 'debió fallar: script propio activo sin aprobación';
+  exception when check_violation then null;
+  end;
+  begin
+    insert into mkt_tracking_tags (code, provider, name, script_body, consent_category, exclude_checkout) values ('TAG-0003', 'script', 'En pago', 'console.log(1)', 'marketing', false);
+    raise exception 'debió fallar: un script propio no puede cargar en el pago';
+  exception when check_violation then null;
+  end;
+  insert into mkt_conversion_mappings (tag_id, internal_event, provider_event, conversion_label, send_value, server_side) values (tg, 'compra', 'conversion', 'AbC-dEf_123', true, true) returning id into mp;
+  insert into mkt_conversion_dispatches (event_id, mapping_id, internal_event, channel, status, sent_at) values ('018f0000-0000-7000-8000-000000000001', mp, 'compra', 'servidor', 'enviado', now());
+  begin
+    insert into mkt_conversion_dispatches (event_id, mapping_id, internal_event, channel) values ('018f0000-0000-7000-8000-000000000001', mp, 'compra', 'servidor');
+    raise exception 'debió fallar: conversión duplicada para el mismo evento';
+  exception when unique_violation then null;
+  end;
+  insert into cms_web_analytics_daily (day, path, device, visits, visitors, pageviews) values (current_date, '/', 'movil', 10, 8, 14);
+  begin
+    insert into cms_web_analytics_daily (day, path, device, visits, visitors, pageviews) values (current_date, '/tours', 'movil', 5, 9, 9);
+    raise exception 'debió fallar: más visitantes que visitas';
+  exception when check_violation then null;
+  end;
+  begin
+    perform 1 from platform_tracking_tags limit 1;
+    raise exception 'debió fallar: app_role no lee las etiquetas de la vitrina';
+  exception when insufficient_privilege then null;
+  end;
+  perform app_set_tenant('22222222-2222-7222-8222-222222222222');
+  select count(*) into n from mkt_tracking_tags; assert n = 0, 'B no debe ver etiquetas de A';
+  select count(*) into n from cms_web_analytics_daily; assert n = 0, 'B no debe ver visitas de A';
+  raise notice 'OK v2.10: IDs de etiquetas válidos, scripts con SRI y aprobación, sin scripts en el pago, conversiones sin duplicar y visitas aisladas';
 end $$;

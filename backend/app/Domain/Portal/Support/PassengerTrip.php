@@ -6,6 +6,7 @@ namespace App\Domain\Portal\Support;
 
 use App\Domain\Channels\Support\ChannelKit;
 use App\Domain\Documents\Actions\ClientDocuments;
+use App\Domain\Documents\Support\QrImage;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Carbon;
@@ -109,15 +110,25 @@ final class PassengerTrip
     {
         $ids = $account->reservations()->pluck('id')->all();
         $row = DB::table('ops_vouchers as v')->join('booking_reservations as r', 'r.id', '=', 'v.reservation_id')->whereIn('v.reservation_id', $ids)->where('v.code', $voucher)->where('v.status', '<>', 'anulado')
-            ->first(['v.id', 'v.code', 'v.service_label', 'v.service_date', 'v.status', 'v.version', 'v.pax', 'v.reservation_service_id', 'r.code as reservation'])
+            ->first(['v.id', 'v.code', 'v.service_label', 'v.service_date', 'v.status', 'v.version', 'v.pax', 'v.reservation_service_id', 'v.provider_id', 'v.qr_token', 'v.reservation_id', 'r.code as reservation'])
             ?? throw ApiException::notFound('No encontramos ese voucher en tu viaje.');
-        $service = $row->reservation_service_id ? DB::table('booking_reservation_services')->where('id', $row->reservation_service_id)->first(['name', 'service_time', 'confirmation_code', 'service_kind']) : null;
+        $service = $row->reservation_service_id ? DB::table('booking_reservation_services as s')->leftJoin('catalog_product_departures as d', 'd.id', '=', 's.departure_id')->leftJoin('catalog_products as p', 'p.id', '=', 's.product_id')
+            ->where('s.id', $row->reservation_service_id)->first(['s.name', 's.service_time', 's.confirmation_code', 's.service_kind', 'd.meeting_point', 'p.pickup_text']) : null;
+        $provider = $row->provider_id ? DB::table('catalog_providers')->where('id', $row->provider_id)->first(['name', 'phone', 'type']) : null;
+        $passengers = DB::table('booking_passengers')->where('reservation_id', $row->reservation_id)->orderByDesc('is_lead')->orderBy('seq')->get(['full_name', 'pax_type', 'is_lead']);
+        $pickup = DB::table('booking_reservation_web_snapshots')->where('reservation_id', $row->reservation_id)->first(['pickup_point', 'pickup_address']);
+        $meeting = $service->meeting_point ?? (trim(implode(' · ', array_filter([$pickup->pickup_point ?? null, $pickup->pickup_address ?? null]))) ?: ($service->pickup_text ?? null));
         $this->audit->log('Voucher', (string) $row->code, 'abrir_portal_pasajero', after: (string) $account->user->code);
 
         return [
             ...$this->voucherSummary($row),
             'reservation' => $row->reservation,
             'service' => $service ? ['name' => $service->name, 'time' => $service->service_time ? substr((string) $service->service_time, 0, 5) : null, 'confirmation' => $service->confirmation_code, 'kind' => $service->service_kind] : null,
+            'provider' => $provider ? ['name' => $provider->name, 'phone' => $provider->phone, 'type' => $provider->type] : null,
+            'meeting_point' => $meeting,
+            'passengers' => $passengers->map(fn (stdClass $pax): array => ['name' => $pax->full_name, 'type' => $pax->pax_type, 'lead' => (bool) $pax->is_lead])->values()->all(),
+            'qr' => (string) $row->qr_token,
+            'qr_image' => $row->qr_token ? QrImage::dataUri((string) $row->qr_token, 6) : null,
             'pdf' => "vouchers/{$row->code}",
         ];
     }
@@ -141,13 +152,14 @@ final class PassengerTrip
                 'cancellation' => $policies['cancellation'] ?? null,
                 'tiers' => $policies['penalty_tiers'] ?? [],
             ],
+            'contents' => app(PortalContent::class)->for('app', ['Página legal', 'Página', 'Artículo']),
         ];
     }
 
     public function alerts(PortalAccount $account, ?string $code): array
     {
         $reservation = $this->reservation($account, $code);
-        $notices = DB::table('notif_pax_messages')->where('reservation_id', $reservation->id)->whereIn('status', ['enviado', 'entregado', 'leido'])->orderByDesc('sent_at')->limit(20)->get(['code', 'subject', 'body', 'sent_at', 'channel']);
+        $notices = DB::table('notif_pax_messages')->where('reservation_id', $reservation->id)->whereIn('status', ['enviado', 'entregado', 'leido'])->orderByDesc('sent_at')->limit(20)->get(['code', 'subject', 'body', 'sent_at', 'channel', 'status']);
 
         return [
             'code' => $reservation->code,
@@ -161,7 +173,7 @@ final class PassengerTrip
                 'at' => Carbon::parse($row->created_at)->toIso8601String(),
                 'acked' => (bool) $row->acked,
             ])->values()->all(),
-            'notices' => $notices->map(fn (stdClass $row): array => ['code' => $row->code, 'subject' => $row->subject, 'body' => $row->body, 'at' => $row->sent_at, 'channel' => $row->channel])->values()->all(),
+            'notices' => $notices->map(fn (stdClass $row): array => ['code' => $row->code, 'subject' => $row->subject, 'body' => $row->body, 'at' => $row->sent_at, 'channel' => $row->channel, 'read' => $row->status === 'leido'])->values()->all(),
         ];
     }
 

@@ -49,6 +49,9 @@ it('cada ruta con versión del catálogo exige If-Match', function () {
 
 it('SEC-BR-09: Ventas recibe 403 con mensaje de cartera en un lead, una oportunidad y un cliente ajenos', function (string $table, string $path) {
     $code = codeOwnedBy($table, 'U04');
+    if ($table === 'crm_clients') {
+        detachFromPortfolio($code, 'U03');
+    }
     actingAsSeed('U03');
 
     $response = $this->getJson("/api/v1/{$path}/{$code}");

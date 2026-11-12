@@ -2,7 +2,7 @@
 
 import { BellRing, CheckCheck, Loader2, Save } from "lucide-react";
 import { useState, useTransition } from "react";
-import { ackAlert, saveCompanions } from "@/app/(portal)/portal/actions";
+import { ackAlert, readNotice, saveCompanions } from "@/app/(portal)/portal/actions";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -64,23 +64,76 @@ export function PassengerAlertsView({ data }: { data: PaxAlerts }) {
         </ul>
       )}
       {open.length === 0 && data.alerts.length > 0 && <p className="text-[13px] text-fg-3">Confirmaste todos los avisos.</p>}
-      {data.notices.length > 0 && (
-        <Card>
-          <h2 className="text-[15px] font-semibold text-fg">Mensajes que te enviamos</h2>
-          <ul className="mt-3 grid gap-3">
-            {data.notices.map((notice) => (
-              <li key={notice.code} className="rounded-xl border border-line px-4 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <b className="text-[14px] font-semibold text-fg">{notice.subject}</b>
-                  <span className="text-[12px] text-fg-3">{notice.at ? formatDateTime(notice.at) : ""}</span>
-                </div>
-                <p className="mt-1 whitespace-pre-line text-[13px] leading-relaxed text-fg-2">{notice.body}</p>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
+      {data.notices.length > 0 && <ReceivedMessages notices={data.notices} />}
     </div>
+  );
+}
+
+const CHANNEL_LABEL: Record<string, string> = { email: "Correo", whatsapp: "WhatsApp", sms: "SMS", push: "App", portal: "Portal" };
+
+function ReceivedMessages({ notices }: { notices: PaxAlerts["notices"] }) {
+  const [channel, setChannel] = useState<string | null>(null);
+  const [openCode, setOpenCode] = useState<string | null>(null);
+  const [read, setRead] = useState<string[]>([]);
+  const [pending, start] = useTransition();
+  const channels = [...new Set(notices.map((notice) => notice.channel))];
+  const isRead = (notice: PaxAlerts["notices"][number]) => notice.read || read.includes(notice.code);
+  const unread = notices.filter((notice) => !isRead(notice)).length;
+  const visible = channel ? notices.filter((notice) => notice.channel === channel) : notices;
+  const open = (code: string, wasRead: boolean) => {
+    setOpenCode(openCode === code ? null : code);
+    if (!wasRead) {
+      setRead((current) => [...current, code]);
+      start(async () => void (await readNotice(code)));
+    }
+  };
+
+  return (
+    <Card>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-[15px] font-semibold text-fg">
+          Mensajes que te enviamos
+          {unread > 0 && <Badge tone="info">{unread === 1 ? "1 sin leer" : `${unread} sin leer`}</Badge>}
+        </h2>
+        {unread > 0 && (
+          <button type="button" disabled={pending} onClick={() => { setRead(notices.map((notice) => notice.code)); start(async () => void (await readNotice(null))); }} className="inline-flex h-8 items-center gap-1.5 rounded-control px-2.5 text-[12.5px] font-semibold text-t1 transition hover:bg-surface-2 disabled:opacity-60">
+            <CheckCheck size={14} /> Marcar todos como leídos
+          </button>
+        )}
+      </div>
+      {channels.length > 1 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {[null, ...channels].map((value) => (
+            <button key={value ?? "todos"} type="button" onClick={() => setChannel(value)} className={cn("h-7 rounded-full px-3 text-[12px] font-semibold transition", channel === value ? "bg-brand text-brand-fg" : "bg-surface-2 text-fg-2 hover:text-fg")}>
+              {value ? (CHANNEL_LABEL[value] ?? value) : "Todos"}
+            </button>
+          ))}
+        </div>
+      )}
+      <ul className="mt-3 grid gap-2">
+        {visible.map((notice) => {
+          const wasRead = isRead(notice);
+          const expanded = openCode === notice.code;
+          return (
+            <li key={notice.code}>
+              <button type="button" onClick={() => open(notice.code, wasRead)} aria-expanded={expanded} className={cn("lift w-full rounded-xl border px-4 py-3 text-left transition hover:bg-surface-2", wasRead ? "border-line" : "border-[color-mix(in_srgb,var(--t1)_35%,transparent)]")}>
+                <span className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-2">
+                    {!wasRead && <span aria-label="Sin leer" className="h-2 w-2 flex-none rounded-full bg-t1" />}
+                    <b className={cn("truncate text-[14px] text-fg", wasRead ? "font-medium" : "font-semibold")}>{notice.subject}</b>
+                  </span>
+                  <span className="flex items-center gap-2 text-[12px] text-fg-3">
+                    <span className="rounded-full bg-surface-2 px-2 py-0.5">{CHANNEL_LABEL[notice.channel] ?? notice.channel}</span>
+                    {notice.at ? formatDateTime(notice.at) : ""}
+                  </span>
+                </span>
+                <span className={cn("mt-1 block whitespace-pre-line text-[13px] leading-relaxed text-fg-2", !expanded && "line-clamp-1")}>{notice.body}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
   );
 }
 

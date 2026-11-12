@@ -56,7 +56,7 @@ function Itinerary({ trip }: { trip: PortalTrip }) {
                       </span>
                       <span className="flex flex-none flex-col items-end gap-1">
                         <Badge tone={state.tone}>{state.label}</Badge>
-                        {service.state === "proximo" && <PortalBadge status={service.status} />}
+                        {service.state === "proximo" && <PortalBadge status={service.status} scope="service" />}
                       </span>
                     </li>
                   );

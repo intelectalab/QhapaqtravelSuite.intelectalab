@@ -229,7 +229,7 @@ function readCap() {
   A('- `GET /api/v1/me/access` debe devolver exactamente esta evaluación (`screens: {ruta: bool}`) para que menú y router del frontend Next.js coincidan con el prototipo.');
   A('- Accesos «cruzados» intencionales: `operaciones/documentos-viaje` abierto a Ventas por `reservations.create`; `crm/clientes` y `finanzas/pagos` a Contabilidad por `finance.receivables`; `catalogo/cupos` a Finanzas por `catalog.products.view_profitability` (00 §7.5).');
   A('- `proveedor` exige `__solo_extranet__` (ningún permiso interno): solo el rol `provider` lo abre por su experiencia.');
-  A('- Rutas sin entrada en ACCESS (p. ej. `flujo`, `sitio/*`) quedan abiertas a cualquier rol interno o son públicas; si se agrega una pantalla nueva, registrar su permiso en ACCESS y en `/me/access`.');
+  A('- `sitio/*` es el **sitio web público** de la agencia: no pide sesión ni permiso, se dibuja sin el shell del back-office y en producción es la parte pública de Next.js con tenant por host (spec 15 §6, `/api/v1/public/*`). `dashboard` y `flujo` (mapa de procesos) usan el comodín `*`: abiertos a cualquier rol interno. Una pantalla nueva sin entrada en ACCESS quedaría abierta: registrar siempre su permiso en ACCESS y en `/me/access`.');
   A('- Reglas de administración de roles (no revocar `admin.users.manage` al Tenant Admin, no otorgar permisos de plataforma a roles de tenant, etc.): ver `REGLAS-DE-NEGOCIO.md` (RBAC-BR, USR-BR).');
   if (mismatches.length) { A(); A('Diferencias detectadas con el «Mapa de acceso» en pantalla: ' + mismatches.slice(0, 30).join(', ')); }
   fs.writeFileSync(path.join(OUT, 'PERMISOS.md'), L.join('\n') + '\n');

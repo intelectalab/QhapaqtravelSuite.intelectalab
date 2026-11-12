@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, CalendarClock, Copy, FlaskConical, Megaphone, Plus, SendHorizontal, Ticket, Undo2 } from "lucide-react";
+import { Ban, CalendarClock, Copy, FileText, FlaskConical, Megaphone, Plus, SendHorizontal, Ticket, Undo2, Users } from "lucide-react";
 import { useState } from "react";
 import { campaignStep, saveCampaign } from "@/app/(backoffice)/marketing/campanas/actions";
 import { RowIcon } from "@/components/table/RowActions";
@@ -215,7 +215,18 @@ export function CampaignDuplicateAction({ campaign }: { campaign: Campaign }) {
         <>
           <input type="hidden" name="code" value={campaign.code} />
           <input type="hidden" name="step" value="duplicate" />
-          <p className="text-[13px] text-fg-2">Segmento {campaign.segment?.name ?? "sin segmento"} · plantilla {campaign.template?.name ?? "sin plantilla"}{campaign.promo_code ? ` · código ${campaign.promo_code}` : ""}.</p>
+          <ul className="flex flex-wrap gap-1.5 text-[12.5px]">
+            {[
+              { icon: Users, text: campaign.segment?.name ?? "Sin segmento" },
+              { icon: FileText, text: campaign.template?.name ?? "Sin plantilla" },
+              ...(campaign.promo_code ? [{ icon: Ticket, text: campaign.promo_code }] : []),
+            ].map((pill) => (
+              <li key={pill.text} className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1">
+                <pill.icon size={13} className="text-[var(--tint,var(--t1))]" />
+                {pill.text}
+              </li>
+            ))}
+          </ul>
         </>
       )}
     </PanelAction>

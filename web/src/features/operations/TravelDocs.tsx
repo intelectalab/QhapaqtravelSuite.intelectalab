@@ -22,20 +22,20 @@ export function DocumentActions({ document, passenger, target, fileHref }: { doc
     <RowActions>
       {document.has_file ? <RowIcon tone="view" label="Ver archivo" icon={<Eye size={15} />} href={fileHref} /> : <RowIcon tone="view" label="Ver archivo" icon={<Eye size={15} />} disabledHint="Todavía no hay archivo" />}
       <UploadDocAction document={document} passenger={passenger} target={target} />
-      {document.status === "completo" ? (
-        <RowIcon tone="edit" label="Validar" icon={<BadgeCheck size={15} />} disabledHint="Ya está validado" />
+      {document.status === "completo" || !document.has_file ? (
+        <RowIcon tone="edit" label="Validar" icon={<BadgeCheck size={15} />} disabledHint={document.status === "completo" ? "Ya está validado" : document.type === "minor_auth" ? "Carga primero la partida de nacimiento o el permiso notarial" : "Carga primero el archivo del documento"} />
       ) : (
         <OpsStep step="doc_validate" target={target} formKey={`${document.id}-ok`} label="Validar" title={`Validar ${document.label.toLowerCase()}`} description={passenger} submitLabel="Validar documento" trigger={(open) => <RowIcon tone="edit" label="Validar" icon={<BadgeCheck size={15} />} onClick={open} />}>
-          {document.file ? <ConfirmNote>Archivo recibido: <b>{document.file}</b></ConfirmNote> : <ConfirmNote tone="warn">{document.type === "minor_auth" ? "Carga primero la partida de nacimiento o el permiso notarial." : "No hay archivo cargado. Valida solo si revisaste el documento por otro medio."}</ConfirmNote>}
+          <ConfirmNote>Archivo recibido: <b>{document.file}</b></ConfirmNote>
           {document.min_expiry && <ConfirmNote>Para validarlo debe vencer después del <b>{formatDate(document.min_expiry)}</b>.</ConfirmNote>}
           <div className="grid grid-cols-2 gap-3">
             <TextField label="Número" name="doc_number" maxLength={40} defaultValue={document.number ?? ""} />
-            <TextField label="Vence" name="expiry_date" type="date" defaultValue={document.expiry ?? ""} />
+            <TextField label="Vence" name="expiry_date" type="date" required={document.type === "id_doc"} defaultValue={document.expiry ?? ""} />
           </div>
         </OpsStep>
       )}
       <OpsStep step="doc_observe" target={target} formKey={`${document.id}-obs`} label="Observar" title={`Observar ${document.label.toLowerCase()}`} description={passenger} submitLabel="Registrar observación" trigger={(open) => <RowIcon tone="delete" label="Observar" icon={<FileWarning size={15} />} onClick={open} />}>
-        <ConfirmNote>El documento vuelve a quedar pendiente de corrección y se informa al cliente en el próximo recordatorio.</ConfirmNote>
+        <ConfirmNote>El documento queda pendiente de corrección y el cliente recibe un correo con el motivo.</ConfirmNote>
         <TextArea label="Qué falta o qué corregir" name="reason" rows={3} required minLength={5} maxLength={500} defaultValue={document.observation ?? ""} placeholder="La foto del pasaporte está cortada; enviar la página completa." />
       </OpsStep>
     </RowActions>

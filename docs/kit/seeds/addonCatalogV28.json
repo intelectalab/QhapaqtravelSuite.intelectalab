@@ -1,0 +1,74 @@
+[
+  {
+    "key": "paypal_gateway",
+    "label": "Cobros con PayPal",
+    "billing": "unico",
+    "price": 149,
+    "priceMonth": null,
+    "desc": "Conexión de la cuenta PayPal de la agencia, conciliación y reporte de comisiones. Pago único."
+  },
+  {
+    "key": "trip_builder",
+    "label": "Armador de viajes por tramos",
+    "billing": "ambos",
+    "price": 690,
+    "priceMonth": 89,
+    "desc": "Noches por ciudad, tarifas por fecha, tours y movilidad por tramo, venta en ruta."
+  },
+  {
+    "key": "seo_pro",
+    "label": "SEO y blog de aventuras",
+    "billing": "ambos",
+    "price": 490,
+    "priceMonth": 69,
+    "desc": "Auditoría SEO por página, redirecciones, sitemap, datos estructurados y blog de aventuras con clientes."
+  },
+  {
+    "key": "showcase_boost",
+    "label": "Destacado en la vitrina",
+    "billing": "mensual",
+    "price": null,
+    "priceMonth": 39,
+    "desc": "Sus tours aparecen primero en su ciudad y en el blog de la vitrina."
+  },
+  {
+    "key": "custom_domain",
+    "label": "Dominio propio + SSL",
+    "billing": "ambos",
+    "price": 290,
+    "priceMonth": 45,
+    "desc": "Sitio y portales bajo el dominio de la agencia (CNAME + SSL automático)."
+  },
+  {
+    "key": "ai_content",
+    "label": "Contenido con IA",
+    "billing": "mensual",
+    "price": null,
+    "priceMonth": 59,
+    "desc": "300 créditos al mes: mejorar descripciones de tours, metadatos SEO, traducciones, relatos de aventura y artículos del blog. Usted revisa antes de publicar."
+  },
+  {
+    "key": "ai_images",
+    "label": "Imágenes con IA",
+    "billing": "ambos",
+    "price": 39,
+    "priceMonth": 49,
+    "desc": "Paquete de 20 imágenes (pago único) o 30 al mes, para tours, banners y blog, con texto alternativo y etiqueta «Imagen generada con IA»."
+  },
+  {
+    "key": "premium_template",
+    "label": "Plantilla premium",
+    "billing": "unico",
+    "price": 290,
+    "priceMonth": null,
+    "desc": "Diseño de autor para el sitio web (p. ej. Nazca Noche). Pago único por plantilla; las incluidas no tienen costo."
+  },
+  {
+    "key": "marketing_pro",
+    "label": "Marketing Pro",
+    "billing": "mensual",
+    "price": null,
+    "priceMonth": 39,
+    "desc": "Para Starter: todos los píxeles (Google Ads, TikTok, LinkedIn, Clarity), conversiones del lado del servidor, scripts propios y visitas de 13 meses con exportación."
+  }
+]

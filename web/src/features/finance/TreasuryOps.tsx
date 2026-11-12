@@ -217,8 +217,8 @@ export function ReplenishmentRequestAction({ account }: { account: TreasuryAccou
   const missing = Math.max(0, (account.fund ?? 0) - account.balance);
   return (
     <FinanceStep step="replenishment_request" itemKey={account.code} label="Reposición" icon={<RotateCcw size={16} />} title={`Pedir reposición de ${account.name}`} description="Repone el fondo fijo con lo gastado. La aprueba una persona distinta de quien la pide." submitLabel="Solicitar" trigger={(open) => <Button size="sm" variant="ghost" icon={<RotateCcw size={15} />} onClick={open}>Reponer</Button>}>
-      <SummaryBox rows={[{ label: "Fondo fijo", value: formatMoney(account.fund ?? 0) }, { label: "Saldo actual", value: formatMoney(account.balance) }, { label: "Para completar el fondo", value: formatMoney(missing), strong: true }]} />
-      <TextField label="Importe (S/)" name="amount" type="number" step="0.01" min="0.01" defaultValue={missing > 0 ? missing.toFixed(2) : ""} />
+      <SummaryBox rows={[{ label: "Fondo fijo", value: formatMoney(account.fund ?? 0) }, { label: "Saldo actual", value: formatMoney(account.balance) }, { label: "Gastado desde la última reposición", value: formatMoney(missing), strong: true }]} />
+      <p className="text-[12.5px] text-fg-3">El importe es la suma de los gastos por rendir de la caja: quedan ligados a esta reposición y vuelven a quedar pendientes si se rechaza.</p>
       <TextArea label="Nota (opcional)" name="note" rows={2} maxLength={500} />
     </FinanceStep>
   );

@@ -54,7 +54,6 @@ it('solo quien asigna recursos crea o edita órdenes operativas', function (stri
 
     expect($this->postJson('/api/v1/ops/orders', ['reservation_code' => 'RES-2026-000344', 'coordinator_id' => seedUser('U05')->getKey()], critical()))->toBeApiError(403);
     expect($this->patchJson('/api/v1/ops/orders/OP-2026-0415', ['coordinator_id' => seedUser('U05')->getKey()]))->toBeApiError(403);
-    expect($this->postJson('/api/v1/ops/orders/OP-2026-0415/cancel', ['reason' => 'Cliente desistió del viaje.']))->toBeApiError(403);
     expect(rowOf('ops_orders', 'OP-2026-0415')->status)->toBe('pendiente_asignacion');
 })->with(['U09', 'U03', 'U07']);
 
@@ -91,25 +90,11 @@ it('marca la orden como asignada solo cuando no quedan servicios sin recursos', 
     $this->postJson('/api/v1/ops/orders/OP-2026-0414/mark-assigned', [], critical(opsCrudOrderLock('OP-2026-0414') + 3))->assertStatus(409);
 });
 
-it('cancela la orden, libera sus recursos y deja al guía libre para otra orden', function () {
+it('la orden no se cancela desde Operaciones: solo al cancelar su reserva', function () {
     actingAsSeed('U05');
-    $guide = idOf('ops_guides', 'G05');
-    $first = opsCrudOrderAssignments('OP-2026-0415')[1];
-    $this->putJson("/api/v1/ops/assignments/{$first->id}/resources", ['guide_id' => $guide, 'ack_warnings' => true], critical((int) $first->lock_version))->assertOk();
 
-    expect($this->postJson('/api/v1/ops/orders/OP-2026-0415/cancel', ['reason' => 'No']))->toBeApiError(422);
-    $this->postJson('/api/v1/ops/orders/OP-2026-0415/cancel', ['reason' => 'El cliente canceló el viaje.'])->assertOk();
-
-    $order = rowOf('ops_orders', 'OP-2026-0415');
-    expect($order->status)->toBe('cancelada')
-        ->and($order->cancel_reason)->toBe('El cliente canceló el viaje.')
-        ->and(collect(opsCrudOrderAssignments('OP-2026-0415'))->every(fn (object $row) => $row->status === 'pendiente' && $row->guide_id === null))->toBeTrue()
-        ->and(opsCrudAudit(['entity' => 'Orden operativa', 'entity_id' => 'OP-2026-0415', 'action' => 'cancelar']))->toBeTrue();
-
-    expect(withinTenant(tenantA(), fn () => DB::table('ops_assignments')->where('guide_id', $guide)->where('service_date', '2026-10-10')->exists()))->toBeFalse();
-    expect($this->postJson('/api/v1/ops/orders/OP-2026-0415/cancel', ['reason' => 'Segundo intento de cancelación.']))->toBeApiError(409, 'OPS-BR-05');
-    expect($this->postJson('/api/v1/ops/orders/OP-2026-0412/cancel', ['reason' => 'La operación ya empezó.']))->toBeApiError(409, 'OPS-BR-05');
-    expect(rowOf('ops_orders', 'OP-2026-0412')->status)->toBe('en_ejecucion');
+    expect($this->postJson('/api/v1/ops/orders/OP-2026-0415/cancel', ['reason' => 'El cliente canceló el viaje.'])->status())->toBe(404)
+        ->and(rowOf('ops_orders', 'OP-2026-0415')->status)->toBe('pendiente_asignacion');
 });
 
 it('agrega, completa, reabre y elimina tareas de la orden', function () {

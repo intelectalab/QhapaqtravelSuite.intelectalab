@@ -2,7 +2,7 @@
 # Ubicación esperada: raíz del espacio de trabajo, junto a backend/ y web/.
 #   cp docs/kit/infra/docker-compose.yml . && cp -r docs/kit/infra/docker .
 # Servicios: api (php-fpm 8.4) + nginx, queue (Horizon), scheduler, reverb, web (Next.js),
-#            postgres 17, redis 8, minio (S3), mailpit (correo).
+#            postgres 17, redis 8, minio (S3), mailpit (correo) + minio-init (crea los buckets y termina).
 name: kipucontrol
 
 x-php: &php
@@ -62,7 +62,7 @@ services:
       POSTGRES_DB: kipucontrol
       POSTGRES_USER: kipucontrol_owner          # dueño del esquema: SOLO para migraciones
       POSTGRES_PASSWORD: owner_local_only
-    ports: [ "5432:5432" ]
+    ports: [ "127.0.0.1:5432:5432" ]   # solo localhost: credenciales de desarrollo
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -74,7 +74,7 @@ services:
   redis:
     image: redis:8
     command: ["redis-server", "--appendonly", "yes"]
-    ports: [ "6379:6379" ]
+    ports: [ "127.0.0.1:6379:6379" ]   # solo localhost: Redis local sin contraseña
     volumes: [ "redis_data:/data" ]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -82,17 +82,19 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:latest
+    # MinIO dejó de publicar imágenes en Docker Hub: se usa quay.io con versión fija (nunca :latest).
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio_local_only
-    ports: [ "9000:9000", "9001:9001" ]
+    ports: [ "127.0.0.1:9000:9000", "127.0.0.1:9001:9001" ]
     volumes: [ "minio_data:/data" ]
 
   minio-init:
-    image: minio/mc:latest
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z   # la imagen del servidor ya trae el cliente mc
     depends_on: [ minio ]
+    restart: "no"
     entrypoint: >
       sh -c "sleep 3 &&
              mc alias set local http://minio:9000 minio minio_local_only &&
@@ -100,8 +102,8 @@ services:
              mc anonymous set download local/kipucontrol-public"
 
   mailpit:
-    image: axllent/mailpit:latest
-    ports: [ "8025:8025", "1025:1025" ]
+    image: axllent/mailpit:v1.29
+    ports: [ "127.0.0.1:8025:8025", "127.0.0.1:1025:1025" ]
 
 volumes:
   pg_data:

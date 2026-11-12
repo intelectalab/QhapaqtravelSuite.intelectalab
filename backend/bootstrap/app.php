@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Exceptions\ApiExceptionRenderer;
 use App\Http\Middleware\AssignCorrelationId;
+use App\Http\Middleware\EnsureChannelEnabled;
 use App\Http\Middleware\EnsureExperience;
 use App\Http\Middleware\EnsureFeature;
 use App\Http\Middleware\EnsureLockVersion;
@@ -40,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prependToGroup('api', AssignCorrelationId::class);
+        $middleware->appendToGroup('api', EnsureChannelEnabled::class);
         $middleware->append(SecurityHeaders::class);
         $middleware->replace(TrustProxies::class, TrustConfiguredProxies::class);
         $middleware->redirectGuestsTo(fn () => null);
@@ -64,11 +66,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->priority([
             AssignCorrelationId::class,
-            Authenticate::class,
             ResolveTenant::class,
             ResolvePublicSite::class,
             SetPostgresTenant::class,
+            Authenticate::class,
             EnsureTenantActive::class,
+            EnsureChannelEnabled::class,
             SetPermissionsTeam::class,
             EnsureMfaVerified::class,
             EnsureExperience::class,

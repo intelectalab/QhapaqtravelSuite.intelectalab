@@ -7,7 +7,7 @@ erDiagram
     varchar code PK
   }
   coupon_redemptions {
-    uuid id PK
+    uuid id PK,UK
     uuid coupon_id FK,UK
     uuid tenant_id FK,UK
     uuid subscription_id FK
@@ -65,11 +65,54 @@ erDiagram
     char currency
     varchar status
   }
+  platform_access_passes {
+    uuid id PK
+    varchar code UK
+    uuid tenant_id FK
+    varchar name
+    char currency
+    varchar status
+    uuid convert_to_plan_id FK
+    uuid invoice_id FK
+    uuid created_by FK
+  }
+  platform_ai_credit_packs {
+    uuid id PK
+    varchar code UK
+    varchar name
+    varchar kind
+    char currency
+  }
+  platform_blog_posts {
+    uuid id PK
+    varchar slug UK
+    varchar title
+    varchar status
+    uuid author_id FK
+  }
+  platform_conversion_dispatches {
+    bigint id PK
+    uuid mapping_id FK
+    varchar status
+    char currency
+    uuid agency_id FK
+  }
+  platform_conversion_mappings {
+    uuid id PK
+    uuid tag_id FK
+  }
   platform_credit_notes {
     uuid id PK
     uuid invoice_id FK,UK
     numeric amount
     uuid created_by FK
+  }
+  platform_funnel_events {
+    bigint id PK
+    varchar kind
+    uuid agency_id FK
+    uuid tenant_id FK
+    uuid listing_id FK
   }
   platform_invoice_lines {
     uuid id PK
@@ -77,11 +120,34 @@ erDiagram
     numeric amount
   }
   platform_invoices {
-    uuid id PK
-    uuid tenant_id FK
+    uuid id PK,UK
+    uuid tenant_id FK,UK
     uuid subscription_id FK
     varchar kind
     char currency
+    varchar status
+  }
+  platform_marketplace_listings {
+    uuid id PK
+    uuid seller_tenant_id FK
+    varchar title
+    char currency
+    varchar status
+  }
+  platform_marketplace_orders {
+    uuid id PK
+    varchar code UK
+    uuid partnership_id FK
+    uuid listing_id FK
+    uuid seller_tenant_id FK
+    uuid reseller_tenant_id FK
+    char currency
+    varchar status
+  }
+  platform_marketplace_partnerships {
+    uuid id PK
+    uuid seller_tenant_id FK
+    uuid reseller_tenant_id FK
     varchar status
   }
   platform_metrics_daily {
@@ -91,11 +157,74 @@ erDiagram
   platform_sequences {
     uuid id PK
   }
+  platform_showcase_agencies {
+    uuid id PK
+    varchar code UK
+    uuid tenant_id FK
+    varchar name
+    varchar slug UK
+    varchar email
+    varchar status
+  }
+  platform_showcase_bookings {
+    uuid id PK
+    varchar code UK
+    uuid listing_id FK
+    date service_date
+    varchar status
+    numeric amount
+    char currency
+    varchar cancel_token UK
+  }
+  platform_showcase_listings {
+    uuid id PK
+    varchar code UK
+    uuid agency_id FK
+    varchar slug UK
+    varchar title
+    char currency
+    varchar status
+  }
+  platform_site_template_versions {
+    uuid id PK
+    uuid template_id FK
+    varchar status
+    uuid approved_by FK
+  }
+  platform_site_templates {
+    uuid id PK
+    varchar code UK
+    varchar slug UK
+    varchar name
+    char currency
+    varchar status
+    uuid current_version_id FK
+  }
+  platform_template_submissions {
+    uuid id PK
+    varchar code UK
+    uuid template_id FK
+    uuid submitted_by FK
+    varchar status
+    uuid reviewer_id FK
+  }
+  platform_tracking_tags {
+    uuid id PK
+    varchar code UK
+    varchar name
+    varchar status
+    uuid created_by FK
+    uuid approved_by FK
+  }
   platform_users {
     uuid id PK
     varchar name
     varchar email
     varchar status
+  }
+  platform_web_analytics_daily {
+    bigint id PK
+    uuid agency_id FK
   }
   subscription_changes {
     uuid id PK
@@ -112,9 +241,9 @@ erDiagram
     varchar addon_code FK
   }
   subscriptions {
-    uuid id PK
+    uuid id PK,UK
     varchar code UK
-    uuid tenant_id FK
+    uuid tenant_id FK,UK
     uuid plan_id FK
     varchar status
     uuid coupon_redemption_id FK
@@ -154,7 +283,7 @@ erDiagram
   addons ||--o{ addon_prices : "addon_code"
   addons |o--o{ features : "addon_code"
   addons ||--o{ subscription_items : "addon_code"
-  coupon_redemptions |o--o{ subscriptions : "coupon_redemption_id"
+  coupon_redemptions ||--o{ subscriptions : "coupon_redemption_id, tenant_id"
   coupons ||--o{ coupon_redemptions : "coupon_id"
   features ||--o{ feature_overrides : "feature_key"
   features ||--o{ plan_features : "feature_key"
@@ -162,27 +291,53 @@ erDiagram
   plans ||--o{ plan_channels : "min_plan_id"
   plans ||--o{ plan_features : "plan_id"
   plans ||--o{ plan_limits : "plan_id"
+  plans |o--o{ platform_access_passes : "convert_to_plan_id"
   plans |o--o{ subscription_changes : "from_plan_id, to_plan_id"
   plans ||--o{ subscriptions : "plan_id"
   plans ||--o{ tenants : "plan_id"
+  platform_conversion_mappings ||--o{ platform_conversion_dispatches : "mapping_id"
   platform_invoices ||--o{ payment_attempts : "invoice_id"
+  platform_invoices ||--o{ platform_access_passes : "invoice_id, tenant_id"
   platform_invoices ||--o| platform_credit_notes : "invoice_id"
   platform_invoices ||--o{ platform_invoice_lines : "invoice_id"
   platform_invoices |o--o{ subscription_changes : "invoice_id"
+  platform_marketplace_listings ||--o{ platform_marketplace_orders : "listing_id"
+  platform_marketplace_partnerships ||--o{ platform_marketplace_orders : "partnership_id"
+  platform_showcase_agencies |o--o{ platform_conversion_dispatches : "agency_id"
+  platform_showcase_agencies |o--o{ platform_funnel_events : "agency_id"
+  platform_showcase_agencies ||--o{ platform_showcase_listings : "agency_id"
+  platform_showcase_agencies |o--o{ platform_web_analytics_daily : "agency_id"
+  platform_showcase_listings |o--o{ platform_funnel_events : "listing_id"
+  platform_showcase_listings ||--o{ platform_showcase_bookings : "listing_id"
+  platform_site_template_versions |o--o{ platform_site_templates : "current_version_id"
+  platform_site_templates ||--o{ platform_site_template_versions : "template_id"
+  platform_site_templates ||--o{ platform_template_submissions : "template_id"
+  platform_tracking_tags ||--o{ platform_conversion_mappings : "tag_id"
   platform_users |o--o{ coupons : "created_by"
   platform_users ||--o{ feature_overrides : "granted_by"
   platform_users |o--o{ plan_rule_entitlements : "updated_by"
+  platform_users |o--o{ platform_access_passes : "created_by"
+  platform_users |o--o{ platform_blog_posts : "author_id"
   platform_users |o--o{ platform_credit_notes : "created_by"
+  platform_users |o--o{ platform_site_template_versions : "approved_by"
+  platform_users |o--o{ platform_template_submissions : "reviewer_id, submitted_by"
+  platform_users |o--o{ platform_tracking_tags : "approved_by, created_by"
   platform_users |o--o{ tenants : "created_by"
-  subscriptions ||--o{ coupon_redemptions : "subscription_id"
-  subscriptions ||--o{ platform_invoices : "subscription_id"
+  subscriptions ||--o{ coupon_redemptions : "subscription_id, tenant_id"
+  subscriptions ||--o{ platform_invoices : "subscription_id, tenant_id"
   subscriptions ||--o{ subscription_changes : "subscription_id"
   subscriptions ||--o{ subscription_items : "subscription_id"
   sys_booking_rule_catalog ||--o| plan_rule_entitlements : "rule_code"
   tenants ||--o{ coupon_redemptions : "tenant_id"
   tenants ||--o{ feature_overrides : "tenant_id"
   tenants ||--o{ payment_methods : "tenant_id"
+  tenants ||--o{ platform_access_passes : "tenant_id"
+  tenants |o--o{ platform_funnel_events : "tenant_id"
   tenants ||--o{ platform_invoices : "tenant_id"
+  tenants ||--o{ platform_marketplace_listings : "seller_tenant_id"
+  tenants ||--o{ platform_marketplace_orders : "reseller_tenant_id, seller_tenant_id"
+  tenants ||--o{ platform_marketplace_partnerships : "reseller_tenant_id, seller_tenant_id"
+  tenants |o--o{ platform_showcase_agencies : "tenant_id"
   tenants ||--o{ subscriptions : "tenant_id"
   tenants ||--o| tenant_onboarding : "copied_from_tenant_id, tenant_id"
   tenants ||--o{ usage_counters : "tenant_id"

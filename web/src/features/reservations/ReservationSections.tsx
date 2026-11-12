@@ -15,6 +15,8 @@ import type { ReceivablesOverview } from "@/lib/finance";
 import { amountAttr, formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { FeedbackIncidentAction } from "@/features/operations/FeedbackIncidentAction";
 import { FeedbackReplyActions } from "./FeedbackReplyActions";
+import { daysBetween, PolicyLadder } from "./PolicyLadder";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { CHANGE_TYPE, DOC_TYPE, PAX_TYPE, SERVICE_KIND, type ReservationDetail, type ReservationFeedback, type ReservationHistoryEvent, type ReservationPaxMessage, type ReservationWebSnapshot } from "@/lib/reservations";
 import { statusLabel } from "@/lib/tone";
 import { PassengerAddAction, PassengerRowActions } from "./ReservationActions";
@@ -31,6 +33,8 @@ function Empty({ icon, title, description }: { icon: ReactNode; title: string; d
 }
 
 const SERVICE_STATES = [
+  { key: "completado", label: "Completados", tone: "bg-t3" },
+  { key: "en_curso", label: "En curso", tone: "bg-t1" },
   { key: "confirmado", label: "Confirmados", tone: "bg-ok" },
   { key: "solicitado", label: "Solicitados", tone: "bg-info" },
   { key: "pendiente", label: "Pendientes", tone: "bg-warn" },
@@ -61,7 +65,7 @@ export function SummarySection({ reservation }: { reservation: ReservationDetail
             {counts.map((state) => state.value > 0 && <span key={state.key} className={cn("h-full transition-[width] duration-700", state.tone)} style={{ width: `${(state.value / Math.max(1, active.length)) * 100}%` }} title={`${state.label}: ${state.value}`} />)}
           </div>
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {counts.map((state) => (
+            {counts.filter((state) => state.value > 0 || !["en_curso", "completado"].includes(state.key)).map((state) => (
               <li key={state.key} className={cn("lift rounded-[12px] px-3 py-2.5", SOFT_TINT)}>
                 <span className="flex items-center gap-1.5 text-[12px] text-fg-3">
                   <span className={cn("h-2 w-2 rounded-full", state.tone)} />
@@ -137,24 +141,24 @@ export function SummarySection({ reservation }: { reservation: ReservationDetail
           )}
         </Card>
         <Card className={cn((seesMargin || operationsView) && "xl:col-span-2")}>
-          <TintCardTitle icon={ScrollText} title="Políticas aplicadas" />
+          <TintCardTitle icon={ScrollText} title="Políticas aplicadas" aside={reservation.policies.source === "product" ? <InfoTip label="Políticas vigentes del producto">La reserva no guardó copia de las políticas al crearse; se muestran las vigentes de cada producto.</InfoTip> : undefined} />
           {reservation.policies.items.length === 0 ? (
             <p className="text-[13.5px] text-fg-3">Los productos de esta reserva no tienen políticas registradas.</p>
           ) : (
-            <div className="flex flex-col gap-4">
-              {reservation.policies.source === "product" && <p className="text-[12.5px] text-fg-3">La reserva no guardó copia de las políticas al crearse; se muestran las vigentes de cada producto.</p>}
+            <div className="grid gap-3 lg:grid-cols-2">
               {reservation.policies.items.map((policy) => (
-                <div key={policy.product}>
-                  <p className="mb-1.5 text-[13.5px] font-semibold">{policy.product}</p>
-                  <FieldList
-                    fields={[
-                      { label: "Cancelación", value: <span className="whitespace-normal">{policy.cancellation ?? "Sin definir"}</span> },
-                      { label: "Cambios", value: <span className="whitespace-normal">{policy.modification ?? "Sin definir"}</span> },
-                      { label: "No presentarse", value: <span className="whitespace-normal">{policy.no_show ?? "Sin definir"}</span> },
-                      { label: "Reembolsos", value: <span className="whitespace-normal">{policy.refund ?? "Sin definir"}</span> },
-                    ]}
-                  />
-                </div>
+                <PolicyLadder
+                  key={policy.product}
+                  product={policy.product}
+                  tiers={policy.tiers ?? []}
+                  daysToTravel={daysBetween(reservation.today, reservation.travel_from)}
+                  texts={[
+                    { label: "Cancelación", value: policy.cancellation },
+                    { label: "Cambios", value: policy.modification },
+                    { label: "No presentarse", value: policy.no_show },
+                    { label: "Reembolsos", value: policy.refund },
+                  ]}
+                />
               ))}
             </div>
           )}
@@ -591,6 +595,18 @@ export function IncidentsSection({ reservation }: { reservation: ReservationDeta
   );
 }
 
+const WEB_RULES: Record<string, { label: string; icon: typeof ScrollText }> = {
+  "R-DEPOSIT": { label: "Adelanto", icon: Wallet },
+  "R-PAY-LATER": { label: "Pagar después", icon: CalendarClock },
+  "R-PICKUP": { label: "Recojo", icon: Plane },
+  "R-COMMENTS": { label: "Comentarios", icon: MessageSquareText },
+  "R-COMPANIONS": { label: "Acompañantes", icon: Users },
+  "R-LODGING": { label: "Alojamiento", icon: BedDouble },
+  "R-ADDONS": { label: "Adicionales", icon: Sparkles },
+  "R-PROMO": { label: "Promoción", icon: Receipt },
+  "R-SEASON": { label: "Temporada", icon: CalendarClock },
+};
+
 export function WebSection({ snapshot, currency }: { snapshot: ReservationWebSnapshot | null; currency: string }) {
   if (!snapshot) return <Empty icon={<Sparkles size={20} />} title="No es una reserva web" description="Esta reserva no se hizo desde el sitio público, así que no tiene datos del carrito ni del pago en línea." />;
   const lineLabel = (line: { label?: string; name?: string; reason?: string }) => line.label ?? line.name ?? line.reason ?? "Concepto";
@@ -598,14 +614,31 @@ export function WebSection({ snapshot, currency }: { snapshot: ReservationWebSna
     <div className="grid items-start gap-5 xl:grid-cols-2">
       <Card>
         <TintCardTitle icon={Sparkles} title="Compra en el sitio" aside={snapshot.order_code ?? undefined} />
-        <FieldList
-          fields={[
-            { label: "Producto", value: snapshot.product ? <Link href={`/catalogo/productos/${snapshot.product.code}`} className="hover:underline">{snapshot.product.name}</Link> : "—" },
-            { label: "Fecha del servicio", value: formatDate(snapshot.service_date) },
-            { label: "Pasajeros", value: [snapshot.pax.adt && `${snapshot.pax.adt} adultos`, snapshot.pax.chd && `${snapshot.pax.chd} niños`, snapshot.pax.inf && `${snapshot.pax.inf} infantes`].filter(Boolean).join(" · ") },
-            { label: "Moneda", value: snapshot.currency_display === snapshot.charge_currency ? snapshot.charge_currency : `Vio ${snapshot.currency_display}, se cobró en ${snapshot.charge_currency} (cambio ${snapshot.fx_rate})` },
-          ]}
-        />
+        {snapshot.product && (
+          <Link href={`/catalogo/productos/${snapshot.product.code}`} className="mb-2 block text-[14px] font-semibold hover:underline">
+            {snapshot.product.name}
+          </Link>
+        )}
+        <div className="mb-3 flex flex-wrap gap-1.5 text-[12.5px]">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1">
+            <CalendarClock size={13} className="text-[var(--tint)]" /> {formatDate(snapshot.service_date)}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-2 px-2.5 py-1">
+            <Users size={13} className="text-[var(--tint)]" /> {[snapshot.pax.adt && `${snapshot.pax.adt} adultos`, snapshot.pax.chd && `${snapshot.pax.chd} niños`, snapshot.pax.inf && `${snapshot.pax.inf} infantes`].filter(Boolean).join(" · ")}
+          </span>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: "Vio", value: snapshot.currency_display },
+            { label: "Se cobró", value: snapshot.charge_currency },
+            { label: "Cambio", value: snapshot.currency_display === snapshot.charge_currency ? "—" : snapshot.fx_rate },
+          ].map((tile) => (
+            <div key={tile.label} className="rounded-tile border border-line px-3 py-2 text-center">
+              <span className="block text-[11.5px] text-fg-3">{tile.label}</span>
+              <b className="font-mono text-[15px] font-semibold">{tile.value}</b>
+            </div>
+          ))}
+        </div>
         {snapshot.lines && snapshot.lines.length > 0 && (
           <ul className="mt-4 flex flex-col border-t border-line-2 pt-2">
             {[...snapshot.lines, ...(snapshot.adjustments ?? [])].map((line, index) => (
@@ -626,14 +659,26 @@ export function WebSection({ snapshot, currency }: { snapshot: ReservationWebSna
       <div className="flex flex-col gap-5">
         {snapshot.payment && (
           <Card>
-            <TintCardTitle icon={Wallet} title="Plan de pago" />
-            <FieldList
-              fields={[
-                { label: "Modalidad", value: <span className="first-letter:uppercase">{snapshot.payment.mode ?? "—"}</span> },
-                { label: "Adelanto", value: snapshot.payment.deposit ? `${formatMoney(snapshot.payment.deposit, snapshot.charge_currency)}${snapshot.payment.deposit_pct ? ` (${Number(snapshot.payment.deposit_pct)} %)` : ""}` : "—" },
-                { label: "Saldo", value: snapshot.payment.balance ? `${formatMoney(snapshot.payment.balance, snapshot.charge_currency)}${snapshot.payment.balance_due ? ` hasta el ${formatDate(snapshot.payment.balance_due)}` : ""}` : "—" },
-              ]}
-            />
+            <TintCardTitle icon={Wallet} title="Plan de pago" aside={<span className="text-[12.5px] first-letter:uppercase text-fg-3">{(snapshot.payment.mode ?? "").replace("_", " ")}</span>} />
+            <ol className="relative ml-2 flex flex-col gap-3 border-l-2 border-line pl-4">
+              {[
+                { label: "Al reservar", amount: snapshot.payment.deposit, note: snapshot.payment.deposit_pct ? `${Number(snapshot.payment.deposit_pct)} % de adelanto` : null, done: true },
+                { label: snapshot.payment.balance_due ? `Hasta el ${formatDate(snapshot.payment.balance_due)}` : "Saldo", amount: snapshot.payment.balance, note: "Saldo", done: false },
+              ]
+                .filter((step) => step.amount && Number(step.amount) > 0)
+                .map((step) => (
+                  <li key={step.label} className="relative text-[13px]">
+                    <span className={cn("absolute -left-[23px] top-1 h-3 w-3 rounded-full border-2 border-[var(--surface)]", step.done ? "bg-ok" : "bg-[var(--tint)]")} />
+                    <span className="flex items-baseline justify-between gap-3">
+                      <span>
+                        <b className="block font-semibold">{step.label}</b>
+                        {step.note && <span className="text-[12px] text-fg-3">{step.note}</span>}
+                      </span>
+                      <span className="font-mono font-semibold">{formatMoney(step.amount ?? 0, snapshot.charge_currency)}</span>
+                    </span>
+                  </li>
+                ))}
+            </ol>
           </Card>
         )}
         <Card>
@@ -651,11 +696,25 @@ export function WebSection({ snapshot, currency }: { snapshot: ReservationWebSna
           <Card>
             <TintCardTitle icon={BedDouble} title="Alojamiento y adicionales" />
             <ul className="flex flex-col">
-              {snapshot.lodging.map((item, index) => (
-                <li key={`l${index}`} className="border-t border-line-2 py-2 text-[13px] first:border-t-0">
-                  <b className="font-semibold">{item.city}</b> · {item.hotel_name ?? "Hotel por asignar"} · {item.rooms} hab. {item.room_type ?? ""} · {item.nights} noches
-                </li>
-              ))}
+              {snapshot.lodging.map((item, index) => {
+                const most = Math.max(...snapshot.lodging.map((row) => row.nights), 1);
+                return (
+                  <li key={`l${index}`} className="border-t border-line-2 py-2.5 text-[13px] first:border-t-0">
+                    <span className="flex items-baseline justify-between gap-3">
+                      <b className="font-semibold">{item.city}</b>
+                      <span className="text-[12px] text-fg-3">{item.hotel_name ?? "Hotel por asignar"}</span>
+                    </span>
+                    <span className="mt-1.5 flex items-center gap-2">
+                      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+                        <span className="block h-full rounded-full bg-[var(--tint)]" style={{ width: `${(item.nights / most) * 100}%` }} />
+                      </span>
+                      <span className="flex-none text-[12px] text-fg-2">
+                        {item.nights} {item.nights === 1 ? "noche" : "noches"} · {item.rooms} hab.{item.room_type ? ` ${item.room_type}` : ""}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
               {snapshot.addons.map((item, index) => (
                 <li key={`a${index}`} className="flex justify-between border-t border-line-2 py-2 text-[13px] first:border-t-0">
                   <span>
@@ -670,13 +729,17 @@ export function WebSection({ snapshot, currency }: { snapshot: ReservationWebSna
         {snapshot.rules_applied.length > 0 && (
           <Card>
             <TintCardTitle icon={ScrollText} title="Reglas aplicadas" />
-            <div className="flex flex-wrap gap-1.5">
-              {snapshot.rules_applied.map((rule) => (
-                <span key={rule} className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-[11.5px] text-fg-2">
-                  {rule}
-                </span>
-              ))}
-            </div>
+            <ul className="flex flex-wrap gap-1.5">
+              {snapshot.rules_applied.map((rule) => {
+                const meta = WEB_RULES[rule] ?? { label: rule, icon: ScrollText };
+                return (
+                  <li key={rule} title={rule} className="lift inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-[12.5px]">
+                    <meta.icon size={13} className="text-[var(--tint)]" />
+                    {meta.label}
+                  </li>
+                );
+              })}
+            </ul>
           </Card>
         )}
       </div>
@@ -688,7 +751,24 @@ export function FeedbackSection({ feedback, messages, canEscalate = false, canRe
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
       <Card>
-        <TintCardTitle icon={MessageSquareText} title="Comentarios del pasajero" aside={feedback.length ? String(feedback.length) : undefined} />
+        <TintCardTitle
+          icon={MessageSquareText}
+          title="Comentarios del pasajero"
+          aside={
+            <span className="flex items-center gap-2">
+              {feedback.length > 0 && <span className="text-[12.5px] text-fg-3">{feedback.length}</span>}
+              {!canReply && (
+                <InfoTip label="Quién responde">
+                  Las respuestas las envía el equipo que atiende la{" "}
+                  <Link href="/canales/portal-pasajero" className="font-semibold text-[var(--tint)] hover:underline">
+                    bandeja del portal del pasajero
+                  </Link>
+                  .
+                </InfoTip>
+              )}
+            </span>
+          }
+        />
         {feedback.length === 0 ? (
           <p className="text-[13.5px] text-fg-3">Los pasajeros no han dejado comentarios en su portal.</p>
         ) : (
@@ -733,15 +813,6 @@ export function FeedbackSection({ feedback, messages, canEscalate = false, canRe
               </li>
             ))}
           </ul>
-        )}
-        {!canReply && (
-          <p className="mt-3 text-[12.5px] text-fg-3">
-            Las respuestas las envía el equipo que atiende la{" "}
-            <Link href="/canales/portal-pasajero" className="font-semibold text-[var(--tint)] hover:underline">
-              bandeja del portal del pasajero
-            </Link>
-            .
-          </p>
         )}
       </Card>
       <Card>

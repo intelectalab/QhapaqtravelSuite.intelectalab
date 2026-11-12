@@ -135,6 +135,27 @@ final class ReportExportController
         return response()->json(['data' => $schedule($this->user($request), $data)], 201);
     }
 
+    public function updateSchedule(Request $request, string $id, ScheduleReport $schedule): JsonResponse
+    {
+        $data = $request->validate([
+            'frequency' => ['required', 'in:'.implode(',', array_keys(ScheduleReport::FREQUENCIES))],
+            'time' => ['required', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],
+            'format' => ['required', 'in:CSV,XLSX,PDF'],
+            'recipients' => ['required', 'array', 'min:1', 'max:10'],
+            'recipients.*' => ['required', 'email', 'max:150'],
+            'period' => ['nullable', 'in:'.implode(',', array_keys(ReportFilters::PERIODS))],
+            'sede' => ['nullable', 'string', 'max:40'],
+        ], [
+            'frequency.*' => 'Elige la frecuencia: diaria, semanal o mensual.',
+            'time.*' => 'La hora va como HH:MM.',
+            'format.*' => 'El formato es CSV, XLSX o PDF.',
+            'recipients.*' => 'Agrega entre 1 y 10 correos válidos.',
+            'recipients.*.*' => 'Revisa los correos de los destinatarios.',
+        ]);
+
+        return response()->json(['data' => $schedule->update($this->user($request), $id, $data)]);
+    }
+
     private function user(Request $request): User
     {
         $user = $request->user();

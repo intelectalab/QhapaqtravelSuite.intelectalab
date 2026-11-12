@@ -66,6 +66,10 @@ final class ConversationCrm
         $conversation = $this->conversations->find($code, $actor);
         $related = $this->relation($conversation, $data);
 
+        if (! in_array($related['related_type'], ['lead', 'client'], true) && ! ($related['related_type'] === 'quote' && $conversation->client_id !== null)) {
+            throw ApiException::unprocessable('INB-BR-07', 'Vincula la conversación a un lead o a un cliente antes de agendar la actividad.');
+        }
+
         return DB::transaction(function () use ($conversation, $data, $related, $actor): array {
             $activity = $this->activities->create([...$data, ...$related], $actor);
             DB::table('collab_messages')->insert([

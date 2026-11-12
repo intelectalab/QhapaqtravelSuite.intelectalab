@@ -1,4 +1,8 @@
-export const ANALYTICS_CONSENT_KEY = "site_analytics_consent";
+export const ANALYTICS_CONSENT_KEY = "site_cookie_consent";
+
+export const COOKIE_POLICY_VERSION = "v1.0";
+
+export const COOKIE_PREFERENCES_EVENT = "site:cookie-preferences";
 
 export const SITE_TRACK_EVENT = "site:track";
 

@@ -188,8 +188,8 @@ export function ExternalInbox({ overview }: { overview: ExternalReviewsOverview 
       cell: (row) => (
         <RowActions>
           <ReviewDetail review={row} />
-          {overview.can_reply && row.status !== "no_admite" && <ReplyAction review={row} />}
-          {overview.can_reply && row.status === "pendiente_publicar" && <PublishedAction review={row} />}
+          {overview.can_reply && row.status !== "publicada" && <ReplyAction review={row} />}
+          {overview.can_reply && (row.status === "pendiente_publicar" || (row.status === "no_admite" && Boolean(row.reply))) && <PublishedAction review={row} />}
         </RowActions>
       ),
     },

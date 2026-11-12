@@ -12,7 +12,7 @@ Route::middleware('permission:crm.clients.manage')->group(function (): void {
     Route::post('crm/cases', [AfterSalesController::class, 'storeCase'])->name('crm.cases.store');
     Route::patch('crm/cases/{code}', [AfterSalesController::class, 'updateCase'])->name('crm.cases.update');
 
-    foreach (['start' => 'start', 'follow-ups' => 'followup', 'resolve' => 'resolve', 'close' => 'close', 'reopen' => 'reopen'] as $path => $step) {
+    foreach (['start' => 'start', 'follow-ups' => 'followup', 'resolve' => 'resolve', 'close' => 'close'] as $path => $step) {
         Route::post("crm/cases/{code}/{$path}", [AfterSalesController::class, 'transitionCase'])->defaults('step', $step)->name("crm.cases.{$path}");
     }
 });

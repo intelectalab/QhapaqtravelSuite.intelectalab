@@ -149,7 +149,9 @@ export function HoldActions({ hold }: { hold: HoldRow }) {
   const label = `${hold.quantity} cupos · ${hold.reference}`;
   return (
     <>
-      {hold.status === "hold" ? (
+      {hold.status === "hold" && hold.expired ? (
+        <RowIcon tone="neutral" label="Confirmar" icon={<CircleCheck size={15} />} disabledHint="El bloqueo ya venció: crea uno nuevo" />
+      ) : hold.status === "hold" ? (
         <ConfirmAction
           id={`hold-confirm-${hold.ref}`}
           label="Confirmar"

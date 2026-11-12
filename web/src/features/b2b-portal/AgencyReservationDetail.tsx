@@ -121,7 +121,7 @@ export function AgencyReservationDetail({ reservation, created, openCancel }: { 
         }
         actions={
           <>
-            <AgencyBadge status={reservation.status} />
+            <AgencyBadge status={reservation.status} scope="trip" />
             {reservation.pay_mode && <Badge tone={reservation.pay_mode === "credito" ? "t1" : "warn"}>{PAY_MODES[reservation.pay_mode].label}</Badge>}
             {reservation.cancel.allowed && <CancelPanel reservation={reservation} open={openCancel} />}
           </>
@@ -177,7 +177,7 @@ export function AgencyReservationDetail({ reservation, created, openCancel }: { 
                               {service.confirmation ? ` · Conf. ${service.confirmation}` : ""}
                             </span>
                           </span>
-                          <AgencyBadge status={service.status} />
+                          <AgencyBadge status={service.status} scope="service" />
                         </li>
                       ))}
                     </ul>

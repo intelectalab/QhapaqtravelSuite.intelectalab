@@ -1,10 +1,10 @@
 # Diccionario de datos · Sistema (sys_)
 
-_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras cargar `00`→`90`. No editar a mano._
+_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.15 tras cargar `00`→`90`. No editar a mano._
 
 Auditoría, correlativos, idempotencia, outbox, ajustes, documentos, jobs y reglas de reserva.
 
-12 tablas · 159 columnas · 14 claves foráneas. Diagrama ER: [`../er/sys.svg`](../er/sys.svg) (fuente [`../er/sys.mmd`](../er/sys.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
+13 tablas · 180 columnas · 16 claves foráneas. Diagrama ER: [`../er/sys.svg`](../er/sys.svg) (fuente [`../er/sys.mmd`](../er/sys.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
 
 ## Tablas
 
@@ -22,6 +22,7 @@ Auditoría, correlativos, idempotencia, outbox, ajustes, documentos, jobs y regl
 | [`sys_settings`](#sys_settings) | Fase 0 · Fundaciones | tenant | 6 | 1 | [Spec 09 §3.8] [Fase 0] Configuración del tenant por sección (JSONB validado por FormRequest). |
 | [`sys_holidays`](#sys_holidays) | Fase 1 · MVP | shared | 8 | 1 | [Spec 12 §3.11] [Fase 1] Feriados (tenant NULL = nacionales) para plazos hábiles. |
 | [`sys_booking_rules`](#sys_booking_rules) | Fase 2 · Canales y campo | tenant | 20 | 1 | [Spec 17 §3.1 + 16 §3.1] [Fase 2] Centro de reglas del tenant (copia del catálogo de plataforma). |
+| [`sys_ai_requests`](#sys_ai_requests) | Fase 3 · SaaS y crecimiento | tenant | 21 | 2 | [Spec 19 §3.1] [Fase 3] Pedidos al asistente de IA (itinerario, borrador de cotización o respuesta, resumen, importación, insight): entrada, salida, tokens y co |
 
 ## Detalle por tabla
 
@@ -221,6 +222,12 @@ Auditoría, correlativos, idempotencia, outbox, ajustes, documentos, jobs y regl
 |---|---|---|---|
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_sys_documents_tenant_id` |
 
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_sys_documents_id` | `tenant_id, id` |  | restricción |
+
 **Índices**
 
 | Nombre | Definición |
@@ -285,6 +292,12 @@ Auditoría, correlativos, idempotencia, outbox, ajustes, documentos, jobs y regl
 | `ix_sys_idempotency_keys_tenant_id_status` | `USING btree (tenant_id, status)` |
 | `ix_sys_idempotency_keys_user_id` | `USING btree (user_id)` |
 
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_fk_tenant_sys_idempotency_keys_user_id` | BEFORE INSERT OR UPDATE OF user_id, tenant_id | `app_check_fk_tenant` |
+
 [↑ Índice del dominio](#tablas)
 
 ### `sys_job_runs`
@@ -336,6 +349,13 @@ Auditoría, correlativos, idempotencia, outbox, ajustes, documentos, jobs y regl
 | `ix_sys_job_runs_scheduled_job_id_started_at_desc` | `USING btree (scheduled_job_id, started_at DESC)` |
 | `ix_sys_job_runs_tenant_id_status` | `USING btree (tenant_id, status)` |
 | `ix_sys_job_runs_triggered_by` | `USING btree (triggered_by)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_fk_tenant_sys_job_runs_scheduled_job_id` | BEFORE INSERT OR UPDATE OF scheduled_job_id, tenant_id | `app_check_fk_tenant` |
+| `trg_fk_tenant_sys_job_runs_triggered_by` | BEFORE INSERT OR UPDATE OF triggered_by, tenant_id | `app_check_fk_tenant` |
 
 [↑ Índice del dominio](#tablas)
 
@@ -456,6 +476,7 @@ Auditoría, correlativos, idempotencia, outbox, ajustes, documentos, jobs y regl
 
 | Nombre | Momento y evento | Función |
 |---|---|---|
+| `trg_fk_tenant_sys_scheduled_jobs_owner_user_id` | BEFORE INSERT OR UPDATE OF owner_user_id, tenant_id | `app_check_fk_tenant` |
 | `trg_sys_scheduled_jobs_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
 
 [↑ Índice del dominio](#tablas)
@@ -665,5 +686,81 @@ Auditoría, correlativos, idempotencia, outbox, ajustes, documentos, jobs y regl
 |---|---|---|
 | `trg_sys_booking_rules_lock_version` | BEFORE UPDATE | `app_bump_lock_version` |
 | `trg_sys_booking_rules_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `sys_ai_requests`
+
+[Spec 19 §3.1] [Fase 3] Pedidos al asistente de IA (itinerario, borrador de cotización o respuesta, resumen, importación, insight): entrada, salida, tokens y costo; base del cupo mensual por plan.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Sistema (sys_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id, iam_users.tenant_id. |
+| 3 | `kind` | `character varying(20)` | no |  | Valores: `itinerary`, `quote_draft`, `reply_draft`, `summary`, `product_import`, `insight`. |
+| 4 | `source_type` | `character varying(40)` | sí |  |  |
+| 5 | `source_id` | `uuid` | sí |  |  |
+| 6 | `user_id` | `uuid` | sí |  | FK → iam_users.id. |
+| 7 | `prompt` | `text` | no |  |  |
+| 8 | `input_ref` | `jsonb` | no | `'{}'::jsonb` |  |
+| 9 | `output` | `jsonb` | sí |  |  |
+| 10 | `provider` | `character varying(40)` | no | `'fake'::character varying` |  |
+| 11 | `model` | `character varying(80)` | sí |  |  |
+| 12 | `tokens_in` | `integer` | no | `0` |  |
+| 13 | `tokens_out` | `integer` | no | `0` |  |
+| 14 | `cost_usd` | `numeric(10,4)` | no | `0` |  |
+| 15 | `status` | `character varying(12)` | no | `'pending'::character varying` | Valores: `pending`, `completed`, `failed`, `applied`, `discarded`. |
+| 16 | `error` | `text` | sí |  |  |
+| 17 | `completed_at` | `timestamp with time zone` | sí |  |  |
+| 18 | `applied_at` | `timestamp with time zone` | sí |  |  |
+| 19 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
+| 20 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 21 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_sys_ai_requests_tenant_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_sys_ai_requests_user_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_sys_ai_requests_id` | `tenant_id, id` |  | restricción |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `ck_sys_ai_requests_1` | `CHECK ((((status)::text <> 'applied'::text) OR (applied_at IS NOT NULL)))` |  |
+| `sys_ai_requests_cost_usd_check` | `CHECK ((cost_usd >= (0)::numeric))` |  |
+| `sys_ai_requests_kind_check` | `CHECK (((kind)::text = ANY ((ARRAY['itinerary'::character varying, 'quote_draft'::character varying, 'reply_draft'::character varying, 'summary'::character varying, 'product_import'::character varying, 'insight'::character varying])::text[])))` | `kind`: `itinerary`, `quote_draft`, `reply_draft`, `summary`, `product_import`, `insight` |
+| `sys_ai_requests_status_check` | `CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'completed'::character varying, 'failed'::character varying, 'applied'::character varying, 'discarded'::character varying])::text[])))` | `status`: `pending`, `completed`, `failed`, `applied`, `discarded` |
+| `sys_ai_requests_tokens_in_check` | `CHECK ((tokens_in >= 0))` |  |
+| `sys_ai_requests_tokens_out_check` | `CHECK ((tokens_out >= 0))` |  |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_sys_ai_requests_source` | `USING btree (source_type, source_id)` |
+| `ix_sys_ai_requests_tenant_id_kind_created_at_desc` | `USING btree (tenant_id, kind, created_at DESC)` |
+| `ix_sys_ai_requests_user_id` | `USING btree (user_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_sys_ai_requests_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
 
 [↑ Índice del dominio](#tablas)

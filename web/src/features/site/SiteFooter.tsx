@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatDate } from "@/lib/format";
 import { siteHref, type SiteProfile } from "@/lib/site";
 import type { SiteSocial } from "@/lib/site-design";
+import { CookiePreferencesButton } from "./SiteAnalytics";
 import { useSite } from "./SiteContext";
 import { AgencyMark } from "./SiteHeader";
 
@@ -30,7 +31,7 @@ const SOCIAL_LABELS: Record<SiteSocial, string> = { facebook: "Facebook", instag
 
 export function SiteFooter({ profile, base }: { profile: SiteProfile; base: string }) {
   const { agency, sedes, fx } = profile;
-  const { t, dateLocale, design } = useSite();
+  const { t, dateLocale, design, locale } = useSite();
   const showSedes = design?.footer.show_sedes ?? true;
   const showFx = design?.footer.show_fx ?? true;
   const social = (Object.entries(design?.footer.social ?? {}) as [SiteSocial, string][]).filter(([, url]) => url !== "");
@@ -104,6 +105,7 @@ export function SiteFooter({ profile, base }: { profile: SiteProfile; base: stri
               {t.legal.links[key]}
             </Link>
           ))}
+          <CookiePreferencesButton label={locale === "en" ? "Cookie settings" : "Configurar cookies"} className="transition hover:text-white" />
           {fx && showFx && (
             <span className="sm:ml-auto">
               {t.footer.fx(fx.rate.toFixed(3), formatDate(fx.date, "short", dateLocale))}

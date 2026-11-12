@@ -18,6 +18,7 @@
     "crm.opportunities.manage",
     "crm.activities.manage",
     "crm.clients.manage",
+    "crm.records.reassign",
     "crm.targets.view",
     "crm.targets.manage",
     "crm.claims.manage",
@@ -30,6 +31,7 @@
     "catalog.products.manage_availability",
     "catalog.products.view_profitability",
     "catalog.products.publish",
+    "catalog.products.manage_promotions",
     "catalog.providers.manage",
     "catalog.allotments.manage",
     "quotes.view",
@@ -37,10 +39,13 @@
     "quotes.approve_internal",
     "quotes.send",
     "quotes.discount_override",
+    "quotes.reassign",
     "reservations.view",
     "reservations.create",
     "reservations.modify",
     "reservations.cancel",
+    "reservations.approve_changes",
+    "reservations.reassign",
     "operations.view",
     "operations.assign",
     "operations.vouchers",
@@ -57,9 +62,32 @@
     "finance.treasury",
     "channels.b2b.manage",
     "channels.ecommerce.manage",
+    "channels.cms.edit",
     "channels.cms.publish",
     "reports.view",
-    "reports.export"
+    "reports.export",
+    "ai.assistant.use",
+    "ai.insights.view",
+    "inbox.whatsapp.manage",
+    "finance.payment_links",
+    "finance.gift_cards",
+    "finance.accounting_export",
+    "catalog.products.import",
+    "catalog.products.dynamic_pricing",
+    "channels.ota.manage",
+    "channels.marketplace.manage",
+    "operations.checkin",
+    "quotes.external_offers",
+    "crm.corporate.manage",
+    "finance.corporate_statements",
+    "channels.showcase.manage",
+    "cms.seo.manage",
+    "finance.gateways.manage",
+    "cms.templates.manage",
+    "ai.content.use",
+    "marketing.tracking.manage",
+    "marketing.tracking.approve",
+    "analytics.web.view"
   ],
   "manager": [
     "admin.audit.view",
@@ -71,6 +99,7 @@
     "crm.opportunities.manage",
     "crm.activities.manage",
     "crm.clients.manage",
+    "crm.records.reassign",
     "crm.targets.view",
     "crm.targets.manage",
     "crm.claims.manage",
@@ -83,16 +112,20 @@
     "catalog.products.manage_availability",
     "catalog.products.view_profitability",
     "catalog.products.publish",
+    "catalog.products.manage_promotions",
     "catalog.allotments.manage",
     "quotes.view",
     "quotes.create",
     "quotes.approve_internal",
     "quotes.send",
     "quotes.discount_override",
+    "quotes.reassign",
     "reservations.view",
     "reservations.create",
     "reservations.modify",
     "reservations.cancel",
+    "reservations.approve_changes",
+    "reservations.reassign",
     "operations.view",
     "operations.assign",
     "operations.vouchers",
@@ -106,9 +139,29 @@
     "finance.treasury",
     "channels.b2b.manage",
     "channels.ecommerce.manage",
+    "channels.cms.edit",
     "channels.cms.publish",
     "reports.view",
-    "reports.export"
+    "reports.export",
+    "ai.assistant.use",
+    "ai.insights.view",
+    "inbox.whatsapp.manage",
+    "finance.payment_links",
+    "finance.gift_cards",
+    "catalog.products.import",
+    "catalog.products.dynamic_pricing",
+    "channels.ota.manage",
+    "channels.marketplace.manage",
+    "operations.checkin",
+    "quotes.external_offers",
+    "crm.corporate.manage",
+    "finance.corporate_statements",
+    "channels.showcase.manage",
+    "cms.seo.manage",
+    "cms.templates.manage",
+    "ai.content.use",
+    "marketing.tracking.manage",
+    "analytics.web.view"
   ],
   "sales": [
     "crm.leads.view",
@@ -126,7 +179,12 @@
     "approvals.view",
     "inbox.view",
     "inbox.manage",
-    "crm.targets.view"
+    "crm.targets.view",
+    "ai.assistant.use",
+    "finance.payment_links",
+    "quotes.external_offers",
+    "crm.corporate.manage",
+    "analytics.web.view"
   ],
   "operations": [
     "catalog.products.view",
@@ -144,10 +202,13 @@
     "inbox.view",
     "inbox.manage",
     "catalog.allotments.manage",
-    "operations.travel_docs"
+    "operations.travel_docs",
+    "ai.assistant.use",
+    "operations.checkin"
   ],
   "finance": [
     "finance.receivables",
+    "finance.gateways.manage",
     "finance.payments.register",
     "finance.payments.revert",
     "finance.payables",
@@ -161,7 +222,13 @@
     "reports.view",
     "reports.export",
     "finance.treasury",
-    "approvals.view"
+    "approvals.view",
+    "ai.insights.view",
+    "finance.payment_links",
+    "finance.gift_cards",
+    "finance.accounting_export",
+    "crm.corporate.manage",
+    "finance.corporate_statements"
   ],
   "accounting": [
     "finance.invoicing",
@@ -169,15 +236,19 @@
     "reservations.view",
     "reports.view",
     "reports.export",
-    "finance.treasury"
+    "finance.treasury",
+    "finance.accounting_export",
+    "finance.corporate_statements"
   ],
   "guide": [
     "operations.view",
-    "operations.incidents"
+    "operations.incidents",
+    "operations.checkin"
   ],
   "driver": [
     "operations.view",
-    "operations.incidents"
+    "operations.incidents",
+    "operations.checkin"
   ],
   "b2b": [
     "catalog.products.view",
@@ -193,6 +264,15 @@
     "reservations.view"
   ],
   "provider": [
-    "operations.view"
+    "operations.view",
+    "supplier.portal.view",
+    "supplier.requests.respond",
+    "supplier.rooming.manage",
+    "supplier.vouchers.redeem",
+    "supplier.payables.view",
+    "supplier.invoices.upload",
+    "supplier.incidents.report",
+    "supplier.rates.request",
+    "supplier.users.manage"
   ]
 }

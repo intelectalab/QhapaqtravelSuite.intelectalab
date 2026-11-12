@@ -1,11 +1,26 @@
 erDiagram
+  cms_ai_content_jobs {
+    uuid id PK,UK
+    uuid tenant_id UK
+    varchar code UK
+    varchar kind
+    varchar status
+    uuid ai_request_id FK
+    uuid created_by FK
+  }
+  cms_ai_images {
+    uuid id PK
+    uuid job_id FK
+    varchar status
+    uuid created_by FK
+  }
   cms_content_events {
     uuid id PK
     uuid content_id FK
     uuid user_id FK
   }
   cms_contents {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar title
@@ -16,9 +31,77 @@ erDiagram
     date valid_from
     date valid_to
   }
+  cms_redirects {
+    uuid id PK
+    smallint code
+    uuid created_by FK
+  }
+  cms_seo_pages {
+    uuid id PK
+    uuid tenant_id UK
+    varchar path UK
+    varchar title
+  }
+  cms_site_domains {
+    uuid id PK
+    varchar status
+    uuid created_by FK
+  }
+  cms_site_themes {
+    uuid id PK
+    uuid template_id FK
+    uuid template_version_id FK
+    varchar status
+    uuid applied_by FK
+  }
+  cms_travel_stories {
+    uuid id PK
+    uuid tenant_id UK
+    varchar slug UK
+    varchar title
+    uuid client_id FK
+    uuid reservation_id FK
+    uuid product_id FK
+    varchar status
+    uuid created_by FK
+  }
+  cms_web_analytics_daily {
+    bigint id PK
+  }
+  booking_reservations {
+    uuid id PK
+  }
+  catalog_products {
+    uuid id PK
+  }
+  crm_clients {
+    uuid id PK
+  }
   iam_users {
     uuid id PK
   }
-  cms_contents ||--o{ cms_content_events : "content_id"
-  iam_users ||--o{ cms_content_events : "user_id"
-  iam_users ||--o{ cms_contents : "author_id"
+  platform_site_template_versions {
+    uuid id PK
+  }
+  platform_site_templates {
+    uuid id PK
+  }
+  sys_ai_requests {
+    uuid id PK
+  }
+  booking_reservations ||--o{ cms_travel_stories : "reservation_id, tenant_id"
+  catalog_products ||--o{ cms_travel_stories : "product_id, tenant_id"
+  cms_ai_content_jobs ||--o{ cms_ai_images : "job_id, tenant_id"
+  cms_contents ||--o{ cms_content_events : "content_id, tenant_id"
+  crm_clients ||--o{ cms_travel_stories : "client_id, tenant_id"
+  iam_users ||--o{ cms_ai_content_jobs : "created_by, tenant_id"
+  iam_users ||--o{ cms_ai_images : "created_by, tenant_id"
+  iam_users ||--o{ cms_content_events : "tenant_id, user_id"
+  iam_users ||--o{ cms_contents : "author_id, tenant_id"
+  iam_users ||--o{ cms_redirects : "created_by, tenant_id"
+  iam_users ||--o{ cms_site_domains : "created_by, tenant_id"
+  iam_users ||--o{ cms_site_themes : "applied_by, tenant_id"
+  iam_users ||--o{ cms_travel_stories : "created_by, tenant_id"
+  platform_site_template_versions ||--o{ cms_site_themes : "template_version_id"
+  platform_site_templates ||--o{ cms_site_themes : "template_id"
+  sys_ai_requests ||--o{ cms_ai_content_jobs : "ai_request_id, tenant_id"

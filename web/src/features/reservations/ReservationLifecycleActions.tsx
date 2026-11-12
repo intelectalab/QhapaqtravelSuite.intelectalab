@@ -152,9 +152,11 @@ export function ServiceRowActions({ code, service, reasons }: { code: string; se
           <TextField label="Confirmó (opcional)" name="confirmed_by" maxLength={120} placeholder="Nombre de quien confirmó" />
         </div>
       </Step>
-      <Step code={code} step="service_reject" formKey={`${service.code}-reject`} label="Rechazo" icon={<CircleX size={15} />} title="Registrar rechazo del proveedor" description={`${subject}. Si la reserva estaba confirmada, vuelve a pendiente de proveedor.`} submitLabel="Registrar rechazo" trigger={(open) => <RowIcon tone="delete" icon={<CircleX size={15} />} label="Registrar rechazo" onClick={open} />}>
-        <RejectFields service={service} reasons={reasons} late={false} />
-      </Step>
+      {service.status === "solicitado" && (
+        <Step code={code} step="service_reject" formKey={`${service.code}-reject`} label="Rechazo" icon={<CircleX size={15} />} title="Registrar rechazo del proveedor" description={`${subject}. Si la reserva estaba confirmada, vuelve a pendiente de proveedor.`} submitLabel="Registrar rechazo" trigger={(open) => <RowIcon tone="delete" icon={<CircleX size={15} />} label="Registrar rechazo" onClick={open} />}>
+          <RejectFields service={service} reasons={reasons} late={false} />
+        </Step>
+      )}
     </span>
   );
 }

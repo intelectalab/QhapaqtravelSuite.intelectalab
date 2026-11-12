@@ -1,6 +1,6 @@
 # Diccionario de datos · Notificaciones (notif_)
 
-_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras cargar `00`→`90`. No editar a mano._
+_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.15 tras cargar `00`→`90`. No editar a mano._
 
 Reglas de evento, plantillas, mensajes y lecturas; mensajes al pasajero.
 
@@ -90,7 +90,7 @@ Reglas de evento, plantillas, mensajes y lecturas; mensajes al pasajero.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_clients.tenant_id, notif_messages.tenant_id, iam_users.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | sí |  |  |
 | 4 | `event_code` | `character varying(50)` | no |  |  |
 | 5 | `channel` | `character varying(20)` | no |  | Valores: `email`, `whatsapp`, `push`, `portal`. |
@@ -121,12 +121,18 @@ Reglas de evento, plantillas, mensajes y lecturas; mensajes al pasajero.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `client_id` | `crm_clients.id` | NO ACTION | `fk_notif_messages_client_id` |
-| `fallback_of_id` | `notif_messages.id` | NO ACTION | `fk_notif_messages_fallback_of_id` |
-| `recipient_user_id` | `iam_users.id` | NO ACTION | `fk_notif_messages_recipient_user_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_notif_messages_reservation_id` |
+| `tenant_id, client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_notif_messages_client_id` |
+| `tenant_id, fallback_of_id` | `notif_messages.tenant_id, id` | NO ACTION | `fk_notif_messages_fallback_of_id` |
+| `tenant_id, recipient_user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_notif_messages_recipient_user_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_notif_messages_reservation_id` |
 | `template_id` | `notif_templates.id` | NO ACTION | `fk_notif_messages_template_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_notif_messages_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_notif_messages_id` | `tenant_id, id` |  | restricción |
 
 **CHECK**
 
@@ -150,6 +156,12 @@ Reglas de evento, plantillas, mensajes y lecturas; mensajes al pasajero.
 | `ix_notif_messages_tenant_id_source_type_source_id` | `USING btree (tenant_id, source_type, source_id)` |
 | `ix_notif_messages_tenant_id_status` | `USING btree (tenant_id, status)` |
 
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_fk_tenant_notif_messages_template_id` | BEFORE INSERT OR UPDATE OF template_id, tenant_id | `app_check_fk_tenant` |
+
 [↑ Índice del dominio](#tablas)
 
 ### `notif_reads`
@@ -165,7 +177,7 @@ Reglas de evento, plantillas, mensajes y lecturas; mensajes al pasajero.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → notif_messages.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `notification_id` | `uuid` | no |  | FK → notif_messages.id. |
 | 4 | `user_id` | `uuid` | no |  | FK → iam_users.id. |
 | 5 | `read_at` | `timestamp with time zone` | no | `now()` |  |
@@ -176,9 +188,9 @@ Reglas de evento, plantillas, mensajes y lecturas; mensajes al pasajero.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `notification_id` | `notif_messages.id` | CASCADE | `fk_notif_reads_notification_id` |
+| `tenant_id, notification_id` | `notif_messages.tenant_id, id` | CASCADE | `fk_notif_reads_notification_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_notif_reads_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_notif_reads_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_notif_reads_user_id` |
 
 **UNIQUE**
 
@@ -288,6 +300,7 @@ Reglas de evento, plantillas, mensajes y lecturas; mensajes al pasajero.
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_notif_pax_message_templates_id` | `tenant_id, id` |  | restricción |
 | `uq_notif_pax_message_templates_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -326,7 +339,7 @@ Reglas de evento, plantillas, mensajes y lecturas; mensajes al pasajero.
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → channel_pax_feedback.tenant_id, booking_reservations.tenant_id, notif_pax_message_templates.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `reservation_id` | `uuid` | sí |  | FK → booking_reservations.id. |
 | 5 | `template_id` | `uuid` | sí |  | FK → notif_pax_message_templates.id. |
@@ -357,9 +370,9 @@ Reglas de evento, plantillas, mensajes y lecturas; mensajes al pasajero.
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `feedback_id` | `channel_pax_feedback.id` | NO ACTION | `fk_notif_pax_messages_feedback_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_notif_pax_messages_reservation_id` |
-| `template_id` | `notif_pax_message_templates.id` | NO ACTION | `fk_notif_pax_messages_template_id` |
+| `tenant_id, feedback_id` | `channel_pax_feedback.tenant_id, id` | NO ACTION | `fk_notif_pax_messages_feedback_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_notif_pax_messages_reservation_id` |
+| `tenant_id, template_id` | `notif_pax_message_templates.tenant_id, id` | NO ACTION | `fk_notif_pax_messages_template_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_notif_pax_messages_tenant_id` |
 
 **UNIQUE**

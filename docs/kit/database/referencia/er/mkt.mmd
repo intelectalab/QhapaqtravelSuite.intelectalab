@@ -18,7 +18,7 @@ erDiagram
     uuid triggered_by FK
   }
   mkt_automations {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar key UK
@@ -41,7 +41,7 @@ erDiagram
     uuid to_user_id FK
   }
   mkt_campaigns {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar name
@@ -57,7 +57,7 @@ erDiagram
     uuid actor_id FK
   }
   mkt_consents {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar status
@@ -71,19 +71,55 @@ erDiagram
     uuid client_id FK
     uuid lead_id FK
   }
-  mkt_segments {
+  mkt_conversion_dispatches {
+    bigint id PK
+    uuid mapping_id FK
+    varchar status
+    char currency
+    uuid order_id FK
+  }
+  mkt_conversion_mappings {
+    uuid id PK,UK
+    uuid tenant_id UK
+    uuid tag_id FK
+  }
+  mkt_recovery_attempts {
     uuid id PK
+    uuid flow_id FK
+    uuid cart_id FK
+    uuid quote_id FK
+    uuid client_id FK
+    varchar status
+    uuid recovered_reservation_id FK
+  }
+  mkt_recovery_flows {
+    uuid id PK,UK
+    uuid tenant_id UK
+    varchar code UK
+    varchar name
+  }
+  mkt_segments {
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar name
     uuid owner_id FK
   }
   mkt_templates {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar name
     varchar status
+  }
+  mkt_tracking_tags {
+    uuid id PK,UK
+    uuid tenant_id UK
+    varchar code UK
+    varchar name
+    varchar status
+    uuid created_by FK
+    uuid approved_by FK
   }
   booking_reservations {
     uuid id PK
@@ -92,6 +128,9 @@ erDiagram
     uuid id PK
   }
   channel_ecom_orders {
+    uuid id PK
+  }
+  channel_web_carts {
     uuid id PK
   }
   crm_clients {
@@ -103,25 +142,37 @@ erDiagram
   iam_users {
     uuid id PK
   }
-  booking_reservations |o--o{ mkt_attributions : "reservation_id"
-  catalog_product_promotions |o--o{ mkt_campaigns : "promotion_id"
-  channel_ecom_orders |o--o{ mkt_attributions : "ecom_order_id"
-  crm_clients |o--o{ mkt_contacts_subscribers : "client_id"
-  crm_leads |o--o{ mkt_attributions : "lead_id"
-  crm_leads |o--o{ mkt_contacts_subscribers : "lead_id"
-  iam_users |o--o{ mkt_automation_runs : "triggered_by"
-  iam_users ||--o{ mkt_campaign_tests : "to_user_id"
-  iam_users ||--o{ mkt_campaigns : "owner_id"
-  iam_users |o--o{ mkt_consent_events : "actor_id"
-  iam_users ||--o{ mkt_segments : "owner_id"
-  mkt_automations ||--o{ mkt_automation_enrollments : "automation_id"
-  mkt_automations ||--o{ mkt_automation_runs : "automation_id"
-  mkt_campaigns ||--o{ mkt_attributions : "campaign_id"
-  mkt_campaigns ||--o{ mkt_campaign_recipients : "campaign_id"
-  mkt_campaigns ||--o{ mkt_campaign_suppressions : "campaign_id"
-  mkt_campaigns ||--o{ mkt_campaign_tests : "campaign_id"
-  mkt_campaigns |o--o{ mkt_consents : "revoke_campaign_id"
-  mkt_consents ||--o{ mkt_consent_events : "consent_id"
-  mkt_segments ||--o{ mkt_campaigns : "segment_id"
-  mkt_templates ||--o{ mkt_automations : "template_id"
-  mkt_templates ||--o{ mkt_campaigns : "template_id"
+  quote_quotes {
+    uuid id PK
+  }
+  booking_reservations ||--o{ mkt_attributions : "reservation_id, tenant_id"
+  booking_reservations ||--o{ mkt_recovery_attempts : "recovered_reservation_id, tenant_id"
+  catalog_product_promotions ||--o{ mkt_campaigns : "promotion_id, tenant_id"
+  channel_ecom_orders ||--o{ mkt_attributions : "ecom_order_id, tenant_id"
+  channel_ecom_orders ||--o{ mkt_conversion_dispatches : "order_id, tenant_id"
+  channel_web_carts ||--o{ mkt_recovery_attempts : "cart_id, tenant_id"
+  crm_clients ||--o{ mkt_contacts_subscribers : "client_id, tenant_id"
+  crm_clients ||--o{ mkt_recovery_attempts : "client_id, tenant_id"
+  crm_leads ||--o{ mkt_attributions : "lead_id, tenant_id"
+  crm_leads ||--o{ mkt_contacts_subscribers : "lead_id, tenant_id"
+  iam_users ||--o{ mkt_automation_runs : "tenant_id, triggered_by"
+  iam_users ||--o{ mkt_campaign_tests : "tenant_id, to_user_id"
+  iam_users ||--o{ mkt_campaigns : "owner_id, tenant_id"
+  iam_users ||--o{ mkt_consent_events : "actor_id, tenant_id"
+  iam_users ||--o{ mkt_segments : "owner_id, tenant_id"
+  iam_users ||--o{ mkt_tracking_tags : "approved_by, created_by, tenant_id"
+  mkt_automations ||--o{ mkt_automation_enrollments : "automation_id, tenant_id"
+  mkt_automations ||--o{ mkt_automation_runs : "automation_id, tenant_id"
+  mkt_campaigns ||--o{ mkt_attributions : "campaign_id, tenant_id"
+  mkt_campaigns ||--o{ mkt_campaign_recipients : "campaign_id, tenant_id"
+  mkt_campaigns ||--o{ mkt_campaign_suppressions : "campaign_id, tenant_id"
+  mkt_campaigns ||--o{ mkt_campaign_tests : "campaign_id, tenant_id"
+  mkt_campaigns ||--o{ mkt_consents : "revoke_campaign_id, tenant_id"
+  mkt_consents ||--o{ mkt_consent_events : "consent_id, tenant_id"
+  mkt_conversion_mappings ||--o{ mkt_conversion_dispatches : "mapping_id, tenant_id"
+  mkt_recovery_flows ||--o{ mkt_recovery_attempts : "flow_id, tenant_id"
+  mkt_segments ||--o{ mkt_campaigns : "segment_id, tenant_id"
+  mkt_templates ||--o{ mkt_automations : "template_id, tenant_id"
+  mkt_templates ||--o{ mkt_campaigns : "template_id, tenant_id"
+  mkt_tracking_tags ||--o{ mkt_conversion_mappings : "tag_id, tenant_id"
+  quote_quotes ||--o{ mkt_recovery_attempts : "quote_id, tenant_id"

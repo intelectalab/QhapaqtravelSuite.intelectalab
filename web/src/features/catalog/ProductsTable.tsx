@@ -53,7 +53,7 @@ const buildColumns = (can: { edit: boolean; remove: boolean }): Column<ProductRo
     cell: (product) => (
       <RowActions>
         <RowIcon tone="view" label="Ver ficha" href={href(product)} />
-        {can.edit && <RowIcon tone="edit" label="Editar" href={`${href(product)}?editar=1`} disabledHint={product.status === "ARCHIVED" ? "Archivado: reactívalo desde la ficha" : undefined} />}
+        {can.edit && <RowIcon tone="edit" label="Editar" href={`${href(product)}?editar=1`} disabledHint={product.status === "ARCHIVED" ? "Archivado: ya no se edita" : undefined} />}
         {can.remove && (["ACTIVE", "SUSPENDED"].includes(product.status) ? <RowIcon tone="delete" label="Eliminar" disabledHint="Activo o suspendido: primero inactívalo" /> : <ProductDeleteAction product={product} iconOnly />)}
       </RowActions>
     ),
@@ -62,9 +62,9 @@ const buildColumns = (can: { edit: boolean; remove: boolean }): Column<ProductRo
 
 const metrics: MetricFilter<ProductRow>[] = [
   { id: "active", label: "Activos", tone: "ok", icon: <CircleCheck size={19} />, matches: (product) => product.status === "ACTIVE" },
-  { id: "review", label: "En revisión", tone: "sun", icon: <Hourglass size={19} />, matches: (product) => product.status === "REVIEW" },
-  { id: "draft", label: "Borradores", tone: "info", icon: <FilePen size={19} />, matches: (product) => product.status === "DRAFT" },
-  { id: "suspended", label: "Suspendidos", tone: "bad", icon: <CirclePause size={19} />, matches: (product) => product.status === "SUSPENDED" },
+  { id: "review", label: "En revisión o borrador", tone: "sun", icon: <Hourglass size={19} />, matches: (product) => product.status === "REVIEW" || product.status === "DRAFT" },
+  { id: "approved", label: "Aprobados sin activar", tone: "info", icon: <FilePen size={19} />, matches: (product) => product.status === "APPROVED" },
+  { id: "stopped", label: "Suspendidos o inactivos", tone: "bad", icon: <CirclePause size={19} />, matches: (product) => product.status === "SUSPENDED" || product.status === "INACTIVE" },
 ];
 
 const sorts: SortOption<ProductRow>[] = [
@@ -77,6 +77,7 @@ export function ProductsTable({ products, can }: { products: ProductRow[]; can: 
   const filters: FilterConfig<ProductRow>[] = [
     { id: "type", label: "Tipo", options: unique(products.map((product) => product.type)), value: (product) => product.type },
     { id: "category", label: "Categoría", options: unique(products.map((product) => product.category)), value: (product) => product.category },
+    { id: "status", label: "Estado", options: [...new Set(products.map((product) => product.status))].map((status) => ({ value: status, label: PRODUCT_STATUS[status].label })), value: (product) => product.status },
     { id: "destination", label: "Destino", options: unique(products.map((product) => product.destination)), value: (product) => product.destination },
     { id: "channel", label: "Canal", options: unique(products.flatMap((product) => product.channels)), value: (product) => product.channels },
   ];

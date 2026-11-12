@@ -67,7 +67,7 @@ export function AgencyReservations({ rows, today }: { rows: AgencyReservationRow
       header: "Estado",
       cell: (row) => (
         <span className="flex flex-wrap items-center gap-1.5">
-          <AgencyBadge status={row.status} />
+          <AgencyBadge status={row.status} scope="trip" />
           {row.cancel_pending && <Badge tone="bad">Anulación pedida</Badge>}
         </span>
       ),

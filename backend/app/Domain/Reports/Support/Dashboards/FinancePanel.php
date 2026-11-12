@@ -22,7 +22,7 @@ final class FinancePanel
         $months = $this->data->months($viewer);
         $receivables = $this->data->receivables($viewer);
         $overdue = $receivables->filter(fn (object $row): bool => $this->data->overdue($row));
-        $cash = DB::table('fin_payments')->whereIn('status', ['aplicado', 'confirmado'])->whereBetween('paid_on', [$start->toDateString(), $start->copy()->endOfMonth()->toDateString()])->get(['method', 'amount', 'fx_rate']);
+        $cash = DB::table('fin_payments')->where('kind', 'cobro')->whereIn('status', ['aplicado', 'confirmado'])->whereBetween('paid_on', [$start->toDateString(), $start->copy()->endOfMonth()->toDateString()])->get(['method', 'amount', 'fx_rate']);
         $toValidate = $this->toValidate();
         $payables = $this->payables($this->data->now()->addDays(7)->toDateString(), $today);
 
@@ -50,7 +50,7 @@ final class FinancePanel
     private function toValidate(): Collection
     {
         return DB::table('fin_payments as p')->leftJoin('booking_reservations as r', 'r.id', '=', 'p.reservation_id')->leftJoin('iam_users as u', 'u.id', '=', 'p.registered_by')
-            ->where('p.status', 'pendiente')->orderBy('p.paid_on')
+            ->where('p.kind', 'cobro')->where('p.status', 'pendiente')->orderBy('p.paid_on')
             ->get(['p.code', 'p.method', 'p.amount', 'p.currency', 'p.fx_rate', 'p.paid_on', 'p.source', 'r.code as reservation', 'u.name as by'])
             ->map(fn (object $row): array => [
                 'code' => $row->code,

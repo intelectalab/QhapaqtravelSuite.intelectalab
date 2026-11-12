@@ -301,6 +301,7 @@ export interface InvoiceKpis {
   month_pen: number;
   accepted: number;
   observed: number;
+  rejected?: number;
   waiting: number;
   credit_notes_pen: number;
   uninvoiced_pen: number;
@@ -380,6 +381,7 @@ export interface TreasuryMovement {
   currency: string;
   pen: number;
   manual: boolean;
+  voidable?: boolean;
   category: string | null;
   description: string;
   reference: string | null;

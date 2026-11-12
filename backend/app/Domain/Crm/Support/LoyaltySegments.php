@@ -41,7 +41,7 @@ final class LoyaltySegments
     public function rows(User $viewer, array $filters = []): Collection
     {
         $today = Carbon::now($this->context->timezone())->startOfDay();
-        $clients = Portfolio::scope(DB::table('crm_clients as c'), $viewer, 'c.owner_id')
+        $clients = Portfolio::clients(DB::table('crm_clients as c'), $viewer, 'c')
             ->leftJoin('iam_users as u', 'u.id', '=', 'c.owner_id')
             ->whereNull('c.deleted_at')
             ->orderBy('c.name')

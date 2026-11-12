@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, CircleCheck, Hourglass, Send, ThumbsDown, ThumbsUp } from "lucide-react";
+import { ArrowLeftRight, ChevronLeft, ChevronRight, CircleCheck, Hourglass, Send, ThumbsDown, ThumbsUp } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { FieldList } from "@/components/ui/Details";
 import { PanelSection } from "@/features/catalog-shared/CatalogPanels";
-import { ALLOTMENT_STATUS, CONTRACT_STEPS, KIND_LABEL, REQUEST_STATUS, isClosed, type AllotmentCell, type AllotmentDetail, type AllotmentRequest, type ConsumptionRow } from "@/lib/catalog-allotments";
+import { ALLOTMENT_STATUS, CONTRACT_STEPS, KIND_LABEL, REQUEST_STATUS, isClosed, type AllotmentCell, type AllotmentDetail, type AllotmentStatus, type AllotmentRequest, type ConsumptionRow } from "@/lib/catalog-allotments";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { toneStyle } from "@/lib/tone";
@@ -82,17 +82,33 @@ export function ContractCalendar({ detail }: { detail: AllotmentDetail }) {
 
 export function ContractConditions({ detail }: { detail: AllotmentDetail }) {
   const { contract } = detail;
-  const current = CONTRACT_STEPS.indexOf(contract.status);
+  const tile = (step: AllotmentStatus, note: string) => (
+    <li key={step} style={toneStyle(ALLOTMENT_STATUS[step].tone)} className={cn("lift flex-1 rounded-xl border px-3 py-2.5 text-[13px]", step === contract.status ? "border-[var(--tint)] bg-[color-mix(in_srgb,var(--tint)_12%,var(--surface))] font-semibold" : "border-line text-fg-3")} aria-current={step === contract.status ? "step" : undefined}>
+      {ALLOTMENT_STATUS[step].label}
+      <span className="block text-[11.5px] font-normal text-fg-3">{note}</span>
+    </li>
+  );
   return (
     <div className="flex flex-col gap-6 p-5">
-      <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {CONTRACT_STEPS.map((step, index) => (
-          <li key={step} style={toneStyle(ALLOTMENT_STATUS[step].tone)} className={cn("lift rounded-xl border px-3 py-2.5 text-[13px]", index === current ? "border-[var(--tint)] bg-[color-mix(in_srgb,var(--tint)_12%,var(--surface))] font-semibold" : "border-line text-fg-3")}>
-            <span className="block text-[11px] font-mono">{index + 1}</span>
-            {ALLOTMENT_STATUS[step].label}
-          </li>
-        ))}
-      </ol>
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+        <div>
+          <p className="mb-1.5 text-[12px] font-semibold text-fg-3">Mientras está vigente</p>
+          <ol className="flex items-center gap-2" aria-label="Ciclo del contrato">
+            {tile(CONTRACT_STEPS[0], "Cupo disponible para vender")}
+            <li aria-hidden className="flex-none text-fg-3">
+              <ArrowLeftRight size={16} />
+            </li>
+            {tile(CONTRACT_STEPS[1], "Se activa y se cierra solo con el release")}
+          </ol>
+        </div>
+        <div>
+          <p className="mb-1.5 text-[12px] font-semibold text-fg-3">Salidas</p>
+          <ol className="flex items-center gap-2" aria-label="Salidas del contrato">
+            {tile(CONTRACT_STEPS[2], "Acción manual")}
+            {tile(CONTRACT_STEPS[3], "Al terminar la vigencia")}
+          </ol>
+        </div>
+      </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <PanelSection title="Contrato">
           <FieldList

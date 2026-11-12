@@ -87,6 +87,14 @@ it('solo se anulan pedidos abiertos: confirmados y ya anulados responden 409', f
     expect(ecoCancel('WEB-10433'))->toBeApiError(409, 'ECO-BR-04');
 });
 
+it('un pedido con el abono por validar no se anula desde el canal: lo resuelve Finanzas al validar', function () {
+    actingAsSeed('U01');
+    withinTenant(tenantA(), fn () => DB::table('channel_ecom_orders')->where('code', 'WEB-10433')->update(['status' => 'pago_por_validar']));
+
+    expect(ecoCancel('WEB-10433'))->toBeApiError(409, 'ECO-BR-04')
+        ->and(rowOf('channel_ecom_orders', 'WEB-10433')->status)->toBe('pago_por_validar');
+});
+
 it('anular exige motivo, la versión del pedido y el permiso de e-commerce', function () {
     actingAsSeed('U01');
     ecoCancel('WEB-10433', ['reason' => ''])->assertStatus(422)->assertJsonValidationErrors(['reason']);

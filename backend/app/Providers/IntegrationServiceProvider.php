@@ -5,18 +5,21 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Domain\Integrations\Adapters\ClamAvMalwareScanner;
+use App\Domain\Integrations\Adapters\ExpoPushSender;
 use App\Domain\Integrations\Contracts\CaptchaVerifier;
 use App\Domain\Integrations\Contracts\FiscalGateway;
 use App\Domain\Integrations\Contracts\FxRateProvider;
 use App\Domain\Integrations\Contracts\MalwareScanner;
 use App\Domain\Integrations\Contracts\MessagingChannel;
 use App\Domain\Integrations\Contracts\PaymentGateway;
+use App\Domain\Integrations\Contracts\PushSender;
 use App\Domain\Integrations\Contracts\ReviewsProvider;
 use App\Domain\Integrations\Fake\FakeFiscalGateway;
 use App\Domain\Integrations\Fake\FakeFxRateProvider;
 use App\Domain\Integrations\Fake\FakeMalwareScanner;
 use App\Domain\Integrations\Fake\FakeMessagingChannel;
 use App\Domain\Integrations\Fake\FakePaymentGateway;
+use App\Domain\Integrations\Fake\FakePushSender;
 use App\Domain\Integrations\Fake\FakeReviewsProvider;
 use App\Domain\Integrations\Mail\PlatformMailTransport;
 use App\Domain\Integrations\Mail\SmtpConnector;
@@ -36,6 +39,7 @@ final class IntegrationServiceProvider extends ServiceProvider
         ReviewsProvider::class => ['config' => 'integrations.drivers.reviews', 'drivers' => ['fake' => FakeReviewsProvider::class]],
         FxRateProvider::class => ['config' => 'integrations.drivers.fx', 'drivers' => ['fake' => FakeFxRateProvider::class]],
         MalwareScanner::class => ['config' => 'integrations.drivers.antivirus', 'drivers' => ['fake' => FakeMalwareScanner::class, 'clamav' => ClamAvMalwareScanner::class]],
+        PushSender::class => ['config' => 'integrations.drivers.push', 'drivers' => ['fake' => FakePushSender::class, 'expo' => ExpoPushSender::class]],
     ];
 
     private const REAL_REQUIRED_IN_PRODUCTION = [FiscalGateway::class, PaymentGateway::class, MalwareScanner::class];

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Site\Support;
 
+use App\Domain\Admin\Support\PriceRounding;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Illuminate\Support\Collection;
@@ -116,6 +117,6 @@ final class SitePricing
             $price = $price->multipliedBy($season->exact)->dividedBy($base->isZero() ? BigDecimal::one() : $base, 10, RoundingMode::HALF_UP);
         }
 
-        return $price->toScale(1, RoundingMode::HALF_UP)->toFloat();
+        return app(PriceRounding::class)->apply($price)->toFloat();
     }
 }

@@ -54,7 +54,7 @@ export interface FlowStage {
 
 export interface ProcessMapData {
   stages: FlowStage[];
-  conversion: { lead_to_opportunity: number; opportunity_win: number | null; quote_to_reservation: number | null };
+  conversion: { lead_to_opportunity: number; opportunity_to_quote?: number | null; opportunity_win: number | null; quote_to_reservation: number | null };
   scope: "own" | "tenant";
 }
 

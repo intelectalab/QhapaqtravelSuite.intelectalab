@@ -21,7 +21,7 @@ export async function rejectQuote(code: string, _state: StepResult, form: FormDa
 }
 
 export async function reportPayment(code: string, _state: StepResult, form: FormData): Promise<StepResult> {
-  const result = await sendStep(`/portal/client/receivables/${encodeURIComponent(code)}/payments`, "POST", formValues(form, ["amount", "method", "reference", "paid_on", "note"]), "No pudimos registrar tu pago.");
+  const result = await sendStep(`/portal/client/receivables/${encodeURIComponent(code)}/payment-reports`, "POST", formValues(form, ["amount", "method", "reference", "paid_on", "note"]), "No pudimos registrar tu pago.");
   if (result.done) refresh("/portal/pagos");
   return result;
 }
@@ -50,11 +50,33 @@ export async function sendFeedback(_state: StepResult, form: FormData): Promise<
   return result;
 }
 
+const REVIEW_PHOTOS = 4;
+
+const REVIEW_PHOTO_BYTES = 5 * 1024 * 1024;
+
 export async function sendReview(_state: StepResult, form: FormData): Promise<StepResult> {
-  const subratings = Object.fromEntries([...form.entries()].filter(([key, value]) => key.startsWith("sub_") && typeof value === "string" && value !== "").map(([key, value]) => [key.slice(4), Number(value)]));
-  const result = await sendStep("/portal/passenger/reviews", "POST", { ...formValues(form, ["trip", "product", "stars", "title", "body", "lang", "country"]), subratings, consent_publish: form.get("consent_publish") === "on" }, "No pudimos enviar tu reseña.");
-  if (result.done) refresh("/portal/califica");
-  return result;
+  const photos = form.getAll("photos").filter((file): file is File => file instanceof File && file.size > 0);
+  if (photos.length > REVIEW_PHOTOS) return { message: `Puedes adjuntar hasta ${REVIEW_PHOTOS} fotos.`, done: false };
+  const heavy = photos.find((file) => file.size > REVIEW_PHOTO_BYTES);
+  if (heavy) return { message: `${heavy.name} pesa más de 5 MB.`, done: false };
+
+  const payload = new FormData();
+  for (const [key, value] of Object.entries(formValues(form, ["trip", "product", "stars", "title", "body", "lang", "country"]))) {
+    if (value !== null && value !== undefined && value !== "") payload.set(key, String(value));
+  }
+  for (const [key, value] of form.entries()) {
+    if (key.startsWith("sub_") && typeof value === "string" && value !== "") payload.set(`subratings[${key.slice(4)}]`, value);
+  }
+  payload.set("consent_publish", form.get("consent_publish") === "on" ? "1" : "0");
+  photos.forEach((file, index) => payload.append(`photos[${index}]`, file, file.name));
+
+  const result = await apiFetch("/portal/passenger/reviews", { method: "POST", form: payload });
+  if (!result.ok) {
+    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { message: firstError ?? result.error?.message ?? "No pudimos enviar tu reseña.", done: false };
+  }
+  refresh("/portal/califica");
+  return { message: null, done: true };
 }
 
 export async function sendMessage(_state: StepResult, form: FormData): Promise<StepResult> {
@@ -65,6 +87,13 @@ export async function sendMessage(_state: StepResult, form: FormData): Promise<S
 
 export async function ackAlert(code: string): Promise<StepResult> {
   const result = await sendStep(`/portal/passenger/alerts/${encodeURIComponent(code)}/ack`, "POST", {}, "No pudimos confirmar la lectura.");
+  if (result.done) refresh("/portal/avisos");
+  return result;
+}
+
+export async function readNotice(code: string | null): Promise<StepResult> {
+  const path = code ? `/portal/passenger/messages/${encodeURIComponent(code)}/read` : "/portal/passenger/messages/read-all";
+  const result = await sendStep(path, "POST", {}, "No pudimos marcar el mensaje como leído.");
   if (result.done) refresh("/portal/avisos");
   return result;
 }
@@ -82,7 +111,7 @@ export async function requestQuoteChanges(code: string, _state: StepResult, form
 }
 
 export async function payOnline(code: string, _state: StepResult, form: FormData): Promise<StepResult> {
-  const result = await apiFetch<{ result: string; message: string }>(`/portal/customer/receivables/${encodeURIComponent(code)}/pay`, { method: "POST", body: formValues(form, ["method", "card_token", "card_holder", "operation_ref"]) });
+  const result = await apiFetch<{ result: string; message: string }>(`/portal/client/receivables/${encodeURIComponent(code)}/payments`, { method: "POST", body: formValues(form, ["method", "card_token", "card_holder", "operation_ref"]) });
   refresh("/portal/pagos");
   if (!result.ok || !result.data) {
     const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;

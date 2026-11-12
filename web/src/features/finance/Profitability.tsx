@@ -1,6 +1,7 @@
 "use client";
 
 import { CircleAlert, CircleCheck, TriangleAlert } from "lucide-react";
+import { PROFIT_CSV } from "@/lib/finance-csv";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -81,7 +82,7 @@ export function ProfitabilityTable({ data }: { data: ProfitabilityOverview }) {
   ];
 
   const filters: FilterConfig<ProfitRow>[] = [
-    { id: "owner", label: "Asesor", options: unique(rows.map((row) => row.owner)).map((value) => ({ value, label: value })), value: (row) => row.owner },
+    { id: "owner", label: "Responsable", options: unique(rows.map((row) => row.owner)).map((value) => ({ value, label: value })), value: (row) => row.owner },
     { id: "channel", label: "Canal", options: unique(rows.map((row) => row.channel)).map((value) => ({ value, label: value })), value: (row) => row.channel },
     { id: "status", label: "Estado", options: unique(rows.map((row) => row.status)).map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status },
     { id: "settled", label: "Liquidación", options: [{ value: "si", label: "Liquidada" }, { value: "no", label: "Sin liquidar" }], value: (row) => (row.settled_at ? "si" : "no") },
@@ -96,6 +97,7 @@ export function ProfitabilityTable({ data }: { data: ProfitabilityOverview }) {
   return (
     <DataTable
       screen="finanzas-rentabilidad"
+      csv={PROFIT_CSV}
       rows={rows}
       columns={columns}
       getKey={(row) => row.code}

@@ -68,7 +68,7 @@ it('la clave de bloqueo es por agencia y no distingue mayúsculas ni espacios', 
 
 it('los códigos MFA equivocados de la plataforma también bloquean la cuenta', function () {
     $platform = platformUser();
-    $pending = AccessToken::query()->forceCreate(['tokenable_type' => $platform->getMorphClass(), 'tokenable_id' => $platform->getKey(), 'name' => 'plataforma', 'token' => hash('sha256', $secret = 'pest-lock-'.bin2hex(random_bytes(16))), 'abilities' => ['mfa:verify'], 'experience' => 'platform', 'expires_at' => now()->addHours(8)]);
+    $pending = AccessToken::on('pgsql_platform')->forceCreate(['tokenable_type' => $platform->getMorphClass(), 'tokenable_id' => $platform->getKey(), 'name' => 'plataforma', 'token' => hash('sha256', $secret = 'pest-lock-'.bin2hex(random_bytes(16))), 'abilities' => ['mfa:verify'], 'experience' => 'platform', 'expires_at' => now()->addHours(8)]);
     useToken($pending->getKey().'|'.$secret);
 
     foreach (range(1, 4) as $ignored) {

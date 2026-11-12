@@ -2,7 +2,7 @@
 
 > Generado por `kit-ia/referencia/tools/extract_rules.py` desde `proto/docs/especificaciones/*.md` y `kit-ia/seeds/settings.json` (`bookingRules`) + `plans.json`. No editar a mano: corregir la especificación y regenerar. La versión tabular completa (con columna de comportamiento) está en `REGLAS-DE-NEGOCIO.csv`.
 
-**Cifras:** 747 filas de regla (730 IDs distintos; una misma regla puede repetirse en varias especificaciones con matices propios) en 19 especificaciones · 32 reglas activables del centro de reglas · 20 reglas transversales (RT-n) referenciadas.
+**Cifras:** 858 filas de regla (841 IDs distintos; una misma regla puede repetirse en varias especificaciones con matices propios) en 26 especificaciones · 34 reglas activables del centro de reglas · 20 reglas transversales (RT-n) referenciadas.
 
 ## 1. Cómo leer este catálogo
 
@@ -18,28 +18,31 @@
 | `FIN-BR` | 59 | `OPS-BR` | 49 | `CRM-BR` | 48 |
 | `CAT-BR` | 45 | `SUP-BR` | 30 | `RES-BR` | 29 |
 | `RT` | 29 | `SIT-BR` | 28 | `QTE-BR` | 27 |
-| `SEC-BR` | 25 | `PRD-BR` | 19 | `MKT-BR` | 18 |
-| `TES-BR` | 18 | `B2B-BR` | 17 | `ECO-BR` | 16 |
-| `APR-BR` | 15 | `DOC-BR` | 13 | `CFG-BR` | 12 |
-| `MOB-BR` | 12 | `SUB-BR` | 12 | `TEN-BR` | 12 |
-| `INB-BR` | 11 | `RVW` | 11 | `USR-BR` | 11 |
-| `CUP-BR` | 10 | `LR-BR` | 10 | `MET-BR` | 10 |
-| `PCL-BR` | 10 | `RBAC-BR` | 9 | `API-BR` | 8 |
-| `NTF-BR` | 8 | `CAN-V21` | 7 | `CAT-AV` | 7 |
-| `CMS-BR` | 7 | `PPX-BR` | 7 | `PRC` | 7 |
+| `SEC-BR` | 25 | `LND` | 20 | `PRD-BR` | 19 |
+| `MKT-BR` | 18 | `TES-BR` | 18 | `B2B-BR` | 17 |
+| `SC` | 17 | `ECO-BR` | 16 | `APR-BR` | 15 |
+| `DOC-BR` | 13 | `VT` | 13 | `CFG-BR` | 12 |
+| `MOB-BR` | 12 | `SEG` | 12 | `SUB-BR` | 12 |
+| `TEN-BR` | 12 | `INB-BR` | 11 | `RVW` | 11 |
+| `USR-BR` | 11 | `CP` | 10 | `CUP-BR` | 10 |
+| `LR-BR` | 10 | `MET-BR` | 10 | `PCL-BR` | 10 |
+| `TB` | 10 | `TPL` | 10 | `RBAC-BR` | 9 |
+| `API-BR` | 8 | `IA` | 8 | `NTF-BR` | 8 |
+| `CAN-V21` | 7 | `CAT-AV` | 7 | `CMS-BR` | 7 |
+| `PPX-BR` | 7 | `PRC` | 7 | `BLG` | 6 |
 | `INT-BR` | 6 | `REP-BR` | 6 | `RES-V21` | 6 |
-| `SED-BR` | 5 | `CR` | 4 | `FX` | 4 |
-| `OPS-V21` | 4 | `PLN-BR` | 4 | `AUD-BR` | 3 |
-| `CAT-AD` | 3 | `CAT-LG` | 3 | `CAT-PX` | 3 |
-| `CAT-RL` | 3 | `EXP-BR` | 3 | `JOB-BR` | 3 |
-| `MSG` | 3 | `PAX-BR` | 3 | `RV` | 3 |
-| `WG` | 3 | `CAT-PY` | 2 | `DSH-BR` | 2 |
-| `PROC` | 2 | `CAT-PK` | 1 | `ENT-BR` | 1 |
-| `PLN-R` | 1 |  |  |  |  |
+| `SED-BR` | 5 | `VIS` | 5 | `CR` | 4 |
+| `FX` | 4 | `OPS-V21` | 4 | `PLN-BR` | 4 |
+| `AUD-BR` | 3 | `CAT-AD` | 3 | `CAT-LG` | 3 |
+| `CAT-PX` | 3 | `CAT-RL` | 3 | `EXP-BR` | 3 |
+| `JOB-BR` | 3 | `MSG` | 3 | `PAX-BR` | 3 |
+| `RV` | 3 | `WG` | 3 | `CAT-PY` | 2 |
+| `DSH-BR` | 2 | `PROC` | 2 | `CAT-PK` | 1 |
+| `ENT-BR` | 1 | `PLN-R` | 1 |  |  |
 
 ## 2. Catálogo de reglas activables (centro de reglas)
 
-Fuente: `kit-ia/seeds/settings.json → bookingRules` (32 reglas) · tabla `sys_booking_rules` (por tenant, `code`, `enabled`, `params`, `params_schema`, `product_override`, `min_plan`) y catálogo de plataforma `sys_booking_rule_catalog` + `plan_rule_entitlements`. Las especificaciones 16 §3.1 y 01_platform.sql hablan de 31 reglas; la semilla trae 32 porque v2.2 agregó `R-OWN-REVIEWS` (spec 18).
+Fuente: `kit-ia/seeds/settings.json → bookingRules` (34 reglas) · tabla `sys_booking_rules` (por tenant, `code`, `enabled`, `params`, `params_schema`, `product_override`, `min_plan`) y catálogo de plataforma `sys_booking_rule_catalog` + `plan_rule_entitlements`. Las especificaciones 16 §3.1 y 01_platform.sql hablan de 31 reglas; la semilla trae 32 porque v2.2 agregó `R-OWN-REVIEWS` (spec 18).
 
 | Código | Grupo | Nombre | Plan mínimo | Override por producto | Activa en demo | Parámetros (valores demo) | Canales | Reglas con ID que la citan |
 |---|---|---|---|---|---|---|---|---|
@@ -75,6 +78,8 @@ Fuente: `kit-ia/seeds/settings.json → bookingRules` (32 reglas) · tabla `sys_
 | `R-PAX-FEEDBACK` | Comunicación | Comentarios del pasajero desde su panel | Professional | no | sí | — | Portal pasajero, App pasajero | CAN-V21-01, RES-V21-05 |
 | `R-REVIEW-INVITE` | Comunicación | Invitación a reseña externa | Enterprise | no | no | `daysAfter=2` | Comunicaciones, Reseñas | — |
 | `R-OWN-REVIEWS` | Comunicación | Reseñas propias verificadas | Professional | sí | sí | `daysAfter=1`, `minStarsAutoPublish=4`, `moderation=true` | Portal pasajero, Sitio web, Widget, Reseñas | RVW-01 |
+| `R-TRIP-BUILDER` | Alojamiento | Viaje por tramos | Professional | sí | sí | — | Sitio web, Widget, Cotizaciones | TB-01 |
+| `R-IN-TRIP-SALES` | Comunicación | Venta durante el viaje | Professional | sí | sí | `minHoursBefore=12` | Portal pasajero, WhatsApp | TB-09 |
 
 ### 2.1 Qué hace cada regla activable en cada módulo
 
@@ -271,6 +276,14 @@ Fuente: `kit-ia/seeds/settings.json → bookingRules` (32 reglas) · tabla `sys_
 - *15 §5 Reglas de negocio › §5.2 v2.2 — Reseñas propias verificadas en el sitio (R-OWN-REVIEWS)*: Idioma EN: Textos traducidos (Verified trip, Reviews from verified travelers, etc.)
 - *15 §5 Reglas de negocio › §5.2 v2.2 — Reseñas propias verificadas en el sitio (R-OWN-REVIEWS)*: Apagado: Regla inactiva, plan sin la regla, producto con `ruleOverrides['R-OWN-REVIEWS']=false` o `show_on_site=false` → no se muestra nada ni se emite `aggregateRating`
 
+**`R-TRIP-BUILDER` — Viaje por tramos.** El cliente elige cuántas noches pasa en cada ciudad (dentro del mínimo y máximo del tramo), el hotel con tarifa por fecha y suma tours y movilidad por ciudad. El total se separa en alojamiento, tours, movilidad y adicionales.
+
+- Sin tabla de efecto específica en las especificaciones (ver descripción).
+
+**`R-IN-TRIP-SALES` — Venta durante el viaje.** El pasajero ve y compra tours y movilidad de los tramos que le quedan desde su portal o por WhatsApp con un link de pago; el proveedor confirma desde la extranet.
+
+- Sin tabla de efecto específica en las especificaciones (ver descripción).
+
 ## 3. Reglas transversales (RT-n)
 
 Numeración heredada de la documentación inicial: `RT-n` = regla transversal n de DOC-PROC-001 §30 («Regla transversal n»). Cada módulo la aplica con su propio ID; esta tabla agrupa dónde aparece cada una.
@@ -320,7 +333,7 @@ Numeración heredada de la documentación inicial: `RT-n` = regla transversal n 
 | `SEC-BR-14` |  | §5 Reglas de negocio transversales | Acción no permitida: no se muestra activa (oculta o deshabilitada con “Requiere permiso x.y”); si llega por otra vía → 403 y sin cambios | Frontend + Policy | Policy · UI |  |
 | `SEC-BR-15` | PRD-BR-014 / RT-16 | §5 Reglas de negocio transversales | Acciones críticas auditadas (lista §9) | `AuditLogger` | Service |  |
 | `SEC-BR-16` | RT-22 | §5 Reglas de negocio transversales | Operaciones críticas exigen `Idempotency-Key`; misma key + mismo cuerpo → misma respuesta; misma key + cuerpo distinto → 422 `IDEMPOTENCY_KEY_REUSED`; key en proceso → 409 `IDEMPOTENCY_IN_PROGRESS` | Middleware `Idempotent` | Middleware |  |
-| `SEC-BR-17` |  | §5 Reglas de negocio transversales | Recursos con `lock_version` requieren `If-Match`; desfase → 409 `STALE_VERSION` | Trait `OptimisticLock` | Service |  |
+| `SEC-BR-17` |  | §5 Reglas de negocio transversales | Recursos con `lock_version` requieren `If-Match`; desfase → 409 `STALE_VERSION`; sin `If-Match` → 422 `IF_MATCH_REQUIRED` (v2.5: 412, 423 y 428 no se usan) | Trait `OptimisticLock` | Service |  |
 | `SEC-BR-18` | PRD-BR-010 / RT-5 | §5 Reglas de negocio transversales | Precios calculados en backend con `PricingService` (§5.1); el frontend solo previsualiza | Service | Service |  |
 | `SEC-BR-19` | RT-15 | §5 Reglas de negocio transversales | Moneda y `fx_rate` se congelan en cada documento; conversión a PEN = `monto × fx` si USD | Service | Service |  |
 | `SEC-BR-20` |  | §5 Reglas de negocio transversales | Correlativos: asignación atómica (`SELECT … FOR UPDATE` en `sys_sequences`), sin huecos por rollback en documentos fiscales (se asigna al confirmar), nunca retroceden | Service + trigger | Service · BD |  |
@@ -1141,6 +1154,152 @@ Numeración heredada de la documentación inicial: `RT-n` = regla transversal n 
 | `RVW-09` |  | §5 Reglas de negocio | Invitación `daysAfter` días después de `travel_to` a las 09:00, recordatorio y vencimiento configurables; a todos los elegibles, sin incentivos | Job | Job/Listener |  |
 | `RVW-10` |  | §5 Reglas de negocio | Sitio/widget muestran solo `publicada`, con sello «Viaje verificado» y rótulo «ejemplo (demo)» si `is_demo`; `show_on_site/show_on_widget` apagan cada salida | Query + cache | Query/Read model |  |
 | `RVW-11` |  | §5 Reglas de negocio | Ventas: solo reseñas de reservas propias o clientes de su cartera; no modera ni responde | Policy (`owner=me`) | Policy |  |
+
+### 19 · 19-crecimiento-comercial.md (`19-crecimiento-comercial.md`) — 17 reglas
+
+| ID | Alias | Sección | Regla | Dónde se valida | Capa | Activable |
+|---|---|---|---|---|---|---|
+| `SC-01` |  | §5 Reglas de negocio | Cada función es una regla activable con plan mínimo. Plan **Starter**: R-AI-ASSISTANT (cupo 100 pedidos al mes), R-PAY-LINKS y R-AI-IMPORT. Plan **Professional**: R-WHATSAPP-OFFICIAL, R-CART-RECOVERY, R-GIFT-CARDS, R-QR-CHECKIN y R-ACCOUNTING-EXPORT. Plan **Enterprise**: R-OTA-CHANNEL, R-MARKETPLACE, R-DYNAMIC-PRICING, R-GDS-OFFERS y R-AI-INSIGHTS. Regla apagada o fuera de plan → 403 `RULE_NOT_IN_PLAN` | `EnsureFeature` + RuleResolver | Service |  |
+| `SC-02` |  | §5 Reglas de negocio | El cupo de IA se mide por `sys_ai_requests` del mes (`usage_counters` clave `ai_requests`). Al 80 % se avisa; al 100 % se responde 429 `AI_QUOTA_EXCEEDED` hasta el mes siguiente o la compra de un paquete adicional | Service + medición (spec 13) | Service |  |
+| `SC-03` |  | §5 Reglas de negocio | La IA nunca confirma, cobra ni envía sola: deja un borrador que un usuario aplica o envía. «Aplicar» crea una versión de cotización en `borrador` y pasa por las reglas de precio y aprobación de siempre | Action | Por definir |  |
+| `SC-04` |  | §5 Reglas de negocio | No se envían a la IA datos de tarjeta, documentos de identidad ni contraseñas. Los datos del cliente se reducen a nombre, fechas, pax y preferencias | Service (filtro de PII) | Service |  |
+| `SC-05` |  | §5 Reglas de negocio | WhatsApp: fuera de la ventana de 24 h solo se pueden enviar plantillas `aprobada`. El opt-in del cliente es obligatorio antes del primer mensaje | Adapter + consentimientos (spec 14) | Service |  |
+| `SC-06` |  | §5 Reglas de negocio | El link de pago aplica el pago a la CxC o a la reserva con la misma lógica de 07 §4.9. El link es idempotente: un segundo webhook del mismo cobro no duplica el pago. Si el monto excede el saldo pendiente → 422 `AMOUNT_EXCEEDS_BALANCE` | Action + Idempotency | Por definir |  |
+| `SC-07` |  | §5 Reglas de negocio | Recuperación: no se envía si el cliente no tiene consentimiento del canal, si ya compró (se descarta) o si se alcanzó `max_attempts`. Pausa entre intentos ≥ `delay_minutes` | Job | Job/Listener |  |
+| `SC-08` |  | §5 Reglas de negocio | El importador nunca publica: crea productos en `borrador` tras la revisión, con los campos marcados «detectado por IA» | Action | Por definir |  |
+| `SC-09` |  | §5 Reglas de negocio | Disponibilidad hacia OTAs = disponibilidad real menos los holds vigentes (`catalog_availability_holds`). Una reserva OTA consume cupo con el mismo bloqueo de fila que el checkout; sin cupo → `rechazada` y se informa a la OTA | BookingEngine | Service |  |
+| `SC-10` |  | §5 Reglas de negocio | El precio a la OTA según el mapeo: markup sobre la tarifa pública, precio fijo o neto. La comisión de la OTA se registra como CxP de comisión al confirmar | Service | Service |  |
+| `SC-11` |  | §5 Reglas de negocio | Marketplace: el revendedor ve el precio neto (público − comisión) y vende con su margen. La venta crea la reserva en el tenant vendedor (canal `marketplace`) y una reserva espejo en el revendedor. La tarifa de plataforma (1 %) se factura en la suscripción del vendedor | MarketplaceService (conexión platform) | Service |  |
+| `SC-12` |  | §5 Reglas de negocio | Precio dinámico: se aplican las reglas activas por prioridad y el ajuste acumulado queda entre `floor_pct` y `ceiling_pct`. Cotización y reserva guardan el ajuste en su snapshot; un cambio posterior de regla no altera lo ya vendido | PricingService | Service |  |
+| `SC-13` |  | §5 Reglas de negocio | Vale de regalo: el canje no puede superar el saldo, se registra con bloqueo de fila del vale y deja un movimiento. Un vale vencido no se canjea; la anulación devuelve el saldo solo si nunca se canjeó | Action + lock | Service |  |
+| `SC-14` |  | §5 Reglas de negocio | Check-in QR: un pase solo se usa una vez. El escaneo exige que el servicio sea del día y que el usuario esté asignado al servicio. Si la regla R-QR-CHECKIN exige deslinde, no se marca el check-in sin firma vigente (o la del tutor, para menores) | Action | Por definir |  |
+| `SC-15` |  | §5 Reglas de negocio | La exportación contable solo incluye períodos con comprobantes `aceptado` u `observado` y exige el plan de cuentas completo para los conceptos del alcance; si falta una cuenta → 422 `ACCOUNT_MAPPING_MISSING` | Service | Service |  |
+| `SC-16` |  | §5 Reglas de negocio | Una oferta externa vencida no se puede convertir. Al convertir la cotización, las ofertas `retenida` pasan a emitirse en el GDS o banco de camas y su costo entra como servicio de la reserva | Action | Por definir |  |
+| `SC-17` |  | §5 Reglas de negocio | Las alertas IA solo muestran datos que el rol ya puede ver: Ventas no recibe márgenes ni costos (SEC-BR-13) | Policy | Policy |  |
+
+### 20 · 20-portal-corporativo.md (`20-portal-corporativo.md`) — 10 reglas
+
+| ID | Alias | Sección | Regla | Dónde se valida | Capa | Activable |
+|---|---|---|---|---|---|---|
+| `CP-01` |  | §5 Reglas de negocio | La regla R-CORP-PORTAL (plan mínimo Professional) habilita el módulo. Regla apagada o fuera de plan → 403 en los endpoints y sin pestaña en el portal | Middleware de regla (spec 13) | Middleware |  |
+| `CP-02` |  | §5 Reglas de negocio | Solo los usuarios del portal de la cuenta ven el panel; cada endpoint filtra por la cuenta del `client_id` del token (SEC-BR-12). El viajero solo ve compras donde figura como pasajero o como viajero asignado; el aprobador ve las de su centro de costo | Policy + scope | Policy |  |
+| `CP-03` |  | §5 Reglas de negocio | Si la cuenta exige aprobación y el total de la versión vigente es mayor o igual al umbral, convertir la cotización en reserva exige una aprobación `aprobada` de esa versión. Sin ella → 422 `CORPORATE_APPROVAL_REQUIRED`. Una nueva versión cancela la solicitud pendiente | Action `ConvertQuote` | Por definir |  |
+| `CP-04` |  | §5 Reglas de negocio | El reparto de costos de una reserva suma 100 % y su importe suma el total de la reserva (diferencia de redondeo al último renglón). Sin reparto, la reserva va al centro de costo por defecto | Service | Service |  |
+| `CP-05` |  | §5 Reglas de negocio | El estado de cuenta se genera por mes calendario en la moneda de la cuenta (los importes en otra moneda se convierten con el tipo de cambio del día del movimiento, 07 §4). El envío automático corre el `statement_day` del mes siguiente y no duplica un estado `generado` o `enviado` del mismo mes | Job + índice parcial | Job/Listener · BD |  |
+| `CP-06` |  | §5 Reglas de negocio | Un correo solo puede tener un usuario por cuenta. Solo el administrador de la empresa o el personal con `crm.corporate.manage` invita, cambia roles o desactiva usuarios. La cuenta siempre conserva al menos un administrador activo | Action | Por definir |  |
+| `CP-07` |  | §5 Reglas de negocio | El aprobador solo decide solicitudes de su centro de costo (el administrador decide todas). Rechazar exige motivo. La decisión es idempotente: una segunda decisión sobre una solicitud cerrada → 409 | Action + `lock_version` | Service |  |
+| `CP-08` |  | §5 Reglas de negocio | Las exportaciones se generan en segundo plano y quedan 7 días; el enlace es firmado y de un solo usuario. Máximo 10 exportaciones en cola por cuenta | Job | Job/Listener |  |
+| `CP-09` |  | §5 Reglas de negocio | El panel nunca muestra costos de proveedor, márgenes ni comisiones (SEC-BR-13): solo importes de venta, pagos y notas de crédito del cliente | Resource | Resource |  |
+| `CP-10` |  | §5 Reglas de negocio | Presupuesto: al superar el 80 % del presupuesto del período de un centro de costo se avisa al administrador y al aprobador; superarlo no bloquea la compra, pero la marca «excedido» en el reporte y en la solicitud de aprobación | Service + notificación | Service |  |
+
+### 21 · 21-viajes-por-tramos.md (`21-viajes-por-tramos.md`) — 10 reglas
+
+| ID | Alias | Sección | Regla | Dónde se valida | Capa | Activable |
+|---|---|---|---|---|---|---|
+| `TB-01` |  | §5 Reglas de negocio | R-TRIP-BUILDER apagada o fuera de plan: las noches son fijas, no se muestran tours ni movilidad y el API ignora `nights`, `tours` y `transport` del pedido | BookingEngine (spec 16) | Service | `R-TRIP-BUILDER` |
+| `TB-02` |  | §5 Reglas de negocio | Noches por tramo dentro de `[min_nights, max_nights]`; el servidor las acota y avisa. Las fechas de cada tramo salen de la fecha de inicio y las noches anteriores | BookingEngine::tripSchedule | Service |  |
+| `TB-03` |  | §5 Reglas de negocio | Cada noche se cobra con la tarifa base del hotel ajustada por la temporada vigente ese día (`adjust_pct`). La línea de alojamiento muestra el precio medio y la etiqueta «Temporada alta» si alguna noche la tuvo | BookingEngine::quote | Service |  |
+| `TB-04` |  | §5 Reglas de negocio | Tour: adultos × `price_adult` + niños × `price_child`; infantes gratis. Con `min_age`, si hay niños menores se avisa y no se cobra por ellos | BookingEngine | Service |  |
+| `TB-05` |  | §5 Reglas de negocio | Movilidad por pasajero igual que TB-04. Por vehículo: el vehículo más chico con `max_pax` ≥ personas; si ninguno alcanza, varias unidades del más grande | BookingEngine | Service |  |
+| `TB-06` |  | §5 Reglas de negocio | Entre dos ciudades se elige una sola opción de movilidad (elegir otra reemplaza la anterior). Sin opción elegida no se bloquea la reserva | BookingEngine + UI | Service · UI |  |
+| `TB-07` |  | §5 Reglas de negocio | El resumen y la reserva guardan `byCategory` = {base, lodging, tour, transport, addon, surcharge}; la suma es el subtotal antes de promociones | BookingEngine::byCategory | Service |  |
+| `TB-08` |  | §5 Reglas de negocio | Al confirmar, cada tour y movilidad crea un servicio de reserva con su proveedor y fecha, y su orden operativa (spec 05) | ConvertCart / Action | Por definir |  |
+| `TB-09` |  | §5 Reglas de negocio | Venta en ruta (R-IN-TRIP-SALES): solo reservas confirmadas o en operación, solo ítems con `in_trip_sale`, de tramos cuya fecha no pasó y con al menos `minHoursBefore` horas de anticipación. No se ofrece otra movilidad para un par que ya tiene una | InTripOffers service | Por definir | `R-IN-TRIP-SALES` |
+| `TB-10` |  | §5 Reglas de negocio | El precio de la oferta en ruta lo calcula el servidor al crearla y queda congelado hasta `expires_at`; el pago se hace con link (spec 19). Si el proveedor no confirma, se reembolsa el total | Job + webhook | Job/Listener |  |
+
+### 22 · 22-vitrina-monetizacion-marca.md (`22-vitrina-monetizacion-marca.md`) — 13 reglas
+
+| ID | Alias | Sección | Regla | Dónde se valida | Capa | Activable |
+|---|---|---|---|---|---|---|
+| `VT-01` |  | §5 Reglas de negocio › §5.2 Reglas | Toda publicación pasa por moderación: fotos y textos propios (declaración), punto de encuentro real y agencia verificada (RUC y licencia). Rechazar exige motivo | Platform Action | Por definir |  |
+| `VT-02` |  | §5 Reglas de negocio › §5.2 Reglas | Reserva de la vitrina: solo nombre y correo válidos; sin pago para free tours; cupo por salida; un mismo correo no reserva dos veces la misma salida | Public Action | Por definir |  |
+| `VT-03` |  | §5 Reglas de negocio › §5.2 Reglas | Cargo a la agencia: free tours sin costo hasta 30 reservas al mes; desde la 31 se cobra por asistente; tours de pago pagan la comisión de su plan. Las agencias con plan no tienen cargo por asistente | Service + factura mensual | Service |  |
+| `VT-04` |  | §5 Reglas de negocio › §5.2 Reglas | Solo quien asistió puede reseñar; el ranking ordena por destacado, reseñas verificadas y tasa de asistencia | Service | Service |  |
+| `VT-05` |  | §5 Reglas de negocio › §5.2 Reglas | El panel de toda agencia sin plan muestra siempre los beneficios de los planes y el botón «Probar 30 días» | UI | UI |  |
+| `VT-06` |  | §5 Reglas de negocio › §5.2 Reglas | Pase: uno activo por tenant, máximo 60 días, funciones elegidas de `features`. Al vencer, el tenant queda en solo lectura 15 días; los datos se conservan | Job + middleware de entitlements (spec 13) | Middleware · Job/Listener |  |
+| `VT-07` |  | §5 Reglas de negocio › §5.2 Reglas | Add-on de pago único: se factura una vez y queda activo mientras exista la cuenta; mensual: se suma a la factura recurrente; «ambos»: el tenant elige al contratar | Billing (spec 13) | Por definir |  |
+| `VT-08` |  | §5 Reglas de negocio › §5.2 Reglas | Cada cobro por pasarela crea su `fin_payment_fees` con la comisión estimada; al liquidar, se reemplaza por la real del reporte o webhook de la pasarela. La rentabilidad de la reserva descuenta comisión, IGV de la comisión y margen de cambio | Service + Job | Service · Job/Listener |  |
+| `VT-09` |  | §5 Reglas de negocio › §5.2 Reglas | Si la pasarela traslada la comisión al cliente, el recargo se muestra en el checkout antes de pagar y figura en el comprobante | BookingEngine | Service |  |
+| `VT-10` |  | §5 Reglas de negocio › §5.2 Reglas | Las credenciales de PayPal y de la pasarela local se guardan cifradas en el vault; la API nunca las devuelve | Integrations (spec 13) | Por definir |  |
+| `VT-11` |  | §5 Reglas de negocio › §5.2 Reglas | Dominio: verificación por TXT y CNAME; SSL automático y renovación 30 días antes; un host pertenece a un solo tenant | Job | Job/Listener |  |
+| `VT-12` |  | §5 Reglas de negocio › §5.2 Reglas | Historia de aventura: solo se publica con consentimiento vigente; si el cliente lo retira desde su portal, se despublica en el momento. El nombre se muestra según `consent_name_mode` | DB CHECK + Action | BD |  |
+| `VT-13` |  | §5 Reglas de negocio › §5.2 Reglas | Blog SEO: un artículo se publica con 800 palabras o más, palabra clave y al menos 3 tours enlazados de su ciudad | Platform Action | Por definir |  |
+
+### 23 · 23-plantillas-web-contenido-ia.md (`23-plantillas-web-contenido-ia.md`) — 18 reglas
+
+| ID | Alias | Sección | Regla | Dónde se valida | Capa | Activable |
+|---|---|---|---|---|---|---|
+| `TPL-01` |  | §5 Reglas de negocio › §5.2 Reglas | Cambiar de plantilla nunca modifica datos: tours, precios, reservas, blog, SEO, dominio y redirecciones quedan igual. Solo cambia la presentación | Arquitectura (§13) | Infraestructura |  |
+| `TPL-02` |  | §5 Reglas de negocio › §5.2 Reglas | Un tema activo por tenant; aplicar otro deja el anterior en `anterior` y se puede restaurar | DB + Action | BD |  |
+| `TPL-03` |  | §5 Reglas de negocio › §5.2 Reglas | La vista previa usa un token propio, no indexable (`noindex`), válido 24 h, y no cambia el sitio publicado | Service | Service |  |
+| `TPL-04` |  | §5 Reglas de negocio › §5.2 Reglas | Premium: se compra antes de aplicar; la compra crea el ítem en la factura de plataforma (`subscription_items`, pago único) | Billing (spec 13) | Por definir |  |
+| `TPL-05` |  | §5 Reglas de negocio › §5.2 Reglas | Plan mínimo: no se puede aplicar una plantilla con `min_plan_code` superior al plan del tenant (422 `TEMPLATE_PLAN_REQUIRED`) | Action | Por definir |  |
+| `TPL-06` |  | §5 Reglas de negocio › §5.2 Reglas | Personalización: el color de botones y enlaces debe tener contraste ≥ 4,5:1 sobre blanco; el redondeo va de 0 a 28 px (422 `THEME_CONTRAST`) | FormRequest | FormRequest |  |
+| `TPL-07` |  | §5 Reglas de negocio › §5.2 Reglas | Al alta, el tenant recibe la plantilla elegida en el registro o la `default_for_new`; el Super Admin puede asignar cualquier publicada (premium como cortesía) | Onboarding (spec 13) | Por definir |  |
+| `TPL-08` |  | §5 Reglas de negocio › §5.2 Reglas | Publicar una versión exige validaciones automáticas en verde, Lighthouse mínimo (§3.2) y revisión visual a 360, 768 y 1280 px en claro y oscuro | Platform Action + DB CHECK | BD |  |
+| `TPL-09` |  | §5 Reglas de negocio › §5.2 Reglas | Versiones menores (x.Y.z) se aplican solas a quienes usan la plantilla; mayores (X.y.z) se ofrecen y la agencia decide | Job | Job/Listener |  |
+| `TPL-10` |  | §5 Reglas de negocio › §5.2 Reglas | Retirar una plantilla la quita de la galería; quienes la usan la conservan y reciben aviso para migrar | Platform Action | Por definir |  |
+| `IA-01` |  | §5 Reglas de negocio › §5.2 Reglas | Antes de generar se muestra el costo en créditos y el saldo; sin saldo → 429 `AI_CREDITS_EXHAUSTED` (como `AI_QUOTA_EXCEEDED` de la spec 19) con oferta de paquetes | Service | Service |  |
+| `IA-02` |  | §5 Reglas de negocio › §5.2 Reglas | Los créditos se descuentan cuando el resultado está listo; si falla, no se cobra (`fallido` con 0 créditos, CHECK) | Job | Job/Listener |  |
+| `IA-03` |  | §5 Reglas de negocio › §5.2 Reglas | Nada se publica solo: el resultado queda en `listo` y una persona lo aplica; aplicar queda auditado con antes y después | Action + Audit | Por definir |  |
+| `IA-04` |  | §5 Reglas de negocio › §5.2 Reglas | La IA recibe los datos reales del objeto (itinerario, incluye, punto de encuentro, precios) y se le prohíbe inventar cifras; el texto muestra el aviso «revise cifras, horarios y precios» | Prompt de sistema | Por definir |  |
+| `IA-05` |  | §5 Reglas de negocio › §5.2 Reglas | Imágenes: sin personas reales identificables, marcas de terceros ni lugares falsos; texto alternativo obligatorio; etiqueta «Imagen generada con IA» visible en el sitio | Moderación + DB CHECK | BD |  |
+| `IA-06` |  | §5 Reglas de negocio › §5.2 Reglas | Los créditos mensuales del plan y del add-on no se acumulan; los de paquetes de pago único vencen a los 12 meses (`vencimiento`) | Job | Job/Listener |  |
+| `IA-07` |  | §5 Reglas de negocio › §5.2 Reglas | El libro de créditos es append-only; el saldo es el último `balance_after` por tipo | DB | BD |  |
+| `IA-08` |  | §5 Reglas de negocio › §5.2 Reglas | Relatos de aventura con IA usan solo historias con consentimiento (spec 22 VT-12) | Action | Por definir |  |
+
+### 24 · 24-blog-payload-seo-seguimiento-visitas.md (`24-blog-payload-seo-seguimiento-visitas.md`) — 23 reglas
+
+| ID | Alias | Sección | Regla | Dónde se valida | Capa | Activable |
+|---|---|---|---|---|---|---|
+| `SEG-01` |  | §5 Reglas de negocio › §5.2 Reglas | Antes de cualquier etiqueta se carga el **Consent Mode v2** con todo denegado (`ad_storage`, `analytics_storage`, `ad_user_data`, `ad_personalization`). Cada etiqueta se activa solo si el visitante aceptó su categoría, y al cambiar el consentimiento se actualiza sin recargar | `KipuTags` (Next.js) | UI |  |
+| `SEG-02` |  | §5 Reglas de negocio › §5.2 Reglas | ID con formato inválido → 422 `TAG_ID_INVALID` (y CHECK). Mismo proveedor e ID dos veces → 409 `TAG_DUPLICATE` | FormRequest + DB | FormRequest · BD |  |
+| `SEG-03` |  | §5 Reglas de negocio › §5.2 Reglas | Scripts propios: `script_src` exige `https` y hash SRI (422 `SCRIPT_SRI_REQUIRED`). Hay que declarar los dominios de la CSP. Se rechaza el código que use `document.write`, `eval` o `new Function`, o que lea campos de formularios de pago | FormRequest + análisis estático | FormRequest |  |
+| `SEG-04` |  | §5 Reglas de negocio › §5.2 Reglas | Un script propio se activa solo con la aprobación de una persona con `marketing.tracking.approve`. Si el tenant tiene dos o más administradores, el aprobador tiene que ser otro (403 `SCRIPT_SELF_APPROVAL`). En la plataforma la regla vale para todas las etiquetas (CHECK) | Action + DB | BD |  |
+| `SEG-05` |  | §5 Reglas de negocio › §5.2 Reglas | **Nunca se cargan scripts propios ni de terceros no esenciales en el pago** (`/checkout/*`, `/pagar/*` ni en el iframe de la pasarela). Así se cumple PCI DSS 6.4.3: inventario, autorización y justificación de cada script | DB CHECK + middleware | Middleware · BD |  |
+| `SEG-06` |  | §5 Reglas de negocio › §5.2 Reglas | La CSP del sitio usa `nonce` y `strict-dynamic` y suma los dominios de las etiquetas activas. Una etiqueta que no carga por la CSP aparece en «Verificar instalación» | Middleware Next.js | Middleware · UI |  |
+| `SEG-07` |  | §5 Reglas de negocio › §5.2 Reglas | Las conversiones se envían por el navegador y por el servidor con el **mismo `event_id`**, para que Meta, TikTok y Google deduplicen. El envío por servidor exige consentimiento de marketing guardado; sin él queda en `sin_consentimiento` y no se envía | Job + DB único | Job/Listener · BD |  |
+| `SEG-08` |  | §5 Reglas de negocio › §5.2 Reglas | Conversiones mejoradas de Google Ads y Meta CAPI: correo y teléfono se normalizan y se envían solo como **hash SHA-256**. El `gclid`, `fbclid` y `ttclid` se guardan con la UTM del carrito (spec 14) | Service | Service |  |
+| `SEG-09` |  | §5 Reglas de negocio › §5.2 Reglas | La compra se reporta cuando el pago está confirmado (webhook de la pasarela), no al volver de la pasarela. `compra_pendiente` se envía como evento propio y no cuenta como conversión de compra | Listener | Job/Listener |  |
+| `SEG-10` |  | §5 Reglas de negocio › §5.2 Reglas | Reintentos con espera exponencial hasta 10 intentos. Si falla 3 veces seguidas se avisa al responsable. Los envíos se guardan 90 días | Job | Job/Listener |  |
+| `SEG-11` |  | §5 Reglas de negocio › §5.2 Reglas | Botón **Verificar instalación**: abre la página en un navegador sin interfaz, acepta cookies y confirma que cada etiqueta activa cargó y disparó `page_view` | Job `VerifyTags` | Job/Listener |  |
+| `SEG-12` |  | §5 Reglas de negocio › §5.2 Reglas | Cambiar, pausar o borrar una etiqueta invalida la caché del sitio (`revalidateTag('tags:<sitio>')`) en menos de 1 minuto y queda auditado con el antes y el después | Action + Audit | Por definir |  |
+| `BLG-01` |  | §5 Reglas de negocio › §5.2 Reglas | Un artículo se publica con 800 palabras o más (VT-13), palabra clave en el título, el H1, el primer párrafo y el slug, meta título de 30 a 60 caracteres, meta descripción de 70 a 160, imagen destacada con texto alternativo y un solo H1 | Hook `beforeChange` de Payload | Por definir |  |
+| `BLG-02` |  | §5 Reglas de negocio › §5.2 Reglas | Los artículos de ciudad enlazan al menos 3 tours publicados de la vitrina con el bloque `ToursRecomendados`. Si un tour se despublica, el bloque lo oculta y avisa al editor | Bloque + webhook | Por definir |  |
+| `BLG-03` |  | §5 Reglas de negocio › §5.2 Reglas | Al publicar o despublicar, Payload llama al webhook firmado (HMAC) de KipuControl, que actualiza `platform_blog_posts` y revalida el sitemap, la página y el listado | Hook `afterChange` | Por definir |  |
+| `BLG-04` |  | §5 Reglas de negocio › §5.2 Reglas | Cambiar el slug de un artículo publicado crea una redirección 301 automática (plugin de redirecciones), sin cadenas ni bucles | Hook | Por definir |  |
+| `BLG-05` |  | §5 Reglas de negocio › §5.2 Reglas | Cada artículo publica JSON-LD `BlogPosting`, `BreadcrumbList` y, si tiene preguntas, `FAQPage`. La imagen para redes se genera con `next/og` cuando no se sube una | Plantilla | Por definir |  |
+| `BLG-06` |  | §5 Reglas de negocio › §5.2 Reglas | Los sitemaps se dividen por tipo (artículos, ciudades, tours y agencias) con `lastmod` real. Al publicar se avisa por IndexNow y el sitemap queda registrado en Search Console | Job `PingSearchEngines` | Service · Job/Listener |  |
+| `VIS-01` |  | §5 Reglas de negocio › §5.2 Reglas | **Conteo sin cookies.** Cada visita se cuenta con un hash del IP truncado, el navegador y el sitio, con una sal que cambia cada día, así que no se puede seguir a una persona de un día a otro. No se guarda el IP. Por eso las visitas se cuentan aunque el visitante rechace las cookies; el detalle por evento con `session_id` solo existe con consentimiento analítico | `POST /public/analytics/hit` | Por definir |  |
+| `VIS-02` |  | §5 Reglas de negocio › §5.2 Reglas | Visita: 30 minutos sin actividad la cierran. Rebote: visita de una página sin interacción en 10 segundos. Se excluyen los bots conocidos y el tráfico interno (usuarios del back-office y las IP de la agencia) | Job `AggregateWebAnalytics` | Job/Listener |  |
+| `VIS-03` |  | §5 Reglas de negocio › §5.2 Reglas | La fuente sale de la UTM, de `gclid`, `fbclid` o `ttclid` (Google Ads `google / cpc`, Meta `facebook / paid`) o del referente. Sin nada de eso es `(directo)` | Service | Service |  |
+| `VIS-04` |  | §5 Reglas de negocio › §5.2 Reglas | El agregado diario se recalcula cada hora para el día en curso y una vez a las 03:00 para el día anterior. Los últimos 30 minutos («en vivo») salen de Redis | Jobs | Por definir |  |
+| `VIS-05` |  | §5 Reglas de negocio › §5.2 Reglas | Los números de esta vista son los de KipuControl. Si hay GA4 conectado, se muestra al lado su cifra y la diferencia esperada (GA4 cuenta solo a quien aceptó cookies) | UI | UI |  |
+
+### 25 · 25-landing-kipucontrol.md (`25-landing-kipucontrol.md`) — 20 reglas
+
+| ID | Alias | Sección | Regla | Dónde se valida | Capa | Activable |
+|---|---|---|---|---|---|---|
+| `LND-01` |  | §5 Reglas de negocio › §5.2 Reglas | Los precios, add-ons y límites de la landing se leen de `GET /api/v1/public/plans`, la misma fuente que el back-office (spec 13). No se escriben a mano en el sitio | ISR + webhook `PlansChanged` | Por definir |  |
+| `LND-02` |  | §5 Reglas de negocio › §5.2 Reglas | Total del alta: subtotal (plan × meses + add-ons) − cupón (solo sobre el plan) = neto; IGV 18 % sobre el neto; total = neto + IGV. El servidor recalcula y rechaza si cambia (422 `SIGNUP_TOTAL_CHANGED`) | `SignupService` | Service |  |
+| `LND-03` |  | §5 Reglas de negocio › §5.2 Reglas | El correo no puede pertenecer a otro tenant (409 `SIGNUP_EMAIL_TAKEN`, con enlace a «Iniciar sesión»). La contraseña tiene 10 caracteres o más y no figura en listas de contraseñas filtradas | FormRequest | FormRequest |  |
+| `LND-04` |  | §5 Reglas de negocio › §5.2 Reglas | Factura: RUC de 11 dígitos que empieza en 10 o 20, válido en el padrón de SUNAT y activo (422 `RUC_INVALID`). Boleta: DNI de 8 dígitos o carné de extranjería | FormRequest + `RucLookup` | FormRequest |  |
+| `LND-05` |  | §5 Reglas de negocio › §5.2 Reglas | **Los datos de la tarjeta nunca pasan por KipuControl.** Se capturan en los campos alojados de la pasarela, que devuelve un token. En la página de pago no cargan etiquetas de terceros ni scripts propios (SEG-05) | Next.js + CSP | UI |  |
+| `LND-06` |  | §5 Reglas de negocio › §5.2 Reglas | Yape o Plin: se genera una orden con QR o código con vigencia de 10 minutos. La bienvenida espera la confirmación del webhook de la pasarela. Si vence, el alta queda `pago_pendiente` y se puede reintentar | Webhook | Por definir |  |
+| `LND-07` |  | §5 Reglas de negocio › §5.2 Reglas | El cupón cumple SUB-BR-07 (activo, vigente, con canjes y para ese plan). Se valida en vivo y se vuelve a validar con bloqueo al pagar | `CouponService` | Service |  |
+| `LND-08` |  | §5 Reglas de negocio › §5.2 Reglas | La prueba crea la suscripción en `trialing`, sin método de pago, y sigue los avisos y la suspensión de la spec 13. Un mismo RUC o dominio de correo tiene una sola prueba cada 12 meses | `SignupService` | Service |  |
+| `LND-09` |  | §5 Reglas de negocio › §5.2 Reglas | Alta abandonada: a la 1 h y a las 24 h se envía un correo para retomar, con el plan y el cupón guardados. Se envía solo con consentimiento de comunicaciones | Job `SignupRecovery` | Job/Listener |  |
+| `LND-10` |  | §5 Reglas de negocio › §5.2 Reglas | Si la agencia ya publica en Rutas Libres, el alta reutiliza su tenant de vitrina y conserva tours, reservas y reseñas (spec 22). Su plan cambia de «Vitrina gratis» al elegido | `SignupService` | Service |  |
+| `LND-11` |  | §5 Reglas de negocio › §5.2 Reglas | Comentarios: campo trampa invisible, 3 comentarios por hora por IP y 2 enlaces o más → `spam`. El primer comentario de un correo queda `pendiente`; después, si el correo tiene un comentario aprobado, se publica solo. Se aceptan la publicación del nombre y el tratamiento de datos (Ley 29733) | Hook `beforeChange` | Por definir |  |
+| `LND-12` |  | §5 Reglas de negocio › §5.2 Reglas | Las respuestas tienen un nivel como máximo. Las del equipo llevan la marca «Equipo KipuControl» y se publican sin moderación. «Útil» se cuenta una vez por visitante (hash diario) | Hook + API | Controller |  |
+| `LND-13` |  | §5 Reglas de negocio › §5.2 Reglas | Popups: uno por visita y cada uno con frecuencia en días (7 por defecto). No se muestran en el alta, en móvil al salir ni a quien ya tiene cuenta. Se cierran con Esc y con el botón, y devuelven el foco | Componente `Popup` | Por definir |  |
+| `LND-14` |  | §5 Reglas de negocio › §5.2 Reglas | Boletín con doble confirmación. La baja va en cada correo y se aplica en 1 clic | Payload + correo | Por definir |  |
+| `LND-15` |  | §5 Reglas de negocio › §5.2 Reglas | Chatbot «Kipu»: responde solo con las páginas, precios y preguntas frecuentes publicados (RAG sobre Payload y `GET /public/plans`). Si no sabe, ofrece pasar a una persona. Pide el correo solo cuando se lo piden (demo, ventas), con aviso de privacidad. No pide datos de tarjeta ni contraseñas | Asistente IA (spec 19) | Por definir |  |
+| `LND-16` |  | §5 Reglas de negocio › §5.2 Reglas | Paso a persona: WhatsApp del equipo comercial con un resumen de la conversación, en horario de 9:00 a 19:00 (Lima). Fuera de horario se crea un lead y se promete respuesta en menos de 2 horas hábiles | Job `ChatHandoff` | Job/Listener |  |
+| `LND-17` |  | §5 Reglas de negocio › §5.2 Reglas | SEO: cada página tiene título, descripción, canónica y `hreflang` (es-PE, en, pt-BR). Inicio y precios publican JSON-LD `Organization`, `SoftwareApplication` con `Offer` por plan y `FAQPage`. Los artículos siguen BLG-01 a BLG-06 | Plantillas | Por definir |  |
+| `LND-18` |  | §5 Reglas de negocio › §5.2 Reglas | Filtros del blog: las categorías tienen URL propia e indexable (`/blog/categoria/ventas`). La búsqueda, el orden y el filtro por sitio usan parámetros con `noindex, follow` y canónica a la página limpia | Next.js | UI |  |
+| `LND-19` |  | §5 Reglas de negocio › §5.2 Reglas | SEO para IA: `/llms.txt` y `/llms-full.txt` con el resumen del producto, los planes y los artículos. Todo el contenido se renderiza en el servidor y se lee sin JavaScript. `robots.txt` permite los rastreadores de búsqueda y declara la política para los de entrenamiento | Rutas Next.js | UI |  |
+| `LND-20` |  | §5 Reglas de negocio › §5.2 Reglas | Rendimiento: LCP < 2,5 s y CLS < 0,1 en móvil. El chatbot y los popups se cargan después de la interacción o a los 3 s | Next.js | UI |  |
 
 ## 5. Supuestos y notas
 

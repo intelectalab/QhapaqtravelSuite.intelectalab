@@ -1,6 +1,6 @@
 # Diccionario de datos · Identidad y acceso (iam_)
 
-_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras cargar `00`→`90`. No editar a mano._
+_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.15 tras cargar `00`→`90`. No editar a mano._
 
 Sedes, usuarios, MFA, tokens, roles y permisos (Spatie).
 
@@ -18,8 +18,8 @@ Sedes, usuarios, MFA, tokens, roles y permisos (Spatie).
 | [`iam_users`](#iam_users) | Fase 0 · Fundaciones | tenant | 34 | 9 | [Spec 00 §3.2] [Fase 0] Usuarios del tenant (internos y externos: cliente, pasajero, B2B, proveedor, guía, conductor). |
 | [`model_has_permissions`](#model_has_permissions) | Fase 0 · Fundaciones | tenant | 4 | 2 | [Spec 00 §3.5] [Fase 0] Tabla del paquete spatie. NO se usa: prohibidos permisos directos a usuario (se crea por compatibilidad con la migración del paquete). |
 | [`model_has_roles`](#model_has_roles) | Fase 0 · Fundaciones | tenant | 4 | 2 | [Spec 00 §3.5] [Fase 0] Asignación de rol a usuario (un rol por usuario). |
-| [`personal_access_tokens`](#personal_access_tokens) | Fase 0 · Fundaciones | sin RLS | 15 | 1 | [Spec 00 §3.4] [Fase 0] Tokens Sanctum extendidos. Sin RLS: se consultan antes de conocer el tenant (son la fuente del tenant). |
-| [`role_has_permissions`](#role_has_permissions) | Fase 0 · Fundaciones | sin RLS | 2 | 2 | [Spec 00 §3.5] [Fase 0] Pivote rol-permiso (spatie). Sin tenant_id propio: se filtra vía `roles`. |
+| [`personal_access_tokens`](#personal_access_tokens) | Fase 0 · Fundaciones | tenant | 15 | 1 | [Spec 00 §3.4] [Fase 0] Tokens Sanctum extendidos. Sin RLS: se consultan antes de conocer el tenant (son la fuente del tenant). |
+| [`role_has_permissions`](#role_has_permissions) | Fase 0 · Fundaciones | RLS | 2 | 2 | [Spec 00 §3.5] [Fase 0] Pivote rol-permiso (spatie). Sin tenant_id propio: se filtra vía `roles`. |
 | [`roles`](#roles) | Fase 0 · Fundaciones | shared | 13 | 1 | [Spec 00 §3.5] [Fase 0] Roles spatie con teams (tenant_id NULL = plantilla de sistema). |
 
 ## Detalle por tabla
@@ -65,7 +65,7 @@ Sedes, usuarios, MFA, tokens, roles y permisos (Spatie).
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `user_id` | `uuid` | no |  | FK → iam_users.id. |
 | 4 | `path` | `character varying(250)` | no |  |  |
 | 5 | `required_permissions` | `text[]` | no | `'{}'::text[]` |  |
@@ -81,9 +81,9 @@ Sedes, usuarios, MFA, tokens, roles y permisos (Spatie).
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `resolved_by` | `iam_users.id` | NO ACTION | `fk_iam_access_requests_resolved_by` |
+| `tenant_id, resolved_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_iam_access_requests_resolved_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_iam_access_requests_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_iam_access_requests_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_iam_access_requests_user_id` |
 
 **CHECK**
 
@@ -114,7 +114,7 @@ Sedes, usuarios, MFA, tokens, roles y permisos (Spatie).
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id, iam_users.tenant_id. |
 | 3 | `user_id` | `uuid` | no |  | FK → iam_users.id. |
 | 4 | `type` | `character varying(10)` | no | `'totp'::character varying` |  |
 | 5 | `secret` | `text` | no |  |  |
@@ -130,7 +130,7 @@ Sedes, usuarios, MFA, tokens, roles y permisos (Spatie).
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_iam_mfa_factors_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_iam_mfa_factors_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_iam_mfa_factors_user_id` |
 
 **UNIQUE**
 
@@ -165,7 +165,7 @@ Sedes, usuarios, MFA, tokens, roles y permisos (Spatie).
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `name` | `character varying(120)` | no |  |  |
 | 5 | `city` | `character varying(80)` | sí |  |  |
@@ -186,13 +186,14 @@ Sedes, usuarios, MFA, tokens, roles y permisos (Spatie).
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `manager_user_id` | `iam_users.id` | NO ACTION | `fk_iam_sedes_manager_user_id` |
+| `tenant_id, manager_user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_iam_sedes_manager_user_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_iam_sedes_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_iam_sedes_id` | `tenant_id, id` |  | restricción |
 | `uq_iam_sedes_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_iam_sedes_tenant_id_lower_name` | `tenant_id, lower((name)::text)` |  | índice único |
 | `uq_iam_sedes_tenant_id_p` | `tenant_id` | `is_main` | índice único |
@@ -232,7 +233,7 @@ Sedes, usuarios, MFA, tokens, roles y permisos (Spatie).
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `user_id` | `uuid` | no |  | FK → iam_users.id. |
 | 4 | `token_hash` | `character(64)` | no |  |  |
 | 5 | `expires_at` | `timestamp with time zone` | no |  |  |
@@ -249,9 +250,9 @@ Sedes, usuarios, MFA, tokens, roles y permisos (Spatie).
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `invited_by` | `iam_users.id` | NO ACTION | `fk_iam_user_invitations_invited_by` |
+| `tenant_id, invited_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_iam_user_invitations_invited_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_iam_user_invitations_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_iam_user_invitations_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_iam_user_invitations_user_id` |
 
 **UNIQUE**
 
@@ -282,7 +283,7 @@ Sedes, usuarios, MFA, tokens, roles y permisos (Spatie).
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → channel_b2b_agencies.tenant_id, crm_clients.tenant_id, ops_drivers.tenant_id, ops_guides.tenant_id, iam_users.tenant_id, catalog_providers.tenant_id, booking_reservations.tenant_id, iam_sedes.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(20)` | sí |  |  |
 | 4 | `name` | `character varying(150)` | no |  |  |
 | 5 | `email` | `character varying(190)` | no |  |  |
@@ -322,20 +323,21 @@ Sedes, usuarios, MFA, tokens, roles y permisos (Spatie).
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `agency_id` | `channel_b2b_agencies.id` | NO ACTION | `fk_iam_users_agency_id` |
-| `client_id` | `crm_clients.id` | NO ACTION | `fk_iam_users_client_id` |
-| `driver_id` | `ops_drivers.id` | NO ACTION | `fk_iam_users_driver_id` |
-| `guide_id` | `ops_guides.id` | NO ACTION | `fk_iam_users_guide_id` |
-| `invited_by` | `iam_users.id` | NO ACTION | `fk_iam_users_invited_by` |
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_iam_users_provider_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_iam_users_reservation_id` |
-| `sede_id` | `iam_sedes.id` | NO ACTION | `fk_iam_users_sede_id` |
+| `tenant_id, agency_id` | `channel_b2b_agencies.tenant_id, id` | NO ACTION | `fk_iam_users_agency_id` |
+| `tenant_id, client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_iam_users_client_id` |
+| `tenant_id, driver_id` | `ops_drivers.tenant_id, id` | NO ACTION | `fk_iam_users_driver_id` |
+| `tenant_id, guide_id` | `ops_guides.tenant_id, id` | NO ACTION | `fk_iam_users_guide_id` |
+| `tenant_id, invited_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_iam_users_invited_by` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_iam_users_provider_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_iam_users_reservation_id` |
+| `tenant_id, sede_id` | `iam_sedes.tenant_id, id` | NO ACTION | `fk_iam_users_sede_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_iam_users_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_iam_users_id` | `tenant_id, id` |  | restricción |
 | `uq_iam_users_tenant_id_code_p` | `tenant_id, code` | `(code IS NOT NULL)` | índice único |
 | `uq_iam_users_tenant_id_lower_email` | `tenant_id, lower((email)::text)` |  | índice único |
 
@@ -440,6 +442,12 @@ Sedes, usuarios, MFA, tokens, roles y permisos (Spatie).
 | `ix_model_has_roles_model_id_model_type` | `USING btree (model_id, model_type)` |
 | `ix_model_has_roles_role_id` | `USING btree (role_id)` |
 
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_fk_tenant_model_has_roles_role_id` | BEFORE INSERT OR UPDATE OF role_id, tenant_id | `app_check_fk_tenant` |
+
 [↑ Índice del dominio](#tablas)
 
 ### `personal_access_tokens`
@@ -448,7 +456,7 @@ Sedes, usuarios, MFA, tokens, roles y permisos (Spatie).
 
 | Dominio | Fase (archivo) | RLS | Políticas | Particionado |
 |---|---|---|---|---|
-| Identidad y acceso (iam_) | Fase 0 · Fundaciones (`10_fase0.sql`) | sin RLS | — | No |
+| Identidad y acceso (iam_) | Fase 0 · Fundaciones (`10_fase0.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
 
 **Columnas**
 
@@ -511,7 +519,7 @@ Sedes, usuarios, MFA, tokens, roles y permisos (Spatie).
 
 | Dominio | Fase (archivo) | RLS | Políticas | Particionado |
 |---|---|---|---|---|
-| Identidad y acceso (iam_) | Fase 0 · Fundaciones (`10_fase0.sql`) | sin RLS | — | No |
+| Identidad y acceso (iam_) | Fase 0 · Fundaciones (`10_fase0.sql`) | RLS (platform_access, rhp_delete, rhp_insert, rhp_read) · FORCE | `platform_access`, `rhp_delete`, `rhp_insert`, `rhp_read` | No |
 
 **Columnas**
 

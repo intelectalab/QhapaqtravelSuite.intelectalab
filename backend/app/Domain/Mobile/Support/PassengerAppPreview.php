@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Mobile\Support;
 
 use App\Domain\Channels\Support\ChannelKit;
+use App\Domain\Portal\Support\PassengerTrip;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -41,7 +42,8 @@ final class PassengerAppPreview
             ->leftJoin('ops_drivers as d', 'd.id', '=', 'a.driver_id')
             ->leftJoin('ops_vehicles as v', 'v.id', '=', 'a.vehicle_id')
             ->where('s.reservation_id', $reservation->id)
-            ->where('s.status', '<>', 'cancelado')
+            ->whereNotIn('s.status', ['cancelado', 'rechazado'])
+            ->whereNull('s.replaced_by_id')
             ->orderBy('s.service_date')
             ->orderBy('s.service_time')
             ->get(['s.code', 's.name', 's.service_date', 's.service_time', 's.service_kind', 's.status', 's.confirmation_code', 'g.full_name as guide', 'g.phone as guide_phone', 'd.full_name as driver', 'v.plate']);
@@ -49,7 +51,8 @@ final class PassengerAppPreview
         $total = $from->diffInDays(Carbon::parse($reservation->travel_to)) + 1;
         $current = $today >= $reservation->travel_from && $today <= $reservation->travel_to ? (int) $from->diffInDays(Carbon::parse($today)) + 1 : null;
         $chat = DB::table('channel_trip_messages as m')->leftJoin('iam_users as u', 'u.id', '=', 'm.sender_user_id')->where('m.reservation_id', $reservation->id)->orderBy('m.created_at')->get(['m.sender_type', 'm.body', 'm.created_at', 'u.name as sender']);
-        $alerts = DB::table('ops_incidents')->where('reservation_id', $reservation->id)->whereIn('status', ['abierta', 'en_proceso'])->orderByDesc('created_at')->get(['code', 'type', 'severity', 'title', 'public_title', 'public_message', 'created_at']);
+        $alerts = DB::table('ops_incidents as i')->where('i.reservation_id', $reservation->id)->whereIn('i.type', PassengerTrip::ALERT_TYPES)->whereIn('i.status', ['abierta', 'en_proceso'])
+            ->whereNotExists(fn ($query) => $query->from('ops_incident_pax_acks as k')->whereColumn('k.incident_id', 'i.id'))->orderByDesc('i.created_at')->get(['code', 'type', 'severity', 'title', 'public_title', 'public_message', 'created_at']);
         $vouchers = DB::table('ops_vouchers')->where('reservation_id', $reservation->id)->where('status', '<>', 'anulado')->orderBy('service_date')->get(['code', 'service_label', 'service_date', 'status', 'version']);
         $passengers = DB::table('booking_passengers')->where('reservation_id', $reservation->id)->orderBy('seq')->get(['full_name', 'pax_type', 'is_lead']);
         $next = $services->first(fn (object $row): bool => $row->service_date >= $today && in_array($row->status, ['confirmado', 'solicitado', 'pendiente'], true));

@@ -107,8 +107,8 @@ const buildColumns = (catalogs: CrmCatalogs | null): Column<LeadRow>[] => [
             </>
           ) : (
             <>
-              <RowIcon tone="edit" label="Editar" disabledHint="Ya está cerrado" />
-              <RowIcon tone="delete" label="Descartar" disabledHint="Ya está cerrado" />
+              <RowIcon tone="edit" label="Editar" disabledHint={lead.status === "convertido" ? "Ya se convirtió" : "Reábrelo desde su ficha para editarlo"} />
+              <RowIcon tone="delete" label="Descartar" disabledHint={lead.status === "convertido" ? "Ya se convirtió" : "Ya está fuera del recorrido"} />
             </>
           ))}
       </RowActions>

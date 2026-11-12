@@ -1,17 +1,19 @@
 "use client";
 
-import { Check, Minus, SearchX, X } from "lucide-react";
+import { Check, Minus, SearchX, Table2, X, type LucideIcon } from "lucide-react";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MetricCard, MetricCardRow } from "@/components/ui/MetricCard";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
-import { downloadCsv, type CsvExport } from "@/lib/csv";
+import type { CsvExport } from "@/lib/csv";
+import { titleFromSlug } from "@/lib/export";
 import { useStoredValue } from "@/lib/useStoredValue";
+import { ExportMenu } from "./ExportMenu";
 import { Pager } from "./Pager";
 import { openRow, ROWS_OPEN } from "./rowOpen";
 import { applyQuery, countActiveFilters, LONG_PAGE, parseRows, SORT_DIRECTIONS, type TableQuery } from "./query";
-import { Chip, DrawerBar, ExportButton, FilterIcon, SearchBox, SortIcon, ToggleButton } from "./Toolbar";
+import { Chip, DrawerBar, FilterIcon, SearchBox, SortIcon, ToggleButton } from "./Toolbar";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "./types";
 
 interface DataTableProps<T> {
@@ -30,7 +32,21 @@ interface DataTableProps<T> {
   toolbarEnd?: ReactNode;
   emptyTitle?: string;
   csv?: CsvExport<T>;
+  footer?: Record<string, ReactNode>;
+  views?: TableView<T>[];
+  defaultView?: string;
 }
+
+export interface TableView<T> {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  render: (rows: T[]) => ReactNode;
+}
+
+const DEFAULT_VIEW = "predeterminada";
+
+const parseView = (raw: string | null): string => raw ?? DEFAULT_VIEW;
 
 const EMPTY_QUERY: TableQuery = { search: "", metric: "", filters: {}, sortId: "", sortDir: "asc" };
 
@@ -50,7 +66,12 @@ export function DataTable<T>({
   toolbarEnd,
   emptyTitle = "No hay coincidencias",
   csv,
+  footer,
+  views = [],
+  defaultView = "",
 }: DataTableProps<T>) {
+  const [storedView, setView] = useStoredValue(`table-view:${screen}`, parseView, String);
+  const view = views.find((option) => option.id === (storedView === DEFAULT_VIEW ? defaultView : storedView)) ?? null;
   const [query, setQuery] = useState<TableQuery>(() => ({ ...EMPTY_QUERY, search: initialSearch ?? "" }));
   const [open, setOpen] = useState<"filters" | "sort" | null>(null);
   const [page, setPage] = useState(1);
@@ -97,6 +118,20 @@ export function DataTable<T>({
   const titleColumn = columns.find((column) => column.mobile === "title") ?? columns[0];
   const detailColumns = columns.filter((column) => column !== titleColumn && column.mobile !== "hidden");
   const selectable = Boolean(selectionActions);
+  const describeFilters = (): string[] => {
+    const metric = metrics.find((item) => item.id === query.metric);
+    const chosen = filters.flatMap((filter) => {
+      const value = query.filters[filter.id];
+      if (!value) return [];
+      return [`${filter.label}: ${filter.options.find((option) => option.value === value)?.label ?? value}`];
+    });
+    return [
+      ...(metric ? [`Tarjeta: ${metric.label}`] : []),
+      ...(query.search.trim() ? [`Búsqueda: "${query.search.trim()}"`] : []),
+      ...chosen,
+      ...(activeSort ? [`Orden: ${activeSort.label} (${SORT_DIRECTIONS[activeSort.type ?? "text"][query.sortDir]})`] : []),
+    ];
+  };
 
   return (
     <div>
@@ -120,13 +155,13 @@ export function DataTable<T>({
       <div ref={card} className="relative scroll-mt-20 rounded-card border border-line bg-surface shadow-card max-md:border-0 max-md:bg-transparent max-md:shadow-none">
         <div className="sticky top-16 z-20 flex items-center gap-2 rounded-t-card border-b border-line bg-surface/95 px-3.5 py-3 backdrop-blur-md max-md:border-0 max-md:bg-bg/95 max-md:px-0">
           <SearchBox value={query.search} onChange={(search) => update({ search })} placeholder={searchPlaceholder} />
-          {visible.length > 0 && <Pager placement="top" page={currentPage} pages={pages} total={visible.length} rows={pageSize} onPage={goPage} onRows={chooseRows} entityLabel={entityLabel} />}
+          {visible.length > 0 && !view && <Pager placement="top" page={currentPage} pages={pages} total={visible.length} rows={pageSize} onPage={goPage} onRows={chooseRows} entityLabel={entityLabel} />}
           <div className="ml-auto flex flex-none items-center gap-2">
             {toolbarEnd && <div className="hidden items-center gap-2 md:flex">{toolbarEnd}</div>}
             {filters.length > 0 && (
               <ToggleButton active={open === "filters"} onClick={() => setOpen(open === "filters" ? null : "filters")} icon={FilterIcon} label="Filtro" badge={activeFilters} collapseLabel />
             )}
-            {csv && <ExportButton disabled={visible.length === 0} onClick={() => downloadCsv(visible, csv)} />}
+            {csv && <ExportMenu title={csv.title ?? titleFromSlug(csv.fileName)} screen={screen} columns={csv.columns} filtered={visible} selected={selectedRows} filters={describeFilters()} />}
             {sorts.length > 0 && (
               <ToggleButton
                 active={open === "sort"}
@@ -135,6 +170,27 @@ export function DataTable<T>({
                 label={activeSort ? `Orden: ${activeSort.label}` : "Ordenar por"}
                 collapseLabel
               />
+            )}
+            {views.length > 0 && (
+              <span className="inline-flex h-9 flex-none items-center rounded-[10px] border border-line bg-surface p-0.5" role="group" aria-label="Vista">
+                {[{ id: "", label: "Tabla", icon: Table2 }, ...views].map((option) => {
+                  const active = (view?.id ?? "") === option.id;
+                  return (
+                    <button
+                      key={option.id || "table"}
+                      type="button"
+                      onClick={() => setView(option.id)}
+                      title={option.label}
+                      aria-label={option.label}
+                      aria-pressed={active}
+                      data-testid={`table-view-switch:${option.id || "table"}`}
+                      className={cn("grid h-7 w-8 place-items-center rounded-[8px] transition", active ? "bg-fg text-surface" : "text-fg-2 hover:text-fg")}
+                    >
+                      <option.icon size={15} />
+                    </button>
+                  );
+                })}
+              </span>
             )}
           </div>
         </div>
@@ -197,7 +253,9 @@ export function DataTable<T>({
           </DrawerBar>
         )}
 
-        {visible.length === 0 ? (
+        {view && visible.length > 0 ? (
+          <div className="p-3.5 max-md:px-0" data-testid={`table-view:${view.id}`}>{view.render(visible)}</div>
+        ) : visible.length === 0 ? (
           <div data-testid="table-empty">
             <EmptyState icon={<SearchX size={22} />} title={emptyTitle} description="Prueba con otra búsqueda o quita algún filtro." />
           </div>
@@ -239,6 +297,18 @@ export function DataTable<T>({
                     );
                   })}
                 </tbody>
+                {footer && (
+                  <tfoot>
+                    <tr className="border-t-2 border-line bg-surface-2">
+                      {selectable && <td />}
+                      {columns.map((column) => (
+                        <td key={column.id} className={cn("whitespace-nowrap px-3 py-2.5 text-[13px] font-semibold", column.align === "right" && "text-right", column.wideOnly && "max-[1600px]:hidden")}>
+                          {footer[column.id] ?? null}
+                        </td>
+                      ))}
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
 
@@ -262,7 +332,7 @@ export function DataTable<T>({
           </>
         )}
 
-        {(visible.length === 0 || pageRows.length > LONG_PAGE) && <Pager page={currentPage} pages={pages} total={visible.length} rows={pageSize} onPage={goPage} onRows={chooseRows} entityLabel={entityLabel} />}
+        {!view && (visible.length === 0 || pageRows.length > LONG_PAGE) && <Pager page={currentPage} pages={pages} total={visible.length} rows={pageSize} onPage={goPage} onRows={chooseRows} entityLabel={entityLabel} />}
 
         {selectionActions && selectedRows.length > 0 && (
           <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-2xl bg-fg py-2 pl-4 pr-2 text-[13.5px] text-surface shadow-[0_18px_40px_-12px_rgb(22_24_42/0.45)]">

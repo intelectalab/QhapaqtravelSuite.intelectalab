@@ -270,14 +270,14 @@ Contraparte en back-office (no existe en el prototipo; necesaria para cerrar los
 | GET | `/catalog/rate-requests` | catalog.providers.manage | Solicitudes de tarifa |
 | POST | `/catalog/rate-requests/{id}/approve` | catalog.products.manage_rates | Crea nueva vigencia en `catalog_service_rates` |
 | POST | `/catalog/rate-requests/{id}/reject` | catalog.products.manage_rates | Rechaza con nota |
-| POST | `/fin/supplier-invoices/{id}/validate` \| `/observe` \| `/reject` | finance.payables | Validación de factura |
+| POST | `/fin/supplier-invoices/{id}/validate` \| `/observe` \| `/reject` | finance.payables | Validación de factura (transición de estado: repetirla responde 409) | — |
 | POST | `/catalog/providers/{id}/users` | catalog.providers.manage + admin.users.manage | Invitar usuario del proveedor |
 
 ---
 
 ## 7. Permisos y comportamiento por rol
 
-En el prototipo el rol `provider` solo tiene `operations.view` y las acciones se protegen por **pertenencia** (`guardOwn`, `providerId`). Se proponen permisos específicos (grupo "Extranet") asignables por `provider_role`:
+v2.5: el rol `provider` tiene `operations.view` y los 9 permisos del grupo "Extranet" (00 §7.1); además, cada acción se protege por **pertenencia** (`guardOwn`, `providerId`). Los permisos se asignan por `provider_role`:
 
 | Permiso propuesto | admin | reservas | recepcion | contabilidad |
 |---|---|---|---|---|

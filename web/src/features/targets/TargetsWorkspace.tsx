@@ -118,7 +118,6 @@ export function TargetsWorkspace({ overview }: { overview: TargetsOverview }) {
     <>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <PeriodPicker periods={overview.periods} value={period} onChange={setPeriod} />
-        <p className="text-[12.5px] text-fg-3">Ventas = reservas confirmadas creadas en el período, en soles con el tipo de cambio de cada reserva.</p>
       </div>
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <TintTile icon={Crosshair} tone="t1" label={overview.can.manage ? "Meta de asesores" : "Mi meta"} value={formatMoney(goal)} info={<p>Suma de la meta de ventas de las metas de asesor activas o cerradas del período elegido. No incluye borradores.</p>} />

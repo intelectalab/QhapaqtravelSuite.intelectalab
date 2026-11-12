@@ -79,7 +79,7 @@ it('X-10 / T-14: el Tenant Admin no entra a la consola de plataforma', function 
 it('X-10 / T-14: el Super Admin no opera datos del tenant', function () {
     $platform = platformUser();
     $plain = withinTenant(tenantA(), function () use ($platform) {
-        $token = AccessToken::query()->forceCreate([
+        $token = AccessToken::on('pgsql_platform')->forceCreate([
             'tokenable_type' => $platform->getMorphClass(),
             'tokenable_id' => $platform->getKey(),
             'name' => 'pest',

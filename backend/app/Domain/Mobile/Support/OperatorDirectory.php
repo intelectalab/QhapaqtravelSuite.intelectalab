@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Mobile\Support;
 
+use App\Domain\Admin\Support\TenantSettings;
 use App\Domain\Operations\Support\OpsCommon;
 use App\Domain\Shared\Errors\ApiException;
 use Carbon\CarbonImmutable;
@@ -40,6 +41,7 @@ final class OperatorDirectory
             'languages' => $resource->type === 'guide' ? array_values(array_filter(explode(',', trim((string) $row->languages, '{}')))) : [],
             'user' => ['name' => $resource->user->getAttribute('name'), 'email' => $resource->user->getAttribute('email')],
             'today' => $today,
+            'sync_minutes' => max(1, (int) (app(TenantSettings::class)->section('operations')['offline_sync_min'] ?? 10)),
         ];
     }
 
@@ -78,7 +80,7 @@ final class OperatorDirectory
             ->first([
                 'a.id', 'a.status', 'a.lock_version', 'a.service_date', 'a.service_time', 'a.service_label', 'a.confirmed_at', 'a.started_at', 'a.first_checkin_at', 'a.finished_at', 'a.updated_at', 'a.reservation_service_id',
                 'o.id as order_id', 'o.code as order_code', 'o.title as order_title', 'o.status as order_status', 'r.id as reservation_id', 'r.code as reservation_code', 'r.notes as reservation_notes',
-                's.code as service_code', 's.name as service_name', 's.service_kind', 's.status as service_status', 's.confirmation_code', 'p.name as provider_name',
+                's.code as service_code', 's.name as service_name', 's.service_kind', 's.status as service_status', 's.confirmation_code', 's.departure_id', 's.product_id', 'p.name as provider_name',
                 'g.id as guide_id', 'g.full_name as guide_name', 'g.phone as guide_phone', 'd.id as driver_id', 'd.full_name as driver_name', 'd.phone as driver_phone', 'v.plate', 'v.vehicle_type',
                 'c.name as coordinator_name', 'c.phone as coordinator_phone',
             ]) ?? throw ApiException::notFound('Esta asignación ya no es suya. Vuelva a la vista de hoy.');
@@ -104,6 +106,8 @@ final class OperatorDirectory
             'reservation' => $row->reservation_code,
             'notes' => $row->reservation_notes,
             'vehicle' => $row->plate ? "{$row->plate} · {$row->vehicle_type}" : null,
+            'meeting_point' => $this->meetingPoint($row),
+            'pickup' => $this->pickup($row, $passengers),
             'partner' => $partner,
             'coordinator' => $row->coordinator_name ? ['name' => $row->coordinator_name, 'phone' => $row->coordinator_phone] : null,
             'confirmed_at' => $row->confirmed_at,
@@ -132,6 +136,45 @@ final class OperatorDirectory
                 'finish' => $row->status === 'en_curso' && $checkins->isNotEmpty() && $evidences->isNotEmpty(),
             ],
         ];
+    }
+
+    private function pickup(object $row, Collection $passengers): array
+    {
+        $snapshot = DB::table('booking_reservation_web_snapshots')->where('reservation_id', $row->reservation_id)->orderBy('service_date')->first(['pickup_flight', 'pickup_arrival', 'comments']);
+        $client = DB::table('booking_reservations as r')->join('crm_clients as c', 'c.id', '=', 'r.client_id')->where('r.id', $row->reservation_id)->first(['c.tags']);
+        $lead = $passengers->firstWhere('is_lead', true) ?? $passengers->first();
+        $diets = [];
+        foreach ($passengers as $pax) {
+            if (trim((string) $pax->diet_notes) !== '') {
+                $diets[] = ['name' => $pax->full_name, 'diet' => trim((string) $pax->diet_notes)];
+            }
+        }
+
+        return [
+            'flight' => $snapshot->pickup_flight ?? null,
+            'arrival' => $snapshot->pickup_arrival ?? null,
+            'sign' => $lead ? mb_strtoupper((string) $lead->full_name) : null,
+            'comments' => trim((string) ($snapshot->comments ?? '')) ?: null,
+            'tags' => $client ? array_values(array_filter(explode(',', trim((string) $client->tags, '{}')), fn (string $tag): bool => $tag !== '')) : [],
+            'diets' => $diets,
+        ];
+    }
+
+    private function meetingPoint(object $row): ?array
+    {
+        $departure = $row->departure_id ? DB::table('catalog_product_departures')->where('id', $row->departure_id)->value('meeting_point') : null;
+        if ($departure) {
+            return ['text' => (string) $departure, 'source' => 'salida'];
+        }
+
+        $pickup = DB::table('booking_reservation_web_snapshots')->where('reservation_id', $row->reservation_id)->first(['pickup_point', 'pickup_address']);
+        if ($pickup && ($pickup->pickup_point || $pickup->pickup_address)) {
+            return ['text' => trim(implode(' · ', array_filter([$pickup->pickup_point, $pickup->pickup_address]))), 'source' => 'cliente'];
+        }
+
+        $product = $row->product_id ? DB::table('catalog_products')->where('id', $row->product_id)->value('pickup_text') : null;
+
+        return $product ? ['text' => (string) $product, 'source' => 'producto'] : null;
     }
 
     public function incidents(OperatorResource $resource): Collection

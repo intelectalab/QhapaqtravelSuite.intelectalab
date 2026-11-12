@@ -10,6 +10,7 @@ use App\Domain\Catalog\Support\ProductSectionRules;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -61,13 +62,17 @@ final class ProductSections
     {
         $itinerary = $this->itineraryId($productId);
         $days = $itinerary ? DB::table('catalog_itinerary_days')->where('itinerary_id', $itinerary)->orderBy('day_number')->get(['id', 'title'])->all() : [];
-        $items = DB::table('catalog_itinerary_items')->whereIn('day_id', array_column($days, 'id'))->orderBy('start_time')->get(['id', 'day_id', 'start_time', 'activity', 'item_type', 'location'])->groupBy('day_id');
+        $items = DB::table('catalog_itinerary_items as i')->leftJoin('catalog_services as s', 's.id', '=', 'i.service_id')->whereIn('i.day_id', array_column($days, 'id'))->orderBy('i.start_time')
+            ->get(['i.id', 'i.day_id', 'i.start_time', 'i.activity', 'i.item_type', 'i.location', 'i.service_id', 'i.note', 'i.image_ref', 'i.cost', 'i.price', 's.name as service_name'])->groupBy('day_id');
         $result = [];
 
         foreach ($days as $day) {
             $activities = [];
             foreach ($items[$day->id] ?? [] as $item) {
-                $activities[] = ['id' => $item->id, 'time' => $item->start_time ? substr((string) $item->start_time, 0, 5) : null, 'activity' => $item->activity, 'type' => $item->item_type, 'location' => $item->location];
+                $activities[] = [
+                    'id' => $item->id, 'time' => $item->start_time ? substr((string) $item->start_time, 0, 5) : null, 'activity' => $item->activity, 'type' => $item->item_type, 'location' => $item->location,
+                    'service_id' => $item->service_id, 'service' => $item->service_name, 'note' => $item->note, 'image_ref' => $item->image_ref, 'cost' => (string) $item->cost, 'price' => (string) $item->price,
+                ];
             }
             $result[] = ['id' => $day->id, 'title' => $day->title, 'items' => $activities];
         }
@@ -301,8 +306,16 @@ final class ProductSections
                     'activity' => trim($item['activity']),
                     'item_type' => $item['type'] ?? null,
                     'location' => trim((string) ($item['location'] ?? '')) ?: null,
+                    'service_id' => $this->ownService($product, $item['service_id'] ?? null),
+                    'note' => trim((string) ($item['note'] ?? '')) ?: null,
+                    'image_ref' => trim((string) ($item['image_ref'] ?? '')) ?: null,
+                    'cost' => (string) Decimal::round2((string) ($item['cost'] ?? '0')),
+                    'price' => (string) Decimal::round2((string) ($item['price'] ?? '0')),
                 ];
                 $itemId = $item['id'] ?? null;
+                if (! CatalogAccess::seesMargin($actor) || ! array_key_exists('cost', $item) || $item['cost'] === null || $item['cost'] === '') {
+                    $values['cost'] = $itemId ? (string) Decimal::round2((string) ($currentItems[$itemId]['cost'] ?? '0')) : '0.00';
+                }
                 $text = $this->activity(['time' => $values['start_time'], 'activity' => $values['activity']])." del día {$number}";
 
                 if (! $itemId) {
@@ -315,7 +328,9 @@ final class ProductSections
                 $previous = $currentItems[$itemId];
                 DB::table('catalog_itinerary_items')->where('id', $itemId)->update([...$values, 'updated_by' => $actor->getKey()]);
                 $changed = $previous['activity'] !== $values['activity'] || (string) $previous['time'] !== (string) $values['start_time']
-                    || (string) $previous['type'] !== (string) $values['item_type'] || (string) $previous['location'] !== (string) $values['location'] || $previous['day_id'] !== $dayId;
+                    || (string) $previous['type'] !== (string) $values['item_type'] || (string) $previous['location'] !== (string) $values['location'] || $previous['day_id'] !== $dayId
+                    || (string) ($previous['service_id'] ?? '') !== (string) $values['service_id'] || (string) ($previous['note'] ?? '') !== (string) $values['note']
+                    || (string) ($previous['image_ref'] ?? '') !== (string) $values['image_ref'] || Decimal::round2((string) ($previous['cost'] ?? '0'))->compareTo($values['cost']) !== 0 || Decimal::round2((string) ($previous['price'] ?? '0'))->compareTo($values['price']) !== 0;
                 if ($changed) {
                     $this->note($product, "Cambió la actividad {$text}", $this->activity($previous));
                 }
@@ -517,6 +532,11 @@ final class ProductSections
             ? DB::table('catalog_product_channels')->where('id', $row->id)->update($values)
             : DB::table('catalog_product_channels')->insert([...$values, 'product_id' => $product->id, 'channel' => $channel, 'created_by' => $actor->getKey()]);
         $this->note($product, ($published ? 'Publicó el canal ' : 'Despublicó el canal ').self::CHANNEL_LABELS[$channel]);
+        $flag = ['b2b' => 'is_b2b', 'ecommerce' => 'is_ecommerce', 'quotes' => 'is_quoteable'][$channel] ?? null;
+
+        if ($flag !== null) {
+            DB::table('catalog_products')->where('id', $product->id)->update([$flag => $published, 'updated_at' => now()]);
+        }
     }
 
     private function media(object $product, array $media, User $actor): void
@@ -587,6 +607,19 @@ final class ProductSections
         $value = (float) $value;
 
         return $value == floor($value) ? (string) (int) $value : rtrim(rtrim(number_format($value, 2, '.', ''), '0'), '.');
+    }
+
+    private function ownService(object $product, mixed $serviceId): ?string
+    {
+        if ($serviceId === null || $serviceId === '') {
+            return null;
+        }
+
+        if (! DB::table('catalog_services')->where('id', $serviceId)->whereNull('deleted_at')->exists()) {
+            throw ApiException::unprocessable('CAT-BR-12', "El servicio vinculado a una actividad de {$product->name} no existe.");
+        }
+
+        return (string) $serviceId;
     }
 
     private function note(object $product, string $after, ?string $before = null): void

@@ -29,7 +29,7 @@ erDiagram
     varchar status
   }
   integration_review_sources {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar provider UK
     varchar status
@@ -44,21 +44,22 @@ erDiagram
     timestamptz created_at PK
   }
   integration_webhooks {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar status
   }
   oauth_clients {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     varchar name
   }
   iam_users {
     uuid id PK
   }
   iam_users |o--o{ integration_adapters : "owner_user_id"
-  iam_users |o--o{ integration_api_keys : "revoked_by"
+  iam_users ||--o{ integration_api_keys : "revoked_by, tenant_id"
   iam_users |o--o{ integration_errors : "resolved_by"
-  iam_users |o--o{ integration_review_sources : "connected_by, contract_ack_by"
-  integration_webhooks ||--o{ integration_webhook_deliveries : "webhook_id"
-  oauth_clients ||--o| integration_oauth_apps : "client_id"
+  iam_users ||--o{ integration_review_sources : "connected_by, contract_ack_by, tenant_id"
+  integration_webhooks ||--o{ integration_webhook_deliveries : "tenant_id, webhook_id"
+  oauth_clients ||--o{ integration_oauth_apps : "client_id, tenant_id"

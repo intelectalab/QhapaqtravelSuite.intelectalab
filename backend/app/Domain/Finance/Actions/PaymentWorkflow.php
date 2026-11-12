@@ -9,6 +9,7 @@ use App\Domain\Finance\Events\PaymentApplied;
 use App\Domain\Finance\Events\PaymentConfirmed;
 use App\Domain\Finance\Events\PaymentReverted;
 use App\Domain\Finance\Support\FinanceHistory;
+use App\Domain\Finance\Support\FinanceNotices;
 use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -31,10 +32,22 @@ final class PaymentWorkflow
                 throw ApiException::conflict('FIN-BR-12', 'Solo se validan pagos pendientes o confirmados por aplicar.');
             }
 
+            if ($payment->kind === 'reembolso') {
+                if ($payment->status !== 'pendiente' || $receivableCode !== null) {
+                    throw ApiException::conflict('FIN-REFUND', 'Un reembolso es dinero que sale: se registra como hecho y no se aplica a una cuota.');
+                }
+
+                $this->transition($payment, 'confirmado', 'Reembolso hecho', $actor);
+                $this->audit->log('Pago', $payment->code, 'procesar_reembolso', 'pendiente', 'confirmado');
+
+                return;
+            }
+
             if ($payment->status === 'pendiente') {
                 $this->transition($payment, 'confirmado', 'Pago validado', $actor);
                 $this->audit->log('Pago', $payment->code, 'validar', 'pendiente', 'confirmado');
                 PaymentConfirmed::dispatch((string) $payment->id, (string) $actor->getKey());
+                app(FinanceNotices::class)->received((string) $payment->id, (string) $actor->getKey());
             }
 
             $receivableCode ??= $payment->receivable_id ? DB::table('fin_receivables')->where('id', $payment->receivable_id)->value('code') : null;
@@ -57,6 +70,7 @@ final class PaymentWorkflow
             $this->transition($payment, 'rechazado', $reason, $actor, ['reject_reason' => $reason]);
             $this->audit->log('Pago', $payment->code, 'rechazar', 'pendiente', $reason);
             $this->web->rejected($payment, $reason);
+            app(FinanceNotices::class)->rejected((string) $payment->id, $reason);
         });
     }
 
@@ -101,6 +115,7 @@ final class PaymentWorkflow
             $this->credit->paymentReverted($payment, $actor->getKey());
             PaymentReverted::dispatch((string) $payment->id, (string) $actor->getKey());
             $this->audit->log('Pago', $payment->code, 'revertir', $payment->status, $detail);
+            app(FinanceNotices::class)->reverted((string) $payment->id, $reason);
         });
     }
 

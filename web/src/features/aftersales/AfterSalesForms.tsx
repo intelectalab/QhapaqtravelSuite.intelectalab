@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, ArrowRightCircle, CheckCircle2, ClipboardPen, MessageSquarePlus, Plus, RotateCcw, Star } from "lucide-react";
+import { Archive, ArrowRightCircle, CheckCircle2, ClipboardPen, MessageSquarePlus, Plus, Star } from "lucide-react";
 import { useState } from "react";
 import { moveCase, saveCase, saveSurvey } from "@/app/(backoffice)/crm/postventa/actions";
 import { RowIcon } from "@/components/table/RowActions";
@@ -131,11 +131,7 @@ const STEPS: Record<string, { step: string; label: string; icon: React.ReactNode
     { step: "followup", label: "Registrar seguimiento", icon: <MessageSquarePlus size={15} />, note: "Nota de seguimiento", required: true },
     { step: "resolve", label: "Resolver", icon: <CheckCircle2 size={15} />, note: "¿Cómo se resolvió?", required: true },
   ],
-  resuelta: [
-    { step: "close", label: "Cerrar caso", icon: <Archive size={15} />, note: "Comentario de cierre (opcional)", required: false },
-    { step: "reopen", label: "Reabrir", icon: <RotateCcw size={15} />, note: "Motivo", required: false },
-  ],
-  cerrada: [{ step: "reopen", label: "Reabrir", icon: <RotateCcw size={15} />, note: "Motivo", required: false }],
+  resuelta: [{ step: "close", label: "Cerrar caso", icon: <Archive size={15} />, note: "Comentario de cierre (opcional)", required: false }],
 };
 
 export function CaseDetailAction({ item }: { item: CaseItem }) {

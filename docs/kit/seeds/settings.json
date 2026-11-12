@@ -2149,6 +2149,37 @@
       ],
       "productOverride": true,
       "minPlan": "Professional"
+    },
+    {
+      "id": "R-TRIP-BUILDER",
+      "group": "Alojamiento",
+      "name": "Viaje por tramos",
+      "desc": "El cliente elige cuántas noches pasa en cada ciudad (dentro del mínimo y máximo del tramo), el hotel con tarifa por fecha y suma tours y movilidad por ciudad. El total se separa en alojamiento, tours, movilidad y adicionales.",
+      "enabled": true,
+      "params": {},
+      "scope": [
+        "Sitio web",
+        "Widget",
+        "Cotizaciones"
+      ],
+      "productOverride": true,
+      "minPlan": "Professional"
+    },
+    {
+      "id": "R-IN-TRIP-SALES",
+      "group": "Comunicación",
+      "name": "Venta durante el viaje",
+      "desc": "El pasajero ve y compra tours y movilidad de los tramos que le quedan desde su portal o por WhatsApp con un link de pago; el proveedor confirma desde la extranet.",
+      "enabled": true,
+      "params": {
+        "minHoursBefore": 12
+      },
+      "scope": [
+        "Portal pasajero",
+        "WhatsApp"
+      ],
+      "productOverride": true,
+      "minPlan": "Professional"
     }
   ],
   "general": {

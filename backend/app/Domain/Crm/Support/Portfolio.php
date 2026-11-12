@@ -26,6 +26,25 @@ final class Portfolio
         return self::ownOnly($viewer) ? $query->where($ownerColumn, $viewer->getKey()) : $query;
     }
 
+    public static function clients(Builder $query, User $viewer, string $alias = 'crm_clients'): Builder
+    {
+        if (! self::ownOnly($viewer)) {
+            return $query;
+        }
+
+        $me = $viewer->getKey();
+
+        return $query->where(fn (Builder $scope) => $scope->where("{$alias}.owner_id", $me)
+            ->orWhereExists(fn (Builder $sub) => $sub->from('crm_opportunities as po')->whereColumn('po.client_id', "{$alias}.id")->where('po.owner_id', $me))
+            ->orWhereExists(fn (Builder $sub) => $sub->from('quote_quotes as pq')->whereColumn('pq.client_id', "{$alias}.id")->where('pq.owner_id', $me))
+            ->orWhereExists(fn (Builder $sub) => $sub->from('booking_reservations as pr')->whereColumn('pr.client_id', "{$alias}.id")->where('pr.owner_id', $me)));
+    }
+
+    public static function inClients(User $viewer, string $clientId): bool
+    {
+        return self::clients(DB::table('crm_clients'), $viewer)->where('crm_clients.id', $clientId)->exists();
+    }
+
     public static function missing(User $viewer, string $table, string $code, string $notFound, string $entity, string $ownerColumn = 'owner_id'): ApiException
     {
         if (self::ownOnly($viewer)) {

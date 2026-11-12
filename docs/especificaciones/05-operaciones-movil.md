@@ -178,7 +178,7 @@ Detalle de la respuesta de extranet (alternativas, "confirmado por") en `supplie
 | guide_id | uuid | sí | FK ops_guides; índice `(tenant_id, guide_id, service_date)` |
 | driver_id | uuid | sí | FK ops_drivers; índice `(tenant_id, driver_id, service_date)` |
 | vehicle_id | uuid | sí | FK ops_vehicles; índice `(tenant_id, vehicle_id, service_date)` |
-| status | varchar(30) | no | CHECK IN (`pendiente`,`asignada`,`confirmada`,`en_curso`,`completada`) |
+| status | varchar(30) | no | CHECK IN (`pendiente`,`asignada`,`confirmada`,`en_curso`,`completada`,`cancelada`); v2.5: `cancelada` cuando se cancela la reserva (04 §4.6 paso 7) |
 | confirmed_at / confirmed_via | timestamptz / varchar(10) | sí | `web` o `app` |
 | started_at | timestamptz | sí | Hora real de inicio (hecho de campo) |
 | first_checkin_at | timestamptz | sí | Prototipo `checkin` = menor marca de check-in |
@@ -239,7 +239,7 @@ UNIQUE parcial `(assignment_id, passenger_id) WHERE undone_at IS NULL` → idemp
 | status | varchar(20) | no | CHECK IN (`disponible`,`asignado`,`mantenimiento`) |
 | deleted_at | timestamptz | sí | |
 
-Ocupación de recursos: **vista** `ops_resource_occupations` = UNION de `ops_assignments` (órdenes no canceladas, asignación ≠ `completada`) y `catalog_departures` (guía/vehículo de salidas programadas), columnas `(tenant_id, resource_type, resource_id, service_date, service_time, label, source_type, source_id, order_id)`. Se usa para validar PROC-033 y para la matriz de disponibilidad.
+Ocupación de recursos: **vista** `ops_resource_occupations` = UNION de `ops_assignments` (órdenes no canceladas, asignación ∉ {`completada`, `cancelada`}) y `catalog_departures` (guía/vehículo de salidas programadas), columnas `(tenant_id, resource_type, resource_id, service_date, service_time, label, source_type, source_id, order_id)`. Se usa para validar PROC-033 y para la matriz de disponibilidad.
 
 ### 3.8 `ops_rooming_lists`
 
@@ -485,6 +485,7 @@ Nota: el prototipo habilita el botón de cierre con precondiciones cumplidas **s
 | `confirmada` | `en_curso` | Móvil `start` | Solo el recurso asignado | `started_at`; servicio → `en_curso`; orden → `en_ejecucion`; reserva → `en_operacion`; push coordinador |
 | `en_curso` | `completada` | Móvil `finish` | ≥1 check-in y ≥1 evidencia del servicio | `finished_at`; servicio → `completado`; pasajeros sin check-in = no-show; push coordinador |
 | `confirmado`/`en_curso` (servicio) | `completada` | Web "Marcar servicio completado" (`operations.assign`) | Fecha del servicio ≤ hoy | Servicio → `completado` |
+| `pendiente`/`asignada`/`confirmada`/`en_curso` | `cancelada` | Cancelación de la reserva (04 §4.6 paso 7) | — | Libera el recurso (sale de `ops_resource_occupations`); v2.5 |
 | ≠ `pendiente`,`completada` | `pendiente` | Web "Liberar recursos" (`operations.assign`) | Confirmación | Quita guía/conductor/vehículo; WhatsApp "Asignación liberada" a cada recurso; audit `liberar`; recalcula orden |
 
 ### 4.3 Servicio de reserva — estado de proveedor (PROC-032/036)

@@ -153,7 +153,7 @@ ENTIDADES = {
            T("pendiente_pago", "pendiente_proveedor", "Pago aprobado con servicios bajo solicitud", "Sistema", ref="08 §4.5 · 15 §4.4"),
            T("pendiente_pago", "cancelada", "Anular o expirar el pedido web", "Sistema / `channels.ecommerce.manage`", ref="08 §4.2")],
         terminales=["completada", "cancelada"],
-        notas=["`parcial` e `incidencia` existen en el CHECK pero ningún módulo documenta cuándo se asignan (04 §4.1): Por definir.",
+        notas=["v2.5 [Decisión]: `parcial` = reserva con parte de sus servicios cancelados; `incidencia` = servicio con incidencia de severidad alta abierta (vuelve a `en_operacion` al resolverse).",
                "La reversión de un pago no devuelve la reserva a `pendiente_pago` (07 §4.9, P-09)."]),
     "booking_reservation_services.status": dict(
         titulo="Servicio de reserva", fuentes=[dict(spec="04", sec="4.2"), dict(spec="05", sec="4.3", tabla=True), dict(spec="06", sec="4.1", tabla=True)],
@@ -204,9 +204,9 @@ ENTIDADES = {
                "Reprogramación de la reserva (04 §4.5): la orden vuelve a `pendiente_asignacion`."]),
     "ops_assignments.status": dict(
         titulo="Asignación de recurso", fuentes=[dict(spec="05", sec="4.2", tabla=True), dict(spec="04", sec="4.6")],
-        terminales=["completada"],
+        terminales=["completada", "cancelada"],
         notas=["La fila «`confirmado`/`en_curso` (servicio) → `completada`» se refiere al estado del servicio de la reserva; la asignación pasa a `completada`.",
-               "La cancelación de la reserva (04 §4.6 paso 7) pasa las asignaciones no completadas a «cancelada», pero ese valor no está en el CHECK de `ops_assignments.status`: Por definir (agregar el valor o liberar la asignación)."]),
+               "v2.5: `cancelada` se agrega al CHECK de `ops_assignments.status`; la cancelación de la reserva (04 §4.6 paso 7) pasa ahí las asignaciones no completadas."]),
     "ops_vouchers.status": dict(
         titulo="Voucher", fuentes=[dict(spec="05", sec="4.4", tabla=True), dict(spec="06", sec="4.3")],
         terminales=["utilizado", "anulado"],
@@ -554,4 +554,225 @@ ENTIDADES = {
            T("enviada|abierta", "vencida", "Job al `expires_at`", "Sistema"),
            T("vencida|enviada", "enviada", "Reenviar", "Admin")],
         terminales=["respondida", "cancelada"]),
+    # ------------------------------------------------------------------ 19 Crecimiento comercial (v2.6)
+    "sys_ai_requests.status": dict(
+        titulo="Pedido al asistente IA", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "pending", "Nuevo pedido", "`ai.assistant.use`"), T("pending", "completed", "Respuesta del LLM", "Sistema"),
+           T("pending", "failed", "Error del proveedor", "Sistema"), T("completed", "applied", "Aplicar el borrador", "`ai.assistant.use`", guardas="SC-03"),
+           T("completed", "discarded", "Descartar", "`ai.assistant.use`")],
+        terminales=["applied", "discarded", "failed"]),
+    "report_ai_insights.status": dict(
+        titulo="Alerta IA", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "nueva", "Job diario", "Sistema"), T("nueva", "vista", "Abrir la alerta", "`ai.insights.view`"),
+           T("nueva|vista", "resuelta", "Marcar resuelta", "`ai.insights.view`"), T("nueva|vista", "descartada", "Descartar", "`ai.insights.view`")],
+        terminales=["resuelta", "descartada"]),
+    "collab_whatsapp_templates.status": dict(
+        titulo="Plantilla de WhatsApp", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "borrador", "Crear", "`inbox.whatsapp.manage`"), T("borrador", "enviada", "Enviar a Meta", "`inbox.whatsapp.manage`"),
+           T("enviada", "aprobada", "Webhook de Meta", "Sistema"), T("enviada", "rechazada", "Webhook de Meta", "Sistema"),
+           T("aprobada", "enviada", "Editar", "`inbox.whatsapp.manage`"), T("aprobada", "pausada", "Meta pausa por calidad", "Sistema"),
+           T("pausada|rechazada", "enviada", "Corregir y reenviar", "`inbox.whatsapp.manage`")]),
+    "fin_payment_links.status": dict(
+        titulo="Link de pago", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "activo", "Crear", "`finance.payment_links`"), T("activo", "pagado", "Webhook de la pasarela", "Sistema", guardas="SC-06", efectos="Pago aplicado a la CxC"),
+           T("activo", "vencido", "Job al `expires_at`", "Sistema"), T("activo", "anulado", "Anular", "`finance.payment_links`")],
+        terminales=["pagado", "vencido", "anulado"]),
+    "mkt_recovery_attempts.status": dict(
+        titulo="Intento de recuperación", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "programado", "Job de detección", "Sistema"), T("programado", "enviado", "Envío", "Sistema", guardas="SC-07"),
+           T("enviado", "recuperado", "Reserva creada desde el carrito o la cotización", "Sistema"),
+           T("programado|enviado", "descartado", "Cliente ya compró, sin consentimiento o intentos agotados", "Sistema"),
+           T("programado", "fallido", "Error del canal", "Sistema")],
+        terminales=["recuperado", "descartado", "fallido"]),
+    "catalog_import_jobs.status": dict(
+        titulo="Importación de productos", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "en_cola", "Nueva importación", "`catalog.products.import`"), T("en_cola", "procesando", "Job", "Sistema"),
+           T("procesando", "revision", "Extracción terminada", "Sistema"), T("procesando", "fallido", "Error", "Sistema"),
+           T("revision", "importado", "Confirmar", "`catalog.products.import`", guardas="SC-08"),
+           T("en_cola|revision", "cancelado", "Cancelar", "`catalog.products.import`")],
+        terminales=["importado", "fallido", "cancelado"]),
+    "channel_ota_connections.status": dict(
+        titulo="Conexión OTA", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "borrador", "Crear", "`channels.ota.manage`"), T("borrador", "conectado", "Credenciales verificadas", "Sistema"),
+           T("conectado", "pausado", "Pausar", "`channels.ota.manage`"), T("pausado", "conectado", "Reanudar", "`channels.ota.manage`"),
+           T("conectado", "error", "3 fallos seguidos", "Sistema"), T("error", "conectado", "Reintento OK", "Sistema"),
+           T("borrador|conectado|pausado|error", "desconectado", "Desconectar", "`channels.ota.manage`")],
+        terminales=["desconectado"]),
+    "channel_ota_product_mappings.status": dict(
+        titulo="Mapeo de producto OTA", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "pendiente", "Crear mapeo", "`channels.ota.manage`"), T("pendiente", "activo", "Primera sincronización OK", "Sistema"),
+           T("activo", "pausado", "Pausar", "`channels.ota.manage`"), T("pausado", "activo", "Reanudar", "`channels.ota.manage`"),
+           T("pendiente|activo", "error", "Rechazo de la OTA", "Sistema"), T("error", "pendiente", "Corregir", "`channels.ota.manage`")]),
+    "channel_ota_bookings.status": dict(
+        titulo="Reserva recibida de OTA", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "recibida", "Webhook de la OTA", "Sistema"), T("recibida", "confirmada", "Reserva creada con cupo", "Sistema", guardas="SC-09"),
+           T("recibida", "rechazada", "Sin cupo o sin mapeo", "Sistema"), T("confirmada", "cancelada", "Cancelación de la OTA", "Sistema"),
+           T("recibida", "error", "Error de proceso", "Sistema")],
+        terminales=["rechazada", "cancelada"]),
+    "platform_marketplace_listings.status": dict(
+        titulo="Publicación en el marketplace", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "borrador", "Crear", "`channels.marketplace.manage`"), T("borrador|pausado", "publicado", "Publicar", "`channels.marketplace.manage`"),
+           T("publicado", "pausado", "Pausar", "`channels.marketplace.manage`"), T("borrador|publicado|pausado", "retirado", "Retirar", "`channels.marketplace.manage`")],
+        terminales=["retirado"]),
+    "platform_marketplace_partnerships.status": dict(
+        titulo="Alianza del marketplace", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "solicitada", "Solicitar", "Revendedor"), T("solicitada", "activa", "Aceptar", "Vendedor"), T("solicitada", "rechazada", "Rechazar", "Vendedor"),
+           T("activa", "suspendida", "Suspender", "Vendedor"), T("suspendida", "activa", "Reactivar", "Vendedor"),
+           T("activa|suspendida", "terminada", "Terminar", "Vendedor o revendedor")],
+        terminales=["rechazada", "terminada"]),
+    "platform_marketplace_orders.status": dict(
+        titulo="Venta del marketplace", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "solicitada", "Venta del revendedor", "Revendedor"), T("solicitada", "confirmada", "Reservas creadas", "Sistema", guardas="SC-11"),
+           T("solicitada", "rechazada", "Sin cupo", "Sistema"), T("confirmada", "cancelada", "Cancelar", "Revendedor o vendedor"),
+           T("confirmada", "liquidada", "Cierre mensual", "Sistema")],
+        terminales=["rechazada", "cancelada", "liquidada"]),
+    "fin_gift_cards.status": dict(
+        titulo="Vale de regalo", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "pendiente", "Compra o emisión", "`finance.gift_cards` / Público"), T("pendiente", "activa", "Pago aprobado o emisión manual", "Sistema"),
+           T("activa", "agotada", "Canje deja saldo 0", "Sistema", guardas="SC-13"), T("activa", "vencida", "Job diario", "Sistema"),
+           T("pendiente|activa", "anulada", "Anular", "`finance.gift_cards`")],
+        terminales=["agotada", "vencida", "anulada"]),
+    "ops_checkin_passes.status": dict(
+        titulo="Pase QR de check-in", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "emitido", "Reserva confirmada", "Sistema"), T("emitido", "usado", "Escaneo", "`operations.checkin`", guardas="SC-14"),
+           T("emitido", "anulado", "Cancelación del servicio o reemisión", "Sistema")],
+        terminales=["usado", "anulado"]),
+    "fin_accounting_exports.status": dict(
+        titulo="Exportación contable", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "en_cola", "Generar", "`finance.accounting_export`"), T("en_cola", "generado", "Archivo listo", "Sistema", guardas="SC-15"),
+           T("en_cola", "fallido", "Error", "Sistema"), T("generado", "enviado", "Envío al sistema contable", "Sistema")],
+        terminales=["enviado", "fallido"]),
+    "quote_external_offers.status": dict(
+        titulo="Oferta externa (aéreo, hotel)", fuentes=[dict(spec="19", sec="4")],
+        t=[T("*", "cotizada", "Añadir a la cotización", "`quotes.external_offers`"), T("cotizada", "retenida", "Retener", "`quotes.external_offers`"),
+           T("retenida", "emitida", "Conversión de la cotización", "Sistema", guardas="SC-16"),
+           T("cotizada|retenida", "vencida", "Job", "Sistema"), T("cotizada|retenida|emitida", "cancelada", "Cancelar", "`quotes.external_offers`"),
+           T("cotizada|retenida", "error", "Error del proveedor", "Sistema")],
+        terminales=["emitida", "vencida", "cancelada"]),
+    # ------------------------------------------------------------------ 20 portal corporativo (v2.7)
+    "crm_corporate_accounts.status": dict(
+        titulo="Cuenta corporativa", fuentes=[dict(spec="20", sec="4")],
+        t=[T("*", "activa", "Alta de la cuenta", "`crm.corporate.manage`"), T("activa", "suspendida", "Suspender", "`crm.corporate.manage`"),
+           T("suspendida", "activa", "Reactivar", "`crm.corporate.manage`"), T("activa|suspendida", "cerrada", "Cerrar", "`crm.corporate.manage`")],
+        terminales=["cerrada"]),
+    "crm_corporate_portal_users.status": dict(
+        titulo="Usuario del portal corporativo", fuentes=[dict(spec="20", sec="4")],
+        t=[T("*", "invitado", "Invitar", "Administrador de la empresa o `crm.corporate.manage`", guardas="CP-06"),
+           T("invitado", "activo", "Aceptar la invitación", "Usuario invitado"), T("activo", "inactivo", "Desactivar", "Administrador", guardas="CP-06: queda al menos un administrador"),
+           T("inactivo", "activo", "Reactivar", "Administrador"), T("invitado", "inactivo", "Revocar la invitación", "Administrador")],
+        terminales=[]),
+    "booking_corporate_approvals.status": dict(
+        titulo="Aprobación corporativa", fuentes=[dict(spec="20", sec="4")],
+        t=[T("*", "pendiente", "Pedir aprobación", "Vendedor (`quotes.send`) o usuario de la empresa", guardas="CP-03"),
+           T("pendiente", "aprobada", "Aprobar", "Aprobador del centro de costo o administrador", guardas="CP-07"),
+           T("pendiente", "rechazada", "Rechazar con motivo", "Aprobador del centro de costo o administrador", guardas="CP-07"),
+           T("pendiente", "vencida", "Job al `expires_at`", "Sistema"), T("pendiente", "cancelada", "Nueva versión o cancelación de la cotización", "Sistema", guardas="CP-03")],
+        terminales=["aprobada", "rechazada", "vencida", "cancelada"]),
+    "fin_corporate_statements.status": dict(
+        titulo="Estado de cuenta corporativo", fuentes=[dict(spec="20", sec="4")],
+        t=[T("*", "generado", "Generar el mes", "`finance.corporate_statements` o job", guardas="CP-05"), T("generado", "enviado", "Enviar por correo", "`finance.corporate_statements`, administrador o pagador, o job"),
+           T("generado|enviado", "anulado", "Anular para regenerar", "`finance.corporate_statements`")],
+        terminales=["anulado"]),
+    "report_corporate_exports.status": dict(
+        titulo="Exportación corporativa", fuentes=[dict(spec="20", sec="4")],
+        t=[T("*", "en_cola", "Pedir exportación", "Usuario del portal", guardas="CP-08"), T("en_cola", "procesando", "Inicio del job", "Sistema"),
+           T("procesando", "listo", "Archivo generado", "Sistema"), T("procesando", "fallido", "Error al generar", "Sistema"), T("listo", "vencido", "Job a los 7 días", "Sistema")],
+        terminales=["fallido", "vencido"]),
+    # ------------------------------------------------------------------ 21 viajes por tramos y 22 vitrina y marca (v2.8)
+    "booking_in_trip_offers.status": dict(
+        titulo="Oferta de venta en ruta", fuentes=[dict(spec="21", sec="4")],
+        t=[T("*", "ofrecida", "Crear oferta", "Cliente titular o `reservations.modify`", guardas="TB-09"), T("ofrecida", "link_enviado", "Generar link de pago", "Sistema", guardas="TB-10"),
+           T("link_enviado", "pagada", "Webhook del link", "Sistema"), T("pagada", "confirmada", "Proveedor confirma", "Sistema / proveedor"),
+           T("pagada", "reembolsada", "Proveedor rechaza", "Sistema", guardas="TB-10"), T("ofrecida|link_enviado", "vencida", "Job al `expires_at`", "Sistema"),
+           T("ofrecida|link_enviado", "cancelada", "Cancelar", "Cliente o `reservations.modify`")],
+        terminales=["confirmada", "reembolsada", "vencida", "cancelada"]),
+    "platform_showcase_listings.status": dict(
+        titulo="Publicación de la vitrina", fuentes=[dict(spec="22", sec="4")],
+        t=[T("*", "borrador", "Crear", "`channels.showcase.manage`"), T("borrador", "en_revision", "Enviar a revisión", "`channels.showcase.manage`", guardas="VT-01"),
+           T("en_revision", "publicado", "Aprobar", "Super Admin", guardas="VT-01"), T("en_revision", "rechazado", "Rechazar con motivo", "Super Admin", guardas="VT-01"),
+           T("rechazado", "en_revision", "Corregir y reenviar", "`channels.showcase.manage`"), T("publicado", "despublicado", "Pausar", "`channels.showcase.manage` o Super Admin"),
+           T("despublicado", "publicado", "Reactivar", "`channels.showcase.manage`")],
+        terminales=[]),
+    "platform_showcase_agencies.status": dict(
+        titulo="Agencia de la vitrina", fuentes=[dict(spec="22", sec="4")],
+        t=[T("*", "en_revision", "Registro", "Público"), T("en_revision", "activa", "Verificar", "Super Admin", guardas="VT-01"), T("en_revision", "rechazada", "Rechazar", "Super Admin"),
+           T("activa", "suspendida", "Suspender", "Super Admin"), T("suspendida", "activa", "Reactivar", "Super Admin")],
+        terminales=["rechazada"]),
+    "platform_showcase_bookings.status": dict(
+        titulo="Reserva de la vitrina", fuentes=[dict(spec="22", sec="4")],
+        t=[T("*", "confirmada", "Reservar", "Público", guardas="VT-02"), T("confirmada", "asistio", "Marcar asistencia", "`channels.showcase.manage`"),
+           T("confirmada", "no_show", "Marcar no-show", "`channels.showcase.manage`"), T("confirmada", "cancelada", "Cancelar", "Viajero (token) o agencia")],
+        terminales=["asistio", "no_show", "cancelada"]),
+    "platform_access_passes.status": dict(
+        titulo="Pase de 30 días", fuentes=[dict(spec="22", sec="4")],
+        t=[T("*", "activo", "Crear pase", "Super Admin", guardas="VT-06"), T("activo", "vencido", "Job al `ends_on`", "Sistema", guardas="VT-06"),
+           T("activo", "convertido", "Convertir a plan", "Super Admin o el tenant al suscribirse"), T("activo", "revocado", "Revocar", "Super Admin")],
+        terminales=["vencido", "convertido", "revocado"]),
+    "cms_site_domains.status": dict(
+        titulo="Dominio propio", fuentes=[dict(spec="22", sec="4")],
+        t=[T("*", "pendiente_dns", "Agregar dominio", "`cms.seo.manage`"), T("pendiente_dns", "verificado", "DNS correcto", "Job o `cms.seo.manage`", guardas="VT-11"),
+           T("pendiente_dns", "error", "DNS incorrecto", "Sistema"), T("error", "pendiente_dns", "Reintentar", "`cms.seo.manage`"), T("*", "retirado", "Retirar", "`cms.seo.manage`")],
+        terminales=["retirado"]),
+    "cms_travel_stories.status": dict(
+        titulo="Historia de aventura", fuentes=[dict(spec="22", sec="4")],
+        t=[T("*", "borrador", "Crear desde una reserva", "`cms.seo.manage` o `channels.cms.publish`"), T("borrador", "pendiente_consentimiento", "Pedir consentimiento", "`cms.seo.manage` o `channels.cms.publish`"),
+           T("pendiente_consentimiento", "publicado", "Publicar con consentimiento", "`channels.cms.publish`", guardas="VT-12"), T("publicado", "despublicado", "Despublicar o retiro del consentimiento", "`channels.cms.publish` o cliente", guardas="VT-12")],
+        terminales=[]),
+    "fin_payment_fees.status": dict(
+        titulo="Comisión de cobro por pasarela", fuentes=[dict(spec="22", sec="4")],
+        t=[T("*", "estimado", "Cobro registrado", "Sistema", guardas="VT-08"), T("estimado", "liquidado", "Liquidación de la pasarela", "Job", guardas="VT-08"), T("liquidado", "ajustado", "Ajuste posterior", "`finance.gateways.manage`")],
+        terminales=[]),
+    # ------------------------------------------------------------------ 23 plantillas web y contenido con IA (v2.9)
+    "platform_site_templates.status": dict(
+        titulo="Plantilla del sitio", fuentes=[dict(spec="23", sec="4")],
+        t=[T("*", "borrador", "Crear", "Super Admin"), T("borrador", "en_revision", "Primer envío", "Autor (equipo o partner)"),
+           T("en_revision", "publicado", "Aprobar envío", "Super Admin", guardas="TPL-08"), T("publicado", "retirado", "Retirar", "Super Admin", guardas="TPL-10"),
+           T("retirado", "publicado", "Republicar", "Super Admin")],
+        terminales=[]),
+    "platform_site_template_versions.status": dict(
+        titulo="Versión de plantilla", fuentes=[dict(spec="23", sec="4")],
+        t=[T("*", "candidata", "Envío", "Autor"), T("candidata", "aprobada", "Validaciones y revisión", "Super Admin", guardas="TPL-08"),
+           T("aprobada", "publicada", "Publicar", "Super Admin", guardas="TPL-09"), T("publicada", "retirada", "Retirar versión", "Super Admin")],
+        terminales=["retirada"]),
+    "platform_template_submissions.status": dict(
+        titulo="Envío de plantilla a revisión", fuentes=[dict(spec="23", sec="4")],
+        t=[T("*", "recibida", "kipu-tpl submit", "Autor"), T("recibida", "validando", "Job ValidateTemplateBundle", "Sistema"),
+           T("validando", "aprobada", "Aprobar y publicar", "Super Admin", guardas="TPL-08"), T("validando", "rechazada", "Rechazar con motivo", "Super Admin", guardas="TPL-08")],
+        terminales=["aprobada", "rechazada"]),
+    "cms_site_themes.status": dict(
+        titulo="Tema del sitio del tenant", fuentes=[dict(spec="23", sec="4")],
+        t=[T("*", "vista_previa", "Vista previa", "`cms.templates.manage`", guardas="TPL-03"), T("vista_previa", "activo", "Aplicar", "`cms.templates.manage`", guardas="TPL-02, TPL-05"),
+           T("activo", "anterior", "Aplicar otra plantilla", "`cms.templates.manage` o Super Admin", guardas="TPL-02"), T("anterior", "activo", "Restaurar", "`cms.templates.manage`", guardas="TPL-02")],
+        terminales=[]),
+    "cms_ai_content_jobs.status": dict(
+        titulo="Pedido de contenido con IA", fuentes=[dict(spec="23", sec="4")],
+        t=[T("*", "en_cola", "Nuevo pedido", "`ai.content.use`", guardas="IA-01"), T("en_cola", "procesando", "Job GenerateAiContent", "Sistema"),
+           T("procesando", "listo", "Resultado", "Sistema", guardas="IA-02"), T("procesando", "fallido", "Error del proveedor", "Sistema", guardas="IA-02"),
+           T("listo", "aplicado", "Aplicar", "`ai.content.use`", guardas="IA-03"), T("listo", "descartado", "Descartar", "`ai.content.use`")],
+        terminales=["aplicado", "descartado", "fallido"]),
+    "cms_ai_images.status": dict(
+        titulo="Imagen generada con IA", fuentes=[dict(spec="23", sec="4")],
+        t=[T("*", "generada", "Job GenerateAiImages", "Sistema", guardas="IA-05"), T("generada", "en_uso", "Usar con texto alternativo", "`ai.content.use`", guardas="IA-05"),
+           T("generada", "descartada", "Descartar", "`ai.content.use`")],
+        terminales=["descartada"]),
+    # ------------------------------------------------------------------ 24 blog en Payload, seguimiento y visitas (v2.10)
+    "mkt_tracking_tags.status": dict(
+        titulo="Etiqueta o script del sitio de la agencia", fuentes=[dict(spec="24", sec="4")],
+        t=[T("*", "borrador", "Crear script propio", "`marketing.tracking.manage`", guardas="SEG-03"), T("*", "activo", "Crear etiqueta estándar con ID válido", "`marketing.tracking.manage`", guardas="SEG-02"),
+           T("borrador", "en_revision", "Enviar a revisión", "`marketing.tracking.manage`"), T("en_revision", "activo", "Aprobar", "`marketing.tracking.approve`", guardas="SEG-04, SEG-05"),
+           T("en_revision", "rechazado", "Rechazar con motivo", "`marketing.tracking.approve`"), T("rechazado", "borrador", "Corregir", "`marketing.tracking.manage`"),
+           T("activo", "pausado", "Pausar", "`marketing.tracking.manage`", guardas="SEG-12"), T("pausado", "activo", "Reanudar", "`marketing.tracking.manage`", guardas="SEG-12")],
+        terminales=[]),
+    "platform_tracking_tags.status": dict(
+        titulo="Etiqueta de la vitrina y el blog", fuentes=[dict(spec="24", sec="4")],
+        t=[T("*", "borrador", "Crear", "Super Admin"), T("borrador", "en_revision", "Enviar a revisión", "Super Admin"),
+           T("en_revision", "activo", "Aprobar (otro Super Admin)", "Super Admin", guardas="SEG-04"), T("en_revision", "rechazado", "Rechazar con motivo", "Super Admin"),
+           T("rechazado", "borrador", "Corregir", "Super Admin"), T("activo", "pausado", "Pausar", "Super Admin"), T("pausado", "activo", "Reanudar", "Super Admin")],
+        terminales=[]),
+    "mkt_conversion_dispatches.status": dict(
+        titulo="Envío de conversión", fuentes=[dict(spec="24", sec="4")],
+        t=[T("*", "pendiente", "Evento del sitio o webhook de pago", "Sistema", guardas="SEG-09"), T("pendiente", "enviado", "Job DispatchConversion", "Sistema", guardas="SEG-07, SEG-08"),
+           T("pendiente", "fallido", "Error del proveedor", "Sistema", guardas="SEG-10"), T("pendiente", "sin_consentimiento", "Sin consentimiento de marketing", "Sistema", guardas="SEG-07"),
+           T("pendiente", "duplicado", "Mismo event_id ya enviado", "Sistema", guardas="SEG-07"), T("fallido", "pendiente", "Reintento automático o manual", "Sistema o `marketing.tracking.manage`", guardas="SEG-10")],
+        terminales=["enviado", "sin_consentimiento", "duplicado"]),
 }

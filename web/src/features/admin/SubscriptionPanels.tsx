@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, CalendarClock, Check, CreditCard, Layers, MessageSquare, Pencil, Receipt, ShieldCheck, Webhook, X } from "lucide-react";
+import { BarChart3, CalendarClock, Check, CreditCard, Layers, Lock, MessageSquare, Pencil, Receipt, ShieldCheck, Webhook, X } from "lucide-react";
 import { useActionState, useState, useTransition, type FormEvent } from "react";
 import { openCardSession, saveCard, updateBilling } from "@/app/(backoffice)/admin/suscripcion/actions";
 import { Badge } from "@/components/ui/Badge";
@@ -24,9 +24,8 @@ const STATUS_TONE: Record<string, "ok" | "sun" | "bad" | "mute" | "t1"> = { tria
 const SOURCE: Record<string, string> = { addon: "Complemento", override: "Excepción" };
 
 function daysUntil(iso: string): number {
-  const today = new Date();
-  today.setHours(12, 0, 0, 0);
-  return Math.round((new Date(`${iso}T12:00:00`).getTime() - today.getTime()) / 86_400_000);
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
+  return Math.round((Date.parse(`${iso.slice(0, 10)}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 86_400_000);
 }
 
 function Breakdown({ rows }: { rows: [string, string][] }) {
@@ -105,7 +104,7 @@ export function SubscriptionKpis({ data }: { data: SubscriptionOverview }) {
         label="Método de pago"
         value={card ? `${card.brand} •••• ${card.last4}` : "Sin tarjeta"}
         note={card ? `Vence ${card.exp}` : "Registra una tarjeta"}
-        info={<p>Tarjeta predeterminada registrada en la pasarela{card?.updated_by ? ` por ${card.updated_by}` : ""}. Solo guardamos la marca, los últimos 4 dígitos, el vencimiento y el token; nunca el número completo ni el CVV.</p>}
+        info={<p>Tarjeta predeterminada registrada en la pasarela{card?.updated_by ? ` por ${card.updated_by}` : ""}. Solo se guardan la marca, los últimos 4 dígitos, el vencimiento y el titular.</p>}
       />
     </KpiGrid>
   );
@@ -220,7 +219,7 @@ function CardUpdate({ holder, label }: { holder: string | null; label: string })
         open={open}
         onOpenChange={setOpen}
         title={label}
-        description="El formulario es de la pasarela: la tarjeta se tokeniza en tu navegador y a la plataforma solo llegan la marca, los últimos 4 dígitos, el vencimiento y el titular."
+        description="Formulario de la pasarela. Se valida con un cargo de S/ 1.00 que se revierte al instante. A KipuControl solo llegan la marca, los últimos 4 dígitos, el vencimiento y el titular; nunca el número completo ni el CVV."
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setOpen(false)}>
@@ -239,7 +238,6 @@ function CardUpdate({ holder, label }: { holder: string | null; label: string })
             <TextField label="Vencimiento" name="expiry" required maxLength={7} placeholder="MM/AAAA" />
             <TextField label="CVV" name="cvv" type="password" inputMode="numeric" required maxLength={4} />
           </div>
-          <p className="text-[12px] text-fg-3">Se valida con un cargo de S/ 1.00 que se revierte al instante.</p>
           {message && <p className="text-[12.5px] text-bad">{message}</p>}
         </form>
       </SidePanel>
@@ -250,8 +248,15 @@ function CardUpdate({ holder, label }: { holder: string | null; label: string })
 export function PaymentMethodCard({ card, manage }: { card: SubscriptionOverview["payment_method"]; manage: boolean }) {
   return (
     <Card>
-      <TintCardTitle icon={CreditCard} title="Método de pago" />
-      <p className="-mt-2 mb-4 text-[12px] text-fg-3">La tarjeta se tokeniza en la pasarela; la plataforma nunca guarda el número completo ni el CVV.</p>
+      <TintCardTitle
+        icon={CreditCard}
+        title="Método de pago"
+        aside={
+          <span className="inline-flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--ok)_12%,transparent)] px-2.5 py-1 text-[11.5px] font-semibold text-ok" title="La tarjeta se tokeniza en la pasarela; nunca se guarda el número completo ni el CVV.">
+            <Lock size={12} /> Tokenizada · PCI
+          </span>
+        }
+      />
       {card ? (
         <div className="flex items-center gap-3.5">
           <span className="grid h-11 w-11 flex-none place-items-center rounded-[12px] bg-accent/10 text-accent">

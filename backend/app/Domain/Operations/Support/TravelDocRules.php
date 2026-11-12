@@ -27,6 +27,8 @@ final class TravelDocRules
 
     public const RELATIONS = ['Familiar', 'Pareja', 'Amigo(a)', 'Empresa', 'Otro'];
 
+    public const AMAZON = 'loreto|amazon|madre de dios';
+
     public function settings(): array
     {
         $values = (array) json_decode((string) DB::table('sys_settings')->where('section', self::SECTION)->value('values'), true);
@@ -68,11 +70,28 @@ final class TravelDocRules
             ->distinct()->pluck('s.reservation_id')->flip();
     }
 
-    public function applies(string $type, object $passenger, ?string $travelFrom, bool $trekking, array $settings): bool
+    public function amazon(Collection $reservationIds): Collection
+    {
+        $byDestination = DB::table('booking_reservation_services as s')
+            ->join('catalog_products as p', 'p.id', '=', 's.product_id')
+            ->join('catalog_destinations as d', 'd.id', '=', 'p.primary_destination_id')
+            ->whereIn('s.reservation_id', $reservationIds->all())->where('s.status', '<>', 'cancelado')
+            ->where(fn ($query) => $query->where('d.path', '~*', self::AMAZON)->orWhere('d.name', '~*', self::AMAZON))
+            ->distinct()->pluck('s.reservation_id');
+        $byRequirement = DB::table('booking_reservation_services as s')
+            ->join('catalog_product_requirements as q', 'q.product_id', '=', 's.product_id')
+            ->whereIn('s.reservation_id', $reservationIds->all())->where('s.status', '<>', 'cancelado')->where('q.text', '~*', 'fiebre amarilla')
+            ->distinct()->pluck('s.reservation_id');
+
+        return $byDestination->merge($byRequirement)->unique()->flip();
+    }
+
+    public function applies(string $type, object $passenger, ?string $travelFrom, bool $trekking, array $settings, bool $amazon = false): bool
     {
         $foreign = self::foreign($passenger->nationality ?? null);
 
         return match ($type) {
+            'yellow_fever' => $amazon,
             'visa' => $foreign && collect($settings['visa_nationalities'])->contains(fn (string $country) => str_starts_with(mb_strtolower((string) ($passenger->nationality ?? '')), mb_strtolower(mb_substr($country, 0, 4)))),
             'insurance' => $foreign || ($settings['insurance_trekking'] && $trekking),
             'minor_auth' => self::minor($passenger, $travelFrom),

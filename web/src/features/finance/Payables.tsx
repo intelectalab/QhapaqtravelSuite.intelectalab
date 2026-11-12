@@ -1,6 +1,7 @@
 "use client";
 
 import { AlarmClock, Ban, BadgeCheck, Building2, CalendarClock, CircleCheck, FilePlus2, HandCoins, Stamp, TrendingDown, Wallet } from "lucide-react";
+import { PAYABLES_CSV } from "@/lib/finance-csv";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { DataTable } from "@/components/table/DataTable";
@@ -412,6 +413,7 @@ export function PayablesTable({ data }: { data: PayablesOverview }) {
   return (
     <DataTable
       screen="finanzas-proveedores"
+      csv={PAYABLES_CSV}
       rows={rows}
       columns={columns}
       getKey={(row) => row.code}

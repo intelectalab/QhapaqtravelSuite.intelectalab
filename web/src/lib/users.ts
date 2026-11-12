@@ -36,7 +36,7 @@ export interface UserDetail {
   sede: { id: string; name: string } | null;
   invitation_expires_at: string | null;
   permissions: string[];
-  permission_modules: { module: string; permissions: string[] }[];
+  permission_modules: { module: string; permissions: string[]; total?: number }[];
   workload: { opportunities: number; activities: number; clients: number };
   activity: { id: string; code: string; entity: string; entity_id: string; action: string; before: string | null; after: string | null; critical: boolean; at: string }[];
 }

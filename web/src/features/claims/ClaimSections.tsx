@@ -1,14 +1,16 @@
 "use client";
 
-import { BookOpen, Building2, CalendarRange, Coins, Download, Hash, MapPin, Settings2, Tags, Timer, TimerReset } from "lucide-react";
-import { saveClaimSettings } from "@/app/(backoffice)/crm/reclamaciones/actions";
+import { BookOpen, Building2, CalendarOff, CalendarRange, Coins, Download, Hash, MapPin, Pencil, Plus, Settings2, Tags, Timer, TimerReset, Trash2 } from "lucide-react";
+import { claimHolidayStep, saveClaimSettings } from "@/app/(backoffice)/crm/reclamaciones/actions";
+import { RowIcon } from "@/components/table/RowActions";
 import { Button } from "@/components/ui/Button";
+import { HiddenFields } from "@/features/catalog-shared/CatalogPanels";
 import { BarChart } from "@/components/ui/Charts";
 import { FieldList } from "@/components/ui/Details";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { TextField } from "@/components/ui/TextField";
 import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
-import type { ClaimSheet, ClaimsOverview } from "@/lib/claims";
+import type { ClaimHoliday, ClaimSheet, ClaimsOverview } from "@/lib/claims";
 import { formatMoney, formatNumber } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { ClaimsTable } from "./ClaimsTable";
@@ -182,7 +184,94 @@ export function ClaimSettings({ overview }: { overview: ClaimsOverview }) {
           ))}
         </ul>
       </section>
+      <ClaimHolidays overview={overview} />
     </div>
+  );
+}
+
+const WEEKDAYS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+
+function HolidayForm({ overview, holiday }: { overview: ClaimsOverview; holiday?: ClaimHoliday }) {
+  return (
+    <PanelAction<StepResult>
+      label={holiday ? "Editar" : "Agregar feriado"}
+      formId={`claim-holiday-${holiday?.date ?? "new"}`}
+      title={holiday ? "Editar feriado" : "Agregar feriado"}
+      description="Los días feriados no cuentan para el plazo legal de respuesta ni para la alerta previa."
+      submitLabel="Guardar"
+      action={claimHolidayStep}
+      initial={initial}
+      trigger={holiday ? (open) => <RowIcon tone="edit" label={`Editar ${holiday.name}`} icon={<Pencil size={15} />} onClick={open} /> : (open) => <Button size="sm" icon={<Plus size={15} />} onClick={open}>Agregar feriado</Button>}
+    >
+      {() => (
+        <>
+          <HiddenFields values={{ step: "save", original: holiday?.date, current: JSON.stringify(overview.holidays) }} />
+          <TextField label="Fecha" name="date" type="date" required defaultValue={holiday?.date} />
+          <TextField label="Nombre" name="name" required minLength={3} maxLength={120} defaultValue={holiday?.name} placeholder="Día de la Independencia" />
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+function RemoveHoliday({ overview, holiday }: { overview: ClaimsOverview; holiday: ClaimHoliday }) {
+  return (
+    <PanelAction<StepResult>
+      label="Quitar"
+      formId={`claim-holiday-remove-${holiday.date}`}
+      title="Quitar feriado"
+      description={`${holiday.name} vuelve a contar como día hábil. Las hojas ya registradas conservan su vencimiento.`}
+      submitLabel="Quitar"
+      action={claimHolidayStep}
+      initial={initial}
+      trigger={(open) => <RowIcon tone="delete" label={`Quitar ${holiday.name}`} icon={<Trash2 size={15} />} onClick={open} />}
+    >
+      {() => <HiddenFields values={{ step: "remove", date: holiday.date, current: JSON.stringify(overview.holidays) }} />}
+    </PanelAction>
+  );
+}
+
+function ClaimHolidays({ overview }: { overview: ClaimsOverview }) {
+  const years = [...new Set(overview.holidays.map((holiday) => holiday.date.slice(0, 4)))];
+  const upcoming = overview.holidays.filter((holiday) => holiday.date >= overview.today).length;
+  return (
+    <section className="lift rounded-tile border border-line p-4 xl:col-span-2">
+      <TintCardTitle icon={CalendarOff} title="Feriados" tone="t2" aside={overview.can.settings ? <HolidayForm overview={overview} /> : <span className="text-[12px] text-fg-3">{plural(upcoming, "feriado próximo", "feriados próximos")}</span>} />
+      <p className="mb-3 text-[12.5px] text-fg-3">El plazo de respuesta cuenta días hábiles: se saltan sábados, domingos y estas fechas.</p>
+      {overview.holidays.length === 0 ? (
+        <p className="rounded-tile border border-dashed border-line px-4 py-6 text-center text-[13px] text-fg-3">Aún no hay feriados registrados para este año.</p>
+      ) : (
+        years.map((year) => (
+          <div key={year} className="mb-3 last:mb-0">
+            <b className="mb-2 block text-[12px] font-semibold text-fg-2">{year}</b>
+            <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {overview.holidays.filter((holiday) => holiday.date.startsWith(year)).map((holiday) => {
+                const day = new Date(`${holiday.date}T12:00:00`);
+                const past = holiday.date < overview.today;
+                return (
+                  <li key={holiday.date} className={`lift flex items-center gap-3 rounded-tile border border-line px-3 py-2 ${past ? "opacity-60" : ""}`}>
+                    <span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-surface-2 text-center leading-none">
+                      <b className="block text-[14px] font-semibold">{day.getDate()}</b>
+                      <span className="block text-[10.5px] text-fg-3">{MONTHS[day.getMonth()]}</span>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <b className="block truncate text-[13px] font-semibold">{holiday.name}</b>
+                      <span className="block text-[12px] text-fg-3">{WEEKDAYS[day.getDay()]}</span>
+                    </span>
+                    {overview.can.settings && (
+                      <span className="flex flex-none items-center gap-0.5">
+                        <HolidayForm overview={overview} holiday={holiday} />
+                        <RemoveHoliday overview={overview} holiday={holiday} />
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))
+      )}
+    </section>
   );
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, CircleCheck, Eye, FilePlus2, FileMinus2, MailCheck, RefreshCw, Send, SendHorizontal, TriangleAlert } from "lucide-react";
+import { INVOICES_CSV } from "@/lib/finance-csv";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { checkInvoice, loadInvoiceDraft } from "@/app/(backoffice)/finanzas/actions";
@@ -76,16 +77,34 @@ function FiscalStatusAction({ row }: { row: InvoiceRow }) {
   );
 }
 
-const FLOW = ["Emitido", "Enviado al OSE", "Aceptado", "Entregado"];
+const FLOW = ["Generado", "Enviado al OSE", "Aceptado", "Entregado"];
 
 function flowIndex(row: Pick<InvoiceRow, "status" | "delivered">): number {
   if (row.status === "aceptado") return row.delivered ? 3 : 2;
-  if (["observado", "rechazado", "anulado"].includes(row.status)) return 1;
+  if (["observado", "rechazado"].includes(row.status)) return 1;
   if (row.status === "emitido") return 1;
   return 0;
 }
 
 export function InvoiceFlow({ row }: { row: Pick<InvoiceRow, "status" | "delivered"> }) {
+  if (row.status === "anulado") {
+    return (
+      <ol className="flex flex-wrap items-center gap-x-2 gap-y-2" aria-label="Flujo del comprobante">
+        {FLOW.slice(0, 3).map((label) => (
+          <li key={label} className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-[12px] font-semibold text-fg-3">
+              <Check size={12} strokeWidth={3} />
+              {label}
+            </span>
+            <span className="h-px w-5 bg-line" />
+          </li>
+        ))}
+        <li>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--bad)_40%,transparent)] bg-[color-mix(in_srgb,var(--bad)_10%,transparent)] px-2.5 py-1 text-[12px] font-semibold text-bad">Anulado</span>
+        </li>
+      </ol>
+    );
+  }
   const current = flowIndex(row);
   const failed = ["observado", "rechazado"].includes(row.status);
   return (
@@ -208,7 +227,8 @@ export function InvoicesTable({ data }: { data: InvoicesOverview }) {
 
   const metrics: MetricFilter<InvoiceRow>[] = [
     { id: "accepted", label: "Aceptados", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "aceptado" },
-    { id: "observed", label: "Observados", tone: "warn", icon: <TriangleAlert size={19} />, matches: (row) => row.status === "observado" || row.status === "rechazado" },
+    { id: "observed", label: "Observados", tone: "warn", icon: <TriangleAlert size={19} />, matches: (row) => row.status === "observado" },
+    { id: "rejected", label: "Rechazados", tone: "bad", icon: <TriangleAlert size={19} />, matches: (row) => row.status === "rechazado" },
     { id: "credit", label: "Notas de crédito", tone: "violet", icon: <FileMinus2 size={19} />, matches: (row) => row.doc_type === "07" },
   ];
 
@@ -228,6 +248,7 @@ export function InvoicesTable({ data }: { data: InvoicesOverview }) {
   return (
     <DataTable
       screen="finanzas-facturacion"
+      csv={INVOICES_CSV}
       rows={rows}
       columns={columns}
       getKey={(row) => row.number}

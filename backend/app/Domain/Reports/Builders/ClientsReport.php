@@ -14,7 +14,7 @@ final class ClientsReport extends ReportBuilder
 {
     public function build(User $viewer, ReportFilters $filters): array
     {
-        $clients = $filters->ownerSede(Portfolio::scope(DB::table('crm_clients as c')->whereNull('c.deleted_at'), $viewer, 'c.owner_id'), 'c.owner_id')
+        $clients = $filters->ownerSede(Portfolio::clients(DB::table('crm_clients as c')->whereNull('c.deleted_at'), $viewer, 'c'), 'c.owner_id')
             ->leftJoin('iam_users as u', 'u.id', '=', 'c.owner_id')
             ->get(['c.id', 'c.code', 'c.name', 'c.kind', 'c.country', 'c.segment_code', 'c.nps_last', 'u.name as owner']);
         $sales = $this->reservations($viewer, $filters)->whereIn('r.client_id', $clients->pluck('id'))->selectRaw("r.client_id, count(*) as total, sum({$this->sales()}) as sales")->groupBy('r.client_id')->get()->keyBy('client_id');

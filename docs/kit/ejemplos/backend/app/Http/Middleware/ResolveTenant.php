@@ -9,19 +9,21 @@ use App\Domain\Shared\Tenancy\TenantContext;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Resuelve el tenant de la solicitud (spec 00 SEC-BR-01/02; 02-ARQUITECTURA §4.1).
  *
- * Orden en el grupo `api` (spec 00 §11 fila 1):
- *   AssignCorrelationId → auth:sanctum → ResolveTenant → EnsureTenantActive → EnsureMfaVerified
- *   → SetPostgresTenant → SetPermissionsTeam → EnsureExperience → (Idempotency) → Controller/Policy
+ * Orden en el grupo `api` (spec 00 §11 fila 1, v2.5):
+ *   AssignCorrelationId → ResolveTenant → SetPostgresTenant → auth:sanctum → EnsureTenantActive
+ *   → EnsureMfaVerified → SetPermissionsTeam → EnsureExperience → (Idempotency) → Controller/Policy
+ *
+ * ResolveTenant va ANTES de auth:sanctum: `personal_access_tokens` e `iam_users` tienen RLS, así que Sanctum
+ * solo encuentra el token y su usuario cuando `app.tenant_id` ya está fijado en la transacción.
  *
  * Fuentes válidas del tenant, en este orden:
- *  1. Token Sanctum: `personal_access_tokens.tenant_id` (tabla SIN RLS a propósito, C-08: es la fuente del tenant).
- *     Si además hay host de tenant, debe coincidir; si no → 403 TENANT_SCOPE_VIOLATION.
+ *  1. Token Bearer: hash SHA-256 del secreto → función SECURITY DEFINER `app_resolve_access_token(hash)`
+ *     de database/90_rls.sql (C-08 v2.5). Si además hay host de tenant, debe coincidir; si no → 403 TENANT_SCOPE_VIOLATION.
  *  2. Host (rutas públicas, sitio, widget, portales con enlace): función SECURITY DEFINER
  *     `app_resolve_tenant_by_host(host, base_domain)` de database/90_rls.sql (subdominio o dominio propio).
  *
@@ -45,6 +47,10 @@ final class ResolveTenant
 
         $tenantId = $fromToken ?? $fromHost;
 
+        if ($tenantId === null && $request->bearerToken() !== null) {
+            throw new \Illuminate\Auth\AuthenticationException(); // token inválido o vencido → 401 UNAUTHENTICATED
+        }
+
         if ($tenantId === null) {
             throw ApiException::forbidden('TENANT_REQUIRED', 'No se pudo determinar la empresa (tenant) de la solicitud.');
         }
@@ -59,19 +65,22 @@ final class ResolveTenant
 
     private function tenantFromToken(Request $request): ?string
     {
-        $user = $request->user();
-        if ($user === null || ! method_exists($user, 'currentAccessToken')) {
-            return null;
+        $bearer = $request->bearerToken();
+
+        if ($bearer === null) {
+            // Sanctum::actingAs en pruebas no envía Bearer: se toma el tenant del usuario autenticado.
+            return $request->user('sanctum')?->tenant_id ?? null;
         }
 
-        $token = $user->currentAccessToken();
+        // Formato de Sanctum: "{id}|{secreto}". En la tabla se guarda hash('sha256', secreto).
+        $secret = str_contains($bearer, '|') ? explode('|', $bearer, 2)[1] : $bearer;
 
-        // Sanctum::actingAs en pruebas usa TransientToken (sin fila): se toma el tenant del usuario.
-        if (! $token instanceof PersonalAccessToken) {
-            return $user->tenant_id ?? null;
-        }
+        $row = DB::selectOne(
+            'select tenant_id from app_resolve_access_token(?)',
+            [hash('sha256', $secret)],
+        );
 
-        return $token->getAttribute('tenant_id'); // NULL solo para platform_users (guard platform)
+        return $row?->tenant_id; // NULL: token inexistente, vencido o de plataforma → auth:sanctum responde 401
     }
 
     private function tenantFromHost(Request $request): ?string

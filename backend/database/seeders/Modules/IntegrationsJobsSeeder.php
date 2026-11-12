@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders\Modules;
 
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Shared\Jobs\DefaultScheduledJobs;
 use App\Domain\Shared\Jobs\JobCatalog;
 use Database\Support\KitSeeds;
 use Database\Support\SeedsTenant;
@@ -34,6 +35,7 @@ final class IntegrationsJobsSeeder
     {
         $this->adapters();
         $this->jobs();
+        app(DefaultScheduledJobs::class)->sync((string) $this->tenant->getKey());
         $this->errors();
         $this->exports();
     }

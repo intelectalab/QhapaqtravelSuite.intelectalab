@@ -1,6 +1,6 @@
 erDiagram
   crm_activities {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar type
@@ -16,7 +16,7 @@ erDiagram
     uuid user_id FK
   }
   crm_cases {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid client_id FK
@@ -44,7 +44,7 @@ erDiagram
     uuid source_lead_id FK
   }
   crm_clients {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar kind
@@ -54,6 +54,39 @@ erDiagram
     uuid source_lead_id FK
     uuid b2b_agency_id FK
   }
+  crm_corporate_accounts {
+    uuid id PK,UK
+    uuid tenant_id UK
+    uuid client_id FK,UK
+    varchar status
+    char currency
+    uuid default_cost_center_id FK
+    uuid created_by FK
+  }
+  crm_corporate_cost_centers {
+    uuid id PK,UK
+    uuid tenant_id UK
+    uuid account_id FK
+    varchar code
+    varchar name
+  }
+  crm_corporate_portal_users {
+    uuid id PK,UK
+    uuid tenant_id UK
+    uuid account_id FK
+    uuid user_id FK
+    varchar email
+    uuid cost_center_id FK
+    uuid traveler_id FK
+    varchar status
+  }
+  crm_corporate_travelers {
+    uuid id PK,UK
+    uuid tenant_id UK
+    uuid account_id FK
+    uuid cost_center_id FK
+    varchar email
+  }
   crm_lead_qualifications {
     uuid id PK
     uuid lead_id FK
@@ -61,7 +94,7 @@ erDiagram
     uuid qualified_by FK
   }
   crm_leads {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar email
@@ -76,7 +109,7 @@ erDiagram
     uuid matched_client_id FK
   }
   crm_opportunities {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid client_id FK
@@ -94,7 +127,7 @@ erDiagram
     uuid user_id FK
   }
   crm_own_reviews {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid reservation_id FK
@@ -114,7 +147,7 @@ erDiagram
     varchar name
   }
   crm_review_requests {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid reservation_id FK,UK
@@ -132,7 +165,7 @@ erDiagram
     uuid tenant_id UK
   }
   crm_sales_targets {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar status
@@ -146,14 +179,14 @@ erDiagram
     date valid_to
   }
   crm_sales_teams {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     varchar name
     uuid leader_id FK
   }
   crm_surveys {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid client_id FK
@@ -184,48 +217,58 @@ erDiagram
   iam_users {
     uuid id PK
   }
-  booking_passengers |o--o{ crm_own_reviews : "passenger_id"
-  booking_reservations |o--o{ crm_cases : "reservation_id"
-  booking_reservations ||--o{ crm_own_reviews : "reservation_id"
-  booking_reservations ||--o{ crm_review_requests : "reservation_id"
-  booking_reservations |o--o{ crm_surveys : "reservation_id"
-  catalog_destinations |o--o{ crm_leads : "destination_id"
-  catalog_products |o--o{ crm_leads : "product_id"
-  catalog_products |o--o{ crm_opportunities : "product_id"
-  catalog_products ||--o{ crm_own_reviews : "product_id"
-  channel_b2b_agencies |o--o{ crm_clients : "b2b_agency_id"
-  crm_activities |o--o{ crm_activities : "previous_activity_id"
-  crm_cases ||--o{ crm_case_events : "case_id"
-  crm_clients |o--o{ crm_cases : "client_id"
-  crm_clients ||--o{ crm_client_contacts : "client_id"
-  crm_clients |o--o{ crm_leads : "converted_client_id, matched_client_id"
-  crm_clients ||--o{ crm_opportunities : "client_id"
-  crm_clients ||--o{ crm_own_reviews : "client_id"
-  crm_clients ||--o{ crm_review_requests : "client_id"
-  crm_clients ||--o{ crm_surveys : "client_id"
-  crm_leads |o--o{ crm_activities : "merged_from_lead_id"
-  crm_leads |o--o{ crm_client_contacts : "source_lead_id"
-  crm_leads |o--o{ crm_clients : "source_lead_id"
-  crm_leads ||--o{ crm_lead_qualifications : "lead_id"
-  crm_leads |o--o{ crm_opportunities : "lead_id"
-  crm_opportunities |o--o{ crm_leads : "converted_opportunity_id"
-  crm_own_reviews ||--o{ crm_own_review_log : "review_id"
-  crm_review_requests |o--o{ crm_own_reviews : "request_id"
-  crm_sales_targets ||--o{ crm_sales_target_adjustments : "target_id"
-  crm_sales_teams ||--o{ crm_sales_team_members : "team_id"
-  crm_surveys |o--o{ crm_cases : "survey_id"
-  fin_commissions |o--o{ crm_sales_targets : "bonus_commission_id"
-  iam_sedes |o--o{ crm_cases : "sede_id"
-  iam_users ||--o{ crm_activities : "completed_by, owner_id"
-  iam_users |o--o{ crm_case_events : "user_id"
-  iam_users ||--o{ crm_cases : "owner_id, submitted_by"
-  iam_users ||--o{ crm_clients : "owner_id"
-  iam_users ||--o{ crm_lead_qualifications : "qualified_by"
-  iam_users |o--o{ crm_leads : "converted_by, owner_id, taken_by"
-  iam_users ||--o{ crm_opportunities : "owner_id"
-  iam_users |o--o{ crm_own_review_log : "user_id"
-  iam_users |o--o{ crm_own_reviews : "moderated_by, reply_by"
-  iam_users ||--o{ crm_sales_target_adjustments : "actor_id"
-  iam_users ||--o{ crm_sales_team_members : "user_id"
-  iam_users |o--o{ crm_sales_teams : "leader_id"
-  iam_users ||--o{ crm_surveys : "recorded_by"
+  booking_passengers ||--o{ crm_own_reviews : "passenger_id, tenant_id"
+  booking_reservations ||--o{ crm_cases : "reservation_id, tenant_id"
+  booking_reservations ||--o{ crm_own_reviews : "reservation_id, tenant_id"
+  booking_reservations ||--o| crm_review_requests : "reservation_id, tenant_id"
+  booking_reservations ||--o{ crm_surveys : "reservation_id, tenant_id"
+  catalog_destinations ||--o{ crm_leads : "destination_id, tenant_id"
+  catalog_products ||--o{ crm_leads : "product_id, tenant_id"
+  catalog_products ||--o{ crm_opportunities : "product_id, tenant_id"
+  catalog_products ||--o{ crm_own_reviews : "product_id, tenant_id"
+  channel_b2b_agencies ||--o{ crm_clients : "b2b_agency_id, tenant_id"
+  crm_activities ||--o{ crm_activities : "previous_activity_id, tenant_id"
+  crm_cases ||--o{ crm_case_events : "case_id, tenant_id"
+  crm_clients ||--o{ crm_cases : "client_id, tenant_id"
+  crm_clients ||--o{ crm_client_contacts : "client_id, tenant_id"
+  crm_clients ||--o| crm_corporate_accounts : "client_id, tenant_id"
+  crm_clients ||--o{ crm_leads : "converted_client_id, matched_client_i..."
+  crm_clients ||--o{ crm_opportunities : "client_id, tenant_id"
+  crm_clients ||--o{ crm_own_reviews : "client_id, tenant_id"
+  crm_clients ||--o{ crm_review_requests : "client_id, tenant_id"
+  crm_clients ||--o{ crm_surveys : "client_id, tenant_id"
+  crm_corporate_accounts ||--o{ crm_corporate_cost_centers : "account_id, tenant_id"
+  crm_corporate_accounts ||--o{ crm_corporate_portal_users : "account_id, tenant_id"
+  crm_corporate_accounts ||--o{ crm_corporate_travelers : "account_id, tenant_id"
+  crm_corporate_cost_centers ||--o{ crm_corporate_accounts : "default_cost_center_id, tenant_id"
+  crm_corporate_cost_centers ||--o{ crm_corporate_portal_users : "cost_center_id, tenant_id"
+  crm_corporate_cost_centers ||--o{ crm_corporate_travelers : "cost_center_id, tenant_id"
+  crm_corporate_travelers ||--o{ crm_corporate_portal_users : "tenant_id, traveler_id"
+  crm_leads ||--o{ crm_activities : "merged_from_lead_id, tenant_id"
+  crm_leads ||--o{ crm_client_contacts : "source_lead_id, tenant_id"
+  crm_leads ||--o{ crm_clients : "source_lead_id, tenant_id"
+  crm_leads ||--o{ crm_lead_qualifications : "lead_id, tenant_id"
+  crm_leads ||--o{ crm_opportunities : "lead_id, tenant_id"
+  crm_opportunities ||--o{ crm_leads : "converted_opportunity_id, tenant_id"
+  crm_own_reviews ||--o{ crm_own_review_log : "review_id, tenant_id"
+  crm_review_requests ||--o{ crm_own_reviews : "request_id, tenant_id"
+  crm_sales_targets ||--o{ crm_sales_target_adjustments : "target_id, tenant_id"
+  crm_sales_teams ||--o{ crm_sales_team_members : "team_id, tenant_id"
+  crm_surveys ||--o{ crm_cases : "survey_id, tenant_id"
+  fin_commissions ||--o{ crm_sales_targets : "bonus_commission_id, tenant_id"
+  iam_sedes ||--o{ crm_cases : "sede_id, tenant_id"
+  iam_users ||--o{ crm_activities : "completed_by, owner_id, tenant_id"
+  iam_users ||--o{ crm_case_events : "tenant_id, user_id"
+  iam_users ||--o{ crm_cases : "owner_id, submitted_by, tenant_id"
+  iam_users ||--o{ crm_clients : "owner_id, tenant_id"
+  iam_users ||--o{ crm_corporate_accounts : "created_by, tenant_id"
+  iam_users ||--o{ crm_corporate_portal_users : "tenant_id, user_id"
+  iam_users ||--o{ crm_lead_qualifications : "qualified_by, tenant_id"
+  iam_users ||--o{ crm_leads : "converted_by, owner_id, taken_by, ten..."
+  iam_users ||--o{ crm_opportunities : "owner_id, tenant_id"
+  iam_users ||--o{ crm_own_review_log : "tenant_id, user_id"
+  iam_users ||--o{ crm_own_reviews : "moderated_by, reply_by, tenant_id"
+  iam_users ||--o{ crm_sales_target_adjustments : "actor_id, tenant_id"
+  iam_users ||--o{ crm_sales_team_members : "tenant_id, user_id"
+  iam_users ||--o{ crm_sales_teams : "leader_id, tenant_id"
+  iam_users ||--o{ crm_surveys : "recorded_by, tenant_id"

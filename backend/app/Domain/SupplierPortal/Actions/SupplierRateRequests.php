@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\SupplierPortal\Actions;
 
+use App\Domain\Catalog\Support\CatalogAccess;
+use App\Domain\Catalog\Support\ServiceDirectory;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -25,7 +27,7 @@ final class SupplierRateRequests
         return DB::transaction(function () use ($account, $data): string {
             $service = $account->catalogService($data['service']);
 
-            if ($service->status !== 'activo') {
+            if (ServiceDirectory::serviceState($service, CatalogAccess::today()) !== 'activo') {
                 throw ApiException::unprocessable('SUP-BR-61', 'Solo puede actualizar la tarifa de un servicio activo.');
             }
 

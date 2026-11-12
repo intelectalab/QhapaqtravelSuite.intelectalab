@@ -109,6 +109,19 @@ async function readEditor(code: string): Promise<WizardResult<ProductEditorState
   return result.ok && result.data ? { ok: true, data: result.data } : failure(result, "No pudimos cargar el producto.");
 }
 
+export async function saveReferenceMarkup(code: string, markup: number): Promise<{ ok: boolean; message: string | null }> {
+  const editor = await readEditor(code);
+  if (!editor.ok) return { ok: false, message: editor.error.message };
+  const draft = editor.data;
+  const result = await apiFetch<{ code: string }>(`/catalog/products/${encodeURIComponent(code)}`, {
+    method: "PATCH",
+    body: { ...draft.master, markup_pct: markup, provider_id: draft.main_provider_id, secondary_destination_ids: draft.secondary_destination_ids, lock_version: draft.lock_version },
+  });
+  if (!result.ok) return { ok: false, message: failure(result, "No pudimos guardar el markup.").error.message };
+  revalidatePath("/catalogo/productos", "layout");
+  return { ok: true, message: null };
+}
+
 export async function saveProductSection(code: string, lockVersion: number, section: ProductSection, draft: ProductDraft): Promise<WizardResult<ProductEditorState>> {
   const path = `/catalog/products/${encodeURIComponent(code)}`;
   const body = payload(draft);

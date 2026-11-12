@@ -129,7 +129,21 @@ export interface ProductComponentDraft {
 export interface ItineraryDayDraft {
   id?: string;
   title: string;
-  items: { id?: string; time: string | null; activity: string; type: string | null; location: string | null }[];
+  items: ItineraryItemDraft[];
+}
+
+export interface ItineraryItemDraft {
+  id?: string;
+  time: string | null;
+  activity: string;
+  type: string | null;
+  location: string | null;
+  service_id?: string | null;
+  service?: string | null;
+  note?: string | null;
+  image_ref?: string | null;
+  cost?: string | null;
+  price?: string | null;
 }
 
 export interface ProductRateDraft {
@@ -311,7 +325,7 @@ export interface ProductOverview {
   related: { code: string; name: string; status: ProductStatus; relation: string }[];
   b2b: { agency_code: string | null; agency: string | null; price_list: string | null; price: string; currency: string; commission_pct: string | null; is_credit: boolean; valid_to: string | null }[] | null;
   promotions: { ref: string; name: string; kind: string; value: string; channel: string | null; promo_code: string | null; min_pax: number | null; date_from: string; date_to: string; status: string }[];
-  profitability: { ref: string; rate_type: string; segment: string; channel: string; currency: string; cost: string; price: string; status: string; margin: string; margin_pct: number | null }[] | null;
+  profitability: { id: string; ref: string; rate_type: string; segment: string; channel: string; currency: string; cost: string; price: string; status: string; margin: string; margin_pct: number | null }[] | null;
   config_groups: { name: string; options: { label: string; price_delta: string }[] }[];
   versions: { version: string; status: string; valid_from: string | null; reason: string | null; created_at: string; author: string | null }[];
   history: { code: string; action: string; before_value: string | null; after_value: string | null; occurred_at: string; actor: string | null }[] | null;

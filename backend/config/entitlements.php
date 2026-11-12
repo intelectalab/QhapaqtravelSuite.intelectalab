@@ -17,7 +17,7 @@ return [
         'module.b2b' => ['channels/b2b', 'b2b'],
         'module.ecommerce' => ['channels/ecommerce', 'channels/widget'],
         'module.cms' => ['cms', 'admin/site-design'],
-        'module.portal_client' => ['portal/client', 'portal/customer', 'channels/customer-portal'],
+        'module.portal_client' => ['portal/client', 'channels/customer-portal'],
         'module.portal_passenger' => ['channels/passenger-portal', 'portal/passenger', 'passenger/reviews'],
         'module.mobile_apps' => ['mobile'],
         'module.inbox_omnichannel' => ['inbox'],
@@ -28,7 +28,7 @@ return [
     ],
 
     'public' => [
-        'module.ecommerce' => ['public/carts', 'public/checkout', 'public/orders', 'public/shop/orders'],
+        'module.ecommerce' => ['public/carts', 'public/checkout', 'public/orders'],
     ],
 
     'screens' => [

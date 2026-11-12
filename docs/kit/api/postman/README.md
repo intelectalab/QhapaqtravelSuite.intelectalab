@@ -6,7 +6,7 @@ No se edita a mano: si cambia el contrato, se regenera.
 
 | Archivo | Contenido |
 |---|---|
-| `kipucontrol-api.postman_collection.json` | 1 006 requests (una por operación del contrato) |
+| `kipucontrol-api.postman_collection.json` | 1 065 requests (una por operación del contrato) |
 | `local.postman_environment.json` | Tenant demo TNT-0001 «andes»: `http://andes.localhost:8000`, usuario `mquispe@andeshorizonte.pe` (Tenant Admin) |
 | `tenant-b.postman_environment.json` | Tenant TNT-0002 «selva»: `http://selva.localhost:8000`, usuario `gerencia@selvaviva.pe` (prueba de aislamiento E2E-08) |
 | `build_postman.py` | Generador (Python 3, sin dependencias) |
@@ -85,11 +85,11 @@ Administración › API / Integración web del tenant.
 
 ```bash
 python3 kit-ia/api/postman/build_postman.py
-# operaciones en OpenAPI: 1006 · requests en colección: 1006 · variables FK: 146
+# operaciones en OpenAPI: 1202 · requests en colección: 1202 · variables FK: 155
 ```
 
 El script falla (código 1) si el número de requests no coincide con las operaciones del contrato o con el total esperado
-(`EXPECTED_REQUESTS = 1006`); al agregar endpoints al contrato, actualizar esa constante. `kit-ia/referencia/tools/regenerar.sh`
+(`EXPECTED_REQUESTS = 1202`); al agregar endpoints al contrato, actualizar esa constante. `kit-ia/referencia/tools/regenerar.sh`
 regenera esta colección junto con el material de `kit-ia/referencia/`.
 
 Supuestos: el nombre del header del token de pedido (`X-Order-Token`) y el de firma de webhooks (`X-Signature`) son

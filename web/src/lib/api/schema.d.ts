@@ -147,7 +147,7 @@ export interface paths {
         put?: never;
         /**
          * POST /platform/auth/login — Guard platform
-         * @description Guard platform (MFA siempre)
+         * @description Guard platform: devuelve token con ability mfa:verify (MFA siempre)
          *
          *     **Idempotencia / lock (spec):** rate limit
          */
@@ -168,8 +168,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * POST /platform/auth/mfa/verify — Guard platform
-         * @description Guard platform (MFA siempre)
+         * POST /platform/auth/mfa/verify
+         * @description {code} TOTP o recovery → token completo de plataforma
          *
          *     **Idempotencia / lock (spec):** rate limit
          */
@@ -334,6 +334,26 @@ export interface paths {
          * @description ≥ 2 caracteres; máx. 12 resultados; filtra por pantallas permitidas y ownership (SEC-BR-09)
          */
         get: operations["getSearch"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/documents/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /documents/{id}/download — 302 a URL firmada de S3
+         * @description 302 a URL firmada de S3 (5 min); audita la descarga de documentos sensibles (v2.5, F0-30)
+         */
+        get: operations["getDocumentsDownload"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7267,7 +7287,7 @@ export interface paths {
         put?: never;
         /**
          * POST /finance/supplier-invoices/{id}/validate — Validación de factura
-         * @description Validación de factura
+         * @description Validación de factura (transición de estado: repetirla responde 409)
          */
         post: operations["financeSupplierInvoicesValidate"];
         delete?: never;
@@ -7287,7 +7307,7 @@ export interface paths {
         put?: never;
         /**
          * POST /finance/supplier-invoices/{id}/observe — Validación de factura
-         * @description Validación de factura
+         * @description Validación de factura (transición de estado: repetirla responde 409)
          */
         post: operations["financeSupplierInvoicesObserve"];
         delete?: never;
@@ -7307,7 +7327,7 @@ export interface paths {
         put?: never;
         /**
          * POST /finance/supplier-invoices/{id}/reject — Validación de factura
-         * @description Validación de factura
+         * @description Validación de factura (transición de estado: repetirla responde 409)
          */
         post: operations["financeSupplierInvoicesReject"];
         delete?: never;
@@ -9288,156 +9308,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/public/shop/products": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /public/shop/products — Catálogo publicado
-         * @description Catálogo publicado (q, category, sort) — consumido por espec. 15
-         *
-         *     **Idempotencia / lock (spec):** cache Redis
-         */
-        get: operations["listPublicShopProducts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/shop/products/{slug}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /public/shop/products/{slug} — Detalle
-         * @description Detalle (contenido, config, salidas, promos visibles)
-         *
-         *     **Idempotencia / lock (spec):** cache
-         */
-        get: operations["showPublicShopProducts"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/shop/price": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /public/shop/price — Cálculo de precio
-         * @description Cálculo de precio (pax, opciones, fecha/salida, código) → líneas, descuento, total, promo_state
-         *
-         *     **Idempotencia / lock (spec):** rate limit
-         */
-        post: operations["publicShopPrice"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/shop/availability": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /public/shop/availability — Valida disponibilidad
-         * @description Valida disponibilidad (ECO-BR-07)
-         */
-        post: operations["publicShopAvailability"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/shop/orders": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /public/shop/orders — Crea pedido + hold
-         * @description Crea pedido + hold (comprador, pasajeros, snapshot)
-         *
-         *     **Idempotencia / lock (spec):** Idempotency-Key; lock salida
-         */
-        post: operations["createPublicShopOrders"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/shop/orders/{code}/payments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /public/shop/orders/{code}/payments — Intento de pago con token de pasarela
-         * @description Intento de pago con token de pasarela
-         *
-         *     **Idempotencia / lock (spec):** Idempotency-Key
-         */
-        post: operations["publicShopOrdersPayments"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/public/shop/orders/{code}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * GET /public/shop/orders/{code} — Estado, reserva, voucher
-         * @description Estado, reserva, voucher
-         */
-        get: operations["showPublicShopOrders"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/webhooks/payments/{gateway}": {
         parameters: {
             query?: never;
@@ -10470,7 +10340,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/portal/customer/reservations/{code}/web-summary": {
+    "/api/v1/portal/client/reservations/{code}/web-summary": {
         parameters: {
             query?: never;
             header?: never;
@@ -10478,10 +10348,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * GET /portal/customer/reservations/{code}/web-summary — Resumen web + plan de pago + CxC abiertas
+         * GET /portal/client/reservations/{code}/web-summary — Resumen web + plan de pago + CxC abiertas
          * @description Resumen web + plan de pago + CxC abiertas
          */
-        get: operations["getPortalCustomerReservationsWebSummary"];
+        get: operations["getPortalClientReservationsWebSummary"];
         put?: never;
         post?: never;
         delete?: never;
@@ -10490,7 +10360,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/portal/customer/reservations/{code}/companions": {
+    "/api/v1/portal/client/reservations/{code}/companions": {
         parameters: {
             query?: never;
             header?: never;
@@ -10499,37 +10369,15 @@ export interface paths {
         };
         get?: never;
         /**
-         * PUT /portal/customer/reservations/{code}/companions — Completar acompañantes
+         * PUT /portal/client/reservations/{code}/companions — Completar acompañantes
          * @description Completar acompañantes (R-COMPANIONS cualquier modo)
          *
          *     **Idempotencia / lock (spec):** lock_version
          *
          *     **También en 15-sitio-web-publico.md §6.6 v2.1 — Motor de reservas público:** Completar acompañantes pendientes (valida edad por tipo)
          */
-        put: operations["putPortalCustomerReservationsCompanions"];
+        put: operations["putPortalClientReservationsCompanions"];
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/portal/customer/receivables/{code}/pay": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * POST /portal/customer/receivables/{code}/pay — Pago del saldo
-         * @description Pago del saldo (pasarela)
-         *
-         *     **Idempotencia / lock (spec):** Idempotency-Key
-         */
-        post: operations["portalCustomerReceivablesPay"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13546,7 +13394,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/public/{tenant}/claim-book": {
+    "/api/v1/public/claim-book": {
         parameters: {
             query?: never;
             header?: never;
@@ -13556,8 +13404,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * POST /public/{tenant}/claim-book — Registro desde el sitio web
-         * @description Registro desde el sitio web
+         * POST /public/claim-book — Registro desde el sitio web
+         * @description Registro desde el sitio web; el tenant sale de X-KipuControl-Key / host, nunca de la ruta (v2.5)
          *
          *     **Idempotencia / lock (spec):** Idempotency-Key
          */
@@ -14493,7 +14341,9 @@ export interface paths {
         put?: never;
         /**
          * POST /platform/invoices/{id}/dunning/extend — Prórroga de 7 días
-         * @description Prórroga de 7 días
+         * @description Prórroga de 7 días (un reintento con la misma clave no suma otra prórroga)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
          */
         post: operations["platformInvoicesDunningExtend"];
         delete?: never;
@@ -17207,7 +17057,7 @@ export interface paths {
         put?: never;
         /**
          * POST /catalog/products/{id}/accommodation/legs — Tramos
-         * @description Tramos; POST …/legs/reorder {ids[]}
+         * @description Tramos
          */
         post: operations["createCatalogProductsAccommodationLegs"];
         delete?: never;
@@ -17228,16 +17078,36 @@ export interface paths {
         post?: never;
         /**
          * DELETE /catalog/products/{id}/accommodation/legs/{legId} — Tramos
-         * @description Tramos; POST …/legs/reorder {ids[]}
+         * @description Tramos
          */
         delete: operations["deleteCatalogProductsAccommodationLegs"];
         options?: never;
         head?: never;
         /**
          * PATCH /catalog/products/{id}/accommodation/legs/{legId} — Tramos
-         * @description Tramos; POST …/legs/reorder {ids[]}
+         * @description Tramos
          */
         patch: operations["updateCatalogProductsAccommodationLegs"];
+        trace?: never;
+    };
+    "/api/v1/catalog/products/{id}/accommodation/legs/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /catalog/products/{id}/accommodation/legs/reorder — Reordenar tramos {ids[]}
+         * @description Reordenar tramos {ids[]} (v2.5: antes solo se mencionaba en la descripción)
+         */
+        post: operations["catalogProductsAccommodationLegsReorder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/catalog/products/{id}/accommodation/legs/{legId}/hotels": {
@@ -18534,6 +18404,4280 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ai/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /ai/requests — Nuevo pedido
+         * @description Nuevo pedido (kind, prompt, source) → 202 con el pedido; resultado por polling o Reverb
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["aiRequests"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/requests/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /ai/requests/{id} — Estado y salida del pedido
+         * @description Estado y salida del pedido
+         */
+        get: operations["showAiRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/requests/{id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /ai/requests/{id}/apply — Aplica el borrador
+         * @description Aplica el borrador (crea versión de cotización o mensaje en borrador)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["aiRequestsApply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/requests/{id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /ai/requests/{id}/discard — Descarta
+         * @description Descarta
+         */
+        post: operations["aiRequestsDiscard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /ai/usage — Consumo del mes y cupo del plan
+         * @description Consumo del mes y cupo del plan
+         */
+        get: operations["getAiUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /reports/insights — Alertas filtradas por estado y tipo
+         * @description Alertas filtradas por estado y tipo
+         */
+        get: operations["getReportsInsights"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/insights/{id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /reports/insights/{id}/resolve — Marcar resuelta o descartada
+         * @description Marcar resuelta o descartada ({status})
+         */
+        post: operations["reportsInsightsResolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inbox/whatsapp-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /inbox/whatsapp-templates — Plantillas transaccionales
+         * @description Plantillas transaccionales
+         */
+        get: operations["getInboxWhatsappTemplates"];
+        put?: never;
+        /**
+         * POST /inbox/whatsapp-templates — Crear y enviar a Meta
+         * @description Crear y enviar a Meta
+         */
+        post: operations["inboxWhatsappTemplates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inbox/whatsapp-templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /inbox/whatsapp-templates/{id} — Editar
+         * @description Editar (aprobada → enviada)
+         */
+        patch: operations["updateInboxWhatsappTemplates"];
+        trace?: never;
+    };
+    "/api/v1/inbox/conversations/{code}/send-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /inbox/conversations/{code}/send-template — Envía una plantilla aprobada con variables
+         * @description Envía una plantilla aprobada con variables
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["inboxConversationsSendTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/payment-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /finance/payment-links — Lista
+         * @description Lista
+         */
+        get: operations["listFinancePaymentLinks"];
+        put?: never;
+        /**
+         * POST /finance/payment-links — Crear link
+         * @description Crear link
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["createFinancePaymentLinks"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/payment-links/{code}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /finance/payment-links/{code}/send — Enviar por WhatsApp o correo
+         * @description Enviar por WhatsApp o correo
+         */
+        post: operations["financePaymentLinksSend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/payment-links/{code}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /finance/payment-links/{code}/cancel — Anular
+         * @description Anular
+         *
+         *     **Idempotencia / lock (spec):** lock_version
+         */
+        post: operations["financePaymentLinksCancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/pay/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /public/pay/{token} — Datos del link para la página de pago
+         * @description Datos del link para la página de pago
+         */
+        get: operations["showPublicPay"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/pay/{token}/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /public/pay/{token}/checkout — Inicia el cobro con el medio elegido
+         * @description Inicia el cobro con el medio elegido
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["publicPayCheckout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marketing/recovery-flows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /marketing/recovery-flows — Flujos
+         * @description Flujos
+         */
+        get: operations["getMarketingRecoveryFlows"];
+        put?: never;
+        /**
+         * POST /marketing/recovery-flows — Crear
+         * @description Crear
+         */
+        post: operations["marketingRecoveryFlows"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marketing/recovery-flows/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /marketing/recovery-flows/{code} — Editar o activar
+         * @description Editar o activar
+         */
+        patch: operations["updateMarketingRecoveryFlows"];
+        trace?: never;
+    };
+    "/api/v1/marketing/recovery-attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /marketing/recovery-attempts — Intentos y recuperados
+         * @description Intentos y recuperados
+         */
+        get: operations["getMarketingRecoveryAttempts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /catalog/imports — Nueva importación
+         * @description Nueva importación (URL o archivo)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["catalogImports"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/imports/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /catalog/imports/{code} — Estado y productos detectados
+         * @description Estado y productos detectados
+         */
+        get: operations["showCatalogImports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/imports/{code}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /catalog/imports/{code}/confirm — Crea en borrador los productos elegidos
+         * @description Crea en borrador los productos elegidos
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["catalogImportsConfirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/imports/{code}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /catalog/imports/{code}/cancel — Cancelar
+         * @description Cancelar
+         */
+        post: operations["catalogImportsCancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/dynamic-price-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /catalog/dynamic-price-rules — Lista
+         * @description Lista
+         */
+        get: operations["getCatalogDynamicPriceRules"];
+        put?: never;
+        /**
+         * POST /catalog/dynamic-price-rules — Crear
+         * @description Crear
+         */
+        post: operations["catalogDynamicPriceRules"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/dynamic-price-rules/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /catalog/dynamic-price-rules/{code} — Editar o activar
+         * @description Editar o activar
+         *
+         *     **Idempotencia / lock (spec):** lock_version
+         */
+        patch: operations["updateCatalogDynamicPriceRules"];
+        trace?: never;
+    };
+    "/api/v1/catalog/dynamic-price-rules/simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /catalog/dynamic-price-rules/simulate — Simula el precio por fecha y canal
+         * @description Simula el precio por fecha y canal
+         */
+        post: operations["catalogDynamicPriceRulesSimulate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/channels/ota/connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /channels/ota/connections — Conexiones
+         * @description Conexiones
+         */
+        get: operations["getChannelsOtaConnections"];
+        put?: never;
+        /**
+         * POST /channels/ota/connections — Crear y verificar credenciales
+         * @description Crear y verificar credenciales
+         */
+        post: operations["channelsOtaConnections"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/channels/ota/connections/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /channels/ota/connections/{code} — Editar, pausar o reanudar
+         * @description Editar, pausar o reanudar
+         *
+         *     **Idempotencia / lock (spec):** lock_version
+         */
+        patch: operations["updateChannelsOtaConnections"];
+        trace?: never;
+    };
+    "/api/v1/channels/ota/connections/{code}/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /channels/ota/connections/{code}/sync — Forzar sincronización
+         * @description Forzar sincronización
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["channelsOtaConnectionsSync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/channels/ota/connections/{code}/mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /channels/ota/connections/{code}/mappings — Mapeos
+         * @description Mapeos
+         */
+        get: operations["getChannelsOtaConnectionsMappings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/channels/ota/connections/{code}/mappings/{productId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * PUT /channels/ota/connections/{code}/mappings/{productId} — Crear o editar mapeo
+         * @description Crear o editar mapeo
+         */
+        put: operations["replaceChannelsOtaConnectionsMappings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/channels/ota/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /channels/ota/bookings — Reservas recibidas y errores
+         * @description Reservas recibidas y errores
+         */
+        get: operations["getChannelsOtaBookings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/ota/{ota}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /webhooks/ota/{ota} — Reserva, cambio o cancelación entrante
+         * @description Reserva, cambio o cancelación entrante
+         *
+         *     **Idempotencia / lock (spec):** Idempotency por ota_booking_ref
+         */
+        post: operations["webhooksOta"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marketplace/listings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /marketplace/listings — Buscar productos de otros operadores
+         * @description Buscar productos de otros operadores (destino, fecha)
+         */
+        get: operations["getMarketplaceListings"];
+        put?: never;
+        /**
+         * POST /marketplace/listings — Publicar un producto propio
+         * @description Publicar un producto propio
+         */
+        post: operations["marketplaceListings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marketplace/listings/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /marketplace/listings/{id} — Editar, pausar o retirar
+         * @description Editar, pausar o retirar
+         */
+        patch: operations["updateMarketplaceListings"];
+        trace?: never;
+    };
+    "/api/v1/marketplace/partnerships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /marketplace/partnerships — Alianzas
+         * @description Alianzas
+         */
+        get: operations["getMarketplacePartnerships"];
+        put?: never;
+        /**
+         * POST /marketplace/partnerships — Solicitar alianza
+         * @description Solicitar alianza
+         */
+        post: operations["marketplacePartnerships"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marketplace/partnerships/{id}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /marketplace/partnerships/{id}/decide — Aceptar o rechazar
+         * @description Aceptar o rechazar ({decision})
+         */
+        post: operations["marketplacePartnershipsDecide"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marketplace/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /marketplace/orders — Ventas y compras del marketplace
+         * @description Ventas y compras del marketplace
+         */
+        get: operations["getMarketplaceOrders"];
+        put?: never;
+        /**
+         * POST /marketplace/orders — Vender un producto de un aliado
+         * @description Vender un producto de un aliado
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["marketplaceOrders"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/gift-cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /finance/gift-cards — Lista
+         * @description Lista
+         */
+        get: operations["getFinanceGiftCards"];
+        put?: never;
+        /**
+         * POST /finance/gift-cards — Emitir
+         * @description Emitir (manual)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["financeGiftCards"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/gift-cards/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /finance/gift-cards/{code} — Detalle y movimientos
+         * @description Detalle y movimientos
+         */
+        get: operations["showFinanceGiftCards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/gift-cards/{code}/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /finance/gift-cards/{code}/redeem — Canjear contra una reserva o CxC
+         * @description Canjear contra una reserva o CxC
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["financeGiftCardsRedeem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/gift-cards/{code}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /finance/gift-cards/{code}/void — Anular
+         * @description Anular
+         *
+         *     **Idempotencia / lock (spec):** lock_version
+         */
+        post: operations["financeGiftCardsVoid"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/gift-cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /public/gift-cards — Comprar un vale en el sitio
+         * @description Comprar un vale en el sitio
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["publicGiftCards"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/gift-cards/balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /public/gift-cards/balance — Consultar saldo con el código de canje
+         * @description Consultar saldo con el código de canje
+         */
+        post: operations["publicGiftCardsBalance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/waiver-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /ops/waiver-templates — Plantillas de deslinde
+         * @description Plantillas de deslinde
+         */
+        get: operations["getOpsWaiverTemplates"];
+        put?: never;
+        /**
+         * POST /ops/waiver-templates — Crear versión
+         * @description Crear versión
+         */
+        post: operations["opsWaiverTemplates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/checkin/scan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /ops/checkin/scan — Escanear un pase
+         * @description Escanear un pase ({token})
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["opsCheckinScan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ops/checkin/manifest/{serviceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /ops/checkin/manifest/{serviceId} — Manifiesto en vivo del servicio
+         * @description Manifiesto en vivo del servicio
+         */
+        get: operations["showOpsCheckinManifest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/passenger/passes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /portal/passenger/passes — Pases QR de sus servicios
+         * @description Pases QR de sus servicios
+         */
+        get: operations["getPortalPassengerPasses"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/passenger/waivers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /portal/passenger/waivers — Firmar deslinde
+         * @description Firmar deslinde (multipart con el trazo)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["portalPassengerWaivers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/account-mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /finance/account-mappings — Plan de cuentas por destino
+         * @description Plan de cuentas por destino
+         */
+        get: operations["getFinanceAccountMappings"];
+        /**
+         * PUT /finance/account-mappings — Guardar plan de cuentas
+         * @description Guardar plan de cuentas
+         */
+        put: operations["putFinanceAccountMappings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/accounting-exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /finance/accounting-exports — Exportaciones y descarga
+         * @description Exportaciones y descarga
+         */
+        get: operations["getFinanceAccountingExports"];
+        put?: never;
+        /**
+         * POST /finance/accounting-exports — Generar exportación
+         * @description Generar exportación
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["financeAccountingExports"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotes/{id}/external-offers/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /quotes/{id}/external-offers/search — Buscar aéreo, hotel, auto o seguro
+         * @description Buscar aéreo, hotel, auto o seguro
+         */
+        post: operations["quotesExternalOffersSearch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotes/{id}/external-offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /quotes/{id}/external-offers — Añadir una oferta a la cotización
+         * @description Añadir una oferta a la cotización
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["quotesExternalOffers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotes/{id}/external-offers/{offerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * DELETE /quotes/{id}/external-offers/{offerId} — Quitar oferta
+         * @description Quitar oferta
+         */
+        delete: operations["deleteQuotesExternalOffers"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/crm/corporate-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /crm/corporate-accounts — Cuentas corporativas con saldo y estado
+         * @description Cuentas corporativas con saldo y estado
+         */
+        get: operations["listCrmCorporateAccounts"];
+        put?: never;
+        /**
+         * POST /crm/corporate-accounts — Alta de la cuenta de un cliente
+         * @description Alta de la cuenta de un cliente (client_id, crédito, aprobación, envío automático)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["createCrmCorporateAccounts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/crm/corporate-accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /crm/corporate-accounts/{id} — Detalle con centros de costo, usuarios y totales
+         * @description Detalle con centros de costo, usuarios y totales
+         */
+        get: operations["showCrmCorporateAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /crm/corporate-accounts/{id} — Editar condiciones
+         * @description Editar condiciones
+         *
+         *     **Idempotencia / lock (spec):** lock_version
+         */
+        patch: operations["updateCrmCorporateAccounts"];
+        trace?: never;
+    };
+    "/api/v1/crm/corporate-accounts/{id}/suspend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /crm/corporate-accounts/{id}/suspend — Suspender o reactivar
+         * @description Suspender o reactivar ({active})
+         *
+         *     **Idempotencia / lock (spec):** lock_version
+         */
+        post: operations["crmCorporateAccountsSuspend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/crm/corporate-accounts/{id}/cost-centers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /crm/corporate-accounts/{id}/cost-centers — Centros de costo
+         * @description Centros de costo
+         */
+        get: operations["listCrmCorporateAccountsCostCenters"];
+        put?: never;
+        /**
+         * POST /crm/corporate-accounts/{id}/cost-centers — Crear centro de costo
+         * @description Crear centro de costo
+         */
+        post: operations["createCrmCorporateAccountsCostCenters"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/crm/corporate-accounts/{id}/cost-centers/{costCenterId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /crm/corporate-accounts/{id}/cost-centers/{costCenterId} — Editar o desactivar
+         * @description Editar o desactivar
+         */
+        patch: operations["updateCrmCorporateAccountsCostCenters"];
+        trace?: never;
+    };
+    "/api/v1/crm/corporate-accounts/{id}/travelers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /crm/corporate-accounts/{id}/travelers — Viajeros
+         * @description Viajeros
+         */
+        get: operations["listCrmCorporateAccountsTravelers"];
+        put?: never;
+        /**
+         * POST /crm/corporate-accounts/{id}/travelers — Crear viajero
+         * @description Crear viajero
+         */
+        post: operations["createCrmCorporateAccountsTravelers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/crm/corporate-accounts/{id}/travelers/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /crm/corporate-accounts/{id}/travelers/import — Importar viajeros desde CSV o Excel
+         * @description Importar viajeros desde CSV o Excel
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["crmCorporateAccountsTravelersImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/crm/corporate-accounts/{id}/travelers/{travelerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /crm/corporate-accounts/{id}/travelers/{travelerId} — Editar o desactivar
+         * @description Editar o desactivar
+         */
+        patch: operations["updateCrmCorporateAccountsTravelers"];
+        trace?: never;
+    };
+    "/api/v1/crm/corporate-accounts/{id}/portal-users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /crm/corporate-accounts/{id}/portal-users — Usuarios del portal
+         * @description Usuarios del portal
+         */
+        get: operations["listCrmCorporateAccountsPortalUsers"];
+        put?: never;
+        /**
+         * POST /crm/corporate-accounts/{id}/portal-users — Invitar usuario con rol
+         * @description Invitar usuario con rol
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["createCrmCorporateAccountsPortalUsers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/crm/corporate-accounts/{id}/portal-users/{portalUserId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /crm/corporate-accounts/{id}/portal-users/{portalUserId} — Cambiar rol, centro de costo o estado
+         * @description Cambiar rol, centro de costo o estado
+         */
+        patch: operations["updateCrmCorporateAccountsPortalUsers"];
+        trace?: never;
+    };
+    "/api/v1/crm/corporate-accounts/{id}/portal-users/{portalUserId}/resend-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /crm/corporate-accounts/{id}/portal-users/{portalUserId}/resend-invite — Reenviar invitación
+         * @description Reenviar invitación
+         */
+        post: operations["crmCorporateAccountsPortalUsersResendInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reservations/{id}/cost-allocations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /reservations/{id}/cost-allocations — Reparto de la reserva
+         * @description Reparto de la reserva
+         */
+        get: operations["getReservationsCostAllocations"];
+        /**
+         * PUT /reservations/{id}/cost-allocations — Reemplazar el reparto
+         * @description Reemplazar el reparto (CP-04)
+         *
+         *     **Idempotencia / lock (spec):** lock_version de la reserva
+         */
+        put: operations["putReservationsCostAllocations"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quotes/{id}/corporate-approval": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /quotes/{id}/corporate-approval — Pedir aprobación a la empresa para la versión vigente
+         * @description Pedir aprobación a la empresa para la versión vigente
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["quotesCorporateApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/corporate-statements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /finance/corporate-statements — Estados de cuenta por cuenta y mes
+         * @description Estados de cuenta por cuenta y mes
+         */
+        get: operations["listFinanceCorporateStatements"];
+        put?: never;
+        /**
+         * POST /finance/corporate-statements — Generar el estado de un mes
+         * @description Generar el estado de un mes (account_id, month)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["createFinanceCorporateStatements"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/corporate-statements/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /finance/corporate-statements/{code} — Detalle con líneas y PDF
+         * @description Detalle con líneas y PDF
+         */
+        get: operations["showFinanceCorporateStatements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/corporate-statements/{code}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /finance/corporate-statements/{code}/send — Enviar por correo a los destinatarios
+         * @description Enviar por correo a los destinatarios
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["financeCorporateStatementsSend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/corporate-statements/{code}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /finance/corporate-statements/{code}/void — Anular para regenerar
+         * @description Anular para regenerar
+         */
+        post: operations["financeCorporateStatementsVoid"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /portal/client/corporate/summary — KPIs, gasto por mes, por centro de costo y por viajero
+         * @description KPIs, gasto por mes, por centro de costo y por viajero (period)
+         */
+        get: operations["getPortalClientCorporateSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/purchases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /portal/client/corporate/purchases — Compras del período con centro de costo y viajeros
+         * @description Compras del período con centro de costo y viajeros
+         */
+        get: operations["getPortalClientCorporatePurchases"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /portal/client/corporate/movements — Compras, pagos y notas de crédito con saldo acumulado
+         * @description Compras, pagos y notas de crédito con saldo acumulado
+         */
+        get: operations["getPortalClientCorporateMovements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/statements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /portal/client/corporate/statements — Estados de cuenta mensuales
+         * @description Estados de cuenta mensuales
+         */
+        get: operations["getPortalClientCorporateStatements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/statements/{code}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /portal/client/corporate/statements/{code}/pdf — PDF del estado de cuenta
+         * @description PDF del estado de cuenta
+         */
+        get: operations["getPortalClientCorporateStatementsPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/statement-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /portal/client/corporate/statement-settings — Envío automático, día y destinatarios
+         * @description Envío automático, día y destinatarios
+         *
+         *     **Idempotencia / lock (spec):** lock_version
+         */
+        patch: operations["updatePortalClientCorporateStatementSettings"];
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /portal/client/corporate/approvals — Solicitudes de aprobación
+         * @description Solicitudes de aprobación
+         */
+        get: operations["listPortalClientCorporateApprovals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/approvals/{code}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /portal/client/corporate/approvals/{code}/approve — Aprobar
+         * @description Aprobar
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key; lock_version
+         */
+        post: operations["portalClientCorporateApprovalsApprove"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/approvals/{code}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /portal/client/corporate/approvals/{code}/reject — Rechazar con motivo
+         * @description Rechazar con motivo
+         *
+         *     **Idempotencia / lock (spec):** lock_version
+         */
+        post: operations["portalClientCorporateApprovalsReject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /portal/client/corporate/users — Usuarios de la empresa
+         * @description Usuarios de la empresa
+         */
+        get: operations["getPortalClientCorporateUsers"];
+        put?: never;
+        /**
+         * POST /portal/client/corporate/users — Invitar usuario
+         * @description Invitar usuario
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["portalClientCorporateUsers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/users/{portalUserId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /portal/client/corporate/users/{portalUserId} — Cambiar rol, centro de costo o estado
+         * @description Cambiar rol, centro de costo o estado (CP-06)
+         */
+        patch: operations["updatePortalClientCorporateUsers"];
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/cost-centers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /portal/client/corporate/cost-centers — Centros de costo con presupuesto y consumo
+         * @description Centros de costo con presupuesto y consumo
+         */
+        get: operations["getPortalClientCorporateCostCenters"];
+        put?: never;
+        /**
+         * POST /portal/client/corporate/cost-centers — Crear centro de costo
+         * @description Crear centro de costo
+         */
+        post: operations["portalClientCorporateCostCenters"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/cost-centers/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /portal/client/corporate/cost-centers/{code} — Editar presupuesto o desactivar
+         * @description Editar presupuesto o desactivar
+         */
+        patch: operations["updatePortalClientCorporateCostCenters"];
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/travelers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /portal/client/corporate/travelers — Viajeros de la empresa
+         * @description Viajeros de la empresa
+         */
+        get: operations["getPortalClientCorporateTravelers"];
+        put?: never;
+        /**
+         * POST /portal/client/corporate/travelers — Crear viajero
+         * @description Crear viajero
+         */
+        post: operations["portalClientCorporateTravelers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /portal/client/corporate/exports — Exportaciones propias
+         * @description Exportaciones propias
+         */
+        get: operations["getPortalClientCorporateExports"];
+        put?: never;
+        /**
+         * POST /portal/client/corporate/exports — Pedir exportación
+         * @description Pedir exportación (report_type, format, filters) → 202
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["portalClientCorporateExports"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/client/corporate/exports/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /portal/client/corporate/exports/{code} — Estado y enlace firmado de descarga
+         * @description Estado y enlace firmado de descarga
+         */
+        get: operations["showPortalClientCorporateExports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/products/{id}/trip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /catalog/products/{id}/trip — Tramos con noches mínimas y máximas, temporadas por hotel, tours y movilidad
+         * @description Tramos con noches mínimas y máximas, temporadas por hotel, tours y movilidad
+         */
+        get: operations["getCatalogProductsTrip"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/products/{id}/trip/legs/{legId}/nights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * PUT /catalog/products/{id}/trip/legs/{legId}/nights — Fijar min_nights y max_nights del tramo
+         * @description Fijar min_nights y max_nights del tramo
+         *
+         *     **Idempotencia / lock (spec):** lock_version del producto
+         */
+        put: operations["putCatalogProductsTripLegsNights"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/hotels/{hotelId}/season-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /catalog/hotels/{hotelId}/season-rates — Temporadas del hotel
+         * @description Temporadas del hotel
+         */
+        get: operations["listCatalogHotelsSeasonRates"];
+        put?: never;
+        /**
+         * POST /catalog/hotels/{hotelId}/season-rates — Crear temporada
+         * @description Crear temporada (409 si se solapa)
+         */
+        post: operations["createCatalogHotelsSeasonRates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/hotels/{hotelId}/season-rates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * DELETE /catalog/hotels/{hotelId}/season-rates/{id} — Borrar temporada
+         * @description Borrar temporada
+         */
+        delete: operations["deleteCatalogHotelsSeasonRates"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/products/{id}/trip/tours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /catalog/products/{id}/trip/tours — Crear tour de un tramo
+         * @description Crear tour de un tramo
+         */
+        post: operations["createCatalogProductsTripTours"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/products/{id}/trip/tours/{tourId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /catalog/products/{id}/trip/tours/{tourId} — Editar o desactivar
+         * @description Editar o desactivar
+         */
+        patch: operations["updateCatalogProductsTripTours"];
+        trace?: never;
+    };
+    "/api/v1/catalog/products/{id}/trip/transport": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /catalog/products/{id}/trip/transport — Crear opción de movilidad
+         * @description Crear opción de movilidad (con vehículos si es por vehículo)
+         */
+        post: operations["catalogProductsTripTransport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/products/{id}/trip/transport/{optionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /catalog/products/{id}/trip/transport/{optionId} — Editar o desactivar
+         * @description Editar o desactivar
+         */
+        patch: operations["updateCatalogProductsTripTransport"];
+        trace?: never;
+    };
+    "/api/v1/reservations/{id}/trip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /reservations/{id}/trip — Tramos, tours, movilidad y gasto por categoría de la reserva
+         * @description Tramos, tours, movilidad y gasto por categoría de la reserva
+         */
+        get: operations["getReservationsTrip"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reservations/{id}/in-trip-offers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /reservations/{id}/in-trip-offers — Ofertas en ruta y su estado
+         * @description Ofertas en ruta y su estado
+         */
+        get: operations["listReservationsInTripOffers"];
+        put?: never;
+        /**
+         * POST /reservations/{id}/in-trip-offers — El asesor ofrece un tour o movilidad
+         * @description El asesor ofrece un tour o movilidad (kind, item_id, channel)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["createReservationsInTripOffers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reservations/{id}/in-trip-offers/{offerCode}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /reservations/{id}/in-trip-offers/{offerCode}/cancel — Cancelar oferta no pagada
+         * @description Cancelar oferta no pagada
+         */
+        post: operations["reservationsInTripOffersCancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/client/reservations/{code}/in-trip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /portal/client/reservations/{code}/in-trip — Lo que puede comprar en ruta, con precio y fecha
+         * @description Lo que puede comprar en ruta, con precio y fecha
+         */
+        get: operations["getPortalClientReservationsInTrip"];
+        put?: never;
+        /**
+         * POST /portal/client/reservations/{code}/in-trip — Crear la oferta y el link de pago
+         * @description Crear la oferta y el link de pago (kind, item_id)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["portalClientReservationsInTrip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/showcase/listings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /showcase/listings — Publicaciones con filtros city, zone, theme, lang, model
+         * @description Publicaciones con filtros city, zone, theme, lang, model
+         */
+        get: operations["getShowcaseListings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/showcase/listings/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /showcase/listings/{slug} — Ficha con agencia, horarios y reseñas
+         * @description Ficha con agencia, horarios y reseñas
+         */
+        get: operations["showShowcaseListings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/showcase/listings/{slug}/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /showcase/listings/{slug}/bookings — Reservar
+         * @description Reservar (nombre, correo, fecha, hora, personas, idioma)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["showcaseListingsBookings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/showcase/bookings/{token}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /showcase/bookings/{token}/cancel — Cancelar desde el correo
+         * @description Cancelar desde el correo
+         */
+        post: operations["showcaseBookingsCancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/showcase/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /showcase/posts — Artículos publicados
+         * @description Artículos publicados
+         */
+        get: operations["getShowcasePosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/showcase/posts/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /showcase/posts/{slug} — Artículo con tours enlazados
+         * @description Artículo con tours enlazados
+         */
+        get: operations["showShowcasePosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/showcase/agencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /showcase/agencies — Registro de agencia
+         * @description Registro de agencia (y pedido de pase)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["createShowcaseAgencies"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/channels/showcase/listings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /channels/showcase/listings — Publicaciones de la agencia
+         * @description Publicaciones de la agencia
+         */
+        get: operations["getChannelsShowcaseListings"];
+        put?: never;
+        /**
+         * POST /channels/showcase/listings — Crear y enviar a revisión
+         * @description Crear y enviar a revisión
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["channelsShowcaseListings"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/channels/showcase/listings/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /channels/showcase/listings/{code} — Editar
+         * @description Editar (vuelve a revisión) o pausar
+         */
+        patch: operations["updateChannelsShowcaseListings"];
+        trace?: never;
+    };
+    "/api/v1/channels/showcase/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /channels/showcase/bookings — Reservas de la vitrina
+         * @description Reservas de la vitrina
+         */
+        get: operations["getChannelsShowcaseBookings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/channels/showcase/bookings/{code}/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /channels/showcase/bookings/{code}/attendance — Marcar asistio o no_show
+         * @description Marcar asistio o no_show
+         */
+        post: operations["channelsShowcaseBookingsAttendance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/channels/showcase/fees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /channels/showcase/fees — Cargos y comisiones por mes
+         * @description Cargos y comisiones por mes
+         */
+        get: operations["getChannelsShowcaseFees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/domains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /cms/domains — Dominios y SSL
+         * @description Dominios y SSL
+         */
+        get: operations["getCmsDomains"];
+        put?: never;
+        /**
+         * POST /cms/domains — Agregar dominio
+         * @description Agregar dominio (devuelve TXT y CNAME)
+         */
+        post: operations["cmsDomains"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/domains/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /cms/domains/{id}/verify — Verificar DNS y pedir SSL
+         * @description Verificar DNS y pedir SSL
+         */
+        post: operations["cmsDomainsVerify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/domains/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * DELETE /cms/domains/{id} — Retirar dominio
+         * @description Retirar dominio
+         */
+        delete: operations["deleteCmsDomains"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/seo/pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /cms/seo/pages — Auditoría por página
+         * @description Auditoría por página
+         */
+        get: operations["getCmsSeoPages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/seo/pages/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /cms/seo/pages/{id} — Editar título, descripción, palabra clave, schema y canónica
+         * @description Editar título, descripción, palabra clave, schema y canónica
+         */
+        patch: operations["updateCmsSeoPages"];
+        trace?: never;
+    };
+    "/api/v1/cms/seo/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /cms/seo/audit — Reauditar ahora
+         * @description Reauditar ahora
+         */
+        post: operations["cmsSeoAudit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/redirects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /cms/redirects — Redirecciones
+         * @description Redirecciones
+         */
+        get: operations["getCmsRedirects"];
+        put?: never;
+        /**
+         * POST /cms/redirects — Crear
+         * @description Crear (422 si genera cadena)
+         */
+        post: operations["cmsRedirects"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/redirects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * DELETE /cms/redirects/{id} — Desactivar
+         * @description Desactivar
+         */
+        delete: operations["deleteCmsRedirects"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/stories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /cms/stories — Historias de aventura
+         * @description Historias de aventura
+         */
+        get: operations["listCmsStories"];
+        put?: never;
+        /**
+         * POST /cms/stories — Crear borrador desde una reserva
+         * @description Crear borrador desde una reserva
+         */
+        post: operations["createCmsStories"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/stories/{id}/consent-request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /cms/stories/{id}/consent-request — Pedir el consentimiento al cliente
+         * @description Pedir el consentimiento al cliente
+         */
+        post: operations["cmsStoriesConsentRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/stories/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /cms/stories/{id}/publish — Publicar
+         * @description Publicar (422 sin consentimiento)
+         */
+        post: operations["cmsStoriesPublish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/stories/{id}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /cms/stories/{id}/unpublish — Despublicar
+         * @description Despublicar
+         */
+        post: operations["cmsStoriesUnpublish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/portal/client/stories/{id}/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /portal/client/stories/{id}/consent — Dar o retirar el consentimiento
+         * @description Dar o retirar el consentimiento
+         */
+        post: operations["portalClientStoriesConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/gateways": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /finance/gateways — Pasarelas
+         * @description Pasarelas
+         */
+        get: operations["getFinanceGateways"];
+        put?: never;
+        /**
+         * POST /finance/gateways — Conectar pasarela
+         * @description Conectar pasarela (credenciales al vault)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["financeGateways"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/gateways/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /finance/gateways/{id} — Editar comisión, traslado y estado
+         * @description Editar comisión, traslado y estado
+         */
+        patch: operations["updateFinanceGateways"];
+        trace?: never;
+    };
+    "/api/v1/finance/gateway-fees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /finance/gateway-fees — Cobros con bruto, comisión y neto
+         * @description Cobros con bruto, comisión y neto (from, to, gateway)
+         */
+        get: operations["getFinanceGatewayFees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/gateway-fees/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /finance/gateway-fees/import — Importar el reporte de liquidación de la pasarela
+         * @description Importar el reporte de liquidación de la pasarela
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["financeGatewayFeesImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/access-passes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /platform/access-passes — Pases
+         * @description Pases
+         */
+        get: operations["getPlatformAccessPasses"];
+        put?: never;
+        /**
+         * POST /platform/access-passes — Crear pase con funciones
+         * @description Crear pase con funciones
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["platformAccessPasses"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/access-passes/{code}/extend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /platform/access-passes/{code}/extend — Extender días
+         * @description Extender días
+         */
+        post: operations["platformAccessPassesExtend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/access-passes/{code}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /platform/access-passes/{code}/convert — Convertir a plan
+         * @description Convertir a plan
+         */
+        post: operations["platformAccessPassesConvert"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/access-passes/{code}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /platform/access-passes/{code}/revoke — Revocar
+         * @description Revocar
+         */
+        post: operations["platformAccessPassesRevoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/addons/{code}/billing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /platform/addons/{code}/billing — Modo de cobro y precios del add-on
+         * @description Modo de cobro y precios del add-on
+         */
+        patch: operations["updatePlatformAddonsBilling"];
+        trace?: never;
+    };
+    "/api/v1/platform/showcase/moderation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /platform/showcase/moderation — Publicaciones y agencias por revisar
+         * @description Publicaciones y agencias por revisar
+         */
+        get: operations["getPlatformShowcaseModeration"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/showcase/listings/{code}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /platform/showcase/listings/{code}/decision — Aprobar o rechazar con motivo
+         * @description Aprobar o rechazar con motivo
+         */
+        post: operations["platformShowcaseListingsDecision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/showcase/agencies/{code}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /platform/showcase/agencies/{code}/verify — Verificar agencia
+         * @description Verificar agencia
+         */
+        post: operations["platformShowcaseAgenciesVerify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/showcase/funnel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /platform/showcase/funnel — Embudo por mes
+         * @description Embudo por mes
+         */
+        get: operations["getPlatformShowcaseFunnel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/showcase/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /platform/showcase/posts — Artículos del blog
+         * @description Artículos del blog
+         */
+        get: operations["getPlatformShowcasePosts"];
+        put?: never;
+        /**
+         * POST /platform/showcase/posts — Crear artículo
+         * @description Crear artículo
+         */
+        post: operations["platformShowcasePosts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/showcase/posts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /platform/showcase/posts/{id} — Editar o publicar
+         * @description Editar o publicar (VT-13)
+         */
+        patch: operations["updatePlatformShowcasePosts"];
+        trace?: never;
+    };
+    "/api/v1/cms/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /cms/templates — Galería
+         * @description Galería: plantillas publicadas con tipo, precio, plan mínimo, Lighthouse y si ya está comprada
+         */
+        get: operations["getCmsTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/templates/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /cms/templates/{code} — Detalle con secciones y versiones
+         * @description Detalle con secciones y versiones
+         */
+        get: operations["showCmsTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/templates/{code}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /cms/templates/{code}/preview — Crea un token de vista previa
+         * @description Crea un token de vista previa (24 h) y devuelve la URL
+         */
+        post: operations["cmsTemplatesPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/templates/{code}/purchase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /cms/templates/{code}/purchase — Compra de plantilla premium
+         * @description Compra de plantilla premium (pago único)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["cmsTemplatesPurchase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/theme": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /cms/theme — Tema activo, personalización e historial
+         * @description Tema activo, personalización e historial
+         */
+        get: operations["getCmsTheme"];
+        /**
+         * PUT /cms/theme — Aplicar plantilla
+         * @description Aplicar plantilla (template_code, version)
+         *
+         *     **Idempotencia / lock (spec):** If-Match
+         */
+        put: operations["putCmsTheme"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/theme/tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /cms/theme/tokens — Personalizar colores, redondeo, logo y secciones
+         * @description Personalizar colores, redondeo, logo y secciones (TPL-06)
+         *
+         *     **Idempotencia / lock (spec):** If-Match
+         */
+        patch: operations["updateCmsThemeTokens"];
+        trace?: never;
+    };
+    "/api/v1/cms/theme/restore/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /cms/theme/restore/{id} — Restaurar una plantilla anterior
+         * @description Restaurar una plantilla anterior
+         */
+        post: operations["cmsThemeRestore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/site/theme": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /public/site/theme — Plantilla, versión y tokens del sitio
+         * @description Plantilla, versión y tokens del sitio (por host o token de vista previa)
+         */
+        get: operations["getPublicSiteTheme"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/ai/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /cms/ai/jobs — Historial con filtros kind, status
+         * @description Historial con filtros kind, status
+         */
+        get: operations["listCmsAiJobs"];
+        put?: never;
+        /**
+         * POST /cms/ai/jobs — Nuevo pedido
+         * @description Nuevo pedido (kind, target_type, target_id, tone, locale, notes) → 202; costo en la respuesta
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["createCmsAiJobs"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/ai/jobs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /cms/ai/jobs/{id} — Estado, antes y después
+         * @description Estado, antes y después
+         */
+        get: operations["showCmsAiJobs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/ai/jobs/{id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /cms/ai/jobs/{id}/apply — Aplicar al objeto
+         * @description Aplicar al objeto (crea versión y auditoría)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["cmsAiJobsApply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/ai/jobs/{id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /cms/ai/jobs/{id}/discard — Descartar
+         * @description Descartar
+         */
+        post: operations["cmsAiJobsDiscard"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/ai/jobs/{id}/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /cms/ai/jobs/{id}/regenerate — Otra versión
+         * @description Otra versión (cobra de nuevo)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["cmsAiJobsRegenerate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/ai/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /cms/ai/images — Galería
+         * @description Galería
+         */
+        get: operations["getCmsAiImages"];
+        put?: never;
+        /**
+         * POST /cms/ai/images — Crear imágenes
+         * @description Crear imágenes (prompt, style, count, quality) → 202
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["cmsAiImages"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/ai/images/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /cms/ai/images/{id} — Texto alternativo, uso o descarte
+         * @description Texto alternativo, uso o descarte
+         */
+        patch: operations["updateCmsAiImages"];
+        trace?: never;
+    };
+    "/api/v1/cms/ai/credits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /cms/ai/credits — Saldo por tipo, plan de IA y costos
+         * @description Saldo por tipo, plan de IA y costos
+         */
+        get: operations["getCmsAiCredits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/ai/credits/ledger": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /cms/ai/credits/ledger — Movimientos de créditos
+         * @description Movimientos de créditos
+         */
+        get: operations["getCmsAiCreditsLedger"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/ai/packs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /cms/ai/packs — Planes y paquetes disponibles
+         * @description Planes y paquetes disponibles
+         */
+        get: operations["getCmsAiPacks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cms/ai/packs/{code}/purchase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /cms/ai/packs/{code}/purchase — Comprar paquete o contratar plan de IA
+         * @description Comprar paquete o contratar plan de IA
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["cmsAiPacksPurchase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /platform/templates — Catálogo completo
+         * @description Catálogo completo
+         */
+        get: operations["getPlatformTemplates"];
+        put?: never;
+        /**
+         * POST /platform/templates — Crear plantilla
+         * @description Crear plantilla (borrador)
+         */
+        post: operations["platformTemplates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/templates/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /platform/templates/{code} — Editar tipo, precio, plan mínimo, descripción, por defecto o retirar
+         * @description Editar tipo, precio, plan mínimo, descripción, por defecto o retirar
+         */
+        patch: operations["updatePlatformTemplates"];
+        trace?: never;
+    };
+    "/api/v1/platform/template-submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /platform/template-submissions — Envíos con validaciones
+         * @description Envíos con validaciones
+         */
+        get: operations["getPlatformTemplateSubmissions"];
+        put?: never;
+        /**
+         * POST /platform/template-submissions — Enviar versión
+         * @description Enviar versión (también la cuenta de plataforma del partner) (paquete tgz + SHA-256 + manifiesto); lanza validaciones
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["platformTemplateSubmissions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/template-submissions/{code}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /platform/template-submissions/{code}/decision — Aprobar y publicar o rechazar con motivo
+         * @description Aprobar y publicar o rechazar con motivo (TPL-08)
+         */
+        post: operations["platformTemplateSubmissionsDecision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tenants/{id}/theme": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /platform/tenants/{id}/theme — Asignar plantilla a un tenant
+         * @description Asignar plantilla a un tenant (TPL-07)
+         */
+        post: operations["platformTenantsTheme"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/ai/packs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /platform/ai/packs — Paquetes y planes de IA
+         * @description Paquetes y planes de IA
+         */
+        get: operations["getPlatformAiPacks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/ai/packs/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /platform/ai/packs/{code} — Precio, créditos y estado
+         * @description Precio, créditos y estado
+         */
+        patch: operations["updatePlatformAiPacks"];
+        trace?: never;
+    };
+    "/api/v1/marketing/tracking/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /marketing/tracking/tags — Etiquetas del sitio con estado y última verificación
+         * @description Etiquetas del sitio con estado y última verificación
+         */
+        get: operations["getMarketingTrackingTags"];
+        put?: never;
+        /**
+         * POST /marketing/tracking/tags — Crear etiqueta
+         * @description Crear etiqueta (SEG-02 y SEG-03)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["marketingTrackingTags"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marketing/tracking/tags/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /marketing/tracking/tags/{code} — Detalle con historial de cambios
+         * @description Detalle con historial de cambios
+         */
+        get: operations["showMarketingTrackingTags"];
+        put?: never;
+        post?: never;
+        /**
+         * DELETE /marketing/tracking/tags/{code} — Eliminar
+         * @description Eliminar (borrado lógico)
+         */
+        delete: operations["deleteMarketingTrackingTags"];
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /marketing/tracking/tags/{code} — Editar
+         * @description Editar (un script activo genera una nueva revisión)
+         *
+         *     **Idempotencia / lock (spec):** If-Match
+         */
+        patch: operations["updateMarketingTrackingTags"];
+        trace?: never;
+    };
+    "/api/v1/marketing/tracking/tags/{code}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /marketing/tracking/tags/{code}/submit — Enviar un script propio a revisión
+         * @description Enviar un script propio a revisión
+         */
+        post: operations["marketingTrackingTagsSubmit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marketing/tracking/tags/{code}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /marketing/tracking/tags/{code}/decision — Aprobar o rechazar con motivo
+         * @description Aprobar o rechazar con motivo (SEG-04)
+         */
+        post: operations["marketingTrackingTagsDecision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marketing/tracking/tags/{code}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /marketing/tracking/tags/{code}/pause — Pausar o reanudar
+         * @description Pausar o reanudar
+         */
+        post: operations["marketingTrackingTagsPause"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marketing/tracking/tags/{code}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /marketing/tracking/tags/{code}/verify — Verificar instalación
+         * @description Verificar instalación (SEG-11) → 202
+         */
+        post: operations["marketingTrackingTagsVerify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marketing/tracking/conversions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /marketing/tracking/conversions — Mapeo de eventos a proveedores
+         * @description Mapeo de eventos a proveedores
+         */
+        get: operations["getMarketingTrackingConversions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marketing/tracking/conversions/{tag}/{event}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * PUT /marketing/tracking/conversions/{tag}/{event} — Crear o editar un mapeo
+         * @description Crear o editar un mapeo
+         */
+        put: operations["replaceMarketingTrackingConversions"];
+        post?: never;
+        /**
+         * DELETE /marketing/tracking/conversions/{tag}/{event} — Quitar un mapeo
+         * @description Quitar un mapeo
+         */
+        delete: operations["deleteMarketingTrackingConversions"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marketing/tracking/dispatches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /marketing/tracking/dispatches — Envíos con filtros status, provider, from, to
+         * @description Envíos con filtros status, provider, from, to
+         */
+        get: operations["getMarketingTrackingDispatches"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/marketing/tracking/dispatches/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /marketing/tracking/dispatches/{id}/retry — Reintentar un envío fallido
+         * @description Reintentar un envío fallido
+         */
+        post: operations["marketingTrackingDispatchesRetry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/web/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /analytics/web/overview — KPIs y tendencia
+         * @description KPIs y tendencia (from, to, compare)
+         */
+        get: operations["getAnalyticsWebOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/web/pages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /analytics/web/pages — Páginas con visitas, rebote, tiempo y conversiones
+         * @description Páginas con visitas, rebote, tiempo y conversiones
+         */
+        get: operations["getAnalyticsWebPages"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/web/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /analytics/web/sources — Fuentes, medios y campañas
+         * @description Fuentes, medios y campañas
+         */
+        get: operations["getAnalyticsWebSources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/web/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /analytics/web/devices — Dispositivos y países
+         * @description Dispositivos y países
+         */
+        get: operations["listAnalyticsWebDevices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/web/realtime": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /analytics/web/realtime — Últimos 30 minutos
+         * @description Últimos 30 minutos
+         */
+        get: operations["getAnalyticsWebRealtime"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/web/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /analytics/web/export — CSV del período
+         * @description CSV del período
+         */
+        get: operations["getAnalyticsWebExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/site/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /public/site/tags — Etiquetas activas del sitio por host y página, con categoría de consentimiento
+         * @description Etiquetas activas del sitio por host y página, con categoría de consentimiento (sin secretos)
+         */
+        get: operations["getPublicSiteTags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/analytics/hit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /public/analytics/hit — Visita sin cookies
+         * @description Visita sin cookies (VIS-01), con beacon y límite por IP
+         */
+        post: operations["publicAnalyticsHit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /public/consent — Guarda la elección del banner de cookies con versión de la política
+         * @description Guarda la elección del banner de cookies con versión de la política (spec 14)
+         */
+        post: operations["publicConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tracking/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /platform/tracking/tags — Etiquetas de la vitrina y el blog
+         * @description Etiquetas de la vitrina y el blog
+         */
+        get: operations["getPlatformTrackingTags"];
+        put?: never;
+        /**
+         * POST /platform/tracking/tags — Crear etiqueta
+         * @description Crear etiqueta
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["platformTrackingTags"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tracking/tags/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * PATCH /platform/tracking/tags/{code} — Editar, pausar o enviar a revisión
+         * @description Editar, pausar o enviar a revisión
+         *
+         *     **Idempotencia / lock (spec):** If-Match
+         */
+        patch: operations["updatePlatformTrackingTags"];
+        trace?: never;
+    };
+    "/api/v1/platform/tracking/tags/{code}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /platform/tracking/tags/{code}/decision — Aprobar o rechazar
+         * @description Aprobar o rechazar (otro Super Admin)
+         */
+        post: operations["platformTrackingTagsDecision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/tracking/conversions/{tag}/{event}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * PUT /platform/tracking/conversions/{tag}/{event} — Mapeo de conversiones de la vitrina
+         * @description Mapeo de conversiones de la vitrina
+         */
+        put: operations["replacePlatformTrackingConversions"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/analytics/web/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /platform/analytics/web/overview — Visitas de la vitrina y el blog
+         * @description Visitas de la vitrina y el blog (site, agency)
+         */
+        get: operations["getPlatformAnalyticsWebOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/analytics/web/agencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /platform/analytics/web/agencies — Visitas, reservas y conversión por agencia
+         * @description Visitas, reservas y conversión por agencia
+         */
+        get: operations["listPlatformAnalyticsWebAgencies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/blog/webhooks/payload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /platform/blog/webhooks/payload — Payload avisa la creación, publicación, despublicación o cambio de slug
+         * @description Payload avisa la creación, publicación, despublicación o cambio de slug (BLG-03)
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["platformBlogWebhooksPayload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/blog/sync-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /platform/blog/sync-status — Artículos sincronizados, pendientes y con error
+         * @description Artículos sincronizados, pendientes y con error
+         */
+        get: operations["getPlatformBlogSyncStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /public/plans — Planes, precios mensuales y anuales, add-ons, límites y tipo de cambio del día
+         * @description Planes, precios mensuales y anuales, add-ons, límites y tipo de cambio del día (LND-01)
+         */
+        get: operations["listPublicPlans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/coupons/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /public/coupons/validate — Valida un cupón para un plan y ciclo y devuelve el descuento
+         * @description Valida un cupón para un plan y ciclo y devuelve el descuento
+         */
+        post: operations["publicCouponsValidate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/ruc/{ruc}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /public/ruc/{ruc} — Razón social, dirección y estado del contribuyente
+         * @description Razón social, dirección y estado del contribuyente (LND-04)
+         */
+        get: operations["showPublicRuc"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/signups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /public/signups — Crea el alta
+         * @description Crea el alta: usuario, tenant y suscripción trialing (prueba) o alta pago_pendiente (plan pagado). Devuelve el token del alta
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["publicSignups"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/signups/{token}/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /public/signups/{token}/checkout — Cobra el primer periodo con el token de la pasarela, Yape o PayPal y emite la f…
+         * @description Cobra el primer periodo con el token de la pasarela, Yape o PayPal y emite la factura o boleta de la plataforma
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key · lock sobre el alta
+         */
+        post: operations["publicSignupsCheckout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/signups/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /public/signups/{token} — Estado del alta y comprobante, para la bienvenida y la espera de Yape
+         * @description Estado del alta y comprobante, para la bienvenida y la espera de Yape
+         */
+        get: operations["showPublicSignups"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/public/sales-leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * POST /public/sales-leads — Lead comercial de KipuControl desde el chatbot, el popup o el formulario de ventas, con cons…
+         * @description Lead comercial de KipuControl desde el chatbot, el popup o el formulario de ventas, con consentimiento. No confundir con /public/leads de la spec 15, que es el lead del sitio de una agencia
+         *
+         *     **Idempotencia / lock (spec):** Idempotency-Key
+         */
+        post: operations["publicSalesLeads"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/signups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * GET /platform/signups — Altas desde la landing con embudo, origen, plan, estado y comprobante
+         * @description Altas desde la landing con embudo, origen, plan, estado y comprobante
+         */
+        get: operations["getPlatformSignups"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -18769,6 +22913,107 @@ export interface components {
             /** @description antes/después (fechas, precios por servicio, cupos) */
             payload?: Record<string, never> | null;
         };
+        BookingCorporateApproval: {
+            /** @description APC-0001, UNIQUE por tenant */
+            code: string;
+            /**
+             * Format: uuid
+             * @description FKs
+             */
+            account_id: string;
+            /**
+             * Format: uuid
+             * @description FKs
+             */
+            cost_center_id: string;
+            /**
+             * Format: uuid
+             * @description Exactamente uno (CHECK). Solo una solicitud pendiente por cotización o reserva (índice parcial)
+             */
+            quote_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Exactamente uno (CHECK). Solo una solicitud pendiente por cotización o reserva (índice parcial)
+             */
+            reservation_id?: string | null;
+            /**
+             * Format: decimal
+             * @description Total de la versión vigente al pedir la aprobación
+             */
+            amount: string;
+            /**
+             * Format: decimal
+             * @description Total de la versión vigente al pedir la aprobación
+             */
+            currency: string;
+            /**
+             * Format: uuid
+             * @description Quién la pidió: un usuario de la empresa o el vendedor
+             */
+            requested_by_portal_user_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Quién la pidió: un usuario de la empresa o el vendedor
+             */
+            requested_by_user_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Quién decidió; obligatorio en aprobada y rechazada
+             */
+            approver_portal_user_id?: string | null;
+            /** @description 'pendiente','aprobada','rechazada','vencida','cancelada'; rechazada exige motivo */
+            status: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** Format: date-time */
+            decided_at?: string | null;
+            lock_version: number;
+        };
+        BookingInTripOffer: {
+            /** @description UNIQUE (tenant_id, code) */
+            readonly id: unknown;
+            /** @description UNIQUE (tenant_id, code) */
+            code: unknown;
+            /**
+             * Format: uuid
+             * @description FK booking_reservations
+             */
+            reservation_id: string;
+            /** @description Igual que 3.5 (CHECK) */
+            kind?: unknown;
+            /** @description Igual que 3.5 (CHECK) */
+            leg_tour_id?: unknown;
+            /** @description Igual que 3.5 (CHECK) */
+            transport_option_id?: unknown;
+            /** @description amount > 0 */
+            service_date: unknown;
+            /** @description amount > 0 */
+            currency: unknown;
+            /** @description amount > 0 */
+            amount: unknown;
+            /**
+             * @description CHECK IN ('ofrecida','link_enviado','pagada','confirmada','vencida','cancelada','reembolsada'); pagada/confirmada exigen payment_link_id; confirmada exige trip_item_id
+             * @enum {string}
+             */
+            status: "ofrecida" | "link_enviado" | "pagada" | "confirmada" | "vencida" | "cancelada" | "reembolsada";
+            /**
+             * Format: uuid
+             * @description FK fin_payment_links (spec 19)
+             */
+            payment_link_id?: string | null;
+            /**
+             * Format: uuid
+             * @description FK booking_trip_items
+             */
+            trip_item_id?: string | null;
+            /**
+             * Format: date-time
+             * @description service_date + start_time − minHoursBefore
+             */
+            expires_at: string;
+            /** @description portal, whatsapp, email, app, asesor */
+            channel: string;
+        };
         BookingInventoryHold: {
             /** Format: uuid */
             readonly id: string;
@@ -18819,6 +23064,7 @@ export interface components {
              * @enum {string|null}
              */
             doc_type?: "DNI" | "Pasaporte" | "CE" | "Passport" | null;
+            /** @description Cifrado en la aplicación (cast encrypted); v2.5: text porque el valor cifrado no cabe en varchar(30). */
             doc_number?: string | null;
             /**
              * @description CHECK IN ('ADT','CHD','INF')
@@ -19166,6 +23412,52 @@ export interface components {
              */
             replaced_by_id?: string | null;
         };
+        BookingTripItem: {
+            /**
+             * Format: uuid
+             * @description FK booking_reservations (cascade)
+             */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description FK booking_reservations (cascade)
+             */
+            reservation_id: string;
+            /**
+             * Format: uuid
+             * @description FK booking_trip_legs
+             */
+            trip_leg_id?: string | null;
+            /** @description 'tour' (exige leg_tour_id) o 'transporte' (exige transport_option_id) */
+            kind: string;
+            /**
+             * Format: uuid
+             * @description Juntos o ninguno (CHECK)
+             */
+            vehicle_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Juntos o ninguno (CHECK)
+             */
+            vehicle_units?: string | null;
+            service_date: unknown;
+            start_time?: unknown;
+            /** @description Suma > 0 */
+            adults: number;
+            /** @description Suma > 0 */
+            children: number;
+            /** @description Importe confirmado por el servidor */
+            currency: string;
+            /** @description Importe confirmado por el servidor */
+            amount: string;
+            /**
+             * Format: uuid
+             * @description FK booking_reservation_services (servicio generado)
+             */
+            reservation_service_id?: string | null;
+            /** @description true si se compró en ruta */
+            sold_in_trip: boolean;
+        };
         CatalogAccommodationHotel: {
             /**
              * Format: uuid
@@ -19199,6 +23491,10 @@ export interface components {
             destination_id?: string | null;
             /** @description CHECK (nights BETWEEN 1 AND 30) */
             nights: number;
+            /** @description Ambas nulas (noches fijas) o ambas con valor: 1 ≤ min ≤ nights ≤ max ≤ 30 (CHECK) */
+            min_nights?: number | null;
+            /** @description Ambas nulas (noches fijas) o ambas con valor: 1 ≤ min ≤ nights ≤ max ≤ 30 (CHECK) */
+            max_nights?: number | null;
         };
         CatalogAccommodationRoomType: {
             /**
@@ -19533,6 +23829,74 @@ export interface components {
             path: unknown;
             /** Format: date-time */
             readonly deleted_at?: string | null;
+        };
+        CatalogHotelSeasonRate: {
+            /**
+             * Format: uuid
+             * @description PK, RLS
+             */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description FK catalog_accommodation_hotels (cascade)
+             */
+            hotel_id: string;
+            /** @description «Temporada alta», «Fiestas Patrias» */
+            label: string;
+            /**
+             * Format: date
+             * @description date_to ≥ date_from; EXCLUDE: sin solapes por hotel
+             */
+            date_from: string;
+            /**
+             * Format: date
+             * @description date_to ≥ date_from; EXCLUDE: sin solapes por hotel
+             */
+            date_to: string;
+            /**
+             * Format: decimal
+             * @description −50 a 300; se aplica a la tarifa base de la noche
+             */
+            adjust_pct: string;
+        };
+        CatalogLegTour: {
+            /**
+             * Format: uuid
+             * @description PK, RLS
+             */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description FK catalog_accommodation_legs (cascade); UNIQUE (leg_id, code)
+             */
+            leg_id: string;
+            code: string;
+            name: string;
+            /** @description Día del tramo (0 = día de llegada), 0–30 */
+            day_offset: number;
+            /** Format: time */
+            start_time: string;
+            /** Format: time */
+            duration_hours: string;
+            /** @description Infantes no pagan */
+            currency: string;
+            /** @description Infantes no pagan */
+            price_adult: string;
+            /** @description Infantes no pagan */
+            price_child: string;
+            /** @description Edad mínima; cupo por salida */
+            min_age?: number | null;
+            /** @description Edad mínima; cupo por salida */
+            capacity?: number | null;
+            /**
+             * Format: uuid
+             * @description FK catalog_providers
+             */
+            provider_id?: string | null;
+            /** @description in_trip_sale habilita la venta en ruta */
+            in_trip_sale: boolean;
+            /** @description in_trip_sale habilita la venta en ruta */
+            active: boolean;
         };
         CatalogPaxRule: {
             /**
@@ -20172,6 +24536,47 @@ export interface components {
             status: "activo" | "inactivo" | "vencido";
             /** Format: date-time */
             readonly deleted_at?: string | null;
+        };
+        CatalogTransportOption: {
+            /**
+             * Format: uuid
+             * @description PK, RLS
+             */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description FK catalog_products (cascade)
+             */
+            product_id: string;
+            /**
+             * Format: uuid
+             * @description Con to_leg_id: traslado entre ciudades; sin él: movilidad local. CHECK distintos
+             */
+            from_leg_id: string;
+            /**
+             * Format: uuid
+             * @description Con to_leg_id: traslado entre ciudades; sin él: movilidad local. CHECK distintos
+             */
+            to_leg_id?: string | null;
+            /**
+             * @description CHECK IN ('vuelo','bus','tren','traslado','movilidad')
+             * @enum {string}
+             */
+            mode: "vuelo" | "bus" | "tren" | "traslado" | "movilidad";
+            /** @description 'pax' (exige price_adult) o 'vehiculo' (exige vehículos) */
+            pricing: string;
+            /** Format: decimal */
+            price_adult?: string | null;
+            /** Format: decimal */
+            price_child?: string | null;
+            /** Format: decimal */
+            duration_hours?: string | null;
+            in_trip_sale: boolean;
+            active: boolean;
+            /** @description UNIQUE (option_id, name) */
+            name: unknown;
+            /** @description UNIQUE (option_id, name) */
+            price: unknown;
         };
         ChannelB2bAgency: {
             /**
@@ -20981,6 +25386,79 @@ export interface components {
              */
             readonly deleted_at?: string | null;
         };
+        CmsSiteTheme: {
+            /**
+             * Format: uuid
+             * @description PK, RLS
+             */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description FK a la plataforma
+             */
+            template_id: string;
+            /**
+             * Format: uuid
+             * @description FK a la plataforma
+             */
+            template_version_id: string;
+            /** @description vista_previa, activo, anterior. Un activo por tenant (índice parcial único) */
+            status: string;
+            /** @description Personalización: side, accent, sun, radius, logo */
+            tokens: Record<string, never>;
+            /** @description Orden y visibilidad de secciones */
+            sections: Record<string, never>;
+            /** @description alta, agencia, admin_plataforma */
+            chosen_by: string;
+            /** @description Activo o anterior exige applied_at (CHECK) */
+            applied_by?: unknown;
+            /** @description Activo o anterior exige applied_at (CHECK) */
+            applied_at?: unknown;
+            /** @description Único; obligatorio en vista previa (CHECK) */
+            preview_token?: string | null;
+            lock_version: number;
+        };
+        CmsTravelStory: {
+            /** @description UNIQUE (tenant_id, slug) */
+            readonly id: unknown;
+            /** @description UNIQUE (tenant_id, slug) */
+            slug: unknown;
+            /** @description FK crm_clients */
+            title: unknown;
+            /** @description FK crm_clients */
+            client_id: unknown;
+            /**
+             * Format: uuid
+             * @description FK booking_reservations, catalog_products
+             */
+            reservation_id?: string | null;
+            /**
+             * Format: uuid
+             * @description FK booking_reservations, catalog_products
+             */
+            product_id?: string | null;
+            quote?: unknown;
+            body?: unknown;
+            city?: unknown;
+            photo_count?: unknown;
+            /** @description borrador, pendiente_consentimiento, publicado, despublicado */
+            status: string;
+            /** @description Los cuatro juntos o ninguno (CHECK); canal portal/correo_firmado/whatsapp/presencial; nombre completo/solo nombre/anónimo */
+            consent_at?: unknown;
+            /** @description Los cuatro juntos o ninguno (CHECK); canal portal/correo_firmado/whatsapp/presencial; nombre completo/solo nombre/anónimo */
+            consent_by_name?: unknown;
+            /** @description Los cuatro juntos o ninguno (CHECK); canal portal/correo_firmado/whatsapp/presencial; nombre completo/solo nombre/anónimo */
+            consent_channel?: unknown;
+            /** @description Los cuatro juntos o ninguno (CHECK); canal portal/correo_firmado/whatsapp/presencial; nombre completo/solo nombre/anónimo */
+            consent_name_mode?: unknown;
+            consent_photos?: unknown;
+            consent_revoked_at?: unknown;
+            /**
+             * Format: date-time
+             * @description Publicado exige consentimiento vigente y fecha (CHECK); con fotos exige consent_photos
+             */
+            published_at?: string | null;
+        };
         CollabApprovalInfoRequest: {
             /**
              * Format: uuid
@@ -21644,6 +26122,122 @@ export interface components {
             b2b_agency_id?: string | null;
             /** Format: date-time */
             readonly deleted_at?: string | null;
+        };
+        CrmCorporateAccount: {
+            /**
+             * Format: uuid
+             * @description PK, RLS
+             */
+            readonly id: string;
+            /**
+             * Format: uuid
+             * @description FK crm_clients; UNIQUE por tenant (una cuenta por cliente)
+             */
+            client_id: string;
+            /**
+             * @description CHECK IN ('activa','suspendida','cerrada')
+             * @enum {string}
+             */
+            status: "activa" | "suspendida" | "cerrada";
+            /** @description Moneda de los reportes y del estado de cuenta */
+            currency: string;
+            /** @description 0–120 */
+            credit_days: number;
+            /** @description Si exige aprobación, el umbral es obligatorio (CHECK) */
+            require_approval: boolean;
+            /** @description Si exige aprobación, el umbral es obligatorio (CHECK) */
+            approval_threshold?: boolean | null;
+            /** @description Vigencia de la solicitud (1–720 h, por defecto 72) */
+            approval_ttl_hours: number;
+            /**
+             * Format: uuid
+             * @description FK crm_corporate_cost_centers
+             */
+            default_cost_center_id?: string | null;
+            /** @description Día 1–28; con envío automático hace falta al menos un destinatario (CHECK) */
+            statement_auto: boolean[];
+            /** @description Día 1–28; con envío automático hace falta al menos un destinatario (CHECK) */
+            statement_day: boolean[];
+            /** @description Día 1–28; con envío automático hace falta al menos un destinatario (CHECK) */
+            statement_recipients: boolean[];
+            /** Format: date-time */
+            statement_last_sent_at?: string | null;
+            lock_version: number;
+        };
+        CrmCorporateCostCenter: {
+            /**
+             * Format: uuid
+             * @description FK crm_corporate_accounts
+             */
+            account_id: string;
+            /** @description ^[A-Z0-9-]{2,20}$; UNIQUE por cuenta */
+            code: string;
+            name: string;
+            /**
+             * Format: decimal
+             * @description Período 'mensual', 'trimestral' o 'anual'
+             */
+            budget_amount?: string | null;
+            /**
+             * Format: decimal
+             * @description Período 'mensual', 'trimestral' o 'anual'
+             */
+            budget_period: string;
+            active: boolean;
+        };
+        CrmCorporatePortalUser: {
+            /**
+             * Format: uuid
+             * @description FK
+             */
+            account_id: string;
+            /**
+             * Format: uuid
+             * @description FK iam_users (rol customer, client_id = cliente de la cuenta); se llena al aceptar la invitación
+             */
+            user_id?: string | null;
+            /** @description Email UNIQUE por cuenta (sin distinguir mayúsculas) */
+            email: string;
+            /** @description Email UNIQUE por cuenta (sin distinguir mayúsculas) */
+            full_name: string;
+            /**
+             * @description CHECK IN ('administrador','aprobador','pagador','viajero'); el aprobador exige cost_center_id
+             * @enum {string}
+             */
+            portal_role: "administrador" | "aprobador" | "pagador" | "viajero";
+            /**
+             * Format: uuid
+             * @description Alcance del aprobador; vínculo del viajero con su ficha
+             */
+            cost_center_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Alcance del aprobador; vínculo del viajero con su ficha
+             */
+            traveler_id?: string | null;
+            /** @description 'invitado','activo','inactivo'; activo exige user_id y accepted_at */
+            status: string;
+        };
+        CrmCorporateTraveler: {
+            /**
+             * Format: uuid
+             * @description FKs
+             */
+            account_id: string;
+            /**
+             * Format: uuid
+             * @description FKs
+             */
+            cost_center_id?: string | null;
+            full_name: string;
+            email?: string | null;
+            /** @description Los dos o ninguno (CHECK); UNIQUE por cuenta cuando hay documento */
+            doc_type?: string | null;
+            /** @description Los dos o ninguno (CHECK); UNIQUE por cuenta cuando hay documento */
+            doc_number?: string | null;
+            /** @description UNIQUE por cuenta cuando existe */
+            employee_code?: string | null;
+            active: boolean;
         };
         CrmLeadQualification: {
             /**
@@ -22559,6 +27153,59 @@ export interface components {
             /** Format: date-time */
             readonly deleted_at?: string | null;
         };
+        FinCorporateStatement: {
+            /** @description EC-CLI0002-2026-09, UNIQUE por tenant */
+            code: string;
+            /**
+             * Format: uuid
+             * @description FK
+             */
+            account_id: string;
+            /**
+             * Format: date
+             * @description Un estado vigente por cuenta, mes y moneda (índice parcial sin anulado)
+             */
+            period_start: string;
+            /**
+             * Format: date
+             * @description Un estado vigente por cuenta, mes y moneda (índice parcial sin anulado)
+             */
+            period_end: string;
+            /**
+             * Format: decimal
+             * @description CHECK closing = opening + charges − payments − credits
+             */
+            opening_balance: string;
+            /**
+             * Format: decimal
+             * @description CHECK closing = opening + charges − payments − credits
+             */
+            charges: string;
+            /**
+             * Format: decimal
+             * @description CHECK closing = opening + charges − payments − credits
+             */
+            payments: string;
+            /**
+             * Format: decimal
+             * @description CHECK closing = opening + charges − payments − credits
+             */
+            credits: string;
+            /**
+             * Format: decimal
+             * @description CHECK closing = opening + charges − payments − credits
+             */
+            closing_balance: string;
+            /** @description Movimientos del mes congelados al generar */
+            lines: Record<string, never>;
+            /** @description 'generado','enviado','anulado'; enviado exige sent_at y destinatarios */
+            status: string;
+            /**
+             * Format: uuid
+             * @description FK sys_documents (PDF)
+             */
+            document_id?: string | null;
+        };
         FinExpenseReceipt: {
             /**
              * Format: uuid
@@ -22609,6 +27256,53 @@ export interface components {
              * @description + ganancia (776) / − pérdida (676)
              */
             diff_pen: string;
+        };
+        FinGatewayAccount: {
+            /**
+             * Format: uuid
+             * @description PK, RLS
+             */
+            readonly id: string;
+            /**
+             * @description CHECK IN ('pasarela_local','paypal','yape','plin','otro')
+             * @enum {string}
+             */
+            provider: "pasarela_local" | "paypal" | "yape" | "plin" | "otro";
+            /** @description UNIQUE (tenant_id, provider, account_ref) */
+            label: string;
+            /** @description UNIQUE (tenant_id, provider, account_ref) */
+            account_ref: string;
+            /** @description pendiente/activa/pausada/error; sandbox/produccion. Activa en producción exige credentials_ref (CHECK) */
+            status: string;
+            /** @description pendiente/activa/pausada/error; sandbox/produccion. Activa en producción exige credentials_ref (CHECK) */
+            mode: string;
+            currency: string;
+            fee_currency: string;
+            /**
+             * Format: decimal
+             * @description 0–15 %, ≥ 0, 0–10 %
+             */
+            fee_pct: string;
+            /**
+             * Format: decimal
+             * @description 0–15 %, ≥ 0, 0–10 %
+             */
+            fee_fixed: string;
+            /**
+             * Format: decimal
+             * @description 0–15 %, ≥ 0, 0–10 %
+             */
+            fx_spread_pct: string;
+            /** @description IGV sobre la comisión; trasladar la comisión como recargo visible */
+            tax_on_fee: boolean;
+            /** @description IGV sobre la comisión; trasladar la comisión como recargo visible */
+            pass_fee_to_customer: boolean;
+            /** @description 0–60 */
+            settle_days: number;
+            /** @description Llave del vault; nunca el secreto */
+            credentials_ref?: string | null;
+            /** @description p. ej. paypal_gateway */
+            addon_required?: string | null;
         };
         FinInvoice: {
             /**
@@ -22907,6 +27601,47 @@ export interface components {
              * @description Desaplicación
              */
             reversed_by?: string | null;
+        };
+        FinPaymentLink: {
+            /** @description LPG-0001, UNIQUE por tenant */
+            code: string;
+            /**
+             * Format: uuid
+             * @description Al menos uno (CHECK)
+             */
+            reservation_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Al menos uno (CHECK)
+             */
+            receivable_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Al menos uno (CHECK)
+             */
+            gift_card_id?: string | null;
+            /** Format: decimal */
+            amount: string;
+            /** Format: decimal */
+            currency: string;
+            /** @description ⊆ {card, yape, plin, mercadopago, transfer, pagoefectivo, paypal} */
+            methods: string[];
+            /** @description 1–24 */
+            installments_max: number;
+            /** @description Adaptador de pasarela */
+            provider?: unknown;
+            /** @description Adaptador de pasarela */
+            provider_ref?: unknown;
+            /** @description Adaptador de pasarela */
+            url?: unknown;
+            /** Format: date-time */
+            expires_at: string;
+            /**
+             * @description CHECK IN ('activo','pagado','vencido','anulado'); pagado exige paid_at y payment_id (FK fin_payments)
+             * @enum {string}
+             */
+            status: "activo" | "pagado" | "vencido" | "anulado";
+            lock_version: number;
         };
         FinPayment: {
             /**
@@ -24344,10 +29079,10 @@ export interface components {
              */
             vehicle_id?: string | null;
             /**
-             * @description CHECK IN (pendiente,asignada,confirmada,en_curso,completada)
+             * @description CHECK IN (pendiente,asignada,confirmada,en_curso,completada,cancelada); v2.5: cancelada cuando se cancela la reserva (04 §4.6 paso 7)
              * @enum {string}
              */
-            status: "pendiente" | "asignada" | "confirmada" | "en_curso" | "completada";
+            status: "pendiente" | "asignada" | "confirmada" | "en_curso" | "completada" | "cancelada";
             /**
              * Format: date-time
              * @description web o app
@@ -25322,6 +30057,90 @@ export interface components {
             /** Format: date-time */
             readonly updated_at: string;
         };
+        PlatformSiteTemplate: {
+            /**
+             * Format: uuid
+             * @description PK
+             */
+            readonly id: string;
+            /** @description Únicos. slug kebab-case */
+            code: string;
+            /** @description Únicos. slug kebab-case */
+            slug: string;
+            name: unknown;
+            description: unknown;
+            /** @description agencia, free_tour, aventura, lujo, corporativo, multi */
+            category: string;
+            /** @description incluida (precio 0) o premium (precio > 0) (CHECK) */
+            tier: unknown;
+            /** @description incluida (precio 0) o premium (precio > 0) (CHECK) */
+            price_once: unknown;
+            /** @description incluida (precio 0) o premium (precio > 0) (CHECK) */
+            currency: unknown;
+            /** @description Plan mínimo para usarla */
+            min_plan_code?: string | null;
+            /** @description equipo o partner */
+            author_kind?: unknown;
+            /** @description equipo o partner */
+            author_name?: unknown;
+            /** @description equipo o partner */
+            repo_url?: unknown;
+            /** @description borrador, en_revision, publicado, retirado. Publicado exige current_version_id (CHECK) */
+            status: string;
+            /**
+             * Format: uuid
+             * @description FK diferible a platform_site_template_versions
+             */
+            current_version_id?: string | null;
+            /** @description Una sola por defecto (índice parcial único), publicada e incluida (CHECK) */
+            default_for_new: boolean;
+            installs: unknown;
+            tags: unknown;
+        };
+        PlatformTrackingTag: {
+            /** @description Único (TAG-0001) */
+            code?: string;
+            /** @description vitrina, blog, ambos */
+            site?: string;
+            /** @description ga4, gtm, google_ads, meta_pixel, tiktok, clarity, linkedin, script */
+            provider?: string;
+            /** @description Formato por proveedor (CHECK): G-…, GTM-…, AW-… y Pixel numérico. Los scripts no llevan ID */
+            measurement_id?: string;
+            /** @description Opciones del proveedor: enhanced_conversions, debug_mode, send_page_view, ads_data_redaction, url_passthrough */
+            config?: Record<string, never>;
+            /** @description Referencia al vault (token de Conversions API, credencial de Google Ads API). Nunca se guarda el secreto */
+            secret_ref?: string;
+            /** @description necesarias, analiticas, marketing */
+            consent_category?: string;
+            /** @description head, body_inicio, body_fin */
+            placement?: string;
+            /** @description {"include":["/*"],"exclude":["/checkout/*"]} */
+            page_rules?: Record<string, never>;
+            /** @description Solo para script. Cuerpo de 50 KB como máximo; la fuente tiene que ser https:// */
+            script_body?: string;
+            /** @description Solo para script. Cuerpo de 50 KB como máximo; la fuente tiene que ser https:// */
+            script_src?: string;
+            /** @description Obligatorio si hay script_src (CHECK) */
+            sri_hash?: string;
+            /** @description Dominios que se agregan a la CSP del sitio */
+            csp_domains?: string[];
+            /** @description Para script siempre es true (CHECK) */
+            exclude_checkout?: boolean;
+            /** @description borrador, en_revision, activo, pausado, rechazado. Activo o pausado exige aprobación y el aprobador tiene que ser distinto del autor (CHECK) */
+            status?: string;
+            /**
+             * Format: date-time
+             * @description Ventana de campaña (ends_at > starts_at)
+             */
+            starts_at?: string;
+            /**
+             * Format: date-time
+             * @description Ventana de campaña (ends_at > starts_at)
+             */
+            ends_at?: string;
+            /** @description Obligatorio al rechazar (10 caracteres o más) */
+            reject_reason?: string;
+        };
         PlatformUser: {
             /**
              * Format: uuid
@@ -26115,6 +30934,54 @@ export interface components {
             /** @description Decisión de Operaciones (no existe en el prototipo) */
             review_note?: string | null;
         };
+        SysAiRequest: {
+            /**
+             * Format: uuid
+             * @description PK, RLS
+             */
+            readonly id: string;
+            /**
+             * @description CHECK IN ('itinerary','quote_draft','reply_draft','summary','product_import','insight')
+             * @enum {string}
+             */
+            kind: "itinerary" | "quote_draft" | "reply_draft" | "summary" | "product_import" | "insight";
+            /** @description Lead, cotización, conversación, importación */
+            source_type?: string | null;
+            /** @description Lead, cotización, conversación, importación */
+            source_id?: string | null;
+            /**
+             * Format: uuid
+             * @description FK iam_users
+             */
+            user_id?: string | null;
+            /** @description Texto del pedido (sin datos de tarjeta; ver SC-04) */
+            prompt: string;
+            /** @description Contexto enviado (ids, no datos completos) y respuesta estructurada */
+            input_ref: Record<string, never>;
+            /** @description Contexto enviado (ids, no datos completos) y respuesta estructurada */
+            output?: Record<string, never> | null;
+            /** @description fake por defecto */
+            provider: string;
+            /** @description fake por defecto */
+            model?: string | null;
+            /** @description Base del cupo mensual */
+            tokens_in: number;
+            /** @description Base del cupo mensual */
+            tokens_out: number;
+            /** @description Base del cupo mensual */
+            cost_usd: number;
+            /**
+             * @description CHECK IN ('pending','completed','failed','applied','discarded')
+             * @enum {string}
+             */
+            status: "pending" | "completed" | "failed" | "applied" | "discarded";
+            /** @description applied exige applied_at */
+            error?: unknown;
+            /** @description applied exige applied_at */
+            completed_at?: unknown;
+            /** @description applied exige applied_at */
+            applied_at?: unknown;
+        };
         SysBookingRule: {
             /** @description R-AVAIL-RANGES… UNIQUE (tenant_id, rule_key) */
             rule_key: string;
@@ -26451,6 +31318,48 @@ export interface components {
             payload?: Record<string, never> | null;
         };
         /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
+        BookingInTripOfferInput: {
+            /**
+             * Format: uuid
+             * @description FK booking_reservations
+             */
+            reservation_id?: string;
+            /** @description Igual que 3.5 (CHECK) */
+            kind?: unknown;
+            /** @description Igual que 3.5 (CHECK) */
+            leg_tour_id?: unknown;
+            /** @description Igual que 3.5 (CHECK) */
+            transport_option_id?: unknown;
+            /** @description amount > 0 */
+            service_date?: unknown;
+            /** @description amount > 0 */
+            currency?: unknown;
+            /** @description amount > 0 */
+            amount?: unknown;
+            /**
+             * @description CHECK IN ('ofrecida','link_enviado','pagada','confirmada','vencida','cancelada','reembolsada'); pagada/confirmada exigen payment_link_id; confirmada exige trip_item_id
+             * @enum {string}
+             */
+            status?: "ofrecida" | "link_enviado" | "pagada" | "confirmada" | "vencida" | "cancelada" | "reembolsada";
+            /**
+             * Format: uuid
+             * @description FK fin_payment_links (spec 19)
+             */
+            payment_link_id?: string | null;
+            /**
+             * Format: uuid
+             * @description FK booking_trip_items
+             */
+            trip_item_id?: string | null;
+            /**
+             * Format: date-time
+             * @description service_date + start_time − minHoursBefore
+             */
+            expires_at?: string;
+            /** @description portal, whatsapp, email, app, asesor */
+            channel?: string;
+        };
+        /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
         BookingPassengerInput: {
             /**
              * Format: uuid
@@ -26466,6 +31375,7 @@ export interface components {
              * @enum {string|null}
              */
             doc_type?: "DNI" | "Pasaporte" | "CE" | "Passport" | null;
+            /** @description Cifrado en la aplicación (cast encrypted); v2.5: text porque el valor cifrado no cabe en varchar(30). */
             doc_number?: string | null;
             /**
              * @description CHECK IN ('ADT','CHD','INF')
@@ -26602,6 +31512,10 @@ export interface components {
             destination_id?: string | null;
             /** @description CHECK (nights BETWEEN 1 AND 30) */
             nights?: number;
+            /** @description Ambas nulas (noches fijas) o ambas con valor: 1 ≤ min ≤ nights ≤ max ≤ 30 (CHECK) */
+            min_nights?: number | null;
+            /** @description Ambas nulas (noches fijas) o ambas con valor: 1 ≤ min ≤ nights ≤ max ≤ 30 (CHECK) */
+            max_nights?: number | null;
         };
         /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
         CatalogAllotmentInput: {
@@ -26790,6 +31704,65 @@ export interface components {
             description?: string | null;
             /** @description Materializado para consultas de descendientes (filtro “Destino” incluye subdestinos). Índice GiST/btree */
             path?: unknown;
+        };
+        /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
+        CatalogHotelSeasonRateInput: {
+            /**
+             * Format: uuid
+             * @description FK catalog_accommodation_hotels (cascade)
+             */
+            hotel_id?: string;
+            /** @description «Temporada alta», «Fiestas Patrias» */
+            label?: string;
+            /**
+             * Format: date
+             * @description date_to ≥ date_from; EXCLUDE: sin solapes por hotel
+             */
+            date_from?: string;
+            /**
+             * Format: date
+             * @description date_to ≥ date_from; EXCLUDE: sin solapes por hotel
+             */
+            date_to?: string;
+            /**
+             * Format: decimal
+             * @description −50 a 300; se aplica a la tarifa base de la noche
+             */
+            adjust_pct?: string;
+        };
+        /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
+        CatalogLegTourInput: {
+            /**
+             * Format: uuid
+             * @description FK catalog_accommodation_legs (cascade); UNIQUE (leg_id, code)
+             */
+            leg_id?: string;
+            name?: string;
+            /** @description Día del tramo (0 = día de llegada), 0–30 */
+            day_offset?: number;
+            /** Format: time */
+            start_time?: string;
+            /** Format: time */
+            duration_hours?: string;
+            /** @description Infantes no pagan */
+            currency?: string;
+            /** @description Infantes no pagan */
+            price_adult?: string;
+            /** @description Infantes no pagan */
+            price_child?: string;
+            /** @description Edad mínima; cupo por salida */
+            min_age?: number | null;
+            /** @description Edad mínima; cupo por salida */
+            capacity?: number | null;
+            /**
+             * Format: uuid
+             * @description FK catalog_providers
+             */
+            provider_id?: string | null;
+            /** @description in_trip_sale habilita la venta en ruta */
+            in_trip_sale?: boolean;
+            /** @description in_trip_sale habilita la venta en ruta */
+            active?: boolean;
         };
         /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
         CatalogPaxRuleInput: {
@@ -27843,6 +32816,46 @@ export interface components {
             valid_to?: string | null;
         };
         /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
+        CmsTravelStoryInput: {
+            /** @description UNIQUE (tenant_id, slug) */
+            slug?: unknown;
+            /** @description FK crm_clients */
+            title?: unknown;
+            /** @description FK crm_clients */
+            client_id?: unknown;
+            /**
+             * Format: uuid
+             * @description FK booking_reservations, catalog_products
+             */
+            reservation_id?: string | null;
+            /**
+             * Format: uuid
+             * @description FK booking_reservations, catalog_products
+             */
+            product_id?: string | null;
+            quote?: unknown;
+            body?: unknown;
+            city?: unknown;
+            photo_count?: unknown;
+            /** @description borrador, pendiente_consentimiento, publicado, despublicado */
+            status?: string;
+            /** @description Los cuatro juntos o ninguno (CHECK); canal portal/correo_firmado/whatsapp/presencial; nombre completo/solo nombre/anónimo */
+            consent_at?: unknown;
+            /** @description Los cuatro juntos o ninguno (CHECK); canal portal/correo_firmado/whatsapp/presencial; nombre completo/solo nombre/anónimo */
+            consent_by_name?: unknown;
+            /** @description Los cuatro juntos o ninguno (CHECK); canal portal/correo_firmado/whatsapp/presencial; nombre completo/solo nombre/anónimo */
+            consent_channel?: unknown;
+            /** @description Los cuatro juntos o ninguno (CHECK); canal portal/correo_firmado/whatsapp/presencial; nombre completo/solo nombre/anónimo */
+            consent_name_mode?: unknown;
+            consent_photos?: unknown;
+            consent_revoked_at?: unknown;
+            /**
+             * Format: date-time
+             * @description Publicado exige consentimiento vigente y fecha (CHECK); con fotos exige consent_photos
+             */
+            published_at?: string | null;
+        };
+        /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
         CollabApprovalInfoRequestInput: {
             /**
              * Format: uuid
@@ -28362,6 +33375,118 @@ export interface components {
              * @description FK channel_b2b_agencies (ej. CLI-0007 ↔ AGB-01)
              */
             b2b_agency_id?: string | null;
+        };
+        /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
+        CrmCorporateAccountInput: {
+            /**
+             * Format: uuid
+             * @description FK crm_clients; UNIQUE por tenant (una cuenta por cliente)
+             */
+            client_id?: string;
+            /**
+             * @description CHECK IN ('activa','suspendida','cerrada')
+             * @enum {string}
+             */
+            status?: "activa" | "suspendida" | "cerrada";
+            /** @description Moneda de los reportes y del estado de cuenta */
+            currency?: string;
+            /** @description 0–120 */
+            credit_days?: number;
+            /** @description Si exige aprobación, el umbral es obligatorio (CHECK) */
+            require_approval?: boolean;
+            /** @description Si exige aprobación, el umbral es obligatorio (CHECK) */
+            approval_threshold?: boolean | null;
+            /** @description Vigencia de la solicitud (1–720 h, por defecto 72) */
+            approval_ttl_hours?: number;
+            /**
+             * Format: uuid
+             * @description FK crm_corporate_cost_centers
+             */
+            default_cost_center_id?: string | null;
+            /** @description Día 1–28; con envío automático hace falta al menos un destinatario (CHECK) */
+            statement_auto?: boolean[];
+            /** @description Día 1–28; con envío automático hace falta al menos un destinatario (CHECK) */
+            statement_day?: boolean[];
+            /** @description Día 1–28; con envío automático hace falta al menos un destinatario (CHECK) */
+            statement_recipients?: boolean[];
+            /** Format: date-time */
+            statement_last_sent_at?: string | null;
+        };
+        /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
+        CrmCorporateCostCenterInput: {
+            /**
+             * Format: uuid
+             * @description FK crm_corporate_accounts
+             */
+            account_id?: string;
+            name?: string;
+            /**
+             * Format: decimal
+             * @description Período 'mensual', 'trimestral' o 'anual'
+             */
+            budget_amount?: string | null;
+            /**
+             * Format: decimal
+             * @description Período 'mensual', 'trimestral' o 'anual'
+             */
+            budget_period?: string;
+            active?: boolean;
+        };
+        /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
+        CrmCorporatePortalUserInput: {
+            /**
+             * Format: uuid
+             * @description FK
+             */
+            account_id?: string;
+            /**
+             * Format: uuid
+             * @description FK iam_users (rol customer, client_id = cliente de la cuenta); se llena al aceptar la invitación
+             */
+            user_id?: string | null;
+            /** @description Email UNIQUE por cuenta (sin distinguir mayúsculas) */
+            email?: string;
+            /** @description Email UNIQUE por cuenta (sin distinguir mayúsculas) */
+            full_name?: string;
+            /**
+             * @description CHECK IN ('administrador','aprobador','pagador','viajero'); el aprobador exige cost_center_id
+             * @enum {string}
+             */
+            portal_role?: "administrador" | "aprobador" | "pagador" | "viajero";
+            /**
+             * Format: uuid
+             * @description Alcance del aprobador; vínculo del viajero con su ficha
+             */
+            cost_center_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Alcance del aprobador; vínculo del viajero con su ficha
+             */
+            traveler_id?: string | null;
+            /** @description 'invitado','activo','inactivo'; activo exige user_id y accepted_at */
+            status?: string;
+        };
+        /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
+        CrmCorporateTravelerInput: {
+            /**
+             * Format: uuid
+             * @description FKs
+             */
+            account_id?: string;
+            /**
+             * Format: uuid
+             * @description FKs
+             */
+            cost_center_id?: string | null;
+            full_name?: string;
+            email?: string | null;
+            /** @description Los dos o ninguno (CHECK); UNIQUE por cuenta cuando hay documento */
+            doc_type?: string | null;
+            /** @description Los dos o ninguno (CHECK); UNIQUE por cuenta cuando hay documento */
+            doc_number?: string | null;
+            /** @description UNIQUE por cuenta cuando existe */
+            employee_code?: string | null;
+            active?: boolean;
         };
         /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
         CrmLeadInput: {
@@ -28891,6 +34016,58 @@ export interface components {
             status?: "open" | "closed";
         };
         /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
+        FinCorporateStatementInput: {
+            /**
+             * Format: uuid
+             * @description FK
+             */
+            account_id?: string;
+            /**
+             * Format: date
+             * @description Un estado vigente por cuenta, mes y moneda (índice parcial sin anulado)
+             */
+            period_start?: string;
+            /**
+             * Format: date
+             * @description Un estado vigente por cuenta, mes y moneda (índice parcial sin anulado)
+             */
+            period_end?: string;
+            /**
+             * Format: decimal
+             * @description CHECK closing = opening + charges − payments − credits
+             */
+            opening_balance?: string;
+            /**
+             * Format: decimal
+             * @description CHECK closing = opening + charges − payments − credits
+             */
+            charges?: string;
+            /**
+             * Format: decimal
+             * @description CHECK closing = opening + charges − payments − credits
+             */
+            payments?: string;
+            /**
+             * Format: decimal
+             * @description CHECK closing = opening + charges − payments − credits
+             */
+            credits?: string;
+            /**
+             * Format: decimal
+             * @description CHECK closing = opening + charges − payments − credits
+             */
+            closing_balance?: string;
+            /** @description Movimientos del mes congelados al generar */
+            lines?: Record<string, never>;
+            /** @description 'generado','enviado','anulado'; enviado exige sent_at y destinatarios */
+            status?: string;
+            /**
+             * Format: uuid
+             * @description FK sys_documents (PDF)
+             */
+            document_id?: string | null;
+        };
+        /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
         FinExpenseReceiptInput: {
             /**
              * Format: uuid
@@ -29250,6 +34427,45 @@ export interface components {
              * @description FK iam_users; null = Sistema (e-commerce)
              */
             registered_by?: string | null;
+        };
+        /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
+        FinPaymentLinkInput: {
+            /**
+             * Format: uuid
+             * @description Al menos uno (CHECK)
+             */
+            reservation_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Al menos uno (CHECK)
+             */
+            receivable_id?: string | null;
+            /**
+             * Format: uuid
+             * @description Al menos uno (CHECK)
+             */
+            gift_card_id?: string | null;
+            /** Format: decimal */
+            amount?: string;
+            /** Format: decimal */
+            currency?: string;
+            /** @description ⊆ {card, yape, plin, mercadopago, transfer, pagoefectivo, paypal} */
+            methods?: string[];
+            /** @description 1–24 */
+            installments_max?: number;
+            /** @description Adaptador de pasarela */
+            provider?: unknown;
+            /** @description Adaptador de pasarela */
+            provider_ref?: unknown;
+            /** @description Adaptador de pasarela */
+            url?: unknown;
+            /** Format: date-time */
+            expires_at?: string;
+            /**
+             * @description CHECK IN ('activo','pagado','vencido','anulado'); pagado exige paid_at y payment_id (FK fin_payments)
+             * @enum {string}
+             */
+            status?: "activo" | "pagado" | "vencido" | "anulado";
         };
         /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
         FinReceivableReminderInput: {
@@ -29943,10 +35159,10 @@ export interface components {
              */
             vehicle_id?: string | null;
             /**
-             * @description CHECK IN (pendiente,asignada,confirmada,en_curso,completada)
+             * @description CHECK IN (pendiente,asignada,confirmada,en_curso,completada,cancelada); v2.5: cancelada cuando se cancela la reserva (04 §4.6 paso 7)
              * @enum {string}
              */
-            status?: "pendiente" | "asignada" | "confirmada" | "en_curso" | "completada";
+            status?: "pendiente" | "asignada" | "confirmada" | "en_curso" | "completada" | "cancelada";
             /**
              * Format: date-time
              * @description web o app
@@ -30981,6 +36197,39 @@ export interface components {
             min_plan?: "Starter" | "Professional" | "Enterprise";
         };
         /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
+        SysScheduledJobInput: {
+            name?: string;
+            /** @description clase Laravel */
+            job_class?: string;
+            /** @description expresión cron; cron_label humano (“cada 5 min”, “diario 00:05”, “lunes 07:00”, “mensual día 1 07:00”) */
+            cron?: string;
+            cron_label?: string;
+            /** @description critical/default/notifications/documents/integrations/reports/low */
+            queue?: string;
+            /** @description default false */
+            paused?: boolean;
+            /** Format: date-time */
+            last_run_at?: string | null;
+            /** Format: date-time */
+            next_run_at?: string | null;
+            /** @description CHECK (ok,advertencia,error,en_curso) */
+            last_status?: string | null;
+            last_result?: string | null;
+            /** @description solo envíos programados de reportes */
+            report_key?: string | null;
+            /** @description CHECK (PDF,XLSX,CSV) */
+            report_format?: string | null;
+            /** @description correos separados por coma */
+            recipients?: string | null;
+            /**
+             * Format: uuid
+             * @description quien programó
+             */
+            owner_user_id?: string | null;
+            /** @description true para JOB-01…09 (no eliminables) */
+            is_system?: boolean;
+        };
+        /** @description Campos escribibles (sin `required`: la obligatoriedad real la fija el FormRequest; supuesto). */
         SysSequenceInput: {
             /** @description quote, reservation, ops_order, voucher, invoice, receipt (boleta), credit_note, debit_note, commission_settlement, cash_receipt, purchase_order… UNIQUE (tenant_id, doc_type, series) */
             doc_type?: string;
@@ -31429,9 +36678,13 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
-                "application/json": components["schemas"]["ActionBody"];
+                "application/json": {
+                    code?: unknown;
+                } & {
+                    [key: string]: unknown;
+                };
             };
         };
         responses: {
@@ -31449,6 +36702,8 @@ export interface operations {
                     };
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["UnprocessableEntity"];
             429: components["responses"]["TooManyRequests"];
@@ -31678,6 +36933,25 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getDocumentsDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            302: components["responses"]["Redirect"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
             429: components["responses"]["TooManyRequests"];
         };
     };
@@ -49680,239 +54954,6 @@ export interface operations {
             429: components["responses"]["TooManyRequests"];
         };
     };
-    listPublicShopProducts: {
-        parameters: {
-            query?: {
-                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
-                filter?: components["parameters"]["FilterDeep"];
-                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
-                sort?: components["parameters"]["Sort"];
-                /** @description Relaciones a incluir, separadas por coma. */
-                include?: components["parameters"]["Include"];
-                "page[size]"?: components["parameters"]["PageSize"];
-                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
-                "page[cursor]"?: components["parameters"]["PageCursor"];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Listado paginado por cursor. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data: components["schemas"]["CatalogProduct"][];
-                        meta?: components["schemas"]["CursorMeta"];
-                        links?: components["schemas"]["CursorLinks"];
-                    };
-                };
-            };
-            429: components["responses"]["TooManyRequests"];
-        };
-    };
-    showPublicShopProducts: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Parámetro de ruta `slug`. */
-                slug: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data?: components["schemas"]["CatalogProduct"];
-                        meta?: {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-            404: components["responses"]["NotFound"];
-            429: components["responses"]["TooManyRequests"];
-        };
-    };
-    publicShopPrice: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["ActionBody"];
-            };
-        };
-        responses: {
-            /** @description OK. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data?: components["schemas"]["GenericObject"];
-                        meta?: {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["UnprocessableEntity"];
-            429: components["responses"]["TooManyRequests"];
-        };
-    };
-    publicShopAvailability: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["ActionBody"];
-            };
-        };
-        responses: {
-            /** @description OK. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data?: components["schemas"]["GenericObject"];
-                        meta?: {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["UnprocessableEntity"];
-            429: components["responses"]["TooManyRequests"];
-        };
-    };
-    createPublicShopOrders: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
-                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChannelEcomOrderInput"];
-            };
-        };
-        responses: {
-            /** @description Creado. */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data?: components["schemas"]["ChannelEcomOrder"];
-                        meta?: {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["UnprocessableEntity"];
-            429: components["responses"]["TooManyRequests"];
-        };
-    };
-    publicShopOrdersPayments: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
-                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-            };
-            path: {
-                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ActionBody"];
-            };
-        };
-        responses: {
-            /** @description OK. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data?: components["schemas"]["ChannelEcomOrder"];
-                        meta?: {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-            404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["UnprocessableEntity"];
-            429: components["responses"]["TooManyRequests"];
-        };
-    };
-    showPublicShopOrders: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data?: components["schemas"]["ChannelEcomOrder"];
-                        meta?: {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-            404: components["responses"]["NotFound"];
-            429: components["responses"]["TooManyRequests"];
-        };
-    };
     webhooksPayments: {
         parameters: {
             query?: never;
@@ -51787,7 +56828,7 @@ export interface operations {
             429: components["responses"]["TooManyRequests"];
         };
     };
-    getPortalCustomerReservationsWebSummary: {
+    getPortalClientReservationsWebSummary: {
         parameters: {
             query?: never;
             header?: never;
@@ -51819,7 +56860,7 @@ export interface operations {
             429: components["responses"]["TooManyRequests"];
         };
     };
-    putPortalCustomerReservationsCompanions: {
+    putPortalClientReservationsCompanions: {
         parameters: {
             query?: never;
             header: {
@@ -51846,47 +56887,6 @@ export interface operations {
                 content: {
                     "application/json": {
                         data?: components["schemas"]["BookingReservation"];
-                        meta?: {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-            401: components["responses"]["Unauthorized"];
-            403: components["responses"]["Forbidden"];
-            404: components["responses"]["NotFound"];
-            409: components["responses"]["Conflict"];
-            422: components["responses"]["UnprocessableEntity"];
-            429: components["responses"]["TooManyRequests"];
-        };
-    };
-    portalCustomerReceivablesPay: {
-        parameters: {
-            query?: never;
-            header: {
-                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
-                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-            };
-            path: {
-                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
-                code: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ActionBody"];
-            };
-        };
-        responses: {
-            /** @description OK. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        data?: components["schemas"]["FinReceivable"];
                         meta?: {
                             [key: string]: unknown;
                         };
@@ -57887,10 +62887,7 @@ export interface operations {
                 /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
                 "Idempotency-Key": components["parameters"]["IdempotencyKey"];
             };
-            path: {
-                /** @description Parámetro de ruta `tenant`. */
-                tenant: string;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
@@ -57913,7 +62910,6 @@ export interface operations {
                     };
                 };
             };
-            404: components["responses"]["NotFound"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["UnprocessableEntity"];
             429: components["responses"]["TooManyRequests"];
@@ -59640,14 +64636,17 @@ export interface operations {
     platformInvoicesDunningExtend: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
             path: {
                 /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
                 id: string;
             };
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": components["schemas"]["ActionBody"];
             };
@@ -64994,6 +69993,48 @@ export interface operations {
             429: components["responses"]["TooManyRequests"];
         };
     };
+    catalogProductsAccommodationLegsReorder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    ids?: unknown[];
+                } & {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
     createCatalogProductsAccommodationLegsHotels: {
         parameters: {
             query?: never;
@@ -67564,6 +72605,8309 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             409: components["responses"]["Conflict"];
             422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    aiRequests: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            202: components["responses"]["Accepted"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showAiRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    aiRequestsApply: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    aiRequestsDiscard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getAiUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getReportsInsights: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    reportsInsightsResolve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    status?: unknown;
+                } & {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getInboxWhatsappTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    inboxWhatsappTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateInboxWhatsappTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    inboxConversationsSendTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CollabConversation"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listFinancePaymentLinks: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["FinPaymentLink"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    createFinancePaymentLinks: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinPaymentLinkInput"];
+            };
+        };
+        responses: {
+            /** @description Creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["FinPaymentLink"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    financePaymentLinksSend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["FinPaymentLink"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    financePaymentLinksCancel: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description `lock_version` vigente del recurso (entero o ETag `W/"<lock_version>"`). Si no coincide → 409 `STALE_VERSION`. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["FinPaymentLink"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showPublicPay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Parámetro de ruta `token`. */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    publicPayCheckout: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Parámetro de ruta `token`. */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getMarketingRecoveryFlows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    marketingRecoveryFlows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateMarketingRecoveryFlows: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getMarketingRecoveryAttempts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    catalogImports: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showCatalogImports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    catalogImportsConfirm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    catalogImportsCancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getCatalogDynamicPriceRules: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["GenericObject"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    catalogDynamicPriceRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateCatalogDynamicPriceRules: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description `lock_version` vigente del recurso (entero o ETag `W/"<lock_version>"`). Si no coincide → 409 `STALE_VERSION`. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    catalogDynamicPriceRulesSimulate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getChannelsOtaConnections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    channelsOtaConnections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateChannelsOtaConnections: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description `lock_version` vigente del recurso (entero o ETag `W/"<lock_version>"`). Si no coincide → 409 `STALE_VERSION`. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    channelsOtaConnectionsSync: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getChannelsOtaConnectionsMappings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    replaceChannelsOtaConnectionsMappings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+                /** @description Parámetro de ruta `productId`. */
+                productId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getChannelsOtaBookings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    webhooksOta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Parámetro de ruta `ota`. */
+                ota: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getMarketplaceListings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    marketplaceListings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateMarketplaceListings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getMarketplacePartnerships: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    marketplacePartnerships: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    marketplacePartnershipsDecide: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    decision?: unknown;
+                } & {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getMarketplaceOrders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    marketplaceOrders: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getFinanceGiftCards: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["GenericObject"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    financeGiftCards: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showFinanceGiftCards: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    financeGiftCardsRedeem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    financeGiftCardsVoid: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description `lock_version` vigente del recurso (entero o ETag `W/"<lock_version>"`). Si no coincide → 409 `STALE_VERSION`. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    publicGiftCards: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    publicGiftCardsBalance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getOpsWaiverTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    opsWaiverTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    opsCheckinScan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    token?: unknown;
+                } & {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showOpsCheckinManifest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Parámetro de ruta `serviceId`. */
+                serviceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPortalPassengerPasses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    portalPassengerWaivers: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    file?: string;
+                } & {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getFinanceAccountMappings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    putFinanceAccountMappings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getFinanceAccountingExports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    financeAccountingExports: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    quotesExternalOffersSearch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["QuoteQuote"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    quotesExternalOffers: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["QuoteQuote"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    deleteQuotesExternalOffers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+                /** @description Parámetro de ruta `offerId`. */
+                offerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: components["responses"]["NoContent"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listCrmCorporateAccounts: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CrmCorporateAccount"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    createCrmCorporateAccounts: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmCorporateAccountInput"];
+            };
+        };
+        responses: {
+            /** @description Creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CrmCorporateAccount"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showCrmCorporateAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CrmCorporateAccount"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateCrmCorporateAccounts: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description `lock_version` vigente del recurso (entero o ETag `W/"<lock_version>"`). Si no coincide → 409 `STALE_VERSION`. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmCorporateAccountInput"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CrmCorporateAccount"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    crmCorporateAccountsSuspend: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description `lock_version` vigente del recurso (entero o ETag `W/"<lock_version>"`). Si no coincide → 409 `STALE_VERSION`. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    active?: unknown;
+                } & {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CrmCorporateAccount"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listCrmCorporateAccountsCostCenters: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CrmCorporateCostCenter"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    createCrmCorporateAccountsCostCenters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmCorporateCostCenterInput"];
+            };
+        };
+        responses: {
+            /** @description Creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CrmCorporateCostCenter"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateCrmCorporateAccountsCostCenters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+                /** @description Parámetro de ruta `costCenterId`. */
+                costCenterId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmCorporateCostCenterInput"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CrmCorporateCostCenter"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listCrmCorporateAccountsTravelers: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CrmCorporateTraveler"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    createCrmCorporateAccountsTravelers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmCorporateTravelerInput"];
+            };
+        };
+        responses: {
+            /** @description Creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CrmCorporateTraveler"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    crmCorporateAccountsTravelersImport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateCrmCorporateAccountsTravelers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+                /** @description Parámetro de ruta `travelerId`. */
+                travelerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmCorporateTravelerInput"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CrmCorporateTraveler"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listCrmCorporateAccountsPortalUsers: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CrmCorporatePortalUser"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    createCrmCorporateAccountsPortalUsers: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmCorporatePortalUserInput"];
+            };
+        };
+        responses: {
+            /** @description Creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CrmCorporatePortalUser"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateCrmCorporateAccountsPortalUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+                /** @description Parámetro de ruta `portalUserId`. */
+                portalUserId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrmCorporatePortalUserInput"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CrmCorporatePortalUser"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    crmCorporateAccountsPortalUsersResendInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+                /** @description Parámetro de ruta `portalUserId`. */
+                portalUserId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CrmCorporatePortalUser"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getReservationsCostAllocations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    putReservationsCostAllocations: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description `lock_version` vigente del recurso (entero o ETag `W/"<lock_version>"`). Si no coincide → 409 `STALE_VERSION`. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["BookingReservation"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    quotesCorporateApproval: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["QuoteQuote"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listFinanceCorporateStatements: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["FinCorporateStatement"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    createFinanceCorporateStatements: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinCorporateStatementInput"];
+            };
+        };
+        responses: {
+            /** @description Creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["FinCorporateStatement"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showFinanceCorporateStatements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["FinCorporateStatement"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    financeCorporateStatementsSend: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["FinCorporateStatement"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    financeCorporateStatementsVoid: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["FinCorporateStatement"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPortalClientCorporateSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPortalClientCorporatePurchases: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPortalClientCorporateMovements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPortalClientCorporateStatements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPortalClientCorporateStatementsPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updatePortalClientCorporateStatementSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description `lock_version` vigente del recurso (entero o ETag `W/"<lock_version>"`). Si no coincide → 409 `STALE_VERSION`. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listPortalClientCorporateApprovals: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CollabApprovalRequest"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    portalClientCorporateApprovalsApprove: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                /** @description `lock_version` vigente del recurso (entero o ETag `W/"<lock_version>"`). Si no coincide → 409 `STALE_VERSION`. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CollabApprovalRequest"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    portalClientCorporateApprovalsReject: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description `lock_version` vigente del recurso (entero o ETag `W/"<lock_version>"`). Si no coincide → 409 `STALE_VERSION`. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CollabApprovalRequest"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPortalClientCorporateUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    portalClientCorporateUsers: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updatePortalClientCorporateUsers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Parámetro de ruta `portalUserId`. */
+                portalUserId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPortalClientCorporateCostCenters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    portalClientCorporateCostCenters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updatePortalClientCorporateCostCenters: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPortalClientCorporateTravelers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    portalClientCorporateTravelers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPortalClientCorporateExports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    portalClientCorporateExports: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            202: components["responses"]["Accepted"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showPortalClientCorporateExports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getCatalogProductsTrip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    putCatalogProductsTripLegsNights: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description `lock_version` vigente del recurso (entero o ETag `W/"<lock_version>"`). Si no coincide → 409 `STALE_VERSION`. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+                /** @description Parámetro de ruta `legId`. */
+                legId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CatalogAccommodationLeg"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listCatalogHotelsSeasonRates: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path: {
+                /** @description Parámetro de ruta `hotelId`. */
+                hotelId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CatalogHotelSeasonRate"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    createCatalogHotelsSeasonRates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Parámetro de ruta `hotelId`. */
+                hotelId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CatalogHotelSeasonRateInput"];
+            };
+        };
+        responses: {
+            /** @description Creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CatalogHotelSeasonRate"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    deleteCatalogHotelsSeasonRates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Parámetro de ruta `hotelId`. */
+                hotelId: string;
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: components["responses"]["NoContent"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    createCatalogProductsTripTours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CatalogLegTourInput"];
+            };
+        };
+        responses: {
+            /** @description Creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CatalogLegTour"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateCatalogProductsTripTours: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+                /** @description Parámetro de ruta `tourId`. */
+                tourId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CatalogLegTourInput"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CatalogLegTour"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    catalogProductsTripTransport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CatalogProduct"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateCatalogProductsTripTransport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+                /** @description Parámetro de ruta `optionId`. */
+                optionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getReservationsTrip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listReservationsInTripOffers: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["BookingInTripOffer"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    createReservationsInTripOffers: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookingInTripOfferInput"];
+            };
+        };
+        responses: {
+            /** @description Creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["BookingInTripOffer"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    reservationsInTripOffersCancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+                /** @description Parámetro de ruta `offerCode`. */
+                offerCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["BookingInTripOffer"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPortalClientReservationsInTrip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    portalClientReservationsInTrip: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["BookingReservation"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getShowcaseListings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showShowcaseListings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Parámetro de ruta `slug`. */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showcaseListingsBookings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Parámetro de ruta `slug`. */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showcaseBookingsCancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Parámetro de ruta `token`. */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getShowcasePosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showShowcasePosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Parámetro de ruta `slug`. */
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    createShowcaseAgencies: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChannelB2bAgencyInput"];
+            };
+        };
+        responses: {
+            /** @description Creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["ChannelB2bAgency"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getChannelsShowcaseListings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    channelsShowcaseListings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateChannelsShowcaseListings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getChannelsShowcaseBookings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    channelsShowcaseBookingsAttendance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getChannelsShowcaseFees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getCmsDomains: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cmsDomains: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cmsDomainsVerify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    deleteCmsDomains: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: components["responses"]["NoContent"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getCmsSeoPages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateCmsSeoPages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cmsSeoAudit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getCmsRedirects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cmsRedirects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    deleteCmsRedirects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: components["responses"]["NoContent"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listCmsStories: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CmsTravelStory"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    createCmsStories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CmsTravelStoryInput"];
+            };
+        };
+        responses: {
+            /** @description Creado. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CmsTravelStory"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cmsStoriesConsentRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CmsTravelStory"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cmsStoriesPublish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CmsTravelStory"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cmsStoriesUnpublish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["CmsTravelStory"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    portalClientStoriesConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getFinanceGateways: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    financeGateways: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateFinanceGateways: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getFinanceGatewayFees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    financeGatewayFeesImport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPlatformAccessPasses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    platformAccessPasses: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    platformAccessPassesExtend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    platformAccessPassesConvert: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    platformAccessPassesRevoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updatePlatformAddonsBilling: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPlatformShowcaseModeration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    platformShowcaseListingsDecision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    platformShowcaseAgenciesVerify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["ChannelB2bAgency"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPlatformShowcaseFunnel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPlatformShowcasePosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    platformShowcasePosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updatePlatformShowcasePosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getCmsTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showCmsTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cmsTemplatesPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cmsTemplatesPurchase: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getCmsTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    putCmsTheme: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description `lock_version` vigente del recurso (entero o ETag `W/"<lock_version>"`). Si no coincide → 409 `STALE_VERSION`. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateCmsThemeTokens: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description `lock_version` vigente del recurso (entero o ETag `W/"<lock_version>"`). Si no coincide → 409 `STALE_VERSION`. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cmsThemeRestore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPublicSiteTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listCmsAiJobs: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SysScheduledJob"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    createCmsAiJobs: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SysScheduledJobInput"];
+            };
+        };
+        responses: {
+            202: components["responses"]["Accepted"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showCmsAiJobs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["SysScheduledJob"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cmsAiJobsApply: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["SysScheduledJob"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cmsAiJobsDiscard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["SysScheduledJob"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cmsAiJobsRegenerate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["SysScheduledJob"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getCmsAiImages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cmsAiImages: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            202: components["responses"]["Accepted"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateCmsAiImages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getCmsAiCredits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getCmsAiCreditsLedger: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getCmsAiPacks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    cmsAiPacksPurchase: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPlatformTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    platformTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updatePlatformTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPlatformTemplateSubmissions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    platformTemplateSubmissions: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    platformTemplateSubmissionsDecision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    platformTenantsTheme: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["Tenant"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPlatformAiPacks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updatePlatformAiPacks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getMarketingTrackingTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    marketingTrackingTags: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showMarketingTrackingTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    deleteMarketingTrackingTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: components["responses"]["NoContent"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updateMarketingTrackingTags: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description `lock_version` vigente del recurso (entero o ETag `W/"<lock_version>"`). Si no coincide → 409 `STALE_VERSION`. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    marketingTrackingTagsSubmit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    marketingTrackingTagsDecision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    marketingTrackingTagsPause: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    marketingTrackingTagsVerify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            202: components["responses"]["Accepted"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getMarketingTrackingConversions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    replaceMarketingTrackingConversions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Parámetro de ruta `tag`. */
+                tag: string;
+                /** @description Parámetro de ruta `event`. */
+                event: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    deleteMarketingTrackingConversions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Parámetro de ruta `tag`. */
+                tag: string;
+                /** @description Parámetro de ruta `event`. */
+                event: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: components["responses"]["NoContent"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getMarketingTrackingDispatches: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    marketingTrackingDispatchesRetry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Identificador del recurso (UUID v7). Supuesto: el backend acepta también el `code` legible vía route model binding. */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getAnalyticsWebOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getAnalyticsWebPages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getAnalyticsWebSources: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listAnalyticsWebDevices: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["OpsMobileDevice"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getAnalyticsWebRealtime: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getAnalyticsWebExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPublicSiteTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    publicAnalyticsHit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    publicConsent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPlatformTrackingTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    platformTrackingTags: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    updatePlatformTrackingTags: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description `lock_version` vigente del recurso (entero o ETag `W/"<lock_version>"`). Si no coincide → 409 `STALE_VERSION`. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    platformTrackingTagsDecision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Código legible único por tenant (p. ej. `LEAD-0231`, `COT-2026-00191`). */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    replacePlatformTrackingConversions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Parámetro de ruta `tag`. */
+                tag: string;
+                /** @description Parámetro de ruta `event`. */
+                event: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPlatformAnalyticsWebOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listPlatformAnalyticsWebAgencies: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ChannelB2bAgency"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    platformBlogWebhooksPayload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPlatformBlogSyncStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    listPublicPlans: {
+        parameters: {
+            query?: {
+                /** @description Filtros `filter[campo]=valor`. `filter[owner]=me` se fuerza en servidor para Ventas. */
+                filter?: components["parameters"]["FilterDeep"];
+                /** @description Campos separados por coma; prefijo `-` = descendente (p. ej. `-created_at`). */
+                sort?: components["parameters"]["Sort"];
+                /** @description Relaciones a incluir, separadas por coma. */
+                include?: components["parameters"]["Include"];
+                "page[size]"?: components["parameters"]["PageSize"];
+                /** @description Cursor opaco devuelto en `meta.next_cursor`. */
+                "page[cursor]"?: components["parameters"]["PageCursor"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Listado paginado por cursor. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Plan"][];
+                        meta?: components["schemas"]["CursorMeta"];
+                        links?: components["schemas"]["CursorLinks"];
+                    };
+                };
+            };
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    publicCouponsValidate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showPublicRuc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Parámetro de ruta `ruc`. */
+                ruc: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    publicSignups: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    publicSignupsCheckout: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                /** @description Parámetro de ruta `token`. */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    showPublicSignups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Parámetro de ruta `token`. */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            404: components["responses"]["NotFound"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    publicSalesLeads: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Clave única por intento lógico (UUID v4/v7). Se guarda en `sys_idempotency_keys` (TTL 24 h) y la respuesta se cachea en Redis; reintentos con la misma clave devuelven la misma respuesta; misma clave con otro cuerpo → 422. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActionBody"];
+            };
+        };
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            429: components["responses"]["TooManyRequests"];
+        };
+    };
+    getPlatformSignups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data?: components["schemas"]["GenericObject"];
+                        meta?: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
             429: components["responses"]["TooManyRequests"];
         };
     };

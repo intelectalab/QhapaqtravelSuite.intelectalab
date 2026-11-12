@@ -17,7 +17,7 @@ final class CustomerPortalPreview
     public function show(User $viewer, ?string $clientCode): array
     {
         $today = $this->kit->today();
-        $clients = Portfolio::scope(DB::table('crm_clients as c'), $viewer, 'c.owner_id')
+        $clients = Portfolio::clients(DB::table('crm_clients as c'), $viewer, 'c')
             ->whereNull('c.deleted_at')
             ->where(fn ($query) => $query
                 ->whereExists(fn ($sub) => $sub->from('booking_reservations as r')->whereColumn('r.client_id', 'c.id')->whereNull('r.deleted_at'))

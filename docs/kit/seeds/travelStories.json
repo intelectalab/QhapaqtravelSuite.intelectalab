@@ -1,0 +1,62 @@
+[
+  {
+    "id": "AVT-001",
+    "slug": "familia-rios-peru-clasico",
+    "title": "Diez días, cuatro ciudades: la familia Ríos en el Perú Clásico",
+    "clientId": "CLI-0001",
+    "resId": "RES-2026-000361",
+    "city": "Arequipa",
+    "status": "publicado",
+    "consent": {
+      "at": "2026-09-29 08:40",
+      "by": "Gabriela Ríos Montoya",
+      "channel": "Portal cliente",
+      "photos": true,
+      "name": "solo nombre"
+    },
+    "photos": 6,
+    "quote": "El bus con paradas a Puno fue lo mejor: vimos vicuñas y la laguna Lagunillas.",
+    "publishedAt": "2026-09-29",
+    "seoScore": 84,
+    "views": 312,
+    "linkedProduct": "PRD-011"
+  },
+  {
+    "id": "AVT-002",
+    "slug": "sophie-humantay",
+    "title": "Sophie y la laguna Humantay al amanecer",
+    "clientId": "CLI-0006",
+    "resId": "RES-2026-000346",
+    "city": "Cusco",
+    "status": "pendiente_consentimiento",
+    "consent": null,
+    "photos": 4,
+    "quote": "Subir a 4 200 m valió cada paso.",
+    "publishedAt": null,
+    "seoScore": 62,
+    "views": 0,
+    "linkedProduct": "PRD-004"
+  },
+  {
+    "id": "AVT-003",
+    "slug": "incentivo-mineros-cusco",
+    "title": "Incentivo corporativo: 12 colaboradores en Cusco",
+    "clientId": "CLI-0002",
+    "resId": "RES-2026-000348",
+    "city": "Cusco",
+    "status": "borrador",
+    "consent": {
+      "at": "2026-09-20 11:00",
+      "by": "Úrsula Benavides Lara",
+      "channel": "Correo firmado",
+      "photos": true,
+      "name": "sin nombres de personas"
+    },
+    "photos": 10,
+    "quote": "Organización impecable de principio a fin.",
+    "publishedAt": null,
+    "seoScore": 70,
+    "views": 0,
+    "linkedProduct": null
+  }
+]

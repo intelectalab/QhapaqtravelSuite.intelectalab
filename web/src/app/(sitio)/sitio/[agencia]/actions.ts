@@ -77,7 +77,7 @@ export async function sendContact(agencia: string, _state: SiteFormState, form: 
 export async function sendClaim(agencia: string, _state: SiteFormState, form: FormData): Promise<SiteFormState> {
   return submit(
     agencia,
-    "/claims",
+    "/claim-book",
     {
       name: text(form, "name"),
       doc_type: text(form, "doc_type"),
@@ -336,7 +336,7 @@ export async function requestTripLink(agencia: string, _state: SiteFormState, fo
 export async function unsubscribeNewsletter(agencia: string, token: string): Promise<SiteFormState> {
   const result = await sendSite<{ email: string }>(agencia, "/newsletter/unsubscribe", { token });
   if (!result.ok || !result.data) return accountFailure(result.status, result.error, "No pudimos procesar la baja.");
-  return { status: "done", message: `Listo: ${result.data.email} ya no recibirá el boletín.` };
+  return { status: "done", message: `Listo: ${result.data.email} ya no recibirá ofertas por correo.` };
 }
 
 export async function sendTokenReview(agencia: string, _state: SiteFormState, form: FormData): Promise<SiteFormState> {

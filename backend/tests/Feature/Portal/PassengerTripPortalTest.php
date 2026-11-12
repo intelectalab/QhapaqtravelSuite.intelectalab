@@ -155,3 +155,25 @@ it('R-COMPANIONS: el cliente completa acompañantes y recojo antes del viaje; la
     expect(collect($updated['passengers'])->firstWhere('seq', $adult['seq'])['name'])->toBe('Lucía Ramos Paz')
         ->and(collect($updated['passengers'])->firstWhere('seq', $adult['seq'])['pending'])->toBeFalse();
 });
+
+it('el pasajero abre un mensaje recibido y queda leído; marcar todos cuenta para la tasa de lectura', function () {
+    actingAsSeed('U15');
+    $reservation = idOf('booking_reservations', 'RES-2026-000347');
+    withinTenant(tenantA(), function () use ($reservation): void {
+        foreach (['PXM-T1', 'PXM-T2'] as $code) {
+            DB::table('notif_pax_messages')->insert(['code' => $code, 'reservation_id' => $reservation, 'channel' => 'email', 'recipient' => 'pasajero@correo.pe', 'subject' => "Aviso {$code}", 'body' => 'Recuerda llevar tu pasaporte.', 'status' => 'enviado', 'sent_at' => now()]);
+        }
+    });
+
+    $notice = fn (string $code) => collect($this->getJson('/api/v1/portal/passenger/alerts')->assertOk()->json('data.notices'))->firstWhere('code', $code);
+    expect($notice('PXM-T1')['read'])->toBeFalse();
+
+    $this->postJson('/api/v1/portal/passenger/messages/PXM-T1/read', [])->assertOk()->assertJsonPath('data.updated', 1);
+    expect($notice('PXM-T1')['read'])->toBeTrue()->and($notice('PXM-T2')['read'])->toBeFalse();
+    expect($this->postJson('/api/v1/portal/passenger/messages/PXM-NOEXISTE/read', []))->toBeApiError(404);
+
+    $this->postJson('/api/v1/portal/passenger/messages/read-all', [])->assertOk();
+    $status = withinTenant(tenantA(), fn () => DB::table('notif_pax_messages')->whereIn('code', ['PXM-T1', 'PXM-T2'])->pluck('status')->unique()->values()->all());
+
+    expect($notice('PXM-T2')['read'])->toBeTrue()->and($status)->toBe(['leido']);
+});

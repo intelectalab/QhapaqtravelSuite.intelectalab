@@ -210,7 +210,12 @@ final class ContactBook
             return 'Todos los contactos';
         }
 
-        $parts = array_map(function (array $rule): string {
+        return implode($match === 'any' ? ' o ' : ' y ', $this->parts($rules));
+    }
+
+    public function parts(array $rules): array
+    {
+        return array_map(function (array $rule): string {
             $field = self::FIELDS[$rule['f']] ?? $rule['f'];
 
             if (in_array($rule['op'], self::NO_VALUE, true)) {
@@ -227,8 +232,6 @@ final class ContactBook
 
             return trim($field.' '.(self::OPERATORS[$rule['op']] ?? $rule['op']).' '.$value);
         }, $rules);
-
-        return implode($match === 'any' ? ' o ' : ' y ', $parts);
     }
 
     private function test(array $contact, array $rule): bool

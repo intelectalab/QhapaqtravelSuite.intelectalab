@@ -140,7 +140,7 @@ final class SiteCatalog
         return $this->destinations ??= DB::table('catalog_destination_contents as dc')
             ->join('catalog_destinations as d', 'd.id', '=', 'dc.destination_id')
             ->whereNull('d.deleted_at')->where('dc.locale', 'es')
-            ->get(['d.id', 'd.ref', 'd.name', 'd.type', 'd.path', 'd.lat', 'd.lng', 'dc.hero_media_id', 'dc.slug','dc.tagline', 'dc.description', 'dc.climate', 'dc.altitude_text', 'dc.faqs'])
+            ->get(['d.id', 'd.ref', 'd.name', 'd.type', 'd.path', 'd.lat', 'd.lng', 'dc.hero_media_id', 'dc.slug', 'dc.tagline', 'dc.description', 'dc.climate', 'dc.altitude_text', 'dc.faqs'])
             ->map(function (stdClass $row): stdClass {
                 $translation = $this->locale->translated() ? DB::table('catalog_destination_contents')->where('destination_id', $row->id)->where('locale', $this->locale->current())->first(['tagline', 'description', 'climate', 'altitude_text', 'faqs']) : null;
                 $row->content_locale = $translation ? $this->locale->current() : SiteLocale::BASE;

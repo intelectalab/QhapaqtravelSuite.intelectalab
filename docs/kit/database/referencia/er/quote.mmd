@@ -1,6 +1,7 @@
 erDiagram
   quote_access_tokens {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid quote_id FK
     varchar token_hash UK
   }
@@ -12,15 +13,26 @@ erDiagram
     uuid token_id FK
     char currency
   }
-  quote_internal_approvals {
+  quote_external_offers {
     uuid id PK
+    uuid quote_id FK
+    uuid version_id FK
+    uuid reservation_id FK
+    varchar kind
+    char currency
+    varchar status
+  }
+  quote_internal_approvals {
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid quote_version_id FK
     uuid requested_by FK
     varchar status
     uuid decided_by FK
   }
   quote_items {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid quote_version_id FK
     uuid product_id FK
     uuid rate_id FK
@@ -33,7 +45,7 @@ erDiagram
     uuid recorded_by FK
   }
   quote_quotes {
-    uuid id PK
+    uuid id PK,UK
     uuid tenant_id UK
     varchar code UK
     uuid client_id FK
@@ -56,7 +68,8 @@ erDiagram
     uuid notification_id FK
   }
   quote_versions {
-    uuid id PK
+    uuid id PK,UK
+    uuid tenant_id UK
     uuid quote_id FK
     smallint version_no
     varchar status
@@ -102,31 +115,34 @@ erDiagram
   sys_documents {
     uuid id PK
   }
-  booking_reservations |o--o{ quote_quotes : "reservation_id"
-  catalog_products ||--o{ quote_items : "product_id"
-  catalog_rates |o--o{ quote_items : "rate_id"
-  catalog_seasons |o--o{ quote_items : "season_id"
-  collab_approval_requests |o--o{ quote_versions : "approval_request_id"
-  crm_clients ||--o{ quote_quotes : "client_id"
-  crm_opportunities |o--o{ quote_quotes : "opportunity_id"
-  iam_users |o--o{ quote_internal_approvals : "decided_by, requested_by"
-  iam_users ||--o{ quote_negotiations : "recorded_by"
-  iam_users ||--o{ quote_quotes : "approval_recorded_by, owner_id"
-  iam_users ||--o{ quote_sends : "sent_by"
-  iam_users ||--o{ quote_versions : "author_id"
-  iam_users |o--o{ quote_views : "recorded_by"
-  notif_messages |o--o{ quote_sends : "notification_id"
-  quote_access_tokens |o--o{ quote_approvals : "token_id"
-  quote_internal_approvals |o--o{ quote_versions : "internal_approval_id"
-  quote_quotes ||--o{ quote_access_tokens : "quote_id"
-  quote_quotes ||--o{ quote_approvals : "quote_id"
-  quote_quotes ||--o{ quote_negotiations : "quote_id"
-  quote_quotes |o--o{ quote_quotes : "duplicated_from_id"
-  quote_quotes ||--o{ quote_sends : "quote_id"
-  quote_quotes ||--o{ quote_versions : "quote_id"
-  quote_quotes ||--o{ quote_views : "quote_id"
-  quote_versions |o--o{ quote_approvals : "quote_version_id"
-  quote_versions ||--o{ quote_internal_approvals : "quote_version_id"
-  quote_versions ||--o{ quote_items : "quote_version_id"
-  quote_versions |o--o{ quote_quotes : "current_version_id"
-  sys_documents |o--o{ quote_versions : "pdf_document_id"
+  booking_reservations ||--o{ quote_external_offers : "reservation_id, tenant_id"
+  booking_reservations ||--o{ quote_quotes : "reservation_id, tenant_id"
+  catalog_products ||--o{ quote_items : "product_id, tenant_id"
+  catalog_rates ||--o{ quote_items : "rate_id, tenant_id"
+  catalog_seasons ||--o{ quote_items : "season_id, tenant_id"
+  collab_approval_requests ||--o{ quote_versions : "approval_request_id, tenant_id"
+  crm_clients ||--o{ quote_quotes : "client_id, tenant_id"
+  crm_opportunities ||--o{ quote_quotes : "opportunity_id, tenant_id"
+  iam_users ||--o{ quote_internal_approvals : "decided_by, requested_by, tenant_id"
+  iam_users ||--o{ quote_negotiations : "recorded_by, tenant_id"
+  iam_users ||--o{ quote_quotes : "approval_recorded_by, owner_id, tenan..."
+  iam_users ||--o{ quote_sends : "sent_by, tenant_id"
+  iam_users ||--o{ quote_versions : "author_id, tenant_id"
+  iam_users ||--o{ quote_views : "recorded_by, tenant_id"
+  notif_messages ||--o{ quote_sends : "notification_id, tenant_id"
+  quote_access_tokens ||--o{ quote_approvals : "tenant_id, token_id"
+  quote_internal_approvals ||--o{ quote_versions : "internal_approval_id, tenant_id"
+  quote_quotes ||--o{ quote_access_tokens : "quote_id, tenant_id"
+  quote_quotes ||--o{ quote_approvals : "quote_id, tenant_id"
+  quote_quotes ||--o{ quote_external_offers : "quote_id, tenant_id"
+  quote_quotes ||--o{ quote_negotiations : "quote_id, tenant_id"
+  quote_quotes ||--o{ quote_quotes : "duplicated_from_id, tenant_id"
+  quote_quotes ||--o{ quote_sends : "quote_id, tenant_id"
+  quote_quotes ||--o{ quote_versions : "quote_id, tenant_id"
+  quote_quotes ||--o{ quote_views : "quote_id, tenant_id"
+  quote_versions ||--o{ quote_approvals : "quote_version_id, tenant_id"
+  quote_versions ||--o{ quote_external_offers : "tenant_id, version_id"
+  quote_versions ||--o{ quote_internal_approvals : "quote_version_id, tenant_id"
+  quote_versions ||--o{ quote_items : "quote_version_id, tenant_id"
+  quote_versions ||--o{ quote_quotes : "current_version_id, tenant_id"
+  sys_documents ||--o{ quote_versions : "pdf_document_id, tenant_id"

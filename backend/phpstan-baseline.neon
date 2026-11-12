@@ -120,14 +120,3 @@ parameters:
 			count: 1
 			path: app/Http/Middleware/EnsurePlatformUser.php
 
-		-
-			message: '#^Call to function method_exists\(\) with App\\Domain\\Iam\\Models\\User and ''currentAccessToken'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: app/Http/Middleware/ResolveTenant.php
-
-		-
-			message: '#^Instanceof between Laravel\\Sanctum\\PersonalAccessToken and Laravel\\Sanctum\\PersonalAccessToken will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
-			count: 1
-			path: app/Http/Middleware/ResolveTenant.php

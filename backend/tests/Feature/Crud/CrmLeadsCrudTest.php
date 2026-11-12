@@ -199,7 +199,8 @@ it('descartar conserva el lead, guarda el motivo y cierra sus actividades pendie
     $this->postJson("/api/v1/crm/leads/{$code}/discard", ['reason' => 'sin_interes_real', 'detail' => 'Solo cotizaba precios'], critical(crmLeadVersion($code)))
         ->assertOk()
         ->assertJsonPath('data.status', 'descartado')
-        ->assertJsonPath('data.discard_reason', 'Sin interés real');
+        ->assertJsonPath('data.discard_reason', 'Sin interés real')
+        ->assertJsonPath('data.discarded_from', 'nuevo');
 
     $lead = rowOf('crm_leads', $code);
     $activities = withinTenant(tenantA(), fn () => DB::table('crm_activities')->where('related_type', 'lead')->where('related_id', $lead->id)->get());

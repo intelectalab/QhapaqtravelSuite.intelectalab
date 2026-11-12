@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\SupplierPortal\Support;
 
 use App\Domain\Booking\Actions\ProviderServiceResponse;
+use App\Domain\Catalog\Support\CatalogAccess;
+use App\Domain\Catalog\Support\ServiceDirectory;
 use App\Domain\Finance\Support\PayableDirectory;
 use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Shared\Tenancy\TenantContext;
@@ -149,7 +151,7 @@ final class SupplierDirectory
                 'capacity' => $service->capacity === null ? null : (int) $service->capacity,
                 'valid_from' => $service->valid_from,
                 'valid_to' => $service->valid_to,
-                'status' => $service->status,
+                'status' => ServiceDirectory::serviceState($service, CatalogAccess::today()),
                 'scheduled_cost' => $service->scheduled_cost === null ? null : (float) $service->scheduled_cost,
                 'scheduled_from' => $service->scheduled_cost_from,
                 'bookings' => (int) ($usage[$service->id] ?? 0),
@@ -213,7 +215,7 @@ final class SupplierDirectory
                 'email' => $provider->email,
                 'currency' => $provider->currency,
                 'payment_terms' => $provider->payment_terms,
-                'status' => $provider->status,
+                'status' => isset($provider->contract_end) ? ServiceDirectory::providerState($provider, CatalogAccess::today()) : $provider->status,
             ],
             'contract' => $this->contract($account),
             'agency' => ['name' => $tenant->commercial_name, 'legal_name' => $tenant->legal_name, 'ruc' => $tenant->ruc, 'address' => $tenant->fiscal_address],

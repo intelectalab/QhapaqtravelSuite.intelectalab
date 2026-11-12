@@ -170,7 +170,7 @@ function personMetrics<T extends { status: string; upcoming: number }>(extra: Me
   return [
     { id: "available", label: "Disponibles", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "disponible" },
     { id: "busy", label: "Con servicios próximos", tone: "t1", icon: <CalendarCheck size={19} />, matches: (row) => row.upcoming > 0 },
-    { id: "off", label: "Fuera de servicio", tone: "mute", icon: <UserRoundX size={19} />, matches: (row) => ["descanso", "vacaciones", "mantenimiento"].includes(row.status) },
+    { id: "off", label: "Fuera de servicio", tone: "mute", icon: <UserRoundX size={19} />, matches: (row) => ["vacaciones", "mantenimiento"].includes(row.status) },
     ...extra,
   ];
 }

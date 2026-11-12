@@ -4,17 +4,22 @@ declare(strict_types=1);
 
 namespace App\Domain\Admin\Actions;
 
+use App\Domain\Admin\Support\TenantDataExport;
 use App\Domain\Iam\Support\StaffSeats;
 use App\Domain\Platform\Actions\CollectInvoice;
 use App\Domain\Platform\Support\DowngradeValidator;
 use App\Domain\Platform\Support\Entitlements;
 use App\Domain\Platform\Support\PlatformInvoicer;
+use App\Domain\Platform\Support\ReadOnlyWindow;
+use App\Domain\Reports\Support\ReportExports;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Concurrency\IfMatch;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Mail\QueuedMail;
 use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\Shared\Tenancy\TenantDatabase;
+use App\Jobs\ExportTenantData;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Illuminate\Database\ConnectionInterface;
@@ -140,6 +145,10 @@ final class ManageSubscription
         });
 
         $this->audit->log(self::ENTITY, $this->code(), 'cancelar', 'active', "cancel_scheduled · {$survey['reason']} · cierra el {$end}");
+
+        if ($survey['export'] ?? false) {
+            $this->requestExport($userId, $end);
+        }
 
         return $end;
     }
@@ -677,6 +686,33 @@ final class ManageSubscription
     private function planName(?string $id): string
     {
         return (string) $this->db()->table('plans')->where('id', $id)->value('name');
+    }
+
+    public function requestExport(string $userId, string $closesOn): string
+    {
+        $tenantId = $this->context->idOrFail();
+
+        return app(TenantDatabase::class)->run($tenantId, function () use ($userId, $closesOn, $tenantId): string {
+            $id = (string) Str::uuid7();
+            $code = ReportExports::nextCode();
+            DB::table('report_exports')->insert([
+                'id' => $id,
+                'code' => $code,
+                'report_name' => 'Exportación completa de datos',
+                'report_key' => TenantDataExport::REPORT_KEY,
+                'filters' => json_encode(['motivo' => 'cancelación', 'cierra' => $closesOn], JSON_UNESCAPED_UNICODE),
+                'scope' => 'detailed',
+                'format' => 'XLSX',
+                'status' => 'en_cola',
+                'requested_by' => $userId,
+                'expires_at' => Carbon::parse($closesOn)->addDays(ReadOnlyWindow::CANCELED_DAYS)->endOfDay(),
+                'created_by' => $userId,
+            ]);
+            $this->audit->log('Exportación', $code, 'exportar_datos', null, 'Exportación completa solicitada al cancelar');
+            dispatch((new ExportTenantData($id))->forTenant($tenantId))->afterCommit();
+
+            return $code;
+        });
     }
 
     private function code(): string

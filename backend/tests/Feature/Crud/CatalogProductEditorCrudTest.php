@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 
 function edRef(string $table, string $ref): string
 {
@@ -224,6 +225,25 @@ it('reemplaza el itinerario por días y actividades', function () {
 
     actingAsSeed('U03');
     expect($this->putJson('/api/v1/catalog/products/SUR-CIR-8D/itinerary', edBody('SUR-CIR-8D', ['itinerary' => []]), edHeaders('SUR-CIR-8D')))->toBeApiError(403);
+});
+
+it('CAT-BR-12: la actividad guarda servicio, nota, imagen, costo y precio; quien no ve márgenes no borra el costo', function () {
+    actingAsSeed('U01');
+    $service = edRef('catalog_services', 'SRV-002');
+    $item = ['time' => '09:00', 'activity' => 'Ingreso al sitio', 'type' => 'Entrada', 'service_id' => $service, 'note' => 'Llevar pasaporte', 'image_ref' => 'https://img.example/sitio.jpg', 'cost' => 45.5, 'price' => 80];
+
+    $day = $this->putJson('/api/v1/catalog/products/SUR-CIR-8D/itinerary', edBody('SUR-CIR-8D', ['itinerary' => [['title' => 'Día de visita', 'items' => [$item]]]]), edHeaders('SUR-CIR-8D'))->assertOk()->json('data.itinerary.0');
+    $saved = $day['items'][0];
+
+    expect($saved)->toMatchArray(['service_id' => $service, 'note' => 'Llevar pasaporte', 'image_ref' => 'https://img.example/sitio.jpg', 'cost' => '45.50', 'price' => '80.00'])
+        ->and($saved['service'])->not->toBeNull();
+
+    expect($this->putJson('/api/v1/catalog/products/SUR-CIR-8D/itinerary', edBody('SUR-CIR-8D', ['itinerary' => [['title' => 'Día de visita', 'items' => [[...$item, 'service_id' => (string) Str::uuid7()]]]]]), edHeaders('SUR-CIR-8D')))->toBeApiError(422, 'CAT-BR-12');
+
+    $cost = fn () => withinTenant(tenantA(), fn () => (string) DB::table('catalog_itinerary_items')->where('activity', 'Ingreso al sitio')->value('cost'));
+    $this->putJson('/api/v1/catalog/products/SUR-CIR-8D/itinerary', edBody('SUR-CIR-8D', ['itinerary' => [['id' => $day['id'], 'title' => 'Día de visita', 'items' => [[...$item, 'id' => $saved['id'], 'cost' => null, 'price' => 85]]]]]), edHeaders('SUR-CIR-8D'))->assertOk();
+
+    expect($cost())->toBe('45.50');
 });
 
 it('asocia temporadas activas y conserva las que usan sus tarifas', function () {

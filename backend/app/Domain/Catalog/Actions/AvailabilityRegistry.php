@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog\Actions;
 
+use App\Domain\Admin\Support\StaffNotices;
 use App\Domain\Catalog\Support\CatalogAccess;
 use App\Domain\Catalog\Support\DepartureDirectory;
 use App\Domain\Crm\Support\CodeSequence;
@@ -240,6 +241,10 @@ final class AvailabilityRegistry
             'liberada' => 'liberar',
             default => 'consumir',
         }, $hold->status, trim($status.($reason ? " · {$reason}" : '')));
+
+        if ($status === 'confirmada' && ($hold->created_by ?? null) !== null) {
+            app(StaffNotices::class)->toUser((string) $hold->created_by, 'disponibilidad.confirmada', "Hold {$hold->ref} confirmado", 'Los cupos quedaron confirmados para tu reserva.', 'catalog_availability_hold', (string) $hold->id, null, (string) $actor->getKey());
+        }
     }
 
     private function alternatives(object $departure, int $quantity): string

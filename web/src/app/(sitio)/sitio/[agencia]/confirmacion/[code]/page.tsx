@@ -19,6 +19,7 @@ export default async function ConfirmationPage({ params }: PageProps<"/sitio/[ag
   const [order, base, profile] = await Promise.all([getSiteOrder(agencia, code), siteBase(agencia), getSiteProfile(agencia)]);
   const paid = order.status === "confirmado";
   const rejected = order.status === "pago_rechazado";
+  const closed = order.status === "cancelado" || order.status === "expirado";
   const balance = paid && Number(order.due) > 0;
   const canPay = Number(order.due) > 0 && ["pago_pendiente", "pago_rechazado", "confirmado"].includes(order.status);
   const groupSize = Math.max(0, ...order.reservations.flatMap((reservation) => reservation.services.map((service) => service.pax)));
@@ -26,7 +27,7 @@ export default async function ConfirmationPage({ params }: PageProps<"/sitio/[ag
   const steps = [
     { label: "Pedido creado", done: true },
     { label: "Pago registrado", done: paid },
-    { label: "Servicios confirmados por operaciones", done: paid && order.reservations.every((r) => r.status === "confirmada") },
+    { label: "Servicios confirmados por operaciones", done: paid && order.reservations.every((r) => ["confirmada", "en_operacion", "completada", "reprogramada"].includes(r.status)) },
     { label: "Vouchers listos para descargar", done: order.reservations.some((r) => r.vouchers.length > 0) },
   ];
 
@@ -35,11 +36,15 @@ export default async function ConfirmationPage({ params }: PageProps<"/sitio/[ag
       <TrackEvent event={paid ? "purchase" : "purchase_pending"} params={{ transaction_id: order.code, value: Number(order.total), currency: order.currency }} />
       <PageHero
         eyebrow={`Pedido ${order.code}`}
-        title={paid ? "¡Tu reserva está registrada!" : "Tu pedido está listo para el pago"}
+        title={paid ? "¡Tu reserva está registrada!" : closed ? (order.status === "expirado" ? "Tu pedido venció" : "Tu pedido se canceló") : order.status === "pago_por_validar" ? "Estamos validando tu pago" : "Tu pedido está listo para el pago"}
         description={
           paid
             ? `Enviamos el detalle a ${order.customer.email}. Guarda tus códigos de reserva.`
-            : "Creamos tu reserva con los cupos bloqueados. Completa el pago para confirmarla."
+            : closed
+              ? "Los cupos se liberaron. Si aún quieres viajar, arma un pedido nuevo o escríbenos."
+              : order.status === "pago_por_validar"
+                ? "Recibimos tu número de operación. Te avisaremos por correo cuando lo confirmemos."
+                : "Creamos tu reserva con los cupos bloqueados. Completa el pago para confirmarla."
         }
       />
       <div className="mx-auto grid max-w-[1240px] gap-6 px-5 pt-10 sm:px-8 lg:grid-cols-[1fr_340px]">

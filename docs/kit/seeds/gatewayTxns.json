@@ -1,0 +1,58 @@
+[
+  {
+    "id": "GTX-0101",
+    "gatewayId": "GW-01",
+    "paymentId": "PAG-01912",
+    "resId": "RES-2026-000346",
+    "date": "2026-09-10",
+    "gross": 431,
+    "currency": "USD",
+    "fee": 17.2,
+    "tax": 3.1,
+    "net": 410.7,
+    "status": "liquidado",
+    "ref": "TXN 7710-CC12"
+  },
+  {
+    "id": "GTX-0102",
+    "gatewayId": "GW-01",
+    "paymentId": "PAG-01915",
+    "resId": "RES-2026-000347",
+    "date": "2026-08-28",
+    "gross": 2716,
+    "currency": "USD",
+    "fee": 108.37,
+    "tax": 19.51,
+    "net": 2588.12,
+    "status": "liquidado",
+    "ref": "TXN 8812-AA90"
+  },
+  {
+    "id": "GTX-0103",
+    "gatewayId": "GW-02",
+    "paymentId": "PAG-01930",
+    "resId": "RES-2026-000361",
+    "date": "2026-08-30",
+    "gross": 2486,
+    "currency": "USD",
+    "fee": 134.54,
+    "tax": 0,
+    "net": 2351.46,
+    "status": "liquidado",
+    "ref": "PAYID-NB7Q2KA"
+  },
+  {
+    "id": "GTX-0104",
+    "gatewayId": "GW-03",
+    "paymentId": "PAG-01921",
+    "resId": "RES-2026-000344",
+    "date": "2026-09-25",
+    "gross": 400,
+    "currency": "USD",
+    "fee": 0,
+    "tax": 0,
+    "net": 400,
+    "status": "liquidado",
+    "ref": "YP 44910022"
+  }
+]

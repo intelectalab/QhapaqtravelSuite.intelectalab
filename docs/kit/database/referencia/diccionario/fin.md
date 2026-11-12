@@ -1,19 +1,19 @@
 # Diccionario de datos · Finanzas y tesorería (fin_)
 
-_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.13 tras cargar `00`→`90`. No editar a mano._
+_Generado por `build_reference.py` desde el catálogo de PostgreSQL 16.15 tras cargar `00`→`90`. No editar a mano._
 
 CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y monedas.
 
-34 tablas · 590 columnas · 125 claves foráneas. Diagrama ER: [`../er/fin.svg`](../er/fin.svg) (fuente [`../er/fin.mmd`](../er/fin.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
+43 tablas · 740 columnas · 153 claves foráneas. Diagrama ER: [`../er/fin.svg`](../er/fin.svg) (fuente [`../er/fin.mmd`](../er/fin.mmd)). Volver al [índice general](../DICCIONARIO-DE-DATOS.md).
 
 ## Tablas
 
 | Tabla | Fase | RLS | Columnas | FKs | Descripción |
 |---|---|---|---|---|---|
+| [`fin_fx_rates`](#fin_fx_rates) | Fase 0 · Fundaciones | tenant | 17 | 2 | [Spec 07 §3.19 + 09 §3.9 + 17 §3.6] [Fase 0] Histórico de tipo de cambio (append-only). En Fase 0 por la configuración de moneda del tenant (09 §3.9, F0-33). |
 | [`fin_bank_accounts`](#fin_bank_accounts) | Fase 1 · MVP | tenant | 13 | 1 | [Spec 07 §3.8] [Fase 1] Cuentas bancarias para pagos a proveedores. |
 | [`fin_commission_rules`](#fin_commission_rules) | Fase 1 · MVP | tenant | 13 | 1 | [Spec 07 §3.10] [Fase 1] Reglas de comisión (vendedor / agencia B2B). |
 | [`fin_commissions`](#fin_commissions) | Fase 1 · MVP | tenant | 30 | 8 | [Spec 07 §3.11 + 14 §3.17] [Fase 1] Comisiones calculadas (vendedor, agencia B2B, bono por meta). |
-| [`fin_fx_rates`](#fin_fx_rates) | Fase 1 · MVP | tenant | 17 | 2 | [Spec 07 §3.19 + 09 §3.9 + 17 §3.6] [Fase 1] Histórico de tipo de cambio (append-only). |
 | [`fin_payable_payouts`](#fin_payable_payouts) | Fase 1 · MVP | tenant | 15 | 4 | [Spec 07 §3.7] [Fase 1] Pagos a proveedores. |
 | [`fin_payables`](#fin_payables) | Fase 1 · MVP | tenant | 30 | 7 | [Spec 07 §3.6] [Fase 1] Cuentas por pagar a proveedores y costos adicionales. |
 | [`fin_payment_applications`](#fin_payment_applications) | Fase 1 · MVP | tenant | 13 | 5 | [Spec 07 §3.4] [Fase 1] Aplicación / desaplicación de pagos a CxC. |
@@ -44,8 +44,78 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | [`fin_treasury_settings`](#fin_treasury_settings) | Fase 2 · Canales y campo | tenant | 13 | 1 | [Spec 12 §3.9] [Fase 2] Parámetros de tesorería (1 fila por tenant). |
 | [`fin_treasury_transfers`](#fin_treasury_transfers) | Fase 2 · Canales y campo | tenant | 15 | 3 | [Spec 12 §3.4] [Fase 2] Transferencias entre cuentas / liquidaciones de pasarela. |
 | [`fx_rate_providers`](#fx_rate_providers) | Fase 2 · Canales y campo | tenant | 15 | 1 | [Spec 17 §3.6 (v2.2)] [Fase 2] Proveedores de tipo de cambio. |
+| [`fin_account_mappings`](#fin_account_mappings) | Fase 3 · SaaS y crecimiento | tenant | 10 | 1 | [Spec 19 §3.11] [Fase 3] Plan de cuentas del tenant por sistema contable de destino. |
+| [`fin_accounting_exports`](#fin_accounting_exports) | Fase 3 · SaaS y crecimiento | tenant | 15 | 1 | [Spec 19 §3.11] [Fase 3] Exportaciones contables por período. |
+| [`fin_ai_credit_ledger`](#fin_ai_credit_ledger) | Fase 3 · SaaS y crecimiento | tenant | 12 | 5 | [Spec 23 §3.8] [Fase 3] Libro de créditos de IA del tenant (asignación del plan, compras, consumo, reembolso, vencimiento). Append-only. |
+| [`fin_corporate_statements`](#fin_corporate_statements) | Fase 3 · SaaS y crecimiento | tenant | 21 | 4 | [Spec 20 §3.7] [Fase 3] Estados de cuenta mensuales de la empresa cliente (saldo inicial, compras, pagos, notas de crédito y saldo final). |
+| [`fin_gateway_accounts`](#fin_gateway_accounts) | Fase 3 · SaaS y crecimiento | tenant | 20 | 2 | [Spec 22 §3.1] [Fase 3] Pasarelas de cobro del tenant (tarjeta local, PayPal, Yape/Plin) con su esquema de comisión. |
+| [`fin_gift_card_movements`](#fin_gift_card_movements) | Fase 3 · SaaS y crecimiento | tenant | 11 | 4 | [Spec 19 §3.9] [Fase 3] Movimientos del vale (append-only). |
+| [`fin_gift_cards`](#fin_gift_cards) | Fase 3 · SaaS y crecimiento | tenant | 21 | 3 | [Spec 19 §3.9] [Fase 3] Vales y tarjetas de regalo con saldo (código de canje con hash). |
+| [`fin_payment_fees`](#fin_payment_fees) | Fase 3 · SaaS y crecimiento | tenant | 16 | 3 | [Spec 22 §3.2] [Fase 3] Comisión real de cada cobro por pasarela: bruto, comisión, IGV de la comisión, margen de cambio y neto. |
+| [`fin_payment_links`](#fin_payment_links) | Fase 3 · SaaS y crecimiento | tenant | 24 | 5 | [Spec 19 §3.3] [Fase 3] Links de pago con medios locales (Yape, Plin, Mercado Pago, cuotas) para reserva, CxC o vale de regalo. |
 
 ## Detalle por tabla
+
+### `fin_fx_rates`
+
+[Spec 07 §3.19 + 09 §3.9 + 17 §3.6] [Fase 0] Histórico de tipo de cambio (append-only). En Fase 0 por la configuración de moneda del tenant (09 §3.9, F0-33).
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Finanzas y tesorería (fin_) | Fase 0 · Fundaciones (`10_fase0.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fx_rate_providers.tenant_id, tenants.id. |
+| 3 | `currency_code` | `character(3)` | no |  |  |
+| 4 | `base_currency` | `character(3)` | no | `'PEN'::bpchar` |  |
+| 5 | `rate_pen` | `numeric(14,6)` | no |  |  |
+| 6 | `buy` | `numeric(12,6)` | sí |  |  |
+| 7 | `sell` | `numeric(12,6)` | sí |  |  |
+| 8 | `previous_rate` | `numeric(14,6)` | sí |  |  |
+| 9 | `rate_date` | `date` | no |  |  |
+| 10 | `source` | `character varying(80)` | no |  |  |
+| 11 | `effective_at` | `timestamp with time zone` | no | `now()` |  |
+| 12 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
+| 13 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 14 | `provider_id` | `uuid` | sí |  | Columnas agregadas en Fase 2 por spec 17 §3.6 (v2.2) FK → fx_rate_providers.id. [Agregada en `30_fase2.sql`] |
+| 15 | `daily_change_pct` | `numeric(7,3)` | sí |  | Columnas agregadas en Fase 2 por spec 17 §3.6 (v2.2) [Agregada en `30_fase2.sql`] |
+| 16 | `alert_raised` | `boolean` | no | `false` | Columnas agregadas en Fase 2 por spec 17 §3.6 (v2.2) [Agregada en `30_fase2.sql`] |
+| 17 | `is_demo` | `boolean` | no | `false` | Columnas agregadas en Fase 2 por spec 17 §3.6 (v2.2) [Agregada en `30_fase2.sql`] |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, provider_id` | `fx_rate_providers.tenant_id, id` | NO ACTION | `fk_fin_fx_rates_provider_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_fx_rates_tenant_id` |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `fin_fx_rates_rate_pen_check` | `CHECK ((rate_pen > (0)::numeric))` |  |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_fin_fx_rates_provider_id` | `USING btree (provider_id)` |
+| `ix_fin_fx_rates_tenant_id_currency_code_effective_at_desc` | `USING btree (tenant_id, currency_code, effective_at DESC)` |
+| `ix_fin_fx_rates_tenant_id_currency_code_rate_date_desc` | `USING btree (tenant_id, currency_code, rate_date DESC)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_fin_fx_rates_append_only` | BEFORE DELETE OR UPDATE | `app_forbid_update_delete` |
+
+[↑ Índice del dominio](#tablas)
 
 ### `fin_bank_accounts`
 
@@ -85,6 +155,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fin_bank_accounts_id` | `tenant_id, id` |  | restricción |
 | `uq_fin_bank_accounts_tenant_id_bank_number` | `tenant_id, bank, number` |  | índice único |
 
 **CHECK**
@@ -136,6 +207,12 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 |---|---|---|---|
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_commission_rules_tenant_id` |
 
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_fin_commission_rules_id` | `tenant_id, id` |  | restricción |
+
 **CHECK**
 
 | Nombre | Definición | Valores permitidos |
@@ -172,7 +249,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, channel_b2b_agencies.tenant_id, iam_users.tenant_id, booking_reservations.tenant_id, fin_commission_rules.tenant_id, crm_sales_targets.tenant_id, channel_b2b_settlement_requests.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `reservation_id` | `uuid` | sí |  | FK → booking_reservations.id. |
 | 5 | `kind` | `character varying(20)` | no |  | Valores: `vendedor`, `agencia_b2b`, `Bono por meta`. |
@@ -208,19 +285,20 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `approved_by` | `iam_users.id` | NO ACTION | `fk_fin_commissions_approved_by` |
-| `beneficiary_agency_id` | `channel_b2b_agencies.id` | NO ACTION | `fk_fin_commissions_beneficiary_agency_id` |
-| `beneficiary_user_id` | `iam_users.id` | NO ACTION | `fk_fin_commissions_beneficiary_user_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_fin_commissions_reservation_id` |
-| `rule_id` | `fin_commission_rules.id` | NO ACTION | `fk_fin_commissions_rule_id` |
-| `sales_target_id` | `crm_sales_targets.id` | NO ACTION | `fk_fin_commissions_sales_target_id` |
-| `settlement_request_id` | `channel_b2b_settlement_requests.id` | NO ACTION | `fk_fin_commissions_settlement_request_id` |
+| `tenant_id, approved_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_commissions_approved_by` |
+| `tenant_id, beneficiary_agency_id` | `channel_b2b_agencies.tenant_id, id` | NO ACTION | `fk_fin_commissions_beneficiary_agency_id` |
+| `tenant_id, beneficiary_user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_commissions_beneficiary_user_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_fin_commissions_reservation_id` |
+| `tenant_id, rule_id` | `fin_commission_rules.tenant_id, id` | NO ACTION | `fk_fin_commissions_rule_id` |
+| `tenant_id, sales_target_id` | `crm_sales_targets.tenant_id, id` | NO ACTION | `fk_fin_commissions_sales_target_id` |
+| `tenant_id, settlement_request_id` | `channel_b2b_settlement_requests.tenant_id, id` | NO ACTION | `fk_fin_commissions_settlement_request_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_commissions_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fin_commissions_id` | `tenant_id, id` |  | restricción |
 | `uq_fin_commissions_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_fin_commissions_tenant_id_reservation_id_kind_p` | `tenant_id, reservation_id, kind` | `((deleted_at IS NULL) AND (reservation_id IS NOT NULL))` | índice único |
 | `uq_fin_commissions_tenant_id_sales_target_id_p` | `tenant_id, sales_target_id` | `(sales_target_id IS NOT NULL)` | índice único |
@@ -259,67 +337,6 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 [↑ Índice del dominio](#tablas)
 
-### `fin_fx_rates`
-
-[Spec 07 §3.19 + 09 §3.9 + 17 §3.6] [Fase 1] Histórico de tipo de cambio (append-only).
-
-| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
-|---|---|---|---|---|
-| Finanzas y tesorería (fin_) | Fase 1 · MVP (`20_fase1.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
-
-**Columnas**
-
-| # | Columna | Tipo | Nulo | Default | Descripción |
-|---|---|---|---|---|---|
-| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
-| 3 | `currency_code` | `character(3)` | no |  |  |
-| 4 | `base_currency` | `character(3)` | no | `'PEN'::bpchar` |  |
-| 5 | `rate_pen` | `numeric(14,6)` | no |  |  |
-| 6 | `buy` | `numeric(12,6)` | sí |  |  |
-| 7 | `sell` | `numeric(12,6)` | sí |  |  |
-| 8 | `previous_rate` | `numeric(14,6)` | sí |  |  |
-| 9 | `rate_date` | `date` | no |  |  |
-| 10 | `source` | `character varying(80)` | no |  |  |
-| 11 | `effective_at` | `timestamp with time zone` | no | `now()` |  |
-| 12 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
-| 13 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
-| 14 | `provider_id` | `uuid` | sí |  | Columnas agregadas en Fase 2 por spec 17 §3.6 (v2.2) FK → fx_rate_providers.id. [Agregada en `30_fase2.sql`] |
-| 15 | `daily_change_pct` | `numeric(7,3)` | sí |  | Columnas agregadas en Fase 2 por spec 17 §3.6 (v2.2) [Agregada en `30_fase2.sql`] |
-| 16 | `alert_raised` | `boolean` | no | `false` | Columnas agregadas en Fase 2 por spec 17 §3.6 (v2.2) [Agregada en `30_fase2.sql`] |
-| 17 | `is_demo` | `boolean` | no | `false` | Columnas agregadas en Fase 2 por spec 17 §3.6 (v2.2) [Agregada en `30_fase2.sql`] |
-
-**PK:** `id`
-
-**Claves foráneas**
-
-| Columna(s) | Referencia | ON DELETE | Nombre |
-|---|---|---|---|
-| `provider_id` | `fx_rate_providers.id` | NO ACTION | `fk_fin_fx_rates_provider_id` |
-| `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_fx_rates_tenant_id` |
-
-**CHECK**
-
-| Nombre | Definición | Valores permitidos |
-|---|---|---|
-| `fin_fx_rates_rate_pen_check` | `CHECK ((rate_pen > (0)::numeric))` |  |
-
-**Índices**
-
-| Nombre | Definición |
-|---|---|
-| `ix_fin_fx_rates_provider_id` | `USING btree (provider_id)` |
-| `ix_fin_fx_rates_tenant_id_currency_code_effective_at_desc` | `USING btree (tenant_id, currency_code, effective_at DESC)` |
-| `ix_fin_fx_rates_tenant_id_currency_code_rate_date_desc` | `USING btree (tenant_id, currency_code, rate_date DESC)` |
-
-**Triggers**
-
-| Nombre | Momento y evento | Función |
-|---|---|---|
-| `trg_fin_fx_rates_append_only` | BEFORE DELETE OR UPDATE | `app_forbid_update_delete` |
-
-[↑ Índice del dominio](#tablas)
-
 ### `fin_payable_payouts`
 
 [Spec 07 §3.7] [Fase 1] Pagos a proveedores.
@@ -333,7 +350,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_bank_accounts.tenant_id, fin_bank_lines.tenant_id, fin_payables.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `payable_id` | `uuid` | no |  | FK → fin_payables.id. |
 | 5 | `paid_on` | `date` | no |  |  |
@@ -354,9 +371,9 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `bank_account_id` | `fin_bank_accounts.id` | NO ACTION | `fk_fin_payable_payouts_bank_account_id` |
-| `bank_line_id` | `fin_bank_lines.id` | NO ACTION | `fk_fin_payable_payouts_bank_line_id` |
-| `payable_id` | `fin_payables.id` | NO ACTION | `fk_fin_payable_payouts_payable_id` |
+| `tenant_id, bank_account_id` | `fin_bank_accounts.tenant_id, id` | NO ACTION | `fk_fin_payable_payouts_bank_account_id` |
+| `tenant_id, bank_line_id` | `fin_bank_lines.tenant_id, id` | NO ACTION | `fk_fin_payable_payouts_bank_line_id` |
+| `tenant_id, payable_id` | `fin_payables.tenant_id, id` | NO ACTION | `fk_fin_payable_payouts_payable_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_payable_payouts_tenant_id` |
 
 **UNIQUE**
@@ -402,7 +419,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, catalog_providers.tenant_id, booking_reservations.tenant_id, booking_reservation_services.tenant_id, fin_bank_accounts.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `provider_id` | `uuid` | no |  | FK → catalog_providers.id. |
 | 5 | `reservation_id` | `uuid` | sí |  | FK → booking_reservations.id. |
@@ -438,18 +455,19 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `approved_by` | `iam_users.id` | NO ACTION | `fk_fin_payables_approved_by` |
-| `provider_id` | `catalog_providers.id` | NO ACTION | `fk_fin_payables_provider_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_fin_payables_reservation_id` |
-| `reservation_service_id` | `booking_reservation_services.id` | NO ACTION | `fk_fin_payables_reservation_service_id` |
-| `scheduled_bank_account_id` | `fin_bank_accounts.id` | NO ACTION | `fk_fin_payables_scheduled_bank_account_id` |
-| `scheduled_by` | `iam_users.id` | NO ACTION | `fk_fin_payables_scheduled_by` |
+| `tenant_id, approved_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_payables_approved_by` |
+| `tenant_id, provider_id` | `catalog_providers.tenant_id, id` | NO ACTION | `fk_fin_payables_provider_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_fin_payables_reservation_id` |
+| `tenant_id, reservation_service_id` | `booking_reservation_services.tenant_id, id` | NO ACTION | `fk_fin_payables_reservation_service_id` |
+| `tenant_id, scheduled_bank_account_id` | `fin_bank_accounts.tenant_id, id` | NO ACTION | `fk_fin_payables_scheduled_bank_account_id` |
+| `tenant_id, scheduled_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_payables_scheduled_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_payables_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fin_payables_id` | `tenant_id, id` |  | restricción |
 | `uq_fin_payables_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -502,7 +520,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, fin_payments.tenant_id, fin_receivables.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `payment_id` | `uuid` | no |  | FK → fin_payments.id. |
 | 4 | `receivable_id` | `uuid` | no |  | FK → fin_receivables.id. |
 | 5 | `amount` | `numeric(14,2)` | no |  |  |
@@ -521,10 +539,10 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `applied_by` | `iam_users.id` | NO ACTION | `fk_fin_payment_applications_applied_by` |
-| `payment_id` | `fin_payments.id` | NO ACTION | `fk_fin_payment_applications_payment_id` |
-| `receivable_id` | `fin_receivables.id` | NO ACTION | `fk_fin_payment_applications_receivable_id` |
-| `reversed_by` | `iam_users.id` | NO ACTION | `fk_fin_payment_applications_reversed_by` |
+| `tenant_id, applied_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_payment_applications_applied_by` |
+| `tenant_id, payment_id` | `fin_payments.tenant_id, id` | NO ACTION | `fk_fin_payment_applications_payment_id` |
+| `tenant_id, receivable_id` | `fin_receivables.tenant_id, id` | NO ACTION | `fk_fin_payment_applications_receivable_id` |
+| `tenant_id, reversed_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_payment_applications_reversed_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_payment_applications_tenant_id` |
 
 **UNIQUE**
@@ -622,7 +640,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → sys_documents.tenant_id, fin_receivables.tenant_id, iam_users.tenant_id, booking_reservations.tenant_id, collab_approval_requests.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 5 | `receivable_id` | `uuid` | sí |  | FK → fin_receivables.id. |
@@ -657,18 +675,19 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `evidence_document_id` | `sys_documents.id` | NO ACTION | `fk_fin_payments_evidence_document_id` |
-| `receivable_id` | `fin_receivables.id` | NO ACTION | `fk_fin_payments_receivable_id` |
-| `registered_by` | `iam_users.id` | NO ACTION | `fk_fin_payments_registered_by` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_fin_payments_reservation_id` |
-| `reversal_request_id` | `collab_approval_requests.id` | NO ACTION | `fk_fin_payments_reversal_request_id` |
-| `reverted_by` | `iam_users.id` | NO ACTION | `fk_fin_payments_reverted_by` |
+| `tenant_id, evidence_document_id` | `sys_documents.tenant_id, id` | NO ACTION | `fk_fin_payments_evidence_document_id` |
+| `tenant_id, receivable_id` | `fin_receivables.tenant_id, id` | NO ACTION | `fk_fin_payments_receivable_id` |
+| `tenant_id, registered_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_payments_registered_by` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_fin_payments_reservation_id` |
+| `tenant_id, reversal_request_id` | `collab_approval_requests.tenant_id, id` | NO ACTION | `fk_fin_payments_reversal_request_id` |
+| `tenant_id, reverted_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_payments_reverted_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_payments_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fin_payments_id` | `tenant_id, id` |  | restricción |
 | `uq_fin_payments_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -720,7 +739,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_receivables.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `receivable_id` | `uuid` | no |  | FK → fin_receivables.id. |
 | 4 | `channels` | `character varying(60)` | no |  |  |
 | 5 | `sent_by` | `uuid` | sí |  | FK → iam_users.id. |
@@ -735,8 +754,8 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `receivable_id` | `fin_receivables.id` | NO ACTION | `fk_fin_receivable_reminders_receivable_id` |
-| `sent_by` | `iam_users.id` | NO ACTION | `fk_fin_receivable_reminders_sent_by` |
+| `tenant_id, receivable_id` | `fin_receivables.tenant_id, id` | NO ACTION | `fk_fin_receivable_reminders_receivable_id` |
+| `tenant_id, sent_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_receivable_reminders_sent_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_receivable_reminders_tenant_id` |
 
 **Índices**
@@ -762,7 +781,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_clients.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(30)` | no |  |  |
 | 4 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 5 | `client_id` | `uuid` | no |  | FK → crm_clients.id. |
@@ -790,14 +809,15 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `client_id` | `crm_clients.id` | NO ACTION | `fk_fin_receivables_client_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_fin_receivables_reservation_id` |
+| `tenant_id, client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_fin_receivables_client_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_fin_receivables_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_receivables_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fin_receivables_id` | `tenant_id, id` |  | restricción |
 | `uq_fin_receivables_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -844,7 +864,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, booking_reservations.tenant_id, tenants.id. |
 | 3 | `reservation_id` | `uuid` | no |  | FK → booking_reservations.id. |
 | 4 | `closed_at` | `timestamp with time zone` | no | `now()` |  |
 | 5 | `closed_by` | `uuid` | no |  | FK → iam_users.id. |
@@ -865,8 +885,8 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `closed_by` | `iam_users.id` | NO ACTION | `fk_fin_settlements_closed_by` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_fin_settlements_reservation_id` |
+| `tenant_id, closed_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_settlements_closed_by` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_fin_settlements_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_settlements_tenant_id` |
 
 **UNIQUE**
@@ -903,7 +923,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id, iam_users.tenant_id. |
 | 3 | `entity_type` | `character varying(30)` | no |  | Valores: `payment`, `commission`, `invoice`, `payable`. |
 | 4 | `entity_id` | `uuid` | no |  |  |
 | 5 | `status` | `character varying(30)` | no |  |  |
@@ -919,7 +939,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_status_history_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_fin_status_history_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_status_history_user_id` |
 
 **CHECK**
 
@@ -950,7 +970,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_reconciliation_closures.tenant_id, fin_payables.tenant_id, fin_payments.tenant_id, iam_users.tenant_id, fin_bank_statements.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `statement_id` | `uuid` | sí |  | FK → fin_bank_statements.id. |
 | 5 | `bank` | `character varying(20)` | no |  |  |
@@ -976,17 +996,18 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `closure_id` | `fin_reconciliation_closures.id` | NO ACTION | `fk_fin_bank_lines_closure_id` |
-| `matched_payable_id` | `fin_payables.id` | NO ACTION | `fk_fin_bank_lines_matched_payable_id` |
-| `matched_payment_id` | `fin_payments.id` | NO ACTION | `fk_fin_bank_lines_matched_payment_id` |
-| `resolved_by` | `iam_users.id` | NO ACTION | `fk_fin_bank_lines_resolved_by` |
-| `statement_id` | `fin_bank_statements.id` | NO ACTION | `fk_fin_bank_lines_statement_id` |
+| `tenant_id, closure_id` | `fin_reconciliation_closures.tenant_id, id` | NO ACTION | `fk_fin_bank_lines_closure_id` |
+| `tenant_id, matched_payable_id` | `fin_payables.tenant_id, id` | NO ACTION | `fk_fin_bank_lines_matched_payable_id` |
+| `tenant_id, matched_payment_id` | `fin_payments.tenant_id, id` | NO ACTION | `fk_fin_bank_lines_matched_payment_id` |
+| `tenant_id, resolved_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_bank_lines_resolved_by` |
+| `tenant_id, statement_id` | `fin_bank_statements.tenant_id, id` | NO ACTION | `fk_fin_bank_lines_statement_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_bank_lines_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fin_bank_lines_id` | `tenant_id, id` |  | restricción |
 | `uq_fin_bank_lines_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_fin_bank_lines_tenant_id_matched_payable_id_p` | `tenant_id, matched_payable_id` | `(((status)::text <> 'excepcion'::text) AND (matched_payable_id IS NOT NULL))` | índice único |
 | `uq_fin_bank_lines_tenant_id_matched_payment_id_p` | `tenant_id, matched_payment_id` | `(((status)::text <> 'excepcion'::text) AND (matched_payment_id IS NOT NULL))` | índice único |
@@ -1033,7 +1054,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_bank_accounts.tenant_id, sys_documents.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `bank` | `character varying(20)` | no |  |  |
 | 4 | `bank_account_id` | `uuid` | sí |  | FK → fin_bank_accounts.id. |
 | 5 | `filename` | `character varying(200)` | no |  |  |
@@ -1053,10 +1074,16 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `bank_account_id` | `fin_bank_accounts.id` | NO ACTION | `fk_fin_bank_statements_bank_account_id` |
-| `document_id` | `sys_documents.id` | NO ACTION | `fk_fin_bank_statements_document_id` |
-| `imported_by` | `iam_users.id` | NO ACTION | `fk_fin_bank_statements_imported_by` |
+| `tenant_id, bank_account_id` | `fin_bank_accounts.tenant_id, id` | NO ACTION | `fk_fin_bank_statements_bank_account_id` |
+| `tenant_id, document_id` | `sys_documents.tenant_id, id` | NO ACTION | `fk_fin_bank_statements_document_id` |
+| `tenant_id, imported_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_bank_statements_imported_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_bank_statements_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_fin_bank_statements_id` | `tenant_id, id` |  | restricción |
 
 **CHECK**
 
@@ -1094,7 +1121,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_treasury_accounts.tenant_id, fin_treasury_movements.tenant_id, iam_users.tenant_id, fin_cash_sessions.tenant_id, iam_users.tenant_id, tenants.id, iam_users.tenant_id, iam_users.tenant_id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `account_id` | `uuid` | no |  | FK → fin_treasury_accounts.id. |
 | 5 | `session_id` | `uuid` | sí |  | FK → fin_cash_sessions.id. |
@@ -1127,19 +1154,20 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `account_id` | `fin_treasury_accounts.id` | NO ACTION | `fk_fin_cash_counts_account_id` |
-| `adjustment_movement_id` | `fin_treasury_movements.id` | NO ACTION | `fk_fin_cash_counts_adjustment_movement_id` |
-| `approved_by` | `iam_users.id` | NO ACTION | `fk_fin_cash_counts_approved_by` |
-| `session_id` | `fin_cash_sessions.id` | NO ACTION | `fk_fin_cash_counts_session_id` |
-| `signed_by` | `iam_users.id` | NO ACTION | `fk_fin_cash_counts_signed_by` |
+| `tenant_id, account_id` | `fin_treasury_accounts.tenant_id, id` | NO ACTION | `fk_fin_cash_counts_account_id` |
+| `tenant_id, adjustment_movement_id` | `fin_treasury_movements.tenant_id, id` | NO ACTION | `fk_fin_cash_counts_adjustment_movement_id` |
+| `tenant_id, approved_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_cash_counts_approved_by` |
+| `tenant_id, session_id` | `fin_cash_sessions.tenant_id, id` | NO ACTION | `fk_fin_cash_counts_session_id` |
+| `tenant_id, signed_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_cash_counts_signed_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_cash_counts_tenant_id` |
-| `validated_by` | `iam_users.id` | NO ACTION | `fk_fin_cash_counts_validated_by` |
-| `witness_id` | `iam_users.id` | NO ACTION | `fk_fin_cash_counts_witness_id` |
+| `tenant_id, validated_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_cash_counts_validated_by` |
+| `tenant_id, witness_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_cash_counts_witness_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fin_cash_counts_id` | `tenant_id, id` |  | restricción |
 | `uq_fin_cash_counts_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -1188,7 +1216,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_cash_replenishments.tenant_id, tenants.id, iam_users.tenant_id. |
 | 3 | `replenishment_id` | `uuid` | no |  | FK → fin_cash_replenishments.id. |
 | 4 | `from_status` | `character varying(15)` | sí |  |  |
 | 5 | `to_status` | `character varying(15)` | no |  |  |
@@ -1203,9 +1231,9 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `replenishment_id` | `fin_cash_replenishments.id` | NO ACTION | `fk_fin_cash_replenishment_events_replenishment_id` |
+| `tenant_id, replenishment_id` | `fin_cash_replenishments.tenant_id, id` | NO ACTION | `fk_fin_cash_replenishment_events_replenishment_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_cash_replenishment_events_tenant_id` |
-| `user_id` | `iam_users.id` | NO ACTION | `fk_fin_cash_replenishment_events_user_id` |
+| `tenant_id, user_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_cash_replenishment_events_user_id` |
 
 **Índices**
 
@@ -1230,7 +1258,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_treasury_accounts.tenant_id, iam_users.tenant_id, iam_users.tenant_id, fin_treasury_accounts.tenant_id, iam_users.tenant_id, tenants.id, fin_treasury_transfers.tenant_id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `account_id` | `uuid` | no |  | FK → fin_treasury_accounts.id. |
 | 5 | `amount` | `numeric(14,2)` | no |  |  |
@@ -1256,18 +1284,19 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `account_id` | `fin_treasury_accounts.id` | NO ACTION | `fk_fin_cash_replenishments_account_id` |
-| `approved_by` | `iam_users.id` | NO ACTION | `fk_fin_cash_replenishments_approved_by` |
-| `paid_by` | `iam_users.id` | NO ACTION | `fk_fin_cash_replenishments_paid_by` |
-| `paid_from_account_id` | `fin_treasury_accounts.id` | NO ACTION | `fk_fin_cash_replenishments_paid_from_account_id` |
-| `requested_by` | `iam_users.id` | NO ACTION | `fk_fin_cash_replenishments_requested_by` |
+| `tenant_id, account_id` | `fin_treasury_accounts.tenant_id, id` | NO ACTION | `fk_fin_cash_replenishments_account_id` |
+| `tenant_id, approved_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_cash_replenishments_approved_by` |
+| `tenant_id, paid_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_cash_replenishments_paid_by` |
+| `tenant_id, paid_from_account_id` | `fin_treasury_accounts.tenant_id, id` | NO ACTION | `fk_fin_cash_replenishments_paid_from_account_id` |
+| `tenant_id, requested_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_cash_replenishments_requested_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_cash_replenishments_tenant_id` |
-| `transfer_id` | `fin_treasury_transfers.id` | NO ACTION | `fk_fin_cash_replenishments_transfer_id` |
+| `tenant_id, transfer_id` | `fin_treasury_transfers.tenant_id, id` | NO ACTION | `fk_fin_cash_replenishments_transfer_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fin_cash_replenishments_id` | `tenant_id, id` |  | restricción |
 | `uq_fin_cash_replenishments_tenant_id_account_id_p` | `tenant_id, account_id` | `((status)::text = ANY ((ARRAY['requested'::character varying, 'approved'::character varying])::text[]))` | índice único |
 | `uq_fin_cash_replenishments_tenant_id_code` | `tenant_id, code` |  | índice único |
 
@@ -1312,7 +1341,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_treasury_accounts.tenant_id, iam_users.tenant_id, fin_cash_counts.tenant_id, iam_users.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `account_id` | `uuid` | no |  | FK → fin_treasury_accounts.id. |
 | 5 | `session_date` | `date` | no |  |  |
@@ -1334,16 +1363,17 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `account_id` | `fin_treasury_accounts.id` | NO ACTION | `fk_fin_cash_sessions_account_id` |
-| `closed_by` | `iam_users.id` | NO ACTION | `fk_fin_cash_sessions_closed_by` |
-| `closing_count_id` | `fin_cash_counts.id` | NO ACTION | `fk_fin_cash_sessions_closing_count_id` |
-| `opened_by` | `iam_users.id` | NO ACTION | `fk_fin_cash_sessions_opened_by` |
+| `tenant_id, account_id` | `fin_treasury_accounts.tenant_id, id` | NO ACTION | `fk_fin_cash_sessions_account_id` |
+| `tenant_id, closed_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_cash_sessions_closed_by` |
+| `tenant_id, closing_count_id` | `fin_cash_counts.tenant_id, id` | NO ACTION | `fk_fin_cash_sessions_closing_count_id` |
+| `tenant_id, opened_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_cash_sessions_opened_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_cash_sessions_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fin_cash_sessions_id` | `tenant_id, id` |  | restricción |
 | `uq_fin_cash_sessions_tenant_id_account_id_p` | `tenant_id, account_id` | `((status)::text = 'open'::text)` | índice único |
 | `uq_fin_cash_sessions_tenant_id_account_id_session_date` | `tenant_id, account_id, session_date` |  | índice único |
 | `uq_fin_cash_sessions_tenant_id_code` | `tenant_id, code` |  | índice único |
@@ -1447,7 +1477,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_sedes.tenant_id, tenants.id. |
 | 3 | `doc_type` | `character(2)` | no |  | Valores: `01`, `03`, `07`, `08`. |
 | 4 | `series` | `character(4)` | no |  |  |
 | 5 | `next_number` | `integer` | no | `1` |  |
@@ -1464,7 +1494,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `sede_id` | `iam_sedes.id` | NO ACTION | `fk_fin_document_series_sede_id` |
+| `tenant_id, sede_id` | `iam_sedes.tenant_id, id` | NO ACTION | `fk_fin_document_series_sede_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_document_series_tenant_id` |
 
 **UNIQUE**
@@ -1508,7 +1538,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_treasury_movements.tenant_id, tenants.id. |
 | 3 | `movement_id` | `uuid` | no |  | FK → fin_treasury_movements.id. |
 | 4 | `receipt_type` | `character varying(30)` | no |  | Valores: `invoice`, `sales_receipt`, `ticket`, `fee_receipt`, `mobility_sheet`, `sworn_statement`. |
 | 5 | `series_number` | `character varying(30)` | sí |  |  |
@@ -1526,7 +1556,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `movement_id` | `fin_treasury_movements.id` | NO ACTION | `fk_fin_expense_receipts_movement_id` |
+| `tenant_id, movement_id` | `fin_treasury_movements.tenant_id, id` | NO ACTION | `fk_fin_expense_receipts_movement_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_expense_receipts_tenant_id` |
 
 **UNIQUE**
@@ -1572,7 +1602,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_invoices.tenant_id, sys_documents.tenant_id, tenants.id. |
 | 3 | `invoice_id` | `uuid` | no |  | FK → fin_invoices.id. |
 | 4 | `action` | `character varying(20)` | no |  | Valores: `send`, `status`, `resend`, `void`. |
 | 5 | `attempt` | `smallint` | no | `1` |  |
@@ -1590,8 +1620,8 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `invoice_id` | `fin_invoices.id` | NO ACTION | `fk_fin_fiscal_events_invoice_id` |
-| `payload_document_id` | `sys_documents.id` | NO ACTION | `fk_fin_fiscal_events_payload_document_id` |
+| `tenant_id, invoice_id` | `fin_invoices.tenant_id, id` | NO ACTION | `fk_fin_fiscal_events_invoice_id` |
+| `tenant_id, payload_document_id` | `sys_documents.tenant_id, id` | NO ACTION | `fk_fin_fiscal_events_payload_document_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_fiscal_events_tenant_id` |
 
 **CHECK**
@@ -1624,7 +1654,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_treasury_accounts.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `account_id` | `uuid` | no |  | FK → fin_treasury_accounts.id. |
 | 5 | `period` | `character(7)` | no |  |  |
@@ -1644,7 +1674,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `account_id` | `fin_treasury_accounts.id` | NO ACTION | `fk_fin_fx_revaluations_account_id` |
+| `tenant_id, account_id` | `fin_treasury_accounts.tenant_id, id` | NO ACTION | `fk_fin_fx_revaluations_account_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_fx_revaluations_tenant_id` |
 
 **UNIQUE**
@@ -1682,7 +1712,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_invoices.tenant_id, tenants.id. |
 | 3 | `invoice_id` | `uuid` | no |  | FK → fin_invoices.id. |
 | 4 | `line_no` | `smallint` | no | `1` |  |
 | 5 | `description` | `character varying(500)` | no |  |  |
@@ -1703,7 +1733,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `invoice_id` | `fin_invoices.id` | NO ACTION | `fk_fin_invoice_lines_invoice_id` |
+| `tenant_id, invoice_id` | `fin_invoices.tenant_id, id` | NO ACTION | `fk_fin_invoice_lines_invoice_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_invoice_lines_tenant_id` |
 
 **UNIQUE**
@@ -1745,7 +1775,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → sys_documents.tenant_id, crm_clients.tenant_id, iam_users.tenant_id, sys_documents.tenant_id, fin_receivables.tenant_id, fin_invoices.tenant_id, booking_reservations.tenant_id, tenants.id, sys_documents.tenant_id. |
 | 3 | `number` | `character varying(20)` | no |  |  |
 | 4 | `doc_type` | `character(2)` | no |  | Valores: `01`, `03`, `07`, `08`. |
 | 5 | `series` | `character(4)` | no |  |  |
@@ -1797,20 +1827,21 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `cdr_document_id` | `sys_documents.id` | NO ACTION | `fk_fin_invoices_cdr_document_id` |
-| `client_id` | `crm_clients.id` | NO ACTION | `fk_fin_invoices_client_id` |
-| `issued_by` | `iam_users.id` | NO ACTION | `fk_fin_invoices_issued_by` |
-| `pdf_document_id` | `sys_documents.id` | NO ACTION | `fk_fin_invoices_pdf_document_id` |
-| `receivable_id` | `fin_receivables.id` | NO ACTION | `fk_fin_invoices_receivable_id` |
-| `ref_invoice_id` | `fin_invoices.id` | NO ACTION | `fk_fin_invoices_ref_invoice_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_fin_invoices_reservation_id` |
+| `tenant_id, cdr_document_id` | `sys_documents.tenant_id, id` | NO ACTION | `fk_fin_invoices_cdr_document_id` |
+| `tenant_id, client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_fin_invoices_client_id` |
+| `tenant_id, issued_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_invoices_issued_by` |
+| `tenant_id, pdf_document_id` | `sys_documents.tenant_id, id` | NO ACTION | `fk_fin_invoices_pdf_document_id` |
+| `tenant_id, receivable_id` | `fin_receivables.tenant_id, id` | NO ACTION | `fk_fin_invoices_receivable_id` |
+| `tenant_id, ref_invoice_id` | `fin_invoices.tenant_id, id` | NO ACTION | `fk_fin_invoices_ref_invoice_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_fin_invoices_reservation_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_invoices_tenant_id` |
-| `xml_document_id` | `sys_documents.id` | NO ACTION | `fk_fin_invoices_xml_document_id` |
+| `tenant_id, xml_document_id` | `sys_documents.tenant_id, id` | NO ACTION | `fk_fin_invoices_xml_document_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fin_invoices_id` | `tenant_id, id` |  | restricción |
 | `uq_fin_invoices_tenant_id_number` | `tenant_id, number` |  | índice único |
 | `uq_fin_invoices_tenant_id_series_correlative` | `tenant_id, series, correlative` |  | índice único |
 
@@ -1868,7 +1899,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, fin_period_closes.tenant_id, tenants.id. |
 | 3 | `period_close_id` | `uuid` | no |  | FK → fin_period_closes.id. |
 | 4 | `check_code` | `character varying(20)` | no |  | Valores: `fx`, `aging`, `igv`. |
 | 5 | `checked_by` | `uuid` | no |  | FK → iam_users.id. |
@@ -1884,8 +1915,8 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `checked_by` | `iam_users.id` | NO ACTION | `fk_fin_period_close_checks_checked_by` |
-| `period_close_id` | `fin_period_closes.id` | CASCADE | `fk_fin_period_close_checks_period_close_id` |
+| `tenant_id, checked_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_period_close_checks_checked_by` |
+| `tenant_id, period_close_id` | `fin_period_closes.tenant_id, id` | CASCADE | `fk_fin_period_close_checks_period_close_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_period_close_checks_tenant_id` |
 
 **UNIQUE**
@@ -1928,7 +1959,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, tenants.id. |
 | 3 | `period` | `character(7)` | no |  |  |
 | 4 | `status` | `character varying(10)` | no | `'abierto'::character varying` | Valores: `abierto`, `cerrado`. |
 | 5 | `closed_at` | `timestamp with time zone` | sí |  |  |
@@ -1945,13 +1976,14 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `closed_by` | `iam_users.id` | NO ACTION | `fk_fin_period_closes_closed_by` |
+| `tenant_id, closed_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_period_closes_closed_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_period_closes_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fin_period_closes_id` | `tenant_id, id` |  | restricción |
 | `uq_fin_period_closes_tenant_id_period` | `tenant_id, period` |  | índice único |
 
 **CHECK**
@@ -1989,7 +2021,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `period` | `character(7)` | no |  |  |
 | 5 | `closed_at` | `timestamp with time zone` | no | `now()` |  |
@@ -2011,13 +2043,14 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `closed_by` | `iam_users.id` | NO ACTION | `fk_fin_reconciliation_closures_closed_by` |
+| `tenant_id, closed_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_reconciliation_closures_closed_by` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_reconciliation_closures_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fin_reconciliation_closures_id` | `tenant_id, id` |  | restricción |
 | `uq_fin_reconciliation_closures_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **Índices**
@@ -2048,7 +2081,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, iam_sedes.tenant_id, fin_treasury_accounts.tenant_id, tenants.id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `kind` | `character varying(20)` | no |  | Valores: `bank`, `petty_cash`, `gateway`. |
 | 5 | `bank` | `character varying(40)` | sí |  |  |
@@ -2077,15 +2110,16 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `custodian_id` | `iam_users.id` | NO ACTION | `fk_fin_treasury_accounts_custodian_id` |
-| `sede_id` | `iam_sedes.id` | NO ACTION | `fk_fin_treasury_accounts_sede_id` |
-| `settle_to_account_id` | `fin_treasury_accounts.id` | NO ACTION | `fk_fin_treasury_accounts_settle_to_account_id` |
+| `tenant_id, custodian_id` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_treasury_accounts_custodian_id` |
+| `tenant_id, sede_id` | `iam_sedes.tenant_id, id` | NO ACTION | `fk_fin_treasury_accounts_sede_id` |
+| `tenant_id, settle_to_account_id` | `fin_treasury_accounts.tenant_id, id` | NO ACTION | `fk_fin_treasury_accounts_settle_to_account_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_treasury_accounts_tenant_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fin_treasury_accounts_id` | `tenant_id, id` |  | restricción |
 | `uq_fin_treasury_accounts_tenant_id_bank_account_number_p` | `tenant_id, bank, account_number` | `(account_number IS NOT NULL)` | índice único |
 | `uq_fin_treasury_accounts_tenant_id_code` | `tenant_id, code` |  | índice único |
 
@@ -2131,7 +2165,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_treasury_accounts.tenant_id, fin_treasury_transfers.tenant_id, fin_cash_replenishments.tenant_id, booking_reservations.tenant_id, iam_sedes.tenant_id, tenants.id, fin_treasury_transfers.tenant_id, iam_users.tenant_id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `account_id` | `uuid` | no |  | FK → fin_treasury_accounts.id. |
 | 5 | `movement_date` | `date` | no |  |  |
@@ -2170,19 +2204,20 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `account_id` | `fin_treasury_accounts.id` | NO ACTION | `fk_fin_treasury_movements_account_id` |
-| `deposited_transfer_id` | `fin_treasury_transfers.id` | NO ACTION | `fk_fin_treasury_movements_deposited_transfer_id` |
-| `replenishment_id` | `fin_cash_replenishments.id` | NO ACTION | `fk_fin_treasury_movements_replenishment_id` |
-| `reservation_id` | `booking_reservations.id` | NO ACTION | `fk_fin_treasury_movements_reservation_id` |
-| `sede_id` | `iam_sedes.id` | NO ACTION | `fk_fin_treasury_movements_sede_id` |
+| `tenant_id, account_id` | `fin_treasury_accounts.tenant_id, id` | NO ACTION | `fk_fin_treasury_movements_account_id` |
+| `tenant_id, deposited_transfer_id` | `fin_treasury_transfers.tenant_id, id` | NO ACTION | `fk_fin_treasury_movements_deposited_transfer_id` |
+| `tenant_id, replenishment_id` | `fin_cash_replenishments.tenant_id, id` | NO ACTION | `fk_fin_treasury_movements_replenishment_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_fin_treasury_movements_reservation_id` |
+| `tenant_id, sede_id` | `iam_sedes.tenant_id, id` | NO ACTION | `fk_fin_treasury_movements_sede_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_treasury_movements_tenant_id` |
-| `transfer_id` | `fin_treasury_transfers.id` | NO ACTION | `fk_fin_treasury_movements_transfer_id` |
-| `voided_by` | `iam_users.id` | NO ACTION | `fk_fin_treasury_movements_voided_by` |
+| `tenant_id, transfer_id` | `fin_treasury_transfers.tenant_id, id` | NO ACTION | `fk_fin_treasury_movements_transfer_id` |
+| `tenant_id, voided_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_treasury_movements_voided_by` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fin_treasury_movements_id` | `tenant_id, id` |  | restricción |
 | `uq_fin_treasury_movements_tenant_id_code` | `tenant_id, code` |  | índice único |
 | `uq_fin_treasury_movements_tenant_id_source_key_p` | `tenant_id, source_key` | `(source_key IS NOT NULL)` | índice único |
 
@@ -2284,7 +2319,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | # | Columna | Tipo | Nulo | Default | Descripción |
 |---|---|---|---|---|---|
 | 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
-| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_treasury_accounts.tenant_id, tenants.id, fin_treasury_accounts.tenant_id. |
 | 3 | `code` | `character varying(20)` | no |  |  |
 | 4 | `from_account_id` | `uuid` | no |  | FK → fin_treasury_accounts.id. |
 | 5 | `to_account_id` | `uuid` | no |  | FK → fin_treasury_accounts.id. |
@@ -2305,14 +2340,15 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Columna(s) | Referencia | ON DELETE | Nombre |
 |---|---|---|---|
-| `from_account_id` | `fin_treasury_accounts.id` | NO ACTION | `fk_fin_treasury_transfers_from_account_id` |
+| `tenant_id, from_account_id` | `fin_treasury_accounts.tenant_id, id` | NO ACTION | `fk_fin_treasury_transfers_from_account_id` |
 | `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_treasury_transfers_tenant_id` |
-| `to_account_id` | `fin_treasury_accounts.id` | NO ACTION | `fk_fin_treasury_transfers_to_account_id` |
+| `tenant_id, to_account_id` | `fin_treasury_accounts.tenant_id, id` | NO ACTION | `fk_fin_treasury_transfers_to_account_id` |
 
 **UNIQUE**
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fin_treasury_transfers_id` | `tenant_id, id` |  | restricción |
 | `uq_fin_treasury_transfers_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -2378,6 +2414,7 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 
 | Nombre | Columnas / expresión | Condición (parcial) | Tipo |
 |---|---|---|---|
+| `uq_tid_fx_rate_providers_id` | `tenant_id, id` |  | restricción |
 | `uq_fx_rate_providers_tenant_id_code` | `tenant_id, code` |  | índice único |
 
 **CHECK**
@@ -2399,5 +2436,647 @@ CxC, pagos, CxP, comisiones, comprobantes, conciliación, cierres, tesorería y 
 | Nombre | Momento y evento | Función |
 |---|---|---|
 | `trg_fx_rate_providers_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `fin_account_mappings`
+
+[Spec 19 §3.11] [Fase 3] Plan de cuentas del tenant por sistema contable de destino.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Finanzas y tesorería (fin_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 3 | `target` | `character varying(15)` | no |  | Valores: `contasis`, `concar`, `siigo`, `quickbooks`, `xero`, `csv`. |
+| 4 | `concept` | `character varying(30)` | no |  | Valores: `venta_gravada`, `venta_exonerada`, `igv`, `cxc`, `caja`, `banco`, `cxp`, `costo_servicio`, `comision`, `diferencia_cambio`, `anticipo`, `vale_regalo`. |
+| 5 | `account_code` | `character varying(30)` | no |  |  |
+| 6 | `cost_center` | `character varying(30)` | sí |  |  |
+| 7 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
+| 8 | `updated_by` | `uuid` | sí |  | Usuario de la última actualización (sin FK). |
+| 9 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 10 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_account_mappings_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_fin_account_mappings_tenant_target_concept` | `tenant_id, target, concept` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `fin_account_mappings_concept_check` | `CHECK (((concept)::text = ANY ((ARRAY['venta_gravada'::character varying, 'venta_exonerada'::character varying, 'igv'::character varying, 'cxc'::character varying, 'caja'::character varying, 'banco'::character varying, 'cxp'::character varying, 'costo_servicio'::character varying, 'comision'::character varying, 'diferencia_cambio'::character varying, 'anticipo'::character varying, 'vale_regalo'::character varying])::text[])))` | `concept`: `venta_gravada`, `venta_exonerada`, `igv`, `cxc`, `caja`, `banco`, `cxp`, `costo_servicio`, `comision`, `diferencia_cambio`, `anticipo`, `vale_regalo` |
+| `fin_account_mappings_target_check` | `CHECK (((target)::text = ANY ((ARRAY['contasis'::character varying, 'concar'::character varying, 'siigo'::character varying, 'quickbooks'::character varying, 'xero'::character varying, 'csv'::character varying])::text[])))` | `target`: `contasis`, `concar`, `siigo`, `quickbooks`, `xero`, `csv` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_fin_account_mappings_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `fin_accounting_exports`
+
+[Spec 19 §3.11] [Fase 3] Exportaciones contables por período.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Finanzas y tesorería (fin_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → tenants.id. |
+| 3 | `code` | `character varying(30)` | no |  |  |
+| 4 | `target` | `character varying(15)` | no |  | Valores: `contasis`, `concar`, `siigo`, `quickbooks`, `xero`, `csv`. |
+| 5 | `period_from` | `date` | no |  |  |
+| 6 | `period_to` | `date` | no |  |  |
+| 7 | `scope` | `text[]` | no | `'{ventas,cobros,compras}'::text[]` |  |
+| 8 | `status` | `character varying(10)` | no | `'en_cola'::character varying` | Valores: `en_cola`, `generado`, `enviado`, `fallido`. |
+| 9 | `rows_count` | `integer` | no | `0` |  |
+| 10 | `file_path` | `text` | sí |  |  |
+| 11 | `sha256` | `character(64)` | sí |  |  |
+| 12 | `error` | `text` | sí |  |  |
+| 13 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
+| 14 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 15 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_accounting_exports_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_fin_accounting_exports_tenant_id_code` | `tenant_id, code` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `ck_fin_accounting_exports_1` | `CHECK ((period_to >= period_from))` |  |
+| `ck_fin_accounting_exports_2` | `CHECK ((((status)::text <> ALL ((ARRAY['generado'::character varying, 'enviado'::character varying])::text[])) OR (file_path IS NOT NULL)))` |  |
+| `fin_accounting_exports_status_check` | `CHECK (((status)::text = ANY ((ARRAY['en_cola'::character varying, 'generado'::character varying, 'enviado'::character varying, 'fallido'::character varying])::text[])))` | `status`: `en_cola`, `generado`, `enviado`, `fallido` |
+| `fin_accounting_exports_target_check` | `CHECK (((target)::text = ANY ((ARRAY['contasis'::character varying, 'concar'::character varying, 'siigo'::character varying, 'quickbooks'::character varying, 'xero'::character varying, 'csv'::character varying])::text[])))` | `target`: `contasis`, `concar`, `siigo`, `quickbooks`, `xero`, `csv` |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_fin_accounting_exports_tenant_id_created_at_desc` | `USING btree (tenant_id, created_at DESC)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_fin_accounting_exports_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `fin_ai_credit_ledger`
+
+[Spec 23 §3.8] [Fase 3] Libro de créditos de IA del tenant (asignación del plan, compras, consumo, reembolso, vencimiento). Append-only.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Finanzas y tesorería (fin_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, platform_invoices.tenant_id, cms_ai_content_jobs.tenant_id, tenants.id. |
+| 3 | `kind` | `character varying(10)` | no |  | Valores: `contenido`, `imagenes`. |
+| 4 | `movement` | `character varying(16)` | no |  | Valores: `asignacion_plan`, `compra_paquete`, `consumo`, `reembolso`, `vencimiento`, `ajuste`. |
+| 5 | `credits` | `integer` | no |  |  |
+| 6 | `balance_after` | `integer` | no |  |  |
+| 7 | `pack_id` | `uuid` | sí |  | FK → platform_ai_credit_packs.id. |
+| 8 | `job_id` | `uuid` | sí |  | FK → cms_ai_content_jobs.id. |
+| 9 | `invoice_id` | `uuid` | sí |  | FK → platform_invoices.id. |
+| 10 | `note` | `character varying(200)` | sí |  |  |
+| 11 | `occurred_at` | `timestamp with time zone` | no | `now()` |  |
+| 12 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). FK → iam_users.id. |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, created_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_ai_credit_ledger_created_by` |
+| `tenant_id, invoice_id` | `platform_invoices.tenant_id, id` | NO ACTION | `fk_fin_ai_credit_ledger_invoice_id` |
+| `tenant_id, job_id` | `cms_ai_content_jobs.tenant_id, id` | NO ACTION | `fk_fin_ai_credit_ledger_job_id` |
+| `pack_id` | `platform_ai_credit_packs.id` | NO ACTION | `fk_fin_ai_credit_ledger_pack_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_ai_credit_ledger_tenant_id` |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `ck_fin_ai_credit_ledger_1` | `CHECK ((((movement)::text <> 'compra_paquete'::text) OR ((pack_id IS NOT NULL) AND (credits > 0))))` |  |
+| `ck_fin_ai_credit_ledger_2` | `CHECK ((((movement)::text <> 'consumo'::text) OR ((job_id IS NOT NULL) AND (credits < 0))))` |  |
+| `ck_fin_ai_credit_ledger_3` | `CHECK ((((movement)::text <> 'vencimiento'::text) OR (credits < 0)))` |  |
+| `ck_fin_ai_credit_ledger_4` | `CHECK ((((movement)::text <> ALL ((ARRAY['asignacion_plan'::character varying, 'reembolso'::character varying])::text[])) OR (credits > 0)))` |  |
+| `fin_ai_credit_ledger_balance_after_check` | `CHECK ((balance_after >= 0))` |  |
+| `fin_ai_credit_ledger_credits_check` | `CHECK ((credits <> 0))` |  |
+| `fin_ai_credit_ledger_kind_check` | `CHECK (((kind)::text = ANY ((ARRAY['contenido'::character varying, 'imagenes'::character varying])::text[])))` | `kind`: `contenido`, `imagenes` |
+| `fin_ai_credit_ledger_movement_check` | `CHECK (((movement)::text = ANY ((ARRAY['asignacion_plan'::character varying, 'compra_paquete'::character varying, 'consumo'::character varying, 'reembolso'::character varying, 'vencimiento'::character varying, 'ajuste'::character varying])::text[])))` | `movement`: `asignacion_plan`, `compra_paquete`, `consumo`, `reembolso`, `vencimiento`, `ajuste` |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_fin_ai_credit_ledger_created_by` | `USING btree (created_by)` |
+| `ix_fin_ai_credit_ledger_invoice_id` | `USING btree (invoice_id)` |
+| `ix_fin_ai_credit_ledger_job_id` | `USING btree (job_id)` |
+| `ix_fin_ai_credit_ledger_kind_time` | `USING btree (tenant_id, kind, occurred_at)` |
+| `ix_fin_ai_credit_ledger_pack_id` | `USING btree (pack_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_fin_ai_credit_ledger_append_only` | BEFORE DELETE OR UPDATE | `app_forbid_update_delete` |
+
+[↑ Índice del dominio](#tablas)
+
+### `fin_corporate_statements`
+
+[Spec 20 §3.7] [Fase 3] Estados de cuenta mensuales de la empresa cliente (saldo inicial, compras, pagos, notas de crédito y saldo final).
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Finanzas y tesorería (fin_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_corporate_accounts.tenant_id, sys_documents.tenant_id, iam_users.tenant_id, tenants.id. |
+| 3 | `code` | `character varying(20)` | no |  |  |
+| 4 | `account_id` | `uuid` | no |  | FK → crm_corporate_accounts.id. |
+| 5 | `period_start` | `date` | no |  |  |
+| 6 | `period_end` | `date` | no |  |  |
+| 7 | `currency` | `character(3)` | no |  |  |
+| 8 | `opening_balance` | `numeric(14,2)` | no |  |  |
+| 9 | `charges` | `numeric(14,2)` | no | `0` |  |
+| 10 | `payments` | `numeric(14,2)` | no | `0` |  |
+| 11 | `credits` | `numeric(14,2)` | no | `0` |  |
+| 12 | `closing_balance` | `numeric(14,2)` | no |  |  |
+| 13 | `lines` | `jsonb` | no | `'[]'::jsonb` |  |
+| 14 | `status` | `character varying(10)` | no | `'generado'::character varying` | Valores: `generado`, `enviado`, `anulado`. |
+| 15 | `document_id` | `uuid` | sí |  | FK → sys_documents.id. |
+| 16 | `generated_by` | `uuid` | sí |  | FK → iam_users.id. |
+| 17 | `generated_at` | `timestamp with time zone` | no | `now()` |  |
+| 18 | `sent_at` | `timestamp with time zone` | sí |  |  |
+| 19 | `sent_to` | `text[]` | no | `'{}'::text[]` |  |
+| 20 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 21 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, account_id` | `crm_corporate_accounts.tenant_id, id` | NO ACTION | `fk_fin_corporate_statements_account_id` |
+| `tenant_id, document_id` | `sys_documents.tenant_id, id` | NO ACTION | `fk_fin_corporate_statements_document_id` |
+| `tenant_id, generated_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_corporate_statements_generated_by` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_corporate_statements_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_fin_corporate_statements_account_period` | `tenant_id, account_id, period_start, currency` | `((status)::text <> 'anulado'::text)` | índice único |
+| `uq_fin_corporate_statements_tenant_id_code` | `tenant_id, code` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `ck_fin_corporate_statements_1` | `CHECK ((period_end >= period_start))` |  |
+| `ck_fin_corporate_statements_2` | `CHECK ((closing_balance = (((opening_balance + charges) - payments) - credits)))` |  |
+| `ck_fin_corporate_statements_3` | `CHECK ((((status)::text <> 'enviado'::text) OR ((sent_at IS NOT NULL) AND (cardinality(sent_to) > 0))))` |  |
+| `fin_corporate_statements_charges_check` | `CHECK ((charges >= (0)::numeric))` |  |
+| `fin_corporate_statements_credits_check` | `CHECK ((credits >= (0)::numeric))` |  |
+| `fin_corporate_statements_currency_check` | `CHECK ((currency ~ '^[A-Z]{3}$'::text))` |  |
+| `fin_corporate_statements_payments_check` | `CHECK ((payments >= (0)::numeric))` |  |
+| `fin_corporate_statements_status_check` | `CHECK (((status)::text = ANY ((ARRAY['generado'::character varying, 'enviado'::character varying, 'anulado'::character varying])::text[])))` | `status`: `generado`, `enviado`, `anulado` |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_fin_corporate_statements_account_id` | `USING btree (account_id, period_start DESC)` |
+| `ix_fin_corporate_statements_document_id` | `USING btree (document_id)` |
+| `ix_fin_corporate_statements_generated_by` | `USING btree (generated_by)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_fin_corporate_statements_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `fin_gateway_accounts`
+
+[Spec 22 §3.1] [Fase 3] Pasarelas de cobro del tenant (tarjeta local, PayPal, Yape/Plin) con su esquema de comisión.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Finanzas y tesorería (fin_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → iam_users.tenant_id, tenants.id. |
+| 3 | `provider` | `character varying(16)` | no |  | Valores: `pasarela_local`, `paypal`, `yape`, `plin`, `otro`. |
+| 4 | `label` | `character varying(80)` | no |  |  |
+| 5 | `status` | `character varying(12)` | no | `'pendiente'::character varying` | Valores: `pendiente`, `activa`, `pausada`, `error`. |
+| 6 | `mode` | `character varying(10)` | no | `'sandbox'::character varying` | Valores: `sandbox`, `produccion`. |
+| 7 | `account_ref` | `character varying(120)` | no |  |  |
+| 8 | `currency` | `character(3)` | no |  |  |
+| 9 | `fee_pct` | `numeric(5,2)` | no | `0` |  |
+| 10 | `fee_fixed` | `numeric(10,2)` | no | `0` |  |
+| 11 | `fee_currency` | `character(3)` | no |  |  |
+| 12 | `fx_spread_pct` | `numeric(5,2)` | no | `0` |  |
+| 13 | `tax_on_fee` | `boolean` | no | `false` |  |
+| 14 | `settle_days` | `smallint` | no | `0` |  |
+| 15 | `pass_fee_to_customer` | `boolean` | no | `false` |  |
+| 16 | `credentials_ref` | `character varying(120)` | sí |  |  |
+| 17 | `addon_required` | `character varying(40)` | sí |  |  |
+| 18 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). FK → iam_users.id. |
+| 19 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 20 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, created_by` | `iam_users.tenant_id, id` | NO ACTION | `fk_fin_gateway_accounts_created_by` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_gateway_accounts_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_fin_gateway_accounts_id` | `tenant_id, id` |  | restricción |
+| `uq_fin_gateway_accounts_provider_account` | `tenant_id, provider, account_ref` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `ck_fin_gateway_accounts_1` | `CHECK ((((status)::text <> 'activa'::text) OR ((mode)::text = 'sandbox'::text) OR (credentials_ref IS NOT NULL)))` |  |
+| `fin_gateway_accounts_currency_check` | `CHECK ((currency ~ '^[A-Z]{3}$'::text))` |  |
+| `fin_gateway_accounts_fee_currency_check` | `CHECK ((fee_currency ~ '^[A-Z]{3}$'::text))` |  |
+| `fin_gateway_accounts_fee_fixed_check` | `CHECK ((fee_fixed >= (0)::numeric))` |  |
+| `fin_gateway_accounts_fee_pct_check` | `CHECK (((fee_pct >= (0)::numeric) AND (fee_pct <= (15)::numeric)))` |  |
+| `fin_gateway_accounts_fx_spread_pct_check` | `CHECK (((fx_spread_pct >= (0)::numeric) AND (fx_spread_pct <= (10)::numeric)))` |  |
+| `fin_gateway_accounts_mode_check` | `CHECK (((mode)::text = ANY ((ARRAY['sandbox'::character varying, 'produccion'::character varying])::text[])))` | `mode`: `sandbox`, `produccion` |
+| `fin_gateway_accounts_provider_check` | `CHECK (((provider)::text = ANY ((ARRAY['pasarela_local'::character varying, 'paypal'::character varying, 'yape'::character varying, 'plin'::character varying, 'otro'::character varying])::text[])))` | `provider`: `pasarela_local`, `paypal`, `yape`, `plin`, `otro` |
+| `fin_gateway_accounts_settle_days_check` | `CHECK (((settle_days >= 0) AND (settle_days <= 60)))` |  |
+| `fin_gateway_accounts_status_check` | `CHECK (((status)::text = ANY ((ARRAY['pendiente'::character varying, 'activa'::character varying, 'pausada'::character varying, 'error'::character varying])::text[])))` | `status`: `pendiente`, `activa`, `pausada`, `error` |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_fin_gateway_accounts_created_by` | `USING btree (created_by)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_fin_gateway_accounts_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `fin_gift_card_movements`
+
+[Spec 19 §3.9] [Fase 3] Movimientos del vale (append-only).
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Finanzas y tesorería (fin_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_gift_cards.tenant_id, fin_receivables.tenant_id, booking_reservations.tenant_id, tenants.id. |
+| 3 | `gift_card_id` | `uuid` | no |  | FK → fin_gift_cards.id. |
+| 4 | `kind` | `character varying(10)` | no |  | Valores: `emision`, `canje`, `reverso`, `ajuste`, `anulacion`, `vencimiento`. |
+| 5 | `amount` | `numeric(14,2)` | no |  |  |
+| 6 | `balance_after` | `numeric(14,2)` | no |  |  |
+| 7 | `reservation_id` | `uuid` | sí |  | FK → booking_reservations.id. |
+| 8 | `receivable_id` | `uuid` | sí |  | FK → fin_receivables.id. |
+| 9 | `note` | `character varying(300)` | sí |  |  |
+| 10 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
+| 11 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, gift_card_id` | `fin_gift_cards.tenant_id, id` | NO ACTION | `fk_fin_gift_card_movements_gift_card_id` |
+| `tenant_id, receivable_id` | `fin_receivables.tenant_id, id` | NO ACTION | `fk_fin_gift_card_movements_receivable_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_fin_gift_card_movements_reservation_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_gift_card_movements_tenant_id` |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `fin_gift_card_movements_amount_check` | `CHECK ((amount <> (0)::numeric))` |  |
+| `fin_gift_card_movements_balance_after_check` | `CHECK ((balance_after >= (0)::numeric))` |  |
+| `fin_gift_card_movements_kind_check` | `CHECK (((kind)::text = ANY ((ARRAY['emision'::character varying, 'canje'::character varying, 'reverso'::character varying, 'ajuste'::character varying, 'anulacion'::character varying, 'vencimiento'::character varying])::text[])))` | `kind`: `emision`, `canje`, `reverso`, `ajuste`, `anulacion`, `vencimiento` |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_fin_gift_card_movements_gift_card_id_created_at` | `USING btree (gift_card_id, created_at)` |
+| `ix_fin_gift_card_movements_receivable_id` | `USING btree (receivable_id)` |
+| `ix_fin_gift_card_movements_reservation_id` | `USING btree (reservation_id)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_fin_gift_card_movements_append_only` | BEFORE DELETE OR UPDATE | `app_forbid_update_delete` |
+
+[↑ Índice del dominio](#tablas)
+
+### `fin_gift_cards`
+
+[Spec 19 §3.9] [Fase 3] Vales y tarjetas de regalo con saldo (código de canje con hash).
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Finanzas y tesorería (fin_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → crm_clients.tenant_id, fin_payments.tenant_id, tenants.id. |
+| 3 | `code` | `character varying(30)` | no |  |  |
+| 4 | `redeem_code_hash` | `character(64)` | no |  |  |
+| 5 | `redeem_code_last4` | `character(4)` | no |  |  |
+| 6 | `initial_amount` | `numeric(14,2)` | no |  |  |
+| 7 | `balance` | `numeric(14,2)` | no |  |  |
+| 8 | `currency` | `character(3)` | no |  |  |
+| 9 | `buyer_client_id` | `uuid` | sí |  | FK → crm_clients.id. |
+| 10 | `recipient_name` | `character varying(160)` | sí |  |  |
+| 11 | `recipient_email` | `character varying(190)` | sí |  |  |
+| 12 | `message` | `character varying(500)` | sí |  |  |
+| 13 | `deliver_at` | `timestamp with time zone` | sí |  |  |
+| 14 | `expires_at` | `date` | no |  |  |
+| 15 | `status` | `character varying(10)` | no | `'pendiente'::character varying` | Valores: `pendiente`, `activa`, `agotada`, `vencida`, `anulada`. |
+| 16 | `payment_id` | `uuid` | sí |  | FK → fin_payments.id. |
+| 17 | `lock_version` | `integer` | no | `0` | Bloqueo optimista: UPDATE … WHERE lock_version = ? (409 si no afecta filas). |
+| 18 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
+| 19 | `updated_by` | `uuid` | sí |  | Usuario de la última actualización (sin FK). |
+| 20 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 21 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, buyer_client_id` | `crm_clients.tenant_id, id` | NO ACTION | `fk_fin_gift_cards_buyer_client_id` |
+| `tenant_id, payment_id` | `fin_payments.tenant_id, id` | NO ACTION | `fk_fin_gift_cards_payment_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_gift_cards_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_fin_gift_cards_id` | `tenant_id, id` |  | restricción |
+| `uq_fin_gift_cards_tenant_id_code` | `tenant_id, code` |  | índice único |
+| `uq_fin_gift_cards_tenant_id_redeem_code_hash` | `tenant_id, redeem_code_hash` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `ck_fin_gift_cards_1` | `CHECK ((balance <= initial_amount))` |  |
+| `ck_fin_gift_cards_2` | `CHECK ((((status)::text <> 'agotada'::text) OR (balance = (0)::numeric)))` |  |
+| `fin_gift_cards_balance_check` | `CHECK ((balance >= (0)::numeric))` |  |
+| `fin_gift_cards_initial_amount_check` | `CHECK ((initial_amount > (0)::numeric))` |  |
+| `fin_gift_cards_status_check` | `CHECK (((status)::text = ANY ((ARRAY['pendiente'::character varying, 'activa'::character varying, 'agotada'::character varying, 'vencida'::character varying, 'anulada'::character varying])::text[])))` | `status`: `pendiente`, `activa`, `agotada`, `vencida`, `anulada` |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_fin_gift_cards_buyer_client_id` | `USING btree (buyer_client_id)` |
+| `ix_fin_gift_cards_payment_id` | `USING btree (payment_id)` |
+| `ix_fin_gift_cards_tenant_id_status_expires_at` | `USING btree (tenant_id, status, expires_at)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_fin_gift_cards_lock_version` | BEFORE UPDATE | `app_bump_lock_version` |
+| `trg_fin_gift_cards_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `fin_payment_fees`
+
+[Spec 22 §3.2] [Fase 3] Comisión real de cada cobro por pasarela: bruto, comisión, IGV de la comisión, margen de cambio y neto.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Finanzas y tesorería (fin_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_gateway_accounts.tenant_id, fin_payments.tenant_id, tenants.id. |
+| 3 | `payment_id` | `uuid` | no |  | FK → fin_payments.id. |
+| 4 | `gateway_account_id` | `uuid` | no |  | FK → fin_gateway_accounts.id. |
+| 5 | `currency` | `character(3)` | no |  |  |
+| 6 | `gross` | `numeric(14,2)` | no |  |  |
+| 7 | `fee` | `numeric(14,2)` | no | `0` |  |
+| 8 | `fee_tax` | `numeric(14,2)` | no | `0` |  |
+| 9 | `fx_spread` | `numeric(14,2)` | no | `0` |  |
+| 10 | `net` | `numeric(14,2)` | no |  |  |
+| 11 | `status` | `character varying(10)` | no | `'estimado'::character varying` | Valores: `estimado`, `liquidado`, `ajustado`. |
+| 12 | `external_ref` | `character varying(80)` | sí |  |  |
+| 13 | `settled_on` | `date` | sí |  |  |
+| 14 | `passed_to_customer` | `boolean` | no | `false` |  |
+| 15 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 16 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, gateway_account_id` | `fin_gateway_accounts.tenant_id, id` | NO ACTION | `fk_fin_payment_fees_gateway_account_id` |
+| `tenant_id, payment_id` | `fin_payments.tenant_id, id` | NO ACTION | `fk_fin_payment_fees_payment_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_payment_fees_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_fin_payment_fees_payment_id` | `tenant_id, payment_id` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `ck_fin_payment_fees_1` | `CHECK ((net = (((gross - fee) - fee_tax) - fx_spread)))` |  |
+| `ck_fin_payment_fees_2` | `CHECK ((((status)::text <> 'liquidado'::text) OR (settled_on IS NOT NULL)))` |  |
+| `fin_payment_fees_currency_check` | `CHECK ((currency ~ '^[A-Z]{3}$'::text))` |  |
+| `fin_payment_fees_fee_check` | `CHECK ((fee >= (0)::numeric))` |  |
+| `fin_payment_fees_fee_tax_check` | `CHECK ((fee_tax >= (0)::numeric))` |  |
+| `fin_payment_fees_fx_spread_check` | `CHECK ((fx_spread >= (0)::numeric))` |  |
+| `fin_payment_fees_gross_check` | `CHECK ((gross > (0)::numeric))` |  |
+| `fin_payment_fees_status_check` | `CHECK (((status)::text = ANY ((ARRAY['estimado'::character varying, 'liquidado'::character varying, 'ajustado'::character varying])::text[])))` | `status`: `estimado`, `liquidado`, `ajustado` |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_fin_payment_fees_gateway_account_id` | `USING btree (gateway_account_id, settled_on)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_fin_payment_fees_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
+
+[↑ Índice del dominio](#tablas)
+
+### `fin_payment_links`
+
+[Spec 19 §3.3] [Fase 3] Links de pago con medios locales (Yape, Plin, Mercado Pago, cuotas) para reserva, CxC o vale de regalo.
+
+| Dominio | Fase (archivo) | RLS | Políticas | Particionado |
+|---|---|---|---|---|
+| Finanzas y tesorería (fin_) | Fase 3 · SaaS y crecimiento (`40_fase3.sql`) | tenant · FORCE | `platform_access`, `tenant_isolation` | No |
+
+**Columnas**
+
+| # | Columna | Tipo | Nulo | Default | Descripción |
+|---|---|---|---|---|---|
+| 1 | `id` | `uuid` | no | `app_uuid_v7()` | PK. |
+| 2 | `tenant_id` | `uuid` | no | `app_current_tenant_id()` | Tenant propietario de la fila (RLS). FK → fin_gift_cards.tenant_id, fin_payments.tenant_id, fin_receivables.tenant_id, booking_reservations.tenant_id, tenants.id. |
+| 3 | `code` | `character varying(30)` | no |  |  |
+| 4 | `reservation_id` | `uuid` | sí |  | FK → booking_reservations.id. |
+| 5 | `receivable_id` | `uuid` | sí |  | FK → fin_receivables.id. |
+| 6 | `gift_card_id` | `uuid` | sí |  | FK → fin_gift_cards.id. |
+| 7 | `amount` | `numeric(14,2)` | no |  |  |
+| 8 | `currency` | `character(3)` | no |  |  |
+| 9 | `methods` | `text[]` | no | `'{card}'::text[]` |  |
+| 10 | `installments_max` | `smallint` | no | `1` |  |
+| 11 | `provider` | `character varying(30)` | no | `'fake'::character varying` |  |
+| 12 | `provider_ref` | `character varying(120)` | sí |  |  |
+| 13 | `url` | `text` | sí |  |  |
+| 14 | `token_hash` | `character(64)` | no |  |  |
+| 15 | `sent_via` | `character varying(10)` | sí |  | Valores: `email`, `whatsapp`, `copia`. |
+| 16 | `expires_at` | `timestamp with time zone` | no |  |  |
+| 17 | `status` | `character varying(10)` | no | `'activo'::character varying` | Valores: `activo`, `pagado`, `vencido`, `anulado`. |
+| 18 | `paid_at` | `timestamp with time zone` | sí |  |  |
+| 19 | `payment_id` | `uuid` | sí |  | FK → fin_payments.id. |
+| 20 | `lock_version` | `integer` | no | `0` | Bloqueo optimista: UPDATE … WHERE lock_version = ? (409 si no afecta filas). |
+| 21 | `created_by` | `uuid` | sí |  | Usuario que creó la fila (sin FK: usuario del tenant, de plataforma o NULL = Sistema). |
+| 22 | `updated_by` | `uuid` | sí |  | Usuario de la última actualización (sin FK). |
+| 23 | `created_at` | `timestamp with time zone` | no | `now()` | Fecha y hora de creación. |
+| 24 | `updated_at` | `timestamp with time zone` | no | `now()` | Última actualización (trigger app_set_updated_at). |
+
+**PK:** `id`
+
+**Claves foráneas**
+
+| Columna(s) | Referencia | ON DELETE | Nombre |
+|---|---|---|---|
+| `tenant_id, gift_card_id` | `fin_gift_cards.tenant_id, id` | NO ACTION | `fk_fin_payment_links_gift_card_id` |
+| `tenant_id, payment_id` | `fin_payments.tenant_id, id` | NO ACTION | `fk_fin_payment_links_payment_id` |
+| `tenant_id, receivable_id` | `fin_receivables.tenant_id, id` | NO ACTION | `fk_fin_payment_links_receivable_id` |
+| `tenant_id, reservation_id` | `booking_reservations.tenant_id, id` | NO ACTION | `fk_fin_payment_links_reservation_id` |
+| `tenant_id` | `tenants.id` | NO ACTION | `fk_fin_payment_links_tenant_id` |
+
+**UNIQUE**
+
+| Nombre | Columnas / expresión | Condición (parcial) | Tipo |
+|---|---|---|---|
+| `uq_tid_fin_payment_links_id` | `tenant_id, id` |  | restricción |
+| `uq_fin_payment_links_tenant_id_code` | `tenant_id, code` |  | índice único |
+| `uq_fin_payment_links_token_hash` | `token_hash` |  | índice único |
+
+**CHECK**
+
+| Nombre | Definición | Valores permitidos |
+|---|---|---|
+| `ck_fin_payment_links_1` | `CHECK (((reservation_id IS NOT NULL) OR (receivable_id IS NOT NULL) OR (gift_card_id IS NOT NULL)))` |  |
+| `ck_fin_payment_links_2` | `CHECK ((((status)::text <> 'pagado'::text) OR ((paid_at IS NOT NULL) AND (payment_id IS NOT NULL))))` |  |
+| `fin_payment_links_amount_check` | `CHECK ((amount > (0)::numeric))` |  |
+| `fin_payment_links_installments_max_check` | `CHECK (((installments_max >= 1) AND (installments_max <= 24)))` |  |
+| `fin_payment_links_methods_check` | `CHECK ((methods <@ ARRAY['card'::text, 'yape'::text, 'plin'::text, 'mercadopago'::text, 'transfer'::text, 'pagoefectivo'::text, 'paypal'::text]))` |  |
+| `fin_payment_links_sent_via_check` | `CHECK (((sent_via IS NULL) OR ((sent_via)::text = ANY ((ARRAY['email'::character varying, 'whatsapp'::character varying, 'copia'::character varying])::text[]))))` | `sent_via`: `email`, `whatsapp`, `copia` |
+| `fin_payment_links_status_check` | `CHECK (((status)::text = ANY ((ARRAY['activo'::character varying, 'pagado'::character varying, 'vencido'::character varying, 'anulado'::character varying])::text[])))` | `status`: `activo`, `pagado`, `vencido`, `anulado` |
+
+**Índices**
+
+| Nombre | Definición |
+|---|---|
+| `ix_fin_payment_links_gift_card_id` | `USING btree (gift_card_id)` |
+| `ix_fin_payment_links_payment_id` | `USING btree (payment_id)` |
+| `ix_fin_payment_links_receivable_id` | `USING btree (receivable_id)` |
+| `ix_fin_payment_links_reservation_id` | `USING btree (reservation_id)` |
+| `ix_fin_payment_links_tenant_id_status_expires_at` | `USING btree (tenant_id, status, expires_at)` |
+
+**Triggers**
+
+| Nombre | Momento y evento | Función |
+|---|---|---|
+| `trg_fin_payment_links_lock_version` | BEFORE UPDATE | `app_bump_lock_version` |
+| `trg_fin_payment_links_updated_at` | BEFORE UPDATE | `app_set_updated_at` |
 
 [↑ Índice del dominio](#tablas)

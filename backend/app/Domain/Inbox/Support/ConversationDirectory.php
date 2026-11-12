@@ -49,7 +49,7 @@ final class ConversationDirectory
         return [
             'kpis' => [
                 'open' => $rows->where('status', 'abierta')->count(),
-                'unassigned' => $rows->whereNull('assignee_id')->where('status', '<>', 'resuelta')->count(),
+                'unassigned' => $rows->whereNull('assignee_id')->where('status', 'abierta')->count(),
                 'sla_breached' => $rows->filter(fn (object $row): bool => $row->status !== 'resuelta' && $row->first_response_at === null && Carbon::parse($row->first_response_due_at)->lt($now))->count(),
                 'resolved_week' => $rows->filter(fn (object $row): bool => $row->resolved_at !== null && Carbon::parse($row->resolved_at)->gte($now->copy()->subDays(7)))->count(),
                 'first_response_minutes' => $minutes->isEmpty() ? null : (int) round($minutes->avg()),
