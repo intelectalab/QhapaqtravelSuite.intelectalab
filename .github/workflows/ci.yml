@@ -52,7 +52,7 @@ jobs:
       FX_RATE_PROVIDER: fake
       PUSH_PROVIDER: fake
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(join(github.event.commits.*.modified, ','), 'docs/kit/database') || github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: PostgreSQL 17 (binarios)
         run: |
           sudo apt-get update
@@ -109,8 +109,8 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: '22', cache: npm, cache-dependency-path: web/package-lock.json }
       - run: npm ci
       - name: Dependencias de la web sin vulnerabilidades altas
@@ -126,8 +126,8 @@ jobs:
       run:
         working-directory: mobile
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with: { node-version: '22', cache: npm, cache-dependency-path: mobile/package-lock.json }
       - run: npm ci
       - run: npm run typecheck
@@ -139,7 +139,7 @@ jobs:
     needs: [ backend, web ]
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Stack completo
         run: |
           cp docs/kit/infra/docker-compose.yml . && cp -r docs/kit/infra/docker .
@@ -149,7 +149,7 @@ jobs:
           docker compose exec -T api composer install --no-interaction
           docker compose exec -T api php artisan key:generate
           docker compose exec -T api php artisan migrate:fresh --database=pgsql_owner --seed --seeder='Database\Seeders\E2ESeeder'
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with: { node-version: '22' }
       - working-directory: docs/kit/tests/e2e
         run: |
@@ -157,7 +157,7 @@ jobs:
           npx playwright install --with-deps chromium
           cp .env.example .env
           npx playwright test
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: playwright-report
