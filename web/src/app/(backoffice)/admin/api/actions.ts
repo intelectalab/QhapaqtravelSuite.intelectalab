@@ -55,3 +55,16 @@ export async function loadDelivery(delivery: string): Promise<WebhookDeliveryDet
   const result = await apiFetch<WebhookDeliveryDetail>(`/integrations/webhook-deliveries/${encodeURIComponent(delivery)}`);
   return result.ok && result.data ? result.data : null;
 }
+
+export async function createOAuthApp(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
+  const redirectUris = (text(form, "redirect_uris") ?? "").split(/[\s,]+/).filter(Boolean);
+  return sendAdmin("/integrations/oauth-apps", "POST", { ...fields(form, ["name", "vendor"]), scopes: list(form, "scopes"), redirect_uris: redirectUris }, PATH, "No pudimos registrar la aplicación.");
+}
+
+export async function rotateOAuthSecret(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
+  return sendAdmin(`/integrations/oauth-apps/${encodeURIComponent(text(form, "id") ?? "")}/secret`, "POST", {}, PATH, "No pudimos rotar el secreto.");
+}
+
+export async function revokeOAuthApp(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
+  return sendAdmin(`/integrations/oauth-apps/${encodeURIComponent(text(form, "id") ?? "")}`, "DELETE", {}, PATH, "No pudimos revocar la aplicación.");
+}

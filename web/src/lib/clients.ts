@@ -106,7 +106,7 @@ export interface ClientDetail extends ClientRow {
   openOpportunities: { code: string; title: string; stage: string; amount: string | null; currency: string; expected_close_date: string | null }[];
   nextActivities: { code: string; type: string; subject: string; status: string; due_at: string | null; owner: string | null }[];
   satisfactionDetail: { last: number; average: number; count: number; comment: string | null } | null;
-  destinations: { name: string; trips: number }[];
+  destinations: { name: string; trips: number; won?: number }[];
   openCases: { code: string; subject: string; priority: string | null; status: string }[];
   cancelledTrips: number;
 }
@@ -191,7 +191,7 @@ export interface ApiClientDetail extends ApiClient {
   open_opportunities?: ClientDetail["openOpportunities"];
   next_activities?: ClientDetail["nextActivities"];
   satisfaction_detail?: ClientDetail["satisfactionDetail"];
-  destinations?: ({ name: string; trips: number } | string)[];
+  destinations?: ({ name: string; trips: number; won?: number } | string)[];
   open_cases?: ClientDetail["openCases"];
   cancelled_trips?: number;
 }

@@ -61,6 +61,7 @@ final class AdminSettingsSeeder
             'tax_pct' => $seed['taxPct'],
             'rounding' => $seed['rounding'],
             'round_mode' => self::ROUND_MODES[$seed['roundMode']] ?? 'nearest',
+            'invoice_void_days' => 7,
         ], $owner);
 
         $this->section('policies', [

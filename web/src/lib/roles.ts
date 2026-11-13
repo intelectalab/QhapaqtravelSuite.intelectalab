@@ -98,11 +98,18 @@ export interface AccessMapRole {
   experience: string;
   screens: Record<string, boolean>;
   allowed: number;
+  home?: string;
+  data_scope?: string;
+  modules?: { module: string; granted: number; total: number }[];
+  denied?: string[];
+  external?: Record<string, boolean>;
+  users?: number;
 }
 
 export interface AccessMapData {
   screens: { path: string; permissions: string[] }[];
   roles: AccessMapRole[];
+  external?: { key: string; label: string; path: string }[];
 }
 
 export interface PermissionMatrixData {
@@ -120,6 +127,8 @@ export interface RoleDetail {
   custom: boolean;
   experience: string;
   screens: { allowed: number; total: number };
+  data_scope?: string;
+  home?: string | null;
   users: { code: string | null; name: string; email: string; status: string; sede: string | null; last_login_at: string | null }[];
   audit: { at: string; action: string; permission: string | null; before: string | null; after: string | null; actor: string; correlation: string | null }[];
 }

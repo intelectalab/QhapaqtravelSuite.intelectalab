@@ -20,6 +20,8 @@ use stdClass;
 
 final class PassengerTripActions
 {
+    public const OTHER_ADDRESS = 'Otra dirección';
+
     public const TOPICS = ['general' => 'Consulta general', 'horario' => 'Horarios y recojo', 'documentos' => 'Documentos', 'cambios' => 'Cambios', 'salud' => 'Salud'];
 
     public function __construct(
@@ -147,8 +149,18 @@ final class PassengerTripActions
                     'lead' => (bool) $p->is_lead,
                     'pending' => (bool) $p->pending || (bool) $p->is_placeholder,
                 ])->values()->all(),
-            'pickup' => $snapshot ? ['point' => $snapshot->pickup_point, 'address' => $snapshot->pickup_address, 'flight' => $snapshot->pickup_flight, 'arrival' => $snapshot->pickup_arrival] : null,
+            'pickup' => $snapshot ? ['point' => $snapshot->pickup_point, 'address' => $snapshot->pickup_address, 'flight' => $snapshot->pickup_flight, 'arrival' => $snapshot->pickup_arrival, 'points' => $this->pickupPoints((string) $reservation->id)] : null,
         ];
+    }
+
+    private function pickupPoints(string $reservationId): array
+    {
+        return DB::table('catalog_pickup_points')
+            ->whereIn('product_id', DB::table('booking_reservation_services')->where('reservation_id', $reservationId)->whereNotNull('product_id')->select('product_id'))
+            ->orderBy('sequence')->get(['label', 'kind', 'requires_address'])
+            ->unique('label')
+            ->map(fn (stdClass $point): array => ['label' => $point->label, 'kind' => $point->kind, 'requires_address' => (bool) $point->requires_address])
+            ->values()->all();
     }
 
     public function updateCompanions(PortalAccount $account, ?string $code, array $data, ?int $lockVersion): array
@@ -165,6 +177,7 @@ final class PassengerTripActions
             'passengers.*.nationality' => ['required', 'string', 'max:60'],
             'passengers.*.diet' => ['nullable', 'string', 'max:120'],
             'pickup' => ['nullable', 'array'],
+            'pickup.point' => ['nullable', 'string', 'max:160'],
             'pickup.address' => ['nullable', 'string', 'max:200'],
             'pickup.flight' => ['nullable', 'string', 'max:40'],
             'pickup.arrival' => ['nullable', 'date'],
@@ -229,7 +242,18 @@ final class PassengerTripActions
             }
 
             if (! empty($valid['pickup'])) {
+                $point = isset($valid['pickup']['point']) ? trim((string) $valid['pickup']['point']) : null;
+
+                if ($point !== null && $point !== '' && $point !== self::OTHER_ADDRESS && ! in_array($point, array_column($this->pickupPoints((string) $row->id), 'label'), true)) {
+                    throw ValidationException::withMessages(['pickup.point' => 'Elige un punto de recojo de la lista o «'.self::OTHER_ADDRESS.'».']);
+                }
+
+                if ($point === self::OTHER_ADDRESS && blank($valid['pickup']['address'] ?? null)) {
+                    throw ValidationException::withMessages(['pickup.address' => 'Escribe la dirección donde te recogemos.']);
+                }
+
                 DB::table('booking_reservation_web_snapshots')->where('reservation_id', $row->id)->update([
+                    ...($point !== null && $point !== '' ? ['pickup_point' => $point] : []),
                     'pickup_address' => $valid['pickup']['address'] ?? null,
                     'pickup_flight' => $valid['pickup']['flight'] ?? null,
                     'pickup_arrival' => $valid['pickup']['arrival'] ?? null,

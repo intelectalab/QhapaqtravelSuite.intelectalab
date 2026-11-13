@@ -18,7 +18,7 @@ const COPY: Record<Step, { title: string; hint: string; action: string }> = {
 };
 
 export default function LoginScreen() {
-  const { activate } = useApp();
+  const { activate, notice } = useApp();
   const [mode, setMode] = useState<Mode>("operator");
   const [step, setStep] = useState<Step>("credentials");
   const [email, setEmail] = useState("");
@@ -94,6 +94,7 @@ export default function LoginScreen() {
 
             <Text style={styles.title}>{COPY[step].title}</Text>
             <Text style={styles.hint}>{COPY[step].hint}</Text>
+            {notice && !info ? <Text style={styles.info}>{notice}</Text> : null}
             {info ? <Text style={styles.info}>{info}</Text> : null}
 
             {step === "credentials" ? (

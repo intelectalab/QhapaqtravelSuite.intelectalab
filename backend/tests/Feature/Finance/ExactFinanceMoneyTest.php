@@ -51,7 +51,7 @@ it('la diferencia por temporada al reprogramar es la suma exacta de las líneas'
     actingAsSeed('U01');
     $reservation = withinTenant(tenantA(), fn () => DB::table('booking_reservations')->where('status', 'confirmada')->orderByDesc('travel_from')->first(['id', 'code', 'travel_from']));
     withinTenant(tenantA(), function () use ($reservation): void {
-        $season = (string) DB::table('catalog_seasons')->insertGetId(['ref' => 'TMP-ALTA', 'name' => 'Alta de prueba', 'type' => 'Alta', 'date_from' => '2026-11-01', 'date_to' => '2026-12-31', 'priority' => 9, 'factor' => '1.137'], 'id');
+        $season = (string) DB::table('catalog_seasons')->insertGetId(['ref' => 'TMP-ALTA', 'name' => 'Alta de prueba', 'type' => 'Alta', 'date_from' => '2026-11-01', 'date_to' => '2026-12-31', 'priority' => 1, 'factor' => '1.137'], 'id');
         $product = (string) DB::table('catalog_products')->whereNull('deleted_at')->where('status', 'ACTIVE')->orderBy('code')->value('id');
         DB::table('booking_reservation_services')->where('reservation_id', $reservation->id)->update(['product_id' => $product]);
         DB::table('catalog_product_seasons')->where('product_id', $product)->delete();

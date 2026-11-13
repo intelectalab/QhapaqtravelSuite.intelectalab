@@ -13,9 +13,9 @@ return [
         'steps' => [
             ['title' => 'Invitar a una persona', 'text' => 'Pulsa «Invitar usuario», completa nombre, correo, rol y sede y envía con «Enviar invitación». Le llega un correo para crear su contraseña; el enlace vence a las 72 horas. Si no lo recibió, usa «Reenviar invitación» en su fila: el enlace anterior deja de funcionar.'],
             ['title' => 'Cambiar rol, sede o teléfono', 'text' => 'Usa el icono «Editar» de la fila y guarda con «Guardar cambios». El correo no se puede cambiar después de invitar.'],
-            ['title' => 'Desactivar o reactivar', 'text' => '«Desactivar» pide un motivo: la persona ya no puede entrar y sus sesiones se cierran, pero su historial se conserva. «Reactivar» le devuelve el acceso y vuelve a contar para el límite de usuarios de tu plan.'],
+            ['title' => 'Desactivar o reactivar', 'text' => '«Desactivar» pide un motivo: la persona ya no puede entrar y sus sesiones se cierran, pero su historial se conserva. Si tiene oportunidades abiertas o actividades pendientes, el panel te las muestra para que las reasignes antes. «Reactivar» le devuelve el acceso y vuelve a contar para el límite de usuarios de tu plan.'],
             ['title' => 'Reiniciar la verificación en dos pasos', 'text' => 'Si alguien cambió de teléfono, usa «Reiniciar verificación en dos pasos» y escribe el motivo. Tendrá que configurarla otra vez al entrar, sus sesiones abiertas se cierran y le avisamos por correo.'],
-            ['title' => 'Encontrar a alguien', 'text' => 'Las tarjetas Activos, Invitados sin entrar, Sin 2 pasos y Desactivados filtran la tabla. También puedes buscar por nombre, correo o rol y filtrar por Rol y Sede.'],
+            ['title' => 'Encontrar a alguien', 'text' => 'Las tarjetas Activos internos, Activos de canal, Invitados sin entrar, Sin 2 pasos y Desactivados filtran la tabla. También puedes buscar por nombre, correo o rol, filtrar por Rol y Sede y exportar la lista con «Exportar».'],
         ],
         'faqs' => [
             ['question' => '¿Por qué no puedo invitar a más usuarios?', 'answer' => 'Tu plan fija cuántos usuarios puede tener la agencia y cuentan tanto los activos como los invitados que aún no entran. Desactiva a quien ya no use el sistema o mejora el plan.'],
@@ -36,7 +36,8 @@ return [
         'summary' => 'Las sedes son las oficinas de tu agencia: agrupan usuarios, reservas y caja. Desde esta pestaña las creas, editas, desactivas o eliminas.',
         'steps' => [
             ['title' => 'Crear una sede', 'text' => 'Pulsa «Nueva sede», escribe nombre, ciudad, teléfono y dirección, elige un responsable si quieres y confirma con «Crear sede». El encabezado muestra cuántas sedes activas permite tu plan.'],
-            ['title' => 'Editar sus datos', 'text' => 'En la tarjeta de la sede pulsa «Editar», cambia lo que necesites y guarda con «Guardar cambios».'],
+            ['title' => 'Buscar y cambiar de vista', 'text' => 'Busca por nombre, ciudad o responsable, filtra por Ciudad o con las tarjetas Activas, Inactivas y Sin responsable, y alterna entre Tarjetas y Tabla. «Exportar» descarga la lista.'],
+            ['title' => 'Editar sus datos', 'text' => 'En la tarjeta o la fila de la sede pulsa «Editar», cambia lo que necesites y guarda con «Guardar cambios».'],
             ['title' => 'Desactivar o activar', 'text' => '«Desactivar» oculta la sede para nuevas asignaciones y conserva su historial. Solo funciona si no tiene usuarios activos. «Activar» la devuelve y vuelve a contar para el límite de tu plan.'],
             ['title' => 'Eliminar una sede', 'text' => '«Eliminar» solo aparece en sedes que no son la principal y que no tienen usuarios ni reservas. Las demás se desactivan para no perder el historial.'],
         ],
@@ -104,7 +105,8 @@ return [
         'summary' => 'Ajusta cómo se ven el panel de tu equipo y el sitio web de tu agencia. En el sitio, cada cambio se guarda como borrador y se ve al lado en la vista previa; tus clientes solo lo ven cuando lo publicas.',
         'steps' => [
             ['title' => 'Colores del panel', 'text' => 'En Colores y tarjetas define el color principal, el de acento y el del menú, y el diseño de las tarjetas. Cada color muestra su contraste y, si es bajo, una sugerencia más oscura. Pulsa «Guardar apariencia» para aplicarlo a toda la agencia.'],
-            ['title' => 'Marca y estilo del sitio', 'text' => 'En Sitio web → Marca y estilo elige si el sitio usa los colores del panel o una paleta propia, la tipografía y qué tan redondeadas se ven las esquinas.'],
+            ['title' => 'Marca y estilo del sitio', 'text' => 'En Sitio web → Marca y estilo elige el estilo del sitio (Actual o Andes Clásico), si usa los colores del panel o una paleta propia, la tipografía y qué tan redondeadas se ven las esquinas.'],
+            ['title' => 'Ajustes de Andes Clásico', 'text' => 'Con el estilo Andes Clásico aparecen sus ajustes: el color de la acción principal (los botones Reservar, Cotizar a medida y Buscar), los títulos con serifa y los destinos en mosaico. El color debe dejar leer el texto oscuro del botón; si no, se sugiere un tono más claro.'],
             ['title' => 'Portada y orden de secciones', 'text' => 'En Portada elige el fondo del encabezado (noche andina, color sólido o una imagen tuya), el título, la alineación y si se muestran el buscador y las cifras. En Orden de secciones sube, baja u oculta los bloques de la portada.'],
             ['title' => 'Avisos y banners', 'text' => 'Elige el aviso superior (el banner del CMS, uno propio con enlace o ninguno) y crea hasta seis banners promocionales con imagen, botón y fechas de inicio y fin.'],
             ['title' => 'Menú, pie, textos y Google', 'text' => 'Ordena u oculta los enlaces y botones del menú, decide qué muestra el pie y agrega tus redes sociales. En Textos cambia cualquier frase del sitio en español o inglés. En Google y redes escribe el título y la descripción para buscadores.'],
@@ -116,9 +118,10 @@ return [
             ['question' => '¿Los cambios afectan a otras agencias?', 'answer' => 'No. Cada agencia tiene su propio diseño; lo que cambias solo se ve en tu sitio.'],
             ['question' => '¿Por qué no puedo ocultar el Libro de Reclamaciones?', 'answer' => 'Es obligatorio por ley, igual que los datos legales del pie. Siempre se muestran.'],
             ['question' => '¿Por qué no veo las secciones del sitio web?', 'answer' => 'El sitio web está incluido desde el plan que trae la funcionalidad Sitio web. Revisa tu plan en Suscripción y uso.'],
+            ['question' => '¿Cambiar de estilo borra mis colores o textos?', 'answer' => 'No. El estilo solo cambia la presentación. Tus colores, textos, secciones, tours y precios se mantienen, y puedes volver al estilo anterior cuando quieras.'],
             ['question' => '¿Qué significa el número junto a cada color?', 'answer' => 'Es el contraste del texto sobre ese color según la norma WCAG AA, que pide 4.5 o más para leer con comodidad.'],
         ],
-        'keywords' => ['colores', 'marca', 'logo', 'apariencia', 'tema', 'contraste', 'sitio web', 'pagina', 'portada', 'banner', 'textos', 'publicar', 'seo', 'redes sociales'],
+        'keywords' => ['colores', 'marca', 'logo', 'apariencia', 'tema', 'plantilla', 'andes clasico', 'estilo', 'contraste', 'sitio web', 'pagina', 'portada', 'banner', 'textos', 'publicar', 'seo', 'redes sociales'],
         'roles' => [],
     ],
     [
@@ -148,7 +151,8 @@ return [
         'steps' => [
             ['title' => 'Activar o apagar una regla', 'text' => 'Usa el interruptor de la columna Estado. Si la regla muestra un candado, está disponible desde un plan superior.'],
             ['title' => 'Ajustar sus parámetros', 'text' => 'Pulsa «Editar parámetros» en la fila, cambia los valores dentro de sus rangos y guarda con «Guardar parámetros». Los valores se validan también entre reglas, por ejemplo la edad máxima de infante frente a la mínima de niño.'],
-            ['title' => 'Volver a los valores de fábrica', 'text' => 'Las reglas estándar que ajustaste muestran «Ajustada». Usa «Volver a los valores de fábrica», escribe el motivo y confirma con «Restablecer».'],
+            ['title' => 'Volver a los valores de fábrica', 'text' => 'Las reglas estándar que ajustaste muestran «Ajustada». Usa «Volver a los valores de fábrica», escribe el motivo y confirma con «Restablecer». Para devolver todas las reglas estándar a la vez, usa «Restablecer todas» arriba a la derecha.'],
+            ['title' => 'Ver de qué depende cada regla', 'text' => 'Debajo del código se indica si la regla depende de otra. Si esa otra está inactiva, verás «Sin efecto» y, al apagar una regla de la que dependen otras, el interruptor te avisa cuáles quedan sin efecto.'],
             ['title' => 'Crear una regla personalizada', 'text' => 'Pulsa «Nueva regla», escribe nombre, qué hará y su grupo, y confirma con «Crear regla». Nace inactiva: el equipo técnico la conecta al motor de reservas cuando implementa su efecto.'],
             ['title' => 'Filtrar las reglas', 'text' => 'Las tarjetas Activas, Inactivas, Ajustadas, Personalizadas y Fuera de tu plan filtran la tabla. También puedes filtrar por Grupo, Dónde aplica y Plan mínimo.'],
         ],
@@ -171,7 +175,8 @@ return [
             ['title' => 'Crear una plantilla', 'text' => 'Pulsa «Nueva plantilla», elige el momento del viaje y el desfase en horas (negativo es antes), los canales y el idioma. Escribe asunto y mensaje y confirma con «Crear plantilla».'],
             ['title' => 'Insertar datos de la reserva', 'text' => 'Debajo del mensaje toca una variable para insertarla donde está el cursor. La vista previa la completa con una reserva vigente; si no hay, la variable se resalta.'],
             ['title' => 'Poner condiciones', 'text' => 'Puedes enviar la plantilla solo si está activa una regla de reserva, solo si hay saldo pendiente o solo si faltan datos de acompañantes.'],
-            ['title' => 'Revisar, editar o desactivar', 'text' => 'Con «Vista previa» ves el mensaje y cuántos se enviaron o fallaron. «Editar plantilla» no cambia lo ya enviado. «Desactivar» retira los mensajes programados y deja de programarla en reservas nuevas.'],
+            ['title' => 'Revisar, editar o desactivar', 'text' => 'Con «Vista previa» ves el mensaje con los datos reales de la primera reserva vigente que cumple las condiciones, o de la que elijas, y la fecha en que saldría. Si con esa reserva no se enviaría, te dice por qué. «Editar plantilla» no cambia lo ya enviado. «Desactivar» retira los mensajes programados y deja de programarla en reservas nuevas.'],
+            ['title' => 'Tener la plantilla en otro idioma', 'text' => 'Usa «Duplicar en inglés» o «Duplicar en español». La copia nace inactiva: traduce el asunto y el mensaje, guarda y actívala. Cada pasajero recibe la versión de su idioma.'],
         ],
         'faqs' => [
             ['question' => '¿Por qué no se programa ningún mensaje?', 'answer' => 'La regla de mensajes automáticos está apagada; lo indica el aviso al inicio de la página. Actívala en Reglas de reserva. Revisa también la tarjeta Regla apagada, que muestra las plantillas cuya condición no se cumple.'],
@@ -192,6 +197,7 @@ return [
         'steps' => [
             ['title' => 'Ver el tipo de cambio vigente', 'text' => 'Cada tarjeta muestra el último valor de la moneda, su fecha, la variación frente al registro anterior y la tendencia reciente.'],
             ['title' => 'Registrar un tipo de cambio', 'text' => 'Pulsa «Registrar tipo de cambio», elige la moneda, escribe los soles por unidad y, si quieres, compra y venta. Si dejas la fecha vacía se registra hoy. Elige la fuente y confirma con «Registrar».'],
+            ['title' => 'Probar una conversión', 'text' => 'El «Conversor de prueba» muestra cuánto es un monto en otra moneda con el tipo referencial y con el que ve el cliente (con margen). La tabla de monedas indica a cuánto equivalen S/ 100 y «Últimos 30 días» grafica la tendencia de cada moneda.'],
             ['title' => 'Consultar el historial', 'text' => 'La tabla Historial muestra cada registro con su variación, fuente y quién lo hizo. Filtra por Moneda o Fuente y ordena por fecha o por valor.'],
         ],
         'faqs' => [
@@ -210,10 +216,10 @@ return [
         'title' => 'Notificaciones',
         'summary' => 'Decide qué eventos se avisan, por qué canal, a quién y cuándo, edita el texto de cada aviso y revisa el historial de envíos.',
         'steps' => [
-            ['title' => 'Elegir canales y destinatarios', 'text' => 'En Qué se avisa y por dónde, pulsa editar en la fila del evento. Activa los canales, escribe los destinatarios, elige cuándo se envía y la condición, y confirma con «Guardar regla».'],
+            ['title' => 'Elegir canales y destinatarios', 'text' => 'En Qué se avisa y por dónde, toca el círculo de un canal para encenderlo o apagarlo al instante. Para cambiar destinatarios, cuándo se envía o la condición, pulsa editar en la fila del evento y confirma con «Guardar regla». Si WhatsApp está en pruebas, un aviso arriba de la matriz te lo recuerda.'],
             ['title' => 'Editar el texto de un aviso', 'text' => 'Pulsa el icono de plantillas del evento, elige el canal y cambia el asunto o título y el mensaje. Usa «Insertar dato» para añadir variables y guarda con «Guardar versión». Cada cambio crea una versión nueva.'],
             ['title' => 'Probar o volver al original', 'text' => 'Con «Enviar prueba» recibes el aviso con datos de ejemplo. «Volver a la plantilla del sistema» descarta la versión de tu agencia para ese canal.'],
-            ['title' => 'Resolver envíos fallidos', 'text' => 'En Historial de envíos usa la tarjeta Fallidos. «Reintentar envío» sirve para errores temporales; «Reenviar por correo» manda el mismo aviso al correo del destinatario.'],
+            ['title' => 'Resolver envíos fallidos', 'text' => 'En Historial de envíos usa la tarjeta Fallidos y «Ver detalle del envío» para ver el último error, la regla aplicada y el recorrido del aviso. «Reintentar envío» sirve para errores temporales; «Reenviar por correo» manda el mismo aviso al correo del destinatario, y ese envío aparece marcado como Alterno.'],
         ],
         'faqs' => [
             ['question' => 'Si un aviso falla, ¿se deshace la operación?', 'answer' => 'No. La reserva, el pago o el cambio que originó el aviso se mantiene. Solo queda el envío como fallido.'],
@@ -235,7 +241,7 @@ return [
             ['title' => 'Revisar tu plan', 'text' => 'La banda superior muestra el plan, su precio y ciclo, el estado de la suscripción, el periodo actual, el próximo cobro, el saldo a favor y los adicionales contratados.'],
             ['title' => 'Controlar el consumo', 'text' => 'Consumo del mes frente al plan muestra cada límite con su barra. Al superar el 80 % aparece un aviso. En Consumo de los últimos meses alternas entre Reservas, WhatsApp, Correos y API.'],
             ['title' => 'Actualizar los datos de facturación', 'text' => 'En Datos de facturación pulsa editar y cambia RUC, razón social, dirección fiscal, ubigeo o correo para facturas. Aplican desde la próxima factura; las emitidas no cambian.'],
-            ['title' => 'Consultar tus facturas', 'text' => 'En Facturas de KipuControl pulsa «Ver factura» para ver el detalle, el IGV, el pago y el estado ante SUNAT. Las tarjetas Pagadas y Por pagar o fallidas filtran la lista.'],
+            ['title' => 'Consultar tus facturas', 'text' => 'En Facturas de KipuControl pulsa «Ver factura» para ver el detalle, el IGV, a quién se facturó, el comprobante ante SUNAT y cada intento de cobro. Las tarjetas Pagadas y Por pagar o fallidas filtran la lista. Si tienes varias pendientes, «Pagar ahora» del aviso las cobra todas, una tras otra.'],
         ],
         'faqs' => [
             ['question' => '¿Qué pasa si llego a un límite?', 'answer' => 'Los usuarios y las sedes se bloquean al llegar al límite. Las reservas solo avisan. Los mensajes de WhatsApp y correo que lo superen quedan en cola hasta el siguiente mes o hasta sumar un paquete.'],
@@ -253,10 +259,11 @@ return [
         'title' => 'API y webhooks',
         'summary' => 'Conecta tu ERP, tu sitio web o tus herramientas de marketing con los datos de tu agencia mediante claves de API y webhooks firmados.',
         'steps' => [
-            ['title' => 'Crear una clave de API', 'text' => 'Pulsa «Nueva clave», ponle nombre, elige Producción o Pruebas, marca solo los permisos necesarios y, si quieres, una fecha de vencimiento e IP permitidas. Al confirmar con «Crear clave» la verás completa una sola vez: cópiala en ese momento.'],
+            ['title' => 'Crear una clave de API', 'text' => 'Pulsa «Nueva clave», ponle nombre, elige Producción o Pruebas, marca solo los permisos necesarios y, si quieres, una fecha de vencimiento e IP permitidas, sueltas o en rangos CIDR como 203.0.113.0/24. Al confirmar con «Crear clave» la verás completa una sola vez: cópiala en ese momento.'],
             ['title' => 'Revocar una clave', 'text' => 'Usa «Revocar clave» en su fila y escribe el motivo. Deja de funcionar al instante y los sistemas que la usan recibirán un error 401.'],
             ['title' => 'Crear un webhook', 'text' => 'Pulsa «Nuevo webhook», escribe la URL de destino con https, una descripción y los eventos que quieres recibir. El secreto para validar la firma también se muestra una sola vez.'],
-            ['title' => 'Mantener los webhooks', 'text' => 'En la tarjeta de cada webhook puedes «Editar webhook», «Pausar» o «Reanudar» y «Eliminar webhook». Al eliminarlo deja de recibir eventos, pero el historial de entregas se conserva.'],
+            ['title' => 'Mantener los webhooks', 'text' => 'En la tarjeta de cada webhook ves los fallos seguidos frente al tope de 10, la última rotación del secreto y «Ver entregas», que abre el log filtrado. Puedes «Editar webhook», «Pausar» o «Reanudar», «Reactivar» uno deshabilitado y «Eliminar webhook». Al eliminarlo deja de recibir eventos, pero el historial de entregas se conserva.'],
+            ['title' => 'Integrar con la documentación', 'text' => 'En Documentación tienes el enlace a la especificación OpenAPI, el código para verificar la firma de los webhooks en Node.js, PHP y Python, y las convenciones de la API.'],
             ['title' => 'Revisar las entregas', 'text' => 'Historial de entregas muestra la respuesta, el intento y el estado de cada envío. Las tarjetas Entregadas, Reintentando y Fallidas filtran la tabla.'],
         ],
         'faqs' => [
@@ -276,9 +283,9 @@ return [
         'title' => 'Integraciones y jobs',
         'summary' => 'Estado de las integraciones con terceros, los procesos programados de tu agencia y los errores que necesitan atención.',
         'steps' => [
-            ['title' => 'Probar una integración', 'text' => 'En la tarjeta de la integración pulsa «Probar conexión» y luego «Probar ahora». El resultado queda guardado en la misma tarjeta.'],
+            ['title' => 'Probar una integración', 'text' => 'En la tarjeta de la integración pulsa «Probar conexión» y luego «Probar ahora». El panel muestra el registro de la prueba con cada paso, sus tiempos y el código de correlación. El resultado queda guardado en la misma tarjeta.'],
             ['title' => 'Configurar una integración', 'text' => 'Pulsa «Configurar» para elegir entorno de Pruebas o Producción, el responsable, los reintentos y los tiempos de espera. Guarda con «Guardar». La espera entre reintentos se duplica en cada intento.'],
-            ['title' => 'Gestionar los procesos programados', 'text' => 'En Procesos programados usa «Ver ejecuciones» para revisar el historial, «Ejecutar ahora» para lanzar una corrida manual y «Pausar» o «Reanudar» para detenerlo o retomarlo.'],
+            ['title' => 'Gestionar los procesos programados', 'text' => 'Arriba de Procesos programados ves lo que está en cola, los workers activos, la zona horaria y la política de reintentos. Usa «Ver ejecuciones» para revisar el historial, «Ejecutar ahora» para lanzar una corrida manual y «Pausar» o «Reanudar» para detenerlo o retomarlo.'],
             ['title' => 'Atender un error', 'text' => 'En Errores y reintentos, «Reintentar» vuelve a intentar los errores temporales. Cuando lo hayas solucionado, usa «Marcar como resuelto» y explica cómo se resolvió.'],
         ],
         'faqs' => [
@@ -299,8 +306,8 @@ return [
         'summary' => 'Quién hizo qué, cuándo y qué cambió en tu agencia. La bitácora es de solo agregar: ningún rol puede editarla ni borrarla.',
         'steps' => [
             ['title' => 'Elegir el periodo', 'text' => 'Arriba a la derecha elige Hoy, 7 días, 30 días, 90 días o Todo. Las tarjetas Eventos, Críticos, Personas y sistemas y Accesos denegados se recalculan para ese periodo.'],
-            ['title' => 'Buscar un cambio', 'text' => 'Busca por documento, usuario o valor, o filtra por Entidad, Acción y Usuario. Las tarjetas Críticos, Accesos denegados y Hoy acotan la tabla al instante.'],
-            ['title' => 'Ver el detalle de un evento', 'text' => 'Pulsa el evento o «Ver detalle». Verás el valor antes y después, el detalle por campo, la evidencia, los eventos relacionados de la misma operación y el contexto: rol, IP y navegador.'],
+            ['title' => 'Buscar un cambio', 'text' => 'Busca por documento, usuario, IP o valor, o filtra por Entidad, Acción y Usuario. Las tarjetas Críticos, Accesos denegados y Hoy acotan la tabla al instante, y los gráficos Acciones críticas por tipo y Actividad por actor llevan a sus eventos. «Exportar» descarga lo que ves en la tabla.'],
+            ['title' => 'Ver el detalle de un evento', 'text' => 'Pulsa el evento o «Ver detalle». Verás el valor antes y después, el detalle por campo, la evidencia, los eventos relacionados de la misma operación y el contexto: rol, IP y navegador. «Ir a la entidad» abre el registro que cambió.'],
         ],
         'faqs' => [
             ['question' => '¿Se puede corregir o borrar un evento?', 'answer' => 'No. La bitácora no se modifica. Si algo se hizo mal, corrígelo en su pantalla y ese cambio quedará registrado como un evento nuevo.'],

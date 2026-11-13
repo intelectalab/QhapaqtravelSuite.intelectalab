@@ -6,6 +6,7 @@ namespace App\Domain\Crm\Actions;
 
 use App\Domain\Crm\Support\Advisors;
 use App\Domain\Crm\Support\ClientDocument;
+use App\Domain\Crm\Support\ClientDuplicates;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Crm\Support\CrmCatalog;
 use App\Domain\Crm\Support\CrmNotices;
@@ -32,7 +33,29 @@ final class ClientWorkflow
         private readonly Advisors $advisors,
         private readonly TenantContext $context,
         private readonly ClientContacts $contacts,
+        private readonly ClientDuplicates $duplicates,
     ) {}
+
+    public function reassign(string $code, string $ownerId, ?string $note, User $actor): void
+    {
+        DB::transaction(function () use ($code, $ownerId, $note, $actor): void {
+            $client = DB::table('crm_clients')->where('code', $code)->whereNull('deleted_at')->lock('for no key update')->first(['id', 'code', 'owner_id'])
+                ?? throw ApiException::notFound('El cliente no existe.');
+
+            if ((string) $client->owner_id === $ownerId) {
+                throw ApiException::unprocessable('CRM-BR-31', 'Elige un responsable distinto del actual.');
+            }
+
+            if (! $this->advisors->has($ownerId)) {
+                throw ApiException::unprocessable('CRM-BR-31', 'Elige un responsable activo de la lista.');
+            }
+
+            DB::table('crm_clients')->where('id', $client->id)->update(['owner_id' => $ownerId, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            $this->audit->log('Cliente', $code, 'reasignar', $this->ownerName($client->owner_id), trim($this->ownerName($ownerId).($note ? " · {$note}" : '')));
+        });
+
+        app(CrmNotices::class)->clientReassigned($code, $ownerId, (string) $actor->getKey());
+    }
 
     public function create(array $data, User $actor): string
     {
@@ -128,8 +151,7 @@ final class ClientWorkflow
         $number = ClientDocument::normalize($kind, $data['doc_type'], (string) $data['doc_number'], $country);
         $segment = $this->segment($data['segment'] ?? null);
 
-        $twin = DB::table('crm_clients')->where('doc_type', $data['doc_type'])->where('doc_number', $number)->whereNull('deleted_at')
-            ->when($current, fn ($query) => $query->where('id', '<>', $current->id))->first(['code', 'name']);
+        $twin = $this->duplicates->hard($data['doc_type'], $number, $current?->id);
 
         if ($twin) {
             throw ApiException::conflict('CRM-BR-16', "Ya existe un cliente con ese documento: {$twin->name} ({$twin->code}).", ['matches' => [['code' => $twin->code, 'name' => $twin->name]]]);
@@ -140,16 +162,7 @@ final class ClientWorkflow
         $phoneNorm = ClientDocument::phoneNorm($phone);
 
         if (! ($data['confirm_duplicate'] ?? false) && ($email || $phoneNorm)) {
-            $matches = DB::table('crm_clients')->whereNull('deleted_at')
-                ->when($current, fn ($query) => $query->where('id', '<>', $current->id))
-                ->where(function ($query) use ($email, $phoneNorm): void {
-                    if ($email) {
-                        $query->orWhere('email_norm', mb_strtolower($email));
-                    }
-                    if ($phoneNorm) {
-                        $query->orWhere('phone_norm', $phoneNorm);
-                    }
-                })->get(['code', 'name'])->map(fn (object $row) => ['code' => $row->code, 'name' => $row->name])->all();
+            $matches = array_map(fn (array $row): array => ['code' => $row['code'], 'name' => $row['name']], $this->duplicates->soft($email, $phone, $current?->id));
 
             if ($matches !== []) {
                 throw ApiException::conflict('CRM-BR-17', 'Otro cliente tiene el mismo correo o teléfono. Revisa que no sea la misma persona.', ['matches' => $matches]);

@@ -11,6 +11,7 @@ use App\Domain\Catalog\Support\RateDirectory;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Quotes\Support\QuotePricing;
+use App\Domain\Quotes\Support\QuoteSections;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
@@ -178,6 +179,7 @@ final class QuoteBuilder
                 'per_pax' => $pax > 0 ? (string) BigDecimal::of($totals['grand_total'])->dividedBy($pax, 2, RoundingMode::HALF_UP) : null,
             ],
             'tax_default' => $this->defaultTax($client?->country),
+            'itinerary' => QuoteSections::itineraryFor($items->map(fn (array $item): object => (object) ['id' => $item['product_id'], 'code' => $item['product_code'], 'name' => $item['product_name'], 'service_date' => $item['date']])),
             'needs_internal_approval' => QuoteLifecycle::needsInternalApproval($discount, $totals['margin_pct'], QuoteLifecycle::currentLimits()),
         ];
     }
@@ -456,7 +458,7 @@ final class QuoteBuilder
         return $opportunity;
     }
 
-    private function fx(string $currency): string
+    public function fx(string $currency): string
     {
         if ($currency === 'PEN') {
             return '1';

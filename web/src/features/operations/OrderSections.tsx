@@ -112,7 +112,18 @@ export function ServicesSection({ order, editable }: { order: OrderDetail; edita
                 </b>
                 <span className="text-xs text-fg-3">
                   {formatDate(service.date)}
-                  {service.provider ? ` · ${service.provider.name}` : " · Sin proveedor"}
+                  {" · "}
+                  {service.provider ? (
+                    service.provider.ref ? (
+                      <Link href={`/catalogo/proveedores/${encodeURIComponent(service.provider.ref)}`} className="hover:text-accent hover:underline">
+                        {service.provider.name}
+                      </Link>
+                    ) : (
+                      service.provider.name
+                    )
+                  ) : (
+                    "Sin proveedor"
+                  )}
                   {service.confirmation ? ` · ${service.confirmation}` : ""}
                 </span>
                 {service.status === "rechazado" && service.reject_reason && <span className="block text-xs text-bad">{service.reject_reason}</span>}

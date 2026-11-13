@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Channels\Http\Controllers;
 
 use App\Domain\Channels\Actions\AnswerPaxFeedback;
+use App\Domain\Channels\Actions\PassengerPortalPreview;
 use App\Domain\Channels\Support\CustomerPortalPreview;
 use App\Domain\Channels\Support\PassengerPortalDirectory;
 use App\Domain\Iam\Models\User;
@@ -51,6 +52,13 @@ final class PortalController
     public function passenger(Request $request, PassengerPortalDirectory $directory): JsonResponse
     {
         return response()->json(['data' => $directory->overview($this->user($request))]);
+    }
+
+    public function previewPassenger(Request $request, PassengerPortalPreview $preview): JsonResponse
+    {
+        $data = $request->validate(['reservation' => ['required', 'string', 'max:30']], ['reservation.*' => 'Indica el código de la reserva.']);
+
+        return response()->json(['data' => $preview->start($data['reservation'], $this->user($request))]);
     }
 
     public function reply(Request $request, string $code, AnswerPaxFeedback $answer): JsonResponse

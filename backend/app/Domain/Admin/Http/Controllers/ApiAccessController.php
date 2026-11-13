@@ -7,6 +7,7 @@ namespace App\Domain\Admin\Http\Controllers;
 use App\Domain\Admin\Actions\ManageApiAccess;
 use App\Domain\Admin\Actions\ManageWebhookDeliveries;
 use App\Domain\Admin\Support\ApiDirectory;
+use App\Domain\Admin\Support\IpRange;
 use App\Domain\Iam\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,14 +38,14 @@ final class ApiAccessController
             'scopes.*' => ['in:'.implode(',', array_keys(ApiDirectory::SCOPES))],
             'expires_at' => ['nullable', 'date', 'after:today'],
             'ips' => ['nullable', 'array', 'max:10'],
-            'ips.*' => ['ip'],
+            'ips.*' => [IpRange::rule()],
         ], [
             'name.*' => 'Ponle un nombre que diga para qué se usa.',
             'environment.*' => 'Elige el entorno.',
             'scopes.required' => 'Elige al menos un permiso.',
             'scopes.*' => 'Elige permisos de la lista.',
             'expires_at.*' => 'La fecha de vencimiento debe ser futura.',
-            'ips.*' => 'Escribe direcciones IP válidas, separadas por comas.',
+            'ips.*' => 'Escribe direcciones IP o rangos CIDR válidos, separados por comas.',
         ]);
 
         return response()->json(['data' => $access->createKey($data, $this->user($request))], 201);

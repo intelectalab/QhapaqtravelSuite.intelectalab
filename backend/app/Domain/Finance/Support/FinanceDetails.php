@@ -8,6 +8,7 @@ use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Money\Decimal;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -138,7 +139,7 @@ final class FinanceDetails
 
         $fx = (string) ($reservation->fx_rate ?: 1);
         $pen = fn ($amount, ?string $rate = null): BigDecimal => Decimal::of((string) $amount)->multipliedBy($rate ?? $fx)->toScale(2, RoundingMode::HALF_UP);
-        $receivables = DB::table('fin_receivables')->where('reservation_id', $reservation->id)->whereNull('deleted_at')->where('status', '<>', 'cancelada')->get(['code', 'concept', 'amount', 'paid_amount', 'fx_rate', 'status', 'due_date']);
+        $receivables = DB::table('fin_receivables')->where('reservation_id', $reservation->id)->whereNull('deleted_at')->where('status', '<>', 'cancelada')->orderBy('due_date')->get(['code', 'concept', 'amount', 'paid_amount', 'currency', 'fx_rate', 'status', 'due_date']);
         $payables = DB::table('fin_payables as f')->leftJoin('catalog_providers as p', 'p.id', '=', 'f.provider_id')->where('f.reservation_id', $reservation->id)->whereNull('f.deleted_at')->whereNotIn('f.status', ['anulada', 'cancelada'])
             ->get(['f.code', 'f.kind', 'f.concept', 'f.amount', 'f.paid_amount', 'f.currency', 'f.fx_rate', 'f.status', 'f.approved_at', 'p.name as provider']);
         $pendingExtras = $payables->filter(fn (object $row): bool => $row->kind === 'costo_adicional' && $row->approved_at === null);
@@ -147,10 +148,15 @@ final class FinanceDetails
         $income = $receivables->reduce(fn (BigDecimal $sum, object $row) => $sum->plus($pen($reservation->currency === 'PEN' ? Decimal::withoutIgv((string) $row->amount) : $row->amount, (string) ($row->fx_rate ?: $fx))), BigDecimal::zero());
         $collectedGross = $receivables->reduce(fn (BigDecimal $sum, object $row) => $sum->plus($pen($row->amount, (string) ($row->fx_rate ?: $fx))), BigDecimal::zero());
         $collected = $receivables->reduce(fn (BigDecimal $sum, object $row) => $sum->plus($pen($row->paid_amount, (string) ($row->fx_rate ?: $fx))), BigDecimal::zero());
-        $cost = $payables->reduce(fn (BigDecimal $sum, object $row) => $sum->plus($pen($row->amount, (string) ($row->fx_rate ?: 1))), BigDecimal::zero());
+        $costOf = fn (iterable $rows): BigDecimal => collect($rows)->reduce(fn (BigDecimal $sum, object $row) => $sum->plus($pen($row->amount, (string) ($row->fx_rate ?: 1))), BigDecimal::zero());
+        $extraCost = $costOf($payables->where('kind', 'costo_adicional'));
+        $cost = $costOf($payables);
+        $serviceCost = $cost->minus($extraCost);
+        $gross = $income->minus($cost);
         $paidOut = $payables->reduce(fn (BigDecimal $sum, object $row) => $sum->plus($pen($row->paid_amount, (string) ($row->fx_rate ?: 1))), BigDecimal::zero());
         $commission = $commissions->reduce(fn (BigDecimal $sum, object $row) => $sum->plus($pen($row->amount, (string) ($row->fx_rate ?: 1))), BigDecimal::zero());
-        $net = $income->minus($cost)->minus($commission);
+        $net = $gross->minus($commission);
+        $pct = fn (BigDecimal $value): ?string => $income->isZero() ? null : (string) $value->multipliedBy(100)->dividedBy($income, 1, RoundingMode::HALF_UP);
         $closed = DB::table('fin_settlements as s')->leftJoin('iam_users as u', 'u.id', '=', 's.closed_by')->where('s.reservation_id', $reservation->id)->first(['s.closed_at', 'u.name as closed_by', 's.net_pen', 's.gross_margin_pct']);
 
         $checks = [
@@ -165,8 +171,9 @@ final class FinanceDetails
         return [
             'reservation' => ['code' => $reservation->code, 'title' => $reservation->title, 'status' => $reservation->status, 'client' => $reservation->client, 'currency' => $reservation->currency],
             'statement' => [
-                'income' => (string) $income, 'cost' => (string) $cost, 'commissions' => (string) $commission, 'net' => (string) $net,
-                'margin_pct' => $income->isZero() ? null : (string) $net->multipliedBy(100)->dividedBy($income, 1, RoundingMode::HALF_UP),
+                'income' => (string) $income, 'service_cost' => (string) $serviceCost, 'extra_cost' => (string) $extraCost, 'pending_extra_cost' => (string) $costOf($pendingExtras),
+                'cost' => (string) $cost, 'gross' => (string) $gross, 'commissions' => (string) $commission, 'net' => (string) $net,
+                'margin_pct' => $pct($gross), 'net_pct' => $pct($net),
             ],
             'cash' => ['collected' => (string) $collected, 'paid_out' => (string) $paidOut, 'position' => (string) $collected->minus($paidOut)->minus($commission)],
             'receivables' => $receivables, 'payables' => $payables, 'commissions' => $commissions,
@@ -177,8 +184,13 @@ final class FinanceDetails
 
     public static function bankAccounts(?string $currency = null): array
     {
-        return DB::table('fin_treasury_accounts')->whereNull('deleted_at')->where('kind', 'bank')->where('status', 'active')->when($currency !== null, fn ($query) => $query->where('currency', $currency))->orderBy('code')
+        return self::bankAccountQuery($currency)->orderBy('code')
             ->get(['code', 'name', 'bank', 'currency'])->map(fn (object $row): array => ['value' => $row->code, 'label' => "{$row->name} · {$row->currency}", 'currency' => $row->currency])->all();
+    }
+
+    public static function bankAccountQuery(?string $currency = null): Builder
+    {
+        return DB::table('fin_treasury_accounts')->whereNull('deleted_at')->where('kind', 'bank')->where('status', 'active')->when($currency !== null, fn ($query) => $query->where('currency', $currency));
     }
 
     private function statusHistory(string $type, string $id): Collection

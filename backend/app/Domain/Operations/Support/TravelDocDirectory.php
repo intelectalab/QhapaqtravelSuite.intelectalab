@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Operations\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Errors\ApiException;
 use App\Jobs\RemindTravelDocuments;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
@@ -12,6 +13,16 @@ use Illuminate\Support\Facades\DB;
 
 final class TravelDocDirectory
 {
+    public const LOG_ACTIONS = [
+        'cargar' => 'Cargó el archivo',
+        'reemplazar_archivo' => 'Reemplazó el archivo',
+        'validar' => 'Validó',
+        'observar' => 'Observó',
+        'registrar_contacto' => 'Registró el contacto de emergencia',
+        'declarar_atencion' => 'Declaró la atención especial',
+        'solicitar_documentos' => 'Solicitó documentos al cliente',
+    ];
+
     public const LABELS = [
         'id_doc' => 'Documento de identidad',
         'visa' => 'Visa',
@@ -81,6 +92,24 @@ final class TravelDocDirectory
             ],
             'items' => $rows,
             'passengers' => $people->map(fn (array $person): array => array_diff_key($person, ['blocking' => true]))->values(),
+        ];
+    }
+
+    public function gate(string $code): array
+    {
+        $reservation = DB::table('booking_reservations')->where('code', $code)->whereNull('deleted_at')->first(['id', 'code', 'status'])
+            ?? throw ApiException::notFound('La reserva no existe.');
+        $mapi = $this->mapiFor($reservation);
+        $missing = $mapi === null ? [] : $this->blocking((string) $reservation->id);
+
+        return [
+            'code' => $reservation->code,
+            'status' => $reservation->status,
+            'applies' => $mapi !== null,
+            'blocked' => $missing !== [],
+            'missing' => $missing,
+            'services' => $mapi['services'] ?? [],
+            'rule' => 'DOC-BR-010: no se emite el voucher de una entrada nominativa sin documentos validados.',
         ];
     }
 
@@ -306,6 +335,17 @@ final class TravelDocDirectory
                 'contact' => isset($contacts[$passenger->id]) ? ['name' => $contacts[$passenger->id]->name, 'phone' => $contacts[$passenger->id]->phone, 'relation' => $contacts[$passenger->id]->relation] : null,
                 'attention' => isset($special[$passenger->id]) ? ['flag' => (bool) $special[$passenger->id]->requires_attention, 'note' => $special[$passenger->id]->operational_note] : null,
             ])->values(),
+            'log' => DB::table('audit_events')->where('entity', 'Documento de viaje')->where(fn (Builder $query) => $query->where('entity_id', $reservation->code)->orWhere('entity_id', 'like', "{$reservation->code} · %"))
+                ->orderByDesc('occurred_at')->limit(30)->get(['code', 'entity_id', 'action', 'before_value', 'after_value', 'actor_id', 'occurred_at'])
+                ->map(fn (object $event): array => [
+                    'code' => $event->code,
+                    'passenger' => str_contains((string) $event->entity_id, ' · ') ? explode(' · ', (string) $event->entity_id, 2)[1] : null,
+                    'action' => self::LOG_ACTIONS[$event->action] ?? str_replace('_', ' ', (string) $event->action),
+                    'before' => $event->before_value,
+                    'after' => $event->after_value,
+                    'by' => $event->actor_id ? ($names[$event->actor_id] ?? null) : 'Sistema',
+                    'at' => $event->occurred_at,
+                ])->values(),
             'reminders' => DB::table('ops_travel_doc_reminders')->where('reservation_id', $reservation->id)->orderByDesc('sent_at')->get(['sent_at', 'channels', 'recipient', 'trigger', 'days_before', 'sent_by', 'items_count'])
                 ->map(fn (object $reminder): array => ['at' => $reminder->sent_at, 'channel' => $reminder->channels, 'to' => $reminder->recipient, 'trigger' => $reminder->trigger, 'days_before' => $reminder->days_before, 'items' => (int) $reminder->items_count, 'by' => $reminder->sent_by ? ($names[$reminder->sent_by] ?? null) : 'Sistema'])->values(),
         ];

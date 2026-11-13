@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, CircleCheck, Plane, TriangleAlert, Wallet } from "lucide-react";
+import { Activity, Ban, CircleCheck, Hourglass, Plane, TriangleAlert, Wallet } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -102,6 +102,8 @@ export function ReservationsTable({ rows, today, can, prices = true, costs = fal
   const metrics: MetricFilter<ReservationRow>[] = [
     { id: "traveling", label: "De viaje ahora", tone: "t4", icon: <Plane size={19} />, matches: traveling },
     { id: "confirmed", label: "Confirmadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "confirmada" },
+    { id: "operation", label: "En operación", tone: "violet", icon: <Activity size={19} />, matches: (row) => row.status === "en_operacion" },
+    { id: "pending", label: "Pendientes de pago o proveedor", tone: "sun", icon: <Hourglass size={19} />, matches: (row) => row.status === "pendiente_pago" || row.status === "pendiente_proveedor" },
     { id: "balance", label: "Con saldo por cobrar", tone: "warn", icon: <Wallet size={19} />, matches: (row) => (row.balance_pen ?? 0) > 0 },
     { id: "incidents", label: "Con incidencia", tone: "bad", icon: <TriangleAlert size={19} />, matches: (row) => row.open_incidents > 0 },
   ];

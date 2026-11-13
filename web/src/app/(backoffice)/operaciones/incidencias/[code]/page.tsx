@@ -106,7 +106,7 @@ export default async function IncidenciaPage({ params }: PageProps<"/operaciones
 
           <Card>
             <TintCardTitle icon={Camera} title="Evidencias" aside={String(incident.evidence_files.length)} />
-            <EvidenceSection scope="incident" target={incident.code} files={incident.evidence_files} canUpload={incident.can.manage && incident.status !== "cerrada"} canRemove={false} emptyText="Aún no hay fotos ni documentos de respaldo." />
+            <EvidenceSection scope="incident" target={incident.code} files={incident.evidence_files} canUpload={incident.can.manage && incident.status !== "cerrada"} canRemove={incident.can.remove_evidence === true && incident.status !== "cerrada"} emptyText="Aún no hay fotos ni documentos de respaldo." />
           </Card>
         </div>
 

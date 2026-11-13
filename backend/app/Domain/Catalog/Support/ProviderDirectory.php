@@ -20,13 +20,18 @@ final class ProviderDirectory
         $contacts = DB::table('catalog_provider_contacts')->orderBy('name')->get(['id', 'provider_id', 'name', 'role', 'phone', 'email'])->groupBy('provider_id');
         $services = DB::table('catalog_services')->whereNull('deleted_at')->orderBy('name')->get(['provider_id', 'ref', 'name', 'type', 'status'])->groupBy('provider_id');
         $products = DB::table('catalog_products')->whereNull('deleted_at')->whereNotNull('main_provider_id')->orderBy('name')->get(['main_provider_id', 'code', 'name', 'status'])->groupBy('main_provider_id');
+        $serviceOwners = DB::table('catalog_services')->whereNull('deleted_at')->pluck('provider_id', 'id');
+        $components = DB::table('catalog_product_items as i')->join('catalog_products as p', 'p.id', '=', 'i.product_id')->whereNull('p.deleted_at')->orderBy('p.name')
+            ->get(['i.provider_id', 'i.service_id', 'p.code', 'p.name', 'p.status'])
+            ->flatMap(fn (object $item): array => collect([$item->provider_id, $serviceOwners[$item->service_id] ?? null])->filter()->unique()->map(fn ($owner): array => ['owner' => $owner, 'code' => $item->code, 'name' => $item->name, 'status' => $item->status])->all())
+            ->groupBy('owner');
 
         $providers = DB::table('catalog_providers')->whereNull('deleted_at')->orderBy('name')->get()
             ->map(fn (object $provider) => [
                 ...$this->row($provider, $today),
                 'contacts' => self::pick($contacts, $provider->id, ['id', 'name', 'role', 'phone', 'email']),
                 'services' => self::pick($services, $provider->id, ['ref', 'name', 'type', 'status']),
-                'products' => self::pick($products, $provider->id, ['code', 'name', 'status']),
+                'products' => self::involved(self::pick($products, $provider->id, ['code', 'name', 'status']), collect($components[$provider->id] ?? [])),
             ]);
 
         return [
@@ -57,7 +62,7 @@ final class ProviderDirectory
                 ...$this->row($provider, $today),
                 'contacts' => DB::table('catalog_provider_contacts')->where('provider_id', $provider->id)->orderBy('name')->get(['id', 'name', 'role', 'phone', 'email']),
                 'services' => $services->map(fn (object $service): array => ['ref' => $service->ref, 'name' => $service->name, 'type' => $service->type, 'status' => $service->status])->values(),
-                'products' => $main->map(fn (object $product): array => (array) $product)->values(),
+                'products' => $products,
             ],
             'services' => $services->map(fn (object $service): array => [
                 'ref' => $service->ref,
@@ -166,6 +171,20 @@ final class ProviderDirectory
 
         foreach (self::group($grouped, $key) as $item) {
             $rows[] = array_intersect_key((array) $item, array_flip($fields));
+        }
+
+        return $rows;
+    }
+
+    private static function involved(array $main, Collection $components): array
+    {
+        $codes = array_column($main, 'code');
+        $rows = array_map(fn (array $product): array => [...$product, 'role' => 'principal'], $main);
+
+        foreach ($components->unique('code') as $component) {
+            if (! in_array($component['code'], $codes, true)) {
+                $rows[] = ['code' => $component['code'], 'name' => $component['name'], 'status' => $component['status'], 'role' => 'componente'];
+            }
         }
 
         return $rows;

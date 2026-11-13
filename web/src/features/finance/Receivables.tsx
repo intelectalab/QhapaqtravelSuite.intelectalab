@@ -89,18 +89,36 @@ export function PickPaymentAction({ data }: { data: ReceivablesOverview }) {
   );
 }
 
+const addDays = (iso: string, days: number) => {
+  const date = new Date(`${iso}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+
 function AdvanceFields({ options, today }: { options: AdvanceOption[]; today: string }) {
   const [code, setCode] = useState("");
+  const [pct, setPct] = useState("50");
   const [amount, setAmount] = useState("");
+  const [concept, setConcept] = useState("");
   const [notify, setNotify] = useState(true);
   const option = options.find((item) => item.value === code);
+  const suggest = (picked: AdvanceOption | undefined, value: string) => {
+    if (!picked || value === "") return;
+    const share = Number(value);
+    setAmount(Math.min(picked.available, (picked.total * share) / 100).toFixed(2));
+    setConcept(`Anticipo ${share} % — ${picked.title ?? picked.label}`);
+  };
+  const pick = (value: string) => {
+    setCode(value);
+    suggest(options.find((item) => item.value === value), pct);
+  };
   const fromPct = (value: string) => {
-    if (!option || value === "") return;
-    setAmount(((option.total * Number(value)) / 100).toFixed(2));
+    setPct(value);
+    suggest(option, value);
   };
   return (
     <>
-      <SelectField label="Reserva" name="reservation" searchable options={options.map(({ value, label }) => ({ value, label }))} placeholder="Busca la reserva" onChange={setCode} hint={options.length === 0 ? "Todas las reservas vigentes ya tienen su total repartido en cuotas." : undefined} />
+      <SelectField label="Reserva" name="reservation" searchable options={options.map(({ value, label }) => ({ value, label }))} placeholder="Busca la reserva" onChange={pick} hint={options.length === 0 ? "Todas las reservas vigentes ya tienen su total repartido en cuotas." : undefined} />
       {option && (
         <SummaryBox
           rows={[
@@ -112,11 +130,11 @@ function AdvanceFields({ options, today }: { options: AdvanceOption[]; today: st
         />
       )}
       <div className="grid grid-cols-[0.8fr_1.2fr] gap-3">
-        <TextField label="% del total (opcional)" name="pct" type="number" step="0.01" min="1" max="100" onChange={(event) => fromPct(event.target.value)} />
-        <TextField label={`Importe${option ? ` (${option.currency})` : ""}`} name="amount" type="number" step="0.01" min="0.01" max={option?.available} required value={amount} onChange={(event) => setAmount(event.target.value)} />
+        <TextField label="% del total" name="pct" type="number" step="0.01" min="1" max="100" value={pct} onChange={(event) => fromPct(event.target.value)} />
+        <TextField label={`Importe${option ? ` (${option.currency})` : ""}`} name="amount" type="number" step="0.01" min="0.01" max={option?.available} required value={amount} onChange={(event) => setAmount(event.target.value)} hint={option && option.available < (option.total * Number(pct || 0)) / 100 ? "Se limitó a lo disponible de la reserva." : undefined} />
       </div>
-      <TextField label="Vence" name="due_date" type="date" required min={today} defaultValue={today} />
-      <TextField label="Concepto" name="concept" required minLength={3} maxLength={255} placeholder="Ejemplo: anticipo para reservar el tren a Machu Picchu" />
+      <TextField label="Vence" name="due_date" type="date" required min={today} defaultValue={addDays(today, 3)} />
+      <TextField label="Concepto" name="concept" required minLength={3} maxLength={255} value={concept} onChange={(event) => setConcept(event.target.value)} placeholder="Ejemplo: anticipo para reservar el tren a Machu Picchu" />
       <SwitchField label="Avisar al cliente por correo" name="notify_switch" checked={notify} onCheckedChange={setNotify} hint="Le llega el aviso de pago pendiente con el importe." />
       <input type="hidden" name="notify" value={notify ? "1" : "0"} />
     </>

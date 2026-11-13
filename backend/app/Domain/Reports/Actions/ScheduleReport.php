@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
 
 final class ScheduleReport
 {
-    public const FREQUENCIES = ['daily' => 'Diario', 'weekly' => 'Semanal (lunes)', 'monthly' => 'Mensual (día 1)'];
+    public const FREQUENCIES = ['daily' => 'Diario', 'weekly' => 'Semanal (lunes)', 'friday' => 'Semanal (viernes)', 'monthly' => 'Mensual (día 1)'];
 
     public function __construct(private readonly AuditLogger $audit, private readonly TenantContext $context) {}
 
@@ -28,13 +28,7 @@ final class ScheduleReport
         }
 
         ReportTabs::assert($actor, $data['report_key']);
-        [$hour, $minute] = array_map('intval', explode(':', $data['time']));
-        $cron = match ($data['frequency']) {
-            'daily' => "{$minute} {$hour} * * *",
-            'weekly' => "{$minute} {$hour} * * 1",
-            default => "{$minute} {$hour} 1 * *",
-        };
-        $label = mb_strtolower(self::FREQUENCIES[$data['frequency']]).' '.str_pad((string) $hour, 2, '0', STR_PAD_LEFT).':'.str_pad((string) $minute, 2, '0', STR_PAD_LEFT);
+        [$cron, $label] = $this->cron($data['frequency'], $data['time']);
         $title = ReportTabs::TITLES[$data['report_key']];
         $recipients = array_values(array_unique(array_map(fn (string $email): string => Str::lower(trim($email)), $data['recipients'])));
 
@@ -78,13 +72,7 @@ final class ScheduleReport
             throw ApiException::forbidden('REP-BR-05', 'Editar envíos requiere el permiso reports.export.');
         }
 
-        [$hour, $minute] = array_map('intval', explode(':', $data['time']));
-        $cron = match ($data['frequency']) {
-            'daily' => "{$minute} {$hour} * * *",
-            'weekly' => "{$minute} {$hour} * * 1",
-            default => "{$minute} {$hour} 1 * *",
-        };
-        $label = mb_strtolower(self::FREQUENCIES[$data['frequency']]).' '.str_pad((string) $hour, 2, '0', STR_PAD_LEFT).':'.str_pad((string) $minute, 2, '0', STR_PAD_LEFT);
+        [$cron, $label] = $this->cron($data['frequency'], $data['time']);
         $recipients = array_values(array_unique(array_map(fn (string $email): string => Str::lower(trim($email)), $data['recipients'])));
         $previous = (array) json_decode((string) $job->recipients, true);
         DB::table('sys_scheduled_jobs')->where('id', $job->id)->update([
@@ -98,5 +86,18 @@ final class ScheduleReport
         $this->audit->log('Proceso programado', $code, 'editar_envio', "{$job->cron_label} · {$job->report_format}", "{$label} · {$data['format']} · ".count($recipients).' destinatarios');
 
         return ['code' => $code, 'cron' => $cron, 'label' => $label];
+    }
+
+    private function cron(string $frequency, string $time): array
+    {
+        [$hour, $minute] = array_map('intval', explode(':', $time));
+        $cron = match ($frequency) {
+            'daily' => "{$minute} {$hour} * * *",
+            'weekly' => "{$minute} {$hour} * * 1",
+            'friday' => "{$minute} {$hour} * * 5",
+            default => "{$minute} {$hour} 1 * *",
+        };
+
+        return [$cron, mb_strtolower(self::FREQUENCIES[$frequency]).' '.str_pad((string) $hour, 2, '0', STR_PAD_LEFT).':'.str_pad((string) $minute, 2, '0', STR_PAD_LEFT)];
     }
 }

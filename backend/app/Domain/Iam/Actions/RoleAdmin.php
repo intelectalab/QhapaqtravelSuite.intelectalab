@@ -8,6 +8,7 @@ use App\Domain\Iam\Models\Permission;
 use App\Domain\Iam\Models\Role;
 use App\Domain\Iam\Models\User;
 use App\Domain\Iam\Support\AccessMap;
+use App\Domain\Iam\Support\RoleProfiles;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
@@ -76,6 +77,8 @@ final class RoleAdmin
             'custom' => (bool) $role->is_custom,
             'experience' => $map['experience'] ?? $role->experience ?? 'backoffice',
             'screens' => ['allowed' => (int) ($map['allowed'] ?? 0), 'total' => count(config('access.routes'))],
+            'data_scope' => RoleProfiles::dataScope($role->name, $role->scope),
+            'home' => $map['home'] ?? null,
             'users' => $users->map(fn (object $user): array => ['code' => $user->code, 'name' => $user->name, 'email' => $user->email, 'status' => $user->status, 'sede' => $user->sede, 'last_login_at' => $user->last_login_at])->values()->all(),
             'audit' => $items,
         ];

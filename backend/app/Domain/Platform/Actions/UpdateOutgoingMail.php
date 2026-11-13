@@ -33,9 +33,14 @@ final class UpdateOutgoingMail
         private readonly PlatformSession $session,
     ) {}
 
-    public function update(array $data, ?string $password, PlatformUser $actor): array
+    public function update(array $data, ?string $password, PlatformUser $actor, array $webhookSecrets = []): array
     {
         $password = $password === null || $password === '' ? null : $password;
+        $webhookSecrets = array_filter(
+            array_intersect_key($webhookSecrets, OutgoingMail::WEBHOOK_PROVIDERS),
+            fn (mixed $secret, string $provider): bool => is_string($secret) && $secret !== '' && $secret !== $this->settings->webhookSecret($provider),
+            ARRAY_FILTER_USE_BOTH,
+        );
         $values = [
             'enabled' => (bool) $data['enabled'],
             'host' => mb_strtolower(trim((string) ($data['host'] ?? ''))),
@@ -63,6 +68,9 @@ final class UpdateOutgoingMail
         if ($password !== null && $password !== $this->settings->password()) {
             $changes['Contraseña del correo'] = [$before['password_set'] ? 'configurada' : null, 'cambiada'];
         }
+        foreach (array_keys($webhookSecrets) as $provider) {
+            $changes[OutgoingMail::WEBHOOK_PROVIDERS[$provider]] = [$before['webhook_secrets'][$provider] ? 'configurado' : null, 'cambiado'];
+        }
 
         if ($changes === []) {
             throw ApiException::unprocessable('CFG-BR-01', 'No hay cambios que guardar.');
@@ -78,8 +86,8 @@ final class UpdateOutgoingMail
             $verifiedAt = now()->toIso8601String();
         }
 
-        DB::connection('pgsql_platform')->transaction(function () use ($values, $password, $verifiedAt, $actor, $changes): void {
-            $this->settings->store($values, $password, $verifiedAt, (string) $actor->getKey());
+        DB::connection('pgsql_platform')->transaction(function () use ($values, $password, $verifiedAt, $actor, $changes, $webhookSecrets): void {
+            $this->settings->store($values, $password, $verifiedAt, (string) $actor->getKey(), $webhookSecrets);
             foreach ($changes as $field => [$old, $new]) {
                 $this->session->log(UpdatePlatformSettings::ENTITY, $field, 'actualizar', $old, $new, $actor);
             }

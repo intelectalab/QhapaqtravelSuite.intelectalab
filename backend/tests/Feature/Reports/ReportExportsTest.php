@@ -61,6 +61,13 @@ it('editar un envío programado cambia frecuencia, hora, formato y destinatarios
         ->and($job->report_format)->toBe('PDF')
         ->and(json_decode((string) $job->recipients, true)['emails'])->toHaveCount(2);
     expect($this->patchJson('/api/v1/reports/schedules/JOB-01', ['frequency' => 'daily', 'time' => '08:00', 'format' => 'PDF', 'recipients' => ['a@b.pe']]))->toBeApiError(404);
+
+    $this->postJson("/api/v1/reports/schedules/{$schedule['code']}/pause")->assertOk()->assertJsonPath('data.paused', true);
+    $paused = withinTenant(tenantA(), fn () => DB::table('sys_scheduled_jobs')->where('code', $schedule['code'])->value('paused'));
+    $this->postJson("/api/v1/reports/schedules/{$schedule['code']}/resume")->assertOk()->assertJsonPath('data.paused', false);
+    expect($paused)->toBeTrue()
+        ->and(withinTenant(tenantA(), fn () => DB::table('sys_scheduled_jobs')->where('code', $schedule['code'])->value('paused')))->toBeFalse()
+        ->and($this->postJson('/api/v1/reports/schedules/JOB-01/pause'))->toBeApiError(409, 'JOB-BR-03');
 });
 
 it('programar un envío crea el proceso y el job genera el archivo y lo envía a los destinatarios', function () {

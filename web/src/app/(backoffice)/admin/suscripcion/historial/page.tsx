@@ -8,5 +8,5 @@ export const metadata: Metadata = { title: "Historial de consumo" };
 export default async function HistorialPage() {
   const data = await getSubscription();
   if (!data) return <NoAccess home="/dashboard" />;
-  return <HistoryTab history={data.history} />;
+  return <HistoryTab history={data.history} usage={data.usage} />;
 }

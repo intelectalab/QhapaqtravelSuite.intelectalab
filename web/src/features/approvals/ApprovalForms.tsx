@@ -30,7 +30,7 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-function LevelTrack({ item }: { item: ApprovalItem }) {
+export function LevelTrack({ item }: { item: ApprovalItem }) {
   const levels = Array.from({ length: Math.max(1, item.levels) }, (_, index) => index + 1);
   return (
     <ol className="flex items-center gap-2">
@@ -50,7 +50,7 @@ function LevelTrack({ item }: { item: ApprovalItem }) {
   );
 }
 
-export function ApprovalDetailAction({ item, cancelReasons = [] }: { item: ApprovalItem; cancelReasons?: string[] }) {
+export function ApprovalDetailAction({ item, cancelReasons = [], defaultOpen = false, trigger }: { item: ApprovalItem; cancelReasons?: string[]; defaultOpen?: boolean; trigger?: (open: () => void) => React.ReactNode }) {
   const decide = item.can_decide && (item.status === "pendiente" || item.status === "info");
   const formId = `aprobacion-${item.key.replace(/[^a-z0-9-]/gi, "-")}`;
   return (
@@ -62,7 +62,8 @@ export function ApprovalDetailAction({ item, cancelReasons = [] }: { item: Appro
       submitLabel={decide ? (item.approve_label ?? "Aprobar") : "Listo"}
       action={decide ? decideApproval : async () => ({ message: null, done: true })}
       initial={initial}
-      trigger={(open) => <RowIcon tone="view" label="Ver solicitud" onClick={open} />}
+      defaultOpen={defaultOpen}
+      trigger={trigger ?? ((open) => <RowIcon tone="view" label="Ver solicitud" onClick={open} />)}
       footerExtra={(_state, pending) =>
         decide ? (
           <Button type="submit" form={formId} name="decision" value="reject" variant="secondary" icon={<X size={15} />} disabled={pending}>
@@ -90,7 +91,7 @@ export function ApprovalDetailAction({ item, cancelReasons = [] }: { item: Appro
           </div>
           <LevelTrack item={item} />
           <section className="rounded-xl bg-surface-2 px-3.5 py-1">
-            <Fact label="Monto o impacto">{formatMoney(item.amount, item.currency)}{item.currency !== "PEN" && <span className="block text-[11.5px] font-normal text-fg-3">{formatMoney(item.amount_pen)} en soles</span>}</Fact>
+            <Fact label="Monto o impacto">{formatMoney(item.amount, item.currency)}{item.currency !== "PEN" && <span className="block text-[11.5px] font-normal text-fg-3">{formatMoney(item.amount_pen)} en soles</span>}{item.impact && <span className="block text-[11.5px] font-normal text-fg-3">{item.impact}</span>}</Fact>
             <Fact label="Solicitó">{item.requester}</Fact>
             <Fact label="Fecha">{formatDateTime(item.created_at)}</Fact>
             {item.due_at && <Fact label="Plazo">{formatDateTime(item.due_at)}</Fact>}

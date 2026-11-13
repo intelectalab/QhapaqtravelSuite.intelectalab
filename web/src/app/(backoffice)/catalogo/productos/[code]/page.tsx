@@ -1,4 +1,4 @@
-import { Baby, BadgePercent, BedDouble, Boxes, Box, CalendarRange, ChartPie, Clock, Coins, FileText, GitBranch, History, Link2, ListChecks, LayoutDashboard, MapPin, MapPinned, PackagePlus, Radio, Route, ScrollText, ShieldCheck, ShoppingBag, SlidersHorizontal, Truck, Users, Wallet, Warehouse, type LucideIcon } from "lucide-react";
+import { Baby, BadgePercent, BedDouble, Boxes, Box, CalendarRange, ChartPie, Clock, Coins, FileText, GitBranch, History, Link2, ListChecks, LayoutDashboard, MapPin, MapPinned, PackagePlus, Radio, Route, ScrollText, ShieldCheck, ShoppingBag, Signpost, SlidersHorizontal, Truck, Users, Wallet, Warehouse, type LucideIcon } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -10,7 +10,9 @@ import { formatMoney } from "@/lib/format";
 import { resolveSections } from "@/lib/sections";
 import type { PromotionCatalog } from "@/lib/channels";
 import { getProduct, getProductBookingConfig, getProductEditor, getProductFormOptions, getProductOverview, getProductTranslations } from "@/lib/server/catalog";
+import { getDepartures } from "@/lib/server/catalog-board";
 import { getResource } from "@/lib/server/resource";
+import type { TripCatalogView } from "@/lib/trip";
 import { ProductDeleteAction, ProductLifecycleActions } from "@/features/catalog/ProductForms";
 import { ProductHighlights } from "@/features/catalog/ProductHighlights";
 import { ProductLifecycle, ProductStatusNotice } from "@/features/catalog/product360/ProductHeader";
@@ -43,6 +45,7 @@ const SECTION_ICONS: Record<string, LucideIcon> = {
   pasajeros: Baby,
   adicionales: PackagePlus,
   alojamiento: BedDouble,
+  tramos: Signpost,
   pago: Wallet,
   recojo: MapPinned,
   reglas: ShieldCheck,
@@ -59,11 +62,15 @@ export default async function ProductoPage({ params, searchParams }: PageProps<"
   const [product, options, translations, editor, overview, booking] = await Promise.all([getProduct(code), getProductFormOptions(), getProductTranslations(code), getProductEditor(code), getProductOverview(code), getProductBookingConfig(code)]);
   if (!options || !editor || !overview) notFound();
   const promotions = seccion === "promociones" && options.can_update ? await getResource<PromotionCatalog>("/channels/ecommerce/promotions", "No pudimos cargar las promociones.") : null;
+  const trip = booking?.accommodation.enabled ? await getResource<TripCatalogView>(`/catalog/products/${encodeURIComponent(product.code)}/trip`, "No pudimos cargar el viaje por tramos.") : null;
+  const departures = seccion === "salidas" ? (await getDepartures()).departures : null;
 
   const status = PRODUCT_STATUS[product.status];
   const editable = options.can_update && product.status !== "ARCHIVED";
-  const sale = product.rates.filter((rate) => rate.active && rate.type === "Venta" && ["Adulto", "Pasajero"].includes(rate.segment)).sort((a, b) => Number(a.price) - Number(b.price))[0];
-  const tabs = productTabs({ product, editor, overview, options, translations, promotions, booking });
+  const sale = product.price_from;
+  const tabs = productTabs({ product, editor, overview, options, translations, promotions, booking, trip, departures });
+  const requested = Array.isArray(seccion) ? seccion[0] : seccion;
+  const hiddenSection = requested !== undefined && requested in SECTION_ICONS && !tabs.some((tab) => tab.id === requested);
   const base = `/catalogo/productos/${encodeURIComponent(product.code)}`;
   const { active: activeId, groups } = resolveSections(
     base,
@@ -107,12 +114,13 @@ export default async function ProductoPage({ params, searchParams }: PageProps<"
       />
 
       <ProductStatusNotice product={product} overview={overview} />
+      {hiddenSection && <p role="status" className="mb-5 rounded-xl border border-warn/35 bg-warn/[0.09] px-4 py-3 text-[13.5px]">La sección que pediste no está disponible para tu rol. Te mostramos la ficha general.</p>}
 
       <HeroBand>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
           <div>
-            <p className="text-[13px] font-medium text-white/70">{sale ? `Desde, por ${sale.segment === "Adulto" ? "adulto" : "pasajero"}` : "Precio"}</p>
-            <p className="mt-1 text-[38px] font-bold leading-none tracking-[-0.03em]">{sale ? formatMoney(sale.price, sale.currency) : "Sin tarifa"}</p>
+            <p className="text-[13px] font-medium text-white/70">{sale ? `Desde, por ${sale.segment ? sale.segment.toLowerCase() : "pasajero"}` : "Precio"}</p>
+            <p className="mt-1 text-[38px] font-bold leading-none tracking-[-0.03em]">{sale ? formatMoney(sale.amount, sale.currency) : "Sin tarifa"}</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <HeroChip icon={<Clock size={14} />}>
                 {durationLabel(product.duration)} · {product.modality.toLowerCase()}

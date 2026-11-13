@@ -1,5 +1,7 @@
+import { ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TabbedCard } from "@/components/ui/RouteTabs";
 import { EcommerceTiles } from "@/features/channels/Ecommerce";
@@ -15,6 +17,11 @@ export default async function EcommerceLayout({ children }: { children: ReactNod
         title="E-commerce"
         subtitle="Ventas en línea desde el sitio web y el widget: pedidos, pagos y productos a la venta."
         info={<InfoTip>Cada pedido crea su reserva y su cuenta por cobrar al primer intento de pago. Solo se anulan pedidos con el pago pendiente o rechazado.</InfoTip>}
+        actions={
+          <Button href={overview.site_url} target="_blank" icon={<ExternalLink size={16} />} iconOnlyOnMobile>
+            Ver tienda pública
+          </Button>
+        }
       />
       <EcommerceTiles kpis={overview.kpis} funnel={overview.funnel} products={overview.products.length} />
       <TabbedCard

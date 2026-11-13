@@ -37,7 +37,21 @@ final class NotificationDirectory
             ],
             'history' => $this->audit->recent(['Notificación'], 8),
             'can_manage' => $viewer->can('admin.settings.manage'),
+            'whatsapp' => $this->whatsapp(),
         ]);
+    }
+
+    private function whatsapp(): ?array
+    {
+        $adapter = DB::table('integration_adapters')->where('kind', SettingsCatalog::CHANNEL_INTEGRATIONS['whatsapp'])->orderBy('code')->first(['code', 'name', 'status', 'environment']);
+
+        return $adapter === null ? null : [
+            'code' => $adapter->code,
+            'name' => $adapter->name,
+            'status' => $adapter->status,
+            'status_label' => IntegrationDirectory::STATUSES[$adapter->status] ?? $adapter->status,
+            'sandbox' => $adapter->status !== 'activo' || $adapter->environment !== 'production',
+        ];
     }
 
     public function rule(string $event): array

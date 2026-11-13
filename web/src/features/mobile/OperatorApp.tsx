@@ -1,6 +1,8 @@
-import { Bus, CalendarDays, CircleCheck, Clock3, Home, ListChecks, MapPin, Phone, RefreshCw, Smartphone, Ticket, TriangleAlert, User, Users } from "lucide-react";
+import { Ban, Bus, CalendarDays, CircleCheck, Clock3, ExternalLink, Home, ListChecks, MapPin, Phone, RefreshCw, Smartphone, Ticket, TriangleAlert, User, Users } from "lucide-react";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
+import { InfoTip } from "@/components/ui/InfoTip";
+import { OpsStep } from "@/features/operations/OpsStep";
 import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
 import { ChannelBadge } from "@/features/channels/ChannelUi";
 import { SERVICE_KINDS } from "@/lib/channels";
@@ -87,10 +89,10 @@ export function OperatorSide({ preview }: { preview: OperatorPreview }) {
   return (
     <div className="flex flex-col gap-5">
       <section className="grid gap-3 sm:grid-cols-2">
-        <TintTile icon={ListChecks} tone="t1" label="Servicios del día" value={preview.kpis.services} note={`${preview.kpis.pax} pasajeros en campo`} />
-        <TintTile icon={User} tone="violet" label="Con guía o conductor" value={`${preview.kpis.assigned} de ${preview.kpis.services}`} note={preview.kpis.services - preview.kpis.assigned > 0 ? "Hay servicios por asignar" : "Todo asignado"} />
-        <TintTile icon={CircleCheck} tone="ok" label="Confirmados" value={preview.kpis.confirmed} note={`${preview.kpis.done} completados`} />
-        <TintTile icon={Smartphone} tone="sun" label="Equipos activos" value={preview.devices.active} note={preview.devices.last_sync_at ? `Última sincronización ${formatDateTime(preview.devices.last_sync_at, false)}` : "Ninguno ha sincronizado"} />
+        <TintTile icon={ListChecks} tone="t1" label="Servicios del día" value={preview.kpis.services} note={`${preview.kpis.pax} pasajeros en campo`} info="Servicios de campo (tours, traslados, tren) del día elegido, de reservas confirmadas." />
+        <TintTile icon={User} tone="violet" label="Con guía o conductor" value={`${preview.kpis.assigned} de ${preview.kpis.services}`} note={preview.kpis.services - preview.kpis.assigned > 0 ? "Hay servicios por asignar" : "Todo asignado"} info="Servicios del día con guía o conductor asignado en Operaciones." />
+        <TintTile icon={CircleCheck} tone="ok" label="Confirmados" value={preview.kpis.confirmed} note={`${preview.kpis.done} completados`} info="Asignaciones que el guía o conductor ya confirmó, inició o terminó desde la app." />
+        <TintTile icon={Smartphone} tone="sun" label="Equipos activos" value={preview.devices.active} note={preview.devices.last_sync_at ? `Última sincronización ${formatDateTime(preview.devices.last_sync_at, false)}` : "Ninguno ha sincronizado"} info="Teléfonos con sesión abierta en la app del operador y no desactivados." />
       </section>
       <Card>
         <TintCardTitle icon={CalendarDays} title="Días con servicios" aside={`${preview.days.length}`} />
@@ -119,7 +121,51 @@ export function OperatorSide({ preview }: { preview: OperatorPreview }) {
                   <b className="block truncate text-[13px] font-semibold">{service.time ?? "—"} · {service.name}</b>
                   <span className="text-[12px] text-fg-3">{service.reservation}{service.confirmation ? ` · ${service.confirmation}` : ""}</span>
                 </span>
-                <ChannelBadge status={service.assignment ?? "pendiente"} label={service.assignment ? undefined : "Sin asignar"} />
+                <span className="flex flex-none items-center gap-2">
+                  {service.order && (
+                    <Link href={`/operaciones/ordenes/${encodeURIComponent(service.order)}`} className="inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-[11.5px] font-semibold text-link transition-colors hover:border-accent/50">
+                      <ExternalLink size={12} /> Ver orden {service.order}
+                    </Link>
+                  )}
+                  <ChannelBadge status={service.assignment ?? "pendiente"} label={service.assignment ? undefined : "Sin asignar"} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+      <Card>
+        <TintCardTitle icon={RefreshCw} title="Sincronización de la app" aside={<InfoTip>Acciones que los teléfonos enviaron al servidor desde el {formatDate(preview.sync.since)} (tabla de acciones sincronizadas). Lo que aún espera señal queda en cada teléfono, en su bandeja de salida.</InfoTip>} />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {[
+            { label: "Recibidas", value: preview.sync.received, tone: "t1" as Tone, hint: `${preview.sync.applied} aplicadas` },
+            { label: "Sin conexión", value: preview.sync.offline, tone: "sun" as Tone, hint: "Se registraron sin señal" },
+            { label: "Conflictos resueltos", value: preview.sync.conflicts, tone: "warn" as Tone, hint: "El servidor aplicó su regla" },
+            { label: "Rechazadas", value: preview.sync.rejected, tone: "bad" as Tone, hint: "El teléfono revirtió el cambio" },
+          ].map((item) => (
+            <span key={item.label} style={toneStyle(item.tone)} className="lift rounded-xl bg-[color-mix(in_srgb,var(--tint)_9%,var(--surface))] px-3 py-2.5">
+              <b className="block text-[20px] leading-none text-[var(--tint)]">{item.value}</b>
+              <span className="mt-1 block text-[12px] font-semibold text-fg">{item.label}</span>
+              <span className="block text-[11px] text-fg-3">{item.hint}</span>
+            </span>
+          ))}
+        </div>
+      </Card>
+      <Card>
+        <TintCardTitle icon={Smartphone} title="Teléfonos con la app" aside={`${preview.devices.items.length}`} />
+        {preview.devices.items.length === 0 ? (
+          <p className="text-[13px] text-fg-3">Ningún guía o conductor ha iniciado sesión en la app.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {preview.devices.items.map((device) => (
+              <li key={device.id} className="lift flex items-center justify-between gap-3 rounded-tile border border-line px-3 py-2">
+                <span className="min-w-0">
+                  <b className="block truncate text-[13px] font-semibold">{device.user}</b>
+                  <span className="text-[12px] text-fg-3">
+                    {device.platform === "ios" ? "iPhone" : "Android"} · versión {device.version} · {device.last_sync_at ? `sincronizó ${formatDateTime(device.last_sync_at, false)}` : "sin sincronizar"}
+                  </span>
+                </span>
+                <OpsStep step="device_revoke" target={device.id} label="Desactivar" size="sm" variant="ghost" icon={<Ban size={14} />} title="Desactivar teléfono" submitLabel="Desactivar" description={`El teléfono de ${device.user} dejará de sincronizar y borrará sus datos guardados la próxima vez que se conecte. Para volver a usarlo tendrá que iniciar sesión.`} />
               </li>
             ))}
           </ul>

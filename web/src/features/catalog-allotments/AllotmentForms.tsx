@@ -20,7 +20,7 @@ const addDays = (iso: string, days: number) => {
   return date.toISOString().slice(0, 10);
 };
 
-function ContractTerms({ contract, today }: { contract?: AllotmentSummary; today: string }) {
+function ContractTerms({ contract, today, suggested }: { contract?: AllotmentSummary; today: string; suggested?: { id: string; cost: number; currency: string } }) {
   return (
     <>
       <PanelSection title="Vigencia y cantidad">
@@ -35,8 +35,8 @@ function ContractTerms({ contract, today }: { contract?: AllotmentSummary; today
       </PanelSection>
       <PanelSection title="Condiciones económicas">
         <div className="grid grid-cols-2 gap-3">
-          <TextField label="Tarifa neta" name="net_rate" type="number" min={0} step="0.01" required defaultValue={contract?.net_rate} />
-          <ChoiceGroup label="Moneda" name="currency" defaultValue={contract?.currency ?? "USD"} options={[{ value: "USD", label: "USD" }, { value: "PEN", label: "PEN" }]} />
+          <TextField key={`rate-${suggested?.id ?? ""}`} label="Tarifa neta" name="net_rate" type="number" min={0} step="0.01" required defaultValue={contract?.net_rate ?? suggested?.cost} hint={suggested ? "Tomada del costo de lista del servicio; ajústala si el contrato es distinto." : undefined} />
+          <ChoiceGroup key={`currency-${suggested?.id ?? ""}`} label="Moneda" name="currency" defaultValue={contract?.currency ?? suggested?.currency ?? "USD"} options={[{ value: "USD", label: "USD" }, { value: "PEN", label: "PEN" }]} />
         </div>
         <TextField label="Penalidad por no uso (%)" name="penalty_pct" type="number" min={0} max={100} step="0.01" required defaultValue={contract?.penalty_pct ?? 100} hint="Sobre la tarifa neta de lo retenido y no usado." />
       </PanelSection>
@@ -54,9 +54,20 @@ function ContractIdentity({ contract }: { contract?: AllotmentSummary & { notes?
   );
 }
 
-function ProviderService({ options }: { options: AllotmentOptions }) {
-  const [provider, setProvider] = useState("");
+function ContractCreateFields({ options, today }: { options: AllotmentOptions; today: string }) {
   const [service, setService] = useState("");
+  const chosen = options.services.find((item) => item.id === service);
+  return (
+    <>
+      <ProviderService options={options} service={service} setService={setService} />
+      <ContractIdentity />
+      <ContractTerms today={today} suggested={chosen ? { id: chosen.id, cost: chosen.cost, currency: chosen.currency } : undefined} />
+    </>
+  );
+}
+
+function ProviderService({ options, service, setService }: { options: AllotmentOptions; service: string; setService: (value: string) => void }) {
+  const [provider, setProvider] = useState("");
   const services = options.services.filter((item) => item.provider_id === provider);
   const chosen = options.services.find((item) => item.id === service);
   return (
@@ -74,7 +85,7 @@ function ProviderService({ options }: { options: AllotmentOptions }) {
         placeholder="Hoteles, tren o entradas activos"
       />
       <SelectField label="Servicio contratado" name="service_id" value={service} onChange={setService} options={services.map((item) => ({ value: item.id, label: item.name, hint: `${KIND_LABEL[item.kind]} · ${formatMoney(item.cost, item.currency)}` }))} placeholder={provider ? "Elegir servicio" : "Primero elige el proveedor"} />
-      {chosen && <p className="text-[12.5px] text-fg-3">Costo de lista {formatMoney(chosen.cost, chosen.currency)}. La tarifa neta del cupo puede ser distinta.</p>}
+      {chosen && <p className="text-[12.5px] text-fg-3">Costo de lista {formatMoney(chosen.cost, chosen.currency)}. Lo usamos como tarifa neta y moneda iniciales.</p>}
     </PanelSection>
   );
 }
@@ -92,13 +103,7 @@ export function ContractCreateAction({ options, today }: { options: AllotmentOpt
       action={createContract}
       initial={STEP_INITIAL}
     >
-      {() => (
-        <>
-          <ProviderService options={options} />
-          <ContractIdentity />
-          <ContractTerms today={today} />
-        </>
-      )}
+      {() => <ContractCreateFields options={options} today={today} />}
     </PanelAction>
   );
 }

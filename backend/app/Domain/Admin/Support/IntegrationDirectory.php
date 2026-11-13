@@ -7,10 +7,13 @@ namespace App\Domain\Admin\Support;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Http\CursorPage;
+use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laravel\Horizon\Contracts\SupervisorRepository;
+use Throwable;
 
 final class IntegrationDirectory
 {
@@ -30,7 +33,7 @@ final class IntegrationDirectory
         'distribution' => 'Publicar tarifas y recibir reservas de canales',
     ];
 
-    public function __construct(private readonly AuditDirectory $audit) {}
+    public function __construct(private readonly AuditDirectory $audit, private readonly TenantContext $context) {}
 
     public function adaptersPage(Request $request, User $viewer): array
     {
@@ -73,6 +76,7 @@ final class IntegrationDirectory
                 'paused' => DB::table('sys_scheduled_jobs')->where('paused', true)->count(),
                 'errors' => DB::table('sys_scheduled_jobs')->where('last_status', 'error')->count(),
             ],
+            'scheduler' => $this->scheduler(),
         ] : []);
         $runs = DB::table('sys_job_runs')->whereIn('scheduled_job_id', array_column($page['data'], 'id'))->orderByDesc('started_at')->limit(400)->get(['scheduled_job_id', 'trigger', 'status', 'result', 'started_at', 'finished_at'])->groupBy('scheduled_job_id');
         $page['data'] = array_map(fn (array $job): array => [...$job, 'runs' => $this->runs($runs->get($job['id'], collect())->take(6)->all())], $page['data']);
@@ -118,6 +122,34 @@ final class IntegrationDirectory
             ->leftJoin('iam_users as u', 'u.id', '=', 'e.resolved_by')
             ->when($viewer !== null && ! $viewer->can('admin.settings.manage'), fn (Builder $q) => $q->where('e.source', 'job')->whereIn('e.ref_code', DB::table('sys_scheduled_jobs')->whereNotNull('report_key')->where('owner_user_id', $viewer?->getKey())->select('code')))
             ->select(['e.id', 'e.code', 'e.source', 'e.ref_code', 'e.target', 'e.error', 'e.error_class', 'e.attempt', 'e.max_attempts', 'e.next_retry_at', 'e.status', 'e.resolution', 'e.resolved_by', 'e.created_at', 'e.updated_at', 'u.name as resolved_by_name']);
+    }
+
+    public function scheduler(): array
+    {
+        $runs = DB::table('sys_job_runs')->where('status', 'en_curso')->selectRaw('count(*) as total, min(started_at) as oldest')->first();
+
+        return [
+            'timezone' => $this->context->timezone(),
+            'queued' => (int) ($runs->total ?? 0),
+            'oldest_queued_at' => $runs->oldest ?? null,
+            'workers' => $this->workers(),
+            'paused' => DB::table('sys_scheduled_jobs')->where('paused', true)->count(),
+            'next_run_at' => DB::table('sys_scheduled_jobs')->where('paused', false)->whereNotNull('next_run_at')->min('next_run_at'),
+            'policy' => [
+                'base_seconds' => AdapterRetryPolicy::BASE_SECONDS,
+                'jitter_pct' => (int) round(AdapterRetryPolicy::JITTER * 100),
+                'steps' => array_map(fn (int $seconds, int $index): array => ['attempt' => $index + 1, 'seconds' => $seconds], AdapterRetryPolicy::schedule(), array_keys(AdapterRetryPolicy::schedule())),
+            ],
+        ];
+    }
+
+    private function workers(): ?int
+    {
+        try {
+            return (int) collect(app(SupervisorRepository::class)->all())->sum(fn (object $supervisor): int => (int) array_sum(array_map('intval', (array) ($supervisor->processes ?? []))));
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     private function adapters(): Builder

@@ -33,15 +33,21 @@ function relatedChoices(options: RelatedOptions) {
   return RELATION_TYPES.flatMap((type) => (options[type] ?? []).map((item) => ({ value: `${type}:${item.code}`, label: item.name, hint: `${RELATION_LABEL[type]} · ${item.code}` })));
 }
 
-function ActivityFields({ options, activity, preset, relationNote }: { options: RelatedOptions; activity?: ActivityItem; preset?: ActivityPreset; relationNote?: string }) {
+export interface ActivityDefaults {
+  type?: string;
+  subject?: string;
+  due_at?: string;
+}
+
+function ActivityFields({ options, activity, preset, relationNote, defaults }: { options: RelatedOptions; activity?: ActivityItem; preset?: ActivityPreset; relationNote?: string; defaults?: ActivityDefaults }) {
   const current = activity?.related ? `${activity.related.type}:${activity.related.code}` : "";
   const choices = relatedChoices(options);
   const related = current && !choices.some((choice) => choice.value === current) && activity?.related ? [{ value: current, label: activity.related.name, hint: `${RELATION_LABEL[activity.related.type]} · ${activity.related.code}` }, ...choices] : choices;
 
   return (
     <>
-      <SelectField label="Tipo" name="type" options={typeOptions} defaultValue={activity?.type ?? "llamada"} />
-      <TextField label="Asunto" name="subject" required maxLength={200} defaultValue={activity?.subject} placeholder="Por ejemplo: Llamar para confirmar fechas" />
+      <SelectField label="Tipo" name="type" options={typeOptions} defaultValue={activity?.type ?? defaults?.type ?? "llamada"} />
+      <TextField label="Asunto" name="subject" required maxLength={200} defaultValue={activity?.subject ?? defaults?.subject} placeholder="Por ejemplo: Llamar para confirmar fechas" />
       {preset ? (
         <>
           <input type="hidden" name="related" value={`${preset.type}:${preset.code}`} />
@@ -55,7 +61,7 @@ function ActivityFields({ options, activity, preset, relationNote }: { options: 
         <SelectField label="Relacionada con (opcional)" name="related" options={related} defaultValue={current} placeholder="Buscar lead, oportunidad, cliente o cotización" searchable clearable />
       )}
       <div className="grid grid-cols-2 gap-3">
-        <TextField label="Fecha y hora" name="due_at" type="datetime-local" required defaultValue={activity ? localDateTime(activity.due_at) : undefined} icon={<CalendarClock size={17} />} />
+        <TextField label="Fecha y hora" name="due_at" type="datetime-local" required defaultValue={activity ? localDateTime(activity.due_at) : defaults?.due_at} icon={<CalendarClock size={17} />} />
         {options.owners.length > 0 && <SelectField label="Responsable" name="owner_id" options={options.owners.map((owner) => ({ value: owner.id, label: owner.name }))} defaultValue={activity?.owner.id ?? ""} placeholder="Tú" />}
       </div>
       <TextArea label="Descripción o guion (opcional)" name="description" rows={3} maxLength={2000} defaultValue={activity?.description ?? undefined} />
@@ -72,6 +78,9 @@ export function ActivityCreateAction({
   label = "Nueva actividad",
   size = "md",
   variant = "primary",
+  defaults,
+  formKey,
+  title = "Nueva actividad",
 }: {
   options: RelatedOptions;
   preset?: ActivityPreset;
@@ -81,8 +90,11 @@ export function ActivityCreateAction({
   label?: string;
   size?: "md" | "sm";
   variant?: "primary" | "secondary";
+  defaults?: ActivityDefaults;
+  formKey?: string;
+  title?: string;
 }) {
-  const formId = `activity-create-${preset?.code ?? hidden?.conversation ?? "agenda"}`;
+  const formId = `activity-create-${formKey ?? preset?.code ?? hidden?.conversation ?? "agenda"}`;
   return (
     <PanelAction
       label={label}
@@ -90,7 +102,7 @@ export function ActivityCreateAction({
       variant={variant}
       size={size}
       formId={formId}
-      title="Nueva actividad"
+      title={title}
       description="Agenda una llamada, reunión o tarea para no perder el seguimiento."
       submitLabel="Agendar"
       action={action}
@@ -101,7 +113,7 @@ export function ActivityCreateAction({
           {Object.entries(hidden ?? {}).map(([name, value]) => (
             <input key={name} type="hidden" name={name} value={value} />
           ))}
-          <ActivityFields options={options} preset={preset} relationNote={relationNote} />
+          <ActivityFields options={options} preset={preset} relationNote={relationNote} defaults={defaults} />
         </>
       )}
     </PanelAction>

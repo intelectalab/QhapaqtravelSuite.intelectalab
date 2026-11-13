@@ -23,6 +23,7 @@ use App\Domain\Portal\Http\Controllers\PassengerPortalController;
 use App\Domain\Quotes\Http\Controllers\QuoteController;
 use App\Domain\Quotes\Http\Controllers\QuoteConversionController;
 use App\Domain\Reports\Http\Controllers\DashboardController;
+use App\Domain\Reports\Http\Controllers\DataExportController;
 use App\Domain\Shared\Http\Controllers\HealthController;
 use App\Domain\Site\Http\Middleware\ScopeSiteTenant;
 use App\Http\Middleware\EnsurePreviewReadOnly;
@@ -32,6 +33,10 @@ Route::get('health', HealthController::class)->name('health');
 
 foreach (glob(__DIR__.'/webhooks/*.php') ?: [] as $webhookRoutes) {
     require $webhookRoutes;
+}
+
+foreach (glob(__DIR__.'/showcase/*.php') ?: [] as $showcaseRoutes) {
+    require $showcaseRoutes;
 }
 
 Route::prefix('public')->middleware(['throttle:public', 'feature'])->name('public.')->group(function (): void {
@@ -64,6 +69,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
         Route::get('me', [SessionController::class, 'me'])->name('me');
         Route::get('me/access', [SessionController::class, 'access'])->name('me.access');
         Route::get('me/counts', [DashboardController::class, 'counts'])->name('me.counts');
+        Route::post('me/data-exports', [DataExportController::class, 'store'])->middleware('throttle:60,1')->name('me.data-exports.store');
         Route::get('me/permissions', [MeController::class, 'permissions'])->name('me.permissions');
         Route::get('me/notifications', [MeController::class, 'notifications'])->name('me.notifications.index');
         Route::post('me/notifications/read-all', [MeController::class, 'readNotifications'])->name('me.notifications.read-all');
@@ -129,6 +135,8 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
             Route::post('reservations/{code}/reschedule', [ReservationController::class, 'reschedule'])->middleware('permission:reservations.modify')->name('reservations.reschedule');
             Route::post('reservations/{code}/cancellation/preview', [ReservationController::class, 'cancellationPreview'])->middleware('permission:reservations.cancel|reservations.create')->name('reservations.cancellation.preview');
             Route::post('reservations/{code}/cancel', [ReservationController::class, 'cancel'])->middleware('permission:reservations.cancel')->name('reservations.cancel');
+            Route::post('reservations/{code}/services/cancel/preview', [ReservationController::class, 'partialCancelPreview'])->middleware('permission:reservations.cancel')->name('reservations.services.cancel.preview');
+            Route::post('reservations/{code}/services/cancel', [ReservationController::class, 'partialCancel'])->middleware('permission:reservations.cancel')->name('reservations.services.cancel');
             Route::post('reservations/{code}/cancel-requests', [ReservationController::class, 'requestCancel'])->middleware('permission:reservations.create')->name('reservations.cancel-requests.store');
             Route::post('reservations/{code}/cancel-requests/{cancelRequest}/reject', [ReservationController::class, 'rejectCancelRequest'])->middleware('permission:reservations.cancel')->name('reservations.cancel-requests.reject');
         });
@@ -136,13 +144,14 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
         Route::middleware('permission:catalog.products.view')->group(function (): void {
             Route::get('catalog/products', [ProductController::class, 'index'])->name('catalog.products.index');
             Route::get('catalog/products/form-options', [ProductController::class, 'formOptions'])->name('catalog.products.options');
-            Route::get('catalog/products/{code}', [ProductController::class, 'show'])->name('catalog.products.show');
+            Route::get('catalog/products/{code}', [ProductController::class, 'show'])->where('code', '(?!(?:quoteable|kpis|export)$)[^/]+')->name('catalog.products.show');
             Route::get('catalog/products/{code}/activation-checklist', [ProductController::class, 'checklist'])->name('catalog.products.checklist');
             Route::get('catalog/products/{code}/translations', [ProductTranslationController::class, 'index'])->name('catalog.products.translations.index');
             Route::put('catalog/products/{code}/translations/{locale}', [ProductTranslationController::class, 'update'])->middleware('permission:catalog.products.update')->name('catalog.products.translations.update');
             Route::delete('catalog/products/{code}/translations/{locale}', [ProductTranslationController::class, 'destroy'])->middleware('permission:catalog.products.update')->name('catalog.products.translations.destroy');
             Route::post('catalog/products', [ProductController::class, 'store'])->middleware('permission:catalog.products.create')->name('catalog.products.store');
             Route::patch('catalog/products/{code}', [ProductController::class, 'update'])->middleware('permission:catalog.products.update')->name('catalog.products.update');
+            Route::patch('catalog/products/{code}/minimum-passengers', [ProductController::class, 'minimumPassengers'])->middleware('permission:catalog.products.update')->name('catalog.products.minimum-passengers');
             Route::delete('catalog/products/{code}', [ProductController::class, 'destroy'])->middleware('permission:catalog.products.activate')->name('catalog.products.destroy');
             foreach (array_keys(ProductWorkflow::TRANSITIONS) as $action) {
                 Route::post("catalog/products/{code}/{$action}", [ProductController::class, 'transition'])
@@ -234,7 +243,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
         Route::middleware('permission:crm.clients.manage|finance.receivables')->group(function (): void {
             Route::get('crm/clients', [ClientController::class, 'index'])->name('crm.clients.index');
             Route::get('crm/clients/form-options', [ClientController::class, 'formOptions'])->name('crm.clients.options');
-            Route::get('crm/clients/{code}', [ClientController::class, 'show'])->name('crm.clients.show');
+            Route::get('crm/clients/{code}', [ClientController::class, 'show'])->where('code', '(?!duplicates$)[^/]+')->name('crm.clients.show');
             Route::get('crm/clients/{code}/{tab}', [ClientController::class, 'tab'])->whereIn('tab', ClientTabs::TABS)->name('crm.clients.tab');
 
             Route::middleware('permission:crm.clients.manage')->group(function (): void {

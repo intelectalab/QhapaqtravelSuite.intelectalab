@@ -1,8 +1,9 @@
-import { CalendarDays, ClipboardCheck, ClipboardList, FileText, History, LayoutDashboard, MapPin, MessageSquareText, Receipt, Route, Scale, Sparkles, TriangleAlert, UserRound, Users, Wallet } from "lucide-react";
+import { ConsultModeNotice, LockedButton } from "@/components/ui/ConsultMode";
+import { CalendarDays, ClipboardCheck, ClipboardList, FileText, History, LayoutDashboard, MapPin, MessageSquareText, Receipt, Route, Scale, Signpost, Sparkles, TriangleAlert, UserRound, Users, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { LiveTag, StatusBadge } from "@/components/ui/Badge";
+import { Badge, LiveTag, StatusBadge } from "@/components/ui/Badge";
 import { DownloadButton } from "@/components/ui/DownloadButton";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { SectionLayout, SectionNav } from "@/components/ui/SectionNav";
@@ -11,17 +12,19 @@ import { HeroBand, HeroChip, HeroPanel, TintTile, ToneScope } from "@/components
 import { cn } from "@/lib/cn";
 import { amountAttr, formatDate, formatDateTime, formatMoney, shortName } from "@/lib/format";
 import { PendingChanges, ReservationModifyAction, ReservationRescheduleAction } from "@/features/reservations/ReservationChangeActions";
-import { ReservationCancelAction, ReservationEditAction, ReservationRejectRequestAction, ReservationRequestCancelAction } from "@/features/reservations/ReservationActions";
+import { ReservationCancelAction, ReservationEditAction, ReservationPartialCancelAction, ReservationRejectRequestAction, ReservationRequestCancelAction } from "@/features/reservations/ReservationActions";
 import { ReservationOrderAction, ReservationReassignAction, ReservationStateActions } from "@/features/reservations/ReservationLifecycleActions";
 import { ReservationLockScope } from "@/features/reservations/ReservationLock";
 import { DocumentsSection, FeedbackSection, HistorySection, IncidentsSection, OperationSection, PassengersSection, PaymentsSection, ServicesSection, SummarySection, WebSection } from "@/features/reservations/ReservationSections";
 import type { ReceivablesOverview, SettlementDetail } from "@/lib/finance";
 import { SettlementSection } from "@/features/finance/Settlement";
-import { CLOSED_RESERVATION, type ReservationService } from "@/lib/reservations";
+import { CLOSED_RESERVATION, PENDING_PROVIDER_SERVICE, specialRequestTags, type ReservationService } from "@/lib/reservations";
 import { getAdvisors } from "@/lib/server/leads";
 import { currentUser } from "@/lib/server/me";
 import { getChangeOptions, getReservation, getReservationCancellation, getReservationFeedback, getReservationHistory, getReservationPaxMessages, getReservationWebSnapshot } from "@/lib/server/reservations";
 import { getResource } from "@/lib/server/resource";
+import type { ReservationTripView } from "@/lib/trip";
+import { ReservationTripSection } from "@/features/reservations/ReservationTripSection";
 import { statusTone } from "@/lib/tone";
 
 export async function generateMetadata({ params }: PageProps<"/reservas/[code]">): Promise<Metadata> {
@@ -106,11 +109,15 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
   const base = `/reservas/${encodeURIComponent(reservation.code)}`;
   const orderAction = reservation.can.operation_order ? <ReservationOrderAction code={reservation.code} /> : null;
 
+  const [trip, webSnapshot] = await Promise.all([getResource<ReservationTripView>(`/reservations/${encodeURIComponent(reservation.code)}/trip`, "No pudimos cargar el viaje por tramos."), reservation.counts.web > 0 ? getReservationWebSnapshot(code) : null]);
+  const specialRequest = closed ? null : (webSnapshot?.comments?.trim() ?? null);
+  const pendingServices = reservation.services.filter((service) => !service.replaced && PENDING_PROVIDER_SERVICE.includes(service.status)).length;
   const { active: current, groups } = resolveSections(base, [
     { group: "Reserva", id: "resumen", label: "Resumen", icon: <LayoutDashboard size={15} /> },
     { group: "Reserva", id: "pasajeros", label: "Pasajeros", icon: <Users size={15} />, count: reservation.passengers.length },
     { group: "Reserva", id: "servicios", label: "Servicios", icon: <Route size={15} />, count: reservation.services.length },
     { group: "Reserva", id: "web", label: "Reserva web", icon: <Sparkles size={15} />, show: reservation.counts.web > 0 },
+    { group: "Reserva", id: "tramos", label: "Viaje por tramos", icon: <Signpost size={15} />, count: trip?.offers.length || undefined, show: (trip?.legs.length ?? 0) > 0 },
     { group: "Cobros y documentos", id: "pagos", label: "Pagos", icon: <Wallet size={15} />, count: reservation.payments?.length, show: receivables !== undefined },
     { group: "Cobros y documentos", id: "documentos", label: "Documentos", icon: <FileText size={15} />, count: reservation.vouchers.length + (reservation.invoices?.length ?? 0) },
     { group: "Cobros y documentos", id: "liquidacion", label: "Liquidación", icon: <Scale size={15} />, show: reservation.view.margin },
@@ -126,8 +133,12 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
         return <PassengersSection reservation={reservation} editable={editable} />;
       case "servicios":
         return <ServicesSection reservation={reservation} />;
+      case "tramos": {
+        if (!trip) return <SummarySection reservation={reservation} />;
+        return <ReservationTripSection trip={trip} available={trip.available} />;
+      }
       case "web":
-        return <WebSection snapshot={await getReservationWebSnapshot(code)} currency={reservation.currency} />;
+        return <WebSection snapshot={webSnapshot} currency={reservation.currency} />;
       case "liquidacion":
         return <SettlementSection data={await getResource<SettlementDetail>(`/finance/reservations/${encodeURIComponent(code)}/settlement`, "No pudimos cargar la liquidación.")} />;
       case "pagos":
@@ -140,7 +151,7 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
         return <IncidentsSection reservation={reservation} />;
       case "comentarios": {
         const [feedback, messages, me] = await Promise.all([getReservationFeedback(code), getReservationPaxMessages(code), currentUser()]);
-        return <FeedbackSection feedback={feedback ?? []} messages={messages ?? []} canEscalate={me.permissions.includes("operations.incidents")} canReply={["channels.b2b.manage", "channels.cms.publish", "operations.assign"].some((permission) => me.permissions.includes(permission))} />;
+        return <FeedbackSection feedback={feedback ?? []} messages={messages ?? []} ruleOff={reservation.pax_feedback_on === false} canEscalate={me.permissions.includes("operations.incidents")} canReply={["channels.b2b.manage", "channels.cms.publish", "operations.assign"].some((permission) => me.permissions.includes(permission))} />;
       }
       case "historial":
         return <HistorySection events={await getReservationHistory(code)} labels={ACTION_LABEL} />;
@@ -180,6 +191,9 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
                     {orderAction}
                     {changeOptions && <ReservationModifyAction code={reservation.code} currency={reservation.currency} options={changeOptions} />}
                     {changeOptions && <ReservationRescheduleAction code={reservation.code} />}
+                    {!reservation.can.modify && reservation.view.mode !== "operations" && <LockedButton reason="Requiere el permiso reservations.modify" testId="reservation-modify-locked">Modificar</LockedButton>}
+                    {!reservation.can.cancel && !reservation.can.request_cancel && reservation.view.mode !== "operations" && <LockedButton reason="Requiere el permiso reservations.cancel" testId="reservation-cancel-locked">Cancelar</LockedButton>}
+                    {preview && reservation.can.cancel && ["confirmada", "en_operacion", "parcial"].includes(reservation.status) && <ReservationPartialCancelAction reservation={reservation} preview={preview} />}
                     {preview && reservation.can.cancel && <ReservationCancelAction reservation={reservation} preview={preview} defaultOpen={one(query.cancelar) === "1"} />}
                     {preview && reservation.can.request_cancel && !reservation.cancel_request && <ReservationRequestCancelAction reservation={reservation} preview={preview} defaultOpen={one(query.cancelar) === "1"} />}
                   </>
@@ -188,6 +202,7 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
             )
           }
         />
+        <ConsultModeNotice permissions={["reservations.modify", "operations.view"]} what="modificar, reprogramar ni cancelar reservas" need="reservations.modify" />
 
         <HeroBand>
           <div className="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
@@ -247,8 +262,45 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
             <span className="min-w-0 flex-1">
               <b className="font-semibold">Anulación solicitada</b> el {formatDate(reservation.cancel_request.requested_at)} · {reservation.cancel_request.reason}
             </span>
-            {reservation.can.cancel && <ReservationRejectRequestAction code={reservation.code} request={reservation.cancel_request.id} />}
+            {reservation.can.cancel ? (
+              <span className="flex flex-wrap gap-2">
+                {preview && <ReservationCancelAction reservation={reservation} preview={preview} fromRequest />}
+                <ReservationRejectRequestAction code={reservation.code} request={reservation.cancel_request.id} />
+              </span>
+            ) : (
+              <span className="text-[12.5px] text-fg-3">Gerencia ya fue avisada. La reserva sigue vigente hasta que decida.</span>
+            )}
           </div>
+        )}
+
+        {specialRequest && (
+          <div data-testid="reservation-notice-special" className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-card border border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-4 py-3 text-[13.5px]">
+            <MessageSquareText size={16} className="flex-none text-warn" />
+            <span className="min-w-0 flex-1">
+              <b className="font-semibold">Pedido especial del cliente:</b> «{specialRequest}»
+            </span>
+            {specialRequestTags(specialRequest).map((tag) => (
+              <Badge key={tag.label} tone={tag.tone}>
+                {tag.label}
+              </Badge>
+            ))}
+            {current !== "web" && (
+              <Link href={`${base}?seccion=web`} scroll={false} className="font-semibold text-[var(--tint)] hover:underline">
+                Ver la reserva web
+              </Link>
+            )}
+          </div>
+        )}
+
+        {!closed && reservation.can.modify && pendingServices > 0 && (
+          <p data-testid="reservation-notice-pending-services" className="mb-5 rounded-card border border-[color-mix(in_srgb,var(--info)_35%,transparent)] bg-[color-mix(in_srgb,var(--info)_9%,transparent)] px-4 py-3 text-[13.5px]">
+            <b className="font-semibold">{pendingServices === 1 ? "1 servicio sin confirmar" : `${pendingServices} servicios sin confirmar`} por el proveedor.</b>{" "}
+            {current !== "servicios" && (
+              <Link href={`${base}?seccion=servicios`} scroll={false} className="font-semibold text-[var(--tint)] hover:underline">
+                Gestionarlos en Servicios
+              </Link>
+            )}
+          </p>
         )}
 
         {reservation.status === "pendiente_disponibilidad" && (

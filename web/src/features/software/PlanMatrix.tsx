@@ -76,7 +76,7 @@ function Row({ label, hint, plans, hovered, onHover, cell, nested = false }: Row
           style={toneStyle(planTone(plan.rank))}
           onMouseEnter={() => onHover(index)}
           onMouseLeave={() => onHover(null)}
-          className={cn("px-3 py-3 text-center text-[13.5px] text-fg transition-colors duration-200", hovered === index && "bg-[color-mix(in_srgb,var(--tint)_7%,transparent)]")}
+          className={cn("px-1.5 py-3 text-center text-[13px] text-fg transition-colors duration-200 sm:px-3 sm:text-[13.5px]", hovered === index && "bg-[color-mix(in_srgb,var(--tint)_7%,transparent)]")}
         >
           {cell(plan)}
         </td>
@@ -111,9 +111,9 @@ export function PlanMatrix({ catalog, cycle }: { catalog: PlansCatalog; cycle: B
 
   return (
     <div className="scroll-thin -mx-5 overflow-x-auto px-5 sm:mx-0 sm:px-0">
-      <table className="w-full min-w-[720px] border-separate border-spacing-0">
+      <table className="w-full min-w-[540px] border-separate border-spacing-0">
         <colgroup>
-          <col className="w-[34%]" />
+          <col className="w-[30%] md:w-[34%]" />
           {plans.map((plan) => (
             <col key={plan.code} />
           ))}
@@ -130,14 +130,15 @@ export function PlanMatrix({ catalog, cycle }: { catalog: PlansCatalog; cycle: B
                 style={toneStyle(planTone(plan.rank))}
                 onMouseEnter={() => setHovered(index)}
                 onMouseLeave={() => setHovered(null)}
-                className="bg-surface px-3 pb-4 align-bottom"
+                className="bg-surface px-1.5 pb-4 align-bottom sm:px-3"
               >
-                <span className={cn("block rounded-[14px] border px-3 py-3 transition-all duration-300", hovered === index ? "-translate-y-0.5 border-[color-mix(in_srgb,var(--tint)_45%,transparent)] bg-[color-mix(in_srgb,var(--tint)_8%,var(--surface))]" : "border-line")}>
+                <span className={cn("block rounded-[14px] border px-2 py-3 transition-all duration-300 sm:px-3", hovered === index ? "-translate-y-0.5 border-[color-mix(in_srgb,var(--tint)_45%,transparent)] bg-[color-mix(in_srgb,var(--tint)_8%,var(--surface))]" : "border-line")}>
                   <span className="mx-auto mb-2 block h-1 w-8 rounded-full bg-[var(--tint)]" />
                   <span className="block text-[15px] font-bold text-fg">{plan.name}</span>
-                  <span key={cycle} className="mt-0.5 block font-mono text-[13px] font-semibold text-[var(--tint)] animate-[rise-in_320ms_cubic-bezier(0.22,1,0.36,1)_backwards]">
-                    {formatMoney(monthlyPrice(plan, cycle), plan.currency)} al mes
+                  <span key={cycle} className="mt-0.5 block whitespace-nowrap font-mono text-[13px] font-semibold text-[var(--tint)] animate-[rise-in_320ms_cubic-bezier(0.22,1,0.36,1)_backwards]">
+                    {formatMoney(monthlyPrice(plan, cycle), plan.currency)}
                   </span>
+                  <span className="block text-[11px] font-medium text-fg-3">al mes</span>
                 </span>
               </th>
             ))}

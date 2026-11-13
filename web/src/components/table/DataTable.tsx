@@ -24,6 +24,7 @@ interface DataTableProps<T> {
   entityLabel: string;
   searchText?: (row: T) => string;
   initialSearch?: string;
+  initialFilters?: Record<string, string>;
   searchPlaceholder?: string;
   metrics?: MetricFilter<T>[];
   filters?: FilterConfig<T>[];
@@ -32,7 +33,7 @@ interface DataTableProps<T> {
   toolbarEnd?: ReactNode;
   emptyTitle?: string;
   csv?: CsvExport<T>;
-  footer?: Record<string, ReactNode>;
+  footer?: Record<string, ReactNode> | ((rows: T[]) => Record<string, ReactNode>);
   views?: TableView<T>[];
   defaultView?: string;
 }
@@ -58,6 +59,7 @@ export function DataTable<T>({
   entityLabel,
   searchText,
   initialSearch,
+  initialFilters,
   searchPlaceholder,
   metrics = [],
   filters = [],
@@ -72,7 +74,7 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   const [storedView, setView] = useStoredValue(`table-view:${screen}`, parseView, String);
   const view = views.find((option) => option.id === (storedView === DEFAULT_VIEW ? defaultView : storedView)) ?? null;
-  const [query, setQuery] = useState<TableQuery>(() => ({ ...EMPTY_QUERY, search: initialSearch ?? "" }));
+  const [query, setQuery] = useState<TableQuery>(() => ({ ...EMPTY_QUERY, search: initialSearch ?? "", filters: initialFilters ?? {} }));
   const [open, setOpen] = useState<"filters" | "sort" | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useStoredValue(`table-rows:${screen}`, parseRows, String);
@@ -85,6 +87,7 @@ export function DataTable<T>({
   };
 
   const visible = useMemo(() => applyQuery(rows, query, { searchText, filters, metrics, sorts }), [rows, query, searchText, filters, metrics, sorts]);
+  const footerCells = typeof footer === "function" ? footer(visible) : footer;
   const pages = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, pages);
   const pageRows = visible.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -297,13 +300,13 @@ export function DataTable<T>({
                     );
                   })}
                 </tbody>
-                {footer && (
+                {footerCells && (
                   <tfoot>
                     <tr className="border-t-2 border-line bg-surface-2">
                       {selectable && <td />}
                       {columns.map((column) => (
                         <td key={column.id} className={cn("whitespace-nowrap px-3 py-2.5 text-[13px] font-semibold", column.align === "right" && "text-right", column.wideOnly && "max-[1600px]:hidden")}>
-                          {footer[column.id] ?? null}
+                          {footerCells[column.id] ?? null}
                         </td>
                       ))}
                     </tr>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 import { payOrder, payReceivable } from "@/app/(sitio)/sitio/[agencia]/actions";
 import { cn } from "@/lib/cn";
+import { trackSiteEvent } from "@/lib/site-analytics";
 import type { CheckoutTerms } from "@/lib/site";
 import { PaymentFields, type PaymentValue } from "./PaymentFields";
 import { useSite } from "./SiteContext";
@@ -27,7 +28,9 @@ export function OrderPayment({ code, label, methods, accounts, walletPhone, targ
           onClick={() =>
             start(async () => {
               const body = Object.fromEntries(Object.entries(payment).filter(([key, value]) => key !== "ready" && typeof value === "string")) as Record<string, string>;
+              trackSiteEvent("add_payment_info", { transaction_id: code, payment_type: payment.method });
               const response = await (target === "receivable" ? payReceivable : payOrder)(agencia, code, body);
+              if (!response.ok) trackSiteEvent("payment_failed", { transaction_id: code, payment_type: payment.method });
               setResult(response);
               router.refresh();
             })

@@ -1,4 +1,5 @@
 import type { NavCountKey } from "@/config/navigation";
+import type { ApprovalItem } from "./approvals";
 
 export type PanelName = "executive" | "manager" | "sales" | "operations" | "finance" | "accounting" | "general";
 
@@ -97,6 +98,7 @@ export interface ExecutiveData {
 }
 
 export interface ManagerData {
+  quote_approvals?: ApprovalItem[];
   approvals: {
     by_type: { type: string; label: string; count: number }[];
     items: { code: string; type: string; title: string; subject: string | null; amount: number | null; currency: string | null; due_at: string | null; level: string; requester: string | null }[];

@@ -35,6 +35,11 @@ final class TravelDocController
         return response()->json(['data' => $this->directory->find($this->user($request), $code) ?? throw ApiException::notFound('La reserva no tiene checklist documental.')]);
     }
 
+    public function gate(string $code): JsonResponse
+    {
+        return response()->json(['data' => $this->directory->gate($code)]);
+    }
+
     public function passengers(Request $request): JsonResponse
     {
         return response()->json(['data' => $this->directory->list($this->user($request))['passengers']]);

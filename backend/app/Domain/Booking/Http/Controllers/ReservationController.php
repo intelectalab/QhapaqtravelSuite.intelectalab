@@ -8,6 +8,7 @@ use App\Domain\Booking\Actions\CreateDirectReservation;
 use App\Domain\Booking\Actions\ProviderServiceResponse;
 use App\Domain\Booking\Actions\ReservationChanges;
 use App\Domain\Booking\Actions\ReservationLifecycle;
+use App\Domain\Booking\Actions\ReservationPartialCancel;
 use App\Domain\Booking\Actions\ReservationReschedule;
 use App\Domain\Booking\Actions\ReservationServiceRequests;
 use App\Domain\Booking\Actions\ReservationWorkflow;
@@ -243,6 +244,21 @@ final class ReservationController
     {
         $data = $this->cancelData($request);
         $workflow->cancel($code, $data['reason'], $data['detail'], $this->user($request));
+
+        return $this->resource(Reservation::query()->where('code', $code)->firstOrFail());
+    }
+
+    public function partialCancelPreview(Request $request, string $code, ReservationPartialCancel $partial): JsonResponse
+    {
+        $data = $request->validate(['services' => ['required', 'array', 'min:1', 'max:60'], 'services.*' => ['string', 'max:40']], ['services.*' => 'Elige los servicios que se cancelan.']);
+
+        return response()->json(['data' => $partial->preview($code, $data['services'], $this->user($request))]);
+    }
+
+    public function partialCancel(Request $request, string $code, ReservationPartialCancel $partial): JsonResponse
+    {
+        $data = [...$this->cancelData($request), ...$request->validate(['services' => ['required', 'array', 'min:1', 'max:60'], 'services.*' => ['string', 'max:40']], ['services.*' => 'Elige los servicios que se cancelan.'])];
+        $partial->cancel($code, $data['services'], $data['reason'], $data['detail'], $this->user($request));
 
         return $this->resource(Reservation::query()->where('code', $code)->firstOrFail());
     }

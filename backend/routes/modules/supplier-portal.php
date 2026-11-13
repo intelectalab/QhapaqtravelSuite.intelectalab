@@ -21,7 +21,6 @@ Route::prefix('supplier')->name('supplier.')->controller(SupplierPortalControlle
     Route::post('rate-requests/{code}/withdraw', 'withdrawRateRequest')->middleware('permission:supplier.rates.request')->name('rate-requests.withdraw');
     Route::get('payables', 'payables')->middleware('permission:supplier.payables.view')->name('payables.index');
     Route::post('payables/{code}/invoices', 'storeInvoice')->middleware('permission:supplier.invoices.upload')->name('payables.invoices.store');
-    Route::delete('payables/{code}/invoices', 'annulInvoice')->middleware('permission:supplier.invoices.upload')->name('payables.invoices.destroy');
     Route::get('company', 'company')->middleware('permission:supplier.portal.view')->name('company');
     Route::post('company/contacts', 'storeContact')->middleware('permission:supplier.users.manage')->name('company.contacts.store');
     Route::patch('company/contacts/{id}', 'updateContact')->middleware('permission:supplier.users.manage')->name('company.contacts.update');

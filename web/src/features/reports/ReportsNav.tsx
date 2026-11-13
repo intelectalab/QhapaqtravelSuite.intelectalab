@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Briefcase, Download, FileText, LayoutDashboard, Plane, Truck, UsersRound, Wallet, Workflow } from "lucide-react";
+import { BarChart3, BellRing, Briefcase, Download, FileText, LayoutDashboard, Plane, Truck, UsersRound, Wallet, Workflow } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { SectionNav } from "@/components/ui/SectionNav";
@@ -32,7 +32,7 @@ export function ReportsNav({ tabs, exports, canExport }: { tabs: ReportTab[]; ex
       active={active}
       testId="reports-nav"
       groups={[
-        { title: "General", items: [{ id: "resumen", label: "Resumen", href: "/reportes", icon: <LayoutDashboard size={16} /> }] },
+        { title: "General", items: [{ id: "resumen", label: "Resumen", href: "/reportes", icon: <LayoutDashboard size={16} /> }, { id: "alertas", label: "Alertas de rentabilidad", href: "/reportes/alertas", icon: <BellRing size={16} /> }] },
         { title: "Reportes de tu rol", items: tabs.map((tab) => ({ id: tab.key, label: tab.title, href: `/reportes/${tab.key}${suffix}`, icon: ICONS[tab.key] ?? <BarChart3 size={16} /> })) },
         ...(canExport ? [{ title: "Archivos", items: [{ id: "exportaciones", label: "Exportaciones", href: "/reportes/exportaciones", count: exports, icon: <Download size={16} /> }] }] : []),
       ]}

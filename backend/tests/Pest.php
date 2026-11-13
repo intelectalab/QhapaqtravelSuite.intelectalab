@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Platform\Support\Entitlements;
+use Illuminate\Cache\RateLimiter;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\TestDatabase;
 use Tests\TestCase;
@@ -16,6 +17,8 @@ uses(TestCase::class)
         TestDatabase::isolatePermissionCache();
         Entitlements::flush();
         config(['access.lockout.attempts' => 1000]);
+        $store = $this->app['cache']->store('array');
+        (fn () => $this->cache = $store)->call($this->app->make(RateLimiter::class));
         freezeBusinessToday();
     })
     ->in('Feature');

@@ -1,6 +1,6 @@
 "use client";
 
-import { AtSign, Lock, Send, Server } from "lucide-react";
+import { AtSign, KeyRound, Lock, Send, Server } from "lucide-react";
 import { useState } from "react";
 import { saveOutgoingMail, sendOutgoingMailTest } from "@/app/plataforma/(consola)/configuracion/actions";
 import { Badge } from "@/components/ui/Badge";
@@ -64,8 +64,42 @@ function OutgoingMailFields({ mail }: { mail: OutgoingMailSummary }) {
         <TextField label="Remitente" name="from_address" type="email" required={enabled} defaultValue={mail.from_address} maxLength={190} placeholder="avisos@tudominio.com" hint="Debe ser el mismo buzón o uno que el servidor permita." />
         <TextField label="Nombre del remitente" name="from_name" defaultValue={mail.from_name} maxLength={120} placeholder="KipuControl" />
       </div>
+      <div className="grid gap-3 border-t border-line-2 pt-4">
+        <div>
+          <p className="text-[13px] font-semibold text-fg">Acuses de entrega</p>
+          <p className="mt-0.5 text-[12.5px] text-fg-2">Con estos secretos comprobamos la firma de los avisos de entrega, lectura y rebote que envían los proveedores. Las respuestas «BAJA» también llegan por aquí.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <WebhookSecretField label="Secreto del correo (SES)" name="ses_webhook_secret" saved={mail.webhook_secrets.ses} />
+          <WebhookSecretField label="Secreto de push (FCM)" name="fcm_webhook_secret" saved={mail.webhook_secrets.fcm} />
+        </div>
+      </div>
     </>
   );
+}
+
+function WebhookSecretField({ label, name, saved }: { label: string; name: string; saved: boolean }) {
+  return (
+    <TextField
+      label={label}
+      name={name}
+      type="password"
+      revealable
+      minLength={16}
+      maxLength={255}
+      autoComplete="new-password"
+      icon={<KeyRound size={17} />}
+      placeholder={saved ? "Guardado. Déjalo vacío para mantenerlo." : "Mínimo 16 caracteres"}
+      hint="Se guarda cifrado y no se vuelve a mostrar."
+    />
+  );
+}
+
+function webhookStatus(secrets: OutgoingMailSummary["webhook_secrets"]) {
+  if (secrets.ses && secrets.fcm) return "Correo y push configurados";
+  if (secrets.ses) return "Correo configurado · push sin configurar";
+  if (secrets.fcm) return "Push configurado · correo sin configurar";
+  return "Sin configurar";
 }
 
 function TestMail({ mail }: { mail: OutgoingMailSummary }) {
@@ -112,6 +146,7 @@ export function OutgoingMailCard({ mail, version, index }: { mail: OutgoingMailS
           { label: "Servidor", value: mail.host ? <span className="font-mono text-[12.5px]">{`${mail.host}:${mail.port ?? ENCRYPTION[mail.encryption].port} · ${ENCRYPTION[mail.encryption].label}`}</span> : "—" },
           { label: "Contraseña", value: mail.password_set ? "Guardada" : "Sin configurar" },
           { label: "Conexión probada", value: mail.verified_at ? formatDateTime(mail.verified_at) : "—" },
+          { label: "Acuses de entrega", value: webhookStatus(mail.webhook_secrets) },
           ...(test ? [{ label: "Última prueba", value: <span className={test.ok ? "text-ok" : "text-bad"}>{`${test.ok ? "Enviada" : "Falló"} a ${test.to} · ${formatDateTime(test.at)}`}</span> }] : []),
         ]}
       />

@@ -102,6 +102,7 @@ final class ProductBookingConfig
             accommodation: $sections['accommodation'],
             options: $base->options,
             payment: $sections['payment'],
+            trip: $sections['trip'],
         );
     }
 
@@ -110,6 +111,7 @@ final class ProductBookingConfig
         $product = DB::table('catalog_products')->where('id', $productId)->first(['accommodation_enabled', 'accommodation_currency']);
         $policy = DB::table('catalog_payment_policies')->where('product_id', $productId)->first();
         $legs = $product !== null && $product->accommodation_enabled ? $this->legs($productId) : [];
+        $seasons = TripCatalog::seasonRatesFor(collect($legs)->pluck('hotels')->flatten(1)->pluck('id')->all());
 
         return [
             'addons' => $this->addonRows($productId)->map(fn ($addon): array => [
@@ -128,14 +130,19 @@ final class ProductBookingConfig
                     'id' => $leg['code'],
                     'city' => $leg['city'],
                     'nights' => $leg['nights'],
+                    'minNights' => $leg['min_nights'],
+                    'maxNights' => $leg['max_nights'],
                     'hotels' => array_map(fn (array $hotel): array => [
                         'id' => $hotel['code'],
                         'name' => $hotel['name'],
                         'category' => $hotel['category'],
+                        'providerId' => $hotel['provider']['id'] ?? null,
+                        'seasonRates' => $seasons[$hotel['id']] ?? [],
                         'rooms' => array_map(fn (array $room): array => ['type' => $room['room_type'], 'capacity' => $room['capacity'], 'price' => $room['price_per_night']], $hotel['room_types']),
                     ], $leg['hotels']),
                 ], $legs),
             ],
+            'trip' => $legs === [] ? [] : TripCatalog::engineTrip($productId, $legs),
             'payment' => $policy === null ? [] : array_filter([
                 'modes' => $this->pgArray($policy->modes),
                 'depositPct' => $policy->deposit_pct === null ? null : (int) round((float) $policy->deposit_pct),
@@ -336,7 +343,7 @@ final class ProductBookingConfig
 
     public function legs(string $productId): array
     {
-        $legs = DB::table('catalog_accommodation_legs')->where('product_id', $productId)->orderBy('sequence')->get(['id', 'code', 'sequence', 'city', 'destination_id', 'nights']);
+        $legs = DB::table('catalog_accommodation_legs')->where('product_id', $productId)->orderBy('sequence')->get(['id', 'code', 'sequence', 'city', 'destination_id', 'nights', 'min_nights', 'max_nights']);
         $hotels = DB::table('catalog_accommodation_hotels')->whereIn('leg_id', $legs->pluck('id'))->orderBy('name')->get(['id', 'leg_id', 'code', 'name', 'category', 'provider_id'])->groupBy('leg_id');
         $rooms = DB::table('catalog_accommodation_room_types')->whereIn('hotel_id', $hotels->flatten()->pluck('id'))->orderBy('capacity')->orderBy('price_per_night')->get(['id', 'hotel_id', 'room_type', 'capacity', 'price_per_night'])->groupBy('hotel_id');
         $destinations = DB::table('catalog_destinations')->whereIn('id', $legs->pluck('destination_id')->filter())->pluck('name', 'id');
@@ -349,6 +356,8 @@ final class ProductBookingConfig
             'city' => $leg->city,
             'destination' => $leg->destination_id === null ? null : ['id' => $leg->destination_id, 'name' => $destinations[$leg->destination_id] ?? null],
             'nights' => (int) $leg->nights,
+            'min_nights' => $leg->min_nights === null ? null : (int) $leg->min_nights,
+            'max_nights' => $leg->max_nights === null ? null : (int) $leg->max_nights,
             'hotels' => collect($hotels->get($leg->id, []))->map(fn ($hotel): array => [
                 'id' => $hotel->id,
                 'code' => $hotel->code,

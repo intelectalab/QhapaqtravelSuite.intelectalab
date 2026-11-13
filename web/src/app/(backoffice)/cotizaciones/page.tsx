@@ -1,3 +1,4 @@
+import { ConsultModeNotice } from "@/components/ui/ConsultMode";
 import { ShieldAlert } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -24,6 +25,7 @@ export default async function CotizacionesPage({ searchParams }: PageProps<"/cot
         actions={options ? <QuoteWizardAction options={options} opportunityCode={typeof oportunidad === "string" ? oportunidad : undefined} defaultOpen={nueva === "1"} /> : undefined}
         info={<InfoTip>Una cotización vence al pasar su fecha de vigencia si nadie la aprobó. El monto en seguimiento suma en soles las enviadas, vistas y en negociación, sin borradores. El porcentaje de aprobación compara las aprobadas con todas las ya cerradas.</InfoTip>}
       />
+      <ConsultModeNotice permissions={["quotes.create"]} what="crear ni editar cotizaciones" />
       {kpis.pending_internal ? (
         <p className="mb-4 flex flex-wrap items-center gap-2 rounded-xl bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-4 py-3 text-[13.5px]" data-testid="quotes-pending-internal">
           <ShieldAlert size={17} className="text-warn" />

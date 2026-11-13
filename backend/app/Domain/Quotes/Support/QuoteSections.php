@@ -103,14 +103,19 @@ final class QuoteSections
             ->get(['a.code', 'a.type', 'a.subject', 'a.status', 'a.due_at', 'a.completed_at', 'a.related_type', 'u.name as owner']);
     }
 
-    private function itinerary(?string $versionId): array
+    public function itinerary(?string $versionId): array
     {
         if ($versionId === null) {
             return [];
         }
 
-        $products = DB::table('quote_items as i')->join('catalog_products as p', 'p.id', '=', 'i.product_id')->where('i.quote_version_id', $versionId)
-            ->orderBy('i.service_date')->get(['p.id', 'p.code', 'p.name', 'i.service_date'])->unique('id');
+        return self::itineraryFor(DB::table('quote_items as i')->join('catalog_products as p', 'p.id', '=', 'i.product_id')->where('i.quote_version_id', $versionId)
+            ->orderBy('i.service_date')->get(['p.id', 'p.code', 'p.name', 'i.service_date']));
+    }
+
+    public static function itineraryFor(Collection $products): array
+    {
+        $products = $products->sortBy('service_date')->unique('id')->values();
         $itineraries = DB::table('catalog_itineraries')->whereIn('product_id', $products->pluck('id'))->where('is_default', true)->pluck('id', 'product_id');
         $days = DB::table('catalog_itinerary_days')->whereIn('itinerary_id', $itineraries->values())->orderBy('day_number')->get(['itinerary_id', 'day_number', 'title'])->groupBy('itinerary_id');
 

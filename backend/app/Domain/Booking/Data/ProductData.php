@@ -24,6 +24,7 @@ final readonly class ProductData
         public array $accommodation = [],
         public array $options = [],
         public array $payment = [],
+        public array $trip = [],
     ) {}
 
     public static function fromArray(array $p): self
@@ -55,6 +56,7 @@ final readonly class ProductData
             accommodation: (array) ($p['accommodation'] ?? []),
             options: array_values((array) ($p['config'] ?? [])),
             payment: (array) ($p['payment'] ?? []),
+            trip: (array) ($p['trip'] ?? []),
         );
     }
 }

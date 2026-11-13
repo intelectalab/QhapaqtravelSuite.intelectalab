@@ -313,7 +313,7 @@ export function BillingForm({ billing, manage }: { billing: Subscription["billin
           <TextField label="Contacto de facturación" name="contact" maxLength={150} defaultValue={billing.contact ?? undefined} disabled={!manage} />
         </div>
         <div className="sm:col-span-6">
-          <SelectField label="Comprobante" name="doc_type" options={[{ value: "Factura", label: "Factura" }, { value: "Boleta", label: "Boleta" }]} defaultValue={billing.doc_type} hint="Las empresas con RUC 20 reciben factura electrónica." />
+          <SelectField label="Comprobante" name="doc_type" options={[{ value: "Factura", label: "Factura" }, { value: "Boleta", label: "Boleta" }]} defaultValue={billing.doc_type} disabled={!manage} hint="Las empresas con RUC 20 reciben factura electrónica." />
         </div>
         {manage && (
           <div className="flex items-end justify-end gap-3 sm:col-span-12">
@@ -329,13 +329,15 @@ export function BillingForm({ billing, manage }: { billing: Subscription["billin
   );
 }
 
-export function HistoryTab({ history }: { history: SubscriptionOverview["history"] }) {
+export function HistoryTab({ history, usage }: { history: SubscriptionOverview["history"]; usage: SubscriptionOverview["usage"] }) {
   const columns = [
     { id: "reservations_month", label: "Reservas" },
     { id: "whatsapp_month", label: "WhatsApp" },
     { id: "email_month", label: "Correos" },
     { id: "api_calls_month", label: "Llamadas API" },
+    { id: "storage_gb", label: "Almacenamiento (GB)" },
   ];
+  const limits = Object.fromEntries(usage.map((metric) => [metric.metric, metric.limit]));
   const months = [...new Set(Object.values(history).flatMap((series) => series.map((point) => point.month)))].sort().reverse();
   const value = (metric: string, month: string) => history[metric]?.find((point) => point.month === month)?.value;
   const current = new Date().toISOString().slice(0, 7);
@@ -344,11 +346,11 @@ export function HistoryTab({ history }: { history: SubscriptionOverview["history
       <div className="grid gap-5 xl:grid-cols-2">
         <Card>
           <TintCardTitle icon={MessageSquare} title="Mensajería por mes" />
-          <UsageHistory history={history} metrics={[{ id: "whatsapp_month", label: "WhatsApp" }, { id: "email_month", label: "Correos" }]} />
+          <UsageHistory history={history} limits={limits} metrics={[{ id: "whatsapp_month", label: "WhatsApp" }, { id: "email_month", label: "Correos" }]} />
         </Card>
         <Card>
           <TintCardTitle icon={Webhook} title="Llamadas a la API por mes" />
-          <UsageHistory history={history} metrics={[{ id: "api_calls_month", label: "API" }]} />
+          <UsageHistory history={history} limits={limits} metrics={[{ id: "api_calls_month", label: "API" }]} />
         </Card>
       </div>
       <Card>

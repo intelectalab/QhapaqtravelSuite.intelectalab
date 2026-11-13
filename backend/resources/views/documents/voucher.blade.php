@@ -50,8 +50,14 @@
         </tr>
     </table>
 
+    @if (! empty($emergency))
+        <div class="note brand keep" style="margin-top: 12px">
+            <strong>Emergencias 24/7: {{ $emergency }}</strong> · llámanos ante cualquier imprevisto durante el servicio.
+        </div>
+    @endif
+
     @if ($crew !== [])
-        <h2><span></span>Guía y transporte</h2>
+        <h2><span></span>Guía, transporte y coordinación</h2>
         <div class="card keep">
             <table class="list">
                 @foreach ($crew as $member)

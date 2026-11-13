@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Catalog\Support;
 
 use App\Domain\Iam\Models\User;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -39,6 +40,76 @@ final class RateDirectory
         return in_array($type, self::NET_TYPES, true) || in_array($channel, self::NET_CHANNELS, true);
     }
 
+    public static function withoutNet(Builder $query): Builder
+    {
+        return $query->whereNotIn('r.rate_type', self::NET_TYPES)->whereNotIn('r.channel', self::NET_CHANNELS);
+    }
+
+    public static function rateQuery(): Builder
+    {
+        return DB::table('catalog_rates as r')
+            ->join('catalog_products as p', 'p.id', '=', 'r.product_id')
+            ->leftJoin('catalog_seasons as s', 's.id', '=', 'r.season_id')
+            ->whereNull('p.deleted_at')
+            ->select(['r.*', 'p.code as product_code', 'p.name as product_name', 'p.status as product_status', 's.ref as season_ref', 's.name as season_name']);
+    }
+
+    public static function presentRate(object $rate, string $today, bool $seesCost, bool $seesMargin): array
+    {
+        return [
+            'id' => $rate->id,
+            'ref' => $rate->ref,
+            'product' => ['id' => $rate->product_id, 'code' => $rate->product_code, 'name' => $rate->product_name, 'status' => $rate->product_status ?? null],
+            'type' => $rate->rate_type,
+            'segment' => $rate->segment,
+            'channel' => $rate->channel,
+            'currency' => trim($rate->currency),
+            'basis' => $rate->price_basis,
+            'cost' => $seesCost ? $rate->cost : null,
+            'price' => $rate->price,
+            'min_price' => $rate->min_price,
+            'max_price' => $rate->max_price,
+            'margin_pct' => $seesMargin ? CatalogAccess::marginPct($rate->price, $rate->cost) : null,
+            'valid_from' => $rate->valid_from,
+            'valid_to' => $rate->valid_to,
+            'season' => $rate->season_id ? ['id' => $rate->season_id, 'ref' => $rate->season_ref, 'name' => $rate->season_name] : null,
+            'conditions' => $rate->conditions,
+            'status' => $rate->status,
+            'state' => self::state($rate, $today),
+            'lock_version' => (int) $rate->lock_version,
+        ];
+    }
+
+    public static function presentSeason(object $season, string $today, int $rates, int $products): array
+    {
+        return [
+            'id' => $season->id,
+            'ref' => $season->ref,
+            'name' => $season->name,
+            'type' => $season->type,
+            'date_from' => $season->date_from,
+            'date_to' => $season->date_to,
+            'priority' => (int) $season->priority,
+            'factor' => (float) $season->factor,
+            'status' => $season->status,
+            'phase' => match (true) {
+                $season->date_to < $today => 'pasada',
+                $season->date_from > $today => 'proxima',
+                default => 'en_curso',
+            },
+            'rates' => $rates,
+            'products' => $products,
+        ];
+    }
+
+    public static function seasonUsage(): array
+    {
+        return [
+            DB::table('catalog_rates')->whereNotNull('season_id')->selectRaw('season_id, count(*) as total')->groupBy('season_id')->pluck('total', 'season_id'),
+            DB::table('catalog_product_seasons')->selectRaw('season_id, count(*) as total')->groupBy('season_id')->pluck('total', 'season_id'),
+        ];
+    }
+
     public function overview(User $viewer): array
     {
         $today = CatalogAccess::today();
@@ -47,34 +118,9 @@ final class RateDirectory
         $seesNet = CatalogAccess::seesNetRates($viewer);
         $seasons = $this->seasons($today);
 
-        $rates = DB::table('catalog_rates as r')
-            ->join('catalog_products as p', 'p.id', '=', 'r.product_id')
-            ->leftJoin('catalog_seasons as s', 's.id', '=', 'r.season_id')
-            ->whereNull('p.deleted_at')
-            ->orderBy('p.name')->orderBy('r.ref')
-            ->get(['r.*', 'p.code as product_code', 'p.name as product_name', 's.ref as season_ref', 's.name as season_name'])
+        $rates = self::rateQuery()->orderBy('p.name')->orderBy('r.ref')->get()
             ->filter(fn (object $rate) => $seesNet || ! self::isNet($rate->rate_type, $rate->channel))
-            ->map(fn (object $rate) => [
-                'ref' => $rate->ref,
-                'product' => ['id' => $rate->product_id, 'code' => $rate->product_code, 'name' => $rate->product_name],
-                'type' => $rate->rate_type,
-                'segment' => $rate->segment,
-                'channel' => $rate->channel,
-                'currency' => trim($rate->currency),
-                'basis' => $rate->price_basis,
-                'cost' => $seesCost ? $rate->cost : null,
-                'price' => $rate->price,
-                'min_price' => $rate->min_price,
-                'max_price' => $rate->max_price,
-                'margin_pct' => $seesMargin ? CatalogAccess::marginPct($rate->price, $rate->cost) : null,
-                'valid_from' => $rate->valid_from,
-                'valid_to' => $rate->valid_to,
-                'season' => $rate->season_id ? ['id' => $rate->season_id, 'ref' => $rate->season_ref, 'name' => $rate->season_name] : null,
-                'conditions' => $rate->conditions,
-                'status' => $rate->status,
-                'state' => self::state($rate, $today),
-                'lock_version' => (int) $rate->lock_version,
-            ])
+            ->map(fn (object $rate) => self::presentRate($rate, $today, $seesCost, $seesMargin))
             ->values();
 
         return [
@@ -100,33 +146,15 @@ final class RateDirectory
         ];
     }
 
-    private function seasons(string $today): Collection
+    public function seasons(string $today): Collection
     {
-        $rates = DB::table('catalog_rates')->whereNotNull('season_id')->selectRaw('season_id, count(*) as total')->groupBy('season_id')->pluck('total', 'season_id');
-        $products = DB::table('catalog_product_seasons')->selectRaw('season_id, count(*) as total')->groupBy('season_id')->pluck('total', 'season_id');
+        [$rates, $products] = self::seasonUsage();
 
         return DB::table('catalog_seasons')->whereNull('deleted_at')->orderBy('date_from')->orderBy('priority')->get()
-            ->map(fn (object $season) => [
-                'id' => $season->id,
-                'ref' => $season->ref,
-                'name' => $season->name,
-                'type' => $season->type,
-                'date_from' => $season->date_from,
-                'date_to' => $season->date_to,
-                'priority' => (int) $season->priority,
-                'factor' => (float) $season->factor,
-                'status' => $season->status,
-                'phase' => match (true) {
-                    $season->date_to < $today => 'pasada',
-                    $season->date_from > $today => 'proxima',
-                    default => 'en_curso',
-                },
-                'rates' => (int) ($rates[$season->id] ?? 0),
-                'products' => (int) ($products[$season->id] ?? 0),
-            ]);
+            ->map(fn (object $season) => self::presentSeason($season, $today, (int) ($rates[$season->id] ?? 0), (int) ($products[$season->id] ?? 0)));
     }
 
-    private function overlaps(Collection $seasons): array
+    public function overlaps(Collection $seasons): array
     {
         $active = $seasons->where('status', 'activa')->values();
         $pairs = [];

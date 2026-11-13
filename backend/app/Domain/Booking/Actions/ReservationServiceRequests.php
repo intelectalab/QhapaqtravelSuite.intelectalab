@@ -10,6 +10,7 @@ use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Mail\QueuedMail;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\SupplierPortal\Support\SupplierNotices;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -150,6 +151,8 @@ final class ReservationServiceRequests
             'created_by' => $actor->getKey(),
             'updated_by' => $actor->getKey(),
         ]);
+
+        app(SupplierNotices::class)->toProvider((string) $provider->id, 'proveedor.solicitud', "Nueva solicitud {$service->code} · {$service->name}", CarbonImmutable::parse($service->service_date)->format('d/m/Y').($service->service_time ? ' '.substr((string) $service->service_time, 0, 5) : '')." · {$service->pax} pax · reserva {$reservation->code}. Confirme o proponga una alternativa.", 'booking_service', (string) $service->id, (string) $reservation->id);
 
         if ($provider->email) {
             $agency = $this->context->tenant()->commercial_name;

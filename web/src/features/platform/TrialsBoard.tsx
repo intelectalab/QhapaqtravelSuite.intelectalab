@@ -1,14 +1,15 @@
 "use client";
 
-import { CalendarPlus, CreditCard, Hourglass, Sparkles, TimerReset, Users } from "lucide-react";
+import { CalendarCheck, CalendarPlus, CreditCard, Gift, Hourglass, Sparkles, TimerReset, Users } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { convertTrial, extendTrial } from "@/app/plataforma/(consola)/facturacion/actions";
+import { convertTrial, extendTrial, startTrial } from "@/app/plataforma/(consola)/facturacion/actions";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectField } from "@/components/ui/SelectField";
+import { TextArea } from "@/components/ui/TextArea";
 import { TintTile, ToneScope } from "@/components/ui/Tinted";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { TrialItem, TrialsOverview } from "@/lib/platformBilling";
@@ -30,6 +31,22 @@ export function TrialsBoard({ overview }: { overview: TrialsOverview }) {
         <TintTile icon={TimerReset} tone="warn" label="Vencen en 7 días" value={soon} />
         <TintTile icon={CreditCard} tone="violet" label="Sin tarjeta registrada" value={withoutCard} note="Se suspenden al vencer" />
       </section>
+      {overview.eligible.length > 0 && (
+        <div className="mb-4 flex justify-end">
+          <ConsoleAction
+            id="start-trial"
+            label="Dar prueba"
+            icon={<Gift size={15} />}
+            variant="primary"
+            title="Dar una prueba gratis"
+            description="Para agencias sin suscripción o con la prueba vencida en solo lectura. La agencia recupera todas las funciones del plan durante los días que elijas y se le avisa por correo."
+            submitLabel="Dar prueba"
+            action={startTrial}
+          >
+            <StartTrialFields eligible={overview.eligible} plans={overview.plans} />
+          </ConsoleAction>
+        </div>
+      )}
       {overview.items.length === 0 ? (
         <Card>
           <EmptyState icon={<Hourglass size={22} />} title="No hay agencias en prueba" description="Las agencias nuevas aparecen aquí durante sus días de prueba gratis." />
@@ -72,9 +89,10 @@ function TrialCard({ item, index, coupons, plans }: { item: TrialItem; index: nu
           <span className="block h-full origin-left rounded-full bg-[var(--tint)] motion-safe:animate-[fill-x_800ms_cubic-bezier(0.4,0,0.2,1)_backwards]" style={{ width: `${elapsed}%` }} />
         </div>
 
-        <dl className="mb-4 grid grid-cols-3 gap-2 text-[13px]">
+        <dl className="mb-4 grid grid-cols-2 gap-2 text-[13px]">
           <Fact icon={<Sparkles size={14} />} label="Plan" value={`${item.plan.name} · ${formatMoney(item.plan.price_month)}`} />
           <Fact icon={<Users size={14} />} label="Usuarios" value={String(item.users)} />
+          <Fact icon={<CalendarCheck size={14} />} label="Reservas creadas" value={String(item.reservations)} />
           <Fact icon={<CreditCard size={14} />} label="Tarjeta" value={item.payment_method ?? "Sin registrar"} />
         </dl>
         {item.extended_days > 0 && <p className="mb-4 text-[12.5px] text-fg-3">Ya se extendió {item.extended_days} días de los 14 permitidos.</p>}
@@ -112,6 +130,21 @@ function TrialCard({ item, index, coupons, plans }: { item: TrialItem; index: nu
         </div>
       </article>
     </ToneScope>
+  );
+}
+
+function StartTrialFields({ eligible, plans }: { eligible: TrialsOverview["eligible"]; plans: TrialsOverview["plans"] }) {
+  const [tenant, setTenant] = useState(eligible[0]?.code ?? "");
+  const chosen = eligible.find((option) => option.code === tenant);
+  const plan = chosen?.plan ?? plans[0]?.code ?? "";
+
+  return (
+    <>
+      <SelectField label="Agencia" name="tenant" searchable options={eligible.map((option) => ({ value: option.code, label: `${option.name} · ${option.reason}` }))} defaultValue={tenant} onChange={setTenant} />
+      <ChoiceGroup key={tenant} label="Plan de la prueba" name="plan" options={plans.map((option) => ({ value: option.code, label: option.code === chosen?.plan ? `${option.name} (actual)` : option.name }))} defaultValue={plan} />
+      <ChoiceGroup label="Días de prueba" name="days" options={["7", "14", "30", "60"].map((days) => ({ value: days, label: `${days} días` }))} defaultValue="14" />
+      <TextArea label="Motivo" name="reason" rows={3} required placeholder="Ej.: la agencia pidió más tiempo para evaluar antes de contratar." />
+    </>
   );
 }
 

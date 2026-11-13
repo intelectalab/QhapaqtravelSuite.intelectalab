@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { AGENCY_PREVIEW_RETURN, PREVIEW_BACK_COOKIE, previewBack } from "@/lib/agency-preview";
 import { REALMS, realmFor } from "@/lib/realms";
 import { SITE_LOCALE_COOKIE, SITE_LOCALES } from "@/lib/site-i18n";
+import { TEMPLATE_PREVIEW_COOKIE, TEMPLATE_PREVIEW_SECONDS, templatePreviewToken } from "@/lib/templatePreview";
 import { FRAMEABLE_PREFIX, HSTS_HEADER, NONCE_HEADER, WIDGET_ASSETS_PREFIX, WIDGET_PREFIX, contentSecurityPolicy, createNonce, isSecureRequest } from "@/lib/security-headers";
+import { showcasePath } from "@/lib/showcase-host";
 import { widgetAncestors } from "@/lib/widget-ancestors";
 
 export async function proxy(request: NextRequest) {
@@ -25,11 +28,27 @@ export async function proxy(request: NextRequest) {
 
 function route(request: NextRequest, nonce: string, policy: string) {
   const { pathname, search } = request.nextUrl;
+  const showcase = showcasePath(request.headers.get("x-forwarded-host") ?? request.headers.get("host"), pathname);
+  if (showcase) {
+    const forwarded = new Headers(request.headers);
+    forwarded.set(NONCE_HEADER, nonce);
+    forwarded.set("Content-Security-Policy", policy);
+    return NextResponse.rewrite(new URL(`${showcase}${search}`, request.url), { request: { headers: forwarded } });
+  }
   const realm = REALMS[realmFor(pathname)];
   const hasSession = request.cookies.has(realm.session);
   const mfaPending = request.cookies.has(realm.mfa);
   const isPublic = pathname === "/" || realm.publicPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
   const isEntry = pathname === realm.login || pathname === realm.mfaPage;
+
+  const previewReturn = realm === REALMS.agency ? request.cookies.get(AGENCY_PREVIEW_RETURN)?.value : undefined;
+  if (!hasSession && previewReturn) {
+    const restored = NextResponse.redirect(new URL(previewBack(request.cookies.get(PREVIEW_BACK_COOKIE)?.value), request.url));
+    restored.cookies.delete({ name: AGENCY_PREVIEW_RETURN, path: "/" });
+    restored.cookies.delete({ name: PREVIEW_BACK_COOKIE, path: "/" });
+    restored.cookies.set(realm.session, previewReturn, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: realm.path, maxAge: 60 * 60 * realm.hours });
+    return restored;
+  }
 
   if (!hasSession && !isPublic) {
     const url = new URL(realm.login, request.url);
@@ -48,11 +67,14 @@ function route(request: NextRequest, nonce: string, policy: string) {
   const lang = request.nextUrl.searchParams.get("lang");
   const locale = pathname.startsWith("/sitio/") && lang && (SITE_LOCALES as string[]).includes(lang) ? lang : null;
   if (locale) request.cookies.set(SITE_LOCALE_COOKIE, locale);
+  const preview = pathname.startsWith("/sitio/") ? templatePreviewToken(request.nextUrl.searchParams.get("preview")) : null;
+  if (preview) request.cookies.set(TEMPLATE_PREVIEW_COOKIE, preview);
   const headers = new Headers(request.headers);
   headers.set(NONCE_HEADER, nonce);
   headers.set("Content-Security-Policy", policy);
   const response = NextResponse.next({ request: { headers } });
   if (locale) response.cookies.set(SITE_LOCALE_COOKIE, locale, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  if (preview) response.cookies.set(TEMPLATE_PREVIEW_COOKIE, preview, { path: "/", maxAge: TEMPLATE_PREVIEW_SECONDS, sameSite: "lax", httpOnly: true });
   return response;
 }
 

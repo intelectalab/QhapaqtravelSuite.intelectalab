@@ -92,6 +92,7 @@ export function CouponFormAction({ coupon, plans }: { coupon?: Coupon; plans: Pl
 
 function CouponStatusAction({ coupon }: { coupon: Coupon }) {
   const activate = coupon.status === "inactive";
+  const blocked = activate && (coupon.expired || coupon.exhausted);
   return (
     <ConsoleAction
       id={`coupon-status-${coupon.code}`}
@@ -99,7 +100,7 @@ function CouponStatusAction({ coupon }: { coupon: Coupon }) {
       icon={activate ? <CirclePlay size={15} /> : <CirclePause size={15} />}
       rowTone={activate ? "neutral" : "delete"}
       title={activate ? `Activar ${coupon.code}` : `Desactivar ${coupon.code}`}
-      description={activate ? "Las agencias podrán volver a canjearlo mientras esté vigente y tenga canjes disponibles." : "Nadie más podrá canjearlo. Las agencias que ya lo usan conservan su descuento hasta completar los ciclos."}
+      description={blocked ? `No se puede activar: el cupón está ${coupon.expired ? "vencido" : "agotado"}. Crea uno nuevo.` : activate ? "Las agencias podrán volver a canjearlo mientras esté vigente y tenga canjes disponibles." : "Nadie más podrá canjearlo. Las agencias que ya lo usan conservan su descuento hasta completar los ciclos."}
       submitLabel={activate ? "Activar" : "Desactivar"}
       action={setCouponStatus}
       fields={{ code: coupon.code, active: activate ? "1" : "0" }}

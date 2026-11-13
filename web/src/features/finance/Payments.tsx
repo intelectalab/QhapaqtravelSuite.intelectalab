@@ -73,6 +73,18 @@ function ReasonStep({ row, step, label, title, description, submitLabel, icon, t
     <FinanceStep step={step} itemKey={row.code} label={label} title={title} description={description} submitLabel={submitLabel} trigger={(open) => <RowIcon tone={tone} label={label} icon={icon} onClick={open} />}>
       <input type="hidden" name="lock_version" value={row.lock_version} />
       <SummaryBox rows={paymentSummary(row)} />
+      {step === "payment_revert" &&
+        (row.application ? (
+          <SummaryBox
+            rows={[
+              { label: "Cuota afectada", value: row.application.receivable },
+              { label: "Saldo de la cuota hoy", value: formatMoney(row.application.balance_before, row.currency) },
+              { label: "Saldo tras revertir", value: formatMoney(row.application.balance_after, row.currency), strong: true },
+            ]}
+          />
+        ) : (
+          <p className="rounded-xl bg-surface-2 px-3.5 py-2.5 text-[12.5px] text-fg-3">El pago no está aplicado a ninguna cuota: ningún saldo cambia.</p>
+        ))}
       <TextArea label="Motivo" name="reason" rows={4} required minLength={5} maxLength={500} />
     </FinanceStep>
   );

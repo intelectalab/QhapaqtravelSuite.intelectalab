@@ -5,13 +5,18 @@ import { Card } from "@/components/ui/Card";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
 import { ProcessFlow } from "@/features/reports/ProcessFlow";
+import { DomainsAndCases, HandoffMatrix, RoleChain, StateMachines } from "@/features/reports/ProcessReference";
+import { isAllowed } from "@/lib/access";
+import { getAccess } from "@/lib/server/dashboard";
+import { currentUser } from "@/lib/server/me";
 import type { ProcessMapData } from "@/lib/reports";
 import { getResource } from "@/lib/server/resource";
 
 export const metadata: Metadata = { title: "Mapa de procesos" };
 
 export default async function FlujoPage() {
-  const data = await getResource<ProcessMapData>("/reports/process-map", "No pudimos cargar el mapa de procesos.");
+  const [data, me, access] = await Promise.all([getResource<ProcessMapData>("/reports/process-map", "No pudimos cargar el mapa de procesos."), currentUser(), getAccess()]);
+  const can = (href: string) => isAllowed(access?.screens ?? null, href);
 
   if (!data) {
     return <PageHeader title="Mapa de procesos" subtitle="Tu rol no tiene acceso a esta sección." />;
@@ -31,10 +36,16 @@ export default async function FlujoPage() {
         <TintTile icon={Trophy} tone="violet" label="Oportunidades ganadas" value={conversion.opportunity_win !== null ? `${conversion.opportunity_win} %` : "Sin cierres"} note="Sobre las cerradas" info={<p>Oportunidades ganadas sobre las cerradas (ganadas más perdidas). Las abiertas no cuentan.</p>} />
         <TintTile icon={Target} tone="ok" label="Cotizaciones convertidas en reserva" value={conversion.quote_to_reservation !== null ? `${conversion.quote_to_reservation} %` : "Sin datos"} info={<p>Cotizaciones convertidas en reserva sobre el total de cotizaciones registradas.</p>} />
       </section>
-      <Card>
+      <Card className="mb-5">
         <TintCardTitle icon={Route} title="Lead → oportunidad → cotización → reserva → operación → cobro" />
         <ProcessFlow data={data} />
       </Card>
+      <RoleChain role={me.role.name} roleName={me.role.display_name ?? me.role.name} can={can} />
+      <section className="mb-5 grid items-start gap-5 xl:grid-cols-2">
+        <StateMachines />
+        <DomainsAndCases can={can} />
+      </section>
+      <HandoffMatrix />
     </>
   );
 }

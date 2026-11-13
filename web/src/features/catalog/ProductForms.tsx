@@ -1,13 +1,15 @@
 "use client";
 
 import { Archive, CircleCheck, CircleDashed, CirclePause, CirclePlay, CircleStop, Send, Trash2, Undo2 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { changeProductStatus, deleteProduct, type ProductActionState } from "@/app/(backoffice)/catalogo/productos/actions";
+import { changeProductStatus, deleteProduct, type ProductActionState, type ProductUsageBlock } from "@/app/(backoffice)/catalogo/productos/actions";
 import { RowIcon } from "@/components/table/RowActions";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { TextArea } from "@/components/ui/TextArea";
 import { LIFECYCLE, type ProductDetail, type ProductFormOptions } from "@/lib/catalog";
+import { statusLabel } from "@/lib/tone";
 
 const initial: ProductActionState = { message: null, done: false };
 
@@ -85,13 +87,79 @@ export function ProductDeleteAction({ product, iconOnly = false }: { product: Pi
       submitLabel="Eliminar producto"
       action={deleteProduct}
       initial={initial}
+      footerExtra={(state) => (state.usage?.can_archive ? <ArchiveInstead product={product} /> : null)}
       onDone={() => (iconOnly ? router.refresh() : router.push("/catalogo/productos"))}
+    >
+      {(state) => (
+        <>
+          <input type="hidden" name="code" value={product.code} />
+          <input type="hidden" name="lock_version" value={product.lock_version} />
+          {state.usage && <UsageBlock usage={state.usage} />}
+          <TextArea label="Motivo" name="reason" rows={3} required minLength={3} maxLength={500} placeholder="Por ejemplo: se creó por error." />
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+const USAGE_GROUPS: { key: "quotes" | "reservations" | "operations" | "packages"; label: string; href: (code: string) => string }[] = [
+  { key: "quotes", label: "Cotizaciones", href: (code) => `/cotizaciones/${encodeURIComponent(code)}` },
+  { key: "reservations", label: "Reservas", href: (code) => `/reservas/${encodeURIComponent(code)}` },
+  { key: "operations", label: "Operaciones", href: (code) => `/operaciones/ordenes/${encodeURIComponent(code)}` },
+  { key: "packages", label: "Paquetes", href: (code) => `/catalogo/productos/${encodeURIComponent(code)}` },
+];
+
+function UsageBlock({ usage }: { usage: ProductUsageBlock }) {
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-bad/30 bg-bad/[0.06] p-3.5">
+      <p className="text-[13px] font-semibold text-bad">Lo usan documentos que deben conservarse. Archívalo para sacarlo del catálogo sin perder su historial.</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {USAGE_GROUPS.map((group) => {
+          const rows = usage[group.key];
+          return (
+            <div key={group.key}>
+              <p className="mb-1 text-[12px] font-semibold text-fg-2">{group.label} · {rows.length}</p>
+              {rows.length ? (
+                <ul className="flex flex-col gap-0.5 text-[12.5px]">
+                  {rows.slice(0, 6).map((row) => (
+                    <li key={row.code} className="flex items-center justify-between gap-2">
+                      <Link href={group.href(row.code)} className="truncate font-mono text-accent hover:underline">{"name" in row ? `${row.code} · ${row.name}` : row.code}</Link>
+                      <span className="flex-none text-fg-3">{statusLabel(row.status)}</span>
+                    </li>
+                  ))}
+                  {rows.length > 6 && <li className="text-fg-3">y {rows.length - 6} más</li>}
+                </ul>
+              ) : (
+                <p className="text-[12.5px] text-fg-3">Ninguna</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ArchiveInstead({ product }: { product: Pick<ProductDetail, "code" | "name" | "lock_version"> }) {
+  const router = useRouter();
+  return (
+    <PanelAction<ProductActionState>
+      label="Archivar en su lugar"
+      icon={<Archive size={16} />}
+      formId={`product-archive-${product.code}`}
+      title="Archivar producto"
+      description={`${product.name} sale del catálogo de forma definitiva. Su historial se conserva.`}
+      submitLabel="Archivar"
+      action={changeProductStatus}
+      initial={initial}
+      onDone={() => router.refresh()}
     >
       {() => (
         <>
           <input type="hidden" name="code" value={product.code} />
+          <input type="hidden" name="action" value="archive" />
           <input type="hidden" name="lock_version" value={product.lock_version} />
-          <TextArea label="Motivo" name="reason" rows={3} required minLength={3} maxLength={500} placeholder="Por ejemplo: se creó por error." />
+          <TextArea label="Motivo" name="reason" rows={3} required minLength={3} maxLength={500} placeholder="Queda registrado en el historial del producto." />
         </>
       )}
     </PanelAction>

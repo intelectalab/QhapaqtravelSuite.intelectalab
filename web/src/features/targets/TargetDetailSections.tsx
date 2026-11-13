@@ -1,4 +1,4 @@
-import { ArrowRight, Ban, CalendarCheck2, Pencil, PlayCircle, Plus, type LucideIcon } from "lucide-react";
+import { AlarmClock, ArrowRight, Ban, CalendarCheck2, Pencil, PlayCircle, Plus, UserRound, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -216,6 +216,120 @@ export function TargetAdjustmentsSection({ rows }: { rows: TargetAdjustment[] })
         })}
       </ol>
     </Card>
+  );
+}
+
+const FLOW: { status: SalesTarget["status"]; label: string }[] = [
+  { status: "borrador", label: "Borrador" },
+  { status: "vigente", label: "Vigente" },
+  { status: "cerrada", label: "Cerrada" },
+];
+
+export function TargetFlow({ target }: { target: SalesTarget }) {
+  const voided = target.status === "anulada";
+  const index = FLOW.findIndex((step) => step.status === target.status);
+  const unclosed = target.status === "vigente" && target.health === "por_cerrar";
+  return (
+    <div className="mb-5 flex flex-col gap-3">
+      <ol className="flex items-center gap-2 rounded-tile border border-line bg-surface px-4 py-3 shadow-card">
+        {FLOW.map((step, position) => {
+          const done = !voided && (position < index || target.status === "cerrada");
+          const current = !voided && position === index && target.status !== "cerrada";
+          return (
+            <li key={step.status} className="flex flex-1 items-center gap-2">
+              <span className={cn("grid h-7 w-7 flex-none place-items-center rounded-full border-2 text-[12px] font-bold", done ? "border-ok bg-ok text-white" : current ? "border-accent text-accent" : "border-line text-fg-3")}>{position + 1}</span>
+              <span className={cn("text-[12.5px] font-semibold", current ? "text-fg" : "text-fg-3")}>{step.label}</span>
+              {position < FLOW.length - 1 && <span aria-hidden className={cn("h-0.5 flex-1 rounded-full", done ? "bg-ok" : "bg-line")} />}
+            </li>
+          );
+        })}
+        {voided && <Badge tone="mute">Anulada</Badge>}
+      </ol>
+      {unclosed && (
+        <p className="flex items-center gap-2 rounded-xl border border-warn/40 bg-[color-mix(in_srgb,var(--warn)_9%,var(--surface))] px-4 py-2.5 text-[13px]">
+          <AlarmClock size={15} className="flex-none text-warn" />
+          <span><b>Período finalizado sin cerrar.</b> Terminó el {formatDate(target.period_to)}: ciérralo para congelar el resultado{target.bonus ? " y liquidar el bono" : ""}.</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function TargetDefinition({ target, members, tiers, ranking }: { target: SalesTarget; members: TargetBreakdownRow[]; tiers: { min: number; pay: number }[]; ranking: { position: number; name: string; me: boolean; progress_pct: number; sales: number | null; goal: number | null }[] }) {
+  const goals = [
+    { label: "Ventas", value: formatMoney(target.goals.sales) },
+    { label: "Reservas", value: target.goals.bookings !== null ? String(target.goals.bookings) : "—" },
+    { label: "Margen", value: target.goals.margin !== null ? formatMoney(target.goals.margin, "PEN", { compact: true }) : "—" },
+    { label: "Conversión", value: target.goals.conversion !== null ? formatPercent(target.goals.conversion, 0) : "—" },
+  ];
+  const reached = target.status === "cerrada" ? target.progress_pct : target.projection_pct;
+  const people = members.filter((row) => row.kind === "asesor");
+  return (
+    <div className="mb-5 grid gap-4 lg:grid-cols-3">
+      <Card>
+        <SectionTitle title="Definición" />
+        <ul className="grid grid-cols-2 gap-2">
+          {goals.map((goal) => (
+            <li key={goal.label} className="lift rounded-xl bg-surface-2 px-3 py-2">
+              <span className="block text-[11.5px] text-fg-3">{goal.label}</span>
+              <b className="text-[14px]">{goal.value}</b>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-[12px] text-fg-3">{target.scope_label} · {formatDate(target.period_from)} al {formatDate(target.period_to)}</p>
+        {target.scope_type !== "asesor" && (
+          <div className="mt-3">
+            <p className="mb-1.5 text-[12px] font-semibold text-fg-3">Integrantes</p>
+            {people.length === 0 ? (
+              <p className="text-[12.5px] text-fg-3">Sin asesores en el período.</p>
+            ) : (
+              <ul className="flex flex-wrap gap-1.5">
+                {people.map((row) => (
+                  <li key={row.name} className="inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-0.5 text-[12px]">
+                    <UserRound size={12} className="text-fg-3" />
+                    {row.target_code ? <Link href={targetHref(row.target_code)} className="hover:text-accent">{row.name}</Link> : row.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </Card>
+      <Card>
+        <SectionTitle title="Tramos del bono" />
+        {target.bonus ? (
+          <ul className="flex flex-col gap-1.5">
+            {tiers.map((tier) => {
+              const active = reached >= tier.min;
+              return (
+                <li key={tier.min} className={cn("flex items-center justify-between rounded-xl border px-3 py-2 text-[13px] transition-colors", active ? "border-ok/50 bg-[color-mix(in_srgb,var(--ok)_8%,var(--surface))]" : "border-line")}>
+                  <span>Desde {tier.min} % de la meta</span>
+                  <b>{tier.pay} % · {formatMoney(((target.bonus?.amount ?? 0) * tier.pay) / 100)}</b>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-[13px] text-fg-3">{target.scope_type === "asesor" ? "Esta meta no tiene bono base." : "El bono solo aplica a metas de asesor."}</p>
+        )}
+      </Card>
+      <Card>
+        <SectionTitle title="Ranking del período" />
+        {ranking.length === 0 ? (
+          <p className="text-[13px] text-fg-3">Aún no hay metas de asesor para comparar.</p>
+        ) : (
+          <ol className="flex flex-col gap-1.5">
+            {ranking.slice(0, 6).map((entry) => (
+              <li key={entry.name} className={cn("flex items-center gap-2.5 rounded-xl border px-3 py-2", entry.me || entry.name === target.scope.name ? "border-accent/40 bg-[color-mix(in_srgb,var(--accent)_7%,var(--surface))]" : "border-line")}>
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-surface-2 text-[11.5px] font-bold">{entry.position}</span>
+                <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{entry.name}</span>
+                <span className="font-mono text-[12.5px]">{formatPercent(entry.progress_pct, 0)}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Card>
+    </div>
   );
 }
 

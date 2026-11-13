@@ -61,6 +61,24 @@ final class SeasonRegistry
         });
     }
 
+    public function delete(string $ref, User $actor): void
+    {
+        $this->guarded(function () use ($ref, $actor): string {
+            $season = $this->season($ref);
+            $rates = DB::table('catalog_rates')->where('season_id', $season->id)->count();
+            $products = DB::table('catalog_product_seasons')->where('season_id', $season->id)->count();
+
+            if ($rates > 0 || $products > 0) {
+                throw ApiException::conflict('CAT-SEASON-IN-USE', "La temporada se usa en {$rates} tarifa(s) y {$products} producto(s). Desactívala en lugar de eliminarla.", ['rates' => $rates, 'products' => $products]);
+            }
+
+            DB::table('catalog_seasons')->where('id', $season->id)->update(['deleted_at' => now(), 'status' => 'inactiva', 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            $this->audit->log('Temporada', $ref, 'eliminar', "{$season->name} · {$season->date_from} a {$season->date_to} · {$season->status}");
+
+            return $ref;
+        });
+    }
+
     private function season(string $ref): object
     {
         return DB::table('catalog_seasons')->where('ref', $ref)->whereNull('deleted_at')->lockForUpdate()->first() ?? throw ApiException::notFound('La temporada no existe.');

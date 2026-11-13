@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { StatusBadge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { SectionLayout, SectionNav } from "@/components/ui/SectionNav";
 import { HeroBand, HeroChip, HeroPanel, Journey, TintTile, ToneScope } from "@/components/ui/Tinted";
 import { OrderAdvanceActions } from "@/features/operations/OrderActions";
@@ -102,12 +103,17 @@ export default async function OrdenPage({ params, searchParams }: PageProps<"/op
         }
         subtitle={order.code}
         actions={
-          editable ? (
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <OrderEditAction code={order.code} title={order.title} coordinator={order.coordinator.id} coordinators={order.coordinators} />
-              <OrderAdvanceActions order={order} checks={order.checks} />
-            </div>
-          ) : undefined
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button href={`/operaciones/calendario?mes=${order.date_from.slice(0, 7)}`} variant="secondary" icon={<CalendarDays size={16} />} iconOnlyOnMobile label="Ver en calendario">
+              Ver en calendario
+            </Button>
+            {editable && (
+              <>
+                <OrderEditAction code={order.code} title={order.title} coordinator={order.coordinator.id} coordinators={order.coordinators} />
+                <OrderAdvanceActions order={order} checks={order.checks} />
+              </>
+            )}
+          </div>
         }
       />
 

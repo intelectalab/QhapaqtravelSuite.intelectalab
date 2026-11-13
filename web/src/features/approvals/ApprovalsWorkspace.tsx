@@ -8,14 +8,62 @@ import type { Column, FilterConfig, MetricFilter, SortOption } from "@/component
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { SectionPanel } from "@/components/ui/SectionPanel";
-import { SLA_META, TYPE_TONES, type ApprovalItem, type ApprovalRule, type ApprovalsOverview } from "@/lib/approvals";
+import { approvalHref, SLA_META, TYPE_TONES, type ApprovalItem, type ApprovalRule, type ApprovalSla, type ApprovalsOverview } from "@/lib/approvals";
+import type { CsvExport } from "@/lib/csv";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { statusLabel } from "@/lib/tone";
 import { ApprovalDetailAction, ApprovalFlowActions, ApprovalFormAction, ApprovalWithdrawAction, RuleDeleteAction, RuleFormAction, RulesResetAction } from "./ApprovalForms";
 
 const unique = (values: string[]) => [...new Set(values)];
 
-function ApprovalTable({ rows, screen, overview }: { rows: ApprovalItem[]; screen: string; overview: ApprovalsOverview }) {
+const SLA_FILTERS: ApprovalSla[] = ["ok", "warning", "overdue", "paused", "done"];
+
+const HISTORY_CSV: CsvExport<ApprovalItem> = {
+  fileName: "historial-aprobaciones",
+  title: "Historial de aprobaciones",
+  columns: [
+    { header: "Código", value: (row) => row.code },
+    { header: "Tipo", value: (row) => row.type_label },
+    { header: "Solicitud", value: (row) => row.title },
+    { header: "Solicitó", value: (row) => row.requester },
+    { header: "Fecha de solicitud", value: (row) => row.created_at, type: "datetime" },
+    { header: "Monto", value: (row) => row.amount, type: "money" },
+    { header: "Moneda", value: (row) => row.currency },
+    { header: "Monto en soles", value: (row) => row.amount_pen, type: "money", total: true },
+    { header: "Estado", value: (row) => statusLabel(row.status) },
+    { header: "Decidió", value: (row) => row.decider },
+    { header: "Fecha de decisión", value: (row) => row.decided_at, type: "datetime" },
+    { header: "Comentario", value: (row) => row.decision_note },
+  ],
+};
+
+function RecentDecisions({ rows }: { rows: ApprovalItem[] }) {
+  const recent = rows.filter((row) => row.decided_at !== null).sort((a, b) => (b.decided_at ?? "").localeCompare(a.decided_at ?? "")).slice(0, 5);
+  if (recent.length === 0) return null;
+  return (
+    <section className="border-b border-line px-5 py-4">
+      <p className="mb-2.5 flex items-center gap-2 text-[13px] font-semibold">
+        <ShieldCheck size={15} className="text-accent" /> Últimas decisiones auditadas
+      </p>
+      <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+        {recent.map((row) => (
+          <li key={row.key}>
+            <Link href={approvalHref(row)} className="lift block rounded-xl border border-line px-3 py-2.5 hover:border-accent/40">
+              <span className="flex items-center justify-between gap-2">
+                <StatusBadge status={row.status} />
+                <span className="font-mono text-[11px] text-fg-3">{row.code}</span>
+              </span>
+              <span className="mt-1 block truncate text-[12.5px] font-semibold">{row.title}</span>
+              <span className="block truncate text-[11.5px] text-fg-3">{row.decider ?? "Sistema"} · {formatDateTime(row.decided_at ?? row.created_at, false)}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function ApprovalTable({ rows, screen, overview, csv }: { rows: ApprovalItem[]; screen: string; overview: ApprovalsOverview; csv?: CsvExport<ApprovalItem> }) {
   const columns: Column<ApprovalItem>[] = [
     {
       id: "request",
@@ -35,7 +83,9 @@ function ApprovalTable({ rows, screen, overview }: { rows: ApprovalItem[]; scree
               <span className="font-mono text-[12px] text-fg-3">{row.code}</span>
             )}
           </span>
-          <span className="mt-1 block max-w-[440px] truncate text-[13.5px] font-semibold">{row.title}</span>
+          <Link href={approvalHref(row)} className="mt-1 block max-w-[440px] truncate text-[13.5px] font-semibold hover:text-accent">
+            {row.title}
+          </Link>
         </div>
       ),
     },
@@ -53,7 +103,12 @@ function ApprovalTable({ rows, screen, overview }: { rows: ApprovalItem[]; scree
       id: "amount",
       header: "Monto",
       align: "right",
-      cell: (row) => <span className="font-mono text-[13px] font-semibold">{formatMoney(row.amount, row.currency)}</span>,
+      cell: (row) => (
+        <span className="flex flex-col items-end">
+          <span className="font-mono text-[13px] font-semibold">{formatMoney(row.amount, row.currency)}</span>
+          {row.impact && <span className="max-w-[240px] truncate text-[11.5px] text-fg-3" title={row.impact}>{row.impact}</span>}
+        </span>
+      ),
     },
     {
       id: "sla",
@@ -105,6 +160,7 @@ function ApprovalTable({ rows, screen, overview }: { rows: ApprovalItem[]; scree
   const filters: FilterConfig<ApprovalItem>[] = [
     { id: "type", label: "Tipo", options: unique(rows.map((row) => row.type)).map((value) => ({ value, label: rows.find((row) => row.type === value)?.type_label ?? value })), value: (row) => row.type },
     { id: "status", label: "Estado", options: unique(rows.map((row) => row.status)).map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status },
+    { id: "sla", label: "Plazo", options: SLA_FILTERS.filter((value) => rows.some((row) => row.sla === value)).map((value) => ({ value, label: SLA_META[value].label })), value: (row) => row.sla },
   ];
 
   const sorts: SortOption<ApprovalItem>[] = [
@@ -125,6 +181,7 @@ function ApprovalTable({ rows, screen, overview }: { rows: ApprovalItem[]; scree
       metrics={metrics}
       filters={filters}
       sorts={sorts}
+      csv={csv}
       emptyTitle="Nada pendiente aquí"
     />
   );
@@ -209,7 +266,17 @@ export function ApprovalsWorkspace({ overview, section }: { overview: ApprovalsO
           { id: "mine", label: "Para mí", count: forMe.length, content: <ApprovalTable rows={forMe} screen="aprobaciones-para-mi" overview={overview} /> },
           { id: "sent", label: "Enviadas por mí", count: mine.length, content: <ApprovalTable rows={mine} screen="aprobaciones-enviadas" overview={overview} /> },
           { id: "all", label: "Pendientes", count: pending.length, content: <ApprovalTable rows={pending} screen="aprobaciones-pendientes" overview={overview} /> },
-          { id: "history", label: "Historial", count: history.length, content: <ApprovalTable rows={history} screen="aprobaciones-historial" overview={overview} /> },
+          {
+            id: "history",
+            label: "Historial",
+            count: history.length,
+            content: (
+              <>
+                <RecentDecisions rows={history} />
+                <ApprovalTable rows={history} screen="aprobaciones-historial" overview={overview} csv={HISTORY_CSV} />
+              </>
+            ),
+          },
           { id: "rules", label: "Reglas", count: overview.rules.length, content: <RulesTable rules={overview.rules} canManage={overview.can.manage_rules} types={overview.types} /> },
         ]}
       />

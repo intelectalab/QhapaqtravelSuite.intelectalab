@@ -31,6 +31,7 @@ final class SettingsDirectory
         $fx = DB::table('fin_fx_rates')->where('currency_code', $sections['currency']['values']['alt_currency'] ?? 'USD')->orderByDesc('rate_date')->orderByDesc('effective_at')->first(['rate_pen', 'rate_date', 'source']);
         $sedes = DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->orderByDesc('is_main')->orderBy('name')->get(['id', 'name']);
         $changes = DB::table('audit_events')->where('entity', 'Configuración')->where('occurred_at', '>=', Carbon::today()->subDays(29))->count();
+        $integrations = $this->channelIntegrations();
 
         return [
             'agency' => [
@@ -58,6 +59,7 @@ final class SettingsDirectory
                 'enabled' => (bool) ($channels[$key] ?? false),
                 'allowed' => $rank >= $channel['plan'],
                 'min_plan' => SettingsCatalog::PLAN_NAMES[$channel['plan']],
+                'integration' => $integrations[$key] ?? null,
             ])->values(),
             'sequence_types' => collect(SettingsCatalog::SEQUENCE_TYPES)->except(DB::table('sys_sequences')->pluck('doc_type')->all())->map(fn (array $type, string $value): array => ['value' => $value, 'label' => $type['label'], 'pad' => $type['pad'], 'year_reset' => $type['year_reset']])->values()->all(),
             'sequences' => DB::table('sys_sequences')->orderBy('label')->orderBy('series')->get(['doc_type', 'label', 'series', 'prefix', 'pad_width', 'next_number', 'year_reset', 'updated_at'])->map(fn (object $row): array => [
@@ -156,6 +158,24 @@ final class SettingsDirectory
     public function planRank(): int
     {
         return (int) DB::table('plans')->where('id', $this->context->tenant()->plan_id)->value('rank');
+    }
+
+    public function channelIntegrations(): array
+    {
+        $adapters = DB::table('integration_adapters')->whereIn('kind', array_values(SettingsCatalog::CHANNEL_INTEGRATIONS))->orderBy('code')->get(['code', 'name', 'kind', 'status', 'environment']);
+
+        return collect(SettingsCatalog::CHANNEL_INTEGRATIONS)->map(function (string $kind) use ($adapters): ?array {
+            $adapter = $adapters->firstWhere('kind', $kind);
+
+            return $adapter === null ? null : [
+                'code' => $adapter->code,
+                'name' => $adapter->name,
+                'status' => $adapter->status,
+                'status_label' => IntegrationDirectory::STATUSES[$adapter->status] ?? $adapter->status,
+                'ready' => $adapter->status === 'activo',
+                'warning' => $adapter->status === 'activo' ? null : SettingsCatalog::CHANNEL_WARNINGS[$kind],
+            ];
+        })->all();
     }
 
     private function options(array $map): array

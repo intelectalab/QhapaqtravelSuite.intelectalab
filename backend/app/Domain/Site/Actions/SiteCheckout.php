@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Site\Actions;
 
+use App\Domain\Booking\Actions\TripBooking;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Finance\Events\PaymentApplied;
 use App\Domain\Finance\Support\ReceivableLedger;
@@ -538,6 +539,7 @@ final class SiteCheckout
             'requested_at' => now(),
         ]);
 
+        app(TripBooking::class)->persist($reservationId, $product->id, $serviceId, $quote, ['adt' => (int) $item->pax_adults, 'chd' => (int) $item->pax_children], $rate);
         $this->passengers($reservationId, $item, $buyer, $passengers);
 
         $receivables = $deposit

@@ -1,4 +1,4 @@
-import { BellRing, CalendarX2, FileCheck2, FileWarning, HeartPulse, Phone, ShieldCheck, Ticket, TicketX, Users } from "lucide-react";
+import { BellRing, CalendarX2, FileCheck2, FileWarning, HeartPulse, History, Phone, ShieldCheck, Ticket, TicketX, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -98,7 +98,7 @@ export default async function DocumentosReservaPage({ params }: PageProps<"/oper
                     <span className="min-w-0 flex-1">
                       <b className="block truncate text-[13.5px] font-semibold">{document.label}</b>
                       <span className={cn("block truncate text-xs", document.expires_before_return ? "font-semibold text-bad" : "text-fg-3")}>
-                        {[document.number, document.expiry ? `vence ${formatDate(document.expiry)}` : null, document.file, document.validated_by ? `validó ${document.validated_by}` : null].filter(Boolean).join(" · ") || "Sin datos todavía"}
+                        {[document.number, document.expiry ? `vence ${formatDate(document.expiry)}` : null, document.min_expiry ? `mínimo exigido ${formatDate(document.min_expiry)}` : null, document.file, document.validated_by ? `validó ${document.validated_by}${document.validated_at ? ` el ${formatDate(document.validated_at)}` : ""}` : null].filter(Boolean).join(" · ") || "Sin datos todavía"}
                       </span>
                       {(document.observation || document.note) && <span className="mt-0.5 block text-xs text-fg-2">{document.observation ?? document.note}</span>}
                     </span>
@@ -136,6 +136,7 @@ export default async function DocumentosReservaPage({ params }: PageProps<"/oper
           ))}
         </div>
 
+        <div className="flex flex-col gap-4">
         <Card>
           <TintCardTitle icon={BellRing} title="Recordatorios enviados" aside={String(data.reminders.length)} />
           {data.reminders.length === 0 ? (
@@ -157,6 +158,30 @@ export default async function DocumentosReservaPage({ params }: PageProps<"/oper
             </ol>
           )}
         </Card>
+
+        <Card>
+          <TintCardTitle icon={History} title="Bitácora" aside={String(data.log?.length ?? 0)} />
+          {!data.log || data.log.length === 0 ? (
+            <p className="text-[13.5px] text-fg-3">Aún no hay movimientos en los documentos de esta reserva.</p>
+          ) : (
+            <ol className="flex flex-col gap-3 border-l-2 border-line pl-5">
+              {data.log.map((event) => (
+                <li key={event.code} className="relative">
+                  <span className="absolute -left-[27px] top-1 h-3 w-3 rounded-full bg-[var(--tint)] ring-4 ring-surface" />
+                  <p className="text-[13.5px]">
+                    <b className="font-semibold">{event.action}</b>
+                    {event.passenger && <span> · {event.passenger}</span>}
+                    {event.after && <span className="text-fg-2"> · {event.after}</span>}
+                  </p>
+                  <p className="text-xs text-fg-3">
+                    {event.by ?? "Sistema"} · {formatDateTime(event.at, false)}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          )}
+        </Card>
+        </div>
       </div>
     </ToneScope>
   );

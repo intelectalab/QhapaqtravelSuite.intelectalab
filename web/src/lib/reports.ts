@@ -93,6 +93,7 @@ export interface ReportColumn {
   label: string;
   format: ReportValueFormat;
   warn_below?: number;
+  filter?: boolean;
 }
 
 export interface ReportTab {

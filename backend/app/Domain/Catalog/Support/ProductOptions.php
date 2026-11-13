@@ -49,6 +49,7 @@ final class ProductOptions
                     'currency' => $service->currency,
                     'provider_id' => $service->provider_id,
                     'provider' => $service->provider,
+                    'valid_to' => $service->valid_to,
                     'blocked' => match (true) {
                         $service->status !== 'activo' || $service->valid_to < $today => 'Servicio vencido o inactivo',
                         $service->provider_status !== 'activo' || $service->provider_deleted !== null => 'Proveedor inactivo',

@@ -18,6 +18,7 @@ import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { ADMIN_INITIAL, type AdminActionState } from "@/lib/admin";
 import type { ReportExportsData, ReportSchedule } from "@/lib/reports";
+import { frequencyFromLabel, REPORT_FREQUENCIES } from "./frequencies";
 
 const FORMAT_ICON = { CSV: FileType, XLSX: FileSpreadsheet, PDF: FileText } as const;
 
@@ -29,9 +30,8 @@ function size(bytes: number | null): string {
 }
 
 function scheduleDefaults(label: string): { frequency: string; time: string } {
-  const lower = label.toLowerCase();
   const time = /(\d{2}:\d{2})\s*$/.exec(label)?.[1] ?? "07:00";
-  return { frequency: lower.startsWith("diar") ? "daily" : lower.startsWith("mens") ? "monthly" : "weekly", time };
+  return { frequency: frequencyFromLabel(label), time };
 }
 
 function ScheduleActions({ item }: { item: ReportSchedule }) {
@@ -43,7 +43,7 @@ function ScheduleActions({ item }: { item: ReportSchedule }) {
         {() => (
           <>
             <input type="hidden" name="code" value={item.code} />
-            <SelectField label="Frecuencia" name="frequency" options={[{ value: "weekly", label: "Semanal (lunes)" }, { value: "daily", label: "Diaria" }, { value: "monthly", label: "Mensual (día 1)" }]} defaultValue={defaults.frequency} />
+            <SelectField label="Frecuencia" name="frequency" options={REPORT_FREQUENCIES} defaultValue={defaults.frequency} />
             <TextField label="Hora" name="time" required defaultValue={defaults.time} maxLength={5} placeholder="HH:MM" hint="Hora de Lima." />
             <ChoiceGroup label="Formato" name="format" options={[{ value: "PDF", label: "PDF" }, { value: "XLSX", label: "Excel" }, { value: "CSV", label: "CSV" }]} defaultValue={item.format} />
             <TextArea label="Destinatarios" name="recipients" rows={3} required defaultValue={item.recipients.join(", ")} hint="Hasta 10 correos, separados por coma o en líneas." />

@@ -138,7 +138,38 @@ it('valida colores, secciones, enlaces, banners y textos', function (Closure $ch
     'red social sin https' => [fn (array $d) => [...$d, 'footer' => [...$d['footer'], 'social' => [...$d['footer']['social'], 'instagram' => 'http://instagram.com/x']]], 'design.footer.social.instagram'],
     'texto no editable' => [fn (array $d) => [...$d, 'texts' => ['es' => ['checkout.pay' => 'Pagar']]], 'design.texts.es.checkout.pay'],
     'texto muy largo' => [fn (array $d) => [...$d, 'texts' => ['es' => ['header.tagline' => str_repeat('a', 61)]]], 'design.texts.es.header.tagline'],
+    'dorado sin formato' => [fn (array $d) => [...$d, 'andes' => [...$d['andes'], 'gold' => 'dorado']], 'design.andes.gold'],
+    'dorado sin contraste' => [fn (array $d) => [...$d, 'andes' => [...$d['andes'], 'gold' => '#6b4a00']], 'design.andes.gold'],
+    'mosaico no booleano' => [fn (array $d) => [...$d, 'andes' => [...$d['andes'], 'mosaic' => 'quizá']], 'design.andes.mosaic'],
 ]);
+
+it('los ajustes de Andes Clásico nacen con los del kit, se guardan, se publican y se auditan', function () {
+    actingAsSeed('U01');
+    $data = siteDesignDraft();
+
+    expect($data['draft']['theme']['style'])->toBe('actual')
+        ->and($data['draft']['andes'])->toBe(['gold' => '#f2b33d', 'serif_titles' => true, 'mosaic' => true])
+        ->and($data['catalog']['andes']['ink'])->toBe(SiteDesign::ANDES_INK);
+
+    $design = [...$data['draft'], 'theme' => [...$data['draft']['theme'], 'style' => 'andes'], 'andes' => ['gold' => '#F5C04A', 'serif_titles' => false, 'mosaic' => false]];
+    siteDesignSave($design, $data['lock_version'])->assertOk();
+    $saved = siteDesignDraft();
+
+    expect($saved['draft']['andes'])->toBe(['gold' => '#f5c04a', 'serif_titles' => false, 'mosaic' => false])
+        ->and($saved['pending'])->toContain('Ajustes de Andes Clásico');
+
+    $this->postJson('/api/v1/admin/site-design/publish')->assertOk();
+
+    expect($this->getJson('/api/v1/public/site', siteOf())->json('data.design.andes.gold'))->toBe('#f5c04a')
+        ->and(siteDesignAudit('publicar')->before_value)->toContain('Ajustes de Andes Clásico');
+});
+
+it('un diseño guardado antes de los ajustes de Andes los completa con los del kit', function () {
+    $filled = SiteDesign::fill(['theme' => ['style' => 'andes']]);
+
+    expect($filled['andes'])->toBe(['gold' => '#f2b33d', 'serif_titles' => true, 'mosaic' => true])
+        ->and(SiteDesign::contrast('#f2b33d', SiteDesign::ANDES_INK))->toBeGreaterThanOrEqual(SiteDesign::ANDES_MIN_CONTRAST);
+});
 
 it('los banners solo se muestran dentro de sus fechas y si están visibles', function () {
     actingAsSeed('U01');

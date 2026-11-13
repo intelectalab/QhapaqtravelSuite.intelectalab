@@ -51,6 +51,28 @@ final class ConversationAttachments
         return ['upload_id' => $uploadId, 'file_name' => $name, 'mime' => $mime, 'size' => $size];
     }
 
+    public function storeInbound(string $base64, string $fileName, string $mime, string $conversationCode): array
+    {
+        $mime = $this->mime($mime);
+        $contents = base64_decode($base64, true);
+
+        if ($contents === false) {
+            throw ApiException::unprocessable('INB-BR-11', 'El adjunto no viene en base64.');
+        }
+
+        $size = strlen($contents);
+        $this->size($size);
+        $name = Str::limit(trim($fileName) ?: 'adjunto', 200, '');
+        $this->guard->ensureClean($contents, $name, 'Conversación', $conversationCode);
+        $path = $this->path($this->context->idOrFail(), (string) Str::uuid7(), $mime);
+
+        if ($this->disk()->put($path, $contents) === false) {
+            throw ApiException::conflict('INB-BR-11', 'No pudimos guardar el archivo.');
+        }
+
+        return ['path' => $path, 'file_name' => $name, 'mime' => $mime, 'size' => $size, 'sha256' => hash('sha256', $contents)];
+    }
+
     public function presign(array $data, User $actor): array
     {
         $mime = $this->mime((string) $data['mime']);

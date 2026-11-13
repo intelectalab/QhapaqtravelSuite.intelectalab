@@ -54,6 +54,29 @@ export function ScorePicker({ name, defaultValue }: { name: string; defaultValue
   );
 }
 
+function ClientReservationFields({ overview, hint }: { overview: AfterSalesOverview; hint?: string }) {
+  const [client, setClient] = useState("");
+  const [reservation, setReservation] = useState("");
+  const options = (overview.reservations ?? []).filter((item) => item.client === client).map(({ value, label, hint: date }) => ({ value, label, hint: date }));
+  return (
+    <>
+      <SelectField
+        label="Cliente"
+        name="client"
+        options={overview.clients}
+        placeholder="Buscar cliente"
+        searchable
+        value={client}
+        onChange={(next) => {
+          setClient(next);
+          setReservation("");
+        }}
+      />
+      <SelectField label="Reserva (opcional)" name="reservation" options={options} value={reservation} onChange={setReservation} placeholder={client ? (options.length > 0 ? "Elegir una reserva del cliente" : "El cliente no tiene reservas") : "Primero elige el cliente"} disabled={!client || options.length === 0} searchable clearable hint={hint} />
+    </>
+  );
+}
+
 export function SurveyAction({ overview, trip, survey }: { overview: AfterSalesOverview; trip?: TripItem; survey?: SurveyItem }) {
   const editing = Boolean(survey);
   return (
@@ -79,8 +102,7 @@ export function SurveyAction({ overview, trip, survey }: { overview: AfterSalesO
               <input type="hidden" name="reservation" value={trip.code} />
             </>
           )}
-          {!survey && !trip && <SelectField label="Cliente" name="client" options={overview.clients} placeholder="Buscar cliente" />}
-          {!survey && !trip && <TextField label="Reserva (opcional)" name="reservation" placeholder="RES-2026-000346" hint="Una sola encuesta por reserva." />}
+          {!survey && !trip && <ClientReservationFields overview={overview} hint="Una sola encuesta por reserva." />}
           <ScorePicker name="score" defaultValue={survey?.score} />
           <SelectField label="Canal" name="channel" options={overview.channels} defaultValue={survey?.channel_code ?? "llamada"} />
           <TextArea label="Comentario del cliente" name="comment" rows={3} maxLength={2000} defaultValue={survey?.comment ?? undefined} placeholder="Lo que destacó o lo que podemos mejorar." />
@@ -106,8 +128,7 @@ export function CaseFormAction({ overview, item }: { overview: AfterSalesOvervie
       {() => (
         <>
           {item && <input type="hidden" name="code" value={item.code} />}
-          {!item && <SelectField label="Cliente" name="client" options={overview.clients} placeholder="Buscar cliente" />}
-          {!item && <TextField label="Reserva (opcional)" name="reservation" placeholder="RES-2026-000346" />}
+          {!item && <ClientReservationFields overview={overview} />}
           <div className="grid grid-cols-2 gap-3">
             <SelectField label="Tipo" name="type" options={overview.case_types} defaultValue={item?.type_code ?? "reclamo"} />
             <SelectField label="Prioridad" name="priority" options={PRIORITIES} defaultValue={item?.priority ?? "media"} />

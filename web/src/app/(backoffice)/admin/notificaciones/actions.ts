@@ -48,6 +48,12 @@ export async function updateNotificationRule(_state: AdminActionState, form: For
   return sendAdmin(`/notifications/rules/${encodeURIComponent(text(form, "event") ?? "")}`, "PATCH", body, PATH, "No pudimos guardar la regla.");
 }
 
+export async function toggleNotificationChannel(rule: { event: string; recipients: string; timing: string; condition: string; channels: Record<string, boolean> }, channel: string, enabled: boolean): Promise<AdminActionState> {
+  const next = { ...rule.channels, [channel]: enabled };
+  const body = { recipients: rule.recipients, timing: rule.timing, condition: rule.condition, ch_email: Boolean(next.email), ch_whatsapp: Boolean(next.whatsapp), ch_push: Boolean(next.push), ch_portal: Boolean(next.portal) };
+  return sendAdmin(`/notifications/rules/${encodeURIComponent(rule.event)}`, "PATCH", body, PATH, "No pudimos cambiar el canal.");
+}
+
 export async function retryNotification(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
   return sendAdmin(`/notifications/messages/${message(form)}/retry`, "POST", {}, PATH, "No pudimos reintentar el envío.");
 }

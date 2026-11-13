@@ -8,6 +8,8 @@ use App\Domain\Catalog\Actions\AllotmentRegistry;
 use App\Domain\Catalog\Http\Controllers\Concerns\ResolvesActor;
 use App\Domain\Catalog\Support\AllotmentDirectory;
 use App\Domain\Catalog\Support\CatalogAccess;
+use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Http\CursorPage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -45,6 +47,35 @@ final class AllotmentController
     public function show(Request $request, string $code): JsonResponse
     {
         return response()->json(['data' => $this->directory->detail($code, $this->actor($request))]);
+    }
+
+    public function charges(Request $request, string $code): JsonResponse
+    {
+        $detail = $this->directory->detail($code, $this->actor($request));
+
+        return response()->json(CursorPage::respondItems($request, collect($detail['charges'])->values()->all(), ['total' => $detail['penalties']]));
+    }
+
+    public function requests(Request $request, string $code): JsonResponse
+    {
+        $status = CursorPage::filters($request)['status'] ?? null;
+        $items = collect($this->directory->detail($code, $this->actor($request))['requests'])
+            ->when($status, fn ($rows) => $rows->whereIn('status', explode(',', (string) $status)))->values()->all();
+
+        return response()->json(CursorPage::respondItems($request, $items));
+    }
+
+    public function day(Request $request, string $code, string $date): JsonResponse
+    {
+        $detail = $this->directory->detail($code, $this->actor($request));
+        $day = collect($detail['days'])->firstWhere('date', $date) ?? throw ApiException::notFound('Ese día no está dentro del contrato de cupo.');
+
+        return response()->json(['data' => [
+            ...$day,
+            'allotment' => ['code' => $detail['contract']['code'] ?? $code],
+            'consumptions' => collect($detail['consumptions'])->where('date', $date)->values(),
+            'charges' => collect($detail['charges'])->where('date', $date)->values(),
+        ]]);
     }
 
     public function store(Request $request): JsonResponse

@@ -1,10 +1,11 @@
+import type { ProductStatus } from "./catalog";
 import type { Tone } from "./tone";
 
 export type RateState = "vigente" | "programada" | "vencida" | "inactiva";
 
 export interface RateRow {
   ref: string;
-  product: { id: string; code: string; name: string };
+  product: { id: string; code: string; name: string; status?: ProductStatus | null };
   type: string;
   segment: string;
   channel: string;
@@ -45,6 +46,14 @@ export interface SeasonOverlap {
   from: string;
   to: string;
   winner: string;
+}
+
+export interface SeasonResolution {
+  date: string;
+  season: SeasonRow | null;
+  factor: number;
+  others: SeasonRow[];
+  rule: string;
 }
 
 export interface RatesOverview {

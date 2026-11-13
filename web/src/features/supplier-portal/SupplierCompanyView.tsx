@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, CalendarRange, ClipboardList, FileSignature, Landmark, Mail, Phone, Plus, Tags, UserRound, Users } from "lucide-react";
+import { Building2, CalendarRange, ClipboardList, FileSignature, Headset, Landmark, Mail, Phone, Plus, Siren, Tags, UserRound, Users, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { deleteContact, saveContact } from "@/app/(proveedor)/proveedor/actions";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -16,8 +16,12 @@ import { EmptyLine, PortalTitle, RISE, rise, SectionCard } from "@/features/port
 import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatDateTime } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
-import type { SupplierCompany, SupplierContact } from "@/lib/supplier-portal";
+import type { SupplierAgencyContact, SupplierCompany, SupplierContact } from "@/lib/supplier-portal";
 import { toneStyle, type Tone } from "@/lib/tone";
+
+const AGENCY_ICON = { operaciones: Headset, pagos: Wallet, emergencias: Siren } as const;
+
+const AGENCY_TONE: Record<SupplierAgencyContact["kind"], Tone> = { operaciones: "t1", pagos: "t3", emergencias: "bad" };
 
 function ContactPanel({ contact }: { contact?: SupplierContact }) {
   const router = useRouter();
@@ -68,10 +72,10 @@ export function SupplierCompanyView({ data }: { data: SupplierCompany }) {
       )}
 
       <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TintTile icon={ClipboardList} tone="t1" label="Servicios atendidos" value={data.activity.services} note={`En ${data.activity.reservations} reservas`} />
-        <TintTile icon={Tags} tone="t3" label="Servicios en catálogo" value={data.activity.catalog} note="Activos con tarifa neta" />
-        <TintTile icon={CalendarRange} tone={contractTone} label="Vigencia del contrato" value={contract.days_left < 0 ? "Vencido" : `${contract.days_left} días`} note={`Hasta el ${formatDate(contract.end)}`} />
-        <TintTile icon={Users} tone="violet" label="Contactos" value={data.contacts.length} note={`${data.users.length} ${data.users.length === 1 ? "usuario" : "usuarios"} en la extranet`} />
+        <TintTile icon={ClipboardList} tone="t1" label="Servicios atendidos" value={data.activity.services} note={`En ${data.activity.reservations} reservas`} info="Servicios que la agencia le solicitó, sin contar los cancelados." />
+        <TintTile icon={Tags} tone="t3" label="Servicios en catálogo" value={data.activity.catalog} note="Activos con tarifa neta" info="Servicios activos registrados a su nombre en el catálogo de la agencia." />
+        <TintTile icon={CalendarRange} tone={contractTone} label="Vigencia del contrato" value={contract.days_left < 0 ? "Vencido" : `${contract.days_left} días`} note={`Hasta el ${formatDate(contract.end)}`} info="Días que faltan para el fin del contrato registrado en su ficha de proveedor." />
+        <TintTile icon={Users} tone="violet" label="Contactos" value={data.contacts.length} note={`${data.users.length} ${data.users.length === 1 ? "usuario" : "usuarios"} en la extranet`} info="Contactos de su empresa que la agencia usa para coordinar; abajo puede editarlos." />
       </section>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">
@@ -142,6 +146,37 @@ export function SupplierCompanyView({ data }: { data: SupplierCompany }) {
             <div className="mt-3" title={`${Math.round(elapsed)} % del contrato transcurrido`}>
               <UsageBar pct={elapsed} tone={contractTone} />
             </div>
+          </SectionCard>
+          <SectionCard icon={Headset} title={`Contactos de ${data.agency.name}`}>
+            <ul className="flex flex-col gap-2">
+              {data.agency_contacts.map((contact, index) => {
+                const Icon = AGENCY_ICON[contact.kind];
+                return (
+                  <li key={contact.kind} style={{ ...rise(index), ...toneStyle(AGENCY_TONE[contact.kind]) }} className={cn("lift flex items-start gap-3 rounded-tile border border-line bg-surface px-3.5 py-3", RISE)}>
+                    <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-[color-mix(in_srgb,var(--tint)_12%,var(--surface))] text-[var(--tint)]">
+                      <Icon size={17} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[11.5px] font-semibold text-[var(--tint)]">{contact.label}</span>
+                      <b className="block truncate text-[13.5px] font-semibold">{contact.name}</b>
+                      {contact.note && <span className="block text-[12px] text-fg-3">{contact.note}</span>}
+                      {contact.email && (
+                        <a href={`mailto:${contact.email}`} className="mt-1 flex items-center gap-1.5 truncate text-[12.5px] text-fg-2 transition hover:text-t1">
+                          <Mail size={13} /> {contact.email}
+                        </a>
+                      )}
+                      {contact.phone ? (
+                        <a href={`tel:${contact.phone.replace(/\s/g, "")}`} className="flex items-center gap-1.5 text-[12.5px] text-fg-2 transition hover:text-t1">
+                          <Phone size={13} /> {contact.phone}
+                        </a>
+                      ) : (
+                        !contact.email && <span className="block text-[12px] text-fg-3">La agencia aún no registró este contacto.</span>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           </SectionCard>
           <SectionCard icon={Landmark} title="Facturar a">
             <FieldList

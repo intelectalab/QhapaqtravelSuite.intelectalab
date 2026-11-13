@@ -53,7 +53,7 @@ final class OrderWorkflow
             }
 
             $services = DB::table('booking_reservation_services')->where('reservation_id', $reservation->id)->where('status', '<>', 'cancelado')
-                ->whereIn('service_kind', ['tour', 'traslado'])->orderBy('service_date')->orderBy('service_time')->get(['id', 'name', 'service_date', 'service_time']);
+                ->whereIn('service_kind', OrderDirectory::REPLICATED_KINDS)->orderBy('service_date')->orderBy('service_time')->get(['id', 'name', 'service_date', 'service_time']);
             $code = $this->sequences->next('ops_order', year: (int) substr((string) $reservation->travel_from, 0, 4));
             $orderId = (string) Str::uuid7();
             DB::table('ops_orders')->insert([

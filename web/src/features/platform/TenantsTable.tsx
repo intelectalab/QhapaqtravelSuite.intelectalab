@@ -34,6 +34,7 @@ const columns: Column<TenantSummary>[] = [
   },
   { id: "plan", header: "Plan", cell: (tenant) => <Badge tone="t1" dot={false}>{tenant.plan?.name ?? "Sin plan"}</Badge> },
   { id: "users", header: "Usuarios", align: "right", cell: (tenant) => <span className="font-mono text-[13px]">{tenant.users}</span> },
+  { id: "modules", header: "Módulos", align: "right", wideOnly: true, cell: (tenant) => <span className="font-mono text-[13px]">{tenant.modules}</span> },
   { id: "sedes", header: "Sedes", align: "right", wideOnly: true, cell: (tenant) => <span className="font-mono text-[13px]">{tenant.sedes}</span> },
   { id: "storage", header: "Almacenamiento", align: "right", wideOnly: true, cell: (tenant) => <span className="font-mono text-[13px]">{formatBytes(tenant.storage_used_bytes)}</span> },
   { id: "mrr", header: "Ingreso mensual", align: "right", cell: (tenant) => <span className="font-mono text-[13px]">{formatMoney(tenant.mrr)}</span> },
@@ -67,11 +68,14 @@ const sorts: SortOption<TenantSummary>[] = [
   { id: "since", label: "Fecha de alta", type: "date", value: (tenant) => tenant.created_at },
 ];
 
+const STATUS_LABEL: Record<TenantSummary["status"], string> = { activo: "Activa", prueba: "En prueba", suspendido: "Suspendida" };
+
 const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es")).map((value) => ({ value, label: value }));
 
-export function TenantsTable({ tenants }: { tenants: TenantSummary[] }) {
+export function TenantsTable({ tenants, initialPlan }: { tenants: TenantSummary[]; initialPlan?: string }) {
   const filters: FilterConfig<TenantSummary>[] = [
     { id: "plan", label: "Plan", options: unique(tenants.map((tenant) => tenant.plan?.name ?? "Sin plan")), value: (tenant) => tenant.plan?.name ?? "Sin plan" },
+    { id: "status", label: "Estado", options: Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label })), value: (tenant) => tenant.status },
   ];
 
   return (
@@ -86,6 +90,14 @@ export function TenantsTable({ tenants }: { tenants: TenantSummary[] }) {
       metrics={metrics}
       filters={filters}
       sorts={sorts}
+      initialFilters={initialPlan ? { plan: initialPlan } : undefined}
+      footer={(rows) => ({
+        tenant: `Total (${rows.length})`,
+        users: <span className="font-mono">{rows.reduce((sum, tenant) => sum + tenant.users, 0)}</span>,
+        sedes: <span className="font-mono">{rows.reduce((sum, tenant) => sum + tenant.sedes, 0)}</span>,
+        storage: <span className="font-mono">{formatBytes(rows.reduce((sum, tenant) => sum + tenant.storage_used_bytes, 0))}</span>,
+        mrr: <span className="font-mono">{formatMoney(rows.reduce((sum, tenant) => sum + Number(tenant.mrr), 0))}</span>,
+      })}
     />
   );
 }

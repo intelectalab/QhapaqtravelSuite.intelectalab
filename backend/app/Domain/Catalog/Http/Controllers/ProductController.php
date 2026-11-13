@@ -19,9 +19,9 @@ final class ProductController
 {
     public function __construct(private readonly ProductDirectory $directory, private readonly ProductWorkflow $workflow) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(['data' => $this->directory->list()]);
+        return response()->json(['data' => $this->directory->list($this->user($request))]);
     }
 
     public function show(Request $request, string $code): JsonResponse
@@ -51,6 +51,13 @@ final class ProductController
         $next = $this->workflow->update($code, $request->validated(), (int) $request->input('lock_version'), $this->user($request));
 
         return response()->json(['data' => ['code' => $next]]);
+    }
+
+    public function minimumPassengers(Request $request, string $code): JsonResponse
+    {
+        $data = $request->validate(['minimum_passengers' => ['required', 'integer', 'min:1', 'max:999'], 'lock_version' => ['required', 'integer']], ['minimum_passengers.*' => 'Escribe el mínimo de pasajeros (1 o más).']);
+
+        return response()->json(['data' => $this->workflow->minimumPassengers($code, (int) $data['minimum_passengers'], (int) $data['lock_version'], $this->user($request))]);
     }
 
     public function transition(Request $request, string $code, string $action): JsonResponse

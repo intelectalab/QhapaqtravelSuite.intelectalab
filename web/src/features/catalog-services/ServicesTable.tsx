@@ -7,6 +7,7 @@ import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { CountTip } from "@/components/ui/InfoTip";
+import { providerHref } from "@/features/catalog-providers/ProvidersTable";
 import { SUPPLY_STATE, type ServiceRow, type ServicesOverview } from "@/lib/catalog-services";
 import { cn } from "@/lib/cn";
 import type { CsvExport } from "@/lib/csv";
@@ -31,7 +32,7 @@ export function ServicesTable({ overview }: { overview: ServicesOverview }) {
         </Link>
       ),
     },
-    { id: "provider", header: "Proveedor", cell: (service) => <span className={cn("text-[13px]", service.provider.state !== "activo" && "text-bad")}>{service.provider.name}{service.provider.state !== "activo" && <small className="block text-xs">Proveedor {SUPPLY_STATE[service.provider.state].label.toLowerCase()}</small>}</span> },
+    { id: "provider", header: "Proveedor", cell: (service) => <span className={cn("text-[13px]", service.provider.state !== "activo" && "text-bad")}><Link href={providerHref(service.provider.ref)} className="transition-colors hover:text-accent hover:underline">{service.provider.name}</Link>{service.provider.state !== "activo" && <small className="block text-xs">Proveedor {SUPPLY_STATE[service.provider.state].label.toLowerCase()}</small>}</span> },
     ...(can.see_cost ? [{ id: "cost", header: "Costo", align: "right" as const, cell: (service: ServiceRow) => <span className="block text-right"><b className="font-mono text-[13.5px] font-semibold">{service.cost === null ? "—" : formatMoney(Number(service.cost), service.currency)}</b><small className="block text-[11.5px] text-fg-3">por {service.unit}</small></span> }] : []),
     { id: "validity", header: "Vigencia", wideOnly: true, cell: (service) => <span className="text-[13px]">hasta {formatDate(service.valid_to)}<small className={cn("block text-xs", service.expires_in < 0 ? "text-bad" : service.expires_in <= 90 ? "text-warn" : "text-fg-3")}>{service.expires_in < 0 ? "Vencido" : `${service.expires_in} días`}</small></span> },
     { id: "products", header: "En productos", wideOnly: true, cell: (service) => (service.products.length ? <CountTip items={service.products.map((product) => ({ label: product.name, included: true }))} unit="productos" className="text-[12.5px]" /> : <span className="text-[12.5px] text-fg-3">Ninguno</span>) },

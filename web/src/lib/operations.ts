@@ -15,7 +15,8 @@ export interface OrderRow {
   date_from: string;
   date_to: string;
   created_at: string;
-  reservation: { code: string; status: string; client: string };
+  reservation: { code: string; status: string; client: string; channel?: string | null };
+  services?: number;
   coordinator: Person;
   passengers: number;
   assignments: { total: number; pending: number; confirmed: number };
@@ -31,6 +32,9 @@ export interface OrderCandidate {
   travel_from: string;
   travel_to: string;
   client: string;
+  services?: number;
+  replicable?: number;
+  passengers?: number;
 }
 
 export interface OrderList {
@@ -303,6 +307,15 @@ export interface Vehicle extends ResourceBase {
 
 export type DocumentState = "vigente" | "por_vencer" | "vencido" | "sin_dato";
 
+export interface ResourceDeparture {
+  kind: "guide" | "driver" | "vehicle";
+  resource_id: string;
+  date: string;
+  time: string | null;
+  label: string;
+  ref: string;
+}
+
 export interface ResourceOverview {
   today: string;
   can: { assign: boolean };
@@ -310,6 +323,7 @@ export interface ResourceOverview {
   drivers: Driver[];
   vehicles: Vehicle[];
   assignments: Assignment[];
+  departures?: ResourceDeparture[];
   languages: SelectOption[];
   carriers: { id: string; name: string }[];
   options: ResourceOptions | null;
@@ -435,7 +449,7 @@ export interface IncidentDetail extends IncidentRow {
   assignee_id: string | null;
   logs: { id: string; user: string; kind: string; message: string; at: string }[];
   evidence_files: EvidenceFile[];
-  can: { manage: boolean };
+  can: { manage: boolean; remove_evidence?: boolean };
   types: string[];
   assignees: Person[];
 }
@@ -545,6 +559,7 @@ export interface TravelDocDetail {
   mapi: { services: { code: string; name: string; date: string; pax: number | null }[]; used: boolean; blocked: boolean; missing: { name: string; documents: string[] }[] } | null;
   passengers: TravelDocDetailPassenger[];
   reminders: { at: string; channel: string; to: string; trigger: string; days_before: number | null; items: number; by: string | null }[];
+  log?: { code: string; passenger: string | null; action: string; before: string | null; after: string | null; by: string | null; at: string }[];
 }
 
 export const SEVERITY_LABEL: Record<string, string> = { baja: "Baja", media: "Media", alta: "Alta", critica: "Crítica" };

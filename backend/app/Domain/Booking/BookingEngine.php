@@ -15,10 +15,12 @@ use App\Domain\Booking\Data\QuoteLine;
 use App\Domain\Booking\Data\QuoteSelection;
 use App\Domain\Booking\Data\RuleSet;
 use App\Domain\Booking\Data\SeasonCalendar;
+use App\Domain\Catalog\Support\RateResolver;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Brick\Money\Money;
 use Carbon\CarbonImmutable;
+use Closure;
 use DomainException;
 
 final class BookingEngine implements BookingEngineInterface
@@ -34,6 +36,7 @@ final class BookingEngine implements BookingEngineInterface
         private readonly InventoryReader $inventory,
         private readonly array $ecommerceDefaults,
         string $today,
+        private readonly ?Closure $rounding = null,
     ) {
         $this->today = CarbonImmutable::parse($today)->startOfDay();
     }
@@ -195,7 +198,14 @@ final class BookingEngine implements BookingEngineInterface
         $season = ($sel->date !== null && $this->rules->on('R-SEASON', $p)) ? $this->seasons->for($sel->date) : null;
         $factor = BigDecimal::of($season->factor ?? '1');
 
-        [$lines, $rooms, $nights] = $this->priceLines($p, $sel, $factor, $season, $warnings);
+        $schedule = $this->tripSchedule($p, $sel);
+        foreach ($schedule as $leg) {
+            if ($leg['requested'] !== null && $leg['requested'] !== $leg['nights']) {
+                $warnings[] = $leg['city'].' admite de '.$leg['minNights'].' a '.$leg['maxNights'].' noche(s): se ajustó a '.$leg['nights'].'.';
+            }
+        }
+
+        [$lines, $rooms, $nights] = $this->priceLines($p, $sel, $factor, $season, $warnings, $schedule);
 
         $subtotal = $this->sum($currency, array_filter($lines, fn (QuoteLine $l): bool => ! $l->removed && $l->kind !== 'info'));
         $adjustments = $this->adjustments($p, $sel, $subtotal);
@@ -234,16 +244,163 @@ final class BookingEngine implements BookingEngineInterface
             warnings: $warnings,
             ok: $this->onlyNonBlocking($warnings),
             season: $season,
+            legs: array_map(fn (array $leg): array => array_diff_key($leg, ['requested' => true]), $schedule),
+            tripEnd: $schedule === [] ? null : $schedule[count($schedule) - 1]['checkOut'],
+            byCategory: $this->byCategory($currency, $lines),
         );
+    }
+
+    public function tripSchedule(ProductData $p, QuoteSelection $sel): array
+    {
+        $on = $this->rules->on('R-TRIP-BUILDER', $p);
+        $day = $sel->date !== null ? CarbonImmutable::parse($sel->date)->startOfDay() : null;
+        $out = [];
+
+        foreach (array_values((array) ($p->accommodation['legs'] ?? [])) as $leg) {
+            $fixed = (int) $leg['nights'];
+            $min = $on && ! empty($leg['minNights']) ? (int) $leg['minNights'] : $fixed;
+            $max = $on && ! empty($leg['maxNights']) ? (int) $leg['maxNights'] : $fixed;
+            $requested = $on && array_key_exists((string) $leg['id'], $sel->nights) ? (int) $sel->nights[(string) $leg['id']] : null;
+            $nights = $requested === null ? $fixed : max($min, min($max, $requested));
+            $out[] = [
+                'legId' => (string) $leg['id'],
+                'city' => (string) $leg['city'],
+                'nights' => $nights,
+                'minNights' => $min,
+                'maxNights' => $max,
+                'requested' => $requested,
+                'checkIn' => $day?->toDateString(),
+                'checkOut' => $day?->addDays($nights)->toDateString(),
+            ];
+            $day = $day?->addDays($nights);
+        }
+
+        return $out;
+    }
+
+    public function vehicleFor(array $vehicles, int $people): ?array
+    {
+        $sorted = collect($vehicles)->sortBy(fn (array $v): int => (int) $v['maxPax'])->values();
+        if ($sorted->isEmpty()) {
+            return null;
+        }
+        $fit = $sorted->first(fn (array $v): bool => (int) $v['maxPax'] >= $people);
+        $vehicle = $fit ?? $sorted->last();
+
+        return ['vehicle' => $vehicle, 'units' => $fit !== null ? 1 : (int) ceil(max(1, $people) / max(1, (int) $vehicle['maxPax']))];
+    }
+
+    public function tripItemAmount(array $item, string $kind, array $pax): array
+    {
+        $adt = (int) ($pax['adt'] ?? 0);
+        $chd = (int) ($pax['chd'] ?? 0);
+
+        if ($kind === 'tour') {
+            $children = BigDecimal::of((string) ($item['priceChd'] ?? 0))->isPositive() || empty($item['minAge']) ? $chd : 0;
+            $amount = BigDecimal::of((string) $item['priceAdt'])->multipliedBy($adt)->plus(BigDecimal::of((string) ($item['priceChd'] ?? 0))->multipliedBy($children));
+
+            return ['amount' => $amount, 'adt' => $adt, 'chd' => $children, 'vehicle' => null, 'units' => null];
+        }
+
+        if (($item['pricing'] ?? 'pax') === 'vehiculo') {
+            $pick = $this->vehicleFor((array) ($item['vehicles'] ?? []), $adt + $chd);
+            if ($pick === null) {
+                return ['amount' => BigDecimal::zero(), 'adt' => $adt, 'chd' => $chd, 'vehicle' => null, 'units' => null];
+            }
+
+            return ['amount' => BigDecimal::of((string) $pick['vehicle']['price'])->multipliedBy($pick['units']), 'adt' => $adt, 'chd' => $chd, 'vehicle' => $pick['vehicle'], 'units' => $pick['units']];
+        }
+
+        $child = BigDecimal::of((string) ($item['priceChd'] ?? 0));
+        $child = $child->isPositive() ? $child : BigDecimal::of((string) $item['priceAdt']);
+
+        return ['amount' => BigDecimal::of((string) $item['priceAdt'])->multipliedBy($adt)->plus($child->multipliedBy($chd)), 'adt' => $adt, 'chd' => $chd, 'vehicle' => null, 'units' => null];
+    }
+
+    public function tourDate(array $tour, array $leg): ?string
+    {
+        if (($leg['checkIn'] ?? null) === null) {
+            return null;
+        }
+
+        return CarbonImmutable::parse($leg['checkIn'])->addDays(min((int) ($tour['dayOffset'] ?? 0), max(0, (int) $leg['nights'] - 1)))->toDateString();
+    }
+
+    public function transportDate(array $option, array $schedule): ?string
+    {
+        $legs = collect($schedule)->keyBy('legId');
+        $to = ($option['toLegId'] ?? null) !== null ? $legs->get($option['toLegId']) : null;
+
+        return $to !== null ? $to['checkIn'] : ($legs->get($option['fromLegId'])['checkIn'] ?? null);
+    }
+
+    public function pickTransport(ProductData $p, array $ids): array
+    {
+        $options = collect($p->trip['transport'] ?? [])->keyBy('id');
+        $picked = [];
+        foreach ($ids as $id) {
+            $option = $options->get($id);
+            if ($option === null) {
+                continue;
+            }
+            $picked[($option['toLegId'] ?? null) === null ? 'local|'.$option['id'] : $option['fromLegId'].'|'.$option['toLegId']] = $option;
+        }
+
+        return array_values($picked);
+    }
+
+    private function tripLines(ProductData $p, QuoteSelection $sel, array $schedule, callable $add, array &$warnings, string $fallbackCurrency): void
+    {
+        $legs = collect($schedule)->keyBy('legId');
+        $currency = (string) ($p->trip['currency'] ?? $fallbackCurrency);
+        $tours = collect($p->trip['tours'] ?? [])->keyBy('id');
+
+        foreach (array_unique($sel->tours) as $id) {
+            $tour = $tours->get($id);
+            if ($tour === null) {
+                continue;
+            }
+            $leg = $legs->get($tour['legId'], []);
+            $priced = $this->tripItemAmount($tour, 'tour', $sel->pax);
+            if (! empty($tour['minAge']) && $sel->pax['chd'] > 0) {
+                $warnings[] = $tour['name'].': edad mínima '.$tour['minAge'].' años; los niños menores no participan.';
+            }
+            $date = $this->tourDate($tour, $leg);
+            $add('tour-'.$tour['id'], 'tour', (isset($leg['city']) ? $leg['city'].' · ' : '').$tour['name'].($date !== null ? ' · '.substr($date, 8, 2).'/'.substr($date, 5, 2).' '.$tour['time'] : ''), 1, $priced['amount'], (string) ($tour['currency'] ?? $currency), true,
+                ['tour_id' => $tour['id'], 'leg_id' => $tour['legId'], 'city' => $leg['city'] ?? null, 'date' => $date, 'time' => $tour['time'] ?? null, 'adt' => $priced['adt'], 'chd' => $priced['chd'], 'provider_id' => $tour['providerId'] ?? null]);
+        }
+
+        foreach ($this->pickTransport($p, $sel->transport) as $option) {
+            $priced = $this->tripItemAmount($option, 'transport', $sel->pax);
+            $date = $this->transportDate($option, $schedule);
+            $vehicle = $priced['vehicle'] !== null ? ' · '.($priced['units'] > 1 ? $priced['units'].' × ' : '').$priced['vehicle']['name'] : '';
+            $add('trans-'.$option['id'], 'transport', $option['name'].$vehicle.($date !== null ? ' · '.substr($date, 8, 2).'/'.substr($date, 5, 2) : ''), 1, $priced['amount'], (string) ($option['currency'] ?? $currency), true,
+                ['transport_id' => $option['id'], 'mode' => $option['mode'] ?? $option['kind'] ?? null, 'from_leg_id' => $option['fromLegId'], 'to_leg_id' => $option['toLegId'] ?? null, 'date' => $date, 'pricing' => $option['pricing'] ?? 'pax', 'vehicle' => $priced['vehicle']['name'] ?? null, 'units' => $priced['units'], 'adt' => $priced['adt'], 'chd' => $priced['chd'], 'provider_id' => $option['providerId'] ?? null]);
+        }
+    }
+
+    private function byCategory(string $currency, array $lines): array
+    {
+        $out = [];
+        foreach (['base', 'lodging', 'tour', 'transport', 'addon', 'surcharge'] as $kind) {
+            $out[$kind] = Money::zero($currency);
+        }
+        foreach ($lines as $line) {
+            if (! $line->removed && isset($out[$line->kind])) {
+                $out[$line->kind] = $out[$line->kind]->plus($line->amount);
+            }
+        }
+
+        return $out;
     }
 
     public function segmentPrice(ProductData $p, string $segment, string $date, string $currency, string $channel = 'Directo'): ?array
     {
-        $rate = $this->baseRate($p, $segment, $channel);
-        $basis = 'price';
+        $season = $this->rules->on('R-SEASON', $p) ? $this->seasons->for($date) : null;
+        $rate = $this->baseRate($p, $segment, $channel, $season);
 
         if ($rate === null && $segment === 'Adulto') {
-            $rate = $this->baseRate($p, 'Pasajero', $channel);
+            $rate = $this->baseRate($p, 'Pasajero', $channel, $season);
         }
 
         if ($rate === null && $segment === 'Niño') {
@@ -261,48 +418,42 @@ final class BookingEngine implements BookingEngineInterface
             return null;
         }
 
-        $season = $this->rules->on('R-SEASON', $p) ? $this->seasons->for($date) : null;
-        $factor = BigDecimal::of($season->factor ?? '1');
         $from = (string) $rate['currency'];
         $marginPct = $this->rules->on('R-MULTICURRENCY') ? (string) ($this->rules->param('R-MULTICURRENCY', 'fxMarginPct') ?? 0) : '0';
 
         return [
-            'price' => Money::of($this->fx->display(BigDecimal::of((string) $rate[$basis])->multipliedBy($factor), $from, $currency, $marginPct), $currency, null, RoundingMode::HALF_UP),
+            'price' => Money::of($this->fx->display(RateResolver::seasonal($rate, $season?->factor), $from, $currency, $marginPct), $currency, null, RoundingMode::HALF_UP),
             'cost' => Money::of($this->fx->convert(BigDecimal::of((string) ($rate['cost'] ?? 0)), $from, $currency), $currency, null, RoundingMode::HALF_UP),
             'source' => 'rate',
         ];
     }
 
-    private function baseRate(ProductData $p, string $segment, string $channel): ?array
+    private function baseRate(ProductData $p, string $segment, string $channel, ?object $season = null): ?array
     {
-        foreach ($p->rates as $rate) {
-            if (($rate['status'] ?? '') === 'vigente' && ($rate['segment'] ?? '') === $segment
-                && (($rate['channel'] ?? '') === $channel || ($rate['channel'] ?? '') === 'Directo')) {
-                return $rate;
-            }
-        }
+        $rate = RateResolver::pick($p->rates, null, [$segment], $channel, $season?->id);
 
-        return null;
+        return is_array($rate) ? $rate : null;
     }
 
-    private function priceLines(ProductData $p, QuoteSelection $sel, BigDecimal $factor, ?object $season, array &$warnings): array
+    private function priceLines(ProductData $p, QuoteSelection $sel, BigDecimal $factor, ?object $season, array &$warnings, array $schedule = []): array
     {
         $r = $this->paxRules($p);
         $pax = $sel->pax;
         $currency = $sel->currency;
-        $adtRate = $this->baseRate($p, 'Adulto', $sel->channel) ?? $this->baseRate($p, 'Pasajero', $sel->channel);
+        $adtRate = $this->baseRate($p, 'Adulto', $sel->channel, $season) ?? $this->baseRate($p, 'Pasajero', $sel->channel, $season);
         if ($adtRate === null) {
             $warnings[] = 'El producto no tiene tarifa vigente (PRD-BR-005).';
         }
         $rateCurrency = (string) ($adtRate['currency'] ?? $this->fx->base());
-        $chdRate = $this->baseRate($p, 'Niño', $sel->channel);
+        $chdRate = $this->baseRate($p, 'Niño', $sel->channel, $season);
         $optionDelta = $this->optionDelta($p, $sel);
 
-        $adtUnit = $adtRate !== null ? BigDecimal::of((string) $adtRate['price'])->plus($optionDelta)->multipliedBy($factor) : BigDecimal::zero();
+        $round = fn (BigDecimal $unit): BigDecimal => $sel->roundUnits && $this->rounding !== null ? ($this->rounding)($unit) : $unit;
+        $adtUnit = $adtRate !== null ? $round(RateResolver::base($adtRate)->multipliedBy($factor))->plus($optionDelta->multipliedBy($factor)) : BigDecimal::zero();
         $chdUnit = ! empty($r['childPays'])
             ? ($chdRate !== null
-                ? BigDecimal::of((string) $chdRate['price'])->multipliedBy($factor)
-                : $adtUnit->multipliedBy((string) ($r['childPricePct'] ?? 100))->dividedBy(100, 6, RoundingMode::HALF_UP))
+                ? $round(RateResolver::base($chdRate)->multipliedBy($factor))
+                : $round($adtUnit->multipliedBy((string) ($r['childPricePct'] ?? 100))->dividedBy(100, 6, RoundingMode::HALF_UP)))
             : BigDecimal::zero();
         $infUnit = ! empty($r['infantPays']) ? $chdUnit : BigDecimal::zero();
 
@@ -352,7 +503,7 @@ final class BookingEngine implements BookingEngineInterface
             }
         }
 
-        [$rooms, $nights] = $this->rules->on('R-LODGING', $p) ? $this->lodgingLines($p, $sel, $add, $warnings) : [0, 0];
+        [$rooms, $nights] = $this->rules->on('R-LODGING', $p) ? $this->lodgingLines($p, $sel, $add, $warnings, $schedule) : [0, 0];
 
         if ($this->rules->on('R-SINGLE-SUPP', $p)) {
             $pct = (string) ($this->rules->param('R-SINGLE-SUPP', 'pct', $p) ?? 0);
@@ -365,12 +516,18 @@ final class BookingEngine implements BookingEngineInterface
             }
         }
 
+        if ($this->rules->on('R-TRIP-BUILDER', $p)) {
+            $this->tripLines($p, $sel, $schedule, $add, $warnings, $rateCurrency);
+        }
+
         return [$lines, $rooms, $nights];
     }
 
-    private function lodgingLines(ProductData $p, QuoteSelection $sel, callable $add, array &$warnings): array
+    private function lodgingLines(ProductData $p, QuoteSelection $sel, callable $add, array &$warnings, array $schedule = []): array
     {
         $legs = collect($p->accommodation['legs'] ?? []);
+        $plan = collect($schedule)->keyBy('legId');
+        $seasonal = $this->rules->on('R-TRIP-BUILDER', $p);
         $lodgingCurrency = (string) ($p->accommodation['currency'] ?? 'USD');
         $need = $sel->pax['adt'] + $sel->pax['chd'];
         $rooms = 0;
@@ -383,7 +540,8 @@ final class BookingEngine implements BookingEngineInterface
                 continue;
             }
 
-            $legNights = (int) $leg['nights'];
+            $stay = $plan->get((string) $leg['id']);
+            $legNights = (int) ($stay['nights'] ?? $leg['nights']);
             $legRooms = 0;
             $legBeds = 0;
             foreach ((array) ($choice['rooms'] ?? []) as $room) {
@@ -394,10 +552,11 @@ final class BookingEngine implements BookingEngineInterface
                 }
                 $legRooms += $qty;
                 $legBeds += $qty * (int) $type['capacity'];
+                [$unit, $hits] = $seasonal ? $this->nightlyRate($hotel, (string) $type['price'], $stay['checkIn'] ?? null, $legNights) : [BigDecimal::of((string) $type['price']), []];
                 $add('lodge-'.$leg['id'].'-'.$type['type'], 'lodging',
-                    $leg['city'].' · '.$hotel['name'].' · '.$qty.' hab. '.mb_strtolower((string) $type['type']).' × '.$legNights.' noche(s)',
-                    $qty * $legNights, BigDecimal::of((string) $type['price']), $lodgingCurrency, true,
-                    ['leg_id' => $leg['id'], 'city' => $leg['city'], 'hotel' => $hotel['name'], 'room_type' => $type['type'], 'rooms' => $qty, 'nights' => $legNights]);
+                    $leg['city'].' · '.$hotel['name'].' · '.$qty.' hab. '.mb_strtolower((string) $type['type']).' × '.$legNights.' noche(s)'.($hits !== [] ? ' · '.implode(', ', $hits) : ''),
+                    $qty * $legNights, $unit, $lodgingCurrency, true,
+                    ['leg_id' => $leg['id'], 'city' => $leg['city'], 'hotel' => $hotel['name'], 'room_type' => $type['type'], 'rooms' => $qty, 'nights' => $legNights, 'check_in' => $stay['checkIn'] ?? null, 'check_out' => $stay['checkOut'] ?? null, 'seasonal' => $hits !== []]);
             }
 
             if ($this->rules->on('R-LODGING-CAPACITY', $p) && $legRooms > 0 && $legBeds < $need) {
@@ -412,6 +571,33 @@ final class BookingEngine implements BookingEngineInterface
         }
 
         return [$rooms, $nights];
+    }
+
+    private function nightlyRate(array $hotel, string $base, ?string $checkIn, int $nights): array
+    {
+        $price = BigDecimal::of($base);
+        $ranges = (array) ($hotel['seasonRates'] ?? []);
+        if ($checkIn === null || $nights <= 0 || $ranges === []) {
+            return [$price, []];
+        }
+
+        $sum = BigDecimal::zero();
+        $hits = [];
+        $day = CarbonImmutable::parse($checkIn);
+        for ($i = 0; $i < $nights; $i++, $day = $day->addDay()) {
+            $date = $day->toDateString();
+            $range = collect($ranges)->first(fn (array $r): bool => $date >= $r['from'] && $date <= $r['to']);
+            if ($range === null) {
+                $sum = $sum->plus($price);
+
+                continue;
+            }
+            $pct = BigDecimal::of((string) $range['pct']);
+            $sum = $sum->plus($price->multipliedBy(BigDecimal::of(100)->plus($pct))->dividedBy(100, 2, RoundingMode::HALF_UP));
+            $hits[$range['label']] = $range['label'].' '.($pct->isNegative() ? '' : '+').$pct->strippedOfTrailingZeros().' %';
+        }
+
+        return [$sum->dividedBy($nights, 2, RoundingMode::HALF_UP), array_values($hits)];
     }
 
     private function optionDelta(ProductData $p, QuoteSelection $sel): BigDecimal
@@ -446,6 +632,19 @@ final class BookingEngine implements BookingEngineInterface
         if ($days !== null && $this->rules->on('R-LAST-MINUTE', $p) && $days < (int) $this->rules->param('R-LAST-MINUTE', 'days', $p)) {
             $pct = (string) $this->rules->param('R-LAST-MINUTE', 'pct', $p);
             $adjustments[] = ['key' => 'last', 'label' => 'Recargo de última hora ('.$pct.' %)', 'amount' => $percent($subtotal, $pct)];
+        }
+
+        if ($sel->promotion !== null && $this->rules->on('R-PROMO', $p)) {
+            $promo = $sel->promotion;
+            $amount = ! empty($promo['percent'])
+                ? $percent($subtotal, (string) $promo['value'])
+                : Money::of($this->fx->display(BigDecimal::of((string) $promo['value']), (string) ($promo['currency'] ?? $sel->currency), $sel->currency, '0'), $sel->currency, null, RoundingMode::HALF_UP);
+            if ($amount->isGreaterThan($subtotal)) {
+                $amount = $subtotal;
+            }
+            if ($amount->isPositive()) {
+                $adjustments[] = ['key' => 'promo', 'label' => (string) $promo['label'], 'amount' => $amount->negated(), 'code' => $promo['code'] ?? null];
+            }
         }
 
         if ($this->rules->on('R-PAY-FEE', $p) && $sel->paymentMethod === 'tarjeta') {

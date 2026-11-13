@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Marketing\Actions;
 
+use App\Domain\Crm\Support\Advisors;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Iam\Models\User;
 use App\Domain\Marketing\Support\ContactBook;
@@ -14,9 +15,12 @@ use App\Jobs\SendCampaign;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 final class CampaignWorkflow
 {
+    public const TEST_ROLES = ['tenant_admin', 'manager', 'sales', 'operations', 'finance', 'accounting'];
+
     public function __construct(
         private readonly CodeSequence $codes,
         private readonly AuditLogger $audit,
@@ -60,9 +64,32 @@ final class CampaignWorkflow
         });
     }
 
-    public function test(string $code, User $actor): void
+    public function test(string $code, User $actor, ?string $toUserId = null, ?string $sample = null): string
     {
         $campaign = $this->find($code);
+        $recipient = DB::table('iam_users')->where('id', $toUserId ?? $actor->getKey())->where('status', 'activo')->whereNull('deleted_at')->first(['id', 'name', 'email', 'phone']);
+
+        if ($recipient === null || ($toUserId !== null && ! app(Advisors::class)->has($toUserId, self::TEST_ROLES))) {
+            throw ValidationException::withMessages(['to_user_id' => 'La prueba solo se envía a una persona activa del equipo interno.']);
+        }
+
+        $address = $campaign->channel === 'email' ? $recipient->email : ($recipient->phone ?: null);
+
+        if ($address === null || $address === '') {
+            throw ValidationException::withMessages(['to_user_id' => "{$recipient->name} no tiene teléfono registrado para recibir la prueba por WhatsApp."]);
+        }
+
+        $subject = null;
+
+        if ($sample !== null) {
+            $subject = ($client = DB::table('crm_clients')->whereNull('deleted_at')->where('code', $sample)->value('id')) !== null
+                ? ['client', $client]
+                : (($lead = DB::table('crm_leads')->whereNull('deleted_at')->where('code', $sample)->value('id')) !== null ? ['lead', $lead] : null);
+
+            if ($subject === null) {
+                throw ValidationException::withMessages(['sample' => 'El contacto de ejemplo no existe.']);
+            }
+        }
         $template = DB::table('mkt_templates')->where('id', $campaign->template_id)->first(['channel', 'status']);
 
         if (! in_array($campaign->status, ['borrador', 'programada'], true)) {
@@ -76,12 +103,16 @@ final class CampaignWorkflow
         DB::table('mkt_campaign_tests')->insert([
             'id' => (string) Str::uuid7(),
             'campaign_id' => $campaign->id,
-            'to_user_id' => $actor->getKey(),
-            'to_address' => $campaign->channel === 'email' ? $actor->email : ($actor->phone ?? $actor->email),
+            'to_user_id' => $recipient->id,
+            'to_address' => mb_substr((string) $address, 0, 160),
+            'sample_subject_type' => $subject[0] ?? null,
+            'sample_subject_id' => $subject[1] ?? null,
             'sent_at' => now(),
             'created_by' => $actor->getKey(),
         ]);
-        $this->audit->log('Campaña', $campaign->code, 'envio_prueba', null, $actor->email);
+        $this->audit->log('Campaña', $campaign->code, 'envio_prueba', null, trim($address.($sample !== null ? " · ejemplo {$sample}" : '')));
+
+        return (string) $address;
     }
 
     public function schedule(string $code, string $when, User $actor): void

@@ -52,6 +52,7 @@ export interface B2bAgency {
   sales: number;
   commission: number;
   reservations: { code: string; title: string; status: string; travel_from: string; total: number; currency: string }[];
+  portal_users: { code: string | null; name: string; email: string; status: string; last_login_at: string | null }[];
   rates: B2bRate[];
 }
 
@@ -108,6 +109,10 @@ export interface EcomOrder {
 export interface EcomProduct {
   code: string;
   name: string;
+  slug: string | null;
+  web_price: { amount: number; currency: string } | null;
+  on_site: boolean;
+  promotion: { name: string; kind: string; value: number; percent: boolean; code: string | null; ends_at: string } | null;
   status: string;
   featured: boolean;
   rating: number | null;
@@ -122,6 +127,7 @@ export interface EcommerceOverview {
   kpis: { orders: number; confirmed: number; pending: number; rejected: number; conversion: number; revenue: Money; published: number };
   funnel: { id: string; label: string; value: number }[];
   orders: EcomOrder[];
+  site_url: string;
   products: EcomProduct[];
   can_manage: boolean;
 }
@@ -181,6 +187,12 @@ export interface CmsContent {
   lock_version: number;
   next: string[];
   log: CmsLogEntry[];
+}
+
+export interface CmsPreview {
+  html: string;
+  serp: { title: string; url: string; description: string; title_length: number; description_length: number; warnings: string[] };
+  words: number;
 }
 
 export interface CmsOverview {
@@ -244,6 +256,9 @@ export interface WebOverview {
   events: WebEvent[];
   kpis: { domains: number; verified: number; events: number; sessions: number; handoffs: number };
   products: { code: string; name: string }[];
+  categories?: string[];
+  webhooks?: { event: string; when: string; subscriptions: number; endpoints: string[] }[];
+  handoffs?: { code: string; at: string; product: string | null; date: string; pax: number; total: string | null; currency: string; origin: string | null; status: string }[];
   methods: { value: string; label: string }[];
   can_manage: boolean;
   can_rotate: boolean;
@@ -341,10 +356,17 @@ export interface ExternalReview {
   reply: string | null;
   replied_at: string | null;
   replied_by: string | null;
+  conversation: string | null;
+}
+
+export interface ReviewSourceAdmin extends ReviewSource {
+  priority: boolean;
+  available_scopes: string[];
+  contract_ack_at: string | null;
 }
 
 export interface ExternalReviewsOverview {
-  kpis: { average: number | null; total: number; connected: number; inbox: number; unanswered: number; critical: number };
+  kpis: { average: number | null; total: number; connected: number; inbox: number; unanswered: number; critical: number; invites_active: boolean; invites_sent: number };
   sources: ReviewSource[];
   items: ExternalReview[];
   can_reply: boolean;
@@ -423,6 +445,7 @@ export interface PassengerPortalOverview {
   messages: PaxMessage[];
   feedback: PaxFeedback[];
   can_reply: boolean;
+  previewable?: { code: string; title: string; from: string; passenger: string }[];
 }
 
 export const FEEDBACK_TYPES: Record<string, string> = {
@@ -454,4 +477,6 @@ export interface OwnReviewSettings {
   updated_by: string | null;
   lock_version: number;
   options: { subratings: { value: string; label: string }[]; personal_data: { value: string; label: string }[]; channels: { value: string; label: string }[]; placeholders: string[] };
+  preview: { nombre: string; tour: string; agencia: string; enlace: string; reservation: string | null };
+  export: { public_key: string; key_header: string; cdn: string; host: string; feed_url: string; product: { code: string; name: string } | null; json_ld: Record<string, unknown> | null } | null;
 }

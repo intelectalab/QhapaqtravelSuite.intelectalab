@@ -18,6 +18,8 @@ final class OperatorDirectory
 
     public const NEXT_DAYS = 14;
 
+    public const RESOURCE_STATUS = ['disponible' => 'Disponible', 'asignado' => 'Asignado', 'descanso' => 'En descanso', 'vacaciones' => 'De vacaciones'];
+
     public function __construct(private readonly OpsCommon $common) {}
 
     public function me(OperatorResource $resource): array
@@ -34,6 +36,8 @@ final class OperatorDirectory
             'name' => $row->full_name,
             'phone' => $row->phone,
             'status' => $row->status,
+            'status_label' => self::RESOURCE_STATUS[$row->status] ?? ucfirst((string) $row->status),
+            'rating' => $row->rating !== null ? round((float) $row->rating, 1) : null,
             'license' => $row->license_number,
             'license_class' => $row->license_class ?? null,
             'license_expires_on' => $expires,
@@ -89,6 +93,7 @@ final class OperatorDirectory
         $checkins = DB::table('ops_assignment_checkins')->where('assignment_id', $row->id)->whereNull('undone_at')->get(['passenger_id', 'checked_at', 'source'])->keyBy('passenger_id');
         $evidences = DB::table('ops_evidences')->where('order_id', $row->order_id)->where('reservation_service_id', $row->reservation_service_id)->whereNull('removed_at')->orderBy('captured_at')->get(['id', 'file_name', 'mime_type', 'sha256', 'captured_at', 'source']);
         $done = $row->status === 'completada';
+        $pickupApplies = $this->pickupServiceId((string) $row->reservation_id) === (string) $row->reservation_service_id;
         $partner = $resource->type === 'guide'
             ? ($row->driver_name ? ['role' => 'Conductor', 'name' => $row->driver_name, 'phone' => $row->driver_phone] : null)
             : ($row->guide_name ? ['role' => 'Guía', 'name' => $row->guide_name, 'phone' => $row->guide_phone] : null);
@@ -106,8 +111,10 @@ final class OperatorDirectory
             'reservation' => $row->reservation_code,
             'notes' => $row->reservation_notes,
             'vehicle' => $row->plate ? "{$row->plate} · {$row->vehicle_type}" : null,
-            'meeting_point' => $this->meetingPoint($row),
-            'pickup' => $this->pickup($row, $passengers),
+            'meeting_point' => $this->meetingPoint($row, $pickupApplies),
+            'pickup' => $this->pickup($row, $passengers, $pickupApplies),
+            'incidents' => DB::table('ops_incidents')->where('order_id', $row->order_id)->whereIn('status', ['abierta', 'en_proceso'])->orderByDesc('created_at')->limit(10)
+                ->get(['code', 'type', 'severity', 'title', 'status'])->map(fn (object $incident): array => (array) $incident)->values(),
             'partner' => $partner,
             'coordinator' => $row->coordinator_name ? ['name' => $row->coordinator_name, 'phone' => $row->coordinator_phone] : null,
             'confirmed_at' => $row->confirmed_at,
@@ -138,7 +145,15 @@ final class OperatorDirectory
         ];
     }
 
-    private function pickup(object $row, Collection $passengers): array
+    public function pickupServiceId(string $reservationId): ?string
+    {
+        $id = DB::table('booking_reservation_services')->where('reservation_id', $reservationId)->whereNotIn('status', ['cancelado', 'rechazado'])->whereNull('replaced_by_id')->where('service_kind', '<>', 'alojamiento')
+            ->orderBy('service_date')->orderByRaw('service_time nulls last')->orderBy('code')->value('id');
+
+        return $id !== null ? (string) $id : null;
+    }
+
+    private function pickup(object $row, Collection $passengers, bool $applies): array
     {
         $snapshot = DB::table('booking_reservation_web_snapshots')->where('reservation_id', $row->reservation_id)->orderBy('service_date')->first(['pickup_flight', 'pickup_arrival', 'comments']);
         $client = DB::table('booking_reservations as r')->join('crm_clients as c', 'c.id', '=', 'r.client_id')->where('r.id', $row->reservation_id)->first(['c.tags']);
@@ -151,25 +166,26 @@ final class OperatorDirectory
         }
 
         return [
-            'flight' => $snapshot->pickup_flight ?? null,
-            'arrival' => $snapshot->pickup_arrival ?? null,
-            'sign' => $lead ? mb_strtoupper((string) $lead->full_name) : null,
+            'applies' => $applies,
+            'flight' => $applies ? ($snapshot->pickup_flight ?? null) : null,
+            'arrival' => $applies ? ($snapshot->pickup_arrival ?? null) : null,
+            'sign' => $applies && $lead ? mb_strtoupper((string) $lead->full_name) : null,
             'comments' => trim((string) ($snapshot->comments ?? '')) ?: null,
             'tags' => $client ? array_values(array_filter(explode(',', trim((string) $client->tags, '{}')), fn (string $tag): bool => $tag !== '')) : [],
             'diets' => $diets,
         ];
     }
 
-    private function meetingPoint(object $row): ?array
+    private function meetingPoint(object $row, bool $pickupApplies): ?array
     {
+        $pickup = $pickupApplies ? DB::table('booking_reservation_web_snapshots')->where('reservation_id', $row->reservation_id)->first(['pickup_point', 'pickup_address']) : null;
+        if ($pickup && ($pickup->pickup_point || $pickup->pickup_address)) {
+            return ['text' => trim(implode(' · ', array_filter([$pickup->pickup_point, $pickup->pickup_address]))), 'source' => 'cliente'];
+        }
+
         $departure = $row->departure_id ? DB::table('catalog_product_departures')->where('id', $row->departure_id)->value('meeting_point') : null;
         if ($departure) {
             return ['text' => (string) $departure, 'source' => 'salida'];
-        }
-
-        $pickup = DB::table('booking_reservation_web_snapshots')->where('reservation_id', $row->reservation_id)->first(['pickup_point', 'pickup_address']);
-        if ($pickup && ($pickup->pickup_point || $pickup->pickup_address)) {
-            return ['text' => trim(implode(' · ', array_filter([$pickup->pickup_point, $pickup->pickup_address]))), 'source' => 'cliente'];
         }
 
         $product = $row->product_id ? DB::table('catalog_products')->where('id', $row->product_id)->value('pickup_text') : null;

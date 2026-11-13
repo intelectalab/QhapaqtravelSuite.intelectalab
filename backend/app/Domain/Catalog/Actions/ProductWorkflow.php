@@ -186,6 +186,36 @@ final class ProductWorkflow
         });
     }
 
+    public function minimumPassengers(string $code, int $minimum, int $version, User $actor): array
+    {
+        return DB::transaction(function () use ($code, $minimum, $version, $actor): array {
+            $product = $this->product($code);
+
+            if ($product->status === 'ARCHIVED') {
+                throw ApiException::conflict('PRD-ARCHIVED', 'Un producto archivado no se edita.');
+            }
+
+            if ($minimum < 1 || $minimum > (int) $product->maximum_passengers) {
+                throw ApiException::unprocessable('CAT-BR-02', "El mínimo de pasajeros va de 1 a {$product->maximum_passengers} (el máximo del producto).", ['minimum_passengers' => ['El mínimo no puede ser mayor que el máximo.']]);
+            }
+
+            if ($minimum === (int) $product->minimum_passengers) {
+                throw ApiException::unprocessable('CFG-BR-01', 'El producto ya tiene ese mínimo de pasajeros.');
+            }
+
+            $updated = DB::table('catalog_products')->where('id', $product->id)->where('lock_version', $version)
+                ->update(['minimum_passengers' => $minimum, 'lock_version' => $version + 1, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+
+            if ($updated === 0) {
+                throw ApiException::conflict('STALE_VERSION', 'Alguien cambió este producto mientras lo veías. Recarga la página e inténtalo de nuevo.');
+            }
+
+            $this->audit->log('Producto', (string) $product->code, 'modificar', self::FIELDS['minimum_passengers'].': '.$product->minimum_passengers, self::FIELDS['minimum_passengers'].': '.$minimum);
+
+            return ['code' => (string) $product->code, 'minimum_passengers' => $minimum, 'lock_version' => $version + 1];
+        });
+    }
+
     public function transition(string $code, string $action, ?string $reason, int $version, User $actor): void
     {
         $rule = self::TRANSITIONS[$action] ?? throw ApiException::notFound('La acción no existe.');
@@ -255,16 +285,29 @@ final class ProductWorkflow
             throw ApiException::conflict('PRD-BR-018', 'Un producto en venta no se elimina. Inactívalo o archívalo primero.');
         }
 
-        $quotes = DB::table('quote_items')->where('product_id', $product->id)->count();
-        $reservations = DB::table('booking_reservation_services')->where('product_id', $product->id)->count();
-        $packages = DB::table('catalog_product_items')->where('component_product_id', $product->id)->count();
+        $quotes = DB::table('quote_items as i')->join('quote_versions as v', 'v.id', '=', 'i.quote_version_id')->join('quote_quotes as q', 'q.id', '=', 'v.quote_id')
+            ->where('i.product_id', $product->id)->distinct()->orderByDesc('q.code')->get(['q.code', 'q.status']);
+        $reservations = DB::table('booking_reservation_services as s')->join('booking_reservations as r', 'r.id', '=', 's.reservation_id')
+            ->where('s.product_id', $product->id)->distinct()->orderByDesc('r.code')->get(['r.id', 'r.code', 'r.status']);
+        $operations = DB::table('ops_orders')->whereIn('reservation_id', $reservations->pluck('id'))->whereNull('deleted_at')->orderByDesc('code')->get(['code', 'status']);
+        $packages = DB::table('catalog_product_items as i')->join('catalog_products as p', 'p.id', '=', 'i.product_id')
+            ->where('i.component_product_id', $product->id)->whereNull('p.deleted_at')->distinct()->orderBy('p.name')->get(['p.code', 'p.name', 'p.status']);
 
-        if ($quotes + $reservations + $packages > 0) {
+        if ($quotes->count() + $reservations->count() + $operations->count() + $packages->count() > 0) {
+            $this->audit->logOutsideTransaction('Producto', $product->code, 'eliminacion_bloqueada', $product->status, "PRD-BR-018 · {$quotes->count()} cotizaciones · {$reservations->count()} reservas · {$operations->count()} operaciones · {$packages->count()} paquetes");
+
             throw ApiException::conflict('PRD-BR-018', 'No se puede eliminar porque ya se usa en '.implode(', ', array_filter([
-                $quotes ? "{$quotes} cotizaciones" : null,
-                $reservations ? "{$reservations} servicios de reservas" : null,
-                $packages ? "{$packages} paquetes" : null,
-            ])).'. Archívalo en su lugar.');
+                $quotes->isNotEmpty() ? "{$quotes->count()} cotizaciones" : null,
+                $reservations->isNotEmpty() ? "{$reservations->count()} reservas" : null,
+                $operations->isNotEmpty() ? "{$operations->count()} operaciones" : null,
+                $packages->isNotEmpty() ? "{$packages->count()} paquetes" : null,
+            ])).'. Archívalo en su lugar.', [
+                'quotes' => $quotes->map(fn (object $row): array => ['code' => $row->code, 'status' => $row->status])->values()->all(),
+                'reservations' => $reservations->map(fn (object $row): array => ['code' => $row->code, 'status' => $row->status])->values()->all(),
+                'operations' => $operations->map(fn (object $row): array => ['code' => $row->code, 'status' => $row->status])->values()->all(),
+                'packages' => $packages->map(fn (object $row): array => ['code' => $row->code, 'name' => $row->name, 'status' => $row->status])->values()->all(),
+                'can_archive' => $product->status !== 'ARCHIVED',
+            ]);
         }
 
         DB::table('catalog_products')->where('id', $product->id)->update(['deleted_at' => now(), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);

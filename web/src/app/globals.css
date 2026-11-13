@@ -299,7 +299,8 @@
 
 [data-site-style="andes"] {
   --andes-gold: #f2b33d;
-  --andes-gold-hover: #de9f2b;
+  --andes-gold-hover: color-mix(in srgb, var(--andes-gold) 88%, #000000);
+  --andes-gold-glow: color-mix(in srgb, var(--andes-gold) 70%, transparent);
   --andes-gold-ink: #2a1e00;
   --andes-ice: color-mix(in srgb, var(--site-accent) 8%, #ffffff);
   --andes-serif: var(--font-site-noto-serif), Georgia, serif;
@@ -308,16 +309,25 @@
   --radius-control: 12px;
 }
 
+[data-site-style="andes"][data-andes-serif="off"] {
+  --andes-serif: var(--site-font);
+}
+
 :root:not([data-theme="dark"]) [data-site-style="andes"] {
   --bg: #f7f9fc;
   --line: #e4e8ef;
 }
 
 [data-theme="dark"] [data-site-style="andes"] {
-  --andes-ice: color-mix(in srgb, var(--site-accent) 14%, var(--surface));
+  --bg: #08111f;
+  --surface: #0e1a2c;
+  --surface-2: #132238;
+  --line: rgb(255 255 255 / 0.08);
+  --line-2: rgb(255 255 255 / 0.05);
+  --andes-ice: #132a47;
 }
 
-[data-site-style="andes"] :is(h1, h2, h3) {
+[data-site-style="andes"]:not([data-andes-serif="off"]) :is(h1, h2, h3) {
   font-family: var(--andes-serif);
   font-weight: 600;
   letter-spacing: -0.015em;
@@ -327,7 +337,7 @@
   background: var(--andes-gold);
   color: var(--andes-gold-ink);
   font-weight: 700;
-  box-shadow: 0 6px 16px -8px rgb(242 179 61 / 0.9);
+  box-shadow: 0 6px 16px -8px var(--andes-gold-glow);
 }
 
 [data-site-style="andes"] [data-site-cta]:hover {
@@ -335,11 +345,81 @@
   filter: none;
 }
 
-[data-site-style="andes"] [data-site-claims] {
-  border: 1.5px solid var(--andes-gold);
-  background: rgb(242 179 61 / 0.12);
+[data-site-style="andes"] [data-site-cta]:focus-visible {
+  outline: 2px solid var(--site-accent);
+  outline-offset: 2px;
 }
 
-[data-site-style="andes"] [data-site-claims] svg {
+[data-site-style="andes"] [data-site-claims] {
+  border: 1.5px solid var(--andes-gold);
+  background: color-mix(in srgb, var(--andes-gold) 12%, transparent);
+}
+
+[data-site-style="andes"] [data-site-claims] svg,
+[data-site-style="andes"] [data-site-foot-title] {
   color: var(--andes-gold);
+}
+
+[data-site-style="andes"] [data-site-foot-title] {
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+[data-site-style="andes"] [data-site-nav-line] {
+  background: var(--andes-gold);
+}
+
+[data-site-style="andes"] [data-site-header][data-scrolled="true"] {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+[data-site-style="andes"] [data-site-newsletter] {
+  background: var(--andes-ice);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+}
+
+[data-site-style="andes"] [data-site-newsletter] :is(p, label) {
+  color: var(--fg-2);
+}
+
+[data-site-style="andes"] [data-site-newsletter] [data-site-decor] {
+  display: none;
+}
+
+[data-site-style="andes"] [data-site-day] {
+  border-radius: 999px;
+  background: var(--menu);
+  color: #ffffff;
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--andes-gold);
+}
+
+[data-site-style="andes"] [data-site-itinerary] > li {
+  background: var(--andes-ice);
+  box-shadow: none;
+}
+
+[data-site-style="andes"] [data-site-itinerary] [data-site-step] {
+  border-left-style: solid;
+  border-color: color-mix(in srgb, var(--site-accent) 22%, transparent);
+}
+
+[data-site-style="andes"] [data-site-price-ink] {
+  color: var(--fg);
+}
+
+[data-site-style="andes"] main :is(input:not([type]), input[type="text"], input[type="email"], input[type="tel"], input[type="date"], input[type="number"], input[type="search"]) {
+  min-height: 48px;
+}
+
+[data-site-style="andes"] main :is(input, textarea):not([class*="bg-transparent"]):focus-visible {
+  border-color: var(--site-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--site-accent) 15%, transparent);
+  outline: none;
 }

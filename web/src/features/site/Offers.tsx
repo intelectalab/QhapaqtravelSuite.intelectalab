@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { OffersData, ProductCard as Product } from "@/lib/site";
 import { siteHref } from "@/lib/site";
+import { trackSiteEvent } from "@/lib/site-analytics";
 import { Chip } from "./Bits";
 import { ProductCard } from "./Cards";
 import { Countdown } from "./Countdown";
@@ -56,7 +57,7 @@ function CodeCard({ item, base, index }: { item: OffersData["codes"][number]; ba
       <div>
         <p className="text-[15px] font-bold text-fg">{t.offers.off(item.percent ? `${item.value} %` : `S/ ${item.value}`)}</p>
         <p className="text-[13px] text-fg-2">{item.name}</p>
-        <Link href={siteHref(base, `/tours/${item.product.slug}`)} className="text-[13px] font-semibold text-brand hover:underline">
+        <Link href={siteHref(base, `/tours/${item.product.slug}`)} onClick={() => trackSiteEvent("select_promotion", { item_id: item.product.slug, promotion_name: item.name, promotion_code: item.code })} className="text-[13px] font-semibold text-brand hover:underline">
           {t.offers.forProduct(item.product.name)}
         </Link>
       </div>

@@ -72,6 +72,53 @@ final class ManagePaxTemplates
         });
     }
 
+    public function duplicate(string $code, User $actor): array
+    {
+        return DB::transaction(fn (): array => $this->copy($code, $actor));
+    }
+
+    private function copy(string $code, User $actor): array
+    {
+        $row = $this->find($code);
+        $lang = $row->lang === 'ES' ? 'EN' : 'ES';
+        $group = $row->group_code ?: $row->code;
+
+        $taken = DB::table('notif_pax_message_templates')->where('lang', $lang)->whereIn('group_code', [$group])->exists()
+            || DB::table('notif_pax_message_templates')->where('lang', $lang)->where('code', $group)->exists();
+
+        if ($taken) {
+            throw ApiException::conflict('MSG-05', $lang === 'EN' ? 'Esta plantilla ya tiene su versión en inglés.' : 'Esta plantilla ya tiene su versión en español.');
+        }
+
+        $last = DB::table('notif_pax_message_templates')->lockForUpdate()->pluck('code')->map(fn (string $value): int => (int) substr($value, 4))->max() ?? 0;
+        $copy = 'PMT-'.str_pad((string) ($last + 1), 3, '0', STR_PAD_LEFT);
+
+        if ($row->group_code === null) {
+            DB::table('notif_pax_message_templates')->where('id', $row->id)->update(['group_code' => $group, 'updated_at' => now()]);
+        }
+
+        DB::table('notif_pax_message_templates')->insert([
+            'code' => $copy,
+            'name' => mb_substr("{$row->name} ({$lang})", 0, 120),
+            'event' => $row->event,
+            'offset_hours' => $row->offset_hours,
+            'offset_from_rule' => $row->offset_from_rule,
+            'channels' => $row->channels,
+            'subject' => $row->subject,
+            'body' => $row->body,
+            'lang' => $lang,
+            'group_code' => $group,
+            'conditions' => $row->conditions,
+            'whatsapp_template_name' => $row->whatsapp_template_name,
+            'active' => false,
+            'created_by' => $actor->getKey(),
+            'updated_by' => $actor->getKey(),
+        ]);
+        $this->audit->log('Plantilla de mensaje', $copy, 'duplicar', $code, $lang);
+
+        return ['code' => $copy, 'lang' => $lang, 'group_code' => $group, 'active' => false];
+    }
+
     public function delete(string $code): void
     {
         DB::transaction(function () use ($code): void {

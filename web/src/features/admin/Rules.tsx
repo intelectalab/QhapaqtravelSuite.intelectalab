@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Layers, Lock, PencilRuler, Plus, Power, PowerOff, RotateCcw, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
+import { Check, Layers, Link2, Lock, PencilRuler, Plus, Power, PowerOff, RotateCcw, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useOptimistic, useState, useTransition } from "react";
 import { applyRuleTemplate, createRule, deleteRule, resetRule, toggleRule, updateRule, updateRuleParams } from "@/app/(backoffice)/admin/reglas/actions";
@@ -40,10 +40,11 @@ function paramText(param: RuleParam): string {
   return `${param.label}: ${param.value}${param.unit ? ` ${param.unit}` : ""}`;
 }
 
-function RuleSwitch({ rule, manage }: { rule: BookingRule; manage: boolean }) {
+function RuleSwitch({ rule, manage, dependents }: { rule: BookingRule; manage: boolean; dependents: BookingRule[] }) {
   const [enabled, setEnabled] = useOptimistic(rule.enabled);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const affected = dependents.filter((item) => item.enabled);
   const disabledHint = rule.locked ? `Disponible desde el plan ${rule.min_plan}` : !manage ? "Solo lectura" : undefined;
   if (disabledHint) {
     return (
@@ -69,7 +70,24 @@ function RuleSwitch({ rule, manage }: { rule: BookingRule; manage: boolean }) {
         }
       />
       {error && <span className="max-w-[220px] text-[11.5px] text-bad">{error}</span>}
+      {!error && affected.length > 0 && (
+        <span className="max-w-[220px] text-[11.5px] text-warn" title={affected.map((item) => `${item.code} · ${item.name}`).join("\n")}>
+          {enabled ? `Si la apagas, ${affected.length === 1 ? `${affected[0]!.code} queda sin efecto` : `${affected.length} reglas quedan sin efecto`}.` : `${affected.length === 1 ? affected[0]!.code : `${affected.length} reglas`} ${affected.length === 1 ? "depende" : "dependen"} de esta y no tienen efecto.`}
+        </span>
+      )}
     </div>
+  );
+}
+
+function DependencyNote({ rule, rules }: { rule: BookingRule; rules: BookingRule[] }) {
+  if (!rule.depends_on) return null;
+  const parent = rules.find((item) => item.code === rule.depends_on);
+  const off = parent ? !parent.enabled : false;
+  return (
+    <span className={cn("inline-flex items-center gap-1", off ? "font-semibold text-warn" : "text-fg-3")} title={parent?.name}>
+      <Link2 size={12} />
+      {off ? `Sin efecto: ${rule.depends_on} está inactiva` : `Depende de ${rule.depends_on}`}
+    </span>
   );
 }
 
@@ -103,6 +121,24 @@ export function RuleCreateAction() {
       initial={ADMIN_INITIAL}
     >
       {() => <RuleFields />}
+    </PanelAction>
+  );
+}
+
+export function RuleResetAllAction({ modified }: { modified: number }) {
+  return (
+    <PanelAction<AdminActionState>
+      label="Restablecer todas"
+      icon={<RotateCcw size={15} />}
+      variant="secondary"
+      formId="rule-reset-all"
+      title="Restablecer los valores por defecto"
+      description={modified > 0 ? `Las reglas estándar vuelven a su estado y parámetros de fábrica. Hoy tienes ${modified} ${modified === 1 ? "regla ajustada" : "reglas ajustadas"}. Las personalizadas no cambian.` : "Tus reglas estándar ya están con los valores de fábrica. Las personalizadas no cambian."}
+      submitLabel="Restablecer todas"
+      action={resetRule}
+      initial={ADMIN_INITIAL}
+    >
+      {() => <TextArea label="Motivo" name="reason" rows={2} required minLength={3} placeholder="Por ejemplo: volvemos a la configuración recomendada." />}
     </PanelAction>
   );
 }
@@ -173,6 +209,7 @@ export function RulesTable({ rules, manage }: { rules: BookingRule[]; manage: bo
             <span className="font-mono">{rule.code}</span>
             {rule.custom && <Badge tone="violet">Personalizada</Badge>}
             {rule.modified && <span className="text-accent">Ajustada</span>}
+            <DependencyNote rule={rule} rules={rules} />
           </p>
         </div>
       ),
@@ -196,7 +233,7 @@ export function RulesTable({ rules, manage }: { rules: BookingRule[]; manage: bo
         ),
     },
     { id: "plan", header: "Plan", wideOnly: true, cell: (rule) => <span className={cn("text-[12.5px]", rule.locked ? "font-semibold text-warn" : "text-fg-3")}>Desde {rule.min_plan}</span> },
-    { id: "status", header: "Estado", cell: (rule) => <RuleSwitch rule={rule} manage={manage} /> },
+    { id: "status", header: "Estado", cell: (rule) => <RuleSwitch rule={rule} manage={manage} dependents={rules.filter((item) => item.depends_on === rule.code)} /> },
     { id: "actions", header: "", align: "right", mobile: "detail", cell: (rule) => (manage ? <RuleRowActions rule={rule} /> : null) },
   ];
   const metrics: MetricFilter<BookingRule>[] = [
@@ -373,6 +410,7 @@ export function RuleChangesTable({ entries }: { entries: AuditEntry[] }) {
       ),
     },
     { id: "actor", header: "Quién", cell: (entry) => <span className="text-[13px]">{entry.actor}</span> },
+    { id: "ip", header: "IP", wideOnly: true, cell: (entry) => <span className="font-mono text-[12px] text-fg-3">{entry.ip ?? "—"}</span> },
     {
       id: "at",
       header: "Fecha",
@@ -390,7 +428,10 @@ export function RuleChangesTable({ entries }: { entries: AuditEntry[] }) {
     { id: "params", label: "Parámetros", tone: "t1", icon: <SlidersHorizontal size={19} />, matches: (entry) => entry.action === "editar_parametros" },
     { id: "templates", label: "Plantillas y restablecer", tone: "violet", icon: <Layers size={19} />, matches: (entry) => entry.action === "aplicar_plantilla" || entry.action === "restablecer" },
   ];
-  const filters: FilterConfig<AuditEntry>[] = [{ id: "actor", label: "Quién", options: [...new Set(entries.map((entry) => entry.actor))].map((actor) => ({ value: actor, label: actor })), value: (entry) => entry.actor }];
+  const filters: FilterConfig<AuditEntry>[] = [
+    { id: "action", label: "Cambio", options: [...new Set(entries.map((entry) => entry.action))].map((action) => ({ value: action, label: CHANGE_ACTIONS[action]?.label ?? action.replace(/_/g, " ") })), value: (entry) => entry.action },
+    { id: "actor", label: "Quién", options: [...new Set(entries.map((entry) => entry.actor))].map((actor) => ({ value: actor, label: actor })), value: (entry) => entry.actor },
+  ];
   const sorts: SortOption<AuditEntry>[] = [{ id: "at", label: "Fecha", type: "date", value: (entry) => entry.at }];
   return <DataTable screen="admin-reglas-historial" rows={entries} columns={columns} getKey={(entry) => String(entry.code)} entityLabel="cambios" searchText={(entry) => `${entry.entity_id} ${entry.actor} ${entry.before ?? ""} ${entry.after ?? ""}`} searchPlaceholder="Buscar regla o persona" metrics={metrics} filters={filters} sorts={sorts} emptyTitle="Aún no hay cambios en las reglas" />;
 }

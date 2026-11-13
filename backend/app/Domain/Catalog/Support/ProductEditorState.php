@@ -92,6 +92,7 @@ final class ProductEditorState
                 'seo_description' => $product->seo_description,
                 'slug' => $product->slug,
                 'video_url' => $product->video_url,
+                'features' => json_decode((string) ($product->features ?? '[]'), true) ?: [],
                 'inclusions' => $texts->where('kind', 'include')->pluck('text')->values(),
                 'exclusions' => $texts->where('kind', 'exclude')->pluck('text')->values(),
                 'requirements' => DB::table('catalog_product_requirements')->where('product_id', $product->id)->orderBy('created_at')->get(['category', 'text']),

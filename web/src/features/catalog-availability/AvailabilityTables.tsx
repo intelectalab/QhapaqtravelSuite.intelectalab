@@ -1,12 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { CalendarCheck, CalendarOff, CircleCheck, Hourglass, TimerOff, Undo2 } from "lucide-react";
+import { CalendarCheck, CalendarOff, ChevronRight, CircleCheck, Hourglass, TimerOff, Undo2 } from "lucide-react";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
-import { HOLD_STATUS, RANGE_STATUS, type AvailabilityOverview, type HoldRow, type RangeRow } from "@/lib/catalog-availability";
+import { HOLD_STATUS, RANGE_STATUS, type AvailabilityOverview, type HoldRow, type HoldStatus, type RangeRow } from "@/lib/catalog-availability";
 import { daysBetween } from "@/lib/catalog-rates";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -81,6 +81,40 @@ export function RangesTable({ overview, toolbarEnd }: { overview: AvailabilityOv
   return <DataTable screen="cupos-rangos" rows={overview.ranges} columns={columns} getKey={(range) => range.code} entityLabel="rangos" searchText={(range) => `${range.code} ${range.product.name} ${range.note ?? ""}`} searchPlaceholder="Buscar producto o nota" metrics={metrics} filters={filters} toolbarEnd={toolbarEnd} />;
 }
 
+const HOLD_FLOW: { status: HoldStatus | "disponible"; label: string }[] = [
+  { status: "disponible", label: "Disponible" },
+  { status: "hold", label: "En hold" },
+  { status: "confirmada", label: "Confirmado" },
+  { status: "consumida", label: "Usado" },
+];
+
+export function HoldFlow({ holds }: { holds: HoldRow[] }) {
+  const count = (status: HoldStatus) => holds.filter((hold) => hold.status === status && !(status === "hold" && hold.expired)).length;
+  const side: HoldStatus[] = ["liberada", "expirada"];
+  return (
+    <section className="mb-5 rounded-tile border border-line bg-surface-2/50 px-4 py-3.5" aria-label="Estados de un hold">
+      <ol className="flex flex-wrap items-center gap-2">
+        {HOLD_FLOW.map((step, index) => (
+          <li key={step.status} className="flex items-center gap-2">
+            {index > 0 && <ChevronRight size={15} className="text-fg-3" />}
+            <span style={{ ...toneStyle(step.status === "disponible" ? "accent" : HOLD_STATUS[step.status].tone), animationDelay: `${index * 70}ms` }} className="lift flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--tint)_28%,transparent)] bg-[color-mix(in_srgb,var(--tint)_9%,var(--surface))] px-3 py-1.5 text-[12.5px] font-semibold text-[var(--tint)] motion-safe:animate-[rise-in_380ms_cubic-bezier(0.22,1,0.36,1)_backwards]">
+              {step.label}
+              {step.status !== "disponible" && <b className="rounded-full bg-[var(--tint)] px-1.5 font-mono text-[11px] text-white">{count(step.status)}</b>}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-2.5 flex flex-wrap items-center gap-2 text-[12px] text-fg-3">
+        Salidas alternativas:
+        {side.map((status) => (
+          <Badge key={status} tone={HOLD_STATUS[status].tone}>{HOLD_STATUS[status].label} · {count(status)}</Badge>
+        ))}
+        <span>Un hold retiene cupos sin venderlos; se libera a mano o al cancelar, y expira solo al pasar su hora límite.</span>
+      </p>
+    </section>
+  );
+}
+
 export function HoldsTable({ overview }: { overview: AvailabilityOverview }) {
   const columns: Column<HoldRow>[] = [
     {
@@ -105,6 +139,7 @@ export function HoldsTable({ overview }: { overview: AvailabilityOverview }) {
       ),
     },
     { id: "quantity", header: "Cupos", align: "right", cell: (hold) => <span className="font-mono text-[13.5px] font-semibold">{hold.quantity}</span> },
+    { id: "created", header: "Creado", wideOnly: true, cell: (hold) => <span className="text-[13px] text-fg-2">{formatDateTime(hold.created_at, false)}</span> },
     {
       id: "expires",
       header: "Vence",
@@ -144,6 +179,7 @@ export function HoldsTable({ overview }: { overview: AvailabilityOverview }) {
       { header: "Salida", value: (hold) => hold.departure?.ref },
       { header: "Fecha", value: (hold) => hold.departure?.date },
       { header: "Cupos", value: (hold) => hold.quantity },
+      { header: "Creado", value: (hold) => hold.created_at },
       { header: "Vence", value: (hold) => (hold.status === "hold" ? hold.expires_at : null) },
       { header: "Usuario", value: (hold) => hold.user },
       { header: "Estado", value: (hold) => (hold.expired ? "Vencido" : HOLD_STATUS[hold.status].label) },

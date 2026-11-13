@@ -9,7 +9,7 @@ const done = (result: StepResult) => {
 };
 
 export async function saveWidgetDefaults(_state: StepResult, form: FormData): Promise<StepResult> {
-  const body = { ...formValues(form, ["product", "method", "lang", "currency", "theme", "radius", "domain"]), reviews: form.get("reviews") === "on" };
+  const body = { ...formValues(form, ["mode", "category", "product", "method", "lang", "currency", "theme", "radius", "domain"]), reviews: form.get("reviews") === "on" };
   return done(await sendStep("/channels/widget", "PUT", body, "No pudimos guardar la configuración del widget."));
 }
 

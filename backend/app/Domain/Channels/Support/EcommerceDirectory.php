@@ -6,17 +6,21 @@ namespace App\Domain\Channels\Support;
 
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\Site\Support\SiteCatalog;
 use Illuminate\Support\Facades\DB;
 
 final class EcommerceDirectory
 {
+    public function __construct(private readonly SiteCatalog $catalog, private readonly TenantContext $context) {}
+
     public const OPEN_STATUSES = ['pago_pendiente', 'pago_por_validar', 'pago_rechazado'];
 
     public const CANCELLABLE = ['pago_pendiente', 'pago_rechazado'];
 
     public function order(string $code, User $viewer): array
     {
-        $order = collect($this->overview($viewer)['orders'])->firstWhere('code', $code) ?? throw ApiException::notFound('El pedido no existe.');
+        $order = collect($this->overview($viewer, false)['orders'])->firstWhere('code', $code) ?? throw ApiException::notFound('El pedido no existe.');
         $id = DB::table('channel_ecom_orders')->where('code', $code)->value('id');
         $reservations = DB::table('booking_reservations')->where('ecom_order_id', $id)->get(['id', 'code', 'status', 'title', 'travel_from']);
 
@@ -34,8 +38,9 @@ final class EcommerceDirectory
         ];
     }
 
-    public function overview(User $viewer): array
+    public function overview(User $viewer, bool $withWeb = true): array
     {
+        $web = $withWeb ? $this->webCards() : [];
         $orders = DB::table('channel_ecom_orders as o')
             ->leftJoin('catalog_products as p', 'p.id', '=', 'o.product_id')
             ->leftJoin('booking_reservations as r', 'r.id', '=', 'o.reservation_id')
@@ -47,7 +52,7 @@ final class EcommerceDirectory
             ->whereNull('p.deleted_at')
             ->where(fn ($query) => $query->where('p.is_ecommerce', true)->orWhere('c.is_published', true))
             ->orderBy('p.name')
-            ->get(['p.id', 'p.code', 'p.name', 'p.status', 'p.is_featured', 'p.rating_avg', 'p.rating_count', 'c.is_published', 'c.published_at']);
+            ->get(['p.id', 'p.code', 'p.slug', 'p.name', 'p.status', 'p.is_featured', 'p.rating_avg', 'p.rating_count', 'c.is_published', 'c.published_at']);
 
         $attempts = [];
         foreach (DB::table('channel_ecom_payment_attempts')->whereIn('order_id', $orders->pluck('id'))->orderByDesc('attempted_at')
@@ -110,9 +115,14 @@ final class EcommerceDirectory
                 'links' => $links[(string) $row->code] ?? [],
                 'lock_version' => (int) $row->lock_version,
             ])->values(),
+            'site_url' => WidgetHosts::site((string) $this->context->tenant()->subdomain),
             'products' => $products->map(fn (object $row): array => [
                 'code' => $row->code,
                 'name' => $row->name,
+                'slug' => $row->slug,
+                'web_price' => $web[$row->id]['from'] ?? null,
+                'on_site' => isset($web[$row->id]),
+                'promotion' => $web[$row->id]['promotion'] ?? null,
                 'status' => $row->status,
                 'featured' => (bool) $row->is_featured,
                 'rating' => $row->rating_avg !== null ? (float) $row->rating_avg : null,
@@ -124,5 +134,21 @@ final class EcommerceDirectory
             ])->values(),
             'can_manage' => $viewer->can('channels.ecommerce.manage'),
         ];
+    }
+
+    private function webCards(): array
+    {
+        $cards = [];
+
+        foreach ($this->catalog->products() as $product) {
+            $card = $this->catalog->card($product);
+            $promotion = $product->promotions[0] ?? null;
+            $cards[(string) $product->id] = [
+                'from' => $card['from'],
+                'promotion' => $promotion === null ? null : ['name' => $promotion['name'], 'kind' => $promotion['kind'], 'value' => $promotion['value'], 'percent' => $promotion['percent'], 'code' => $promotion['code'], 'ends_at' => $promotion['ends_at']],
+            ];
+        }
+
+        return $cards;
     }
 }

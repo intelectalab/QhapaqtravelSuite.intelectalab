@@ -6,11 +6,46 @@ namespace App\Domain\Channels\Support;
 
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Tenancy\TenantContext;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final class WebIntegrationDirectory
 {
     public const METHODS = ['webcomponent' => 'Web component', 'iframe' => 'Iframe', 'script' => 'Script con botón', 'link' => 'Enlace directo'];
+
+    public const WEBHOOK_EVENTS = [
+        'reservation.confirmed' => 'Reserva confirmada, también las que llegan del sitio y del widget',
+        'reservation.cancelled' => 'Reserva cancelada',
+        'payment.applied' => 'Pago de adelanto o de saldo aplicado',
+        'voucher.issued' => 'Voucher emitido para un servicio de la reserva',
+    ];
+
+    private function webhooks(): array
+    {
+        $hooks = DB::table('integration_webhooks')->where('status', 'active')->get(['url', 'events']);
+
+        return collect(self::WEBHOOK_EVENTS)->map(function (string $when, string $event) use ($hooks): array {
+            $subscribed = $hooks->filter(fn (object $hook): bool => in_array($event, array_filter(explode(',', trim((string) $hook->events, '{}'))), true));
+
+            return ['event' => $event, 'when' => $when, 'subscriptions' => $subscribed->count(), 'endpoints' => $subscribed->pluck('url')->values()->all()];
+        })->values()->all();
+    }
+
+    public function domains(): Collection
+    {
+        return DB::table('channel_widget_domains as d')->leftJoin('iam_users as u', 'u.id', '=', 'd.created_by')->orderBy('d.created_at')
+            ->get(['d.id', 'd.domain', 'd.cms', 'd.status', 'd.verify_token', 'd.verified_at', 'd.created_at', 'u.name as added_by'])
+            ->map(fn (object $row): array => [
+                'id' => $row->id,
+                'domain' => $row->domain,
+                'cms' => $row->cms,
+                'status' => $row->status,
+                'token' => $row->verify_token,
+                'verified_at' => $row->verified_at,
+                'added_at' => $row->created_at,
+                'added_by' => $row->added_by,
+            ])->values();
+    }
 
     public function overview(User $viewer): array
     {
@@ -18,7 +53,7 @@ final class WebIntegrationDirectory
         $defaults = $config ? json_decode((string) $config->defaults, true) : [];
         $subdomain = (string) app(TenantContext::class)->tenant()->subdomain;
         $product = isset($defaults['product']) ? DB::table('catalog_products')->where('ref', $defaults['product'])->orWhere('code', $defaults['product'])->first(['code', 'name']) : null;
-        $domains = DB::table('channel_widget_domains as d')->leftJoin('iam_users as u', 'u.id', '=', 'd.created_by')->orderBy('d.created_at')->get(['d.id', 'd.domain', 'd.cms', 'd.status', 'd.verify_token', 'd.verified_at', 'd.created_at', 'u.name as added_by']);
+        $domains = $this->domains();
         $events = DB::table('channel_web_events as e')->leftJoin('crm_clients as c', 'c.id', '=', 'e.client_id')->orderByDesc('e.occurred_at')->limit(50)->get(['e.id', 'e.occurred_at', 'e.session_id', 'e.event', 'e.params', 'e.locale', 'e.currency', 'c.name as client']);
 
         return [
@@ -46,16 +81,7 @@ final class WebIntegrationDirectory
                 'method' => $defaults['method'] ?? 'webcomponent',
                 'domain' => $defaults['domain'] ?? null,
             ],
-            'domains' => $domains->map(fn (object $row): array => [
-                'id' => $row->id,
-                'domain' => $row->domain,
-                'cms' => $row->cms,
-                'status' => $row->status,
-                'token' => $row->verify_token,
-                'verified_at' => $row->verified_at,
-                'added_at' => $row->created_at,
-                'added_by' => $row->added_by,
-            ])->values(),
+            'domains' => $domains,
             'events' => $events->map(fn (object $row): array => [
                 'id' => (int) $row->id,
                 'at' => $row->occurred_at,
@@ -76,6 +102,29 @@ final class WebIntegrationDirectory
             'products' => DB::table('catalog_products as p')
                 ->join('catalog_product_channels as c', fn ($join) => $join->on('c.product_id', '=', 'p.id')->where('c.channel', 'ecommerce')->where('c.is_published', true))
                 ->whereNull('p.deleted_at')->orderBy('p.name')->get(['p.code', 'p.name']),
+            'webhooks' => $this->webhooks(),
+            'handoffs' => DB::table('channel_widget_handoffs as h')->leftJoin('catalog_products as p', 'p.id', '=', 'h.product_id')->orderByDesc('h.created_at')->limit(10)
+                ->get(['h.code', 'h.created_at', 'h.service_date', 'h.pax', 'h.quote_snapshot', 'h.currency_display', 'h.origin_domain', 'h.status', 'p.name as product'])
+                ->map(function (object $row): array {
+                    $pax = json_decode((string) $row->pax, true) ?: [];
+                    $quote = json_decode((string) $row->quote_snapshot, true) ?: [];
+
+                    return [
+                        'code' => $row->code,
+                        'at' => $row->created_at,
+                        'product' => $row->product,
+                        'date' => $row->service_date,
+                        'pax' => array_sum(array_map('intval', array_intersect_key($pax, array_flip(['adults', 'children', 'infants', 'adt', 'chd', 'inf'])))),
+                        'total' => isset($quote['total']) ? (string) $quote['total'] : null,
+                        'currency' => $quote['currency'] ?? $row->currency_display,
+                        'origin' => $row->origin_domain,
+                        'status' => $row->status,
+                    ];
+                })->values(),
+            'categories' => DB::table('catalog_products as p')
+                ->join('catalog_product_channels as c', fn ($join) => $join->on('c.product_id', '=', 'p.id')->where('c.channel', 'ecommerce')->where('c.is_published', true))
+                ->join('catalog_product_categories as k', 'k.id', '=', 'p.category_id')
+                ->whereNull('p.deleted_at')->distinct()->orderBy('k.name')->pluck('k.name')->values(),
             'methods' => collect(self::METHODS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
             'can_manage' => $viewer->can('channels.ecommerce.manage'),
             'can_rotate' => $viewer->can('admin.api.manage'),

@@ -12,6 +12,7 @@ use App\Domain\Booking\StateMachines\ReservationStateMachine;
 use App\Domain\Booking\Support\ConversionPlan;
 use App\Domain\Booking\Support\ReservationAssembler;
 use App\Domain\Booking\Support\ReservationReceivables;
+use App\Domain\Corporate\Actions\CorporateApprovals;
 use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
 use App\Domain\Quotes\Enums\QuoteStatus;
@@ -101,6 +102,8 @@ final class ConvertQuoteToReservation
         if ($version->status !== 'aprobada') {
             throw ApiException::conflict('RT-3', 'La versión vigente de la cotización no está aprobada.');
         }
+
+        app(CorporateApprovals::class)->assertConvertible($quote, $version);
 
         $items = $this->plan->items((string) $version->id);
         $grandTotal = Decimal::round2((string) $version->grand_total);

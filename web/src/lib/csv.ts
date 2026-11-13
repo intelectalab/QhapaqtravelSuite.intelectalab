@@ -3,10 +3,13 @@ export type CsvValue = string | number | boolean | null | undefined;
 export interface CsvColumn<T> {
   header: string;
   value: (row: T) => CsvValue;
+  type?: "text" | "number" | "money" | "date" | "datetime";
+  total?: boolean;
 }
 
 export interface CsvExport<T> {
   fileName: string;
+  title?: string;
   columns: CsvColumn<T>[];
 }
 

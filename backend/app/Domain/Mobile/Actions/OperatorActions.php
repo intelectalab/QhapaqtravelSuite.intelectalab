@@ -23,6 +23,10 @@ final class OperatorActions
 
     public const MAX_BATCH = 50;
 
+    public const DEVICE_REVOKED = 'DEVICE_REVOKED';
+
+    public const DEVICE_REVOKED_MESSAGE = 'Tu agencia desactivó este teléfono. Borramos los datos guardados; vuelve a iniciar sesión.';
+
     public function __construct(
         private readonly OperatorDirectory $directory,
         private readonly EvidenceWorkflow $evidence,
@@ -337,9 +341,13 @@ final class OperatorActions
 
     private function device(OperatorResource $resource, string $id): void
     {
-        $valid = Str::isUuid($id) && DB::table('ops_mobile_devices')->where('id', $id)->where('user_id', $resource->user->getKey())->where('app', 'operador')->whereNull('revoked_at')->exists();
+        $device = Str::isUuid($id) ? DB::table('ops_mobile_devices')->where('id', $id)->where('user_id', $resource->user->getKey())->where('app', 'operador')->first(['revoked_at', 'updated_by']) : null;
 
-        if (! $valid) {
+        if ($device !== null && $device->revoked_at !== null && (string) $device->updated_by !== (string) $resource->user->getKey()) {
+            throw ApiException::forbidden(self::DEVICE_REVOKED, self::DEVICE_REVOKED_MESSAGE);
+        }
+
+        if ($device === null || $device->revoked_at !== null) {
             throw ApiException::forbidden('MOB-BR-01', 'Registre este dispositivo antes de sincronizar.');
         }
     }

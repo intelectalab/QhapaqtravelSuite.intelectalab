@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { accountCookie, cartCookie, NO_EXTRAS, orderCookie, siteHref, type AccountMe, type BookingExtras, type CalendarMonth, type PaymentMode, type Quote, type SiteFormState } from "@/lib/site";
+import { accountCookie, cartCookie, NO_EXTRAS, orderCookie, siteHref, type AccountMe, type ChatMessage, type BookingExtras, type CalendarMonth, type PaymentMode, type Quote, type SiteFormState } from "@/lib/site";
 import { parseSiteLocale, SITE_LOCALE_COOKIE } from "@/lib/site-i18n";
 import { captchaHeaders } from "@/lib/server/captcha";
 import { apiFetch } from "@/lib/server/api";
@@ -158,6 +158,16 @@ export async function toggleCartItem(agencia: string, line: number, key: string,
   return result.status === 404 ? "Tu carrito expiró o esa línea ya no existe." : (result.error?.message ?? "No pudimos actualizar la línea.");
 }
 
+export async function updateCartLinePax(agencia: string, line: number, pax: { adults: number; children: number; infants: number }): Promise<string | null> {
+  const token = await cartToken(agencia);
+  const result = await sendSite(agencia, `/carts/current/items/${line}`, pax, cartHeaders(token), "PATCH");
+  revalidatePath(`/sitio/${agencia}/carrito`);
+  revalidatePath(`/sitio/${agencia}/checkout`);
+  if (result.ok) return null;
+  if (result.status === 409) return result.error?.message ?? "Ya no hay cupos para ese grupo en esta fecha.";
+  return result.status === 404 ? "Tu carrito expiró o esa línea ya no existe." : (result.error?.message ?? "No pudimos cambiar los viajeros.");
+}
+
 export async function reholdCartLine(agencia: string, line: number): Promise<string | null> {
   const token = await cartToken(agencia);
   const result = await sendSite(agencia, `/carts/current/items/${line}/hold`, {}, cartHeaders(token));
@@ -242,7 +252,7 @@ async function openAccount(agencia: string, token: string): Promise<void> {
 }
 
 function safeNext(value: string | undefined): string {
-  return value && value.startsWith("/cuenta") && !value.startsWith("//") ? value : "/cuenta";
+  return value && (value.startsWith("/cuenta") || value === "/checkout") && !value.startsWith("//") ? value : "/cuenta";
 }
 
 export async function registerAccount(agencia: string, _state: SiteFormState, form: FormData): Promise<SiteFormState> {
@@ -342,6 +352,40 @@ export async function unsubscribeNewsletter(agencia: string, token: string): Pro
 export async function sendTokenReview(agencia: string, _state: SiteFormState, form: FormData): Promise<SiteFormState> {
   const subratings = Object.fromEntries([...form.entries()].filter(([key, value]) => key.startsWith("sub_") && typeof value === "string" && value !== "").map(([key, value]) => [key.slice(4), Number(value)]));
   return submit(agencia, "/reviews/by-token", { code: text(form, "code"), t: text(form, "t"), product: text(form, "product"), stars: Number(text(form, "stars") ?? 0), title: text(form, "title"), body: text(form, "body"), lang: text(form, "lang") ?? "es", country: text(form, "country"), subratings, consent_publish: flag(form, "consent_publish") }, "No pudimos enviar tu opinión.", form);
+}
+
+type ChatResult = { messages: ChatMessage[] | null; message: string | null; errors?: Record<string, string> };
+
+const chatCookie = (agencia: string) => `kipucontrol_chat_${agencia}`;
+
+async function chatSession(agencia: string): Promise<{ session: string; token: string } | null> {
+  const raw = (await cookies()).get(chatCookie(agencia))?.value;
+  const [session, token] = raw ? raw.split(".") : [];
+  return session && token ? { session, token } : null;
+}
+
+export async function openSiteChat(agencia: string, input: { name: string; contact: string; message: string; consent: boolean }): Promise<ChatResult> {
+  const contact = input.contact.trim();
+  const email = contact.includes("@") ? contact : null;
+  const result = await sendSite<{ session: string; token: string; messages: ChatMessage[] }>(agencia, "/chat/sessions", { name: input.name, email, whatsapp: email ? null : contact, message: input.message, consent: input.consent });
+  if (!result.ok || !result.data) return { messages: null, message: result.status === 429 ? "Recibimos muchos mensajes seguidos. Intenta en un minuto." : (result.error?.message ?? "No pudimos abrir el chat."), errors: fieldErrors(result.error?.errors) };
+  (await cookies()).set(chatCookie(agencia), `${result.data.session}.${result.data.token}`, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 7 * 86_400 });
+  return { messages: result.data.messages, message: null };
+}
+
+export async function sendSiteChat(agencia: string, body: string): Promise<ChatResult> {
+  const chat = await chatSession(agencia);
+  if (!chat) return { messages: null, message: "Tu chat terminó. Abre uno nuevo." };
+  const result = await sendSite<{ messages: ChatMessage[] }>(agencia, `/chat/sessions/${encodeURIComponent(chat.session)}/messages`, { body }, { "X-Chat-Token": chat.token });
+  return result.ok && result.data ? { messages: result.data.messages, message: null } : { messages: null, message: result.error?.message ?? "No pudimos enviar tu mensaje." };
+}
+
+export async function readSiteChat(agencia: string): Promise<ChatResult> {
+  const chat = await chatSession(agencia);
+  if (!chat) return { messages: null, message: null };
+  const result = await readSite<{ messages: ChatMessage[] }>(agencia, `/chat/sessions/${encodeURIComponent(chat.session)}`, { "X-Chat-Token": chat.token });
+  if (result.status === 404) (await cookies()).delete(chatCookie(agencia));
+  return result.ok && result.data ? { messages: result.data.messages, message: null } : { messages: null, message: null };
 }
 
 export async function recordSiteEvents(agencia: string, payload: { session_id: string; currency?: string; events: { event: string; params?: Record<string, unknown> }[] }): Promise<boolean> {

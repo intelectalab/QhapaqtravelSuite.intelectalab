@@ -33,14 +33,15 @@ return [
         'summary' => 'Todas las agencias de la plataforma: dalas de alta, revisa su ficha, edita sus datos, cambia su plan y suspéndelas o reactívalas.',
         'steps' => [
             ['title' => 'Dar de alta una agencia', 'text' => 'Pulsa «Nueva agencia» y completa empresa, subdominio, plan, cómo empieza («Con prueba gratis» o «Activa y facturando»), sede principal y administrador. Con «Crear agencia» se crean la sede, los 12 roles base y el administrador, que recibe un correo para crear su contraseña.'],
-            ['title' => 'Encontrar una agencia', 'text' => 'Las tarjetas Activas, En prueba y Suspendidas filtran la lista. También puedes filtrar por Plan, buscar por agencia, RUC o correo y ordenar por nombre, ingreso, usuarios o fecha de alta.'],
-            ['title' => 'Revisar la ficha', 'text' => 'Pulsa el nombre o «Ver ficha». Verás el ingreso mensual, el plan, los datos fiscales, el uso (usuarios, sedes, almacenamiento y módulos), las sedes, los administradores y el historial de estado.'],
-            ['title' => 'Editar datos o cambiar el plan', 'text' => 'En la ficha, «Editar» cambia nombre, razón social, RUC, tipo de negocio, domicilio y subdominio. «Cambiar plan» pide el nuevo plan y un motivo opcional que queda en el historial.'],
+            ['title' => 'Encontrar una agencia', 'text' => 'Arriba ves los usuarios en plataforma, el ingreso mensual y anual y el almacenamiento usado frente al contratado. Las tarjetas Activas, En prueba y Suspendidas filtran la lista. También puedes filtrar por Plan y Estado, buscar por agencia, RUC o correo y ordenar por nombre, ingreso, usuarios o fecha de alta. El pie suma las filas filtradas. Debajo, «Ver agencias» de cada plan filtra la lista por ese plan.'],
+            ['title' => 'Revisar la ficha', 'text' => 'Pulsa el nombre o «Ver ficha». Verás el ingreso mensual, el plan, los datos fiscales, el uso contra el límite del plan (usuarios, sedes, almacenamiento, reservas, WhatsApp, correos y API), las funciones habilitadas y de dónde vienen, las sedes, los administradores y el historial de estado.'],
+            ['title' => 'Editar datos o cambiar el plan', 'text' => 'En la ficha, «Editar» cambia nombre, razón social, RUC, tipo de negocio, domicilio, subdominio, país, idioma, monedas y zona horaria. «Cambiar plan» pide el nuevo plan y un motivo opcional que queda en el historial.'],
             ['title' => 'Suspender o reactivar', 'text' => '«Suspender» pide un motivo: los usuarios de la agencia no pueden ingresar y sus sesiones se cierran, pero los datos se conservan. «Reactivar» les devuelve el acceso con su plan actual. Ambos quedan en la auditoría.'],
         ],
         'faqs' => [
             ['question' => '¿Por qué no puedo bajar de plan a una agencia?', 'answer' => 'Sus usuarios, sedes y almacenamiento deben caber en el plan nuevo. El mensaje indica qué sobra; la agencia debe reducirlo antes del cambio.'],
             ['question' => '¿Qué pasa si cambio el subdominio?', 'answer' => 'La dirección anterior deja de funcionar. Avisa a la agencia antes de hacerlo.'],
+            ['question' => '¿Por qué no puedo cambiar la moneda base?', 'answer' => 'La agencia ya tiene reservas o pagos registrados en esa moneda. La moneda alterna, el idioma, el país y la zona horaria sí se pueden cambiar.'],
             ['question' => '¿Por qué no se crea la agencia?', 'answer' => 'El subdominio o el RUC ya los usa otra agencia, o el correo del administrador ya pertenece a un usuario de otra agencia.'],
             ['question' => '¿El administrador entra sin más pasos?', 'answer' => 'No. Crea su contraseña desde el correo de invitación y debe activar la verificación en dos pasos al ingresar.'],
         ],
@@ -120,6 +121,7 @@ return [
             ['title' => 'Actuar sobre una factura', 'text' => 'Usa «Reintentar cobro», «Registrar pago», «Prórroga de 7 días» o «Suspender agencia». La prórroga mueve el próximo reintento y el último 7 días.'],
             ['title' => 'Ajustar la política', 'text' => 'En Política de cobranza pulsa «Editar política», define los días de cada reintento y elige qué pasa al agotarlos: «Suspender la agencia» o «Solo marcar incobrable». Guarda con «Guardar política».'],
             ['title' => 'Ejecutar la cobranza a mano', 'text' => '«Ejecutar ahora» reintenta las facturas cuyo reintento ya venció. Las demás conservan su fecha.'],
+            ['title' => 'Medir la recuperación', 'text' => 'La tarjeta Recuperación compara lo cobrado y lo perdido de las facturas que entraron en cobranza en los últimos 90 días. Debajo, el Historial de cobranza lista cada una como Recuperada o Perdida, con sus intentos.'],
         ],
         'faqs' => [
             ['question' => '¿Cuántas prórrogas puedo dar?', 'answer' => 'Una por factura, de 7 días. Después ya no aparece la opción.'],
@@ -137,7 +139,7 @@ return [
         'title' => 'Pruebas gratis',
         'summary' => 'Agencias en periodo de prueba: extiende su plazo o conviértelas en suscripción de pago.',
         'steps' => [
-            ['title' => 'Revisar las pruebas', 'text' => 'Las tarjetas Agencias en prueba, Vencen en 7 días y Sin tarjeta registrada muestran dónde actuar. Cada agencia indica su plan, usuarios, tarjeta y fecha de vencimiento.'],
+            ['title' => 'Revisar las pruebas', 'text' => 'Las tarjetas Agencias en prueba, Vencen en 7 días y Sin tarjeta registrada muestran dónde actuar. Cada agencia indica su plan, usuarios, reservas creadas, tarjeta y fecha de vencimiento.'],
             ['title' => 'Extender una prueba', 'text' => 'Pulsa «Extender prueba», elige los días adicionales y confirma con «Extender». Una prueba admite hasta 14 días de extensión en total.'],
             ['title' => 'Convertir en suscripción', 'text' => 'Pulsa «Convertir en suscripción», aplica un cupón si corresponde y confirma con «Convertir». La agencia pasa a activa y se emite su primera factura con vencimiento a 7 días.'],
         ],
@@ -159,7 +161,7 @@ return [
         'steps' => [
             ['title' => 'Crear un cupón', 'text' => 'Pulsa «Nuevo cupón», escribe el código, elige Porcentaje o Monto fijo, el valor, los ciclos que dura, los canjes máximos, la vigencia y los planes a los que aplica. Confirma con «Crear cupón».'],
             ['title' => 'Editar un cupón', 'text' => 'Usa «Editar» en su fila. Los cambios rigen para los canjes nuevos; los canjes máximos no pueden quedar por debajo de los ya hechos.'],
-            ['title' => 'Activar o desactivar', 'text' => '«Desactivar» impide nuevos canjes; las agencias que ya lo usan conservan el descuento hasta completar los ciclos. «Activar» lo vuelve a habilitar mientras esté vigente.'],
+            ['title' => 'Activar o desactivar', 'text' => '«Desactivar» impide nuevos canjes; las agencias que ya lo usan conservan el descuento hasta completar los ciclos. «Activar» lo vuelve a habilitar. Un cupón vencido o agotado no se reactiva: crea uno nuevo.'],
             ['title' => 'Filtrar la lista', 'text' => 'Las tarjetas Activos, Vencidos o agotados y Desactivados filtran la tabla, igual que los filtros Tipo y Plan.'],
         ],
         'faqs' => [
@@ -219,7 +221,9 @@ return [
         'title' => 'Auditoría',
         'summary' => 'Las acciones del equipo de plataforma y los eventos de cuenta de las agencias: altas, planes, suspensiones, cobros y accesos.',
         'steps' => [
+            ['title' => 'Leer el resumen', 'text' => 'Arriba ves los eventos registrados, los críticos, el día de más actividad de las últimas dos semanas y el tipo de registro más frecuente. Pasa el cursor por el ícono de información para ver el gráfico.'],
             ['title' => 'Filtrar por tipo de evento', 'text' => 'Las tarjetas Agencias, Facturación, Planes y funcionalidades, Tareas y Sesiones y accesos filtran la tabla con un clic.'],
+            ['title' => 'Exportar la bitácora', 'text' => '«Exportar 30 días» descarga en CSV hasta 5000 eventos de los últimos 30 días. La exportación queda registrada en la propia auditoría.'],
             ['title' => 'Buscar un evento', 'text' => 'Busca por agencia, factura o detalle. Filtra por Acción, Quién y Criticidad, por ejemplo Solo críticas.'],
             ['title' => 'Leer cada evento', 'text' => 'Cada fila indica la acción, sobre qué agencia o documento, el detalle del cambio, quién lo hizo y cuándo.'],
         ],
@@ -245,6 +249,7 @@ return [
             ['title' => 'Cobranza', 'text' => 'La tarjeta Cobranza muestra la política vigente. Para cambiarla pulsa «Editar en Facturación».'],
             ['title' => 'Protección de formularios', 'text' => 'Crea un sitio en Cloudflare Turnstile con el dominio de la plataforma, que cubre los subdominios de las agencias. Copia la Site Key y la Secret Key en «Protección de formularios», activa la protección y guarda. Probamos la clave con Cloudflare antes de guardarla. Desde ese momento, los formularios públicos de todas las agencias piden la verificación invisible.'],
             ['title' => 'Correo de salida', 'text' => 'Es la cuenta desde la que salen todos los correos: avisos, invitaciones, recuperación de acceso, cotizaciones y reportes. Escribe el servidor de salida, el cifrado y el puerto (SSL con 465 es lo habitual en cPanel), el usuario, la contraseña y el remitente. Al guardar probamos la conexión; si falla, no se guarda nada. Luego pulsa «Enviar prueba» para confirmar que llega.'],
+            ['title' => 'Webhook fiscal', 'text' => 'El OSE avisa a la URL de devolución cuando SUNAT acepta u observa un comprobante, y firma cada aviso con un secreto. Pulsa «Editar» en «Webhook fiscal», pega el secreto que te entrega el OSE y guarda. Se guarda cifrado y no se vuelve a mostrar.'],
             ['title' => 'Antivirus de adjuntos', 'text' => 'La tarjeta muestra si el antivirus del servidor está conectado. Revisa las evidencias y las facturas de proveedores antes de guardarlas. Si dice «No responde», avisa a quien administra el servidor.'],
         ],
         'faqs' => [

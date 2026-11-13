@@ -45,10 +45,54 @@ final class AfterSalesDirectory
             'surveys' => $surveys->values(),
             'cases' => $cases->values(),
             'clients' => Portfolio::clients(DB::table('crm_clients')->whereNull('deleted_at'), $viewer)->orderBy('name')->get(['code', 'name'])->map(fn (object $row): array => ['value' => $row->code, 'label' => $row->name])->values(),
+            'reservations' => $this->reservationOptions($viewer),
             'channels' => $this->catalog('survey_channel'),
             'case_types' => $this->catalog('case_type'),
             'owners' => Portfolio::ownOnly($viewer) ? [] : $this->advisors->all()->values(),
             'can' => ['manage' => $viewer->can('crm.clients.manage')],
+        ];
+    }
+
+    private function reservationOptions(User $viewer): Collection
+    {
+        return Portfolio::clients(DB::table('booking_reservations as r')->join('crm_clients as c', 'c.id', '=', 'r.client_id')->whereNull('r.deleted_at')->whereNull('c.deleted_at')->whereNotIn('r.status', ['borrador']), $viewer, 'c')
+            ->orderByDesc('r.travel_from')->limit(500)
+            ->get(['r.code', 'r.title', 'r.travel_from', 'c.code as client_code'])
+            ->map(fn (object $row): array => ['value' => $row->code, 'label' => "{$row->code} · {$row->title}", 'hint' => Carbon::parse($row->travel_from)->format('d/m/Y'), 'client' => $row->client_code])
+            ->values();
+    }
+
+    public function tripList(User $viewer): Collection
+    {
+        $today = Carbon::now($this->context->timezone())->startOfDay();
+
+        return $this->trips($viewer, $today, $this->surveys($viewer))->values();
+    }
+
+    public function surveyList(User $viewer): Collection
+    {
+        return $this->surveys($viewer)->values();
+    }
+
+    public function caseList(User $viewer): Collection
+    {
+        return $this->cases($viewer)->values();
+    }
+
+    public function surveyStats(Collection $surveys): array
+    {
+        $total = $surveys->count();
+        $promoters = $surveys->where('category', 'promotor')->count();
+        $detractors = $surveys->where('category', 'detractor')->count();
+
+        return [
+            'responses' => $total,
+            'nps' => $total === 0 ? null : (int) round(($promoters - $detractors) / $total * 100),
+            'average' => $total === 0 ? null : round($surveys->avg('score'), 1),
+            'promoters' => $promoters,
+            'passives' => $surveys->where('category', 'pasivo')->count(),
+            'detractors' => $detractors,
+            'distribution' => collect(range(0, 10))->map(fn (int $score): array => ['score' => $score, 'count' => $surveys->where('score', $score)->count()])->values()->all(),
         ];
     }
 
@@ -85,7 +129,7 @@ final class AfterSalesDirectory
                 ->where(fn ($done) => $done->where('r.status', 'completada')->where('r.travel_to', '>=', $today->copy()->subDays(90)->toDateString()))
                 ->orWhere(fn ($live) => $live->where('r.status', 'en_operacion')->where('r.travel_to', '<=', $today->copy()->addDays(5)->toDateString())))
             ->orderByDesc('r.travel_to')
-            ->get(['r.code', 'r.title', 'r.status', 'r.travel_from', 'r.travel_to', 'r.total_amount', 'r.currency', 'c.code as client_code', 'c.name as client', 'u.name as owner'])
+            ->get(['r.code', 'r.title', 'r.status', 'r.travel_from', 'r.travel_to', 'r.total_amount', 'r.currency', 'r.owner_id', 'c.code as client_code', 'c.name as client', 'u.name as owner'])
             ->map(fn (object $row): array => [
                 'code' => $row->code,
                 'title' => $row->title,
@@ -97,6 +141,7 @@ final class AfterSalesDirectory
                 'currency' => $row->currency,
                 'client' => ['code' => $row->client_code, 'name' => $row->client],
                 'owner' => $row->owner,
+                'owner_id' => $row->owner_id,
                 'survey' => isset($byReservation[$row->code]) ? ['code' => $byReservation[$row->code]['code'], 'score' => $byReservation[$row->code]['score']] : null,
             ]);
     }

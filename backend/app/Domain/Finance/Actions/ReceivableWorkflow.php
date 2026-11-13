@@ -205,6 +205,38 @@ final class ReceivableWorkflow
         return $result;
     }
 
+    public function sendStatement(string $reservationCode, ?string $email, User $actor): array
+    {
+        return DB::transaction(function () use ($reservationCode, $email, $actor): array {
+            $reservation = DB::table('booking_reservations as b')->join('crm_clients as c', 'c.id', '=', 'b.client_id')->where('b.code', $reservationCode)->whereNull('b.deleted_at')
+                ->first(['b.id', 'b.code', 'b.status', 'b.client_id', 'b.currency', 'b.travel_from', 'c.name as client_name', 'c.email as client_email'])
+                ?? throw ApiException::notFound('La reserva no existe.');
+            $address = $email ?? (string) $reservation->client_email;
+
+            if (! str_contains($address, '@')) {
+                throw ApiException::unprocessable('FIN-BR-38', 'El cliente no tiene un correo registrado. Agrégalo en su ficha o indica a qué correo enviar el estado de cuenta.');
+            }
+
+            $open = DB::table('fin_receivables')->where('reservation_id', $reservation->id)->whereNull('deleted_at')->whereNotIn('status', ['cancelada'])->get(['amount', 'paid_amount']);
+
+            if ($open->isEmpty()) {
+                throw ApiException::conflict('FIN-BR-38', 'La reserva aún no tiene cuotas: no hay estado de cuenta que enviar.');
+            }
+
+            $balance = Decimal::round2($open->reduce(fn (BigDecimal $sum, object $row): BigDecimal => $sum->plus((string) $row->amount)->minus((string) $row->paid_amount), BigDecimal::zero()));
+            $message = $this->notifications->queue('estado_cuenta.enviado', $address, [
+                'cliente' => (string) $reservation->client_name,
+                'reserva' => (string) $reservation->code,
+                'monto' => Decimal::display($balance, (string) $reservation->currency),
+                'fecha_viaje' => $reservation->travel_from ? CarbonImmutable::parse((string) $reservation->travel_from)->format('d/m/Y') : '',
+                'vendedor' => (string) $actor->name,
+            ], ['source_type' => 'booking_reservation', 'source_id' => $reservation->id, 'client_id' => $reservation->client_id, 'reservation_id' => $reservation->id]);
+            $this->audit->log('Reserva', (string) $reservation->code, 'enviar_estado_cuenta', null, "{$address} · saldo {$reservation->currency} {$balance}");
+
+            return ['code' => (string) $reservation->code, 'sent_to' => $address, 'balance' => (string) $balance, 'currency' => (string) $reservation->currency, 'message' => $message];
+        });
+    }
+
     private function notifyClient(object $receivable, object $reservation, BigDecimal $amount, User $actor): ?string
     {
         return $this->notifications->queue('pago.recordatorio', (string) $reservation->client_email, [

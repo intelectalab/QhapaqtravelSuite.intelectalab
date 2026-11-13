@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Site\Support;
 
 use App\Domain\Admin\Support\Branding;
+use App\Domain\Booking\Rules\RuleResolver;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,7 @@ final class SiteProfile
         private readonly TenantContext $context,
         private readonly Branding $branding,
         private readonly SiteDesignStudio $designs,
+        private readonly RuleResolver $rules,
     ) {}
 
     public function today(): Carbon
@@ -45,6 +47,8 @@ final class SiteProfile
                 'email' => $general['email'] ?? $tenant->admin_email,
                 'web' => $general['web'] ?? null,
                 'registry' => $general['mincetur_registry'] ?? null,
+                'emergency_phone' => $general['emergency_phone'] ?? $general['phone'] ?? DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->orderByDesc('is_main')->value('phone'),
+                'payment_methods' => array_keys(CheckoutTerms::METHODS),
             ],
             'branding' => $presentation['branding'],
             'design' => $presentation['design'],
@@ -84,9 +88,16 @@ final class SiteProfile
         return (string) $this->context->tenant()->subdomain;
     }
 
+    public function holdEnabled(): bool
+    {
+        return $this->rules->on('R-HOLD');
+    }
+
     public function holdMinutes(): int
     {
-        return (int) ($this->section('policies')['hold_minutes'] ?? 30);
+        $minutes = (int) ($this->rules->param('R-HOLD', 'minutes') ?? 0);
+
+        return $minutes > 0 ? $minutes : (int) ($this->section('policies')['hold_minutes'] ?? 30);
     }
 
     public function usdRate(): float

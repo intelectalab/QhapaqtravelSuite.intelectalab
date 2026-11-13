@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, CircleX, Clock3, Eye, EyeOff, Gauge, Globe, Send, ShoppingBag, MousePointerClick, Star, Wallet } from "lucide-react";
+import { BadgePercent, CircleCheck, CircleX, Clock3, ExternalLink, Eye, EyeOff, Gauge, Globe, Send, ShoppingBag, MousePointerClick, Star, Wallet } from "lucide-react";
 import { cancelOrder, sendPaymentLink, togglePublication } from "@/app/(backoffice)/canales/ecommerce/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -251,7 +251,11 @@ function PublicationAction({ product }: { product: EcomProduct }) {
   );
 }
 
-function ProductsTable({ rows, canManage }: { rows: EcomProduct[]; canManage: boolean }) {
+function promotionLabel(promotion: NonNullable<EcomProduct["promotion"]>): string {
+  return promotion.percent ? `${formatNumber(promotion.value)} %` : promotion.kind;
+}
+
+function ProductsTable({ rows, canManage, siteUrl }: { rows: EcomProduct[]; canManage: boolean; siteUrl: string }) {
   const columns: Column<EcomProduct>[] = [
     {
       id: "product",
@@ -261,8 +265,37 @@ function ProductsTable({ rows, canManage }: { rows: EcomProduct[]; canManage: bo
         <span className="flex flex-col">
           <a href={`/catalogo/productos/${row.code}`} className="text-[13.5px] font-semibold hover:text-accent">{row.name}</a>
           <span className="text-[12px] text-fg-3">{row.code}{row.featured ? " · Destacado" : ""}</span>
+          {row.slug ? (
+            row.on_site ? (
+              <a href={`${siteUrl}/tours/${row.slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-mono text-[11.5px] text-fg-3 hover:text-accent">/{row.slug} <ExternalLink size={11} /></a>
+            ) : (
+              <span className="font-mono text-[11.5px] text-fg-3">/{row.slug}</span>
+            )
+          ) : (
+            <span className="text-[11.5px] text-warn">Sin slug: no se muestra en el sitio</span>
+          )}
         </span>
       ),
+    },
+    {
+      id: "web_price",
+      header: "Precio web",
+      align: "right",
+      cell: (row) => (row.web_price ? <span className="flex flex-col items-end"><span className="text-[11px] text-fg-3">Desde</span><b className="text-[13px] font-semibold">{formatMoney(row.web_price.amount, row.web_price.currency)}</b></span> : <span className="text-[12.5px] text-fg-3" title="Sin tarifa vigente para la web o sin fechas a la venta">—</span>),
+    },
+    {
+      id: "promotion",
+      header: "Promoción",
+      wideOnly: true,
+      cell: (row) =>
+        row.promotion ? (
+          <span className="flex flex-col" title={`${row.promotion.name}${row.promotion.code ? ` · código ${row.promotion.code}` : ""}`}>
+            <span className="inline-flex w-fit items-center gap-1 rounded-md bg-[color-mix(in_srgb,var(--ok)_12%,transparent)] px-1.5 py-0.5 text-[12px] font-semibold text-ok"><BadgePercent size={12} /> {promotionLabel(row.promotion)}</span>
+            <span className="mt-0.5 text-[11.5px] text-fg-3">hasta {formatDate(row.promotion.ends_at)}</span>
+          </span>
+        ) : (
+          <span className="text-[12.5px] text-fg-3">Sin promoción</span>
+        ),
     },
     { id: "rating", header: "Calificación", wideOnly: true, cell: (row) => (row.rating ? <span className="flex items-center gap-1.5"><Stars value={row.rating} size={12} /><span className="text-[12px] text-fg-3">({row.rating_count})</span></span> : <span className="text-[12.5px] text-fg-3">Sin reseñas</span>) },
     { id: "orders", header: "Pedidos", align: "right", cell: (row) => <span className="font-mono text-[13px]">{row.orders}</span> },
@@ -274,6 +307,7 @@ function ProductsTable({ rows, canManage }: { rows: EcomProduct[]; canManage: bo
     { id: "on", label: "Publicados", tone: "ok", icon: <Globe size={19} />, matches: (row) => row.published },
     { id: "off", label: "Sin publicar", tone: "mute", icon: <EyeOff size={19} />, matches: (row) => !row.published },
     { id: "selling", label: "Con ventas", tone: "t4", icon: <ShoppingBag size={19} />, matches: (row) => row.orders > 0 },
+    { id: "promo", label: "Con promoción", tone: "violet", icon: <BadgePercent size={19} />, matches: (row) => row.promotion !== null },
     { id: "rated", label: "Con reseñas", tone: "sun", icon: <Star size={19} />, matches: (row) => row.rating_count > 0 },
   ];
   const sorts: SortOption<EcomProduct>[] = [
@@ -290,7 +324,7 @@ export function EcommerceWorkspace({ overview, promotions, section }: { overview
         active={section}
         tabs={[
           { id: "orders", label: "Pedidos web", count: overview.orders.length, content: <OrdersTable rows={overview.orders} canManage={overview.can_manage} /> },
-          { id: "products", label: "Productos en la tienda", count: overview.products.length, content: <ProductsTable rows={overview.products} canManage={overview.can_manage} /> },
+          { id: "products", label: "Productos en la tienda", count: overview.products.length, content: <ProductsTable rows={overview.products} canManage={overview.can_manage} siteUrl={overview.site_url} /> },
           ...(promotions ? [{ id: "promotions", label: "Promociones y códigos", count: promotions.rows.filter((row) => row.state === "vigente").length, content: <PromotionsTable catalog={promotions} canManage={overview.can_manage} screen="canales-ecommerce-promociones" /> }] : []),
         ]}
       />

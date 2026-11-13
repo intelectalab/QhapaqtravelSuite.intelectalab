@@ -1,7 +1,8 @@
-import { CalendarDays, Siren, UserRoundX } from "lucide-react";
+import { CalendarDays, CalendarRange, Siren, Truck, UserRoundX } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { Button } from "@/components/ui/Button";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TintTile } from "@/components/ui/Tinted";
 import { Notice } from "@/features/operations/OpsBits";
@@ -30,7 +31,17 @@ export default async function OrdenesPage() {
         title="Órdenes operativas"
         subtitle="La ejecución de cada reserva confirmada: recursos, tareas e incidencias."
         info={<InfoTip>Una reserva confirmada genera una sola orden. Al crearla se copian sus tours y traslados para asignarles guía, conductor y vehículo.</InfoTip>}
-        actions={data.can.assign ? <OrderCreateAction candidates={data.candidates} coordinators={data.coordinators} viewerId={data.viewer_id} /> : undefined}
+        actions={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button href="/operaciones/calendario" variant="secondary" icon={<CalendarRange size={16} />} iconOnlyOnMobile label="Calendario">
+              Calendario
+            </Button>
+            <Button href="/operaciones/asignaciones" variant="secondary" icon={<Truck size={16} />} iconOnlyOnMobile label="Recursos">
+              Recursos
+            </Button>
+            {data.can.assign && <OrderCreateAction candidates={data.candidates} coordinators={data.coordinators} viewerId={data.viewer_id} />}
+          </div>
+        }
       />
 
       {kpis.critical_incidents > 0 && (

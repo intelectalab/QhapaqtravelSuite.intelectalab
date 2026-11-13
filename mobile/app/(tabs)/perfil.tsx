@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import { pendingCount } from "../../src/data/evidence";
+import { failedPhotos, pendingCount, retryPhoto, type FailedPhoto } from "../../src/data/evidence";
 import { getMe } from "../../src/data/repository";
 import { sinceLabel } from "../../src/format";
 import { acknowledgeConflict, history, list, retryFailed, type OutboxAction, type SyncedAction } from "../../src/offline/outbox";
@@ -28,12 +28,21 @@ const STATE_LABELS: Record<string, { label: string; tone: "info" | "warn" | "bad
   failed: { label: "Con error", tone: "bad" },
 };
 
+const RESOURCE_TONE: Record<string, "ok" | "info" | "warn" | "mute"> = { disponible: "ok", asignado: "info", descanso: "warn", vacaciones: "mute" };
+
 export default function ProfileScreen() {
   const { signOut, sync, touch } = useApp();
   const me = useLocal(useCallback(() => getMe(), []), null as OperatorMe | null);
   const outbox = useLocal(useCallback(() => list(), []), [] as OutboxAction[]);
   const recent = useLocal(useCallback(() => history(6), []), [] as SyncedAction[]);
   const photos = useLocal(useCallback(() => pendingCount(), []), 0);
+  const failed = useLocal(useCallback(() => failedPhotos(), []), [] as FailedPhoto[]);
+
+  async function retry(id: string) {
+    await retryPhoto(id);
+    touch();
+    void sync();
+  }
 
   async function act(action: OutboxAction) {
     if (action.state === "failed") await retryFailed(action.client_action_id);
@@ -58,6 +67,10 @@ export default function ProfileScreen() {
           <Text style={ui.subtitle}>
             {me.role} · {me.code}
           </Text>
+          <View style={styles.badges}>
+            <Pill label={me.status_label ?? me.status} tone={RESOURCE_TONE[me.status] ?? "mute"} />
+            {me.rating !== null && me.rating !== undefined ? <Pill label={`${me.rating.toFixed(1)} / 5`} icon="star" tone="sun" /> : null}
+          </View>
           {me.phone ? <Row icon="call-outline" label="Teléfono" value={me.phone} /> : null}
           {me.license ? (
             <Row
@@ -80,9 +93,9 @@ export default function ProfileScreen() {
 
       <SyncBanner />
 
-      <SectionTitle title="Bandeja de salida" aside={`${outbox.length + photos}`} />
+      <SectionTitle title="Bandeja de salida" aside={`${outbox.length + photos + failed.length}`} />
       <Card>
-        {outbox.length === 0 && photos === 0 ? <Text style={ui.muted}>No hay acciones pendientes de enviar.</Text> : null}
+        {outbox.length === 0 && photos === 0 && failed.length === 0 ? <Text style={ui.muted}>No hay acciones pendientes de enviar.</Text> : null}
         {photos > 0 ? (
           <View style={styles.item}>
             <Text style={[ui.body, { flex: 1 }]}>
@@ -91,22 +104,46 @@ export default function ProfileScreen() {
             <Pill label="Por enviar" tone="mute" />
           </View>
         ) : null}
+        {failed.map((photo) => (
+          <View key={photo.id} style={styles.item}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={ui.body}>Foto de evidencia</Text>
+              <Text style={ui.muted}>
+                {photo.attempts} intento{photo.attempts === 1 ? "" : "s"} sin éxito
+              </Text>
+              {photo.last_error ? <Text style={styles.reason}>{photo.last_error}</Text> : null}
+            </View>
+            <View style={styles.side}>
+              <Pill label="Con error" tone="bad" />
+              <Pressable onPress={() => void retry(photo.id)} accessibilityRole="button" hitSlop={6}>
+                <Text style={styles.link}>Reintentar</Text>
+              </Pressable>
+            </View>
+          </View>
+        ))}
         {outbox.map((action) => {
           const state = STATE_LABELS[action.state] ?? STATE_LABELS.pending!;
           const actionable = action.state === "failed" || action.state === "conflict";
           return (
-            <Pressable key={action.client_action_id} onPress={actionable ? () => void act(action) : undefined} disabled={!actionable} style={styles.item}>
+            <View key={action.client_action_id} style={styles.item}>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={ui.body}>{ACTION_LABELS[action.type] ?? action.type}</Text>
                 <Text style={ui.muted}>
                   {sinceLabel(action.occurred_at)}
                   {action.offline ? " · sin conexión" : ""}
+                  {action.attempts > 0 ? ` · ${action.attempts} intento${action.attempts === 1 ? "" : "s"}` : ""}
                 </Text>
                 {action.conflict_message || action.last_error ? <Text style={styles.reason}>{action.conflict_message ?? action.last_error}</Text> : null}
-                {actionable ? <Text style={styles.link}>{action.state === "failed" ? "Tocar para reintentar" : "Tocar para marcar como visto"}</Text> : null}
               </View>
-              <Pill label={state.label} tone={state.tone} />
-            </Pressable>
+              <View style={styles.side}>
+                <Pill label={state.label} tone={state.tone} />
+                {actionable ? (
+                  <Pressable onPress={() => void act(action)} accessibilityRole="button" hitSlop={6}>
+                    <Text style={styles.link}>{action.state === "failed" ? "Reintentar" : "Entendido"}</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
           );
         })}
       </Card>
@@ -138,5 +175,7 @@ const styles = StyleSheet.create({
   inline: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: space.sm },
   item: { flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: space.sm, borderBottomWidth: 1, borderBottomColor: colors.line },
   reason: { fontSize: font.small, color: colors.warn },
-  link: { fontSize: font.small, color: colors.link, fontWeight: "600" },
+  link: { fontSize: font.small, color: colors.link, fontWeight: "700" },
+  side: { alignItems: "flex-end", gap: 6 },
+  badges: { flexDirection: "row", flexWrap: "wrap", gap: space.sm },
 });

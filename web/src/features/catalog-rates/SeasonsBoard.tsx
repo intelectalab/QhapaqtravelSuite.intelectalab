@@ -1,16 +1,19 @@
 "use client";
 
-import { Layers, Scale } from "lucide-react";
-import { useState } from "react";
+import { CalendarSearch, Layers, Scale } from "lucide-react";
+import { useState, useTransition } from "react";
+import { resolveSeason } from "@/app/(backoffice)/catalogo/tarifas/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
-import { daysBetween, SEASON_PHASE, SEASON_TONE, type RatesOverview, type SeasonRow } from "@/lib/catalog-rates";
+import { Button } from "@/components/ui/Button";
+import { TextField } from "@/components/ui/TextField";
+import { daysBetween, SEASON_PHASE, SEASON_TONE, type RatesOverview, type SeasonResolution, type SeasonRow } from "@/lib/catalog-rates";
 import { cn } from "@/lib/cn";
 import { formatDate, monthName } from "@/lib/format";
 import { toneStyle } from "@/lib/tone";
-import { SeasonEditAction, SeasonToggleAction } from "./RateForms";
+import { SeasonDeleteAction, SeasonEditAction, SeasonToggleAction } from "./RateForms";
 
 const factorLabel = (factor: number) => (factor === 1 ? "precio base" : `${factor > 1 ? "+" : ""}${Math.round((factor - 1) * 100)} %`);
 
@@ -109,6 +112,44 @@ function Overlaps({ overview }: { overview: RatesOverview }) {
   );
 }
 
+function SeasonResolver({ today }: { today: string }) {
+  const [date, setDate] = useState(today);
+  const [result, setResult] = useState<SeasonResolution | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const resolve = () =>
+    startTransition(async () => {
+      const response = await resolveSeason(date);
+      setResult(response.data);
+      setMessage(response.message);
+    });
+  const season = result?.season ?? null;
+  return (
+    <section className="lift rounded-tile border border-line bg-surface px-4 py-3.5">
+      <div className="flex flex-wrap items-end gap-3">
+        <TextField className="w-48" label="Resolver temporada por fecha" name="resolve_date" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+        <Button type="button" variant="secondary" onClick={resolve} disabled={pending || !date}>
+          <CalendarSearch size={16} /> {pending ? "Resolviendo" : "Resolver"}
+        </Button>
+        {result && (
+          <div className="min-w-0 flex-1 text-[13px] motion-safe:animate-[rise-in_320ms_ease-out]">
+            {season ? (
+              <p style={toneStyle(SEASON_TONE[season.type] ?? "t1")}>
+                El {formatDate(result.date)} aplica <b className="font-semibold text-[var(--tint)]">{season.name}</b>
+                <span className="text-fg-3"> · prioridad {season.priority} · {factorLabel(result.factor)}</span>
+              </p>
+            ) : (
+              <p>El {formatDate(result.date)} no lo cubre ninguna temporada activa: se usa el precio base.</p>
+            )}
+            {result.others.length > 0 && <p className="text-[12px] text-fg-3">También la cubren, con menos peso: {result.others.map((other) => `${other.name} (prioridad ${other.priority})`).join(", ")}.</p>}
+          </div>
+        )}
+        {message && <p className="text-[13px] text-bad">{message}</p>}
+      </div>
+    </section>
+  );
+}
+
 export function SeasonsBoard({ overview }: { overview: RatesOverview }) {
   const columns: Column<SeasonRow>[] = [
     {
@@ -141,6 +182,7 @@ export function SeasonsBoard({ overview }: { overview: RatesOverview }) {
               <RowActions>
                 <SeasonEditAction overview={overview} season={season} />
                 <SeasonToggleAction season={season} />
+                <SeasonDeleteAction season={season} />
               </RowActions>
             ),
           },
@@ -160,6 +202,7 @@ export function SeasonsBoard({ overview }: { overview: RatesOverview }) {
         <Timeline seasons={overview.seasons} today={overview.today} />
         <Overlaps overview={overview} />
       </section>
+      <SeasonResolver today={overview.today} />
       <DataTable screen="temporadas" rows={overview.seasons} columns={columns} getKey={(season) => season.ref} entityLabel="temporadas" searchText={(season) => `${season.ref} ${season.name} ${season.type}`} searchPlaceholder="Buscar temporada" metrics={metrics} filters={filters} csv={{ fileName: "temporadas", columns: [{ header: "Código", value: (season) => season.ref }, { header: "Temporada", value: (season) => season.name }, { header: "Tipo", value: (season) => season.type }, { header: "Desde", value: (season) => season.date_from }, { header: "Hasta", value: (season) => season.date_to }, { header: "Prioridad", value: (season) => season.priority }, { header: "Factor", value: (season) => season.factor }, { header: "Tarifas que la usan", value: (season) => season.rates }, { header: "Productos", value: (season) => season.products }, { header: "Estado", value: (season) => (season.status === "activa" ? "Activa" : "Inactiva") }] }} />
     </div>
   );

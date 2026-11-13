@@ -49,10 +49,9 @@ final class ApprovalInbox
 
     public function __construct(private readonly ApprovalRules $rules) {}
 
-    public function overview(User $viewer): array
+    public function items(User $viewer): Collection
     {
-        $now = Carbon::now();
-        $items = $this->quotes($viewer)
+        return $this->quotes($viewer)
             ->concat($this->changes($viewer))
             ->concat($this->cancellations($viewer))
             ->concat($this->settlements($viewer))
@@ -61,19 +60,30 @@ final class ApprovalInbox
             ->concat($this->requests($viewer))
             ->sortByDesc('created_at')
             ->values();
+    }
 
+    public function counters(Collection $items): array
+    {
+        $now = Carbon::now();
         $pending = $items->whereIn('status', ['pendiente', 'info']);
         $resolved = $items->filter(fn (array $item): bool => in_array($item['status'], ['aprobada', 'rechazada'], true) && $item['decided_at'] !== null && Carbon::parse($item['decided_at'])->greaterThanOrEqualTo($now->copy()->subDays(7)));
         $hours = $resolved->map(fn (array $item): float => Carbon::parse($item['created_at'])->diffInMinutes(Carbon::parse($item['decided_at'])) / 60);
 
         return [
-            'kpis' => [
-                'for_me' => $pending->filter(fn (array $item): bool => $item['can_decide'] || $item['can_answer'])->count(),
-                'overdue' => $pending->where('sla', 'overdue')->count(),
-                'sent_open' => $pending->where('mine', true)->count(),
-                'resolved_week' => $resolved->count(),
-                'avg_hours' => $hours->isEmpty() ? null : round($hours->avg(), 1),
-            ],
+            'for_me' => $pending->filter(fn (array $item): bool => $item['can_decide'] || $item['can_answer'])->count(),
+            'overdue' => $pending->where('sla', 'overdue')->count(),
+            'sent_open' => $pending->where('mine', true)->count(),
+            'resolved_week' => $resolved->count(),
+            'avg_hours' => $hours->isEmpty() ? null : round($hours->avg(), 1),
+        ];
+    }
+
+    public function overview(User $viewer): array
+    {
+        $items = $this->items($viewer);
+
+        return [
+            'kpis' => $this->counters($items),
             'items' => $items,
             'rules' => $this->rules->list(),
             'types' => collect(self::TYPES)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
@@ -83,6 +93,10 @@ final class ApprovalInbox
             'can' => [
                 'create' => $viewer->can('approvals.view'),
                 'manage_rules' => $viewer->can('admin.settings.manage'),
+            ],
+            'viewer' => [
+                'role' => $role = (string) $viewer->primaryRole()->name,
+                'scope' => in_array($role, ['tenant_admin', 'manager'], true) ? 'all' : 'role',
             ],
         ];
     }
@@ -108,8 +122,9 @@ final class ApprovalInbox
 
         return $codes->isEmpty() ? collect() : DB::table('fin_payments as p')
             ->leftJoin('booking_reservations as r', 'r.id', '=', 'p.reservation_id')
+            ->leftJoin('fin_receivables as x', 'x.id', '=', 'p.receivable_id')
             ->whereIn('p.code', $codes)
-            ->get(['p.code', 'p.method', 'p.amount', 'p.currency', 'p.paid_on', 'p.reference', 'p.status', 'r.code as reservation'])
+            ->get(['p.code', 'p.method', 'p.amount', 'p.currency', 'p.paid_on', 'p.reference', 'p.status', 'r.code as reservation', 'x.code as receivable'])
             ->keyBy('code');
     }
 
@@ -138,6 +153,7 @@ final class ApprovalInbox
                     'title' => $row->title,
                     'detail' => $row->request_note ?: implode(' · ', $reasons),
                     'facts' => [...$reasons, "Cliente: {$row->client}"],
+                    'impact' => trim(implode(' y ', $reasons).($row->over_cap ? ' · supera el tope de descuento' : '')) ?: null,
                     'requester_id' => $row->requested_by,
                     'created_at' => $created,
                     'due_at' => Carbon::parse($created)->addHours($sla)->toIso8601String(),
@@ -178,6 +194,7 @@ final class ApprovalInbox
                 'title' => $row->title,
                 'detail' => $row->description,
                 'facts' => ['Tipo de cambio: '.str_replace('_', ' ', $row->type), "Cliente: {$row->client}"],
+                'impact' => ucfirst(str_replace('_', ' ', (string) $row->type)).' · '.((float) $row->delta_amount >= 0 ? 'suma ' : 'resta ').$row->currency.' '.number_format(abs((float) $row->delta_amount), 2, '.', ' '),
                 'requester_id' => $row->requested_by,
                 'created_at' => $row->requested_at,
                 'due_at' => Carbon::parse($row->requested_at)->addHours(24)->toIso8601String(),
@@ -211,7 +228,7 @@ final class ApprovalInbox
             ->when(! $canDecide, fn ($query) => $query->where('b.requested_by', $viewer->getKey()))
             ->orderByDesc('b.requested_at')
             ->limit(120)
-            ->get(['b.id', 'b.reason', 'b.status', 'b.requested_by', 'b.requested_at', 'b.decided_by', 'b.decided_at', 'b.decision_note', 'r.code', 'r.lock_version', 'r.title', 'r.status as reservation_status', 'r.total_amount', 'r.currency', 'r.fx_rate', 'r.b2b_terms', 'c.name as client', 'g.code as agency_code', 'g.legal_name as agency'])
+            ->get(['b.id', 'b.reason', 'b.status', 'b.requested_by', 'b.requested_at', 'b.decided_by', 'b.decided_at', 'b.decision_note', 'r.code', 'r.lock_version', 'r.title', 'r.status as reservation_status', 'r.travel_from', 'r.total_amount', 'r.currency', 'r.fx_rate', 'r.b2b_terms', 'c.name as client', 'g.code as agency_code', 'g.legal_name as agency'])
             ->map(function (object $row) use ($viewer, $canDecide, $sla): array {
                 [$reason, $detail] = $this->splitReason((string) $row->reason);
                 $terms = json_decode((string) $row->b2b_terms, true) ?: [];
@@ -224,6 +241,7 @@ final class ApprovalInbox
                     'title' => $row->title,
                     'detail' => $detail,
                     'facts' => ["Motivo: {$reason}", ...$agency, "Cliente: {$row->client}"],
+                    'impact' => 'Reserva '.str_replace('_', ' ', (string) $row->reservation_status).($row->travel_from ? ' · viaje '.Carbon::parse($row->travel_from)->format('d/m/Y') : ''),
                     'requester_suffix' => $row->agency_code ? 'Portal B2B' : null,
                     'requester_id' => $row->requested_by,
                     'created_at' => $row->requested_at,
@@ -278,6 +296,7 @@ final class ApprovalInbox
                         'Comisiones: '.$commissions->count().' ('.$commissions->groupBy('status')->map(fn (Collection $group, string $status): string => "{$status} × ".$group->count())->implode(', ').')',
                         'Reservas: '.($commissions->pluck('reservation')->filter()->unique()->implode(', ') ?: '—'),
                     ],
+                    'impact' => $commissions->count().' comisiones de '.$row->agency_code,
                     'requester_id' => $row->requested_by,
                     'requester_suffix' => 'Portal B2B',
                     'created_at' => $row->created_at,
@@ -337,6 +356,7 @@ final class ApprovalInbox
                         "Motivo: {$row->reason_type}",
                         $open && round((float) $row->service_cost, 2) !== round($current, 2) ? "Aviso: el costo del servicio cambió a {$row->currency} {$row->service_cost} después de la solicitud" : null,
                     ])],
+                    'impact' => "Por {$row->unit} · {$row->currency} ".number_format($current, 2).' → '.number_format($proposed, 2).($change !== null ? ' ('.($change > 0 ? '+' : '')."{$change} %)" : ''),
                     'requester_id' => $row->requested_by,
                     'requester_suffix' => 'Extranet',
                     'created_at' => $row->requested_at,
@@ -397,6 +417,7 @@ final class ApprovalInbox
                         "Archivo: {$row->original_file_name}",
                         $row->reservation ? "Reserva: {$row->reservation}" : null,
                     ])],
+                    'impact' => "{$row->payable} · saldo {$row->currency} ".number_format($balance, 2, '.', ' ').(abs($difference) > 0.01 ? ' · diferencia '.number_format($difference, 2, '.', ' ') : ''),
                     'requester_id' => $row->uploaded_by,
                     'requester_suffix' => 'Extranet',
                     'created_at' => $row->uploaded_at,
@@ -464,6 +485,7 @@ final class ApprovalInbox
                 'title' => $row->title,
                 'detail' => $row->justification,
                 'facts' => $payment ? $this->paymentFacts($payment) : array_values(array_filter([$row->subject_code ? (self::SUBJECT_LABELS[$row->subject_type] ?? 'Origen').": {$row->subject_code}" : null, isset($snapshot['reservation']) ? "Reserva relacionada: {$snapshot['reservation']}" : null, $row->is_generic ? 'Solicitud creada en la bandeja' : null])),
+                'impact' => $this->requestImpact($row, $payment, $open),
                 'requester_id' => $row->requester_id,
                 'requester_kind' => $row->requester_kind,
                 'created_at' => $row->created_at,
@@ -545,7 +567,31 @@ final class ApprovalInbox
             'can_resubmit' => $item['can_resubmit'] ?? false,
             'delegated_to' => $item['delegated_to'] ?? null,
             'lock_version' => $item['lock_version'] ?? null,
+            'impact' => $item['impact'] ?? null,
         ];
+    }
+
+    private function requestImpact(object $row, ?object $payment, bool $open): ?string
+    {
+        return match ($row->request_type) {
+            'reversal' => $payment ? 'Desaplica de '.($payment->receivable ?? 'sin cuenta por cobrar') : null,
+            'credit_b2b' => $this->creditImpact((string) $row->subject_code, $open ? (float) $row->amount : 0.0),
+            'refund' => 'Genera un reembolso pendiente en Finanzas',
+            default => null,
+        };
+    }
+
+    private function creditImpact(string $agencyCode, float $increase): ?string
+    {
+        $agency = $agencyCode !== '' ? DB::table('channel_b2b_agencies')->where('code', $agencyCode)->first(['credit_currency', 'credit_limit']) : null;
+
+        if ($agency === null) {
+            return null;
+        }
+
+        $limit = (float) $agency->credit_limit;
+
+        return "Línea {$agency->credit_currency} ".number_format($limit, 0, '.', ' ').($increase > 0 ? ' → '.number_format($limit + $increase, 0, '.', ' ') : '');
     }
 
     private function paymentFacts(object $payment): array

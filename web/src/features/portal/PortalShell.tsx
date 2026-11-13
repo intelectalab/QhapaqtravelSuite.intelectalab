@@ -1,11 +1,12 @@
 "use client";
 
-import { Bell, BellRing, CalendarHeart, FileCheck2, Home, LifeBuoy, LogOut, MessageCircle, MessageSquareHeart, Moon, ScrollText, Star, Sun, UserRound, UsersRound, Wallet, type LucideIcon } from "lucide-react";
+import { Bell, BellRing, Building2, CalendarHeart, Eye, FileCheck2, Home, LifeBuoy, LogOut, MessageCircle, MessageSquareHeart, Moon, QrCode, ScrollText, Star, Sun, TriangleAlert, UserRound, UsersRound, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { BrandMark } from "@/components/shell/BrandMark";
 import { Avatar } from "@/components/ui/Avatar";
+import { PORTAL_PREVIEW_EXIT } from "@/lib/agency-preview";
 import { cn } from "@/lib/cn";
 import { shortName } from "@/lib/format";
 import type { PortalSession } from "@/lib/portal";
@@ -17,21 +18,26 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   count?: number;
+  alert?: boolean;
+  also?: string[];
 }
 
 const keepTheme = (theme: Theme) => theme;
 
 function navFor(session: PortalSession): NavItem[] {
   if (session.role === "passenger") {
+    const menu = session.menu;
+    const on = (key: keyof NonNullable<PortalSession["menu"]>["sections"]) => menu?.sections[key] ?? true;
     return [
       { href: "/portal", label: "Inicio", icon: Home },
-      ...(session.trip ? [{ href: `/portal/viajes/${session.trip}`, label: "Mi viaje", icon: CalendarHeart }] : []),
-      { href: "/portal/avisos", label: "Avisos", icon: BellRing },
+      ...(session.trip ? [{ href: `/portal/viajes/${session.trip}`, label: "Mi viaje", icon: CalendarHeart, also: ["/portal/viaje"] }] : []),
+      { href: "/portal/mi-pase", label: "Mi pase", icon: QrCode },
+      { href: "/portal/avisos", label: "Avisos", icon: BellRing, count: menu?.counts.alerts, alert: (menu?.counts.alerts ?? 0) > 0 },
       { href: "/portal/contactos", label: "Contactos", icon: LifeBuoy },
-      { href: "/portal/viajeros", label: "Viajeros", icon: UsersRound },
-      { href: "/portal/mensajes", label: "Mensajes", icon: MessageCircle },
-      { href: "/portal/comentarios", label: "Comentarios", icon: MessageSquareHeart },
-      { href: "/portal/califica", label: "Califica tu viaje", icon: Star },
+      ...(on("companions") ? [{ href: "/portal/viajeros", label: "Viajeros", icon: UsersRound, count: menu?.counts.companions, alert: (menu?.counts.companions ?? 0) > 0 }] : []),
+      ...(on("messages") ? [{ href: "/portal/mensajes", label: "Mensajes", icon: MessageCircle, count: menu?.counts.messages }] : []),
+      ...(on("feedback") ? [{ href: "/portal/comentarios", label: "Comentarios", icon: MessageSquareHeart }] : []),
+      ...(on("reviews") ? [{ href: "/portal/califica", label: "Califica tu viaje", icon: Star, count: menu?.counts.reviews }] : []),
       { href: "/portal/datos", label: "Mis datos", icon: UserRound },
     ];
   }
@@ -41,6 +47,7 @@ function navFor(session: PortalSession): NavItem[] {
     { href: "/portal/propuestas", label: "Propuestas", icon: ScrollText, count: session.counts.quotes },
     { href: "/portal/pagos", label: "Pagos", icon: Wallet },
     { href: "/portal/documentos", label: "Documentos", icon: FileCheck2 },
+    ...(session.corporate ? [{ href: "/portal/corporativo", label: "Panel corporativo", icon: Building2, count: session.corporate.pending_approvals }] : []),
     { href: "/portal/mensajes", label: "Mensajes", icon: MessageCircle },
     { href: "/portal/notificaciones", label: "Notificaciones", icon: Bell },
     { href: "/portal/datos", label: "Mis datos", icon: UserRound },
@@ -80,18 +87,26 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
     >
       <Icon size={16} className="transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110" />
       {item.label}
-      {!!item.count && <span className={cn("grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px]", active ? "bg-t1 text-white" : "bg-surface-2 text-fg-2")}>{item.count}</span>}
+      {!!item.count && <span className={cn("grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-[11px]", item.alert ? "bg-warn text-white" : active ? "bg-t1 text-white" : "bg-surface-2 text-fg-2")}>{item.count}</span>}
     </Link>
   );
 }
 
-export function PortalShell({ session, children }: { session: PortalSession | null; children: ReactNode }) {
+export function PortalShell({ session, preview = false, children }: { session: PortalSession | null; preview?: boolean; children: ReactNode }) {
   const pathname = usePathname();
   const items = session ? navFor(session) : [];
-  const isActive = (href: string) => (href === "/portal" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
+  const matches = (href: string) => (href === "/portal" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
+  const isActive = (href: string) => matches(href) || (items.find((item) => item.href === href)?.also ?? []).some(matches);
+  const alert = session?.role === "passenger" && session.menu?.alert && pathname !== "/portal/avisos" ? session.menu.alert : null;
 
   return (
     <div className="relative flex min-h-dvh flex-col">
+      {preview && (
+        <div className="z-40 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-fg px-4 py-2 text-center text-[12.5px] text-bg">
+          <span className="flex items-center gap-1.5"><Eye size={14} /> Vista previa de solo lectura{session ? ` como ${session.user.name}` : ""}. No se guarda ningún cambio.</span>
+          <a href={PORTAL_PREVIEW_EXIT} className="rounded-md bg-bg/15 px-2.5 py-0.5 font-semibold transition hover:bg-bg/25">Volver al backoffice</a>
+        </div>
+      )}
       <div className="weave-band h-2 flex-none" />
       <div className="ambient-glow pointer-events-none absolute inset-x-0 top-2 h-[420px]" />
       <header className="sticky top-0 z-30 border-b border-line bg-surface/85 backdrop-blur-md">
@@ -133,7 +148,19 @@ export function PortalShell({ session, children }: { session: PortalSession | nu
           </nav>
         )}
       </header>
-      <main className="relative mx-auto w-full max-w-[1240px] flex-1 px-4 pb-14 pt-6 sm:px-6">{children}</main>
+      <main className="relative mx-auto w-full max-w-[1240px] flex-1 px-4 pb-14 pt-6 sm:px-6">
+        {alert && (
+          <Link href="/portal/avisos" className="lift mb-5 flex items-start gap-3 rounded-tile border border-[color-mix(in_srgb,var(--bad)_30%,transparent)] bg-[color-mix(in_srgb,var(--bad)_8%,var(--surface))] px-4 py-3 text-[13.5px]">
+            <TriangleAlert size={18} className="mt-0.5 flex-none text-bad" />
+            <span className="min-w-0 flex-1">
+              <b className="font-semibold text-bad">Alerta de viaje: </b>
+              <span className="text-fg">{alert.title}</span>
+            </span>
+            <span className="flex-none font-semibold text-bad">Ver detalle</span>
+          </Link>
+        )}
+        {children}
+      </main>
       <footer className="border-t border-line bg-surface/60">
         <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-3 px-4 py-5 text-[12.5px] text-fg-3 sm:px-6">
           <span>{session?.agency.name ?? "Tu agencia"} · Tus datos están protegidos según la Ley 29733.</span>

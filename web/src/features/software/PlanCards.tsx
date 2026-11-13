@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
 import { planTone } from "@/lib/platform";
 import { contactHref, monthlyPrice, type BillingCycle, type PublicPlan } from "@/lib/software";
+import { signupHref } from "@/lib/landing";
 import { toneStyle } from "@/lib/tone";
 
 const HIGHLIGHTS = 5;
@@ -53,13 +54,13 @@ function PriceBlock({ plan, cycle, dense = false }: { plan: PublicPlan; cycle: B
         <span key={`${plan.code}-${cycle}`} className={cn("whitespace-nowrap font-mono font-bold leading-none tracking-[-0.04em] text-fg animate-[rise-in_380ms_cubic-bezier(0.22,1,0.36,1)_backwards]", dense ? "text-[30px]" : "text-[40px]")}>
           {formatMoney(price, plan.currency)}
         </span>
-        <span className="pb-1 text-[13px] font-medium text-fg-3">al mes</span>
+        <span className="pb-1 text-[13px] font-medium text-fg-3">al mes + IGV</span>
       </div>
       <p className="mt-2 min-h-[24px] text-[13px] text-fg-2">
         {cycle === "year" ? (
           <span className="inline-flex flex-wrap items-center gap-2">
             {formatMoney(plan.price_year, plan.currency)} al año
-            {plan.saving_year > 0 && <Badge tone="ok">Ahorras {formatMoney(plan.saving_year, plan.currency)}</Badge>}
+            {plan.saving_year > 0 && <Badge tone="ok">2 meses gratis · ahorras {formatMoney(plan.saving_year, plan.currency)}</Badge>}
           </span>
         ) : (
           <>Facturación mensual, sin permanencia</>
@@ -108,9 +109,20 @@ export function PlanCard({ plan, cycle, featured, index, compact = false, action
         <div className="mt-6 grid min-h-[40px] gap-2">{action}</div>
       ) : (
       <div className="mt-6 grid gap-2">
-        <Button href={contactHref("trial", plan.code, cycle)} variant={featured ? "primary" : "dark"} icon={<ArrowRight size={16} />} className="site-sheen relative w-full overflow-hidden">
-          Probar {plan.trial_days} días gratis
-        </Button>
+        {plan.rank >= 3 ? (
+          <Button href={signupHref(plan, cycle)} variant={featured ? "primary" : "dark"} icon={<ArrowRight size={16} />} className="site-sheen relative w-full overflow-hidden">
+            Hablar con ventas
+          </Button>
+        ) : (
+          <>
+            <Button href={signupHref(plan, "trial")} variant={featured ? "primary" : "dark"} icon={<ArrowRight size={16} />} className="site-sheen relative w-full overflow-hidden">
+              Probar {plan.trial_days} días gratis
+            </Button>
+            <Button href={signupHref(plan, cycle)} variant="secondary" className="w-full">
+              Contratar {cycle === "year" ? "anual" : "mensual"}
+            </Button>
+          </>
+        )}
         {!compact && (
           <Button href={contactHref("demo", plan.code, cycle)} variant="ghost" className="w-full">
             Solicitar una demo

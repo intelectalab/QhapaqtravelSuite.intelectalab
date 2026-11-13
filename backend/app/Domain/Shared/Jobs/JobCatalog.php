@@ -15,6 +15,7 @@ use App\Jobs\DispatchScheduledCampaigns;
 use App\Jobs\EvaluateMinimumGroup;
 use App\Jobs\ExpireApiKeys;
 use App\Jobs\ExpireAvailabilityHolds;
+use App\Jobs\ExpireInTripOffers;
 use App\Jobs\ExpireQuotes;
 use App\Jobs\ExpireSupplierAlternativeHolds;
 use App\Jobs\ExpireUnconfirmedAssignments;
@@ -44,6 +45,8 @@ use App\Jobs\SendPaymentReminders;
 use App\Jobs\SendScheduledReports;
 use App\Jobs\SnapshotPlatformMetrics;
 use App\Jobs\SyncSupplierAdapters;
+use App\Jobs\TreasuryCashFlowSnapshot;
+use App\Jobs\TreasuryOpenSessionCheck;
 use App\Jobs\VoucherDeadlineAlerts;
 use App\Jobs\WarnExpiringCards;
 
@@ -83,6 +86,9 @@ final class JobCatalog
         'JOB-31' => ['class' => CashDepositAlerts::class, 'name' => 'Efectivo sin depositar', 'cron' => '0 10 * * *', 'label' => 'diario 10:00', 'queue' => 'notifications'],
         'JOB-30' => ['class' => EvaluateMinimumGroup::class, 'name' => 'Evaluar grupo mínimo de salidas', 'cron' => '0 6 * * *', 'label' => 'diario 06:00', 'queue' => 'default'],
         'JOB-33' => ['class' => RetryIntegrationErrors::class, 'name' => 'Reintentar errores de integración', 'cron' => '*/5 * * * *', 'label' => 'cada 5 min', 'queue' => 'integrations'],
+        'JOB-TES-1' => ['class' => TreasuryOpenSessionCheck::class, 'name' => 'Cajas chicas sin abrir', 'cron' => '0 10 * * *', 'label' => 'diario 10:00', 'queue' => 'low'],
+        'JOB-TES-2' => ['class' => TreasuryCashFlowSnapshot::class, 'name' => 'Foto del flujo de caja proyectado', 'cron' => '0 6 * * *', 'label' => 'diario 06:00', 'queue' => 'reports'],
+        'JOB-TRAMOS-1' => ['class' => ExpireInTripOffers::class, 'name' => 'Vencer ofertas de venta en ruta', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'default'],
     ];
 
     public const PLATFORM = [

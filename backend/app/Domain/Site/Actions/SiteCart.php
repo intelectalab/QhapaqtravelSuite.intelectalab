@@ -89,6 +89,7 @@ final class SiteCart
             'lodging' => $extras['lodging'] === [] ? null : json_encode($extras['lodging'], JSON_UNESCAPED_UNICODE),
             'no_lodging' => $extras['no_lodging'],
             'removed_line_keys' => SiteBooking::pgArray($extras['removed']),
+            'extras' => SiteBooking::tripJson($extras),
             'source' => ($data['source'] ?? 'sitio') === 'widget' ? 'widget' : 'sitio',
         ]);
 
@@ -144,6 +145,62 @@ final class SiteCart
 
             return $this->present(DB::table('channel_web_carts')->where('id', $cart->id)->first());
         });
+    }
+
+    public function updateItem(?string $token, int $line, array $data): array
+    {
+        return DB::transaction(function () use ($token, $line, $data): array {
+            $cart = $this->find($token) ?? throw ApiException::notFound('Tu carrito expiró o ya fue procesado.');
+            $cart = DB::table('channel_web_carts')->where('id', $cart->id)->lock('for no key update')->first();
+            $item = DB::table('channel_web_cart_items as i')->join('catalog_products as p', 'p.id', '=', 'i.product_id')->where('i.cart_id', $cart->id)->where('i.line_no', $line)->first(['i.*', 'p.slug'])
+                ?? throw ApiException::notFound('Esa línea ya no está en tu carrito.');
+            $pax = [
+                'adults' => (int) ($data['adults'] ?? $item->pax_adults),
+                'children' => (int) ($data['children'] ?? $item->pax_children),
+                'infants' => (int) ($data['infants'] ?? $item->pax_infants),
+            ];
+            $current = SiteBooking::decode($item);
+            $extras = [...$current, ...array_intersect_key(SiteBooking::extrasFrom($data), $data)];
+            $quote = $this->quotes->quote($this->quotes->product($item->slug), $item->service_date, $pax['adults'], $pax['children'], $pax['infants'], $cart->promo_code, $extras, true);
+            $priced = $quote['extras'];
+            DB::table('channel_web_cart_items')->where('id', $item->id)->update([
+                'pax_adults' => $pax['adults'],
+                'pax_children' => $pax['children'],
+                'pax_infants' => $pax['infants'],
+                'options' => json_encode($priced['options'], JSON_UNESCAPED_UNICODE),
+                'addons' => $priced['addons'] === [] ? null : json_encode($priced['addons'], JSON_UNESCAPED_UNICODE),
+                'lodging' => $priced['lodging'] === [] ? null : json_encode($priced['lodging'], JSON_UNESCAPED_UNICODE),
+                'no_lodging' => $priced['no_lodging'],
+                'removed_line_keys' => SiteBooking::pgArray($priced['removed']),
+                'extras' => SiteBooking::tripJson($priced),
+                'updated_at' => now(),
+            ]);
+            $this->hold($cart, DB::table('channel_web_cart_items')->where('id', $item->id)->first());
+            DB::table('channel_web_carts')->where('id', $cart->id)->update(['lock_version' => (int) $cart->lock_version + 1, 'last_activity_at' => now(), 'updated_at' => now()]);
+            $this->audit->log('Carrito', $cart->code, 'modificar_linea', "línea {$line} · {$item->pax_adults}+{$item->pax_children}+{$item->pax_infants}", "línea {$line} · {$pax['adults']}+{$pax['children']}+{$pax['infants']}");
+            $presented = $this->present(DB::table('channel_web_carts')->where('id', $cart->id)->first());
+
+            return ['item' => collect($presented['items'])->firstWhere('line', $line), 'cart' => $presented];
+        });
+    }
+
+    public function preferences(?string $token, array $data): array
+    {
+        $cart = $this->find($token);
+        $values = array_filter(['currency' => $data['currency'] ?? null, 'locale' => $data['locale'] ?? null], fn (?string $value): bool => $value !== null);
+
+        if ($cart === null) {
+            return ['currency' => $values['currency'] ?? null, 'locale' => $values['locale'] ?? 'es', 'cart' => null];
+        }
+
+        if ($values !== []) {
+            DB::table('channel_web_carts')->where('id', $cart->id)->update([...$values, 'lock_version' => (int) $cart->lock_version + 1, 'last_activity_at' => now(), 'updated_at' => now()]);
+            $this->audit->log('Carrito', $cart->code, 'preferencias', "{$cart->currency} · {$cart->locale}", ($values['currency'] ?? $cart->currency).' · '.($values['locale'] ?? $cart->locale));
+        }
+
+        $cart = DB::table('channel_web_carts')->where('id', $cart->id)->first();
+
+        return ['currency' => trim((string) $cart->currency), 'locale' => $cart->locale, 'cart' => $this->present($cart)];
     }
 
     public function promo(?string $token, ?string $code): array
@@ -239,7 +296,7 @@ final class SiteCart
         $availability = $this->quotes->catalog()->availability();
         $controlled = $availability->usesDepartures($product->id) || DB::table('catalog_availability_ranges')->where('product_id', $product->id)->whereNull('deleted_at')->exists();
 
-        if (! $controlled) {
+        if (! $controlled || ! $this->profile->holdEnabled()) {
             return;
         }
 

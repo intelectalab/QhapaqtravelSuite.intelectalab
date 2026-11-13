@@ -91,6 +91,10 @@ final class TreasuryOperations
                 throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige cuentas distintas.');
             }
 
+            if (in_array($kind, ['transfer', 'replenishment'], true) && $to->kind === 'petty_cash' && ! $this->openToday($to)) {
+                throw ApiException::conflict('TES-BR-05', "La caja {$to->name} no está abierta hoy. Ábrela antes de transferirle efectivo.");
+            }
+
             $amountFrom = Decimal::money($data['amount']);
             $rate = $from->currency === $to->currency ? BigDecimal::one() : Decimal::of($data['deal_rate'] ?? $this->money->usdRate());
             $amountTo = $from->currency === $to->currency ? $amountFrom : ($from->currency === 'USD' ? $amountFrom->multipliedBy($rate) : $amountFrom->dividedBy($rate, 2, RoundingMode::HALF_UP))->toScale(2, RoundingMode::HALF_UP);
@@ -151,7 +155,11 @@ final class TreasuryOperations
             $account = $this->pettyCash($accountCode);
 
             if (DB::table('fin_cash_sessions')->where('account_id', $account->id)->where('status', 'open')->exists()) {
-                throw ApiException::conflict('TES-BR-03', 'La caja ya tiene una sesión abierta. Ciérrala con su arqueo antes de abrir otra.');
+                throw ApiException::conflict('TES-BR-06', 'La caja ya tiene una sesión abierta. Ciérrala con su arqueo antes de abrir otra.');
+            }
+
+            if (DB::table('fin_cash_sessions')->where('account_id', $account->id)->where('session_date', $this->money->today())->exists()) {
+                throw ApiException::conflict('TES-BR-06', 'La caja ya se abrió y se cerró hoy. La siguiente apertura es mañana; para un ajuste del día registra un arqueo.');
             }
 
             $expected = $this->balance($account);
@@ -188,8 +196,8 @@ final class TreasuryOperations
 
                 $today = $this->money->today();
 
-                if (DB::table('fin_cash_sessions')->where('account_id', $account->id)->where('status', 'open')->where('session_date', $today)->doesntExist()) {
-                    throw ApiException::conflict('TES-BR-04', 'Abre la caja del día antes de registrar gastos.');
+                if (! $this->openToday($account)) {
+                    throw ApiException::conflict('TES-BR-05', 'Abre la caja del día antes de registrar gastos.');
                 }
 
                 if (filled($data['date'] ?? null) && $data['date'] !== $today) {
@@ -197,15 +205,23 @@ final class TreasuryOperations
                 }
 
                 if ($settings && $amount->isGreaterThan((string) $settings->max_petty_expense)) {
-                    throw ApiException::unprocessable('TES-BR-05', 'El gasto supera el máximo por caja chica (S/ '.$settings->max_petty_expense.'). Págalo desde un banco.');
+                    throw ApiException::unprocessable('TES-BR-11', 'El gasto supera el máximo por caja chica (S/ '.$settings->max_petty_expense.'). Págalo desde un banco.');
                 }
 
                 if ($data['receipt_type'] === 'sworn_statement' && $settings && $amount->isGreaterThan((string) $settings->sworn_statement_max)) {
-                    throw ApiException::unprocessable('TES-BR-11', 'Con declaración jurada solo se sustentan gastos de hasta S/ '.$settings->sworn_statement_max.'.');
+                    throw ApiException::unprocessable('TES-BR-12', 'Con declaración jurada solo se sustentan gastos de hasta S/ '.$settings->sworn_statement_max.'.');
+                }
+
+                if (filled($data['issuer_ruc'] ?? null) && filled($data['series_number'] ?? null) && DB::table('fin_expense_receipts')->where('issuer_ruc', $data['issuer_ruc'])->where('series_number', $data['series_number'])->exists()) {
+                    throw ApiException::conflict('TES-BR-12', "El comprobante {$data['series_number']} del RUC {$data['issuer_ruc']} ya se rindió en otro gasto.");
                 }
 
                 $this->ensureFunds($account, $amount);
-                $reservation = filled($data['reservation'] ?? null) ? DB::table('booking_reservations')->where('code', $data['reservation'])->value('id') : null;
+                $reservation = filled($data['reservation'] ?? null) ? DB::table('booking_reservations')->where('code', $data['reservation'])->whereNull('deleted_at')->value('id') : null;
+
+                if (filled($data['reservation'] ?? null) && $reservation === null) {
+                    throw ApiException::unprocessable('VALIDATION_ERROR', "La reserva {$data['reservation']} no existe. Elige una de la lista o deja el campo vacío.", ['reservation' => ['La reserva no existe.']]);
+                }
                 $movementCode = $this->movement($account, 'out', 'petty_expense', $amount, $data['date'] ?? $this->money->today(), 'expense', null, $data['description'], $data['series_number'] ?? null, $actor, ['reservation_id' => $reservation, 'category' => $data['category'] ?? null, 'counterparty' => $data['supplier']]);
                 $stored = $file !== null ? $this->files->store($file, $movementCode) : null;
                 DB::table('fin_expense_receipts')->insert([
@@ -243,7 +259,7 @@ final class TreasuryOperations
             $difference = $counted->minus($expected);
 
             if (! $difference->isZero() && blank($data['note'] ?? null)) {
-                throw ApiException::unprocessable('TES-BR-06', 'Hay una diferencia: explica qué pasó en la observación.');
+                throw ApiException::unprocessable('TES-BR-13', 'Hay una diferencia: explica qué pasó en la observación.');
             }
 
             $tolerance = Decimal::of(DB::table('fin_treasury_settings')->value('petty_tolerance') ?? 0);
@@ -251,7 +267,7 @@ final class TreasuryOperations
             $kind = $data['kind'] ?? 'closing';
 
             if ($kind === 'closing' && $session === null) {
-                throw ApiException::conflict('TES-BR-04', 'La caja no tiene una sesión abierta para cerrar.');
+                throw ApiException::conflict('TES-BR-05', 'La caja no tiene una sesión abierta para cerrar.');
             }
 
             $code = $this->sequences->next('cash_count');
@@ -289,11 +305,11 @@ final class TreasuryOperations
             $count = DB::table('fin_cash_counts')->where('code', $code)->lockForUpdate()->first() ?? throw ApiException::notFound('El arqueo no existe.');
 
             if ($count->status !== 'pending_approval') {
-                throw ApiException::conflict('TES-BR-07', 'Este arqueo no tiene una diferencia por aprobar.');
+                throw ApiException::conflict('TES-BR-13', 'Este arqueo no tiene una diferencia por aprobar.');
             }
 
             if ($count->signed_by === $actor->getKey()) {
-                throw ApiException::forbidden('TES-BR-07', 'Quien firmó el arqueo no puede aprobar su propia diferencia.');
+                throw ApiException::forbidden('TES-BR-14', 'Quien firmó el arqueo no puede aprobar su propia diferencia.');
             }
 
             $account = DB::table('fin_treasury_accounts')->where('id', $count->account_id)->first();
@@ -310,7 +326,7 @@ final class TreasuryOperations
             $count = DB::table('fin_cash_counts')->where('code', $code)->lockForUpdate()->first(['id', 'code', 'status']) ?? throw ApiException::notFound('El arqueo no existe.');
 
             if (! in_array($count->status, ['signed', 'approved'], true)) {
-                throw ApiException::conflict('TES-BR-07', $count->status === 'validated' ? 'El arqueo ya tiene el visto bueno contable.' : 'Primero hay que aprobar la diferencia del arqueo.');
+                throw ApiException::conflict('TES-BR-13', $count->status === 'validated' ? 'El arqueo ya tiene el visto bueno contable.' : 'Primero hay que aprobar la diferencia del arqueo.');
             }
 
             DB::table('fin_cash_counts')->where('id', $count->id)->update(['status' => 'validated', 'validated_by' => $actor->getKey(), 'validated_at' => now(), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
@@ -324,14 +340,14 @@ final class TreasuryOperations
             $account = $this->pettyCash($accountCode);
 
             if (DB::table('fin_cash_replenishments')->where('account_id', $account->id)->whereIn('status', ['requested', 'approved'])->exists()) {
-                throw ApiException::conflict('TES-BR-09', 'La caja ya tiene una reposición en curso.');
+                throw ApiException::conflict('TES-BR-15', 'La caja ya tiene una reposición en curso.');
             }
 
             $expenses = DB::table('fin_treasury_movements')->where('account_id', $account->id)->where('type', 'petty_expense')->where('status', 'posted')->whereNull('replenishment_id')->lockForUpdate()->get(['id', 'amount']);
             $amount = $expenses->reduce(fn (BigDecimal $sum, object $row): BigDecimal => $sum->plus(Decimal::of($row->amount)), BigDecimal::zero());
 
             if (! $amount->isPositive()) {
-                throw ApiException::unprocessable('TES-BR-09', 'No hay gastos por rendir: la reposición se calcula con los gastos de la caja.');
+                throw ApiException::unprocessable('VALIDATION_ERROR', 'No hay gastos por rendir: la reposición se calcula con los gastos de la caja.');
             }
 
             $code = $this->sequences->next('cash_replenishment');
@@ -352,11 +368,11 @@ final class TreasuryOperations
             $replenishment = DB::table('fin_cash_replenishments')->where('code', $code)->lockForUpdate()->first() ?? throw ApiException::notFound('La reposición no existe.');
 
             if ($replenishment->status !== 'requested') {
-                throw ApiException::conflict('TES-BR-10', 'La reposición ya fue resuelta.');
+                throw ApiException::conflict('STATE_TRANSITION_NOT_ALLOWED', 'La reposición ya fue resuelta.');
             }
 
             if ($replenishment->requested_by === $actor->getKey()) {
-                throw ApiException::forbidden('TES-BR-10', 'Quien solicitó la reposición no puede aprobarla ni rechazarla.');
+                throw ApiException::forbidden('TES-BR-14', 'Quien solicitó la reposición no puede aprobarla ni rechazarla.');
             }
 
             $status = $decision === 'approve' ? 'approved' : 'rejected';
@@ -378,7 +394,7 @@ final class TreasuryOperations
             $replenishment = DB::table('fin_cash_replenishments')->where('code', $code)->lockForUpdate()->first() ?? throw ApiException::notFound('La reposición no existe.');
 
             if ($replenishment->status !== 'approved') {
-                throw ApiException::conflict('TES-BR-10', 'Solo se pagan reposiciones aprobadas.');
+                throw ApiException::conflict('STATE_TRANSITION_NOT_ALLOWED', 'Solo se pagan reposiciones aprobadas.');
             }
 
             $cash = DB::table('fin_treasury_accounts')->where('id', $replenishment->account_id)->value('code');
@@ -424,6 +440,11 @@ final class TreasuryOperations
         return $code;
     }
 
+    private function openToday(object $account): bool
+    {
+        return DB::table('fin_cash_sessions')->where('account_id', $account->id)->where('status', 'open')->where('session_date', $this->money->today())->exists();
+    }
+
     private function warnLowBalance(object $account, User $actor): void
     {
         $threshold = (int) (DB::table('fin_treasury_settings')->value('replenish_threshold_pct') ?? 40);
@@ -453,7 +474,7 @@ final class TreasuryOperations
     private function ensureFunds(object $account, BigDecimal $amount): void
     {
         if ($amount->isGreaterThan($this->balance($account))) {
-            throw ApiException::unprocessable('TES-BR-01', "El importe supera el saldo disponible de {$account->name}.");
+            throw ApiException::unprocessable('TES-BR-02', "El importe supera el saldo disponible de {$account->name}.");
         }
     }
 

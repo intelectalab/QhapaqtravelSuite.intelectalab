@@ -2,6 +2,7 @@
 
 import { Ban, CalendarClock, ClipboardList, Pencil, Plus, Siren, TriangleAlert, UserCog, Users } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -17,15 +18,36 @@ const href = (code: string) => `/operaciones/ordenes/${code}`;
 
 const CLOSED = ["completada", "cancelada"];
 
+function OrderPreview({ candidate }: { candidate: OrderCandidate | undefined }) {
+  if (!candidate || candidate.replicable === undefined) return <ConfirmNote>Elige la reserva para ver qué se copiará a la orden.</ConfirmNote>;
+  const replicable = candidate.replicable;
+  const others = (candidate.services ?? replicable) - replicable;
+  return (
+    <ConfirmNote tone={replicable === 0 ? "warn" : "neutral"}>
+      {replicable === 0 ? (
+        <>La reserva no tiene tours ni traslados: la orden se creará sin servicios por asignar, solo con sus tareas.</>
+      ) : (
+        <>
+          Se replicarán <b className="font-semibold">{replicable === 1 ? "1 servicio" : `${replicable} servicios`}</b> (tours y traslados) para asignarles guía, conductor y vehículo
+          {candidate.passengers !== undefined ? `, con ${candidate.passengers === 1 ? "1 pasajero" : `${candidate.passengers} pasajeros`}` : ""}.
+          {others > 0 ? ` ${others === 1 ? "El otro servicio de la reserva no pasa" : `Los otros ${others} servicios de la reserva no pasan`} a asignación.` : ""}
+        </>
+      )}
+    </ConfirmNote>
+  );
+}
+
 export function OrderCreateAction({ candidates, coordinators, viewerId }: { candidates: OrderCandidate[]; coordinators: Person[]; viewerId: string }) {
   const fallback = coordinators.some((person) => person.id === viewerId) ? viewerId : (coordinators[0]?.id ?? "");
+  const [reservation, setReservation] = useState("");
   return (
     <OpsStep step="order_create" label="Nueva orden" icon={<Plus size={16} strokeWidth={2.4} />} variant="primary" title="Nueva orden operativa" description="Se crea desde una reserva confirmada. Los tours y traslados pasan a asignación con las cinco tareas habituales." submitLabel="Crear orden">
       {candidates.length === 0 ? (
         <ConfirmNote>Todas las reservas confirmadas ya tienen su orden operativa.</ConfirmNote>
       ) : (
         <>
-          <SelectField label="Reserva" name="reservation_code" options={candidates.map((item) => ({ value: item.code, label: `${item.code} · ${item.title}`, hint: `${item.client} · ${formatDate(item.travel_from)}` }))} placeholder="Elegir reserva" />
+          <SelectField label="Reserva" name="reservation_code" value={reservation} onChange={setReservation} options={candidates.map((item) => ({ value: item.code, label: `${item.code} · ${item.title}`, hint: `${item.client} · ${formatDate(item.travel_from)}` }))} placeholder="Elegir reserva" />
+          <OrderPreview candidate={candidates.find((item) => item.code === reservation)} />
           <SelectField label="Coordinador" name="coordinator_id" options={coordinators.map((person) => ({ value: person.id, label: person.name }))} defaultValue={fallback} />
         </>
       )}
@@ -74,6 +96,17 @@ export function OrdersTable({ data }: { data: OrderList }) {
             {row.code} · <Link href={`/reservas/${row.reservation.code}`} className="hover:text-accent hover:underline">{row.reservation.code}</Link> · {row.reservation.client}
           </small>
         </div>
+      ),
+    },
+    {
+      id: "operation",
+      header: "Operación",
+      wideOnly: true,
+      cell: (row) => (
+        <span className="text-[13px]">
+          {row.services === undefined ? "—" : row.services === 1 ? "1 servicio" : `${row.services} servicios`}
+          {row.reservation.channel && <span className="block text-xs text-fg-3">Canal {row.reservation.channel}</span>}
+        </span>
       ),
     },
     {

@@ -62,7 +62,7 @@ final class QuotesReport extends ReportBuilder
                 S::column('code', 'Cotización'),
                 S::column('client', 'Cliente'),
                 S::column('seller', 'Vendedor'),
-                S::column('status', 'Estado', 'status'),
+                S::column('status', 'Estado', 'status', ['filter' => true]),
                 S::column('versions', 'Vers.', 'number'),
                 S::column('total', 'Total S/', 'money'),
                 S::column('margin', 'Margen', 'percent', ['warn_below' => 15]),

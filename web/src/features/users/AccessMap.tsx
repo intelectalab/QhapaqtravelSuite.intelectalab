@@ -18,6 +18,8 @@ interface Row {
 
 const OTHER = "Otras pantallas";
 
+const EXTERNAL = "Portales y apps externas";
+
 function humanize(segment: string): string {
   const text = segment.replace(/[-_]/g, " ");
   return text.charAt(0).toUpperCase() + text.slice(1);
@@ -55,7 +57,7 @@ export function AccessMap({ data }: { data: AccessMapData }) {
   return (
     <div className="grid gap-4">
       <div className="grid gap-3 sm:grid-cols-[240px_240px_1fr] sm:items-end">
-        <SelectField label="Módulo" name="group" options={groups.map((value) => ({ value, label: value }))} value={group} placeholder="Todos los módulos" clearable onChange={setGroup} />
+        <SelectField label="Módulo" name="group" options={[...groups, ...((data.external ?? []).length > 0 ? [EXTERNAL] : [])].map((value) => ({ value, label: value }))} value={group} placeholder="Todos los módulos" clearable onChange={setGroup} />
         <SelectField label="Tipo de rol" name="scope" options={(Object.keys(SCOPE_LABEL) as RoleScope[]).map((value) => ({ value, label: SCOPE_LABEL[value] }))} value={scope} placeholder="Todos los roles" clearable onChange={setScope} />
         <p className="flex items-center gap-3 whitespace-nowrap text-[12.5px] text-fg-3 sm:pb-2.5">
           <span className="inline-flex items-center gap-1"><Check size={13} className="text-ok" /> Ve</span>
@@ -129,10 +131,93 @@ export function AccessMap({ data }: { data: AccessMapData }) {
               .map((name) => (
                 <GroupRows key={name} name={name} rows={visible.filter((row) => row.group === name)} roles={roles} focus={focus} />
               ))}
+            {(group === "" || group === EXTERNAL) && (data.external ?? []).length > 0 && <ExternalRows items={data.external ?? []} roles={roles} focus={focus} />}
           </tbody>
         </table>
       </Card>
+
+      <RoleSummary roles={roles} total={data.screens.length} focus={focus} />
     </div>
+  );
+}
+
+function ExternalRows({ items, roles, focus }: { items: NonNullable<AccessMapData["external"]>; roles: AccessMapData["roles"]; focus: string | null }) {
+  return (
+    <>
+      <tr className="bg-surface-2">
+        <td colSpan={roles.length + 1} className="sticky left-0 px-4 py-2 text-[12px] font-bold text-fg-2">
+          {EXTERNAL}
+        </td>
+      </tr>
+      {items.map((item) => (
+        <tr key={item.key} className="border-b border-line-2 transition hover:bg-[color-mix(in_srgb,var(--t1)_4%,transparent)]">
+          <td className="sticky left-0 z-10 bg-surface px-4 py-2 text-fg">
+            {item.label}
+            <span className="ml-2 font-mono text-[11px] text-fg-3">{item.path}</span>
+          </td>
+          {roles.map((role) => (
+            <td key={role.role} className={cn("px-2 py-2 text-center", focus === role.role && "bg-[color-mix(in_srgb,var(--brand)_8%,transparent)]")}>
+              {role.external?.[item.key] ? <Check size={15} className="mx-auto text-ok" aria-label="Puede entrar" /> : <Minus size={14} className="mx-auto text-line" aria-label="Sin acceso" />}
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+function RoleSummary({ roles, total, focus }: { roles: AccessMapData["roles"]; total: number; focus: string | null }) {
+  return (
+    <Card padded={false} className="overflow-x-auto">
+      <div className="flex items-center justify-between gap-3 px-4 pt-4">
+        <h2 className="text-[15px] font-bold">Resumen por rol</h2>
+        <InfoTip label="De dónde sale">Se calcula con los permisos actuales de cada rol y la experiencia que tiene asignada: back-office, portal o app. Cambia al editar los permisos.</InfoTip>
+      </div>
+      <table className="mt-3 w-full min-w-[920px] border-collapse text-[12.5px]">
+        <thead>
+          <tr className="border-y border-line text-left text-[12px] text-fg-3">
+            <th className="px-4 py-2.5 font-semibold">Rol</th>
+            <th className="px-3 py-2.5 font-semibold">Inicio</th>
+            <th className="px-3 py-2.5 text-right font-semibold">Pantallas</th>
+            <th className="px-3 py-2.5 font-semibold">Qué puede hacer</th>
+            <th className="px-3 py-2.5 font-semibold">No puede</th>
+            <th className="px-3 py-2.5 font-semibold">Alcance de datos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {roles.map((role) => (
+            <tr key={role.role} className={cn("border-b border-line-2 align-top transition hover:bg-surface-2", focus === role.role && "bg-[color-mix(in_srgb,var(--brand)_6%,transparent)]")}>
+              <td className="px-4 py-2.5">
+                <Link href={`/admin/roles?rol=${role.role}`} className="font-semibold hover:text-accent">
+                  {role.name}
+                </Link>
+                <span className="block text-[11.5px] text-fg-3">
+                  {EXPERIENCE_LABEL[role.experience] ?? role.experience}
+                  {role.users !== undefined ? ` · ${role.users} ${role.users === 1 ? "usuario activo" : "usuarios activos"}` : ""}
+                </span>
+              </td>
+              <td className="px-3 py-2.5 font-mono text-[11.5px] text-fg-2">{role.home ?? "—"}</td>
+              <td className="px-3 py-2.5 text-right font-mono">{role.experience === "backoffice" ? `${role.allowed} / ${total}` : "—"}</td>
+              <td className="px-3 py-2.5">
+                {(role.modules ?? []).length === 0 ? (
+                  <span className="text-fg-3">Sin permisos asignados</span>
+                ) : (
+                  <span className="flex max-w-[300px] flex-wrap gap-1">
+                    {(role.modules ?? []).map((item) => (
+                      <span key={item.module} title={`${item.granted} de ${item.total} permisos`} className={cn("rounded-md px-1.5 py-0.5 text-[11px]", item.granted === item.total ? "bg-[color-mix(in_srgb,var(--ok)_12%,transparent)] text-fg" : "bg-surface-2 text-fg-2")}>
+                        {item.module} {item.granted === item.total ? "completo" : `${item.granted}/${item.total}`}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </td>
+              <td className="max-w-[240px] px-3 py-2.5 text-fg-2">{(role.denied ?? []).length > 0 ? (role.denied ?? []).join(", ") : "—"}</td>
+              <td className="max-w-[260px] px-3 py-2.5 text-fg-2">{role.data_scope ?? SCOPE_LABEL[role.scope]}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Card>
   );
 }
 

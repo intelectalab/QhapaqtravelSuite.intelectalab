@@ -21,6 +21,15 @@ export async function updateCurrency(_state: StepResult, form: FormData): Promis
   return refresh(await sendStep(`/finance/currencies/${code}`, "PATCH", body, "No pudimos actualizar la moneda."));
 }
 
+export async function testFxProvider(_state: StepResult, form: FormData): Promise<StepResult> {
+  const code = encodeURIComponent(String(form.get("code") ?? ""));
+  return refresh(await sendStep(`/finance/fx-providers/${code}/test`, "POST", {}, "No pudimos probar la conexión."));
+}
+
+export async function refreshFxRates(): Promise<StepResult> {
+  return refresh(await sendStep("/finance/currencies/refresh", "POST", {}, "No pudimos actualizar el tipo de cambio."));
+}
+
 export async function saveFxSettings(_state: StepResult, form: FormData): Promise<StepResult> {
   return refresh(await sendStep("/finance/fx-settings", "PATCH", formValues(form, ["margin_pct", "alert_pct"]), "No pudimos guardar el margen."));
 }

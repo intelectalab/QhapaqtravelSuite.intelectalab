@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TabbedCard } from "@/components/ui/RouteTabs";
 import { ExternalTiles } from "@/features/channels/ExternalReviews";
+import { InviteReservationAction } from "@/features/channels/ReviewSourceActions";
 import type { ExternalReviewsOverview } from "@/lib/channels";
 import { getCachedResource } from "@/lib/server/resource";
 
@@ -22,9 +23,12 @@ export default async function ExternalReviewsLayout({ children }: { children: Re
         subtitle="Lo que dicen de tu agencia en Google, TripAdvisor y otras plataformas, en una sola bandeja."
         info={<InfoTip>Se leen por las APIs oficiales de cada plataforma, sin copiar páginas. Las respuestas se publican por API cuando la plataforma lo permite; si no, se copian a mano y se marcan como publicadas.</InfoTip>}
         actions={
-          <Button href="/canales/resenas-propias" variant="secondary" icon={<Award size={16} />} iconOnlyOnMobile>
-            Reseñas de clientes
-          </Button>
+          <>
+            {overview.can_reply && <InviteReservationAction />}
+            <Button href="/canales/resenas-propias" variant="secondary" icon={<Award size={16} />} iconOnlyOnMobile>
+              Reseñas de clientes
+            </Button>
+          </>
         }
       />
       <ExternalTiles overview={overview} />

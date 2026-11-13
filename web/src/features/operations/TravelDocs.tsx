@@ -59,6 +59,8 @@ export function TravelDocsTable({ data }: { data: TravelDocList }) {
         </span>
       ),
     },
+    { id: "pax", header: "Pax", align: "right", wideOnly: true, cell: (row) => <span className="font-mono text-[13px]">{row.passengers}</span> },
+    { id: "owner", header: "Asesor", wideOnly: true, cell: (row) => <span className="text-[13px]">{row.owner}</span> },
     { id: "trip", header: "Viaje", cell: (row) => (<span><DateRange from={row.travel_from} to={row.travel_to} /><span className="block text-xs text-fg-3">{row.days_to_travel > 0 ? `Sale en ${row.days_to_travel} días` : row.days_to_travel === 0 ? "Sale hoy" : "En curso o terminado"}</span></span>) },
     { id: "progress", header: "Documentos", cell: (row) => <Meter value={row.documents.complete} total={row.documents.total} tone={row.progress === 100 ? "ok" : row.documents.observed > 0 ? "bad" : "warn"} label={`${row.documents.received} por revisar · ${row.documents.pending} pendientes · ${row.documents.observed} observados`} /> },
     {
@@ -81,7 +83,14 @@ export function TravelDocsTable({ data }: { data: TravelDocList }) {
     { id: "soon", label: "Salen en 15 días", tone: "warn", icon: <Plane size={19} />, matches: (row) => row.days_to_travel >= 0 && row.days_to_travel <= 15 && row.progress < 100 },
   ];
 
-  const filters: FilterConfig<TravelDocRow>[] = [{ id: "status", label: "Estado de la reserva", options: [...new Set(data.items.map((row) => row.status))].map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status }];
+  const upcoming = (row: TravelDocRow) => row.travel_to >= data.today && row.status !== "completada";
+  const mapiState = (row: TravelDocRow) => (row.mapi === null ? "no_aplica" : row.mapi.blocked && !row.mapi.used ? "bloqueada" : "habilitada");
+
+  const filters: FilterConfig<TravelDocRow>[] = [
+    { id: "status", label: "Estado de la reserva", options: [...new Set(data.items.map((row) => row.status))].map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status },
+    { id: "period", label: "Periodo", options: [{ value: "proximos", label: "Próximos viajes" }, { value: "finalizados", label: "Finalizados" }], value: (row) => (upcoming(row) ? "proximos" : "finalizados") },
+    { id: "mapi", label: "MAPI", options: [{ value: "bloqueada", label: "Bloqueada" }, { value: "habilitada", label: "Habilitada" }, { value: "no_aplica", label: "No aplica" }], value: mapiState },
+  ];
 
   const sorts: SortOption<TravelDocRow>[] = [
     { id: "travel", label: "Fecha de viaje", type: "date", value: (row) => row.travel_from },

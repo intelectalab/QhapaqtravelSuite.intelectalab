@@ -50,6 +50,7 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `GET /catalog/availability` | Lectura de pantalla | Vista de disponibilidad de todos los productos en una pantalla; el contrato la da producto por producto. |
 | `GET /catalog/products/{}/editor` | Lectura de pantalla | Estado completo del asistente de edición (ficha, componentes, itinerario, tarifas, temporadas, disponibilidad, contenido, políticas, canales, resumen y checklist) en una sola llamada. |
 | `POST /catalog/products/preview` | Acción propia | Validación por paso del asistente PROC-014 («validación por paso», spec 02 §2): valida el payload de `POST /catalog/products` hasta el paso indicado, lo ejecuta dentro de una transacción que se revierte y devuelve el resumen y el checklist §42. No guarda nada. |
+| `PATCH /catalog/products/{}/minimum-passengers` | Editar, borrar o cambiar estado | Atajo desde la tarjeta «Costo por persona según el grupo»: cambia solo el mínimo de pasajeros (1 al máximo del producto) sin reenviar la ficha completa. Exige `lock_version` y audita el valor anterior y el nuevo. |
 | `GET /catalog/products/{}/overview` | Lectura de pantalla | Datos de las secciones de la ficha del producto (salidas, proveedores, relacionados, B2B, promociones, rentabilidad, personalización, versiones, historial y uso en ventas) en una sola llamada. Oculta costos, B2B e historial según el rol. |
 | `PUT /catalog/products/{}/components` | Editar, borrar o cambiar estado | Atajo de la pantalla: el asistente guarda todos los componentes en un envío. Las rutas del contrato `POST /catalog/products/{id}/components` y `PATCH/DELETE …/components/{componentId}` ya existen y usan la misma lógica (`ProductSections`). Conserva los ids y audita cada cambio. |
 | `PUT /catalog/products/{}/itinerary` | Editar, borrar o cambiar estado | Atajo de la pantalla para guardar días y actividades en un envío. Las rutas del contrato de días y actividades (`POST/PATCH/DELETE …/itineraries/{itId}/days[/{dayId}[/items[/{itemId}]]]`) ya existen; `{itId}` acepta el id del itinerario principal o `principal`. |
@@ -89,7 +90,7 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `PATCH /reservations/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `GET /reservations/{}/confirm-preview` | Lectura de pantalla | Vista previa de disponibilidad por servicio antes de confirmar, con salidas alternativas y «Reprogramar» si hay bloqueo (04 §4.1). Pide `reservations.modify`. |
 
-### Operaciones y móvil · spec 05 (16)
+### Operaciones y móvil · spec 05 (18)
 
 | Ruta | Grupo | Equivalente en el contrato o motivo |
 | --- | --- | --- |
@@ -108,6 +109,8 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `POST /ops/orders/{}/evidences/upload` | Acción propia | Carga directa multipart de una evidencia de la orden (`operations.assign`, imagen o PDF, hasta 10 MB). El flujo del contrato (`/ops/evidences/presign`, PUT al bucket y `/ops/orders/{}/evidences`) es para la app del operador; desde el panel el archivo pasa por una server action de Next, y el PUT a una URL prefirmada exigiría que el navegador vea el almacenamiento. Misma validación, deduplicación por SHA-256 (OPS-BR-71) y auditoría que la ruta del contrato. |
 | `POST /ops/incidents/{}/evidences/upload` | Acción propia | Igual que la anterior para una incidencia (`operations.incidents`); deja la entrada «evidencia» en la bitácora de la incidencia. |
 | `PUT /ops/assignments/{}/checkins` | Acción propia | Check-in por pasajero desde la ficha de la orden (origen web). El contrato solo lo prevé por la sincronización de la app móvil. |
+| `GET /mobile/passenger/feedback` | Lectura de pantalla | Tipos, servicios e historial de comentarios del pasajero para la pantalla «Comentar» de la app. El contrato solo tiene el alta (`POST /mobile/passenger/feedback`); es la misma lectura que `GET /portal/passenger/feedback`, bajo el canal de la app. |
+| `POST /ops/mobile-devices/{}/revoke` | Acción propia | Operaciones desactiva el teléfono de un guía o conductor (`operations.assign`, auditado). El contrato solo tiene el cierre de sesión del propio dispositivo (`DELETE /mobile/devices/{id}`); la app borra sus datos al recibir `403 DEVICE_REVOKED` (spec 05 §3.13, `revoked_at`). |
 
 ### Extranet de proveedores · spec 06 (9)
 
@@ -119,7 +122,6 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `GET /supplier/session` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `DELETE /supplier/company/contacts/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `PATCH /supplier/company/contacts/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
-| `DELETE /supplier/payables/{}/invoices` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `PATCH /supplier/rate-requests/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
 | `POST /supplier/company/contacts` | Acción propia | Contactos de la empresa en la extranet del proveedor; el contrato no los tiene. |
 
@@ -178,6 +180,8 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `GET /dashboard/home` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `GET /health` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `GET /me/counts` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
+| `POST /reservations/{}/services/cancel` | Acción propia | Cancela parte de los servicios de una reserva (estado «parcial», spec 04 §4 v2.5 y §4.6 por servicio): penalidad por servicio, CxC recalculadas, reembolso si lo pagado supera el nuevo total, cupos, vouchers y asignaciones de esos servicios. El contrato define la transición pero no trae la ruta. |
+| `POST /reservations/{}/services/cancel/preview` | Lectura de pantalla | Vista previa de la cancelación parcial con la penalidad por servicio, el nuevo total y el reembolso. |
 | `POST /me/data-exports` | Acción propia | Registra en la auditoría cada lista que se exporta a Excel o CSV (formato, filas, filtros y columnas). El archivo se arma en el navegador con las filas filtradas y ordenadas, como en ErpSaas. |
 | `GET /reports/kpis` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `GET /reports/process-map` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
@@ -194,6 +198,8 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | Ruta | Grupo | Equivalente en el contrato o motivo |
 | --- | --- | --- |
 | `PATCH /approvals/{}` | Editar, borrar o cambiar estado | Editar, borrar o cambiar de estado un registro. Lo exige el criterio de CRUD completo de la jefatura y el contrato no siempre lo incluye. |
+| `GET /inbox/channel-accounts` | Lectura de pantalla | Cuentas de WhatsApp y correo de la bandeja (ID del número, buzón, plazo, estado y si el secreto del webhook está configurado, sin mostrarlo). Panel «Canales e integración» de la bandeja. |
+| `PUT /inbox/channel-accounts/{}` | Editar, borrar o cambiar estado | Crea o edita la cuenta de canal (`collab_channel_accounts`): ID del número o buzón, secreto del webhook cifrado, plazo de primera respuesta y estado (desconectar = `inactivo`). Audita cada campo; el secreto nunca se devuelve. |
 
 ### Plataforma SaaS y API · spec 13 (38)
 
@@ -202,6 +208,9 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | `GET /platform/branding` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `PUT /platform/settings/outgoing-mail` | Editar, borrar o cambiar estado | Correo de salida de la plataforma (SMTP) desde Configuración de la consola. Prueba la conexión antes de guardar, guarda la contraseña cifrada en `platform_settings`, nunca la devuelve y audita cada campo. Todos los correos usan el mailer `platform`, que lee esta cuenta en cada envío. |
 | `POST /platform/settings/outgoing-mail/test` | Acción propia | Envía en el momento un correo de prueba con la cuenta guardada y registra el resultado. |
+| `PUT /platform/settings/whatsapp-webhook` | Editar, borrar o cambiar estado | Token de verificación de la app de Meta para `GET /integrations/whatsapp/webhook`, desde Configuración de la consola. Se guarda cifrado en `platform_settings`, nunca se devuelve (solo «configurado») y se audita; `clear` lo quita. |
+| `PUT /platform/settings/fiscal-webhook` | Editar, borrar o cambiar estado | Secreto con el que el OSE firma `POST /integrations/fiscal/{provider}/webhook`, desde Configuración de la consola. Se guarda cifrado en `platform_settings` (clave `fiscal_provider`, campo `webhook_secret`), nunca se devuelve (solo «configurado») y se audita; `clear` lo quita. |
+| `GET /platform/audit-events/export` | Acción propia | Descarga en CSV hasta 5000 eventos de la auditoría de plataforma (7, 30, 90 o 365 días, con los mismos filtros del listado) y registra la exportación. |
 | `PUT /platform/settings/form-protection` | Editar, borrar o cambiar estado | Protección de formularios (Cloudflare Turnstile, spec 15 §585) desde Configuración de la consola. Prueba la clave secreta con Cloudflare, la guarda cifrada en `platform_settings`, nunca la devuelve y audita cada campo. |
 | `GET /platform/demo-requests` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `GET /platform/dunning` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
@@ -313,3 +322,22 @@ Agregadas el 11 de noviembre de 2026, con las secciones de Reseñas externas y d
 | --- | --- | --- |
 | `PUT /channels/external-reviews/widget` | Editar, borrar o cambiar estado | Guarda la configuración del widget de reseñas para el sitio: plataformas (solo las conectadas), nota mínima, cantidad y diseño. Pide `channels.ecommerce.manage` y queda auditado. |
 | `PUT /crm/claim-book/settings` | Editar, borrar o cambiar estado | Guarda el plazo de respuesta, los días de alerta antes del vencimiento y los años de conservación. No tiene GET propio: la configuración y el siguiente correlativo por sede vienen en `GET /crm/claim-book`. Pide `admin.settings.manage` y queda auditado. |
+
+### Portal corporativo · spec 20 (2)
+
+Agregadas el 12 de noviembre de 2026, con las cuentas corporativas y los estados de cuenta.
+
+| Ruta | Grupo | Equivalente en el contrato o motivo |
+| --- | --- | --- |
+| `GET /crm/corporate-accounts/form-options` | Lectura de pantalla | Empresas del CRM sin cuenta corporativa (según la cartera), roles del portal, períodos de presupuesto y tipos de documento para los formularios. Pide `crm.corporate.manage`. |
+| `GET /finance/corporate-statements/{}/pdf` | Lectura de pantalla | PDF del estado de cuenta para Finanzas (el contrato solo lo tiene en el portal). Pide `finance.corporate_statements`. |
+
+### Vitrina, monetización y marca · spec 22 (5)
+
+| Ruta | Grupo | Equivalente en el contrato o motivo |
+| --- | --- | --- |
+| `PATCH /cms/stories/{}` | Editar, borrar o cambiar estado | Editar título, ciudad, frase, relato, fotos y tour enlazado de una historia de aventura. El contrato solo crea, pide consentimiento, publica y despublica; lo exige el criterio de CRUD completo. Si la historia está publicada y el cliente no autorizó fotos, no admite fotos (VT-12). `cms.seo.manage` o `channels.cms.publish`. |
+| `DELETE /cms/stories/{}` | Editar, borrar o cambiar estado | Eliminar una historia que no está publicada (borrador, esperando consentimiento o despublicada). La auditoría conserva el registro. Mismos permisos. |
+| `GET /showcase/overview` | Lectura de pantalla | Resumen público para la web de Rutas Libres en una sola llamada: ciudades con número de tours, temas, cifras del mes del embudo, reglas de cupo y comisión, beneficios, planes y add-ons para la página «Para agencias». Sin datos de agencias ni viajeros. |
+| `GET /public/stories` | Lectura de pantalla | Historias publicadas con consentimiento vigente para la página `/aventuras` del sitio de la agencia (spec 22 §2, `(sitio)/aventuras`). El nombre del viajero se muestra según `consent_name_mode`. |
+| `GET /public/stories/{}` | Lectura de pantalla | Detalle de una historia publicada para `/aventuras/{slug}`; suma una lectura. 404 si el cliente retiró el consentimiento. |

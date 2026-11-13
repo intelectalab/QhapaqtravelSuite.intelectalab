@@ -2,7 +2,7 @@ import { BedDouble, CalendarClock, ClipboardCheck, ClipboardList, Coins, FileTex
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { AuditWhen, AuditWho } from "@/components/table/AuditCells";
-import { StatusBadge } from "@/components/ui/Badge";
+import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { MiniTable, ProgressBar } from "@/components/ui/MiniTable";
@@ -607,13 +607,28 @@ const WEB_RULES: Record<string, { label: string; icon: typeof ScrollText }> = {
   "R-SEASON": { label: "Temporada", icon: CalendarClock },
 };
 
+function HistoricTag({ rules, inactive }: { rules: string[]; inactive: string[] }) {
+  const off = rules.filter((rule) => inactive.includes(rule));
+  if (off.length === 0) return null;
+  return (
+    <span className="flex flex-wrap gap-1">
+      {off.map((rule) => (
+        <Badge key={rule} tone="mute" dot={false} testId="web-rule-inactive">
+          {rule} inactiva · dato histórico
+        </Badge>
+      ))}
+    </span>
+  );
+}
+
 export function WebSection({ snapshot, currency }: { snapshot: ReservationWebSnapshot | null; currency: string }) {
   if (!snapshot) return <Empty icon={<Sparkles size={20} />} title="No es una reserva web" description="Esta reserva no se hizo desde el sitio público, así que no tiene datos del carrito ni del pago en línea." />;
   const lineLabel = (line: { label?: string; name?: string; reason?: string }) => line.label ?? line.name ?? line.reason ?? "Concepto";
+  const inactive = snapshot.rules_inactive ?? [];
   return (
     <div className="grid items-start gap-5 xl:grid-cols-2">
       <Card>
-        <TintCardTitle icon={Sparkles} title="Compra en el sitio" aside={snapshot.order_code ?? undefined} />
+        <TintCardTitle icon={Sparkles} title="Compra en el sitio" aside={<span className="flex items-center gap-2">{snapshot.currency_display !== snapshot.charge_currency && <HistoricTag rules={["R-MULTICURRENCY"]} inactive={inactive} />}{snapshot.order_code}</span>} />
         {snapshot.product && (
           <Link href={`/catalogo/productos/${snapshot.product.code}`} className="mb-2 block text-[14px] font-semibold hover:underline">
             {snapshot.product.name}
@@ -659,7 +674,7 @@ export function WebSection({ snapshot, currency }: { snapshot: ReservationWebSna
       <div className="flex flex-col gap-5">
         {snapshot.payment && (
           <Card>
-            <TintCardTitle icon={Wallet} title="Plan de pago" aside={<span className="text-[12.5px] first-letter:uppercase text-fg-3">{(snapshot.payment.mode ?? "").replace("_", " ")}</span>} />
+            <TintCardTitle icon={Wallet} title="Plan de pago" aside={<span className="flex items-center gap-2"><HistoricTag rules={snapshot.rules_applied.filter((rule) => rule === "R-DEPOSIT" || rule === "R-PAY-LATER")} inactive={inactive} /><span className="text-[12.5px] first-letter:uppercase text-fg-3">{(snapshot.payment.mode ?? "").replace("_", " ")}</span></span>} />
             <ol className="relative ml-2 flex flex-col gap-3 border-l-2 border-line pl-4">
               {[
                 { label: "Al reservar", amount: snapshot.payment.deposit, note: snapshot.payment.deposit_pct ? `${Number(snapshot.payment.deposit_pct)} % de adelanto` : null, done: true },
@@ -682,7 +697,7 @@ export function WebSection({ snapshot, currency }: { snapshot: ReservationWebSna
           </Card>
         )}
         <Card>
-          <TintCardTitle icon={Plane} title="Recojo y comentarios" />
+          <TintCardTitle icon={Plane} title="Recojo y comentarios" aside={<HistoricTag rules={[...(snapshot.pickup.point || snapshot.pickup.address ? ["R-PICKUP"] : []), ...(snapshot.comments ? ["R-COMMENTS"] : [])]} inactive={inactive} />} />
           <FieldList
             fields={[
               { label: "Punto de recojo", value: <span className="whitespace-normal">{[snapshot.pickup.point, snapshot.pickup.address].filter(Boolean).join(" · ") || "Sin indicar"}</span> },
@@ -694,7 +709,7 @@ export function WebSection({ snapshot, currency }: { snapshot: ReservationWebSna
         </Card>
         {(snapshot.lodging.length > 0 || snapshot.addons.length > 0) && (
           <Card>
-            <TintCardTitle icon={BedDouble} title="Alojamiento y adicionales" />
+            <TintCardTitle icon={BedDouble} title="Alojamiento y adicionales" aside={<HistoricTag rules={[...(snapshot.lodging.length > 0 ? ["R-LODGING"] : []), ...(snapshot.addons.length > 0 ? ["R-ADDONS"] : [])]} inactive={inactive} />} />
             <ul className="flex flex-col">
               {snapshot.lodging.map((item, index) => {
                 const most = Math.max(...snapshot.lodging.map((row) => row.nights), 1);
@@ -747,9 +762,14 @@ export function WebSection({ snapshot, currency }: { snapshot: ReservationWebSna
   );
 }
 
-export function FeedbackSection({ feedback, messages, canEscalate = false, canReply = false }: { feedback: ReservationFeedback[]; messages: ReservationPaxMessage[]; canEscalate?: boolean; canReply?: boolean }) {
+export function FeedbackSection({ feedback, messages, canEscalate = false, canReply = false, ruleOff = false }: { feedback: ReservationFeedback[]; messages: ReservationPaxMessage[]; canEscalate?: boolean; canReply?: boolean; ruleOff?: boolean }) {
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+      {ruleOff && (
+        <p data-testid="feedback-rule-off" className="rounded-card border border-line bg-surface-2 px-4 py-3 text-[13.5px] text-fg-2 xl:col-span-2">
+          <b className="font-semibold text-fg">Los comentarios del pasajero están desactivados</b> en las reglas del motor de reservas (R-PAX-FEEDBACK). Los pasajeros ya no pueden dejar comentarios en su portal; aquí solo se ven los que dejaron antes.
+        </p>
+      )}
       <Card>
         <TintCardTitle
           icon={MessageSquareText}

@@ -30,7 +30,7 @@ export interface ProviderRow {
   rating_note: string | null;
   contacts: ProviderContact[];
   services: { ref: string; name: string; type: string; status: string }[];
-  products: { code: string; name: string; status: string }[];
+  products: { code: string; name: string; status: string; role: "principal" | "componente" }[];
 }
 
 export interface ProvidersOverview {

@@ -178,6 +178,33 @@ final class IncidentWorkflow
         }
     }
 
+    public function assign(string $code, string $assigneeId, User $actor): void
+    {
+        $incident = $this->open($code);
+
+        if ($incident->assignee_id === $assigneeId) {
+            throw ApiException::conflict('STATE_TRANSITION_NOT_ALLOWED', 'La incidencia ya está asignada a esa persona.');
+        }
+
+        $this->update($code, ['type' => $incident->type, 'severity' => $incident->severity, 'title' => $incident->title, 'description' => $incident->description, 'assignee_id' => $assigneeId], $actor);
+    }
+
+    public function classify(string $code, string $type, string $severity, User $actor): void
+    {
+        $incident = $this->open($code);
+
+        if ($incident->type === $type && $incident->severity === $severity) {
+            throw ApiException::conflict('STATE_TRANSITION_NOT_ALLOWED', 'La incidencia ya tiene ese tipo y esa severidad.');
+        }
+
+        $this->update($code, ['type' => $type, 'severity' => $severity, 'title' => $incident->title, 'description' => $incident->description, 'assignee_id' => null], $actor);
+    }
+
+    public function codeOf(string $reference): string
+    {
+        return (string) (DB::table('ops_incidents')->where(Str::isUuid($reference) ? 'id' : 'code', $reference)->value('code') ?? throw ApiException::notFound('La incidencia no existe.'));
+    }
+
     public function take(string $code, User $actor): void
     {
         $incident = $this->incident($code);

@@ -1,11 +1,11 @@
 "use client";
 
-import { AlertTriangle, Award, Coins, Crosshair, Medal, TrendingUp, Users } from "lucide-react";
+import { AlertTriangle, Award, Coins, Crosshair, History, Medal, TrendingUp, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import Link from "next/link";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
-import type { Column } from "@/components/table/types";
+import type { Column, FilterConfig, SortOption } from "@/components/table/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -28,6 +28,15 @@ function Actions({ target, overview }: { target: SalesTarget; overview: TargetsO
         </>
       )}
     </RowActions>
+  );
+}
+
+function Indicator({ real, goal, format }: { real: number; goal: number | null; format: (value: number) => string }) {
+  return (
+    <span className="font-mono text-[13px]" title={goal !== null ? `Meta ${format(goal)}` : "Sin meta"}>
+      <span className={cn(goal !== null && real >= goal && "font-semibold text-ok")}>{format(real)}</span>
+      {goal !== null && <span className="block text-[11px] text-fg-3">de {format(goal)}</span>}
+    </span>
   );
 }
 
@@ -82,7 +91,6 @@ export function TargetsWorkspace({ overview }: { overview: TargetsOverview }) {
   const [period, setPeriod] = useState(overview.current_period ?? overview.periods[0]?.value ?? "");
   const inPeriod = useMemo(() => overview.targets.filter((target) => target.period_key === period), [overview.targets, period]);
   const advisors = inPeriod.filter((target) => target.scope_type === "asesor" && target.status !== "anulada");
-  const groups = inPeriod.filter((target) => target.scope_type !== "asesor");
   const live = advisors.filter((target) => target.status !== "borrador");
   const goal = live.reduce((total, target) => total + target.goals.sales, 0);
   const real = live.reduce((total, target) => total + target.actual.sales, 0);
@@ -110,9 +118,27 @@ export function TargetsWorkspace({ overview }: { overview: TargetsOverview }) {
     { id: "goal", header: "Meta", align: "right", cell: (row) => <span className="font-mono text-[13px]">{formatMoney(row.goals.sales)}</span> },
     { id: "real", header: "Real", align: "right", cell: (row) => <span className="font-mono text-[13px] font-semibold">{formatMoney(row.actual.sales)}</span> },
     { id: "progress", header: "Avance", cell: (row) => <div className="w-[160px]"><ProgressBar progress={row.progress_pct} projection={row.projection_pct} /><span className="mt-1 block text-[11.5px] text-fg-3">{formatPercent(row.progress_pct, 0)} · proyección {formatPercent(row.projection_pct, 0)}</span></div> },
+    { id: "bookings", header: "Reservas", align: "right", cell: (row) => <Indicator real={row.actual.bookings} goal={row.goals.bookings} format={String} /> },
+    { id: "margin", header: "Margen", align: "right", cell: (row) => <Indicator real={row.actual.margin} goal={row.goals.margin} format={(value) => formatMoney(value, "PEN", { compact: true })} /> },
+    { id: "conversion", header: "Conversión", align: "right", cell: (row) => <Indicator real={row.actual.conversion ?? 0} goal={row.goals.conversion} format={(value) => formatPercent(value, 0)} /> },
     { id: "health", header: "Estado", cell: (row) => <Badge tone={(HEALTH[row.health] ?? HEALTH.borrador).tone}>{(HEALTH[row.health] ?? HEALTH.borrador).label}</Badge> },
     { id: "actions", header: "", align: "right", mobile: "hidden", cell: (row) => <Actions target={row} overview={overview} /> },
   ];
+  const tableRows = inPeriod.filter((target) => target.status !== "anulada");
+  const filters: FilterConfig<SalesTarget>[] = [
+    { id: "scope", label: "Alcance", options: [{ value: "asesor", label: "Asesor" }, { value: "equipo", label: "Equipo" }, { value: "sede", label: "Sede" }], value: (row) => row.scope_type },
+    { id: "advisor", label: "Asesor", options: [...new Set(tableRows.filter((row) => row.scope_type === "asesor").map((row) => row.scope.name))].map((name) => ({ value: name, label: name })), value: (row) => (row.scope_type === "asesor" ? row.scope.name : "") },
+    { id: "health", label: "Estado", options: [...new Set(tableRows.map((row) => row.health))].map((value) => ({ value, label: (HEALTH[value] ?? HEALTH.borrador).label })), value: (row) => row.health },
+  ];
+  const sorts: SortOption<SalesTarget>[] = [
+    { id: "progress", label: "Avance", type: "number", value: (row) => row.progress_pct },
+    { id: "projection", label: "Proyección", type: "number", value: (row) => row.projection_pct },
+    { id: "sales", label: "Vendido", type: "number", value: (row) => row.actual.sales },
+  ];
+  const history = overview.targets
+    .filter((target) => target.period_key !== period && (target.status === "cerrada" || target.health === "por_cerrar"))
+    .sort((a, b) => b.period_from.localeCompare(a.period_from))
+    .slice(0, 8);
 
   return (
     <>
@@ -129,7 +155,11 @@ export function TargetsWorkspace({ overview }: { overview: TargetsOverview }) {
 
       <section className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div>
-          {advisors.length === 0 ? (
+          {overview.can.manage ? (
+            <Card padded={false} className="overflow-hidden">
+              <DataTable screen="metas-periodo" rows={tableRows} columns={columns} getKey={(row) => row.code} entityLabel="metas" searchText={(row) => `${row.scope.name} ${row.code} ${row.scope_label}`} searchPlaceholder="Buscar asesor, equipo o sede" filters={filters} sorts={sorts} emptyTitle="Sin metas en este período" />
+            </Card>
+          ) : advisors.length === 0 ? (
             <Card>
               <EmptyState icon={<Crosshair size={20} />} title="Sin metas de asesor en este período" description={overview.can.manage ? "Crea una meta para empezar a medir el avance." : "Cuando Gerencia active tu meta la verás aquí."} />
             </Card>
@@ -161,12 +191,31 @@ export function TargetsWorkspace({ overview }: { overview: TargetsOverview }) {
           )}        </Card>
       </section>
 
-      {overview.can.manage && (
-        <Card>
-          <TintCardTitle icon={Users} title="Metas de equipo y sede" aside={`${groups.length} en el período`} />
-          <DataTable screen="metas-grupos" rows={groups} columns={columns} getKey={(row) => row.code} entityLabel="metas" searchText={(row) => `${row.scope.name} ${row.code}`} searchPlaceholder="Buscar equipo o sede" emptyTitle="Sin metas de equipo o sede en este período" />
-        </Card>
-      )}
+      <Card>
+        <TintCardTitle icon={History} title={overview.can.manage ? "Metas cerradas y por cerrar" : "Mis metas de otros períodos"} tone="violet" aside={history.length > 0 ? `${history.length} recientes` : undefined} />
+        {history.length === 0 ? (
+          <p className="text-[13px] text-fg-3">Aún no hay metas de otros períodos.</p>
+        ) : (
+          <ul className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+            {history.map((target) => {
+              const health = HEALTH[target.health] ?? HEALTH.borrador;
+              return (
+                <li key={target.code}>
+                  <Link href={targetHref(target.code)} style={toneStyle(health.tone)} className="lift block rounded-xl border border-line px-3.5 py-3 hover:border-[var(--tint)]">
+                    <span className="flex items-center justify-between gap-2">
+                      <b className="truncate text-[13px]">{target.scope.name}</b>
+                      <Badge tone={health.tone}>{health.label}</Badge>
+                    </span>
+                    <span className="mt-0.5 block text-[12px] text-fg-3">{target.period_label} · {target.code}</span>
+                    <span className="mt-2 block"><ProgressBar progress={target.progress_pct} projection={target.progress_pct} /></span>
+                    <span className="mt-1 block text-[12px] text-fg-2">{formatPercent(target.progress_pct, 0)} · {formatMoney(target.actual.sales)} de {formatMoney(target.goals.sales)}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
     </>
   );
 }

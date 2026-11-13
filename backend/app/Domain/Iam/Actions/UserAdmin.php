@@ -42,10 +42,10 @@ final class UserAdmin
             throw ApiException::unprocessable('USR-BR-01', 'Ese correo ya pertenece a un usuario de otra agencia.');
         }
 
-        $this->assertSeats();
         $role = $this->role($data['role']);
 
         [$user, $token] = DB::transaction(function () use ($data, $email, $role, $actor): array {
+            $this->assertSeats();
             $user = User::query()->create([
                 'code' => $this->codes->next(),
                 'name' => trim($data['name']),
@@ -144,10 +144,12 @@ final class UserAdmin
             throw ApiException::conflict('USER_ACTIVE', 'Este usuario no está desactivado.');
         }
 
-        $this->assertSeats();
-        $status = $user->password ? 'activo' : 'pendiente';
-        $user->forceFill(['status' => $status, 'deactivated_at' => null, 'deactivated_reason' => null, 'updated_by' => $actor->getKey()])->save();
-        $this->audit->log('Usuario', $user->code, 'reactivar', 'inactivo', $status);
+        DB::transaction(function () use ($user, $actor): void {
+            $this->assertSeats();
+            $status = $user->password ? 'activo' : 'pendiente';
+            $user->forceFill(['status' => $status, 'deactivated_at' => null, 'deactivated_reason' => null, 'updated_by' => $actor->getKey()])->save();
+            $this->audit->log('Usuario', $user->code, 'reactivar', 'inactivo', $status);
+        });
     }
 
     public function resetMfa(string $code, string $reason, User $actor): void
@@ -191,6 +193,7 @@ final class UserAdmin
     {
         $tenant = $this->context->tenant();
         $limit = EffectiveLimits::limit((string) $tenant->getKey(), (string) $tenant->plan_id, 'users');
+        DB::table('iam_users')->whereNull('deleted_at')->whereIn('status', ['activo', 'pendiente'])->orderBy('id')->lockForUpdate()->pluck('id');
         $used = StaffSeats::count(DB::table('iam_users'));
 
         if ($limit !== null && $used >= (int) $limit) {

@@ -1,17 +1,19 @@
 "use client";
 
-import { AlarmClock, Hourglass, Inbox } from "lucide-react";
+import { AlarmClock, ExternalLink, Hourglass, Inbox } from "lucide-react";
+import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
+import { Button } from "@/components/ui/Button";
 import { RowActions } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
-import { BOOK_STATUS_TONE, DEADLINE, type ClaimSheet, type ClaimsOverview } from "@/lib/claims";
+import { BOOK_STATUS_TONE, DEADLINE, type ClaimSheet, type ClaimsOverview, type Deadline } from "@/lib/claims";
 import { formatDate } from "@/lib/format";
-import { ClaimCloseAction, ClaimDetailAction, ClaimFormAction, ClaimResendAction } from "./ClaimForms";
+import { ClaimAlertsAction, ClaimCloseAction, ClaimDetailAction, ClaimFormAction, ClaimLinkAction, ClaimResendAction } from "./ClaimForms";
 
 const unique = (values: (string | null)[]) => [...new Set(values.filter((value): value is string => Boolean(value)))];
 
-export function ClaimsTable({ overview }: { overview: ClaimsOverview }) {
+export function ClaimsTable({ overview, publicUrl }: { overview: ClaimsOverview; publicUrl?: string | null }) {
   const rows = overview.claims;
   const columns: Column<ClaimSheet>[] = [
     {
@@ -26,7 +28,9 @@ export function ClaimsTable({ overview }: { overview: ClaimsOverview }) {
             </Badge>
             <span className="font-mono text-[12px] text-fg-3">{row.book_number}</span>
           </span>
-          <span className="mt-1 block max-w-[380px] truncate text-[13.5px] font-semibold">{row.detail}</span>
+          <Link href={`/crm/reclamaciones/${encodeURIComponent(row.code)}`} className="mt-1 block max-w-[380px] truncate text-[13.5px] font-semibold hover:text-accent">
+            {row.detail}
+          </Link>
         </div>
       ),
     },
@@ -62,8 +66,9 @@ export function ClaimsTable({ overview }: { overview: ClaimsOverview }) {
           <ClaimDetailAction sheet={row} canManage={overview.can.manage} owners={overview.options.owners ?? []} />
           {overview.can.manage && row.book_status === "received" && <ClaimDetailAction sheet={row} canManage owners={overview.options.owners ?? []} respondNow />}
           <ClaimFormAction overview={overview} sheet={row} />
+          {overview.can.manage && <ClaimLinkAction sheet={row} overview={overview} />}
           {row.book_status === "answered" ? <ClaimResendAction sheet={row} /> : null}
-          <ClaimCloseAction sheet={row} />
+          <ClaimCloseAction sheet={row} reasons={overview.options.close_reasons} />
         </RowActions>
       ),
     },
@@ -77,10 +82,21 @@ export function ClaimsTable({ overview }: { overview: ClaimsOverview }) {
     { id: "type", label: "Tipo", options: unique(rows.map((row) => row.type)).map((value) => ({ value, label: value })), value: (row) => row.type },
     { id: "sede", label: "Sede", options: unique(rows.map((row) => row.sede)).map((value) => ({ value, label: value })), value: (row) => row.sede ?? "" },
     { id: "status", label: "Estado", options: unique(rows.map((row) => row.book_status_label)).map((value) => ({ value, label: value })), value: (row) => row.book_status_label },
+    { id: "deadline", label: "Plazo", options: (Object.keys(DEADLINE) as Deadline[]).map((value) => ({ value, label: DEADLINE[value].label })), value: (row) => row.deadline },
   ];
   const sorts: SortOption<ClaimSheet>[] = [
     { id: "received", label: "Fecha de recepción", type: "date", value: (row) => row.received_at },
     { id: "due", label: "Vencimiento", type: "date", value: (row) => row.due_date },
   ];
-  return <DataTable screen="reclamaciones" rows={rows} columns={columns} getKey={(row) => row.code} entityLabel="hojas" searchText={(row) => `${row.book_number} ${row.consumer.name} ${row.detail} ${row.consumer.doc_number ?? ""}`} searchPlaceholder="Buscar número, consumidor o documento" metrics={metrics} filters={filters} sorts={sorts} />;
+  const toolbarEnd = (
+    <span className="flex flex-wrap items-center gap-2">
+      {publicUrl && (
+        <Button href={publicUrl} target="_blank" variant="ghost" size="sm" icon={<ExternalLink size={14} />}>
+          Formulario público
+        </Button>
+      )}
+      {overview.can.manage && <ClaimAlertsAction pending={rows.filter((row) => row.deadline === "por_vencer" || row.deadline === "vencido").length} />}
+    </span>
+  );
+  return <DataTable screen="reclamaciones" rows={rows} columns={columns} getKey={(row) => row.code} entityLabel="hojas" searchText={(row) => `${row.book_number} ${row.consumer.name} ${row.detail} ${row.consumer.doc_number ?? ""}`} searchPlaceholder="Buscar número, consumidor o documento" metrics={metrics} filters={filters} sorts={sorts} toolbarEnd={toolbarEnd} />;
 }

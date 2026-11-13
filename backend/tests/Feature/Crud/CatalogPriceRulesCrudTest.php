@@ -39,6 +39,8 @@ it('lista las reglas sembradas y crea, edita, desactiva y elimina una regla', fu
 
     $this->postJson("/api/v1/catalog/price-rules/{$ref}/deactivate", [], critical())->assertOk();
     expect(priceRuleRow($ref)->status)->toBe('inactiva');
+    $this->postJson("/api/v1/catalog/price-rules/{$ref}/activate", [], critical())->assertOk();
+    expect(priceRuleRow($ref)->status)->toBe('activa');
 
     $this->deleteJson("/api/v1/catalog/price-rules/{$ref}", ['reason' => 'Ya no aplica'], critical())->assertOk();
     expect(priceRuleRow($ref))->toBeNull()->and(priceRuleAudit(['entity' => 'Regla de precio', 'entity_id' => $ref, 'action' => 'eliminar']))->toBeTrue();

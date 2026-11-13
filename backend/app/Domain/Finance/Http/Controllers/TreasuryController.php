@@ -15,9 +15,11 @@ use App\Domain\Finance\Support\TreasuryDirectory;
 use App\Domain\Finance\Support\TreasuryRouting;
 use App\Domain\Finance\Support\TreasurySettings;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Http\CursorPage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -28,6 +30,30 @@ final class TreasuryController
     public function index(Request $request, TreasuryDirectory $directory): JsonResponse
     {
         return response()->json(['data' => $directory->overview($this->actor($request))]);
+    }
+
+    public function movements(Request $request, TreasuryDirectory $directory): JsonResponse
+    {
+        $filters = CursorPage::filters($request);
+        $errors = array_filter([
+            'filter.type' => isset($filters['type']) && ! isset(TreasuryDirectory::TYPES[$filters['type']]) ? 'Ese tipo de movimiento no existe.' : null,
+            'filter.direction' => isset($filters['direction']) && ! in_array($filters['direction'], ['in', 'out'], true) ? 'La dirección es in (ingreso) u out (egreso).' : null,
+            'filter.status' => isset($filters['status']) && ! in_array($filters['status'], ['posted', 'voided'], true) ? 'El estado es posted o voided.' : null,
+            'filter.from' => isset($filters['from']) && strtotime($filters['from']) === false ? 'Revisa la fecha inicial.' : null,
+            'filter.to' => isset($filters['to']) && strtotime($filters['to']) === false ? 'Revisa la fecha final.' : null,
+        ]);
+
+        if ($errors !== []) {
+            throw ApiException::unprocessable('VALIDATION_ERROR', (string) reset($errors), array_map(fn (string $message): array => [$message], $errors));
+        }
+
+        return response()->json(CursorPage::respond(
+            $request,
+            $directory->movementQuery($filters),
+            ['date' => 'm.movement_date', 'code' => 'm.code', 'amount' => 'm.amount'],
+            '-date,-code',
+            fn (object $row): array => $directory->movement($row),
+        ));
     }
 
     public function store(Request $request, TreasuryMovementWorkflow $workflow): JsonResponse
@@ -62,7 +88,20 @@ final class TreasuryController
 
     public function cashFlow(Request $request, TreasuryDirectory $directory): JsonResponse
     {
-        return response()->json(['data' => $directory->cashFlow($this->actor($request))]);
+        $data = $request->validate([
+            'horizon' => ['nullable', 'in:30,60,90'],
+            'include_overdue' => ['nullable', 'in:0,1,true,false'],
+            'include_fixed' => ['nullable', 'in:0,1,true,false'],
+        ], ['horizon.*' => 'El horizonte es 30, 60 o 90 días.', 'include_overdue.*' => 'Indica 1 o 0.', 'include_fixed.*' => 'Indica 1 o 0.']);
+        $flag = fn (string $key): bool => ! in_array($data[$key] ?? '1', ['0', 'false'], true);
+        $flow = $directory->cashFlow($flag('include_overdue'), $flag('include_fixed'));
+
+        if (isset($data['horizon'])) {
+            $until = Carbon::parse($flow['weeks'][0]['start'])->addDays((int) $data['horizon'])->toDateString();
+            $flow['items'] = array_values(array_filter($flow['items'], fn (array $item): bool => $item['date'] <= $until));
+        }
+
+        return response()->json(['data' => $flow]);
     }
 
     public function storeAccount(Request $request, TreasuryOperations $operations): JsonResponse
@@ -238,7 +277,8 @@ final class TreasuryController
             'denominations.*' => ['integer', 'min:0', 'max:100000'],
             'note' => ['nullable', 'string', 'max:500'],
             'witness_id' => ['nullable', 'uuid'],
-        ], ['denominations.*' => 'Revisa las cantidades por denominación.']);
+            'declaration' => ['sometimes', 'accepted'],
+        ], ['denominations.*' => 'Revisa las cantidades por denominación.', 'declaration.*' => 'Confirma la declaración del responsable para firmar el arqueo.']);
 
         return response()->json(['data' => ['code' => $operations->count($account, $data, $this->actor($request))]], 201);
     }

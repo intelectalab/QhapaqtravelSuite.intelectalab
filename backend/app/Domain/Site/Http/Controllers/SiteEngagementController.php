@@ -38,6 +38,11 @@ final class SiteEngagementController
         return response()->json(['data' => $chat->send($session, $request->header('X-Chat-Token'), $data['body'])]);
     }
 
+    public function chatSession(Request $request, string $session, WebChat $chat): JsonResponse
+    {
+        return response()->json(['data' => $chat->show($session, $request->header('X-Chat-Token'))]);
+    }
+
     public function events(Request $request, RecordWebEvents $events): JsonResponse
     {
         return response()->json(['data' => $events->record($request->all(), (string) $request->header('X-Site-Locale', 'es'))], 202);

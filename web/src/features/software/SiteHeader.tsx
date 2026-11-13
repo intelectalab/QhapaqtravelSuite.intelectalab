@@ -77,10 +77,10 @@ export function SiteHeader({ signedIn }: { signedIn: boolean }) {
         </nav>
         <div className="ml-auto flex items-center gap-1.5">
           <ThemeSwitch />
-          <Button href={access.href} variant="ghost" icon={access.icon} className="hidden sm:inline-flex">
+          <Button href={access.href} variant="ghost" icon={access.icon} className="max-md:hidden">
             {access.label}
           </Button>
-          <Button href="/software/contacto" variant="primary" icon={<ArrowRight size={16} />} className="site-sheen relative hidden overflow-hidden sm:inline-flex">
+          <Button href="/software/contacto" variant="primary" icon={<ArrowRight size={16} />} className="site-sheen relative overflow-hidden max-sm:hidden">
             Solicitar demo
           </Button>
           <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label={open ? "Cerrar menú" : "Abrir menú"} className="grid h-10 w-10 place-items-center rounded-xl text-fg-2 transition hover:bg-surface-2 lg:hidden">

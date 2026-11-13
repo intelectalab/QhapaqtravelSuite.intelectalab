@@ -94,7 +94,11 @@ final class PlatformSettingsController
             'password' => ['nullable', 'string', 'max:255'],
             'from_address' => [$required, 'email', 'max:190'],
             'from_name' => ['nullable', 'string', 'max:120'],
+            'ses_webhook_secret' => ['nullable', 'string', 'min:16', 'max:255'],
+            'fcm_webhook_secret' => ['nullable', 'string', 'min:16', 'max:255'],
         ], [
+            'ses_webhook_secret.*' => 'El secreto de acuses del correo debe tener entre 16 y 255 caracteres.',
+            'fcm_webhook_secret.*' => 'El secreto de acuses push debe tener entre 16 y 255 caracteres.',
             'enabled.*' => 'Indica si el correo de salida queda activo.',
             'host.*' => 'Escribe el servidor de salida, por ejemplo mail.tudominio.com.',
             'port.*' => 'El puerto va de 1 a 65535. Con SSL suele ser 465 y con STARTTLS, 587.',
@@ -105,7 +109,7 @@ final class PlatformSettingsController
             'from_name.*' => 'El nombre del remitente no puede pasar de 120 caracteres.',
         ]);
 
-        return response()->json(['data' => $mail->update($data, $request->input('password'), $this->user($request))]);
+        return response()->json(['data' => $mail->update($data, $request->input('password'), $this->user($request), ['ses' => $data['ses_webhook_secret'] ?? null, 'fcm' => $data['fcm_webhook_secret'] ?? null])]);
     }
 
     public function testOutgoingMail(Request $request, UpdateOutgoingMail $mail): JsonResponse

@@ -1,12 +1,12 @@
+import { ConsultModeNotice } from "@/components/ui/ConsultMode";
 import { AlarmClock, CalendarCheck, CalendarDays, CircleCheckBig } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { TintTile, ToneScope } from "@/components/ui/Tinted";
+import { TintTile } from "@/components/ui/Tinted";
 import { ViewSwitch } from "@/components/ui/ViewSwitch";
 import { ActivityCreateAction } from "@/features/activities/ActivityForms";
-import { ActivityRow } from "@/features/activities/ActivityRow";
-import { ActivityWeek, weekStart } from "@/features/activities/ActivityWeek";
-import { BUCKETS } from "@/lib/activities";
+import { ActivityAgenda } from "@/features/activities/ActivityAgenda";
+import { weekStart } from "@/features/activities/ActivityWeek";
 import { TIME_ZONE } from "@/lib/format";
 import { getAgenda, getRelatedOptions } from "@/lib/server/activities";
 
@@ -26,6 +26,7 @@ export default async function ActividadesPage({ searchParams }: PageProps<"/crm/
   return (
     <>
       <PageHeader title="Actividades" actions={options ? <ActivityCreateAction options={options} /> : undefined} />
+      <ConsultModeNotice permissions={["crm.activities.manage"]} what="agendar ni completar actividades" />
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <TintTile icon={AlarmClock} tone="bad" label="Vencidas" value={kpis.overdue} info={<p>Actividades pendientes de tu agenda cuya fecha y hora ya pasaron.</p>} />
         <TintTile icon={CalendarCheck} tone="t1" label="Para hoy" value={kpis.today} info={<p>Actividades pendientes programadas para lo que queda del día, en la hora de la agencia.</p>} />
@@ -40,32 +41,7 @@ export default async function ActividadesPage({ searchParams }: PageProps<"/crm/
           { href: "/crm/actividades?vista=semana", label: "Semana", active: weekMode },
         ]}
       />
-      {weekMode ? (
-        <ActivityWeek items={agenda.items} start={start} today={today} basePath="/crm/actividades?vista=semana" />
-      ) : (
-        <div className="flex flex-col gap-4">
-          {BUCKETS.map((bucket) => {
-            const items = agenda.items.filter((item) => item.bucket === bucket.id);
-            if (items.length === 0) return null;
-            return (
-              <ToneScope key={bucket.id} tone={bucket.tone}>
-                <section className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
-                  <header className="flex items-center gap-2.5 border-b border-line bg-[color-mix(in_srgb,var(--tint)_8%,var(--surface))] px-4 py-2.5">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[var(--tint)]" />
-                    <h2 className="text-[13.5px] font-bold">{bucket.title}</h2>
-                    {(bucket.id === "later" || bucket.id === "done") && <span className="text-[12.5px] text-fg-3">{items.length}</span>}
-                  </header>
-                  <ul>
-                    {(bucket.id === "done" ? [...items].reverse() : items).map((item) => (
-                      <ActivityRow key={item.code} activity={item} options={options} />
-                    ))}
-                  </ul>
-                </section>
-              </ToneScope>
-            );
-          })}
-        </div>
-      )}
+      <ActivityAgenda items={agenda.items} options={options} week={weekMode ? { start, today, basePath: "/crm/actividades?vista=semana" } : null} />
     </>
   );
 }

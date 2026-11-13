@@ -1,7 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { CmsPreview } from "@/lib/channels";
+import { apiFetch } from "@/lib/server/api";
 import { formValues, sendStep, type StepResult } from "@/lib/server/resource";
+
+export async function previewContent(code: string, values: Record<string, string>): Promise<{ data: CmsPreview | null; message: string | null }> {
+  const body = Object.fromEntries(["title", "body", "slug", "type", "seo_title", "seo_description"].map((key) => [key, values[key]?.trim() ? values[key].trim() : null]));
+  const result = await apiFetch<CmsPreview>(`/cms/contents/${encodeURIComponent(code)}/preview`, { method: "POST", body });
+  return result.ok ? { data: result.data, message: null } : { data: null, message: result.error?.message ?? "No pudimos generar la vista previa." };
+}
 
 const FIELDS = ["title", "type", "channel", "slug", "body", "seo_title", "seo_description", "placement", "valid_from", "valid_to"];
 

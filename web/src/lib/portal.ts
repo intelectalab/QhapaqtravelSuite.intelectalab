@@ -1,4 +1,5 @@
 import { channelStatus, type Money } from "@/lib/channels";
+import type { CorporateBadge } from "@/lib/corporate";
 import type { Tone } from "@/lib/tone";
 
 export type PortalRole = "customer" | "passenger";
@@ -17,6 +18,74 @@ export interface PortalSession {
   user: { name: string; email: string; color: string | null };
   trip: string | null;
   counts: { quotes: number; trips: number };
+  corporate?: CorporateBadge | null;
+  menu?: PassengerMenu | null;
+}
+
+export interface PassengerMenu {
+  trip: string;
+  sections: { messages: boolean; feedback: boolean; companions: boolean; reviews: boolean };
+  counts: { messages: number; companions: number; reviews: number; alerts: number };
+  alert: { code: string; severity: string; title: string } | null;
+}
+
+export interface PaxService {
+  code: string;
+  name: string;
+  date: string;
+  time: string | null;
+  kind: string;
+  status: string;
+  state: string;
+  pax: number;
+  nights: number | null;
+  confirmation: string | null;
+  guide: string | null;
+  driver: string | null;
+  vehicle: string | null;
+  guide_languages: string[];
+  meeting_point: string | null;
+  provider: { name: string; phone: string | null } | null;
+  includes: string[];
+}
+
+export interface PaxSection {
+  code: string;
+  section: string;
+  items: PaxService[];
+}
+
+export interface PaxVoucherSummary {
+  code: string;
+  label: string;
+  date: string;
+  status: string;
+  version: number;
+  pax: number;
+}
+
+export interface PaxVouchers {
+  code: string;
+  items: PaxVoucherSummary[];
+}
+
+export interface PaxVoucher extends PaxVoucherSummary {
+  reservation: string;
+  service: { name: string; time: string | null; confirmation: string | null; kind: string } | null;
+  provider: { name: string; phone: string | null; type: string | null } | null;
+  meeting_point: string | null;
+  passengers: { name: string; type: string; lead: boolean }[];
+  qr: string;
+  qr_image: string | null;
+}
+
+export interface PaxDocuments {
+  code: string;
+  items: { kind: string; code?: string; label: string; available: boolean }[];
+  invoices: { number: string; type: string; date: string; status: string }[];
+  policy: { cancellation: string | null; tiers: unknown[] };
+  insurance: { passenger: string; status: string; number: string | null; expires_on: string | null; note: string | null }[];
+  passports: { passenger: string; document: string | null; nationality: string | null; status: string | null; expires_on: string | null }[];
 }
 
 export interface PortalTripSummary {
@@ -386,5 +455,7 @@ export interface PaxCompanions {
   editable: boolean;
   when: string;
   passengers: { seq: number; name: string; type: "ADT" | "CHD" | "INF"; doc_type: string | null; document: string | null; nationality: string | null; birth_date: string | null; diet: string | null; lead: boolean; pending: boolean }[];
-  pickup: { point: string | null; address: string | null; flight: string | null; arrival: string | null } | null;
+  pickup: { point: string | null; address: string | null; flight: string | null; arrival: string | null; points?: { label: string; kind: string; requires_address: boolean }[] } | null;
 }
+
+export const OTHER_PICKUP = "Otra dirección";

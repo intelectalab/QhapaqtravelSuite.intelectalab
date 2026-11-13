@@ -52,7 +52,7 @@ const duplicateButton = (formId: string, allowMerge = false) =>
     );
   };
 
-export function LeadCreateAction({ catalogs, advisors }: { catalogs: CrmCatalogs; advisors: Advisor[] }) {
+export function LeadCreateAction({ catalogs, advisors, defaultOpen = false }: { catalogs: CrmCatalogs; advisors: Advisor[]; defaultOpen?: boolean }) {
   const router = useRouter();
 
   return (
@@ -68,6 +68,7 @@ export function LeadCreateAction({ catalogs, advisors }: { catalogs: CrmCatalogs
       initial={{ message: null, done: false }}
       onDone={(state) => state.result?.code && router.push(`/crm/leads/${state.result.code}`)}
       footerExtra={duplicateButton("panel-nuevo-lead", true)}
+      defaultOpen={defaultOpen}
     >
       {(state) => (
         <>

@@ -1,15 +1,17 @@
-import { ArrowRight, Fingerprint, GitCompareArrows, Link2 } from "lucide-react";
+import { ArrowRight, ExternalLink, Fingerprint, GitCompareArrows, Link2 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { NoAccess } from "@/components/shell/NoAccess";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { TintCardTitle } from "@/components/ui/Tinted";
 import { AuditChange } from "@/features/admin/Audit";
 import { actionLabel, type AuditDetail } from "@/lib/admin";
+import { auditEntityHref } from "@/lib/auditLinks";
 import { formatDateTime } from "@/lib/format";
 import { getResource } from "@/lib/server/resource";
 
@@ -28,6 +30,7 @@ export default async function AuditEventPage({ params }: { params: Promise<{ cod
   const { codigo } = await params;
   const event = await getResource<AuditDetail>(`/audit-events/${encodeURIComponent(codigo)}`, "No pudimos cargar el evento.");
   if (!event) return <NoAccess home="/dashboard" />;
+  const target = auditEntityHref(event.entity, event.entity_id);
 
   return (
     <>
@@ -37,7 +40,18 @@ export default async function AuditEventPage({ params }: { params: Promise<{ cod
         title={actionLabel(event.action)}
         subtitle={`${event.actor} · ${event.entity} ${event.entity_id} · ${formatDateTime(event.at)}`}
         jump={false}
-        actions={event.critical ? <Badge tone="bad">Evento crítico</Badge> : undefined}
+        actions={
+          event.critical || target ? (
+            <span className="flex flex-wrap items-center gap-2">
+              {event.critical && <Badge tone="bad">Evento crítico</Badge>}
+              {target && (
+                <Button href={target} size="sm" icon={<ExternalLink size={15} />}>
+                  Ir a la entidad
+                </Button>
+              )}
+            </span>
+          ) : undefined
+        }
       />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-5">
@@ -96,7 +110,16 @@ export default async function AuditEventPage({ params }: { params: Promise<{ cod
               { label: "Código", value: <span className="font-mono">{event.code}</span> },
               { label: "Usuario", value: event.actor_code ? `${event.actor} (${event.actor_code})` : event.actor },
               { label: "Rol", value: event.role ?? "—" },
-              { label: "Entidad", value: `${event.entity} · ${event.entity_id}` },
+              {
+                label: "Entidad",
+                value: target ? (
+                  <Link href={target} className="font-semibold text-accent hover:underline">
+                    {event.entity} · {event.entity_id}
+                  </Link>
+                ) : (
+                  `${event.entity} · ${event.entity_id}`
+                ),
+              },
               { label: "Fecha y hora", value: formatDateTime(event.at) },
               { label: "IP", value: <span className="font-mono">{event.ip ?? "—"}</span> },
               { label: "Navegador", value: <span title={event.user_agent ?? undefined}>{event.user_agent ?? "—"}</span> },

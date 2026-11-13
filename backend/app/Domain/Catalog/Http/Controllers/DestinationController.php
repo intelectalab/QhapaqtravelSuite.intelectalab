@@ -22,6 +22,11 @@ final class DestinationController
         return response()->json(['data' => $directory->overview($this->actor($request))]);
     }
 
+    public function show(DestinationDirectory $directory, string $ref): JsonResponse
+    {
+        return response()->json(['data' => $directory->find($ref)]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         return response()->json(['data' => ['ref' => $this->registry->create($this->validated($request), $this->actor($request))]], 201);

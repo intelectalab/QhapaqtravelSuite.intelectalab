@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Domain\Admin\Support\AdapterRetryPolicy;
 use App\Domain\Shared\Jobs\RecordJobRun;
 use App\Domain\Shared\Tenancy\Jobs\RestoreTenantContext;
 use App\Domain\Shared\Tenancy\Jobs\TenantAware;
@@ -53,7 +54,7 @@ abstract class TenantJob implements ShouldBeUnique, ShouldQueue
 
     public function backoff(): array
     {
-        return [60, 120, 240, 480, 960];
+        return AdapterRetryPolicy::delays(AdapterRetryPolicy::BASE_SECONDS, $this->tries);
     }
 
     public function uniqueId(): string

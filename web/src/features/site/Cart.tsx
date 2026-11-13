@@ -1,14 +1,16 @@
 "use client";
 
-import { CalendarDays, Clock3, Loader2, Lock, RefreshCw, Trash2, Users } from "lucide-react";
+import { CalendarDays, Check, Clock3, Loader2, Lock, RefreshCw, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { reholdCartLine, removeCartLine, toggleCartItem } from "@/app/(sitio)/sitio/[agencia]/actions";
+import { reholdCartLine, removeCartLine, toggleCartItem, updateCartLinePax } from "@/app/(sitio)/sitio/[agencia]/actions";
 import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatMoney } from "@/lib/format";
+import { trackSiteEvent } from "@/lib/site-analytics";
 import type { CartLine, QuoteLine, SiteCart } from "@/lib/site";
 import { QuoteLines } from "./QuoteLines";
+import { Stepper } from "./SearchBar";
 import { useSite } from "./SiteContext";
 
 function useNow(): number | null {
@@ -64,11 +66,54 @@ export function CartItemLines({ item, lockVersion }: { item: CartLine; lockVersi
   );
 }
 
+function PaxEditor({ item, onDone }: { item: CartLine; onDone: (message: string | null) => void }) {
+  const { agencia, t } = useSite();
+  const [pax, setPax] = useState({ adults: Math.max(1, item.pax.adults), children: item.pax.children, infants: item.pax.infants });
+  const [pending, start] = useTransition();
+  const fields: { key: keyof typeof pax; min: number; max: number }[] = [
+    { key: "adults", min: 1, max: 40 },
+    { key: "children", min: 0, max: 20 },
+    { key: "infants", min: 0, max: 10 },
+  ];
+  const changed = pax.adults !== item.pax.adults || pax.children !== item.pax.children || pax.infants !== item.pax.infants;
+  return (
+    <div className="mt-3 rounded-2xl border border-line bg-surface-2/60 px-3.5 py-3">
+      <div className="grid gap-3 sm:grid-cols-3">
+        {fields.map((field) => (
+          <div key={field.key} className="flex items-center justify-between gap-2">
+            <span className="text-[13px] font-semibold text-fg">{t.cart.paxLabels[field.key]}</span>
+            <Stepper value={pax[field.key]} min={field.min} max={field.max} onChange={(value) => setPax({ ...pax, [field.key]: value })} label={t.cart.paxLabels[field.key].toLowerCase()} removeLabel={t.common.remove(t.cart.paxLabels[field.key].toLowerCase())} addLabel={t.common.add(t.cart.paxLabels[field.key].toLowerCase())} />
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[12px] text-fg-3">{t.cart.changeDate}</span>
+        <span className="flex items-center gap-2">
+          <button type="button" onClick={() => onDone(null)} className="inline-flex h-9 items-center rounded-control px-3 text-[12.5px] font-semibold text-fg-3 transition hover:text-fg">
+            {t.cart.cancelPax}
+          </button>
+          <button type="button" disabled={!changed || pending} onClick={() => start(async () => onDone((await updateCartLinePax(agencia, item.line, pax)) ?? ""))} className="inline-flex h-9 items-center gap-1.5 rounded-control bg-brand px-3.5 text-[12.5px] font-semibold text-brand-fg transition hover:brightness-110 disabled:opacity-50">
+            {pending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+            {t.cart.savePax}
+          </button>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function CartRow({ item, index, lockVersion }: { item: CartLine; index: number; lockVersion?: number }) {
   const { agencia, href, t, dateLocale } = useSite();
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const finishEdit = (message: string | null) => {
+    setEditing(false);
+    if (message === null) return;
+    setError(message === "" ? null : message);
+    router.refresh();
+  };
   const run = (task: () => Promise<string | null>) =>
     start(async () => {
       const message = await task();
@@ -100,8 +145,14 @@ function CartRow({ item, index, lockVersion }: { item: CartLine; index: number; 
         <div className="text-right">
           {item.quote ? <b className="text-[18px] font-bold tabular-nums text-fg">{formatMoney(item.quote.total, item.quote.currency)}</b> : <span className="text-[13px] text-bad">{t.cart.unavailable}</span>}
           {item.quote?.discount && <span className="block text-[12px] text-ok">{item.quote.discount.label}: − {formatMoney(item.quote.discount.amount, item.quote.currency)}</span>}
+          {item.quote && (item.quote.adjustments ?? []).filter((adjustment) => adjustment.key !== "promo").map((adjustment) => (
+            <span key={adjustment.key} className={cn("block text-[12px]", Number(adjustment.amount) < 0 ? "text-ok" : "text-fg-3")}>
+              {adjustment.label}: {Number(adjustment.amount) < 0 ? "− " : "+ "}{formatMoney(Math.abs(Number(adjustment.amount)), item.quote?.currency ?? "PEN")}
+            </span>
+          ))}
         </div>
       </div>
+      {editing && <PaxEditor item={item} onDone={finishEdit} />}
       <CartItemLines item={item} lockVersion={lockVersion} />
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
         <div className="flex flex-wrap items-center gap-2 text-[12px] text-fg-3">
@@ -118,13 +169,24 @@ function CartRow({ item, index, lockVersion }: { item: CartLine; index: number; 
           )}
         </div>
         <div className="flex items-center gap-2">
+          {item.quote && !editing && (
+            <button type="button" onClick={() => setEditing(true)} className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line px-3 text-[12.5px] font-semibold text-fg transition hover:border-accent hover:text-accent">
+              <Users size={14} />
+              {t.cart.editPax}
+            </button>
+          )}
           {item.hold && expired && (
             <button type="button" onClick={() => run(() => reholdCartLine(agencia, item.line))} className="inline-flex h-9 items-center gap-1.5 rounded-control border border-line px-3 text-[12.5px] font-semibold text-fg transition hover:border-accent hover:text-accent">
               <RefreshCw size={14} />
               {t.cart.rehold}
             </button>
           )}
-          <button type="button" onClick={() => run(() => removeCartLine(agencia, item.line))} className="inline-flex h-9 items-center gap-1.5 rounded-control px-3 text-[12.5px] font-semibold text-fg-3 transition hover:bg-[color-mix(in_srgb,var(--bad)_8%,transparent)] hover:text-bad">
+          <button
+            type="button"
+            onClick={() => {
+              trackSiteEvent("remove_from_cart", { item_id: item.product.slug, date: item.date, value: item.quote ? Number(item.quote.total) : null, currency: item.quote?.currency ?? null });
+              run(() => removeCartLine(agencia, item.line));
+            }} className="inline-flex h-9 items-center gap-1.5 rounded-control px-3 text-[12.5px] font-semibold text-fg-3 transition hover:bg-[color-mix(in_srgb,var(--bad)_8%,transparent)] hover:text-bad">
             {pending ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
             {t.cart.remove}
           </button>

@@ -1,3 +1,4 @@
+import { ConsultModeNotice } from "@/components/ui/ConsultMode";
 import { ArrowRight, CalendarDays, Check, CircleSlash, Gauge, Mail, MapPin, Merge, MessageSquareText, Package, Phone, Route, Target, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -59,6 +60,7 @@ export default async function LeadPage({ params, searchParams }: PageProps<"/crm
         subtitle={[lead.code, lead.company].filter(Boolean).join(" · ")}
         actions={catalogs ? <LeadActions lead={lead} catalogs={catalogs} viewerId={me.id} advisors={advisors} opportunityOptions={opportunityOptions} editOpen={editar === "1"} /> : undefined}
       />
+      <ConsultModeNotice permissions={["crm.leads.manage"]} what="gestionar leads" />
 
       <HeroBand>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">

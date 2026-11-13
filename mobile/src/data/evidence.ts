@@ -8,9 +8,22 @@ import { enqueue, uuidv7 } from "../offline/outbox";
 import { applyEvidence } from "./actions";
 import { updateAssignment } from "./repository";
 
-const MAX_SIDE = 1600;
+const MAX_SIDE = 1920;
 const QUALITY = 0.7;
 const MIME = "image/jpeg";
+export const MAX_UPLOAD_ATTEMPTS = 5;
+
+export interface FailedPhoto {
+  id: string;
+  assignment_id: string;
+  file_name: string;
+  attempts: number;
+  last_error: string | null;
+}
+
+export function nextUploadState(attempts: number): "pending" | "failed" {
+  return attempts >= MAX_UPLOAD_ATTEMPTS ? "failed" : "pending";
+}
 
 export interface Photo {
   id: string;
@@ -29,6 +42,7 @@ interface PendingEvidence {
   size: number;
   sha256: string;
   incident_action_id: string | null;
+  attempts: number;
 }
 
 interface Presigned {
@@ -126,10 +140,21 @@ export async function uploadPending(online: boolean): Promise<number> {
       });
       uploaded++;
     } catch (error) {
-      await db.runAsync("UPDATE evidences SET last_error = ? WHERE id = ?", [error instanceof Error ? error.message : "No se pudo subir la foto", evidence.id]);
+      const attempts = evidence.attempts + 1;
+      await db.runAsync("UPDATE evidences SET attempts = ?, state = ?, last_error = ? WHERE id = ?", [attempts, nextUploadState(attempts), error instanceof Error ? error.message : "No se pudo subir la foto", evidence.id]);
     }
   }
   return uploaded;
+}
+
+export async function failedPhotos(): Promise<FailedPhoto[]> {
+  const db = await getDb();
+  return db.getAllAsync<FailedPhoto>("SELECT id, assignment_id, file_name, attempts, last_error FROM evidences WHERE state = 'failed' ORDER BY created_at");
+}
+
+export async function retryPhoto(id: string): Promise<void> {
+  const db = await getDb();
+  await db.runAsync("UPDATE evidences SET state = 'pending', attempts = 0, last_error = NULL WHERE id = ? AND state = 'failed'", [id]);
 }
 
 export async function pendingCount(): Promise<number> {

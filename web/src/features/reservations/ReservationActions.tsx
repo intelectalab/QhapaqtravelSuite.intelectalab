@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, CircleX, Pencil, Plus, ShieldQuestion } from "lucide-react";
+import { Ban, CircleX, ListX, Pencil, Plus, ShieldQuestion } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { reservationStep, type ReservationState } from "@/app/(backoffice)/reservas/actions";
@@ -166,7 +166,7 @@ function CancelSummary({ preview }: { preview: ReservationCancellation }) {
   );
 }
 
-export function ReservationCancelAction({ reservation, preview, defaultOpen }: { reservation: ReservationDetail; preview: ReservationCancellation; defaultOpen?: boolean }) {
+export function ReservationCancelAction({ reservation, preview, defaultOpen, fromRequest = false }: { reservation: ReservationDetail; preview: ReservationCancellation; defaultOpen?: boolean; fromRequest?: boolean }) {
   const requested = preview.request ? preview.request.split(": ") : null;
   return (
     <Step
@@ -179,11 +179,88 @@ export function ReservationCancelAction({ reservation, preview, defaultOpen }: {
       submitLabel="Cancelar reserva"
       defaultOpen={defaultOpen}
       confirmTestId="cancellation-confirm"
-      trigger={(open) => <Button iconOnly icon={<Ban size={16} />} label="Cancelar reserva" onClick={open} data-testid="reservation-cancel" className="transition-transform duration-300 hover:-translate-y-0.5" />}
+      trigger={(open) =>
+        fromRequest ? (
+          <Button size="sm" icon={<Ban size={15} />} onClick={open} data-testid="reservation-cancel-from-request" className="text-bad">
+            Procesar cancelación
+          </Button>
+        ) : (
+          <Button iconOnly icon={<Ban size={16} />} label="Cancelar reserva" onClick={open} data-testid="reservation-cancel" className="transition-transform duration-300 hover:-translate-y-0.5" />
+        )
+      }
     >
       <CancelSummary preview={preview} />
       <SelectField label="Motivo" name="reason" options={preview.reasons.map((value) => ({ value, label: value }))} defaultValue={requested?.[0] ?? ""} placeholder="Elegir" />
       <TextArea label="Detalle" name="detail" rows={3} required minLength={3} maxLength={500} defaultValue={requested?.slice(1).join(": ") ?? ""} placeholder="Qué pasó y quién lo pidió." />
+    </Step>
+  );
+}
+
+function PartialCancelFields({ preview }: { preview: ReservationCancellation }) {
+  const [chosen, setChosen] = useState<string[]>([]);
+  const money = (value: number) => formatMoney(value, preview.currency);
+  const lines = preview.lines.filter((line) => chosen.includes(line.code));
+  const factor = Number(preview.factor_k) || 1;
+  const value = lines.reduce((sum, line) => sum + Number(line.price), 0);
+  const penalty = lines.reduce((sum, line) => sum + Number(line.penalty), 0);
+  const credit = Math.round((value - penalty) * factor * 100) / 100;
+  const newTotal = Math.max(0, Number(preview.total) - credit);
+  const refund = Math.max(0, Number(preview.paid) - newTotal);
+  const all = chosen.length > 0 && chosen.length >= preview.lines.length;
+  const toggle = (code: string) => setChosen((current) => (current.includes(code) ? current.filter((item) => item !== code) : [...current, code]));
+  return (
+    <>
+      <section className="flex flex-col gap-2">
+        <h3 className="text-[13.5px] font-semibold">Servicios a cancelar</h3>
+        {preview.lines.map((line) => (
+          <label key={line.code} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border px-3.5 py-2.5 text-[13px] transition", chosen.includes(line.code) ? "border-bad/40 bg-[color-mix(in_srgb,var(--bad)_6%,var(--surface))]" : "border-line-2 bg-surface-2")}>
+            <input type="checkbox" name="services" value={line.code} checked={chosen.includes(line.code)} onChange={() => toggle(line.code)} className="mt-0.5 h-4 w-4" />
+            <span className="min-w-0 flex-1">
+              <b className="block truncate font-semibold">{line.name}</b>
+              <span className="text-fg-3">
+                {formatDate(line.date)} · {line.tiers}
+              </span>
+            </span>
+            <span className={cn("flex-none rounded-full px-2 py-0.5 text-[12px] font-semibold", line.pct === 0 ? "bg-[color-mix(in_srgb,var(--ok)_14%,transparent)] text-ok" : "bg-[color-mix(in_srgb,var(--bad)_12%,transparent)] text-bad")}>{line.pct} %</span>
+          </label>
+        ))}
+      </section>
+      {all ? (
+        <p className="rounded-xl bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] px-3.5 py-2.5 text-[12.5px] text-fg-2">Elegiste todos los servicios: usa «Cancelar reserva» para cancelarla completa.</p>
+      ) : (
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: "Penalidad", value: Math.round(penalty * factor * 100) / 100, tone: penalty > 0 ? "text-bad" : "text-fg" },
+            { label: "Nuevo total", value: newTotal, tone: "text-fg" },
+            { label: "Se reembolsa", value: refund, tone: refund > 0 ? "text-ok" : "text-fg" },
+          ].map((item) => (
+            <div key={item.label} className="lift rounded-xl border border-line-2 bg-surface px-3 py-2.5">
+              <p className="text-[12px] text-fg-3">{item.label}</p>
+              <p className="mt-0.5 text-[16px] font-bold tracking-[-0.02em]"><span className={item.tone}>{money(item.value)}</span></p>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+export function ReservationPartialCancelAction({ reservation, preview }: { reservation: ReservationDetail; preview: ReservationCancellation }) {
+  if (preview.lines.length < 2) return null;
+  return (
+    <Step
+      code={reservation.code}
+      step="cancel_services"
+      label="Cancelar servicios"
+      icon={<ListX size={16} />}
+      title="Cancelar parte de los servicios"
+      description="Cada servicio se cobra según su política. Las cuotas pendientes se recalculan y, si ya pagó de más, se registra el reembolso."
+      submitLabel="Cancelar servicios"
+      trigger={(open) => <Button iconOnly icon={<ListX size={16} />} label="Cancelar servicios" onClick={open} data-testid="reservation-cancel-services" className="transition-transform duration-300 hover:-translate-y-0.5" />}
+    >
+      <PartialCancelFields preview={preview} />
+      <SelectField label="Motivo" name="reason" options={preview.reasons.map((value) => ({ value, label: value }))} placeholder="Elegir" />
+      <TextArea label="Detalle" name="detail" rows={3} required minLength={3} maxLength={500} placeholder="Qué servicios ya no van y quién lo pidió." />
     </Step>
   );
 }

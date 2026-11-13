@@ -92,6 +92,34 @@ final class ManagePaxMessages
         return $code;
     }
 
+    public function feedbackReply(object $feedback, object $reservation, string $channel, string $recipient, string $body, User $actor): array
+    {
+        $code = $this->codes->next('notif_pax_messages', 'MSG-', 6);
+        $id = (string) Str::uuid7();
+
+        DB::table('notif_pax_messages')->insert([
+            'id' => $id,
+            'code' => $code,
+            'reservation_id' => $reservation->id,
+            'feedback_id' => $feedback->id,
+            'channel' => $channel,
+            'recipient' => $recipient,
+            'subject' => $channel === 'whatsapp' ? null : "Respuesta a tu comentario · {$reservation->code}",
+            'body' => $body,
+            'status' => 'programado',
+            'direction' => 'saliente',
+            'origin' => 'manual',
+            'scheduled_at' => now(),
+            'attempts' => 0,
+            'lang' => $reservation->lang ?? 'ES',
+            'created_by' => $actor->getKey(),
+            'updated_by' => $actor->getKey(),
+        ]);
+        $this->audit->log('Mensaje al pasajero', $code, 'responder_comentario', null, "{$feedback->code} · {$channel}");
+
+        return ['code' => $code, 'status' => $this->deliver($id)];
+    }
+
     public function sendNow(string $code, User $actor): string
     {
         $message = $this->find($code);

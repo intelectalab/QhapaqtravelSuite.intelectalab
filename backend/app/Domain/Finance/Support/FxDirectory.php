@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Finance\Support;
 
 use App\Domain\Iam\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 final class FxDirectory
@@ -31,7 +32,7 @@ final class FxDirectory
                 'previous' => $current && $current->previous_rate !== null ? (float) $current->previous_rate : null,
                 'date' => $current?->rate_date,
                 'source' => $current?->source,
-                'trend' => $history->take(14)->reverse()->map(fn (object $row): array => ['date' => $row->rate_date, 'rate' => (float) $row->rate_pen])->values(),
+                'trend' => $history->unique('rate_date')->filter(fn (object $row): bool => $current !== null && (string) $row->rate_date >= Carbon::parse((string) $current->rate_date)->subDays(29)->toDateString())->reverse()->map(fn (object $row): array => ['date' => $row->rate_date, 'rate' => (float) $row->rate_pen])->values(),
             ];
         })->values();
 

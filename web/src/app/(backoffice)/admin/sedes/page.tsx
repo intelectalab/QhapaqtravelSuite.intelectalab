@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { NoAccess } from "@/components/shell/NoAccess";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
-import { SedeCreateAction, SedesGrid } from "@/features/users/SedeForms";
+import { SedeCreateAction, SedesTable } from "@/features/users/SedeForms";
 import { listSedes } from "@/lib/server/users";
 
 export const metadata: Metadata = { title: "Sedes" };
@@ -21,7 +21,7 @@ export default async function SedesPage() {
         info={<InfoTip label="Por qué no se eliminan">Las sedes con usuarios o reservas no se eliminan: se desactivan para conservar el historial.</InfoTip>}
         actions={<SedeCreateAction managers={data.managers} disabledReason={full ? "Tu plan no permite más sedes activas." : undefined} />}
       />
-      <SedesGrid sedes={data.sedes} managers={data.managers} />
+      <SedesTable sedes={data.sedes} managers={data.managers} />
     </>
   );
 }

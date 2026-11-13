@@ -1,7 +1,9 @@
 "use client";
 
-import { Archive, ArrowRight, FileText, Globe, Image as ImageIcon, Plus, Scale, Search, SendHorizontal } from "lucide-react";
-import { archiveContent, saveContent, transitionContent } from "@/app/(backoffice)/canales/cms/actions";
+import { Archive, ArrowRight, Eye, FileText, Globe, Image as ImageIcon, Loader2, Plus, Scale, Search, SendHorizontal } from "lucide-react";
+import { useState, useTransition } from "react";
+import { archiveContent, previewContent, saveContent, transitionContent } from "@/app/(backoffice)/canales/cms/actions";
+import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -11,7 +13,7 @@ import { RichText } from "@/components/ui/RichText";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
-import { CMS_ACTIONS, CMS_FLOW, channelStatus, type CmsContent, type CmsOverview } from "@/lib/channels";
+import { CMS_ACTIONS, CMS_FLOW, channelStatus, type CmsContent, type CmsOverview, type CmsPreview } from "@/lib/channels";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { toneStyle } from "@/lib/tone";
@@ -38,6 +40,53 @@ export function CmsFlow({ kpis }: { kpis: Record<string, number> }) {
         );
       })}
     </ol>
+  );
+}
+
+function EditorPreview({ code, formId }: { code?: string; formId: string }) {
+  const [pending, start] = useTransition();
+  const [body, setBody] = useState<string | null>(null);
+  const [preview, setPreview] = useState<CmsPreview | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const run = () => {
+    const form = document.getElementById(formId);
+    if (!(form instanceof HTMLFormElement)) return;
+    const values = Object.fromEntries([...new FormData(form).entries()].map(([key, value]) => [key, typeof value === "string" ? value : ""]));
+    setBody(values.body ?? "");
+    setMessage(null);
+    if (!code) {
+      setPreview(null);
+      return;
+    }
+    start(async () => {
+      const result = await previewContent(code, values);
+      setPreview(result.data);
+      setMessage(result.message);
+    });
+  };
+  return (
+    <PanelSection title="Vista previa" aside={<Button size="sm" variant="ghost" icon={pending ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />} onClick={run} disabled={pending}>{body === null ? "Ver cómo queda" : "Actualizar"}</Button>}>
+      {body === null ? (
+        <p className="text-[12.5px] text-fg-3">Revisa el texto y cómo aparecerá en los buscadores antes de guardar. No cambia nada.</p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {preview && (
+            <div className="lift rounded-tile border border-line bg-surface px-3.5 py-3">
+              <span className="block truncate text-[12px] text-ok">{preview.serp.url}</span>
+              <b className="mt-0.5 block text-[15px] font-semibold leading-snug text-accent">{preview.serp.title || "Sin título"}</b>
+              <span className="mt-0.5 line-clamp-2 block text-[12.5px] text-fg-2">{preview.serp.description}</span>
+              <span className="mt-2 block text-[11.5px] text-fg-3">Título {preview.serp.title_length}/60 · descripción {preview.serp.description_length}/160 · {preview.words} palabras</span>
+              {preview.serp.warnings.map((warning) => (
+                <span key={warning} className="mt-1 block text-[12px] font-medium text-warn">{warning}</span>
+              ))}
+            </div>
+          )}
+          {!code && <p className="text-[12px] text-fg-3">La vista en buscadores aparece una vez guardado el borrador.</p>}
+          {message && <p className="text-[12.5px] text-bad">{message}</p>}
+          {body.trim() ? <Markdown body={body} /> : <p className="text-[12.5px] text-fg-3">Escribe el contenido para verlo aquí.</p>}
+        </div>
+      )}
+    </PanelSection>
   );
 }
 
@@ -76,6 +125,7 @@ export function ContentFormAction({ content, overview, iconOnly = false }: { con
               <TextField label="Hasta" name="valid_to" type="date" defaultValue={content?.valid_to ?? undefined} />
             </div>
           </PanelSection>
+          <EditorPreview code={content?.code} formId={content ? `cms-${content.code}` : "cms-new"} />
         </>
       )}
     </PanelAction>

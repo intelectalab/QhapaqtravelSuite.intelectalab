@@ -1,5 +1,6 @@
 import { BedDouble, Bus, CalendarDays, Coffee, FileCheck2, FileText, Megaphone, Mountain, ReceiptText, Ticket, TriangleAlert, Users, Wallet, type LucideIcon } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { DownloadButton } from "@/components/ui/DownloadButton";
 import { HeroBand, HeroChip, HeroPanel, ToneScope } from "@/components/ui/Tinted";
@@ -111,7 +112,7 @@ function Billing({ billing }: { billing: NonNullable<PortalTrip["billing"]> }) {
   );
 }
 
-export function PortalTripDetail({ trip, passenger }: { trip: PortalTrip; passenger: boolean }) {
+export function PortalTripDetail({ trip, passenger, extra }: { trip: PortalTrip; passenger: boolean; extra?: ReactNode }) {
   const phase = PHASES[trip.phase];
   const pct = trip.progress.services ? Math.round((trip.progress.confirmed / trip.progress.services) * 100) : 0;
   const missing = trip.passengers.filter((row) => row.missing).length;
@@ -172,6 +173,7 @@ export function PortalTripDetail({ trip, passenger }: { trip: PortalTrip; passen
           <SectionCard icon={CalendarDays} title="Itinerario día a día" aside={`${trip.days.length} ${trip.days.length === 1 ? "día" : "días"}`}>
             <Itinerary trip={trip} />
           </SectionCard>
+          {extra}
           <SectionCard icon={Users} title="Pasajeros" aside={trip.passengers.length}>
             {missing > 0 && (
               <p style={toneStyle("warn")} className="mb-3 flex items-center gap-2 rounded-tile bg-[color-mix(in_srgb,var(--tint)_10%,var(--surface))] px-3 py-2 text-[12.5px] font-medium text-[var(--tint)]">

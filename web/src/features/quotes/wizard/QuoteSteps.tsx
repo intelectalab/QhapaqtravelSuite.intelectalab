@@ -12,6 +12,7 @@ import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
 import { MANUAL_RATE, paxLabel, rateValidOn, type QuoteFormOptions, type QuoteLineInput, type QuotePreview, type QuoteRateOption, type QuoteSegmentOption } from "@/lib/quotes";
+import { QuoteItinerary } from "../QuoteItinerary";
 import { lineKey, lineReady, type QuoteDraft, type QuotePatch } from "./draft";
 
 const SEGMENTS = ["Adulto", "Niño", "Infante", "Grupo", "Pasajero"];
@@ -367,6 +368,9 @@ export function SummaryStep({ draft, set, options, errors, preview }: QuoteStepP
               <dd className="font-medium">{draft.validUntil ? formatDate(draft.validUntil) : "Según la agencia"}</dd>
             </div>
           </dl>
+        </Section>
+        <Section title="Itinerario resumido" hint="Se arma con el itinerario de cada producto, en el orden de sus fechas.">
+          <QuoteItinerary blocks={shown?.itinerary ?? []} empty={ready.length > 0 ? "Los productos elegidos no tienen itinerario cargado." : "Agrega ítems para ver el itinerario."} linked={false} />
         </Section>
       </div>
       <Aside title="Resumen económico">

@@ -21,7 +21,9 @@ final class WebIntegrationController
     public function defaults(Request $request, ManageWebIntegration $manage): JsonResponse
     {
         $data = $request->validate([
-            'product' => ['required', 'string', 'exists:catalog_products,code'],
+            'mode' => ['nullable', 'in:producto,catalogo'],
+            'category' => ['nullable', 'string', 'max:120'],
+            'product' => ['required_unless:mode,catalogo', 'nullable', 'string', 'exists:catalog_products,code'],
             'method' => ['required', Rule::in(array_keys(WebIntegrationDirectory::METHODS))],
             'lang' => ['required', 'in:es,en'],
             'currency' => ['required', 'in:PEN,USD'],
@@ -30,6 +32,8 @@ final class WebIntegrationController
             'reviews' => ['nullable', 'boolean'],
             'domain' => ['nullable', 'string', 'max:190'],
         ], [
+            'mode.*' => 'Elige si el widget muestra un producto o el catálogo.',
+            'category.*' => 'La categoría no es válida.',
             'product.*' => 'Elige un producto publicado.',
             'method.*' => 'Elige el método de integración.',
             'lang.*' => 'Elige el idioma.',

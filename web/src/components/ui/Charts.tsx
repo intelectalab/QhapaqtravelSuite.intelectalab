@@ -108,9 +108,9 @@ export interface BarDatum {
   highlight?: boolean;
 }
 
-export function BarChart({ data, height = 118 }: { data: BarDatum[]; height?: number }) {
+export function BarChart({ data, height = 118, reference }: { data: BarDatum[]; height?: number; reference?: { value: number; label: string } }) {
   const [active, setActive] = useState<string | null>(null);
-  const max = Math.max(...data.map((item) => item.value)) || 1;
+  const max = Math.max(...data.map((item) => item.value), reference?.value ?? 0) || 1;
 
   return (
     <div className="grid items-end gap-3.5" style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }} onPointerLeave={() => setActive(null)}>
@@ -120,6 +120,7 @@ export function BarChart({ data, height = 118 }: { data: BarDatum[]; height?: nu
         return (
           <div key={item.label} className="flex cursor-default flex-col items-center gap-1.5" onPointerEnter={() => setActive(item.label)}>
             <div className="relative flex w-full items-end" style={{ height }}>
+              {reference && <span aria-hidden className="pointer-events-none absolute inset-x-[-7px] border-t border-dashed border-bad/60" style={{ bottom: `${(reference.value / max) * height}px` }} title={reference.label} />}
               {isActive && (
                 <span className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg bg-fg px-2 py-1 text-[11.5px] font-semibold text-bg shadow-lg motion-safe:animate-[drop-in_160ms_ease-out]" style={{ bottom: `${Math.max(6, (item.value / max) * height) + 8}px` }}>
                   {item.detail ?? item.caption}

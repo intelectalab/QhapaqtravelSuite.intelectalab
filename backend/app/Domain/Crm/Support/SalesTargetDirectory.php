@@ -101,6 +101,13 @@ final class SalesTargetDirectory
                     'at' => $entry->occurred_at,
                 ])->values(),
             'policy' => $policy,
+            'ranking' => $this->ranking(
+                DB::table('crm_sales_targets')->where('scope_type', 'asesor')->whereIn('status', ['vigente', 'cerrada'])->where('period_key', $row->period_key)->get()
+                    ->map(fn (object $other): array => $this->present($other, $names, $policy, $today)),
+                $manage,
+                $viewer,
+                (string) $row->period_key,
+            ),
             'can' => ['manage' => $manage, 'reduce_late' => $viewer->can('admin.settings.manage')],
         ];
     }
@@ -214,9 +221,36 @@ final class SalesTargetDirectory
         };
     }
 
-    private function ranking(Collection $targets, bool $amounts, User $viewer): array
+    public function rankingFor(User $viewer, ?string $period): array
     {
-        $period = $targets->where('scope_type', 'asesor')->whereIn('status', ['vigente', 'cerrada'])->pluck('period_key')->filter(fn (string $key): bool => ! str_contains($key, 'Q'))->sortDesc()->first(fn (string $key): bool => $key <= Carbon::now($this->context->timezone())->format('Y-m'));
+        $today = Carbon::now($this->context->timezone())->startOfDay();
+        $policy = $this->policy();
+        $names = $this->scopeNames();
+        $targets = DB::table('crm_sales_targets')->where('scope_type', 'asesor')->whereIn('status', ['vigente', 'cerrada'])
+            ->when($period !== null, fn (Builder $query) => $query->where('period_key', $period))
+            ->get()
+            ->map(fn (object $row): array => $this->present($row, $names, $policy, $today));
+        $key = $period ?? $this->rankingPeriod($targets);
+        $items = $this->ranking($targets, $viewer->can('crm.targets.manage'), $viewer, $key);
+
+        return [
+            'period' => $key,
+            'period_label' => $key !== null ? TargetPeriod::label($key) : null,
+            'periods' => DB::table('crm_sales_targets')->where('scope_type', 'asesor')->whereIn('status', ['vigente', 'cerrada'])->distinct()->orderByDesc('period_key')->pluck('period_key')
+                ->map(fn (string $value): array => ['value' => $value, 'label' => TargetPeriod::label($value)])->values()->all(),
+            'items' => $items,
+            'amounts' => $viewer->can('crm.targets.manage'),
+        ];
+    }
+
+    private function rankingPeriod(Collection $targets): ?string
+    {
+        return $targets->where('scope_type', 'asesor')->whereIn('status', ['vigente', 'cerrada'])->pluck('period_key')->filter(fn (string $key): bool => ! str_contains($key, 'Q'))->sortDesc()->first(fn (string $key): bool => $key <= Carbon::now($this->context->timezone())->format('Y-m'));
+    }
+
+    private function ranking(Collection $targets, bool $amounts, User $viewer, ?string $only = null): array
+    {
+        $period = $only ?? $this->rankingPeriod($targets);
 
         return $targets->where('scope_type', 'asesor')->where('period_key', $period)->whereIn('status', ['vigente', 'cerrada'])
             ->sortByDesc('progress_pct')->values()

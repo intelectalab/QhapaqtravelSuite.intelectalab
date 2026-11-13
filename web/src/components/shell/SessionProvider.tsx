@@ -15,6 +15,10 @@ export function useMe(): Me {
   return me;
 }
 
+export function useOptionalMe(): Me | null {
+  return useContext(SessionContext);
+}
+
 export function useCan(permission: string): boolean {
   return useMe().permissions.includes(permission);
 }

@@ -1,4 +1,4 @@
-import { AlertTriangle, Eye, Luggage, Timer } from "lucide-react";
+import { AlertTriangle, CalendarClock, Eye, Luggage, Timer } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { NoAccess } from "@/components/shell/NoAccess";
@@ -22,6 +22,8 @@ export default async function ComunicacionesLayout({ children }: { children: Rea
   const read = outgoing.filter((message) => message.status === "leido").length;
   const next = [...scheduled].filter((message) => message.scheduled_at).sort((a, b) => (a.scheduled_at ?? "").localeCompare(b.scheduled_at ?? ""))[0];
   const reservations = new Set(messages.map((message) => message.reservation).filter(Boolean)).size;
+  const horizon = new Date().getTime() + 48 * 3600 * 1000;
+  const soon = scheduled.filter((message) => message.scheduled_at !== null && new Date(message.scheduled_at).getTime() <= horizon).length;
 
   return (
     <>
@@ -43,7 +45,8 @@ export default async function ComunicacionesLayout({ children }: { children: Rea
           </span>
         </ToneScope>
       )}
-      <KpiGrid columns={3}>
+      <KpiGrid columns={4}>
+        <TintTile icon={CalendarClock} tone="sun" label="Programados" value={scheduled.length} note={`${soon} en las próximas 48 h`} info={<p>Mensajes en estado programado, automáticos o manuales. La nota cuenta los que salen en las próximas 48 horas.</p>} />
         <TintTile icon={Eye} tone="ok" label="Tasa de lectura" value={outgoing.length > 0 ? formatPercent((read / outgoing.length) * 100, 0) : "Sin envíos"} note="De los mensajes que ya salieron" info={<p>Mensajes salientes con acuse de lectura entre todos los que ya salieron, entregados, leídos o fallidos.</p>} />
         <TintTile icon={Timer} tone="info" label="Próximo envío" value={next?.scheduled_at ? formatDateTime(next.scheduled_at, false) : "Nada programado"} note={next ? `${next.template_name ?? "Mensaje"}${next.reservation ? ` · ${next.reservation}` : ""}` : undefined} info={<p>El mensaje programado que sale primero, con su plantilla y su reserva.</p>} />
         <TintTile icon={Luggage} tone="t4" label="Reservas acompañadas" value={reservations} note="Con al menos un mensaje" info={<p>Reservas distintas que tienen mensajes programados, enviados o respondidos por el pasajero.</p>} />

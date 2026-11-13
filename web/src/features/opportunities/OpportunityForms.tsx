@@ -63,7 +63,7 @@ function OpportunityFields({ options, opportunity, clientCode }: { options: Oppo
   );
 }
 
-export function OpportunityCreateAction({ options, clientCode, size = "md", variant = "primary" }: { options: OpportunityFormOptions; clientCode?: string; size?: "md" | "sm"; variant?: "primary" | "secondary" }) {
+export function OpportunityCreateAction({ options, clientCode, size = "md", variant = "primary", defaultOpen = false }: { options: OpportunityFormOptions; clientCode?: string; size?: "md" | "sm"; variant?: "primary" | "secondary"; defaultOpen?: boolean }) {
   const router = useRouter();
   return (
     <PanelAction<OpportunityFormState>
@@ -78,6 +78,7 @@ export function OpportunityCreateAction({ options, clientCode, size = "md", vari
       action={createOpportunity}
       initial={initial}
       onDone={(state) => state.code && router.push(`/crm/oportunidades/${state.code}`)}
+      defaultOpen={defaultOpen}
     >
       {() => <OpportunityFields options={options} clientCode={clientCode} />}
     </PanelAction>

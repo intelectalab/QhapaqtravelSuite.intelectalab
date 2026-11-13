@@ -31,6 +31,7 @@ export default async function SiteHomePage({ params }: PageProps<"/sitio/[agenci
   const centered = hero.align === "centro";
   const image = hero.style === "imagen" && hero.image_id ? siteImageHref(base, hero.image_id) : null;
   const andes = profile.design.theme.style === "andes";
+  const mosaic = andes && profile.design.andes.mosaic;
   const stats = hero.show_stats ? [t.statProducts(home.stats.products), t.statDestinations(home.stats.destinations), t.statDepartures(home.stats.departures)] : [];
   const reasons = [
     { icon: CalendarCheck2, title: t.priceTitle, text: t.priceText },
@@ -44,11 +45,19 @@ export default async function SiteHomePage({ params }: PageProps<"/sitio/[agenci
       home.destinations.length > 0 ? (
         <section>
           <SectionHeading eyebrow={t.destinations.eyebrow} title={t.destinations.title} description={t.destinations.description} action={<MoreLink href={siteHref(base, "/destinos")} label={t.destinations.more} />} />
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {home.destinations.map((destination, index) => (
-              <DestinationTile key={destination.slug} destination={destination} base={base} index={index} large={index === 0} />
-            ))}
-          </div>
+          {mosaic ? (
+            <div data-testid="site-destinations-mosaic" className="grid gap-4 lg:grid-cols-12">
+              {home.destinations.map((destination, index) => (
+                <DestinationTile key={destination.slug} destination={destination} base={base} index={index} large={index < 2} className={index === 0 ? "lg:col-span-7" : index === 1 ? "lg:col-span-5" : "lg:col-span-6"} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {home.destinations.map((destination, index) => (
+                <DestinationTile key={destination.slug} destination={destination} base={base} index={index} large={!andes && index === 0} />
+              ))}
+            </div>
+          )}
         </section>
       ) : null,
     featured: (

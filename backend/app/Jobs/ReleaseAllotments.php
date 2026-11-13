@@ -44,6 +44,7 @@ final class ReleaseAllotments extends TenantJob
                 'allotment_id' => $day->allotment_id,
                 'message' => mb_substr("Release automático: {$day->free} unidad(es) liberadas del {$day->service_date} (JOB-10)", 0, 300),
             ]);
+            $audit->log('Cupo', (string) $day->code, 'release_automatico', null, "{$day->service_date} · {$day->free} unidad(es) liberadas");
             $units += (int) $day->free;
         }
 

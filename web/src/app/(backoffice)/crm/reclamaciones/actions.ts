@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { apiFetch } from "@/lib/server/api";
 import { formValues, sendStep, type StepResult } from "@/lib/server/resource";
 
 const SHEET = ["type", "consumer_name", "consumer_doc_type", "consumer_doc_number", "consumer_email", "consumer_phone", "consumer_address", "good_kind", "good_description", "good_amount", "good_currency", "detail", "request", "client", "reservation"];
@@ -28,8 +29,25 @@ export async function claimStep(_state: StepResult, form: FormData): Promise<Ste
   if (step === "evaluate") return refresh(await sendStep(`/crm/claim-book/${code}/review`, "POST", formValues(form, ["lock_version", "owner_id", "note"]), failure));
   if (step === "resend") return refresh(await sendStep(`/crm/claim-book/${code}/response/resend`, "POST", {}, "No pudimos reenviar la respuesta."));
   if (step === "respond") return refresh(await sendStep(`/crm/claim-book/${code}/response`, "POST", formValues(form, ["decision", "text", "actions"]), failure));
-  if (step === "close") return refresh(await sendStep(`/crm/claim-book/${code}/close`, "POST", formValues(form, ["note", "lock_version"]), failure));
+  if (step === "close") return refresh(await sendStep(`/crm/claim-book/${code}/close`, "POST", formValues(form, ["reason", "note", "lock_version"]), failure));
+  if (step === "note") return refresh(await sendStep(`/crm/claim-book/${code}/notes`, "POST", formValues(form, ["note"]), "No pudimos guardar la nota."));
+  if (step === "links") return refresh(await sendStep(`/crm/claim-book/${code}/links`, "PATCH", { client: text(form, "client") || null, reservation: text(form, "reservation") || null }, "No pudimos actualizar los vínculos."));
+  if (step === "alerts") return refresh(await sendStep("/crm/claim-book/deadline-alerts", "POST", {}, "No pudimos enviar los avisos de vencimiento."));
   return { message: null, done: true };
+}
+
+export interface ClaimExportResult extends StepResult {
+  exportId?: string;
+  rows?: number;
+}
+
+export async function requestClaimExport(_state: ClaimExportResult, form: FormData): Promise<ClaimExportResult> {
+  const result = await apiFetch<{ data: { export_id: string; rows: number } }>("/crm/claim-book/exports", { method: "POST", body: formValues(form, ["year", "format"]) });
+  if (!result.ok || !result.data) {
+    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { message: firstError ?? result.error?.message ?? "No pudimos generar la relación.", done: false };
+  }
+  return { message: null, done: true, exportId: result.data.data.export_id, rows: result.data.data.rows };
 }
 
 function holidayList(form: FormData): { date: string; name: string }[] {

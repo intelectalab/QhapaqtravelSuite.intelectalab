@@ -1,3 +1,4 @@
+import { ConsultModeNotice } from "@/components/ui/ConsultMode";
 import { Crosshair, Globe2, MapPinned, Package } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -30,6 +31,7 @@ export default async function DestinosPage() {
         info={<InfoTip>Al filtrar productos por un destino se incluyen sus subdestinos. Un destino con subdestinos o productos no se puede eliminar.</InfoTip>}
         actions={overview.can.manage ? <DestinationCreateAction destinations={overview.destinations} types={overview.options.types} /> : undefined}
       />
+      <ConsultModeNotice permissions={["catalog.products.update"]} what="crear ni editar destinos" />
       <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <TintTile icon={Globe2} tone="t1" label="Destinos" value={nodes.length} note={`${nodes.filter((node) => node.depth <= 1).length} países y regiones`} info={<p>Todos los destinos del árbol, desde países hasta atracciones y rutas.</p>} />
         <TintTile icon={MapPinned} tone="sun" label="Atracciones y lugares" value={leaves.length} note="Puntos que visita el pasajero" info={<p>Destinos de tipo atracción, lugar o ruta: los puntos concretos que aparecen en los itinerarios.</p>} />

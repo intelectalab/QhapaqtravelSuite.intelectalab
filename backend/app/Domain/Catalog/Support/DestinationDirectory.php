@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Catalog\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Errors\ApiException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final class DestinationDirectory
@@ -13,6 +15,34 @@ final class DestinationDirectory
 
     public function overview(User $viewer): array
     {
+        return [
+            'destinations' => $this->tree($viewer)->values(),
+            'options' => ['types' => array_keys(self::RANKS)],
+            'can' => ['manage' => $viewer->can('catalog.products.update')],
+        ];
+    }
+
+    public function find(string $ref): array
+    {
+        $tree = $this->tree()->keyBy('id');
+        $node = $tree->first(fn (array $destination) => $destination['id'] === $ref || $destination['ref'] === $ref) ?? throw ApiException::notFound('El destino no existe.');
+        $ancestors = [];
+
+        for ($parent = $node['parent']['id'] ?? null; $parent !== null && isset($tree[$parent]) && count($ancestors) < 12; $parent = $tree[$parent]['parent']['id'] ?? null) {
+            array_unshift($ancestors, array_intersect_key($tree[$parent], array_flip(['id', 'ref', 'name', 'type', 'level'])));
+        }
+
+        return [
+            ...$node,
+            'ancestors' => $ancestors,
+            'children' => $tree->where('parent.id', $node['id'])->map(fn (array $child) => array_intersect_key($child, array_flip(['id', 'ref', 'name', 'type', 'level', 'children', 'direct_products'])))->values(),
+            'children_count' => $node['children'],
+        ];
+    }
+
+    private function tree(?User $viewer = null): Collection
+    {
+        $prices = ProductDirectory::pricesFrom($viewer);
         $nodes = DB::table('catalog_destinations as d')
             ->leftJoin('catalog_destinations as parent', 'parent.id', '=', 'd.parent_id')
             ->whereNull('d.deleted_at')
@@ -25,7 +55,7 @@ final class DestinationDirectory
                 ->get(['p.id', 'p.code', 'p.name', 'p.status', 'pd.destination_id'])->map(fn (object $product) => [...(array) $product, 'role' => 'secundario']));
         $paths = $nodes->pluck('path', 'id');
 
-        $destinations = $nodes->map(function (object $node) use ($nodes, $links, $paths) {
+        return $nodes->map(function (object $node) use ($nodes, $links, $paths, $prices) {
             $direct = $links->where('destination_id', $node->id);
             $within = $links->filter(fn (array $link) => isset($paths[$link['destination_id']]) && ($paths[$link['destination_id']] === $node->path || str_starts_with((string) $paths[$link['destination_id']], $node->path.' / ')));
 
@@ -43,14 +73,14 @@ final class DestinationDirectory
                 'description' => $node->description,
                 'children' => $nodes->where('parent_id', $node->id)->count(),
                 'direct_products' => $direct->pluck('code')->unique()->count(),
-                'products' => $within->unique('code')->map(fn (array $link) => ['code' => $link['code'], 'name' => $link['name'], 'status' => $link['status']])->values(),
+                'products' => $within->sortBy(fn (array $link) => $link['destination_id'] === $node->id ? ($link['role'] === 'principal' ? 0 : 1) : 2)->unique('code')->map(fn (array $link) => [
+                    'code' => $link['code'],
+                    'name' => $link['name'],
+                    'status' => $link['status'],
+                    'relation' => $link['destination_id'] === $node->id ? $link['role'] : 'subdestino',
+                    'price_from' => $prices[$link['id']] ?? null,
+                ])->values(),
             ];
         });
-
-        return [
-            'destinations' => $destinations->values(),
-            'options' => ['types' => array_keys(self::RANKS)],
-            'can' => ['manage' => $viewer->can('catalog.products.update')],
-        ];
     }
 }

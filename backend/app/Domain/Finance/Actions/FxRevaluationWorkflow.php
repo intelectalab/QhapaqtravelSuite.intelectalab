@@ -39,6 +39,7 @@ final class FxRevaluationWorkflow
                 'market_pen' => (string) $market,
                 'unrealized_pen' => (string) $market->minus($valuation['value'])->toScale(2, RoundingMode::HALF_UP),
                 'realized_pen' => (string) $valuation['realized']->toScale(2, RoundingMode::HALF_UP),
+                'realized_operations' => $valuation['operations'],
                 'registered' => $registered->get($account->id),
             ];
         })->values();
@@ -107,8 +108,9 @@ final class FxRevaluationWorkflow
         $units = Decimal::of($account->opening_balance);
         $value = $units->multipliedBy(Decimal::of($account->opening_rate ?: $this->money->usdRate()));
         $realized = BigDecimal::zero();
+        $operations = [];
         $events = DB::table('fin_treasury_movements')->where('account_id', $account->id)->where('status', 'posted')
-            ->get(['movement_date as date', 'code', 'direction', 'amount', 'fx_rate'])
+            ->get(['movement_date as date', 'code', 'direction', 'amount', 'fx_rate', 'description'])
             ->map(fn (object $row): array => ['date' => (string) $row->date, 'order' => 0, 'key' => (string) $row->code, 'row' => $row])
             ->concat(DB::table('fin_fx_revaluations')->where('account_id', $account->id)->where('period', '<', $period)->get(['revaluation_date as date', 'code', 'close_rate'])
                 ->map(fn (object $row): array => ['date' => (string) $row->date, 'order' => 1, 'key' => (string) $row->code, 'row' => $row]))
@@ -135,7 +137,12 @@ final class FxRevaluationWorkflow
 
             $average = $units->isPositive() ? $value->dividedBy($units, 6, RoundingMode::HALF_UP) : $rate;
             if (str_starts_with($event['date'], $period)) {
-                $realized = $realized->plus($amount->multipliedBy($rate->minus($average)));
+                $diff = $amount->multipliedBy($rate->minus($average));
+                $realized = $realized->plus($diff);
+
+                if (! $diff->toScale(2, RoundingMode::HALF_UP)->isZero()) {
+                    $operations[] = ['code' => (string) $row->code, 'date' => $event['date'], 'description' => $row->description, 'amount_usd' => (string) $amount->toScale(2), 'rate' => (string) $rate->toScale(4, RoundingMode::HALF_UP), 'average' => (string) $average->toScale(4, RoundingMode::HALF_UP), 'diff_pen' => (string) $diff->toScale(2, RoundingMode::HALF_UP)];
+                }
             }
             $units = $units->minus($amount);
             $value = $value->minus($amount->multipliedBy($average));
@@ -146,6 +153,7 @@ final class FxRevaluationWorkflow
             'value' => $value,
             'rate' => $units->isPositive() ? $value->dividedBy($units, 6, RoundingMode::HALF_UP) : Decimal::of($this->money->usdRate()),
             'realized' => $realized,
+            'operations' => $operations,
         ];
     }
 

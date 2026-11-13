@@ -66,7 +66,7 @@ function flujoLead(): array
         ->and($client->owner_id)->toBe($seller->id)
         ->and($client->doc_number)->toBe('70451236')
         ->and($opportunity->client_id)->toBe($client->id)
-        ->and($opportunity->stage)->toBe('calificacion');
+        ->and($opportunity->stage)->toBe('descubrimiento');
 
     return ['lead' => $code, 'client' => $client->code, 'opportunity' => $opportunity->code];
 }

@@ -1,3 +1,4 @@
+import { ConsultModeNotice } from "@/components/ui/ConsultMode";
 import { Shapes } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -25,6 +26,7 @@ export default async function ProductosPage({ searchParams }: PageProps<"/catalo
           </>
         }
       />
+      <ConsultModeNotice permissions={["catalog.products.create", "catalog.products.update"]} what="crear ni editar productos" />
       <ProductsTable products={products} can={{ edit: Boolean(options?.can_update), remove: Boolean(options?.can_activate) }} />
     </>
   );

@@ -106,3 +106,15 @@ export async function removeClientContact(_state: ClientActionState, form: FormD
 export async function sendClientCommunication(_state: ClientActionState, form: FormData): Promise<ClientActionState> {
   return contactCall(`/crm/clients/${encodeURIComponent(text(form, "code") ?? "")}/communications`, "POST", { recipient: text(form, "recipient"), subject: text(form, "subject"), body: text(form, "body") });
 }
+
+export interface ClientDuplicateCheck {
+  hard: { code: string; name: string } | null;
+  soft: { code: string; name: string }[];
+}
+
+export async function checkClientDuplicates(input: { doc_type?: string; doc_number?: string; email?: string; phone?: string; exclude?: string }): Promise<ClientDuplicateCheck> {
+  const params = new URLSearchParams(Object.entries(input).filter((entry): entry is [string, string] => typeof entry[1] === "string" && entry[1].trim() !== "").map(([key, value]) => [key, value.trim()]));
+  if (!params.has("doc_number") && !params.has("email") && !params.has("phone")) return { hard: null, soft: [] };
+  const result = await apiFetch<ClientDuplicateCheck>(`/crm/clients/duplicates?${params.toString()}`);
+  return result.ok && result.data ? { hard: result.data.hard, soft: result.data.soft ?? [] } : { hard: null, soft: [] };
+}

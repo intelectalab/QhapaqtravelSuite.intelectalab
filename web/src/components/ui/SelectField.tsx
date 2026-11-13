@@ -17,9 +17,10 @@ interface SelectFieldProps {
   searchable?: boolean;
   className?: string;
   onChange?: (value: string) => void;
+  disabled?: boolean;
 }
 
-export function SelectField({ label, name, options, defaultValue = "", value, placeholder, hint, error, clearable, searchable, className, onChange }: SelectFieldProps) {
+export function SelectField({ label, name, options, defaultValue = "", value, placeholder, hint, error, clearable, searchable, className, onChange, disabled }: SelectFieldProps) {
   const id = useId();
   const [inner, setInner] = useState(defaultValue);
   const current = value ?? inner;
@@ -42,6 +43,7 @@ export function SelectField({ label, name, options, defaultValue = "", value, pl
         ariaLabel={label}
         className={cn("h-12 w-full", error && "border-bad")}
         testId={`field:${name}`}
+        disabled={disabled}
       />
       <input type="hidden" name={name} value={current} />
       {error ? <div className="mt-1.5 text-[12.5px] font-medium text-bad">{error}</div> : hint && <div className="mt-1.5 text-[12.5px] text-fg-3">{hint}</div>}

@@ -214,7 +214,7 @@ final class InvoiceDirectory
             })->filter()->values()->all();
     }
 
-    private function uninvoiced(): float
+    public function uninvoiced(): float
     {
         $collected = DB::table('fin_payments')->where('status', 'aplicado')->where('kind', 'cobro')->get(['reservation_id', 'amount', 'currency', 'fx_rate'])
             ->groupBy('reservation_id')->map(fn ($items): float => $items->sum(fn (object $row): float => $this->money->pen($row->amount, $row->currency, $row->fx_rate)));

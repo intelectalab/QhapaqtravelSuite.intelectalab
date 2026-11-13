@@ -6,13 +6,75 @@ namespace App\Domain\Operations\Support;
 
 use App\Domain\Booking\Actions\ProviderServiceResponse;
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Http\CursorPage;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 final class SupplierResponseDirectory
 {
     public const REVIEW = ['pendiente', 'aceptada', 'rechazada', 'expirada'];
 
+    private const REQUEST_SORTS = ['requested_at' => 'q.requested_at', 'responded_at' => 'q.responded_at', 'service_date' => 's.service_date', 'status' => 'q.status'];
+
     public function __construct(private readonly OpsCommon $common) {}
+
+    public function requests(Request $request): array
+    {
+        $filters = CursorPage::filters($request);
+        $query = DB::table('ops_supplier_requests as q')
+            ->join('booking_reservation_services as s', 's.id', '=', 'q.reservation_service_id')
+            ->join('booking_reservations as r', 'r.id', '=', 's.reservation_id')
+            ->join('catalog_providers as p', 'p.id', '=', 'q.provider_id')
+            ->leftJoin('iam_users as u', 'u.id', '=', 'q.requested_by')
+            ->leftJoin('iam_users as ru', 'ru.id', '=', 'q.responded_by_user_id')
+            ->whereNull('q.deleted_at')
+            ->whereNull('r.deleted_at')
+            ->when($filters['status'] ?? null, fn ($query, string $status) => $query->whereIn('q.status', explode(',', $status)))
+            ->when($filters['provider'] ?? null, fn ($query, string $provider) => $query->where('p.ref', $provider))
+            ->when($filters['reservation'] ?? null, fn ($query, string $code) => $query->where('r.code', $code))
+            ->when($filters['service'] ?? null, fn ($query, string $code) => $query->where('s.code', $code))
+            ->when($filters['channel'] ?? null, fn ($query, string $channel) => $query->where('q.channel', $channel))
+            ->select([
+                'q.id', 'q.reservation_service_id', 'q.provider_id', 'q.status', 'q.channel', 'q.requested_at', 'q.responded_at', 'q.response_source', 'q.confirmation_code', 'q.rejection_reason', 'q.note',
+                's.code as service_code', 's.name as service_name', 's.service_date', 's.status as service_status', 'r.code as reservation_code', 'r.title as reservation_title',
+                'p.ref as provider_ref', 'p.name as provider_name', 'u.name as requested_by', 'ru.name as responded_by',
+            ]);
+
+        return CursorPage::respond($request, $query, self::REQUEST_SORTS, '-requested_at', function (object $row): array {
+            $responses = DB::table('supplier_request_responses as x')->leftJoin('iam_users as u', 'u.id', '=', 'x.responded_by_user_id')
+                ->where('x.supplier_request_id', $row->id)->orderByDesc('x.responded_at')
+                ->get(['x.id', 'x.type', 'x.responded_at', 'x.confirmation_code', 'x.rejection_reason', 'x.alt_kind', 'x.alt_date', 'x.alt_net_cost', 'x.currency', 'x.hold_until', 'x.note', 'x.review_status', 'u.name as responded_by']);
+
+            return [
+                'id' => $row->id,
+                'reservation_service_id' => $row->reservation_service_id,
+                'provider_id' => $row->provider_id,
+                'status' => $row->status,
+                'channel' => $row->channel,
+                'requested_at' => $row->requested_at,
+                'requested_by' => $row->requested_by,
+                'responded_at' => $row->responded_at,
+                'responded_by' => $row->responded_by,
+                'response_source' => $row->response_source,
+                'confirmation_code' => $row->confirmation_code,
+                'rejection_reason' => $row->rejection_reason,
+                'note' => $row->note,
+                'service' => ['code' => $row->service_code, 'name' => $row->service_name, 'date' => $row->service_date, 'status' => $row->service_status],
+                'reservation' => ['code' => $row->reservation_code, 'title' => $row->reservation_title],
+                'provider' => ['ref' => $row->provider_ref, 'name' => $row->provider_name],
+                'responses' => $responses->map(fn (object $response): array => [
+                    'id' => $response->id,
+                    'type' => $response->type,
+                    'responded_at' => $response->responded_at,
+                    'responded_by' => $response->responded_by,
+                    'confirmation_code' => $response->confirmation_code,
+                    'rejection_reason' => $response->rejection_reason,
+                    'alternative' => $response->type === 'alternativa' ? ['kind' => $response->alt_kind, 'date' => $response->alt_date, 'net_cost' => $response->alt_net_cost === null ? null : (string) $response->alt_net_cost, 'currency' => $response->currency, 'hold_until' => $response->hold_until, 'review_status' => $response->review_status] : null,
+                    'note' => $response->note,
+                ])->values(),
+            ];
+        });
+    }
 
     public function list(User $viewer, array $filters): array
     {

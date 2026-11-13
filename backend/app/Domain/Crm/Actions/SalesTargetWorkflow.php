@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Crm\Actions;
 
+use App\Domain\Admin\Support\StaffNotices;
 use App\Domain\Crm\Events\SalesTargetClosed;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Crm\Support\SalesTargetDirectory;
@@ -66,6 +67,10 @@ final class SalesTargetWorkflow
             $this->history($id, 'crear', null, $goals, $status === 'vigente' ? 'Meta creada y activada' : 'Meta creada en borrador', $actor);
             $this->audit->log('Meta comercial', $code, 'crear', null, "{$data['period']} · S/ {$data['goal_sales']}");
 
+            if ($status === 'vigente') {
+                $this->notifyOwner($data['scope_type'], $data['scope_id'], $id, 'Nueva meta asignada · '.$data['period'], 'Tu meta de ventas es S/ '.number_format((float) $data['goal_sales'], 0, '.', ' ').'.', $actor);
+            }
+
             return $code;
         });
     }
@@ -100,6 +105,10 @@ final class SalesTargetWorkflow
             ]);
             $this->history($target->id, 'ajustar', $before, $after, $data['reason'], $actor);
             $this->audit->log('Meta comercial', $target->code, 'ajustar', 'S/ '.$before['goal_sales_pen'], 'S/ '.$after['goal_sales_pen'].' · '.$data['reason']);
+
+            if ($target->status === 'vigente') {
+                $this->notifyOwner((string) $target->scope_type, (string) $target->scope_id, (string) $target->id, "Tu meta {$target->period_key} se ajustó", 'Meta de ventas: S/ '.number_format((float) $before['goal_sales_pen'], 0, '.', ' ').' → S/ '.number_format((float) $after['goal_sales_pen'], 0, '.', ' ').". Motivo: {$data['reason']}", $actor);
+            }
         });
     }
 
@@ -112,6 +121,7 @@ final class SalesTargetWorkflow
         }
 
         $this->change($target, 'vigente', 'activar', 'Meta activada', $actor);
+        $this->notifyOwner((string) $target->scope_type, (string) $target->scope_id, (string) $target->id, "Nueva meta asignada · {$target->period_key}", 'Tu meta de ventas es S/ '.number_format((float) $target->goal_sales_pen, 0, '.', ' ').'.', $actor);
     }
 
     public function void(string $code, string $reason, User $actor): void
@@ -162,7 +172,22 @@ final class SalesTargetWorkflow
             $this->history($target->id, 'cerrar', null, null, "Período cerrado · cumplimiento {$pct} %", $actor);
             $this->audit->log('Meta comercial', $target->code, 'cerrar', 'vigente', "cerrada · {$pct} %");
             SalesTargetClosed::dispatch((string) $target->id, (string) $actor->getKey());
+            $this->notifyOwner((string) $target->scope_type, (string) $target->scope_id, (string) $target->id, "Se cerró tu meta {$target->period_key}", "Cumplimiento final: {$pct} %.", $actor);
         });
+    }
+
+    private function notifyOwner(string $scopeType, string $scopeId, string $targetId, string $subject, string $body, User $actor): void
+    {
+        if ($scopeType !== 'asesor') {
+            return;
+        }
+
+        $notices = app(StaffNotices::class);
+        $notices->toUser($scopeId, 'meta.asignada', $subject, $body, 'crm_sales_target', $targetId, null, (string) $actor->getKey());
+
+        if ($scopeId !== (string) $actor->getKey()) {
+            $notices->emailUser($scopeId, 'meta.asignada', $subject, $body, 'crm_sales_target', $targetId);
+        }
     }
 
     private function change(object $target, string $status, string $action, string $reason, User $actor): void

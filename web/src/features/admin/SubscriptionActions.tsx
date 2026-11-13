@@ -201,7 +201,7 @@ export function SubscriptionBanners({ subscription, overdue, near, currency }: {
 
   if (overdue.length > 0) {
     const total = overdue.reduce((sum, invoice) => sum + invoice.total, 0);
-    banners.push({ key: "overdue", tone: "bad", icon: <XCircle size={17} />, text: `${overdue.length === 1 ? "Tienes 1 factura pendiente" : `Tienes ${overdue.length} facturas pendientes`} por ${formatMoney(total, currency)}.`, action: <PayInvoiceAction number={overdue[0].number} total={overdue[0].total} currency={currency} /> });
+    banners.push({ key: "overdue", tone: "bad", icon: <XCircle size={17} />, text: `${overdue.length === 1 ? "Tienes 1 factura pendiente" : `Tienes ${overdue.length} facturas pendientes`} por ${formatMoney(total, currency)}.`, action: <PayInvoiceAction numbers={overdue.map((invoice) => invoice.number)} total={total} currency={currency} /> });
   }
 
   if (near > 0) {
@@ -223,10 +223,11 @@ export function SubscriptionBanners({ subscription, overdue, near, currency }: {
   );
 }
 
-export function PayInvoiceAction({ number, total, currency }: { number: string; total: number; currency: string }) {
+export function PayInvoiceAction({ numbers, total, currency }: { numbers: string[]; total: number; currency: string }) {
+  const single = numbers.length === 1;
   return (
-    <PanelAction<AdminActionState> label="Pagar ahora" size="sm" variant="primary" formId={`invoice-pay-${number}`} title={`Pagar factura ${number}`} description={`Cobraremos ${formatMoney(total, currency)} con tu tarjeta registrada.`} submitLabel="Pagar" action={payInvoice} initial={ADMIN_INITIAL}>
-      {() => <input type="hidden" name="number" value={number} />}
+    <PanelAction<AdminActionState> label="Pagar ahora" size="sm" variant="primary" formId={`invoice-pay-${numbers.join("-")}`} title={single ? `Pagar factura ${numbers[0]}` : `Pagar ${numbers.length} facturas`} description={single ? `Cobraremos ${formatMoney(total, currency)} con tu tarjeta registrada.` : `Cobraremos ${formatMoney(total, currency)} con tu tarjeta registrada, una factura tras otra: ${numbers.join(", ")}. Si alguna se rechaza, nos detenemos ahí.`} submitLabel={single ? "Pagar" : `Pagar ${numbers.length} facturas`} action={payInvoice} initial={ADMIN_INITIAL}>
+      {() => numbers.map((number) => <input key={number} type="hidden" name="number" value={number} />)}
     </PanelAction>
   );
 }
@@ -260,6 +261,11 @@ function AddonFields({ offer, subscription, currency, current }: { offer: AddonO
   );
 }
 
+function requirement(offer: AddonOffer): string {
+  const plans = [...new Set([...offer.available_in, ...offer.included_in])];
+  return plans.length > 0 ? `Requiere ${plans.join(" o ")}` : "No disponible en tu plan";
+}
+
 export function AddonsTable({ data, manage }: { data: SubscriptionOverview; manage: boolean }) {
   const subscription = data.subscription;
   const currency = data.plan?.currency ?? "PEN";
@@ -289,6 +295,7 @@ export function AddonsTable({ data, manage }: { data: SubscriptionOverview; mana
           <thead>
             <tr className="border-b border-line text-left text-[12px] text-fg-3">
               <th className="py-2 pr-3 font-medium">Complemento</th>
+              <th className="py-2 pr-3 font-medium">Disponibilidad</th>
               <th className="py-2 pr-3 text-right font-medium">Precio</th>
               <th className="py-2 pr-3 font-medium">Estado</th>
               <th className="py-2 text-right font-medium">Acción</th>
@@ -302,7 +309,12 @@ export function AddonsTable({ data, manage }: { data: SubscriptionOverview; mana
                 <tr key={offer.code} className="border-b border-line-2 align-middle transition-colors hover:bg-surface-2">
                   <td className="py-3 pr-3">
                     <b className="block font-semibold">{offer.label}</b>
+                    {offer.description && <span className="block max-w-[340px] text-[12px] text-fg-3">{offer.description}</span>}
                     {active?.detail && <span className="font-mono text-[11.5px] text-fg-3">{active.detail}</span>}
+                  </td>
+                  <td className="py-3 pr-3 text-[12.5px] text-fg-2">
+                    {offer.available_in.length > 0 && <span className="block">{offer.available_in.join(", ")}</span>}
+                    {offer.included_in.length > 0 && <span className="block text-[11.5px] text-fg-3">Incluido en {offer.included_in.join(", ")}</span>}
                   </td>
                   <td className="py-3 pr-3 text-right tabular-nums">
                     {offer.included ? "—" : (
@@ -317,7 +329,7 @@ export function AddonsTable({ data, manage }: { data: SubscriptionOverview; mana
                     {state === "active" && <Badge tone="ok">Activo{offer.quantity_allowed ? ` × ${active!.quantity}` : ""}</Badge>}
                     {state === "leaving" && <Badge tone="sun">Se retira el {formatDate(active!.ends_at!)}</Badge>}
                     {state === "offer" && <span className="text-[12.5px] text-fg-3">No contratado</span>}
-                    {state === "locked" && <Badge tone="mute">No disponible en tu plan</Badge>}
+                    {state === "locked" && <Badge tone="mute">{requirement(offer)}</Badge>}
                   </td>
                   <td className="py-3 text-right">
                     {manage && (
@@ -333,7 +345,7 @@ export function AddonsTable({ data, manage }: { data: SubscriptionOverview; mana
                           </PanelAction>
                         )}
                         {state === "active" && (
-                          <PanelAction<AdminActionState> label="Retirar" icon={<Minus size={15} />} size="sm" variant="ghost" formId={`addon-remove-${offer.code}`} title={`Retirar ${offer.label}`} description={`Sigue activo hasta el ${formatDate(subscription.period_end)} y no se cobra en la renovación.`} submitLabel="Programar retiro" action={removeAddon} initial={ADMIN_INITIAL}>
+                          <PanelAction<AdminActionState> label="Retirar" icon={<Minus size={15} />} size="sm" variant="ghost" formId={`addon-remove-${offer.code}`} title={`Retirar ${offer.label}`} description={`Sigue activo hasta el ${formatDate(subscription.period_end)} y no se cobra en la renovación.${offer.feature ? ` Desde el día siguiente pierdes la función «${offer.feature}».` : ""}`} submitLabel="Programar retiro" action={removeAddon} initial={ADMIN_INITIAL}>
                             {() => <input type="hidden" name="code" value={offer.code} />}
                           </PanelAction>
                         )}

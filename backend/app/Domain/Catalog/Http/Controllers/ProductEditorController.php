@@ -41,9 +41,9 @@ final class ProductEditorController
 
     public function mainProvider(Request $request, string $code): JsonResponse
     {
-        $data = $this->validated($request, ['main_provider_id' => ['nullable', 'uuid']]);
+        $data = $this->validated($request, ['main_provider_id' => ['nullable', 'uuid'], 'reason' => ['nullable', 'string', 'min:3', 'max:300']]);
 
-        return $this->save($request, $code, fn (object $product) => $this->sections->mainProvider($product, $data['main_provider_id'] ?? null, $this->actor($request)));
+        return $this->save($request, $code, fn (object $product) => $this->sections->mainProvider($product, $data['main_provider_id'] ?? null, $this->actor($request), $data['reason'] ?? null));
     }
 
     public function components(Request $request, string $code): JsonResponse

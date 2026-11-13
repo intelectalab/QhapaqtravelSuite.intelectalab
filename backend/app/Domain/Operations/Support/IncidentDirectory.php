@@ -67,7 +67,7 @@ final class IncidentDirectory
                 ->map(fn (object $log): array => ['id' => $log->id, 'user' => $log->user_id ? ($names[$log->user_id] ?? 'Usuario') : 'Sistema', 'kind' => $log->kind, 'message' => $log->message, 'at' => $log->created_at])->values(),
             'evidence_files' => DB::table('ops_evidences')->where('incident_id', $row->id)->whereNull('removed_at')->orderBy('captured_at')->get(['id', 'file_name', 'mime_type', 'size_bytes', 'source', 'captured_at', 'uploaded_by'])
                 ->map(fn (object $file): array => ['id' => $file->id, 'name' => $file->file_name, 'mime' => $file->mime_type, 'size' => (int) $file->size_bytes, 'source' => $file->source, 'at' => $file->captured_at, 'by' => $names[$file->uploaded_by] ?? null])->values(),
-            'can' => ['manage' => $canManage],
+            'can' => ['manage' => $canManage, 'remove_evidence' => $viewer->can('operations.assign') && ! in_array($row->order_status ?? null, ['completada', 'cancelada'], true)],
             'types' => self::TYPES,
             'assignees' => $canManage ? $this->common->coordinators() : [],
         ];
@@ -86,7 +86,7 @@ final class IncidentDirectory
             ->leftJoin('booking_reservations as r', 'r.id', '=', 'i.reservation_id')
             ->leftJoin('iam_users as a', 'a.id', '=', 'i.assignee_id')
             ->leftJoin('iam_users as rep', 'rep.id', '=', 'i.reported_by')
-            ->select(['i.*', 'o.code as order_code', 'o.title as order_title', 'r.code as reservation_code', 'r.title as reservation_title', 'a.name as assignee_name', 'a.avatar_color as assignee_color', 'rep.name as reporter_name']);
+            ->select(['i.*', 'o.code as order_code', 'o.title as order_title', 'o.status as order_status', 'r.code as reservation_code', 'r.title as reservation_title', 'a.name as assignee_name', 'a.avatar_color as assignee_color', 'rep.name as reporter_name']);
     }
 
     private function summary(object $row, CarbonImmutable $now): array

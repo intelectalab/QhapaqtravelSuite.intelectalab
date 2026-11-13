@@ -12,7 +12,7 @@ import { TextField } from "@/components/ui/TextField";
 import { PlanChangeNote, PlanChangeSummary } from "@/features/billing/PlanChangeSummary";
 import type { PlanChangePreview } from "@/lib/admin";
 import { formatDate, formatMoney } from "@/lib/format";
-import { CYCLE_LABEL, type BillingCycle, type PlanEffective, type PlanSummary, type TenantDetail, type TenantSubscription } from "@/lib/platform";
+import { CYCLE_LABEL, type BillingCycle, type PlanEffective, type PlanSummary, type ProvisionOptions, type TenantDetail, type TenantSubscription } from "@/lib/platform";
 
 const BUSINESS_TYPES = ["Agencia de viajes minorista", "Operador turístico", "DMC / receptivo", "Agencia corporativa", "Agencia mayorista"];
 
@@ -140,7 +140,7 @@ export function TenantScheduledChange({ tenant }: { tenant: TenantDetail }) {
   );
 }
 
-export function TenantEditAction({ tenant, defaultOpen = false }: { tenant: TenantDetail; defaultOpen?: boolean }) {
+export function TenantEditAction({ tenant, options, defaultOpen = false }: { tenant: TenantDetail; options: ProvisionOptions; defaultOpen?: boolean }) {
   const router = useRouter();
 
   return (
@@ -168,6 +168,14 @@ export function TenantEditAction({ tenant, defaultOpen = false }: { tenant: Tena
           </div>
           <TextField label="Domicilio fiscal" name="fiscal_address" required defaultValue={tenant.fiscal_address} icon={<MapPin size={17} />} />
           <TextField label="Subdominio" name="subdomain" required minLength={3} maxLength={30} defaultValue={tenant.subdomain} hint="Si lo cambias, la dirección anterior deja de funcionar." icon={<Globe size={17} />} />
+          <p className="mt-1 text-[13px] font-semibold text-fg-2">País, idioma y moneda</p>
+          <div className="grid grid-cols-2 gap-3">
+            <SelectField label="País" name="country" options={options.countries.map((country) => ({ value: country, label: country }))} defaultValue={tenant.country} />
+            <SelectField label="Idioma" name="locale" options={options.locales} defaultValue={tenant.locale} />
+            <SelectField label="Moneda base" name="base_currency" options={options.base_currencies.map((currency) => ({ value: currency.value, label: `${currency.value} · ${currency.label}` }))} defaultValue={tenant.base_currency} hint="No cambia si la agencia ya tiene reservas o pagos." />
+            <SelectField label="Moneda alterna" name="alt_currency" options={options.alt_currencies.map((currency) => ({ value: currency.value, label: `${currency.value} · ${currency.label}` }))} defaultValue={tenant.alt_currency} />
+          </div>
+          <SelectField label="Zona horaria" name="timezone" options={options.timezones.map((zone) => ({ value: zone, label: zone.replace("America/", "").replace(/_/g, " ") }))} defaultValue={tenant.timezone} searchable />
         </>
       )}
     </PanelAction>

@@ -439,8 +439,9 @@ final class LeadWorkflow
             $client = ! empty($data['client_code'])
                 ? $this->existingClient((string) $data['client_code'], $actor)
                 : $this->createClient($lead, $data, $actor);
+            $this->leadContact($lead, $client, empty($data['client_code']), $actor);
 
-            $stageCode = $data['stage'] ?? 'calificacion';
+            $stageCode = $data['stage'] ?? 'descubrimiento';
             $stage = DB::table('crm_pipeline_stages')->where('code', $stageCode)->first() ?? throw ApiException::unprocessable('STAGE', 'Elige una etapa del embudo.');
             $owner = $this->opportunityOwner($data['owner_id'] ?? null, $lead, $actor);
             $opportunityCode = $this->nextCode('crm_opportunities', 'OPP-');
@@ -480,6 +481,38 @@ final class LeadWorkflow
 
             return ['client' => $client->code, 'opportunity' => $opportunityCode, 'activity' => $activity];
         });
+    }
+
+    private function leadContact(object $lead, object $client, bool $created, User $actor): void
+    {
+        $contact = ['name' => $lead->full_name, 'email' => $lead->email, 'phone' => $lead->phone];
+
+        if ($created) {
+            if ($client->kind === 'empresa') {
+                app(ClientContacts::class)->add($client, [...$contact, 'role' => 'Contacto principal', 'is_primary' => true], $actor);
+            }
+
+            return;
+        }
+
+        $email = Str::lower(trim((string) $lead->email));
+
+        if ($email === '' || Str::lower(trim((string) $client->email)) === $email || DB::table('crm_client_contacts')->where('client_id', $client->id)->whereRaw('lower(email) = ?', [$email])->exists()) {
+            return;
+        }
+
+        app(ClientContacts::class)->add($client, [...$contact, 'role' => "Contacto desde {$lead->code}", 'secondary' => true], $actor);
+    }
+
+    private static function suggestedSegment(object $lead): string
+    {
+        $interest = Str::lower((string) $lead->interest_code);
+
+        return match (true) {
+            str_contains($interest, 'corporativ') => 'Corporativo',
+            str_contains($interest, 'promocion') || (int) $lead->pax >= 10 => 'Grupos',
+            default => 'Retail',
+        };
     }
 
     private function existingClient(string $code, User $actor): object
@@ -527,7 +560,7 @@ final class LeadWorkflow
         $kind = $data['kind'] ?? ($type === 'RUC' ? 'empresa' : 'persona');
         $country = trim((string) ($data['country'] ?? '')) ?: 'Perú';
         $number = ClientDocument::normalize($kind, $type, (string) $data['doc_number'], $country);
-        $segment = $data['segment'] ?? ($kind === 'empresa' ? 'Corporativo' : 'Retail');
+        $segment = $data['segment'] ?? self::suggestedSegment($lead);
 
         if (! empty($data['segment']) && ! $this->catalog->options()->get('client_segment', collect())->pluck('label')->contains($segment)) {
             throw ApiException::unprocessable('CRM-BR-01', 'Elige el segmento de la lista.');

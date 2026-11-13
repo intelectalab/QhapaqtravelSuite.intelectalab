@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Platform\Actions;
 
 use App\Domain\Admin\Support\SettingsCatalog;
+use App\Domain\Finance\Actions\InvoiceFollowUp;
 use App\Domain\Iam\Models\Sede;
 use App\Domain\Iam\Models\User;
 use App\Domain\Iam\Support\Invitations;
@@ -76,7 +77,7 @@ final class ProvisionTenant
         }
     }
 
-    public function __invoke(array $data, PlatformUser $actor): Tenant
+    public function __invoke(array $data, ?PlatformUser $actor): Tenant
     {
         $this->validate($data);
         $plan = Plan::on(self::CONNECTION)->where('code', $data['plan'])->first() ?? throw ApiException::unprocessable('PLAN', 'Elige un plan de la lista.');
@@ -156,12 +157,14 @@ final class ProvisionTenant
             app(PermissionRegistrar::class)->forgetCachedPermissions();
         }
 
-        $this->invitations->send($admin->email, $admin->name, $tenant->commercial_name, $token, true);
+        if ($data['send_invitation'] ?? true) {
+            $this->invitations->send($admin->email, $admin->name, $tenant->commercial_name, $token, true);
+        }
 
         return $tenant;
     }
 
-    private function subscribe(Tenant $tenant, Plan $plan, bool $trial, PlatformUser $actor): void
+    private function subscribe(Tenant $tenant, Plan $plan, bool $trial, ?PlatformUser $actor): void
     {
         $today = Carbon::today('America/Lima');
         $end = $trial ? Carbon::parse($tenant->trial_ends_at)->timezone('America/Lima')->startOfDay() : $today->copy()->addMonthNoOverflow()->subDay();
@@ -183,7 +186,7 @@ final class ProvisionTenant
             'billing_name' => $tenant->legal_name,
             'billing_address' => $tenant->fiscal_address,
             'billing_email' => $tenant->admin_email,
-            'created_by' => $actor->getKey(),
+            'created_by' => $actor?->getKey(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -206,7 +209,7 @@ final class ProvisionTenant
 
         $sections = [
             'general' => ['lang' => $tenant->locale, 'legal_rep' => $tenant->legal_rep, 'email' => $tenant->admin_email, 'phone' => $sede->phone, 'address' => $tenant->fiscal_address, 'date_format' => 'DD/MM/AAAA', 'main_sede_id' => $sede->getKey()],
-            'currency' => ['base_currency' => $tenant->base_currency, 'alt_currency' => $tenant->alt_currency, 'tax_pct' => (float) ($data['tax_pct'] ?? 18), 'rounding' => (string) ($data['rounding'] ?? '0.10'), 'round_mode' => 'nearest', 'price_with_tax' => true, 'fx_source' => $data['fx_source'] ?? SettingsCatalog::FX_SOURCES[0]],
+            'currency' => ['base_currency' => $tenant->base_currency, 'alt_currency' => $tenant->alt_currency, 'tax_pct' => (float) ($data['tax_pct'] ?? 18), 'rounding' => (string) ($data['rounding'] ?? '0.10'), 'round_mode' => 'nearest', 'price_with_tax' => true, 'fx_source' => $data['fx_source'] ?? SettingsCatalog::FX_SOURCES[0], 'invoice_void_days' => InvoiceFollowUp::DEFAULT_VOID_DAYS],
             'policies' => [
                 'quote_validity_days' => (int) ($data['quote_validity_days'] ?? 10),
                 'hold_minutes' => (int) ($data['hold_minutes'] ?? 30),

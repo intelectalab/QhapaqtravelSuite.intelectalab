@@ -11,6 +11,7 @@ use App\Domain\Iam\Models\User;
 use App\Domain\Operations\Actions\RoomingPrefill;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class OrderDirectory
 {
@@ -18,40 +19,34 @@ final class OrderDirectory
 
     public const OPEN_INCIDENT = ['abierta', 'en_proceso'];
 
+    public const REPLICATED_KINDS = ['tour', 'traslado'];
+
+    public const MARGIN_PERMISSIONS = ['finance.profitability', 'catalog.products.view_profitability', 'quotes.approve_internal'];
+
     public function __construct(private readonly OpsCommon $common, private readonly ResourceDirectory $resources, private readonly EvidenceStore $evidences, private readonly RoomingPrefill $prefill) {}
 
     public function list(User $viewer): array
     {
         $today = $this->common->today();
-        $tomorrow = $this->common->now()->addDay()->toDateString();
         $orders = DB::table('ops_orders as o')
             ->join('booking_reservations as r', 'r.id', '=', 'o.reservation_id')
             ->join('crm_clients as c', 'c.id', '=', 'r.client_id')
             ->leftJoin('iam_users as u', 'u.id', '=', 'o.coordinator_id')
             ->whereNull('o.deleted_at')
             ->orderBy('o.date_from')
-            ->get(['o.id', 'o.code', 'o.lock_version', 'o.title', 'o.status', 'o.date_from', 'o.date_to', 'o.created_at', 'o.cancel_reason', 'r.id as reservation_id', 'r.code as reservation_code', 'r.status as reservation_status', 'c.name as client_name', 'u.id as coordinator_id', 'u.name as coordinator_name', 'u.avatar_color as coordinator_color']);
+            ->get(['o.id', 'o.code', 'o.lock_version', 'o.title', 'o.status', 'o.date_from', 'o.date_to', 'o.created_at', 'o.cancel_reason', 'r.id as reservation_id', 'r.code as reservation_code', 'r.status as reservation_status', 'r.channel as reservation_channel', 'c.name as client_name', 'u.id as coordinator_id', 'u.name as coordinator_name', 'u.avatar_color as coordinator_color']);
         $ids = $orders->pluck('id');
         $assignments = DB::table('ops_assignments')->whereIn('order_id', $ids)->get(['order_id', 'status', 'service_date']);
         $tasks = DB::table('ops_order_tasks')->whereIn('order_id', $ids)->whereNull('deleted_at')->get(['order_id', 'done']);
         $incidents = DB::table('ops_incidents')->whereIn('order_id', $ids)->whereIn('status', self::OPEN_INCIDENT)->get(['order_id', 'severity']);
         $passengers = DB::table('booking_passengers')->whereIn('reservation_id', $orders->pluck('reservation_id'))->selectRaw('reservation_id, count(*) as total')->groupBy('reservation_id')->pluck('total', 'reservation_id');
-        $active = $orders->whereIn('status', self::ACTIVE)->pluck('id')->all();
-        $activeAssignments = $assignments->whereIn('order_id', $active);
-        $openIncidents = DB::table('ops_incidents')->whereIn('status', self::OPEN_INCIDENT)->get(['severity']);
+        $services = DB::table('booking_reservation_services')->whereIn('reservation_id', $orders->pluck('reservation_id'))->where('status', '<>', 'cancelado')->selectRaw('reservation_id, count(*) as total')->groupBy('reservation_id')->pluck('total', 'reservation_id');
 
         return [
             'today' => $today,
             'can' => ['assign' => $viewer->can('operations.assign'), 'close' => $viewer->can('operations.close')],
-            'kpis' => [
-                'running' => $orders->where('status', 'en_ejecucion')->count(),
-                'pending_assignment' => $activeAssignments->where('status', 'pendiente')->count(),
-                'services_today' => $activeAssignments->where('service_date', $today)->count(),
-                'services_tomorrow' => $activeAssignments->where('service_date', $tomorrow)->count(),
-                'open_incidents' => $openIncidents->count(),
-                'critical_incidents' => $openIncidents->where('severity', 'critica')->count(),
-            ],
-            'items' => $orders->map(function (object $order) use ($assignments, $tasks, $incidents, $passengers): array {
+            'kpis' => $this->kpis(),
+            'items' => $orders->map(function (object $order) use ($assignments, $tasks, $incidents, $passengers, $services): array {
                 $own = $assignments->where('order_id', $order->id);
                 $ownTasks = $tasks->where('order_id', $order->id);
                 $ownIncidents = $incidents->where('order_id', $order->id);
@@ -64,7 +59,8 @@ final class OrderDirectory
                     'date_from' => $order->date_from,
                     'date_to' => $order->date_to,
                     'created_at' => $order->created_at,
-                    'reservation' => ['code' => $order->reservation_code, 'status' => $order->reservation_status, 'client' => $order->client_name],
+                    'reservation' => ['code' => $order->reservation_code, 'status' => $order->reservation_status, 'client' => $order->client_name, 'channel' => $order->reservation_channel],
+                    'services' => (int) ($services[$order->reservation_id] ?? 0),
                     'coordinator' => ['id' => $order->coordinator_id, 'name' => $order->coordinator_name, 'color' => $order->coordinator_color],
                     'passengers' => (int) ($passengers[$order->reservation_id] ?? 0),
                     'assignments' => ['total' => $own->count(), 'pending' => $own->where('status', 'pendiente')->count(), 'confirmed' => $own->whereIn('status', ['confirmada', 'en_curso', 'completada'])->count()],
@@ -79,6 +75,95 @@ final class OrderDirectory
         ];
     }
 
+    public function kpis(): array
+    {
+        $today = $this->common->today();
+        $tomorrow = $this->common->now()->addDay()->toDateString();
+        $orders = DB::table('ops_orders')->whereNull('deleted_at');
+        $assignments = DB::table('ops_assignments as a')->join('ops_orders as o', 'o.id', '=', 'a.order_id')->whereNull('o.deleted_at')->whereIn('o.status', self::ACTIVE)->get(['a.status', 'a.service_date']);
+        $incidents = DB::table('ops_incidents')->whereIn('status', self::OPEN_INCIDENT)->get(['severity']);
+
+        return [
+            'running' => (clone $orders)->where('status', 'en_ejecucion')->count(),
+            'pending_assignment' => $assignments->where('status', 'pendiente')->count(),
+            'services_today' => $assignments->where('service_date', $today)->count(),
+            'services_tomorrow' => $assignments->where('service_date', $tomorrow)->count(),
+            'open_incidents' => $incidents->count(),
+            'critical_incidents' => $incidents->where('severity', 'critica')->count(),
+        ];
+    }
+
+    public function order(string $reference): ?object
+    {
+        return DB::table('ops_orders')->whereNull('deleted_at')->where(Str::isUuid($reference) ? 'id' : 'code', $reference)->first();
+    }
+
+    public function closeChecks(User $viewer, string $reference): ?array
+    {
+        $order = $this->order($reference);
+
+        if ($order === null) {
+            return null;
+        }
+
+        $checks = $this->checks($order->id, $order->reservation_id);
+        $pending = DB::table('ops_order_tasks')->where('order_id', $order->id)->whereNull('deleted_at')->where('done', false)->orderBy('position')->get(['id', 'title']);
+
+        return [
+            'code' => $order->code,
+            'status' => $order->status,
+            'lock_version' => (int) $order->lock_version,
+            'checks' => $checks,
+            'pending_tasks' => $pending->map(fn (object $task): array => ['id' => $task->id, 'title' => $task->title])->values(),
+            'ready' => collect($checks)->every(fn (array $check): bool => $check['ok']) && $order->status === 'en_ejecucion',
+            'can_close' => $viewer->can('operations.close'),
+        ];
+    }
+
+    public function costSummary(User $viewer, string $reference): ?array
+    {
+        $order = $this->order($reference);
+
+        if ($order === null) {
+            return null;
+        }
+
+        $seesMargin = collect(self::MARGIN_PERMISSIONS)->contains(fn (string $permission): bool => $viewer->can($permission));
+        $services = DB::table('booking_reservation_services as s')->leftJoin('catalog_providers as p', 'p.id', '=', 's.provider_id')
+            ->where('s.reservation_id', $order->reservation_id)->where('s.status', '<>', 'cancelado')->orderBy('s.service_date')->orderBy('s.code')
+            ->get(['s.code', 's.name', 's.service_date', 's.status', 's.cost_amount', 's.price_amount', 's.currency', 'p.ref as provider_ref', 'p.name as provider_name']);
+        $sale = fn (object $service): float => (float) (string) NetSales::of($service->price_amount, $service->currency);
+
+        return [
+            'code' => $order->code,
+            'sees_margin' => $seesMargin,
+            'services' => $services->map(fn (object $service): array => [
+                'code' => $service->code,
+                'name' => $service->name,
+                'date' => $service->service_date,
+                'status' => $service->status,
+                'provider' => $service->provider_name ? ['ref' => $service->provider_ref, 'name' => $service->provider_name] : null,
+                'cost' => (string) round((float) $service->cost_amount, 2),
+                'currency' => $service->currency,
+                'missing_cost' => (float) $service->cost_amount <= 0,
+                ...($seesMargin ? ['sale' => (string) round($sale($service), 2)] : []),
+            ])->values(),
+            'by_provider' => $services->groupBy(fn (object $service): string => ($service->provider_name ?? 'Sin proveedor').'|'.$service->currency)
+                ->map(fn (Collection $group): array => ['provider' => $group->first()->provider_name, 'currency' => $group->first()->currency, 'services' => $group->count(), 'cost' => (string) round($group->sum(fn (object $service): float => (float) $service->cost_amount), 2)])
+                ->sortByDesc('cost')->values(),
+            'totals' => $services->groupBy('currency')->map(function (Collection $group, string $currency) use ($seesMargin, $sale): array {
+                $cost = round($group->sum(fn (object $service): float => (float) $service->cost_amount), 2);
+                $total = round($group->sum($sale), 2);
+
+                return [
+                    'currency' => $currency,
+                    'cost' => (string) $cost,
+                    ...($seesMargin ? ['sale' => (string) $total, 'margin' => (string) round($total - $cost, 2), 'margin_pct' => $total > 0 ? round(($total - $cost) / $total * 100, 1) : null] : []),
+                ];
+            })->values(),
+        ];
+    }
+
     public function candidates(): Collection
     {
         return DB::table('booking_reservations as r')
@@ -87,8 +172,22 @@ final class OrderDirectory
             ->whereIn('r.status', ['confirmada', 'en_operacion'])
             ->whereNotExists(fn ($query) => $query->from('ops_orders as o')->whereColumn('o.reservation_id', 'r.id')->whereNull('o.deleted_at'))
             ->orderBy('r.travel_from')
-            ->get(['r.code', 'r.title', 'r.status', 'r.travel_from', 'r.travel_to', 'c.name as client_name'])
-            ->map(fn (object $row): array => ['code' => $row->code, 'title' => $row->title, 'status' => $row->status, 'travel_from' => $row->travel_from, 'travel_to' => $row->travel_to, 'client' => $row->client_name])
+            ->get(['r.id', 'r.code', 'r.title', 'r.status', 'r.travel_from', 'r.travel_to', 'c.name as client_name'])
+            ->map(function (object $row): array {
+                $services = DB::table('booking_reservation_services')->where('reservation_id', $row->id)->where('status', '<>', 'cancelado')->get(['service_kind']);
+
+                return [
+                    'code' => $row->code,
+                    'title' => $row->title,
+                    'status' => $row->status,
+                    'travel_from' => $row->travel_from,
+                    'travel_to' => $row->travel_to,
+                    'client' => $row->client_name,
+                    'services' => $services->count(),
+                    'replicable' => $services->whereIn('service_kind', self::REPLICATED_KINDS)->count(),
+                    'passengers' => DB::table('booking_passengers')->where('reservation_id', $row->id)->count(),
+                ];
+            })
             ->values();
     }
 

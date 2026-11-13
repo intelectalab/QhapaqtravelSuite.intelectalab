@@ -131,6 +131,8 @@ export async function acknowledgeConflict(id: string): Promise<void> {
 export async function recoverInterrupted(): Promise<void> {
   const db = await getDb();
   await db.runAsync("UPDATE outbox SET state = 'pending' WHERE state = 'syncing'");
+  const conflicts = await db.getAllAsync<{ client_action_id: string; conflict_message: string | null }>("SELECT client_action_id, conflict_message FROM outbox WHERE state = 'conflict'");
+  for (const row of conflicts) await markSynced(row.client_action_id, row.conflict_message ?? "resuelto");
 }
 
 export async function counts(): Promise<Record<OutboxState, number>> {

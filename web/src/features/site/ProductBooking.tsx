@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 import { trackSiteEvent } from "@/lib/site-analytics";
 import { capitalize, formatDate, formatMoney, monthName } from "@/lib/format";
 import { listingQuery, NO_EXTRAS, type BookingConfig, type BookingExtras, type CalendarDay, type CalendarMonth, type PaymentMode, type ProductDetail, type Quote, type QuoteLine } from "@/lib/site";
-import { QuoteLines } from "./QuoteLines";
+import { QuoteLines, TripCategories } from "./QuoteLines";
 import { Stepper } from "./SearchBar";
 import { useSite } from "./SiteContext";
 
@@ -268,15 +268,22 @@ export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { 
   const tailorHref = href(`/viajes-a-medida${tailorQuery}${tailorQuery ? "&" : "?"}producto=${slug}`);
   const current = date && quote?.date === date ? quote : null;
 
+  const listPrice = day?.sellable ? day.list : product.list;
+  const listCurrency = day?.sellable ? (day.currency ?? "PEN") : (product.from?.currency ?? "PEN");
+
   return (
     <div id="reservar" className="rounded-card border border-line bg-surface p-5 shadow-[0_24px_50px_-30px_rgb(14_17_32/0.45)]">
       <div className="flex items-baseline justify-between gap-2">
         <span>
           <span className="block text-[11.5px] font-medium text-fg-3">{day?.sellable ? t.booking.dayPrice : t.common.from}</span>
-          <b className="text-[26px] font-bold tracking-tight text-fg">{day?.sellable && day.price !== null ? formatMoney(day.price, day.currency ?? "PEN") : product.from ? formatMoney(product.from.amount, product.from.currency) : "—"}</b>
+          <span className="flex flex-wrap items-baseline gap-x-2">
+            <b className="text-[26px] font-bold tracking-tight text-fg">{day?.sellable && day.price !== null ? formatMoney(day.price, day.currency ?? "PEN") : product.from ? formatMoney(product.from.amount, product.from.currency) : "—"}</b>
+            {listPrice ? <s data-testid="site-list-price" className="text-[14px] text-fg-3">{formatMoney(listPrice, listCurrency)}</s> : null}
+          </span>
         </span>
         {day?.season && <span className="rounded-full bg-surface-2 px-2.5 py-1 text-[11.5px] font-semibold text-fg-2">{t.seasons[day.season.level]}</span>}
       </div>
+      {!day?.sellable && product.from && product.from_date && <p data-testid="site-from-when" className="mt-1 text-[12px] leading-snug text-fg-3">{t.booking.fromWhen(formatDate(product.from_date, "long", dateLocale), product.from_season?.name ?? null, product.from_season?.discount_pct ?? null)}</p>}
 
       <a href="#calendario" className="mt-4 flex h-12 items-center gap-3 rounded-control border border-line px-3.5 transition hover:border-accent">
         <CalendarDays size={17} className="text-brand" />
@@ -300,6 +307,7 @@ export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { 
         className="mt-3 flex gap-2"
         onSubmit={(event) => {
           event.preventDefault();
+          if (promo.trim() !== "") trackSiteEvent("apply_promo", { item_id: slug, promotion_code: promo.trim().toUpperCase() });
           setAppliedPromo(promo.trim().toUpperCase());
         }}
       >
@@ -331,6 +339,7 @@ export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { 
                 {t.booking.roomsNights(current.rooms, current.nights)}
               </p>
             )}
+            {config.trip && current.by_category && <TripCategories categories={current.by_category} currency={current.currency} />}
             {current.discount && (
               <div className="flex justify-between gap-3 text-ok">
                 <dt className="inline-flex items-center gap-1.5">
@@ -340,6 +349,12 @@ export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { 
                 <dd className="tabular-nums">− {formatMoney(current.discount.amount, current.currency)}</dd>
               </div>
             )}
+            {(current.adjustments ?? []).filter((adjustment) => adjustment.key !== "promo").map((adjustment) => (
+              <div key={adjustment.key} data-testid={`site-adjustment:${adjustment.key}`} className={cn("flex justify-between gap-3", Number(adjustment.amount) < 0 ? "text-ok" : "text-fg-2")}>
+                <dt>{adjustment.label}</dt>
+                <dd className="tabular-nums">{Number(adjustment.amount) < 0 ? "− " : "+ "}{formatMoney(Math.abs(Number(adjustment.amount)), current.currency)}</dd>
+              </div>
+            ))}
             <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-line pt-2.5">
               <dt className="font-semibold text-fg">{t.common.total}</dt>
               <dd className="text-right">
@@ -375,7 +390,7 @@ export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { 
         )}
       </div>
 
-      <button type="button" onClick={reserve} disabled={!current || Boolean(error) || adding} className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-control bg-brand text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:pointer-events-none disabled:opacity-50">
+      <button type="button" onClick={reserve} disabled={!current || Boolean(error) || adding} data-site-cta className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-control bg-brand text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:pointer-events-none disabled:opacity-50">
         {adding ? <Loader2 size={17} className="animate-spin" /> : <ShoppingBag size={17} />}
         {reserveLabel ?? t.booking.reserve}
       </button>
@@ -415,7 +430,7 @@ export function MobileBookingBar() {
           <span className="block text-[11px] text-fg-3">{day?.sellable ? formatDate(day.date, "short", dateLocale) : t.common.from}</span>
           <b className="text-[17px] font-bold text-fg">{price ?? "—"}</b>
         </span>
-        <a href="#reservar" className="inline-flex h-11 items-center rounded-control bg-brand px-5 text-[14px] font-semibold text-brand-fg">
+        <a href="#reservar" data-site-cta className="inline-flex h-11 items-center rounded-control bg-brand px-5 text-[14px] font-semibold text-brand-fg">
           {date ? t.booking.viewTotal : t.booking.chooseDate}
         </a>
       </div>

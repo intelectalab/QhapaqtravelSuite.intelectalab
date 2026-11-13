@@ -7,6 +7,7 @@ namespace App\Domain\B2bPortal\Actions;
 use App\Domain\B2bPortal\Support\B2bAccount;
 use App\Domain\B2bPortal\Support\B2bCatalog;
 use App\Domain\Booking\Actions\Support\ServicesFromQuoteItem;
+use App\Domain\Catalog\Support\RateResolver;
 use App\Domain\Channels\Support\B2bCredit;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Finance\Actions\SyncServicePayables;
@@ -156,7 +157,7 @@ final class B2bBooking
 
     private function createServices(string $reservationId, string $code, stdClass $product, array $quote, ?string $departureId, bool $confirmed, string $userId): array
     {
-        $cost = $this->unitCost($product->id, $quote['currency'], (string) $quote['fx']);
+        $cost = $this->unitCost($product->id, (string) $quote['date'], $quote['currency'], (string) $quote['fx']);
         $item = (object) ['id' => null, 'product_id' => $product->id, 'service_date' => $quote['date'], 'pax' => $quote['seats'], 'qty' => 1, 'unit_cost' => (string) $cost, 'unit_price' => (string) $quote['net_unit']];
         $version = (object) ['discount_pct' => 0, 'currency' => $quote['currency'], 'fx_rate' => $quote['fx']];
         $reference = $departureId ? DB::table('catalog_product_departures')->where('id', $departureId)->value('ref') : null;
@@ -275,12 +276,11 @@ final class B2bBooking
         $this->credit->chargeReservation((string) $account->agency->id, $reservationId, $code, (string) $quote['credit']['amount'], (string) $quote['net_total'], (string) $quote['currency'], $fx, $userId);
     }
 
-    private function unitCost(string $productId, string $currency, string $fx): string
+    private function unitCost(string $productId, string $date, string $currency, string $fx): string
     {
-        $rate = DB::table('catalog_rates')->where('product_id', $productId)->where('status', 'vigente')->whereIn('segment', ['Adulto', 'Pasajero'])
-            ->orderByRaw("case when channel = 'B2B' then 0 else 1 end")->first(['cost', 'currency']);
+        $rate = RateResolver::pick(DB::table('catalog_rates')->where('product_id', $productId)->get(['segment', 'channel', 'rate_type', 'status', 'valid_from', 'valid_to', 'price', 'cost', 'currency']), $date, ['Adulto', 'Pasajero'], 'B2B');
 
-        if ($rate === null) {
+        if (! is_object($rate)) {
             return '0.00';
         }
 

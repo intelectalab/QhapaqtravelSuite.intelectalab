@@ -13,7 +13,8 @@ export function formatMoney(amount: number | string, currency = "PEN", options: 
     const thousands = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1, minimumFractionDigits: 1 }).format(value / 1000);
     return `${symbol} ${thousands}k`;
   }
-  const formatted = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 }).format(value).replace(/,/g, " ");
+  const digits = Math.round(Math.abs(value) * 100) % 100 === 0 ? 0 : 2;
+  const formatted = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value).replace(/,/g, " ");
   return `${symbol} ${formatted}`;
 }
 

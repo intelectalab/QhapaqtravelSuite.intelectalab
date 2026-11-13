@@ -24,6 +24,16 @@ export interface OperatorService {
   guide: string | null;
   driver: string | null;
   vehicle: string | null;
+  order: string | null;
+}
+
+export interface OperatorDevice {
+  id: string;
+  user: string;
+  platform: string;
+  version: string;
+  last_seen_at: string | null;
+  last_sync_at: string | null;
 }
 
 export interface OperatorPreview {
@@ -32,7 +42,8 @@ export interface OperatorPreview {
   days: { date: string; services: number }[];
   staff: OperatorStaff[];
   selected_staff: OperatorStaff | null;
-  devices: { active: number; last_sync_at: string | null };
+  devices: { active: number; last_sync_at: string | null; items: OperatorDevice[] };
+  sync: { since: string; received: number; applied: number; offline: number; conflicts: number; rejected: number };
   kpis: { services: number; pax: number; assigned: number; confirmed: number; done: number };
   services: OperatorService[];
 }

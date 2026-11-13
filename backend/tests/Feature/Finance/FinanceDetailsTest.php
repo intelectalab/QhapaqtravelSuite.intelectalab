@@ -28,7 +28,7 @@ it('la liquidación muestra el estado de resultados y solo se cierra cuando todo
     expect($open['statement'])->toHaveKeys(['income', 'cost', 'commissions', 'net', 'margin_pct'])
         ->and($open['checks'])->toHaveCount(6)
         ->and($open['can_close'])->toBeFalse();
-    expect($this->postJson('/api/v1/finance/reservations/RES-2026-000350/settlement'))->toBeApiError(409, 'FIN-BR-20');
+    expect($this->postJson('/api/v1/finance/reservations/RES-2026-000350/settlement'))->toBeApiError(409, 'FIN-BR-36');
 
     withinTenant(tenantA(), function () {
         $id = DB::table('booking_reservations')->where('code', 'RES-2026-000346')->value('id');
@@ -39,5 +39,5 @@ it('la liquidación muestra el estado de resultados y solo se cierra cuando todo
 
     $this->postJson('/api/v1/finance/reservations/RES-2026-000346/settlement')->assertCreated();
     expect($this->getJson('/api/v1/finance/reservations/RES-2026-000346/settlement')->json('data.closed'))->not->toBeNull();
-    expect($this->postJson('/api/v1/finance/reservations/RES-2026-000346/settlement'))->toBeApiError(409, 'FIN-BR-20');
+    expect($this->postJson('/api/v1/finance/reservations/RES-2026-000346/settlement'))->toBeApiError(409, 'FIN-BR-37');
 });

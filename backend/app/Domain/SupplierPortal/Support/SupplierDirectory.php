@@ -39,6 +39,25 @@ final class SupplierDirectory
             'agency' => ['name' => $tenant->commercial_name, 'initials' => $tenant->logo_initials],
             'user' => ['name' => $account->user->name, 'email' => $account->user->email],
             'counts' => ['pending' => (clone $account->services())->whereIn('s.status', ProviderServiceResponse::OPEN)->count(), 'rooming' => $this->operations->pendingRooming($account), 'incidents' => $this->operations->openIncidents($account)],
+            'frame' => $this->frame($account),
+        ];
+    }
+
+    public function frame(SupplierAccount $account): array
+    {
+        $today = $this->today();
+        $week = Carbon::parse($today)->addDays(7)->toDateString();
+        $requests = $this->rows($account);
+        $upcoming = $requests->whereIn('status', self::SCHEDULED)->filter(fn (array $row): bool => $row['date'] >= $today && $row['date'] <= $week);
+
+        return [
+            'pending' => $requests->where('state', 'por_responder')->count(),
+            'alternatives' => $requests->where('state', 'alternativa_propuesta')->count(),
+            'response_hours' => self::RESPONSE_HOURS,
+            'upcoming' => $upcoming->count(),
+            'upcoming_pax' => (int) $upcoming->sum('pax'),
+            'receivable' => $this->byCurrency($this->payableRows($account)->where('balance', '>', ReceivableLedger::TOLERANCE), 'balance'),
+            'open_incidents' => $this->operations->openIncidents($account),
         ];
     }
 
@@ -219,6 +238,7 @@ final class SupplierDirectory
             ],
             'contract' => $this->contract($account),
             'agency' => ['name' => $tenant->commercial_name, 'legal_name' => $tenant->legal_name, 'ruc' => $tenant->ruc, 'address' => $tenant->fiscal_address],
+            'agency_contacts' => $this->agencyContacts($account),
             'contacts' => DB::table('catalog_provider_contacts')->where('provider_id', $account->id())->orderBy('created_at')->get(['id', 'name', 'role', 'phone', 'email'])->values(),
             'users' => DB::table('iam_users')->where('provider_id', $account->id())->whereNull('deleted_at')->orderBy('name')->get(['name', 'email', 'status', 'last_login_at'])->map(fn (object $user): array => ['name' => $user->name, 'email' => $user->email, 'status' => $user->status, 'last_login_at' => $this->iso($user->last_login_at)])->values(),
             'activity' => [
@@ -338,7 +358,7 @@ final class SupplierDirectory
 
     private function alerts(SupplierAccount $account, Collection $pending, Collection $open, array $contract): array
     {
-        $alerts = [];
+        $alerts = app(SupplierNotices::class)->recent($account);
         $overdue = $pending->where('overdue', true);
 
         if ($overdue->isNotEmpty()) {
@@ -370,6 +390,32 @@ final class SupplierDirectory
         }
 
         return $alerts;
+    }
+
+    private function agencyContacts(SupplierAccount $account): array
+    {
+        $general = DB::table('sys_settings')->where('section', 'general')->value('values');
+        $general = is_string($general) ? (json_decode($general, true) ?: []) : [];
+        $sede = DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->orderByDesc('is_main')->first(['name', 'phone']);
+        $coordinator = DB::table('ops_orders as o')->join('iam_users as u', 'u.id', '=', 'o.coordinator_id')
+            ->whereIn('o.reservation_id', (clone $account->services())->select('s.reservation_id'))
+            ->where('o.status', '<>', 'cancelada')->where('u.status', 'activo')->whereNull('u.deleted_at')
+            ->orderByDesc('o.created_at')->first(['u.name', 'u.email', 'u.phone']);
+        $operations = $coordinator ?? $this->staffWithRole('operations');
+        $payments = $this->staffWithRole('finance');
+        $office = $general['email'] ?? null;
+
+        return [
+            ['kind' => 'operaciones', 'label' => 'Operaciones', 'name' => $operations->name ?? 'Operaciones', 'email' => $operations->email ?? $office, 'phone' => $operations->phone ?? $sede?->phone, 'note' => $coordinator ? 'Coordina sus servicios más recientes' : null],
+            ['kind' => 'pagos', 'label' => 'Pagos a proveedores', 'name' => $payments->name ?? 'Finanzas', 'email' => $payments->email ?? $office, 'phone' => $payments->phone ?? null, 'note' => null],
+            ['kind' => 'emergencias', 'label' => 'Emergencias 24 h', 'name' => $sede->name ?? 'Central de la agencia', 'email' => null, 'phone' => $general['emergency_phone'] ?? $general['phone'] ?? $sede?->phone, 'note' => null],
+        ];
+    }
+
+    private function staffWithRole(string $role): ?object
+    {
+        return DB::table('iam_users as u')->join('model_has_roles as mr', 'mr.model_id', '=', 'u.id')->join('roles as r', 'r.id', '=', 'mr.role_id')
+            ->where('r.name', $role)->where('u.status', 'activo')->whereNull('u.deleted_at')->orderBy('u.name')->first(['u.name', 'u.email', 'u.phone']);
     }
 
     private function contract(SupplierAccount $account): array

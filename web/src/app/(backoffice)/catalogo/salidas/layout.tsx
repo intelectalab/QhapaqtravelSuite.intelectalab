@@ -1,3 +1,4 @@
+import { ConsultModeNotice } from "@/components/ui/ConsultMode";
 import { CalendarDays, Hourglass, Ticket, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -36,6 +37,7 @@ export default async function SalidasLayout({ children }: { children: ReactNode 
           </>
         }
       />
+      <ConsultModeNotice permissions={["catalog.products.manage_availability"]} what="programar salidas ni retener cupos" />
       <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <TintTile icon={CalendarDays} tone="t1" label="Próximas salidas" value={upcoming.length} note={`${capacity} cupos programados`} info={<p>Salidas de hoy en adelante que no están canceladas, con la suma de su capacidad.</p>} />
         <TintTile

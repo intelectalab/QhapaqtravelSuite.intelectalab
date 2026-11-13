@@ -9,6 +9,7 @@ import { readPlatformNotifications, searchPlatform } from "@/app/plataforma/(con
 import { AGENCY_HELP, PLATFORM_HELP } from "@/lib/help";
 import { applyTheme, parseTheme, THEME_STORAGE_KEY, type Theme } from "@/lib/theme";
 import { useStoredValue } from "@/lib/useStoredValue";
+import { QuickCreate } from "./QuickCreate";
 import { useWorkspace } from "./Workspace";
 
 const keepTheme = (theme: Theme) => theme;
@@ -50,6 +51,7 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
         <GlobalSearch hint={searchHint} search={searchPlatform} screens={screens} title="Buscar en la plataforma" description="Busca agencias, facturas de la plataforma, planes, cupones y pantallas de la consola por código o nombre." placeholder="Agencia, RUC, factura, plan, cupón o pantalla" />
       )}
       <div className="ml-auto flex items-center gap-1">
+        {agency && <QuickCreate />}
         <ThemeToggle />
         <HelpButton realm={agency ? AGENCY_HELP : PLATFORM_HELP} />
         {agency ? <NotificationBell /> : <NotificationBell feedUrl="/plataforma/configuracion/notificaciones" readAll={readPlatformNotifications} logHref="/plataforma/auditoria" emptyHint="Aquí aparecerán los cobros fallidos, pruebas por vencer, alertas de uso y solicitudes nuevas." />}

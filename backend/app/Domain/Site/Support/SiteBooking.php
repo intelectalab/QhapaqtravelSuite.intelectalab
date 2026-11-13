@@ -16,21 +16,41 @@ use App\Domain\Shared\Errors\ApiException;
 use Brick\Math\BigDecimal;
 use DomainException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use stdClass;
 
 final class SiteBooking
 {
-    public const EXTRA_KINDS = ['addon', 'lodging', 'surcharge'];
+    public const EXTRA_KINDS = ['addon', 'lodging', 'surcharge', 'tour', 'transport'];
+
+    public const REMOVABLE_PREFIXES = ['addon-', 'lodge-', 'tour-', 'trans-'];
 
     private const CHANNEL = 'E-commerce';
 
     private array $products = [];
 
+    public const PER_SERVICE_BASIS = ['Precio fijo', 'Por grupo', 'Por unidad'];
+
     public function __construct(
         private readonly ProductBookingConfig $config,
         private readonly TenantBookingEngine $engine,
         private readonly RuleResolver $rules,
+        private readonly SitePricing $pricing,
     ) {}
+
+    public static function serviceUnits(stdClass $product, ?string $basis, array $pax): ?int
+    {
+        if (! in_array($basis, self::PER_SERVICE_BASIS, true) && $product->kind !== 'traslados') {
+            return null;
+        }
+
+        return (int) ceil(((int) $pax['adt'] + (int) ($pax['chd'] ?? 0) + (int) ($pax['inf'] ?? 0)) / max(1, (int) $product->maximum_passengers));
+    }
+
+    public static function enginePax(array $pax, ?int $units): array
+    {
+        return $units === null ? $pax : ['adt' => $units, 'chd' => 0, 'inf' => 0];
+    }
 
     public static function rules(): array
     {
@@ -50,6 +70,14 @@ final class SiteBooking
             'options.*.label' => ['required', 'string', 'max:80'],
             'removed' => ['nullable', 'array', 'max:40'],
             'removed.*' => ['string', 'max:60'],
+            'nights' => ['nullable', 'array', 'max:12'],
+            'nights.*' => ['integer', 'between:1,30'],
+            'tours' => ['nullable', 'array', 'max:40'],
+            'tours.*' => ['required'],
+            'tours.*.id' => ['sometimes', 'string', 'max:20'],
+            'transport' => ['nullable', 'array', 'max:20'],
+            'transport.*' => ['required'],
+            'transport.*.id' => ['sometimes', 'string', 'max:20'],
         ];
     }
 
@@ -61,6 +89,9 @@ final class SiteBooking
             'no_lodging.*' => 'Revisa el alojamiento elegido.',
             'options.*' => 'Revisa las opciones elegidas.',
             'removed.*' => 'Revisa los ítems quitados.',
+            'nights.*' => 'Las noches por ciudad van de 1 a 30.',
+            'tours.*' => 'Revisa los tours elegidos.',
+            'transport.*' => 'Revisa la movilidad elegida.',
         ];
     }
 
@@ -72,6 +103,9 @@ final class SiteBooking
             'no_lodging' => (bool) ($data['no_lodging'] ?? false),
             'options' => (array) ($data['options'] ?? []),
             'removed' => (array) ($data['removed'] ?? []),
+            'nights' => (array) ($data['nights'] ?? []),
+            'tours' => self::ids((array) ($data['tours'] ?? [])),
+            'transport' => self::ids((array) ($data['transport'] ?? [])),
         ];
     }
 
@@ -79,6 +113,7 @@ final class SiteBooking
     {
         $options = (array) json_decode((string) ($row->options ?? '[]'), true);
         $removed = $row->{$removedColumn} ?? '{}';
+        $trip = (array) json_decode((string) ($row->extras ?? '{}'), true);
 
         return [
             'addons' => (array) json_decode((string) ($row->addons ?? '[]'), true),
@@ -86,7 +121,20 @@ final class SiteBooking
             'no_lodging' => (bool) ($row->no_lodging ?? false),
             'options' => array_is_list($options) ? $options : [],
             'removed' => is_array($removed) ? $removed : array_values(array_filter(array_map(fn (string $key): string => trim($key, '"'), explode(',', trim((string) $removed, '{}'))))),
+            'nights' => (array) ($trip['nights'] ?? []),
+            'tours' => self::ids((array) ($trip['tours'] ?? [])),
+            'transport' => self::ids((array) ($trip['transport'] ?? [])),
         ];
+    }
+
+    public static function tripJson(array $extras): string
+    {
+        return json_encode(['nights' => (object) ($extras['nights'] ?? []), 'tours' => array_values($extras['tours'] ?? []), 'transport' => array_values($extras['transport'] ?? [])], JSON_UNESCAPED_UNICODE) ?: '{}';
+    }
+
+    public static function ids(array $items): array
+    {
+        return array_values(array_unique(array_filter(array_map(fn (mixed $item): string => (string) (is_array($item) ? ($item['id'] ?? '') : $item), $items), fn (string $id): bool => $id !== '')));
     }
 
     public static function pgArray(array $values): string
@@ -121,6 +169,7 @@ final class SiteBooking
             accommodation: $base->accommodation,
             options: $base->options !== [] ? $base->options : $this->optionGroups($productId),
             payment: $base->payment,
+            trip: $base->trip,
         );
     }
 
@@ -169,6 +218,60 @@ final class SiteBooking
                 'hold_hours' => in_array('pagar_despues', $payment['effective_modes'], true) ? $payment['tenant']['hold_hours'] : null,
             ],
             'can_remove' => $set->on('R-PREVIEW-REMOVE', $data),
+            'trip' => $this->tripConfig($data, $set, $legs),
+        ];
+    }
+
+    private function tripConfig(ProductData $data, RuleSet $set, array $legs): ?array
+    {
+        if (! $set->on('R-TRIP-BUILDER', $data) || ! $set->on('R-LODGING', $data) || $legs === []) {
+            return null;
+        }
+
+        $tours = collect($data->trip['tours'] ?? [])->groupBy('legId');
+        $transport = collect($data->trip['transport'] ?? []);
+
+        return [
+            'currency' => (string) ($data->trip['currency'] ?? $data->accommodation['currency'] ?? 'USD'),
+            'legs' => array_map(fn (array $leg): array => [
+                'id' => $leg['id'],
+                'city' => $leg['city'],
+                'nights' => (int) $leg['nights'],
+                'min_nights' => (int) ($leg['minNights'] ?? $leg['nights']),
+                'max_nights' => (int) ($leg['maxNights'] ?? $leg['nights']),
+                'seasonal' => collect($leg['hotels'])->contains(fn (array $hotel): bool => ($hotel['seasonRates'] ?? []) !== []),
+                'tours' => collect($tours->get($leg['id'], []))->map(fn (array $tour): array => [
+                    'id' => $tour['id'],
+                    'name' => $tour['name'],
+                    'day_offset' => $tour['dayOffset'],
+                    'time' => $tour['time'],
+                    'hours' => $tour['hours'],
+                    'currency' => $tour['currency'],
+                    'price_adult' => $tour['priceAdt'],
+                    'price_child' => $tour['priceChd'],
+                    'min_age' => $tour['minAge'],
+                ])->values()->all(),
+                'local' => $transport->where('fromLegId', $leg['id'])->whereNull('toLegId')->map(fn (array $option): array => $this->transportConfig($option))->values()->all(),
+                'arrivals' => $transport->where('toLegId', $leg['id'])->map(fn (array $option): array => $this->transportConfig($option))->values()->all(),
+            ], array_values(array_filter($data->accommodation['legs'] ?? [], fn (array $leg): bool => collect($legs)->contains('id', $leg['id'])))),
+        ];
+    }
+
+    private function transportConfig(array $option): array
+    {
+        return [
+            'id' => $option['id'],
+            'name' => $option['name'],
+            'mode' => $option['mode'],
+            'mode_label' => $option['kind'],
+            'from_leg_id' => $option['fromLegId'],
+            'to_leg_id' => $option['toLegId'],
+            'pricing' => $option['pricing'],
+            'currency' => $option['currency'],
+            'price_adult' => $option['priceAdt'],
+            'price_child' => $option['priceChd'],
+            'hours' => $option['hours'],
+            'vehicles' => array_map(fn (array $vehicle): array => ['name' => $vehicle['name'], 'max_pax' => $vehicle['maxPax'], 'price' => $vehicle['price']], $option['vehicles']),
         ];
     }
 
@@ -214,30 +317,75 @@ final class SiteBooking
             }
         }
 
+        [$nights, $tours, $transport, $tripErrors] = $this->trip($data, $set, $extras);
+        $errors = [...$errors, ...$tripErrors];
+
         if ($errors !== []) {
             throw ApiException::unprocessable('SIT-BR-05', collect($errors)->flatten()->first(), ['errors' => $errors]);
         }
 
         $mandatory = collect($data->addons)->reject(fn (array $addon): bool => $addon['optional'])->map(fn (array $addon): string => 'addon-'.$addon['id'])->all();
         $removed = $set->on('R-PREVIEW-REMOVE', $data)
-            ? array_values(array_unique(array_filter(array_map('strval', (array) ($extras['removed'] ?? [])), fn (string $key): bool => (str_starts_with($key, 'addon-') || str_starts_with($key, 'lodge-')) && ! in_array($key, $mandatory, true))))
+            ? array_values(array_unique(array_filter(array_map('strval', (array) ($extras['removed'] ?? [])), fn (string $key): bool => Str::startsWith($key, self::REMOVABLE_PREFIXES) && ! in_array($key, $mandatory, true))))
             : [];
 
-        return ['addons' => array_values($addons), 'lodging' => $lodging, 'no_lodging' => $noLodging, 'options' => $options, 'removed' => $removed];
+        return ['addons' => array_values($addons), 'lodging' => $lodging, 'no_lodging' => $noLodging, 'options' => $options, 'removed' => $removed, 'nights' => $nights, 'tours' => $tours, 'transport' => $transport];
     }
 
-    public function price(stdClass $product, string $date, array $pax, string $currency, array $extras, bool $strict, ?string $mode = null, ?string $method = null): array
+    private function trip(ProductData $data, RuleSet $set, array $extras): array
+    {
+        $legs = collect($data->accommodation['legs'] ?? [])->keyBy('id');
+        if (! $set->on('R-TRIP-BUILDER', $data) || $legs->isEmpty()) {
+            return [[], [], [], []];
+        }
+
+        $errors = [];
+        $nights = [];
+        foreach ((array) ($extras['nights'] ?? []) as $legId => $value) {
+            if ($legs->has((string) $legId) && is_numeric($value)) {
+                $nights[(string) $legId] = (int) $value;
+            }
+        }
+
+        $catalog = collect($data->trip['tours'] ?? [])->keyBy('id');
+        $tours = [];
+        foreach (self::ids((array) ($extras['tours'] ?? [])) as $id) {
+            if ($catalog->has($id)) {
+                $tours[] = $id;
+            } else {
+                $errors['tours'][] = 'Uno de los tours elegidos ya no está disponible.';
+            }
+        }
+
+        $options = collect($data->trip['transport'] ?? [])->keyBy('id');
+        $wanted = self::ids((array) ($extras['transport'] ?? []));
+        foreach ($wanted as $id) {
+            if (! $options->has($id)) {
+                $errors['transport'][] = 'Una de las opciones de movilidad elegidas ya no está disponible.';
+            }
+        }
+        $transport = array_map(fn (array $option): string => (string) $option['id'], $this->engine->engine()->pickTransport($data, $wanted));
+
+        return [$nights, $tours, $transport, $errors];
+    }
+
+    public function price(stdClass $product, string $date, array $pax, string $currency, array $extras, bool $strict, ?string $mode = null, ?string $method = null, ?array $promotion = null, ?int $units = null): array
     {
         $data = $this->data($product->id, $date);
         $selection = $this->normalize($data, $pax, $extras, $strict);
         $engine = $this->engine->engine();
         $request = [
             'date' => $date,
-            'pax' => $pax,
+            'pax' => self::enginePax($pax, $units),
+            'promotion' => $promotion,
+            'round_units' => true,
             'addons' => $selection['addons'],
             'lodging' => $selection['lodging'],
             'options' => $selection['options'],
             'removed' => $selection['removed'],
+            'nights' => $selection['nights'],
+            'tours' => $selection['tours'],
+            'transport' => $selection['transport'],
             'currency' => $currency,
             'channel' => self::CHANNEL,
             'payment_mode' => $mode,
@@ -250,7 +398,7 @@ final class SiteBooking
             $plain = $selection['options'] === [] ? null : $engine->quote($data, QuoteSelection::fromArray([...$request, 'options' => []]));
             $lines = array_values(array_filter(ProductQuotePreview::serialize($quote)['lines'], fn (array $line): bool => in_array($line['kind'], self::EXTRA_KINDS, true)));
         } catch (DomainException) {
-            $quote = $engine->quote($data, QuoteSelection::fromArray([...$request, 'currency' => 'PEN', 'addons' => [], 'lodging' => [], 'options' => []]));
+            $quote = $engine->quote($data, QuoteSelection::fromArray([...$request, 'currency' => 'PEN', 'addons' => [], 'lodging' => [], 'options' => [], 'tours' => [], 'transport' => []]));
             $plain = null;
             $lines = [];
             $warnings[] = 'Los adicionales y el alojamiento no se pueden cotizar en '.$currency.'.';
@@ -266,6 +414,8 @@ final class SiteBooking
         $paxErrors = $engine->validatePax($data, $pax)->errors;
 
         return [
+            'quote' => $quote,
+            'plain' => $plain ?? $quote,
             'selection' => $selection,
             'lines' => $lines,
             'pax_errors' => $paxErrors,
@@ -274,27 +424,35 @@ final class SiteBooking
             'rooms' => $quote->rooms,
             'nights' => $quote->nights,
             'can_remove' => $this->rules->forTenant()->on('R-PREVIEW-REMOVE', $data),
+            'trip' => $this->rules->forTenant()->on('R-TRIP-BUILDER', $data) ? ProductQuotePreview::serialize($quote) : null,
         ];
     }
 
     public function engineQuote(stdClass $product, array $data): array
     {
         $date = (string) $data['date'];
-        $product = $this->data($product->id, $date);
+        $catalog = $product;
+        $product = $this->data($catalog->id, $date);
         $pax = ['adt' => (int) $data['pax']['adt'], 'chd' => (int) ($data['pax']['chd'] ?? 0), 'inf' => (int) ($data['pax']['inf'] ?? 0)];
         $selection = $this->normalize($product, $pax, self::extrasFrom($data), false);
         $currency = (string) ($data['currency'] ?? $this->rateCurrency($product));
+        $units = self::serviceUnits($catalog, $this->pricing->quote($catalog->id, $date)['basis'] ?? null, $pax);
 
         try {
             $quote = $this->engine->engine()->quote($product, QuoteSelection::fromArray([
                 'date' => $date,
-                'pax' => $pax,
+                'pax' => self::enginePax($pax, $units),
+                'promotion' => SitePromotions::best($catalog, $pax['adt'] + $pax['chd'], $data['promo_code'] ?? null, $this->rateCurrency($product)),
+                'round_units' => true,
                 'addons' => $selection['addons'],
                 'lodging' => $selection['lodging'],
                 'options' => $selection['options'],
                 'removed' => $selection['removed'],
+                'nights' => $selection['nights'],
+                'tours' => $selection['tours'],
+                'transport' => $selection['transport'],
                 'currency' => $currency,
-                'channel' => (string) ($data['channel'] ?? 'Directo'),
+                'channel' => self::CHANNEL,
                 'payment_mode' => $data['payment_mode'] ?? null,
                 'payment_method' => $data['payment_method'] ?? null,
                 'promo_code' => $data['promo_code'] ?? null,

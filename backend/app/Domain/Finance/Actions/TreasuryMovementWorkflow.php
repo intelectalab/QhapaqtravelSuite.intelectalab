@@ -40,7 +40,7 @@ final class TreasuryMovementWorkflow
                 $flow = DB::table('fin_treasury_movements')->where('account_id', $account->id)->where('status', 'posted')
                     ->selectRaw("coalesce(sum(case when direction = 'in' then amount else -amount end), 0) as net")->value('net');
                 if ($amount->isGreaterThan(Decimal::of($account->opening_balance)->plus(Decimal::of($flow)))) {
-                    throw ApiException::unprocessable('TES-BR-01', 'El egreso supera el saldo disponible de la cuenta.');
+                    throw ApiException::unprocessable('TES-BR-02', 'El egreso supera el saldo disponible de la cuenta.');
                 }
             }
 
@@ -84,7 +84,7 @@ final class TreasuryMovementWorkflow
             $transfer = $movement->source_type === 'transfer' && $movement->transfer_id !== null;
 
             if ($movement->status !== 'posted' || ! self::voidable($movement)) {
-                throw ApiException::conflict('TES-BR-02', $movement->type === 'petty_expense' ? 'El gasto ya se rindió en una reposición: anúlalo desde la reposición.' : 'Solo se anulan movimientos manuales, transferencias, gastos de caja sin rendir y liquidaciones de pasarela; los cobros y pagos se corrigen desde su origen.');
+                throw ApiException::conflict($movement->type === 'petty_expense' && $movement->replenishment_id !== null ? 'TES-BR-10' : 'TES-BR-03', $movement->type === 'petty_expense' ? 'El gasto ya se rindió en una reposición: anúlalo desde la reposición.' : 'Solo se anulan movimientos manuales, transferencias, gastos de caja sin rendir y liquidaciones de pasarela; los cobros y pagos se corrigen desde su origen.');
             }
 
             $ids = ($gateway || $transfer) && $movement->transfer_id ? DB::table('fin_treasury_movements')->where('transfer_id', $movement->transfer_id)->where('status', 'posted')->pluck('id')->push($movement->id)->unique()->all() : [$movement->id];

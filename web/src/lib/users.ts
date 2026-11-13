@@ -14,6 +14,8 @@ export interface TeamUser {
   color: string | null;
   deactivated_reason: string | null;
   invitation_expires_at: string | null;
+  channel?: boolean;
+  workload?: { opportunities: number; activities: number };
 }
 
 export interface UserDetail {

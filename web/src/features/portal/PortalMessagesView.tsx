@@ -18,12 +18,25 @@ import { AdvisorCard, EmptyLine, PortalBadge, PortalTitle, RISE, rise } from "./
 
 const initial: PanelActionState = { message: null, done: false };
 
+const PRIORITIES = [
+  { value: "media", label: "Normal" },
+  { value: "alta", label: "Alta" },
+  { value: "baja", label: "Baja" },
+];
+
 function NewMessage({ data, passenger }: { data: PortalMessages; passenger: boolean }) {
   return (
     <PanelAction label="Nuevo mensaje" icon={<MessageCirclePlus size={16} />} variant="primary" title="Escribir a la agencia" description={data.advisor ? `Le llega a ${data.advisor.name} y al equipo de la agencia.` : "Le llega al equipo de la agencia."} submitLabel="Enviar mensaje" action={sendMessage} initial={initial}>
       {() => (
         <>
-          <SelectField label="Tema" name="topic" defaultValue="general" options={MESSAGE_TOPICS} />
+          {passenger ? (
+            <SelectField label="Tema" name="topic" defaultValue="general" options={MESSAGE_TOPICS} />
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <SelectField label="Tema" name="topic" defaultValue="general" options={MESSAGE_TOPICS} />
+              <SelectField label="Prioridad" name="priority" defaultValue="media" options={PRIORITIES} hint="Salud se atiende siempre con prioridad alta." />
+            </div>
+          )}
           {!passenger && data.trips.length > 0 && <SelectField label="Viaje" name="trip" placeholder="Sin viaje en particular" options={data.trips.map((trip) => ({ value: trip.code, label: trip.title }))} />}
           <TextField label="Asunto" name="subject" maxLength={180} placeholder="Opcional" />
           <TextArea label="Mensaje" name="body" rows={6} required minLength={2} maxLength={2000} />

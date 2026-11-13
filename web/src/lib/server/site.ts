@@ -7,6 +7,7 @@ import { accountCookie, cartCookie, listingQuery, orderCookie, siteHref, type Si
 import { REALMS } from "@/lib/realms";
 import { PREVIEW_COOKIE, withTextOverrides, type SitePreview } from "@/lib/site-design";
 import { parseSiteLocale, SITE_LOCALE_COOKIE, siteText, type SiteLocale, type SiteText } from "@/lib/site-i18n";
+import { TEMPLATE_PREVIEW_COOKIE, templatePreviewToken, type PublicSiteTheme } from "@/lib/templatePreview";
 import { apiFetch, tenantSlugFrom } from "./api";
 
 const SITES_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN ?? "localhost";
@@ -48,9 +49,18 @@ export const getSitePreview = cache(async (agencia: string): Promise<SitePreview
   return result.ok && result.data && result.data.subdomain === agencia ? result.data : null;
 });
 
+export const getTemplatePreview = cache(async (agencia: string): Promise<PublicSiteTheme | null> => {
+  const token = templatePreviewToken((await cookies()).get(TEMPLATE_PREVIEW_COOKIE)?.value);
+  if (!token) return null;
+  const result = await apiFetch<PublicSiteTheme>(sitePath(`/site/theme?preview=${encodeURIComponent(token)}`), { auth: false, headers: await siteHeaders(agencia) });
+  return result.ok && result.data?.preview && result.data.site_style ? result.data : null;
+});
+
 export const getSiteProfile = cache(async (agencia: string): Promise<SiteProfile> => {
-  const [profile, preview] = await Promise.all([read<SiteProfile>(agencia, "/site"), getSitePreview(agencia)]);
-  return preview ? { ...profile, design: preview.design, branding: preview.branding, banner: preview.banner, preview: true } : profile;
+  const [profile, preview, template] = await Promise.all([read<SiteProfile>(agencia, "/site"), getSitePreview(agencia), getTemplatePreview(agencia)]);
+  const current = preview ? { ...profile, design: preview.design, branding: preview.branding, banner: preview.banner, preview: true } : profile;
+  if (!template?.template || !template.site_style) return current;
+  return { ...current, design: { ...current.design, theme: { ...current.design.theme, style: template.site_style } }, templatePreview: { code: template.template.code, name: template.template.name, version: template.version } };
 });
 
 export const getSiteText = cache(async (agencia: string): Promise<SiteText> => {

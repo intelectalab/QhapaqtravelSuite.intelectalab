@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Support;
 
+use App\Domain\Admin\Support\PriceRounding;
 use App\Domain\Booking\BookingEngine;
 use App\Domain\Booking\Data\FxTable;
 use App\Domain\Booking\Data\ProductData;
@@ -11,8 +12,10 @@ use App\Domain\Booking\Data\SeasonCalendar;
 use App\Domain\Booking\Inventory\DatabaseInventoryReader;
 use App\Domain\Booking\Rules\RuleResolver;
 use App\Domain\Catalog\Support\ProductBookingConfig;
+use App\Domain\Catalog\Support\RateResolver;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
+use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -47,6 +50,7 @@ final class TenantBookingEngine
                 inventory: $this->inventory,
                 ecommerceDefaults: $this->defaults(),
                 today: CarbonImmutable::now($this->context->timezone())->toDateString(),
+                rounding: fn (BigDecimal $price): BigDecimal => app(PriceRounding::class)->apply($price),
             );
         }
 
@@ -57,6 +61,7 @@ final class TenantBookingEngine
             inventory: $this->inventory,
             ecommerceDefaults: $this->defaults(),
             today: CarbonImmutable::now($this->context->timezone())->toDateString(),
+            rounding: fn (BigDecimal $price): BigDecimal => app(PriceRounding::class)->apply($price),
         );
     }
 
@@ -86,6 +91,7 @@ final class TenantBookingEngine
             addons: $sections['addons'],
             accommodation: $sections['accommodation'],
             payment: $sections['payment'],
+            trip: $sections['trip'],
         );
     }
 
@@ -112,14 +118,15 @@ final class TenantBookingEngine
 
     private function rates(string $productId, string $date): array
     {
-        return DB::table('catalog_rates')
-            ->where('product_id', $productId)
-            ->where('status', 'vigente')
-            ->where('valid_from', '<=', $date)
-            ->where('valid_to', '>=', $date)
-            ->orderByRaw("case when rate_type = 'Venta' then 0 else 1 end")
-            ->orderBy('price')
-            ->get(['segment', 'channel', 'currency', 'price', 'cost', 'status'])
+        return DB::table('catalog_rates as r')
+            ->where('r.product_id', $productId)
+            ->where('r.status', 'vigente')
+            ->where('r.valid_from', '<=', $date)
+            ->where('r.valid_to', '>=', $date)
+            ->whereNotIn('r.rate_type', RateResolver::NON_SALE_TYPES)
+            ->orderByRaw("case when r.rate_type = 'Venta' then 0 else 1 end")
+            ->orderBy('r.price')
+            ->get(['r.segment', 'r.channel', 'r.currency', 'r.price', 'r.cost', 'r.status', 'r.rate_type', 'r.season_id'])
             ->map(fn (object $rate): array => (array) $rate)
             ->all();
     }
@@ -156,8 +163,9 @@ final class TenantBookingEngine
 
     private function seasons(): SeasonCalendar
     {
-        return SeasonCalendar::fromArray(DB::table('catalog_seasons')->whereNull('deleted_at')->get(['name', 'date_from', 'date_to', 'priority', 'factor', 'status'])
+        return SeasonCalendar::fromArray(DB::table('catalog_seasons')->whereNull('deleted_at')->get(['id', 'name', 'date_from', 'date_to', 'priority', 'factor', 'status'])
             ->map(fn (object $season): array => [
+                'id' => (string) $season->id,
                 'name' => $season->name,
                 'from' => (string) $season->date_from,
                 'to' => (string) $season->date_to,

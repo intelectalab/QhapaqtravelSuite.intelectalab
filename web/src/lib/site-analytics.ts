@@ -6,7 +6,34 @@ export const COOKIE_PREFERENCES_EVENT = "site:cookie-preferences";
 
 export const SITE_TRACK_EVENT = "site:track";
 
-export type SiteEventName = "page_view" | "view_item" | "view_item_list" | "add_to_cart" | "view_cart" | "begin_checkout" | "purchase" | "purchase_pending" | "search" | "generate_lead" | "share" | "contact_whatsapp";
+export type SiteEventName =
+  | "page_view"
+  | "search"
+  | "view_item_list"
+  | "view_item"
+  | "add_to_wishlist"
+  | "remove_from_wishlist"
+  | "add_to_cart"
+  | "remove_from_cart"
+  | "view_cart"
+  | "apply_promo"
+  | "select_promotion"
+  | "begin_checkout"
+  | "add_shipping_info"
+  | "add_payment_info"
+  | "payment_failed"
+  | "purchase"
+  | "purchase_pending"
+  | "purchase_balance"
+  | "generate_lead"
+  | "sign_up"
+  | "sign_up_newsletter"
+  | "login"
+  | "share"
+  | "contact_whatsapp"
+  | "select_language"
+  | "select_currency"
+  | "claim_submitted";
 
 export interface SiteEvent {
   event: SiteEventName;

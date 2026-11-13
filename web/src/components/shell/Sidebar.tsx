@@ -4,6 +4,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { ChevronDown, ChevronsUpDown, Lock, LogOut, PanelLeftClose, PanelLeftOpen, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { groupFor, isUnder, type NavGroup, type Screen } from "@/config/navigation";
 import { cn } from "@/lib/cn";
 import { initials, shortName } from "@/lib/format";
@@ -39,8 +40,18 @@ export function Sidebar({ collapsed, onToggle, onExpand, onNavigate, tagged = tr
   const { groups, account, navigation } = useWorkspace();
   const activeGroup = groupFor(pathname, groups);
   const [openGroups, setOpenGroups] = useStoredValue(`kipucontrol-menu-groups:${navigation}`, parseOpen, serializeOpen);
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  const isOpen = (id: string) => openGroups.includes(id) || (activeGroup?.id === id && dismissed !== `${id}:${pathname}`);
 
-  const toggleGroup = (id: string) => setOpenGroups(openGroups.includes(id) ? openGroups.filter((item) => item !== id) : [...openGroups, id]);
+  const toggleGroup = (id: string) => {
+    if (isOpen(id)) {
+      setOpenGroups(openGroups.filter((item) => item !== id));
+      if (activeGroup?.id === id) setDismissed(`${id}:${pathname}`);
+      return;
+    }
+    setDismissed(null);
+    setOpenGroups([...openGroups, id]);
+  };
   const openFromRail = (id: string) => {
     if (!openGroups.includes(id)) setOpenGroups([...openGroups, id]);
     onExpand?.();
@@ -91,7 +102,8 @@ export function Sidebar({ collapsed, onToggle, onExpand, onNavigate, tagged = tr
             <GroupBlock
               key={group.id}
               group={group}
-              open={openGroups.includes(group.id) || activeGroup?.id === group.id}
+              open={isOpen(group.id)}
+              active={activeGroup?.id === group.id}
               onToggle={() => toggleGroup(group.id)}
               pathname={pathname}
               onNavigate={onNavigate}
@@ -170,17 +182,24 @@ function RailItem({ group, active, onClick }: { group: NavGroup; active: boolean
   );
 }
 
-function GroupBlock({ group, open, onToggle, pathname, onNavigate, tagged }: { group: NavGroup; open: boolean; onToggle: () => void; pathname: string; onNavigate?: () => void; tagged: boolean }) {
+function GroupBlock({ group, open, active, onToggle, pathname, onNavigate, tagged }: { group: NavGroup; open: boolean; active: boolean; onToggle: () => void; pathname: string; onNavigate?: () => void; tagged: boolean }) {
   const count = groupCount(group, useWorkspace().counts);
+  const current = active && !open;
+  const screen = current ? group.screens.find((item) => isUnder(pathname, item.href)) : undefined;
   return (
     <div className="mb-0.5">
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12.5px] font-semibold text-white/50 transition hover:text-white/80"
+        aria-current={current ? "page" : undefined}
+        className={cn("relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[12.5px] font-semibold transition", current ? "bg-white/10 text-white" : "text-white/50 hover:text-white/80")}
       >
-        <span className="flex-1 truncate">{group.label}</span>
+        {current && <span className="absolute -left-2.5 bottom-1.5 top-1.5 w-[3px] rounded-r bg-t2" />}
+        <span className="min-w-0 flex-1 truncate">
+          {group.label}
+          {screen && <span className="block truncate text-[11.5px] font-medium text-t2">{screen.label}</span>}
+        </span>
         {!open && count > 0 && <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-brand px-1.5 text-[10.5px] font-semibold text-brand-fg">{count}</span>}
         <ChevronDown size={14} className={cn("flex-none transition-transform", !open && "-rotate-90")} />
       </button>

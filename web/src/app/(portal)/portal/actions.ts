@@ -80,7 +80,7 @@ export async function sendReview(_state: StepResult, form: FormData): Promise<St
 }
 
 export async function sendMessage(_state: StepResult, form: FormData): Promise<StepResult> {
-  const result = await sendStep("/portal/client/tickets", "POST", formValues(form, ["body", "subject", "conversation", "trip", "topic"]), "No pudimos enviar tu mensaje.");
+  const result = await sendStep("/portal/client/tickets", "POST", formValues(form, ["body", "subject", "conversation", "trip", "topic", "priority"]), "No pudimos enviar tu mensaje.");
   if (result.done) refresh("/portal/mensajes");
   return result;
 }
@@ -118,4 +118,14 @@ export async function payOnline(code: string, _state: StepResult, form: FormData
     return { message: firstError ?? result.error?.message ?? "No pudimos procesar el pago.", done: false };
   }
   return result.data.result === "rechazado" ? { message: result.data.message, done: false } : { message: result.data.message, done: true };
+}
+
+export async function buyInTrip(code: string, kind: "tour" | "transport", itemId: string): Promise<{ message: string | null; done: boolean; url: string | null }> {
+  const result = await apiFetch<{ offer: { payment_link: { url: string | null } | null } }>(`/portal/client/reservations/${encodeURIComponent(code)}/in-trip`, { method: "POST", body: { kind, item_id: itemId } });
+  refresh(`/portal/viajes/${code}`);
+  if (!result.ok || !result.data) {
+    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { message: firstError ?? result.error?.message ?? "No pudimos generar el link de pago.", done: false, url: null };
+  }
+  return { message: null, done: true, url: result.data.offer.payment_link?.url ?? null };
 }

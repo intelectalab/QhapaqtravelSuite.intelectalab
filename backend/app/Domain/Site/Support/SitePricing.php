@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Site\Support;
 
 use App\Domain\Admin\Support\PriceRounding;
-use Brick\Math\BigDecimal;
-use Brick\Math\RoundingMode;
+use App\Domain\Booking\Rules\RuleResolver;
+use App\Domain\Catalog\Support\RateResolver;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use stdClass;
@@ -20,6 +20,10 @@ final class SitePricing
     private const RETAIL_TYPES = ['Venta', 'Retail', 'Promocional', 'Especial', 'VIP'];
 
     private ?Collection $seasons = null;
+
+    private ?bool $seasonsOn = null;
+
+    public function __construct(private readonly RuleResolver $rules) {}
 
     private array $rates = [];
 
@@ -44,6 +48,10 @@ final class SitePricing
 
     public function seasonFor(string $date): ?stdClass
     {
+        if (! ($this->seasonsOn ??= $this->rules->on('R-SEASON'))) {
+            return null;
+        }
+
         return $this->seasons()
             ->filter(fn (stdClass $season): bool => $season->date_from <= $date && $season->date_to >= $date)
             ->sortBy([['priority', 'asc'], ['span', 'asc']])
@@ -67,17 +75,24 @@ final class SitePricing
     {
         $this->load([$productId]);
         $rates = $this->rates[$productId]->filter(fn (stdClass $rate): bool => $rate->valid_from <= $date && $rate->valid_to >= $date);
-        $adult = $this->pick($rates, ['Adulto', 'Pasajero'], self::WEB_CHANNELS) ?? $this->pick($rates, ['Adulto', 'Pasajero'], self::PUBLIC_CHANNELS);
+        $season = $this->seasonFor($date);
+        $seasonId = $season?->id === null ? null : (string) $season->id;
+        $adult = RateResolver::pick($rates, $date, ['Adulto', 'Pasajero'], self::WEB_CHANNELS[0], $seasonId);
 
-        if ($adult === null) {
+        if (! $adult instanceof stdClass) {
             return null;
         }
 
-        $season = $this->seasonFor($date);
-        $child = $this->pick($rates, ['Niño'], [$adult->channel]) ?? $this->pick($rates, ['Niño'], self::PUBLIC_CHANNELS);
-        $direct = in_array($adult->channel, self::WEB_CHANNELS, true) ? $this->pick($rates, ['Adulto', 'Pasajero'], self::PUBLIC_CHANNELS) : null;
+        $child = RateResolver::pick($rates, $date, ['Niño'], (string) $adult->channel, $seasonId);
+        $direct = in_array($adult->channel, self::WEB_CHANNELS, true) ? RateResolver::pick($rates, $date, ['Adulto', 'Pasajero'], RateResolver::FALLBACK_CHANNEL, $seasonId) : null;
+        $child = $child instanceof stdClass ? $child : null;
+        $direct = $direct instanceof stdClass ? $direct : null;
         $adultPrice = $this->apply($adult, $season);
-        $listPrice = $direct && $direct->currency === $adult->currency ? $this->apply($direct, $season) : null;
+        $seasonDiscount = $season !== null && $season->factor < 1 ? (int) round((1 - $season->factor) * 100) : null;
+        $listPrice = max(
+            $direct && $direct->currency === $adult->currency ? $this->apply($direct, $season) : 0.0,
+            $seasonDiscount !== null ? $this->apply($direct && $direct->currency === $adult->currency ? $direct : $adult, null) : 0.0,
+        ) ?: null;
 
         return [
             'rate_id' => $adult->id,
@@ -87,7 +102,7 @@ final class SitePricing
             'child' => $child && $child->currency === $adult->currency ? $this->apply($child, $season) : $adultPrice,
             'list' => $listPrice !== null && $listPrice > $adultPrice ? $listPrice : null,
             'web_rate' => in_array($adult->channel, self::WEB_CHANNELS, true),
-            'season' => $season ? ['name' => $season->name, 'type' => $season->type, 'factor' => $season->factor, 'level' => $this->level($season)] : null,
+            'season' => $season ? ['name' => $season->name, 'type' => $season->type, 'factor' => $season->factor, 'level' => $this->level($season), 'discount_pct' => $seasonDiscount] : null,
         ];
     }
 
@@ -101,21 +116,9 @@ final class SitePricing
         };
     }
 
-    private function pick(Collection $rates, array $segments, array $channels): ?stdClass
-    {
-        return $rates->filter(fn (stdClass $rate): bool => in_array($rate->segment, $segments, true) && in_array($rate->channel, $channels, true))
-            ->sortBy(fn (stdClass $rate): float => (float) $rate->price)
-            ->first();
-    }
-
     private function apply(stdClass $rate, ?stdClass $season): float
     {
-        $base = BigDecimal::of($rate->season_id ? ($this->seasons()->firstWhere('id', $rate->season_id)->exact ?? '1') : '1');
-        $price = BigDecimal::of((string) $rate->price);
-
-        if ($season !== null) {
-            $price = $price->multipliedBy($season->exact)->dividedBy($base->isZero() ? BigDecimal::one() : $base, 10, RoundingMode::HALF_UP);
-        }
+        $price = RateResolver::seasonal($rate, $season?->exact === null ? null : (string) $season->exact);
 
         return app(PriceRounding::class)->apply($price)->toFloat();
     }

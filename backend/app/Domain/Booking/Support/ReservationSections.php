@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Support;
 
+use App\Domain\Booking\Rules\RuleResolver;
 use App\Domain\Catalog\Support\CancellationTiers;
 use App\Domain\Iam\Models\User;
 use Illuminate\Support\Collection;
@@ -11,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 
 final class ReservationSections
 {
+    private const WEB_RULES = ['R-MULTICURRENCY', 'R-LODGING', 'R-ADDONS', 'R-PICKUP', 'R-COMMENTS', 'R-DEPOSIT', 'R-PAY-LATER'];
+
     public function extras(object $row, array $view, User $viewer): array
     {
         return [
@@ -24,6 +27,7 @@ final class ReservationSections
                 'feedback' => DB::table('channel_pax_feedback')->where('reservation_id', $row->id)->count(),
                 'unread_feedback' => DB::table('channel_pax_feedback')->where('reservation_id', $row->id)->where('status', 'nuevo')->count(),
             ],
+            'pax_feedback_on' => self::paxFeedbackOn(),
             ...($view['price'] ? [
                 'payments' => $this->payments($row->id),
                 'invoices' => $this->invoices($row->id),
@@ -62,7 +66,21 @@ final class ReservationSections
             'comments' => $snapshot->comments,
             'companions' => ['pending' => (bool) $snapshot->companions_pending, 'due' => $snapshot->companions_due],
             'rules_applied' => $this->pgArray($snapshot->rules_applied),
+            'rules_inactive' => $this->inactiveRules($snapshot->product_id),
         ];
+    }
+
+    public static function paxFeedbackOn(): bool
+    {
+        return app(RuleResolver::class)->on('R-PAX-FEEDBACK');
+    }
+
+    private function inactiveRules(?string $productId): array
+    {
+        $rules = app(RuleResolver::class);
+        [$disabled] = $productId === null ? [[]] : $rules->productOverrides($productId);
+
+        return array_values(array_filter(self::WEB_RULES, fn (string $code): bool => ! $rules->on($code) || array_key_exists($code, $disabled)));
     }
 
     public function paxFeedback(string $reservationId): Collection

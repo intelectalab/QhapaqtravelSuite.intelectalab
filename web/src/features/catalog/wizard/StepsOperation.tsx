@@ -14,6 +14,8 @@ import { SeasonCreateAction } from "@/features/catalog-rates/RateForms";
 import { cn } from "@/lib/cn";
 import { AVAILABILITY_HINT, AVAILABILITY_LABEL, type ItineraryItemDraft, type ProductComponentDraft, type ProductRateDraft, type ProductReview } from "@/lib/catalog";
 import { formatDate, formatMoney } from "@/lib/format";
+import { costAtMinimum, costRange } from "@/lib/catalog-cost";
+import { CostPerPerson } from "../CostPerPerson";
 import { emptyRate } from "./draft";
 import { ErrorList, Group, ManageLink, numberValue, rowError, type StepProps } from "./fields";
 
@@ -43,7 +45,7 @@ export function ComponentsStep({ draft, set, options, errors, review }: StepProp
       </Group>
       <Group
         title="Componentes"
-        hint={review?.summary.components_cost != null ? `Costo total de componentes: ${formatMoney(review.summary.components_cost)} (se recalcula al guardar el paso).` : "Servicios de proveedores o productos activos que forman este producto."}
+        hint={review?.summary.cost_breakdown ? `Costo: ${costRange(review.summary.cost_breakdown)}, según el tamaño del grupo (se recalcula al guardar el paso).` : "Servicios de proveedores o productos activos que forman este producto."}
       >
         <ErrorList errors={errors} prefix={["components"]} />
         <RowsEditor<ProductComponentDraft>
@@ -84,6 +86,7 @@ export function ComponentsStep({ draft, set, options, errors, review }: StepProp
             );
           }}
         />
+        {review?.summary.cost_breakdown && <CostPerPerson breakdown={review.summary.cost_breakdown} className="mt-4" />}
       </Group>
     </div>
   );
@@ -305,7 +308,7 @@ export function RatesStep({ draft, set, options, errors, review, saved, onAdd, o
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface-2/50 px-4 py-3 text-[13px] text-fg-2">
-        {review?.summary.components_cost != null && <span>Costo de componentes: <b className="font-semibold text-fg">{formatMoney(review.summary.components_cost)}</b>.</span>}
+        {review?.summary.cost_breakdown && <span>Costo de componentes: <b className="font-semibold text-fg">{costRange(review.summary.cost_breakdown)}</b>, según el tamaño del grupo.</span>}
         <span>Toda tarifa necesita moneda y vigencia, y no se aceptan tarifas ya vencidas.</span>
         <InfoTip label="Reglas de tarifas">PRD-BR-004: moneda y vigencia obligatorias. PRD-BR-005: una tarifa fuera de vigencia no se aplica ni se registra como vigente.</InfoTip>
       </div>
@@ -359,7 +362,7 @@ export function RatesStep({ draft, set, options, errors, review, saved, onAdd, o
           })}
         </ul>
       )}
-      {options.can_manage_rates && <RateForm key={review?.summary.components_cost ?? "sin-costo"} options={options} suggestedCost={review?.summary.components_cost ?? null} error={(field) => errors[`rates.${editing ? 0 : draft.rates.length - 1}.${field}`]} onAdd={onAdd} />}
+      {options.can_manage_rates && <RateForm key={costAtMinimum(review?.summary.cost_breakdown) ?? "sin-costo"} options={options} suggestedCost={costAtMinimum(review?.summary.cost_breakdown)} error={(field) => errors[`rates.${editing ? 0 : draft.rates.length - 1}.${field}`]} onAdd={onAdd} />}
     </div>
   );
 }

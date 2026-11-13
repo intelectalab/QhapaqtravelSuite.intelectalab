@@ -96,7 +96,7 @@ final class OwnReviewIntake
 
         foreach ($services->groupBy('id') as $productId => $rows) {
             $first = $rows->first();
-            $done = $reservation->status === 'completada' || ($reservation->status === 'en_operacion' && $rows->contains(fn (object $row): bool => $row->status === 'completado' || $row->service_date < $today));
+            $done = $reservation->status === 'completada' || (in_array($reservation->status, ['en_operacion', 'incidencia', 'parcial'], true) && $rows->contains(fn (object $row): bool => $row->status === 'completado' || $row->service_date < $today));
             $review = $reviews->get($productId);
             $items[] = [
                 'product' => ['id' => (string) $productId, 'code' => $first->code, 'name' => $first->name],

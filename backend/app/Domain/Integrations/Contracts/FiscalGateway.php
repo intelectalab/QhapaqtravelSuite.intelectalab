@@ -14,4 +14,6 @@ interface FiscalGateway extends HealthCheckable
     public function status(string $externalId): AdapterResult;
 
     public function void(string $invoiceId, string $reason): AdapterResult;
+
+    public function verifyWebhook(string $rawBody, string $signature): bool;
 }

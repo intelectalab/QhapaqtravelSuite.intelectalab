@@ -13,12 +13,14 @@ import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
-import type { TreasuryAccount, TreasuryMovement, TreasuryOverview } from "@/lib/finance";
+import { SESSION_TODAY, type TreasuryAccount, type TreasuryMovement, type TreasuryOverview } from "@/lib/finance";
 import { formatDate, formatMoney } from "@/lib/format";
 import { toneStyle, type Tone } from "@/lib/tone";
 import { DetailPanel, PanelSection } from "@/features/channels/ChannelUi";
 import { FieldList } from "@/components/ui/Details";
+import { AuditTimeline } from "@/features/audit/AuditTimeline";
 import { FinanceStep, SummaryBox } from "./FinanceStep";
+import { PickExpenseAction } from "./TreasuryOps";
 
 const KIND: Record<TreasuryAccount["kind"], { tone: Tone; icon: typeof Landmark }> = {
   bank: { tone: "t1", icon: Landmark },
@@ -28,12 +30,13 @@ const KIND: Record<TreasuryAccount["kind"], { tone: Tone; icon: typeof Landmark 
 
 const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es"));
 
-export function AccountCards({ accounts }: { accounts: TreasuryAccount[] }) {
+export function AccountCards({ accounts, thresholdPct = 40 }: { accounts: TreasuryAccount[]; thresholdPct?: number }) {
   return (
     <section className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-3">
       {accounts.map((account, index) => {
         const { tone, icon: Icon } = KIND[account.kind];
-        const low = account.fund !== null && account.balance < account.fund * 0.4;
+        const low = account.fund !== null && account.balance < (account.fund * thresholdPct) / 100;
+        const session = account.session_today ? SESSION_TODAY[account.session_today] : null;
         return (
           <article
             key={account.code}
@@ -54,14 +57,17 @@ export function AccountCards({ accounts }: { accounts: TreasuryAccount[] }) {
                   </span>
                 </span>
               </span>
-              <Badge tone={account.currency === "USD" ? "t4" : "mute"} dot={false}>
-                {account.currency}
-              </Badge>
+              <span className="flex flex-none items-center gap-1.5">
+                {session && <Badge tone={session.tone}>{session.label}</Badge>}
+                <Badge tone={account.currency === "USD" ? "t4" : "mute"} dot={false}>
+                  {account.currency}
+                </Badge>
+              </span>
             </div>
             <p className={cn("mt-3 text-[22px] font-bold leading-none tracking-[-0.02em]", account.balance < 0 && "text-bad")}>{formatMoney(account.balance, account.currency)}</p>
             <p className="mt-1.5 text-[12px] text-fg-3">
               {account.fund !== null ? (
-                <span className={cn(low && "font-semibold text-warn")}>
+                <span className={cn(low && "font-semibold text-warn")} title={low ? `Bajo el ${thresholdPct} % del fondo: conviene pedir reposición.` : undefined}>
                   Fondo {formatMoney(account.fund)} · {account.custodian ?? "sin custodio"}
                 </span>
               ) : account.currency === "PEN" ? (
@@ -77,14 +83,14 @@ export function AccountCards({ accounts }: { accounts: TreasuryAccount[] }) {
   );
 }
 
-function MovementFields({ data }: { data: TreasuryOverview }) {
+function MovementFields({ data, account }: { data: TreasuryOverview; account?: string }) {
   const [direction, setDirection] = useState<"in" | "out">("out");
   const accounts = data.accounts.filter((account) => account.active && account.kind === "bank").map((account) => ({ value: account.code, label: `${account.name} · ${formatMoney(account.balance, account.currency)}` }));
   const categories = data.categories[direction].map((value) => ({ value, label: value }));
   return (
     <>
       <ChoiceGroup label="Tipo" name="direction" options={[{ value: "out", label: "Egreso" }, { value: "in", label: "Ingreso" }]} defaultValue="out" onChange={(value) => setDirection(value === "in" ? "in" : "out")} />
-      <SelectField label="Cuenta bancaria" name="account" options={accounts} placeholder="Elige la cuenta" hint="Las cajas chicas registran gastos y las pasarelas su liquidación." />
+      <SelectField label="Cuenta bancaria" name="account" options={accounts} defaultValue={account} placeholder="Elige la cuenta" hint="Las cajas chicas registran gastos y las pasarelas su liquidación." />
       <div className="grid grid-cols-2 gap-3">
         <TextField label="Importe" name="amount" type="number" step="0.01" min="0.01" required />
         <TextField label="Fecha" name="date" type="date" required max={data.today} defaultValue={data.today} />
@@ -99,10 +105,10 @@ function MovementFields({ data }: { data: TreasuryOverview }) {
   );
 }
 
-export function RecordMovementAction({ data }: { data: TreasuryOverview }) {
+export function RecordMovementAction({ data, account }: { data: TreasuryOverview; account?: string }) {
   return (
-    <FinanceStep step="movement_create" label="Registrar movimiento" icon={<Plus size={16} strokeWidth={2.4} />} variant="primary" title="Registrar movimiento" description="Ingresos y egresos que no nacen de un cobro, un pago a proveedor ni una caja chica." submitLabel="Registrar">
-      <MovementFields data={data} />
+    <FinanceStep step="movement_create" label={account ? "Movimiento" : "Registrar movimiento"} icon={<Plus size={16} strokeWidth={2.4} />} variant={account ? "secondary" : "primary"} title="Registrar movimiento" description="Ingresos y egresos que no nacen de un cobro, un pago a proveedor ni una caja chica." submitLabel="Registrar">
+      <MovementFields data={data} account={account} />
     </FinanceStep>
   );
 }
@@ -122,7 +128,7 @@ function VoidMovementAction({ row }: { row: TreasuryMovement }) {
   );
 }
 
-function MovementDetail({ row }: { row: TreasuryMovement }) {
+export function MovementDetail({ row }: { row: TreasuryMovement }) {
   const signed = `${row.direction === "in" ? "+" : "−"}${formatMoney(row.amount, row.currency)}`;
   return (
     <DetailPanel label="Ver movimiento" title={row.description} description={`${row.code} · ${row.type_label} · ${formatDate(row.date)}`}>
@@ -167,6 +173,11 @@ function MovementDetail({ row }: { row: TreasuryMovement }) {
           ) : (
             <p className="text-[12.5px] text-fg-3">Sin archivo adjunto.</p>
           )}
+        </PanelSection>
+      )}
+      {row.audit && (
+        <PanelSection title="Auditoría" aside={String(row.audit.length)}>
+          <AuditTimeline entries={row.audit} empty="Este movimiento se generó sin acciones manuales registradas." />
         </PanelSection>
       )}
       {!row.voidable && row.status === "posted" && <p className="text-[12.5px] text-fg-3">No se anula aquí: se corrige desde su origen.</p>}
@@ -268,6 +279,7 @@ export function MovementsTable({ data }: { data: TreasuryOverview }) {
       metrics={metrics}
       filters={filters}
       sorts={sorts}
+      toolbarEnd={can.manage ? <PickExpenseAction data={data} /> : undefined}
     />
   );
 }

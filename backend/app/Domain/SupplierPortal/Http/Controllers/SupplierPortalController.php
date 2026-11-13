@@ -156,13 +156,6 @@ final class SupplierPortalController
         return $this->json($invoices->register($account, $code, $data), 201);
     }
 
-    public function annulInvoice(Request $request, string $code, SupplierInvoices $invoices): JsonResponse
-    {
-        $invoices->annul($this->account($request), $code);
-
-        return $this->json(['code' => $code]);
-    }
-
     public function company(Request $request): JsonResponse
     {
         return $this->json($this->directory->company($this->account($request)));

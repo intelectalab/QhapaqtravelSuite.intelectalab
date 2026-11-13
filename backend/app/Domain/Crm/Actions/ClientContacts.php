@@ -22,7 +22,7 @@ final class ClientContacts
     {
         return DB::transaction(function () use ($client, $data, $actor): string {
             $first = DB::table('crm_client_contacts')->where('client_id', $client->id)->doesntExist();
-            $primary = $first || (bool) ($data['is_primary'] ?? false);
+            $primary = ! ($data['secondary'] ?? false) && ($first || (bool) ($data['is_primary'] ?? false));
 
             if ($primary) {
                 DB::table('crm_client_contacts')->where('client_id', $client->id)->update(['is_primary' => false, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);

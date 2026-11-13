@@ -26,6 +26,7 @@ interface SelectProps {
   ariaLabel?: string;
   className?: string;
   testId?: string;
+  disabled?: boolean;
 }
 
 export function Select({
@@ -41,6 +42,7 @@ export function Select({
   ariaLabel,
   className,
   testId,
+  disabled = false,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -66,13 +68,14 @@ export function Select({
     >
       <Popover.Trigger
         aria-label={ariaLabel}
+        disabled={disabled}
         data-testid={testId}
         data-value={value}
         className={cn(
           "inline-flex items-center gap-1.5 text-left transition",
           variant === "chip"
             ? cn("h-7 font-semibold", selected ? "text-accent" : "text-fg")
-            : "h-10 w-full justify-between rounded-control border border-line bg-surface px-3 hover:border-fg-3/40",
+            : "h-10 w-full justify-between rounded-control border border-line bg-surface px-3 hover:border-fg-3/40 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-line",
           className,
         )}
       >

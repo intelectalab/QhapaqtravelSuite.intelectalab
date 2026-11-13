@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class EnsureLockVersion
 {
-    private const PLATFORM_TABLES = ['tenants'];
+    private const PLATFORM_TABLES = ['tenants', 'platform_tracking_tags'];
 
     public function handle(Request $request, Closure $next, string $table, string $columns = 'code', ?string $parameter = null): Response
     {

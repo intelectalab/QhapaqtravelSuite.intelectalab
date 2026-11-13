@@ -20,6 +20,11 @@ final class CommissionController
         return response()->json(['data' => $directory->overview($this->actor($request))]);
     }
 
+    public function summary(Request $request, CommissionDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->summary($this->actor($request))]);
+    }
+
     public function calculate(Request $request, CommissionWorkflow $workflow): JsonResponse
     {
         $actor = $this->actor($request);

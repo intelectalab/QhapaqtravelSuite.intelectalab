@@ -1,9 +1,9 @@
 "use client";
 
-import { CalendarRange, CirclePlay, CircleStop, Pencil, Plus, Tag } from "lucide-react";
+import { CalendarRange, CirclePlay, CircleStop, Pencil, Plus, Tag, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
-import { createRate, createSeason, toggleRate, toggleSeason, updateRate, updateSeason } from "@/app/(backoffice)/catalogo/tarifas/actions";
+import { useState, type ReactNode } from "react";
+import { createRate, createSeason, deleteSeason, toggleRate, toggleSeason, updateRate, updateSeason } from "@/app/(backoffice)/catalogo/tarifas/actions";
 import { RowIcon } from "@/components/table/RowActions";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
@@ -127,23 +127,43 @@ export function RateToggleAction({ rate }: { rate: RateRow }) {
   );
 }
 
-function SeasonFields({ seasonTypes, season }: { seasonTypes: string[]; season?: SeasonRow }) {
+function SeasonCrossings({ seasons, season, range }: { seasons: SeasonRow[]; season?: SeasonRow; range: { from: string; to: string; priority: string } }) {
+  const priority = Number(range.priority);
+  if (!range.from || !range.to || range.from > range.to || range.priority === "" || Number.isNaN(priority)) return null;
+  const crossing = seasons.filter((other) => other.ref !== season?.ref && other.status === "activa" && other.date_from <= range.to && other.date_to >= range.from);
+  if (crossing.length === 0) return null;
+  return (
+    <ul className="flex flex-col gap-1.5 rounded-xl bg-[color-mix(in_srgb,var(--warn)_10%,var(--surface))] px-3.5 py-2.5 text-[12.5px] text-warn">
+      {crossing.map((other) => (
+        <li key={other.ref}>
+          Se cruza con <b className="font-semibold">{other.name}</b> ({formatDate(other.date_from)} – {formatDate(other.date_to)}, prioridad {other.priority}):{" "}
+          {other.priority === priority ? "tiene la misma prioridad y no se podrá guardar." : other.priority < priority ? `en los días comunes manda ${other.name}.` : "en los días comunes manda esta temporada."}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function SeasonFields({ seasonTypes, seasons, season }: { seasonTypes: string[]; seasons: SeasonRow[]; season?: SeasonRow }) {
+  const [range, setRange] = useState({ from: season?.date_from ?? "", to: season?.date_to ?? "", priority: String(season?.priority ?? 1) });
+  const [status, setStatus] = useState(season?.status ?? "activa");
   return (
     <>
       <TextField label="Nombre" name="name" required minLength={3} maxLength={120} defaultValue={season?.name} placeholder="Por ejemplo: Semana Santa 2027" icon={<CalendarRange size={17} />} />
       <SelectField label="Tipo" name="type" options={list(seasonTypes)} defaultValue={season?.type ?? "Alta"} />
       <div className="grid grid-cols-2 gap-3">
-        <TextField label="Desde" name="date_from" type="date" required defaultValue={season?.date_from} />
-        <TextField label="Hasta" name="date_to" type="date" required defaultValue={season?.date_to} />
-        <TextField label="Prioridad" name="priority" type="number" min={0} max={99} required defaultValue={season?.priority ?? 1} hint="0 es la que más pesa." />
+        <TextField label="Desde" name="date_from" type="date" required defaultValue={season?.date_from} onChange={(event) => setRange({ ...range, from: event.target.value })} />
+        <TextField label="Hasta" name="date_to" type="date" required defaultValue={season?.date_to} onChange={(event) => setRange({ ...range, to: event.target.value })} />
+        <TextField label="Prioridad" name="priority" type="number" min={0} max={99} required defaultValue={season?.priority ?? 1} hint="0 es la que más pesa." onChange={(event) => setRange({ ...range, priority: event.target.value })} />
         <TextField label="Factor" name="factor" type="number" step="0.01" min="0.01" max="3" required defaultValue={season?.factor ?? 1} hint="1.20 sube el costo base 20 %." />
       </div>
-      {season && <ChoiceGroup label="Estado" name="status" options={[{ value: "activa", label: "Activa" }, { value: "inactiva", label: "Inactiva" }]} defaultValue={season.status} />}
+      {season && <ChoiceGroup label="Estado" name="status" options={[{ value: "activa", label: "Activa" }, { value: "inactiva", label: "Inactiva" }]} defaultValue={season.status} onChange={(value) => setStatus(value === "inactiva" ? "inactiva" : "activa")} />}
+      {status === "activa" && <SeasonCrossings seasons={seasons} season={season} range={range} />}
     </>
   );
 }
 
-export function SeasonCreateAction({ seasonTypes, trigger }: { seasonTypes: string[]; trigger?: (open: () => void) => ReactNode }) {
+export function SeasonCreateAction({ seasonTypes, seasons = [], trigger }: { seasonTypes: string[]; seasons?: SeasonRow[]; trigger?: (open: () => void) => ReactNode }) {
   const router = useRouter();
   return (
     <PanelAction<StepResult>
@@ -158,7 +178,7 @@ export function SeasonCreateAction({ seasonTypes, trigger }: { seasonTypes: stri
       initial={STEP_INITIAL}
       onDone={() => router.refresh()}
     >
-      {() => <SeasonFields seasonTypes={seasonTypes} />}
+      {() => <SeasonFields seasonTypes={seasonTypes} seasons={seasons} />}
     </PanelAction>
   );
 }
@@ -180,7 +200,7 @@ export function SeasonEditAction({ overview, season }: { overview: RatesOverview
       {() => (
         <>
           <HiddenFields values={{ ref: season.ref }} />
-          <SeasonFields seasonTypes={overview.options.season_types} season={season} />
+          <SeasonFields seasonTypes={overview.options.season_types} seasons={overview.seasons} season={season} />
         </>
       )}
     </PanelAction>
@@ -208,5 +228,24 @@ export function SeasonToggleAction({ season }: { season: SeasonRow }) {
       action={toggleSeason}
       hidden={{ ref: season.ref, action: activate ? "activate" : "deactivate" }}
     />
+  );
+}
+
+export function SeasonDeleteAction({ season }: { season: SeasonRow }) {
+  const inUse = season.rates + season.products > 0;
+  if (inUse && season.status === "inactiva") return null;
+  return inUse ? (
+    <ConfirmAction
+      id={`season-delete-${season.ref}`}
+      label="Eliminar"
+      icon={<Trash2 size={16} />}
+      title="No se puede eliminar"
+      description={`${season.name} la usan ${season.rates} tarifas y ${season.products} productos, así que no se puede eliminar. Puedes inactivarla: deja de aplicar su factor y las tarifas se conservan.`}
+      submitLabel="Inactivar en su lugar"
+      action={toggleSeason}
+      hidden={{ ref: season.ref, action: "deactivate" }}
+    />
+  ) : (
+    <ConfirmAction id={`season-delete-${season.ref}`} label="Eliminar" icon={<Trash2 size={16} />} title="Eliminar temporada" description={`${season.name} deja de existir. Ninguna tarifa ni producto la usa. El cambio queda en la auditoría.`} submitLabel="Eliminar temporada" action={deleteSeason} hidden={{ ref: season.ref }} />
   );
 }

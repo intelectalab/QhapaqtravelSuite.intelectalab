@@ -5,7 +5,7 @@ import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native"
 import * as actions from "../../src/data/actions";
 import { takePhoto } from "../../src/data/evidence";
 import { getAssignment } from "../../src/data/repository";
-import { dayLabel, STATUS, STEPS, stepIndex, timeOf } from "../../src/format";
+import { dayLabel, INCIDENT_STATUS, SEVERITY_TONE, STATUS, STEPS, stepIndex, timeOf } from "../../src/format";
 import { useApp, useLocal } from "../../src/state/AppProvider";
 import { colors, font, radius, space } from "../../src/theme";
 import type { Assignment, Passenger } from "../../src/types";
@@ -103,7 +103,7 @@ export default function AssignmentScreen() {
 
         {assignment.pickup && (assignment.pickup.flight || assignment.pickup.arrival || assignment.pickup.sign || assignment.pickup.comments || assignment.pickup.tags.length > 0 || assignment.pickup.diets.length > 0) ? (
           <>
-            <SectionTitle title="Recojo y cliente" />
+            <SectionTitle title={assignment.pickup.applies ? "Recojo y cliente" : "Datos del cliente"} />
             <Card>
               {assignment.pickup.sign ? <Row icon="easel-outline" label="Cartel" value={assignment.pickup.sign} /> : null}
               {assignment.pickup.flight ? <Row icon="airplane-outline" label="Vuelo" value={assignment.pickup.flight} /> : null}
@@ -115,6 +115,26 @@ export default function AssignmentScreen() {
                   {assignment.pickup.tags.map((tag) => <Pill key={tag} label={tag} />)}
                 </View>
               ) : null}
+            </Card>
+          </>
+        ) : null}
+
+        {assignment.incidents && assignment.incidents.length > 0 ? (
+          <>
+            <SectionTitle title="Incidencias abiertas de la orden" aside={`${assignment.incidents.length}`} />
+            <Card style={{ borderColor: colors.bad }}>
+              {assignment.incidents.map((incident) => (
+                <View key={incident.code} style={styles.incident}>
+                  <Ionicons name="alert-circle-outline" size={18} color={SEVERITY_TONE[incident.severity] === "bad" ? colors.bad : colors.warn} />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={styles.paxName}>{incident.title}</Text>
+                    <Text style={ui.muted}>
+                      {incident.code} · {incident.type} · {INCIDENT_STATUS[incident.status] ?? incident.status}
+                    </Text>
+                  </View>
+                  <Pill label={incident.severity === "critica" ? "Crítica" : incident.severity.charAt(0).toUpperCase() + incident.severity.slice(1)} tone={SEVERITY_TONE[incident.severity] ?? "info"} />
+                </View>
+              ))}
             </Card>
           </>
         ) : null}
@@ -211,4 +231,5 @@ const styles = StyleSheet.create({
   paxName: { fontSize: font.body, fontWeight: "600", color: colors.fg },
   paxTime: { fontSize: font.small, color: colors.ok, fontWeight: "700" },
   evidence: { flexDirection: "row", alignItems: "center", gap: space.sm, paddingVertical: 4 },
+  incident: { flexDirection: "row", alignItems: "center", gap: space.md, paddingVertical: 4 },
 });

@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import type { AvailabilityOverview } from "@/lib/catalog-availability";
 import { DEPARTURE_STATUS, type DepartureRow, type DeparturesOverview } from "@/lib/catalog-departures";
 import { cn } from "@/lib/cn";
 import { capitalize, monthName } from "@/lib/format";
@@ -17,7 +18,14 @@ function occupancyTone(departure: DepartureRow): Tone {
   return taken >= 1 ? "bad" : taken >= 0.75 ? "warn" : "ok";
 }
 
-export function DeparturesCalendar({ overview }: { overview: DeparturesOverview }) {
+const LEGEND: { tone: Tone; label: string }[] = [
+  { tone: "ok", label: "Con cupos" },
+  { tone: "warn", label: "Ocupación de 75 % o más" },
+  { tone: "bad", label: "Sin disponibilidad" },
+  { tone: DEPARTURE_STATUS.cancelada.tone, label: "Cancelada o cerrada" },
+];
+
+export function DeparturesCalendar({ overview, holds = [] }: { overview: DeparturesOverview; holds?: AvailabilityOverview["holds"] }) {
   const [month, setMonth] = useState(overview.today.slice(0, 7));
   const [year, index] = month.split("-").map(Number);
   const first = new Date(Date.UTC(year, index - 1, 1));
@@ -54,16 +62,23 @@ export function DeparturesCalendar({ overview }: { overview: DeparturesOverview 
         ))}
         {cells.map((date, cell) => {
           const rows = date ? (byDate.get(date) ?? []) : [];
+          const live = rows.filter((departure) => departure.status !== "cancelada");
+          const dayCapacity = live.reduce((sum, departure) => sum + departure.capacity, 0);
+          const daySold = live.reduce((sum, departure) => sum + departure.sold, 0);
           return (
             <div key={date ?? `blank-${cell}`} className={cn("min-h-[92px] rounded-xl border p-1.5", date ? "border-line bg-surface" : "border-transparent", date === overview.today && "border-accent")}>
               {date && (
                 <>
-                  <span className={cn("block px-1 font-mono text-[11.5px]", date === overview.today ? "font-bold text-accent" : "text-fg-3", date < overview.today && "opacity-60")}>{Number(date.slice(8, 10))}</span>
+                  <span className="flex items-center justify-between gap-1 px-1">
+                    <span className={cn("font-mono text-[11.5px]", date === overview.today ? "font-bold text-accent" : "text-fg-3", date < overview.today && "opacity-60")}>{Number(date.slice(8, 10))}</span>
+                    {dayCapacity > 0 && <span className="font-mono text-[10.5px] text-fg-3" title={`${daySold} vendidos de ${dayCapacity} cupos en el día`}>{daySold}/{dayCapacity}</span>}
+                  </span>
                   <ul className="mt-1 flex flex-col gap-1">
                     {rows.map((departure) => (
                       <li key={departure.ref}>
                         <DepartureDetail
                           departure={departure}
+                          holds={holds.filter((hold) => hold.departure?.ref === departure.ref)}
                           trigger={(open) => (
                             <button
                               type="button"
@@ -86,6 +101,14 @@ export function DeparturesCalendar({ overview }: { overview: DeparturesOverview 
           );
         })}
       </div>
+      <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-fg-3" aria-label="Leyenda de colores">
+        {LEGEND.map((item) => (
+          <li key={item.label} className="flex items-center gap-1.5" style={toneStyle(item.tone)}>
+            <span className="h-2.5 w-2.5 rounded-sm border border-[var(--tint)] bg-[color-mix(in_srgb,var(--tint)_18%,var(--surface))]" />
+            {item.label}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpenText, Mail, MapPin, MessageCircle, Phone, Share2 } from "lucide-react";
+import { BookOpenText, CreditCard, LifeBuoy, Mail, MapPin, MessageCircle, Phone, Share2 } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/format";
 import { siteHref, type SiteProfile } from "@/lib/site";
@@ -14,14 +14,19 @@ const EXPLORE = [
   { path: "/tours?tipo=tours", key: "tours" },
   { path: "/tours?tipo=paquetes", key: "packages" },
   { path: "/tours?tipo=experiencias", key: "experiences" },
+  { path: "/ofertas", key: "offers" },
+  { path: "/viajes-a-medida", key: "tailored" },
   { path: "/buscar", key: "search" },
 ] as const;
 
 const HELP = [
+  { path: "/cuenta", key: "account" },
+  { path: "/cuenta/mi-reserva", key: "manage" },
+  { path: "/legal/cancelacion", key: "changes" },
+  { path: "/contacto", key: "contact" },
   { path: "/nosotros", key: "about" },
   { path: "/blog", key: "blog" },
-  { path: "/viajes-a-medida", key: "tailored" },
-  { path: "/contacto", key: "contact" },
+  { path: "/aventuras", key: "stories" },
   { path: "/libro-reclamaciones", key: "claims" },
 ] as const;
 
@@ -66,12 +71,20 @@ export function SiteFooter({ profile, base }: { profile: SiteProfile; base: stri
         <FooterLinks title={t.footer.explore} base={base} links={EXPLORE.map((link) => ({ path: link.path, label: t.footer.exploreLinks[link.key] }))} />
         <FooterLinks title={t.footer.help} base={base} links={HELP.map((link) => ({ path: link.path, label: t.footer.helpLinks[link.key] }))} />
         <div>
-          <h2 className="text-[13px] font-semibold text-white/90">{t.footer.contactTitle}</h2>
+          <h2 data-site-foot-title className="text-[13px] font-semibold text-white/90">{t.footer.contactTitle}</h2>
           <ul className="mt-4 grid gap-3 text-[13px] text-white/70">
             {agency.phone && (
               <li className="flex items-center gap-2.5">
                 <Phone size={15} className="flex-none text-t2" />
                 <span className="select-all">{agency.phone}</span>
+              </li>
+            )}
+            {agency.emergency_phone && (
+              <li className="flex items-center gap-2.5">
+                <LifeBuoy size={15} className="flex-none text-t2" />
+                <span>
+                  {t.footer.emergency}: <span className="select-all font-semibold text-white/90">{agency.emergency_phone}</span>
+                </span>
               </li>
             )}
             {agency.email && (
@@ -92,6 +105,19 @@ export function SiteFooter({ profile, base }: { profile: SiteProfile; base: stri
               </li>
             ))}
           </ul>
+          {(agency.payment_methods ?? []).length > 0 && (
+            <div className="mt-5">
+              <h3 className="flex items-center gap-1.5 text-[12px] font-semibold text-white/80">
+                <CreditCard size={13} className="text-t2" />
+                {t.footer.payments}
+              </h3>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {(agency.payment_methods ?? []).map((method) => (
+                  <li key={method} className="rounded-md border border-white/15 bg-white/5 px-2 py-0.5 text-[11.5px] text-white/75">{t.footer.paymentMethods[method as keyof typeof t.footer.paymentMethods] ?? method}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
       <div className="relative border-t border-white/10">
@@ -120,7 +146,7 @@ export function SiteFooter({ profile, base }: { profile: SiteProfile; base: stri
 function FooterLinks({ title, base, links }: { title: string; base: string; links: { path: string; label: string }[] }) {
   return (
     <div>
-      <h2 className="text-[13px] font-semibold text-white/90">{title}</h2>
+      <h2 data-site-foot-title className="text-[13px] font-semibold text-white/90">{title}</h2>
       <ul className="mt-4 grid gap-2.5">
         {links.map((link) => (
           <li key={link.path}>

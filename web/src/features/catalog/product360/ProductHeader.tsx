@@ -4,6 +4,7 @@ import { Fragment } from "react";
 import { cn } from "@/lib/cn";
 import { PRODUCT_STATUS, type ProductDetail, type ProductOverview, type ProductStatus } from "@/lib/catalog";
 import { formatMoney } from "@/lib/format";
+import { costRange } from "@/lib/catalog-cost";
 
 const FLOW: { status: ProductStatus; label: string }[] = [
   { status: "DRAFT", label: "Borrador" },
@@ -84,9 +85,9 @@ export function ProductLifecycle({ product, overview, seesCost, seesMargin }: { 
         </ol>
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <Kpi icon={Coins} label="Precio desde" value={base ? formatMoney(base.price, base.currency) : "Sin tarifa"} href={`${link}?seccion=tarifas`} cta="Ver tarifas" />
+        <Kpi icon={Coins} label="Precio desde" value={product.price_from ? formatMoney(product.price_from.amount, product.price_from.currency) : "Sin tarifa"} href={`${link}?seccion=tarifas`} cta="Ver tarifas" />
         {seesMargin && <Kpi icon={Percent} label="Margen tarifa base" value={base?.margin_pct != null ? `${base.margin_pct} %` : "—"} href={`${link}?seccion=rentabilidad`} cta="Ver rentabilidad" />}
-        {seesCost && <Kpi icon={Layers} label="Costo componentes" value={overview.kpis.components_cost !== null ? formatMoney(overview.kpis.components_cost) : "—"} href={`${link}?seccion=componentes`} cta="Ver el detalle" />}
+        {seesCost && <Kpi icon={Layers} label="Costo componentes" value={overview.kpis.cost_breakdown ? costRange(overview.kpis.cost_breakdown) : "—"} href={`${link}?seccion=componentes`} cta="Ver el detalle" />}
         <Kpi icon={CalendarRange} label="Salidas futuras" value={String(overview.kpis.future_departures)} href={`${link}?seccion=salidas`} cta="Ver salidas" />
         <Kpi icon={ShoppingBag} label="Uso en ventas" value={`${overview.kpis.quotes} cot. · ${overview.kpis.reservations} res.`} href={`${link}?seccion=uso`} cta="Ver cotizaciones y reservas" />
         <Kpi icon={TriangleAlert} label="Comercializable" value={overview.kpis.sellable ? "Sí" : "No"} tone={overview.kpis.sellable ? "ok" : "bad"} href={`${link}#checklist`} cta="Ver checklist" />

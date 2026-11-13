@@ -22,7 +22,7 @@ export async function campaignStep(_state: StepResult, form: FormData): Promise<
   const code = encodeURIComponent(text(form, "code"));
   const step = text(form, "intent") || text(form, "step");
   const failure = "No pudimos actualizar la campaña.";
-  if (step === "test") return refresh(await sendStep(`/marketing/campaigns/${code}/test-send`, "POST", {}, failure));
+  if (step === "test") return refresh(await sendStep(`/marketing/campaigns/${code}/test-send`, "POST", formValues(form, ["to_user_id", "sample"]), failure));
   if (step === "schedule") return refresh(await sendStep(`/marketing/campaigns/${code}/schedule`, "POST", formValues(form, ["scheduled_at", "lock_version"]), failure));
   if (step === "unschedule") return refresh(await sendStep(`/marketing/campaigns/${code}/unschedule`, "POST", formValues(form, ["lock_version"]), failure));
   if (step === "cancel") return refresh(await sendStep(`/marketing/campaigns/${code}/cancel`, "POST", formValues(form, ["reason", "lock_version"]), failure));
@@ -84,4 +84,8 @@ export async function consentStep(_state: StepResult, form: FormData): Promise<S
   const step = text(form, "step");
   if (step === "revoke") return refresh(await sendStep(`/marketing/consents/${encodeURIComponent(text(form, "code"))}/revoke`, "POST", formValues(form, ["source", "lock_version"]), "No pudimos registrar la baja."));
   return refresh(await sendStep("/marketing/consents", "POST", formValues(form, ["subject_type", "subject_id", "channel", "source", "evidence", "policy_version", "lock_version"]), "No pudimos registrar el consentimiento."));
+}
+
+export async function unsubscribeRecipient(_state: StepResult, form: FormData): Promise<StepResult> {
+  return refresh(await sendStep(`/marketing/campaigns/${encodeURIComponent(text(form, "code"))}/recipients/${encodeURIComponent(text(form, "id"))}/unsubscribe`, "POST", {}, "No pudimos registrar la baja."));
 }

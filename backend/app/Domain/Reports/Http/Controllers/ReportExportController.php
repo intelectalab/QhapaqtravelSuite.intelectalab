@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Reports\Http\Controllers;
 
+use App\Domain\Crm\Support\CrmExports;
 use App\Domain\Iam\Models\User;
 use App\Domain\Reports\Actions\ExportReport;
 use App\Domain\Reports\Actions\ScheduleReport;
@@ -25,7 +26,7 @@ final class ReportExportController
     public function index(Request $request): JsonResponse
     {
         $user = $this->user($request);
-        $keys = array_column(ReportTabs::for($user), 'key');
+        $keys = [...array_column(ReportTabs::for($user), 'key'), ...CrmExports::keysFor($user)];
         $exports = DB::table('report_exports')->whereIn('report_key', $keys)->where(fn ($query) => $query->where('requested_by', $user->getKey())->orWhere('created_by', $user->getKey()))
             ->orderByDesc('created_at')->limit(15)
             ->get(['id', 'code', 'report_name', 'report_key', 'format', 'scope', 'rows_count', 'size_bytes', 'status', 'scheduled_job_id', 'expires_at', 'created_at']);
@@ -94,7 +95,7 @@ final class ReportExportController
         $user = $this->user($request);
         $row = DB::table('report_exports')->where(Str::isUuid($id) ? 'id' : 'code', $id)->first(['id', 'code', 'report_key', 'format', 'file_path', 'status', 'expires_at', 'requested_by', 'created_by']);
 
-        if ($row === null || ! in_array($user->getKey(), [$row->requested_by, $row->created_by], true) || ! in_array($row->report_key, array_column(ReportTabs::for($user), 'key'), true)) {
+        if ($row === null || ! in_array($user->getKey(), [$row->requested_by, $row->created_by], true) || ! in_array($row->report_key, [...array_column(ReportTabs::for($user), 'key'), ...CrmExports::keysFor($user)], true)) {
             throw ApiException::notFound('La exportación no existe.');
         }
 

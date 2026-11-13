@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
 
 final class ProductSections
 {
-    private const CHANNEL_LABELS = ['erp' => 'ERP', 'crm' => 'CRM', 'quotes' => 'Cotizaciones', 'b2b' => 'B2B', 'portal' => 'Portal cliente', 'portal_pax' => 'Portal pasajero', 'cms' => 'CMS', 'ecommerce' => 'E-commerce', 'mobile' => 'Mobile'];
+    public const CHANNEL_LABELS = ['erp' => 'ERP', 'crm' => 'CRM', 'quotes' => 'Cotizaciones', 'b2b' => 'B2B', 'portal' => 'Portal cliente', 'portal_pax' => 'Portal pasajero', 'cms' => 'CMS', 'ecommerce' => 'E-commerce', 'mobile' => 'Mobile'];
 
     private const POLICY_LABELS = ['cancellation' => 'cancelación', 'modification' => 'cambios', 'no_show' => 'no-show', 'refund' => 'reembolsos', 'penalties' => 'penalidades', 'date_change' => 'cambio de fecha'];
 
@@ -118,7 +118,7 @@ final class ProductSections
         }
     }
 
-    public function mainProvider(object $product, ?string $providerId, User $actor): void
+    public function mainProvider(object $product, ?string $providerId, User $actor, ?string $reason = null): void
     {
         if ($providerId && $providerId !== $product->main_provider_id && ! $this->providerActive($providerId)) {
             throw ApiException::unprocessable('PRD-BR-007', 'Elige un proveedor activo y con contrato vigente.');
@@ -127,7 +127,14 @@ final class ProductSections
         if ($providerId !== $product->main_provider_id) {
             $names = DB::table('catalog_providers')->whereIn('id', array_filter([$providerId, $product->main_provider_id]))->pluck('name', 'id');
             DB::table('catalog_products')->where('id', $product->id)->update(['main_provider_id' => $providerId]);
-            $this->note($product, 'Cambió el proveedor principal a '.($providerId ? $names[$providerId] : 'sin proveedor'), $product->main_provider_id ? $names[$product->main_provider_id] : null);
+            $before = $product->main_provider_id ? $names[$product->main_provider_id] : null;
+            $after = $providerId ? $names[$providerId] : 'sin proveedor';
+
+            if ($reason !== null && trim($reason) !== '') {
+                $this->audit->log('Producto', $product->code, 'cambio_proveedor', $before, mb_substr("{$after} · ".trim($reason), 0, 500));
+            } else {
+                $this->note($product, "Cambió el proveedor principal a {$after}", $before);
+            }
         }
     }
 
@@ -423,6 +430,14 @@ final class ProductSections
             if ((string) $value !== (string) $product->{$field}) {
                 $this->note($product, "Cambió {$fieldLabels[$field]}".($field === 'slug' ? " a {$value}" : ''), $field === 'slug' ? $product->slug : null);
             }
+        }
+        if (array_key_exists('features', $data)) {
+            $features = array_values(array_filter(array_map(fn ($text) => trim((string) $text), (array) ($data['features'] ?? [])), fn (string $text) => $text !== ''));
+            $previous = json_decode((string) ($product->features ?? '[]'), true) ?: [];
+            if ($features !== $previous) {
+                $this->note($product, 'Cambió las características destacadas: '.(implode(' · ', $features) ?: 'ninguna'), $previous === [] ? null : implode(' · ', $previous));
+            }
+            $values['features'] = json_encode($features, JSON_UNESCAPED_UNICODE);
         }
         DB::table('catalog_products')->where('id', $product->id)->update($values);
 

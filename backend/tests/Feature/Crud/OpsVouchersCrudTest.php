@@ -76,7 +76,9 @@ it('anula el voucher con motivo, lo conserva en el historial y libera el servici
 
     $voucher = rowOf('ops_vouchers', $code);
     $passengers = withinTenant(tenantA(), fn () => DB::table('iam_users')->where('reservation_id', $voucher->reservation_id)->pluck('id'));
-    $notified = withinTenant(tenantA(), fn () => DB::table('notif_messages')->where('event_code', 'voucher.emitido')->where('source_id', $voucher->id)->whereNotNull('recipient_user_id')->pluck('recipient_user_id'));
+    $notified = withinTenant(tenantA(), fn () => DB::table('notif_messages as n')->join('iam_users as u', 'u.id', '=', 'n.recipient_user_id')->whereNull('u.provider_id')->where('n.event_code', 'voucher.emitido')->where('n.source_id', $voucher->id)->pluck('n.recipient_user_id'));
+    $suppliers = withinTenant(tenantA(), fn () => DB::table('notif_messages as n')->join('iam_users as u', 'u.id', '=', 'n.recipient_user_id')->where('u.provider_id', $voucher->provider_id)->where('n.event_code', 'voucher.emitido')->where('n.channel', 'portal')->where('n.source_id', $voucher->id)->count());
+    expect($suppliers)->toBe(withinTenant(tenantA(), fn () => DB::table('iam_users')->where('provider_id', $voucher->provider_id)->where('status', 'activo')->whereNull('deleted_at')->count()));
 
     expect($notified->sort()->values()->all())->toEqual($passengers->merge(withinTenant(tenantA(), fn () => DB::table('iam_users')->whereNull('reservation_id')->where('client_id', DB::table('booking_reservations')->where('id', $voucher->reservation_id)->value('client_id'))->pluck('id')))->unique()->sort()->values()->all());
 });

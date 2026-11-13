@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders\Modules;
 
+use App\Domain\Booking\Support\ReservationIncidents;
 use App\Domain\Platform\Models\Tenant;
 use Database\Support\KitSeeds;
 use Database\Support\SeedsTenant;
@@ -62,6 +63,10 @@ final class OperationsIncidentsSeeder
                 $this->evidence($incident->id, $orderId, $file, $seed, $reporter, $source);
             }
         }
+
+        DB::table('booking_reservations as r')->where('r.tenant_id', $this->tenant->getKey())->whereIn('r.status', ['confirmada', 'en_operacion', 'parcial'])
+            ->whereExists(fn ($query) => $query->from('ops_incidents as i')->whereColumn('i.reservation_id', 'r.id')->whereIn('i.severity', ReservationIncidents::HIGH_SEVERITIES)->whereIn('i.status', ReservationIncidents::OPEN_STATUSES))
+            ->update(['status' => 'incidencia']);
     }
 
     private function log(string $incidentId, int $index, array $entry, string $status, int $total): void

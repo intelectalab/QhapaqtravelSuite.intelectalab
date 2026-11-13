@@ -17,6 +17,7 @@ export interface ConversationSummary {
   created_at: string;
   preview: string | null;
   preview_inbound: boolean;
+  preview_note?: boolean;
   sla: { due_at: string; responded_at: string | null; state: "met" | "late" | "breached" | "warning" | "running" };
   window_open: boolean;
   lock_version: number;
@@ -29,9 +30,8 @@ export interface ConversationMessage {
   at: string;
   author: string;
   delivery: string | null;
-  files: { name: string; size: number }[];
+  files: { id: string; name: string; mime: string; size: number; available: boolean }[];
 }
-
 export interface ConversationCard {
   client: { code: string; name: string; segment: string; country: string; nps: number | null; owner: string | null } | null;
   lead: { code: string; name: string; status: string } | null;
@@ -39,6 +39,8 @@ export interface ConversationCard {
   reservations: { code: string; title: string; status: string; date: string; total: number; currency: string; linked: boolean }[];
   quotes: { code: string; title: string; status: string; date: string; linked: boolean }[];
   opportunity: { code: string; title: string; stage: string } | null;
+  in_trip: { code: string; until: string } | null;
+  ticket: { code: string; status: string } | null;
 }
 
 export interface ConversationThread extends ConversationSummary {
@@ -61,7 +63,15 @@ export interface InboxOverview {
   agents: { id: string; name: string }[];
   can: { manage: boolean; reassign: boolean; link: LinkKind[]; quote?: boolean };
   me: string;
+  scope?: "all" | "assigned" | "own";
+  agency?: { name: string; emergency_phone: string | null };
 }
+
+export const INBOX_SCOPE: Record<NonNullable<InboxOverview["scope"]>, { label: string; detail: string }> = {
+  all: { label: "Todo el equipo", detail: "Ves todas las conversaciones de la agencia." },
+  assigned: { label: "Según mi rol", detail: "Ves las conversaciones asignadas a ti y las de pasajeros que están en viaje." },
+  own: { label: "Mis conversaciones", detail: "Ves las conversaciones asignadas a ti y las que aún no tienen responsable." },
+};
 
 export type LinkKind = "client" | "lead" | "reservation";
 
@@ -88,6 +98,13 @@ export const SLA_STATE: Record<ConversationSummary["sla"]["state"], { label: str
   running: { label: "En plazo", tone: "info" },
 };
 
+export function slaCountdown(dueAt: string, now: number = Date.now()): string {
+  const minutes = Math.max(0, Math.round((new Date(dueAt).getTime() - now) / 60000));
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  return hours < 48 ? `${hours} h${minutes % 60 ? ` ${minutes % 60} min` : ""}` : `${Math.floor(hours / 24)} días`;
+}
+
 export const PRIORITY_OPTIONS = [
   { value: "baja", label: "Baja" },
   { value: "media", label: "Media" },
@@ -100,3 +117,29 @@ export const ATTACHMENT_ACCEPT = "image/jpeg,image/png,image/webp,application/pd
 export const ATTACHMENT_MAX_FILES = 5;
 
 export const ATTACHMENT_MAX_BYTES = 10 * 1024 * 1024;
+
+export type InboxChannel = "whatsapp" | "email";
+
+export type ChannelAccountStatus = "activo" | "sandbox" | "inactivo";
+
+export interface ChannelAccount {
+  channel: InboxChannel;
+  label: string;
+  connected: boolean;
+  name: string;
+  phone_number_id: string | null;
+  mailbox: string | null;
+  first_response_sla_minutes: number;
+  status: ChannelAccountStatus;
+  status_label: string;
+  webhook_secret_set: boolean;
+  webhook_url: string;
+  signature_header: string;
+  updated_at: string | null;
+}
+
+export const CHANNEL_ACCOUNT_STATUS: Record<ChannelAccountStatus, { label: string; tone: Tone }> = {
+  activo: { label: "Conectado", tone: "ok" },
+  sandbox: { label: "Modo de prueba", tone: "warn" },
+  inactivo: { label: "Desconectado", tone: "mute" },
+};

@@ -74,6 +74,10 @@ final class PassengerPortalDirectory
                 'service' => $row->service,
             ])->values(),
             'can_reply' => $viewer->can('operations.assign') || $viewer->can('channels.b2b.manage') || $viewer->can('channels.cms.publish'),
+            'previewable' => DB::table('iam_users as u')->join('booking_reservations as r', 'r.id', '=', 'u.reservation_id')
+                ->whereNull('u.deleted_at')->where('u.status', 'activo')->whereNull('r.deleted_at')->whereNotIn('r.status', ['cancelada', 'borrador'])
+                ->orderByDesc('r.travel_from')->limit(50)->get(['r.code', 'r.title', 'r.travel_from', 'u.name'])
+                ->unique('code')->map(fn (object $row): array => ['code' => $row->code, 'title' => $row->title, 'from' => $row->travel_from, 'passenger' => $row->name])->values(),
         ];
     }
 }

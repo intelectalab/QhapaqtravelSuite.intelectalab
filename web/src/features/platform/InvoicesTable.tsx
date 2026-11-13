@@ -13,6 +13,8 @@ import { ManualPaymentAction, RetryChargeAction, VoidInvoiceAction } from "./Inv
 
 const href = (invoice: InvoiceSummary) => `/plataforma/facturacion/facturas/${invoice.id}`;
 
+const recovered = (invoice: InvoiceSummary) => invoice.status === "paid" && invoice.attempts > 1;
+
 const KIND: Record<InvoiceSummary["kind"], string> = { subscription: "Suscripción", proration: "Prorrateo", addon: "Complemento", manual: "Manual" };
 
 const columns: Column<InvoiceSummary>[] = [
@@ -46,6 +48,18 @@ const columns: Column<InvoiceSummary>[] = [
   },
   { id: "issue", header: "Emisión", wideOnly: true, cell: (invoice) => <span className="text-[13px]">{formatDate(invoice.issue_date)}</span> },
   { id: "total", header: "Total", align: "right", cell: (invoice) => <span className="font-mono text-[13.5px] font-semibold">{formatMoney(invoice.total, invoice.currency)}</span> },
+  {
+    id: "attempts",
+    header: "Intentos",
+    align: "right",
+    wideOnly: true,
+    cell: (invoice) => (
+      <span className="flex flex-col items-end">
+        <span className="font-mono text-[13px]">{invoice.attempts}</span>
+        {recovered(invoice) && <small className="text-[11.5px] font-semibold text-ok">recuperado</small>}
+      </span>
+    ),
+  },
   {
     id: "status",
     header: "Estado",
@@ -84,6 +98,7 @@ const metrics: MetricFilter<InvoiceSummary>[] = [
 const sorts: SortOption<InvoiceSummary>[] = [
   { id: "issue", label: "Fecha de emisión", type: "date", value: (invoice) => invoice.issue_date },
   { id: "total", label: "Total", type: "number", value: (invoice) => invoice.total },
+  { id: "attempts", label: "Intentos", type: "number", value: (invoice) => invoice.attempts },
   { id: "number", label: "Número", type: "text", value: (invoice) => invoice.number },
 ];
 
@@ -108,6 +123,7 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceSummary[] }) {
       metrics={metrics}
       filters={filters}
       sorts={sorts}
+      footer={(rows) => ({ number: `Total (${rows.length})`, total: <span className="font-mono">{formatMoney(rows.reduce((sum, invoice) => sum + invoice.total, 0), rows[0]?.currency ?? "PEN")}</span> })}
     />
   );
 }

@@ -28,5 +28,8 @@ final readonly class BookingQuote
         public bool $ok,
         public ?object $season = null,
         public array $rulesApplied = [],
+        public array $legs = [],
+        public ?string $tripEnd = null,
+        public array $byCategory = [],
     ) {}
 }

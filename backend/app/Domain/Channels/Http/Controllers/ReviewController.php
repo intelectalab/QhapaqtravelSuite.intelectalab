@@ -114,7 +114,7 @@ final class ReviewController
 
     public function replyExternal(Request $request, string $id, ReplyExternalReview $reply): JsonResponse
     {
-        $data = $request->validate(['text' => ['required', 'string', 'min:5', 'max:1500']], ['text.*' => 'Escribe una respuesta de 5 a 1500 caracteres.']);
+        $data = $request->validate(['text' => ['required', 'string', 'min:20', 'max:1500']], ['text.*' => 'Escribe una respuesta de 20 a 1500 caracteres.']);
         $reply->reply($id, $data['text'], $this->user($request));
 
         return response()->json(['data' => ['id' => $id]]);

@@ -1,34 +1,54 @@
-import { CalendarCheck, Coins, FileText, Funnel, Luggage, Percent, PhoneCall, Target, UserPlus } from "lucide-react";
+import { AlarmClock, CalendarCheck, Coins, FilePlus2, FileText, Funnel, HeartHandshake, Luggage, Percent, PhoneCall, Target, UserPlus, Users, Zap, type LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { StatusBadge } from "@/components/ui/Badge";
 import { TintTile } from "@/components/ui/Tinted";
 import type { ActivityRow, SalesData } from "@/lib/dashboard";
+import { toneStyle, type Tone } from "@/lib/tone";
 import { capitalize, formatDateTime, formatMoney, formatPercent } from "@/lib/format";
 import { HBars, MaybeLink, PanelCard, PanelLink, RowList, SubHeading, shortDate, type CanOpen } from "./DashboardBlocks";
 import { byCurrency, money, plural } from "./panelFormat";
+import { CompleteActivityAction, TakeLeadButton } from "./PanelActions";
 
 const STAGE_TONES = ["info", "t1", "violet", "sun"] as const;
+
+const QUICK: { href: string; label: string; note: string; icon: LucideIcon; tone: Tone }[] = [
+  { href: "/crm/leads/nuevo", label: "Nuevo lead", note: "Registra a un interesado", icon: UserPlus, tone: "info" },
+  { href: "/cotizaciones/nueva", label: "Nueva cotización", note: "Arma una propuesta", icon: FilePlus2, tone: "accent" },
+  { href: "/crm/clientes", label: "Mis clientes", note: "Tu cartera y su 360", icon: Users, tone: "t1" },
+  { href: "/crm/postventa", label: "Postventa", note: "Encuestas y casos", icon: HeartHandshake, tone: "ok" },
+];
 
 function daysLeft(today: string, date: string | null): number | null {
   if (!date) return null;
   return Math.round((new Date(`${date}T12:00:00`).getTime() - new Date(`${today}T12:00:00`).getTime()) / 86400000);
 }
 
-function activityItem(activity: ActivityRow) {
+function activityItem(activity: ActivityRow, complete = false) {
   return {
     key: activity.code,
     icon: PhoneCall,
     tone: activity.status === "vencida" ? ("bad" as const) : ("t4" as const),
     title: activity.subject,
     detail: [capitalize(activity.type), activity.due_at ? formatDateTime(activity.due_at, false) : null].filter(Boolean).join(" · "),
-    aside: <StatusBadge status={activity.status} />,
+    aside: complete ? <CompleteActivityAction code={activity.code} subject={activity.subject} /> : <StatusBadge status={activity.status} />,
   };
 }
 
 export function SalesPanel({ data, can }: { data: SalesData; can: CanOpen }) {
   const { kpis } = data;
+  const shortcuts = QUICK.filter((item) => can(item.href));
 
   return (
     <>
+      {kpis.activities.due > 0 && (
+        <p data-testid="panel-due-activities" className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-card border border-[color-mix(in_srgb,var(--bad)_30%,transparent)] bg-[color-mix(in_srgb,var(--bad)_8%,transparent)] px-4 py-3 text-[13.5px]">
+          <AlarmClock size={16} className="flex-none text-bad" />
+          <b className="font-semibold">{kpis.activities.due === 1 ? "Tienes 1 actividad para hoy o vencida." : `Tienes ${kpis.activities.due} actividades para hoy o vencidas.`}</b>
+          <PanelLink href="/crm/actividades" can={can}>
+            Ver la agenda
+          </PanelLink>
+        </p>
+      )}
       <section className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <TintTile icon={Target} tone="violet" label="Mi pipeline" value={money(kpis.pipeline.amount)} note={`${plural(kpis.pipeline.count, "oportunidad", "oportunidades")} · ponderado ${money(kpis.pipeline.weighted)}`} info={<p>Tus oportunidades abiertas, en soles. El ponderado multiplica cada una por su probabilidad.</p>} />
         <TintTile icon={FileText} tone={kpis.quotes.expiring > 0 ? "sun" : "accent"} label="Mis cotizaciones abiertas" value={kpis.quotes.open} note={kpis.quotes.expiring > 0 ? `${kpis.quotes.expiring} vencen en 7 días o menos` : "Ninguna vence esta semana"} info={<p>Tus cotizaciones en borrador, enviadas, vistas o en negociación. Debajo, las enviadas cuya validez termina en los próximos 7 días.</p>} />
@@ -61,11 +81,11 @@ export function SalesPanel({ data, can }: { data: SalesData; can: CanOpen }) {
         </PanelCard>
         <PanelCard icon={CalendarCheck} title="Mis actividades" tone="t4" className="lg:col-span-5" aside={<PanelLink href="/crm/actividades" can={can}>Agenda</PanelLink>}>
           <SubHeading>Hoy y vencidas</SubHeading>
-          <RowList empty="Nada pendiente para hoy." items={data.activities.due.map(activityItem)} />
+          <RowList empty="Nada pendiente para hoy." items={data.activities.due.map((activity) => activityItem(activity, data.can.complete))} />
           {data.activities.next.length > 0 && (
             <>
               <SubHeading>Próximas</SubHeading>
-              <RowList empty="" items={data.activities.next.map(activityItem)} />
+              <RowList empty="" items={data.activities.next.map((activity) => activityItem(activity))} />
             </>
           )}
         </PanelCard>
@@ -120,6 +140,7 @@ export function SalesPanel({ data, can }: { data: SalesData; can: CanOpen }) {
                 </MaybeLink>
               ),
               detail: [lead.source, lead.destination, lead.pax ? plural(lead.pax, "pasajero", "pasajeros") : null].filter(Boolean).join(" · "),
+              aside: data.can.take ? <TakeLeadButton code={lead.code} /> : undefined,
             }))}
           />
         </PanelCard>
@@ -140,6 +161,25 @@ export function SalesPanel({ data, can }: { data: SalesData; can: CanOpen }) {
             }))}
           />
         </PanelCard>
+        {shortcuts.length > 0 && (
+          <PanelCard icon={Zap} title="Accesos rápidos" tone="violet" className="lg:col-span-12">
+            <ul className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+              {shortcuts.map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href} style={toneStyle(item.tone)} className="lift flex items-center gap-3 rounded-tile border border-line px-3.5 py-3 transition-colors hover:border-[color-mix(in_srgb,var(--tint)_40%,transparent)]">
+                    <span className="grid h-9 w-9 flex-none place-items-center rounded-[11px] bg-[color-mix(in_srgb,var(--tint)_14%,transparent)] text-[var(--tint)]">
+                      <item.icon size={17} />
+                    </span>
+                    <span className="min-w-0">
+                      <b className="block truncate text-[13.5px] font-semibold">{item.label}</b>
+                      <span className="block truncate text-[12px] text-fg-3">{item.note}</span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </PanelCard>
+        )}
       </div>
     </>
   );

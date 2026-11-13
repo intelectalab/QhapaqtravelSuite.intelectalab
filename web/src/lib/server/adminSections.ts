@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import type { Adapter, AdaptersMeta, ApiOverview, AuditEntry, IntegrationErrorRecord, IntegrationsOverview, NotificationMessageRecord, NotificationRuleRecord, NotificationRulesMeta, NotificationsOverview, PaxMessage, PaxTemplatesOverview, RulesOverview, ScheduledJob } from "@/lib/admin";
+import type { Adapter, AdaptersMeta, ApiOverview, AuditEntry, IntegrationErrorRecord, IntegrationsOverview, NotificationMessageRecord, NotificationRuleRecord, NotificationRulesMeta, NotificationsOverview, PaxMessage, PaxTemplatesOverview, RulesOverview, ScheduledJob, SchedulerInfo } from "@/lib/admin";
 import { getCollection } from "./admin";
 import { getResource } from "./resource";
 
@@ -28,18 +28,22 @@ export const getNotifications = cache(async (): Promise<NotificationsOverview | 
       audience: message.audience,
       at: message.created_at,
       sent_at: message.sent_at,
+      body: message.body_rendered ?? null,
+      address: message.recipient_address ?? null,
+      read_at: message.read_at ?? null,
     })),
     kpis: rules.meta.kpis,
     options: rules.meta.options,
     history: rules.meta.history,
     can_manage: rules.meta.can_manage,
+    whatsapp: rules.meta.whatsapp ?? null,
   };
 });
 
 export const getIntegrations = cache(async (): Promise<IntegrationsOverview | null> => {
   const [adapters, jobs, errors] = await Promise.all([
     getCollection<Adapter, AdaptersMeta>("/integrations", "No pudimos cargar las integraciones.", 100),
-    getCollection<ScheduledJob>("/jobs", "No pudimos cargar los procesos programados.", 100),
+    getCollection<ScheduledJob, { scheduler?: SchedulerInfo }>("/jobs", "No pudimos cargar los procesos programados.", 100),
     getCollection<IntegrationErrorRecord>("/integration-errors", "No pudimos cargar los errores de integración.", 200),
   ]);
   if (!adapters || !jobs || !errors) return null;
@@ -50,6 +54,7 @@ export const getIntegrations = cache(async (): Promise<IntegrationsOverview | nu
     owners: adapters.meta.owners,
     history: adapters.meta.history,
     can_manage: adapters.meta.can_manage,
+    scheduler: jobs.meta.scheduler ?? null,
   };
 });
 

@@ -10,6 +10,7 @@ import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { IDLE, SITE_COUNTRIES, SITE_DOC_TYPES, WISHLIST_STORAGE_KEY, type AccountMe, type SiteFormState } from "@/lib/site";
+import { trackSiteEvent } from "@/lib/site-analytics";
 import { useStoredValue } from "@/lib/useStoredValue";
 import { CheckBox, FormAlert } from "./FormBits";
 import { Done, Section } from "./Forms";
@@ -312,6 +313,7 @@ export function WishButton({ slug, signedIn, initial = false, className }: { slu
       title={on ? "En tu lista de deseos" : "Guardar en mi lista de deseos"}
       disabled={pending}
       onClick={() => {
+        trackSiteEvent(on ? "remove_from_wishlist" : "add_to_wishlist", { item_id: slug });
         if (!signedIn) {
           setLocal(on ? local.filter((item) => item !== slug) : [...local, slug]);
           return;

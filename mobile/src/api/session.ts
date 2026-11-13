@@ -66,6 +66,11 @@ export async function deviceId(): Promise<string | null> {
   return getState("device_id");
 }
 
+export async function wipeDevice(): Promise<void> {
+  await setToken(null);
+  await clearLocalData();
+}
+
 export async function logout(): Promise<void> {
   const device = await deviceId();
   if (device) await api(`/mobile/devices/${device}`, { method: "DELETE" }).catch(() => undefined);

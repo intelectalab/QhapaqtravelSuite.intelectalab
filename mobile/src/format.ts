@@ -71,3 +71,11 @@ export function tripLabel(trip: { days_left: number; day: number; days_total: nu
   if (trip.day >= 1 && trip.day <= trip.days_total) return `Día ${trip.day} de ${trip.days_total}`;
   return "Viaje finalizado";
 }
+
+export function countdownLabel(startsAt: string, now: Date = new Date()): string {
+  const minutes = Math.max(0, Math.round((new Date(startsAt).getTime() - now.getTime()) / 60_000));
+  if (minutes < 60) return minutes <= 1 ? "en un momento" : `en ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `en ${hours} h ${minutes % 60} min`;
+  return `en ${Math.floor(hours / 24)} d ${hours % 24} h`;
+}

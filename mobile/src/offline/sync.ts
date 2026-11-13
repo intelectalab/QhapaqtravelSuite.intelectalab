@@ -1,6 +1,6 @@
 import NetInfo from "@react-native-community/netinfo";
 import { API_URL } from "../config";
-import { due, markConflict, markFailed, markRetry, markSynced, markSyncing, recoverInterrupted, type OutboxAction } from "./outbox";
+import { due, markFailed, markRetry, markSynced, markSyncing, recoverInterrupted, type OutboxAction } from "./outbox";
 
 interface ActionResult {
   client_action_id: string;
@@ -18,6 +18,13 @@ export interface SyncDeps {
   onSessionExpired: () => void;
   refreshFromServer: () => Promise<void>;
   onChange: () => void;
+  onDeviceRevoked?: (message: string) => Promise<void>;
+}
+
+export const DEVICE_REVOKED = "DEVICE_REVOKED";
+
+export function isDeviceRevoked(status: number, code: string | undefined): boolean {
+  return status === 403 && code === DEVICE_REVOKED;
 }
 
 const MAX_ATTEMPTS = 8;
@@ -77,7 +84,10 @@ export class SyncEngine {
         this.deps.onChange();
         if (!ok) break;
       }
-      await this.deps.refreshFromServer().catch(() => undefined);
+      await this.deps.refreshFromServer().catch(async (error: unknown) => {
+        const detail = typeof error === "object" && error !== null && "detail" in error ? (error.detail as { status: number; code?: string; message: string }) : null;
+        if (detail && isDeviceRevoked(detail.status, detail.code)) await this.deps.onDeviceRevoked?.(detail.message);
+      });
     } finally {
       this.running = false;
       this.deps.onChange();
@@ -125,7 +135,11 @@ export class SyncEngine {
       return false;
     }
     if (!response.ok) {
-      const body = (await response.json().catch(() => ({}))) as { message?: string };
+      const body = (await response.json().catch(() => ({}))) as { message?: string; code?: string };
+      if (isDeviceRevoked(response.status, body.code)) {
+        await this.deps.onDeviceRevoked?.(body.message ?? "Tu agencia desactivó este teléfono.");
+        return false;
+      }
       for (const action of batch) {
         await markFailed(action.client_action_id, body.message ?? `Error ${response.status}`);
         await this.deps.onRejected(action, body.message ?? "La acción fue rechazada por el servidor.");
@@ -146,7 +160,7 @@ export class SyncEngine {
         await markSynced(action.client_action_id);
       } else if (result.result === "conflict_resolved") {
         const message = result.message ?? `Conflicto resuelto por el servidor (${result.conflict_rule ?? "regla"})`;
-        await markConflict(action.client_action_id, message);
+        await markSynced(action.client_action_id, message);
         this.deps.onConflict(action, message);
       } else {
         const message = result.message ?? "La acción fue rechazada por el servidor.";

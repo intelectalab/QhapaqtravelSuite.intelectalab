@@ -1,4 +1,5 @@
 import type { SiteBannerData, SiteDesign } from "@/lib/site-design";
+import type { TemplatePreview } from "@/lib/templatePreview";
 
 export interface Money {
   amount: number;
@@ -33,10 +34,13 @@ export interface SiteProfile {
     email: string | null;
     web: string | null;
     registry: string | null;
+    emergency_phone?: string | null;
+    payment_methods?: string[];
   };
   branding: { brand: string; accent: string; menu: string };
   design: SiteDesign;
   preview?: boolean;
+  templatePreview?: TemplatePreview;
   sedes: SiteSede[];
   fx: { rate: number; date: string } | null;
   banner: SiteBannerData | null;
@@ -103,6 +107,8 @@ export interface ProductCard {
   languages: string[];
   rating: Rating | null;
   from: Money | null;
+  from_date?: string | null;
+  from_season?: { name: string; factor: number; discount_pct?: number | null } | null;
   list: number | null;
   first_date: string | null;
   next_departure: Departure | null;
@@ -283,7 +289,49 @@ export interface ProductDetail {
   related: ProductCard[];
 }
 
-export type QuoteLineKind = "base" | "addon" | "lodging" | "surcharge" | "option";
+export type QuoteLineKind = "base" | "addon" | "lodging" | "surcharge" | "option" | "tour" | "transport";
+
+export type TripCategory = "base" | "lodging" | "tour" | "transport" | "addon" | "surcharge";
+
+export interface TripLeg {
+  leg_id: string;
+  city: string;
+  nights: number;
+  min_nights: number;
+  max_nights: number;
+  check_in: string | null;
+  check_out: string | null;
+}
+
+export interface TripTransport {
+  id: string;
+  name: string;
+  mode: string;
+  mode_label: string;
+  from_leg_id: string;
+  to_leg_id: string | null;
+  pricing: "pax" | "vehiculo";
+  currency: string;
+  price_adult: string | null;
+  price_child: string | null;
+  hours: string | null;
+  vehicles: { name: string; max_pax: number; price: string }[];
+}
+
+export interface TripConfig {
+  currency: string;
+  legs: {
+    id: string;
+    city: string;
+    nights: number;
+    min_nights: number;
+    max_nights: number;
+    seasonal: boolean;
+    tours: { id: string; name: string; day_offset: number; time: string; hours: string; currency: string; price_adult: string; price_child: string; min_age: number | null }[];
+    local: TripTransport[];
+    arrivals: TripTransport[];
+  }[];
+}
 
 export interface QuoteLine {
   key: string;
@@ -311,9 +359,12 @@ export interface BookingExtras {
   no_lodging: boolean;
   options: { group: string; label: string }[];
   removed: string[];
+  nights?: Record<string, number>;
+  tours?: string[];
+  transport?: string[];
 }
 
-export const NO_EXTRAS: BookingExtras = { addons: [], lodging: [], no_lodging: false, options: [], removed: [] };
+export const NO_EXTRAS: BookingExtras = { addons: [], lodging: [], no_lodging: false, options: [], removed: [], nights: {}, tours: [], transport: [] };
 
 export interface Quote {
   date: string;
@@ -322,6 +373,7 @@ export interface Quote {
   lines: QuoteLine[];
   subtotal: string;
   discount: { label: string; amount: string; code: string | null } | null;
+  adjustments?: { key: string; label: string; amount: string }[];
   total: string;
   list_total: string | null;
   extras_total: string;
@@ -341,6 +393,9 @@ export interface Quote {
   departure: Departure | null;
   pax: { adults: number; children: number; infants: number };
   quote_token?: string;
+  legs?: TripLeg[];
+  trip_end?: string | null;
+  by_category?: Record<TripCategory, string> | null;
 }
 
 export interface BookingAddon {
@@ -368,6 +423,7 @@ export interface BookingConfig {
   pickup: { required: boolean; ask_flight: boolean; points: { label: string; kind: string; requires_address: boolean }[] } | null;
   payment: { modes: PaymentMode[]; deposit_pct: number; balance_due_days: number; hold_hours: number | null };
   can_remove: boolean;
+  trip?: TripConfig | null;
 }
 
 export interface ReviewWidgetFeed {
@@ -544,6 +600,13 @@ export interface SiteOrder {
     receivables: { code: string; kind: string; concept: string; amount: string; paid: string; currency: string; status: string; due_date: string }[];
     vouchers: { code: string; label: string; date: string; status: string }[];
   }[];
+}
+
+export interface ChatMessage {
+  from: "contacto" | "asesor" | "sistema";
+  author: string | null;
+  body: string;
+  at: string;
 }
 
 export function cartCookie(agencia: string): string {

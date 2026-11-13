@@ -38,31 +38,31 @@ export function SearchBar({ destinations, className, initial }: { destinations: 
         event.preventDefault();
         router.push(href(`/buscar${listingQuery({ destino, fecha, viajeros: String(viajeros) })}`));
       }}
-      className={cn("grid gap-2 rounded-[22px] border border-line bg-surface p-2 shadow-[0_24px_60px_-30px_rgb(14_17_32/0.55)] md:grid-cols-[1.3fr_1fr_1fr_auto]", className)}
+      className={cn("grid gap-2 rounded-[22px] border border-line bg-surface p-2 shadow-[0_24px_60px_-30px_rgb(14_17_32/0.55)] md:grid-cols-[1.3fr_1fr_1fr_auto] md:items-center", className)}
       role="search"
     >
-      <label className="flex min-w-0 items-center gap-3 rounded-2xl px-3 py-2 transition hover:bg-surface-2">
+      <label className="flex h-16 min-w-0 items-center gap-3 rounded-2xl px-3 transition hover:bg-surface-2">
         <MapPin size={18} className="flex-none text-brand" />
-        <span className="min-w-0 flex-1">
-          <span className="block text-[11.5px] font-semibold text-fg-3">{t.search.destination}</span>
-          <Select value={destino} onChange={setDestino} options={[{ value: "", label: t.search.allDestinations }, ...destinations]} placeholder={t.search.where} ariaLabel={t.search.destination} className="h-8! w-full border-0! bg-transparent! px-0! text-[14px]" />
+        <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+          <span className="block text-[11.5px] font-semibold leading-4 text-fg-3">{t.search.destination}</span>
+          <span className="flex h-8 items-center"><Select value={destino} onChange={setDestino} options={[{ value: "", label: t.search.allDestinations }, ...destinations]} placeholder={t.search.where} ariaLabel={t.search.destination} className="h-8! w-full border-0! bg-transparent! px-0! text-[14px]" /></span>
         </span>
       </label>
-      <label className="flex min-w-0 items-center gap-3 rounded-2xl px-3 py-2 transition hover:bg-surface-2">
+      <label className="flex h-16 min-w-0 items-center gap-3 rounded-2xl px-3 transition hover:bg-surface-2">
         <CalendarDays size={18} className="flex-none text-brand" />
-        <span className="min-w-0 flex-1">
-          <span className="block text-[11.5px] font-semibold text-fg-3">{t.search.date}</span>
-          <input type="date" value={fecha} min={today} onChange={(event) => setFecha(event.target.value)} aria-label={t.search.tripDate} className="h-8 w-full bg-transparent text-[14px] text-fg outline-none" />
+        <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+          <span className="block text-[11.5px] font-semibold leading-4 text-fg-3">{t.search.date}</span>
+          <input type="date" value={fecha} min={today} onChange={(event) => setFecha(event.target.value)} aria-label={t.search.tripDate} className="block h-8! min-h-0! w-full border-0! bg-transparent! p-0! text-[14px] leading-8 text-fg shadow-none! outline-none" />
         </span>
       </label>
-      <div className="flex items-center gap-3 rounded-2xl px-3 py-2 transition hover:bg-surface-2">
+      <div className="flex h-16 min-w-0 items-center gap-3 rounded-2xl px-3 transition hover:bg-surface-2">
         <Users size={18} className="flex-none text-brand" />
-        <span className="min-w-0 flex-1">
-          <span className="block text-[11.5px] font-semibold text-fg-3">{t.search.travelers}</span>
-          <Stepper value={viajeros} min={1} max={20} onChange={setViajeros} label={t.search.traveler} removeLabel={t.common.remove(t.search.traveler)} addLabel={t.common.add(t.search.traveler)} />
+        <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+          <span className="block text-[11.5px] font-semibold leading-4 text-fg-3">{t.search.travelers}</span>
+          <span className="flex h-8 items-center"><Stepper value={viajeros} min={1} max={20} onChange={setViajeros} label={t.search.traveler} removeLabel={t.common.remove(t.search.traveler)} addLabel={t.common.add(t.search.traveler)} /></span>
         </span>
       </div>
-      <button type="submit" data-site-cta className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-brand px-6 text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110">
+      <button type="submit" data-site-cta className="inline-flex h-14 items-center justify-center gap-2 self-center rounded-2xl bg-brand px-6 text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110">
         <Search size={18} />
         {t.search.submit}
       </button>

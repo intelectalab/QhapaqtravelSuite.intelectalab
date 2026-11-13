@@ -30,7 +30,12 @@ it('v2.5 (04 §4): una incidencia grave abierta pasa la reserva a incidencia y a
         'description' => 'El bus quedó detenido en el km 40; se pide reemplazo.',
     ], critical())->assertCreated()->json('data.code');
 
-    expect(reservationRow('RES-2026-000348')->status)->toBe('incidencia');
+    $coordinator = withinTenant(tenantA(), fn () => DB::table('ops_orders')->where('code', 'OP-2026-0413')->value('coordinator_id'));
+    $notice = withinTenant(tenantA(), fn () => DB::table('notif_messages')->where('event_code', 'reserva.incidencia')->latest('created_at')->first(['recipient_user_id', 'subject']));
+    expect(reservationRow('RES-2026-000348')->status)->toBe('incidencia')
+        ->and($notice)->not->toBeNull()
+        ->and((string) $notice->recipient_user_id)->toBe((string) $coordinator)
+        ->and($notice->subject)->toContain('RES-2026-000348');
 
     $this->postJson("/api/v1/ops/incidents/{$incident}/resolve", ['resolution' => 'Llegó el bus de reemplazo y el grupo continuó.'], critical((int) rowOf('ops_incidents', $incident)->lock_version))->assertOk();
 

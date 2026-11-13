@@ -70,7 +70,70 @@ export default function DocumentsScreen() {
           {documents.data.policy.cancellation ? <Text style={styles.policy}>Política de cancelación: {documents.data.policy.cancellation}</Text> : null}
         </Card>
       ) : null}
+
+      {documents.data?.invoices && documents.data.invoices.length > 0 ? (
+        <>
+          <SectionTitle title="Comprobantes" aside={`${documents.data.invoices.length}`} />
+          <Card>
+            {documents.data.invoices.map((invoice) => (
+              <View key={invoice.number} style={styles.doc}>
+                <Ionicons name="receipt-outline" size={20} color={colors.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.name}>{invoice.number}</Text>
+                  <Text style={styles.meta}>
+                    {invoice.type} · {dayLabel(invoice.date)}
+                  </Text>
+                </View>
+                <Pill label={invoice.status.replace("_", " ")} tone={invoice.status === "aceptado" ? "ok" : "mute"} />
+              </View>
+            ))}
+          </Card>
+        </>
+      ) : null}
+
+      {documents.data?.insurance && documents.data.insurance.length > 0 ? (
+        <>
+          <SectionTitle title="Póliza de asistencia" />
+          <Card>
+            {documents.data.insurance.map((line) => (
+              <DocLine key={line.passenger} icon="shield-checkmark-outline" title={line.passenger} detail={[line.number ? `Póliza ${line.number}` : null, line.expires_on ? `vigente hasta ${dayLabel(line.expires_on)}` : null, line.note].filter(Boolean).join(" · ") || "Póliza por registrar"} status={line.status} />
+            ))}
+          </Card>
+        </>
+      ) : null}
+
+      {documents.data?.passports && documents.data.passports.length > 0 ? (
+        <>
+          <SectionTitle title="Pasaportes registrados" />
+          <Card>
+            {documents.data.passports.map((line) => (
+              <DocLine key={line.passenger} icon="person-circle-outline" title={line.passenger} detail={[line.document ?? "Documento por registrar", line.nationality, line.expires_on ? `vence ${dayLabel(line.expires_on)}` : null].filter(Boolean).join(" · ")} status={line.status} />
+            ))}
+          </Card>
+        </>
+      ) : null}
     </Screen>
+  );
+}
+
+const DOC_STATUS: Record<string, { label: string; tone: "ok" | "warn" | "bad" | "info" }> = {
+  completo: { label: "Validado", tone: "ok" },
+  recibido: { label: "En revisión", tone: "info" },
+  observado: { label: "Observado", tone: "bad" },
+  pendiente: { label: "Pendiente", tone: "warn" },
+};
+
+function DocLine({ icon, title, detail, status }: { icon: "shield-checkmark-outline" | "person-circle-outline"; title: string; detail: string; status: string | null | undefined }) {
+  const badge = status ? DOC_STATUS[status] : undefined;
+  return (
+    <View style={styles.doc}>
+      <Ionicons name={icon} size={20} color={colors.accent} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.name}>{title}</Text>
+        <Text style={styles.meta}>{detail}</Text>
+      </View>
+      {badge ? <Pill label={badge.label} tone={badge.tone} /> : null}
+    </View>
   );
 }
 

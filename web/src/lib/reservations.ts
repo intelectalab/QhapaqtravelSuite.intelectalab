@@ -119,6 +119,7 @@ export interface ReservationDetail extends Omit<ReservationRow, "passengers" | "
   change_log: ReservationChangeLog[];
   operation: ReservationOperation | null;
   counts: { web: number; feedback: number; unread_feedback: number };
+  pax_feedback_on?: boolean;
   payments?: ReservationPayment[];
   invoices?: ReservationInvoice[];
 }
@@ -199,6 +200,7 @@ export interface ReservationWebSnapshot {
   comments: string | null;
   companions: { pending: boolean; due: string | null };
   rules_applied: string[];
+  rules_inactive?: string[];
 }
 
 export interface ReservationFeedback {
@@ -416,3 +418,16 @@ export interface DirectPayload {
   inf: number;
   notes: string;
 }
+
+const SPECIAL_REQUEST_TAGS: { pattern: RegExp; label: string; tone: "bad" | "violet" | "warn" | "info" }[] = [
+  { pattern: /alerg|frutos secos|man[ií]|gluten|cel[ií]ac|vegetar|vegan|lactosa|dieta|kosher|halal/i, label: "Dieta o alergia", tone: "bad" },
+  { pattern: /aniversario|cumplea|luna de miel|boda|celebra|pedida de mano/i, label: "Celebración", tone: "violet" },
+  { pattern: /silla de ruedas|movilidad|accesib|bast[oó]n/i, label: "Accesibilidad", tone: "warn" },
+  { pattern: /beb[eé]|cuna|silla de (auto|beb)|coche/i, label: "Infante o cuna", tone: "info" },
+];
+
+export function specialRequestTags(text: string | null | undefined) {
+  return SPECIAL_REQUEST_TAGS.filter((tag) => tag.pattern.test(text ?? "")).map(({ label, tone }) => ({ label, tone }));
+}
+
+export const PENDING_PROVIDER_SERVICE = ["pendiente", "solicitado"];

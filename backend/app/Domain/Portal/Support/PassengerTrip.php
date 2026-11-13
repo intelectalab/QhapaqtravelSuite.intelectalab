@@ -9,6 +9,7 @@ use App\Domain\Documents\Actions\ClientDocuments;
 use App\Domain\Documents\Support\QrImage;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +50,11 @@ final class PassengerTrip
         $from = Carbon::parse($reservation->travel_from);
         $services = collect($detail['days'])->flatMap(fn (array $day): array => collect($day['services'])->map(fn (array $service): array => [...$service, 'date' => $day['date']])->all());
         $inside = $today >= $reservation->travel_from && $today <= $reservation->travel_to;
+        $pickup = $this->pickupText((string) $reservation->id);
+        $next = $this->services($reservation)->first(fn (stdClass $row): bool => $row->service_kind !== 'alojamiento' && $row->service_time !== null && PortalDirectory::serviceState($row, $today, (string) $reservation->travel_to) !== 'completado'
+            && ($row->service_date > $today || ($row->service_date === $today && substr((string) $row->service_time, 0, 5) >= $this->clock())));
+        $pending = $this->incidents($reservation)->reject(fn (stdClass $row): bool => (bool) $row->acked);
+        $critical = $pending->sortBy(fn (stdClass $row): int => array_search($row->severity, ['critica', 'alta', 'media', 'baja'], true) ?: 0)->first();
 
         return [
             'today' => $today,
@@ -65,7 +71,10 @@ final class PassengerTrip
             'next' => $services->first(fn (array $service): bool => $service['date'] > $today || ($service['date'] === $today && $service['state'] !== 'completado')),
             'passengers' => $detail['passengers'],
             'advisor' => $detail['advisor'],
-            'alerts' => count($this->incidents($reservation)->reject(fn (stdClass $row): bool => (bool) $row->acked)),
+            'alerts' => $pending->count(),
+            'next_detail' => $next ? [...$this->service($next, $today, (string) $reservation->travel_to, $pickup), 'starts_at' => Carbon::parse("{$next->service_date} ".substr((string) $next->service_time, 0, 5), $this->timezone())->toIso8601String()] : null,
+            'critical_alert' => $critical ? ['id' => $critical->id, 'code' => $critical->code, 'severity' => $critical->severity, 'title' => $critical->public_title ?: $critical->title, 'message' => $critical->public_message] : null,
+            'hotel' => $this->stays($account, $reservation, $this->services($reservation))->first(fn (array $stay): bool => $stay['check_out'] > $today),
         ];
     }
 
@@ -75,13 +84,22 @@ final class PassengerTrip
         $today = $this->kit->today();
         $from = Carbon::parse($reservation->travel_from);
         $services = $this->services($reservation);
+        $pickup = $this->pickupText((string) $reservation->id);
+        $stays = $this->stays($account, $reservation, $services);
+        $first = min((string) $reservation->travel_from, (string) ($services->min('service_date') ?? $reservation->travel_from));
+        $last = max((string) $reservation->travel_to, (string) ($services->max('service_date') ?? $reservation->travel_to));
+        $dates = [];
+        for ($day = Carbon::parse($first); $day->toDateString() <= $last; $day = $day->addDay()) {
+            $dates[] = $day->toDateString();
+        }
 
         return [
             'code' => $reservation->code,
-            'days' => $services->groupBy('service_date')->map(fn (Collection $group, string $date): array => [
+            'days' => collect($dates)->map(fn (string $date): array => [
                 'date' => $date,
                 'number' => (int) $from->diffInDays(Carbon::parse($date), false) + 1,
-                'services' => $group->map(fn (stdClass $row): array => $this->service($row, $today, (string) $reservation->travel_to))->values()->all(),
+                'services' => $services->where('service_date', $date)->where('service_kind', '<>', 'alojamiento')->map(fn (stdClass $row): array => $this->service($row, $today, (string) $reservation->travel_to, $pickup))->values()->all(),
+                'stay' => $stays->first(fn (array $stay): bool => $stay['check_in'] <= $date && $date < $stay['check_out']),
             ])->values()->all(),
         ];
     }
@@ -152,6 +170,8 @@ final class PassengerTrip
                 'cancellation' => $policies['cancellation'] ?? null,
                 'tiers' => $policies['penalty_tiers'] ?? [],
             ],
+            'insurance' => $this->travelDocs($reservation, 'insurance'),
+            'passports' => $this->passports($reservation),
             'contents' => app(PortalContent::class)->for('app', ['Página legal', 'Página', 'Artículo']),
         ];
     }
@@ -236,12 +256,16 @@ final class PassengerTrip
             ->leftJoin('ops_guides as g', 'g.id', '=', 'a.guide_id')
             ->leftJoin('ops_drivers as d', 'd.id', '=', 'a.driver_id')
             ->leftJoin('ops_vehicles as v', 'v.id', '=', 'a.vehicle_id')
+            ->leftJoin('catalog_product_departures as dep', 'dep.id', '=', 's.departure_id')
+            ->leftJoin('catalog_products as p', 'p.id', '=', 's.product_id')
+            ->leftJoin('catalog_providers as pr', 'pr.id', '=', 's.provider_id')
             ->where('s.reservation_id', $reservation->id)->whereNotIn('s.status', ['cancelado', 'rechazado'])->whereNull('s.replaced_by_id')
             ->orderBy('s.service_date')->orderByRaw('s.service_time nulls last')->orderBy('s.code')
-            ->get(['s.code', 's.name', 's.service_date', 's.service_time', 's.service_kind', 's.status', 's.pax', 's.nights', 's.confirmation_code', 'g.full_name as guide', 'g.phone as guide_phone', 'd.full_name as driver', 'v.plate']);
+            ->get(['s.code', 's.name', 's.service_date', 's.service_time', 's.service_kind', 's.status', 's.pax', 's.nights', 's.confirmation_code', 's.provider_id', 'g.full_name as guide', 'g.phone as guide_phone', 'g.languages as guide_languages', 'd.full_name as driver', 'v.plate',
+                's.product_id', 'dep.meeting_point', 'p.pickup_text', 'pr.name as provider_name', 'pr.phone as provider_phone']);
     }
 
-    private function service(stdClass $row, string $today, string $tripEnd): array
+    private function service(stdClass $row, string $today, string $tripEnd, ?string $pickup = null): array
     {
         return [
             'code' => $row->code,
@@ -257,7 +281,75 @@ final class PassengerTrip
             'guide' => $row->guide,
             'driver' => $row->driver,
             'vehicle' => $row->plate,
+            'guide_languages' => array_values(array_filter(explode(',', trim((string) ($row->guide_languages ?? ''), '{}')))),
+            'meeting_point' => $row->meeting_point ?: ($pickup ?: ($row->pickup_text ?: null)),
+            'provider' => $row->provider_name ? ['name' => $row->provider_name, 'phone' => $row->provider_phone] : null,
+            'includes' => $row->product_id ? DB::table('catalog_product_inclusions')->where('product_id', $row->product_id)->where('kind', 'include')->orderBy('sort_order')->limit(6)->pluck('text')->all() : [],
         ];
+    }
+
+    private function pickupText(string $reservationId): ?string
+    {
+        $pickup = DB::table('booking_reservation_web_snapshots')->where('reservation_id', $reservationId)->first(['pickup_point', 'pickup_address']);
+
+        return trim(implode(' · ', array_filter([$pickup->pickup_point ?? null, $pickup->pickup_address ?? null]))) ?: null;
+    }
+
+    private function stays(PortalAccount $account, stdClass $reservation, Collection $services): Collection
+    {
+        $mine = DB::table('booking_passengers')->where('reservation_id', $reservation->id)
+            ->where(fn ($query) => $query->whereRaw('lower(email) = ?', [mb_strtolower((string) $account->user->getAttribute('email'))])->orWhereRaw('lower(full_name) = ?', [mb_strtolower((string) $account->user->getAttribute('name'))]))
+            ->value('id');
+        $lists = DB::table('ops_rooming_lists')->where('reservation_id', $reservation->id)->orderBy('check_in')->get(['id', 'hotel_name', 'city', 'check_in', 'check_out']);
+
+        if ($lists->isNotEmpty()) {
+            return $lists->map(function (stdClass $list) use ($mine): array {
+                $room = $mine ? DB::table('ops_rooming_guests as g')->join('ops_rooming_rooms as r', 'r.id', '=', 'g.room_id')->where('g.rooming_list_id', $list->id)->where('g.passenger_id', $mine)->first(['r.room_number', 'r.room_type']) : null;
+
+                return ['hotel' => (string) $list->hotel_name, 'city' => $list->city, 'check_in' => (string) $list->check_in, 'check_out' => (string) $list->check_out, 'room' => $room?->room_number, 'room_type' => $room?->room_type];
+            })->values();
+        }
+
+        return $services->where('service_kind', 'alojamiento')->map(fn (stdClass $row): array => [
+            'hotel' => (string) $row->name,
+            'city' => null,
+            'check_in' => (string) $row->service_date,
+            'check_out' => Carbon::parse($row->service_date)->addDays(max(1, (int) $row->nights))->toDateString(),
+            'room' => null,
+            'room_type' => null,
+        ])->values();
+    }
+
+    private function travelDocs(stdClass $reservation, string $type): array
+    {
+        return DB::table('ops_travel_doc_items as i')->join('booking_passengers as p', 'p.id', '=', 'i.passenger_id')
+            ->where('i.reservation_id', $reservation->id)->where('i.doc_type', $type)->orderBy('p.seq')
+            ->get(['p.full_name', 'i.status', 'i.doc_number', 'i.expiry_date', 'i.note'])
+            ->map(fn (stdClass $row): array => ['passenger' => $row->full_name, 'status' => $row->status, 'number' => $row->doc_number, 'expires_on' => $row->expiry_date, 'note' => $row->note])->values()->all();
+    }
+
+    private function passports(stdClass $reservation): array
+    {
+        $checked = DB::table('ops_travel_doc_items')->where('reservation_id', $reservation->id)->where('doc_type', 'id_doc')->get(['passenger_id', 'status', 'expiry_date'])->keyBy('passenger_id');
+
+        return DB::table('booking_passengers')->where('reservation_id', $reservation->id)->orderBy('seq')->get(['id', 'full_name', 'doc_type', 'doc_number', 'nationality'])
+            ->map(fn (stdClass $row): array => [
+                'passenger' => $row->full_name,
+                'document' => $row->doc_number ? trim(($row->doc_type ?? '').' ···'.substr((string) $row->doc_number, -3)) : null,
+                'nationality' => $row->nationality,
+                'status' => $checked[$row->id]->status ?? null,
+                'expires_on' => $checked[$row->id]->expiry_date ?? null,
+            ])->values()->all();
+    }
+
+    private function timezone(): string
+    {
+        return app(TenantContext::class)->tenant()->timezone ?: 'America/Lima';
+    }
+
+    private function clock(): string
+    {
+        return Carbon::now($this->timezone())->format('H:i');
     }
 
     private function voucherRows(stdClass $reservation): Collection

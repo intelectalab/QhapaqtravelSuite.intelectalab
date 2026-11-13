@@ -236,7 +236,7 @@ final class ReservationWorkflow
         return DB::table('booking_cancel_requests')->where('id', $requestId)->first(['id', 'reservation_id', 'reason', 'requested_by', 'requested_at', 'status', 'decided_by', 'decided_at', 'decision_note']);
     }
 
-    private function penalty(object $reservation): array
+    public function penalty(object $reservation): array
     {
         $today = $this->today();
         $services = DB::table('booking_reservation_services as s')

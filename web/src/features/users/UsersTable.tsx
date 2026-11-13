@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, ShieldAlert, UserCheck, UserX } from "lucide-react";
+import { Clock, Handshake, ShieldAlert, UserCheck, UserX } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -48,7 +48,8 @@ export function UsersTable({ users, options, viewerId, initialSearch }: { users:
   ];
 
   const metrics: MetricFilter<TeamUser>[] = [
-    { id: "active", label: "Activos", tone: "ok", icon: <UserCheck size={19} />, matches: (user) => user.status === "activo" },
+    { id: "active", label: "Activos internos", tone: "ok", icon: <UserCheck size={19} />, matches: (user) => user.status === "activo" && !user.channel },
+    ...(users.some((user) => user.channel) ? [{ id: "channel", label: "Activos de canal", tone: "t4" as const, icon: <Handshake size={19} />, matches: (user: TeamUser) => user.status === "activo" && Boolean(user.channel) }] : []),
     { id: "pending", label: "Invitados sin entrar", tone: "sun", icon: <Clock size={19} />, matches: (user) => user.status === "pendiente" },
     { id: "mfa", label: "Sin 2 pasos", tone: "bad", icon: <ShieldAlert size={19} />, matches: (user) => user.mfa.required && !user.mfa.enabled && user.status !== "inactivo" },
     { id: "inactive", label: "Desactivados", tone: "mute", icon: <UserX size={19} />, matches: (user) => user.status === "inactivo" },
@@ -79,6 +80,21 @@ export function UsersTable({ users, options, viewerId, initialSearch }: { users:
       metrics={metrics}
       filters={filters}
       sorts={sorts}
+      csv={{
+        fileName: "usuarios",
+        columns: [
+          { header: "Código", value: (user) => user.code },
+          { header: "Nombre", value: (user) => user.name },
+          { header: "Correo", value: (user) => user.email },
+          { header: "Teléfono", value: (user) => user.phone },
+          { header: "Rol", value: (user) => user.role?.name ?? "Sin rol" },
+          { header: "Sede", value: (user) => user.sede?.name },
+          { header: "Tipo", value: (user) => (user.channel ? "De canal" : "Interno") },
+          { header: "Estado", value: (user) => USER_STATUS[user.status].label },
+          { header: "Dos pasos", value: (user) => MFA_STATE[mfaState(user.mfa.enabled, user.mfa.required)].label },
+          { header: "Último acceso", value: (user) => user.last_login_at, type: "datetime" },
+        ],
+      }}
     />
   );
 }

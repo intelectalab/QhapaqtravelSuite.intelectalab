@@ -1,8 +1,8 @@
 "use client";
 
-import { AlertTriangle, Ban, BellRing, CheckCheck, CircleOff, Clock, Eye, FlaskConical, Mail, MessageCircle, MonitorSmartphone, Plus, Power, PowerOff, RefreshCw, RotateCcw, Send, SendHorizontal, Smartphone, Trash2, Variable, X, XCircle } from "lucide-react";
-import { useRef, useState } from "react";
-import { createPaxTemplate, deletePaxTemplate, paxMessageStep, reschedulePaxMessages, sendPaxMessage, testPaxTemplate, togglePaxTemplate, updatePaxTemplate } from "@/app/(backoffice)/admin/comunicaciones/actions";
+import { AlertTriangle, Ban, BellRing, CheckCheck, CircleOff, Clock, Eye, FlaskConical, Languages, Mail, MessageCircle, MonitorSmartphone, Plus, Power, PowerOff, RefreshCw, RotateCcw, Send, SendHorizontal, Smartphone, Trash2, Variable, X, XCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { createPaxTemplate, deletePaxTemplate, duplicatePaxTemplate, paxMessageStep, previewPaxTemplate, reschedulePaxMessages, sendPaxMessage, testPaxTemplate, togglePaxTemplate, updatePaxTemplate } from "@/app/(backoffice)/admin/comunicaciones/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -14,7 +14,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { SidePanel } from "@/components/ui/SidePanel";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
-import { TintCardTitle } from "@/components/ui/Tinted";
+import { TintCardTitle, ToneScope } from "@/components/ui/Tinted";
 import { ADMIN_INITIAL, CHANNEL_LABELS, fillTemplate, offsetLabel, type AdminActionState, type Option, type PaxMessage, type PaxTemplate, type PaxTemplatesOverview } from "@/lib/admin";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
@@ -174,16 +174,71 @@ export function PaxTemplateCreateAction({ data }: { data: PaxTemplatesOverview }
   );
 }
 
-function PreviewIcon({ template, sample }: { template: PaxTemplate; sample: PaxTemplatesOverview["sample"] }) {
+function RealPreview({ template, channel, reservation, sample }: { template: PaxTemplate; channel: string; reservation: string; sample: PaxTemplatesOverview["sample"] }) {
+  const [state, setState] = useState<{ key: string; result: Awaited<ReturnType<typeof previewPaxTemplate>> } | null>(null);
+  const key = `${template.code}:${channel}:${reservation}`;
+  useEffect(() => {
+    let alive = true;
+    previewPaxTemplate(template.code, channel, reservation || undefined).then((result) => {
+      if (alive) setState({ key, result });
+    });
+    return () => {
+      alive = false;
+    };
+  }, [template.code, channel, reservation, key]);
+  if (!state || state.key !== key) return <p className="text-[12.5px] text-fg-3">Preparando la vista previa con datos reales…</p>;
+  if (!state.result.ok) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-[12.5px] text-warn">{state.result.message}</p>
+        <MessagePreview subject={template.subject} body={template.body} channel={channel} sample={sample} />
+      </div>
+    );
+  }
+  const preview = state.result.data;
+  const whatsapp = channel === "whatsapp";
+  return (
+    <div className="flex flex-col gap-2.5">
+      {!preview.eligible && (
+        <ToneScope tone="warn" className="flex items-start gap-2 rounded-[12px] bg-[color-mix(in_srgb,var(--tint)_10%,var(--surface))] px-3 py-2.5 text-[12.5px]">
+          <AlertTriangle size={15} className="mt-px flex-none text-[var(--tint)]" />
+          <span>Con esta reserva la plantilla no se enviaría: {preview.blocked_reason}.</span>
+        </ToneScope>
+      )}
+      <div className={cn("rounded-[16px] p-3.5 text-[13px] leading-relaxed", whatsapp ? "ml-6 rounded-tr-[4px] bg-[color-mix(in_srgb,var(--ok)_14%,var(--surface))]" : "border border-line bg-surface")}>
+        {!whatsapp && preview.subject && <p className="mb-2 border-b border-line-2 pb-2 font-semibold">{preview.subject}</p>}
+        <p className="whitespace-pre-line">{preview.body}</p>
+      </div>
+      <dl className="grid grid-cols-2 gap-2 text-[12px]">
+        <div className="rounded-[11px] bg-surface-2 px-3 py-2">
+          <dt className="text-fg-3">Se enviaría</dt>
+          <dd className="font-semibold">{preview.scheduled_at ? formatDateTime(preview.scheduled_at) : "Sin fecha calculada"}</dd>
+        </div>
+        <div className="rounded-[11px] bg-surface-2 px-3 py-2">
+          <dt className="text-fg-3">Destinatario</dt>
+          <dd className="truncate font-semibold" title={preview.recipient ?? undefined}>{preview.recipient ?? "Sin dato de contacto"}</dd>
+        </div>
+      </dl>
+      <p className="text-[11.5px] text-fg-3">
+        Reserva {preview.reservation} · idioma del pasajero {preview.reservation_lang === "EN" ? "inglés" : "español"}
+        {preview.reservation_lang !== template.lang ? " (recibirá la versión en su idioma si existe)" : ""}
+      </p>
+    </div>
+  );
+}
+
+function PreviewIcon({ template, sample, reservations }: { template: PaxTemplate; sample: PaxTemplatesOverview["sample"]; reservations: PaxTemplatesOverview["reservations"] }) {
   const [open, setOpen] = useState(false);
   const [channel, setChannel] = useState(template.channels[0] ?? "email");
+  const [reservation, setReservation] = useState("");
   return (
     <>
       <RowIcon tone="view" label="Vista previa" onClick={() => setOpen(true)} />
       <SidePanel open={open} onOpenChange={setOpen} title={template.name} description={`${template.event_label} · ${offsetLabel(template.offset_hours)}${template.offset_from_rule ? " (según la regla)" : ""}`}>
         <div className="flex flex-col gap-4">
+          <SelectField label="Reserva" name="preview-reservation" options={reservations} searchable value={reservation} onChange={setReservation} placeholder="La primera reserva vigente que cumple las condiciones" clearable hint="Las variables se completan con los datos reales de la reserva." />
           <ChoiceGroup label="Canal" name="preview-channel" options={template.channels.map((value) => ({ value, label: CHANNEL_LABELS[value] ?? value }))} defaultValue={channel} onChange={setChannel} />
-          <MessagePreview subject={template.subject} body={template.body} channel={channel} sample={sample} />
+          {open && <RealPreview template={template} channel={channel} reservation={reservation} sample={sample} />}
           <dl className="grid grid-cols-2 gap-2 text-[12.5px]">
             <div className="rounded-[11px] bg-surface-2 px-3 py-2">
               <dt className="text-fg-3">Enviados</dt>
@@ -202,11 +257,19 @@ function PreviewIcon({ template, sample }: { template: PaxTemplate; sample: PaxT
 }
 
 function TemplateRowActions({ template, data }: { template: PaxTemplate; data: PaxTemplatesOverview }) {
+  const otherLang = template.lang === "ES" ? "inglés" : "español";
+  const group = template.group_code ?? template.code;
+  const hasVariant = data.templates.some((item) => item.code !== template.code && item.lang !== template.lang && ((item.group_code ?? item.code) === group || item.code === group));
   return (
     <RowActions>
-      <PreviewIcon template={template} sample={data.sample} />
+      <PreviewIcon template={template} sample={data.sample} reservations={data.reservations} />
       {data.can_manage && (
         <>
+          {!hasVariant && (
+            <PanelAction<AdminActionState> label="Duplicar" variant="ghost" size="sm" formId={`pax-duplicate-${template.code}`} trigger={(open) => <RowIcon tone="neutral" label={`Duplicar en ${otherLang}`} icon={<Languages size={15} />} onClick={open} />} title={`Duplicar en ${otherLang}`} description={`Creamos una copia de ${template.name} para los pasajeros que hablan ${otherLang}. Nace inactiva: traduce el asunto y el mensaje y luego actívala.`} submitLabel="Crear copia" action={duplicatePaxTemplate} initial={ADMIN_INITIAL}>
+              {() => <input type="hidden" name="code" value={template.code} />}
+            </PanelAction>
+          )}
           <PanelAction<AdminActionState> label="Editar" variant="ghost" size="sm" formId={`pax-edit-${template.code}`} trigger={(open) => <RowIcon tone="edit" label="Editar plantilla" onClick={open} />} title="Editar plantilla" description={`${template.code} · los mensajes ya enviados no cambian.`} submitLabel="Guardar cambios" action={updatePaxTemplate} initial={ADMIN_INITIAL}>
             {() => <TemplateFields data={data} template={template} />}
           </PanelAction>

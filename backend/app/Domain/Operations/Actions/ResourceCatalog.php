@@ -7,6 +7,7 @@ namespace App\Domain\Operations\Actions;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Iam\Models\User;
 use App\Domain\Operations\Support\OpsCommon;
+use App\Domain\Operations\Support\ResourceDirectory;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Facades\DB;
@@ -156,6 +157,25 @@ final class ResourceCatalog
 
         DB::table(self::TABLES[$type])->where('id', $id)->update([...($type !== 'vehicle' ? ['user_id' => null] : []), 'deleted_at' => now(), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         $this->audit->log(self::LABELS[$type], $current->plate ?? $current->code, 'desactivar', $current->status, null);
+    }
+
+    public function changeStatus(string $type, string $id, string $status, User $actor): array
+    {
+        $current = $this->find($type, $id);
+        $allowed = $type === 'vehicle' ? ResourceDirectory::VEHICLE_STATUS : ResourceDirectory::PERSON_STATUS;
+
+        if (! in_array($status, $allowed, true)) {
+            throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige un estado válido para '.mb_strtolower(self::LABELS[$type]).'.');
+        }
+
+        if ($current->status === $status) {
+            throw ApiException::conflict('STATE_TRANSITION_NOT_ALLOWED', self::LABELS[$type].' ya está en ese estado.');
+        }
+
+        DB::table(self::TABLES[$type])->where('id', $id)->update(['status' => $status, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+        $this->audit->log(self::LABELS[$type], $current->plate ?? $current->code, 'cambio_estado', $current->status, $status);
+
+        return ['id' => $id, 'kind' => $type, 'status' => $status, 'previous' => $current->status];
     }
 
     private function find(string $type, string $id): object

@@ -28,6 +28,7 @@ export interface TripItem {
   currency: string;
   client: { code: string; name: string };
   owner: string;
+  owner_id?: string;
   survey: { code: string; score: number } | null;
 }
 
@@ -63,6 +64,7 @@ export interface AfterSalesOverview {
   surveys: SurveyItem[];
   cases: CaseItem[];
   clients: Option[];
+  reservations?: (Option & { client: string })[];
   channels: Option[];
   case_types: Option[];
   owners: { id: string; name: string }[];

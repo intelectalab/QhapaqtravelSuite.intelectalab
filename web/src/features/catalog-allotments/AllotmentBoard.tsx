@@ -9,12 +9,12 @@ import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { BarChart } from "@/components/ui/Charts";
 import { ProgressBar } from "@/components/ui/MiniTable";
 import { Select } from "@/components/ui/Select";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextField } from "@/components/ui/TextField";
 import { ALERT_TYPE, ALLOTMENT_STATUS, KIND_LABEL, RECOMMENDATION, type AllotmentAlert, type AllotmentCell, type AllotmentGrid, type AllotmentPickup, type AllotmentRow, type AllotmentSummary, type AllotmentsOverview, type PickupRow } from "@/lib/catalog-allotments";
+import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { CellButton, CellLegend, DayPanel, weekday } from "./AllotmentDay";
 import { RunReleaseJobAction } from "./AllotmentForms";
@@ -237,6 +237,47 @@ export function ReleaseAlertsTable({ overview }: { overview: AllotmentsOverview 
   );
 }
 
+function PickupChart({ cuts, curve, capacity, height = 150 }: { cuts: string[]; curve: number[]; capacity: number; height?: number }) {
+  const [active, setActive] = useState<number | null>(null);
+  const max = Math.max(capacity, ...curve, 1);
+  const at = (value: number) => (value / max) * height;
+  const targets = curve.map((_, index) => Math.round((capacity * 0.85 * (index + 1)) / curve.length));
+  return (
+    <div>
+      <div className="relative" style={{ height }} onPointerLeave={() => setActive(null)}>
+        <span aria-hidden className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-dashed border-warn" style={{ bottom: at(capacity) }}>
+          <span className="absolute -top-5 right-0 rounded bg-surface px-1 text-[11px] font-semibold text-warn">Cupo {capacity}</span>
+        </span>
+        <div className="grid h-full items-end gap-3.5" style={{ gridTemplateColumns: `repeat(${curve.length}, minmax(0, 1fr))` }}>
+          {curve.map((value, index) => (
+            <div key={cuts[index]} className="relative flex h-full items-end" onPointerEnter={() => setActive(index)}>
+              <span aria-hidden className="absolute inset-x-[-6px] z-10 h-0.5 rounded-full bg-fg-3" style={{ bottom: at(targets[index]) }} />
+              <div className={cn("w-full origin-bottom rounded-t-[10px] rounded-b-[4px] transition-[filter,opacity] duration-200 motion-safe:animate-[grow-up_700ms_cubic-bezier(0.2,0.8,0.2,1)_backwards]", index === curve.length - 1 ? "bg-t2" : "bg-[color-mix(in_srgb,var(--t1)_85%,transparent)]", active !== null && active !== index && "opacity-45")} style={{ height: Math.max(4, at(value)), animationDelay: `${index * 70}ms` }} />
+              {active === index && (
+                <span className="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-lg bg-fg px-2 py-1 text-[11.5px] font-semibold text-bg shadow-lg motion-safe:animate-[drop-in_160ms_ease-out]" style={{ bottom: Math.max(at(value), at(targets[index])) + 8 }}>
+                  {value} vendidas · objetivo {targets[index]} de {capacity}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-1.5 grid gap-3.5" style={{ gridTemplateColumns: `repeat(${curve.length}, minmax(0, 1fr))` }}>
+        {curve.map((value, index) => (
+          <span key={cuts[index]} className="text-center font-mono text-[11.5px] text-fg-3">
+            {cuts[index].slice(8, 10)}/{cuts[index].slice(5, 7)} <b className="font-semibold text-fg">{value}</b>
+          </span>
+        ))}
+      </div>
+      <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-fg-3">
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-t1" />Vendido acumulado</span>
+        <span className="flex items-center gap-1.5"><span className="w-4 border-t-2 border-dashed border-warn" />Cupo vigente</span>
+        <span className="flex items-center gap-1.5"><span className="h-0.5 w-4 rounded-full bg-fg-3" />Ritmo objetivo 85 %</span>
+      </p>
+    </div>
+  );
+}
+
 export function PickupReport({ pickup }: { pickup: AllotmentPickup }) {
   const [selected, setSelected] = useState(pickup.rows[0]?.code ?? "");
   const current = pickup.rows.find((row) => row.code === selected);
@@ -262,13 +303,6 @@ export function PickupReport({ pickup }: { pickup: AllotmentPickup }) {
       ),
     },
   ];
-  const chart = current
-    ? current.curve.map((value, index) => {
-        const target = Math.round((current.window.capacity * 0.85 * (index + 1)) / current.curve.length);
-        return { label: `${pickup.cuts[index].slice(8, 10)}/${pickup.cuts[index].slice(5, 7)}`, value, caption: String(value), detail: `${value} vendidas al corte · objetivo ${target} de ${current.window.capacity}`, highlight: index === current.curve.length - 1 };
-      })
-    : [];
-
   return (
     <>
       {current && (
@@ -282,7 +316,7 @@ export function PickupReport({ pickup }: { pickup: AllotmentPickup }) {
               <Select value={selected} onChange={setSelected} ariaLabel="Contrato" options={pickup.rows.map((row) => ({ value: row.code, label: row.provider.name, hint: row.code }))} className="h-10 w-full" />
             </div>
           </div>
-          <BarChart data={chart} height={120} />
+          <PickupChart key={current.code} cuts={pickup.cuts} curve={current.curve} capacity={current.window.capacity} />
         </div>
       )}
       <div className="p-5">

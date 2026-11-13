@@ -15,6 +15,8 @@ final class FinanceReport extends ReportBuilder
 {
     private const PAYABLE = ['abierta' => 'Abierta', 'aprobada' => 'Aprobada', 'parcial' => 'Parcial', 'vencida' => 'Vencida'];
 
+    private const RECEIVABLE = ['abierta' => 'Abierta', 'parcial' => 'Parcial', 'vencida' => 'Vencida'];
+
     public function build(User $viewer, ReportFilters $filters): array
     {
         $profit = $viewer->can('finance.profitability');
@@ -50,6 +52,8 @@ final class FinanceReport extends ReportBuilder
             $billed = (float) $receivables->sum('billed');
             $kpis[] = S::kpi('billed', 'Facturable', round($billed, 2), 'money');
             $kpis[] = S::kpi('collected', 'Cobrado', round((float) $receivables->sum('paid'), 2), 'money', S::rate((float) $receivables->sum('paid'), $billed) !== null ? S::rate((float) $receivables->sum('paid'), $billed).' % de lo facturado' : null);
+            $invoices = $this->invoices($viewer, $filters);
+            $kpis[] = S::kpi('invoices', 'Comprobantes emitidos', (int) ($invoices->total ?? 0), 'number', ((int) ($invoices->observed ?? 0)).' '.((int) ($invoices->observed ?? 0) === 1 ? 'observado' : 'observados'));
         }
 
         $kpis[] = S::kpi('receivable', 'Cuentas por cobrar', round($open, 2), 'money', 'Vencido: S/ '.number_format($overdue, 2, '.', ' '));
@@ -84,8 +88,43 @@ final class FinanceReport extends ReportBuilder
             'variant' => $profit ? 'rentabilidad' : 'contable',
             'kpis' => $kpis,
             'charts' => $charts,
-            'table' => S::table($columns, $rows, null, '/reservas/{code}'),
+            'table' => $profit ? S::table($columns, $rows, null, '/reservas/{code}') : $this->receivablesTable($viewer, $filters),
         ];
+    }
+
+    private function invoices(User $viewer, ReportFilters $filters): ?object
+    {
+        $query = Portfolio::scope(DB::table('fin_invoices as i')->join('crm_clients as c', 'c.id', '=', 'i.client_id')->whereIn('i.doc_type', ['01', '03'])->where('i.status', '<>', 'pendiente_envio'), $viewer, 'c.owner_id')
+            ->whereBetween('i.issue_date', [$filters->from->toDateString(), $filters->to->toDateString()]);
+        $query = $filters->sedeId ? $query->join('booking_reservations as r', 'r.id', '=', 'i.reservation_id')->where('r.sede_id', $filters->sedeId) : $query;
+
+        return $query->selectRaw("count(*) as total, count(*) filter (where i.status = 'observado') as observed")->first();
+    }
+
+    private function receivablesTable(User $viewer, ReportFilters $filters): array
+    {
+        $query = Portfolio::scope(DB::table('fin_receivables as f')->join('crm_clients as c', 'c.id', '=', 'f.client_id')->whereNull('f.deleted_at'), $viewer, 'c.owner_id')
+            ->leftJoin('booking_reservations as r', 'r.id', '=', 'f.reservation_id')->whereNotIn('f.status', ['cancelada', 'pagada']);
+        $query = $filters->sedeId ? $query->where('r.sede_id', $filters->sedeId) : $query;
+        $rows = $query->orderBy('f.due_date')->limit(500)->get(['f.code', 'f.status', 'f.due_date', 'f.amount', 'f.paid_amount', 'f.fx_rate', 'c.name as client', 'r.code as reservation']);
+        $today = Carbon::now($filters->timezone)->toDateString();
+
+        return S::table([
+            S::column('code', 'Documento'),
+            S::column('client', 'Cliente'),
+            S::column('reservation', 'Reserva'),
+            S::column('due_date', 'Vence', 'date'),
+            S::column('balance', 'Saldo S/', 'money'),
+            S::column('status', 'Estado', 'status', ['filter' => true]),
+        ], $rows->map(fn (object $row): array => [
+            'code' => $row->code,
+            'client' => $row->client,
+            'reservation' => $row->reservation,
+            'due_date' => $row->due_date,
+            'balance' => round(((float) $row->amount - (float) $row->paid_amount) * (float) ($row->fx_rate ?: 1), 2),
+            'status' => $row->status !== 'vencida' && $row->due_date < $today ? 'Vencida' : (self::RECEIVABLE[$row->status] ?? $row->status),
+            'status_key' => $row->status !== 'vencida' && $row->due_date < $today ? 'vencida' : $row->status,
+        ])->all(), ['balance' => round((float) $rows->sum(fn (object $row): float => ((float) $row->amount - (float) $row->paid_amount) * (float) ($row->fx_rate ?: 1)), 2)], '/finanzas/cobros/{code}');
     }
 
     private function aging(User $viewer, ReportFilters $filters): array

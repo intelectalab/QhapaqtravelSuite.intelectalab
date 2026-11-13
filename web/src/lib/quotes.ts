@@ -62,6 +62,13 @@ export interface QuoteVersion {
   internal_status?: string | null;
   item_count?: number;
   seasons?: Record<number, string | null>;
+  itinerary?: QuoteItineraryBlock[];
+}
+
+export interface QuoteItineraryBlock {
+  product: { code: string; name: string };
+  start: string | null;
+  days: { day: number; title: string }[];
 }
 
 export interface QuoteTimelineEvent {
@@ -114,7 +121,7 @@ export interface QuoteDetail extends QuoteRow {
   internal_detail: QuoteInternalDetail | null;
   timeline: QuoteTimelineEvent[];
   activities: QuoteActivityItem[];
-  itinerary: { product: { code: string; name: string }; start: string; days: { day: number; title: string }[] }[];
+  itinerary: QuoteItineraryBlock[];
   approval_rules: { discount_limit: string; margin_floor: string; max_discount: string };
   reservation: { code: string } | null;
   approved_at: string | null;
@@ -209,6 +216,7 @@ export interface QuotePreview {
   lines: QuotePreviewLine[];
   totals: { sale_total: string; discount_total: string; net_total: string; tax_total: string; grand_total: string; cost_total: string | null; profit_total: string | null; margin_pct: string | null; tax_pct: string; grand_total_pen: string; per_pax: string | null };
   tax_default: string;
+  itinerary?: QuoteItineraryBlock[];
   needs_internal_approval: boolean;
 }
 

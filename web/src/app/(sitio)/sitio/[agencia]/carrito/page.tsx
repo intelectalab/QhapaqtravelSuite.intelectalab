@@ -1,10 +1,12 @@
 import { ArrowRight, ShoppingBag } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SectionHeading } from "@/features/site/Bits";
+import { ProductCard } from "@/features/site/Cards";
 import { CartLines, CartSummary } from "@/features/site/Cart";
 import { Breadcrumbs, PageHero } from "@/features/site/Hero";
 import { TrackEvent } from "@/features/site/SiteAnalytics";
-import { getSiteCart, siteBase, siteLocale } from "@/lib/server/site";
+import { getSiteCart, getSiteListing, siteBase, siteLocale } from "@/lib/server/site";
 import { siteHref } from "@/lib/site";
 import { siteText } from "@/lib/site-i18n";
 
@@ -18,6 +20,8 @@ export default async function CartPage({ params }: PageProps<"/sitio/[agencia]/c
   const site = siteText(locale);
   const t = site.cart;
   const blocked = cart.items.some((item) => item.quote === null);
+  const inCart = new Set(cart.items.map((item) => item.product.slug));
+  const suggestions = cart.items.length > 0 ? (await getSiteListing(agencia, {})).items.filter((product) => !inCart.has(product.slug)).slice(0, 3) : [];
 
   return (
     <>
@@ -49,7 +53,7 @@ export default async function CartPage({ params }: PageProps<"/sitio/[agencia]/c
                     {blocked ? (
                       <p className="mt-4 rounded-xl bg-[color-mix(in_srgb,var(--bad)_8%,transparent)] px-3 py-2.5 text-[12.5px] text-bad">{t.blocked}</p>
                     ) : (
-                      <Link href={siteHref(base, "/checkout")} className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-control bg-brand text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110">
+                      <Link href={siteHref(base, "/checkout")} data-site-cta className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-control bg-brand text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110">
                         {t.checkout}
                         <ArrowRight size={16} />
                       </Link>
@@ -62,6 +66,16 @@ export default async function CartPage({ params }: PageProps<"/sitio/[agencia]/c
               />
             </aside>
           </div>
+        )}
+        {suggestions.length > 0 && (
+          <section className="mt-14">
+            <SectionHeading eyebrow={t.crossEyebrow} title={t.crossTitle} description={t.crossBody} />
+            <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {suggestions.map((product, index) => (
+                <ProductCard key={product.slug} product={product} base={base} index={index} />
+              ))}
+            </div>
+          </section>
         )}
       </div>
     </>

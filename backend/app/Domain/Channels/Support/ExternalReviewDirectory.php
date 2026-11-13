@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\Channels\Support;
 
+use App\Domain\Booking\Rules\RuleResolver;
 use App\Domain\Iam\Models\User;
 use Illuminate\Support\Facades\DB;
 
 final class ExternalReviewDirectory
 {
+    public function __construct(private readonly RuleResolver $rules) {}
+
     public const PROVIDERS = ['google' => 'Google', 'tripadvisor' => 'TripAdvisor', 'trustpilot' => 'Trustpilot', 'facebook' => 'Facebook', 'getyourguide' => 'GetYourGuide', 'viator' => 'Viator'];
 
     public const LAYOUTS = ['lista', 'cuadricula'];
@@ -19,8 +22,9 @@ final class ExternalReviewDirectory
         $rows = DB::table('channel_external_reviews as e')
             ->leftJoin('catalog_products as p', 'p.id', '=', 'e.product_id')
             ->leftJoin('iam_users as u', 'u.id', '=', 'e.replied_by')
+            ->leftJoin('collab_conversations as v', 'v.id', '=', 'e.conversation_id')
             ->orderByDesc('e.review_date')
-            ->get(['e.*', 'p.code as product_code', 'p.name as product_name', 'u.name as replied_by_name']);
+            ->get(['e.*', 'p.code as product_code', 'p.name as product_name', 'u.name as replied_by_name', 'v.code as conversation_code']);
         $connected = $sources->where('status', 'conectado')->filter(fn (object $source): bool => $source->rating !== null);
         $weight = $connected->sum('review_count');
 
@@ -32,6 +36,8 @@ final class ExternalReviewDirectory
                 'inbox' => $rows->count(),
                 'unanswered' => $rows->where('response_status', 'sin_responder')->count(),
                 'critical' => $rows->where('response_status', 'sin_responder')->where('rating', '<=', 3)->count(),
+                'invites_active' => $this->rules->on('R-REVIEW-INVITE'),
+                'invites_sent' => DB::table('crm_review_requests')->whereIn('status', ['enviada', 'abierta', 'respondida'])->where('sent_at', '>=', now()->subDays(30))->count(),
             ],
             'sources' => collect(self::PROVIDERS)->map(function (string $label, string $provider) use ($sources, $rows): array {
                 $source = $sources->firstWhere('provider', $provider);
@@ -74,6 +80,7 @@ final class ExternalReviewDirectory
                     'reply' => $row->reply,
                     'replied_at' => $row->replied_at,
                     'replied_by' => $row->replied_by_name,
+                    'conversation' => $row->conversation_code,
                 ];
             })->values(),
             'can_reply' => $viewer->can('channels.ecommerce.manage') || $viewer->can('crm.clients.manage'),

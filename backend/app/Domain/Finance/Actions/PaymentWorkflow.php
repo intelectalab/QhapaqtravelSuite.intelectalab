@@ -23,9 +23,9 @@ final class PaymentWorkflow
 {
     public function __construct(private readonly ReceivableLedger $ledger, private readonly B2bCredit $credit, private readonly AuditLogger $audit, private readonly WebOrderSettlement $web) {}
 
-    public function confirm(string $code, ?string $receivableCode, User $actor): void
+    public function confirm(string $code, ?string $receivableCode, User $actor, bool $apply = true): void
     {
-        DB::transaction(function () use ($code, $receivableCode, $actor): void {
+        DB::transaction(function () use ($code, $receivableCode, $actor, $apply): void {
             $payment = $this->open($code);
 
             if (! in_array($payment->status, ['pendiente', 'confirmado'], true)) {
@@ -50,11 +50,32 @@ final class PaymentWorkflow
                 app(FinanceNotices::class)->received((string) $payment->id, (string) $actor->getKey());
             }
 
+            if (! $apply) {
+                if ($payment->status === 'confirmado') {
+                    throw ApiException::conflict('FIN-BR-12', 'El pago ya está validado: solo queda aplicarlo a una cuota.');
+                }
+
+                return;
+            }
+
             $receivableCode ??= $payment->receivable_id ? DB::table('fin_receivables')->where('id', $payment->receivable_id)->value('code') : null;
 
             if ($receivableCode !== null) {
                 $this->apply($payment, (string) $receivableCode, $actor);
             }
+        });
+    }
+
+    public function applyConfirmed(string $code, string $receivableCode, User $actor): void
+    {
+        DB::transaction(function () use ($code, $receivableCode, $actor): void {
+            $payment = $this->open($code);
+
+            if ($payment->status !== 'confirmado' || $payment->kind === 'reembolso') {
+                throw ApiException::conflict('FIN-BR-12', 'Solo se aplican pagos confirmados que aún no están aplicados.');
+            }
+
+            $this->apply($payment, $receivableCode, $actor);
         });
     }
 

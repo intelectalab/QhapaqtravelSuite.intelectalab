@@ -1,3 +1,4 @@
+import { ConsultModeNotice } from "@/components/ui/ConsultMode";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -22,6 +23,7 @@ export default async function ReservasPage({ searchParams }: PageProps<"/reserva
   return (
     <>
       <PageHeader title="Reservas" subtitle="Viajes vendidos, sus pasajeros y lo que falta cobrar." actions={options ? <DirectReservationWizardAction options={options} defaultOpen={nueva === "1"} /> : undefined} />
+      <ConsultModeNotice permissions={["reservations.create"]} what="crear reservas" />
       <nav aria-label="Vista de reservas" className="mb-4 inline-flex rounded-full border border-line bg-surface p-1 text-[13px]">
         {modes.map((mode) => (
           <Link key={mode.href} href={mode.href} aria-current={mode.active ? "page" : undefined} className={cn("rounded-full px-3.5 py-1.5 font-semibold transition-colors", mode.active ? "bg-accent text-white" : "text-fg-2 hover:text-fg")}>

@@ -290,6 +290,7 @@ final class QuoteDirectory
                 'frozen_at' => $extras[$version->id]->frozen_at ?? null,
                 'internal_status' => $extras[$version->id]->internal_status ?? null,
                 'item_count' => collect($items->get($version->id, []))->count(),
+                'itinerary' => $sections->itinerary((string) $version->id),
                 'seasons' => collect($items->get($version->id, []))->mapWithKeys(fn (object $item): array => [(int) $item->line_no => isset($seasons[$version->id.'#'.$item->line_no]) && $seasons[$version->id.'#'.$item->line_no]->season_factor !== null ? (string) $seasons[$version->id.'#'.$item->line_no]->season_factor : null])->all(),
             ])->values(),
             'history' => DB::table('audit_events')->where('entity', 'Cotización')->where('entity_id', $row->code)->orderByDesc('occurred_at')->limit(20)->get(['action', 'before_value', 'after_value', 'occurred_at']),

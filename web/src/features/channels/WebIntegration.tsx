@@ -1,11 +1,13 @@
 "use client";
 
-import { Activity, BadgeCheck, BookOpen, CalendarDays, Code2, ExternalLink, Globe, KeyRound, type LucideIcon, MonitorSmartphone, MousePointerClick, PackageCheck, Palette, Plus, RefreshCw, ShieldCheck, Star, Trash2, Users } from "lucide-react";
+import { Activity, BadgeCheck, BookOpen, CalendarDays, Code2, ExternalLink, Globe, KeyRound, type LucideIcon, MonitorSmartphone, MousePointerClick, PackageCheck, Palette, Plus, RefreshCw, ShieldCheck, Star, Trash2, Users, Webhook } from "lucide-react";
+import Link from "next/link";
 import { type ReactNode, useState } from "react";
 import { addDomain, removeDomain, rotateWidgetKey, saveWidgetDefaults, verifyDomain } from "@/app/(backoffice)/canales/integracion-web/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
+import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { FieldList } from "@/components/ui/Details";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
@@ -13,7 +15,7 @@ import { SwitchField } from "@/components/ui/SwitchField";
 import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
 import type { WebDomain, WebEvent, WebOverview, WidgetDefaults } from "@/lib/channels";
-import { formatDateTime, formatNumber, formatPercent } from "@/lib/format";
+import { formatDate, formatDateTime, formatMoney, formatNumber, formatPercent } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { ChannelBadge, CodeSnippet, TileGrid } from "./ChannelUi";
 
@@ -37,12 +39,15 @@ function snippet(overview: WebOverview, method = overview.defaults.method): stri
   if (!config) return "";
   const sameHost = new URL(config.cdn).origin === new URL(config.host).origin;
   const hostAttr = sameHost ? "" : ` host="${config.host}"`;
-  const attrs = `product="${d.product ?? ""}" lang="${d.lang}" currency="${d.currency}" theme="${d.theme}" radius="${d.radius}"${d.reviews ? ' reviews="1"' : ""}${hostAttr}`;
-  const url = `${config.host}/widget/${d.product}?key=${config.public_key}&lang=${d.lang}&currency=${d.currency}&theme=${d.theme.slice(1)}&radius=${d.radius}&reviews=${d.reviews ? 1 : 0}`;
-  if (method === "iframe") return `<iframe src="${url}" title="Reserva en línea" loading="lazy" allow="payment" style="width:100%;min-height:760px;border:0;border-radius:${d.radius}px"></iframe>`;
+  const catalog = d.mode === "catalogo";
+  const target = catalog ? (d.category ? `category="${d.category}"` : "") : `product="${d.product ?? ""}"`;
+  const attrs = `${target ? `${target} ` : ""}lang="${d.lang}" currency="${d.currency}" theme="${d.theme}" radius="${d.radius}"${d.reviews ? ' reviews="1"' : ""}${hostAttr}`;
+  const url = widgetUrl(overview);
+  if (method === "iframe") return `<iframe src="${url}" title="${catalog ? "Catálogo de viajes" : "Reserva en línea"}" loading="lazy" allow="payment" style="width:100%;min-height:${catalog ? 520 : 760}px;border:0;border-radius:${d.radius}px"></iframe>`;
   if (method === "link") return url;
   if (method === "script") return `<script src="${config.cdn}/kipucontrol.js" data-key="${config.public_key}" data-${attrs.replaceAll('" ', '" data-')}></script>\n<button data-kipucontrol-open>Reservar</button>`;
-  return `<script type="module" src="${config.cdn}/kipucontrol-widget.js"></script>\n<kipucontrol-booking key="${config.public_key}" ${attrs}></kipucontrol-booking>`;
+  const tag = catalog ? "kipucontrol-catalog" : "kipucontrol-booking";
+  return `<script type="module" src="${config.cdn}/kipucontrol-widget.js"></script>\n<${tag} key="${config.public_key}" ${attrs}></${tag}>`;
 }
 
 function WidgetPreview({ defaults }: { defaults: WidgetDefaults }) {
@@ -82,6 +87,7 @@ function WidgetPreview({ defaults }: { defaults: WidgetDefaults }) {
 function DefaultsAction({ overview }: { overview: WebOverview }) {
   const d = overview.defaults;
   const [reviews, setReviews] = useState(d.reviews);
+  const [mode, setMode] = useState<string>(d.mode === "catalogo" ? "catalogo" : "producto");
   return (
     <PanelAction<StepResult>
       label="Configurar"
@@ -96,7 +102,12 @@ function DefaultsAction({ overview }: { overview: WebOverview }) {
     >
       {() => (
         <>
-          <SelectField label="Producto" name="product" options={overview.products.map((product) => ({ value: product.code, label: product.name }))} defaultValue={d.product ?? overview.products[0]?.code} hint="Solo productos publicados en la tienda." />
+          <ChoiceGroup label="Qué muestra" name="mode" options={[{ value: "producto", label: "Un producto" }, { value: "catalogo", label: "Catálogo por categoría" }]} defaultValue={mode} onChange={setMode} />
+          {mode === "catalogo" ? (
+            <SelectField label="Categoría" name="category" options={(overview.categories ?? []).map((category) => ({ value: category, label: category }))} defaultValue={d.category ?? undefined} placeholder="Todas las categorías" clearable hint="El visitante elige el producto y pasa a reservarlo." />
+          ) : (
+            <SelectField label="Producto" name="product" options={overview.products.map((product) => ({ value: product.code, label: product.name }))} defaultValue={d.product ?? overview.products[0]?.code} hint="Solo productos publicados en la tienda." />
+          )}
           <SelectField label="Método" name="method" options={overview.methods} defaultValue={d.method} />
           <div className="grid grid-cols-2 gap-3">
             <SelectField label="Idioma" name="lang" options={[{ value: "es", label: "Español" }, { value: "en", label: "Inglés" }]} defaultValue={d.lang} />
@@ -128,7 +139,7 @@ function SectionHead({ icon: Icon, title, aside }: { icon: LucideIcon; title: st
 export function ConfiguratorSection({ overview }: { overview: WebOverview }) {
   const method = overview.methods.find((item) => item.value === overview.defaults.method)?.label ?? overview.defaults.method;
   const config = overview.config;
-  const live = config && overview.defaults.product ? widgetUrl(overview) : null;
+  const live = config && (overview.defaults.product || overview.defaults.mode === "catalogo") ? widgetUrl(overview) : null;
   return (
     <div className="flex flex-col gap-5">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -163,7 +174,7 @@ export function ConfiguratorSection({ overview }: { overview: WebOverview }) {
               { label: "Checkout", value: config?.site ?? "—" },
               { label: "Script del widget", value: config ? <span className="font-mono text-[12px]">{config.cdn}</span> : "—" },
               { label: "Método", value: method },
-              { label: "Producto", value: overview.defaults.product_name ?? "—" },
+              overview.defaults.mode === "catalogo" ? { label: "Muestra", value: overview.defaults.category ? `Catálogo · ${overview.defaults.category}` : "Catálogo completo" } : { label: "Producto", value: overview.defaults.product_name ?? "—" },
             ]}
           />
           <CodeSnippet code={snippet(overview)} />
@@ -179,7 +190,9 @@ function widgetUrl(overview: WebOverview): string {
   const config = overview.config;
   const d = overview.defaults;
   if (!config) return "";
-  return `${config.host}/widget/${d.product}?key=${config.public_key}&lang=${d.lang}&currency=${d.currency}&theme=${d.theme.slice(1)}&radius=${d.radius}&reviews=${d.reviews ? 1 : 0}`;
+  const catalog = d.mode === "catalogo";
+  const category = catalog && d.category ? `&category=${encodeURIComponent(d.category)}` : "";
+  return `${config.host}/widget/${catalog ? "catalogo" : d.product}?key=${config.public_key}&lang=${d.lang}&currency=${d.currency}&theme=${d.theme.slice(1)}&radius=${d.radius}&reviews=${d.reviews ? 1 : 0}${category}`;
 }
 
 function LivePreview({ url, domain }: { url: string; domain: string | null }) {
@@ -382,6 +395,81 @@ export function DomainsTable({ rows, canManage }: { rows: WebDomain[]; canManage
 
 const EVENT_LABELS: Record<string, string> = { page_view: "Vista de página", view_item: "Vio un producto", add_to_cart: "Agregó al carrito", begin_checkout: "Inició el checkout", purchase: "Compró" };
 
+const HOST_EVENTS = [
+  { event: "kipucontrol:ready", when: "El widget cargó, con producto, idioma y moneda" },
+  { event: "kipucontrol:resize", when: "Nuevo alto en píxeles para el iframe" },
+  { event: "kipucontrol:date_selected", when: "El visitante eligió una fecha" },
+  { event: "kipucontrol:quote", when: "Total recalculado, con total y moneda" },
+  { event: "kipucontrol:checkout", when: "El visitante pulsó continuar y pasó al checkout" },
+];
+
+const GA4_SNIPPET = `document.querySelector("kipucontrol-booking")
+  .addEventListener("kipucontrol:checkout", (event) => {
+    gtag("event", "begin_checkout", { value: event.detail.total, currency: event.detail.currency });
+  });`;
+
+const HANDOFF_STATUS: Record<string, string> = { pendiente: "Pendiente", en_carrito: "En carrito", convertido: "Pedido creado", expirado: "Vencido" };
+
+function IntegrationEvents({ overview }: { overview: WebOverview }) {
+  const webhooks = overview.webhooks ?? [];
+  const handoffs = overview.handoffs ?? [];
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid items-start gap-5 xl:grid-cols-2">
+        <div className="min-w-0">
+          <SectionHead icon={Webhook} title="Webhooks relevantes" aside={overview.can_rotate ? <Link href="/admin/api" className="text-[12.5px] font-semibold text-accent hover:underline">Gestionar en API y webhooks</Link> : undefined} />
+          <ul className="flex flex-col gap-2">
+            {webhooks.map((hook, index) => (
+              <li key={hook.event} style={{ animationDelay: `${index * 50}ms` }} className="lift flex animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] items-start justify-between gap-3 rounded-tile border border-line px-3.5 py-2.5" title={hook.endpoints.join(" · ") || undefined}>
+                <span className="min-w-0">
+                  <span className="block font-mono text-[12px] text-fg-2">{hook.event}</span>
+                  <span className="block text-[12.5px] text-fg-3">{hook.when}</span>
+                </span>
+                {hook.subscriptions > 0 ? <ChannelBadge status="activo" label={hook.subscriptions === 1 ? "1 suscripción" : `${hook.subscriptions} suscripciones`} /> : <span className="flex-none text-[12px] text-fg-3">Sin suscripción</span>}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[12px] text-fg-3">Se envían de servidor a servidor, firmados con HMAC-SHA256 y con reintentos.</p>
+        </div>
+        <div className="min-w-0">
+          <SectionHead icon={MousePointerClick} title="Eventos en la página anfitriona" />
+          <ul className="flex flex-col gap-1.5">
+            {HOST_EVENTS.map((item) => (
+              <li key={item.event} className="flex items-start gap-3 rounded-tile border border-line px-3.5 py-2">
+                <span className="w-[190px] flex-none font-mono text-[12px] text-fg-2">{item.event}</span>
+                <span className="text-[12.5px] text-fg-3">{item.when}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mb-2 mt-3 text-[12px] text-fg-3">Llegan como CustomEvent en la etiqueta y como postMessage desde el iframe, solo a dominios verificados. Ejemplo para GA4:</p>
+          <CodeSnippet code={GA4_SNIPPET} />
+        </div>
+      </div>
+      <div>
+        <SectionHead icon={PackageCheck} title="Últimos traspasos al checkout" aside={<span className="text-[12px] text-fg-3">{handoffs.length} más recientes</span>} />
+        {handoffs.length === 0 ? (
+          <p className="rounded-tile border border-dashed border-line px-4 py-6 text-center text-[13px] text-fg-3">Aún no hay traspasos. Aparecen cuando un visitante pulsa continuar en el widget.</p>
+        ) : (
+          <ul className="grid gap-2 md:grid-cols-2">
+            {handoffs.map((handoff, index) => (
+              <li key={handoff.code} style={{ animationDelay: `${index * 40}ms` }} className="lift flex animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] items-center justify-between gap-3 rounded-tile border border-line px-3.5 py-2.5">
+                <span className="min-w-0">
+                  <b className="block truncate text-[13px] font-semibold">{handoff.product ?? "Producto"}</b>
+                  <span className="block text-[12px] text-fg-3">{handoff.code} · {formatDateTime(handoff.at, false)} · viaje {formatDate(handoff.date)} · {handoff.pax} pax{handoff.origin ? ` · ${handoff.origin}` : ""}</span>
+                </span>
+                <span className="flex flex-none flex-col items-end gap-1">
+                  {handoff.total !== null && <b className="text-[13px]">{formatMoney(Number(handoff.total), handoff.currency)}</b>}
+                  <ChannelBadge status={handoff.status === "convertido" || handoff.status === "en_carrito" ? "activo" : handoff.status === "expirado" ? "vencida" : "pendiente"} label={HANDOFF_STATUS[handoff.status] ?? handoff.status} />
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function EventsSection({ events }: { events: WebEvent[] }) {
   const columns: Column<WebEvent>[] = [
     { id: "event", header: "Evento", mobile: "title", cell: (row) => <b className="text-[13.5px] font-semibold">{EVENT_LABELS[row.event] ?? row.event}</b> },
@@ -412,6 +500,12 @@ export function EventsSection({ events }: { events: WebEvent[] }) {
 export function WebIntegrationWorkspace({ overview, section }: { overview: WebOverview; section: "configurator" | "methods" | "domains" | "events" }) {
   if (section === "methods") return <MethodsSection overview={overview} />;
   if (section === "domains") return <DomainsSection overview={overview} />;
-  if (section === "events") return <EventsSection events={overview.events} />;
+  if (section === "events")
+    return (
+      <div className="flex flex-col gap-8">
+        <EventsSection events={overview.events} />
+        <IntegrationEvents overview={overview} />
+      </div>
+    );
   return <ConfiguratorSection overview={overview} />;
 }

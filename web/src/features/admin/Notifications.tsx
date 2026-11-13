@@ -1,15 +1,20 @@
 "use client";
 
-import { CheckCircle2, Clock, FileText, FlaskConical, Mail, PenLine, RefreshCw, XCircle } from "lucide-react";
-import { fallbackNotification, retryFailedNotifications, retryNotification, testNotificationRule, updateNotificationRule } from "@/app/(backoffice)/admin/notificaciones/actions";
+import { AlertTriangle, CheckCircle2, Clock, FileText, FlaskConical, Mail, PenLine, RefreshCw, XCircle } from "lucide-react";
+import Link from "next/link";
+import { useOptimistic, useState, useTransition } from "react";
+import { fallbackNotification, retryFailedNotifications, retryNotification, testNotificationRule, toggleNotificationChannel, updateNotificationRule } from "@/app/(backoffice)/admin/notificaciones/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
+import { FieldList } from "@/components/ui/Details";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
+import { SidePanel } from "@/components/ui/SidePanel";
 import { TextField } from "@/components/ui/TextField";
+import { ToneScope } from "@/components/ui/Tinted";
 import { ADMIN_INITIAL, CHANNEL_LABELS, type AdminActionState, type NotificationMessage, type NotificationRule, type NotificationsOverview } from "@/lib/admin";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
@@ -56,9 +61,66 @@ function RuleTester({ rule }: { rule: NotificationRule }) {
   );
 }
 
+function ChannelCell({ rule, channel, manage }: { rule: NotificationRule; channel: (typeof CHANNELS)[number]; manage: boolean }) {
+  const [on, setOn] = useOptimistic(rule.channels[channel]);
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const label = `${CHANNEL_LABELS[channel]}: ${on ? "activo" : "apagado"}`;
+  const icon = on ? <CheckCircle2 size={16} /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />;
+  const style = cn("mx-auto grid h-7 w-7 place-items-center rounded-full transition-transform duration-200 group-hover:scale-110", on ? "bg-[color-mix(in_srgb,var(--ok)_14%,transparent)] text-ok" : "text-fg-3/50");
+  if (!manage) {
+    return (
+      <span className={style} title={label}>
+        {icon}
+      </span>
+    );
+  }
+  return (
+    <span className="flex flex-col items-center gap-1">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={`${rule.label} por ${CHANNEL_LABELS[channel]}`}
+        title={`${label}. Toca para ${on ? "apagarlo" : "encenderlo"}.`}
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            setOn(!on);
+            setError(null);
+            const result = await toggleNotificationChannel(rule, channel, !on);
+            if (!result.done) setError(result.message);
+          })
+        }
+        className={cn(style, "cursor-pointer ring-accent/40 hover:ring-2 disabled:opacity-60")}
+      >
+        {icon}
+      </button>
+      {error && <span className="max-w-[140px] text-[11px] leading-tight text-bad">{error}</span>}
+    </span>
+  );
+}
+
+function SandboxNotice({ whatsapp }: { whatsapp: NotificationsOverview["whatsapp"] }) {
+  if (!whatsapp?.sandbox) return null;
+  return (
+    <ToneScope tone="warn" className="mb-3 flex items-start gap-2.5 rounded-[12px] bg-[color-mix(in_srgb,var(--tint)_10%,var(--surface))] px-4 py-3 text-[13px]">
+      <AlertTriangle size={17} className="mt-px flex-none text-[var(--tint)]" />
+      <span>
+        {whatsapp.name} está en estado <b>{whatsapp.status_label.toLowerCase()}</b>: los avisos por WhatsApp solo llegan a los números registrados para pruebas.{" "}
+        <Link href="/admin/integraciones" className="font-semibold text-accent hover:underline">
+          Ver la integración
+        </Link>
+      </span>
+    </ToneScope>
+  );
+}
+
 export function NotificationMatrix({ data }: { data: NotificationsOverview }) {
   const timing = (value: string) => data.options.timings.find((option) => option.value === value)?.label ?? value;
   return (
+    <>
+    <SandboxNotice whatsapp={data.whatsapp} />
     <div className="scroll-thin overflow-x-auto">
       <table className="w-full min-w-[720px] text-[13px]">
         <thead>
@@ -86,9 +148,7 @@ export function NotificationMatrix({ data }: { data: NotificationsOverview }) {
               </td>
               {CHANNELS.map((channel) => (
                 <td key={channel} className="px-2 py-2.5 text-center">
-                  <span className={cn("mx-auto grid h-7 w-7 place-items-center rounded-full transition-transform duration-200 group-hover:scale-110", rule.channels[channel] ? "bg-[color-mix(in_srgb,var(--ok)_14%,transparent)] text-ok" : "text-fg-3/50")} title={`${CHANNEL_LABELS[channel]}: ${rule.channels[channel] ? "activo" : "apagado"}`}>
-                    {rule.channels[channel] ? <CheckCircle2 size={16} /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
-                  </span>
+                  <ChannelCell rule={rule} channel={channel} manage={data.can_manage} />
                 </td>
               ))}
               <td className="px-3 py-2.5 text-fg-2">{rule.recipients}</td>
@@ -112,6 +172,7 @@ export function NotificationMatrix({ data }: { data: NotificationsOverview }) {
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 
@@ -154,7 +215,73 @@ export function NotificationTemplatesTable({ data }: { data: NotificationsOvervi
   return <DataTable screen="admin-notificaciones-plantillas" rows={data.rules} columns={columns} getKey={(rule) => rule.event} entityLabel="eventos" searchText={(rule) => `${rule.label} ${rule.event} ${rule.group}`} searchPlaceholder="Buscar evento" metrics={metrics} filters={filters} sorts={sorts} />;
 }
 
+const FLOW = ["Evento", "Regla", "Plantilla", "Canal", "Envío", "Estado", "Reintento"] as const;
+
+function MessageFlow({ message }: { message: NotificationMessage }) {
+  const reached = message.status === "pendiente" ? 4 : message.status === "fallido" ? 5 : 6;
+  return (
+    <ol className="flex flex-wrap items-center gap-1.5">
+      {FLOW.map((step, index) => {
+        const failed = message.status === "fallido" && index === 5;
+        const retry = index === 6;
+        const done = retry ? message.retries > 0 : index <= reached;
+        return (
+          <li key={step} className="flex items-center gap-1.5">
+            <span className={cn("rounded-full px-2.5 py-1 text-[11.5px] font-semibold", failed ? "bg-[color-mix(in_srgb,var(--bad)_14%,transparent)] text-bad" : done ? "bg-[color-mix(in_srgb,var(--ok)_12%,transparent)] text-ok" : "bg-surface-2 text-fg-3")}>
+              {retry && message.retries > 0 ? `${step} ×${message.retries}` : step}
+            </span>
+            {index < FLOW.length - 1 && <span className="text-fg-3">›</span>}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function MessageDetail({ message, rule, timing, condition }: { message: NotificationMessage; rule: NotificationRule | undefined; timing: string; condition: string | undefined }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <RowIcon tone="view" label="Ver detalle del envío" onClick={() => setOpen(true)} />
+      <SidePanel open={open} onOpenChange={setOpen} title={`Envío ${message.code}`} description={`${message.event_label} · ${CHANNEL_LABELS[message.channel] ?? message.channel}`}>
+        <div className="flex flex-col gap-4">
+          <MessageFlow message={message} />
+          <FieldList
+            fields={[
+              { label: "Evento", value: <span className="font-mono text-[12.5px]">{message.event}</span> },
+              { label: "Regla", value: rule ? <span title={rule.recipients}>{`${rule.recipients} · ${timing}${condition ? ` · ${condition}` : ""}`}</span> : "Aviso del sistema, sin regla editable" },
+              { label: "Canal", value: <span className="flex items-center gap-2"><ChannelChips channels={[message.channel]} />{message.fallback && <Badge tone="violet">Alterno</Badge>}</span> },
+              { label: "Para", value: <span title={message.address ?? undefined}>{message.to}{message.address && message.address !== message.to ? ` · ${message.address}` : ""}</span> },
+              { label: "Asunto", value: <span title={message.subject}>{message.subject}</span> },
+              { label: "Creado", value: formatDateTime(message.at) },
+              { label: "Enviado", value: message.sent_at ? formatDateTime(message.sent_at) : "—" },
+              ...(message.read_at ? [{ label: "Leído", value: formatDateTime(message.read_at) }] : []),
+              { label: "Estado", value: <Badge tone={STATUS[message.status].tone}>{STATUS[message.status].label}</Badge> },
+              { label: "Reintentos", value: String(message.retries) },
+            ]}
+          />
+          {message.error && (
+            <div className="rounded-[12px] border border-[color-mix(in_srgb,var(--bad)_25%,transparent)] bg-[color-mix(in_srgb,var(--bad)_5%,var(--surface))] p-3">
+              <p className="mb-1 text-[12px] font-semibold text-bad">{message.permanent ? "Último error · permanente" : "Último error · temporal"}</p>
+              <p className="whitespace-pre-wrap break-words text-[13px]">{message.error}</p>
+            </div>
+          )}
+          {message.status === "fallido" && <p className="text-[12.5px] text-fg-3">El fallo del canal no deshace la operación que originó el aviso. Puedes reintentarlo o reenviarlo por correo desde la tabla.</p>}
+          {message.body && (
+            <div>
+              <p className="mb-1.5 text-[12.5px] font-semibold text-fg-2">Mensaje enviado</p>
+              <p className="scroll-thin max-h-60 overflow-auto whitespace-pre-line rounded-[12px] bg-surface-2 p-3 text-[13px]">{message.body}</p>
+            </div>
+          )}
+        </div>
+      </SidePanel>
+    </>
+  );
+}
+
 export function NotificationLog({ data }: { data: NotificationsOverview }) {
+  const rules = new Map(data.rules.map((rule) => [rule.event, rule]));
+  const optionLabel = (list: { value: string; label: string }[], value: string | undefined) => list.find((option) => option.value === value)?.label ?? value ?? "";
   const columns: Column<NotificationMessage>[] = [
     {
       id: "event",
@@ -171,7 +298,20 @@ export function NotificationLog({ data }: { data: NotificationsOverview }) {
         </div>
       ),
     },
-    { id: "channel", header: "Canal", cell: (message) => <ChannelChips channels={[message.channel]} /> },
+    {
+      id: "channel",
+      header: "Canal",
+      cell: (message) => (
+        <span className="flex items-center gap-1.5">
+          <ChannelChips channels={[message.channel]} />
+          {message.fallback && (
+            <span title="Reenvío por correo de un aviso que falló en otro canal">
+              <Badge tone="violet">Alterno</Badge>
+            </span>
+          )}
+        </span>
+      ),
+    },
     { id: "to", header: "Para", cell: (message) => <span className="text-[13px]">{message.to}</span> },
     {
       id: "status",
@@ -193,23 +333,23 @@ export function NotificationLog({ data }: { data: NotificationsOverview }) {
       header: "",
       align: "right",
       mobile: "detail",
-      cell: (message) =>
-        data.can_manage && message.status === "fallido" ? (
+      cell: (message) => (
           <RowActions>
-            {message.permanent ? (
+            <MessageDetail message={message} rule={rules.get(message.event)} timing={optionLabel(data.options.timings, rules.get(message.event)?.timing)} condition={rules.get(message.event)?.condition && rules.get(message.event)?.condition !== "always" ? optionLabel(data.options.conditions, rules.get(message.event)?.condition) : undefined} />
+            {data.can_manage && message.status === "fallido" && (message.permanent ? (
               <RowIcon tone="neutral" label="Reintentar" icon={<RefreshCw size={15} />} disabledHint="Error permanente: reintentar no lo resuelve. Corrige el destinatario." />
             ) : (
               <PanelAction<AdminActionState> label="Reintentar" variant="ghost" size="sm" formId={`notif-retry-${message.code}`} trigger={(open) => <RowIcon tone="neutral" label="Reintentar envío" icon={<RefreshCw size={15} />} onClick={open} />} title="Reintentar envío" description={message.error ?? undefined} submitLabel="Reintentar" action={retryNotification} initial={ADMIN_INITIAL}>
                 {() => <input type="hidden" name="code" value={message.code} />}
               </PanelAction>
-            )}
-            {message.can_fallback && (
+            ))}
+            {data.can_manage && message.status === "fallido" && message.can_fallback && (
               <PanelAction<AdminActionState> label="Reenviar por correo" variant="ghost" size="sm" formId={`notif-fallback-${message.code}`} trigger={(open) => <RowIcon tone="neutral" label="Reenviar por correo" icon={<Mail size={15} />} onClick={open} />} title="Reenviar por correo" description="Enviamos el mismo aviso al correo del destinatario. El envío original queda registrado como fallido." submitLabel="Reenviar" action={fallbackNotification} initial={ADMIN_INITIAL}>
                 {() => <input type="hidden" name="code" value={message.code} />}
               </PanelAction>
             )}
           </RowActions>
-        ) : null,
+        ),
     },
   ];
   const metrics: MetricFilter<NotificationMessage>[] = [
@@ -229,5 +369,20 @@ export function NotificationLog({ data }: { data: NotificationsOverview }) {
         {() => null}
       </PanelAction>
     ) : undefined;
-  return <DataTable screen="admin-notificaciones" rows={data.messages} columns={columns} getKey={(message) => message.code} entityLabel="envíos" searchText={(message) => `${message.code} ${message.subject} ${message.to} ${message.event_label}`} searchPlaceholder="Buscar envío, destinatario o asunto" metrics={metrics} filters={filters} sorts={sorts} toolbarEnd={retryAll} />;
+  const csv = {
+    fileName: "registro-de-envios",
+    columns: [
+      { header: "Código", value: (message: NotificationMessage) => message.code },
+      { header: "Fecha", value: (message: NotificationMessage) => message.at, type: "datetime" as const },
+      { header: "Evento", value: (message: NotificationMessage) => message.event_label },
+      { header: "Canal", value: (message: NotificationMessage) => CHANNEL_LABELS[message.channel] ?? message.channel },
+      { header: "Alterno", value: (message: NotificationMessage) => message.fallback },
+      { header: "Para", value: (message: NotificationMessage) => message.to },
+      { header: "Asunto", value: (message: NotificationMessage) => message.subject },
+      { header: "Estado", value: (message: NotificationMessage) => STATUS[message.status].label },
+      { header: "Reintentos", value: (message: NotificationMessage) => message.retries, type: "number" as const },
+      { header: "Último error", value: (message: NotificationMessage) => message.error },
+    ],
+  };
+  return <DataTable screen="admin-notificaciones" rows={data.messages} columns={columns} getKey={(message) => message.code} entityLabel="envíos" searchText={(message) => `${message.code} ${message.subject} ${message.to} ${message.event_label}`} searchPlaceholder="Buscar envío, destinatario o asunto" metrics={metrics} filters={filters} sorts={sorts} toolbarEnd={retryAll} csv={csv} />;
 }

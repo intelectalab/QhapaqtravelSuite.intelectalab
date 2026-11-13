@@ -1,17 +1,18 @@
-import { Building2, CalendarClock, CircleAlert, CirclePause, CirclePlay, HardDrive, History, Layers, MapPin, ShieldCheck, Store, Ticket, Undo2, Users } from "lucide-react";
+import { Building2, CalendarClock, CircleAlert, CirclePause, CirclePlay, History, MapPin, ShieldCheck, Ticket, Undo2 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
-import { HeroBand, HeroChip, HeroPanel, SOFT_TINT, TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
+import { HeroBand, HeroChip, HeroPanel, SOFT_TINT, TintCardTitle, ToneScope } from "@/components/ui/Tinted";
 import { TenantEditAction, TenantPlanAction, TenantScheduledChange } from "@/features/platform/TenantManageActions";
 import { TenantStatusAction } from "@/features/platform/TenantStatusAction";
+import { TenantUsage } from "@/features/platform/TenantUsage";
 import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatDateTime, formatMoney, initials } from "@/lib/format";
-import { CYCLE_LABEL, formatBytes, planTone, type TenantDetail } from "@/lib/platform";
-import { getTenant, listPlans } from "@/lib/server/platform";
+import { CYCLE_LABEL, planTone, type TenantDetail } from "@/lib/platform";
+import { getProvisionOptions, getTenant, listPlans } from "@/lib/server/platform";
 
 const ACTIONS: Record<string, { label: string; tone: "bad" | "ok" | "t1" | "warn"; icon: typeof History }> = {
   suspender: { label: "Suspendida", tone: "bad", icon: CirclePause },
@@ -35,7 +36,7 @@ export async function generateMetadata({ params }: PageProps<"/plataforma/agenci
 export default async function AgenciaPage({ params, searchParams }: PageProps<"/plataforma/agencias/[code]">) {
   const { code } = await params;
   const { editar } = await searchParams;
-  const [tenant, plans] = await Promise.all([getTenant(code), listPlans()]);
+  const [tenant, plans, options] = await Promise.all([getTenant(code), listPlans(), getProvisionOptions()]);
   const tone = tenant.status === "suspendido" ? "mute" : planTone(tenant.plan?.rank ?? 1);
 
   return (
@@ -53,7 +54,7 @@ export default async function AgenciaPage({ params, searchParams }: PageProps<"/
         subtitle={[tenant.code, `${tenant.subdomain}.kipucontrol.com`, tenant.created_at ? `Alta el ${formatDate(tenant.created_at)}` : null].filter(Boolean).join(" · ")}
         actions={
           <>
-            <TenantEditAction tenant={tenant} defaultOpen={editar === "1"} />
+            <TenantEditAction tenant={tenant} options={options} defaultOpen={editar === "1"} />
             <TenantPlanAction tenant={tenant} plans={plans} />
             <TenantStatusAction tenant={tenant} />
           </>
@@ -90,19 +91,15 @@ export default async function AgenciaPage({ params, searchParams }: PageProps<"/
             <dl className="grid gap-x-4 gap-y-2 text-[13px] sm:grid-cols-2">
               <HeroFact label="RUC" value={tenant.ruc} />
               <HeroFact label="Tipo" value={tenant.business_type} />
-              <HeroFact label="Moneda y zona" value={`${tenant.base_currency} · ${tenant.timezone}`} />
+              <HeroFact label="Moneda y zona" value={`${tenant.base_currency} / ${tenant.alt_currency} · ${tenant.timezone}`} />
+              <HeroFact label="País e idioma" value={`${tenant.country} · ${tenant.locale}`} />
               <HeroFact label="Contacto" value={tenant.admin_email} />
             </dl>
           </HeroPanel>
         </div>
       </HeroBand>
 
-      <section aria-label="Uso" className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <TintTile icon={Users} tone="t1" label="Usuarios activos" value={tenant.users} />
-        <TintTile icon={Store} tone="sun" label="Sedes" value={tenant.sedes} />
-        <TintTile icon={HardDrive} tone="violet" label="Almacenamiento" value={formatBytes(tenant.storage_used_bytes)} />
-        <TintTile icon={Layers} tone="t4" label="Módulos" value={tenant.modules} note={tenant.plan ? `Según el plan ${tenant.plan.name}` : undefined} />
-      </section>
+      <TenantUsage tenant={tenant} />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <Card>

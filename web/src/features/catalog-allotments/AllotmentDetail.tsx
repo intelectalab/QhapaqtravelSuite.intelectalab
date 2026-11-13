@@ -11,10 +11,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { FieldList } from "@/components/ui/Details";
 import { PanelSection } from "@/features/catalog-shared/CatalogPanels";
-import { ALLOTMENT_STATUS, CONTRACT_STEPS, KIND_LABEL, REQUEST_STATUS, isClosed, type AllotmentCell, type AllotmentDetail, type AllotmentStatus, type AllotmentRequest, type ConsumptionRow } from "@/lib/catalog-allotments";
+import { ALLOTMENT_STATUS, CONTRACT_STEPS, KIND_LABEL, REQUEST_STATUS, isClosed, type AllotmentCell, type AllotmentCharge, type AllotmentDetail, type AllotmentStatus, type AllotmentRequest, type ConsumptionRow } from "@/lib/catalog-allotments";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
-import { toneStyle } from "@/lib/tone";
+import { statusLabel, statusTone, toneStyle } from "@/lib/tone";
 import { CellButton, CellLegend, DayPanel, weekday } from "./AllotmentDay";
 import { ExpansionRequestAction, ExpansionRespondActions } from "./AllotmentForms";
 
@@ -159,6 +159,7 @@ export function ContractConsumption({ detail }: { detail: AllotmentDetail }) {
     { id: "reservation", header: "Reserva", mobile: "title", cell: (row) => <Link href={`/reservas/${row.reservation}`} className="font-semibold text-accent hover:underline">{row.reservation}</Link> },
     { id: "service", header: "Servicio", cell: (row) => <span className="text-[13px]">{row.service}</span> },
     { id: "qty", header: "Unidades", align: "right", cell: (row) => <b className="font-mono text-[13.5px]">{row.qty}</b> },
+    { id: "service_status", header: "Estado del servicio", wideOnly: true, cell: (row) => <Badge tone={statusTone(row.service_status)}>{statusLabel(row.service_status)}</Badge> },
     { id: "state", header: "Consumo", cell: (row) => <Badge tone={row.state === "consumido" ? "ok" : "sun"}>{row.state === "consumido" ? "Consume cupo" : "En trámite"}</Badge> },
   ];
   const metrics: MetricFilter<ConsumptionRow>[] = [
@@ -168,6 +169,61 @@ export function ContractConsumption({ detail }: { detail: AllotmentDetail }) {
   return (
     <div className="p-5">
       <DataTable screen="cupo-consumo" rows={detail.consumptions} columns={columns} getKey={(row) => `${row.date}-${row.reservation}-${row.service}`} entityLabel="consumos" searchText={(row) => `${row.reservation} ${row.service}`} searchPlaceholder="Buscar reserva o servicio" metrics={metrics} emptyTitle="Ninguna reserva consume este contrato" />
+    </div>
+  );
+}
+
+export function ContractPenalties({ detail }: { detail: AllotmentDetail }) {
+  const { contract } = detail;
+  const columns: Column<AllotmentCharge>[] = [
+    { id: "date", header: "Fecha del servicio", mobile: "title", cell: (row) => <span className="text-[13px] font-semibold">{weekday(row.date)} {formatDate(row.date)}</span> },
+    { id: "qty", header: "Unidades sin usar", align: "right", cell: (row) => <b className="font-mono text-[13.5px]">{row.qty}</b> },
+    { id: "amount", header: "Cargo", align: "right", cell: (row) => <b className="font-mono text-[13.5px] text-bad">{formatMoney(row.amount, row.currency)}</b> },
+    { id: "reason", header: "Motivo", wideOnly: true, className: "whitespace-normal", cell: (row) => <span className="block max-w-[320px] text-[13px] text-fg-2">{row.reason}</span> },
+    { id: "payable", header: "Cuenta por pagar", cell: (row) => (row.payable ? <span className="font-mono text-[12.5px]">{row.payable}</span> : <span className="text-[12.5px] text-fg-3">Sin monto</span>) },
+    { id: "created", header: "Registrado", wideOnly: true, cell: (row) => <span className="text-[12.5px] text-fg-3">{formatDateTime(row.created_at, false)}</span> },
+  ];
+  return (
+    <div className="flex flex-col gap-4 p-5">
+      <p className="rounded-xl bg-surface-2 px-3.5 py-2.5 text-[13px] text-fg-2">
+        Cada fecha pasada con unidades sin vender ni liberar genera un cargo del <b className="font-semibold text-fg">{contract.penalty_pct} %</b> de la tarifa neta ({formatMoney(contract.net_rate, contract.currency)} por unidad). El cierre lo hace el release automático y crea la cuenta por pagar al proveedor.
+      </p>
+      <DataTable
+        screen="cupo-penalidades"
+        rows={detail.charges}
+        columns={columns}
+        getKey={(row) => `${row.date}-${row.created_at}`}
+        entityLabel="cargos"
+        searchText={(row) => `${row.date} ${row.reason} ${row.payable ?? ""}`}
+        searchPlaceholder="Buscar cargo"
+        emptyTitle="Sin cargos por no uso"
+        csv={{ fileName: `penalidades-${contract.code}`, columns: [{ header: "Fecha", value: (row) => row.date }, { header: "Unidades", value: (row) => row.qty }, { header: "Monto", value: (row) => row.amount }, { header: "Moneda", value: (row) => row.currency }, { header: "Motivo", value: (row) => row.reason }, { header: "Cuenta por pagar", value: (row) => row.payable }] }}
+      />
+    </div>
+  );
+}
+
+type ContractEvent = AllotmentDetail["events"][number];
+
+export function ContractHistory({ detail }: { detail: AllotmentDetail }) {
+  const columns: Column<ContractEvent>[] = [
+    { id: "at", header: "Fecha", cell: (row) => <span className="font-mono text-[12.5px] text-fg-2">{formatDateTime(row.at)}</span> },
+    { id: "message", header: "Evento", mobile: "title", className: "whitespace-normal", cell: (row) => <span className="block max-w-[560px] text-[13px]">{row.message}</span> },
+    { id: "user", header: "Autor", cell: (row) => <span className="text-[13px] text-fg-2">{row.user ?? "Sistema"}</span> },
+  ];
+  return (
+    <div className="p-5">
+      <DataTable
+        screen="cupo-historial"
+        rows={detail.events}
+        columns={columns}
+        getKey={(row) => `${row.at}-${row.message}`}
+        entityLabel="eventos"
+        searchText={(row) => `${row.message} ${row.user ?? ""}`}
+        searchPlaceholder="Buscar en la bitácora"
+        emptyTitle="Sin eventos registrados"
+        csv={{ fileName: `historial-cupo-${detail.contract.code}`, columns: [{ header: "Fecha", value: (row) => row.at }, { header: "Evento", value: (row) => row.message }, { header: "Autor", value: (row) => row.user ?? "Sistema" }] }}
+      />
     </div>
   );
 }

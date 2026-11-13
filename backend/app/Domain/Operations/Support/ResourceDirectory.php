@@ -9,6 +9,7 @@ use App\Domain\Operations\Actions\ResourceCatalog;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class ResourceDirectory
 {
@@ -17,6 +18,10 @@ final class ResourceDirectory
     public const PERSON_STATUS = ['disponible', 'asignado', 'descanso', 'vacaciones'];
 
     public const VEHICLE_STATUS = ['disponible', 'asignado', 'mantenimiento'];
+
+    public const DOCUMENT_ALERT_DAYS = 30;
+
+    public const AGENDA_DAYS = 90;
 
     public function __construct(private readonly OpsCommon $common) {}
 
@@ -97,6 +102,8 @@ final class ResourceDirectory
             'drivers' => $drivers,
             'vehicles' => $vehicles,
             'assignments' => $assignments->filter(fn (array $row) => $row['order_status'] !== 'cancelada')->values(),
+            'departures' => $this->occupations($today, $this->common->now()->addDays(self::AGENDA_DAYS)->toDateString())->where('source', 'departure')
+                ->sortBy(fn (array $item): string => $item['date'].($item['time'] ?? ''))->map(fn (array $item): array => collect($item)->except(['source', 'done'])->all())->values(),
             'languages' => collect(self::LANGUAGES)->map(fn (string $label, string $code) => ['value' => $code, 'label' => $label])->values(),
             'carriers' => DB::table('catalog_providers')->whereNull('deleted_at')->where('type', 'Transporte')->orderBy('name')->get(['id', 'name']),
             'options' => $viewer->can('operations.assign') ? $this->options() : null,
@@ -124,6 +131,85 @@ final class ResourceDirectory
             'next' => $start->addDays(7)->toDateString(),
             'days' => $days,
             'groups' => $groups,
+        ];
+    }
+
+    public function assignmentList(array $filters): array
+    {
+        $from = ($filters['from'] ?? null) === 'today' ? $this->common->today() : ($filters['from'] ?? null);
+        $incomplete = in_array($filters['incomplete'] ?? null, ['true', '1'], true);
+        $resource = $filters['resource'] ?? null;
+
+        return $this->assignments()
+            ->when($from !== null, fn (Collection $rows) => $rows->filter(fn (array $row): bool => $row['date'] >= $from))
+            ->when($incomplete, fn (Collection $rows) => $rows->filter(fn (array $row): bool => $row['status'] === 'pendiente'))
+            ->when($resource !== null, fn (Collection $rows) => $rows->filter(fn (array $row): bool => in_array($resource, [$row['guide']['id'] ?? null, $row['driver']['id'] ?? null, $row['vehicle']['id'] ?? null], true)))
+            ->values()
+            ->all();
+    }
+
+    public function documentAlerts(): array
+    {
+        $today = $this->common->today();
+        $limit = $this->common->now()->addDays(self::DOCUMENT_ALERT_DAYS)->toDateString();
+        $rows = [];
+
+        foreach (DB::table('ops_drivers')->whereNull('deleted_at')->whereNotNull('license_expires_on')->where('license_expires_on', '<=', $limit)->get(['id', 'full_name', 'license_expires_on', 'status']) as $driver) {
+            $rows[] = $this->alertRow('driver', (string) $driver->id, (string) $driver->full_name, 'Licencia de conducir', (string) $driver->license_expires_on, (string) $driver->status, $today, $limit);
+        }
+
+        foreach (DB::table('ops_vehicles')->whereNull('deleted_at')->whereNotNull('soat_expires_on')->where('soat_expires_on', '<=', $limit)->get(['id', 'plate', 'vehicle_type', 'soat_expires_on', 'status']) as $vehicle) {
+            $rows[] = $this->alertRow('vehicle', (string) $vehicle->id, "{$vehicle->plate} · {$vehicle->vehicle_type}", 'SOAT', (string) $vehicle->soat_expires_on, (string) $vehicle->status, $today, $limit);
+        }
+
+        $items = collect($rows)->sortBy('expires_on')->values();
+
+        return [
+            'today' => $today,
+            'window_days' => self::DOCUMENT_ALERT_DAYS,
+            'counts' => ['expired' => $items->where('state', 'vencido')->count(), 'expiring' => $items->where('state', 'por_vencer')->count()],
+            'items' => $items,
+        ];
+    }
+
+    private function alertRow(string $kind, string $id, string $name, string $document, string $expires, string $status, string $today, string $limit): array
+    {
+        return [
+            'kind' => $kind,
+            'id' => $id,
+            'name' => $name,
+            'document' => $document,
+            'expires_on' => $expires,
+            'days_left' => (int) CarbonImmutable::parse($today)->diffInDays(CarbonImmutable::parse($expires), false),
+            'state' => $this->documentState($expires, $today, $limit),
+            'status' => $status,
+        ];
+    }
+
+    public function agenda(string $kind, string $id): ?array
+    {
+        $table = ResourceCatalog::TABLES[$kind];
+        $resource = Str::isUuid($id) ? DB::table($table)->whereNull('deleted_at')->where('id', $id)->first() : null;
+
+        if ($resource === null) {
+            return null;
+        }
+
+        $today = $this->common->today();
+        $items = $this->occupations($today, $this->common->now()->addDays(self::AGENDA_DAYS)->toDateString())
+            ->filter(fn (array $item): bool => $item['kind'] === $kind && $item['resource_id'] === $id)
+            ->sortBy(fn (array $item): string => $item['date'].($item['time'] ?? ''))
+            ->map(fn (array $item): array => collect($item)->except(['kind', 'resource_id'])->all())
+            ->values();
+
+        return [
+            'kind' => $kind,
+            'id' => $resource->id,
+            'name' => $kind === 'vehicle' ? "{$resource->plate} · {$resource->vehicle_type}" : $resource->full_name,
+            'status' => $resource->status,
+            'from' => $today,
+            'days' => self::AGENDA_DAYS,
+            'items' => $items,
         ];
     }
 

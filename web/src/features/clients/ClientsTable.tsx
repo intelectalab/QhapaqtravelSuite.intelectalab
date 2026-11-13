@@ -84,7 +84,7 @@ const buildColumns = (canManage: boolean): Column<ClientRow>[] => [
   },
   {
     id: "owner",
-    header: "Asesor",
+    header: "Responsable",
     cell: (client) => (
       <span className="flex items-center gap-2 text-[13px]">
         <Avatar name={client.ownerName} size="xs" solid className="max-md:hidden" />
@@ -144,7 +144,7 @@ const csv: CsvExport<ClientRow> = {
     { header: "Saldo (S/)", value: (client) => client.balancePen },
     { header: "Satisfacción", value: (client) => client.satisfaction },
     { header: "Última compra", value: (client) => client.lastPurchase },
-    { header: "Asesor", value: (client) => client.ownerName },
+    { header: "Responsable", value: (client) => client.ownerName },
   ],
 };
 
@@ -152,7 +152,7 @@ export function ClientsTable({ clients, canManage }: { clients: ClientRow[]; can
   const filters: FilterConfig<ClientRow>[] = [
     { id: "kind", label: "Tipo", options: [{ value: "Persona", label: "Personas" }, { value: "Empresa", label: "Empresas" }], value: (client) => client.kind },
     { id: "segment", label: "Segmento", options: uniqueOptions(clients.map((client) => client.segment)), value: (client) => client.segment },
-    { id: "owner", label: "Asesor", options: uniqueOptions(clients.map((client) => client.ownerName)), value: (client) => client.ownerName },
+    { id: "owner", label: "Responsable", options: uniqueOptions(clients.map((client) => client.ownerName)), value: (client) => client.ownerName },
     { id: "country", label: "País", options: uniqueOptions(clients.map((client) => client.country)), value: (client) => client.country },
   ];
 

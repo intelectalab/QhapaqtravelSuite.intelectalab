@@ -1,3 +1,4 @@
+import type { DepartureRow } from "./catalog-departures";
 import type { Tone } from "./tone";
 
 export type ProductStatus = "DRAFT" | "REVIEW" | "APPROVED" | "ACTIVE" | "SUSPENDED" | "INACTIVE" | "ARCHIVED";
@@ -16,7 +17,7 @@ export interface ProductRow {
   status: ProductStatus;
   channels: string[];
   featured: boolean;
-  price_from?: { amount: string; currency: string } | null;
+  price_from?: { amount: string; currency: string; segment?: string; channel?: string } | null;
 }
 
 export interface ProductDetail extends ProductRow {
@@ -61,7 +62,7 @@ export interface ProductFormOptions {
   categories: { id: string; name: string; subcategories: { id: string; name: string }[] }[];
   destinations: { id: string; name: string; path: string; level: number }[];
   providers: { id: string; name: string; type: string; blocked: string | null }[];
-  services: { id: string; ref: string; name: string; type: string; unit: string; cost: string | null; currency: string; provider_id: string; provider: string; blocked: string | null }[];
+  services: { id: string; ref: string; name: string; type: string; unit: string; cost: string | null; currency: string; provider_id: string; provider: string; valid_to?: string; blocked: string | null }[];
   products: { id: string; code: string; name: string }[];
   seasons: { id: string; ref: string; name: string; type: string; date_from: string; date_to: string; priority: number; factor: string; status: string }[];
   units: string[];
@@ -172,6 +173,7 @@ export interface ProductContentDraft {
   seo_description: string | null;
   slug: string | null;
   video_url: string | null;
+  features?: string[];
   inclusions: string[];
   exclusions: string[];
   requirements: { category: string | null; text: string }[];
@@ -216,8 +218,20 @@ export function tierRanges(tiers: PenaltyTier[]): { label: string; pct: number }
   return rows;
 }
 
+export interface CostBreakdown {
+  items: { name: string; amount: string; per_person: boolean }[];
+  per_person: string;
+  shared: string;
+  min_pax: number;
+  max_pax: number;
+  price: string | null;
+  break_even: number | null;
+  loses_at_min: boolean;
+  groups: { pax: number; shared_share: string; cost: string; profit: string | null; margin_pct: string | null }[];
+}
+
 export interface ProductReview {
-  summary: { name: string; code: string; sku: string; type: string | null; category: string | null; subcategory: string | null; destination: string | null; provider: string | null; components: number; components_cost: string | null; itinerary_days: number; rates: number; seasons: number; availability: string; status: ProductStatus };
+  summary: { name: string; code: string; sku: string; type: string | null; category: string | null; subcategory: string | null; destination: string | null; provider: string | null; components: number; components_cost: string | null; cost_breakdown: CostBreakdown | null; itinerary_days: number; rates: number; seasons: number; availability: string; status: ProductStatus };
   checklist: { items: ChecklistItem[]; passed: number; total: number };
 }
 
@@ -316,19 +330,30 @@ export interface ProductTranslations {
   translations: (ProductTranslationText & { locale: string; exists: boolean; slug: string | null; updated_at: string | null })[];
 }
 
+export interface RelatedProduct {
+  code: string;
+  name: string;
+  status: ProductStatus;
+  relation: string;
+  type: string;
+  price_from: { amount: string; currency: string } | null;
+}
+
 export interface ProductOverview {
   code: string;
-  kpis: { components_cost: string | null; future_departures: number; quotes: number; reservations: number; sellable: boolean; version: string | null };
+  kpis: { components_cost: string | null; cost_breakdown: CostBreakdown | null; future_departures: number; quotes: number; reservations: number; sellable: boolean; version: string | null };
   checklist: ProductReview["checklist"];
-  departures: { ref: string; date: string; time: string | null; capacity: number; sold: number; status: string; meeting_point: string | null; future: boolean }[];
-  providers: { ref: string; name: string; type: string; status: string; contract_end: string; main: boolean; services: string[]; usable: boolean }[] | null;
-  related: { code: string; name: string; status: ProductStatus; relation: string }[];
-  b2b: { agency_code: string | null; agency: string | null; price_list: string | null; price: string; currency: string; commission_pct: string | null; is_credit: boolean; valid_to: string | null }[] | null;
-  promotions: { ref: string; name: string; kind: string; value: string; channel: string | null; promo_code: string | null; min_pax: number | null; date_from: string; date_to: string; status: string }[];
+  departures: (Omit<DepartureRow, "time"> & { time: string | null })[];
+  providers: { ref: string; name: string; type: string; status: string; contract_end: string; contract_days: number; ruc: string; payment_terms: string | null; rating: number; main: boolean; services: string[]; usable: boolean }[] | null;
+  related: RelatedProduct[];
+  referenced_by: RelatedProduct[];
+  b2b: { agency_code: string | null; agency: string | null; agency_status: string | null; price_list: string | null; price: string; currency: string; commission_pct: string | null; is_credit: boolean; valid_to: string | null; conditions: string | null; restrictions: string | null; diff_pct: number | null }[] | null;
+  public_price: { amount: string; currency: string; channel: string } | null;
+  promotions: { ref: string; name: string; kind: string; value: string; channel: string | null; promo_code: string | null; min_pax: number | null; date_from: string; date_to: string; status: string; result_price: { amount: string; currency: string } | null }[];
   profitability: { id: string; ref: string; rate_type: string; segment: string; channel: string; currency: string; cost: string; price: string; status: string; margin: string; margin_pct: number | null }[] | null;
   config_groups: { name: string; options: { label: string; price_delta: string }[] }[];
   versions: { version: string; status: string; valid_from: string | null; reason: string | null; created_at: string; author: string | null }[];
-  history: { code: string; action: string; before_value: string | null; after_value: string | null; occurred_at: string; actor: string | null }[] | null;
+  history: { code: string; entity: string; entity_id: string; scope: "producto" | "tarifa" | "salida"; action: string; before_value: string | null; after_value: string | null; occurred_at: string; actor: string | null }[] | null;
   usage: { quotes: { code: string; title: string; status: string; client: string }[]; reservations: { code: string; title: string; status: string; client: string }[] };
 }
 

@@ -35,6 +35,10 @@ final class VoucherSheet
             ->where('a.reservation_service_id', $voucher->reservation_service_id)
             ->first(['g.full_name as guide', 'g.phone as guide_phone', 'dr.full_name as driver', 'dr.phone as driver_phone', 'v.vehicle_type', 'v.plate']);
         $agency = $this->agency->current();
+        $coordinator = DB::table('ops_orders as o')->join('iam_users as u', 'u.id', '=', 'o.coordinator_id')->where('o.reservation_id', $voucher->reservation_id)->where('o.status', '<>', 'cancelada')->orderByDesc('o.created_at')->first(['u.name', 'u.phone']);
+        $general = DB::table('sys_settings')->where('section', 'general')->value('values');
+        $general = is_string($general) ? (json_decode($general, true) ?: []) : [];
+        $emergency = $general['emergency_phone'] ?? $general['phone'] ?? DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->orderByDesc('is_main')->value('phone') ?? $agency['phone'] ?? null;
         $inclusions = $service?->product_id ? $this->itinerary->inclusions(collect([(string) $service->product_id])) : [];
         $passengers = DB::table('booking_passengers')->where('reservation_id', $voucher->reservation_id)->orderByDesc('is_lead')->orderBy('seq')
             ->get(['full_name', 'doc_type', 'doc_number', 'pax_type', 'diet_notes', 'is_lead'])
@@ -83,7 +87,9 @@ final class VoucherSheet
                 $assignment?->guide ? ['label' => 'Guía', 'name' => (string) $assignment->guide, 'phone' => $assignment->guide_phone] : null,
                 $assignment?->driver ? ['label' => 'Conductor', 'name' => (string) $assignment->driver, 'phone' => $assignment->driver_phone] : null,
                 $assignment?->vehicle_type ? ['label' => 'Vehículo', 'name' => trim("{$assignment->vehicle_type} · placa {$assignment->plate}"), 'phone' => null] : null,
+                $coordinator ? ['label' => 'Coordinador', 'name' => (string) $coordinator->name, 'phone' => $coordinator->phone] : null,
             ])),
+            'emergency' => $emergency ? (string) $emergency : null,
             'reservation' => ['code' => (string) $reservation->code, 'title' => (string) $reservation->title],
             'client' => $this->parties->client((string) $reservation->client_id),
             'advisor' => $this->parties->advisor((string) $reservation->owner_id),

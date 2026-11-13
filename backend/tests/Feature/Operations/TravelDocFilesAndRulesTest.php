@@ -25,8 +25,8 @@ it('Operaciones sube y reemplaza el archivo de un documento y lo deja por valida
     $item = docItem('RES-2026-000345');
     $url = "/api/v1/reservations/RES-2026-000345/travel-docs/{$item->passenger_id}/id_doc/files";
 
-    $this->post($url, ['file' => UploadedFile::fake()->create('pasaporte.exe', 20, 'application/x-msdownload')], ['Accept' => 'application/json'])->assertStatus(422);
-    $this->post($url, ['file' => UploadedFile::fake()->create('pasaporte.pdf', 120, 'application/pdf'), 'doc_number' => 'PA9981', 'expiry_date' => '2031-05-01'], ['Accept' => 'application/json'])->assertCreated();
+    $this->post("/api/v1/reservations/RES-2026-000345/travel-docs/{$item->passenger_id}/id_doc/files", ['file' => UploadedFile::fake()->create('pasaporte.exe', 20, 'application/x-msdownload')], ['Accept' => 'application/json'])->assertStatus(422);
+    $this->post("/api/v1/reservations/RES-2026-000345/travel-docs/{$item->passenger_id}/id_doc/files", ['file' => UploadedFile::fake()->create('pasaporte.pdf', 120, 'application/pdf'), 'doc_number' => 'PA9981', 'expiry_date' => '2031-05-01'], ['Accept' => 'application/json'])->assertCreated();
 
     $row = rowOf('ops_travel_doc_items', $item->id, column: 'id');
     expect($row->status)->toBe('recibido')
@@ -53,13 +53,13 @@ it('registra el contacto de emergencia y la atención especial sin términos cl�
     $base = "/api/v1/reservations/RES-2026-000345/travel-docs/{$item->passenger_id}";
 
     $this->putJson("{$base}/emergency-contact", ['name' => 'Ana', 'phone' => 'x', 'relation' => 'Vecino'])->assertStatus(422)->assertJsonValidationErrors(['phone', 'relation']);
-    $this->putJson("{$base}/emergency-contact", ['name' => 'Ana Flores', 'phone' => '+51 984 112 233', 'relation' => 'Familiar'])->assertOk();
+    $this->putJson("/api/v1/reservations/RES-2026-000345/travel-docs/{$item->passenger_id}/emergency-contact", ['name' => 'Ana Flores', 'phone' => '+51 984 112 233', 'relation' => 'Familiar'])->assertOk();
     expect(withinTenant(tenantA(), fn () => DB::table('ops_travel_doc_contacts')->where('passenger_id', $item->passenger_id)->value('phone')))->toBe('+51 984 112 233')
         ->and(docAudit(['entity' => 'Documento de viaje', 'action' => 'registrar_contacto']))->toBeTrue();
 
     expect($this->putJson("{$base}/special-attention", ['requires_attention' => true, 'operational_note' => 'Tiene diabetes tipo 2']))->toBeApiError(422, 'DOC-BR-009');
     $this->putJson("{$base}/special-attention", ['requires_attention' => true])->assertStatus(422)->assertJsonValidationErrors('operational_note');
-    $this->putJson("{$base}/special-attention", ['requires_attention' => true, 'operational_note' => 'Asiento delantero en el bus; dieta sin gluten'])->assertOk();
+    $this->putJson("/api/v1/reservations/RES-2026-000345/travel-docs/{$item->passenger_id}/special-attention", ['requires_attention' => true, 'operational_note' => 'Asiento delantero en el bus; dieta sin gluten'])->assertOk();
 
     $passenger = collect($this->getJson('/api/v1/reservations/RES-2026-000345/travel-docs')->json('data.passengers'))->firstWhere('id', $item->passenger_id);
     expect($passenger['contact']['relation'])->toBe('Familiar')

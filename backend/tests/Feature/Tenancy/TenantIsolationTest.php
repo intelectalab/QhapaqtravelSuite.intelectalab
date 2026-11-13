@@ -230,7 +230,7 @@ it('X-01: barrido de todos los listados del back-office; el admin de B nunca rec
 
     $routes = collect(app('router')->getRoutes()->getRoutes())
         ->filter(fn ($route) => in_array('GET', $route->methods(), true) && str_starts_with($route->uri(), 'api/v1/') && ! str_contains($route->uri(), '{'))
-        ->reject(fn ($route) => preg_match('#^api/v1/(public|platform|portal|supplier|b2b|auth|health)(/|$)#', $route->uri()) === 1 || str_contains($route->uri(), 'export'))
+        ->reject(fn ($route) => preg_match('#^api/v1/(public|platform|portal|supplier|b2b|auth|health|docs)(/|$)#', $route->uri()) === 1 || str_contains($route->uri(), 'export'))
         ->map(fn ($route) => '/'.$route->uri())->unique()->values();
     expect($routes->count())->toBeGreaterThan(80);
 

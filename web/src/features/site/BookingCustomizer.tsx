@@ -1,17 +1,39 @@
 "use client";
 
-import { BedDouble, Check, MapPin, Plane, Sparkles, Ticket } from "lucide-react";
+import { BedDouble, Check, Compass, MapPin, Plane, Route, Sparkles, Ticket } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import { formatMoney } from "@/lib/format";
-import type { BookingConfig, BookingExtras, BookingHotel, LodgingChoice } from "@/lib/site";
+import { formatDate, formatMoney } from "@/lib/format";
+import type { BookingConfig, BookingExtras, BookingHotel, LodgingChoice, TripConfig, TripTransport } from "@/lib/site";
 import { SectionHeading } from "./Bits";
 import { useBooking } from "./ProductBooking";
 import { Stepper } from "./SearchBar";
 import { useSite } from "./SiteContext";
 
 function hasCustomization(config: BookingConfig | undefined): config is BookingConfig {
-  return Boolean(config && (config.options.length > 0 || config.addons.length > 0 || config.lodging || config.pickup));
+  return Boolean(config && (config.options.length > 0 || config.addons.length > 0 || config.lodging || config.pickup || config.trip));
+}
+
+function addDays(date: string, days: number): string {
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+function schedule(trip: TripConfig, date: string | null, nights: Record<string, number>): Record<string, { nights: number; check_in: string | null; check_out: string | null }> {
+  const out: Record<string, { nights: number; check_in: string | null; check_out: string | null }> = {};
+  let day = date;
+  for (const leg of trip.legs) {
+    const count = Math.max(leg.min_nights, Math.min(leg.max_nights, nights[leg.id] ?? leg.nights));
+    out[leg.id] = { nights: count, check_in: day, check_out: day ? addDays(day, count) : null };
+    day = day ? addDays(day, count) : null;
+  }
+  return out;
+}
+
+function vehicleFor(option: TripTransport, people: number) {
+  const sorted = [...option.vehicles].sort((a, b) => a.max_pax - b.max_pax);
+  return sorted.find((vehicle) => vehicle.max_pax >= people) ?? sorted[sorted.length - 1];
 }
 
 function Block({ icon, title, hint, children, index }: { icon: ReactNode; title: string; hint?: string; children: ReactNode; index: number }) {
@@ -45,12 +67,33 @@ function cheapest(hotel: BookingHotel): number {
 }
 
 export function BookingCustomizer({ heading = false }: { heading?: boolean }) {
-  const { t } = useSite();
-  const { config, extras, setExtras, pax, product } = useBooking();
+  const { t, dateLocale } = useSite();
+  const { config, extras, setExtras, pax, product, date } = useBooking();
   if (!hasCustomization(config)) return null;
   const seats = pax.adults + pax.children;
   const update = (patch: Partial<BookingExtras>) => setExtras({ ...extras, ...patch });
   const lodging = config.lodging;
+  const trip = config.trip ?? null;
+  const nights = extras.nights ?? {};
+  const plan = trip ? schedule(trip, date, nights) : {};
+  const tripLeg = (legId: string) => trip?.legs.find((leg) => leg.id === legId);
+  const setNights = (legId: string, value: number) => update({ nights: { ...nights, [legId]: value } });
+  const tours = extras.tours ?? [];
+  const transport = extras.transport ?? [];
+  const toggleTour = (id: string) => update(tours.includes(id) ? { tours: tours.filter((item) => item !== id), removed: extras.removed.filter((key) => key !== `tour-${id}`) } : { tours: [...tours, id] });
+  const toggleTransport = (option: TripTransport, group: TripTransport[]) => {
+    const same = option.to_leg_id ? group.map((item) => item.id) : [option.id];
+    const had = transport.includes(option.id);
+    update({ transport: [...transport.filter((id) => !same.includes(id)), ...(had ? [] : [option.id])], removed: extras.removed.filter((key) => !same.some((id) => key === `trans-${id}`)) });
+  };
+  const optionPrice = (option: TripTransport) => {
+    if (option.pricing === "vehiculo") {
+      const vehicle = vehicleFor(option, seats);
+      return vehicle ? `${formatMoney(vehicle.price, option.currency)} ${t.booking.trip.perVehicle(vehicle.name)}` : "";
+    }
+    return `${formatMoney(option.price_adult ?? 0, option.currency)} ${t.booking.trip.adult}`;
+  };
+  const lastLeg = trip ? plan[trip.legs[trip.legs.length - 1]?.id ?? ""] : undefined;
   const choiceFor = (legId: string): LodgingChoice | undefined => extras.lodging.find((choice) => choice.leg_id === legId);
   const setChoice = (legId: string, choice: LodgingChoice | null) => {
     const others = extras.lodging.filter((item) => item.leg_id !== legId);
@@ -97,7 +140,7 @@ export function BookingCustomizer({ heading = false }: { heading?: boolean }) {
       )}
 
       {lodging && (
-        <Block icon={<BedDouble size={17} />} title={t.booking.lodging} hint={t.booking.lodgingHint(lodging.legs.length, lodging.nights)} index={index++}>
+        <Block icon={<BedDouble size={17} />} title={t.booking.lodging} hint={t.booking.lodgingHint(lodging.legs.length, trip ? Object.values(plan).reduce((sum, leg) => sum + leg.nights, 0) : lodging.nights)} index={index++}>
           {lodging.optional && (
             <div role="radiogroup" aria-label={t.booking.lodging} className="mb-4 inline-flex rounded-full border border-line p-1">
               {[false, true].map((none) => (
@@ -115,10 +158,25 @@ export function BookingCustomizer({ heading = false }: { heading?: boolean }) {
                 return (
                   <li key={leg.id} className="relative">
                     <span className="absolute -left-[27px] top-1 h-3 w-3 rounded-full border-2 border-surface bg-t1" />
-                    <p className="flex flex-wrap items-baseline justify-between gap-2">
-                      <b className="text-[14px] font-semibold text-fg">{leg.city}</b>
-                      <span className="text-[12px] text-fg-3">{t.booking.nights(leg.nights)}</span>
-                    </p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="min-w-0">
+                        <b className="text-[14px] font-semibold text-fg">{leg.city}</b>
+                        {plan[leg.id]?.check_in && (
+                          <span className="ml-2 text-[12px] text-fg-3">
+                            {formatDate(plan[leg.id].check_in ?? "", "short", dateLocale)} → {formatDate(plan[leg.id].check_out ?? "", "short", dateLocale)}
+                          </span>
+                        )}
+                        {tripLeg(leg.id)?.seasonal && <span className="ml-2 rounded-full bg-[color-mix(in_srgb,var(--t3)_14%,transparent)] px-2 py-0.5 text-[11px] font-semibold text-t3">{t.booking.trip.seasonal}</span>}
+                      </span>
+                      {tripLeg(leg.id) && (tripLeg(leg.id)?.max_nights ?? 0) > (tripLeg(leg.id)?.min_nights ?? 0) ? (
+                        <span className="flex items-center gap-2" title={t.booking.trip.nightsRange(tripLeg(leg.id)?.min_nights ?? 1, tripLeg(leg.id)?.max_nights ?? 1)}>
+                          <span className="text-[12px] text-fg-3">{t.booking.nights(plan[leg.id]?.nights ?? leg.nights)}</span>
+                          <Stepper value={plan[leg.id]?.nights ?? leg.nights} min={tripLeg(leg.id)?.min_nights ?? leg.nights} max={tripLeg(leg.id)?.max_nights ?? leg.nights} onChange={(value) => setNights(leg.id, value)} label={t.booking.nights(plan[leg.id]?.nights ?? leg.nights)} removeLabel={t.booking.trip.lessNights(leg.city)} addLabel={t.booking.trip.moreNights(leg.city)} />
+                        </span>
+                      ) : (
+                        <span className="text-[12px] text-fg-3">{t.booking.nights(plan[leg.id]?.nights ?? leg.nights)}</span>
+                      )}
+                    </div>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       {leg.hotels.map((item) => (
                         <Toggle key={item.id} active={item.id === hotel?.id} onClick={() => (item.id === hotel?.id && lodging.optional ? setChoice(leg.id, null) : pickHotel(leg.id, item))}>
@@ -149,6 +207,85 @@ export function BookingCustomizer({ heading = false }: { heading?: boolean }) {
             </ol>
           )}
           {lodging.note && <p className="mt-3 text-[12px] text-fg-3">{lodging.note}</p>}
+        </Block>
+      )}
+
+      {trip && (
+        <Block icon={<Compass size={17} />} title={t.booking.trip.title} hint={t.booking.trip.hint} index={index++}>
+          <ol className="grid gap-3">
+            {trip.legs.map((leg, position) => {
+              const next = trip.legs[position + 1];
+              const arrivals = next ? next.arrivals.filter((option) => option.from_leg_id === leg.id) : [];
+              if (leg.tours.length === 0 && leg.local.length === 0 && arrivals.length === 0) return null;
+              return (
+                <li key={leg.id} className="rounded-2xl border border-line p-3.5">
+                  <p className="flex flex-wrap items-baseline justify-between gap-2">
+                    <b className="text-[14px] font-semibold text-fg">{leg.city}</b>
+                    {plan[leg.id]?.check_in && <span className="text-[12px] text-fg-3">{formatDate(plan[leg.id].check_in ?? "", "short", dateLocale)} → {formatDate(plan[leg.id].check_out ?? "", "short", dateLocale)}</span>}
+                  </p>
+                  {leg.tours.length > 0 && (
+                    <>
+                      <p className="mb-2 mt-3 text-[12px] font-semibold text-fg-2">{t.booking.trip.tours}</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {leg.tours.map((tour) => (
+                          <Toggle key={tour.id} active={tours.includes(tour.id)} onClick={() => toggleTour(tour.id)}>
+                            <b className="block pr-6 text-[13.5px] font-semibold leading-snug text-fg">{tour.name}</b>
+                            <span className="mt-1 block text-[12px] text-fg-3">
+                              {t.booking.trip.day(tour.day_offset)} · {tour.time} · {t.booking.trip.hours(tour.hours)}
+                              {tour.min_age ? ` · ${t.booking.trip.minAge(tour.min_age)}` : ""}
+                            </span>
+                            <span className="mt-1 block text-[12px] tabular-nums text-fg-2">
+                              {formatMoney(tour.price_adult, tour.currency)} {t.booking.trip.adult}
+                              {Number(tour.price_child) > 0 ? ` · ${formatMoney(tour.price_child, tour.currency)} ${t.booking.trip.child}` : tour.min_age ? ` · ${t.booking.trip.childNA}` : ""}
+                            </span>
+                          </Toggle>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {leg.local.length > 0 && (
+                    <>
+                      <p className="mb-2 mt-3 text-[12px] font-semibold text-fg-2">{t.booking.trip.local}</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {leg.local.map((option) => (
+                          <Toggle key={option.id} active={transport.includes(option.id)} onClick={() => toggleTransport(option, leg.local)}>
+                            <b className="block pr-6 text-[13.5px] font-semibold leading-snug text-fg">{option.name}</b>
+                            <span className="mt-1 block text-[12px] tabular-nums text-fg-3">{optionPrice(option)}</span>
+                          </Toggle>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {next && arrivals.length > 0 && (
+                    <>
+                      <p className="mb-2 mt-3 text-[12px] font-semibold text-fg-2">
+                        {t.booking.trip.getTo(next.city)} <span className="font-normal text-fg-3">({t.booking.trip.chooseOne})</span>
+                      </p>
+                      <div role="radiogroup" aria-label={t.booking.trip.getTo(next.city)} className="grid gap-2 sm:grid-cols-2">
+                        {arrivals.map((option) => (
+                          <Toggle key={option.id} active={transport.includes(option.id)} onClick={() => toggleTransport(option, arrivals)}>
+                            <b className="block pr-6 text-[13.5px] font-semibold leading-snug text-fg">{option.name}</b>
+                            <span className="mt-1 block text-[12px] text-fg-3">
+                              {option.mode_label}
+                              {option.hours ? ` · ${t.booking.trip.hours(option.hours)}` : ""}
+                            </span>
+                            <span className="mt-1 block text-[12px] tabular-nums text-fg-2">{optionPrice(option)}</span>
+                          </Toggle>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+          <p className="mt-3 flex items-start gap-2 rounded-xl bg-surface-2 px-3.5 py-2.5 text-[12.5px] text-fg-2">
+            <Route size={15} className="mt-0.5 flex-none text-t1" />
+            <span>
+              {lastLeg?.check_out && <b className="block font-semibold text-fg">{t.booking.trip.ends(formatDate(lastLeg.check_out, "long", dateLocale))}</b>}
+              {t.booking.trip.note}
+            </span>
+          </p>
         </Block>
       )}
 

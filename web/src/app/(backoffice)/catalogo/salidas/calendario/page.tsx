@@ -5,7 +5,7 @@ import { getDepartures } from "@/lib/server/catalog-board";
 export const metadata: Metadata = { title: "Calendario de salidas" };
 
 export default async function SalidasCalendarioPage() {
-  const { departures } = await getDepartures();
+  const { departures, availability } = await getDepartures();
   if (!departures) return null;
-  return <DeparturesCalendar overview={departures} />;
+  return <DeparturesCalendar overview={departures} holds={availability?.holds ?? []} />;
 }

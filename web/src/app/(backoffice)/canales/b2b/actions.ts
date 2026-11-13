@@ -1,7 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { AGENCY_PREVIEW_BACK } from "@/lib/agency-preview";
+import { AGENCY_HOME } from "@/lib/b2b-portal";
+import { apiFetch } from "@/lib/server/api";
+import { startPreviewSession } from "@/lib/server/preview-session";
 import { formValues, sendStep, type StepResult } from "@/lib/server/resource";
+
+export async function previewAgencyPortal(_state: StepResult, form: FormData): Promise<StepResult> {
+  const result = await apiFetch<{ token: string; expires_at: string }>(`/channels/b2b/agencies/${encodeURIComponent(String(form.get("code") ?? ""))}/impersonation`, { method: "POST", body: {} });
+  if (!result.ok || !result.data) return { message: result.error?.message ?? "No pudimos abrir la vista previa del portal.", done: false };
+  if (!(await startPreviewSession(result.data.token, result.data.expires_at, AGENCY_PREVIEW_BACK))) return { message: "Tu sesión venció. Vuelve a ingresar.", done: false };
+  redirect(AGENCY_HOME);
+}
 
 const FIELDS = ["legal_name", "ruc", "contact_name", "booking_email", "client", "price_list_id", "commission_pct", "currency", "credit_limit", "valid_from", "valid_to"];
 

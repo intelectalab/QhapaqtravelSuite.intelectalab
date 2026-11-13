@@ -8,6 +8,7 @@ use App\Domain\Admin\Support\TenantSettings;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -40,7 +41,7 @@ final class OwnReviewSettings
         'last_export' => null,
     ];
 
-    public function __construct(private readonly TenantSettings $settings, private readonly AuditLogger $audit) {}
+    public function __construct(private readonly TenantSettings $settings, private readonly AuditLogger $audit, private readonly TenantContext $context) {}
 
     public static function read(): array
     {
@@ -69,6 +70,69 @@ final class OwnReviewSettings
                 'channels' => self::options(self::CHANNELS),
                 'placeholders' => ['{nombre}', '{tour}', '{agencia}', '{enlace}'],
             ],
+            'preview' => $this->preview(),
+            'export' => $this->export(),
+        ];
+    }
+
+    private function export(): ?array
+    {
+        $config = DB::table('channel_widget_config')->first(['public_key']);
+
+        if ($config === null) {
+            return null;
+        }
+
+        $tenant = $this->context->tenant();
+        $published = DB::table('crm_own_reviews as r')->join('catalog_products as p', 'p.id', '=', 'r.product_id')->whereNull('r.deleted_at')->where('r.status', 'publicada');
+        $top = (clone $published)->groupBy('p.code', 'p.slug', 'p.name')->orderByRaw('count(*) desc')->first(['p.code', 'p.slug', 'p.name', DB::raw('count(*) as total'), DB::raw('avg(r.stars) as average')]);
+        $latest = [];
+
+        foreach ($top === null ? [] : (clone $published)->where('p.code', $top->code)->orderByDesc('r.published_at')->limit(3)->get(['r.author_display', 'r.stars', 'r.title', 'r.body', 'r.travel_date']) as $row) {
+            $latest[] = [
+                '@type' => 'Review',
+                'author' => ['@type' => 'Person', 'name' => $row->author_display],
+                'datePublished' => (string) $row->travel_date,
+                'name' => $row->title,
+                'reviewBody' => $row->body,
+                'reviewRating' => ['@type' => 'Rating', 'ratingValue' => (int) $row->stars, 'bestRating' => 5],
+            ];
+        }
+
+        $jsonLd = $top === null ? null : [
+            '@context' => 'https://schema.org',
+            '@type' => 'Product',
+            'name' => $top->name,
+            'brand' => ['@type' => 'Organization', 'name' => (string) $tenant->commercial_name],
+            'aggregateRating' => ['@type' => 'AggregateRating', 'ratingValue' => round((float) $top->average, 1), 'reviewCount' => (int) $top->total, 'bestRating' => 5],
+            'review' => $latest,
+        ];
+
+        return [
+            'public_key' => $config->public_key,
+            'key_header' => (string) config('sites.key_header'),
+            'cdn' => WidgetHosts::cdn(),
+            'host' => WidgetHosts::host((string) $tenant->subdomain),
+            'feed_url' => rtrim((string) config('app.url'), '/').'/api/v1/public/reviews'.($top?->slug ? '?product='.rawurlencode((string) $top->slug) : ''),
+            'product' => $top ? ['code' => $top->code, 'name' => $top->name] : null,
+            'json_ld' => $jsonLd,
+        ];
+    }
+
+    private function preview(): array
+    {
+        $tenant = $this->context->tenant();
+        $sample = DB::table('booking_reservations as r')->join('crm_clients as c', 'c.id', '=', 'r.client_id')->whereNull('r.deleted_at')
+            ->whereNotIn('r.status', ['cancelada', 'borrador'])->whereNotNull('r.travel_to')->orderByDesc('r.travel_to')
+            ->first(['r.code', 'r.title', 'c.name']);
+        $name = $sample !== null ? trim(explode(' ', trim((string) $sample->name))[0]) : '';
+
+        return [
+            'nombre' => $name !== '' ? $name : 'viajero',
+            'tour' => (string) ($sample->title ?? 'tu viaje'),
+            'agencia' => (string) $tenant->commercial_name,
+            'enlace' => WidgetHosts::site((string) $tenant->subdomain).'/resena/SRV-0000',
+            'reservation' => $sample->code ?? null,
         ];
     }
 

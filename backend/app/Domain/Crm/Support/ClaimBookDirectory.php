@@ -6,10 +6,15 @@ namespace App\Domain\Crm\Support;
 
 use App\Domain\Crm\Actions\ClaimBookWorkflow;
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Audit\AuditTrail;
+use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
+use Closure;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class ClaimBookDirectory
 {
@@ -18,6 +23,13 @@ final class ClaimBookDirectory
     public const BOOK_STATUS = ['received' => 'Recibida', 'in_review' => 'En evaluación', 'answered' => 'Respondida', 'closed' => 'Cerrada'];
 
     public const TYPES = ['reclamo' => 'Reclamo', 'queja' => 'Queja'];
+
+    public const CLOSE_REASONS = [
+        'Consumidor conforme con la respuesta',
+        'Sin respuesta del consumidor en 5 días hábiles',
+        'Consumidor no conforme: se le informa su derecho de acudir a INDECOPI',
+        'Solución aplicada (reembolso o nota de crédito ejecutada)',
+    ];
 
     public function __construct(private readonly TenantContext $context, private readonly BusinessDays $days) {}
 
@@ -29,45 +41,152 @@ final class ClaimBookDirectory
     public function overview(User $viewer): array
     {
         $settings = $this->settings();
-        $today = Carbon::now($this->context->timezone())->startOfDay();
-        $rows = DB::table('crm_cases as k')->where('k.is_book', true)
-            ->leftJoin('iam_sedes as s', 's.id', '=', 'k.sede_id')
-            ->leftJoin('crm_clients as c', 'c.id', '=', 'k.client_id')
-            ->leftJoin('booking_reservations as r', 'r.id', '=', 'k.reservation_id')
-            ->leftJoin('iam_users as u', 'u.id', '=', 'k.owner_id')
-            ->orderByDesc('k.received_at')
-            ->get(['k.*', 's.name as sede', 'c.code as client_code', 'c.name as client', 'r.code as reservation', 'u.name as owner']);
-        $events = DB::table('crm_case_events as e')->leftJoin('iam_users as u', 'u.id', '=', 'e.user_id')->whereIn('e.case_id', $rows->pluck('id'))->orderBy('e.created_at')
-            ->get(['e.case_id', 'e.message', 'e.created_at', 'u.name'])->groupBy('case_id');
-        $claims = $rows->map(fn ($row): array => $this->present($row, $events->get($row->id, collect()), (int) $settings->alert_days, $today));
-        $answered = $claims->filter(fn (array $claim): bool => $claim['response'] !== null && $claim['response']['answered_at'] !== null);
-        $month = $today->format('Y-m');
+        $today = $this->today();
+        $claims = $this->claims();
 
         return [
             'today' => $today->toDateString(),
             'settings' => ['response_days' => (int) $settings->response_days, 'alert_days' => (int) $settings->alert_days, 'retention_years' => (int) $settings->retention_years],
-            'kpis' => [
-                'month' => $claims->filter(fn (array $claim): bool => str_starts_with((string) $claim['received_on'], $month))->count(),
-                'open' => $claims->whereIn('book_status', ['received', 'in_review'])->count(),
-                'due_soon' => $claims->where('deadline', 'por_vencer')->count(),
-                'overdue' => $claims->where('deadline', 'vencido')->count(),
-                'avg_days' => $answered->isEmpty() ? null : round($answered->avg('business_days_to_answer'), 1),
-                'on_time_pct' => $answered->isEmpty() ? null : (int) round($answered->where('deadline', 'respondido_en_plazo')->count() / $answered->count() * 100),
-            ],
+            'kpis' => $this->kpis($claims, $today),
             'by_type' => $this->group($claims, 'type'),
             'by_sede' => $this->group($claims, 'sede'),
             'claims' => $claims->values(),
             'sequences' => $this->sequences($today),
-            'holidays' => DB::table('sys_holidays')->where('date', '>=', $today->copy()->startOfYear()->toDateString())->orderBy('date')->get(['date', 'name'])
-                ->map(fn (object $row): array => ['date' => substr((string) $row->date, 0, 10), 'name' => (string) $row->name])->values(),
+            'holidays' => $this->holidays($today),
             'options' => [
                 'sedes' => DB::table('iam_sedes')->orderBy('code')->get(['id', 'name'])->map(fn (object $row): array => ['value' => $row->id, 'label' => $row->name])->values(),
                 'clients' => DB::table('crm_clients')->whereNull('deleted_at')->orderBy('name')->get(['code', 'name'])->map(fn (object $row): array => ['value' => $row->code, 'label' => $row->name])->values(),
                 'reservations' => DB::table('booking_reservations')->whereNull('deleted_at')->orderByDesc('created_at')->limit(100)->get(['code', 'title'])->map(fn (object $row): array => ['value' => $row->code, 'label' => $row->title, 'hint' => $row->code])->values(),
                 'owners' => app(Advisors::class)->all()->map(fn (array $user): array => ['value' => $user['id'], 'label' => $user['name']])->values(),
+                'close_reasons' => array_map(fn (string $reason): array => ['value' => $reason, 'label' => $reason], self::CLOSE_REASONS),
             ],
             'can' => ['manage' => $viewer->can('crm.claims.manage'), 'settings' => $viewer->can('admin.settings.manage')],
+            'public_path' => ($subdomain = $this->context->tenant()->subdomain ?? null) ? "/sitio/{$subdomain}/libro-reclamaciones" : null,
         ];
+    }
+
+    public function find(string $key): array
+    {
+        $claim = $this->claims(fn (Builder $query) => $query->where(fn (Builder $match) => $match->where('k.code', $key)->orWhere('k.book_number', $key)->when(Str::isUuid($key), fn (Builder $uuid) => $uuid->orWhere('k.id', $key))))->first();
+
+        return $claim ?? throw ApiException::notFound('La hoja de reclamación no existe.');
+    }
+
+    public function settingsView(User $viewer): array
+    {
+        $settings = $this->settings();
+
+        return [
+            'response_days' => (int) $settings->response_days,
+            'alert_days' => (int) $settings->alert_days,
+            'retention_years' => (int) $settings->retention_years,
+            'holidays' => $this->holidays($this->today()),
+            'can' => ['update' => $viewer->can('admin.settings.manage')],
+        ];
+    }
+
+    public function report(string $group, int $year): array
+    {
+        $today = $this->today();
+        $claims = $this->claims($this->year($year));
+        $field = ['type' => 'type', 'sede' => 'sede', 'month' => 'month'][$group];
+        $rows = $claims->map(fn (array $claim): array => [...$claim, 'month' => substr((string) $claim['received_on'], 0, 7)])
+            ->groupBy(fn (array $claim): string => (string) ($claim[$field] ?: 'Sin dato'))
+            ->map(fn (Collection $items, string $label): array => [
+                'label' => $label,
+                'total' => $items->count(),
+                'reclamos' => $items->where('type_code', 'reclamo')->count(),
+                'quejas' => $items->where('type_code', 'queja')->count(),
+                'open' => $items->whereIn('book_status', ['received', 'in_review'])->count(),
+                'answered' => $items->whereIn('book_status', ['answered', 'closed'])->count(),
+                'on_time' => $items->where('deadline', 'respondido_en_plazo')->count(),
+                'late' => $items->whereIn('deadline', ['respondido_fuera_de_plazo', 'vencido'])->count(),
+            ])->sortBy($group === 'month' ? 'label' : fn (array $row): int => -$row['total'])->values()->all();
+
+        $overdue = $claims->where('deadline', 'vencido');
+
+        return [
+            'year' => $year,
+            'group' => $group,
+            'kpis' => $this->kpis($claims, $today),
+            'total' => $claims->count(),
+            'rows' => $rows,
+            'compliance' => [
+                'on_time' => $claims->where('deadline', 'respondido_en_plazo')->count(),
+                'late' => $claims->where('deadline', 'respondido_fuera_de_plazo')->count(),
+                'overdue' => $overdue->count(),
+                'pending' => $claims->whereIn('deadline', ['en_plazo', 'por_vencer'])->count(),
+            ],
+            'overdue' => $overdue->sortBy('due_date')->map(fn (array $claim): array => [
+                'code' => $claim['code'],
+                'book_number' => $claim['book_number'],
+                'type' => $claim['type'],
+                'consumer' => $claim['consumer']['name'],
+                'sede' => $claim['sede'],
+                'due_date' => $claim['due_date'],
+                'days_late' => $claim['days_left'] !== null ? abs((int) $claim['days_left']) : null,
+                'owner' => $claim['owner'],
+            ])->values()->all(),
+        ];
+    }
+
+    public function audit(string $key): array
+    {
+        $claim = DB::table('crm_cases')->where('is_book', true)->where(fn (Builder $match) => $match->where('code', $key)->orWhere('book_number', $key))->first(['code', 'book_number'])
+            ?? throw ApiException::notFound('La hoja de reclamación no existe.');
+
+        return app(AuditTrail::class)->for('Libro de reclamaciones', [(string) $claim->book_number, (string) $claim->code]);
+    }
+
+    public function year(int $year): Closure
+    {
+        $zone = $this->context->timezone();
+
+        return fn (Builder $query) => $query->whereBetween('k.received_at', [Carbon::create($year, 1, 1, 0, 0, 0, $zone)->utc(), Carbon::create($year, 12, 31, 23, 59, 59, $zone)->utc()]);
+    }
+
+    public function claims(?Closure $scope = null): Collection
+    {
+        $settings = $this->settings();
+        $today = $this->today();
+        $rows = DB::table('crm_cases as k')->where('k.is_book', true)
+            ->leftJoin('iam_sedes as s', 's.id', '=', 'k.sede_id')
+            ->leftJoin('crm_clients as c', 'c.id', '=', 'k.client_id')
+            ->leftJoin('booking_reservations as r', 'r.id', '=', 'k.reservation_id')
+            ->leftJoin('iam_users as u', 'u.id', '=', 'k.owner_id')
+            ->when($scope !== null, fn (Builder $query) => $scope($query))
+            ->orderByDesc('k.received_at')
+            ->get(['k.*', 's.name as sede', 'c.code as client_code', 'c.name as client', 'r.code as reservation', 'u.name as owner']);
+        $events = DB::table('crm_case_events as e')->leftJoin('iam_users as u', 'u.id', '=', 'e.user_id')->whereIn('e.case_id', $rows->pluck('id'))->orderBy('e.created_at')
+            ->get(['e.case_id', 'e.message', 'e.created_at', 'u.name'])->groupBy('case_id');
+
+        return $rows->map(fn ($row): array => $this->present($row, $events->get($row->id, collect()), (int) $settings->alert_days, $today));
+    }
+
+    private function kpis(Collection $claims, Carbon $today): array
+    {
+        $answered = $claims->filter(fn (array $claim): bool => $claim['response'] !== null && $claim['response']['answered_at'] !== null);
+        $month = $today->format('Y-m');
+
+        return [
+            'month' => $claims->filter(fn (array $claim): bool => str_starts_with((string) $claim['received_on'], $month))->count(),
+            'open' => $claims->whereIn('book_status', ['received', 'in_review'])->count(),
+            'due_soon' => $claims->where('deadline', 'por_vencer')->count(),
+            'overdue' => $claims->where('deadline', 'vencido')->count(),
+            'avg_days' => $answered->isEmpty() ? null : round($answered->avg('business_days_to_answer'), 1),
+            'on_time_pct' => $answered->isEmpty() ? null : (int) round($answered->where('deadline', 'respondido_en_plazo')->count() / $answered->count() * 100),
+        ];
+    }
+
+    private function holidays(Carbon $today): Collection
+    {
+        return DB::table('sys_holidays')->where('date', '>=', $today->copy()->startOfYear()->toDateString())->orderBy('date')->get(['date', 'name'])
+            ->map(fn (object $row): array => ['date' => substr((string) $row->date, 0, 10), 'name' => (string) $row->name])->values();
+    }
+
+    private function today(): Carbon
+    {
+        return Carbon::now($this->context->timezone())->startOfDay();
     }
 
     private function present(object $row, Collection $events, int $alertDays, Carbon $today): array

@@ -75,6 +75,7 @@ export interface ReceivablesOverview {
 }
 
 export interface AdvanceOption extends FinanceOption {
+  title?: string;
   client: string;
   currency: string;
   total: number;
@@ -111,11 +112,12 @@ export interface PaymentRow {
   registered_by: string;
   bank_line: string | null;
   apply_to: ApplyOption[];
+  application?: { receivable: string; amount: number; balance_before: number; balance_after: number } | null;
 }
 
 export interface PaymentsOverview {
   rows: PaymentRow[];
-  kpis: { pending_count: number; pending_pen: number; applied_month_pen: number; applied_month_count: number; reverted_count: number; reverted_pen: number; rejected_count: number };
+  kpis: { pending_count: number; pending_pen: number; applied_month_pen: number; applied_month_count: number; to_apply_count?: number; reverted_count: number; reverted_pen: number; rejected_count: number };
   can: { validate: boolean; revert: boolean };
 }
 
@@ -138,6 +140,7 @@ export interface PayableRow {
   status: string;
   approved: boolean;
   supplier_doc: string | null;
+  supplier_invoice?: { number: string; status: string } | null;
   evidence: string | null;
   observation: string | null;
   scheduled_date: string | null;
@@ -369,7 +372,18 @@ export interface TreasuryAccount {
   sede: string | null;
   custodian: string | null;
   active: boolean;
+  cci?: string | null;
+  sede_id?: string | null;
+  custodian_id?: string | null;
+  settle_to?: string | null;
+  session_today?: "open" | "closed" | "none" | null;
 }
+
+export const SESSION_TODAY: Record<"open" | "closed" | "none", { label: string; tone: "ok" | "mute" | "warn" }> = {
+  open: { label: "Abierta", tone: "ok" },
+  closed: { label: "Cerrada hoy", tone: "mute" },
+  none: { label: "Sin aperturar hoy", tone: "warn" },
+};
 
 export interface TreasuryMovement {
   code: string;
@@ -396,6 +410,7 @@ export interface TreasuryMovement {
   receipt: { type: string; number: string | null; ruc: string | null; supplier: string; file: boolean } | null;
   account: { code: string; name: string };
   user: string;
+  audit?: { code: string; action: string; before: string | null; after: string | null; actor: string | null; ip: string | null; at: string }[];
 }
 
 export interface TreasurySettingsData {
@@ -439,11 +454,21 @@ export interface FxRevaluationPreview {
   today: string;
   close_rate: string;
   reference_rate: number;
-  rows: { code: string; name: string; kind: string; balance_usd: string; book_rate: string; book_pen: string; market_pen: string; unrealized_pen: string; realized_pen: string; registered: string | null }[];
+  rows: { code: string; name: string; kind: string; balance_usd: string; book_rate: string; book_pen: string; market_pen: string; unrealized_pen: string; realized_pen: string; realized_operations?: RealizedFxOperation[]; registered: string | null }[];
   totals: { unrealized_pen: string; realized_pen: string };
   pending: number;
   history: { code: string; period: string; date: string; balance_usd: string; book_rate: string; close_rate: string; diff_pen: string; account: { code: string; name: string }; user: string | null }[];
   can: { register: boolean };
+}
+
+export interface RealizedFxOperation {
+  code: string;
+  date: string;
+  description: string;
+  amount_usd: string;
+  rate: string;
+  average: string;
+  diff_pen: string;
 }
 
 export interface PeriodCheck {
@@ -478,6 +503,7 @@ export interface CashSession {
   opened_by: string | null;
   opened_at: string;
   closed_at: string | null;
+  closed_by?: string | null;
   opening: number;
   status: "open" | "closed";
   count: { code: string; counted: number; difference: number; result: string; status: string; note: string | null } | null;
@@ -488,14 +514,26 @@ export interface TreasuryOverview {
   movements: TreasuryMovement[];
   sessions: CashSession[];
   replenishments: { code: string; amount: number; status: string; status_label: string; requested_at: string; note: string | null; reject_reason: string | null; account: string; account_code: string; requested_by: string | null; requested_by_id: string }[];
-  kpis: { bank_pen: number; cash_pen: number; gateway_pen: number; total_pen: number; in_month_pen: number; out_month_pen: number; open_sessions: number };
+  kpis: { bank_pen: number; cash_pen: number; gateway_pen: number; total_pen: number; in_month_pen: number; out_month_pen: number; open_sessions: number; projected_30_pen?: number | null };
+  composition?: { label: string; pen: number }[];
+  balance_history?: { date: string; pen: number }[];
   categories: { in: string[]; out: string[] };
   usd_rate: number;
   today: string;
   can: { manage: boolean; settings: boolean; revalue: boolean };
   counts: CashCount[];
   alerts: { tone: "warn" | "bad" | "info"; text: string }[];
-  options: { sedes: { value: string; label: string }[]; custodians: { value: string; label: string }[]; denominations: string[]; gateway_fee_pct: string | null; max_petty_expense: string | null };
+  options: {
+    sedes: { value: string; label: string }[];
+    custodians: { value: string; label: string }[];
+    denominations: string[];
+    gateway_fee_pct: string | null;
+    max_petty_expense: string | null;
+    threshold_pct?: number;
+    petty_tolerance?: string;
+    expense_categories?: string[];
+    reservations?: { value: string; label: string }[];
+  };
   viewer_id: string;
 }
 
@@ -533,16 +571,55 @@ export interface TreasuryLedger {
   opening_date: string;
   active: boolean;
   balance: string;
+  balance_pen?: number;
+  usd_rate?: number | null;
+  categories?: { in: string[]; out: string[] };
   month_in: string;
   month_out: string;
   open_session: { code: string; opened_at: string; opening_amount: string } | null;
-  movements: { code: string; date: string; direction: "in" | "out"; type: string; type_label: string; amount: string; category: string | null; description: string; reference: string | null; counterparty: string | null; manual: boolean; status: string; balance: string; user: string }[];
+  movements: LedgerMovement[];
+}
+
+export type LedgerMovement = Omit<TreasuryMovement, "amount"> & { amount: string; balance: string };
+
+export interface CashFlowItem {
+  kind: "in" | "out";
+  type?: "cxc" | "cxp" | "commission" | "fixed";
+  source: string;
+  code: string | null;
+  href?: string | null;
+  concept: string;
+  party?: string | null;
+  date: string;
+  due?: string;
+  overdue: boolean;
+  amount?: number;
+  currency?: string;
+  pen: number;
+}
+
+export interface CashFlowHorizon {
+  label: string;
+  days?: number;
+  opening?: number;
+  in: number;
+  out: number;
+  net: number;
+  closing: number;
+  cxc?: number;
+  cxp?: number;
+  commissions?: number;
+  fixed?: number;
 }
 
 export interface CashFlowProjection {
   opening_pen: number;
-  horizons: { label: string; in: number; out: number; net: number; closing: number }[];
-  items: { kind: "in" | "out"; source: string; code: string | null; concept: string; date: string; overdue: boolean; pen: number }[];
+  horizons: CashFlowHorizon[];
+  weeks?: { start: string; in: number; out: number; balance: number }[];
+  items: CashFlowItem[];
+  totals?: { in: number; out: number };
+  options?: { include_overdue: boolean; include_fixed: boolean };
+  usd_rate?: number;
   risk: { label: string; closing: number } | null;
 }
 
@@ -715,10 +792,10 @@ export interface CommissionDetail {
 
 export interface SettlementDetail {
   reservation: { code: string; title: string; status: string; client: string; currency: string };
-  statement: { income: string; cost: string; commissions: string; net: string; margin_pct: string | null };
+  statement: { income: string; service_cost?: string; extra_cost?: string; pending_extra_cost?: string; cost: string; gross?: string; commissions: string; net: string; margin_pct: string | null; net_pct?: string | null };
   cash: { collected: string; paid_out: string; position: string };
-  receivables: { code: string; concept: string; amount: string; paid_amount: string; status: string; due_date: string }[];
-  payables: { code: string; concept: string; amount: string; paid_amount: string; currency: string; status: string; provider: string | null }[];
+  receivables: { code: string; concept: string; amount: string; paid_amount: string; currency?: string; status: string; due_date: string }[];
+  payables: { code: string; kind?: string; concept: string; amount: string; paid_amount: string; currency: string; status: string; provider: string | null }[];
   commissions: { code: string; kind: string; amount: string; currency: string; status: string }[];
   checks: { key: string; label: string; ok: boolean; detail: string }[];
   can_close: boolean;

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { DownloadButton } from "@/components/ui/DownloadButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MiniTable } from "@/components/ui/MiniTable";
@@ -103,13 +104,14 @@ export function ClientSummaryExtras({ client }: { client: ClientDetail }) {
         )}
       </Card>
       <Card>
-        <TintCardTitle icon={Globe2} title="Destinos visitados" aside={client.destinations.length > 0 ? <span className="text-[12.5px] text-fg-3">{client.destinations.length}</span> : undefined} />
+        <TintCardTitle icon={Globe2} title="Destinos visitados" aside={<span className="flex items-center gap-2">{client.destinations.length > 0 && <span className="text-[12.5px] text-fg-3">{client.destinations.length}</span>}<InfoTip label="De dónde sale">Departamentos de los productos que reservó (sin borradores ni canceladas) y destinos de sus oportunidades ganadas.</InfoTip></span>} />
         {client.destinations.length === 0 ? (
           <p className="text-[13.5px] text-fg-3">Aún no viajó con la agencia.</p>
         ) : (
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {client.destinations.map((destination, index) => {
-              const most = Math.max(...client.destinations.map((item) => item.trips));
+              const most = Math.max(1, ...client.destinations.map((item) => item.trips + (item.won ?? 0)));
+              const label = [destination.trips > 0 ? (destination.trips === 1 ? "1 viaje" : `${destination.trips} viajes`) : null, destination.won ? (destination.won === 1 ? "1 oportunidad ganada" : `${destination.won} oportunidades ganadas`) : null].filter(Boolean).join(" · ");
               return (
                 <li key={destination.name} style={{ animationDelay: `${index * 50}ms` }} className="lift flex animate-[rise-in_380ms_cubic-bezier(0.22,1,0.36,1)_backwards] flex-col gap-1.5 rounded-tile border border-line px-3 py-2.5">
                   <span className="flex items-center gap-1.5">
@@ -118,9 +120,9 @@ export function ClientSummaryExtras({ client }: { client: ClientDetail }) {
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
-                      <span className="block h-full rounded-full bg-[var(--tint,var(--t1))]" style={{ width: `${Math.max(12, (destination.trips / most) * 100)}%` }} />
+                      <span className="block h-full rounded-full bg-[var(--tint,var(--t1))]" style={{ width: `${Math.max(12, ((destination.trips + (destination.won ?? 0)) / most) * 100)}%` }} />
                     </span>
-                    <span className="flex-none text-[12px] text-fg-3">{destination.trips === 1 ? "1 viaje" : `${destination.trips} viajes`}</span>
+                    <span className="flex-none text-[12px] text-fg-3" title={label}>{destination.trips > 0 ? (destination.trips === 1 ? "1 viaje" : `${destination.trips} viajes`) : "Ganada"}</span>
                   </span>
                 </li>
               );

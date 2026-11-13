@@ -67,14 +67,7 @@ final class PlatformAudit
 
     public function page(Request $request): array
     {
-        $filters = CursorPage::filters($request);
-        $query = $this->base()
-            ->when($filters['tenant'] ?? null, fn (Builder $q, string $code) => $q->where(fn (Builder $w) => $w->whereIn('a.entity_id', $this->subjectsOf($code))->orWhere('a.entity_id', 'like', '%@'.addcslashes($code, '%_\\'))))
-            ->when($filters['entity'] ?? null, fn (Builder $q, string $entity) => $q->whereIn('a.entity', explode(',', $entity)))
-            ->when($filters['action'] ?? null, fn (Builder $q, string $action) => $q->where('a.action', $action))
-            ->when(isset($filters['critical']), fn (Builder $q) => $q->where('a.is_critical', filter_var($filters['critical'], FILTER_VALIDATE_BOOLEAN)))
-            ->when((int) ($filters['days'] ?? 0) > 0, fn (Builder $q) => $q->where('a.occurred_at', '>=', now()->subDays((int) $filters['days'])))
-            ->select(self::COLUMNS);
+        $query = $this->filtered(CursorPage::filters($request))->select(self::COLUMNS);
         $kpis = CursorPage::isFirst($request) ? [
             'total' => (clone $query)->count(),
             'critical' => (clone $query)->where('a.is_critical', true)->count(),
@@ -99,6 +92,22 @@ final class PlatformAudit
             ->map(fn (object $item) => [...$this->summary($item), 'same_request' => $event->correlation_id !== null && $item->correlation_id === $event->correlation_id]);
 
         return [...$this->full($event), 'actor_email' => $event->actor_email, 'related' => $related->values()];
+    }
+
+    public function export(array $filters, int $limit): Collection
+    {
+        return $this->filtered($filters)->orderByDesc('a.occurred_at')->limit($limit)->get(self::COLUMNS)
+            ->map(fn (object $event) => $this->summary($event));
+    }
+
+    private function filtered(array $filters): Builder
+    {
+        return $this->base()
+            ->when($filters['tenant'] ?? null, fn (Builder $q, string $code) => $q->where(fn (Builder $w) => $w->whereIn('a.entity_id', $this->subjectsOf($code))->orWhere('a.entity_id', 'like', '%@'.addcslashes($code, '%_\\'))))
+            ->when($filters['entity'] ?? null, fn (Builder $q, string $entity) => $q->whereIn('a.entity', explode(',', $entity)))
+            ->when($filters['action'] ?? null, fn (Builder $q, string $action) => $q->where('a.action', $action))
+            ->when(isset($filters['critical']), fn (Builder $q) => $q->where('a.is_critical', filter_var($filters['critical'], FILTER_VALIDATE_BOOLEAN)))
+            ->when((int) ($filters['days'] ?? 0) > 0, fn (Builder $q) => $q->where('a.occurred_at', '>=', now()->subDays((int) $filters['days'])));
     }
 
     private function base(): Builder

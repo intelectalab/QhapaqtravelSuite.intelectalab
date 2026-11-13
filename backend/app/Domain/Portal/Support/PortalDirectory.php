@@ -6,6 +6,7 @@ namespace App\Domain\Portal\Support;
 
 use App\Domain\Channels\Support\ChannelKit;
 use App\Domain\Channels\Support\CustomerPortalPreview;
+use App\Domain\Corporate\Support\CorporateMember;
 use App\Domain\Crm\Actions\ArcoRequests;
 use App\Domain\Crm\Support\ClaimConsumer;
 use App\Domain\Finance\Support\PaymentMethods;
@@ -39,6 +40,7 @@ final class PortalDirectory
             'user' => ['name' => $account->user->name, 'email' => $account->user->email, 'color' => $account->user->avatar_color],
             'trip' => $account->isPassenger() ? $account->reservations()->first()?->code : null,
             'counts' => ['quotes' => $awaiting, 'trips' => $account->reservations()->count()],
+            'corporate' => $account->isPassenger() ? null : CorporateMember::badge($account->user),
         ];
     }
 

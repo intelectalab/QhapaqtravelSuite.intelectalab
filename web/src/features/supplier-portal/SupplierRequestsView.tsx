@@ -1,6 +1,6 @@
 "use client";
 
-import { AlarmClock, CheckCircle2, Hourglass, XCircle } from "lucide-react";
+import { AlarmClock, CheckCircle2, Hourglass, Repeat2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -98,6 +98,7 @@ export function SupplierRequestsView({ data, contact }: { data: SupplierRequests
 
   const metrics: MetricFilter<SupplierRequest>[] = [
     { id: "pending", label: "Por responder", icon: <Hourglass size={16} />, tone: "warn", matches: (row) => row.state === "por_responder" },
+    { id: "alternative", label: "Alternativa propuesta", icon: <Repeat2 size={16} />, tone: "info", matches: (row) => row.state === "alternativa_propuesta" },
     { id: "overdue", label: "Fuera de plazo", icon: <AlarmClock size={16} />, tone: "bad", matches: (row) => row.state === "por_responder" && row.overdue },
     { id: "confirmed", label: "Confirmados", icon: <CheckCircle2 size={16} />, tone: "ok", matches: (row) => ["confirmado", "en_curso", "completado"].includes(row.state) },
     { id: "rejected", label: "Rechazados", icon: <XCircle size={16} />, tone: "mute", matches: (row) => row.state === "rechazado" },

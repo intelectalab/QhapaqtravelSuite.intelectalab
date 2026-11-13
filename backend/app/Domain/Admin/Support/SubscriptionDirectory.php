@@ -31,6 +31,15 @@ final class SubscriptionDirectory
         'webhooks' => ['label' => 'Webhooks', 'unit' => 'webhooks'],
     ];
 
+    private const ADDON_DESCRIPTIONS = [
+        'extra_users' => 'Amplía el límite de usuarios activos del plan.',
+        'whatsapp_pack' => 'Mensajes de plantilla adicionales cada mes por WhatsApp Business.',
+        'storage_pack' => 'Más espacio para documentos, vouchers, adjuntos de reservas y fotografías.',
+        'b2b_full' => 'Portal de agencias con tarifas netas, crédito, comisiones y reservas en línea.',
+        'mobile_apps' => 'App de guías y conductores sin conexión y app del pasajero con avisos.',
+        'custom_domain' => 'Portales y sitio web bajo el dominio de la agencia, con certificado SSL automático.',
+    ];
+
     private const STATUS = ['trialing' => 'En prueba', 'active' => 'Activa', 'past_due' => 'Pago pendiente', 'cancel_scheduled' => 'Cancelación programada', 'suspended' => 'Suspendida', 'canceled' => 'Cancelada'];
 
     public function __construct(
@@ -53,6 +62,8 @@ final class SubscriptionDirectory
         $items = $platform->table('subscription_items')->where('subscription_id', $subscription->id ?? null)->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $today))->get(['addon_code', 'quantity', 'unit_price', 'starts_at', 'ends_at', 'meta']);
         $catalog = $platform->table('addons')->orderBy('price_month')->get();
         $labels = $catalog->pluck('label', 'code');
+        $planNames = $platform->table('plans')->orderBy('rank')->pluck('name', 'id');
+        $featureLabels = $platform->table('features')->pluck('label', 'key')->all();
         $prices = $platform->table('addon_prices')->where('plan_id', $planId)->pluck('price', 'addon_code');
         $scheduled = $subscription ? $platform->table('subscription_changes as c')->leftJoin('plans as p', 'p.id', '=', 'c.to_plan_id')->where('c.subscription_id', $subscription->id)->where('c.status', 'scheduled')->first(['c.kind', 'c.to_cycle', 'c.effective_at', 'p.name as plan']) : null;
         $coupon = $subscription && $subscription->coupon_redemption_id ? $platform->table('coupon_redemptions as r')->join('coupons as c', 'c.id', '=', 'r.coupon_id')->where('r.id', $subscription->coupon_redemption_id)->where('r.remaining_cycles', '>', 0)->first(['c.code', 'c.type', 'c.value', 'r.remaining_cycles']) : null;
@@ -71,8 +82,9 @@ final class SubscriptionDirectory
             'api_keys' => DB::table('integration_api_keys')->where('status', 'active')->count(),
             'webhooks' => DB::table('integration_webhooks')->whereIn('status', ['active', 'paused'])->count(),
         ];
-        $invoices = $platform->table('platform_invoices')->where('tenant_id', $tenant->getKey())->orderByDesc('issue_date')->limit(24)->get(['id', 'series', 'number', 'kind', 'period_from', 'period_to', 'issue_date', 'due_date', 'currency', 'subtotal', 'igv', 'total', 'status', 'paid_at', 'payment_ref', 'sunat_status']);
+        $invoices = $platform->table('platform_invoices')->where('tenant_id', $tenant->getKey())->orderByDesc('issue_date')->limit(24)->get(['id', 'series', 'number', 'kind', 'period_from', 'period_to', 'issue_date', 'due_date', 'currency', 'subtotal', 'igv', 'total', 'status', 'paid_at', 'payment_ref', 'sunat_status', 'sunat_hash', 'bill_to']);
         $lines = $platform->table('platform_invoice_lines')->whereIn('invoice_id', $invoices->pluck('id'))->get(['invoice_id', 'description', 'quantity', 'unit_price', 'amount'])->groupBy('invoice_id');
+        $attempts = $platform->table('payment_attempts')->whereIn('invoice_id', $invoices->pluck('id'))->orderBy('attempt_no')->get(['invoice_id', 'attempt_no', 'source', 'result', 'message', 'created_at'])->groupBy('invoice_id');
 
         return [
             'plan' => $plan ? [
@@ -121,6 +133,10 @@ final class SubscriptionDirectory
             'addon_catalog' => $catalog->map(fn (object $addon): array => [
                 'code' => $addon->code,
                 'label' => $addon->label,
+                'description' => self::ADDON_DESCRIPTIONS[$addon->code] ?? null,
+                'available_in' => $planNames->only(self::uuids($addon->available_plans))->values()->all(),
+                'included_in' => $planNames->only(self::uuids($addon->included_plans))->values()->all(),
+                'feature' => $this->addonFeature($addon->grants, $featureLabels),
                 'unit' => $addon->unit,
                 'quantity_allowed' => (bool) $addon->quantity_allowed,
                 'price' => (float) ($prices[$addon->code] ?? $addon->price_month ?? 0),
@@ -155,6 +171,9 @@ final class SubscriptionDirectory
                 'paid_at' => $row->paid_at,
                 'method' => $row->payment_ref,
                 'sunat' => $row->sunat_status,
+                'sunat_hash' => $row->sunat_hash,
+                'bill_to' => $row->bill_to ? json_decode((string) $row->bill_to, true) : null,
+                'attempts' => collect($attempts[$row->id] ?? [])->map(fn ($attempt): array => ['number' => (int) $attempt->attempt_no, 'source' => $attempt->source, 'result' => $attempt->result, 'message' => $attempt->message, 'at' => $attempt->created_at])->values(),
                 'lines' => collect($lines[$row->id] ?? [])->map(fn ($line): array => ['description' => $line->description, 'quantity' => (float) $line->quantity, 'amount' => (float) $line->amount])->values(),
             ])->values(),
             'payment_method' => $this->paymentMethod((string) $tenant->getKey()),
@@ -206,11 +225,20 @@ final class SubscriptionDirectory
             'paid_at' => $row->paid_at,
             'method' => $row->payment_ref,
             'sunat' => $row->sunat_status,
+            'sunat_hash' => $row->sunat_hash ?? null,
             'bill_to' => $row->bill_to ? json_decode((string) $row->bill_to, true) : null,
             'next_retry_at' => $row->dunning_next_retry_at,
             'lines' => $lines->map(fn (object $line): array => ['description' => $line->description, 'quantity' => (float) $line->quantity, 'unit_price' => (float) $line->unit_price, 'amount' => (float) $line->amount, 'type' => $line->line_type])->values()->all(),
             'attempts' => $attempts->map(fn (object $attempt): array => ['number' => (int) $attempt->attempt_no, 'source' => $attempt->source, 'result' => $attempt->result, 'message' => $attempt->message, 'at' => $attempt->created_at])->values()->all(),
         ];
+    }
+
+    private function addonFeature(mixed $grants, array $labels): ?string
+    {
+        $grants = is_string($grants) ? (array) json_decode($grants, true) : (array) $grants;
+        $feature = isset($grants['feature']) ? (string) $grants['feature'] : null;
+
+        return $feature === null ? null : (string) ($labels[$feature] ?? $feature);
     }
 
     private function paymentMethod(string $tenantId): ?array

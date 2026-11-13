@@ -78,6 +78,13 @@ final class WebChat
         return ['session' => $conversation->code, 'messages' => $this->visible((string) $conversation->id)];
     }
 
+    public function show(string $session, ?string $token): array
+    {
+        $conversation = $this->authorize($session, $token);
+
+        return ['session' => $conversation->code, 'messages' => $this->visible((string) $conversation->id)];
+    }
+
     public static function token(string $conversationId): string
     {
         return hash_hmac('sha256', 'webchat|'.$conversationId, (string) config('app.key'));

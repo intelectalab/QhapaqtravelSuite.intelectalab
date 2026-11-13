@@ -160,6 +160,35 @@ final class SiteDesignStudio
         });
     }
 
+    public function applyTemplate(array $changes, string $note, ?string $userId, string $byName): array
+    {
+        return DB::transaction(function () use ($changes, $note, $userId, $byName): array {
+            $row = $this->lockedRow();
+            $draft = $this->withChanges($this->draftOf($row), $changes);
+            $published = $this->withChanges($row?->published !== null ? SiteDesign::fill($this->decode($row->published)) : $this->initial(), $changes);
+            $version = (int) ($row->published_version ?? 0) + 1;
+            $json = json_encode($published, JSON_UNESCAPED_UNICODE);
+            $values = ['draft' => json_encode($draft, JSON_UNESCAPED_UNICODE), 'published' => $json, 'published_version' => $version, 'published_at' => now()->utc(), 'published_by' => $userId];
+
+            if ($row === null) {
+                DB::table('site_designs')->insert([...$values, 'lock_version' => 1]);
+            } else {
+                DB::table('site_designs')->where('id', $row->id)->update($values);
+            }
+
+            DB::table('site_design_versions')->insert(['version' => $version, 'design' => $json, 'note' => mb_substr($note, 0, 200), 'published_by' => $userId, 'published_by_name' => mb_substr($byName, 0, 160)]);
+
+            return $published;
+        });
+    }
+
+    public function publishedDesign(): array
+    {
+        $row = $this->row();
+
+        return $row?->published !== null ? SiteDesign::fill($this->decode($row->published)) : $this->initial();
+    }
+
     public function uploadImage(UploadedFile $file, User $user): array
     {
         $mime = (string) $file->getMimeType();
@@ -231,6 +260,19 @@ final class SiteDesignStudio
     {
         $design = SiteDesign::defaults();
         $design['theme'] = [...$design['theme'], ...array_intersect_key($this->branding->current(), array_flip(['brand', 'accent', 'menu']))];
+
+        return SiteDesign::normalize($design);
+    }
+
+    private function withChanges(array $design, array $changes): array
+    {
+        foreach (['theme', 'andes'] as $group) {
+            $design[$group] = [...$design[$group], ...(array) ($changes[$group] ?? [])];
+        }
+
+        if (isset($changes['sections'])) {
+            $design['sections'] = $changes['sections'];
+        }
 
         return SiteDesign::normalize($design);
     }

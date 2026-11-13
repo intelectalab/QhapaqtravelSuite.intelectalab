@@ -149,6 +149,13 @@ final class RoomingWorkflow
         $this->audit->log('Rooming list', $list->reservation_code, 'eliminar', $list->status, null);
     }
 
+    public function listOfRoom(string $roomId): object
+    {
+        $listId = Str::isUuid($roomId) ? DB::table('ops_rooming_rooms')->where('id', $roomId)->value('rooming_list_id') : null;
+
+        return $this->list((string) ($listId ?? throw ApiException::notFound('La habitación no existe.')));
+    }
+
     private function ensureConsistent(object $list): void
     {
         $over = DB::table('ops_rooming_rooms as r')->leftJoin('ops_rooming_guests as g', 'g.room_id', '=', 'r.id')->leftJoin('booking_passengers as p', fn ($join) => $join->on('p.id', '=', 'g.passenger_id')->where('p.pax_type', '<>', 'INF'))

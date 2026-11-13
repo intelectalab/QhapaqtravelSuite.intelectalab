@@ -6,10 +6,12 @@ namespace App\Domain\Platform\Actions;
 
 use App\Domain\Integrations\Contracts\MalwareScanner;
 use App\Domain\Platform\Models\PlatformUser;
+use App\Domain\Platform\Support\FiscalWebhookSecret;
 use App\Domain\Platform\Support\FormProtection;
 use App\Domain\Platform\Support\OutgoingMail;
 use App\Domain\Platform\Support\PlatformAudit;
 use App\Domain\Platform\Support\PlatformSettings;
+use App\Domain\Platform\Support\WhatsappWebhook;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -42,6 +44,8 @@ final class UpdatePlatformSettings
                 'dunning' => $this->settings->dunning(),
                 'form_protection' => $this->forms->summary(),
                 'outgoing_mail' => $this->mail->summary(),
+                'whatsapp_webhook' => app(WhatsappWebhook::class)->summary(),
+                'fiscal_webhook' => app(FiscalWebhookSecret::class)->summary(),
                 'antivirus' => $this->antivirus(),
             ],
             'lock_version' => $this->settings->version(),

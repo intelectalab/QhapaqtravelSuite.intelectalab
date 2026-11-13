@@ -1,11 +1,12 @@
 "use client";
 
-import { Building2, CalendarRange, Home, LogOut, Moon, Package, Plus, ReceiptText, Sun, type LucideIcon } from "lucide-react";
+import { Building2, CalendarRange, Eye, Home, LogOut, Moon, Package, Plus, ReceiptText, Sun, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { BrandMark } from "@/components/shell/BrandMark";
 import { Avatar } from "@/components/ui/Avatar";
+import { AGENCY_PREVIEW_EXIT } from "@/lib/agency-preview";
 import { AGENCY_HOME, type AgencySession } from "@/lib/b2b-portal";
 import { cn } from "@/lib/cn";
 import { applyTheme, parseTheme, THEME_STORAGE_KEY, type Theme } from "@/lib/theme";
@@ -71,13 +72,19 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   );
 }
 
-export function AgencyShell({ session, children }: { session: AgencySession | null; children: ReactNode }) {
+export function AgencyShell({ session, preview = false, children }: { session: AgencySession | null; preview?: boolean; children: ReactNode }) {
   const pathname = usePathname();
   const items = session ? navFor(session) : [];
   const isActive = (href: string) => (href === AGENCY_HOME ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
 
   return (
     <div className="relative flex min-h-dvh flex-col">
+      {preview && (
+        <div className="z-40 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-fg px-4 py-2 text-center text-[12.5px] text-bg">
+          <span className="flex items-center gap-1.5"><Eye size={14} /> Vista previa de solo lectura{session ? ` como ${session.user.name}` : ""}. No se guarda ningún cambio.</span>
+          <a href={AGENCY_PREVIEW_EXIT} className="rounded-md bg-bg/15 px-2.5 py-0.5 font-semibold transition hover:bg-bg/25">Volver al backoffice</a>
+        </div>
+      )}
       <div className="weave-band h-2 flex-none" />
       <div className="ambient-glow pointer-events-none absolute inset-x-0 top-2 h-[420px]" />
       <header className="sticky top-0 z-30 border-b border-line bg-surface/85 backdrop-blur-md">

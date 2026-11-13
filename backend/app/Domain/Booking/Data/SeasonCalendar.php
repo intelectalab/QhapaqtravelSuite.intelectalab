@@ -16,6 +16,7 @@ final readonly class SeasonCalendar
                 continue;
             }
             $seasons[] = (object) [
+                'id' => isset($s['id']) ? (string) $s['id'] : null,
                 'name' => (string) $s['name'], 'from' => (string) $s['from'], 'to' => (string) $s['to'],
                 'priority' => (int) ($s['priority'] ?? 99), 'factor' => (string) $s['factor'],
             ];

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import { Alert, Linking, StyleSheet, Text, TextInput, View } from "react-native";
 import { api } from "../../src/api/client";
 import { usePassenger, type Messages, type Support } from "../../src/data/passenger";
@@ -20,6 +21,22 @@ export default function HelpScreen() {
   const messages = usePassenger<Messages>("messages");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const unreadIds = (messages.data?.items ?? []).filter((message) => !message.read && message.from !== "passenger" && message.from !== "pasajero").map((message) => message.id);
+  const unreadKey = unreadIds.join(",");
+
+  useFocusEffect(
+    useCallback(() => {
+      if (unreadKey === "") return;
+      let alive = true;
+      void (async () => {
+        const marked = await Promise.all(unreadKey.split(",").map((id) => api(`/mobile/passenger/messages/${id}/read`, { method: "POST", body: {} }).then(() => true).catch(() => false)));
+        if (alive && marked.some(Boolean)) await messages.reload();
+      })();
+      return () => {
+        alive = false;
+      };
+    }, [unreadKey, messages.reload]),
+  );
 
   async function send(text: string) {
     if (text.trim().length < 2) return;

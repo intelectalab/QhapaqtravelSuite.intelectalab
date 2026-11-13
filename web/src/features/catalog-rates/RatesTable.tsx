@@ -9,6 +9,7 @@ import type { Column, FilterConfig, MetricFilter, SortOption } from "@/component
 import { Badge } from "@/components/ui/Badge";
 import { FieldList } from "@/components/ui/Details";
 import { DetailPanel, NameButton } from "@/features/catalog-shared/CatalogPanels";
+import { PRODUCT_STATUS } from "@/lib/catalog";
 import { RATE_STATE, type RateRow, type RatesOverview } from "@/lib/catalog-rates";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -48,7 +49,12 @@ export function RatesTable({ overview }: { overview: RatesOverview }) {
       id: "rate",
       header: "Tarifa",
       mobile: "title",
-      cell: (rate) => <RateDetail rate={rate} overview={overview} trigger={(open) => <NameButton onClick={open} hint={`${rate.ref} · ${rate.type}`}>{rate.product.name}</NameButton>} />,
+      cell: (rate) => (
+        <span className="flex min-w-0 flex-col items-start gap-1">
+          <RateDetail rate={rate} overview={overview} trigger={(open) => <NameButton onClick={open} hint={`${rate.ref} · ${rate.type}`}>{rate.product.name}</NameButton>} />
+          {rate.product.status && <Badge tone={PRODUCT_STATUS[rate.product.status].tone}>{PRODUCT_STATUS[rate.product.status].label}</Badge>}
+        </span>
+      ),
     },
     { id: "audience", header: "Segmento y canal", cell: (rate) => <span className="text-[13px]">{rate.segment} <span className="text-fg-3">· {rate.channel}</span></span> },
     {

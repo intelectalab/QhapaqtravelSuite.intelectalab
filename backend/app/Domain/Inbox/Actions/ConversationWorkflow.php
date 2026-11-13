@@ -85,6 +85,21 @@ final class ConversationWorkflow
             }
 
             DB::table('collab_conversations')->where('id', $conversation->id)->update($values);
+
+            if (! $internal && $conversation->assignee_id === null) {
+                DB::table('collab_messages')->insert([
+                    'id' => (string) Str::uuid7(),
+                    'conversation_id' => $conversation->id,
+                    'channel' => $conversation->channel,
+                    'direction' => 'system',
+                    'author_user_id' => $actor->getKey(),
+                    'body' => "Asignada automáticamente a {$actor->name} al responder.",
+                    'sent_at' => $now->copy()->subMillisecond(),
+                    'created_by' => $actor->getKey(),
+                ]);
+                $this->audit->log('Conversación', $conversation->code, 'asignar', null, (string) $actor->getKey());
+            }
+
             $reservationId = $conversation->reservation_id ?? null;
 
             if (! $internal && $conversation->channel === 'portal' && $reservationId && trim((string) ($data['body'] ?? '')) !== ''

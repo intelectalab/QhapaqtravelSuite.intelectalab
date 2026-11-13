@@ -2,6 +2,7 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { InfoTip } from "./InfoTip";
 
 export function SectionTitle({ title, href, linkLabel }: { title: string; href?: string; linkLabel?: string }) {
   return (
@@ -30,10 +31,13 @@ export function FieldList({ fields }: { fields: { label: string; value: ReactNod
   );
 }
 
-export function StatCard({ label, value, note, tone }: { label: string; value: ReactNode; note?: ReactNode; tone?: "ok" | "bad" }) {
+export function StatCard({ label, value, note, tone, info }: { label: string; value: ReactNode; note?: ReactNode; tone?: "ok" | "bad"; info?: ReactNode }) {
   return (
     <div className="lift rounded-tile border border-line bg-surface px-4 py-3.5 shadow-card hover:border-[color-mix(in_srgb,var(--tint,var(--accent))_35%,transparent)]">
-      <p className="text-[12.5px] text-fg-3">{label}</p>
+      <p className="flex items-center gap-1.5 text-[12.5px] text-fg-3">
+        {label}
+        {info && <InfoTip label={`De dónde sale: ${label}`}>{info}</InfoTip>}
+      </p>
       <p className={cn("mt-1.5 text-[22px] font-bold tracking-tight", tone === "ok" && "text-ok", tone === "bad" && "text-bad")}>{value}</p>
       {note && <p className="mt-0.5 text-xs text-fg-3">{note}</p>}
     </div>

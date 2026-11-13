@@ -7,6 +7,7 @@ namespace App\Domain\Platform\Actions;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -63,6 +64,14 @@ final class ManageCoupon
 
         if ($coupon->status === $status) {
             throw ApiException::conflict('COUPON_STATUS', $active ? 'El cupón ya está activo.' : 'El cupón ya está desactivado.');
+        }
+
+        if ($active && $coupon->valid_to !== null && Carbon::parse($coupon->valid_to, 'America/Lima')->lt(Carbon::today('America/Lima'))) {
+            throw ApiException::unprocessable('COUPON_EXPIRED', 'No se puede activar: el cupón ya venció. Crea uno nuevo.');
+        }
+
+        if ($active && $coupon->max_redemptions !== null && (int) $coupon->redeemed_count >= (int) $coupon->max_redemptions) {
+            throw ApiException::unprocessable('COUPON_EXHAUSTED', 'No se puede activar: el cupón ya alcanzó su máximo de canjes. Crea uno nuevo.');
         }
 
         $this->db()->transaction(function () use ($coupon, $status, $active, $actor): void {

@@ -8,10 +8,12 @@ import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { BarChart } from "@/components/ui/Charts";
+import { DownloadButton } from "@/components/ui/DownloadButton";
 import { FieldList } from "@/components/ui/Details";
 import { SidePanel } from "@/components/ui/SidePanel";
 import type { PlatformInvoice, SubscriptionOverview } from "@/lib/admin";
 import { formatDate, formatDateTime, formatMoney, formatNumber, monthName } from "@/lib/format";
+import { ATTEMPT_SOURCE } from "@/lib/platformBilling";
 import { UsageBar } from "./AdminParts";
 
 const INVOICE_STATUS: Record<string, { label: string; tone: "ok" | "bad" | "sun" | "mute" }> = {
@@ -46,10 +48,11 @@ const HISTORY_METRICS = [
   { id: "api_calls_month", label: "API" },
 ];
 
-export function UsageHistory({ history, metrics = HISTORY_METRICS }: { history: SubscriptionOverview["history"]; metrics?: { id: string; label: string }[] }) {
+export function UsageHistory({ history, metrics = HISTORY_METRICS, limits = {} }: { history: SubscriptionOverview["history"]; metrics?: { id: string; label: string }[]; limits?: Record<string, number | null> }) {
   const tabs = metrics.filter((tab) => (history[tab.id] ?? []).length > 0);
   const [metric, setMetric] = useState<string>(tabs[0]?.id ?? metrics[0]?.id ?? "");
   const series = history[metric] ?? [];
+  const limit = limits[metric] ?? null;
   if (tabs.length === 0) return <p className="text-[13px] text-fg-3">Aún no hay consumo registrado.</p>;
   return (
     <div>
@@ -69,7 +72,9 @@ export function UsageHistory({ history, metrics = HISTORY_METRICS }: { history: 
           detail: `${monthName(point.month)}: ${formatNumber(point.value)}`,
           highlight: index === series.length - 1,
         }))}
+        reference={limit !== null && limit > 0 ? { value: limit, label: `Límite vigente: ${formatNumber(limit)} al mes` } : undefined}
       />
+      {limit !== null && limit > 0 && <p className="mt-3 flex items-center gap-2 text-[12px] text-fg-3"><span aria-hidden className="inline-block w-5 border-t border-dashed border-bad/60" />Límite vigente del plan: {formatNumber(limit)} al mes</p>}
     </div>
   );
 }
@@ -98,13 +103,48 @@ function InvoiceDetail({ invoice, manage }: { invoice: PlatformInvoice; manage: 
               { label: "IGV", value: formatMoney(invoice.igv, invoice.currency) },
               { label: "Total", value: <b>{formatMoney(invoice.total, invoice.currency)}</b> },
               { label: "Pago", value: invoice.paid_at ? `${formatDateTime(invoice.paid_at)} · ${invoice.method ?? ""}` : "Pendiente" },
-              { label: "SUNAT", value: SUNAT[invoice.sunat] ?? invoice.sunat },
             ]}
           />
+          {invoice.bill_to && (
+            <section className="rounded-[14px] border border-line px-3.5 py-3">
+              <h3 className="mb-1.5 text-[12.5px] font-semibold text-fg-3">Facturar a</h3>
+              <p className="text-[13.5px] font-semibold">{invoice.bill_to.name}</p>
+              {invoice.bill_to.ruc && <p className="font-mono text-[12.5px] text-fg-2">RUC {invoice.bill_to.ruc}</p>}
+              {invoice.bill_to.address && <p className="text-[12.5px] text-fg-2">{invoice.bill_to.address}</p>}
+            </section>
+          )}
+          <section className="rounded-[14px] border border-line px-3.5 py-3">
+            <h3 className="mb-1.5 text-[12.5px] font-semibold text-fg-3">Comprobante electrónico</h3>
+            <FieldList
+              fields={[
+                { label: "Estado SUNAT", value: <Badge tone={invoice.sunat === "accepted" ? "ok" : invoice.sunat === "rejected" ? "bad" : invoice.sunat === "observed" ? "sun" : "mute"}>{SUNAT[invoice.sunat] ?? invoice.sunat}</Badge> },
+                ...(invoice.sunat_hash ? [{ label: "Código hash", value: <span className="break-all font-mono text-[12px]">{invoice.sunat_hash}</span> }] : []),
+              ]}
+            />
+          </section>
+          <section>
+            <h3 className="mb-2 text-[12.5px] font-semibold text-fg-3">Intentos de cobro · {invoice.attempts.length}</h3>
+            {invoice.attempts.length === 0 ? (
+              <p className="text-[12.5px] text-fg-3">Todavía no se intentó cobrar esta factura.</p>
+            ) : (
+              <ul className="flex flex-col divide-y divide-line-2 rounded-[14px] border border-line">
+                {invoice.attempts.map((attempt) => (
+                  <li key={attempt.number} className="flex items-start gap-2.5 px-3.5 py-2.5 text-[13px] transition-colors hover:bg-surface-2">
+                    <span className={attempt.result === "succeeded" ? "mt-0.5 text-ok" : "mt-0.5 text-bad"}>{attempt.result === "succeeded" ? <CheckCircle2 size={15} /> : <XCircle size={15} />}</span>
+                    <span className="min-w-0 flex-1">
+                      <b className="block font-semibold">{ATTEMPT_SOURCE[attempt.source] ?? attempt.source}</b>
+                      {attempt.message && <span className="block text-[12.5px] text-fg-2">{attempt.message}</span>}
+                    </span>
+                    <span className="flex-none text-[12px] text-fg-3">{formatDateTime(attempt.at)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
           {manage && ["open", "failed"].includes(invoice.status) && (
             <div className="flex items-center justify-between gap-3 rounded-[14px] bg-surface-2 px-3.5 py-3">
               <p className="text-[12.5px] text-fg-2">{invoice.status === "failed" ? "El último cobro fue rechazado." : `Vence el ${formatDate(invoice.due_date)}.`}</p>
-              <PayInvoiceAction number={invoice.number} total={invoice.total} currency={invoice.currency} />
+              <PayInvoiceAction numbers={[invoice.number]} total={invoice.total} currency={invoice.currency} />
             </div>
           )}
           {manage && <SendInvoiceAction number={invoice.number} />}
@@ -139,6 +179,7 @@ export function InvoicesTable({ invoices, manage = false }: { invoices: Platform
       mobile: "detail",
       cell: (invoice) => (
         <RowActions>
+          {invoice.status !== "draft" && <DownloadButton href={`/admin/suscripcion/facturas/${encodeURIComponent(invoice.number)}/pdf`} label="Descargar PDF" size="sm" iconOnly />}
           <InvoiceDetail invoice={invoice} manage={manage} />
         </RowActions>
       ),

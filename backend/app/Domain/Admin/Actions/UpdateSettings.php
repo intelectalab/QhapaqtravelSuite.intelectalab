@@ -54,6 +54,10 @@ final class UpdateSettings
                 $warnings[] = 'La pasarela de pagos aún está por validar: los pagos en línea quedarán como pendientes.';
             }
 
+            if ($section === 'channels' && isset($changed['whatsapp']) && $after['whatsapp'] && ($warning = $this->directory->channelIntegrations()['whatsapp']['warning'] ?? null) !== null) {
+                $warnings[] = $warning;
+            }
+
             return ['changed' => array_keys($changed), 'warnings' => $warnings];
         });
     }

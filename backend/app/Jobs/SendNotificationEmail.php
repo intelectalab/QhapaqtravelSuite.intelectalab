@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Domain\Admin\Support\AdapterRetryPolicy;
 use App\Domain\Admin\Support\IntegrationErrors;
 use App\Domain\Platform\Support\UsageMeter;
 use App\Domain\Shared\Tenancy\Jobs\RestoreTenantContext;
@@ -24,16 +25,22 @@ final class SendNotificationEmail implements ShouldQueue
     use Queueable;
     use TenantAware;
 
-    public int $tries = 5;
+    public int $tries = AdapterRetryPolicy::TRIES;
+
+    public int $timeout = AdapterRetryPolicy::TIMEOUT_SECONDS;
+
+    public array $delays = [];
 
     public function __construct(public readonly string $messageId)
     {
         $this->onQueue('notifications');
+        $policy = AdapterRetryPolicy::for('email');
+        [$this->tries, $this->delays, $this->timeout] = [$policy['tries'], $policy['backoff'], $policy['timeout']];
     }
 
     public function backoff(): array
     {
-        return [60, 120, 240, 480, 960];
+        return $this->delays !== [] ? $this->delays : AdapterRetryPolicy::delays();
     }
 
     public function middleware(): array

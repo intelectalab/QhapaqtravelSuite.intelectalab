@@ -16,6 +16,7 @@ import { channelStatus, type OwnReview, type OwnReviewSettings, type OwnReviewsO
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { ChannelBadge, DetailPanel, PanelSection, Stars, TileGrid, Timeline, UsageBar } from "./ChannelUi";
+import { InvitationPreviewButton } from "./InvitationPreview";
 import { OwnReviewSettingsForm } from "./OwnReviewSettingsForm";
 import { ReviewToolbarAction } from "./ReviewToolbarAction";
 
@@ -42,8 +43,12 @@ export function OwnReviewTiles({ kpis }: { kpis: OwnReviewsOverview["kpis"] }) {
 
 export function OwnReviewSummary({ overview }: { overview: OwnReviewsOverview }) {
   const total = Math.max(1, overview.distribution.reduce((sum, item) => sum + item.count, 0));
+  const latest = overview.items
+    .filter((review) => review.status === "publicada")
+    .sort((a, b) => (b.published_at ?? b.created_at).localeCompare(a.published_at ?? a.created_at))
+    .slice(0, 3);
   return (
-    <div className="mb-5 grid gap-5 lg:grid-cols-3">
+    <div className="mb-5 grid gap-5 lg:grid-cols-2">
       <Card>
         <TintCardTitle icon={Star} title="Distribución" tone="sun" />
         <ul className="flex flex-col gap-2">
@@ -78,6 +83,28 @@ export function OwnReviewSummary({ overview }: { overview: OwnReviewsOverview })
             </li>
           ))}
         </ul>
+      </Card>
+      <Card>
+        <TintCardTitle icon={CircleCheck} title="Últimas publicadas" tone="ok" />
+        {latest.length === 0 ? (
+          <p className="rounded-tile border border-dashed border-line px-4 py-6 text-center text-[13px] text-fg-3">Aún no hay reseñas publicadas.</p>
+        ) : (
+          <ul className="flex flex-col gap-2.5">
+            {latest.map((review) => (
+              <li key={review.code} className="lift rounded-tile border border-line px-3 py-2.5">
+                <span className="flex items-center justify-between gap-3">
+                  <b className="min-w-0 truncate text-[13px] font-semibold">{review.title}</b>
+                  <Stars value={review.stars} size={11} />
+                </span>
+                <span className="mt-0.5 line-clamp-2 block text-[12.5px] text-fg-2">{review.body}</span>
+                <span className="mt-1 flex items-center gap-1.5 text-[11.5px] text-fg-3">
+                  {review.verified && <BadgeCheck size={12} className="text-ok" />}
+                  {review.author} · {review.product.name} · {formatDate(review.published_at ?? review.created_at)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
     </div>
   );
@@ -326,7 +353,8 @@ export function OwnReviewsWorkspace({ overview, settings, section }: { overview:
             content: (
               <>
                 {overview.can_moderate && (
-                  <div className="border-b border-line px-5 py-3">
+                  <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-3">
+                    {settings && <InvitationPreviewButton invite={settings.values.invite} sample={settings.preview} />}
                     <ReviewToolbarAction label="Programar invitaciones pendientes" icon={<CalendarClock size={16} />} hint="Crea una invitación por cada viaje terminado que aún no la tiene, con el canal y los plazos de los ajustes." run={scheduleInvitations} />
                   </div>
                 )}

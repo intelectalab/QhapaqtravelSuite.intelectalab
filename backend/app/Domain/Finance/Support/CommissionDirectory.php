@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Finance\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Money\Decimal;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -72,6 +73,20 @@ final class CommissionDirectory
                 'operate' => $viewer->can('finance.commissions') && $viewer->can('finance.payments.register'),
                 'rules' => $viewer->can('finance.commissions') && $viewer->can('finance.payments.register'),
             ],
+        ];
+    }
+
+    public function summary(User $viewer): array
+    {
+        $overview = $this->overview($viewer);
+
+        return [
+            'kpis' => $overview['kpis'],
+            'by_beneficiary' => $overview['by_beneficiary'],
+            'pending_reservations' => $this->eligibleReservations()->orderByDesc('b.code')->limit(50)
+                ->get(['b.code', 'b.title', 'b.channel', 'b.status', 'b.currency', 'b.total_amount', 'c.name as client'])
+                ->map(fn (object $row): array => ['code' => $row->code, 'title' => $row->title, 'channel' => $row->channel, 'status' => $row->status, 'client' => $row->client, 'currency' => $row->currency, 'total' => (string) Decimal::money((string) $row->total_amount)])
+                ->values()->all(),
         ];
     }
 

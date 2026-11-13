@@ -146,9 +146,16 @@ export interface DunningPolicy {
   suspend_after_last: boolean;
 }
 
+export interface DunningHistoryItem extends InvoiceSummary {
+  outcome: "recovered" | "lost";
+  failed_at: string;
+}
+
 export interface DunningOverview {
   policy: DunningPolicy;
   items: DunningItem[];
+  history: DunningHistoryItem[];
+  recovery: { days: number; recovered_count: number; recovered_amount: number; lost_count: number; lost_amount: number };
 }
 
 export interface TrialItem {
@@ -164,10 +171,12 @@ export interface TrialItem {
   can_extend: boolean;
   payment_method: string | null;
   users: number;
+  reservations: number;
 }
 
 export interface TrialsOverview {
   items: TrialItem[];
+  eligible: { code: string; name: string; plan: string | null; reason: string }[];
   coupons: { code: string; label: string; plans: string[] }[];
   plans: { code: string; name: string; rank: number; price_month: number; price_year: number }[];
 }

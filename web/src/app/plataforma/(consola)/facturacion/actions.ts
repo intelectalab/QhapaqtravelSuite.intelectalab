@@ -48,6 +48,15 @@ export async function extendTrial(_state: ConsoleResult, form: FormData): Promis
   return finish(platformSend(`/trials/${encodeURIComponent(text(form, "tenant"))}/extend`, "POST", { days: Number(text(form, "days") || 7) }, "No pudimos extender la prueba."));
 }
 
+export async function startTrial(_state: ConsoleResult, form: FormData): Promise<ConsoleResult> {
+  const days = optional(form, "days");
+  return finish(
+    platformSend<{ tenant: { name: string }; ends_at: string }>("/trials", "POST", { tenant: text(form, "tenant"), plan: optional(form, "plan"), days: days === null ? null : Number(days), reason: text(form, "reason") }, "No pudimos dar la prueba.", (data) =>
+      data ? `Prueba activa para ${data.tenant.name} hasta el ${data.ends_at.split("-").reverse().join("/")}.` : null,
+    ),
+  );
+}
+
 export async function convertTrial(_state: ConsoleResult, form: FormData): Promise<ConsoleResult> {
   return finish(platformSend(`/trials/${encodeURIComponent(text(form, "tenant"))}/convert`, "POST", { coupon: optional(form, "coupon"), plan: optional(form, "plan"), cycle: optional(form, "cycle") }, "No pudimos convertir la prueba."));
 }

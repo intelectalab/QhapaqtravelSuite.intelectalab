@@ -90,6 +90,23 @@ final class InvoiceController
         return response()->json(['data' => $followUp->deliver($number, $data['email'] ?? null, $this->actor($request))]);
     }
 
+    public function xml(Request $request, string $number, InvoiceFollowUp $followUp): JsonResponse
+    {
+        return response()->json(['data' => $followUp->fiscalFile($number, 'xml', $this->actor($request))]);
+    }
+
+    public function cdr(Request $request, string $number, InvoiceFollowUp $followUp): JsonResponse
+    {
+        return response()->json(['data' => $followUp->fiscalFile($number, 'cdr', $this->actor($request))]);
+    }
+
+    public function void(Request $request, string $number, InvoiceFollowUp $followUp): JsonResponse
+    {
+        $data = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:100']], ['reason.*' => 'Explica el motivo de la baja (5 a 100 caracteres).']);
+
+        return response()->json(['data' => $followUp->void($number, $data['reason'], $this->actor($request))]);
+    }
+
     private function issueData(Request $request): array
     {
         return $request->validate([

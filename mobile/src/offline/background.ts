@@ -1,7 +1,7 @@
 import * as BackgroundTask from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
 import { getToken } from "../api/client";
-import { deviceId } from "../api/session";
+import { deviceId, wipeDevice } from "../api/session";
 import { uploadPending } from "../data/evidence";
 import { getMe, refreshFromServer } from "../data/repository";
 import { SyncEngine } from "./sync";
@@ -30,6 +30,9 @@ export async function runBackgroundSync(): Promise<boolean> {
     onSessionExpired: () => undefined,
     refreshFromServer,
     onChange: () => undefined,
+    onDeviceRevoked: async () => {
+      await wipeDevice();
+    },
   });
   await engine.run();
   return true;

@@ -6,7 +6,7 @@ import { InfoTip } from "@/components/ui/InfoTip";
 import { TabbedCard } from "@/components/ui/RouteTabs";
 import { TintTile } from "@/components/ui/Tinted";
 import { KpiGrid } from "@/features/admin/AdminParts";
-import { RuleCreateAction } from "@/features/admin/Rules";
+import { RuleCreateAction, RuleResetAllAction } from "@/features/admin/Rules";
 import { formatDateTime } from "@/lib/format";
 import { getRules } from "@/lib/server/adminSections";
 
@@ -24,7 +24,14 @@ export default async function ReglasLayout({ children }: { children: ReactNode }
         title="Reglas de reserva"
         subtitle="Qué permite y qué exige el motor de reservas en el sitio web, el widget, las cotizaciones y los portales."
         info={<InfoTip>Activa solo lo que tu agencia necesita: una regla apagada desaparece del sitio web, el widget y las cotizaciones. Las reglas estándar no se eliminan, se apagan. Los parámetros se validan con sus rangos y entre reglas, por ejemplo la edad máxima de infante frente a la mínima de niño.</InfoTip>}
-        actions={data.can_manage ? <RuleCreateAction /> : undefined}
+        actions={
+          data.can_manage ? (
+            <span className="flex flex-wrap items-center gap-2">
+              <RuleResetAllAction modified={data.rules.filter((rule) => rule.modified && !rule.custom).length} />
+              <RuleCreateAction />
+            </span>
+          ) : undefined
+        }
       />
       <KpiGrid columns={3}>
         <TintTile icon={ShieldCheck} tone="t1" label="Tu plan" value={data.plan} note="Define qué reglas puedes encender" info={<p>Plan contratado por la agencia. Cada regla indica desde qué plan está disponible; las de planes superiores se ven con candado.</p>} />

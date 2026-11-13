@@ -11,6 +11,7 @@ use App\Domain\Site\Support\CheckoutRules;
 use App\Domain\Site\Support\SiteBooking;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 final class SiteCartController
 {
@@ -40,6 +41,43 @@ final class SiteCartController
         ]);
 
         return response()->json(['data' => $cart->add($this->token($request), $data)], 201);
+    }
+
+    public function bookings(Request $request, SiteCart $cart, SiteCheckout $checkout): JsonResponse
+    {
+        $data = $request->validate([
+            'quote_token' => ['required', 'string', 'max:2000'],
+            'product' => ['required', 'string', 'max:160'],
+            'date' => ['required', 'date_format:Y-m-d'],
+            'adults' => ['required', 'integer', 'min:1', 'max:40'],
+            'children' => ['nullable', 'integer', 'min:0', 'max:20'],
+            'infants' => ['nullable', 'integer', 'min:0', 'max:10'],
+            'promo' => ['nullable', 'string', 'max:40'],
+            'source' => ['nullable', 'string', 'in:sitio,widget'],
+            ...SiteBooking::rules(),
+        ], [
+            'quote_token.*' => 'Cotiza el precio antes de reservar.',
+            'product.*' => 'Elige un producto.',
+            'date.*' => 'Elige una fecha disponible.',
+            'adults.*' => 'Incluye al menos 1 adulto.',
+            ...SiteBooking::messages(),
+        ]);
+
+        $order = DB::transaction(function () use ($cart, $checkout, $data, $request): array {
+            try {
+                $added = $cart->add(null, $data);
+            } catch (ApiException $exception) {
+                if ($exception->ruleCode === 'SIT-BR-05') {
+                    throw ApiException::conflict('AVAIL_CHANGED', 'La fecha ya no está disponible para ese grupo. Elige otra fecha o cambia los viajeros.', ['reason' => $exception->getMessage()]);
+                }
+
+                throw $exception;
+            }
+
+            return $checkout->place((string) $added['token'], $request->all());
+        });
+
+        return response()->json(['data' => $order], 201);
     }
 
     public function applyPromo(Request $request, SiteCart $cart): JsonResponse
@@ -74,6 +112,39 @@ final class SiteCartController
         $version = isset($data['lock_version']) ? (int) $data['lock_version'] : (ctype_digit($ifMatch) ? (int) $ifMatch : null);
 
         return response()->json(['data' => $cart->removedLines($this->token($request), $line, $data['key'], (bool) $data['removed'], $version)]);
+    }
+
+    public function update(Request $request, int $line, SiteCart $cart): JsonResponse
+    {
+        $data = $request->validate([
+            'adults' => ['nullable', 'integer', 'min:1', 'max:40'],
+            'children' => ['nullable', 'integer', 'min:0', 'max:20'],
+            'infants' => ['nullable', 'integer', 'min:0', 'max:10'],
+            'options' => ['nullable', 'array', 'max:20'],
+            'removed' => ['nullable', 'array', 'max:30'],
+            ...SiteBooking::rules(),
+        ], [
+            'adults.*' => 'Incluye al menos 1 adulto.',
+            'children.*' => 'Revisa el número de niños.',
+            'infants.*' => 'Revisa el número de infantes.',
+            ...SiteBooking::messages(),
+        ]);
+        $result = $cart->updateItem($this->token($request), $line, $data);
+
+        return response()->json(['data' => $result['item'], 'meta' => ['cart' => $result['cart']]]);
+    }
+
+    public function preferences(Request $request, SiteCart $cart): JsonResponse
+    {
+        $data = $request->validate([
+            'currency' => ['nullable', 'string', 'in:PEN,USD', 'required_without:locale'],
+            'locale' => ['nullable', 'string', 'in:es,en', 'required_without:currency'],
+        ], [
+            'currency.*' => 'Elige soles (PEN) o dólares (USD).',
+            'locale.*' => 'Elige español (es) o inglés (en).',
+        ]);
+
+        return response()->json(['data' => $cart->preferences($this->token($request), $data)]);
     }
 
     public function hold(Request $request, int $line, SiteCart $cart): JsonResponse

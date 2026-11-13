@@ -21,6 +21,12 @@ final class RegisterWebClaim
 {
     private const SEDE_PREFIX = ['lima' => 'LIM', 'cusco' => 'CUS', 'arequipa' => 'AQP', 'puno' => 'PUN', 'trujillo' => 'TRU'];
 
+    private const ORIGINS = [
+        'web' => ['in' => 'en el sitio web', 'from' => 'desde el sitio web'],
+        'customer_portal' => ['in' => 'en el portal del cliente', 'from' => 'desde el portal del cliente'],
+        'passenger_portal' => ['in' => 'en el portal del pasajero', 'from' => 'desde el portal del pasajero'],
+    ];
+
     public function __construct(
         private readonly TenantContext $context,
         private readonly CodeSequence $codes,
@@ -30,7 +36,7 @@ final class RegisterWebClaim
         private readonly ClaimNotices $notices,
     ) {}
 
-    public function handle(array $data): array
+    public function handle(array $data, string $channel = 'web', ?string $clientId = null, ?string $submittedBy = null): array
     {
         $sede = DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->where('id', $data['sede_id'])->first(['id', 'name'])
             ?? throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige el establecimiento donde contrataste el servicio.');
@@ -38,9 +44,10 @@ final class RegisterWebClaim
         $now = Carbon::now($this->context->timezone());
         $responseDays = (int) $this->directory->settings()->response_days;
         $email = Str::lower(trim($data['email']));
-        $client = DB::table('crm_clients')->whereNull('deleted_at')->where('email_norm', $email)->value('id');
+        $client = $clientId ?? DB::table('crm_clients')->whereNull('deleted_at')->where('email_norm', $email)->value('id');
         $reservation = isset($data['reservation']) ? DB::table('booking_reservations')->whereNull('deleted_at')->where('code', Str::upper(trim($data['reservation'])))->first(['id', 'client_id']) : null;
         $reservationId = $reservation && $client && $reservation->client_id === $client ? $reservation->id : null;
+        $origin = self::ORIGINS[$channel] ?? self::ORIGINS['web'];
         $prefix = 'LR-'.$this->prefix($sede->name).'-'.$now->year.'-';
         $number = $this->codes->next('crm_cases', $prefix, 6, 'book_number');
         $code = $this->codes->next('crm_cases', 'REC-');
@@ -63,7 +70,8 @@ final class RegisterWebClaim
             'is_book' => true,
             'book_number' => $number,
             'sede_id' => $sede->id,
-            'channel' => 'web',
+            'channel' => $channel,
+            'submitted_by' => $submittedBy,
             'book_status' => 'received',
             'consumer' => json_encode(ClaimConsumer::build([
                 'name' => $data['name'],
@@ -88,11 +96,11 @@ final class RegisterWebClaim
             'event' => 'registro',
             'from_status' => null,
             'to_status' => 'abierta',
-            'message' => "Hoja registrada en el sitio web ({$sede->name})".(($data['is_minor'] ?? false) ? " · menor de edad, apoderado {$data['guardian_name']} ({$data['guardian_relation']})" : '').". El consumidor aceptó recibir la respuesta en {$email}; constancia enviada",
+            'message' => "Hoja registrada {$origin['in']} ({$sede->name})".(($data['is_minor'] ?? false) ? " · menor de edad, apoderado {$data['guardian_name']} ({$data['guardian_relation']})" : '').". El consumidor aceptó recibir la respuesta en {$email}; constancia enviada",
         ]);
-        $this->audit->log('Libro de reclamaciones', $number, 'registrar', null, "{$data['type']} · web");
+        $this->audit->log('Libro de reclamaciones', $number, 'registrar', null, "{$data['type']} · {$channel}");
         $this->notices->acknowledge($id);
-        app(StaffNotices::class)->toRoles(['manager', 'tenant_admin'], 'reclamacion.nueva', "{$number} · nueva hoja del Libro de Reclamaciones", "Registrada desde el sitio web ({$sede->name}). Plazo de respuesta: {$due}.", 'crm_case', $id, null, [$owner]);
+        app(StaffNotices::class)->toRoles(['manager', 'tenant_admin'], 'reclamacion.nueva', "{$number} · nueva hoja del Libro de Reclamaciones", "Registrada {$origin['from']} ({$sede->name}). Plazo de respuesta: {$due}.", 'crm_case', $id, null, [$owner]);
 
         return ['number' => $number, 'received_at' => $now->toIso8601String(), 'due_date' => $due, 'response_days' => $responseDays, 'email' => $email, 'sede' => $sede->name];
     }

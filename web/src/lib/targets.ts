@@ -72,6 +72,7 @@ export interface TargetDetail {
   history: SalesTarget[];
   adjustments: TargetAdjustment[];
   policy: TargetsOverview["policy"];
+  ranking?: TargetsOverview["ranking"];
   can: TargetsOverview["can"];
 }
 
@@ -104,3 +105,28 @@ export const HEALTH: Record<string, { label: string; tone: Tone }> = {
   en_riesgo: { label: "En riesgo", tone: "warn" },
   critico: { label: "Crítico", tone: "bad" },
 };
+
+export interface SalesTeam {
+  id: string;
+  code: string;
+  name: string;
+  leader: { id: string; name: string } | null;
+  members: { id: string; name: string; since: string }[];
+  targets: number;
+  updated_at: string;
+}
+
+export interface TargetPolicy {
+  tiers: { min: number; pay: number }[];
+  primary_metric: string;
+  lock_decrease_after_pct: number;
+  attribution_window_days: number;
+  updated_at: string | null;
+}
+
+export interface SalesTeamsOverview {
+  teams: SalesTeam[];
+  advisors: { value: string; label: string }[];
+  policy: TargetPolicy;
+  can: { manage: boolean; policy: boolean };
+}

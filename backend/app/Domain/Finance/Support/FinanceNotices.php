@@ -68,6 +68,17 @@ final class FinanceNotices
         return $this->notices->email($payable->email, 'pago.proveedor', "Te pagamos {$payable->code} · {$agency}", "Hola, {$payable->name}:\n\nRegistramos el pago de ".trim($payable->currency)." {$amount} por {$payable->code}".($payable->reservation ? " (reserva {$payable->reservation})" : '').".\n\nPuedes ver el detalle en la extranet de proveedores.\n\n{$agency}", 'fin_payable', $payable->id, 'provider', ['reservation_id' => $payable->reservation_id]);
     }
 
+    public function settled(string $reservationId, string $net): int
+    {
+        $reservation = DB::table('booking_reservations')->where('id', $reservationId)->first(['id', 'code', 'title', 'owner_id']);
+
+        if ($reservation === null) {
+            return 0;
+        }
+
+        return $this->notices->toUser($reservation->owner_id, 'reserva.liquidada', "{$reservation->code} · reserva liquidada", "{$reservation->title} · utilidad S/ ".Decimal::round2($net), 'booking_reservation', $reservation->id, $reservation->id);
+    }
+
     private function payment(string $id): ?object
     {
         return DB::table('fin_payments as p')->join('booking_reservations as r', 'r.id', '=', 'p.reservation_id')->leftJoin('crm_clients as c', 'c.id', '=', 'r.client_id')

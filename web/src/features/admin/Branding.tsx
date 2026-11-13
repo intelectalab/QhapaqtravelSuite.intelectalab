@@ -15,11 +15,12 @@ import { RISE } from "./AdminParts";
 
 export type ColorRoleKey = "brand" | "accent" | "menu";
 
-export interface ColorRoleSpec {
-  key: ColorRoleKey;
+export interface ColorRoleSpec<K extends string = ColorRoleKey> {
+  key: K;
   label: string;
   hint: string;
   presets: string[];
+  ink?: string;
 }
 
 const ROLES: ColorRoleSpec[] = [
@@ -90,19 +91,27 @@ function darken(hex: string, amount: number): string {
   return `#${[1, 3, 5].map((i) => Math.max(0, Math.round(parseInt(hex.slice(i, i + 2), 16) * (1 - amount))).toString(16).padStart(2, "0")).join("")}`;
 }
 
-function suggestion(hex: string): string | null {
-  if (!HEX.test(hex) || contrast(hex, "#ffffff") >= 4.5) return null;
-  for (let step = 0.05; step < 0.9; step += 0.05) {
-    const candidate = darken(hex, step);
-    if (contrast(candidate, "#ffffff") >= 4.5) return candidate;
-  }
-  return "#1f2937";
+function lighten(hex: string, amount: number): string {
+  return `#${[1, 3, 5].map((i) => { const value = parseInt(hex.slice(i, i + 2), 16); return Math.min(255, Math.round(value + (255 - value) * amount)).toString(16).padStart(2, "0"); }).join("")}`;
 }
 
-export function ColorRole({ role, value, onChange, disabled }: { role: ColorRoleSpec; value: string; onChange: (value: string) => void; disabled: boolean }) {
+const darkInk = (ink: string) => luminance(ink) < 0.18;
+
+function suggestion(hex: string, ink = "#ffffff"): string | null {
+  if (!HEX.test(hex) || contrast(hex, ink) >= 4.5) return null;
+  const toLight = darkInk(ink);
+  for (let step = 0.05; step < 0.9; step += 0.05) {
+    const candidate = toLight ? lighten(hex, step) : darken(hex, step);
+    if (contrast(candidate, ink) >= 4.5) return candidate;
+  }
+  return toLight ? "#fde68a" : "#1f2937";
+}
+
+export function ColorRole({ role, value, onChange, disabled }: { role: ColorRoleSpec<string>; value: string; onChange: (value: string) => void; disabled: boolean }) {
   const valid = HEX.test(value);
-  const fix = role.key === "menu" ? null : suggestion(value);
-  const ratio = valid ? contrast(value, role.key === "menu" ? (luminance(value) > 0.45 ? "#141a33" : "#ffffff") : "#ffffff") : 0;
+  const ink = role.ink ?? "#ffffff";
+  const fix = role.key === "menu" && !role.ink ? null : suggestion(value, ink);
+  const ratio = valid ? contrast(value, role.key === "menu" && !role.ink ? (luminance(value) > 0.45 ? "#141a33" : "#ffffff") : ink) : 0;
   return (
     <div className={cn("rounded-[14px] border border-line p-3.5 transition-colors hover:border-[color-mix(in_srgb,var(--accent)_35%,transparent)]", RISE)}>
       <div className="flex items-start justify-between gap-3">
@@ -136,7 +145,7 @@ export function ColorRole({ role, value, onChange, disabled }: { role: ColorRole
       </div>
       {fix && (
         <p className="mt-2.5 flex items-center gap-2 text-[12px] text-warn">
-          El texto blanco se lee con dificultad sobre este color.
+          El texto {darkInk(ink) ? "oscuro" : "blanco"} se lee con dificultad sobre este color.
           <button type="button" disabled={disabled} onClick={() => onChange(fix)} className="inline-flex items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--warn)_14%,transparent)] px-2 py-0.5 font-semibold transition-transform hover:-translate-y-0.5">
             <Wand2 size={12} /> Usar {fix}
           </button>

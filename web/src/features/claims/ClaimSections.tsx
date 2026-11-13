@@ -1,7 +1,11 @@
 "use client";
 
-import { BookOpen, Building2, CalendarOff, CalendarRange, Coins, Download, Hash, MapPin, Pencil, Plus, Settings2, Tags, Timer, TimerReset, Trash2 } from "lucide-react";
-import { claimHolidayStep, saveClaimSettings } from "@/app/(backoffice)/crm/reclamaciones/actions";
+import { AlarmClock, BookOpen, Building2, CalendarOff, CalendarRange, Coins, Download, Hash, MapPin, Pencil, Plus, Settings2, Tags, Timer, TimerReset, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { claimHolidayStep, requestClaimExport, saveClaimSettings, type ClaimExportResult } from "@/app/(backoffice)/crm/reclamaciones/actions";
+import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
+import { SimpleTable } from "@/components/ui/SimpleTable";
 import { RowIcon } from "@/components/table/RowActions";
 import { Button } from "@/components/ui/Button";
 import { HiddenFields } from "@/features/catalog-shared/CatalogPanels";
@@ -10,8 +14,8 @@ import { FieldList } from "@/components/ui/Details";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { TextField } from "@/components/ui/TextField";
 import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
-import type { ClaimHoliday, ClaimSheet, ClaimsOverview } from "@/lib/claims";
-import { formatMoney, formatNumber } from "@/lib/format";
+import type { ClaimHoliday, ClaimReport, ClaimSheet, ClaimsOverview } from "@/lib/claims";
+import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { ClaimsTable } from "./ClaimsTable";
 
@@ -59,43 +63,106 @@ function monthly(claims: ClaimSheet[], today: string) {
   });
 }
 
-const csvCell = (value: string | number | null | undefined) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+const EXPORT_COLUMNS = ["N° de hoja", "Fecha", "Sede", "Tipo", "Consumidor", "Documento", "Detalle", "Pedido", "Monto", "Estado", "Respuesta", "Plazo"];
 
-function downloadYear(overview: ClaimsOverview) {
-  const year = overview.today.slice(0, 4);
-  const rows = overview.claims.filter((claim) => claim.received_on.startsWith(year)).sort((a, b) => a.received_at.localeCompare(b.received_at));
-  const head = ["N° de hoja", "Fecha", "Sede", "Tipo", "Consumidor", "Documento", "Detalle", "Pedido", "Monto", "Estado", "Respuesta", "Sentido"];
-  const body = rows.map((claim) =>
-    [
-      claim.book_number,
-      claim.received_on,
-      claim.sede,
-      claim.type,
-      claim.consumer.name,
-      `${claim.consumer.doc_type ?? ""} ${claim.consumer.doc_number ?? ""}`.trim(),
-      claim.detail,
-      claim.request,
-      claim.good && claim.good.amount > 0 ? `${claim.good.currency} ${claim.good.amount}` : "",
-      claim.book_status_label,
-      claim.response?.answered_at?.slice(0, 10),
-      claim.response?.decision,
-    ]
-      .map(csvCell)
-      .join(";"),
+const exportInitial: ClaimExportResult = { message: null, done: false };
+
+function ExportYearAction({ year, count }: { year: string; count: number }) {
+  const [last, setLast] = useState<ClaimExportResult | null>(null);
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <PanelAction<ClaimExportResult>
+        label="Exportar relación"
+        icon={<Download size={15} />}
+        size="sm"
+        formId="exportar-relacion"
+        title={`Relación de hojas ${year}`}
+        description="El archivo queda en Exportaciones por 7 días y la descarga se registra en la auditoría."
+        submitLabel="Generar archivo"
+        action={requestClaimExport}
+        initial={exportInitial}
+        onDone={setLast}
+      >
+        {() => (
+          <>
+            <input type="hidden" name="year" value={year} />
+            <ChoiceGroup label="Formato" name="format" options={[{ value: "XLSX", label: "Excel" }, { value: "CSV", label: "CSV" }, { value: "PDF", label: "PDF" }]} defaultValue="XLSX" />
+          </>
+        )}
+      </PanelAction>
+      {last?.exportId && (
+        <Button href={`/reportes/exportaciones/${last.exportId}/descargar`} variant="primary" size="sm" icon={<Download size={15} />}>
+          Descargar ({plural(last.rows ?? count, "hoja", "hojas")})
+        </Button>
+      )}
+    </div>
   );
-  const blob = new Blob([`﻿${[head.map(csvCell).join(";"), ...body].join("\n")}`], { type: "text/csv;charset=utf-8" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `libro-de-reclamaciones-${year}.csv`;
-  link.click();
-  URL.revokeObjectURL(link.href);
 }
 
-export function ClaimReports({ overview }: { overview: ClaimsOverview }) {
+function Compliance({ report }: { report: ClaimReport }) {
+  const { on_time, late, overdue, pending } = report.compliance;
+  const total = on_time + late + overdue + pending;
+  const parts = [
+    { label: "En plazo", value: on_time, tone: "var(--ok)" },
+    { label: "Fuera de plazo", value: late, tone: "var(--warn)" },
+    { label: "Vencidas sin respuesta", value: overdue, tone: "var(--bad)" },
+    { label: "Aún en plazo", value: pending, tone: "var(--info)" },
+  ];
+  return (
+    <section className="lift rounded-tile border border-line p-4">
+      <TintCardTitle icon={TimerReset} title="Cumplimiento del plazo" tone="ok" aside={`${report.year} · ${plural(total, "hoja", "hojas")}`} />
+      <div className="mt-2 flex h-3 overflow-hidden rounded-full bg-surface-2">
+        {parts.map((part) => (part.value > 0 ? <span key={part.label} title={`${part.label}: ${part.value}`} style={{ width: `${(part.value / Math.max(total, 1)) * 100}%`, background: part.tone }} className="transition-[width] duration-700" /> : null))}
+      </div>
+      <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {parts.map((part) => (
+          <li key={part.label} className="rounded-xl bg-surface-2 px-3 py-2 transition-transform duration-200 hover:-translate-y-0.5">
+            <span className="flex items-center gap-1.5 text-[11.5px] text-fg-3">
+              <span className="h-2 w-2 rounded-full" style={{ background: part.tone }} />
+              {part.label}
+            </span>
+            <b className="text-[17px]">{formatNumber(part.value)}</b>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function OverdueTable({ report }: { report: ClaimReport }) {
+  return (
+    <section className="lift rounded-tile border border-line p-4">
+      <TintCardTitle icon={AlarmClock} title="Vencidas sin respuesta" tone="bad" aside={plural(report.overdue.length, "hoja", "hojas")} />
+      <SimpleTable
+        columns={[{ header: "Hoja" }, { header: "Consumidor" }, { header: "Sede" }, { header: "Venció" }, { header: "Atraso", align: "right" }, { header: "Responsable" }]}
+        rows={report.overdue.map((row) => ({
+          key: row.code,
+          cells: [
+            <Link key="code" href={`/crm/reclamaciones/${encodeURIComponent(row.code)}`} className="font-mono text-[12.5px] text-accent hover:underline">{row.book_number}</Link>,
+            row.consumer,
+            row.sede ?? "—",
+            row.due_date ? formatDate(row.due_date) : "—",
+            row.days_late !== null ? plural(row.days_late, "día hábil", "días hábiles") : "—",
+            row.owner ?? "Sin responsable",
+          ],
+        }))}
+        empty="Ninguna hoja está vencida sin respuesta."
+      />
+    </section>
+  );
+}
+
+export function ClaimReports({ overview, report }: { overview: ClaimsOverview; report: ClaimReport | null }) {
   const year = overview.today.slice(0, 4);
   const ofYear = overview.claims.filter((claim) => claim.received_on.startsWith(year)).length;
   return (
     <div className="flex flex-col gap-5">
+      {report && (
+        <div className="grid gap-5 lg:grid-cols-2">
+          <Compliance report={report} />
+          <OverdueTable report={report} />
+        </div>
+      )}
       <section className="lift rounded-tile border border-line p-4">
         <TintCardTitle icon={CalendarRange} title="Hojas por mes" aside="Últimos 6 meses" />
         <BarChart data={monthly(overview.claims, overview.today)} height={110} />
@@ -112,14 +179,14 @@ export function ClaimReports({ overview }: { overview: ClaimsOverview }) {
       </div>
       <section className="lift rounded-tile border border-line p-4">
         <TintCardTitle icon={BookOpen} title={`Relación de hojas ${year}`} aside={plural(ofYear, "hoja", "hojas")} />
-        <ul className="mb-4 flex flex-col gap-1.5 text-[13px] text-fg-2">
-          <li>Número, fecha, sede, tipo, consumidor y documento.</li>
-          <li>Detalle, pedido y monto declarado.</li>
-          <li>Estado, fecha y sentido de la respuesta.</li>
+        <ul className="mb-4 flex flex-wrap gap-1.5">
+          {EXPORT_COLUMNS.map((column) => (
+            <li key={column} className="rounded-full border border-line px-2.5 py-0.5 text-[12px] text-fg-2">
+              {column}
+            </li>
+          ))}
         </ul>
-        <Button variant="secondary" size="sm" icon={<Download size={15} />} onClick={() => downloadYear(overview)} disabled={ofYear === 0}>
-          Descargar en CSV
-        </Button>
+        {ofYear > 0 ? <ExportYearAction year={year} count={ofYear} /> : <p className="text-[13px] text-fg-3">Aún no hay hojas este año.</p>}
       </section>
     </div>
   );
@@ -275,8 +342,8 @@ function ClaimHolidays({ overview }: { overview: ClaimsOverview }) {
   );
 }
 
-export function ClaimsWorkspace({ overview, section }: { overview: ClaimsOverview; section: "sheets" | "reports" | "settings" }) {
-  if (section === "reports") return <ClaimReports overview={overview} />;
+export function ClaimsWorkspace({ overview, section, report }: { overview: ClaimsOverview; section: "sheets" | "reports" | "settings"; report?: ClaimReport | null }) {
+  if (section === "reports") return <ClaimReports overview={overview} report={report ?? null} />;
   if (section === "settings") return <ClaimSettings overview={overview} />;
-  return <ClaimsTable overview={overview} />;
+  return <ClaimsTable overview={overview} publicUrl={overview.public_path} />;
 }

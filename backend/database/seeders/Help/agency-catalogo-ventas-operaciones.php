@@ -64,7 +64,7 @@ return [
             ['title' => 'Crear una tarifa', 'text' => '«Nueva tarifa» pide producto, tipo, segmento, canal, moneda, costo y precio de venta, con precios mínimo y máximo opcionales, la vigencia y la temporada. Nace vigente; si el precio queda por debajo del costo, se guarda igual y te avisamos.'],
             ['title' => 'Cambiar un precio', 'text' => 'Con «Editar» en la fila ajustas la tarifa. Si cambias el costo o el precio, escribe el «Motivo del cambio»: queda en el historial. Una tarifa inactiva se activa antes de editarla.'],
             ['title' => 'Activar o inactivar', 'text' => '«Inactivar» deja de ofrecerla en cotizaciones y reservas nuevas y pide un motivo; las que ya la usan no cambian. «Activar» la vuelve a ofrecer, salvo que esté vencida.'],
-            ['title' => 'Gestionar temporadas', 'text' => 'En la pestaña «Temporadas», «Nueva temporada» define nombre, tipo, fechas, prioridad y factor: 1.20 sube el costo base 20 %. La línea de tiempo muestra las fechas de cada una y cuál manda donde se cruzan.'],
+            ['title' => 'Gestionar temporadas', 'text' => 'En la pestaña «Temporadas», «Nueva temporada» define nombre, tipo, fechas, prioridad y factor: 1.20 sube el costo base 20 %. La línea de tiempo muestra las fechas de cada una y cuál manda donde se cruzan; el formulario te avisa si se cruza con otra. «Resolver» te dice qué temporada aplica en una fecha. «Eliminar» solo borra las que ninguna tarifa ni producto usa; si está en uso, te ofrece inactivarla.'],
             ['title' => 'Encontrar lo que vence', 'text' => 'Filtra con «Vigentes», «Programadas», «Vencidas» e «Inactivas», o por producto, canal, estado, tipo y moneda. Ordena por «Vence» para ver qué renovar primero.'],
         ],
         'faqs' => [
@@ -193,7 +193,7 @@ return [
         'summary' => 'Las propuestas de viaje para tus clientes, con sus versiones, aprobaciones y conversión en reserva.',
         'steps' => [
             ['title' => 'Filtrar y gestionar la lista', 'text' => 'Filtra con «En curso», «Vencen en 3 días», «Aprobadas o en reserva» y «Rechazadas o vencidas». «Nueva cotización» y «Editar» abren el asistente en un panel lateral; «Editar» solo está disponible en borrador y «Eliminar» pide un motivo, salvo en las aprobadas o convertidas en reserva.'],
-            ['title' => 'Moverte por la ficha', 'text' => 'La ficha se ordena en secciones con el menú de la izquierda (en el celular, con el selector): «Detalle e ítems» con las condiciones y el itinerario resumido; «Versiones» con su autor, total, margen y descuento; «Pricing» con el desglose por línea y el control de aprobación interna, si ves márgenes; «Envío y seguimiento» con los envíos, vistas, negociaciones y la respuesta del cliente; y «Actividad» con la auditoría completa.'],
+            ['title' => 'Moverte por la ficha', 'text' => 'La ficha se ordena en secciones con el menú de la izquierda (en el celular, con el selector): «Detalle e ítems» con las condiciones y el itinerario resumido; «Versiones» con su autor, total, margen y descuento, y el ojo de cada una abre sus ítems, condiciones, markup, aprobación interna e itinerario; «Pricing» con el desglose por línea y el control de aprobación interna, si ves márgenes; «Envío y seguimiento» con los envíos, vistas, negociaciones y la respuesta del cliente; y «Actividad» con la auditoría completa.'],
             ['title' => 'Registrar que el cliente la vio', 'text' => 'En «Envío y seguimiento», «Registrar vista» anota que el cliente revisó la propuesta cuando te lo confirma por otro medio. Si estaba enviada, pasa a vista.'],
             ['title' => 'Enviar al cliente', 'text' => 'En la ficha, «Enviar al cliente» la manda por correo, WhatsApp o enlace del portal, y «Propuesta PDF» descarga la versión. Al enviarla, la versión queda congelada; «Reenviar» la vuelve a mandar.'],
             ['title' => 'Registrar la respuesta', 'text' => '«Registrar negociación» anota lo que pidió el cliente, «Cliente aprobó» guarda quién aprobó y por dónde como evidencia, y «El cliente la rechazó» la cierra con un motivo.'],
@@ -220,7 +220,7 @@ return [
             ['title' => 'Datos generales', 'text' => 'Elige el «Cliente» de tu cartera y, si corresponde, una oportunidad abierta suya. Escribe el «Título», la fecha «Válida hasta» y la moneda. «Siguiente» revisa el paso antes de avanzar.'],
             ['title' => 'Viaje y pasajeros', 'text' => 'Indica las fechas del viaje y cuántos adultos, niños e infantes viajan. La fecha de fin no puede ser anterior al inicio y debe viajar al menos una persona.'],
             ['title' => 'Ítems de la cotización', 'text' => '«Agregar del catálogo» suma un producto activo y cotizable. En cada ítem indica fecha, tipo de pasajero, pasajeros y cantidad. Si dejas el precio vacío se usa la tarifa vigente; si el producto no tiene tarifa de venta, escribe el precio. A la derecha ves el subtotal al momento.'],
-            ['title' => 'Resumen económico', 'text' => 'Define «Descuento (%)», IGV de 18 % o exonerado y notas para la versión. El resumen muestra subtotal, descuento, IGV, total y margen, y avisa si Gerencia tendrá que aprobarla.'],
+            ['title' => 'Resumen económico', 'text' => 'Define «Descuento (%)», IGV de 18 % o exonerado y notas para la versión. El resumen muestra subtotal, descuento, IGV, total y margen, el itinerario resumido de los productos elegidos, y avisa si Gerencia tendrá que aprobarla.'],
             ['title' => 'Moverte entre pasos y guardar', 'text' => 'Los círculos de arriba te llevan a cualquier paso ya alcanzado sin perder lo escrito y, al pasar el mouse, resumen lo que tiene cada uno. «Crear borrador» guarda la versión 1 y abre la ficha. Al editar un borrador todos los pasos están disponibles y se guarda con «Guardar cambios».'],
         ],
         'faqs' => [
@@ -242,7 +242,7 @@ return [
         'title' => 'Reservas',
         'summary' => 'Los viajes vendidos con sus servicios, pasajeros, cuotas y cambios, desde la confirmación hasta el cierre.',
         'steps' => [
-            ['title' => 'Filtrar la lista', 'text' => 'Filtra con «De viaje ahora», «Confirmadas», «Con saldo por cobrar» y «Con incidencia»; el ícono de alerta marca las reservas con incidencias abiertas. Abre la ficha con el código o el ojo. «Nueva reserva» abre el asistente de venta directa en un panel lateral.'],
+            ['title' => 'Filtrar la lista', 'text' => 'Filtra con «De viaje ahora», «Confirmadas», «En operación», «Pendientes de pago o proveedor», «Con saldo por cobrar» y «Con incidencia»; el ícono de alerta marca las reservas con incidencias abiertas. Abre la ficha con el código o el ojo. «Nueva reserva» abre el asistente de venta directa en un panel lateral.'],
             ['title' => 'Moverte por la ficha', 'text' => 'La ficha se ordena en secciones con el menú de la izquierda (en el celular, con el selector): «Resumen» con el estado de los servicios, la economía, los cambios y las políticas; «Pasajeros»; «Servicios»; «Reserva web» si se compró en el sitio; «Pagos» con las cuotas, lo pagado y el saldo de cada una y los pagos registrados; «Documentos» con la confirmación, los comprobantes y los vouchers; «Operación» con la orden, sus tareas y las asignaciones; «Incidencias»; «Comentarios» del pasajero y los mensajes que se le enviaron; e «Historial» con la auditoría completa.'],
             ['title' => 'Registrar un pago', 'text' => 'En «Pagos», el ícono de cada cuota con saldo abre «Registrar pago»: elige el medio, el monto, la fecha y el número de operación. El pago se confirma y se aplica a esa cuota.'],
             ['title' => 'Confirmar y avanzar el viaje', 'text' => 'En la ficha, «Confirmar reserva» verifica pasajeros y cupo, y crea el anticipo y el saldo si no hay cuotas, con el porcentaje de Configuración → Políticas comerciales (40 % por defecto). Después, «Iniciar operación» y «Completar viaje» marcan el avance.'],
@@ -251,8 +251,9 @@ return [
             ['title' => 'Cancelar una reserva', 'text' => '«Cancelar reserva» muestra la penalidad por servicio, con los tramos de cancelación que se aplicaron, y lo que se reembolsa o queda por cobrar; luego libera los cupos y cancela los servicios y las cuotas pendientes. No se puede deshacer.'],
         ],
         'faqs' => [
-            ['question' => '¿Por qué solo puedo solicitar la anulación?', 'answer' => 'Tu rol no cancela reservas directamente. «Solicitar anulación» la envía a Gerencia, que la procesa o la rechaza; mientras tanto, la reserva sigue vigente.'],
+            ['question' => '¿Por qué solo puedo solicitar la anulación?', 'answer' => 'Tu rol no cancela reservas directamente. «Solicitar anulación» la envía a Gerencia, que la procesa con «Procesar cancelación» desde el aviso de la ficha, con el motivo ya cargado, o la rechaza; mientras tanto, la reserva sigue vigente.'],
             ['question' => '¿Por qué mi modificación quedó pendiente?', 'answer' => 'Las modificaciones que no hace un supervisor esperan la aprobación de Gerencia. Al aprobarse, se aplican junto con su impacto en las cuotas.'],
+            ['question' => '¿Qué avisos muestra la ficha?', 'answer' => 'El pedido especial del cliente en una reserva web, con etiquetas como dieta, celebración o accesibilidad; los servicios que el proveedor aún no confirma, con enlace a «Servicios»; y si los comentarios del pasajero están desactivados. En «Reserva web», un dato de una regla que se apagó después de la compra se marca como dato histórico.'],
             ['question' => '¿Cómo paso la reserva a Operaciones?', 'answer' => '«Generar orden operativa» crea la orden con sus tareas y una asignación por cada tour o traslado. Funciona con reservas confirmadas, pendientes de pago o de proveedor, reprogramadas o en operación.'],
             ['question' => '¿Por qué no veo todas las reservas o sus precios?', 'answer' => 'Si trabajas con cartera propia, ves solo tus reservas. El margen lo ven quienes tienen acceso a la rentabilidad y el asesor de la reserva; Operaciones ve costos, pero no precios de venta.'],
         ],
@@ -288,7 +289,7 @@ return [
         'title' => 'Órdenes operativas',
         'summary' => 'La ejecución de cada reserva confirmada: recursos, tareas, proveedores, incidencias y evidencias hasta el cierre.',
         'steps' => [
-            ['title' => 'Crear una orden', 'text' => '«Nueva orden» pide la reserva confirmada y el coordinador. Se copian sus tours y traslados para asignarles guía, conductor y vehículo, junto con las cinco tareas habituales.'],
+            ['title' => 'Crear una orden', 'text' => '«Nueva orden» pide la reserva confirmada y el coordinador. Antes de confirmar, el panel dice cuántos servicios se replicarán: se copian sus tours y traslados para asignarles guía, conductor y vehículo, junto con las cinco tareas habituales.'],
             ['title' => 'Avanzar la orden', 'text' => 'En la ficha, el botón de estado avanza la orden: «Pasar a asignación», «Marcar como asignada», «Confirmar operación», «Iniciar ejecución» y «Cerrar operación». Cada paso exige recursos asignados y confirmados.'],
             ['title' => 'Moverte por la ficha', 'text' => 'La ficha se ordena en secciones con el menú de la izquierda (en el celular, con el selector): «Servicios», «Tareas», «Pasajeros», «Rooming», «Vouchers», «Incidencias», «Evidencias» y «Cierre».'],
             ['title' => 'Asignar y completar servicios', 'text' => 'En «Servicios», arriba ves los datos que el cliente dio para la operación (recojo, vuelo, pedidos y dietas). En «Asignaciones», «Asignar» elige guía, conductor y vehículo. En «Servicios y proveedores» puedes solicitar el servicio al proveedor, registrar su confirmación o su rechazo y, cuando ya se prestó, «Marcar como completado».'],
@@ -334,10 +335,10 @@ return [
         'title' => 'Asignaciones y recursos',
         'summary' => 'Los guías, conductores y vehículos de tu agencia y quién cubre cada servicio de las órdenes.',
         'steps' => [
-            ['title' => 'Asignar recursos a un servicio', 'text' => 'En la pestaña «Asignaciones», filtra «Sin recursos» y usa «Asignar» en la fila para elegir guía, conductor y vehículo. Se valida disponibilidad, descanso entre servicios, capacidad del vehículo y vigencia de licencias y SOAT.'],
+            ['title' => 'Asignar recursos a un servicio', 'text' => 'En la pestaña «Asignaciones», filtra «Recursos incompletos» (les falta guía, conductor o vehículo) y usa «Asignar» en la fila para elegir guía, conductor y vehículo. Se valida disponibilidad, descanso entre servicios, capacidad del vehículo y vigencia de licencias y SOAT.'],
             ['title' => 'Confirmar o liberar', 'text' => 'Cuando el recurso confirma su participación, usa «Registrar confirmación del recurso». «Liberar recursos» quita la asignación para elegir otros.'],
             ['title' => 'Registrar guías, conductores y vehículos', 'text' => 'En sus pestañas, «Nuevo guía», «Nuevo conductor» y «Nuevo vehículo» registran cada recurso: idiomas y carné del guía, licencia y vencimiento del conductor, o placa, plazas y SOAT del vehículo.'],
-            ['title' => 'Editar o dar de baja', 'text' => 'Con «Editar» actualizas sus datos y su estado, y «Ver agenda» muestra sus servicios desde hoy. «Dar de baja» lo saca de las listas de asignación y conserva su historial.'],
+            ['title' => 'Editar o dar de baja', 'text' => 'Con «Editar» actualizas sus datos y su estado, y «Ver agenda» muestra sus servicios y las salidas programadas que tiene a cargo desde hoy. «Dar de baja» lo saca de las listas de asignación y conserva su historial.'],
         ],
         'faqs' => [
             ['question' => '¿Qué bloquea una asignación?', 'answer' => 'Un vehículo en mantenimiento o con menos plazas que el grupo, una licencia o un SOAT que vence antes del servicio, o que el recurso tenga otro servicio de otra orden a menos de 6 horas.'],
@@ -397,10 +398,10 @@ return [
         'title' => 'Documentos de viaje',
         'summary' => 'El checklist de pasaportes, seguros y permisos de cada pasajero antes de salir, reserva por reserva.',
         'steps' => [
-            ['title' => 'Revisar el avance', 'text' => 'Filtra con «Listos para viajar», «Con archivos por revisar», «Observados o vencidos» y «Salen en 15 días». La columna de avance muestra cuántos documentos faltan en cada reserva.'],
+            ['title' => 'Revisar el avance', 'text' => 'Filtra con «Listos para viajar», «Con archivos por revisar», «Observados o vencidos» y «Salen en 15 días». La columna de avance muestra cuántos documentos faltan en cada reserva, y los filtros «Periodo» y «MAPI» separan los viajes próximos y las reservas con entradas bloqueadas.'],
             ['title' => 'Abrir el checklist', 'text' => '«Revisar documentos» abre la reserva con cada pasajero y sus documentos, los contactos de emergencia y la atención especial que necesita el grupo.'],
             ['title' => 'Validar un documento', 'text' => '«Validar» lo aprueba con su número y vencimiento. Si no hay archivo cargado, valida solo si lo revisaste por otro medio.'],
-            ['title' => 'Observar un documento', 'text' => '«Observar» lo devuelve a pendiente de corrección con lo que falta, y se informa al cliente en el próximo recordatorio. En «Recordatorios enviados» ves cuándo y a quién se avisó.'],
+            ['title' => 'Observar un documento', 'text' => '«Observar» lo devuelve a pendiente de corrección con lo que falta, y se informa al cliente en el próximo recordatorio. En «Recordatorios enviados» ves cuándo y a quién se avisó, y en «Bitácora» quién cargó, validó u observó cada documento.'],
         ],
         'faqs' => [
             ['question' => '¿Por qué un documento quedó marcado?', 'answer' => 'Porque vence antes de que termine el viaje. Pide uno vigente para todas las fechas.'],

@@ -49,18 +49,18 @@ function AccountFields({ data, account }: { data: TreasuryOverview; account?: Tr
           <TextField label="Banco" name="bank" maxLength={80} defaultValue={account?.bank ?? ""} />
           <div className="grid grid-cols-2 gap-3">
             <TextField label="Número de cuenta" name="account_number" maxLength={40} defaultValue={account?.number ?? ""} />
-            <TextField label="CCI (opcional)" name="cci" inputMode="numeric" pattern="\d{20}" maxLength={20} />
+            <TextField label="CCI (opcional)" name="cci" inputMode="numeric" pattern="\d{20}" maxLength={20} defaultValue={account?.cci ?? ""} />
           </div>
         </>
       )}
       {kind === "petty_cash" && (
         <div className="grid grid-cols-2 gap-3">
           <TextField label="Fondo fijo" name="fund_amount" type="number" step="0.01" min="1" required={!account} defaultValue={account?.fund ? String(account.fund) : ""} />
-          <SelectField label="Custodia" name="custodian_id" options={data.options.custodians} placeholder="Elegir persona" />
+          <SelectField label="Custodia" name="custodian_id" options={data.options.custodians} placeholder="Elegir persona" defaultValue={account?.custodian_id ?? undefined} />
         </div>
       )}
-      {kind === "gateway" && <SelectField label="Liquida en" name="settle_to" options={banks} placeholder="Cuenta bancaria" hint="El banco donde la pasarela deposita los lotes." />}
-      <SelectField label="Sede" name="sede_id" options={data.options.sedes} placeholder="La del usuario" />
+      {kind === "gateway" && <SelectField label="Liquida en" name="settle_to" options={banks} placeholder="Cuenta bancaria" hint="El banco donde la pasarela deposita los lotes." defaultValue={account?.settle_to ?? undefined} />}
+      <SelectField label="Sede" name="sede_id" options={data.options.sedes} placeholder="La del usuario" defaultValue={account?.sede_id ?? undefined} />
       {!account && (
         <div className="grid grid-cols-2 gap-3">
           <TextField label="Saldo de apertura" name="opening_balance" type="number" step="0.01" min="0" defaultValue="0" />
@@ -100,10 +100,12 @@ function TransferFields({ data, from }: { data: TreasuryOverview; from?: string 
   const a = data.accounts.find((account) => account.code === source);
   const b = data.accounts.find((account) => account.code === target);
   const mixed = a && b && a.currency !== b.currency;
+  const own = (account: TreasuryAccount) => account.kind !== "gateway";
   return (
     <>
-      <SelectField label="Desde" name="from" options={accountOptions(data.accounts)} defaultValue={from} onChange={setSource} placeholder="Cuenta de origen" />
-      <SelectField label="Hacia" name="to" options={accountOptions(data.accounts, (account) => account.code !== source)} onChange={setTarget} placeholder="Cuenta de destino" />
+      <SelectField label="Desde" name="from" options={accountOptions(data.accounts, own)} defaultValue={from} onChange={setSource} placeholder="Cuenta de origen" hint="Las pasarelas no se transfieren: se liquidan a su banco." />
+      <SelectField label="Hacia" name="to" options={accountOptions(data.accounts, (account) => own(account) && account.code !== source)} onChange={setTarget} placeholder="Cuenta de destino" />
+      {b?.kind === "petty_cash" && b.session_today !== "open" && <p className="rounded-xl bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] px-3.5 py-2.5 text-[12.5px] text-fg-2">{b.name} no está abierta hoy. Ábrela antes de transferirle efectivo.</p>}
       <div className="grid grid-cols-2 gap-3">
         <TextField label={`Importe${a ? ` (${a.currency})` : ""}`} name="amount" type="number" step="0.01" min="0.01" required />
         <TextField label="Fecha" name="date" type="date" required max={data.today} defaultValue={data.today} />
@@ -149,41 +151,76 @@ export function OpenSessionAction({ account }: { account: TreasuryAccount }) {
   );
 }
 
-function ExpenseFields({ account, today, max }: { account: TreasuryAccount; today: string; max: string | null }) {
+interface ExpenseOptions {
+  categories?: string[];
+  reservations?: { value: string; label: string }[];
+}
+
+function ExpenseFields({ account, today, max, options }: { account: TreasuryAccount; today: string; max: string | null; options?: ExpenseOptions }) {
   const [receipt, setReceipt] = useState("sales_receipt");
   const needsNumber = !["mobility_sheet", "sworn_statement"].includes(receipt);
   const needsRuc = ["invoice", "fee_receipt"].includes(receipt);
+  const categories = options?.categories?.length ? options.categories.map((value) => ({ value, label: value })) : EXPENSE_CATEGORIES;
   return (
     <>
+      {account.session_today !== undefined && account.session_today !== "open" && <p className="rounded-xl bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] px-3.5 py-2.5 text-[12.5px] text-fg-2">{account.name} no está abierta hoy: ábrela antes de registrar gastos.</p>}
       <div className="grid grid-cols-2 gap-3">
         <TextField label="Importe (S/)" name="amount" type="number" step="0.01" min="0.01" max={max ?? undefined} required hint={max ? `Máximo por gasto: S/ ${max}` : undefined} />
-        <TextField label="Fecha" name="date" type="date" max={today} defaultValue={today} />
+        <TextField label="Fecha" name="date" type="date" min={today} max={today} defaultValue={today} hint="Se registra el mismo día de la caja abierta." />
       </div>
-      <SelectField label="Categoría" name="category" options={EXPENSE_CATEGORIES} defaultValue="Movilidad" />
+      <SelectField label="Categoría" name="category" options={categories} defaultValue={categories[0]?.value} />
       <TextField label="Descripción" name="description" required minLength={3} maxLength={255} placeholder="Ejemplo: taxi al aeropuerto para recoger documentos" />
       <SelectField label="Comprobante" name="receipt_type" options={RECEIPTS} defaultValue="sales_receipt" onChange={setReceipt} />
       {needsNumber && <TextField label="Serie y número" name="series_number" required maxLength={30} placeholder="B001-000123" />}
       {needsRuc && <TextField label="RUC del emisor" name="issuer_ruc" required inputMode="numeric" pattern="\d{11}" maxLength={11} />}
       <TextField label="Pagado a" name="supplier" required maxLength={160} />
-      <TextField label="Reserva (opcional)" name="reservation" maxLength={30} placeholder="RES-2026-000350" hint="Para cargar el gasto al costo de un viaje." />
+      {options?.reservations ? (
+        <SelectField label="Reserva (opcional)" name="reservation" searchable clearable options={options.reservations} placeholder="Sin reserva" hint="Para cargar el gasto al costo de un viaje." />
+      ) : (
+        <TextField label="Reserva (opcional)" name="reservation" maxLength={30} placeholder="RES-2026-000350" hint="Para cargar el gasto al costo de un viaje." />
+      )}
       {needsNumber && <FilePicker key={receipt} label="Archivo del comprobante" accept="application/pdf,image/jpeg,image/png,image/webp" formats="PDF, JPG, PNG o WEBP" maxKb={10240} />}
       <input type="hidden" name="account" value={account.code} />
     </>
   );
 }
 
-export function ExpenseAction({ account, today, max }: { account: TreasuryAccount; today: string; max: string | null }) {
+export function ExpenseAction({ account, today, max, options }: { account: TreasuryAccount; today: string; max: string | null; options?: ExpenseOptions }) {
   return (
     <FinanceStep step="expense_create" itemKey={account.code} action={recordExpense} label="Gasto" icon={<Receipt size={16} />} title={`Gasto de ${account.name}`} description="Cada gasto se sustenta con su comprobante y se rinde en la próxima reposición." submitLabel="Registrar gasto" trigger={(open) => <Button size="sm" variant="secondary" icon={<Receipt size={15} />} onClick={open}>Gasto</Button>}>
-      <ExpenseFields account={account} today={today} max={max} />
+      <ExpenseFields account={account} today={today} max={max} options={options} />
     </FinanceStep>
   );
 }
 
-function CountFields({ account, denominations, custodians, closing }: { account: TreasuryAccount; denominations: string[]; custodians: { value: string; label: string }[]; closing: boolean }) {
+function PickedExpenseFields({ data }: { data: TreasuryOverview }) {
+  const cashes = data.accounts.filter((account) => account.active && account.kind === "petty_cash");
+  const [code, setCode] = useState(cashes.find((account) => account.session_today === "open")?.code ?? "");
+  const account = cashes.find((item) => item.code === code);
+  return (
+    <>
+      <SelectField label="Caja" name="cash" options={cashes.map((item) => ({ value: item.code, label: `${item.name} · ${formatMoney(item.balance)}` }))} defaultValue={code} onChange={setCode} placeholder="Elige la caja chica" />
+      {account ? <ExpenseFields key={account.code} account={account} today={data.today} max={data.options.max_petty_expense} options={{ categories: data.options.expense_categories, reservations: data.options.reservations }} /> : <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[12.5px] text-fg-3">Elige la caja de la que sale el efectivo.</p>}
+    </>
+  );
+}
+
+export function PickExpenseAction({ data }: { data: TreasuryOverview }) {
+  if (!data.accounts.some((account) => account.active && account.kind === "petty_cash")) return null;
+  return (
+    <FinanceStep step="expense_create" action={recordExpense} label="Gasto de caja" icon={<Receipt size={16} />} title="Registrar gasto de caja chica" description="Cada gasto se sustenta con su comprobante y se rinde en la próxima reposición." submitLabel="Registrar gasto">
+      <PickedExpenseFields data={data} />
+    </FinanceStep>
+  );
+}
+
+function CountFields({ account, denominations, custodians, closing, tolerance }: { account: TreasuryAccount; denominations: string[]; custodians: { value: string; label: string }[]; closing: boolean; tolerance?: string }) {
   const [quantities, setQuantities] = useState<Record<string, string>>({});
+  const [declared, setDeclared] = useState(false);
   const counted = denominations.reduce((sum, value) => sum + Number(value) * (Number(quantities[value]) || 0), 0);
   const difference = Math.round((counted - account.balance) * 100) / 100;
+  const limit = Number(tolerance ?? 0);
+  const overTolerance = Math.abs(difference) > limit;
   return (
     <>
       <input type="hidden" name="kind" value={closing ? "closing" : "surprise"} />
@@ -199,16 +236,23 @@ function CountFields({ account, denominations, custodians, closing }: { account:
           { label: "Diferencia", value: <span className={difference === 0 ? "text-ok" : "text-bad"}>{formatMoney(difference)}</span> },
         ]}
       />
+      {difference !== 0 && (
+        <p className={overTolerance ? "rounded-xl bg-[color-mix(in_srgb,var(--bad)_9%,transparent)] px-3.5 py-2.5 text-[12.5px] text-bad" : "rounded-xl bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] px-3.5 py-2.5 text-[12.5px] text-fg-2"}>
+          {overTolerance ? `${difference > 0 ? "Sobrante" : "Faltante"} mayor a la tolerancia de ${formatMoney(limit)}: el arqueo queda por aprobar por gerencia.` : `${difference > 0 ? "Sobrante" : "Faltante"} dentro de la tolerancia de ${formatMoney(limit)}: se ajusta la caja al firmar.`}
+        </p>
+      )}
       <TextArea label={difference === 0 ? "Observación (opcional)" : "Qué pasó con la diferencia"} name="note" rows={3} required={difference !== 0} maxLength={500} />
       <SelectField label="Testigo (opcional)" name="witness_id" options={custodians} placeholder="Elegir persona" />
+      <SwitchField label="Declaro que el conteo es fiel y lo firmo como responsable de la caja" name="declaration_switch" checked={declared} onCheckedChange={setDeclared} hint="Sin esta declaración el arqueo no se firma." />
+      <input type="hidden" name="declaration" value={declared ? "1" : "0"} />
     </>
   );
 }
 
-export function CountAction({ account, denominations, custodians, closing }: { account: TreasuryAccount; denominations: string[]; custodians: { value: string; label: string }[]; closing: boolean }) {
+export function CountAction({ account, denominations, custodians, closing, tolerance }: { account: TreasuryAccount; denominations: string[]; custodians: { value: string; label: string }[]; closing: boolean; tolerance?: string }) {
   return (
     <FinanceStep step="count_create" itemKey={account.code} label={closing ? "Cerrar caja" : "Arqueo"} icon={<Calculator size={16} />} title={closing ? `Cerrar ${account.name}` : `Arqueo sorpresa de ${account.name}`} description="Cuenta los billetes y monedas. Si hay diferencia mayor a la tolerancia, la aprueba otra persona." submitLabel={closing ? "Firmar y cerrar" : "Firmar arqueo"} trigger={(open) => <Button size="sm" variant={closing ? "primary" : "secondary"} icon={<Calculator size={15} />} onClick={open}>{closing ? "Cerrar" : "Arqueo"}</Button>}>
-      <CountFields account={account} denominations={denominations} custodians={custodians} closing={closing} />
+      <CountFields account={account} denominations={denominations} custodians={custodians} closing={closing} tolerance={tolerance} />
     </FinanceStep>
   );
 }

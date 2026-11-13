@@ -12,8 +12,11 @@ import { DESTINATION_TONE, type DestinationNode, type DestinationsOverview } fro
 import { PRODUCT_STATUS, type ProductStatus } from "@/lib/catalog";
 import { cn } from "@/lib/cn";
 import { downloadCsv, type CsvExport } from "@/lib/csv";
+import { formatMoney } from "@/lib/format";
 import { toneStyle } from "@/lib/tone";
 import { DestinationCreateAction, DestinationDeleteAction, DestinationEditAction } from "./DestinationForms";
+
+const RELATION_LABEL: Record<DestinationNode["products"][number]["relation"], string> = { principal: "Principal", secundario: "Secundario", subdestino: "En un subdestino" };
 
 const DESTINATIONS_CSV: CsvExport<DestinationNode> = {
   fileName: "destinos",
@@ -63,6 +66,7 @@ export function DestinationsExplorer({ overview }: { overview: DestinationsOverv
   const hiddenUnder = nodes.filter((node) => collapsed.has(node.ref)).map((node) => `${node.path} / `);
   const visible = nodes.filter((node) => !hiddenUnder.some((prefix) => node.path.startsWith(prefix)));
   const children = selected ? nodes.filter((node) => node.parent?.id === selected.id) : [];
+  const crumbs = selected ? nodes.filter((node) => selected.path.startsWith(`${node.path} / `)).sort((a, b) => a.depth - b.depth) : [];
   const toggle = (ref: string) =>
     setCollapsed((current) => {
       const next = new Set(current);
@@ -97,7 +101,15 @@ export function DestinationsExplorer({ overview }: { overview: DestinationsOverv
                 </span>
                 <div className="min-w-0">
                   <h2 className="truncate text-[18px] font-bold tracking-tight">{selected.name}</h2>
-                  <p className="truncate text-[12.5px] text-fg-3">{selected.path}</p>
+                  <nav aria-label="Ruta del destino" className="flex flex-wrap items-center gap-1 text-[12.5px] text-fg-3">
+                    {crumbs.map((crumb) => (
+                      <span key={crumb.ref} className="flex items-center gap-1">
+                        <button type="button" onClick={() => setSelectedRef(crumb.ref)} className="transition-colors hover:text-accent hover:underline">{crumb.name}</button>
+                        <ChevronRight size={12} />
+                      </span>
+                    ))}
+                    <span className="font-medium text-fg-2">{selected.name}</span>
+                  </nav>
                 </div>
               </div>
               {overview.can.manage && (
@@ -139,8 +151,10 @@ export function DestinationsExplorer({ overview }: { overview: DestinationsOverv
                   const status = PRODUCT_STATUS[product.status as ProductStatus];
                   return (
                     <li key={product.code}>
-                      <Link href={`/catalogo/productos/${product.code}`} className="group flex items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-[13px] transition hover:bg-surface-2">
+                      <Link href={`/catalogo/productos/${product.code}`} className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-0.5 rounded-lg px-2.5 py-2 text-[13px] transition hover:bg-surface-2 sm:grid-cols-[minmax(0,1fr)_7rem_6.5rem_auto]">
                         <span className="min-w-0 truncate font-medium group-hover:text-accent">{product.name}</span>
+                        <span className={cn("order-3 text-[12px] sm:order-none", product.relation === "principal" ? "font-semibold text-[var(--tint,var(--accent))]" : "text-fg-3")}>{RELATION_LABEL[product.relation]}</span>
+                        <span className="order-4 text-right font-mono text-[12.5px] sm:order-none">{product.price_from ? `desde ${formatMoney(product.price_from.amount, product.price_from.currency)}` : <span className="text-fg-3">Sin tarifa</span>}</span>
                         {status ? <Badge tone={status.tone}>{status.label}</Badge> : <span className="text-fg-3">{product.status}</span>}
                       </Link>
                     </li>

@@ -43,17 +43,45 @@ final class TenantDirectory
             ->where('u.tenant_id', $tenant->getKey())->where('r.name', 'tenant_admin')->whereNull('u.deleted_at')
             ->get(['u.name', 'u.email', 'u.status', 'u.last_login_at']);
 
+        $summary = $this->summary($tenant, $this->counts());
+
         return [
-            ...$this->summary($tenant, $this->counts()),
+            ...$summary,
+            'usage' => $this->usage($tenant, $summary),
+            'entitlements' => collect(app(Entitlements::class)->for((string) $tenant->getKey()))->filter(fn (array $feature): bool => $feature['enabled'])
+                ->map(fn (array $feature, string $key): array => ['key' => $key, 'label' => $feature['label'], 'source' => $feature['source'], 'valid_until' => $feature['valid_until']])->sortBy('label')->values()->all(),
             'fiscal_address' => $tenant->fiscal_address,
             'business_type' => $tenant->business_type,
             'timezone' => $tenant->timezone,
             'base_currency' => $tenant->base_currency,
+            'alt_currency' => $tenant->alt_currency,
+            'country' => $tenant->country,
+            'locale' => $tenant->locale,
             'locations' => $sedes,
             'admins' => $admins,
             'history' => $this->history($tenant),
             'subscription' => $this->subscription($tenant),
         ];
+    }
+
+    private function usage(Tenant $tenant, array $summary): array
+    {
+        $tenantId = (string) $tenant->getKey();
+        $used = [
+            'users' => (float) $summary['users'],
+            'sedes' => (float) $summary['sedes'],
+            'storage_gb' => round(((int) $tenant->storage_used_bytes) / 1024 ** 3, 1),
+            'reservations_month' => (float) UsageMeter::used($tenantId, 'reservations_month'),
+            'whatsapp_month' => (float) UsageMeter::used($tenantId, 'whatsapp_month'),
+            'email_month' => (float) UsageMeter::used($tenantId, 'email_month'),
+            'api_calls_month' => (float) UsageMeter::used($tenantId, 'api_calls_month'),
+        ];
+
+        return collect($used)->map(fn (float $value, string $metric): array => [
+            'metric' => $metric,
+            'used' => $value,
+            'limit' => $tenant->plan_id === null ? null : EffectiveLimits::limit($tenantId, (string) $tenant->plan_id, $metric),
+        ])->values()->all();
     }
 
     private function subscription(Tenant $tenant): ?array

@@ -66,6 +66,7 @@ const STEPS: Record<string, Step> = {
   incident_comment: { path: (code) => `/ops/incidents/${id(code)}/comments`, method: "POST", fields: ["message"], failure: "No pudimos guardar el comentario." },
   service_complete: { path: (service) => `/ops/reservation-services/${id(service)}/complete`, method: "POST", fields: ["note"], failure: "No pudimos marcar el servicio como completado." },
   evidence_remove: { path: (evidence) => `/ops/evidences/${id(evidence)}`, method: "DELETE", fields: ["reason"], failure: "No pudimos retirar la evidencia." },
+  device_revoke: { path: (device) => `/ops/mobile-devices/${id(device)}/revoke`, method: "POST", failure: "No pudimos desactivar el teléfono." },
   doc_validate:{ path: (target) => `/reservations/${target}/validate`, method: "POST", fields: ["doc_number", "expiry_date"], failure: "No pudimos validar el documento." },
   doc_observe: { path: (target) => `/reservations/${target}/observe`, method: "POST", fields: ["reason"], failure: "No pudimos registrar la observación." },
 };
@@ -127,5 +128,6 @@ export async function opsStep(_state: OpsState, form: FormData): Promise<OpsStat
   }
   revalidatePath("/operaciones", "layout");
   if (name === "feedback_incident") revalidatePath("/reservas", "layout");
+  if (name === "device_revoke") revalidatePath("/mobile/operador");
   return { message: null, done: true };
 }

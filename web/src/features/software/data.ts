@@ -1,5 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
+import type { LandingCatalog } from "@/lib/landing";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "@/lib/server/api";
 import type { DemoOptions, PlansCatalog, SoftwareOverview } from "@/lib/software";
@@ -14,6 +15,11 @@ export const getPlansCatalog = () => publicResource<PlansCatalog>("plans");
 export const getOverview = () => publicResource<SoftwareOverview>("overview");
 
 export const getDemoOptions = () => publicResource<DemoOptions>("demo-requests/options");
+
+export async function getLandingCatalog(): Promise<LandingCatalog | null> {
+  const result = await apiFetch<LandingCatalog>("/public/plans", { auth: false });
+  return result.ok ? result.data : null;
+}
 
 export async function hasAgencySession(): Promise<boolean> {
   return (await cookies()).has(REALMS.agency.session);

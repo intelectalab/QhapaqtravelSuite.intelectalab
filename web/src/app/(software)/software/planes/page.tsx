@@ -2,7 +2,9 @@ import { CloudOff } from "lucide-react";
 import type { Metadata } from "next";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CallToAction } from "@/features/software/Blocks";
-import { getPlansCatalog } from "@/features/software/data";
+import { getDemoOptions, getPlansCatalog } from "@/features/software/data";
+import { SalesLeadForm } from "@/features/software/SalesLeadForm";
+import { SubscriptionPerks } from "@/features/software/SubscriptionPerks";
 import { Faq } from "@/features/software/Faq";
 import { buildFaq } from "@/features/software/faq";
 import { PlansExplorer } from "@/features/software/PlansExplorer";
@@ -16,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 export default async function PlanesPage({ searchParams }: PageProps<"/software/planes">) {
-  const [{ ciclo }, catalog] = await Promise.all([searchParams, getPlansCatalog()]);
+  const [{ ciclo }, catalog, options] = await Promise.all([searchParams, getPlansCatalog(), getDemoOptions()]);
   const days = catalog ? trialDays(catalog.plans) : 0;
   const entry = catalog?.plans[0];
 
@@ -38,8 +40,21 @@ export default async function PlanesPage({ searchParams }: PageProps<"/software/
           <EmptyState icon={<CloudOff size={22} />} title="No pudimos cargar los planes" description="Vuelve a intentarlo en unos segundos." />
         )}
       </Section>
+      <Section>
+        <SubscriptionPerks days={days} />
+      </Section>
+      {options && (
+        <Section id="ventas" tinted>
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+            <SectionHead eyebrow="Enterprise y propuestas" title="Hablemos de tu operación." description="Varias sedes, mayoristas o integraciones a medida: te preparamos una propuesta con el equipo comercial." />
+            <div className="lift rounded-[24px] border border-line bg-surface p-5 shadow-card sm:p-7">
+              <SalesLeadForm options={options} plan={catalog?.plans.find((plan) => plan.rank >= 3)?.code} />
+            </div>
+          </div>
+        </Section>
+      )}
       {catalog && (
-        <Section tinted>
+        <Section>
           <div className="grid gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
             <SectionHead eyebrow="Antes de elegir" title="Dudas frecuentes sobre planes y pagos." />
             <Faq items={buildFaq(catalog).slice(0, 6)} />

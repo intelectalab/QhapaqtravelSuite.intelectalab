@@ -18,12 +18,14 @@ final class UserDirectory
     {
         $roles = DB::table('model_has_roles as m')->join('roles as r', 'r.id', '=', 'm.role_id')->get(['m.model_id', 'r.name', 'r.display_name'])->keyBy('model_id');
         $pending = DB::table('iam_user_invitations')->whereNull('accepted_at')->where('expires_at', '>', now())->pluck('expires_at', 'user_id');
+        $opportunities = DB::table('crm_opportunities')->whereNull('deleted_at')->whereNotIn('stage', ['ganada', 'perdida'])->whereNotNull('owner_id')->selectRaw('owner_id, count(*) as total')->groupBy('owner_id')->pluck('total', 'owner_id');
+        $activities = DB::table('crm_activities')->whereIn('status', ['pendiente', 'vencida'])->whereNotNull('owner_id')->selectRaw('owner_id, count(*) as total')->groupBy('owner_id')->pluck('total', 'owner_id');
 
         return DB::table('iam_users as u')
             ->leftJoin('iam_sedes as s', 's.id', '=', 'u.sede_id')
             ->whereNull('u.deleted_at')
             ->orderBy('u.name')
-            ->get(['u.id', 'u.code', 'u.name', 'u.email', 'u.phone', 'u.status', 'u.mfa_enabled', 'u.mfa_required', 'u.last_login_at', 'u.avatar_color', 'u.deactivated_reason', 'u.created_at', 's.id as sede_id', 's.name as sede_name'])
+            ->get(['u.id', 'u.code', 'u.name', 'u.email', 'u.phone', 'u.status', 'u.mfa_enabled', 'u.mfa_required', 'u.last_login_at', 'u.avatar_color', 'u.deactivated_reason', 'u.created_at', 'u.client_id', 'u.agency_id', 'u.provider_id', 'u.reservation_id', 's.id as sede_id', 's.name as sede_name'])
             ->map(fn (object $user) => [
                 'id' => $user->id,
                 'code' => $user->code,
@@ -38,6 +40,8 @@ final class UserDirectory
                 'color' => $user->avatar_color,
                 'deactivated_reason' => $user->deactivated_reason,
                 'invitation_expires_at' => $pending[$user->id] ?? null,
+                'channel' => collect(StaffSeats::EXTERNAL_LINKS)->contains(fn (string $column): bool => $user->{$column} !== null),
+                'workload' => ['opportunities' => (int) ($opportunities[$user->id] ?? 0), 'activities' => (int) ($activities[$user->id] ?? 0)],
             ]);
     }
 

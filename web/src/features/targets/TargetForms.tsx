@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, CalendarCheck2, Lock, Pencil, PlayCircle, Plus, Target, Trophy } from "lucide-react";
+import { AlertTriangle, Ban, CalendarCheck2, History, Lock, Pencil, PlayCircle, Plus, Target, Trophy } from "lucide-react";
 import { useState } from "react";
 import { saveTarget, targetStep } from "@/app/(backoffice)/crm/metas/actions";
 import { RowIcon } from "@/components/table/RowActions";
@@ -30,17 +30,57 @@ function GoalFields({ target, withBonus }: { target?: SalesTarget; withBonus: bo
   );
 }
 
-export function TargetCreateAction({ options }: { options: NonNullable<TargetsOverview["options"]> }) {
+function PreviousReference({ targets, scopeType, scopeId, period }: { targets: SalesTarget[]; scopeType: string; scopeId: string; period: string }) {
+  if (!scopeId) return null;
+  const same = targets.filter((target) => target.scope_type === scopeType && target.scope.id === scopeId && target.status !== "anulada");
+  const duplicate = same.find((target) => target.period_key === period);
+  const previous = same.filter((target) => target.period_key !== period && target.period_key < period).sort((a, b) => b.period_key.localeCompare(a.period_key))[0];
+  return (
+    <>
+      {duplicate && (
+        <p className="flex items-start gap-2 rounded-xl bg-[color-mix(in_srgb,var(--bad)_9%,var(--surface))] px-3.5 py-2.5 text-[12.5px] text-fg-2">
+          <AlertTriangle size={14} className="mt-0.5 flex-none text-bad" />
+          Ya existe la meta {duplicate.code} para este alcance en {duplicate.period_label}. Ajústala en lugar de crear otra.
+        </p>
+      )}
+      {previous && (
+        <div className="lift rounded-xl border border-line px-3.5 py-2.5 text-[12.5px]">
+          <p className="flex items-center gap-1.5 font-semibold">
+            <History size={14} className="text-violet" /> Referencia: {previous.period_label}
+          </p>
+          <p className="mt-0.5 text-fg-2">
+            Meta {formatMoney(previous.goals.sales)} · logrado {formatMoney(previous.actual.sales)} ({formatPercent(previous.progress_pct, 0)})
+            {previous.goals.bookings !== null ? ` · ${previous.actual.bookings} de ${previous.goals.bookings} reservas` : ""}
+          </p>
+        </div>
+      )}
+    </>
+  );
+}
+
+export function TargetCreateAction({ options, targets = [] }: { options: NonNullable<TargetsOverview["options"]>; targets?: SalesTarget[] }) {
   const [scope, setScope] = useState<"asesor" | "sede" | "equipo">("asesor");
+  const [scopeId, setScopeId] = useState("");
+  const [period, setPeriod] = useState(options.periods[0]?.value ?? "");
   const [activate, setActivate] = useState(true);
   const scopes = { asesor: options.advisors, sede: options.sedes, equipo: options.teams };
   return (
     <PanelAction<StepResult> label="Nueva meta" icon={<Plus size={16} strokeWidth={2.4} />} variant="primary" formId="nueva-meta" title="Nueva meta comercial" description="Una meta por asesor, sede o equipo en cada período." submitLabel="Crear meta" action={saveTarget} initial={initial}>
       {() => (
         <>
-          <ChoiceGroup label="Alcance" name="scope_type" options={[{ value: "asesor", label: "Asesor" }, { value: "equipo", label: "Equipo" }, { value: "sede", label: "Sede" }]} defaultValue="asesor" onChange={(value) => setScope(value as typeof scope)} />
-          <SelectField key={scope} label={scope === "asesor" ? "Asesor" : scope === "equipo" ? "Equipo" : "Sede"} name="scope_id" options={scopes[scope]} placeholder="Elegir" />
-          <SelectField label="Período" name="period" options={options.periods} defaultValue={options.periods[0]?.value} />
+          <ChoiceGroup
+            label="Alcance"
+            name="scope_type"
+            options={[{ value: "asesor", label: "Asesor" }, { value: "equipo", label: "Equipo" }, { value: "sede", label: "Sede" }]}
+            defaultValue="asesor"
+            onChange={(value) => {
+              setScope(value as typeof scope);
+              setScopeId("");
+            }}
+          />
+          <SelectField key={scope} label={scope === "asesor" ? "Asesor" : scope === "equipo" ? "Equipo" : "Sede"} name="scope_id" options={scopes[scope]} placeholder="Elegir" value={scopeId} onChange={setScopeId} />
+          <SelectField label="Período" name="period" options={options.periods} value={period} onChange={setPeriod} />
+          <PreviousReference targets={targets} scopeType={scope} scopeId={scopeId} period={period} />
           <GoalFields withBonus={scope === "asesor"} />
           <SwitchField label="Activar ahora" hint="Si no, queda en borrador y el asesor no la ve." name="activate" checked={activate} onCheckedChange={setActivate} />
         </>

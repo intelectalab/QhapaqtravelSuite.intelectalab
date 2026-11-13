@@ -31,6 +31,12 @@ export function RoleDetailPanels({ detail, catalog, granted }: { detail: RoleDet
         <p className="text-[13px] text-fg-2">
           {EXPERIENCE_LABEL[detail.experience] ?? detail.experience} · {detail.custom ? "rol propio" : "rol base"} · identificador <span className="font-mono text-[12px]">{detail.code}</span>
         </p>
+        {detail.data_scope && (
+          <p className="mt-2 rounded-[10px] bg-[color-mix(in_srgb,var(--tint)_8%,var(--surface))] px-3 py-2 text-[12.5px]">
+            <span className="font-semibold text-[var(--tint)]">Alcance de datos: </span>
+            {detail.data_scope}
+          </p>
+        )}
         <div className="mt-3">
           <div className="flex items-center justify-between text-[12.5px]">
             <span className="text-fg-3">Pantallas del back-office</span>
@@ -68,7 +74,7 @@ export function RoleDetailPanels({ detail, catalog, granted }: { detail: RoleDet
             {detail.users.map((user) => (
               <li key={user.email} className="flex items-center justify-between gap-3 rounded-xl border border-line-2 px-3 py-2">
                 <span className="min-w-0">
-                  <Link href={`/admin/usuarios?q=${encodeURIComponent(user.email)}`} className="block truncate text-[13px] font-semibold text-fg hover:text-accent">
+                  <Link href={user.code ? `/admin/usuarios/${encodeURIComponent(user.code)}` : `/admin/usuarios?q=${encodeURIComponent(user.email)}`} className="block truncate text-[13px] font-semibold text-fg hover:text-accent">
                     {user.name}
                   </Link>
                   <span className="block truncate text-[12px] text-fg-3">

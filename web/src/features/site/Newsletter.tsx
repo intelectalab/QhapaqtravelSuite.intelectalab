@@ -1,10 +1,11 @@
 "use client";
 
 import { CheckCircle2, Mail, Send } from "lucide-react";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { sendNewsletter } from "@/app/(sitio)/sitio/[agencia]/actions";
 import { Captcha } from "@/components/ui/Captcha";
 import { IDLE } from "@/lib/site";
+import { trackSiteEvent } from "@/lib/site-analytics";
 import { Consent, FieldError, FormAlert } from "./FormBits";
 import { useSite } from "./SiteContext";
 
@@ -13,11 +14,14 @@ export function Newsletter() {
   const [state, action, pending] = useActionState(sendNewsletter.bind(null, agencia), IDLE);
   const done = state.status === "done";
   const existing = done && state.data?.status === "existente";
+  useEffect(() => {
+    if (done && !existing) trackSiteEvent("sign_up_newsletter", { source: "footer" });
+  }, [done, existing]);
 
   return (
-    <section className="relative overflow-hidden rounded-[28px] bg-menu px-6 py-10 text-white sm:px-10">
-      <div className="weave-band absolute inset-x-0 top-0 h-1.5" />
-      <div aria-hidden className="weave-tint absolute -right-10 top-0 h-full w-1/2 bg-white opacity-[0.05] [mask-size:36px_36px]" />
+    <section data-site-newsletter className="relative overflow-hidden rounded-[28px] bg-menu px-6 py-10 text-white sm:px-10">
+      <div data-site-decor className="weave-band absolute inset-x-0 top-0 h-1.5" />
+      <div aria-hidden data-site-decor className="weave-tint absolute -right-10 top-0 h-full w-1/2 bg-white opacity-[0.05] [mask-size:36px_36px]" />
       <div className="relative grid items-center gap-8 lg:grid-cols-[1fr_1.1fr]">
         <div>
           <span className="inline-grid h-11 w-11 place-items-center rounded-2xl bg-white/10">
@@ -42,7 +46,7 @@ export function Newsletter() {
                 <input name="email" type="email" required placeholder={t.newsletter.placeholder} className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-fg-3" />
               </label>
               <Captcha />
-              <button type="submit" disabled={pending} className="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-brand px-5 text-[14px] font-semibold text-brand-fg transition hover:brightness-110 disabled:opacity-60">
+              <button type="submit" disabled={pending} data-site-cta className="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-brand px-5 text-[14px] font-semibold text-brand-fg transition hover:brightness-110 disabled:opacity-60">
                 <Send size={15} />
                 {pending ? t.newsletter.sending : t.newsletter.subscribe}
               </button>

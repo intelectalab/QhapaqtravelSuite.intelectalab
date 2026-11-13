@@ -1,3 +1,4 @@
+import { ConsultModeNotice } from "@/components/ui/ConsultMode";
 import { Boxes, Building2, CalendarClock, Truck } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -35,6 +36,7 @@ export default async function ServiciosPage() {
         info={<InfoTip>Un servicio vencido o de un proveedor inactivo no se puede usar como componente, y bloquea la activación de los productos que lo incluyen.</InfoTip>}
         actions={overview.can.manage ? <ServiceCreateAction overview={overview} /> : undefined}
       />
+      <ConsultModeNotice permissions={["catalog.providers.manage"]} what="registrar ni editar servicios" />
       <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <TintTile icon={Boxes} tone="t1" label="En productos" value={used.length} note={`${services.length - used.length} sin usar todavía`} info={<p>Servicios que forman parte de al menos un producto como componente. Los que no se usan no afectan a ningún producto si los desactivas.</p>} />
         <TintTile icon={CalendarClock} tone="sun" label="Próximo vencimiento" value={next ? formatDate(next.valid_to) : "—"} note={next ? next.name : "Ningún servicio activo por vencer"} info={<p>El servicio activo cuya vigencia termina antes. Al vencer, bloquea la activación de los productos que lo incluyen.</p>} />

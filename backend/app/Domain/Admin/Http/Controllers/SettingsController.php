@@ -181,6 +181,7 @@ final class SettingsController
                 'fx_source' => ['required', 'in:'.implode(',', SettingsCatalog::FX_SOURCES)],
                 'rounding' => ['required', 'in:'.implode(',', array_keys(SettingsCatalog::ROUNDING))],
                 'round_mode' => ['required', 'in:'.implode(',', array_keys(SettingsCatalog::ROUND_MODES))],
+                'invoice_void_days' => ['sometimes', 'required', 'integer', 'between:1,30'],
             ], [
                 'base_currency.*' => 'Elige la moneda base.',
                 'alt_currency.*' => 'Elige la moneda alterna.',
@@ -188,6 +189,7 @@ final class SettingsController
                 'fx_source.*' => 'Elige la fuente del tipo de cambio.',
                 'rounding.*' => 'Elige el redondeo.',
                 'round_mode.*' => 'Elige cómo redondear.',
+                'invoice_void_days.*' => 'El plazo para dar de baja un comprobante va de 1 a 30 días.',
             ]],
             'policies' => [[
                 'quote_validity_days' => ['required', 'integer', 'between:1,60'],

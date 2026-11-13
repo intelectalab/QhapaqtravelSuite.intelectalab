@@ -31,9 +31,13 @@ final class CampaignController
 
     public function test(Request $request, string $code, CampaignWorkflow $workflow): JsonResponse
     {
-        $workflow->test($code, $this->user($request));
+        $data = $request->validate([
+            'to_user_id' => ['nullable', 'uuid'],
+            'sample' => ['nullable', 'string', 'max:40'],
+        ], ['to_user_id.*' => 'Elige un destinatario interno de la lista.', 'sample.*' => 'Elige un cliente o lead de la lista.']);
+        $sentTo = $workflow->test($code, $this->user($request), $data['to_user_id'] ?? null, $data['sample'] ?? null);
 
-        return response()->json(['data' => ['code' => $code]], 201);
+        return response()->json(['data' => ['code' => $code, 'sent_to' => $sentTo]], 201);
     }
 
     public function schedule(Request $request, string $code, CampaignWorkflow $workflow): JsonResponse

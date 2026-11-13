@@ -109,6 +109,8 @@ function ConvertForm({ lead, catalogs, options, canReassign }: { lead: LeadDetai
   const company = kind === "empresa";
   const clients = options?.clients ?? [];
   const segments = catalogs.client_segment.map((item) => ({ value: item.label, label: item.label }));
+  const suggested = /corporativ/i.test(lead.interest) ? "Corporativo" : /promoci/i.test(lead.interest) || lead.pax >= 10 ? "Grupos" : "Retail";
+  const segment = segments.some((item) => item.value === suggested) ? suggested : segments[0]?.value;
   const defaultTitle = `${lead.name.split(" ").slice(0, 2).join(" ")} — ${lead.destination ?? lead.interest}`;
 
   return (
@@ -146,7 +148,7 @@ function ConvertForm({ lead, catalogs, options, canReassign }: { lead: LeadDetai
               <SelectField key={kind} label="Documento" name="doc_type" options={DOCUMENTS} defaultValue={company ? "RUC" : "DNI"} />
               <TextField label="Número" name="doc_number" required autoComplete="off" />
             </div>
-            <SelectField key={`segment-${kind}`} label="Segmento" name="segment" options={segments} defaultValue={company ? "Corporativo" : segments[0]?.value} />
+            <SelectField key="segment" label="Segmento" name="segment" options={segments} defaultValue={segment} hint="Sugerido por el interés y la cantidad de pasajeros del lead." />
             <div className="grid grid-cols-2 gap-3">
               <TextField label="Ciudad" name="city" />
               <TextField label="País" name="country" defaultValue="Perú" />
@@ -156,7 +158,7 @@ function ConvertForm({ lead, catalogs, options, canReassign }: { lead: LeadDetai
       </FormSection>
       <FormSection title="Oportunidad">
         <TextField label="Nombre" name="opportunity_title" required defaultValue={defaultTitle} />
-        {options && options.stages.length > 0 && <SelectField label="Etapa inicial" name="stage" options={options.stages.map((stage) => ({ value: stage.code, label: stage.name, hint: `${stage.probability} %` }))} defaultValue="calificacion" />}
+        {options && options.stages.length > 0 && <SelectField label="Etapa inicial" name="stage" options={options.stages.filter((stage) => stage.code === "calificacion" || stage.code === "descubrimiento").map((stage) => ({ value: stage.code, label: stage.name, hint: `${stage.probability} %` }))} defaultValue="descubrimiento" />}
         <div className="grid grid-cols-[1fr_110px] gap-3">
           <TextField label="Monto estimado" name="amount" type="number" min={0} step="0.01" required defaultValue={lead.bant?.declared_amount ?? ""} />
           <SelectField label="Moneda" name="currency" options={[{ value: "PEN", label: "Soles" }, { value: "USD", label: "Dólares" }]} defaultValue={lead.bant?.currency ?? "PEN"} />

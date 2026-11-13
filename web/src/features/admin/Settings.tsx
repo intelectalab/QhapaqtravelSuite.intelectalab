@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, Building2, CalendarClock, Coins, Hash, Mail, MapPin, Pencil, Phone, Plus, Radio, ScrollText, Settings2, ShieldCheck, Timer, TrendingUp, Wrench } from "lucide-react";
+import { Ban, Building2, CalendarClock, Calculator, Coins, Hash, Mail, MapPin, Pencil, Phone, Plus, Radio, ScrollText, Settings2, ShieldCheck, Timer, TrendingUp, Wrench } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { createSequence, updateSequence, updateSettings } from "@/app/(backoffice)/admin/configuracion/actions";
@@ -19,7 +19,7 @@ import { TextField } from "@/components/ui/TextField";
 import { TintCardTitle } from "@/components/ui/Tinted";
 import { ADMIN_INITIAL, type AdminActionState, type SettingsOverview, type SettingsSequence } from "@/lib/admin";
 import { cn } from "@/lib/cn";
-import { formatDate, formatDateTime } from "@/lib/format";
+import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import type { Tone } from "@/lib/tone";
 import { RISE, ToggleField, Warnings } from "./AdminParts";
 
@@ -81,6 +81,80 @@ export function EditSection({ section, version, title, description, children, ac
   );
 }
 
+const ROUNDERS: Record<string, (value: number) => number> = { up: Math.ceil, down: Math.floor, nearest: Math.round };
+
+function priceBreakdown(cost: number, markupPct: number, taxPct: number, rounding: string, mode: string) {
+  const cents = (value: number) => Math.round(value * 100);
+  const base = cents(cost);
+  const markup = Math.round((base * markupPct) / 100);
+  const net = base + markup;
+  const tax = Math.round((net * taxPct) / 100);
+  const step = Math.max(1, Math.round(Number(rounding || "0.01") * 100));
+  const total = (ROUNDERS[mode] ?? Math.round)((net + tax) / step) * step;
+  return { cost: base / 100, markup: markup / 100, net: net / 100, tax: tax / 100, adjustment: (total - net - tax) / 100, total: total / 100 };
+}
+
+function PricePreview({ data }: { data: SettingsOverview }) {
+  const currency = data.sections.currency.values;
+  const policies = data.sections.policies.values;
+  const [cost, setCost] = useState("1000");
+  const markupPct = policies.markup_pct ?? 25;
+  const taxPct = currency.tax_pct ?? 18;
+  const base = currency.base_currency ?? "PEN";
+  const alt = currency.alt_currency ?? "USD";
+  const amount = Number(cost.replace(",", "."));
+  const result = priceBreakdown(Number.isFinite(amount) && amount > 0 ? amount : 0, markupPct, taxPct, currency.rounding ?? "0.01", currency.round_mode ?? "nearest");
+  const rounding = data.options.rounding.find((item) => item.value === currency.rounding)?.label ?? currency.rounding;
+  const mode = data.options.round_modes.find((item) => item.value === currency.round_mode)?.label.toLowerCase() ?? "";
+  const lines = [
+    { label: "Costo de proveedores", value: result.cost },
+    { label: `Margen sugerido ${markupPct} %`, value: result.markup },
+    { label: "Valor de venta", value: result.net, strong: true },
+    { label: `IGV ${taxPct} %`, value: result.tax },
+    ...(result.adjustment !== 0 ? [{ label: `Redondeo ${rounding?.toLowerCase()} ${mode}`.trim(), value: result.adjustment }] : []),
+  ];
+  return (
+    <SectionCard index={6} icon={Calculator} tone="t4" title="Vista previa del cálculo" action={<InfoTip label="Cómo se calcula">Usa el margen sugerido de Políticas comerciales y el IGV, el redondeo y el tipo de cambio guardados aquí. Es un ejemplo: cada cotización aplica las reglas y tarifas de sus productos.</InfoTip>}>
+      <div className="mb-3 max-w-[220px]">
+        <TextField label={`Costo de ejemplo (${base})`} name="preview_cost" type="number" inputMode="decimal" min={0} value={cost} onChange={(event) => setCost(event.target.value)} />
+      </div>
+      <ul className="flex flex-col">
+        {lines.map((line) => (
+          <li key={line.label} className={cn("flex items-center justify-between gap-3 border-t border-line-2 py-2 text-[13.5px] first:border-t-0", line.strong && "font-semibold")}>
+            <span className="text-fg-2">{line.label}</span>
+            <span className="font-mono">{formatMoney(line.value, base)}</span>
+          </li>
+        ))}
+        <li className="mt-1 flex items-center justify-between gap-3 rounded-[12px] bg-[color-mix(in_srgb,var(--t4)_10%,var(--surface))] px-3 py-2.5 text-[15px] font-bold">
+          <span>Precio final</span>
+          <span className="font-mono">{formatMoney(result.total, base)}</span>
+        </li>
+        {base === "PEN" && data.fx && data.fx.rate > 0 && (
+          <li className="flex items-center justify-between gap-3 px-3 py-2 text-[13px] text-fg-2">
+            <span>Equivale a</span>
+            <span className="font-mono" title={`Tipo de cambio S/ ${data.fx.rate.toFixed(3)} del ${formatDate(data.fx.date)}`}>{formatMoney(result.total / data.fx.rate, alt)}</span>
+          </li>
+        )}
+      </ul>
+      <p className="mt-2 text-[12px] text-fg-3">{currency.price_with_tax ? "Los precios se muestran con el IGV incluido." : "Los precios se muestran sin IGV y el impuesto se suma al final."}</p>
+    </SectionCard>
+  );
+}
+
+function ChannelDependency({ channel }: { channel: SettingsOverview["channels"][number] }) {
+  const integration = channel.integration;
+  if (!integration) return null;
+  return (
+    <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11.5px] text-fg-3" title={integration.warning ?? undefined}>
+      Depende de
+      <Link href="/admin/integraciones" className="font-semibold text-fg-2 hover:text-accent hover:underline">
+        {integration.name}
+      </Link>
+      <Badge tone={integration.ready ? "ok" : "warn"}>{integration.status_label}</Badge>
+    </span>
+  );
+}
+
 const numberField = (name: string, label: string, value: number | undefined, min: number, max: number, hint?: string) => <TextField label={label} name={name} type="number" inputMode="numeric" min={min} max={max} required defaultValue={value} hint={hint} />;
 
 export type SettingsView = "agencia" | "moneda" | "politicas" | "operacion" | "canales";
@@ -94,7 +168,7 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
   const label = (list: { value: string; label: string }[], value?: string) => list.find((item) => item.value === value)?.label ?? value ?? "—";
 
   return (
-    <div className={cn("grid items-start gap-5", show === "agencia" && "xl:grid-cols-2")}>
+    <div className={cn("grid items-start gap-5", (show === "agencia" || show === "moneda") && "xl:grid-cols-2")}>
       {show === "agencia" && (
       <SectionCard
         index={0}
@@ -193,6 +267,7 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
                 <SelectField label="Cómo redondear" name="round_mode" options={options.round_modes} defaultValue={currency.round_mode} />
               </div>
               <SelectField label="Fuente del tipo de cambio" name="fx_source" options={options.fx_sources.map((value) => ({ value, label: value }))} defaultValue={currency.fx_source} />
+              {numberField("invoice_void_days", "Plazo para dar de baja un comprobante (días)", currency.invoice_void_days ?? 7, 1, 30, "Días desde la emisión en que una factura o boleta se puede dar de baja ante el OSE. Pasado el plazo, se anula con nota de crédito. Confírmalo con tu contador.")}
             </EditSection>
           )
         }
@@ -202,6 +277,7 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
             { label: "Monedas", value: `${currency.base_currency ?? "PEN"} base · ${currency.alt_currency ?? "USD"} alterna` },
             { label: "IGV", value: `${currency.tax_pct ?? 18} % · ${currency.price_with_tax ? "incluido en precios" : "se suma al final"}` },
             { label: "Redondeo", value: `${label(options.rounding, currency.rounding)} · ${label(options.round_modes, currency.round_mode).toLowerCase()}` },
+            { label: "Baja de comprobantes", value: `Hasta ${currency.invoice_void_days ?? 7} días desde la emisión` },
             {
               label: "Tipo de cambio",
               value: data.fx ? (
@@ -216,6 +292,8 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
         />
       </SectionCard>
       )}
+
+      {show === "moneda" && <PricePreview data={data} />}
 
       {show === "politicas" && (
       <SectionCard
@@ -330,7 +408,7 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
           manage && (
             <EditSection section="channels" version={sections.channels.lock_version} title="Canales" description="Solo puedes activar los canales que incluye tu plan.">
               {data.channels.map((channel) => (
-                <ToggleField key={channel.key} label={channel.label} name={channel.key} defaultChecked={channel.enabled} disabled={!channel.allowed} hint={channel.allowed ? channel.description : `Disponible desde el plan ${channel.min_plan}.`} />
+                <ToggleField key={channel.key} label={channel.label} name={channel.key} defaultChecked={channel.enabled} disabled={!channel.allowed} hint={!channel.allowed ? `Disponible desde el plan ${channel.min_plan}.` : channel.integration?.warning ? `${channel.description} ${channel.integration.warning}` : channel.description} />
               ))}
             </EditSection>
           )
@@ -338,9 +416,13 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
       >
         <ul className="grid gap-2 sm:grid-cols-2">
           {data.channels.map((channel) => (
-            <li key={channel.key} title={channel.description} className={cn("flex items-center justify-between gap-2 rounded-[11px] border px-3 py-2 text-[13px] transition-transform duration-200 hover:-translate-y-0.5", channel.enabled ? "border-[color-mix(in_srgb,var(--ok)_30%,transparent)] bg-[color-mix(in_srgb,var(--ok)_6%,var(--surface))]" : "border-line")}>
-              <span className="truncate">{channel.label}</span>
-              {channel.allowed ? <Badge tone={channel.enabled ? "ok" : "mute"}>{channel.enabled ? "Activo" : "Apagado"}</Badge> : <Badge tone="mute">Plan {channel.min_plan}</Badge>}
+            <li key={channel.key} title={channel.description} className={cn("rounded-[11px] border px-3 py-2 text-[13px] transition-transform duration-200 hover:-translate-y-0.5", channel.enabled ? "border-[color-mix(in_srgb,var(--ok)_30%,transparent)] bg-[color-mix(in_srgb,var(--ok)_6%,var(--surface))]" : "border-line")}>
+              <span className="flex items-center justify-between gap-2">
+                <span className="truncate">{channel.label}</span>
+                {channel.allowed ? <Badge tone={channel.enabled ? "ok" : "mute"}>{channel.enabled ? "Activo" : "Apagado"}</Badge> : <Badge tone="mute">Plan {channel.min_plan}</Badge>}
+              </span>
+              <ChannelDependency channel={channel} />
+              {channel.enabled && channel.integration?.warning && <span className="mt-1 block text-[11.5px] text-warn">{channel.integration.warning}</span>}
             </li>
           ))}
         </ul>
@@ -416,5 +498,16 @@ export function SequencesTable({ rows, manage, types = [] }: { rows: SettingsSeq
         ) : null,
     },
   ];
-  return <DataTable screen="admin-series" rows={rows} columns={columns} getKey={(row) => `${row.doc_type}:${row.series}`} entityLabel="series" searchText={(row) => `${row.label} ${row.prefix}`} searchPlaceholder="Buscar documento o prefijo" toolbarEnd={manage ? <SequenceCreateAction types={types} /> : undefined} />;
+  const csv = {
+    fileName: "series-y-correlativos",
+    columns: [
+      { header: "Documento", value: (row: SettingsSequence) => row.label },
+      { header: "Serie", value: (row: SettingsSequence) => (row.series === "default" ? "" : row.series) },
+      { header: "Prefijo", value: (row: SettingsSequence) => row.prefix },
+      { header: "Próximo número", value: (row: SettingsSequence) => row.next, type: "number" as const },
+      { header: "Próximo documento", value: (row: SettingsSequence) => row.preview },
+      { header: "Reinicio anual", value: (row: SettingsSequence) => row.year_reset },
+    ],
+  };
+  return <DataTable screen="admin-series" rows={rows} columns={columns} getKey={(row) => `${row.doc_type}:${row.series}`} entityLabel="series" searchText={(row) => `${row.label} ${row.prefix}`} searchPlaceholder="Buscar documento o prefijo" toolbarEnd={manage ? <SequenceCreateAction types={types} /> : undefined} csv={csv} />;
 }

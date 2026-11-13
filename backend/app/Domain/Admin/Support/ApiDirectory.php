@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Admin\Support;
 
+use App\Domain\Admin\Actions\ManageWebhookDeliveries;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Database\Query\Builder;
@@ -94,6 +95,7 @@ final class ApiDirectory
             'scopes' => collect(self::SCOPES)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
             'events' => collect(self::EVENTS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
             'history' => $this->audit->recent(['Clave de API', 'Webhook'], 8),
+            'key_history' => $this->audit->recent(['Clave de API'], 200),
             'can_manage' => $viewer->can('admin.api.manage'),
         ];
     }
@@ -142,7 +144,7 @@ final class ApiDirectory
         return DB::table('integration_webhooks')
             ->where('status', '<>', 'deleted')
             ->orderBy('code')
-            ->get(['id', 'code', 'url', 'description', 'events', 'secret_prefix', 'api_version', 'status', 'consecutive_failures', 'disabled_reason', 'created_at', 'updated_at'])
+            ->get(['id', 'code', 'url', 'description', 'events', 'secret_prefix', 'api_version', 'status', 'consecutive_failures', 'disabled_reason', 'previous_secret_expires_at', 'created_at', 'updated_at'])
             ->map(function (object $row) use ($deliveries): array {
                 $mine = $deliveries->where('webhook', $row->code);
                 $last = $mine->first();
@@ -157,6 +159,8 @@ final class ApiDirectory
                     'status' => $row->status,
                     'failures' => (int) $row->consecutive_failures,
                     'disabled_reason' => $row->disabled_reason,
+                    'failure_limit' => ManageWebhookDeliveries::DISABLE_AFTER,
+                    'rotated_at' => $row->previous_secret_expires_at ? Carbon::parse((string) $row->previous_secret_expires_at)->subHours(ManageWebhookDeliveries::GRACE_HOURS)->toIso8601String() : null,
                     'delivered' => $mine->where('status', 'delivered')->count(),
                     'total' => $mine->count(),
                     'last_at' => $last?->created_at,

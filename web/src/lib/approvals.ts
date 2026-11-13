@@ -45,6 +45,7 @@ export interface ApprovalItem {
   reservation?: string | null;
   rule?: { code: string; min_amount: number; permission_label: string; approvers: string[] } | null;
   effect?: string | null;
+  impact?: string | null;
   lock_version: number | null;
   version_no?: number;
   change_id?: string;
@@ -105,6 +106,24 @@ export interface ApprovalsOverview {
   options: { agencies: ApprovalOption[]; reservations: ApprovalOption[] };
   usd_rate: number;
   can: { create: boolean; manage_rules: boolean };
+  viewer?: { role: string; scope: "all" | "role" };
+}
+
+export const APPROVAL_ROLE_NOTES: Record<string, string> = {
+  sales: "Sigues aquí las solicitudes que enviaste; las decide Gerencia.",
+  operations: "Apruebas las tarifas de proveedores y sigues las facturas que validaste para Finanzas.",
+  finance: "Apruebas reversiones de pago, cuentas por pagar, comisiones y el nivel financiero de crédito y reembolsos.",
+  accounting: "Apruebas reversiones de pago, cuentas por pagar, comisiones y el nivel financiero de crédito y reembolsos.",
+  manager: "Ves todas las solicitudes y apruebas las comerciales y operativas según las reglas.",
+  tenant_admin: "Ves todas las solicitudes y configuras las reglas de aprobación.",
+};
+
+export function approvalSlug(item: Pick<ApprovalItem, "key" | "code">): string {
+  return item.key.startsWith("request:") ? item.code : item.key;
+}
+
+export function approvalHref(item: Pick<ApprovalItem, "key" | "code">): string {
+  return `/aprobaciones/${encodeURIComponent(approvalSlug(item))}`;
 }
 
 export interface ApprovalOption {

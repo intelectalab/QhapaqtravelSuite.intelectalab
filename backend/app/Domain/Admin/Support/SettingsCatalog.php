@@ -19,6 +19,13 @@ final class SettingsCatalog
         'app_pasajero' => ['label' => 'App del pasajero', 'plan' => 3, 'description' => 'Viaje en el teléfono, con avisos push.'],
     ];
 
+    public const CHANNEL_INTEGRATIONS = ['whatsapp' => 'messaging', 'ecommerce' => 'payments'];
+
+    public const CHANNEL_WARNINGS = [
+        'messaging' => 'WhatsApp Business aún no está en producción: los mensajes solo llegan a los números registrados para pruebas.',
+        'payments' => 'La pasarela de pagos aún está por validar: los pagos en línea quedarán como pendientes.',
+    ];
+
     public const SEQUENCE_TYPES = [
         'credit_note' => ['label' => 'Nota de crédito', 'pad' => 8, 'year_reset' => false],
         'debit_note' => ['label' => 'Nota de débito', 'pad' => 8, 'year_reset' => false],

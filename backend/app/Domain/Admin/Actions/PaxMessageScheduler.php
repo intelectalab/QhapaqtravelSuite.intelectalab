@@ -134,33 +134,53 @@ final class PaxMessageScheduler
             ->values();
     }
 
+    public function explain(object $template, object $reservation): array
+    {
+        $blocked = ! in_array($reservation->status, self::LIVE, true) ? 'la reserva no está vigente' : $this->blockReason($template, $reservation);
+        $at = $this->moment($template, $reservation);
+
+        return ['blocked' => $blocked ?? ($at === null ? 'no hay fecha para el momento del viaje elegido' : null), 'at' => $at?->toIso8601String(), 'lang' => $reservation->lang];
+    }
+
+    public function firstEligible(object $template): ?object
+    {
+        return $this->reservations(CarbonImmutable::now(), null)
+            ->filter(fn (object $reservation): bool => $reservation->travel_from >= CarbonImmutable::now($this->context->timezone())->toDateString())
+            ->first(fn (object $reservation): bool => $this->blockReason($template, $reservation) === null && $this->moment($template, $reservation) !== null);
+    }
+
     private function matches(object $template, object $reservation): bool
+    {
+        return $this->blockReason($template, $reservation) === null;
+    }
+
+    private function blockReason(object $template, object $reservation): ?string
     {
         $conditions = (array) json_decode((string) $template->conditions, true);
         $products = array_values(array_filter((array) ($conditions['products'] ?? [])));
         $channels = array_values(array_filter((array) ($conditions['channels'] ?? [])));
 
         if ($channels !== [] && ! in_array($reservation->channel, $channels, true)) {
-            return false;
+            return 'la reserva es de otro canal de venta';
         }
 
         if ($products !== [] && DB::table('booking_reservation_services')->where('reservation_id', $reservation->id)->whereIn('product_id', $products)->doesntExist()) {
-            return false;
+            return 'la reserva no incluye los productos elegidos';
         }
 
         if (($conditions['requiresRule'] ?? null) && ! $this->ruleOn((string) $conditions['requiresRule'])) {
-            return false;
+            return "la regla {$conditions['requiresRule']} está apagada";
         }
 
         if (($conditions['onlyIfBalance'] ?? false) && $this->balance($reservation->id) <= 0) {
-            return false;
+            return 'la reserva no tiene saldo pendiente';
         }
 
         if (($conditions['onlyIfMissingDocs'] ?? false) && DB::table('booking_passengers')->where('reservation_id', $reservation->id)->where(fn ($query) => $query->whereNull('doc_number')->orWhere('doc_number', '')->orWhere('pending', true))->doesntExist()) {
-            return false;
+            return 'a la reserva no le faltan datos de acompañantes';
         }
 
-        return true;
+        return null;
     }
 
     private function moment(object $template, object $reservation): ?CarbonImmutable

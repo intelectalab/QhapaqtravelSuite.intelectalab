@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('permission:crm.targets.view|crm.targets.manage')->group(function (): void {
     Route::get('crm/sales-targets', [SalesTargetController::class, 'index'])->name('crm.targets.index');
-    Route::get('crm/sales-targets/{code}', [SalesTargetController::class, 'show'])->name('crm.targets.show');
+    Route::get('crm/sales-targets/{code}', [SalesTargetController::class, 'show'])->where('code', '(?!ranking$)[^/]+')->name('crm.targets.show');
 
     Route::middleware('permission:crm.targets.manage')->group(function (): void {
         Route::post('crm/sales-targets', [SalesTargetController::class, 'store'])->name('crm.targets.store');

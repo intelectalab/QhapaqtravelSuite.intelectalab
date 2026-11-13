@@ -3,16 +3,14 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { CalendarClock, CircleCheckBig, CircleX, FileText, GripVertical, MoreHorizontal, TriangleAlert } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, useTransition, type DragEvent } from "react";
+import { useState, useTransition, type DragEvent } from "react";
 import { moveOpportunity } from "@/app/(backoffice)/crm/oportunidades/actions";
 import { useCan } from "@/components/shell/SessionProvider";
-import { SearchBox } from "@/components/table/Toolbar";
 import { Avatar } from "@/components/ui/Avatar";
-import { Select } from "@/components/ui/Select";
 import { SOFT_TINT } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
-import { formatDate, formatMoney, normalize } from "@/lib/format";
-import { OPEN_STAGES, STAGE_TONE, type OpportunityBoard, type OpportunityItem, type OpportunityStage, type PipelineStage } from "@/lib/opportunities";
+import { formatDate, formatMoney } from "@/lib/format";
+import { OPEN_STAGES, STAGE_TONE, type OpportunityItem, type OpportunityStage, type PipelineStage } from "@/lib/opportunities";
 import { toneStyle } from "@/lib/tone";
 
 const DRAG_TYPE = "application/x-opportunity";
@@ -87,45 +85,40 @@ function OpportunityCard({ item, today, stages, draggable, moving, onMove, onDra
           </span>
         )}
         <span className="ml-auto">
-          <Avatar name={item.owner.name} size="xs" solid />
+          <span title={`Responsable: ${item.owner.name}`}><Avatar name={item.owner.name} size="xs" solid /></span>
         </span>
       </div>
     </article>
   );
 }
 
-export function PipelineBoard({ board, today }: { board: OpportunityBoard; today: string }) {
+export function PipelineBoard({ items: source, stages: allStages, today }: { items: OpportunityItem[]; stages: PipelineStage[]; today: string }) {
   const canMove = useCan("crm.opportunities.manage");
-  const [items, setItems] = useState(board.items);
-  const [source, setSource] = useState(board.items);
-  if (source !== board.items) {
-    setSource(board.items);
-    setItems(board.items);
-  }
-  const [search, setSearch] = useState("");
-  const [owner, setOwner] = useState("");
+  const [moved, setMoved] = useState<Record<string, { stage: OpportunityStage; probability: number }>>({});
   const [target, setTarget] = useState<string | null>(null);
   const [moving, setMoving] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ tone: "ok" | "bad" | "warn"; text: string } | null>(null);
   const [, startMoving] = useTransition();
-  const stages = board.stages.filter((stage) => OPEN_STAGES.includes(stage.code));
-  const owners = useMemo(() => [...new Set(board.items.map((item) => item.owner.name))].sort((a, b) => a.localeCompare(b, "es")).map((name) => ({ value: name, label: name })), [board.items]);
-  const visible = items.filter((item) => (!owner || item.owner.name === owner) && (!search || normalize(`${item.title} ${item.client.name} ${item.code} ${item.destination ?? ""}`).includes(normalize(search))));
-  const won = visible.filter((item) => item.stage === "ganada");
-  const lost = visible.filter((item) => item.stage === "perdida");
+  const stages = allStages.filter((stage) => OPEN_STAGES.includes(stage.code));
+  const items = source.map((item) => (moved[item.code] ? { ...item, ...moved[item.code] } : item));
+  const won = items.filter((item) => item.stage === "ganada");
+  const lost = items.filter((item) => item.stage === "perdida");
 
   const move = (item: OpportunityItem, stage: OpportunityStage) => {
     if (item.stage === stage || !OPEN_STAGES.includes(item.stage)) return;
-    const previous = item.stage;
     const probability = stages.find((entry) => entry.code === stage)?.probability ?? item.probability;
     const stageName = stages.find((entry) => entry.code === stage)?.name ?? stage;
-    setItems((current) => current.map((entry) => (entry.code === item.code ? { ...entry, stage, probability } : entry)));
+    setMoved((current) => ({ ...current, [item.code]: { stage, probability } }));
     setMoving(item.code);
     startMoving(async () => {
       const result = await moveOpportunity(item.code, stage, item.lock_version);
       setMoving(null);
       if (!result.done) {
-        setItems((current) => current.map((entry) => (entry.code === item.code ? { ...entry, stage: previous, probability: item.probability } : entry)));
+        setMoved((current) => {
+          const next = { ...current };
+          delete next[item.code];
+          return next;
+        });
         setNotice({ tone: "bad", text: result.message ?? "No pudimos mover la oportunidad." });
         return;
       }
@@ -147,26 +140,23 @@ export function PipelineBoard({ board, today }: { board: OpportunityBoard; today
   };
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-center gap-2.5">
-        <div className="min-w-[220px] flex-1 sm:max-w-[340px]">
-          <SearchBox value={search} onChange={setSearch} placeholder="Buscar título, cliente o destino" />
-        </div>
-        {owners.length > 1 && <Select value={owner} onChange={setOwner} options={owners} placeholder="Asesor: todos" variant="chip" ariaLabel="Filtrar por asesor" />}
-        {canMove && <span className="text-[12.5px] text-fg-3">Arrastra una tarjeta a otra etapa o usa su menú.</span>}
-      </div>
-      <p role="status" aria-live="polite" className={cn("text-[12.5px]", !notice && "sr-only")}>
-        {notice && (
-          <span className={cn("inline-flex items-start gap-2 rounded-xl px-3 py-2", notice.tone === "ok" ? "bg-ok/10 text-ok" : notice.tone === "warn" ? "bg-warn/10 text-warn" : "bg-bad/10 text-bad")}>
-            {notice.tone !== "ok" && <TriangleAlert size={15} className="mt-0.5 flex-none" />}
-            {notice.text}
-          </span>
-        )}
-      </p>
+    <div className="flex flex-col gap-4">
+      {(canMove || notice) && (
+        <p role="status" aria-live="polite" className="text-[12.5px]">
+          {notice ? (
+            <span className={cn("inline-flex items-start gap-2 rounded-xl px-3 py-2", notice.tone === "ok" ? "bg-ok/10 text-ok" : notice.tone === "warn" ? "bg-warn/10 text-warn" : "bg-bad/10 text-bad")}>
+              {notice.tone !== "ok" && <TriangleAlert size={15} className="mt-0.5 flex-none" />}
+              {notice.text}
+            </span>
+          ) : (
+            <span className="text-fg-3">Arrastra una tarjeta a otra etapa o usa su menú.</span>
+          )}
+        </p>
+      )}
       <div className="scroll-thin -mx-1 overflow-x-auto px-1 pb-2">
         <div className="grid min-w-[880px] grid-cols-4 gap-3.5">
           {stages.map((stage) => {
-            const column = visible.filter((item) => item.stage === stage.code);
+            const column = items.filter((item) => item.stage === stage.code);
             const weighted = column.reduce((total, item) => total + (item.amount_pen * item.probability) / 100, 0);
             return (
               <section
@@ -208,7 +198,7 @@ export function PipelineBoard({ board, today }: { board: OpportunityBoard; today
         </div>
       </div>
 
-      <ClosedSummary won={won} lost={lost} />
+      {won.length + lost.length > 0 && <ClosedSummary won={won} lost={lost} />}
     </div>
   );
 }

@@ -77,7 +77,7 @@ const STEPS: Record<string, FinanceStepConfig> = {
   gateway_settle: { path: (key) => `/treasury/gateway/${key}/settlements`, method: "POST", fields: ["gross", "fee_pct", "date", "batch"], failure: "No pudimos liquidar la pasarela." },
   session_open: { path: (key) => `/treasury/petty-cash/${key}/sessions`, method: "POST", fields: ["counted", "note"], failure: "No pudimos abrir la caja." },
   expense_create: { path: (key) => `/treasury/petty-cash/${key}/expenses`, method: "POST", fields: ["amount", "date", "category", "description", "receipt_type", "series_number", "issuer_ruc", "supplier", "reservation"], failure: "No pudimos registrar el gasto." },
-  count_create: { path: (key) => `/treasury/petty-cash/${key}/counts`, method: "POST", fields: ["kind", "note", "witness_id"], collect: "denominations", failure: "No pudimos registrar el arqueo." },
+  count_create: { path: (key) => `/treasury/petty-cash/${key}/counts`, method: "POST", fields: ["kind", "note", "witness_id", "declaration"], collect: "denominations", failure: "No pudimos registrar el arqueo." },
   count_approve: { path: (key) => `/treasury/counts/${key}/approve`, method: "POST", fields: ["note"], failure: "No pudimos aprobar la diferencia." },
   count_validate: { path: (key) => `/treasury/counts/${key}/validate`, method: "POST", fields: [], failure: "No pudimos dar el visto bueno." },
   replenishment_request: { path: (key) => `/treasury/petty-cash/${key}/replenishments`, method: "POST", fields: ["amount", "note"], failure: "No pudimos solicitar la reposición." },
@@ -111,7 +111,7 @@ const MAX_RECEIPT_BYTES = 10 * 1024 * 1024;
 const EXPENSE_FIELDS = ["amount", "date", "category", "description", "receipt_type", "series_number", "issuer_ruc", "supplier", "reservation"];
 
 export async function recordExpense(_state: StepResult, form: FormData): Promise<StepResult> {
-  const account = String(form.get("key") ?? "");
+  const account = String(form.get("key") || form.get("account") || "");
   const file = form.get("file");
   const payload = new FormData();
   for (const field of EXPENSE_FIELDS) {

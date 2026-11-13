@@ -13,6 +13,8 @@ final class OutgoingMail
 
     public const ENCRYPTIONS = ['ssl', 'tls', 'none'];
 
+    public const WEBHOOK_PROVIDERS = ['ses' => 'Secreto de acuses del correo', 'fcm' => 'Secreto de acuses push'];
+
     public function raw(): array
     {
         return PlatformSettings::read(self::KEY);
@@ -20,8 +22,16 @@ final class OutgoingMail
 
     public function password(): string
     {
-        $encrypted = (string) ($this->raw()['password'] ?? '');
+        return $this->decrypt((string) ($this->raw()['password'] ?? ''));
+    }
 
+    public function webhookSecret(string $provider): string
+    {
+        return $this->decrypt((string) ($this->raw()['webhook_secrets'][$provider] ?? ''));
+    }
+
+    private function decrypt(string $encrypted): string
+    {
         if ($encrypted === '') {
             return '';
         }
@@ -88,10 +98,11 @@ final class OutgoingMail
             'verified_at' => $raw['verified_at'] ?? null,
             'last_test' => isset($raw['last_test']) ? (array) $raw['last_test'] : null,
             'status' => $this->active() ? 'activa' : ($enabled ? 'incompleta' : 'apagada'),
+            'webhook_secrets' => collect(array_keys(self::WEBHOOK_PROVIDERS))->mapWithKeys(fn (string $provider): array => [$provider => $this->webhookSecret($provider) !== ''])->all(),
         ];
     }
 
-    public function store(array $values, ?string $password, ?string $verifiedAt, string $actorId): void
+    public function store(array $values, ?string $password, ?string $verifiedAt, string $actorId, array $webhookSecrets = []): void
     {
         $current = $this->raw();
 
@@ -100,6 +111,7 @@ final class OutgoingMail
             ...$values,
             'password' => $password === null ? ($current['password'] ?? '') : Crypt::encryptString($password),
             'verified_at' => $verifiedAt ?? ($current['verified_at'] ?? null),
+            'webhook_secrets' => [...(array) ($current['webhook_secrets'] ?? []), ...array_map(fn (string $secret): string => Crypt::encryptString($secret), $webhookSecrets)],
         ], $actorId);
     }
 

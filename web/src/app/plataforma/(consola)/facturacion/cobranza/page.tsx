@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { BillingTabs } from "@/features/platform/BillingTabs";
-import { DunningKpis, DunningList, DunningPolicyCard } from "@/features/platform/DunningBoard";
+import { DunningKpis, DunningList, DunningPolicyCard, DunningRecovery } from "@/features/platform/DunningBoard";
 import { getDunning } from "@/lib/server/platformConsole";
 
 export const metadata: Metadata = { title: "Cobranza" };
@@ -21,8 +21,9 @@ export default async function CobranzaPage() {
       <DunningKpis items={overview.items} />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <DunningList overview={overview} />
-        <div className="xl:sticky xl:top-4 xl:self-start">
+        <div className="flex flex-col gap-5 xl:self-start">
           <DunningPolicyCard policy={overview.policy} />
+          <DunningRecovery overview={overview} />
         </div>
       </div>
     </>

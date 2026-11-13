@@ -155,6 +155,7 @@ final class AuditDirectory
             'top_entities' => $top('a.entity', 6),
             'by_action' => $top('a.action', 8),
             'by_actor' => $top('coalesce(u.name, a.actor_type)', 8),
+            'critical_by_action' => (clone $base)->where('a.is_critical', true)->selectRaw('a.action as label, count(*) as total')->groupBy('a.action')->orderByDesc('total')->limit(8)->get()->map(fn (object $row): array => ['label' => (string) $row->label, 'total' => (int) $row->total])->values()->all(),
             'daily' => collect(range(29, 0))->map(function (int $back) use ($daily, $today): array {
                 $day = $today->copy()->subDays($back)->toDateString();
 

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { apiFetch } from "@/lib/server/api";
 import { formValues, sendStep, type StepResult } from "@/lib/server/resource";
 
 const FIELDS = ["name", "type", "ruc", "city", "stars", "contact_name", "phone", "email", "contract_start", "contract_end", "currency", "payment_terms", "rating", "rating_note"];
@@ -16,8 +17,14 @@ async function run(path: string, method: "POST" | "PATCH" | "DELETE", body: Reco
   return result;
 }
 
-export async function createProvider(_state: StepResult, form: FormData): Promise<StepResult> {
-  return run("/catalog/providers", "POST", formValues(form, FIELDS), "No pudimos crear el proveedor.");
+export async function createProvider(_state: StepResult & { ref?: string }, form: FormData): Promise<StepResult & { ref?: string }> {
+  const result = await apiFetch<{ ref: string }>("/catalog/providers", { method: "POST", body: formValues(form, FIELDS) });
+  if (!result.ok || !result.data) {
+    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+    return { message: firstError ?? result.error?.message ?? "No pudimos crear el proveedor.", done: false };
+  }
+  revalidatePath("/catalogo/proveedores", "layout");
+  return { message: null, done: true, ref: result.data.ref };
 }
 
 export async function updateProvider(_state: StepResult, form: FormData): Promise<StepResult> {

@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TintTile } from "@/components/ui/Tinted";
 import { KpiGrid } from "@/features/admin/AdminParts";
-import { AuditActivity, AuditTable, TopEntities } from "@/features/admin/Audit";
+import { AuditActivity, AuditBreakdown, AuditTable, TopEntities } from "@/features/admin/Audit";
 import { AuditExportAction } from "@/features/admin/AuditExport";
 import type { AuditEntry, AuditMeta, AuditOverview } from "@/lib/admin";
 import { cn } from "@/lib/cn";
@@ -28,7 +28,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
   const days = PERIODS.find((period) => String(period.days) === periodo)?.days ?? 30;
   const page = await getCollection<AuditEntry, AuditMeta>(`/audit-events?filter[days]=${days}`, "No pudimos cargar la auditoría.", 1500);
   if (!page) return <NoAccess home="/dashboard" />;
-  const data: AuditOverview = { days: page.meta.days, total: page.meta.total, truncated: page.more, events: page.data, kpis: page.meta.kpis, top_entities: page.meta.top_entities, daily: page.meta.daily };
+  const data: AuditOverview = { days: page.meta.days, total: page.meta.total, truncated: page.more, events: page.data, kpis: page.meta.kpis, top_entities: page.meta.top_entities, daily: page.meta.daily, by_actor: page.meta.by_actor, critical_by_action: page.meta.critical_by_action };
   const peak = data.daily.slice(-14).reduce<AuditOverview["daily"][number] | null>((best, day) => (day.total > (best?.total ?? 0) ? day : best), null);
   const top = data.top_entities[0];
   const average = Math.round(data.days === 0 ? data.daily.reduce((sum, day) => sum + day.total, 0) / Math.max(1, data.daily.length) : data.kpis.total / data.days);
@@ -101,6 +101,7 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Pr
           info={<p>Eventos del periodo divididos entre sus días. Con «Todo», el promedio es el de los últimos 30 días.</p>}
         />
       </KpiGrid>
+      <AuditBreakdown data={data} days={data.days} />
       {data.truncated && <p className="mb-3 text-[12.5px] text-fg-3">Se muestran los {formatNumber(data.events.length)} eventos más recientes del periodo. Acota el periodo para ver el resto.</p>}
       <AuditTable data={data} initialSearch={q} />
     </>

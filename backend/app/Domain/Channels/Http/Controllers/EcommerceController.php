@@ -19,7 +19,7 @@ final class EcommerceController
 
     public function summary(Request $request, EcommerceDirectory $directory): JsonResponse
     {
-        $overview = $directory->overview($this->user($request));
+        $overview = $directory->overview($this->user($request), false);
 
         return response()->json(['data' => ['kpis' => $overview['kpis'], 'funnel' => $overview['funnel']]]);
     }
@@ -27,7 +27,7 @@ final class EcommerceController
     public function orders(Request $request, EcommerceDirectory $directory): JsonResponse
     {
         $status = $request->query('status');
-        $orders = collect($directory->overview($this->user($request))['orders'])->when(is_string($status) && $status !== '', fn ($rows) => $rows->where('status', $status))->values();
+        $orders = collect($directory->overview($this->user($request), false)['orders'])->when(is_string($status) && $status !== '', fn ($rows) => $rows->where('status', $status))->values();
 
         return response()->json(['data' => $orders]);
     }

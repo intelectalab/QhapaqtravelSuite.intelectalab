@@ -9,6 +9,7 @@ use App\Domain\Finance\Http\Controllers\Concerns\ResolvesActor;
 use App\Domain\Finance\Support\PaymentDirectory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 final class PaymentController
 {
@@ -25,6 +26,25 @@ final class PaymentController
         $workflow->confirm($code, $data['receivable'] ?? null, $this->actor($request));
 
         return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function validatePayment(Request $request, string $code, PaymentWorkflow $workflow): JsonResponse
+    {
+        $data = $request->validate([
+            'apply' => ['sometimes', 'boolean'],
+            'receivable_id' => ['nullable', 'string', 'max:40'],
+        ], ['apply.*' => 'Indica si el pago se aplica a una cuota.', 'receivable_id.*' => 'Elige la cuota a la que se aplica.']);
+        $workflow->confirm($code, $data['receivable_id'] ?? null, $this->actor($request), (bool) ($data['apply'] ?? false));
+
+        return response()->json(['data' => $this->state($code)]);
+    }
+
+    public function apply(Request $request, string $code, PaymentWorkflow $workflow): JsonResponse
+    {
+        $data = $request->validate(['receivable_id' => ['required', 'string', 'max:40']], ['receivable_id.*' => 'Elige la cuota a la que se aplica.']);
+        $workflow->applyConfirmed($code, $data['receivable_id'], $this->actor($request));
+
+        return response()->json(['data' => $this->state($code)]);
     }
 
     public function reject(Request $request, string $code, PaymentWorkflow $workflow): JsonResponse
@@ -47,6 +67,13 @@ final class PaymentController
         $workflow->revert($code, $this->reason($request), $this->actor($request));
 
         return response()->json(['data' => ['code' => $code]]);
+    }
+
+    private function state(string $code): array
+    {
+        $payment = DB::table('fin_payments as p')->leftJoin('fin_receivables as r', 'r.id', '=', 'p.receivable_id')->where('p.code', $code)->first(['p.code', 'p.status', 'p.lock_version', 'r.code as receivable']);
+
+        return ['code' => $code, 'status' => $payment?->status, 'receivable' => $payment?->receivable, 'lock_version' => $payment === null ? null : (int) $payment->lock_version];
     }
 
     private function reason(Request $request): string

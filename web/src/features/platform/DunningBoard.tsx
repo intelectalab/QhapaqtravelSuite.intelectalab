@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, Check, CreditCard, FileWarning, Play, Settings2, ShieldAlert, Wallet } from "lucide-react";
+import { CalendarClock, Check, CreditCard, FileWarning, History, Play, Settings2, ShieldAlert, TrendingUp, Wallet } from "lucide-react";
 import Link from "next/link";
 import { updateDunningPolicy } from "@/app/plataforma/(consola)/facturacion/actions";
 import { runPlatformJob } from "@/app/plataforma/(consola)/integraciones/actions";
@@ -170,5 +170,68 @@ function DunningCard({ item, index }: { item: DunningItem; index: number }) {
         </div>
       </article>
     </ToneScope>
+  );
+}
+
+export function DunningRecovery({ overview }: { overview: DunningOverview }) {
+  const { recovery, history } = overview;
+  const total = recovery.recovered_amount + recovery.lost_amount;
+  const pct = total > 0 ? Math.round((recovery.recovered_amount / total) * 100) : null;
+
+  return (
+    <Card>
+      <TintCardTitle icon={TrendingUp} title={`Recuperación · ${recovery.days} días`} tone="ok" aside={pct === null ? undefined : `${pct} %`} />
+      {total === 0 ? (
+        <p className="text-[13px] text-fg-3">En los últimos {recovery.days} días ninguna factura salió de la cobranza.</p>
+      ) : (
+        <>
+          <div className="mb-3 flex h-2.5 overflow-hidden rounded-full bg-surface-2" title={`${pct ?? 0} % del monto en cobranza se recuperó`}>
+            <span className="block h-full origin-left bg-ok motion-safe:animate-[fill-x_700ms_cubic-bezier(0.4,0,0.2,1)_backwards]" style={{ width: `${pct ?? 0}%` }} />
+            <span className="block h-full flex-1 bg-bad/60" />
+          </div>
+          <dl className="grid grid-cols-2 gap-2 text-[13px]">
+            <div className="lift rounded-[11px] bg-ok/[0.08] px-3 py-2">
+              <dt className="text-[11.5px] text-fg-3">Recuperado</dt>
+              <dd className="font-semibold">{formatMoney(recovery.recovered_amount)}</dd>
+              <dd className="text-[11.5px] text-fg-3">{recovery.recovered_count === 1 ? "1 factura" : `${recovery.recovered_count} facturas`}</dd>
+            </div>
+            <div className="lift rounded-[11px] bg-bad/[0.08] px-3 py-2">
+              <dt className="text-[11.5px] text-fg-3">Perdido</dt>
+              <dd className="font-semibold">{formatMoney(recovery.lost_amount)}</dd>
+              <dd className="text-[11.5px] text-fg-3">{recovery.lost_count === 1 ? "1 factura incobrable" : `${recovery.lost_count} facturas incobrables`}</dd>
+            </div>
+          </dl>
+        </>
+      )}
+      {history.length > 0 && (
+        <>
+          <h3 className="mb-2 mt-5 flex items-center gap-1.5 text-[13px] font-semibold">
+            <History size={14} />
+            Historial de cobranza
+          </h3>
+          <ul className="flex flex-col">
+            {history.slice(0, 8).map((item) => (
+              <li key={item.id} className="flex items-center gap-3 border-t border-line-2 py-2 text-[13px] first:border-t-0">
+                <span className="min-w-0 flex-1">
+                  <Link href={`/plataforma/facturacion/facturas/${item.id}`} className="block font-mono text-[12.5px] font-semibold hover:underline">
+                    {item.number}
+                  </Link>
+                  <span className="block truncate text-[11.5px] text-fg-3">
+                    {item.tenant.name} · falló el {formatDate(item.failed_at)} · {item.attempts === 1 ? "1 intento" : `${item.attempts} intentos`}
+                  </span>
+                </span>
+                <span className="text-right">
+                  <span className="block font-mono text-[12.5px]">{formatMoney(item.total, item.currency)}</span>
+                  <Badge tone={item.outcome === "recovered" ? "ok" : "bad"} dot={false}>
+                    {item.outcome === "recovered" ? "Recuperada" : "Perdida"}
+                  </Badge>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {history.length > 8 && <p className="mt-2 text-[12px] text-fg-3">Y {history.length - 8} más en la lista de facturas.</p>}
+        </>
+      )}
+    </Card>
   );
 }

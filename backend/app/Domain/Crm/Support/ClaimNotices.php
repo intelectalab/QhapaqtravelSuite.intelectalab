@@ -73,10 +73,13 @@ final class ClaimNotices
         }
 
         $agency = $this->agency();
+        $guardian = $consumer['is_minor'] && ! empty($consumer['guardian']['name']) ? (string) $consumer['guardian']['name'] : null;
         $lines = [
-            "Hola, {$consumer['name']}:",
+            'Hola, '.($guardian ?? $consumer['name']).':',
             '',
-            "Esta es la respuesta a tu hoja {$claim->book_number} del Libro de Reclamaciones.",
+            $guardian !== null
+                ? "Esta es la respuesta a la hoja {$claim->book_number} del Libro de Reclamaciones, registrada a nombre de {$consumer['name']} (menor de edad). Te la enviamos como ".mb_strtolower((string) ($consumer['guardian']['relation'] ?? 'apoderado')).'.'
+                : "Esta es la respuesta a tu hoja {$claim->book_number} del Libro de Reclamaciones.",
             '',
             'Decisión: '.$decision,
             '',

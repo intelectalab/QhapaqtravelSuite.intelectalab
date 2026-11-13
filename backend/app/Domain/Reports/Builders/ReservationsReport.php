@@ -19,12 +19,16 @@ final class ReservationsReport extends ReportBuilder
         $rows = $this->reservations($viewer, $filters, false)
             ->leftJoin('crm_clients as c', 'c.id', '=', 'r.client_id')
             ->leftJoin('iam_users as u', 'u.id', '=', 'r.owner_id')
+            ->leftJoin('iam_sedes as sd', 'sd.id', '=', 'r.sede_id')
             ->orderByDesc('r.created_at')
-            ->get(['r.id', 'r.code', 'r.title', 'r.status', 'r.channel', 'r.travel_from', 'r.created_at', DB::raw("{$this->sales()} as sales"), 'c.name as client', 'u.name as seller']);
+            ->get(['r.id', 'r.code', 'r.title', 'r.status', 'r.channel', 'r.travel_from', 'r.travel_to', 'r.created_at', DB::raw("{$this->sales()} as sales"), 'c.name as client', 'u.name as seller', 'sd.name as sede']);
         $sold = $rows->whereIn('status', KpiReport::SOLD);
         $pax = DB::table('booking_passengers')->whereIn('reservation_id', $rows->pluck('id'))->where('is_placeholder', false)->selectRaw('reservation_id, count(*) as total')->groupBy('reservation_id')->pluck('total', 'reservation_id');
         $destinations = DB::table('booking_reservation_services as s')->join('catalog_products as p', 'p.id', '=', 's.product_id')->join('catalog_destinations as d', 'd.id', '=', 'p.primary_destination_id')
             ->whereIn('s.reservation_id', $sold->pluck('id'))->where('s.status', '<>', 'cancelado')->distinct()->get(['s.reservation_id', 'd.name']);
+        $places = DB::table('booking_reservation_services as s')->join('catalog_products as p', 'p.id', '=', 's.product_id')->join('catalog_destinations as d', 'd.id', '=', 'p.primary_destination_id')
+            ->whereIn('s.reservation_id', $rows->pluck('id'))->where('s.status', '<>', 'cancelado')->distinct()->orderBy('d.name')->get(['s.reservation_id', 'd.name'])
+            ->groupBy('reservation_id')->map(fn ($group): string => $group->pluck('name')->unique()->implode(', '));
         $salesById = $sold->pluck('sales', 'id');
         $byDestination = $destinations->groupBy('name')->map(fn ($group, string $name): array => S::point($name, round((float) $group->sum(fn (object $row): float => (float) ($salesById[$row->reservation_id] ?? 0)), 2), ['count' => $group->count()]))->sortByDesc('value')->take(8);
         $salesTotal = (float) $sold->sum('sales');
@@ -47,20 +51,26 @@ final class ReservationsReport extends ReportBuilder
             'table' => S::table([
                 S::column('code', 'Reserva'),
                 S::column('client', 'Cliente'),
+                S::column('destination', 'Destino'),
+                S::column('sede', 'Sede'),
                 S::column('seller', 'Vendedor'),
-                S::column('channel', 'Canal'),
-                S::column('status', 'Estado', 'status'),
-                S::column('travel_from', 'Viaje', 'date'),
+                S::column('channel', 'Canal', 'text', ['filter' => true]),
+                S::column('status', 'Estado', 'status', ['filter' => true]),
+                S::column('travel_from', 'Viaje desde', 'date'),
+                S::column('travel_to', 'Viaje hasta', 'date'),
                 S::column('pax', 'Pax', 'number'),
                 S::column('sales', 'Total S/', 'money'),
             ], $rows->map(fn (object $row): array => [
                 'code' => $row->code,
                 'client' => $row->client,
+                'destination' => $places[$row->id] ?? null,
+                'sede' => $row->sede,
                 'seller' => $row->seller,
                 'channel' => $row->channel,
                 'status' => self::STATUS[$row->status] ?? $row->status,
                 'status_key' => $row->status,
                 'travel_from' => $row->travel_from,
+                'travel_to' => $row->travel_to,
                 'pax' => (int) ($pax[$row->id] ?? 0),
                 'sales' => $row->status === 'cancelada' ? 0.0 : round((float) $row->sales, 2),
             ])->all(), null, '/reservas/{code}'),

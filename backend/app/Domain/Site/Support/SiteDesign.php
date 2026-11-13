@@ -95,12 +95,17 @@ final class SiteDesign
 
     public const MAX_PROMOS = 6;
 
+    public const ANDES_INK = '#2a1e00';
+
+    public const ANDES_MIN_CONTRAST = 4.5;
+
     private const LINK = '/^(\/[^\s]*|https:\/\/[^\s]+)$/u';
 
     public static function defaults(): array
     {
         return [
             'theme' => ['colors' => 'panel', 'brand' => '#b3263e', 'accent' => '#26357a', 'menu' => '#141a33', 'font' => 'moderna', 'corners' => 'suaves', 'style' => 'actual'],
+            'andes' => ['gold' => '#f2b33d', 'serif_titles' => true, 'mosaic' => true],
             'hero' => ['style' => 'noche', 'image_id' => null, 'overlay' => 45, 'align' => 'izquierda', 'show_search' => true, 'show_stats' => true],
             'sections' => array_map(fn (string $id): array => ['id' => $id, 'visible' => true], array_keys(self::SECTIONS)),
             'announcement' => ['mode' => 'cms', 'text' => '', 'link_label' => '', 'link_href' => ''],
@@ -134,6 +139,10 @@ final class SiteDesign
             'design.theme.font' => ['required', $in(self::FONTS)],
             'design.theme.corners' => ['required', $in(self::CORNERS)],
             'design.theme.style' => ['sometimes', 'required', $in(self::STYLES)],
+            'design.andes' => ['sometimes', 'array'],
+            'design.andes.gold' => ['sometimes', 'required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'design.andes.serif_titles' => ['sometimes', 'required', 'boolean'],
+            'design.andes.mosaic' => ['sometimes', 'required', 'boolean'],
             'design.hero' => ['required', 'array'],
             'design.hero.style' => ['required', $in(self::HERO_STYLES)],
             'design.hero.image_id' => ['nullable', 'uuid', 'required_if:design.hero.style,imagen'],
@@ -193,6 +202,7 @@ final class SiteDesign
     {
         return [
             'design.theme.*.regex' => 'Los colores deben tener el formato #RRGGBB.',
+            'design.andes.gold.regex' => 'El color de la acción principal debe tener el formato #RRGGBB.',
             'design.hero.image_id.required_if' => 'Sube o elige la imagen de la portada.',
             'design.hero.overlay.*' => 'El oscurecido de la imagen va de 0 a 85 %.',
             'design.announcement.text.required_if' => 'Escribe el texto del aviso.',
@@ -237,9 +247,32 @@ final class SiteDesign
         return $errors;
     }
 
+    public static function andesErrors(array $andes): array
+    {
+        $gold = (string) ($andes['gold'] ?? '');
+
+        if (preg_match('/^#[0-9a-fA-F]{6}$/', $gold) !== 1 || self::contrast($gold, self::ANDES_INK) >= self::ANDES_MIN_CONTRAST) {
+            return [];
+        }
+
+        return ['design.andes.gold' => ['Ese color es muy oscuro para el texto del botón. Elige un tono más claro para que se lea bien.']];
+    }
+
+    public static function contrast(string $first, string $second): float
+    {
+        $light = max(self::luminance($first), self::luminance($second));
+        $dark = min(self::luminance($first), self::luminance($second));
+
+        return round(($light + 0.05) / ($dark + 0.05), 2);
+    }
+
     public static function normalize(array $design): array
     {
         $defaults = self::defaults();
+        $andes = [...$defaults['andes'], ...array_intersect_key((array) ($design['andes'] ?? []), $defaults['andes'])];
+        $andes['gold'] = strtolower((string) $andes['gold']);
+        $andes['serif_titles'] = (bool) $andes['serif_titles'];
+        $andes['mosaic'] = (bool) $andes['mosaic'];
         $theme = [...$defaults['theme'], ...array_intersect_key((array) ($design['theme'] ?? []), $defaults['theme'])];
 
         foreach (['brand', 'accent', 'menu'] as $color) {
@@ -267,6 +300,7 @@ final class SiteDesign
 
         return [
             'theme' => $theme,
+            'andes' => $andes,
             'hero' => $hero,
             'sections' => self::ordered((array) ($design['sections'] ?? []), array_keys(self::SECTIONS)),
             'announcement' => $announcement,
@@ -327,7 +361,7 @@ final class SiteDesign
 
     public static function areas(array $before, array $after): array
     {
-        $labels = ['theme' => 'Marca y estilo', 'hero' => 'Portada', 'sections' => 'Secciones de la portada', 'announcement' => 'Aviso superior', 'promos' => 'Banners', 'nav' => 'Menú', 'footer' => 'Pie de página', 'seo' => 'Buscadores', 'texts' => 'Textos'];
+        $labels = ['theme' => 'Marca y estilo', 'andes' => 'Ajustes de Andes Clásico', 'hero' => 'Portada', 'sections' => 'Secciones de la portada', 'announcement' => 'Aviso superior', 'promos' => 'Banners', 'nav' => 'Menú', 'footer' => 'Pie de página', 'seo' => 'Buscadores', 'texts' => 'Textos'];
         $changed = [];
 
         foreach ($labels as $key => $label) {
@@ -357,7 +391,19 @@ final class SiteDesign
             'social' => $options(self::SOCIAL),
             'texts' => array_map(fn (string $key, int $max): array => ['key' => $key, 'max' => $max], array_keys(self::TEXTS), self::TEXTS),
             'max_promos' => self::MAX_PROMOS,
+            'andes' => ['ink' => self::ANDES_INK, 'min_contrast' => self::ANDES_MIN_CONTRAST, 'defaults' => self::defaults()['andes']],
         ];
+    }
+
+    private static function luminance(string $hex): float
+    {
+        $channels = array_map(function (string $pair): float {
+            $value = hexdec($pair) / 255;
+
+            return $value <= 0.03928 ? $value / 12.92 : (($value + 0.055) / 1.055) ** 2.4;
+        }, str_split(substr($hex, 1), 2));
+
+        return 0.2126 * $channels[0] + 0.7152 * $channels[1] + 0.0722 * $channels[2];
     }
 
     private static function ordered(array $items, array $ids): array

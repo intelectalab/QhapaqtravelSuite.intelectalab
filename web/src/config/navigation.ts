@@ -1,5 +1,5 @@
 import type { MotifId } from "@/lib/motifs";
-import { Award, BarChart3, BedDouble, Bell, Box, Brain, Briefcase, Building, Building2, CalendarCheck, CalendarClock, CalendarDays, CircleCheck, ClipboardList, Coins, CreditCard, Database, FileCheck2, FileText, Filter, Globe, Grid3x3, Handshake, Heart, KeyRound, Layers, Layers3, LayoutDashboard, LayoutTemplate, LifeBuoy, Link2, Luggage, Mail, Map, MapPinned, Megaphone, MessagesSquare, Palette, Percent, Plug, Radio, Receipt, ReceiptText, Route, Scale, Send, Settings, ShieldCheck, ShoppingCart, Smartphone, Star, Tag, Target, Ticket, TrendingUp, TriangleAlert, Truck, type LucideIcon, User, Users, Wallet } from "lucide-react";
+import { Award, BarChart3, BedDouble, Bell, BellRing, FileSpreadsheet, Gift, ScanLine, Box, Brain, Briefcase, Building, Building2, CalendarCheck, CalendarClock, CalendarDays, CircleCheck, ClipboardList, Coins, CreditCard, Database, FileCheck2, FileText, Filter, Globe, Grid3x3, Handshake, Heart, KeyRound, Layers, Layers3, LayoutDashboard, LayoutTemplate, LifeBuoy, Link2, Luggage, Mail, Map, MapPinned, Megaphone, MessageCircle, MessagesSquare, Network, Palette, Percent, Plug, Radio, Receipt, ReceiptText, RotateCcw, Route, Scale, Send, Settings, Share2, ShieldCheck, ShoppingCart, SlidersHorizontal, Smartphone, Sparkles, Star, Tag, Target, Ticket, TrendingUp, TriangleAlert, Truck, type LucideIcon, Upload, User, Users, Wallet } from "lucide-react";
 
 export interface Screen {
   href: string;
@@ -45,6 +45,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/crm/postventa", label: "Postventa y fidelización", icon: Heart },
       { href: "/crm/metas", label: "Metas comerciales", icon: Award },
       { href: "/crm/reclamaciones", label: "Libro de reclamaciones", icon: ClipboardList },
+      { href: "/crm/cuentas-corporativas", label: "Cuentas corporativas", icon: Building2 },
     ],
   },
   {
@@ -52,7 +53,10 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Marketing",
     icon: Megaphone,
     motif: "condor",
-    screens: [{ href: "/marketing/campanas", label: "Campañas y segmentos", icon: Send }],
+    screens: [
+      { href: "/marketing/campanas", label: "Campañas y segmentos", icon: Send },
+      { href: "/marketing/recuperacion", label: "Recuperación de ventas", icon: RotateCcw },
+    ],
   },
   {
     id: "catalogo",
@@ -68,6 +72,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/catalogo/servicios", label: "Servicios", icon: Layers },
       { href: "/catalogo/proveedores", label: "Proveedores", icon: Building2 },
       { href: "/catalogo/destinos", label: "Destinos", icon: Map },
+      { href: "/catalogo/importar", label: "Importar con IA", icon: Upload },
+      { href: "/catalogo/precios-dinamicos", label: "Precios dinámicos", icon: SlidersHorizontal },
     ],
   },
   {
@@ -78,6 +84,7 @@ export const NAV_GROUPS: NavGroup[] = [
     screens: [
       { href: "/cotizaciones", label: "Cotizaciones", icon: FileText, countKey: "quotes" },
       { href: "/reservas", label: "Reservas", icon: Luggage },
+      { href: "/asistente", label: "Asistente de ventas", icon: Sparkles },
     ],
   },
   {
@@ -93,6 +100,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/operaciones/vouchers", label: "Vouchers", icon: Ticket },
       { href: "/operaciones/documentos-viaje", label: "Documentos de viaje", icon: FileCheck2 },
       { href: "/operaciones/incidencias", label: "Incidencias", icon: TriangleAlert, countKey: "incidents" },
+      { href: "/operaciones/checkin", label: "Check-in con QR", icon: ScanLine },
     ],
   },
   {
@@ -109,7 +117,12 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/finanzas/cierre", label: "Cierre de periodo", icon: CalendarCheck },
       { href: "/finanzas/facturacion", label: "Facturación", icon: Receipt },
       { href: "/finanzas/tesoreria", label: "Tesorería (caja y bancos)", icon: Database },
+      { href: "/finanzas/estados-cuenta-corporativos", label: "Estados de cuenta corporativos", icon: ReceiptText },
       { href: "/finanzas/conciliacion", label: "Conciliación bancaria", icon: Scale },
+      { href: "/finanzas/links-de-pago", label: "Links de pago", icon: Link2 },
+      { href: "/finanzas/vales", label: "Vales de regalo", icon: Gift },
+      { href: "/finanzas/exportacion-contable", label: "Exportación contable", icon: FileSpreadsheet },
+      { href: "/finanzas/pasarelas", label: "Pasarelas y comisiones", icon: CreditCard },
     ],
   },
   {
@@ -121,11 +134,19 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/canales/b2b", label: "B2B agencias", icon: Handshake },
       { href: "/canales/ecommerce", label: "E-commerce", icon: ShoppingCart },
       { href: "/canales/cms", label: "CMS", icon: LayoutTemplate },
+      { href: "/canales/plantillas", label: "Plantillas del sitio", icon: Palette },
+      { href: "/canales/contenido-ia", label: "Contenido con IA", icon: Sparkles },
       { href: "/canales/integracion-web", label: "Integración web y CMS", icon: Link2 },
+      { href: "/canales/seguimiento", label: "Seguimiento y píxeles", icon: Target },
       { href: "/canales/resenas-propias", label: "Reseñas de clientes", icon: Award },
       { href: "/canales/resenas", label: "Reseñas externas", icon: Star },
       { href: "/canales/portal-cliente", label: "Portal del cliente", icon: Globe },
       { href: "/canales/portal-pasajero", label: "Portal del pasajero", icon: User },
+      { href: "/canales/ota", label: "OTAs", icon: Share2 },
+      { href: "/canales/marketplace", label: "Marketplace B2B", icon: Network },
+      { href: "/canales/seo", label: "Dominio y SEO", icon: SlidersHorizontal },
+      { href: "/canales/aventuras", label: "Blog de aventuras", icon: Heart },
+      { href: "/canales/vitrina", label: "Vitrina Rutas Libres", icon: Ticket },
     ],
   },
   {
@@ -143,7 +164,11 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Inteligencia",
     icon: Brain,
     motif: "rombo",
-    screens: [{ href: "/reportes", label: "Reportes y KPIs", icon: BarChart3 }],
+    screens: [
+      { href: "/reportes", label: "Reportes y KPIs", icon: BarChart3 },
+      { href: "/reportes/alertas", label: "Alertas de rentabilidad", icon: BellRing },
+      { href: "/reportes/visitas", label: "Visitas del sitio", icon: TrendingUp },
+    ],
   },
   {
     id: "admin",
@@ -158,6 +183,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/personalizacion", label: "Personalización", icon: Palette },
       { href: "/admin/reglas", label: "Reglas de reserva", icon: ShieldCheck },
       { href: "/admin/comunicaciones", label: "Mensajes al pasajero", icon: Mail },
+      { href: "/admin/whatsapp", label: "WhatsApp Business", icon: MessageCircle },
       { href: "/admin/monedas", label: "Monedas y tipo de cambio", icon: Coins },
       { href: "/admin/notificaciones", label: "Notificaciones", icon: Bell },
       { href: "/admin/suscripcion", label: "Suscripción y uso", icon: ReceiptText },

@@ -62,7 +62,7 @@ export default async function DestinationPage({ params }: PageProps<"/sitio/[age
               <Link href={siteHref(base, `/tours?destino=${destination.slug}`)} className="inline-flex h-10 flex-1 items-center justify-center rounded-control bg-white px-4 text-[13.5px] font-semibold text-menu transition hover:-translate-y-0.5">
                 {t.viewTours}
               </Link>
-              <Link href={siteHref(base, `/viajes-a-medida?destino=${destination.slug}`)} className="inline-flex h-10 flex-1 items-center justify-center rounded-control bg-brand px-4 text-[13.5px] font-semibold text-brand-fg transition hover:-translate-y-0.5 hover:brightness-110">
+              <Link href={siteHref(base, `/viajes-a-medida?destino=${destination.slug}`)} data-site-cta className="inline-flex h-10 flex-1 items-center justify-center rounded-control bg-brand px-4 text-[13.5px] font-semibold text-brand-fg transition hover:-translate-y-0.5 hover:brightness-110">
                 {site.common.tailor}
               </Link>
             </div>
@@ -111,7 +111,7 @@ export default async function DestinationPage({ params }: PageProps<"/sitio/[age
           ) : (
             <div className="flex flex-wrap items-center justify-between gap-4 rounded-card border border-dashed border-line p-6">
               <p className="text-[14px] text-fg-2">{t.noProducts}</p>
-              <Link href={siteHref(base, `/viajes-a-medida?destino=${destination.slug}`)} className="inline-flex h-10 items-center rounded-control bg-brand px-4 text-[13.5px] font-semibold text-brand-fg transition hover:-translate-y-0.5">
+              <Link href={siteHref(base, `/viajes-a-medida?destino=${destination.slug}`)} data-site-cta className="inline-flex h-10 items-center rounded-control bg-brand px-4 text-[13.5px] font-semibold text-brand-fg transition hover:-translate-y-0.5">
                 {t.design}
               </Link>
             </div>

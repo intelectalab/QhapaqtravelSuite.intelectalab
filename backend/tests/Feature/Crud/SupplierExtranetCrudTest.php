@@ -116,35 +116,29 @@ it('advierte la diferencia con el saldo y no acepta una segunda factura ni datos
     expect(Storage::disk((string) config('filesystems.default'))->allFiles())->toHaveCount(1);
 });
 
-it('el proveedor anula su factura registrada y puede volver a subirla, pero no una ya validada', function () {
+it('el proveedor no anula su factura: si Finanzas la observa o rechaza, vuelve a subirla corregida', function () {
     actingAsSeed('U17');
     $this->postJson('/api/v1/supplier/payables/CXP-00407/invoices', supCrudInvoice(), critical())->assertCreated();
 
-    $this->deleteJson('/api/v1/supplier/payables/CXP-00407/invoices')->assertOk();
-    expect(rowOf('fin_payables', 'CXP-00407')->supplier_doc_number)->toBeNull()
-        ->and(withinTenant(tenantA(), fn () => DB::table('supplier_invoices')->where('number', 'F001-4521')->value('deleted_at')))->not->toBeNull()
-        ->and(collect($this->getJson('/api/v1/supplier/payables')->json('data.rows'))->firstWhere('code', 'CXP-00407')['can_invoice'])->toBeTrue()
-        ->and(supCrudAudit(['entity' => 'Cuenta por pagar', 'entity_id' => 'CXP-00407', 'action' => 'anular_factura_proveedor']))->toBeTrue();
-    $this->deleteJson('/api/v1/supplier/payables/CXP-00407/invoices')->assertNotFound();
+    expect($this->deleteJson('/api/v1/supplier/payables/CXP-00407/invoices')->status())->toBe(405)
+        ->and(collect($this->getJson('/api/v1/supplier/payables')->json('data.rows'))->firstWhere('code', 'CXP-00407')['can_invoice'])->toBeFalse();
 
-    $this->postJson('/api/v1/supplier/payables/CXP-00407/invoices', supCrudInvoice(), critical())->assertCreated();
-    expect(rowOf('fin_payables', 'CXP-00407')->supplier_doc_number)->toBe('F001-4521');
-
-    withinTenant(tenantA(), fn () => DB::table('supplier_invoices')->where('number', 'F001-4521')->update(['status' => 'validada']));
-    expect($this->deleteJson('/api/v1/supplier/payables/CXP-00407/invoices'))->toBeApiError(409, 'SUP-BR-42');
-    expect(rowOf('fin_payables', 'CXP-00407')->supplier_doc_number)->toBe('F001-4521');
+    foreach (['observada', 'rechazada'] as $status) {
+        withinTenant(tenantA(), fn () => DB::table('supplier_invoices')->where('number', 'F001-4521')->update(['status' => $status]));
+        expect(collect($this->getJson('/api/v1/supplier/payables')->json('data.rows'))->firstWhere('code', 'CXP-00407')['can_invoice'])->toBeTrue();
+        $this->postJson('/api/v1/supplier/payables/CXP-00407/invoices', supCrudInvoice(), critical())->assertCreated();
+        expect(withinTenant(tenantA(), fn () => DB::table('supplier_invoices')->where('number', 'F001-4521')->value('status')))->toBe('registrada');
+    }
 });
 
-it('un proveedor no factura ni anula cuentas por pagar de otro proveedor', function () {
+it('un proveedor no factura cuentas por pagar de otro proveedor', function () {
     actingAsSeed('U17');
 
     expect($this->postJson('/api/v1/supplier/payables/CXP-00423/invoices', supCrudInvoice(['amount' => 1180.8]), critical()))->toBeApiError(404);
-    $this->deleteJson('/api/v1/supplier/payables/CXP-00423/invoices')->assertNotFound();
     expect(rowOf('fin_payables', 'CXP-00423')->supplier_doc_number)->toBeNull();
 
     actingAsSeed('U01');
     expect($this->postJson('/api/v1/supplier/payables/CXP-00407/invoices', supCrudInvoice(), critical()))->toBeApiError(403);
-    expect($this->deleteJson('/api/v1/supplier/payables/CXP-00407/invoices'))->toBeApiError(403);
 });
 
 it('el proveedor retira su solicitud de tarifa, pide una nueva y llega a aprobaciones de la agencia', function () {

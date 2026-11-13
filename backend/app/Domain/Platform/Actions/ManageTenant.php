@@ -12,6 +12,7 @@ use App\Domain\Platform\Support\DowngradeValidator;
 use App\Domain\Platform\Support\Entitlements;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\Shared\Tenancy\TenantDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -21,6 +22,8 @@ final class ManageTenant
     private const CONNECTION = 'pgsql_platform';
 
     private const FIELDS = ['commercial_name' => 'Nombre comercial', 'legal_name' => 'Razón social', 'ruc' => 'RUC', 'fiscal_address' => 'Domicilio fiscal', 'business_type' => 'Tipo de negocio', 'subdomain' => 'Subdominio'];
+
+    private const REGIONAL = ['country' => 'País', 'locale' => 'Idioma', 'base_currency' => 'Moneda base', 'alt_currency' => 'Moneda alterna', 'timezone' => 'Zona horaria'];
 
     private const CYCLES = ['monthly' => 'mensual', 'annual' => 'anual'];
 
@@ -127,7 +130,17 @@ final class ManageTenant
             'fiscal_address' => trim($data['fiscal_address']),
             'business_type' => $data['business_type'],
             'subdomain' => Str::lower(trim($data['subdomain'])),
+            ...collect(self::REGIONAL)->keys()->filter(fn (string $field): bool => ! empty($data[$field]))->mapWithKeys(fn (string $field): array => [$field => (string) $data[$field]])->all(),
         ];
+
+        if (($values['alt_currency'] ?? $tenant->alt_currency) === ($values['base_currency'] ?? $tenant->base_currency)) {
+            throw ApiException::unprocessable('TEN-BR-05', 'La moneda alterna debe ser distinta de la moneda base.');
+        }
+
+        if (isset($values['base_currency']) && $values['base_currency'] !== (string) $tenant->base_currency
+            && ($db->table('booking_reservations')->where('tenant_id', $tenant->getKey())->exists() || $db->table('fin_payments')->where('tenant_id', $tenant->getKey())->exists())) {
+            throw ApiException::conflict('CFG-BR-05', 'La moneda base no se puede cambiar porque la agencia ya tiene reservas o pagos registrados.');
+        }
 
         if ($db->table('tenants')->where('subdomain', $values['subdomain'])->where('id', '<>', $tenant->getKey())->exists()) {
             throw ApiException::unprocessable('TEN-BR-01', 'El subdominio ya está en uso por otra agencia.');
@@ -137,15 +150,53 @@ final class ManageTenant
             throw ApiException::unprocessable('TEN-BR-02', 'Ya existe una agencia con ese RUC.');
         }
 
-        $changed = array_filter(self::FIELDS, fn (string $label, string $field) => (string) $values[$field] !== (string) $tenant->getAttribute($field), ARRAY_FILTER_USE_BOTH);
+        $changed = array_filter([...self::FIELDS, ...self::REGIONAL], fn (string $label, string $field) => array_key_exists($field, $values) && (string) $values[$field] !== (string) $tenant->getAttribute($field), ARRAY_FILTER_USE_BOTH);
 
         if ($changed === []) {
             return;
         }
 
         $db->transaction(function () use ($tenant, $values, $changed, $actor): void {
+            $this->syncSettings((string) $tenant->getKey(), array_intersect_key($values, $changed));
             $tenant->forceFill([...$values, 'updated_by' => $actor->getKey()])->save();
             $this->session->log('Tenant', $tenant->code, 'editar', null, implode(', ', $changed), $actor);
+        });
+    }
+
+    private function syncSettings(string $tenantId, array $values): void
+    {
+        $sections = array_filter([
+            'general' => array_filter(['lang' => $values['locale'] ?? null]),
+            'currency' => array_filter(['base_currency' => $values['base_currency'] ?? null, 'alt_currency' => $values['alt_currency'] ?? null]),
+        ]);
+
+        if ($sections === []) {
+            return;
+        }
+
+        $previous = $this->context->id();
+
+        try {
+            $this->runInTenant($tenantId, $sections);
+        } finally {
+            $previous === null ? $this->context->clear() : $this->context->set($previous);
+        }
+    }
+
+    private function runInTenant(string $tenantId, array $sections): void
+    {
+        app(TenantDatabase::class)->run($tenantId, function () use ($sections, $tenantId): void {
+            foreach ($sections as $section => $patch) {
+                $row = DB::table('sys_settings')->where('tenant_id', $tenantId)->where('section', $section)->first(['values']);
+
+                if ($row !== null) {
+                    DB::table('sys_settings')->where('tenant_id', $tenantId)->where('section', $section)->update([
+                        'values' => json_encode([...(array) json_decode((string) $row->values, true), ...$patch], JSON_UNESCAPED_UNICODE),
+                        'updated_at' => now(),
+                        'lock_version' => DB::raw('lock_version + 1'),
+                    ]);
+                }
+            }
         });
     }
 }

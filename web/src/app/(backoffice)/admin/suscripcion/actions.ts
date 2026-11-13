@@ -1,7 +1,7 @@
 "use server";
 
 import type { AdminActionState, PlanChangePreview } from "@/lib/admin";
-import { fields, sendAdmin, text } from "@/lib/server/admin";
+import { fields, list, sendAdmin, text } from "@/lib/server/admin";
 import { apiFetch } from "@/lib/server/api";
 
 const PATH = "/admin/suscripcion";
@@ -60,7 +60,15 @@ export async function redeemCoupon(_state: AdminActionState, form: FormData): Pr
 }
 
 export async function payInvoice(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
-  return sendAdmin(`/billing/invoices/${text(form, "number")}/pay`, "POST", {}, PATH, "No pudimos cobrar la factura.");
+  const numbers = list(form, "number");
+  if (numbers.length === 0) return { message: "Elige la factura que quieres pagar.", done: false };
+  let paid = 0;
+  for (const number of numbers) {
+    const result = await sendAdmin(`/billing/invoices/${number}/pay`, "POST", {}, PATH, "No pudimos cobrar la factura.");
+    if (!result.done) return paid === 0 ? result : { ...result, message: `Pagamos ${paid} de ${numbers.length} facturas. ${number}: ${result.message ?? "no se pudo cobrar."}` };
+    paid += 1;
+  }
+  return { message: null, done: true };
 }
 
 export async function openCardSession(): Promise<{ session: string | null; message: string | null }> {

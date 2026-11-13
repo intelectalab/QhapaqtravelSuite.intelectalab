@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, RefreshCw, Save, X } from "lucide-react";
+import { Braces, Code2, Link2, Loader2, RefreshCw, Save, X } from "lucide-react";
 import { useState, useTransition, type KeyboardEvent, type ReactNode } from "react";
 import { exportReviewFeed, saveReviewSettings } from "@/app/(backoffice)/canales/resenas-propias/actions";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
@@ -12,6 +12,8 @@ import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import type { OwnReviewSettings, OwnReviewSettingsValues } from "@/lib/channels";
 import { formatDateTime } from "@/lib/format";
+import { CodeSnippet } from "./ChannelUi";
+import { InvitationPreview } from "./InvitationPreview";
 import { ReviewToolbarAction } from "./ReviewToolbarAction";
 
 function Block({ title, info, children }: { title: string; info?: string; children: ReactNode }) {
@@ -23,6 +25,34 @@ function Block({ title, info, children }: { title: string; info?: string; childr
       </h3>
       {children}
     </section>
+  );
+}
+
+function FeedExport({ exported }: { exported: OwnReviewSettings["export"] }) {
+  if (!exported) return <p className="rounded-tile border border-dashed border-line px-4 py-3 text-[13px] text-fg-3">Activa la integración web de la agencia para obtener la clave pública y el código de inserción.</p>;
+  const sameHost = new URL(exported.cdn).origin === new URL(exported.host).origin;
+  const embed = `<script type="module" src="${exported.cdn}/kipucontrol-widget.js"></script>\n<kipucontrol-booking key="${exported.public_key}" product="${exported.product?.code ?? ""}" reviews="1"${sameHost ? "" : ` host="${exported.host}"`}></kipucontrol-booking>`;
+  const jsonLd = exported.json_ld ? `<script type="application/ld+json">\n${JSON.stringify(exported.json_ld, null, 2)}\n</script>` : null;
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-1.5">
+        <span className="flex items-center gap-1.5 text-[13px] font-semibold text-fg"><Code2 size={15} className="text-fg-3" /> Código de inserción</span>
+        <CodeSnippet code={embed} />
+        <span className="text-[12px] text-fg-3">Muestra el widget de reserva{exported.product ? ` de ${exported.product.name}` : ""} con sus reseñas verificadas. Cambia el producto por cualquiera publicado en la tienda.</span>
+      </div>
+      <div className="grid gap-1.5">
+        <span className="flex items-center gap-1.5 text-[13px] font-semibold text-fg"><Link2 size={15} className="text-fg-3" /> URL del feed JSON</span>
+        <CodeSnippet code={exported.feed_url} />
+        <span className="text-[12px] text-fg-3">Envía la clave pública en la cabecera <span className="font-mono">{exported.key_header}</span>. Solo trae reseñas publicadas, con el promedio y la distribución.</span>
+      </div>
+      {jsonLd && (
+        <div className="grid gap-1.5">
+          <span className="flex items-center gap-1.5 text-[13px] font-semibold text-fg"><Braces size={15} className="text-fg-3" /> Datos estructurados (JSON-LD){exported.product ? ` de ${exported.product.name}` : ""}</span>
+          <CodeSnippet code={jsonLd} />
+          <span className="text-[12px] text-fg-3">El sitio de la agencia ya los publica en cada ficha. Úsalos si muestras el producto en otra web.</span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -57,6 +87,7 @@ export function OwnReviewSettingsForm({ settings, canEdit }: { settings: OwnRevi
       <Block title="Feed del widget" info="Regenera las reseñas publicadas que muestra el widget en webs de terceros. Respeta «Mostrar reseñas en el widget».">
         <p className="text-[13px] text-fg-2">{settings.values.last_export ? `Última exportación: ${formatDateTime(settings.values.last_export.at)} · ${settings.values.last_export.by} · ${settings.values.last_export.count} reseñas.` : "Aún no se exporta el feed."}</p>
         {canEdit && <ReviewToolbarAction label="Exportar feed ahora" icon={<RefreshCw size={16} />} hint="Vuelve a generar el feed con las reseñas publicadas." run={exportReviewFeed} />}
+        <FeedExport exported={settings.export} />
       </Block>
 
       <Block title="Filtros de contenido" info="Las palabras de la lista y los datos personales (correo, teléfono, documento) dejan la reseña pendiente con el motivo.">
@@ -100,6 +131,10 @@ export function OwnReviewSettingsForm({ settings, canEdit }: { settings: OwnRevi
         </div>
         <TextField label="Asunto" value={values.invite.subject} disabled={!canEdit} onChange={(event) => setInvite("subject", event.target.value)} />
         <TextArea label="Mensaje" rows={4} value={values.invite.body} disabled={!canEdit} onChange={(event) => setInvite("body", event.target.value)} />
+        <div>
+          <span className="mb-1.5 block text-[13px] font-semibold text-fg">Vista previa</span>
+          <InvitationPreview invite={values.invite} sample={settings.preview} />
+        </div>
       </Block>
 
       <div className="flex flex-wrap items-center gap-3 px-5 py-4">

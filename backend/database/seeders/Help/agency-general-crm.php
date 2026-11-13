@@ -15,6 +15,7 @@ return [
             ['title' => 'Saber de dónde sale cada número', 'text' => 'Pasa el cursor sobre la (i) de cada indicador para ver qué registros suma y en qué periodo.'],
             ['title' => 'Seguir el embudo y los próximos servicios', 'text' => 'El embudo del mes va de leads a calificados, con cotización, aprobadas y reservas. «Próximos 7 días» lista los servicios de las órdenes operativas.'],
             ['title' => 'Ir al detalle', 'text' => 'Cada tarjeta enlaza al módulo donde se gestiona. Solo ves los enlaces de las pantallas que tu rol puede abrir.'],
+            ['title' => 'Resolver sin salir del panel', 'text' => 'En el panel de ventas, «Hecha» completa una actividad de hoy con su resultado y «Tomar» te asigna un lead de la bolsa común. Si tienes actividades para hoy o vencidas, un aviso arriba te lleva a la agenda; «Accesos rápidos» abre un lead o una cotización nuevos, tus clientes y postventa. Gerencia aprueba desde el panel las cotizaciones fuera de política.'],
         ],
         'faqs' => [
             ['question' => '¿Por qué mis cifras no coinciden con las de mi gerente?', 'answer' => 'Si tu rol trabaja solo su cartera, como Ventas, el panel calcula ventas, cobros, reservas y pendientes solo con los registros que tienes asignados. Gerencia y la administración ven toda la agencia.'],
@@ -36,6 +37,7 @@ return [
             ['title' => 'Leer el recorrido', 'text' => 'Cada tarjeta es una etapa: lead, oportunidad, cotización, reserva, operación y cobro. Muestra cuántos registros están en curso, el monto cuando aplica y sus datos clave. Si algo requiere atención, la tarjeta lo avisa en amarillo.'],
             ['title' => 'Ver las tasas de conversión', 'text' => 'Arriba tienes tres indicadores: leads que pasan a oportunidad, oportunidades ganadas sobre las cerradas y cotizaciones convertidas en reserva. Entre las tarjetas se repite la tasa de paso, calculada con los registros reales.'],
             ['title' => 'Ir al módulo de una etapa', 'text' => 'Haz clic en cualquier tarjeta o en «Abrir módulo» para entrar a la pantalla de esa etapa y trabajar sus registros.'],
+            ['title' => 'Ver tu parte del proceso', 'text' => '«Recorrido completo y tu rol» resalta las etapas a cargo de tu rol; las que no puedes abrir aparecen con candado. Debajo están las máquinas de estado, los dominios con sus procesos, los casos de punta a punta y qué se entregan los equipos entre sí.'],
         ],
         'faqs' => [
             ['question' => '¿Por qué dice «El recorrido de tus ventas»?', 'answer' => 'Tu rol trabaja solo su cartera, así que el mapa se calcula con tus propios leads, oportunidades y reservas. Gerencia y la administración ven el recorrido completo de la agencia.'],
@@ -56,7 +58,8 @@ return [
             ['title' => 'Decidir una solicitud', 'text' => 'En la pestaña «Para mí» abre la solicitud con el icono de ver. Revisa monto, justificación y niveles, escribe un comentario si hace falta y pulsa «Aprobar» o «Rechazar». Algunas traen su propio botón, como «Validar factura» u «Observar». El efecto se aplica en el módulo de origen.'],
             ['title' => 'Pedir una aprobación', 'text' => 'Con «Nueva solicitud» registras excepciones que no nacen en otro módulo: crédito B2B, reembolso u otra excepción. Indica título, monto, moneda, una referencia opcional y la justificación, y pulsa «Enviar a aprobación».'],
             ['title' => 'Editar o retirar lo que pediste', 'text' => 'En «Enviadas por mí» puedes editar una solicitud genérica mientras sigue pendiente, o retirarla con el icono «Retirar». Al retirarla queda anulada en el historial; no se borra.'],
-            ['title' => 'Filtrar por urgencia', 'text' => 'Las tarjetas «Vencidas», «Por vencer» y «Puedo decidir» filtran la tabla al instante. También puedes buscar por código o persona, filtrar por tipo y estado, y ordenar por plazo, fecha de solicitud o monto en soles.'],
+            ['title' => 'Filtrar por urgencia', 'text' => 'Las tarjetas «Vencidas», «Por vencer» y «Puedo decidir» filtran la tabla al instante. También puedes buscar por código o persona, filtrar por tipo, estado y plazo (en plazo, por vencer, vencida o en pausa), y ordenar por plazo, fecha de solicitud o monto en soles. Bajo el monto ves el impacto de cada solicitud.'],
+            ['title' => 'Abrir una solicitud y revisar el historial', 'text' => 'Pulsa el título para abrir la página de la solicitud, con sus niveles y su trazabilidad; puedes compartir ese enlace. En «Historial» están las últimas decisiones y puedes exportar la tabla en CSV.'],
             ['title' => 'Configurar las reglas', 'text' => 'En la pestaña «Reglas», la administración define por tipo y nivel qué permiso aprueba, desde qué monto, el plazo en horas y si se prohíbe que apruebe quien la pidió. Cada tipo necesita al menos una regla activa de nivel 1.'],
         ],
         'faqs' => [
@@ -76,8 +79,9 @@ return [
         'title' => 'Bandeja omnicanal',
         'summary' => 'Atiende en un solo lugar las conversaciones de WhatsApp, correo, chat web, formularios y tickets del portal, con la ficha del cliente al lado.',
         'steps' => [
-            ['title' => 'Encontrar una conversación', 'text' => 'Usa el buscador por contacto o asunto y los filtros «Activas», «Mías», «Sin asignar» y «Resueltas». Al elegir una conversación, a la derecha ves el cliente, el lead y las reservas y cotizaciones vinculadas.'],
-            ['title' => 'Responder al cliente', 'text' => 'Escribe en «Respuesta» o elige una «Plantilla», que completa el nombre, el asesor y los códigos de cotización o reserva. Pulsa «Enviar», o «Enviar y resolver» si con eso queda atendida. Responder una conversación sin responsable te la asigna.'],
+            ['title' => 'Encontrar una conversación', 'text' => 'Usa el buscador por contacto o asunto, los filtros «Activas», «Mías», «Sin asignar» y «Resueltas», los íconos de canal y «Esperando al cliente». Cada conversación muestra cuánto queda para responder. Al abrirla se marca como leída y a la derecha ves el contacto, sus etiquetas, si está en viaje, el ticket del portal y lo vinculado.'],
+            ['title' => 'Responder al cliente', 'text' => 'Escribe en «Respuesta» o elige una «Plantilla», que completa el nombre, el asesor, la empresa, el teléfono de emergencia y los códigos de cotización o reserva. Pulsa «Enviar», o «Enviar y resolver» si con eso queda atendida. Responder una conversación sin responsable te la asigna y queda anotado en el hilo. Los adjuntos se abren o se descargan desde el mensaje.'],
+            ['title' => 'Revisar la auditoría', 'text' => '«Auditoría», en la cabecera del hilo, muestra quién respondió, asignó, vinculó o cambió el estado, con fecha e IP.'],
             ['title' => 'Dejar una nota interna', 'text' => 'Activa «Nota interna» para escribir algo que solo vea el equipo y pulsa «Guardar nota». Las notas internas nunca llegan al cliente.'],
             ['title' => 'Tomar, asignar y clasificar', 'text' => 'Con «Tomar» te quedas con la conversación; si supervisas, «Asignar» la pasa a otra persona. «Clasificar» cambia la prioridad y las etiquetas, separadas por comas y hasta 8.'],
             ['title' => 'Resolver o reabrir', 'text' => 'Pulsa «Resolver» cuando el caso esté atendido. Si hace falta retomarlo, usa «Reabrir».'],
@@ -147,6 +151,7 @@ return [
             ['title' => 'Resolver duplicados', 'text' => 'La ficha lista las coincidencias por correo o teléfono. «Fusionar aquí» trae los datos vacíos y las actividades del otro lead; «Es duplicado» lo saca de la cola. La fusión no se deshace.'],
             ['title' => 'Seguir sus actividades e historial', 'text' => 'En la ficha agenda, completa o reasigna actividades y revisa el historial de cambios.'],
             ['title' => 'Descartar o reabrir', 'text' => '«Descartar» pide el motivo. Un lead descartado o duplicado vuelve a Nuevo con «Reabrir».'],
+            ['title' => 'Revisar la cola y exportarla', 'text' => 'Las tarjetas Nuevos hoy, Sin contactar, Contactados, Calificados y Convertidos filtran la lista, que muestra el correo y el teléfono de cada lead. Los gráficos resumen los leads por fuente y por estado. «Exportar» descarga lo que ves en la tabla.'],
         ],
         'faqs' => [
             ['question' => '¿Por qué no veo todos los leads?', 'answer' => 'Si tu rol trabaja solo su cartera, ves tus leads y los que aún no tienen responsable. Gerencia y la administración ven todos.'],
@@ -167,7 +172,7 @@ return [
         'steps' => [
             ['title' => 'Crear una oportunidad', 'text' => 'Pulsa «Nueva oportunidad», elige el cliente, la etapa inicial, el monto estimado y el cierre esperado.'],
             ['title' => 'Elegir la vista', 'text' => '«Kanban» muestra las etapas en columnas; «Tabla» permite filtrar por situación, etapa y responsable y exportar a CSV.'],
-            ['title' => 'Mover de etapa', 'text' => 'En el kanban arrastra la tarjeta a otra columna o usa su menú «Mover a». La probabilidad se ajusta sola.'],
+            ['title' => 'Mover de etapa', 'text' => 'En el kanban arrastra la tarjeta a otra columna o usa su menú «Mover a». En la ficha, los botones «Mover a» bajo el avance la pasan directo a otra etapa. La probabilidad se ajusta sola.'],
             ['title' => 'Trabajar desde la ficha', 'text' => 'La ficha reúne el cliente, las cotizaciones con su total, las actividades y el historial. «Crear cotización» abre el asistente con la oportunidad ya cargada.'],
             ['title' => 'Ganar, perder o reabrir', 'text' => '«Ganar» la cierra al 100 %; «Perder» pide el motivo. «Reabrir» la devuelve al embudo.'],
             ['title' => 'Reasignar', 'text' => 'Gerencia usa «Reasignar» para cambiar el responsable, con una nota opcional.'],
@@ -190,7 +195,7 @@ return [
         'summary' => 'Tu agenda de llamadas, correos, WhatsApp, reuniones y tareas, ordenada en vencidas, hoy, próximos 7 días, más adelante y completadas.',
         'steps' => [
             ['title' => 'Agendar una actividad', 'text' => 'Pulsa «Nueva actividad», elige el tipo, el asunto, la fecha y hora y, si quieres, el lead, la oportunidad, el cliente o la cotización.'],
-            ['title' => 'Ver la lista o la semana', 'text' => '«Lista» agrupa en vencidas, hoy, próximos 7 días y completadas. «Semana» muestra un calendario de siete días con flechas para cambiar de semana.'],
+            ['title' => 'Ver la lista o la semana', 'text' => '«Lista» agrupa en vencidas, hoy, próximos 7 días y completadas. «Semana» muestra un calendario de siete días con flechas para cambiar de semana. Filtra por tipo y, si supervisas, por asesor: el asesor elegido se mantiene durante tu sesión también en Postventa.'],
             ['title' => 'Completar o reprogramar', 'text' => '«Completar» pide el resultado y permite agendar la siguiente. «Reprogramar» cambia la fecha y guarda el motivo.'],
             ['title' => 'Abrir la ficha', 'text' => 'Pulsa el asunto para ver el detalle, de dónde viene y su auditoría.'],
             ['title' => 'Reasignar, editar o eliminar', 'text' => 'Gerencia usa «Reasignar» para pasarla a otra persona. «Eliminar» la quita de la agenda y queda en la auditoría.'],
@@ -212,9 +217,9 @@ return [
         'title' => 'Clientes',
         'summary' => 'Cartera de personas y empresas que compran viajes, con su total comprado, satisfacción, viajes, cotizaciones y acceso al portal.',
         'steps' => [
-            ['title' => 'Registrar un cliente', 'text' => 'Pulsa «Nuevo cliente», elige Persona o Empresa y completa documento, contacto, segmento y etiquetas. Revisamos que el documento sea válido y que no exista ya. Si se parece a otro por correo o teléfono y es otra persona, pulsa «Guardar igualmente».'],
+            ['title' => 'Registrar un cliente', 'text' => 'Pulsa «Nuevo cliente», elige Persona o Empresa y completa documento, contacto, segmento y etiquetas. Revisamos que el documento sea válido y, mientras escribes, te avisamos si el documento ya está registrado o si otro cliente usa el mismo correo o teléfono. Si es otra persona, pulsa «Guardar igualmente».'],
             ['title' => 'Buscar y filtrar', 'text' => 'Las tarjetas «De viaje ahora», «VIP y grupos», «Empresas» y «Aún sin viajar» filtran la lista. También puedes filtrar por tipo, segmento, asesor y país, y ordenar por nombre, total comprado, fecha de viaje o antigüedad.'],
-            ['title' => 'Abrir la ficha', 'text' => 'Haz clic en el nombre o en el icono de ver. La ficha se ordena en secciones con el menú de la izquierda (en el celular, con el selector). «Resumen» muestra sus viajes, sus oportunidades abiertas, las próximas actividades, la satisfacción y los destinos visitados. Luego vienen «Contactos y datos», «Leads», «Oportunidades», «Cotizaciones», «Reservas», «Pasajeros», «Pagos», «Documentos», «Comunicaciones», «Actividades» e «Historial».'],
+            ['title' => 'Abrir la ficha', 'text' => 'Haz clic en el nombre o en el icono de ver. La ficha se ordena en secciones con el menú de la izquierda (en el celular, con el selector). «Resumen» muestra sus viajes, sus oportunidades abiertas, las próximas actividades, la satisfacción y los destinos visitados por departamento, que suman sus reservas y sus oportunidades ganadas. Luego vienen «Contactos y datos», «Leads», «Oportunidades», «Cotizaciones», «Reservas», «Pasajeros», «Pagos», «Documentos», «Comunicaciones», «Actividades» e «Historial».'],
             ['title' => 'Contactos de una empresa', 'text' => 'En «Contactos y datos», «Agregar contacto» registra a las personas con las que coordinas: nombre, cargo, correo y teléfono. El primero queda como principal. Desde cada fila puedes hacer principal a otro, editarlo o quitarlo.'],
             ['title' => 'Escribirle al cliente', 'text' => '«Escribirle» envía un correo desde la cuenta de la agencia. Puedes cambiar el destinatario por el de un contacto. El envío queda en «Comunicaciones» y en la auditoría.'],
             ['title' => 'Darle acceso al portal', 'text' => 'En la ficha usa «Invitar al portal» para enviarle un enlace que vence en 72 horas. Si no le llegó, pulsa «Reenviar invitación»; para quitarle el ingreso, «Revocar acceso».'],
@@ -240,9 +245,10 @@ return [
         'summary' => 'Cierra cada viaje con una encuesta NPS y da seguimiento a los reclamos, quejas, sugerencias y felicitaciones de tus clientes.',
         'steps' => [
             ['title' => 'Registrar una encuesta', 'text' => 'En «Viajes recientes» pulsa «Encuestar» junto al viaje, o usa «Registrar encuesta» y elige el cliente. Marca el puntaje de 0 a 10, el canal y el comentario del cliente. Cada reserva admite una sola encuesta.'],
-            ['title' => 'Registrar un caso', 'text' => 'Pulsa «Registrar caso» y elige el cliente, el tipo, la prioridad, el asunto y la descripción. Puedes vincularlo a una reserva del mismo cliente que no esté cancelada.'],
+            ['title' => 'Registrar un caso', 'text' => 'Pulsa «Registrar caso» y elige el cliente, el tipo, la prioridad, el asunto y la descripción. Puedes vincularlo a una reserva del mismo cliente, que eliges de la lista.'],
+            ['title' => 'Programar la llamada de postventa', 'text' => '«Llamar», junto a cada viaje, agenda una actividad de postventa con el cliente para hoy a las 17:00; puedes cambiar la fecha y el responsable antes de guardar. «Exportar» descarga la tabla de casos.'],
             ['title' => 'Dar seguimiento al caso', 'text' => 'Ábrelo con «Ver caso» y avanza con «Iniciar atención», «Registrar seguimiento» y «Resolver», que pide cómo se resolvió. Después usa «Cerrar caso» o, si hace falta, «Reabrir».'],
-            ['title' => 'Revisar la satisfacción', 'text' => 'Las tarjetas y gráficos muestran el NPS de los últimos 12 meses, el puntaje promedio, la distribución de puntajes y el NPS por mes. En «Encuestas» filtra por promotores o detractores.'],
+            ['title' => 'Revisar la satisfacción', 'text' => 'Las tarjetas y gráficos muestran el NPS de los últimos 12 meses, el puntaje promedio, la dona de promotores, pasivos y detractores, la distribución de puntajes y el NPS por mes. Si supervisas, el filtro de asesor acota los viajes y los casos. En «Encuestas» filtra por promotores o detractores.'],
         ],
         'faqs' => [
             ['question' => '¿Cómo se calcula el NPS?', 'answer' => 'Es el porcentaje de promotores (9 y 10) menos el de detractores (0 a 6). Los puntajes 7 y 8 son pasivos: no suman ni restan.'],
@@ -287,8 +293,9 @@ return [
             ['title' => 'Registrar una hoja presencial', 'text' => 'Pulsa «Registrar hoja», elige la sede y el tipo, y completa los datos del consumidor, el bien contratado, el detalle y su pedido. Puedes vincularla a un cliente y a una reserva. Las hojas del sitio web y de los portales llegan solas.'],
             ['title' => 'Pasar a evaluación', 'text' => 'Abre la hoja con «Ver hoja» y pulsa «Pasar a evaluación» para indicar que ya la estás revisando.'],
             ['title' => 'Responder', 'text' => 'Con la hoja en evaluación, elige la decisión (procedente, en parte o no procedente), escribe la respuesta al consumidor y las acciones tomadas, y pulsa «Enviar respuesta». Se envía al correo que dejó el consumidor.'],
-            ['title' => 'Cerrar la hoja', 'text' => 'Una vez respondida, usa «Cerrar» y escribe el motivo del cierre. La hoja se conserva en el libro y solo cambia a cerrada.'],
-            ['title' => 'Vigilar los plazos', 'text' => 'Filtra con «Sin respuesta», «Por vencer» y «Vencidas», o por tipo, sede y estado, y ordena por recepción o vencimiento. Los gráficos muestran las hojas por tipo y por sede.'],
+            ['title' => 'Cerrar la hoja', 'text' => 'Una vez respondida, usa «Cerrar» y elige el motivo: consumidor conforme, sin respuesta en 5 días hábiles, no conforme con aviso de INDECOPI o solución aplicada. Puedes sumar una observación. La hoja se conserva en el libro y solo cambia a cerrada.'],
+            ['title' => 'Ver la hoja completa', 'text' => 'Pulsa el detalle de una hoja para abrir su página: muestra el avance de estados, el plazo, el consumidor, los vínculos, la respuesta, el historial y la auditoría. Desde ahí agregas una «Nota interna», que no llega al consumidor, o usas «Vincular» para cambiar el cliente y la reserva.'],
+            ['title' => 'Vigilar los plazos', 'text' => 'Filtra con «Sin respuesta», «Por vencer» y «Vencidas», o por tipo, sede, estado y plazo, y ordena por recepción o vencimiento. «Alertar vencimientos» avisa en el momento al responsable y a la gerencia. En Reportes ves el cumplimiento del plazo, las vencidas sin respuesta y exportas la relación anual, que queda registrada.'],
         ],
         'faqs' => [
             ['question' => '¿Qué diferencia hay entre reclamo y queja?', 'answer' => 'El reclamo es una disconformidad con el servicio contratado; la queja, un malestar con la atención recibida.'],

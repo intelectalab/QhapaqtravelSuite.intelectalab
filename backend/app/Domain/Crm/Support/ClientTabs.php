@@ -52,6 +52,23 @@ final class ClientTabs
         };
     }
 
+    private function visitedDestinations(string $clientId): Collection
+    {
+        $reserved = DB::table('booking_reservation_services as s')->join('booking_reservations as r', 'r.id', '=', 's.reservation_id')
+            ->join('catalog_products as p', 'p.id', '=', 's.product_id')->join('catalog_destinations as d', 'd.id', '=', 'p.primary_destination_id')
+            ->where('r.client_id', $clientId)->whereNull('r.deleted_at')->whereNotIn('r.status', ['borrador', 'cancelada'])
+            ->selectRaw("coalesce(nullif(split_part(d.path, ' / ', 3), ''), d.name) as place, count(distinct r.id) as trips")
+            ->groupByRaw("coalesce(nullif(split_part(d.path, ' / ', 3), ''), d.name)")->get()
+            ->mapWithKeys(fn (object $row): array => [(string) $row->place => (int) $row->trips]);
+        $won = DB::table('crm_opportunities')->where('client_id', $clientId)->whereNull('deleted_at')->where('stage', 'ganada')->whereNotNull('destination_label')->pluck('destination_label')
+            ->flatMap(fn (string $label): array => collect(explode('/', $label))->map(fn (string $place): string => trim($place))->filter(fn (string $place): bool => $place !== '' && $place !== 'Varios')->unique()->values()->all())
+            ->countBy();
+
+        return $reserved->keys()->concat($won->keys())->unique()
+            ->map(fn (string $place): array => ['name' => $place, 'trips' => (int) ($reserved[$place] ?? 0), 'won' => (int) ($won[$place] ?? 0)])
+            ->sortBy([['trips', 'desc'], ['won', 'desc'], ['name', 'asc']])->values();
+    }
+
     public function contacts(string $clientId): Collection
     {
         return DB::table('crm_client_contacts')->where('client_id', $clientId)->orderByDesc('is_primary')->orderBy('name')->get(['id', 'name', 'role', 'email', 'phone', 'is_primary']);
@@ -60,11 +77,7 @@ final class ClientTabs
     public function summary(object $client): array
     {
         $surveys = DB::table('crm_surveys')->where('client_id', $client->id)->whereNotNull('score')->orderByDesc('responded_at')->get(['score', 'comment', 'responded_at']);
-        $destinations = DB::table('booking_reservation_services as s')->join('booking_reservations as r', 'r.id', '=', 's.reservation_id')
-            ->join('catalog_products as p', 'p.id', '=', 's.product_id')->join('catalog_destinations as d', 'd.id', '=', 'p.primary_destination_id')
-            ->where('r.client_id', $client->id)->whereNull('r.deleted_at')->whereNotIn('r.status', ['borrador', 'cancelada'])
-            ->selectRaw('d.name, count(distinct r.id) as trips')->groupBy('d.name')->orderByDesc('trips')->orderBy('d.name')->get()
-            ->map(fn (object $row): array => ['name' => (string) $row->name, 'trips' => (int) $row->trips]);
+        $destinations = $this->visitedDestinations((string) $client->id);
 
         return [
             'open_opportunities' => DB::table('crm_opportunities')->where('client_id', $client->id)->whereNull('deleted_at')->whereNotIn('stage', ['ganada', 'perdida'])->when($this->only, fn ($query) => $query->where('owner_id', $this->only))

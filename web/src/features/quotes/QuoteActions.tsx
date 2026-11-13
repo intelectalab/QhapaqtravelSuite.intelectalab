@@ -8,6 +8,7 @@ import { RowIcon } from "@/components/table/RowActions";
 import { Button } from "@/components/ui/Button";
 import { ChipToggleGroup } from "@/components/ui/ChipToggleGroup";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
+import { LockedButton } from "@/components/ui/ConsultMode";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
@@ -196,6 +197,20 @@ export function QuoteLifecycleActions({ quote }: { quote: QuoteDetail }) {
     );
   }
 
+  if ((status === "borrador" || live) && !can.send) {
+    actions.push(
+      <LockedButton key="send-locked" reason="Requiere el permiso quotes.send" testId="quote-send-locked">
+        {status === "borrador" ? "Enviar al cliente" : "Reenviar"}
+      </LockedButton>,
+    );
+  } else if (status === "borrador" && blockedInternal && can.send) {
+    actions.push(
+      <LockedButton key="send-blocked" reason={`Bloqueada: requiere la aprobación de Gerencia${quote.margin_pct !== null ? ` (margen ${quote.margin_pct} %)` : ""}`} testId="quote-send-blocked">
+        Enviar al cliente
+      </LockedButton>,
+    );
+  }
+
   if (live && can.send) {
     actions.push(
       <StepPanel key="negotiate" code={code} lockVersion={quote.lock_version} step="negotiate" label="Registrar negociación" icon={<MessagesSquare size={16} />} compact title="Registrar negociación" description="Anota lo que pidió el cliente. La oportunidad pasa a negociación." submitLabel="Registrar">
@@ -229,6 +244,14 @@ export function QuoteLifecycleActions({ quote }: { quote: QuoteDetail }) {
       <StepPanel key="approve" code={code} lockVersion={quote.lock_version} step="approve" label="Cliente aprobó" icon={<ThumbsUp size={16} />} variant="primary" title="Registrar aprobación del cliente" description={`Versión ${quote.version} · ${formatMoney(quote.total, quote.currency)}. Queda como evidencia con fecha y huella.`} submitLabel="Registrar aprobación">
         <ApproveFields quote={quote} />
       </StepPanel>,
+    );
+  }
+
+  if (live && !can.register_approval) {
+    actions.push(
+      <LockedButton key="approve-locked" reason="Requiere el permiso reservations.create" testId="quote-approve-locked">
+        Cliente aprobó
+      </LockedButton>,
     );
   }
 

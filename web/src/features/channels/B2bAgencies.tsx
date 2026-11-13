@@ -1,7 +1,7 @@
 "use client";
 
-import { Ban, Building2, CalendarRange, CircleCheck, CreditCard, Handshake, Lock, LockOpen, Mail, Percent, Plus, RotateCcw, ShieldAlert, TrendingUp, User, Wallet } from "lucide-react";
-import { changeAgencyStatus, saveAgency } from "@/app/(backoffice)/canales/b2b/actions";
+import { Ban, Building2, CalendarRange, CircleCheck, CreditCard, Eye, Handshake, Landmark, Lock, LockOpen, Mail, Percent, Plus, RotateCcw, ShieldAlert, TrendingUp, User, Wallet } from "lucide-react";
+import { changeAgencyStatus, previewAgencyPortal, saveAgency } from "@/app/(backoffice)/canales/b2b/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -12,6 +12,7 @@ import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
 import type { B2bAgency, B2bOverview } from "@/lib/channels";
+import { cn } from "@/lib/cn";
 import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { ChannelBadge, DetailPanel, PanelSection, TileGrid, UsageBar } from "./ChannelUi";
@@ -23,9 +24,10 @@ type Catalogs = Pick<B2bOverview, "price_lists" | "clients">;
 export function B2bTiles({ kpis }: { kpis: B2bOverview["kpis"] }) {
   const usage = kpis.credit_limit > 0 ? (kpis.credit_used / kpis.credit_limit) * 100 : 0;
   return (
-    <TileGrid>
+    <TileGrid className="xl:grid-cols-5">
       <TintTile icon={Handshake} tone="t1" label="Agencias activas" value={`${kpis.active} de ${kpis.total}`} note={kpis.restricted > 0 ? `${kpis.restricted} con restricción` : "Todas habilitadas"} />
-      <TintTile icon={CreditCard} tone="violet" label="Crédito utilizado" value={formatMoney(kpis.credit_used, kpis.currency)} note={`${formatPercent(usage, 0)} de ${formatMoney(kpis.credit_limit, kpis.currency)}`} />
+      <TintTile icon={Landmark} tone="info" label="Crédito otorgado" value={formatMoney(kpis.credit_limit, kpis.currency)} note={`Disponible ${formatMoney(Math.max(0, kpis.credit_limit - kpis.credit_used), kpis.currency)}`} info={<p>Suma de los límites de crédito de las agencias con convenio. Las de solo prepago no suman.</p>} />
+      <TintTile icon={CreditCard} tone="violet" label="Crédito utilizado" value={formatMoney(kpis.credit_used, kpis.currency)} note={`${formatPercent(usage, 0)} de la línea total`} info={<p>Saldo por cobrar de las reservas a crédito de las agencias, frente al crédito otorgado.</p>} />
       <TintTile icon={TrendingUp} tone="t4" label="Ventas B2B" value={formatMoney(kpis.sales, kpis.currency)} note="Reservas vigentes de las agencias" />
       <TintTile icon={Percent} tone="sun" label="Comisiones estimadas" value={formatMoney(kpis.commission, kpis.currency)} note="Según la comisión de cada convenio" />
     </TileGrid>
@@ -117,7 +119,30 @@ export function AgencyStatusAction({ agency, target }: { agency: B2bAgency; targ
   );
 }
 
-function AgencyDetail({ agency }: { agency: B2bAgency }) {
+function PortalPreviewAction({ agency }: { agency: B2bAgency }) {
+  return (
+    <PanelAction<StepResult>
+      label="Ver portal como esta agencia"
+      icon={<Eye size={16} />}
+      size="sm"
+      formId={`agency-preview-${agency.code}`}
+      title="Ver portal como esta agencia"
+      description={`Abre el portal de ${agency.legal_name} en modo de solo lectura durante 30 minutos. Queda registrado en la auditoría.`}
+      submitLabel="Abrir portal"
+      action={previewAgencyPortal}
+      initial={initial}
+    >
+      {() => (
+        <>
+          <input type="hidden" name="code" value={agency.code} />
+          <p className="text-[13px] text-fg-2">Verás el catálogo, las tarifas, las reservas y el estado de cuenta tal como los ve la agencia. No podrás reservar ni cambiar datos. Para volver, usa «Volver al backoffice» en la barra superior.</p>
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+function AgencyDetail({ agency, canPreview }: { agency: B2bAgency; canPreview: boolean }) {
   return (
     <DetailPanel label="Ver agencia" title={agency.legal_name} description={`${agency.code} · RUC ${agency.ruc}`}>
       <div className="flex flex-wrap items-center gap-2">
@@ -135,6 +160,27 @@ function AgencyDetail({ agency }: { agency: B2bAgency }) {
             { label: "Vigencia", value: `${formatDate(agency.valid_from)} – ${formatDate(agency.valid_to)}` },
           ]}
         />
+      </PanelSection>
+      <PanelSection title="Usuarios del portal" aside={`${agency.portal_users.length}`}>
+        {agency.portal_users.length === 0 ? (
+          <p className="text-[13px] text-fg-3">Pendiente de alta: invita a un usuario de la agencia desde Administración › Usuarios para que reserve en el portal.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {agency.portal_users.map((user) => (
+              <li key={user.email} className="lift flex items-center justify-between gap-3 rounded-tile border border-line px-3 py-2.5">
+                <span className="min-w-0">
+                  <b className="block truncate text-[13.5px] font-semibold">{user.name}</b>
+                  <span className="text-[12px] text-fg-3">{user.code ? `${user.code} · ` : ""}{user.email}</span>
+                </span>
+                <span className="flex flex-col items-end gap-1">
+                  <ChannelBadge status={user.status} />
+                  <span className="text-[11.5px] text-fg-3">{user.last_login_at ? `Ingresó ${formatDate(user.last_login_at)}` : "Sin ingresos"}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+        {canPreview && agency.portal_users.some((user) => user.status === "activo") && <PortalPreviewAction agency={agency} />}
       </PanelSection>
       <PanelSection title="Línea de crédito" aside={agency.credit_limit > 0 ? formatMoney(agency.credit_limit, agency.currency) : "Solo prepago"}>
         {agency.credit_limit > 0 && (
@@ -210,7 +256,7 @@ export function B2bAgenciesTable({ rows, catalogs, canManage }: { rows: B2bAgenc
       header: "Crédito",
       cell: (row) =>
         row.credit_limit > 0 ? (
-          <span className="flex w-40 flex-col gap-1" title={`Disponible ${formatMoney(row.credit_available, row.currency)}`}>
+          <span className="flex w-40 flex-col gap-1">
             <span className="text-[12.5px]">
               <b className="font-semibold">{formatMoney(row.credit_used, row.currency)}</b> <span className="text-fg-3">de {formatMoney(row.credit_limit, row.currency)}</span>
             </span>
@@ -220,6 +266,12 @@ export function B2bAgenciesTable({ rows, catalogs, canManage }: { rows: B2bAgenc
           <span className="text-[12.5px] text-fg-3">Solo prepago</span>
         ),
     },
+    {
+      id: "available",
+      header: "Disponible",
+      align: "right",
+      cell: (row) => (row.credit_limit > 0 ? <span className={cn("font-mono text-[13px] font-semibold", (row.usage_pct ?? 0) >= 90 ? "text-bad" : "text-fg")}>{formatMoney(row.credit_available, row.currency)}</span> : <span className="text-[12.5px] text-fg-3">—</span>),
+    },
     { id: "valid", header: "Vigencia", wideOnly: true, cell: (row) => <span className="text-[12.5px] text-fg-2">hasta {formatDate(row.valid_to)}</span> },
     { id: "status", header: "Estado", mobile: "detail", cell: (row) => <ChannelBadge status={row.effective_status} /> },
     {
@@ -227,7 +279,7 @@ export function B2bAgenciesTable({ rows, catalogs, canManage }: { rows: B2bAgenc
       header: "",
       cell: (row) => (
         <RowActions>
-          <AgencyDetail agency={row} />
+          <AgencyDetail agency={row} canPreview={canManage} />
           {canManage && (
             <>
               <AgencyFormAction agency={row} catalogs={catalogs} iconOnly />

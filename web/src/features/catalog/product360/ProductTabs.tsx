@@ -5,20 +5,28 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { SimpleTable } from "@/components/ui/SimpleTable";
-import { AVAILABILITY_HINT, AVAILABILITY_LABEL, durationLabel, PRODUCT_STATUS, type ProductDetail, type ProductEditorState, type ProductFormOptions, type ProductOverview, type ProductStatus, type ProductTranslations } from "@/lib/catalog";
-import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { AVAILABILITY_HINT, AVAILABILITY_LABEL, durationLabel, PRODUCT_STATUS, type ProductDetail, type ProductEditorState, type ProductFormOptions, type ProductOverview, type ProductStatus, type ProductTranslations, type RelatedProduct } from "@/lib/catalog";
+import { cn } from "@/lib/cn";
+import { formatDate, formatMoney } from "@/lib/format";
 import { statusLabel } from "@/lib/tone";
-import { DEPARTURE_STATUS } from "@/lib/catalog-departures";
+import { DEPARTURE_STATUS, type DeparturesOverview } from "@/lib/catalog-departures";
+import { DepartureCreateAction, DepartureEditAction } from "@/features/catalog-departures/DepartureForms";
+import { OccupancyBar } from "@/features/catalog-shared/CatalogPanels";
+import { MainProviderChangeAction, PriceConfigurator, ProductHistoryTable, SeasonAssociateAction, SeasonDissociateAction } from "./ProductSectionActions";
 import { PromotionsTable } from "@/features/channels/Promotions";
 import type { PromotionCatalog } from "@/lib/channels";
 import type { BookingSectionId, ProductBookingConfig } from "@/lib/catalog-booking";
 import { AddonsSection, LodgingSection, OperationCard, PaxSection, PaymentSection, PickupSection, RulesSection } from "../booking/BookingSections";
+import { costRange } from "@/lib/catalog-cost";
+import { CostPerPerson } from "../CostPerPerson";
 import { PenaltyTiersView } from "../PenaltyTiers";
 import { ProductTranslationsCard } from "../ProductTranslations";
 import { EditStepButton } from "../wizard/ProductWizard";
 import { ChannelSwitches, ChecklistLinks } from "./ProductInteractive";
 import { ProductProfitability } from "./ProductProfitability";
 import { CompareVersions, NewVersionAction, ResolveRate } from "./ProductVersionTools";
+import { TripSection } from "../trip/TripSection";
+import type { TripCatalogView } from "@/lib/trip";
 
 export interface ProductTabContext {
   product: ProductDetail;
@@ -28,6 +36,8 @@ export interface ProductTabContext {
   translations: ProductTranslations | null;
   promotions?: PromotionCatalog | null;
   booking?: ProductBookingConfig | null;
+  trip?: TripCatalogView | null;
+  departures?: DeparturesOverview | null;
 }
 
 export interface ProductTab {
@@ -70,11 +80,43 @@ function statusBadge(status: ProductStatus) {
   return <Badge tone={PRODUCT_STATUS[status]?.tone ?? "mute"}>{PRODUCT_STATUS[status]?.label ?? status}</Badge>;
 }
 
+function RelatedTable({ rows, empty }: { rows: RelatedProduct[]; empty: string }) {
+  return (
+    <SimpleTable
+      columns={[{ header: "Producto" }, { header: "Relación" }, { header: "Tipo" }, { header: "Precio desde", align: "right" }, { header: "Estado" }]}
+      rows={rows.map((row) => ({
+        key: `${row.code}-${row.relation}`,
+        muted: row.status !== "ACTIVE",
+        cells: [
+          <span key="link">
+            <Link href={`/catalogo/productos/${encodeURIComponent(row.code)}`} className="font-semibold hover:text-accent">{row.name}</Link>
+            {row.status !== "ACTIVE" && <span className="block text-[12px] text-warn">No se ofrecerá: no está activo.</span>}
+          </span>,
+          row.relation,
+          row.type,
+          row.price_from ? formatMoney(row.price_from.amount, row.price_from.currency) : "Sin tarifa",
+          statusBadge(row.status),
+        ],
+      }))}
+      empty={empty}
+    />
+  );
+}
+
 export function productTabs(ctx: ProductTabContext): ProductTab[] {
   const { product, editor, overview, options } = ctx;
   const service = (id: string | null) => options.services.find((item) => item.id === id);
   const seasonIds = new Set([...editor.season_ids, ...editor.rates.map((rate) => rate.season_id).filter((id): id is string => Boolean(id))]);
   const destination = (id: string) => options.destinations.find((item) => item.id === id)?.path ?? "—";
+  const blockedComponents = editor.components.map((component) => service(component.service_id)).filter((item): item is NonNullable<typeof item> => Boolean(item?.blocked));
+  const associated = new Set(editor.season_ids);
+  const futureDepartures = overview.departures.filter((row) => row.future && row.status !== "cancelada");
+  const heldNow = futureDepartures.reduce((sum, row) => sum + row.held, 0);
+  const manageDepartures = ctx.departures?.can.manage ?? false;
+  const canSeasons = options.can_manage_rates && product.status !== "ARCHIVED";
+  const b2bRows = overview.b2b ?? [];
+  const b2bDiffs = b2bRows.map((row) => row.diff_pct).filter((value): value is number => value !== null);
+  const b2bEnabled = product.raw.is_b2b && editor.channels.some((channel) => channel.toUpperCase() === "B2B");
 
   const tabs: (ProductTab | false)[] = [
     {
@@ -114,9 +156,14 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       render: () => (
         <Panel
           title="Componentes"
-          hint={overview.kpis.components_cost !== null ? `Costo total: ${formatMoney(overview.kpis.components_cost)}. Cada fila es costo unitario × cantidad; lo que está en dólares se pasa a soles.` : undefined}
+          hint={overview.kpis.cost_breakdown ? `Costo: ${costRange(overview.kpis.cost_breakdown)}. Cada fila es costo unitario × cantidad; lo que está en dólares se pasa a soles.` : undefined}
           action={editAt(ctx, 3)}
         >
+          {blockedComponents.length > 0 && (
+            <p role="status" className="mb-4 rounded-xl border border-bad/30 bg-bad/[0.07] px-3.5 py-2.5 text-[13px] text-bad">
+              <b className="font-semibold">{blockedComponents.length === 1 ? "1 componente no se puede vender" : `${blockedComponents.length} componentes no se pueden vender`}</b>: {blockedComponents.map((item) => `${item.name} (${item.blocked?.toLowerCase()})`).join(", ")}. Bloquean la activación y las ventas nuevas.
+            </p>
+          )}
           <SimpleTable
             testId="product-components"
             columns={[
@@ -128,6 +175,8 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
               ...(options.sees_cost ? [{ header: "Costo unitario", align: "right" as const }] : []),
               { header: "Cant.", align: "right" },
               ...(options.sees_cost ? [{ header: "Subtotal (S/)", align: "right" as const }] : []),
+              { header: "Vigencia" },
+              { header: "Estado" },
             ]}
             rows={editor.components.map((component, index) => {
               const item = service(component.service_id);
@@ -140,6 +189,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
                   <span key="name">
                     <b className="block font-semibold">{item ? item.name : child ? child.name : "Producto componente"}</b>
                     <span className="text-[12px] text-fg-3">{item ? `${item.ref} · ${item.type} · por ${item.unit}` : `${child?.code ?? ""} · costo de su tarifa vigente más baja`}</span>
+                    {component.notes && <span className="block whitespace-normal text-[12px] italic text-fg-3">{component.notes}</span>}
                   </span>,
                   item?.provider ?? "—",
                   component.is_required ? "Sí" : "No",
@@ -154,12 +204,15 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
                         </span>,
                       ]
                     : []),
+                  item?.valid_to ? `hasta ${formatDate(item.valid_to)}` : child ? "Según su producto" : "—",
+                  item ? <Badge key="state" tone={item.blocked ? "bad" : "ok"}>{item.blocked ?? "Vigente"}</Badge> : child ? <Badge key="state" tone="ok">Producto activo</Badge> : <Badge key="state" tone="bad">No disponible</Badge>,
                 ],
               };
             })}
-            footer={options.sees_cost && editor.components.length > 0 ? ["", "Costo total de componentes", "", "", "", "", "", formatMoney(overview.kpis.components_cost ?? "0")] : undefined}
+            footer={options.sees_cost && editor.components.length > 0 ? ["", "Suma de las filas (por persona y por grupo)", "", "", "", "", "", formatMoney(overview.kpis.components_cost ?? "0"), "", ""] : undefined}
             empty="Sin componentes. El checklist de activación los exige."
           />
+          {options.sees_cost && overview.kpis.cost_breakdown && editor.components.length > 0 && <CostPerPerson breakdown={overview.kpis.cost_breakdown} className="mt-4" adjust={options.can_update && product.status !== "ARCHIVED" ? { code: product.code, lockVersion: product.lock_version } : undefined} />}
         </Panel>
       ),
     },
@@ -237,13 +290,29 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       label: "Temporadas",
       count: seasonIds.size,
       render: () => (
-        <Panel title="Temporadas asociadas" action={<span className="flex gap-2">{editAt(ctx, 6)}<ModuleLink href="/catalogo/tarifas" label="Administrar temporadas" /></span>}>
+        <Panel
+          title="Temporadas asociadas"
+          hint="Ante fechas cruzadas manda la de prioridad con número menor."
+          action={<span className="flex flex-wrap gap-2">{canSeasons && <SeasonAssociateAction product={product} options={options} associated={[...seasonIds]} />}<ModuleLink href="/catalogo/tarifas/temporadas" label="Administrar temporadas" /></span>}
+        >
           <SimpleTable
-            columns={[{ header: "Temporada" }, { header: "Tipo" }, { header: "Fechas" }, { header: "Factor", align: "right" }, { header: "Origen" }]}
-            rows={options.seasons.filter((season) => seasonIds.has(season.id)).map((season) => ({
-              key: season.id,
-              cells: [season.name, season.type, `${formatDate(season.date_from)} al ${formatDate(season.date_to)}`, `×${Number(season.factor).toFixed(2)}`, editor.rates.some((rate) => rate.season_id === season.id) ? "Usada por una tarifa" : "Asociación directa"],
-            }))}
+            columns={[{ header: "Temporada" }, { header: "Fechas" }, { header: "Prioridad", align: "right" }, { header: "Factor", align: "right" }, { header: "Tarifas que la usan" }, { header: "Estado" }, ...(canSeasons ? [{ header: "" }] : [])]}
+            rows={options.seasons.filter((season) => seasonIds.has(season.id)).sort((a, b) => a.priority - b.priority).map((season) => {
+              const used = editor.rates.filter((rate) => rate.season_id === season.id);
+              return {
+                key: season.id,
+                muted: season.status !== "activa",
+                cells: [
+                  <span key="name"><b className="block font-semibold">{season.name}</b><span className="text-[12px] text-fg-3">{season.type}</span></span>,
+                  `${formatDate(season.date_from)} al ${formatDate(season.date_to)}`,
+                  <span key="priority" className="font-mono">{season.priority}</span>,
+                  `×${Number(season.factor).toFixed(2)}`,
+                  used.length ? <span key="rates" className="font-mono text-[12.5px]">{used.map((rate) => rate.ref).join(", ")}</span> : <span key="rates" className="text-fg-3">Asociación directa</span>,
+                  <Badge key="status" tone={season.status === "activa" ? "ok" : "mute"}>{season.status === "activa" ? "Activa" : "Inactiva"}</Badge>,
+                  ...(canSeasons ? [associated.has(season.id) && used.length === 0 ? <SeasonDissociateAction key="off" product={product} season={season} /> : ""] : []),
+                ],
+              };
+            })}
             empty="Sin temporadas asociadas."
           />
         </Panel>
@@ -264,6 +333,34 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
               { label: "Salidas futuras", value: overview.kpis.future_departures },
             ]}
           />
+          {editor.availability.source === "externa" && <p role="status" className="mt-4 rounded-xl border border-warn/35 bg-warn/[0.09] px-3.5 py-2.5 text-[13px]">Fuente externa: la disponibilidad que informa el proveedor es referencial. Confírmala con él antes de confirmar la reserva.</p>}
+        </Panel>
+        <Panel title="Situación actual" hint="Salidas futuras abiertas: cupos, ventas y bloqueos en hold." action={<ModuleLink href="/catalogo/salidas/holds" label="Holds" />}>
+          <div className="mb-4 grid gap-3 sm:grid-cols-3">
+            {[
+              { label: "Cupos disponibles", value: futureDepartures.reduce((sum, row) => sum + row.available, 0), note: `de ${futureDepartures.reduce((sum, row) => sum + row.capacity, 0)} en ${futureDepartures.length} salidas` },
+              { label: "Vendidos", value: futureDepartures.reduce((sum, row) => sum + row.sold, 0), note: "en salidas futuras" },
+              { label: "Holds activos", value: heldNow, note: heldNow ? "cupos retenidos sin vender" : "ningún cupo retenido" },
+            ].map((tile) => (
+              <div key={tile.label} className="lift rounded-tile border border-line px-4 py-3">
+                <p className="text-[12px] text-fg-3">{tile.label}</p>
+                <p className="font-mono text-[20px] font-semibold">{tile.value}</p>
+                <p className="text-[12px] text-fg-3">{tile.note}</p>
+              </div>
+            ))}
+          </div>
+          {futureDepartures.length ? (
+            <ul className="flex flex-col gap-2.5">
+              {futureDepartures.slice(0, 6).map((row, index) => (
+                <li key={row.ref} className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-center gap-3 text-[12.5px]">
+                  <span><b className="font-semibold">{formatDate(row.date)}</b>{row.time && <span className="text-fg-3"> · {row.time}</span>}</span>
+                  <OccupancyBar capacity={row.capacity} sold={row.sold} held={row.held} delay={index * 60} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[13px] text-fg-3">Sin salidas futuras abiertas.</p>
+          )}
         </Panel>
         {ctx.booking && <OperationCard config={ctx.booking} />}
         </div>
@@ -274,14 +371,28 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       label: "Salidas",
       count: overview.departures.filter((row) => row.future).length,
       render: () => (
-        <Panel title="Salidas programadas" action={<ModuleLink href="/catalogo/salidas" label="Programar en Salidas" />}>
+        <Panel title="Salidas programadas" action={<span className="flex flex-wrap gap-2">{manageDepartures && ctx.departures && product.status !== "ARCHIVED" && <DepartureCreateAction overview={ctx.departures} />}<ModuleLink href="/catalogo/salidas" label="Todas las salidas" /></span>}>
           <SimpleTable
-            columns={[{ header: "Salida" }, { header: "Fecha" }, { header: "Punto de encuentro" }, { header: "Vendidos", align: "right" }, { header: "Estado" }]}
-            rows={overview.departures.map((row) => ({
-              key: row.ref,
-              muted: !row.future,
-              cells: [<span key="ref" className="font-mono text-[12.5px]">{row.ref}</span>, `${formatDate(row.date)}${row.time ? ` · ${row.time}` : ""}`, row.meeting_point ?? "—", `${row.sold} de ${row.capacity}`, <Badge key="status" tone={DEPARTURE_STATUS[row.status as keyof typeof DEPARTURE_STATUS]?.tone ?? "mute"}>{DEPARTURE_STATUS[row.status as keyof typeof DEPARTURE_STATUS]?.label ?? statusLabel(row.status)}</Badge>],
-            }))}
+            columns={[{ header: "Salida" }, { header: "Fecha" }, { header: "Hora" }, { header: "Ocupación" }, { header: "Hold", align: "right" }, { header: "Disponibles", align: "right" }, { header: "Guía" }, { header: "Transporte" }, { header: "Estado" }, ...(manageDepartures ? [{ header: "" }] : [])]}
+            rows={overview.departures.map((row) => {
+              const editable = manageDepartures && ctx.departures ? ctx.departures.departures.find((item) => item.ref === row.ref) : undefined;
+              return {
+                key: row.ref,
+                muted: !row.future,
+                cells: [
+                  <span key="ref" className="font-mono text-[12.5px]">{row.ref}<span className="block font-sans text-[12px] text-fg-3">{row.meeting_point || "—"}</span></span>,
+                  formatDate(row.date),
+                  row.time ?? "—",
+                  <OccupancyBar key="occ" capacity={row.capacity} sold={row.sold} held={row.held} compact />,
+                  row.held,
+                  row.available,
+                  row.guide?.name ?? <span key="guide" className="text-fg-3">Sin asignar</span>,
+                  row.vehicle ? `${row.vehicle.plate} · ${row.vehicle.capacity} asientos` : <span key="vehicle" className="text-fg-3">Sin asignar</span>,
+                  <Badge key="status" tone={DEPARTURE_STATUS[row.status as keyof typeof DEPARTURE_STATUS]?.tone ?? "mute"}>{DEPARTURE_STATUS[row.status as keyof typeof DEPARTURE_STATUS]?.label ?? statusLabel(row.status)}</Badge>,
+                  ...(manageDepartures ? [editable && row.future ? <DepartureEditAction key="edit" overview={ctx.departures as DeparturesOverview} departure={editable} /> : ""] : []),
+                ],
+              };
+            })}
             empty="Sin salidas programadas."
           />
         </Panel>
@@ -292,16 +403,18 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       label: "Proveedores",
       count: overview.providers.length,
       render: () => (
-        <Panel title="Proveedores involucrados" hint="Solo proveedores activos con contrato vigente pueden operar el producto (PRD-BR-007)." action={<span className="flex gap-2">{editAt(ctx, 3)}<ModuleLink href="/catalogo/proveedores" label="Proveedores" /></span>}>
+        <Panel title="Proveedores involucrados" hint="Solo proveedores activos con contrato vigente pueden operar el producto (PRD-BR-007)." action={<span className="flex flex-wrap gap-2">{options.can_update && product.status !== "ARCHIVED" && <MainProviderChangeAction product={product} options={options} current={product.ids.provider} />}{editAt(ctx, 3)}<ModuleLink href="/catalogo/proveedores" label="Proveedores" /></span>}>
           <SimpleTable
-            columns={[{ header: "Proveedor" }, { header: "Tipo" }, { header: "Servicios" }, { header: "Contrato hasta" }, { header: "Estado" }]}
+            columns={[{ header: "Proveedor" }, { header: "Tipo" }, { header: "Servicios" }, { header: "Contrato" }, { header: "Pago" }, { header: "Calificación", align: "right" }, { header: "Estado" }]}
             rows={(overview.providers ?? []).map((provider) => ({
               key: provider.ref,
               cells: [
-                <span key="name"><b className="font-semibold">{provider.name}</b>{provider.main && <span className="ml-2 text-[12px] font-semibold text-accent">Principal</span>}</span>,
+                <span key="name"><Link href={`/catalogo/proveedores/${encodeURIComponent(provider.ref)}`} className="font-semibold hover:text-accent hover:underline">{provider.name}</Link>{provider.main && <span className="ml-2 text-[12px] font-semibold text-accent">Principal</span>}<span className="block font-mono text-[12px] text-fg-3">RUC {provider.ruc}</span></span>,
                 provider.type,
-                provider.services.join(" · ") || "—",
-                formatDate(provider.contract_end),
+                <span key="services" className="whitespace-normal">{provider.services.join(" · ") || "—"}</span>,
+                <span key="contract">hasta {formatDate(provider.contract_end)}<span className={cn("block text-[12px]", provider.contract_days < 0 ? "text-bad" : provider.contract_days <= 60 ? "text-warn" : "text-fg-3")}>{provider.contract_days < 0 ? `Vencido hace ${-provider.contract_days} días` : `Vence en ${provider.contract_days} días`}</span></span>,
+                provider.payment_terms ?? "—",
+                provider.rating > 0 ? provider.rating.toFixed(1) : "—",
                 <Badge key="state" tone={provider.usable ? "ok" : "bad"}>{provider.usable ? "Activo" : provider.status === "activo" ? "Contrato vencido" : provider.status}</Badge>,
               ],
             }))}
@@ -315,6 +428,13 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       label: "Políticas",
       render: () => (
         <Panel title="Políticas" action={editAt(ctx, 8)}>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface-2 px-3.5 py-2.5">
+            <p className="text-[13px]">
+              <b className="font-semibold">Anticipación para reservar:</b> de {product.advance_days.min} a {product.advance_days.max} días antes del servicio.
+              {ctx.booking?.operation.cutoff_hours ? <span className="text-fg-3"> Corte de venta: {ctx.booking.operation.cutoff_hours} horas antes.</span> : null}
+            </p>
+            {editAt(ctx, 0, "Editar anticipación")}
+          </div>
           {editor.policies ? (
             <FieldList
               fields={[
@@ -366,9 +486,14 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       label: "Relacionados",
       count: overview.related.length,
       render: () => (
-        <Panel title="Productos relacionados" hint="Sugerencias de venta cruzada y alternativas.">
-          <SimpleTable columns={[{ header: "Producto" }, { header: "Relación" }, { header: "Estado" }]} rows={overview.related.map((row) => ({ key: row.code, cells: [<Link key="link" href={`/catalogo/productos/${encodeURIComponent(row.code)}`} className="font-semibold hover:text-accent">{row.name}</Link>, row.relation, statusBadge(row.status)] }))} empty="Sin productos relacionados." />
-        </Panel>
+        <div className="flex flex-col gap-5">
+          <Panel title="Productos relacionados" hint="Sugerencias de venta cruzada y alternativas.">
+            <RelatedTable rows={overview.related} empty="Sin productos relacionados." />
+          </Panel>
+          <Panel title="Referenciado desde" hint="Productos que sugieren este como relacionado.">
+            <RelatedTable rows={overview.referenced_by} empty="Ningún producto lo sugiere." />
+          </Panel>
+        </div>
       ),
     },
     overview.b2b !== null && {
@@ -376,10 +501,38 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       label: "B2B",
       count: overview.b2b.length,
       render: () => (
-        <Panel title="Precios para agencias B2B" action={<ModuleLink href="/canales/b2b" label="Agencias B2B" />}>
+        <Panel title="Precios para agencias B2B" hint="Precio diferenciado, comisión, crédito, condición comercial y restricciones por agencia." action={<ModuleLink href="/canales/b2b" label="Agencias B2B" />}>
+          {!b2bEnabled && <p role="status" className="mb-4 rounded-xl border border-warn/35 bg-warn/[0.09] px-3.5 py-2.5 text-[13px]">El producto no está habilitado para B2B ({product.raw.is_b2b ? "el canal B2B no está elegido" : "el indicador B2B está apagado"}). Las agencias no verán estos precios.</p>}
+          <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              { label: "Precio público", value: overview.public_price ? formatMoney(overview.public_price.amount, overview.public_price.currency) : "—", note: overview.public_price ? `Canal ${overview.public_price.channel}` : "Sin tarifa pública vigente" },
+              { label: "Agencias con precio", value: String(b2bRows.length), note: `${b2bRows.filter((row) => row.is_credit).length} a crédito` },
+              { label: "Diferencia promedio", value: b2bDiffs.length ? `${(b2bDiffs.reduce((sum, value) => sum + value, 0) / b2bDiffs.length).toFixed(1)} %` : "—", note: "frente al precio público" },
+              { label: "Comisión promedio", value: b2bRows.length ? `${(b2bRows.reduce((sum, row) => sum + Number(row.commission_pct ?? 0), 0) / b2bRows.length).toFixed(1)} %` : "—", note: "entre las agencias" },
+            ].map((tile) => (
+              <div key={tile.label} className="lift rounded-tile border border-line px-4 py-3">
+                <p className="text-[12px] text-fg-3">{tile.label}</p>
+                <p className="font-mono text-[18px] font-semibold">{tile.value}</p>
+                <p className="text-[12px] text-fg-3">{tile.note}</p>
+              </div>
+            ))}
+          </div>
           <SimpleTable
-            columns={[{ header: "Agencia" }, { header: "Lista de precios" }, { header: "Precio", align: "right" }, { header: "Comisión", align: "right" }, { header: "Vigente hasta" }]}
-            rows={(overview.b2b ?? []).map((row, index) => ({ key: `${row.agency_code}-${index}`, cells: [row.agency ?? "Todas", row.price_list ?? "—", formatMoney(row.price, row.currency), row.commission_pct ? `${row.commission_pct} %` : "—", row.valid_to ? formatDate(row.valid_to) : "—"] }))}
+            columns={[{ header: "Agencia" }, { header: "Lista de precios" }, { header: "Precio", align: "right" }, { header: "Frente al público", align: "right" }, { header: "Comisión", align: "right" }, { header: "Pago" }, { header: "Vigente hasta" }, { header: "Condición y restricciones" }]}
+            rows={b2bRows.map((row, index) => ({
+              key: `${row.agency_code}-${index}`,
+              muted: row.agency_status !== null && row.agency_status !== "activa",
+              cells: [
+                <span key="agency"><b className="font-semibold">{row.agency ?? "Todas"}</b>{row.agency_status && row.agency_status !== "activa" && <span className="block text-[12px] text-bad">Agencia {statusLabel(row.agency_status).toLowerCase()}</span>}</span>,
+                row.price_list ?? "—",
+                formatMoney(row.price, row.currency),
+                row.diff_pct === null ? "—" : `${row.diff_pct > 0 ? "+" : ""}${row.diff_pct.toFixed(1)} %`,
+                row.commission_pct ? `${row.commission_pct} %` : "—",
+                row.is_credit ? "Crédito" : "Prepago",
+                row.valid_to ? formatDate(row.valid_to) : "—",
+                <span key="terms" className="whitespace-normal">{row.conditions ?? "—"}{row.restrictions && <span className="block text-[12px] text-fg-3">{row.restrictions}</span>}</span>,
+              ],
+            }))}
             empty="Sin precios B2B."
           />
         </Panel>
@@ -391,12 +544,29 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       count: overview.promotions.length,
       render: () => (
         <Panel title="Promociones" action={<ModuleLink href="/canales/ecommerce" label="Todas las promociones" />}>
+          {overview.public_price && overview.promotions.some((row) => row.result_price) && (
+            <div className="mb-4">
+              <p className="mb-2 text-[12.5px] text-fg-3">Precio resultante sobre la tarifa pública de {formatMoney(overview.public_price.amount, overview.public_price.currency)}</p>
+              <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {overview.promotions.filter((row) => row.result_price).map((row, index) => {
+                  const share = Math.max(0, Math.min(100, (Number(row.result_price?.amount ?? 0) / Math.max(Number(overview.public_price?.amount ?? 1), 0.01)) * 100));
+                  return (
+                    <li key={row.ref} className={cn("lift rounded-tile border border-line px-3.5 py-2.5", row.date_to < options.today && "opacity-55")}>
+                      <p className="flex items-center justify-between gap-2 text-[12.5px]"><b className="truncate font-semibold">{row.name}</b><span className="flex-none font-mono font-semibold text-accent">{formatMoney(row.result_price?.amount ?? "0", row.result_price?.currency)}</span></p>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-2"><span className="block h-full origin-left rounded-full bg-accent motion-safe:animate-[fill-x_640ms_cubic-bezier(0.22,1,0.36,1)_backwards]" style={{ width: `${share}%`, animationDelay: `${index * 60}ms` }} /></div>
+                      <p className="mt-1 text-[11.5px] text-fg-3">{row.kind} · {row.date_to < options.today ? "vencida" : `hasta ${formatDate(row.date_to)}`}</p>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
           {ctx.promotions ? (
             <PromotionsTable catalog={{ ...ctx.promotions, rows: ctx.promotions.rows.filter((row) => row.product.code === product.code) }} canManage={options.can_update && product.status !== "ARCHIVED"} showProduct={false} product={product.code} screen="catalogo-producto-promociones" />
           ) : (
           <SimpleTable
-            columns={[{ header: "Promoción" }, { header: "Descuento" }, { header: "Canal" }, { header: "Vigencia" }, { header: "Estado" }]}
-            rows={overview.promotions.map((row) => ({ key: row.ref, cells: [<span key="name"><b className="block font-semibold">{row.name}</b><span className="font-mono text-[12px] text-fg-3">{row.promo_code ?? row.ref}</span></span>, `${row.kind} ${row.value}`, row.channel ?? "Todos", `${formatDate(row.date_from)} al ${formatDate(row.date_to)}`, <Badge key="status" tone={row.status === "activa" && row.date_to >= options.today ? "ok" : "mute"}>{row.date_to < options.today ? "Vencida" : row.status === "activa" ? "Activa" : "Pausada"}</Badge>] }))}
+            columns={[{ header: "Promoción" }, { header: "Descuento" }, { header: "Canal" }, { header: "Vigencia" }, { header: "Precio resultante", align: "right" }, { header: "Estado" }]}
+            rows={overview.promotions.map((row) => ({ key: row.ref, cells: [<span key="name"><b className="block font-semibold">{row.name}</b><span className="font-mono text-[12px] text-fg-3">{row.promo_code ?? row.ref}</span></span>, `${row.kind} ${row.value}`, row.channel ?? "Todos", `${formatDate(row.date_from)} al ${formatDate(row.date_to)}`, row.result_price ? formatMoney(row.result_price.amount, row.result_price.currency) : "—", <Badge key="status" tone={row.status === "activa" && row.date_to >= options.today ? "ok" : "mute"}>{row.date_to < options.today ? "Vencida" : row.status === "activa" ? "Activa" : "Pausada"}</Badge>] }))}
             empty="Sin promociones."
           />
           )}
@@ -407,7 +577,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       id: "rentabilidad",
       label: "Costos y rentabilidad",
       render: () => (
-        <ProductProfitability code={product.code} rates={overview.profitability ?? []} today={options.today} markup={product.raw.markup_pct} componentsCost={overview.kpis.components_cost} canSave={options.can_update && options.can_manage_rates && product.status !== "ARCHIVED"} />
+        <ProductProfitability code={product.code} rates={overview.profitability ?? []} today={options.today} markup={product.raw.markup_pct} componentsCost={overview.kpis.cost_breakdown ? costRange(overview.kpis.cost_breakdown) : null} canSave={options.can_update && options.can_manage_rates && product.status !== "ARCHIVED"} />
       ),
     },
     {
@@ -428,6 +598,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
               ))}
             </div>
           )}
+          {overview.config_groups.length > 0 && <PriceConfigurator code={product.code} editor={editor} groups={overview.config_groups} today={options.today} />}
         </Panel>
       ),
     },
@@ -438,10 +609,17 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
           <Panel title="Contenido comercial" action={editAt(ctx, 8)}>
             {editor.content.long_description ? <p className="mb-4 whitespace-pre-line text-[13.5px] leading-relaxed text-fg-2">{editor.content.long_description}</p> : <p className="mb-4 text-[13px] text-fg-3">Sin descripción completa.</p>}
+            {(editor.content.features ?? []).length > 0 && (
+              <ul className="mb-4 flex flex-wrap gap-1.5">
+                {(editor.content.features ?? []).map((feature) => (
+                  <li key={feature} className="flex items-center gap-1.5 rounded-full bg-[color-mix(in_srgb,var(--accent)_10%,var(--surface))] px-2.5 py-1 text-[12.5px] font-medium text-accent"><Check size={13} />{feature}</li>
+                ))}
+              </ul>
+            )}
             <FieldList
               fields={[
-                { label: "Título SEO", value: editor.content.seo_title ?? "—" },
-                { label: "Descripción SEO", value: <span className="whitespace-normal">{editor.content.seo_description ?? "—"}</span> },
+                { label: "Título SEO", value: editor.content.seo_title ? <span>{editor.content.seo_title} <span className={cn("font-mono text-[12px]", editor.content.seo_title.length > 60 ? "text-bad" : "text-fg-3")}>{editor.content.seo_title.length}/60</span></span> : "—" },
+                { label: "Descripción SEO", value: editor.content.seo_description ? <span className="whitespace-normal">{editor.content.seo_description} <span className={cn("font-mono text-[12px]", editor.content.seo_description.length > 160 ? "text-bad" : "text-fg-3")}>{editor.content.seo_description.length}/160</span></span> : "—" },
                 { label: "Slug", value: <span className="font-mono text-[12.5px]">{editor.content.slug ?? "—"}</span> },
                 { label: "Video", value: editor.content.video_url ? <a href={editor.content.video_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-accent">Ver <ExternalLink size={13} /></a> : "—" },
                 { label: "Fotos", value: editor.content.media.length ? editor.content.media.map((item) => `${item.alt_text}${item.is_main ? " (portada)" : ""}`).join(" · ") : "—" },
@@ -468,7 +646,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
         </Panel>
       ),
     },
-    {
+    (options.can_update || options.sees_margin) && {
       id: "versiones",
       label: "Versiones",
       count: overview.versions.length,
@@ -484,8 +662,8 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       label: "Historial",
       count: overview.history.length,
       render: () => (
-        <Panel title="Historial de cambios" hint="Cada cambio queda con su autor y su detalle.">
-          <SimpleTable columns={[{ header: "Fecha" }, { header: "Autor" }, { header: "Acción" }, { header: "Detalle" }]} rows={(overview.history ?? []).map((row) => ({ key: row.code, cells: [formatDateTime(row.occurred_at), row.actor ?? "Sistema", row.action.replace(/_/g, " "), <span key="d" className="whitespace-normal">{row.after_value ?? "—"}{row.before_value && <span className="block text-[12px] text-fg-3">Antes: {row.before_value}</span>}</span>] }))} empty="Sin cambios registrados." />
+        <Panel title="Historial de cambios" hint="Cambios del producto, de sus tarifas y de sus salidas, con su autor y su detalle.">
+          <ProductHistoryTable rows={overview.history ?? []} code={product.code} />
         </Panel>
       ),
     },
@@ -505,6 +683,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       ),
     },
     ...bookingTabs(ctx.booking ?? null),
+    ctx.trip && ctx.trip.legs.length > 0 ? { id: "tramos", label: "Viaje por tramos", count: ctx.trip.summary.tours + ctx.trip.summary.transport, render: () => <TripSection data={ctx.trip as TripCatalogView} /> } : false,
   ];
 
   return tabs.filter((tab): tab is ProductTab => tab !== false);
@@ -533,7 +712,7 @@ export const PRODUCT_SECTION_GROUPS: { title: string; ids: string[] }[] = [
   { title: "Ficha", ids: ["general", "contenido", "politicas", "inclusiones", "personalizacion"] },
   { title: "Operación", ids: ["componentes", "itinerario", "proveedores", "disponibilidad", "salidas"] },
   { title: "Precios", ids: ["tarifas", "temporadas", "rentabilidad", "promociones", "b2b"] },
-  { title: "Reservas online", ids: ["pasajeros", "adicionales", "alojamiento", "pago", "recojo", "reglas"] },
+  { title: "Reservas online", ids: ["pasajeros", "adicionales", "alojamiento", "tramos", "pago", "recojo", "reglas"] },
   { title: "Venta", ids: ["canales", "relacionados", "uso"] },
   { title: "Control", ids: ["versiones", "historial"] },
 ];

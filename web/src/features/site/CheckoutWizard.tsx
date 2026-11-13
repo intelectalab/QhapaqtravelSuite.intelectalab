@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Clock, Loader2, Lock, Mountain } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clock, Loader2, Lock, LogIn, Mountain, UserRound } from "lucide-react";
+import Link from "next/link";
 import { useActionState, useCallback, useMemo, useState, useTransition } from "react";
 import { placeOrder, validateCheckoutStep } from "@/app/(sitio)/sitio/[agencia]/actions";
 import { Captcha } from "@/components/ui/Captcha";
@@ -11,7 +12,8 @@ import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatDateTime, formatMoney } from "@/lib/format";
-import { IDLE, SITE_COUNTRIES, SITE_DOC_TYPES, type CheckoutTerms, type SiteCart } from "@/lib/site";
+import { IDLE, SITE_COUNTRIES, SITE_DOC_TYPES, type AccountMe, type CheckoutTerms, type SiteCart } from "@/lib/site";
+import { trackSiteEvent } from "@/lib/site-analytics";
 import { CartItemLines } from "./Cart";
 import { CheckBox, FieldError, FormAlert } from "./FormBits";
 import { PaymentFields, type PaymentValue } from "./PaymentFields";
@@ -35,7 +37,7 @@ function Panel({ title, hint, children }: { title: string; hint?: string; childr
   );
 }
 
-export function CheckoutWizard({ terms, walletPhone, cart }: { terms: CheckoutTerms; walletPhone: string | null; cart?: SiteCart }) {
+export function CheckoutWizard({ terms, walletPhone, cart, account = null, loginHref }: { terms: CheckoutTerms; walletPhone: string | null; cart?: SiteCart; account?: AccountMe | null; loginHref?: string }) {
   const { agencia, name: agencyName } = useSite();
   const travelersNeeded = terms.group.adt + terms.group.chd + terms.group.inf;
   const travelerTypes = useMemo(() => [...Array(terms.group.adt).fill("adt"), ...Array(terms.group.chd).fill("chd"), ...Array(terms.group.inf).fill("inf")] as string[], [terms.group]);
@@ -49,7 +51,7 @@ export function CheckoutWizard({ terms, walletPhone, cart }: { terms: CheckoutTe
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | undefined>();
   const [checking, startCheck] = useTransition();
-  const [buyer, setBuyer] = useState<Buyer>({ name: "", email: "", phone: "", country: "Perú", doc_type: "DNI", doc_number: "", birth_date: "", diet: "", billing_type: "Boleta", ruc: "", business_name: "", fiscal_address: "" });
+  const [buyer, setBuyer] = useState<Buyer>({ name: account?.name ?? "", email: account?.email ?? account?.login_email ?? "", phone: account?.phone ?? "", country: account?.country ?? "Perú", doc_type: "DNI", doc_number: "", birth_date: account?.birth_date ?? "", diet: "", billing_type: "Boleta", ruc: "", business_name: "", fiscal_address: "" });
   const [buyerTravels, setBuyerTravels] = useState(true);
   const [travelers, setTravelers] = useState<Traveler[]>(() => travelerTypes.map(() => emptyTraveler()));
   const [lines, setLines] = useState<Line[]>(() => terms.items.map((item) => ({ line: item.line, pickup_point: "", pickup_address: "", pickup_flight: "", pickup_arrival: "", comments: "" })));
@@ -95,6 +97,7 @@ export function CheckoutWizard({ terms, walletPhone, cart }: { terms: CheckoutTe
         return;
       }
       setErrors({});
+      trackSiteEvent("add_shipping_info", { value: Number(terms.total), currency: terms.currency, marketing: consents.marketing });
       setStep(step + 1);
       setReached(Math.max(reached, step + 1));
       return;
@@ -122,6 +125,25 @@ export function CheckoutWizard({ terms, walletPhone, cart }: { terms: CheckoutTe
 
       {keys[step] === "comprador" && (
         <>
+          {account ? (
+            <p className="flex items-center gap-2 rounded-2xl bg-[color-mix(in_srgb,var(--ok)_9%,var(--surface))] px-4 py-3 text-[13px] text-fg-2">
+              <UserRound size={16} className="flex-none text-ok" />
+              <span>Completamos tus datos desde tu cuenta, <b className="font-semibold text-fg">{account.name.split(" ")[0]}</b>. Revisa el documento antes de continuar.</span>
+            </p>
+          ) : (
+            loginHref && (
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl bg-surface-2 px-4 py-3 text-[13px] text-fg-2">
+                <LogIn size={16} className="flex-none text-brand" />
+                <span>
+                  ¿Ya eres cliente?{" "}
+                  <Link href={loginHref} className="font-semibold text-brand hover:underline">
+                    Inicia sesión
+                  </Link>{" "}
+                  para completar tus datos automáticamente, o continúa como invitado.
+                </span>
+              </p>
+            )
+          )}
           <Panel title="Datos del comprador" hint="Quien compra queda como titular. Enviaremos la confirmación a este correo.">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
@@ -311,7 +333,7 @@ export function CheckoutWizard({ terms, walletPhone, cart }: { terms: CheckoutTe
       )}
 
       {keys[step] === "pago" && (
-        <form action={action} className="grid gap-5">
+        <form action={action} onSubmit={() => trackSiteEvent("add_payment_info", { payment_type: later ? "pagar_despues" : payment.method, pay_mode: mode, value: Number(due), currency: terms.currency })} className="grid gap-5">
           <Panel title="¿Cómo quieres pagar?">
             <div role="radiogroup" className="grid gap-2 sm:grid-cols-2">
               {terms.modes.map((option) => (
@@ -342,7 +364,7 @@ export function CheckoutWizard({ terms, walletPhone, cart }: { terms: CheckoutTe
           <input type="hidden" name="payload" value={JSON.stringify(payload())} />
           {state.status === "error" && <FormAlert message={state.message} />}
           <Captcha />
-          <button type="submit" disabled={pending || (!later && !payment.ready)} className="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-brand text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60">
+          <button type="submit" disabled={pending || (!later && !payment.ready)} data-site-cta className="inline-flex h-12 items-center justify-center gap-2 rounded-control bg-brand text-[15px] font-semibold text-brand-fg shadow-[0_10px_24px_-12px_var(--brand)] transition hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60">
             {pending ? <Loader2 size={17} className="animate-spin" /> : <Lock size={17} />}
             {later ? "Reservar sin pagar ahora" : payment.method === "tarjeta" ? `Pagar ${formatMoney(due, terms.currency)}` : `Registrar pago de ${formatMoney(due, terms.currency)}`}
           </button>

@@ -55,6 +55,9 @@ const MIGRATIONS: readonly string[] = [
   ALTER TABLE evidences ADD COLUMN incident_action_id TEXT;
   CREATE INDEX IF NOT EXISTS ix_evidences_incident ON evidences (incident_action_id, state);
   `,
+  `
+  ALTER TABLE evidences ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 let dbPromise: Promise<Db> | null = null;

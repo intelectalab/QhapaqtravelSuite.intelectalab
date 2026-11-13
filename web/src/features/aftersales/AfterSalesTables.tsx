@@ -9,7 +9,27 @@ import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { CATEGORY_LABEL, CATEGORY_TONE, type AfterSalesOverview, type CaseItem, type SurveyItem } from "@/lib/aftersales";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { statusLabel } from "@/lib/tone";
+import { useAdvisorRows } from "@/features/crm/AdvisorFilter";
+import type { CsvExport } from "@/lib/csv";
 import { CaseDetailAction, CaseFormAction, SurveyAction } from "./AfterSalesForms";
+
+const casesCsv: CsvExport<CaseItem> = {
+  fileName: "casos-postventa",
+  columns: [
+    { header: "Código", value: (row) => row.code },
+    { header: "Asunto", value: (row) => row.subject },
+    { header: "Tipo", value: (row) => row.type },
+    { header: "Origen", value: (row) => (row.origin === "nps_auto" ? "Encuesta NPS" : "Manual") },
+    { header: "Cliente", value: (row) => row.client?.name },
+    { header: "Reserva", value: (row) => row.reservation },
+    { header: "Prioridad", value: (row) => statusLabel(row.priority) },
+    { header: "Estado", value: (row) => row.status_label },
+    { header: "Responsable", value: (row) => row.owner.name },
+    { header: "Registrado", value: (row) => row.created_at, type: "datetime" },
+    { header: "Resuelto", value: (row) => row.resolved_at, type: "datetime" },
+    { header: "Resolución", value: (row) => row.resolution },
+  ],
+};
 
 const unique = (values: string[]) => [...new Set(values)];
 
@@ -25,7 +45,7 @@ export function ScoreBadge({ score, category }: { score: number; category: Surve
 }
 
 export function CasesTable({ overview }: { overview: AfterSalesOverview }) {
-  const rows = overview.cases;
+  const rows = useAdvisorRows(overview.cases, overview.owners, (row) => row.owner.id);
   const columns: Column<CaseItem>[] = [
     {
       id: "case",
@@ -88,7 +108,7 @@ export function CasesTable({ overview }: { overview: AfterSalesOverview }) {
     { id: "status", label: "Estado", options: unique(rows.map((row) => row.status)).map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status },
   ];
   const sorts: SortOption<CaseItem>[] = [{ id: "created", label: "Fecha de registro", type: "date", value: (row) => row.created_at }];
-  return <DataTable screen="postventa-casos" rows={rows} columns={columns} getKey={(row) => row.code} entityLabel="casos" searchText={(row) => `${row.code} ${row.subject} ${row.client?.name ?? ""}`} searchPlaceholder="Buscar caso o cliente" metrics={metrics} filters={filters} sorts={sorts} />;
+  return <DataTable screen="postventa-casos" rows={rows} columns={columns} getKey={(row) => row.code} entityLabel="casos" searchText={(row) => `${row.code} ${row.subject} ${row.client?.name ?? ""}`} searchPlaceholder="Buscar caso o cliente" metrics={metrics} filters={filters} sorts={sorts} csv={casesCsv} />;
 }
 
 export function SurveysTable({ overview }: { overview: AfterSalesOverview }) {

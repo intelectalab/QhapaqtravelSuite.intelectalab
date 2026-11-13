@@ -15,11 +15,11 @@ import type { StepResult } from "@/lib/server/resource";
 
 const initial: StepResult = { message: null, done: false };
 
-function Preview({ channel, subject, body }: { channel: "email" | "whatsapp"; subject: string; body: string }) {
+export function Preview({ channel, subject, body, values }: { channel: "email" | "whatsapp"; subject: string; body: string; values?: Record<string, string> }) {
   if (channel === "whatsapp") {
     return (
       <div className="rounded-xl bg-[color-mix(in_srgb,var(--ok)_8%,var(--surface))] p-3">
-        <p className="w-fit max-w-full whitespace-pre-line rounded-xl rounded-tl-sm bg-surface px-3 py-2 text-[13px] leading-relaxed shadow-sm">{fillVariables(body) || "El mensaje aparece aquí."}</p>
+        <p className="w-fit max-w-full whitespace-pre-line rounded-xl rounded-tl-sm bg-surface px-3 py-2 text-[13px] leading-relaxed shadow-sm">{fillVariables(body, values) || "El mensaje aparece aquí."}</p>
         <p className="mt-1.5 text-[11px] text-fg-3">WhatsApp Business · plantilla de Meta</p>
       </div>
     );
@@ -27,14 +27,14 @@ function Preview({ channel, subject, body }: { channel: "email" | "whatsapp"; su
   return (
     <div className="overflow-hidden rounded-xl border border-line">
       <p className="border-b border-line bg-surface-2 px-3 py-2 text-[12.5px]">
-        <b>Asunto:</b> {fillVariables(subject) || "Sin asunto"}
+        <b>Asunto:</b> {fillVariables(subject, values) || "Sin asunto"}
       </p>
-      <p className="whitespace-pre-line px-3 py-2.5 text-[13px] leading-relaxed">{fillVariables(body) || "El correo aparece aquí."}</p>
+      <p className="whitespace-pre-line px-3 py-2.5 text-[13px] leading-relaxed">{fillVariables(body, values) || "El correo aparece aquí."}</p>
     </div>
   );
 }
 
-function rulesHint(channel: "email" | "whatsapp", category: TemplateCategory, body: string) {
+export function rulesHint(channel: "email" | "whatsapp", category: TemplateCategory, body: string) {
   if (category !== "MARKETING") return null;
   const ok = channel === "email" ? body.includes("{{enlace_baja}}") : body.toUpperCase().includes("BAJA");
   return (

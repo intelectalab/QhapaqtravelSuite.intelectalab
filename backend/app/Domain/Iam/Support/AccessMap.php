@@ -55,10 +55,13 @@ final class AccessMap
     {
         $routes = config('access.routes');
         $experiences = collect(config('access.roles'))->map(fn (array $role) => $role['experience']);
+        $homes = collect(config('access.roles'))->map(fn (array $role) => $role['home']);
         $grants = DB::table('role_has_permissions as rp')->join('permissions as p', 'p.id', '=', 'rp.permission_id')->get(['rp.role_id', 'p.name'])->groupBy('role_id');
         $roles = DB::table('roles')->where('name', '<>', 'super_admin')->orderByRaw("case scope when 'tenant' then 0 when 'mobile' then 1 else 2 end")->orderBy('is_custom')->orderBy('display_name')->get(['id', 'name', 'display_name', 'scope', 'is_custom', 'experience']);
+        $modules = DB::table('permissions')->where('guard_name', 'api')->whereNotIn('name', (array) config('access.platform_permissions'))->get(['name', 'module'])->groupBy('module');
+        $users = DB::table('model_has_roles as m')->join('iam_users as u', 'u.id', '=', 'm.model_id')->whereNull('u.deleted_at')->where('u.status', 'activo')->selectRaw('m.role_id, count(*) as total')->groupBy('m.role_id')->pluck('total', 'role_id');
 
-        $rows = $roles->map(function (object $role) use ($routes, $grants, $experiences): array {
+        $rows = $roles->map(function (object $role) use ($routes, $grants, $experiences, $homes, $modules, $users): array {
             $permissions = ($grants[$role->id] ?? collect())->pluck('name')->flip()->all();
             $experience = $experiences[$role->name] ?? $role->experience ?? 'backoffice';
             $screens = collect($routes)->map(fn (array $required) => $experience === 'backoffice' && $this->satisfies($required, $permissions));
@@ -71,11 +74,18 @@ final class AccessMap
                 'experience' => $experience,
                 'screens' => $screens->all(),
                 'allowed' => $screens->filter()->count(),
+                'home' => $homes[$role->name] ?? ($experience === 'backoffice' ? '/dashboard' : ($experience === 'mobile' ? '/mobile/operador' : '/portal')),
+                'data_scope' => RoleProfiles::dataScope($role->name, $role->scope),
+                'modules' => $modules->map(fn ($items, string $module): array => ['module' => $module, 'granted' => $items->filter(fn (object $item): bool => isset($permissions[$item->name]))->count(), 'total' => $items->count()])->filter(fn (array $item): bool => $item['granted'] > 0)->values()->all(),
+                'denied' => RoleProfiles::denied($experience, $permissions),
+                'external' => RoleProfiles::external($role->name, $experience),
+                'users' => (int) ($users[$role->id] ?? 0),
             ];
         })->values();
 
         return [
             'screens' => collect($routes)->map(fn (array $required, string $path): array => ['path' => $path, 'permissions' => $required])->values()->all(),
+            'external' => collect(RoleProfiles::EXTERNAL)->map(fn (array $row): array => ['key' => $row['key'], 'label' => $row['label'], 'path' => $row['path']])->values()->all(),
             'roles' => $rows->all(),
             'summary' => $rows->map(fn (array $row): array => ['role' => $row['role'], 'name' => $row['name'], 'allowed' => $row['allowed'], 'total' => count($routes)])->all(),
         ];

@@ -45,6 +45,8 @@ export interface AuditOverview {
   kpis: { total: number; critical: number; actors: number; today: number; denied: number };
   top_entities: { label: string; total: number }[];
   daily: { date: string; total: number }[];
+  by_actor?: { label: string; total: number }[];
+  critical_by_action?: { label: string; total: number }[];
 }
 
 interface SectionState<T> {
@@ -73,6 +75,7 @@ export interface CurrencySettings {
   tax_pct?: number;
   rounding?: string;
   round_mode?: string;
+  invoice_void_days?: number;
 }
 
 export interface PolicySettings {
@@ -99,6 +102,42 @@ export interface SettingsChannel {
   enabled: boolean;
   allowed: boolean;
   min_plan: string;
+  integration?: ChannelIntegration | null;
+}
+
+export interface ChannelIntegration {
+  code: string;
+  name: string;
+  status: string;
+  status_label: string;
+  ready: boolean;
+  warning: string | null;
+}
+
+export interface WhatsappIntegration {
+  code: string;
+  name: string;
+  status: string;
+  status_label: string;
+  sandbox: boolean;
+}
+
+export interface SchedulerInfo {
+  timezone: string;
+  queued: number;
+  oldest_queued_at: string | null;
+  workers: number | null;
+  paused: number;
+  next_run_at: string | null;
+  policy: { base_seconds: number; jitter_pct: number; steps: { attempt: number; seconds: number }[] };
+}
+
+export interface ConnectionTestLog {
+  correlation_id: string;
+  at: string;
+  duration_ms: number;
+  timeout_s: number;
+  steps: { label: string; status: "ok" | "warn" | "bad" | "info"; ms: number | null }[];
 }
 
 export interface SettingsSequence {
@@ -263,6 +302,7 @@ export interface PaxTemplate {
   subject: string | null;
   body: string;
   lang: "ES" | "EN";
+  group_code?: string | null;
   only_if_balance: boolean;
   only_if_missing_docs: boolean;
   products: string[];
@@ -321,6 +361,9 @@ export interface NotificationMessage {
   at: string;
   sent_at: string | null;
   can_fallback: boolean;
+  body?: string | null;
+  address?: string | null;
+  read_at?: string | null;
 }
 
 export interface NotificationRuleRecord extends Omit<NotificationRule, "updated_by"> {
@@ -346,6 +389,9 @@ export interface NotificationMessageRecord {
   audience: string;
   created_at: string;
   sent_at: string | null;
+  body_rendered?: string | null;
+  recipient_address?: string | null;
+  read_at?: string | null;
 }
 
 export interface NotificationRulesMeta {
@@ -353,6 +399,7 @@ export interface NotificationRulesMeta {
   options: NotificationsOverview["options"];
   history: AuditEntry[];
   can_manage: boolean;
+  whatsapp?: WhatsappIntegration | null;
 }
 
 export interface NotificationsOverview {
@@ -362,6 +409,7 @@ export interface NotificationsOverview {
   options: { channels: Option[]; timings: Option[]; conditions: Option[] };
   history: AuditEntry[];
   can_manage: boolean;
+  whatsapp?: WhatsappIntegration | null;
 }
 
 export interface UsageMetric {
@@ -388,12 +436,19 @@ export interface PlatformInvoice {
   paid_at: string | null;
   method: string | null;
   sunat: string;
+  sunat_hash: string | null;
+  bill_to: { name?: string; ruc?: string; address?: string; ubigeo?: string | null } | null;
+  attempts: { number: number; source: string; result: string; message: string | null; at: string }[];
   lines: { description: string; quantity: number; amount: number }[];
 }
 
 export interface AddonOffer {
   code: string;
   label: string;
+  description: string | null;
+  available_in: string[];
+  included_in: string[];
+  feature: string | null;
   unit: string;
   quantity_allowed: boolean;
   price: number;
@@ -515,6 +570,8 @@ export interface Webhook {
   status: "active" | "paused" | "disabled";
   failures: number;
   disabled_reason: string | null;
+  failure_limit: number;
+  rotated_at: string | null;
   delivered: number;
   total: number;
   last_at: string | null;
@@ -549,6 +606,7 @@ export interface ApiOverview {
   scopes: Option[];
   events: Option[];
   history: AuditEntry[];
+  key_history: AuditEntry[];
   can_manage: boolean;
 }
 
@@ -609,6 +667,7 @@ export interface IntegrationsOverview {
   owners: Option[];
   history: AuditEntry[];
   can_manage: boolean;
+  scheduler?: SchedulerInfo | null;
 }
 
 export interface AdaptersMeta {
@@ -628,6 +687,8 @@ export interface AuditMeta {
   kpis: AuditOverview["kpis"];
   top_entities: AuditOverview["top_entities"];
   daily: AuditOverview["daily"];
+  by_actor?: AuditOverview["top_entities"];
+  critical_by_action?: AuditOverview["top_entities"];
 }
 
 export const CHANNEL_LABELS: Record<string, string> = { email: "Correo", whatsapp: "WhatsApp", push: "Push", portal: "Portal" };

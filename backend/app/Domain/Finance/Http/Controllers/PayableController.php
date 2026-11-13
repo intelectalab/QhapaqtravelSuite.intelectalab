@@ -6,7 +6,11 @@ namespace App\Domain\Finance\Http\Controllers;
 
 use App\Domain\Finance\Actions\PayableWorkflow;
 use App\Domain\Finance\Http\Controllers\Concerns\ResolvesActor;
+use App\Domain\Finance\Support\FinanceDetails;
 use App\Domain\Finance\Support\PayableDirectory;
+use App\Domain\Finance\Support\ProfitabilityReport;
+use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Http\CursorPage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -33,6 +37,50 @@ final class PayableController
     public function index(Request $request, PayableDirectory $directory): JsonResponse
     {
         return response()->json(['data' => $directory->overview($this->actor($request))]);
+    }
+
+    public function summary(Request $request, PayableDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->summary($this->actor($request))]);
+    }
+
+    public function byProvider(Request $request, PayableDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->byProvider($this->actor($request))]);
+    }
+
+    public function bankAccounts(Request $request): JsonResponse
+    {
+        $filters = CursorPage::filters($request);
+
+        if (isset($filters['currency']) && ! in_array($filters['currency'], ['PEN', 'USD'], true)) {
+            throw ApiException::unprocessable('VALIDATION_ERROR', 'La moneda debe ser PEN o USD.', ['filter.currency' => ['La moneda debe ser PEN o USD.']]);
+        }
+
+        return response()->json(CursorPage::respond(
+            $request,
+            FinanceDetails::bankAccountQuery($filters['currency'] ?? null)->select(['code', 'name', 'bank', 'currency', 'account_number']),
+            ['code' => 'code', 'name' => 'name', 'currency' => 'currency'],
+            'code',
+            fn (object $row): array => ['code' => $row->code, 'name' => $row->name, 'bank' => $row->bank, 'currency' => $row->currency, 'account_number' => $row->account_number, 'label' => "{$row->name} · {$row->currency}"],
+        ));
+    }
+
+    public function preview(Request $request, ProfitabilityReport $report): JsonResponse
+    {
+        $data = $request->validate([
+            'reservation_id' => ['required', 'string', 'max:30'],
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'currency' => ['required', 'in:PEN,USD'],
+            'fx_rate' => ['nullable', 'numeric', 'gt:0.5', 'lt:20'],
+        ], ['reservation_id.*' => 'Elige la reserva.', ...self::MESSAGES]);
+        $impact = $report->costImpact($data['reservation_id'], (string) $data['amount'], $data['currency'], isset($data['fx_rate']) ? (string) $data['fx_rate'] : null);
+
+        if (! $this->actor($request)->can('finance.profitability')) {
+            $impact = ['reservation' => $impact['reservation'], 'amount_pen' => $impact['amount_pen'], 'before' => null, 'after' => null, 'margin_visible' => false];
+        }
+
+        return response()->json(['data' => $impact]);
     }
 
     public function store(Request $request, PayableWorkflow $workflow): JsonResponse

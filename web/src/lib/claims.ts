@@ -56,8 +56,9 @@ export interface ClaimsOverview {
   by_sede: { label: string; count: number }[];
   claims: ClaimSheet[];
   sequences: { sede: string; year_count: number; last: string | null; next: string }[];
-  options: { sedes: { value: string; label: string }[]; clients: { value: string; label: string }[]; reservations: { value: string; label: string; hint?: string }[]; owners?: { value: string; label: string }[] };
+  options: { sedes: { value: string; label: string }[]; clients: { value: string; label: string }[]; reservations: { value: string; label: string; hint?: string }[]; owners?: { value: string; label: string }[]; close_reasons?: { value: string; label: string }[] };
   can: { manage: boolean; settings: boolean };
+  public_path?: string | null;
 }
 
 export const DEADLINE: Record<Deadline, { label: string; tone: Tone }> = {
@@ -67,6 +68,19 @@ export const DEADLINE: Record<Deadline, { label: string; tone: Tone }> = {
   respondido_en_plazo: { label: "Respondida a tiempo", tone: "ok" },
   respondido_fuera_de_plazo: { label: "Respondida fuera de plazo", tone: "bad" },
 };
+
+export interface ClaimReport {
+  year: number;
+  compliance: { on_time: number; late: number; overdue: number; pending: number };
+  overdue: { code: string; book_number: string; type: string; consumer: string; sede: string | null; due_date: string | null; days_late: number | null; owner: string | null }[];
+}
+
+export const BOOK_FLOW: { status: ClaimSheet["book_status"]; label: string }[] = [
+  { status: "received", label: "Recibida" },
+  { status: "in_review", label: "En evaluación" },
+  { status: "answered", label: "Respondida" },
+  { status: "closed", label: "Cerrada" },
+];
 
 export const BOOK_STATUS_TONE: Record<ClaimSheet["book_status"], Tone> = { received: "info", in_review: "accent", answered: "ok", closed: "mute" };
 

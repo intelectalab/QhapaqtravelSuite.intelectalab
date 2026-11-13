@@ -42,7 +42,7 @@ final class PortalMessages
                     'contact_phone' => $account->client->phone,
                     'subject' => Str::limit(trim((string) ($data['subject'] ?? '')) ?: ($reservation ? "Consulta sobre {$reservation->title}" : 'Consulta desde el portal'), 180, ''),
                     'status' => 'abierta',
-                    'priority' => ($data['topic'] ?? null) === 'salud' ? 'alta' : 'media',
+                    'priority' => ($data['topic'] ?? null) === 'salud' ? 'alta' : (in_array($data['priority'] ?? null, ['baja', 'media', 'alta'], true) ? $data['priority'] : 'media'),
                     'assignee_id' => $account->advisorId(),
                     'client_id' => $account->client->id,
                     'reservation_id' => $reservation?->id,

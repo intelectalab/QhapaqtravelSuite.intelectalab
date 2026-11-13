@@ -95,7 +95,13 @@ final class B2bDirectory
             ->where(fn ($query) => $query->whereIn('agency_id', $rows->pluck('id'))->orWhereIn('client_id', $rows->pluck('crm_client_id')->filter()))
             ->get(['code', 'agency_id', 'client_id', 'total_amount', 'currency', 'status', 'travel_from', 'title']);
 
-        $items = $rows->map(function (object $row) use ($sales, $today): array {
+        $portalUsers = [];
+
+        foreach (DB::table('iam_users')->whereIn('agency_id', $rows->pluck('id'))->whereNull('deleted_at')->orderBy('code')->get(['agency_id', 'code', 'name', 'email', 'status', 'last_login_at']) as $user) {
+            $portalUsers[(string) $user->agency_id][] = ['code' => $user->code, 'name' => $user->name, 'email' => $user->email, 'status' => $user->status, 'last_login_at' => $user->last_login_at];
+        }
+
+        $items = $rows->map(function (object $row) use ($sales, $today, $portalUsers): array {
             $own = $sales->filter(fn (object $sale): bool => $sale->agency_id === $row->id || ($row->crm_client_id && $sale->client_id === $row->crm_client_id))->values();
             $limit = ChannelKit::money($row->credit_limit);
             $used = ChannelKit::money($row->credit_used);
@@ -124,6 +130,7 @@ final class B2bDirectory
                 'lock_version' => (int) $row->lock_version,
                 'sales' => $total,
                 'commission' => round($total * (float) $row->commission_pct / 100, 2),
+                'portal_users' => $portalUsers[(string) $row->id] ?? [],
                 'rates' => $this->rates->forAgency((string) $row->id),
                 'reservations' => $own->map(fn (object $sale): array => ['code' => $sale->code, 'title' => $sale->title, 'status' => $sale->status, 'travel_from' => $sale->travel_from, 'total' => ChannelKit::money($sale->total_amount), 'currency' => $sale->currency])->all(),
             ];

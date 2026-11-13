@@ -51,12 +51,12 @@ final class SupplierInvoices
                 }
 
                 if ($this->active($payable->id) !== null) {
-                    throw ApiException::conflict('SUP-BR-42', 'Ya registró una factura para este documento. Anúlela si necesita reemplazarla.');
+                    throw ApiException::conflict('SUP-BR-42', 'Ya registró una factura para este documento. Si tiene un error, Finanzas la observará o rechazará y podrá subirla de nuevo.');
                 }
 
-                $previous = DB::table('supplier_invoices')->where('provider_id', $account->id())->where('number', $number)->first(['id', 'deleted_at']);
+                $previous = DB::table('supplier_invoices')->where('provider_id', $account->id())->where('number', $number)->first(['id', 'payable_id', 'status', 'deleted_at']);
 
-                if ($previous !== null && $previous->deleted_at === null) {
+                if ($previous !== null && $previous->deleted_at === null && ! ($previous->payable_id === $payable->id && in_array($previous->status, ['observada', 'rechazada'], true))) {
                     throw ApiException::conflict('SUP-BR-40', "La factura {$number} ya fue registrada.");
                 }
 
@@ -109,22 +109,6 @@ final class SupplierInvoices
 
             throw $exception;
         }
-    }
-
-    public function annul(SupplierAccount $account, string $payableCode): void
-    {
-        DB::transaction(function () use ($account, $payableCode): void {
-            $payable = $account->payable($payableCode);
-            $invoice = $this->active($payable->id) ?? throw ApiException::notFound('Este documento no tiene una factura registrada.');
-
-            if ($invoice->status !== 'registrada') {
-                throw ApiException::conflict('SUP-BR-42', 'Finanzas ya validó esta factura. Para cambios escriba a Pagos de la agencia.');
-            }
-
-            DB::table('supplier_invoices')->where('id', $invoice->id)->update(['deleted_at' => now(), 'updated_by' => $account->user->getKey(), 'updated_at' => now()]);
-            DB::table('fin_payables')->where('id', $payable->id)->where('supplier_doc_number', $invoice->number)->update(['supplier_doc_number' => null, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $account->user->getKey(), 'updated_at' => now()]);
-            $this->audit->log('Cuenta por pagar', $payable->code, 'anular_factura_proveedor', $invoice->number, null);
-        });
     }
 
     private function active(string $payableId): ?object

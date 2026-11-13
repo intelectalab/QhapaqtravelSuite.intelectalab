@@ -61,28 +61,43 @@ final class ManageIntegrations
     public function test(string $code, ?User $actor = null): array
     {
         $adapter = $this->adapter($code);
+        $started = hrtime(true);
+        $steps = [['label' => 'Adaptador '.$adapter->code.' · entorno '.($adapter->environment === 'production' ? 'producción' : 'pruebas'), 'status' => 'info', 'ms' => null]];
+        $elapsed = fn (int $from): int => (int) round((hrtime(true) - $from) / 1_000_000);
 
         if (in_array($adapter->status, ['por_validar', 'futuro'], true)) {
             [$ok, $result] = [false, 'Proveedor por validar: la prueba no envía credenciales (INT-BR-01).'];
+            $steps[] = ['label' => 'Sin proveedor validado: no se envían credenciales', 'status' => 'warn', 'ms' => null];
         } elseif (! isset(self::CONTRACTS[$adapter->kind])) {
             [$ok, $result] = [false, 'Aún no hay un adaptador con prueba de conexión para este tipo.'];
+            $steps[] = ['label' => 'Este tipo de integración no tiene contrato de prueba', 'status' => 'warn', 'ms' => null];
         } else {
             try {
+                $resolve = hrtime(true);
                 $driver = $this->driver(self::CONTRACTS[$adapter->kind]);
+                $steps[] = ['label' => 'Contrato '.class_basename(self::CONTRACTS[$adapter->kind]).' resuelto con '.class_basename($driver), 'status' => 'ok', 'ms' => $elapsed($resolve)];
+                $call = hrtime(true);
                 $check = $driver instanceof HealthCheckable ? $driver->healthcheck() : null;
                 $simulated = (bool) ($check?->payload['simulated'] ?? false);
                 [$ok, $result] = $check === null
                     ? [false, 'El adaptador no expone prueba de conexión.']
                     : [$check->ok, $check->ok ? ($simulated ? 'Respuesta correcta del adaptador simulado.' : 'Conexión correcta.') : ($check->message ?? 'El proveedor rechazó la prueba.')];
+                $steps[] = ['label' => $check === null ? 'El adaptador no expone prueba de conexión' : 'Prueba de salud'.($simulated ? ' (simulada)' : '').': '.($check->ok ? 'responde' : 'rechaza'), 'status' => $check?->ok ? 'ok' : 'bad', 'ms' => $elapsed($call)];
+
+                if ($adapter->status === 'sandbox') {
+                    $steps[] = ['label' => 'En pruebas: solo llega a destinos registrados en el proveedor', 'status' => 'warn', 'ms' => null];
+                }
             } catch (Throwable $e) {
                 [$ok, $result] = [false, mb_substr($e->getMessage(), 0, 240)];
+                $steps[] = ['label' => 'Error: '.$result, 'status' => 'bad', 'ms' => $elapsed($started)];
             }
         }
 
+        $steps[] = ['label' => $ok ? 'Conexión operativa' : 'La prueba no pasó', 'status' => $ok ? 'ok' : 'bad', 'ms' => null];
         DB::table('integration_adapters')->where('id', $adapter->id)->update(['last_test_at' => now(), 'last_test_ok' => $ok, 'last_test_result' => $result, 'updated_by' => $actor?->getKey()]);
         $this->audit->log('Integración', $adapter->code, 'probar_conexion', null, ($ok ? 'ok · ' : 'error · ').$result);
 
-        return ['ok' => $ok, 'result' => $result];
+        return ['ok' => $ok, 'result' => $result, 'log' => ['correlation_id' => AssignCorrelationId::current(), 'at' => now()->toIso8601String(), 'duration_ms' => $elapsed($started), 'timeout_s' => (int) $adapter->timeout_s, 'steps' => $steps]];
     }
 
     public function job(string $id, string $mode): void

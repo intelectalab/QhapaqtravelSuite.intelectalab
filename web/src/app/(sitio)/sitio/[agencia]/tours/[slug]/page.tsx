@@ -9,6 +9,7 @@ import { BookingCustomizer } from "@/features/site/BookingCustomizer";
 import { AvailabilityCalendar, BookingPanel, BookingProvider, MobileBookingBar } from "@/features/site/ProductBooking";
 import { ReviewsSection } from "@/features/site/Reviews";
 import { Scenery } from "@/features/site/Scenery";
+import { ShareActions } from "@/features/site/ShareActions";
 import { TrackEvent } from "@/features/site/SiteAnalytics";
 import { StructuredData, breadcrumbNode, faqNode, tripNode } from "@/features/site/StructuredData";
 import { siteOrigin } from "@/lib/server/site-seo";
@@ -22,6 +23,8 @@ export async function generateMetadata({ params }: PageProps<"/sitio/[agencia]/t
   const { product } = await getSiteProduct(agencia, slug);
   return { title: product.seo.title, description: product.seo.description ?? undefined };
 }
+
+const MIN_AGE_TEXT = /edad\s+m[ií]nima|minimum\s+age/i;
 
 export default async function ProductPage({ params, searchParams }: PageProps<"/sitio/[agencia]/tours/[slug]">) {
   const [{ agencia, slug }, search] = await Promise.all([params, searchParams]);
@@ -41,6 +44,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
     { icon: ShieldCheck, label: t.booking, value: product.advance_days > 0 ? t.advance(product.advance_days) : t.dayBefore },
   ];
   const promoCode = product.promotions.find((promotion) => promotion.code)?.code ?? null;
+  const showMinAge = product.ages.min > 0 && !detail.requirements.some((item) => MIN_AGE_TEXT.test(item.text));
 
   return (
     <BookingProvider key={fecha ?? "sin-fecha"} detail={detail} initialDate={fecha}>
@@ -87,6 +91,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
                 <RatingLine rating={product.rating} />
               </span>
               <WishButton slug={product.slug} signedIn={signedIn} initial={wishlist?.data?.items.some((item) => item.slug === product.slug) ?? false} className="h-9 border-white/25 bg-white/10 text-white backdrop-blur hover:text-white" />
+              <ShareActions slug={product.slug} name={product.name} />
             </div>
           </div>
         </Scenery>
@@ -122,15 +127,15 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
           {detail.itinerary.length > 0 && (
             <section>
               <SectionHeading eyebrow={t.itinerary.eyebrow} title={t.itinerary.title} className="mb-5" />
-              <ol className="space-y-6">
+              <ol data-site-itinerary className="space-y-6">
                 {detail.itinerary.map((day) => (
                   <li key={day.day} className="rounded-card border border-line bg-surface p-5 shadow-card">
                     <h3 className="flex items-center gap-3 text-[15.5px] font-semibold text-fg">
-                      <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-brand text-[13px] font-bold text-brand-fg">{day.day}</span>
+                      <span data-site-day className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-brand text-[13px] font-bold text-brand-fg">{day.day}</span>
                       {day.title}
                     </h3>
                     {day.items.length > 0 && (
-                      <ul className="relative mt-4 space-y-3 border-l-2 border-dashed border-line pl-5">
+                      <ul data-site-step className="relative mt-4 space-y-3 border-l-2 border-dashed border-line pl-5">
                         {day.items.map((item, index) => (
                           <li key={`${item.time}-${index}`} className="group relative text-[13.5px]">
                             <span className="absolute -left-[27px] top-1 h-3 w-3 rounded-full border-2 border-surface bg-t1 transition group-hover:scale-125" />
@@ -156,7 +161,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
             </section>
           )}
 
-          {detail.requirements.length > 0 && (
+          {(detail.requirements.length > 0 || showMinAge) && (
             <section>
               <SectionHeading eyebrow={t.requirements.eyebrow} title={t.requirements.title} className="mb-4" />
               <ul className="grid gap-2 sm:grid-cols-2">
@@ -166,7 +171,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
                     {item.text}
                   </li>
                 ))}
-                {product.ages.min > 0 && (
+                {showMinAge && (
                   <li className="flex gap-2.5 rounded-xl bg-surface-2 px-3.5 py-3 text-[13.5px] text-fg-2">
                     <Sparkles size={15} className="mt-0.5 flex-none text-t2" />
                     {t.minAge(product.ages.min)}

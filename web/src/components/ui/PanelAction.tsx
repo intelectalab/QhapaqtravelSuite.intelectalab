@@ -34,7 +34,7 @@ export function PanelAction<S extends PanelActionState>({ label, icon, variant =
   const [open, setOpen] = useState(defaultOpen);
   const [formKey, setFormKey] = useState(0);
   useEffect(() => {
-    if (defaultOpen && !open && /(editar|cancelar)=/.test(window.location.search)) window.history.replaceState(null, "", window.location.pathname);
+    if (defaultOpen && !open && /(editar|cancelar|nuevo|nueva)=/.test(window.location.search)) window.history.replaceState(null, "", window.location.pathname);
   }, [defaultOpen, open]);
   const [state, run, pending] = useActionState<S, FormData>(async (previous: S, form: FormData) => {
     const next = await action(previous, form);

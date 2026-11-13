@@ -53,6 +53,8 @@ export async function saveOutgoingMail(_state: AdminActionState, form: FormData)
     password: String(form.get("password") ?? ""),
     from_address: text(form, "from_address"),
     from_name: text(form, "from_name"),
+    ses_webhook_secret: String(form.get("ses_webhook_secret") ?? "") || null,
+    fcm_webhook_secret: String(form.get("fcm_webhook_secret") ?? "") || null,
   };
   return send("/settings/outgoing-mail", "PUT", body, "No pudimos guardar el correo de salida.");
 }

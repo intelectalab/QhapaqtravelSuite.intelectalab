@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { NoAccess } from "@/components/shell/NoAccess";
+import { ReportNotAllowed } from "@/features/reports/ReportNotAllowed";
 import { ReportView } from "@/features/reports/ReportView";
 import { getReport } from "@/lib/server/reports";
 
@@ -16,6 +16,6 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/r
   if (!TITLES[report]) notFound();
   const { period, sede } = await searchParams;
   const data = await getReport(report, typeof period === "string" ? period : undefined, typeof sede === "string" ? sede : undefined);
-  if (!data) return <NoAccess home="/reportes" />;
+  if (!data) return <ReportNotAllowed title={TITLES[report] ?? report} />;
   return <ReportView report={data} />;
 }

@@ -2,7 +2,7 @@
 
 import { AlertOctagon, CheckCircle2, CircleDashed, CreditCard, FileCheck2, Globe2, Mail, MapPinned, MessageCircle, Pause, Play, Plug, PlugZap, RefreshCw, Settings2, ShieldCheck, Truck, XCircle, Zap } from "lucide-react";
 import { useState } from "react";
-import { configureAdapter, resolveIntegrationError, retryIntegrationError, runJob, setJobStatus, testAdapter } from "@/app/(backoffice)/admin/integraciones/actions";
+import { configureAdapter, resolveIntegrationError, retryIntegrationError, runJob, setJobStatus, testAdapter, type ConnectionTestState } from "@/app/(backoffice)/admin/integraciones/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -14,7 +14,7 @@ import { SidePanel } from "@/components/ui/SidePanel";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { ToneScope } from "@/components/ui/Tinted";
-import { ADMIN_INITIAL, type Adapter, type AdminActionState, type IntegrationError, type IntegrationsOverview, type ScheduledJob } from "@/lib/admin";
+import { ADMIN_INITIAL, type Adapter, type AdminActionState, type ConnectionTestLog, type IntegrationError, type IntegrationsOverview, type ScheduledJob } from "@/lib/admin";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format";
 import type { Tone } from "@/lib/tone";
@@ -25,6 +25,39 @@ const ADAPTER_TONES: Record<string, Tone> = { activo: "ok", sandbox: "sun", parc
 const JOB_STATUS: Record<string, { label: string; tone: Tone }> = { ok: { label: "Correcto", tone: "ok" }, advertencia: { label: "Con avisos", tone: "warn" }, error: { label: "Con error", tone: "bad" }, en_curso: { label: "En curso", tone: "info" } };
 const ERROR_STATUS: Record<IntegrationError["status"], { label: string; tone: Tone }> = { reintentando: { label: "Reintentando", tone: "sun" }, fallo_definitivo: { label: "Fallo definitivo", tone: "bad" }, resuelto: { label: "Resuelto", tone: "ok" } };
 const SOURCES: Record<IntegrationError["source"], string> = { job: "Proceso", notification: "Aviso", integration: "Integración" };
+
+const TEST_INITIAL: ConnectionTestState = { message: null, done: false, log: null };
+
+const STEP_TONE: Record<ConnectionTestLog["steps"][number]["status"], string> = { ok: "text-ok", warn: "text-warn", bad: "text-bad", info: "text-fg-3" };
+
+const STEP_MARK: Record<ConnectionTestLog["steps"][number]["status"], string> = { ok: "✓", warn: "!", bad: "×", info: "→" };
+
+function ConnectionLog({ log, ok, result }: { log: ConnectionTestLog; ok: boolean; result: string | null }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className={cn("flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-[13px] font-semibold", ok ? "bg-[color-mix(in_srgb,var(--ok)_10%,transparent)] text-ok" : "bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] text-warn")}>
+        {ok ? <CheckCircle2 size={15} /> : <CircleDashed size={15} />}
+        {result ?? (ok ? "Conexión correcta" : "La prueba no pasó")}
+      </p>
+      <ol className="flex flex-col gap-1 rounded-[12px] bg-surface-2 p-3 font-mono text-[12px]">
+        <li className="text-fg-3">
+          [{formatDateTime(log.at)}] correlación {log.correlation_id}
+        </li>
+        {log.steps.map((step, index) => (
+          <li key={index} className={cn("flex items-start justify-between gap-3", STEP_TONE[step.status])}>
+            <span>
+              {STEP_MARK[step.status]} {step.label}
+            </span>
+            {step.ms !== null && <span className="flex-none text-fg-3">{step.ms} ms</span>}
+          </li>
+        ))}
+      </ol>
+      <p className="text-[12px] text-fg-3">
+        Duró {log.duration_ms} ms de un máximo de {log.timeout_s} s.
+      </p>
+    </div>
+  );
+}
 
 function AdapterCard({ adapter, data, index }: { adapter: Adapter; data: IntegrationsOverview; index: number }) {
   const Icon = KIND_ICONS[adapter.kind] ?? Plug;
@@ -77,8 +110,13 @@ function AdapterCard({ adapter, data, index }: { adapter: Adapter; data: Integra
         )}
         {data.can_manage && (
           <div className="mt-auto flex justify-end gap-1.5 border-t border-line-2 pt-3">
-            <PanelAction<AdminActionState> label="Probar" variant="ghost" size="sm" formId={`adapter-test-${adapter.code}`} trigger={(open) => <RowIcon tone="view" label="Probar conexión" icon={<PlugZap size={15} />} onClick={open} />} title="Probar conexión" description={["por_validar", "futuro"].includes(adapter.status) ? "Esta integración aún no tiene proveedor: la prueba no envía credenciales." : "Llamamos al adaptador y guardamos el resultado en la tarjeta."} submitLabel="Probar ahora" action={testAdapter} initial={ADMIN_INITIAL}>
-              {() => <input type="hidden" name="code" value={adapter.code} />}
+            <PanelAction<ConnectionTestState> label="Probar" variant="ghost" size="sm" formId={`adapter-test-${adapter.code}`} trigger={(open) => <RowIcon tone="view" label="Probar conexión" icon={<PlugZap size={15} />} onClick={open} />} title={`Probar conexión · ${adapter.name}`} description={["por_validar", "futuro"].includes(adapter.status) ? "Esta integración aún no tiene proveedor: la prueba no envía credenciales." : "Llamamos al adaptador y te mostramos cada paso. El resultado queda en la tarjeta y en la auditoría."} submitLabel="Probar ahora" action={testAdapter} initial={TEST_INITIAL}>
+              {(state) => (
+                <>
+                  <input type="hidden" name="code" value={adapter.code} />
+                  {state.log && <ConnectionLog log={state.log} ok={state.ok ?? false} result={state.result ?? null} />}
+                </>
+              )}
             </PanelAction>
             <PanelAction<AdminActionState> label="Configurar" variant="ghost" size="sm" formId={`adapter-config-${adapter.code}`} trigger={(open) => <RowIcon tone="edit" label="Configurar" icon={<Settings2 size={15} />} onClick={open} />} title={adapter.name} description="Las credenciales viven en la bóveda y nunca se muestran. Solo pasan a producción las integraciones validadas." submitLabel="Guardar" action={configureAdapter} initial={ADMIN_INITIAL}>
               {() => (
@@ -214,7 +252,65 @@ export function JobsTable({ data }: { data: IntegrationsOverview }) {
     { id: "next", label: "Próxima ejecución", type: "date", value: (job) => job.next_run_at },
     { id: "last", label: "Última ejecución", type: "date", value: (job) => job.last_run_at },
   ];
-  return <DataTable screen="admin-jobs" rows={data.jobs} columns={columns} getKey={(job) => job.code} entityLabel="procesos" searchText={(job) => `${job.code} ${job.name} ${job.result ?? ""}`} searchPlaceholder="Buscar proceso" metrics={metrics} filters={filters} sorts={sorts} />;
+  const csv = {
+    fileName: "procesos-programados",
+    columns: [
+      { header: "Código", value: (job: ScheduledJob) => job.code },
+      { header: "Proceso", value: (job: ScheduledJob) => job.name },
+      { header: "Programación", value: (job: ScheduledJob) => job.cron_label },
+      { header: "Cola", value: (job: ScheduledJob) => job.queue_label },
+      { header: "En pausa", value: (job: ScheduledJob) => job.paused },
+      { header: "Última ejecución", value: (job: ScheduledJob) => job.last_run_at, type: "datetime" as const },
+      { header: "Estado", value: (job: ScheduledJob) => (job.status ? (JOB_STATUS[job.status]?.label ?? job.status) : "") },
+      { header: "Resultado", value: (job: ScheduledJob) => job.result },
+      { header: "Próxima ejecución", value: (job: ScheduledJob) => job.next_run_at, type: "datetime" as const },
+    ],
+  };
+  return <DataTable screen="admin-jobs" rows={data.jobs} columns={columns} getKey={(job) => job.code} entityLabel="procesos" searchText={(job) => `${job.code} ${job.name} ${job.result ?? ""}`} searchPlaceholder="Buscar proceso" metrics={metrics} filters={filters} sorts={sorts} csv={csv} />;
+}
+
+const waitLabel = (seconds: number) => (seconds < 60 ? `${seconds} s` : seconds % 60 === 0 ? `${seconds / 60} min` : `${(seconds / 60).toFixed(1)} min`);
+
+export function SchedulerCard({ scheduler }: { scheduler: NonNullable<IntegrationsOverview["scheduler"]> }) {
+  const items = [
+    { label: "En curso o en cola", value: String(scheduler.queued), note: scheduler.oldest_queued_at ? `Desde ${formatDateTime(scheduler.oldest_queued_at, false)}` : "Nada pendiente", tip: "Ejecuciones de tu agencia que ya se encolaron y aún no terminan." },
+    { label: "Workers", value: scheduler.workers === null ? "Sin datos" : `${scheduler.workers} activos`, note: "Compartidos por la plataforma", tip: "Procesos que atienden las colas en este momento, según el supervisor de colas." },
+    { label: "Zona horaria", value: scheduler.timezone.replace("America/", "").replace("_", " "), note: scheduler.next_run_at ? `Próxima: ${formatDateTime(scheduler.next_run_at, false)}` : "Sin próximas ejecuciones", tip: "Las programaciones se calculan con la zona horaria de la agencia." },
+    { label: "En pausa", value: String(scheduler.paused), note: "No se ejecutan hasta reanudarlos", tip: "Procesos programados que alguien pausó." },
+  ];
+  return (
+    <div className="mb-4 grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        {items.map((item, index) => (
+          <div key={item.label} style={{ animationDelay: `${index * 50}ms` }} title={item.tip} className={cn("lift rounded-tile border border-line-2 bg-surface px-3.5 py-3", RISE)}>
+            <p className="text-[11.5px] font-semibold text-fg-3">{item.label}</p>
+            <p className="truncate text-[17px] font-bold">{item.value}</p>
+            <p className="truncate text-[11.5px] text-fg-3">{item.note}</p>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-tile border border-line-2 bg-surface px-3.5 py-3">
+        <p className="mb-2 text-[12.5px] font-semibold text-fg-2">Política de reintentos</p>
+        <ol className="flex flex-col gap-1.5">
+          {scheduler.policy.steps.map((step) => {
+            const max = scheduler.policy.steps.at(-1)?.seconds ?? step.seconds;
+            return (
+              <li key={step.attempt} className="group grid grid-cols-[74px_1fr_86px] items-center gap-2 text-[12px]">
+                <span className="text-fg-2">Intento {step.attempt}</span>
+                <span className="block h-1.5 overflow-hidden rounded-full bg-surface-2">
+                  <span className="block h-full origin-left rounded-full bg-[var(--t1)] transition-[filter] group-hover:brightness-125 motion-safe:animate-[fill-x_700ms_cubic-bezier(0.4,0,0.2,1)_backwards]" style={{ width: `${Math.max(6, (step.seconds / max) * 100)}%` }} />
+                </span>
+                <span className="text-right font-mono text-fg-3">
+                  {waitLabel(step.seconds)} ±{scheduler.policy.jitter_pct} %
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+        <p className="mt-2 text-[11.5px] text-fg-3">Tras el último intento queda como fallo definitivo y se avisa al responsable. Cada integración puede ajustar su espera base en Configurar.</p>
+      </div>
+    </div>
+  );
 }
 
 export function ErrorsTable({ data }: { data: IntegrationsOverview }) {
@@ -288,5 +384,19 @@ export function ErrorsTable({ data }: { data: IntegrationsOverview }) {
     { id: "class", label: "Tipo", options: [{ value: "transitorio", label: "Temporal" }, { value: "permanente", label: "Permanente" }], value: (error) => error.class },
   ];
   const sorts: SortOption<IntegrationError>[] = [{ id: "at", label: "Fecha", type: "date", value: (error) => error.at }];
-  return <DataTable screen="admin-errores-integracion" rows={data.errors} columns={columns} getKey={(error) => error.code} entityLabel="errores" searchText={(error) => `${error.code} ${error.ref} ${error.target} ${error.error}`} searchPlaceholder="Buscar error" metrics={metrics} filters={filters} sorts={sorts} />;
+  const csv = {
+    fileName: "errores-de-integracion",
+    columns: [
+      { header: "Código", value: (error: IntegrationError) => error.code },
+      { header: "Fecha", value: (error: IntegrationError) => error.at, type: "datetime" as const },
+      { header: "Origen", value: (error: IntegrationError) => `${SOURCES[error.source]} ${error.ref}` },
+      { header: "Destino", value: (error: IntegrationError) => error.target },
+      { header: "Error", value: (error: IntegrationError) => error.error },
+      { header: "Tipo", value: (error: IntegrationError) => (error.class === "permanente" ? "Permanente" : "Temporal") },
+      { header: "Intentos", value: (error: IntegrationError) => `${error.attempt} / ${error.max}` },
+      { header: "Estado", value: (error: IntegrationError) => ERROR_STATUS[error.status].label },
+      { header: "Resolución", value: (error: IntegrationError) => error.resolution },
+    ],
+  };
+  return <DataTable screen="admin-errores-integracion" rows={data.errors} columns={columns} getKey={(error) => error.code} entityLabel="errores" searchText={(error) => `${error.code} ${error.ref} ${error.target} ${error.error}`} searchPlaceholder="Buscar error" metrics={metrics} filters={filters} sorts={sorts} csv={csv} />;
 }

@@ -7,6 +7,17 @@ export interface SupplierSession {
   agency: { name: string; initials: string };
   user: { name: string; email: string };
   counts: { pending: number; rooming: number; incidents: number };
+  frame: SupplierFrame;
+}
+
+export interface SupplierFrame {
+  pending: number;
+  alternatives: number;
+  response_hours: number;
+  upcoming: number;
+  upcoming_pax: number;
+  receivable: Money;
+  open_incidents: number;
 }
 
 export interface SupplierRequest {
@@ -117,7 +128,7 @@ export interface SupplierPayables {
 }
 
 export interface SupplierAlert {
-  kind: "request" | "contract" | "invoice" | "rate" | "rooming";
+  kind: "request" | "contract" | "invoice" | "rate" | "rooming" | "voucher";
   tone: Tone;
   title: string;
   detail: string;
@@ -194,10 +205,20 @@ export interface SupplierContact {
   email: string | null;
 }
 
+export interface SupplierAgencyContact {
+  kind: "operaciones" | "pagos" | "emergencias";
+  label: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  note: string | null;
+}
+
 export interface SupplierCompany {
   provider: { ref: string; name: string; type: string; ruc: string; city: string | null; stars: number | null; contact: string; phone: string | null; email: string | null; currency: string; payment_terms: string | null; status: string };
   contract: { start: string; end: string; days_left: number; alert: string | null };
   agency: { name: string; legal_name: string | null; ruc: string | null; address: string | null };
+  agency_contacts: SupplierAgencyContact[];
   contacts: SupplierContact[];
   users: { name: string; email: string; status: string; last_login_at: string | null }[];
   activity: { services: number; reservations: number; catalog: number };

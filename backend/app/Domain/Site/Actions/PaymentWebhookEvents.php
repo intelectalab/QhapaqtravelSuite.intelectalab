@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\Site\Actions;
 
+use App\Domain\Finance\Actions\PaymentLinks;
 use App\Domain\Shared\Audit\AuditLogger;
 
 final class PaymentWebhookEvents
 {
     public const TYPES = ['payment.approved', 'payment.rejected', 'payment.chargeback'];
 
-    public function __construct(private readonly SiteCheckout $checkout, private readonly AuditLogger $audit) {}
+    public function __construct(private readonly SiteCheckout $checkout, private readonly AuditLogger $audit, private readonly PaymentLinks $links) {}
 
     public function apply(string $gateway, array $event): array
     {
@@ -22,6 +23,16 @@ final class PaymentWebhookEvents
             $this->audit->log($scope === 'order' ? 'Pedido web' : 'Cuenta por cobrar', $reference, 'contracargo', null, "{$gateway} · ".($data['txn_id'] ?? 'sin referencia'));
 
             return ['result' => 'contracargo_registrado'];
+        }
+
+        if ($scope === 'payment_link') {
+            if ($event['type'] !== 'payment.approved') {
+                $this->audit->log('Link de pago', $reference, 'pago_rechazado', null, "{$gateway} · ".($data['message'] ?? 'Pago no aprobado'));
+
+                return ['result' => 'rechazado'];
+            }
+
+            return $this->links->settle($reference, (string) ($data['method'] ?? 'card'), $data['txn_id'] ?? null, null);
         }
 
         if ($scope !== 'order') {

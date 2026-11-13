@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, Plus, Reply, Send, UserRound } from "lucide-react";
+import { Archive, BellRing, Link2, Plus, Reply, Send, StickyNote, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { claimStep, saveClaim } from "@/app/(backoffice)/crm/reclamaciones/actions";
@@ -158,6 +158,9 @@ export function ClaimDetailAction({ sheet, canManage, owners = [], respondNow = 
               {deadline.label}
               {sheet.days_left !== null && !sheet.response && sheet.book_status !== "closed" ? ` · ${sheet.days_left >= 0 ? `${sheet.days_left} días hábiles` : `${Math.abs(sheet.days_left)} días de atraso`}` : ""}
             </Badge>
+            <Link href={`/crm/reclamaciones/${encodeURIComponent(sheet.code)}`} className="ml-auto text-[12.5px] font-semibold text-accent hover:underline">
+              Ver hoja completa y auditoría
+            </Link>
           </div>
           <section className="rounded-xl bg-surface-2 px-3.5 py-1">
             <Row label="Consumidor">
@@ -220,7 +223,83 @@ export function ClaimDetailAction({ sheet, canManage, owners = [], respondNow = 
   );
 }
 
-export function ClaimCloseAction({ sheet }: { sheet: ClaimSheet }) {
+export function ClaimAlertsAction({ pending }: { pending: number }) {
+  return (
+    <PanelAction<StepResult>
+      label="Alertar vencimientos"
+      icon={<BellRing size={15} />}
+      size="sm"
+      formId="alertar-vencimientos"
+      title="Alertar vencimientos"
+      description={pending > 0 ? `Avisa ahora al responsable de ${pending === 1 ? "1 hoja por vencer o vencida" : `${pending} hojas por vencer o vencidas`} y a la gerencia.` : "No hay hojas por vencer ni vencidas. Igual puedes correr la revisión."}
+      submitLabel="Enviar avisos"
+      action={claimStep}
+      initial={initial}
+    >
+      {() => (
+        <>
+          <input type="hidden" name="step" value="alerts" />
+          <input type="hidden" name="code" value="alertas" />
+          <p className="text-[13px] text-fg-2">Es la misma revisión que corre cada día a las 08:00. Nadie recibe dos veces el mismo aviso en el día.</p>
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+export function ClaimNoteAction({ sheet, trigger }: { sheet: ClaimSheet; trigger?: (open: () => void) => React.ReactNode }) {
+  return (
+    <PanelAction<StepResult>
+      label="Nota interna"
+      icon={<StickyNote size={15} />}
+      size="sm"
+      formId={`nota-${sheet.code}`}
+      title={`Nota interna en ${sheet.book_number}`}
+      description="Queda en el historial de la hoja. No se envía al consumidor."
+      submitLabel="Agregar nota"
+      action={claimStep}
+      initial={initial}
+      trigger={trigger}
+    >
+      {() => (
+        <>
+          <input type="hidden" name="code" value={sheet.code} />
+          <input type="hidden" name="step" value="note" />
+          <TextArea label="Nota" name="note" rows={3} required minLength={3} maxLength={1000} />
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+export function ClaimLinkAction({ sheet, overview, trigger }: { sheet: ClaimSheet; overview: ClaimsOverview; trigger?: (open: () => void) => React.ReactNode }) {
+  const closed = sheet.book_status === "closed";
+  return (
+    <PanelAction<StepResult>
+      label="Vincular"
+      icon={<Link2 size={15} />}
+      size="sm"
+      formId={`vincular-${sheet.code}`}
+      title={`Vincular ${sheet.book_number}`}
+      description="Relaciona la hoja con el cliente y la reserva. Deja vacío para quitar el vínculo."
+      submitLabel="Guardar vínculos"
+      action={claimStep}
+      initial={initial}
+      trigger={trigger ?? ((open) => <RowIcon tone="neutral" label="Vincular cliente y reserva" icon={<Link2 size={15} />} onClick={open} disabledHint={closed ? "La hoja está cerrada" : undefined} />)}
+    >
+      {() => (
+        <>
+          <input type="hidden" name="code" value={sheet.code} />
+          <input type="hidden" name="step" value="links" />
+          <SelectField label="Cliente" name="client" options={overview.options.clients} defaultValue={sheet.client?.code ?? ""} placeholder="Sin cliente" />
+          <SelectField label="Reserva" name="reservation" options={overview.options.reservations} defaultValue={sheet.reservation ?? ""} placeholder="Sin reserva" hint="Si la reserva es de otro cliente, se rechaza." />
+        </>
+      )}
+    </PanelAction>
+  );
+}
+
+export function ClaimCloseAction({ sheet, reasons = [] }: { sheet: ClaimSheet; reasons?: { value: string; label: string }[] }) {
   return (
     <PanelAction<StepResult>
       label="Cerrar"
@@ -237,7 +316,14 @@ export function ClaimCloseAction({ sheet }: { sheet: ClaimSheet }) {
           <input type="hidden" name="code" value={sheet.code} />
           <input type="hidden" name="step" value="close" />
           <input type="hidden" name="lock_version" value={sheet.lock_version} />
-          <TextArea label="Motivo del cierre" name="note" rows={3} required minLength={5} maxLength={1000} placeholder="Por ejemplo: extorno realizado y confirmado por el consumidor." />
+          {reasons.length > 0 ? (
+            <>
+              <SelectField label="Motivo del cierre" name="reason" options={reasons} defaultValue={reasons[0]?.value} />
+              <TextArea label="Observación (opcional)" name="note" rows={2} maxLength={1000} placeholder="Por ejemplo: extorno confirmado el 12/11." />
+            </>
+          ) : (
+            <TextArea label="Motivo del cierre" name="note" rows={3} required minLength={5} maxLength={1000} placeholder="Por ejemplo: extorno realizado y confirmado por el consumidor." />
+          )}
         </>
       )}
     </PanelAction>

@@ -71,8 +71,14 @@ final class OperatorController
             'known' => ['nullable', 'array', 'max:200'],
             'known.*' => ['uuid'],
         ], ['since.*' => 'El cursor de sincronización no es válido.', 'known.*' => 'Revisa la lista de asignaciones conocidas.']);
+        $resource = $this->resource($request);
+        $device = $request->header('X-Device-Id');
 
-        return response()->json(['data' => $directory->bootstrap($this->resource($request), $data['since'] ?? null, $data['known'] ?? [])]);
+        if (is_string($device) && Str::isUuid($device) && DB::table('ops_mobile_devices')->where('id', $device)->where('user_id', $resource->user->getKey())->whereNotNull('revoked_at')->where('updated_by', '<>', $resource->user->getKey())->exists()) {
+            throw ApiException::forbidden(OperatorActions::DEVICE_REVOKED, OperatorActions::DEVICE_REVOKED_MESSAGE);
+        }
+
+        return response()->json(['data' => $directory->bootstrap($resource, $data['since'] ?? null, $data['known'] ?? [])]);
     }
 
     public function assignment(Request $request, string $id, OperatorDirectory $directory): JsonResponse

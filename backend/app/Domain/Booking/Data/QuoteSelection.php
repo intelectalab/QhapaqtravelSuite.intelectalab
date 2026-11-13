@@ -18,6 +18,11 @@ final readonly class QuoteSelection
         public ?string $promoCode = null,
         public array $removed = [],
         public string $channel = 'Directo',
+        public ?array $promotion = null,
+        public bool $roundUnits = false,
+        public array $nights = [],
+        public array $tours = [],
+        public array $transport = [],
     ) {}
 
     public static function fromArray(array $s): self
@@ -36,6 +41,11 @@ final readonly class QuoteSelection
             promoCode: $s['promoCode'] ?? $s['promo_code'] ?? null,
             removed: array_values((array) ($s['removed'] ?? [])),
             channel: (string) ($s['channel'] ?? 'Directo'),
+            promotion: isset($s['promotion']) && is_array($s['promotion']) ? $s['promotion'] : null,
+            roundUnits: (bool) ($s['round_units'] ?? $s['roundUnits'] ?? false),
+            nights: array_map('intval', array_filter((array) ($s['nights'] ?? []), 'is_numeric')),
+            tours: array_values(array_map(fn (mixed $item): string => (string) (is_array($item) ? ($item['id'] ?? '') : $item), (array) ($s['tours'] ?? []))),
+            transport: array_values(array_map(fn (mixed $item): string => (string) (is_array($item) ? ($item['id'] ?? '') : $item), (array) ($s['transport'] ?? []))),
         );
     }
 }

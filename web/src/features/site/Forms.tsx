@@ -2,7 +2,7 @@
 
 import { CheckCircle2, Loader2, Send } from "lucide-react";
 import Link from "next/link";
-import { useActionState, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useState, type ReactNode } from "react";
 import { sendClaim, sendContact, sendLead } from "@/app/(sitio)/sitio/[agencia]/actions";
 import { Captcha } from "@/components/ui/Captcha";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
@@ -12,6 +12,7 @@ import { TextField } from "@/components/ui/TextField";
 import { GuardianFields } from "@/features/claims/GuardianFields";
 import { formatDate, formatDateTime } from "@/lib/format";
 import { IDLE, type Option, type SiteFormState } from "@/lib/site";
+import { trackSiteEvent } from "@/lib/site-analytics";
 import { CheckBox, ChipGroup, Consent, FieldError, FormAlert } from "./FormBits";
 import { Stepper } from "./SearchBar";
 import { useSite } from "./SiteContext";
@@ -204,6 +205,10 @@ export function ClaimForm({ sedes, responseDays }: { sedes: Option[]; responseDa
   const [state, action, pending] = useActionState(sendClaim.bind(null, agencia), IDLE);
   const [minor, setMinor] = useState(false);
   const errors = errorsOf(state);
+  const submitted = state.status === "done";
+  useEffect(() => {
+    if (submitted) trackSiteEvent("claim_submitted", { source: "libro_reclamaciones" });
+  }, [submitted]);
 
   if (state.status === "done") {
     return (

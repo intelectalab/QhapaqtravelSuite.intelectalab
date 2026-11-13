@@ -18,6 +18,8 @@ export interface PlatformSettingsOverview {
     dunning: { retry_days: number[]; suspend_after_last: boolean };
     form_protection: { provider: string; enabled: boolean; site_key: string; secret_set: boolean; secret_hint: string | null; verified_at: string | null; status: "activa" | "incompleta" | "apagada" };
     outgoing_mail: OutgoingMailSummary;
+    whatsapp_webhook: { verify_token_set: boolean; callback_url: string; changed_at: string | null };
+    fiscal_webhook: { secret_set: boolean; callback_url: string; signature_header: string; simulated: boolean; changed_at: string | null };
     antivirus: { driver: string; simulated: boolean; ok: boolean; message: string | null };
   };
   lock_version: number;
@@ -39,6 +41,7 @@ export interface OutgoingMailSummary {
   verified_at: string | null;
   last_test: { to: string; ok: boolean; at: string } | null;
   status: "activa" | "incompleta" | "apagada";
+  webhook_secrets: { ses: boolean; fcm: boolean };
 }
 
 export interface TenantSummary {
@@ -65,10 +68,15 @@ export interface TenantSummary {
 }
 
 export interface TenantDetail extends TenantSummary {
+  usage: { metric: PlanMetric; used: number; limit: number | null }[];
+  entitlements: { key: string; label: string; source: "plan" | "addon" | "override"; valid_until: string | null }[];
   fiscal_address: string;
   business_type: string;
   timezone: string;
   base_currency: string;
+  alt_currency: string;
+  country: string;
+  locale: string;
   admins: { name: string; email: string; status: string; last_login_at: string | null }[];
   history: { action: string; before_value: string | null; after_value: string | null; occurred_at: string; actor: string | null }[];
   locations: { code: string; name: string; city: string; status: string; is_main: boolean }[];

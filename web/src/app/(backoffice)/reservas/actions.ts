@@ -11,7 +11,7 @@ export interface ReservationState {
   done: boolean;
 }
 
-const STEPS: Record<string, { path: (form: FormData) => string; method: "POST" | "PATCH" | "PUT" | "DELETE"; fields: string[]; flags?: string[] }> = {
+const STEPS: Record<string, { path: (form: FormData) => string; method: "POST" | "PATCH" | "PUT" | "DELETE"; fields: string[]; flags?: string[]; lists?: string[] }> = {
   update: { path: () => "", method: "PATCH", fields: ["notes"] },
   passenger: { path: (form) => (form.get("passenger") ? `/passengers/${form.get("passenger")}` : "/passengers"), method: "POST", fields: ["full_name", "pax_type", "doc_type", "doc_number", "nationality", "birth_date", "phone", "email", "diet_notes", "relationship"], flags: ["is_lead"] },
   remove_passenger: { path: (form) => `/passengers/${form.get("passenger")}`, method: "DELETE", fields: [] },
@@ -26,6 +26,7 @@ const STEPS: Record<string, { path: (form: FormData) => string; method: "POST" |
   service_confirm: { path: (form) => `/services/${form.get("service")}/confirm`, method: "POST", fields: ["confirmation_code", "time", "confirmed_by"] },
   service_reject: { path: (form) => `/services/${form.get("service")}/reject`, method: "POST", fields: ["reason", "detail", "alternative_date", "alternative_provider_id"] },
   cancel: { path: () => "/cancel", method: "POST", fields: ["reason", "detail"] },
+  cancel_services: { path: () => "/services/cancel", method: "POST", fields: ["reason", "detail"], lists: ["services"] },
   request_cancel: { path: () => "/cancel-requests", method: "POST", fields: ["reason", "detail"] },
   reject_request: { path: (form) => `/cancel-requests/${form.get("request")}/reject`, method: "POST", fields: ["note"] },
   change: { path: () => "/changes", method: "POST", fields: ["type", "extra_pax", "product_code", "service_date", "delta", "description"], flags: ["apply_now"] },
@@ -43,6 +44,9 @@ export async function reservationStep(_state: ReservationState, form: FormData):
   for (const field of step.fields) {
     const raw = form.get(field);
     if (typeof raw === "string") body[field] = raw.trim() === "" ? null : raw.trim();
+  }
+  for (const list of step.lists ?? []) {
+    body[list] = form.getAll(list).filter((value): value is string => typeof value === "string" && value !== "");
   }
   for (const flag of step.flags ?? []) {
     const raw = form.get(flag);

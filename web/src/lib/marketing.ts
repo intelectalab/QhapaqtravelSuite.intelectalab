@@ -137,6 +137,7 @@ export interface MarketingOverview {
   segment_fields: SegmentField[];
   variables: string[];
   consents: { email: number; whatsapp: number; revoked_30: number; subscribers: number };
+  test_options?: { recipients: { value: string; label: string; email: string | null; phone: string | null }[]; samples: { value: string; label: string; hint?: string }[]; me: string };
   can: { manage: boolean };
 }
 
@@ -227,3 +228,35 @@ export const CHANNEL_LABELS: Record<ConsentChannel, string> = { email: "Email", 
 export const consentOf = (contact: MarketingContact, channel: ConsentChannel) => (channel === "email" ? contact.email_consent : contact.whatsapp_consent);
 
 export const addressOf = (contact: MarketingContact, channel: ConsentChannel) => (channel === "email" ? contact.email : contact.mobile);
+
+export interface CampaignDetail extends Campaign {
+  recipient_statuses: { value: string; label: string; count: number }[];
+  history: { action: string; before: string | null; detail: string | null; at: string; by: string }[];
+  can: { manage: boolean; edit: boolean };
+}
+
+export interface CampaignAudienceDetail {
+  code: string;
+  snapshot: boolean;
+  at: string;
+  summary: { matched: number; eligible: number; reasons: { reason: string; label: string; count: number }[] };
+  suppressed: { type: string; id: string; name: string; reason: string; reason_label: string }[];
+}
+
+export interface CampaignRecipient {
+  id: string;
+  subject_type: string;
+  subject_id: string;
+  name: string;
+  address: string;
+  status: "pendiente" | "enviado" | "entregado" | "rebotado" | "fallido";
+  status_label: string;
+  delivered_at: string | null;
+  opened_at: string | null;
+  clicked_at: string | null;
+  replied_at: string | null;
+  unsubscribed_at: string | null;
+  error: string | null;
+}
+
+export const campaignHref = (code: string) => `/marketing/campanas/${encodeURIComponent(code)}`;

@@ -4,12 +4,20 @@ declare(strict_types=1);
 
 namespace App\Domain\Crm\Http\Controllers;
 
+use App\Domain\Admin\Actions\ManageIntegrations;
 use App\Domain\Crm\Actions\ClaimBookWorkflow;
+use App\Domain\Crm\Actions\ExportClaimBook;
 use App\Domain\Crm\Support\ClaimBookDirectory;
+use App\Domain\Crm\Support\ClaimCertificate;
 use App\Domain\Crm\Support\ClaimConsumer;
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Errors\ApiException;
+use App\Http\Middleware\IdempotencyMiddleware;
+use App\Jobs\AlertClaimDeadlines;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 final class ClaimBookController
@@ -17,6 +25,51 @@ final class ClaimBookController
     public function index(Request $request, ClaimBookDirectory $directory): JsonResponse
     {
         return response()->json(['data' => $directory->overview($this->user($request))]);
+    }
+
+    public function show(string $id, ClaimBookDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->find($id)]);
+    }
+
+    public function currentSettings(Request $request, ClaimBookDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->settingsView($this->user($request))]);
+    }
+
+    public function reports(Request $request, ClaimBookDirectory $directory): JsonResponse
+    {
+        $data = $request->validate([
+            'group' => ['nullable', 'in:type,sede,month'],
+            'year' => ['nullable', 'integer', 'between:2000,2100'],
+        ], ['group.*' => 'Agrupa por type, sede o month.', 'year.*' => 'Revisa el año.']);
+
+        return response()->json(['data' => $directory->report($data['group'] ?? 'type', (int) ($data['year'] ?? now()->year))]);
+    }
+
+    public function certificate(Request $request, string $id, ClaimCertificate $certificate): Response|JsonResponse
+    {
+        return $certificate->respond($id, $request);
+    }
+
+    public function export(Request $request, ExportClaimBook $export): JsonResponse
+    {
+        $data = $request->validate([
+            'year' => ['nullable', 'integer', 'between:2000,2100'],
+            'format' => ['nullable', 'in:'.implode(',', ExportClaimBook::FORMATS)],
+        ], ['year.*' => 'Revisa el año.', 'format.in' => 'La relación se exporta en CSV, XLSX o PDF.']);
+
+        return response()->json(['data' => $export((int) ($data['year'] ?? now()->year), (string) ($data['format'] ?? 'XLSX'), $this->user($request), $request->header(IdempotencyMiddleware::HEADER))], 202);
+    }
+
+    public function links(Request $request, string $id, ClaimBookWorkflow $workflow): JsonResponse
+    {
+        $data = $request->validate([
+            'client' => ['present', 'nullable', 'string', 'max:30'],
+            'reservation' => ['present', 'nullable', 'string', 'max:30'],
+        ], ['client.*' => 'Indica el cliente o déjalo vacío.', 'reservation.*' => 'Indica la reserva o déjala vacía.']);
+
+        return response()->json(['data' => app(ClaimBookDirectory::class)->find($workflow->link($id, $data, $this->user($request)))]);
     }
 
     public function store(Request $request, ClaimBookWorkflow $workflow): JsonResponse
@@ -82,10 +135,36 @@ final class ClaimBookController
 
     public function close(Request $request, string $code, ClaimBookWorkflow $workflow): JsonResponse
     {
-        $data = $request->validate(['note' => ['required', 'string', 'min:5', 'max:1000']], ['note.*' => 'Explica el motivo del cierre.']);
-        $workflow->close($code, $data['note'], $this->user($request));
+        $data = $request->validate([
+            'reason' => ['nullable', 'string', Rule::in(ClaimBookDirectory::CLOSE_REASONS)],
+            'note' => ['required_without:reason', 'nullable', 'string', 'min:5', 'max:1000'],
+        ], ['reason.*' => 'Elige un motivo de cierre de la lista.', 'note.*' => 'Explica el motivo del cierre.']);
+        $reason = $data['reason'] ?? null;
+        $note = trim((string) ($data['note'] ?? ''));
+        $workflow->close($code, $reason !== null ? $reason.($note !== '' ? " — {$note}" : '') : $note, $this->user($request));
 
         return response()->json(['data' => ['code' => $code]]);
+    }
+
+    public function note(Request $request, string $code, ClaimBookWorkflow $workflow): JsonResponse
+    {
+        $data = $request->validate(['note' => ['required', 'string', 'min:3', 'max:1000']], ['note.*' => 'Escribe la nota interna (mínimo 3 caracteres).']);
+        $workflow->note($code, $data['note'], $this->user($request));
+
+        return response()->json(['data' => ['code' => $code]], 201);
+    }
+
+    public function alerts(Request $request, ManageIntegrations $integrations): JsonResponse
+    {
+        $job = DB::table('sys_scheduled_jobs')->where('job_class', AlertClaimDeadlines::class)->value('code')
+            ?? throw ApiException::conflict('LR-ALERTS', 'El aviso de vencimientos no está programado en esta agencia.');
+
+        return response()->json(['data' => $integrations->run((string) $job, $this->user($request))], 202);
+    }
+
+    public function audit(string $code, ClaimBookDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->audit($code)]);
     }
 
     private function registerRules(Request $request): array

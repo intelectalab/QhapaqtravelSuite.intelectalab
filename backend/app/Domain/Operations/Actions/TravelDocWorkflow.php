@@ -25,6 +25,8 @@ final class TravelDocWorkflow
 
     public const MAX_BYTES = 10 * 1024 * 1024;
 
+    public const REQUEST_EVENT = 'documentos.solicitud';
+
     public function __construct(private readonly AuditLogger $audit, private readonly TravelDocRules $rules, private readonly AttachmentGuard $guard, private readonly TenantContext $context) {}
 
     public function validate(string $reservation, string $passenger, string $type, array $data, User $actor): string
@@ -208,7 +210,8 @@ final class TravelDocWorkflow
 
         $settings = $this->rules->settings();
         $channels = array_values(array_intersect($settings['channels'], $data['channels'] ?? $settings['channels'])) ?: $settings['channels'];
-        $pending = (int) DB::table('ops_travel_doc_items')->where('reservation_id', $row->id)->whereIn('status', ['pendiente', 'observado'])->count();
+        $missing = $this->missingDocuments($actor, (string) $row->code);
+        $pending = count($missing);
 
         if ($pending === 0) {
             throw ApiException::unprocessable('DOC-BR-012', 'El checklist no tiene documentos pendientes por solicitar.');
@@ -222,7 +225,8 @@ final class TravelDocWorkflow
             throw ApiException::unprocessable('DOC-BR-012', 'WhatsApp todavía no tiene un proveedor de envío conectado. Incluye el correo para enviar la solicitud.');
         }
 
-        $ids = [$notifications->queue('documentos.recordatorio', (string) $row->email, [
+        $ids = [$notifications->queue(self::REQUEST_EVENT, (string) $row->email, [
+            'documentos' => implode("\n", array_map(fn (string $line): string => "- {$line}", $missing)),
             'cliente' => (string) $row->name,
             'reserva' => (string) $row->code,
             'fecha_viaje' => CarbonImmutable::parse((string) $row->travel_from)->format('d/m/Y'),
@@ -242,7 +246,25 @@ final class TravelDocWorkflow
         ]);
         $this->audit->log('Documento de viaje', (string) $row->code, 'solicitar_documentos', null, "{$pending} ítems · Email");
 
-        return ['items' => $pending, 'channels' => ['Email'], 'not_sent' => array_values(array_diff($channels, ['Email'])), 'recipient' => $row->email];
+        return ['items' => $pending, 'documents' => $missing, 'channels' => ['Email'], 'not_sent' => array_values(array_diff($channels, ['Email'])), 'recipient' => $row->email];
+    }
+
+    private function missingDocuments(User $actor, string $reservation): array
+    {
+        $detail = app(TravelDocDirectory::class)->find($actor, $reservation) ?? throw ApiException::notFound('La reserva no existe.');
+        $states = ['pendiente' => null, 'observado' => 'observado', 'vencido' => 'vencido'];
+        $lines = [];
+
+        foreach ($detail['passengers'] as $passenger) {
+            foreach ($passenger['documents'] as $document) {
+                if (array_key_exists($document['status'], $states)) {
+                    $suffix = $states[$document['status']];
+                    $lines[] = "{$passenger['name']}: ".mb_strtolower((string) $document['label']).($suffix ? " ({$suffix})" : '');
+                }
+            }
+        }
+
+        return $lines;
     }
 
     private function assertFileType(object $item): void

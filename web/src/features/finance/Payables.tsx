@@ -141,6 +141,7 @@ function CancelPayableAction({ row }: { row: PayableRow }) {
 }
 
 const closed = (row: PayableRow) => row.status === "pagada" || row.status === "cancelada";
+const withoutInvoice = (row: PayableRow) => !closed(row) && row.supplier_invoice == null;
 
 function PayableRowActions({ row, data }: { row: PayableRow; data: PayablesOverview }) {
   const { can, today, usd_rate: usdRate, options } = data;
@@ -352,8 +353,16 @@ export function PayablesTable({ data }: { data: PayablesOverview }) {
           <span className="font-semibold">{row.concept}</span>
           {row.kind === "costo_adicional" && <Badge tone="violet" className="ml-2">Costo adicional</Badge>}
           {row.managed && row.service?.status === "cancelado" && row.status !== "cancelada" && <Badge tone="warn" className="ml-2">Servicio cancelado</Badge>}
+          {withoutInvoice(row) && (
+            <span title="El proveedor aún no carga su factura en la extranet. Finanzas programa el pago solo con la factura registrada.">
+              <Badge tone="warn" className="ml-2">
+                Sin factura
+              </Badge>
+            </span>
+          )}
           <small className="block text-xs text-fg-3">
             {row.code} · {row.provider.name}
+            {row.supplier_invoice && ` · factura ${row.supplier_invoice.number}`}
           </small>
         </div>
       ),
@@ -402,6 +411,7 @@ export function PayablesTable({ data }: { data: PayablesOverview }) {
     { id: "status", label: "Estado", options: unique(rows.map((row) => row.status)).map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status },
     { id: "provider", label: "Proveedor", options: unique(rows.map((row) => row.provider.name)).map((value) => ({ value, label: value })), value: (row) => row.provider.name },
     { id: "kind", label: "Tipo", options: [{ value: "servicio", label: "Servicio de reserva" }, { value: "costo_adicional", label: "Costo adicional" }], value: (row) => row.kind },
+    { id: "invoice", label: "Factura", options: [{ value: "sin", label: "Sin factura" }, { value: "con", label: "Con factura" }], value: (row) => (withoutInvoice(row) ? "sin" : "con") },
   ];
 
   const sorts: SortOption<PayableRow>[] = [

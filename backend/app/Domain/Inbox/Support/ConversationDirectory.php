@@ -7,11 +7,15 @@ namespace App\Domain\Inbox\Support;
 use App\Domain\Crm\Support\Advisors;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Audit\AuditTrail;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class ConversationDirectory
 {
@@ -39,7 +43,7 @@ final class ConversationDirectory
             ->orderByDesc('c.last_message_at')
             ->limit(200)
             ->get(['c.*', 'u.name as assignee_name']);
-        $previews = DB::table('collab_messages')->whereIn('conversation_id', $rows->pluck('id'))->where('direction', '<>', 'internal')
+        $previews = DB::table('collab_messages')->whereIn('conversation_id', $rows->pluck('id'))->where('direction', '<>', 'system')
             ->orderByDesc('sent_at')->get(['conversation_id', 'body', 'direction'])->unique('conversation_id')->keyBy('conversation_id');
         $now = Carbon::now();
         $items = $rows->map(fn (object $row): array => $this->summary($row, $previews->get($row->id), $viewer));
@@ -66,6 +70,21 @@ final class ConversationDirectory
                 'link' => $viewer->can('inbox.manage') ? collect(self::LINKS)->filter(fn (array $link): bool => $viewer->can($link['permission']))->keys()->values()->all() : [],
             ],
             'me' => $viewer->getKey(),
+            'scope' => $viewer->can('crm.records.reassign') ? 'all' : (Portfolio::ownOnly($viewer) ? 'own' : 'assigned'),
+            'agency' => $this->agency(),
+        ];
+    }
+
+    private function agency(): array
+    {
+        $general = DB::table('sys_settings')->where('section', 'general')->value('values');
+        $general = is_string($general) ? (json_decode($general, true) ?: []) : [];
+        $tenant = app(TenantContext::class)->tenant();
+        $sedePhone = DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->orderByDesc('is_main')->value('phone');
+
+        return [
+            'name' => (string) ($tenant->commercial_name ?? $tenant->legal_name ?? ''),
+            'emergency_phone' => $general['emergency_phone'] ?? $general['phone'] ?? $sedePhone,
         ];
     }
 
@@ -76,7 +95,12 @@ final class ConversationDirectory
         $messages = DB::table('collab_messages as m')->leftJoin('iam_users as u', 'u.id', '=', 'm.author_user_id')
             ->where('m.conversation_id', $row->id)->orderBy('m.sent_at')
             ->get(['m.id', 'm.direction', 'm.body', 'm.sent_at', 'm.delivery_status', 'u.name as author']);
-        $files = DB::table('collab_message_attachments')->whereIn('message_id', $messages->pluck('id'))->get(['message_id', 'file_name', 'size_bytes'])->groupBy('message_id');
+        $files = DB::table('collab_message_attachments')->whereIn('message_id', $messages->pluck('id'))->get(['id', 'message_id', 'file_name', 'mime', 'size_bytes', 'scan_status'])->groupBy('message_id');
+
+        if ((int) $row->unread_count > 0) {
+            DB::table('collab_conversations')->where('id', $row->id)->update(['unread_count' => 0]);
+            $row->unread_count = 0;
+        }
 
         return [
             ...$this->summary($row, null, $viewer),
@@ -87,10 +111,42 @@ final class ConversationDirectory
                 'at' => $message->sent_at,
                 'author' => $message->direction === 'in' ? $row->contact_name : ($message->author ?? 'Sistema'),
                 'delivery' => $message->delivery_status,
-                'files' => $files->get($message->id, collect())->map(fn ($file): array => ['name' => $file->file_name, 'size' => (int) $file->size_bytes])->values(),
+                'files' => $files->get($message->id, collect())->map(fn ($file): array => ['id' => $file->id, 'name' => $file->file_name, 'mime' => $file->mime, 'size' => (int) $file->size_bytes, 'available' => $file->scan_status === 'limpio'])->values(),
             ])->values(),
             'card' => $this->contact($row),
         ];
+    }
+
+    public function audit(string $code, User $viewer): array
+    {
+        $conversation = $this->find($code, $viewer);
+
+        return app(AuditTrail::class)->for('Conversación', [(string) $conversation->code]);
+    }
+
+    public function download(string $code, string $attachmentId, User $viewer, bool $inline): StreamedResponse
+    {
+        $conversation = $this->find($code, $viewer);
+        $file = DB::table('collab_message_attachments as a')->join('collab_messages as m', 'm.id', '=', 'a.message_id')
+            ->where('m.conversation_id', $conversation->id)->where('a.id', $attachmentId)
+            ->first(['a.file_name', 'a.mime', 'a.storage_path', 'a.scan_status'])
+            ?? throw ApiException::notFound('El adjunto no existe en esta conversación.');
+
+        if ($file->scan_status !== 'limpio') {
+            throw ApiException::conflict('INB-BR-11', 'El adjunto no pasó la revisión antivirus: no se puede abrir.');
+        }
+
+        $disk = Storage::disk((string) config('filesystems.default'));
+
+        if ($file->storage_path === null || ! $disk->exists((string) $file->storage_path)) {
+            throw ApiException::notFound('El archivo ya no está disponible en el almacenamiento.');
+        }
+
+        $headers = ['Content-Type' => (string) $file->mime, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff'];
+
+        return $inline
+            ? $disk->response((string) $file->storage_path, (string) $file->file_name, $headers)
+            : $disk->download((string) $file->storage_path, (string) $file->file_name, $headers);
     }
 
     public function linkOptions(string $code, string $kind, string $search, User $viewer): array
@@ -180,6 +236,7 @@ final class ConversationDirectory
             'created_at' => $row->created_at,
             'preview' => $preview ? mb_substr((string) $preview->body, 0, 140) : null,
             'preview_inbound' => $preview ? $preview->direction === 'in' : false,
+            'preview_note' => $preview ? $preview->direction === 'internal' : false,
             'sla' => [
                 'due_at' => $row->first_response_due_at,
                 'responded_at' => $row->first_response_at,
@@ -205,8 +262,16 @@ final class ConversationDirectory
 
         $opportunity = $row->client_id ? DB::table('crm_opportunities')->where('client_id', $row->client_id)->whereNull('deleted_at')->whereIn('stage', ['calificacion', 'descubrimiento', 'cotizacion', 'negociacion'])->orderByDesc('updated_at')->first(['code', 'title', 'stage']) : null;
         $booking = $row->reservation_id ? DB::table('booking_reservations')->where('id', $row->reservation_id)->first(['code', 'title', 'status']) : null;
+        $today = Carbon::today()->toDateString();
+        $trip = ($row->client_id || $row->reservation_id) ? DB::table('booking_reservations')->whereNull('deleted_at')
+            ->where(fn (Builder $scope) => $scope->when($row->client_id, fn (Builder $inner) => $inner->where('client_id', $row->client_id))->when($row->reservation_id, fn (Builder $inner) => $inner->orWhere('id', $row->reservation_id)))
+            ->where(fn (Builder $live) => $live->where('status', 'en_operacion')->orWhere(fn (Builder $dates) => $dates->where('travel_from', '<=', $today)->where('travel_to', '>=', $today)->where('status', '<>', 'cancelada')))
+            ->orderBy('travel_from')->first(['code', 'travel_to']) : null;
+        $ticket = $row->support_ticket_id ? DB::table('channel_support_tickets')->where('id', $row->support_ticket_id)->first(['code', 'status']) : null;
 
         return [
+            'in_trip' => $trip ? ['code' => $trip->code, 'until' => $trip->travel_to] : null,
+            'ticket' => $ticket ? ['code' => $ticket->code, 'status' => $ticket->status] : null,
             'client' => $client ? ['code' => $client->code, 'name' => $client->name, 'segment' => $client->segment_code, 'country' => $client->country, 'nps' => $client->nps_last, 'owner' => $client->owner] : null,
             'lead' => $lead ? ['code' => $lead->code, 'name' => $lead->full_name, 'status' => $lead->status] : null,
             'reservation' => $booking ? ['code' => $booking->code, 'title' => $booking->title, 'status' => $booking->status] : null,

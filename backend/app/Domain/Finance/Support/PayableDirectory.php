@@ -39,9 +39,41 @@ final class PayableDirectory
         };
     }
 
+    public function summary(User $viewer): array
+    {
+        $overview = $this->overview($viewer);
+
+        return ['today' => $overview['today'], 'kpis' => $overview['kpis'], 'top_providers' => $overview['by_provider']];
+    }
+
+    public function byProvider(User $viewer): array
+    {
+        $overview = $this->overview($viewer);
+        $today = $overview['today'];
+
+        return $overview['rows']->where('status', '<>', 'cancelada')->groupBy(fn (array $row): string => $row['provider']['ref'])
+            ->map(function ($items) use ($today): array {
+                $open = $items->whereNotIn('status', ['pagada', 'cancelada']);
+                $next = $open->where('due_date', '>=', $today)->sortBy('due_date')->first();
+
+                return [
+                    'provider' => $items->first()['provider'],
+                    'count' => $items->count(),
+                    'open_count' => $open->count(),
+                    'total_pen' => round($items->sum('amount_pen'), 2),
+                    'paid_pen' => round($items->sum('paid_pen'), 2),
+                    'balance_pen' => round($open->sum('balance_pen'), 2),
+                    'overdue_pen' => round($open->where('status', 'vencida')->sum('balance_pen'), 2),
+                    'next_due' => $next === null ? null : ['code' => $next['code'], 'date' => $next['due_date'], 'balance_pen' => $next['balance_pen']],
+                ];
+            })->sortByDesc('balance_pen')->values()->all();
+    }
+
     public function overview(User $viewer): array
     {
         $today = $this->money->today();
+        $invoices = DB::table('supplier_invoices as i')->join('fin_payables as p', 'p.id', '=', 'i.payable_id')->whereNull('i.deleted_at')->where('i.status', '<>', 'rechazada')
+            ->orderByDesc('i.uploaded_at')->get(['p.code', 'i.number', 'i.status'])->unique('code')->keyBy('code');
         $rows = DB::table('fin_payables as p')
             ->join('catalog_providers as v', 'v.id', '=', 'p.provider_id')
             ->leftJoin('booking_reservations as b', 'b.id', '=', 'p.reservation_id')
@@ -50,9 +82,10 @@ final class PayableDirectory
             ->whereNull('p.deleted_at')
             ->orderBy('p.due_date')
             ->get(['p.code', 'p.lock_version', 'p.kind', 'p.cost_type', 'p.concept', 'p.amount', 'p.paid_amount', 'p.currency', 'p.fx_rate', 'p.due_date', 'p.status', 'p.approved_at', 'p.supplier_doc_number', 'p.evidence_note', 'p.observation', 'p.scheduled_date', 't.code as scheduled_account', 'v.ref as provider_ref', 'v.name as provider_name', 'v.status as provider_status', 'b.code as reservation_code', 'b.title as reservation_title', 's.name as service_name', 's.code as service_code', 's.service_date', 's.status as service_status'])
-            ->map(function (object $row) use ($today): array {
+            ->map(function (object $row) use ($today, $invoices): array {
                 $amount = (float) $row->amount;
                 $paid = (float) $row->paid_amount;
+                $invoice = $invoices->get($row->code);
                 $balance = round($amount - $paid, 2);
                 $status = self::status($row->status, $amount, $paid, $row->due_date, $row->approved_at !== null, $today);
 
@@ -75,6 +108,7 @@ final class PayableDirectory
                     'status' => $status,
                     'approved' => $row->approved_at !== null,
                     'supplier_doc' => $row->supplier_doc_number,
+                    'supplier_invoice' => $invoice ? ['number' => $invoice->number, 'status' => $invoice->status] : null,
                     'evidence' => $row->evidence_note,
                     'observation' => $row->observation,
                     'scheduled_date' => $row->scheduled_date,

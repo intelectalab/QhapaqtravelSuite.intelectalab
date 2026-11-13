@@ -1,11 +1,13 @@
 "use client";
 
-import { Menu, MessageSquareText, Moon, ShoppingBag, Sun, UserRound, X } from "lucide-react";
+import { Heart, Mail, Menu, MessageCircle, MessageSquareText, Moon, ShoppingBag, Sun, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { setSiteLocale } from "@/app/(sitio)/sitio/[agencia]/actions";
 import { cn } from "@/lib/cn";
+import { WISHLIST_STORAGE_KEY } from "@/lib/site";
+import { trackSiteEvent } from "@/lib/site-analytics";
 import { LOCALE_NAME, SITE_LOCALES } from "@/lib/site-i18n";
 import { applyTheme, parseTheme, THEME_STORAGE_KEY, type Theme } from "@/lib/theme";
 import { useStoredValue } from "@/lib/useStoredValue";
@@ -13,6 +15,17 @@ import type { SiteNavLinkId } from "@/lib/site-design";
 import { useSite } from "./SiteContext";
 
 const keepTheme = (theme: Theme) => theme;
+
+const parseWishlistCount = (raw: string | null): number => {
+  try {
+    const value = JSON.parse(raw ?? "[]");
+    return Array.isArray(value) ? value.length : 0;
+  } catch {
+    return 0;
+  }
+};
+
+const keepCount = (value: number) => String(value);
 
 const LINK_PATHS: Record<SiteNavLinkId, string> = {
   destinations: "/destinos",
@@ -43,6 +56,7 @@ function LocaleSwitch() {
           data-testid={`site-locale:${option}`}
           onClick={() => {
             if (option === locale) return;
+            trackSiteEvent("select_language", { language: option, previous: locale });
             start(async () => {
               await setSiteLocale(option);
               router.refresh();
@@ -94,7 +108,42 @@ function ThemeSwitch() {
   );
 }
 
-export function SiteHeader({ name, initials, logo }: { name: string; initials: string; logo: string | null }) {
+function WishlistLink({ saved }: { saved: number | null }) {
+  const { href, t } = useSite();
+  const [local] = useStoredValue(WISHLIST_STORAGE_KEY, parseWishlistCount, keepCount);
+  const count = saved ?? local;
+  return (
+    <Link href={href(saved === null ? "/cuenta/ingresar?next=/cuenta/deseos" : "/cuenta/deseos")} aria-label={t.header.wishlist(count)} title={t.header.wishlist(count)} className="relative grid h-10 w-10 flex-none place-items-center rounded-xl text-fg-2 transition hover:-translate-y-0.5 hover:bg-surface-2 hover:text-bad">
+      <Heart size={18} className={cn(count > 0 && "fill-[color-mix(in_srgb,var(--bad)_18%,transparent)] text-bad")} />
+      {count > 0 && <span className="absolute -right-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-bad px-1 text-[10.5px] font-bold text-white">{count}</span>}
+    </Link>
+  );
+}
+
+export function SiteTopBar({ email, whatsapp }: { email: string | null; whatsapp: string | null }) {
+  const { t } = useSite();
+  if (!email && !whatsapp) return null;
+  return (
+    <div className="border-b border-line bg-surface-2/60 text-[12px] text-fg-2">
+      <div className="mx-auto flex h-8 max-w-[1240px] items-center gap-5 px-4 sm:px-8">
+        {whatsapp && (
+          <a href={whatsapp} target="_blank" rel="noopener noreferrer" onClick={() => trackSiteEvent("contact_whatsapp", { source: "topbar" })} className="inline-flex items-center gap-1.5 font-semibold transition hover:text-fg">
+            <MessageCircle size={13} className="text-ok" />
+            {t.header.whatsapp}
+          </a>
+        )}
+        {email && (
+          <a href={`mailto:${email}`} className="hidden items-center gap-1.5 transition hover:text-fg sm:inline-flex">
+            <Mail size={13} className="text-fg-3" />
+            {email}
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function SiteHeader({ name, initials, logo, wishlist = null }: { name: string; initials: string; logo: string | null; wishlist?: number | null }) {
   const { href, t, design } = useSite();
   const nav = design?.nav;
   const links = (nav?.links ?? DEFAULT_LINKS).filter((link) => link.visible && link.id in LINK_PATHS).map((link) => ({ path: LINK_PATHS[link.id], key: link.id }));
@@ -119,7 +168,7 @@ export function SiteHeader({ name, initials, logo }: { name: string; initials: s
   };
 
   return (
-    <header className={cn("sticky top-0 z-40 transition-[background-color,box-shadow,border-color] duration-300", scrolled || open ? "border-b border-line bg-surface/90 shadow-[0_10px_30px_-24px_rgb(14_17_32/0.5)] backdrop-blur-md" : "border-b border-transparent bg-bg/60 backdrop-blur-sm")}>
+    <header data-site-header data-scrolled={scrolled || open} className={cn("sticky top-0 z-40 transition-[background-color,box-shadow,border-color] duration-300", scrolled || open ? "border-b border-line bg-surface/90 shadow-[0_10px_30px_-24px_rgb(14_17_32/0.5)] backdrop-blur-md" : "border-b border-transparent bg-bg/60 backdrop-blur-sm")}>
       <div className="mx-auto flex h-[68px] max-w-[1240px] items-center gap-3 px-4 sm:px-8">
         <AgencyMark name={name} initials={initials} logo={logo} />
         <nav aria-label={t.header.sections} className="ml-4 hidden items-center gap-0.5 xl:flex">
@@ -128,7 +177,7 @@ export function SiteHeader({ name, initials, logo }: { name: string; initials: s
             return (
               <Link key={link.path} href={href(link.path)} className={cn("group relative rounded-lg px-3 py-2 text-[13.5px] font-semibold transition-colors", active ? "text-fg" : "text-fg-2 hover:text-fg")}>
                 {t.header.links[link.key]}
-                <span aria-hidden className={cn("weave-line absolute inset-x-3 -bottom-0.5 h-[3px] origin-left rounded-full transition-transform duration-300", active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100")} />
+                <span aria-hidden data-site-nav-line className={cn("weave-line absolute inset-x-3 -bottom-0.5 h-[3px] origin-left rounded-full transition-transform duration-300", active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100")} />
               </Link>
             );
           })}
@@ -139,6 +188,7 @@ export function SiteHeader({ name, initials, logo }: { name: string; initials: s
           <Link href={href("/cuenta")} aria-label={t.header.account} title={t.header.account} className={cn("grid h-10 w-10 flex-none place-items-center rounded-xl transition hover:-translate-y-0.5 hover:bg-surface-2 hover:text-fg", pathname.startsWith(href("/cuenta")) ? "bg-surface-2 text-fg" : "text-fg-2")}>
             <UserRound size={18} />
           </Link>
+          <WishlistLink saved={wishlist} />
           {(nav?.show_cart ?? true) && (
           <Link href={href("/carrito")} aria-label={t.header.cart} title={t.header.cartTitle} className="grid h-10 w-10 flex-none place-items-center rounded-xl text-fg-2 transition hover:-translate-y-0.5 hover:bg-surface-2 hover:text-fg">
             <ShoppingBag size={18} />

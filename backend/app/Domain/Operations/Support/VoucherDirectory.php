@@ -7,6 +7,7 @@ namespace App\Domain\Operations\Support;
 use App\Domain\Iam\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class VoucherDirectory
 {
@@ -59,6 +60,51 @@ final class VoucherDirectory
             ])->values(),
             'pending' => $pending,
             'providers' => $canIssue ? DB::table('catalog_providers')->whereNull('deleted_at')->where('status', 'activo')->orderBy('name')->get(['id as value', 'name as label', 'type as hint']) : [],
+        ];
+    }
+
+    public function find(User $viewer, string $reference): ?array
+    {
+        $voucher = DB::table('ops_vouchers as v')
+            ->join('booking_reservations as r', 'r.id', '=', 'v.reservation_id')
+            ->join('booking_reservation_services as s', 's.id', '=', 'v.reservation_service_id')
+            ->join('catalog_providers as p', 'p.id', '=', 'v.provider_id')
+            ->where(Str::isUuid($reference) ? 'v.id' : 'v.code', $reference)
+            ->first(['v.*', 'r.code as reservation_code', 'r.title as reservation_title', 's.code as service_code', 's.service_time', 's.confirmation_code', 's.status as service_status', 'p.ref as provider_ref', 'p.name as provider_name']);
+
+        if ($voucher === null) {
+            return null;
+        }
+
+        $names = $this->common->userNames();
+        $name = fn (?string $id): ?string => $id ? ($names[$id] ?? null) : null;
+
+        return [
+            'id' => $voucher->id,
+            'code' => $voucher->code,
+            'lock_version' => (int) $voucher->lock_version,
+            'status' => $voucher->status,
+            'version' => (int) $voucher->version,
+            'origin' => $voucher->origin,
+            'reservation' => ['code' => $voucher->reservation_code, 'title' => $voucher->reservation_title],
+            'service' => ['code' => $voucher->service_code, 'label' => $voucher->service_label, 'date' => $voucher->service_date, 'time' => OpsCommon::time($voucher->service_time), 'status' => $voucher->service_status, 'confirmation' => $voucher->confirmation_code],
+            'provider' => ['ref' => $voucher->provider_ref, 'name' => $voucher->provider_name],
+            'pax' => (int) $voucher->pax,
+            'note' => $voucher->note,
+            'issued_at' => $voucher->issued_at,
+            'issued_by' => $name($voucher->issued_by),
+            'used_at' => $voucher->used_at,
+            'used_by' => $name($voucher->used_by),
+            'used_via' => $voucher->used_via,
+            'void_reason' => $voucher->void_reason,
+            'void_at' => $voucher->void_at,
+            'void_by' => $name($voucher->void_by),
+            'versions' => DB::table('ops_voucher_versions')->where('voucher_id', $voucher->id)->orderBy('version')->get(['version', 'issued_at', 'issued_by', 'reason', 'snapshot'])
+                ->map(fn (object $version): array => ['version' => (int) $version->version, 'issued_at' => $version->issued_at, 'issued_by' => $name($version->issued_by), 'reason' => $version->reason, 'snapshot' => json_decode((string) $version->snapshot, true)])->values(),
+            'notifications' => DB::table('notif_messages')->where('source_type', 'ops_voucher')->where('source_id', $voucher->id)->orderByDesc('created_at')
+                ->get(['event_code', 'channel', 'audience', 'recipient_address', 'subject', 'status', 'created_at'])
+                ->map(fn (object $message): array => ['event' => $message->event_code, 'channel' => $message->channel, 'audience' => $message->audience, 'recipient' => $message->recipient_address, 'subject' => $message->subject, 'status' => $message->status, 'created_at' => $message->created_at])->values(),
+            'can' => ['manage' => $viewer->can('operations.vouchers') && $voucher->status === 'emitido'],
         ];
     }
 

@@ -25,12 +25,12 @@ final class DepartureController
 
     public function store(Request $request): JsonResponse
     {
-        return response()->json(['data' => $this->registry->create($this->validated($request, true), $this->actor($request))], 201);
+        return response()->json(['data' => $this->registry->create(self::payload($request, true), $this->actor($request))], 201);
     }
 
     public function update(Request $request, string $ref): JsonResponse
     {
-        return response()->json(['data' => $this->registry->update($ref, $this->validated($request, false), (int) $request->input('lock_version'), $this->actor($request))]);
+        return response()->json(['data' => $this->registry->update($ref, self::payload($request, false), (int) $request->input('lock_version'), $this->actor($request))]);
     }
 
     public function close(Request $request, string $ref): JsonResponse
@@ -67,10 +67,10 @@ final class DepartureController
         return (string) $request->validate(['reason' => ['required', 'string', 'min:3', 'max:300']], ['reason.*' => 'Escribe el motivo.'])['reason'];
     }
 
-    private function validated(Request $request, bool $creating): array
+    public static function payload(Request $request, bool $creating, bool $withProduct = true): array
     {
         return $request->validate([
-            'product_id' => [Rule::requiredIf($creating), 'uuid'],
+            'product_id' => [Rule::requiredIf($creating && $withProduct), 'uuid'],
             'departure_date' => ['required', 'date'],
             'departure_time' => ['required', 'date_format:H:i'],
             'capacity' => ['required', 'integer', 'between:1,60'],

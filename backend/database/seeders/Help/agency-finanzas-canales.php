@@ -125,7 +125,7 @@ return [
         'title' => 'Rentabilidad',
         'summary' => 'El margen de cada reserva vendida, por mes de viaje, por tipo de servicio y por asesor, con un semáforo frente a la meta de la agencia.',
         'steps' => [
-            ['title' => 'Liquidar una reserva', 'text' => 'En la ficha de la reserva, la sección «Liquidación» muestra el estado de resultados (ingresos, costos, comisiones y utilidad), el flujo de caja y los cuatro puntos para liquidar: viaje terminado, todo cobrado, proveedores pagados y comisiones aprobadas. Con todo en orden, «Cerrar liquidación» guarda el resultado y ya no cambia.'],
+            ['title' => 'Liquidar una reserva', 'text' => 'En la ficha de la reserva, la sección «Liquidación» muestra el estado de resultados (ingresos, costo de servicios, costos adicionales aprobados, margen bruto, comisiones y utilidad), las cuotas cobradas, el flujo de caja y los puntos para liquidar: viaje terminado, cuotas creadas y cobradas, costos adicionales aprobados, proveedores pagados y comisiones aprobadas. Con todo en orden, quien registra pagos pulsa «Cerrar liquidación»: el resultado queda guardado, ya no cambia y el responsable de la reserva recibe el aviso.'],
             ['title' => 'Leer los indicadores', 'text' => 'Las tarjetas muestran ingresos y costos, margen bruto, margen promedio y utilidad neta después de comisiones. Todo se expresa en soles.'],
             ['title' => 'Detectar reservas bajo mínimo', 'text' => 'Usa las tarjetas «En meta», «Vigilar» y «Bajo mínimo». La meta (25 % por defecto) y el mínimo (15 %) se configuran en Tesorería, sección Parámetros. Por debajo del mínimo la reserva queda bajo mínimo y la columna «Semáforo» la marca en rojo.'],
             ['title' => 'Comparar productos y asesores', 'text' => 'Los bloques «Por tipo de servicio» y «Por asesor» ordenan el margen en soles y en porcentaje. «Margen por mes de viaje» muestra la evolución mensual.'],
@@ -170,14 +170,14 @@ return [
         'title' => 'Tesorería (caja y bancos)',
         'summary' => 'Saldos de bancos, cajas chicas y pasarelas de pago, con cada ingreso y egreso que los mueve.',
         'steps' => [
-            ['title' => 'Revisar los saldos', 'text' => 'Las tarjetas suman bancos, cajas chicas, pasarelas por liquidar y el flujo del mes. Debajo, cada cuenta muestra su saldo en su moneda; las cajas chicas indican su fondo y su custodio.'],
+            ['title' => 'Revisar los saldos', 'text' => 'Las tarjetas suman bancos, cajas chicas, pasarelas por liquidar, el flujo del mes y el saldo proyectado a 30 días. El Resumen muestra la composición del saldo y su evolución de los últimos 28 días. Debajo, cada cuenta muestra su saldo en su moneda; las cajas chicas indican su fondo, su custodio y si hoy están abiertas, cerradas o sin aperturar.'],
             ['title' => 'Registrar un movimiento', 'text' => 'Pulsa «Registrar movimiento», elige «Egreso» o «Ingreso», la cuenta, el importe, la fecha, la categoría y la descripción. Úsalo para alquileres, tributos y otros gastos que no nacen de un cobro, un pago a proveedor ni una caja chica.'],
             ['title' => 'Anular un movimiento', 'text' => 'En un movimiento manual pulsa «Anular» y escribe el motivo. Deja de contar en el saldo de la cuenta y queda marcado como «Anulado».'],
             ['title' => 'Moverte por tesorería', 'text' => 'El menú de la izquierda tiene «Resumen» (alertas y cuentas), «Movimientos», «Cajas y arqueos», «Flujo proyectado» y «Cuentas». El nombre de cada cuenta abre su página con el libro y el saldo acumulado.'],
             ['title' => 'Transferir entre cuentas', 'text' => '«Transferencia» saca el importe de una cuenta y lo ingresa en otra en la misma operación. Si las monedas difieren, pide el tipo de cambio pactado. En cada pasarela, «Liquidar» registra el lote que deposita en el banco: descuenta la comisión y transfiere el neto.'],
             ['title' => 'Operar una caja chica', 'text' => 'En «Cajas y arqueos», «Abrir» cuenta el efectivo del día. Con la caja abierta, «Gasto» registra cada pago con su comprobante, «Arqueo» hace un conteo sorpresa y «Cerrar» cuenta billetes y monedas y cierra la sesión. Si hay diferencia, se explica y otra persona la aprueba; luego Contabilidad da el visto bueno.'],
             ['title' => 'Reponer una caja chica', 'text' => '«Reponer» propone lo que falta para completar el fondo. La aprueba o la rechaza alguien distinto de quien la pidió, y «Pagar» la transfiere desde un banco.'],
-            ['title' => 'Mirar el flujo proyectado', 'text' => '«Flujo proyectado» suma las cuotas por cobrar, las cuentas por pagar y los egresos fijos de la agencia para los próximos 30, 60 y 90 días, y avisa si el saldo podría quedar en negativo.'],
+            ['title' => 'Mirar el flujo proyectado', 'text' => '«Flujo proyectado» suma las cuotas por cobrar, las cuentas por pagar, las comisiones aprobadas y los egresos fijos para los próximos 30, 60 y 90 días, con su desglose por concepto y un gráfico de 13 semanas. Los interruptores quitan las cuotas vencidas o los egresos fijos, y el detalle se filtra por tipo y horizonte. Avisa si el saldo podría quedar en negativo.'],
             ['title' => 'Dar de alta cuentas', 'text' => 'En «Cuentas», «Nueva cuenta» registra un banco, una caja chica (con su fondo y su custodio) o una pasarela (con el banco donde liquida). Una cuenta solo se desactiva con saldo cero.'],
             ['title' => 'Buscar movimientos', 'text' => 'Filtra por «Cuenta», «Tipo» o «Categoría», usa las tarjetas «Ingresos», «Egresos» y «Gastos de caja chica», y ordena por «Fecha» o «Importe en soles».'],
         ],
@@ -224,7 +224,8 @@ return [
             ['title' => 'Editar el convenio', 'text' => 'Pulsa «Editar» en la fila para cambiar datos, comisión, vigencia o línea de crédito. Un límite de 0 deja a la agencia en solo prepago.'],
             ['title' => 'Bloquear o desbloquear', 'text' => '«Bloquear» pide un motivo y deja a la agencia sin poder reservar hasta que pulses «Desbloquear». Úsalo, por ejemplo, ante pagos muy atrasados.'],
             ['title' => 'Desactivar o reactivar', 'text' => '«Desactivar» conserva sus reservas y movimientos, pero le quita el acceso al portal. «Reactivar» le devuelve su convenio y su acceso.'],
-            ['title' => 'Revisar crédito y reservas', 'text' => 'Abre «Ver agencia» para ver el crédito usado y disponible y sus reservas por este canal. Las tarjetas «Con restricción» y «Crédito sobre 80 %» destacan a quién vigilar.'],
+            ['title' => 'Revisar crédito y reservas', 'text' => 'La columna «Disponible» y la tarjeta «Crédito otorgado» muestran cuánto le queda a cada agencia. Abre «Ver agencia» para ver el crédito usado, sus usuarios del portal y sus reservas por este canal. Las tarjetas «Con restricción» y «Crédito sobre 80 %» destacan a quién vigilar.'],
+            ['title' => 'Ver el portal como la agencia', 'text' => 'En «Ver agencia», «Ver portal como esta agencia» abre su portal en solo lectura durante 30 minutos, con su catálogo y tarifas. Vuelve con «Volver al backoffice» en la barra superior. Queda en la auditoría.'],
         ],
         'faqs' => [
             ['question' => '¿Por qué una agencia no puede reservar a crédito?', 'answer' => 'Tiene el crédito excedido, el convenio vencido o un bloqueo manual. Aparece en el aviso «Agencias con restricción» al inicio de la pantalla.'],
@@ -245,7 +246,7 @@ return [
         'steps' => [
             ['title' => 'Seguir los pedidos', 'text' => 'En la pestaña «Pedidos web» filtra con «Pagados», «Pago pendiente» o «Pago rechazado». Pulsa «Ver pedido» para ver producto, pasajeros, total, código promocional, reserva y datos del comprador.'],
             ['title' => 'Anular un pedido', 'text' => 'En un pedido con pago pendiente o rechazado pulsa «Anular pedido», escribe el motivo y confirma. Se liberan los cupos y la reserva asociada queda cancelada.'],
-            ['title' => 'Publicar un producto en la tienda', 'text' => 'En la pestaña «Productos en la tienda» pulsa «Publicar» para que aparezca en el sitio y en el widget, o «Despublicar» para retirarlo. Los pedidos existentes no cambian.'],
+            ['title' => 'Publicar un producto en la tienda', 'text' => 'En la pestaña «Productos en la tienda» pulsa «Publicar» para que aparezca en el sitio y en el widget, o «Despublicar» para retirarlo. Los pedidos existentes no cambian. La tabla muestra el precio web «Desde», la promoción vigente y la dirección de la ficha; «Ver tienda pública» abre el sitio de la agencia.'],
             ['title' => 'Medir la conversión', 'text' => 'El «Embudo de conversión» muestra cuántos visitantes avanzan en cada paso y el porcentaje respecto del paso anterior, hasta el pago.'],
         ],
         'faqs' => [
@@ -286,11 +287,11 @@ return [
         'title' => 'Integración web y CMS',
         'summary' => 'El widget de reservas para tu sitio, tu blog o el de un aliado: su código, los dominios autorizados y los eventos que llegan desde la web.',
         'steps' => [
-            ['title' => 'Configurar el widget', 'text' => 'En «Widget de reservas» pulsa «Configurar». Elige el producto publicado, el método (web component, iframe, script con botón o enlace directo), idioma, moneda, color, radio de esquinas y si se muestran reseñas verificadas. Guarda con «Guardar».'],
+            ['title' => 'Configurar el widget', 'text' => 'En «Widget de reservas» pulsa «Configurar». Elige si muestra un producto o el catálogo por categoría, el método (web component, iframe, script con botón o enlace directo), idioma, moneda, color, radio de esquinas y si se muestran reseñas verificadas. Guarda con «Guardar».'],
             ['title' => 'Copiar el código', 'text' => 'El bloque de código se genera con tu clave pública y la configuración elegida. Pulsa «Copiar» y pégalo en tu sitio. A la derecha ves una vista previa del widget.'],
             ['title' => 'Autorizar un dominio', 'text' => 'Pulsa «Agregar dominio», escribe el dominio sin https:// ni rutas y, si quieres, la plataforma que usa. Crea en su DNS el registro TXT que aparece en la tabla y luego pulsa «Verificar».'],
             ['title' => 'Quitar un dominio', 'text' => 'Pulsa «Quitar» en la fila del dominio. Desde ese momento el widget deja de cargar en ese sitio.'],
-            ['title' => 'Revisar la actividad', 'text' => '«Últimos eventos» lista vistas de página, productos vistos, carritos, checkouts iniciados y compras, con su sesión, idioma y moneda.'],
+            ['title' => 'Revisar la actividad', 'text' => '«Últimos eventos» lista vistas de página, productos vistos, carritos, checkouts iniciados y compras, con su sesión, idioma y moneda. Debajo están los webhooks relevantes con sus suscripciones, los eventos que el widget emite en la página anfitriona para GA4 y los últimos traspasos al checkout.'],
         ],
         'faqs' => [
             ['question' => 'El widget no aparece en mi sitio', 'answer' => 'Solo responde en dominios verificados. Revisa que el dominio figure como verificado en la tabla y que el código copiado sea el actual.'],
@@ -332,8 +333,8 @@ return [
         'steps' => [
             ['title' => 'Revisar las plataformas', 'text' => 'Cada tarjeta de plataforma muestra si está conectada, su calificación, cuántas reseñas tiene, cuándo sincronizó y si admite respuesta por API o manual.'],
             ['title' => 'Priorizar la bandeja', 'text' => 'Usa «Sin responder», «Críticas», «Por publicar» y «Respondidas». Filtra por «Plataforma», «Respuesta» o «Estrellas» y pulsa «Ver reseña» para leerla completa o abrir el original.'],
-            ['title' => 'Responder', 'text' => 'Pulsa «Responder», escribe tu texto y confirma con «Guardar respuesta». Si la plataforma admite respuestas por API, se publica al sincronizar.'],
-            ['title' => 'Marcar una respuesta manual', 'text' => 'Si la plataforma no admite respuestas por API, copia tu texto en ella y luego pulsa «Marcar publicada» para cerrar la reseña.'],
+            ['title' => 'Responder', 'text' => 'Pulsa «Responder», escribe al menos 20 caracteres o usa «Usar respuesta sugerida» y ajústala, y confirma con «Guardar respuesta». Si la plataforma admite respuestas por API, se publica al sincronizar.'],
+            ['title' => 'Marcar una respuesta manual', 'text' => 'Si la plataforma no admite respuestas por API, pulsa «Copiar para publicar», pégala en la plataforma y luego pulsa «Marcar publicada» para cerrar la reseña.'],
         ],
         'faqs' => [
             ['question' => '¿Cómo llegan las reseñas?', 'answer' => 'Se leen por las APIs oficiales de cada plataforma conectada, que sincronizan cada día. No se copian páginas.'],
@@ -354,6 +355,7 @@ return [
             ['title' => 'Elegir el cliente', 'text' => 'Usa el selector «Cliente» de la cabecera. La vista se actualiza con los datos de ese cliente tal como los vería él.'],
             ['title' => 'Revisar sus viajes y propuestas', 'text' => '«Mis viajes» muestra fechas, pasajeros, servicios confirmados y estado; «Propuestas» lista las cotizaciones enviadas con su versión y vencimiento.'],
             ['title' => 'Verificar pagos y documentos', 'text' => '«Pagos» muestra cada cuota con su vencimiento y saldo, y «Documentos» los vouchers emitidos. Úsalo para confirmar que el cliente tiene todo antes de viajar.'],
+            ['title' => 'Navegar por secciones', 'text' => 'La barra del marco tiene las mismas secciones del portal: Inicio, Mis viajes, Propuestas, Pagos, Documentos y Favoritos. Cada una se abre por separado, en solo lectura.'],
         ],
         'faqs' => [
             ['question' => '¿Qué no ve el cliente?', 'answer' => 'Las notas internas, los costos y los márgenes nunca se muestran. El cliente solo ve lo suyo.'],
@@ -374,7 +376,7 @@ return [
             ['title' => 'Atender los comentarios', 'text' => 'En la pestaña «Comentarios» cada tarjeta indica el tipo, el pasajero, la reserva y el servicio. Pulsa «Responder», escribe la respuesta y confirma con «Enviar respuesta»; el pasajero la ve en su portal y por correo.'],
             ['title' => 'Marcar o derivar', 'text' => '«Marcar leído» deja constancia de que el equipo lo revisó. «Derivar» lo pasa a Operaciones para que lo atienda como incidencia del viaje.'],
             ['title' => 'Revisar los mensajes enviados', 'text' => 'En «Mensajes enviados» filtra por canal, estado o reserva. Pulsa «Ver mensaje» para ver destinatario, plantilla, fechas de envío y lectura, y el error si falló.'],
-            ['title' => 'Ver la app del pasajero', 'text' => 'El botón «Ver como pasajero» abre la vista previa de la app con el itinerario, vouchers, avisos y chat de una reserva.'],
+            ['title' => 'Ver como pasajero', 'text' => '«Ver la app» abre la vista previa de la app con el itinerario, vouchers, avisos y chat de una reserva. «Ver portal web como pasajero» abre el portal web de una reserva con acceso de pasajero, en solo lectura durante 30 minutos; vuelve con «Volver al backoffice».'],
         ],
         'faqs' => [
             ['question' => '¿Cómo ingresa el pasajero?', 'answer' => 'Con el correo y la contraseña de su usuario de pasajero, por el mismo ingreso que el resto. Solo ve su viaje: inicio, mi viaje, mensajes, comentarios, «Califica tu viaje» y sus datos.'],
@@ -396,7 +398,7 @@ return [
             ['title' => 'Ver como una persona del equipo', 'text' => 'En el selector «Ver como» elige un guía o conductor para ver solo sus servicios, o «Todo el equipo» para el día completo.'],
             ['title' => 'Cambiar de día', 'text' => 'En «Días con servicios» pulsa una fecha. La vista mantiene a la persona elegida.'],
             ['title' => 'Seguir el avance', 'text' => '«Estado de los servicios» muestra si cada traslado, tour o tren está sin asignar, asignado, confirmado, en curso o completado según lo que registra el equipo en la app.'],
-            ['title' => 'Controlar los equipos', 'text' => 'La tarjeta «Equipos activos» indica cuántos teléfonos usan la app y cuándo fue la última sincronización.'],
+            ['title' => 'Controlar los equipos', 'text' => 'La tarjeta «Equipos activos» indica cuántos teléfonos usan la app y cuándo fue la última sincronización. «Sincronización de la app» cuenta lo que llegó de los teléfonos en los últimos 7 días, y en «Teléfonos con la app» puedes desactivar uno perdido: deja de sincronizar y borra sus datos al conectarse.'],
         ],
         'faqs' => [
             ['question' => '¿Funciona sin señal?', 'answer' => 'Sí. La app guarda confirmaciones, check-in y evidencias y las sincroniza al recuperar la conexión.'],

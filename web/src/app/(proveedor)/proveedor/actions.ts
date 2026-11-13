@@ -52,12 +52,6 @@ export async function registerInvoice(code: string, _state: StepResult, form: Fo
   return result;
 }
 
-export async function annulInvoice(code: string): Promise<StepResult> {
-  const result = await sendStep(`/supplier/payables/${encodeURIComponent(code)}/invoices`, "DELETE", {}, "No pudimos anular la factura.");
-  if (result.done) refresh("/proveedor/pagos");
-  return result;
-}
-
 export async function acknowledgeRooming(id: string, _state: StepResult, form: FormData): Promise<StepResult> {
   const result = await sendStep(`/supplier/rooming-lists/${encodeURIComponent(id)}/acknowledge`, "POST", formValues(form, ["lock_version"]), "No pudimos registrar el acuse de recibo.");
   if (result.done) refresh("/proveedor/rooming");

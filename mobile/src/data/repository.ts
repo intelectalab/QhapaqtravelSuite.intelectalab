@@ -50,7 +50,8 @@ export async function refreshFromServer(): Promise<void> {
   const db = await getDb();
   const known = (await db.getAllAsync<{ id: string }>("SELECT id FROM assignments")).map((row) => row.id);
   const since = await getState("cursor");
-  const data = await api<Bootstrap>("/mobile/operator/bootstrap", { query: { since: since ?? undefined, known } });
+  const device = await getState("device_id");
+  const data = await api<Bootstrap>("/mobile/operator/bootstrap", { query: { since: since ?? undefined, known }, headers: device ? { "X-Device-Id": device } : undefined });
 
   await db.withTransactionAsync(async () => {
     for (const assignment of data.assignments) await saveAssignment(db, assignment);

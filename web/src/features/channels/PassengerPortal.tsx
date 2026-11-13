@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertCircle, BellRing, CheckCheck, Eye, Mail, MessageCircle, MessageSquareHeart, MessageSquareReply, Phone, Send, Smartphone } from "lucide-react";
-import { markFeedback, replyFeedback } from "@/app/(backoffice)/canales/portal-pasajero/actions";
+import { markFeedback, previewPassengerPortal, replyFeedback } from "@/app/(backoffice)/canales/portal-pasajero/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PanelAction } from "@/components/ui/PanelAction";
+import { SelectField } from "@/components/ui/SelectField";
 import { Tabs } from "@/components/ui/Tabs";
 import { TextArea } from "@/components/ui/TextArea";
 import { TintTile } from "@/components/ui/Tinted";
@@ -20,6 +21,32 @@ import { toneStyle, type Tone } from "@/lib/tone";
 import { ChannelBadge, DetailPanel, PanelSection, Stars, TileGrid } from "./ChannelUi";
 
 const initial: StepResult = { message: null, done: false };
+
+export function PassengerPreviewAction({ options }: { options: NonNullable<PassengerPortalOverview["previewable"]> }) {
+  return (
+    <PanelAction<StepResult>
+      label="Ver portal web como pasajero"
+      icon={<Eye size={16} />}
+      formId="passenger-portal-preview"
+      title="Ver el portal como pasajero"
+      description="Abre el portal web con los datos reales de la reserva, en modo de solo lectura durante 30 minutos. Queda en la auditoría."
+      submitLabel="Abrir portal"
+      action={previewPassengerPortal}
+      initial={initial}
+    >
+      {() =>
+        options.length === 0 ? (
+          <p className="text-[13px] text-fg-3">Ninguna reserva tiene todavía un acceso de pasajero. Se crea cuando el pasajero entra con su enlace seguro desde Mi viaje.</p>
+        ) : (
+          <>
+            <SelectField label="Reserva" name="reservation" options={options.map((option) => ({ value: option.code, label: `${option.code} · ${option.title}` }))} defaultValue={options[0].code} searchable />
+            <p className="text-[12.5px] text-fg-3">Verás lo mismo que el pasajero: su viaje, vouchers, avisos y mensajes. Para volver usa «Volver al backoffice» en la barra superior.</p>
+          </>
+        )
+      }
+    </PanelAction>
+  );
+}
 
 const TYPE_TONES: Record<string, Tone> = { comentario: "t1", sugerencia: "violet", felicitacion: "ok", reclamo: "bad", incidencia: "warn" };
 

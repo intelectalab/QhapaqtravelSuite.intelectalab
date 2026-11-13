@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Finance\Support;
 
+use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
+use Brick\Math\RoundingMode;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +15,38 @@ final class ProfitabilityReport
 {
     private const KINDS = ['alojamiento' => 'Alojamiento', 'tour' => 'Tours y excursiones', 'traslado' => 'Traslados', 'tren_entrada' => 'Trenes y entradas', 'libre' => 'Otros servicios'];
 
+    public const LIGHTS = ['r' => 'bad', 'a' => 'warn', 'g' => 'ok'];
+
     public function __construct(private readonly Consolidation $money) {}
+
+    public function reservations(?string $light = null, ?string $channel = null): array
+    {
+        return $this->overview()['rows']
+            ->when($light !== null, fn (Collection $rows) => $rows->where('band', self::LIGHTS[$light]))
+            ->when($channel !== null, fn (Collection $rows) => $rows->filter(fn (array $row): bool => strcasecmp((string) $row['channel'], (string) $channel) === 0))
+            ->values()->all();
+    }
+
+    public function costImpact(string $reservationCode, string $amount, string $currency, ?string $fxRate = null): array
+    {
+        $overview = $this->overview();
+        $row = $overview['rows']->firstWhere('code', $reservationCode)
+            ?? throw ApiException::unprocessable('FIN-BR-23', 'El costo se registra sobre una reserva vigente (no borrador ni cancelada).');
+        $extra = $this->money->penExact($amount, $currency, $fxRate ?? $this->money->fxFor($currency));
+        $income = Decimal::of($row['income_pen']);
+        $cost = Decimal::of($row['cost_pen'])->plus($extra);
+        $margin = $income->minus($cost);
+        $pct = $income->isPositive() ? (float) (string) $margin->multipliedBy(100)->dividedBy($income, 1, RoundingMode::HALF_UP) : 0.0;
+
+        return [
+            'reservation' => ['code' => $row['code'], 'title' => $row['title']],
+            'amount_pen' => (string) $extra,
+            'before' => ['cost_pen' => (string) Decimal::money($row['cost_pen']), 'margin_pen' => (string) Decimal::money($row['margin_pen']), 'margin_pct' => $row['margin_pct'], 'band' => $row['band']],
+            'after' => ['cost_pen' => (string) Decimal::round2($cost), 'margin_pen' => (string) Decimal::round2($margin), 'margin_pct' => $pct, 'band' => $pct >= $overview['target'] ? 'ok' : ($pct >= $overview['floor'] ? 'warn' : 'bad')],
+            'target' => $overview['target'],
+            'floor' => $overview['floor'],
+        ];
+    }
 
     public function overview(): array
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Domain\Admin\Support\AdapterRetryPolicy;
 use App\Domain\Finance\Support\FinanceHistory;
 use App\Domain\Integrations\Contracts\FiscalGateway;
 use App\Domain\Integrations\Data\AdapterResult;
@@ -27,18 +28,24 @@ final class SendInvoiceToFiscalProvider implements ShouldBeUnique, ShouldQueue
     use Queueable;
     use TenantAware;
 
-    public int $tries = 5;
+    public int $tries = AdapterRetryPolicy::TRIES;
+
+    public int $timeout = AdapterRetryPolicy::TIMEOUT_SECONDS;
 
     public int $uniqueFor = 300;
+
+    public array $delays = [];
 
     public function __construct(public readonly string $invoiceId)
     {
         $this->onQueue('integrations');
+        $policy = AdapterRetryPolicy::for('fiscal');
+        [$this->tries, $this->delays, $this->timeout] = [$policy['tries'], $policy['backoff'], $policy['timeout']];
     }
 
     public function backoff(): array
     {
-        return [30, 60, 120, 240, 480];
+        return $this->delays !== [] ? $this->delays : AdapterRetryPolicy::delays();
     }
 
     public function uniqueId(): string

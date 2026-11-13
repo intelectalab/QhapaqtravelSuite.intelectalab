@@ -1,6 +1,7 @@
 "use client";
 
 import { Activity, Ban, BarChart3, Check, CheckCircle2, Gauge, KeyRound, KeySquare, Link2, Minus, Pause, Play, Plus, Radar, RotateCw, Send, ShieldCheck, Trash2, Webhook as WebhookIcon, XCircle } from "lucide-react";
+import Link from "next/link";
 import { createContext, useContext, useState, useTransition, type ReactNode } from "react";
 import { createApiKey, createWebhook, deleteWebhook, loadDelivery, pingWebhook, redeliverWebhook, revokeApiKey, rotateWebhookSecret, setWebhookStatus, updateWebhook } from "@/app/(backoffice)/admin/api/actions";
 import { DataTable } from "@/components/table/DataTable";
@@ -17,17 +18,21 @@ import { SidePanel } from "@/components/ui/SidePanel";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { TintCardTitle, ToneScope } from "@/components/ui/Tinted";
-import { ADMIN_INITIAL, type AdminActionState, type ApiKey, type ApiOverview, type Option, type Webhook, type WebhookDelivery, type WebhookDeliveryDetail } from "@/lib/admin";
+import { ADMIN_INITIAL, type AdminActionState, type ApiKey, type AuditEntry, type ApiOverview, type Option, type Webhook, type WebhookDelivery, type WebhookDeliveryDetail } from "@/lib/admin";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatNumber } from "@/lib/format";
 import type { Tone } from "@/lib/tone";
-import { CheckChips, FieldLabel, RISE, SecretReveal } from "./AdminParts";
+import { AuditTrail, CheckChips, FieldLabel, RISE, SecretReveal } from "./AdminParts";
 
 const SecretContext = createContext<{ secret: { value: string; title: string } | null; reveal: (value: string, title: string) => void; clear: () => void }>({ secret: null, reveal: () => undefined, clear: () => undefined });
 
 export function SecretProvider({ children }: { children: ReactNode }) {
   const [secret, setSecret] = useState<{ value: string; title: string } | null>(null);
   return <SecretContext.Provider value={{ secret, reveal: (value, title) => setSecret({ value, title }), clear: () => setSecret(null) }}>{children}</SecretContext.Provider>;
+}
+
+export function useSecretReveal() {
+  return useContext(SecretContext).reveal;
 }
 
 export function SecretSlot() {
@@ -37,6 +42,8 @@ export function SecretSlot() {
 
 const KEY_STATUS: Record<ApiKey["status"], { label: string; tone: Tone }> = { active: { label: "Activa", tone: "ok" }, revoked: { label: "Revocada", tone: "mute" }, expired: { label: "Vencida", tone: "warn" } };
 const DELIVERY_STATUS: Record<WebhookDelivery["status"], { label: string; tone: Tone }> = { delivered: { label: "Entregado", tone: "ok" }, retrying: { label: "Reintentando", tone: "sun" }, failed: { label: "Fallido", tone: "bad" }, pending: { label: "En cola", tone: "mute" } };
+const WARN_FAILURES = 5;
+
 const HOOK_STATUS: Record<Webhook["status"], { label: string; tone: Tone }> = { active: { label: "Activo", tone: "ok" }, paused: { label: "Pausado", tone: "mute" }, disabled: { label: "Deshabilitado", tone: "bad" } };
 
 const label = (options: Option[], value: string) => options.find((option) => option.value === value)?.label ?? value;
@@ -65,7 +72,7 @@ export function ApiKeyCreateAction({ scopes, full }: { scopes: Option[]; full: s
             <CheckChips name="scopes" options={scopes} />
           </div>
           <TextField label="Vence el (opcional)" name="expires_at" type="date" />
-          <TextField label="IP permitidas (opcional)" name="ips" placeholder="200.48.22.17, 161.132.8.40" hint="Si lo dejas vacío, acepta llamadas desde cualquier IP." />
+          <TextField label="IP permitidas (opcional)" name="ips" placeholder="200.48.22.17, 161.132.8.0/24" hint="Direcciones o rangos CIDR separados por comas. Si lo dejas vacío, acepta llamadas desde cualquier IP." />
         </>
       )}
     </PanelAction>
@@ -150,7 +157,7 @@ function ScopeMatrix({ granted, labels, compact = false }: { granted: string[]; 
   );
 }
 
-function KeyDetail({ apiKey, scopes }: { apiKey: ApiKey; scopes: Option[] }) {
+function KeyDetail({ apiKey, scopes, history }: { apiKey: ApiKey; scopes: Option[]; history: AuditEntry[] }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -169,6 +176,7 @@ function KeyDetail({ apiKey, scopes }: { apiKey: ApiKey; scopes: Option[] }) {
               ...(apiKey.revoked_at ? [{ label: "Revocada", value: `${formatDateTime(apiKey.revoked_at)} · ${apiKey.revoke_reason ?? ""}` }] : []),
             ]}
           />
+          <AuditTrail entries={history.filter((entry) => entry.entity_id === apiKey.code)} title="Bitácora de la clave" empty="Sin cambios registrados para esta clave." />
         </div>
       </SidePanel>
     </>
@@ -208,7 +216,7 @@ export function ApiKeysTable({ data }: { data: ApiOverview }) {
       mobile: "detail",
       cell: (apiKey) => (
         <RowActions>
-          <KeyDetail apiKey={apiKey} scopes={data.scopes} />
+          <KeyDetail apiKey={apiKey} scopes={data.scopes} history={data.key_history} />
           {data.can_manage && apiKey.status === "active" && (
             <PanelAction<AdminActionState> label="Revocar" variant="ghost" size="sm" formId={`key-revoke-${apiKey.code}`} trigger={(open) => <RowIcon tone="delete" label="Revocar clave" icon={<Ban size={15} />} onClick={open} />} title="Revocar clave" description={`${apiKey.name} deja de funcionar al instante. Los sistemas que la usan recibirán un error 401.`} submitLabel="Revocar" action={revokeApiKey} initial={ADMIN_INITIAL}>
               {() => (
@@ -228,7 +236,11 @@ export function ApiKeysTable({ data }: { data: ApiOverview }) {
     { id: "live", label: "En producción", tone: "t1", icon: <ShieldCheck size={19} />, matches: (apiKey) => apiKey.environment === "live" && apiKey.status === "active" },
     { id: "inactive", label: "Revocadas o vencidas", tone: "mute", icon: <Ban size={19} />, matches: (apiKey) => apiKey.status !== "active" },
   ];
-  const filters: FilterConfig<ApiKey>[] = [{ id: "scope", label: "Permiso", options: data.scopes, value: (apiKey) => apiKey.scopes }];
+  const filters: FilterConfig<ApiKey>[] = [
+    { id: "status", label: "Estado", options: Object.entries(KEY_STATUS).map(([value, item]) => ({ value, label: item.label })), value: (apiKey) => apiKey.status },
+    { id: "env", label: "Entorno", options: [{ value: "live", label: "Producción" }, { value: "test", label: "Pruebas" }], value: (apiKey) => apiKey.environment },
+    { id: "scope", label: "Permiso", options: data.scopes, value: (apiKey) => apiKey.scopes },
+  ];
   const sorts: SortOption<ApiKey>[] = [
     { id: "created", label: "Creación", type: "date", value: (apiKey) => apiKey.created_at },
     { id: "used", label: "Último uso", type: "date", value: (apiKey) => apiKey.last_used_at },
@@ -251,7 +263,8 @@ function WebhookTools({ hook }: { hook: Webhook }) {
 }
 
 function WebhookCard({ hook, data, index }: { hook: Webhook; data: ApiOverview; index: number }) {
-  const health: Tone = hook.status !== "active" ? "mute" : hook.failures >= 5 ? "bad" : hook.failures > 0 ? "warn" : "ok";
+  const health: Tone = hook.status === "disabled" ? "bad" : hook.status !== "active" ? "mute" : hook.failures >= WARN_FAILURES ? "bad" : hook.failures > 0 ? "warn" : "ok";
+  const toggle = hook.status === "active" ? { label: "Pausar", title: "Pausar webhook", description: "Los eventos dejan de enviarse mientras esté en pausa.", mode: "pause" } : hook.status === "disabled" ? { label: "Reactivar", title: "Reactivar webhook", description: "Revisa primero que tu servidor responda. Se reinicia el contador de fallos y vuelve a recibir eventos.", mode: "resume" } : { label: "Reanudar", title: "Reanudar webhook", description: "Vuelve a recibir eventos desde ahora.", mode: "resume" };
   const rate = hook.total > 0 ? Math.round((hook.delivered / hook.total) * 100) : null;
   return (
     <ToneScope tone={health}>
@@ -286,15 +299,32 @@ function WebhookCard({ hook, data, index }: { hook: Webhook; data: ApiOverview; 
           </span>
           <span className="rounded-[10px] bg-surface-2 px-2.5 py-1.5">
             <span className="block text-fg-3">Fallos seguidos</span>
-            <b className={cn("text-[14px]", hook.failures > 0 && "text-[var(--tint)]")}>{hook.failures}</b>
+            <b className={cn("text-[14px]", hook.failures > 0 && "text-[var(--tint)]")}>
+              {hook.failures}
+              <span className="text-[12px] font-medium text-fg-3"> / {hook.failure_limit}</span>
+            </b>
           </span>
           <span className="rounded-[10px] bg-surface-2 px-2.5 py-1.5">
             <span className="block text-fg-3">Último</span>
             <b className="text-[12.5px]">{hook.last_at ? formatDateTime(hook.last_at, false) : "—"}</b>
           </span>
         </div>
+        {hook.status === "disabled" ? (
+          <p className="mt-3 rounded-[10px] bg-bad/[0.08] px-3 py-2 text-[12.5px] text-fg-2">
+            <b className="font-semibold text-bad">Se deshabilitó solo{hook.disabled_reason ? `: ${hook.disabled_reason.toLowerCase()}` : ""}.</b> Revisa tu servidor y reactívalo para volver a recibir eventos.
+          </p>
+        ) : hook.status === "active" && hook.failures >= WARN_FAILURES ? (
+          <p className="mt-3 rounded-[10px] bg-warn/[0.1] px-3 py-2 text-[12.5px] text-fg-2">
+            Lleva {hook.failures} fallos seguidos. Al llegar a {hook.failure_limit} se deshabilita y deja de recibir eventos.
+          </p>
+        ) : null}
         <p className="mt-2 text-[11.5px] text-fg-3">
           Secreto <span className="font-mono">{hook.secret}</span> · versión {hook.api_version}
+          {hook.rotated_at ? ` · rotado el ${formatDate(hook.rotated_at)}` : ""}
+          {" · "}
+          <Link href={`/admin/api/entregas?webhook=${encodeURIComponent(hook.code)}`} className="font-semibold text-accent hover:underline">
+            Ver entregas
+          </Link>
         </p>
         {data.can_manage && (
           <div className="mt-auto flex justify-end gap-1.5 border-t border-line-2 pt-3">
@@ -303,21 +333,21 @@ function WebhookCard({ hook, data, index }: { hook: Webhook; data: ApiOverview; 
               {() => <WebhookFields events={data.events} hook={hook} />}
             </PanelAction>
             <PanelAction<AdminActionState>
-              label={hook.status === "active" ? "Pausar" : "Reanudar"}
+              label={toggle.label}
               variant="ghost"
               size="sm"
               formId={`hook-status-${hook.code}`}
-              trigger={(open) => <RowIcon tone="neutral" label={hook.status === "active" ? "Pausar" : "Reanudar"} icon={hook.status === "active" ? <Pause size={15} /> : <Play size={15} />} onClick={open} />}
-              title={hook.status === "active" ? "Pausar webhook" : "Reanudar webhook"}
-              description={hook.status === "active" ? "Los eventos dejan de enviarse mientras esté en pausa." : "Se reinicia el contador de fallos y vuelve a recibir eventos."}
-              submitLabel={hook.status === "active" ? "Pausar" : "Reanudar"}
+              trigger={(open) => <RowIcon tone="neutral" label={toggle.label} icon={hook.status === "active" ? <Pause size={15} /> : <Play size={15} />} onClick={open} />}
+              title={toggle.title}
+              description={toggle.description}
+              submitLabel={toggle.label}
               action={setWebhookStatus}
               initial={ADMIN_INITIAL}
             >
               {() => (
                 <>
                   <input type="hidden" name="code" value={hook.code} />
-                  <input type="hidden" name="mode" value={hook.status === "active" ? "pause" : "resume"} />
+                  <input type="hidden" name="mode" value={toggle.mode} />
                 </>
               )}
             </PanelAction>
@@ -410,7 +440,7 @@ function DeliveryDetail({ delivery, canManage }: { delivery: WebhookDelivery; ca
   );
 }
 
-export function DeliveriesTable({ data }: { data: ApiOverview }) {
+export function DeliveriesTable({ data, webhook }: { data: ApiOverview; webhook?: string }) {
   const columns: Column<WebhookDelivery>[] = [
     {
       id: "event",
@@ -469,7 +499,7 @@ export function DeliveriesTable({ data }: { data: ApiOverview }) {
     { id: "event", label: "Evento", options: data.events, value: (delivery) => delivery.event },
   ];
   const sorts: SortOption<WebhookDelivery>[] = [{ id: "at", label: "Fecha", type: "date", value: (delivery) => delivery.at }];
-  return <DataTable screen="admin-webhook-entregas" rows={data.deliveries} columns={columns} getKey={(delivery) => delivery.code} entityLabel="entregas" searchText={(delivery) => `${delivery.event} ${delivery.entity ?? ""} ${delivery.webhook}`} searchPlaceholder="Buscar evento o documento" metrics={metrics} filters={filters} sorts={sorts} />;
+  return <DataTable screen="admin-webhook-entregas" initialFilters={webhook ? { webhook } : undefined} rows={data.deliveries} columns={columns} getKey={(delivery) => delivery.code} entityLabel="entregas" searchText={(delivery) => `${delivery.event} ${delivery.entity ?? ""} ${delivery.webhook}`} searchPlaceholder="Buscar evento o documento" metrics={metrics} filters={filters} sorts={sorts} />;
 }
 
 export function OAuthApps({ apps, scopes }: { apps: ApiOverview["apps"]; scopes: Option[] }) {

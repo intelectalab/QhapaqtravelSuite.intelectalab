@@ -2,8 +2,9 @@
 
 import { Archive, AtSign, Building2, CalendarDays, FileLock2, MapPin, Pencil, Phone, Plus, Tag, TriangleAlert, User, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { anonymizeClient, archiveClient, createClient, updateClient, type ClientActionState } from "@/app/(backoffice)/crm/clientes/actions";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { anonymizeClient, archiveClient, checkClientDuplicates, createClient, updateClient, type ClientActionState, type ClientDuplicateCheck } from "@/app/(backoffice)/crm/clientes/actions";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -49,10 +50,53 @@ function DuplicateNotice({ state }: { state: ClientActionState }) {
   );
 }
 
+function useLiveDuplicates(fields: { doc_type: string; doc_number: string; email: string; phone: string }, exclude?: string) {
+  const [found, setFound] = useState<ClientDuplicateCheck>({ hard: null, soft: [] });
+  const key = JSON.stringify(fields);
+  useEffect(() => {
+    const timer = window.setTimeout(async () => {
+      const current = JSON.parse(key) as typeof fields;
+      if (!current.doc_number.trim() && !current.email.trim() && !current.phone.trim()) return setFound({ hard: null, soft: [] });
+      setFound(await checkClientDuplicates({ ...current, exclude }));
+    }, 450);
+    return () => window.clearTimeout(timer);
+  }, [key, exclude]);
+  return found;
+}
+
+function LiveDuplicates({ found }: { found: ClientDuplicateCheck }) {
+  if (!found.hard && found.soft.length === 0) return null;
+  const hard = found.hard;
+  return (
+    <div role="status" data-testid="client-live-duplicates" className={hard ? "rounded-xl border border-bad/30 bg-bad/[0.07] p-3.5 text-[13px]" : "rounded-xl border border-warn/30 bg-warn/[0.08] p-3.5 text-[13px]"}>
+      <p className={hard ? "mb-1.5 flex items-center gap-2 font-semibold text-bad" : "mb-1.5 flex items-center gap-2 font-semibold text-warn"}>
+        <TriangleAlert size={16} />
+        {hard ? "Ese documento ya está registrado" : "Hay clientes con el mismo correo o teléfono"}
+      </p>
+      <ul className="mb-1.5 flex flex-col gap-1 text-fg-2">
+        {(hard ? [hard] : found.soft).map((match) => (
+          <li key={match.code}>
+            <Link href={`/crm/clientes/${match.code}`} target="_blank" className="font-semibold text-fg hover:underline">
+              {match.name}
+            </Link>{" "}
+            · {match.code}
+          </li>
+        ))}
+      </ul>
+      <p className="text-fg-3">{hard ? "No se puede crear otro con el mismo documento: abre el que ya existe." : "Si es otra persona, puedes guardarlo igual."}</p>
+    </div>
+  );
+}
+
 function ClientFields({ options, client }: { options: ClientFormOptions; client?: ClientDetail }) {
   const [kind, setKind] = useState<string>(client?.rawKind ?? "persona");
   const company = kind === "empresa";
   const primary = client?.contacts.find((contact) => contact.is_primary);
+  const [docType, setDocType] = useState<string>(client && client.rawKind === kind ? client.docType : company ? "RUC" : "DNI");
+  const [docNumber, setDocNumber] = useState(client?.docNumber ?? "");
+  const [email, setEmail] = useState(client?.email ?? "");
+  const [phone, setPhone] = useState(client?.phone ?? "");
+  const found = useLiveDuplicates({ doc_type: docType, doc_number: docNumber, email, phone }, client?.id);
 
   return (
     <>
@@ -61,7 +105,10 @@ function ClientFields({ options, client }: { options: ClientFormOptions; client?
           label="Tipo de cliente"
           name="kind"
           defaultValue={kind}
-          onChange={setKind}
+          onChange={(next) => {
+            setKind(next);
+            setDocType(next === "empresa" ? "RUC" : "DNI");
+          }}
           options={[
             { value: "persona", label: "Persona" },
             { value: "empresa", label: "Empresa" },
@@ -69,17 +116,18 @@ function ClientFields({ options, client }: { options: ClientFormOptions; client?
         />
         <TextField label={company ? "Razón social" : "Nombre completo"} name="name" required defaultValue={client?.name} icon={company ? <Building2 size={17} /> : <User size={17} />} />
         <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] gap-3">
-          <SelectField key={kind} label="Documento" name="doc_type" options={DOC_TYPES} defaultValue={client && client.rawKind === kind ? client.docType : company ? "RUC" : "DNI"} />
-          <TextField label="Número" name="doc_number" required defaultValue={client?.docNumber} inputMode="text" autoComplete="off" />
+          <SelectField label="Documento" name="doc_type" options={DOC_TYPES} value={docType} onChange={setDocType} />
+          <TextField label="Número" name="doc_number" required defaultValue={client?.docNumber} onChange={(event) => setDocNumber(event.target.value)} inputMode="text" autoComplete="off" />
         </div>
         {!company && <TextField label="Fecha de nacimiento (opcional)" name="birth_date" type="date" defaultValue={client?.birth ?? undefined} icon={<CalendarDays size={17} />} />}
       </Section>
       <Section title="Contacto">
         <div className="grid grid-cols-2 gap-3">
-          <TextField label="Correo" name="email" type="email" defaultValue={client?.email || undefined} icon={<AtSign size={17} />} />
-          <TextField label="Teléfono" name="phone" inputMode="tel" defaultValue={client?.phone || undefined} icon={<Phone size={17} />} />
+          <TextField label="Correo" name="email" type="email" defaultValue={client?.email || undefined} onChange={(event) => setEmail(event.target.value)} icon={<AtSign size={17} />} />
+          <TextField label="Teléfono" name="phone" inputMode="tel" defaultValue={client?.phone || undefined} onChange={(event) => setPhone(event.target.value)} icon={<Phone size={17} />} />
         </div>
         <p className="-mt-1 text-[12.5px] text-fg-3">Basta con el correo o el teléfono.</p>
+        <LiveDuplicates found={found} />
         <div className="grid grid-cols-2 gap-3">
           <TextField label="Ciudad" name="city" defaultValue={client?.city || undefined} icon={<MapPin size={17} />} />
           <TextField label="País" name="country" defaultValue={client?.country ?? "Perú"} />
@@ -118,7 +166,7 @@ const confirmButton = (formId: string) =>
     ) : null;
   };
 
-export function ClientCreateAction({ options }: { options: ClientFormOptions }) {
+export function ClientCreateAction({ options, defaultOpen = false }: { options: ClientFormOptions; defaultOpen?: boolean }) {
   const router = useRouter();
   return (
     <PanelAction<ClientActionState>
@@ -133,6 +181,7 @@ export function ClientCreateAction({ options }: { options: ClientFormOptions }) 
       initial={initial}
       onDone={(state) => state.code && router.push(`/crm/clientes/${state.code}`)}
       footerExtra={confirmButton("client-create")}
+      defaultOpen={defaultOpen}
     >
       {(state) => (
         <>

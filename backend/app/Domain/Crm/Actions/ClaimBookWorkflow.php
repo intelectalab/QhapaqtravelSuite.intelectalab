@@ -117,6 +117,43 @@ final class ClaimBookWorkflow
         $this->audit->log('Libro de reclamaciones', $claim->book_number, 'vincular', null, $data['type']);
     }
 
+    public function link(string $key, array $data, User $actor): string
+    {
+        $claim = DB::table('crm_cases')->where('is_book', true)->where(fn ($query) => $query->where('code', $key)->orWhere('book_number', $key))->first()
+            ?? throw ApiException::notFound('La hoja de reclamación no existe.');
+
+        if ($claim->book_status === 'closed') {
+            throw ApiException::conflict('LR-STATE', 'La hoja está cerrada; ya no se vincula.');
+        }
+
+        [$clientId, $reservationId] = $this->links($data);
+
+        if (($data['client'] ?? null) !== null && $clientId === null) {
+            throw ApiException::unprocessable('VALIDATION_ERROR', 'El cliente no existe.', ['client' => ['Elige un cliente de la lista.']]);
+        }
+
+        if (($data['reservation'] ?? null) !== null && $reservationId === null) {
+            throw ApiException::unprocessable('VALIDATION_ERROR', 'La reserva no existe.', ['reservation' => ['Elige una reserva de la lista.']]);
+        }
+
+        DB::transaction(function () use ($claim, $clientId, $reservationId, $actor): void {
+            DB::table('crm_cases')->where('id', $claim->id)->update([
+                'client_id' => $clientId,
+                'reservation_id' => $reservationId,
+                'lock_version' => DB::raw('lock_version + 1'),
+                'updated_by' => $actor->getKey(),
+                'updated_at' => now(),
+            ]);
+            $client = $clientId ? DB::table('crm_clients')->where('id', $clientId)->value('code') : null;
+            $reservation = $reservationId ? DB::table('booking_reservations')->where('id', $reservationId)->value('code') : null;
+            $summary = trim(($client ? "cliente {$client}" : 'sin cliente').' · '.($reservation ? "reserva {$reservation}" : 'sin reserva'));
+            $this->log($claim->id, 'seguimiento', $claim->status, $claim->status, "Vínculos actualizados: {$summary}", $actor);
+            $this->audit->log('Libro de reclamaciones', $claim->book_number, 'vincular', null, $summary);
+        });
+
+        return (string) $claim->code;
+    }
+
     public function evaluate(string $code, User $actor, ?string $ownerId = null, ?string $note = null): void
     {
         $claim = $this->find($code);
@@ -173,7 +210,8 @@ final class ClaimBookWorkflow
                 'updated_by' => $actor->getKey(),
                 'updated_at' => now(),
             ]);
-            $this->log($claim->id, 'estado', $claim->status, 'resuelta', ($notification ? "Respuesta enviada a {$consumer['email']}" : 'Respuesta registrada; el consumidor no dejó correo').($late ? ' · fuera de plazo' : ''), $actor);
+            $guardian = $consumer['is_minor'] && ! empty($consumer['guardian']['name']) ? " (dirigida a {$consumer['guardian']['name']}, ".mb_strtolower((string) ($consumer['guardian']['relation'] ?? 'apoderado')).')' : '';
+            $this->log($claim->id, 'estado', $claim->status, 'resuelta', ($notification ? "Respuesta enviada a {$consumer['email']}{$guardian}" : 'Respuesta registrada; el consumidor no dejó correo').($late ? ' · fuera de plazo' : ''), $actor);
             $this->audit->log('Libro de reclamaciones', $claim->book_number, 'responder', $claim->book_status, 'answered'.($late ? ' · FUERA DE PLAZO' : ''));
         });
     }
@@ -273,7 +311,18 @@ final class ClaimBookWorkflow
         DB::transaction(function () use ($claim, $note, $actor): void {
             DB::table('crm_cases')->where('id', $claim->id)->update(['book_status' => 'closed', 'status' => 'cerrada', 'close_note' => $note, 'closed_at' => now(), 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             $this->log($claim->id, 'estado', $claim->status, 'cerrada', "Hoja cerrada · {$note}", $actor);
-            $this->audit->log('Libro de reclamaciones', $claim->book_number, 'cerrar', 'answered', 'closed');
+            $this->audit->log('Libro de reclamaciones', $claim->book_number, 'cerrar', 'answered', "closed · {$note}");
+        });
+    }
+
+    public function note(string $code, string $note, User $actor): void
+    {
+        $claim = DB::table('crm_cases')->where('is_book', true)->where(fn ($query) => $query->where('code', $code)->orWhere('book_number', $code))->first()
+            ?? throw ApiException::notFound('La hoja de reclamación no existe.');
+
+        DB::transaction(function () use ($claim, $note, $actor): void {
+            $this->log((string) $claim->id, 'seguimiento', $claim->status, $claim->status, 'Nota interna: '.trim($note), $actor);
+            $this->audit->log('Libro de reclamaciones', (string) $claim->book_number, 'nota_interna', null, Str::limit(trim($note), 200));
         });
     }
 

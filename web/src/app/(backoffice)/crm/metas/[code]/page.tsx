@@ -4,7 +4,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { TabbedCard } from "@/components/ui/RouteTabs";
 import { TintTile } from "@/components/ui/Tinted";
-import { TargetAdjustmentsSection, TargetBreakdownSection, TargetHistorySection, TargetProgressSection, TargetStatusBadges } from "@/features/targets/TargetDetailSections";
+import { TargetAdjustmentsSection, TargetBreakdownSection, TargetDefinition, TargetFlow, TargetHistorySection, TargetProgressSection, TargetStatusBadges } from "@/features/targets/TargetDetailSections";
 import { TargetAdjustAction, TargetStepAction, TargetVoidAction } from "@/features/targets/TargetForms";
 import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import { resolveSections } from "@/lib/sections";
@@ -57,7 +57,12 @@ export default async function MetaPage({ params, searchParams }: PageProps<"/crm
       case "ajustes":
         return <TargetAdjustmentsSection rows={adjustments} />;
       default:
-        return <TargetProgressSection target={target} />;
+        return (
+          <>
+            <TargetDefinition target={target} members={breakdown} tiers={policy.tiers} ranking={detail.ranking ?? []} />
+            <TargetProgressSection target={target} />
+          </>
+        );
     }
   })();
 
@@ -79,6 +84,7 @@ export default async function MetaPage({ params, searchParams }: PageProps<"/crm
           ) : undefined
         }
       />
+      <TargetFlow target={target} />
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <TintTile
           icon={Gauge}

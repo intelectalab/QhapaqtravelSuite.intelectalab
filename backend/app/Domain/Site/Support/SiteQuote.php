@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Domain\Site\Support;
 
+use App\Domain\Catalog\Support\ProductQuotePreview;
 use App\Domain\Shared\Errors\ApiException;
-use App\Domain\Shared\Money\Decimal;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use stdClass;
 
 final class SiteQuote
 {
-    private const PERCENT_KINDS = ['Descuento %', 'Descuento por cantidad', 'Código promocional', 'Promoción por temporada', 'Promoción por canal', 'Promoción por fecha'];
+    private const BASE_KEYS = ['base-adt' => 'adults', 'base-chd' => 'children', 'base-inf' => 'infants'];
 
     public function __construct(
         private readonly SiteCatalog $catalog,
@@ -81,19 +81,11 @@ final class SiteQuote
         }
 
         $price = $day['price'];
-        $adultUnit = self::money($price['adult']);
-        $childUnit = self::money($price['child']);
-        $perService = in_array($price['basis'], ['Precio fijo', 'Por grupo', 'Por unidad'], true) || $product->kind === 'traslados';
-        $units = $perService ? (int) ceil(($adults + $children + $infants) / max(1, (int) $product->maximum_passengers)) : 0;
-        $en = $this->catalog->locale()->translated();
-        $lines = $perService
-            ? [['key' => 'service', 'label' => $en ? ($units > 1 ? "Private service × {$units} vehicles" : 'Private service') : ($units > 1 ? "Servicio privado × {$units} vehículos" : 'Servicio privado'), 'qty' => $units, 'unit' => (string) $adultUnit, 'amount' => (string) $adultUnit->multipliedBy($units)]]
-            : array_values(array_filter([
-                ['key' => 'adults', 'label' => $en ? ($adults === 1 ? '1 adult' : "{$adults} adults") : ($adults === 1 ? '1 adulto' : "{$adults} adultos"), 'qty' => $adults, 'unit' => (string) $adultUnit, 'amount' => (string) $adultUnit->multipliedBy($adults)],
-                $children > 0 ? ['key' => 'children', 'label' => $en ? ($children === 1 ? '1 child' : "{$children} children") : ($children === 1 ? '1 niño' : "{$children} niños"), 'qty' => $children, 'unit' => (string) $childUnit, 'amount' => (string) $childUnit->multipliedBy($children)] : null,
-                $infants > 0 ? ['key' => 'infants', 'label' => $en ? ($infants === 1 ? '1 infant' : "{$infants} infants") : ($infants === 1 ? '1 infante' : "{$infants} infantes"), 'qty' => $infants, 'unit' => '0.00', 'amount' => '0.00'] : null,
-            ]));
-        $extra = $this->booking->price($product, $date, ['adt' => $adults, 'chd' => $children, 'inf' => $infants], (string) $price['currency'], $extras, $strict, $mode, $method);
+        $pax = ['adt' => $adults, 'chd' => $children, 'inf' => $infants];
+        $units = SiteBooking::serviceUnits($product, $price['basis'], $pax);
+        $perService = $units !== null;
+        $promotion = SitePromotions::best($product, $adults + $children, $promoCode, (string) $price['currency']);
+        $extra = $this->booking->price($product, $date, $pax, (string) $price['currency'], $extras, $strict, $mode, $method, $promotion, $units);
 
         $paxErrors = $perService ? array_values(array_filter($extra['pax_errors'], fn (string $error): bool => ! str_contains($error, 'pasajeros por reserva'))) : $extra['pax_errors'];
 
@@ -101,37 +93,35 @@ final class SiteQuote
             throw ApiException::unprocessable('SIT-BR-05', $paxErrors[0], ['errors' => ['pax' => $paxErrors]]);
         }
 
-        $base = array_reduce($lines, fn (BigDecimal $sum, array $line): BigDecimal => $sum->plus($line['amount']), BigDecimal::zero())->toScale(2);
-        $lines = [...array_map(fn (array $line): array => [...$line, 'kind' => 'base', 'removable' => false, 'removed' => false], $lines), ...$extra['lines']];
+        $quote = ProductQuotePreview::serialize($extra['quote']);
+        $en = $this->catalog->locale()->translated();
+        $lines = [
+            ...array_map(fn (array $line): array => ['key' => $perService ? 'service' : (self::BASE_KEYS[$line['key']] ?? $line['key']), 'label' => $this->baseLabel($line['key'], (int) $line['qty'], $perService, $en), 'qty' => $line['qty'], 'unit' => $line['unit'], 'amount' => $line['amount'], 'kind' => 'base', 'removable' => false, 'removed' => false], array_values(array_filter(ProductQuotePreview::serialize($extra['plain'])['lines'], fn (array $line): bool => $line['kind'] === 'base' && (int) $line['qty'] > 0))),
+            ...$extra['lines'],
+        ];
         $extrasTotal = array_reduce($extra['lines'], fn (BigDecimal $sum, array $line): BigDecimal => $line['removed'] ? $sum : $sum->plus($line['amount']), BigDecimal::zero())->toScale(2);
-        $subtotal = $base->plus($extrasTotal);
-        $promotion = $this->bestPromotion($product, $adults + $children, $promoCode);
-        $discount = $promotion === null ? BigDecimal::zero()->toScale(2) : Decimal::round2($promotion['percent']
-            ? $base->multipliedBy(self::money($promotion['value']))->dividedBy(100, 6, RoundingMode::HALF_UP)
-            : BigDecimal::min($base, self::money($promotion['value'])));
-        $total = $subtotal->minus($discount);
-        $depositPct = (int) $extra['payment']['deposit_pct'];
-        $deposit = Decimal::round2($total->multipliedBy($depositPct)->dividedBy(100, 6, RoundingMode::HALF_UP));
+        $promo = collect($quote['adjustments'])->firstWhere('key', 'promo');
+        $total = BigDecimal::of($quote['total']);
 
         return [
             'date' => $date,
             'currency' => $price['currency'],
             'season' => $price['season'],
             'lines' => $lines,
-            'subtotal' => (string) $subtotal,
-            'discount' => $discount->isPositive() ? ['label' => $promotion['name'], 'amount' => (string) $discount, 'code' => $promotion['code']] : null,
+            'subtotal' => $quote['subtotal'],
+            'discount' => $promo === null ? null : ['label' => $promo['label'], 'amount' => (string) BigDecimal::of($promo['amount'])->abs(), 'code' => $promotion['code'] ?? null],
             'total' => (string) $total,
             'list_total' => $price['list'] !== null && ! $perService && $children === 0 ? (string) self::money($price['list'])->multipliedBy($adults)->plus($extrasTotal) : null,
             'extras_total' => (string) $extrasTotal,
             'extras' => $extra['selection'],
-            'adjustments' => $discount->isPositive() ? [['key' => 'promo', 'label' => $promotion['name'], 'amount' => (string) $discount->negated()]] : [],
-            'modes' => $extra['payment']['modes'],
-            'payment_mode' => $extra['payment']['mode'],
-            'deposit_pct' => $depositPct,
-            'deposit' => (string) $deposit,
-            'balance' => (string) $total->minus($deposit),
-            'balance_due' => $extra['payment']['balance_due'],
-            'hold_hours' => $extra['payment']['hold_hours'],
+            'adjustments' => $quote['adjustments'],
+            'modes' => $quote['modes'],
+            'payment_mode' => $quote['payment_mode'],
+            'deposit_pct' => $quote['deposit_pct'],
+            'deposit' => $quote['deposit'],
+            'balance' => $quote['balance'],
+            'balance_due' => $quote['balance_due'],
+            'hold_hours' => $quote['hold_hours'],
             'rooms' => $extra['rooms'],
             'nights' => $extra['nights'],
             'warnings' => $extra['warnings'],
@@ -141,6 +131,9 @@ final class SiteQuote
             'departure' => $day['departure'],
             'pax' => ['adults' => $adults, 'children' => $children, 'infants' => $infants],
             'rate_id' => $price['rate_id'],
+            'legs' => $extra['trip']['legs'] ?? [],
+            'trip_end' => $extra['trip']['trip_end'] ?? null,
+            'by_category' => $extra['trip']['by_category'] ?? null,
         ];
     }
 
@@ -149,14 +142,16 @@ final class SiteQuote
         return BigDecimal::of(is_string($value) ? $value : number_format((float) $value, 2, '.', ''))->toScale(2, RoundingMode::HALF_UP);
     }
 
-    private function bestPromotion(stdClass $product, int $seats, ?string $code): ?array
+    private function baseLabel(string $key, int $qty, bool $perService, bool $en): string
     {
-        $code = $code ? strtoupper(trim($code)) : null;
+        if ($perService) {
+            return $en ? ($qty > 1 ? "Private service × {$qty} vehicles" : 'Private service') : ($qty > 1 ? "Servicio privado × {$qty} vehículos" : 'Servicio privado');
+        }
 
-        return collect($product->promotions)
-            ->filter(fn (array $p): bool => in_array($p['kind'], self::PERCENT_KINDS, true) || $p['kind'] === 'Descuento fijo')
-            ->filter(fn (array $p): bool => $p['code'] === null ? ($p['min_pax'] === null || $seats >= $p['min_pax']) : $p['code'] === $code)
-            ->sortByDesc('value')
-            ->first();
+        return match ($key) {
+            'base-chd' => $en ? ($qty === 1 ? '1 child' : "{$qty} children") : ($qty === 1 ? '1 niño' : "{$qty} niños"),
+            'base-inf' => $en ? ($qty === 1 ? '1 infant' : "{$qty} infants") : ($qty === 1 ? '1 infante' : "{$qty} infantes"),
+            default => $en ? ($qty === 1 ? '1 adult' : "{$qty} adults") : ($qty === 1 ? '1 adulto' : "{$qty} adultos"),
+        };
     }
 }

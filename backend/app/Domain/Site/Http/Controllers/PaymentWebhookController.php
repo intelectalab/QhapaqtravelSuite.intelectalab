@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Site\Http\Controllers;
 
+use App\Domain\Finance\Actions\PaymentLinks;
 use App\Domain\Integrations\Contracts\PaymentGateway;
 use App\Domain\Integrations\Fake\FakePaymentGateway;
 use App\Domain\Shared\Errors\ApiException;
@@ -37,7 +38,8 @@ final class PaymentWebhookController
             'data' => ['required', 'array'],
             'data.tenant_id' => ['required', 'uuid'],
             'data.reference' => ['required', 'string', 'max:40'],
-            'data.scope' => ['nullable', 'in:order,receivable'],
+            'data.scope' => ['nullable', 'in:order,receivable,payment_link'],
+            'data.method' => ['nullable', 'in:'.implode(',', array_keys(PaymentLinks::METHODS))],
             'data.txn_id' => ['nullable', 'string', 'max:80'],
             'data.code' => ['nullable', 'string', 'max:20'],
             'data.masked' => ['nullable', 'string', 'max:20'],

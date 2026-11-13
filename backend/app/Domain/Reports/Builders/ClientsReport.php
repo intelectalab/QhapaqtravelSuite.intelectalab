@@ -53,7 +53,7 @@ final class ClientsReport extends ReportBuilder
             ],
             'table' => S::table([
                 S::column('name', 'Cliente'),
-                S::column('segment', 'Segmento'),
+                S::column('segment', 'Segmento', 'text', ['filter' => true]),
                 S::column('country', 'País'),
                 S::column('quotes', 'Cotiz.', 'number'),
                 S::column('reservations', 'Reservas', 'number'),

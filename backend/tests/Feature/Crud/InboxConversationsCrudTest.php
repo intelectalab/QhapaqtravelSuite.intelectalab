@@ -39,7 +39,7 @@ it('responder una conversación sin responsable la asigna a quien responde y reg
         ->and($thread['assignee']['id'])->toBe($seller->id);
 });
 
-it('una nota interna no cambia el estado ni aparece como vista previa', function () {
+it('una nota interna no cambia el estado y la vista previa la marca como nota', function () {
     actingAsSeed('U03');
 
     $this->postJson('/api/v1/inbox/conversations/CNV-0101/messages', ['body' => 'Revisar con operaciones el horario del traslado.', 'internal' => true], critical())->assertCreated();
@@ -49,7 +49,8 @@ it('una nota interna no cambia el estado ni aparece como vista previa', function
     expect($conversation->status)->toBe('abierta')
         ->and((int) $conversation->unread_count)->toBe(2)
         ->and(collect(inbMensajes('CNV-0101'))->last()->direction)->toBe('internal')
-        ->and($item['preview'])->not->toContain('Revisar con operaciones')
+        ->and($item['preview'])->toContain('Revisar con operaciones')
+        ->and($item['preview_note'])->toBeTrue()
         ->and(inbConversacionAuditada('CNV-0101', 'nota_interna'))->toBeTrue();
 });
 

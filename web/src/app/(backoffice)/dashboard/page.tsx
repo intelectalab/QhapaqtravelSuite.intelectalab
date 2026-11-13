@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, Compass, FilePlus2, Landmark, ReceiptText, Scale, Truck, Users, Wallet } from "lucide-react";
+import { BarChart3, CalendarDays, Compass, FilePlus2, Landmark, ReceiptText, Scale, Truck, UserPlus, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
@@ -26,7 +26,7 @@ interface PanelLook {
 const LOOK: Record<PanelName, PanelLook> = {
   executive: { name: "Panel ejecutivo", scope: "Resumen comercial y operativo de la agencia, en soles.", actions: [{ href: "/reportes", label: "Reportes", icon: <BarChart3 size={16} /> }, { href: "/cotizaciones/nueva", label: "Nueva cotización", icon: <FilePlus2 size={16} />, primary: true }] },
   manager: { name: "Panel de gerencia", scope: "Resumen de la agencia, aprobaciones y desempeño del equipo, en soles.", actions: [{ href: "/reportes", label: "Reportes", icon: <BarChart3 size={16} /> }, { href: "/cotizaciones/nueva", label: "Nueva cotización", icon: <FilePlus2 size={16} />, primary: true }] },
-  sales: { name: "Panel de ventas", scope: "Solo tu cartera: tus leads, oportunidades, cotizaciones y actividades.", actions: [{ href: "/crm/leads", label: "Leads", icon: <Users size={16} /> }, { href: "/cotizaciones/nueva", label: "Nueva cotización", icon: <FilePlus2 size={16} />, primary: true }] },
+  sales: { name: "Panel de ventas", scope: "Solo tu cartera: tus leads, oportunidades, cotizaciones y actividades.", actions: [{ href: "/crm/leads/nuevo", label: "Nuevo lead", icon: <UserPlus size={16} /> }, { href: "/cotizaciones/nueva", label: "Nueva cotización", icon: <FilePlus2 size={16} />, primary: true }] },
   operations: { name: "Panel de operaciones", scope: "Servicios, proveedores, asignaciones y vouchers. Sin montos de venta ni márgenes.", actions: [{ href: "/operaciones/calendario", label: "Calendario", icon: <CalendarDays size={16} /> }, { href: "/operaciones/asignaciones", label: "Asignaciones", icon: <Truck size={16} />, primary: true }] },
   finance: { name: "Panel de finanzas", scope: "Caja, cuentas por cobrar y por pagar, comisiones y margen, en soles.", actions: [{ href: "/finanzas/conciliacion", label: "Conciliación", icon: <Scale size={16} /> }, { href: "/finanzas/pagos", label: "Pagos", icon: <Wallet size={16} />, primary: true }] },
   accounting: { name: "Panel de contabilidad", scope: "Comprobantes electrónicos, cobranza documentada y cierre del periodo.", actions: [{ href: "/finanzas/cobros", label: "Cobros", icon: <Landmark size={16} /> }, { href: "/finanzas/facturacion", label: "Facturación", icon: <ReceiptText size={16} />, primary: true }] },

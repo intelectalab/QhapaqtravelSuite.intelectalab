@@ -18,6 +18,8 @@ import { statusLabel } from "@/lib/tone";
 import { QuoteRecordViewAction } from "./QuoteActions";
 import { QuoteShareCard } from "./QuoteShare";
 import { QuoteCompare } from "./QuoteCompare";
+import { QuoteItinerary } from "./QuoteItinerary";
+import { QuoteVersionView } from "./QuoteVersionView";
 import { QuoteVersions } from "./QuoteVersions";
 
 const ACTIVITY_LABEL: Record<string, string> = { llamada: "Llamada", reunion: "Reunión", email: "Correo", whatsapp: "WhatsApp", tarea: "Tarea", visita: "Visita" };
@@ -71,34 +73,7 @@ export function DetailSection({ quote }: { quote: QuoteDetail }) {
         </Card>
         <Card>
           <TintCardTitle icon={MapIcon} title="Itinerario resumido" />
-          {quote.itinerary.length === 0 ? (
-            <p className="text-[13.5px] text-fg-3">Los productos de esta versión no tienen itinerario cargado.</p>
-          ) : (
-            <ol className="flex flex-col gap-3">
-              {quote.itinerary.map((block) => (
-                <li key={block.product.code}>
-                  <p className="mb-1 text-[13.5px] font-semibold">
-                    <Link href={`/catalogo/productos/${block.product.code}`} className="hover:underline">
-                      {block.product.name}
-                    </Link>
-                    <span className="ml-2 text-[12px] font-normal text-fg-3">desde el {formatDate(block.start)}</span>
-                  </p>
-                  {block.days.length > 0 ? (
-                    <ul className="ml-1 flex flex-col border-l-2 border-[color-mix(in_srgb,var(--tint)_30%,transparent)] pl-3">
-                      {block.days.map((day) => (
-                        <li key={day.day} className="py-0.5 text-[13px] text-fg-2">
-                          <b className="mr-1.5 font-semibold text-fg">Día {day.day}</b>
-                          {day.title}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-[12.5px] text-fg-3">Sin itinerario por días.</p>
-                  )}
-                </li>
-              ))}
-            </ol>
-          )}
+          <QuoteItinerary blocks={quote.itinerary} />
         </Card>
       </div>
     </div>
@@ -139,7 +114,10 @@ export function VersionsSection({ quote }: { quote: QuoteDetail }) {
               </span>
             </td>
             <td className="text-right">
-              <DownloadButton href={`/cotizaciones/${quote.code}/pdf/${version.number}`} label={`PDF de la versión ${version.number}`} size="sm" variant="ghost" iconOnly />
+              <span className="inline-flex items-center gap-1.5">
+                <QuoteVersionView version={version} currency={quote.currency} current={version.number === quote.version} seeMargin={quote.see_margin} />
+                <DownloadButton href={`/cotizaciones/${quote.code}/pdf/${version.number}`} label={`PDF de la versión ${version.number}`} size="sm" variant="ghost" iconOnly />
+              </span>
             </td>
           </tr>
         ))}

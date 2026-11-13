@@ -22,8 +22,8 @@ export function PageHeader({ title, subtitle, actions, back, info, jump = true, 
           <BackLink href={back.href}>{back.label}</BackLink>
         </div>
       )}
-      <div className="flex items-center justify-between gap-3 sm:gap-6">
-        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
+        <div className="flex min-w-0 flex-[1_1_320px] items-center gap-3 sm:gap-4">
           <span className="max-sm:hidden">{leading ?? <SectionBadge />}</span>
           <div className="min-w-0">
             {!back && <SectionCrumb />}
@@ -35,7 +35,7 @@ export function PageHeader({ title, subtitle, actions, back, info, jump = true, 
             {subtitle && <div className="mt-1 text-[13.5px] text-fg-3 max-sm:line-clamp-2">{subtitle}</div>}
           </div>
         </div>
-        {actions && <div className="flex flex-none items-center gap-2 sm:gap-2.5">{actions}</div>}
+        {actions && <div className="flex max-w-full flex-wrap items-center gap-2 sm:gap-2.5">{actions}</div>}
       </div>
       <span aria-hidden className="weave-line absolute inset-x-0 -bottom-px h-1 opacity-90" />
     </header>

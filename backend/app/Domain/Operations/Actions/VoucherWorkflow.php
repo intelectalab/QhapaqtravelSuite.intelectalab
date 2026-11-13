@@ -13,6 +13,7 @@ use App\Domain\Portal\Support\PassengerNotices;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Sequences\SequenceService;
+use App\Domain\Shared\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -24,37 +25,8 @@ final class VoucherWorkflow
     public function issue(string $serviceCode, ?string $providerId, ?string $note, User $actor): string
     {
         return DB::transaction(function () use ($serviceCode, $providerId, $note, $actor): string {
-            $service = DB::table('booking_reservation_services as s')
-                ->join('booking_reservations as r', 'r.id', '=', 's.reservation_id')
-                ->leftJoin('catalog_products as pr', 'pr.id', '=', 's.product_id')
-                ->where('s.code', $serviceCode)->lock('for update of s')
-                ->first(['s.id', 's.name', 's.service_date', 's.service_time', 's.status', 's.confirmation_code', 's.provider_id', 'pr.main_provider_id', 'r.id as reservation_id', 'r.code as reservation_code', 'r.status as reservation_status'])
-                ?? throw ApiException::notFound('El servicio no existe.');
-
-            if (in_array($service->reservation_status, ['cancelada', 'borrador'], true)) {
-                throw ApiException::unprocessable('OPS-BR-47', 'La reserva está cancelada o en borrador: no se emiten vouchers.');
-            }
-
-            if (! in_array($service->status, ['confirmado', 'completado'], true)) {
-                throw ApiException::unprocessable('OPS-BR-40', 'Solo los servicios confirmados por el proveedor emiten voucher.');
-            }
-
-            if (DB::table('ops_vouchers')->where('reservation_service_id', $service->id)->whereIn('status', ['emitido', 'utilizado'])->exists()) {
-                throw ApiException::conflict('OPS-BR-41', 'Este servicio ya tiene un voucher vigente. Para cambios, emite una nueva versión.');
-            }
-
-            $providerId = $service->provider_id ?? $service->main_provider_id ?? $providerId;
-            $provider = $providerId && Str::isUuid($providerId) ? DB::table('catalog_providers')->whereNull('deleted_at')->where('id', $providerId)->first(['id', 'name', 'status']) : null;
-
-            if ($provider === null) {
-                throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige el proveedor que prestará el servicio.');
-            }
-
-            if ($provider->status !== 'activo') {
-                throw ApiException::unprocessable('OPS-BR-42', "{$provider->name} no tiene contrato vigente: no se puede emitir el voucher.");
-            }
-
-            $this->travelDocs->assertCanIssue((string) $service->reservation_id, (string) $service->name);
+            $service = $this->service($serviceCode, true);
+            $provider = $this->issuable($service, $providerId);
 
             $pax = DB::table('booking_passengers')->where('reservation_id', $service->reservation_id)->count();
             $code = $this->sequences->next('voucher', year: (int) substr((string) $service->service_date, 0, 4));
@@ -84,6 +56,86 @@ final class VoucherWorkflow
 
             return $code;
         });
+    }
+
+    public function check(string $serviceReference, ?string $providerId): array
+    {
+        $service = $this->service($serviceReference, false);
+        $blocks = [];
+        $warnings = [];
+        $provider = null;
+
+        try {
+            $provider = $this->issuable($service, $providerId);
+        } catch (ApiException $exception) {
+            $blocks[] = ['code' => $exception->ruleCode, 'message' => $exception->getMessage()];
+        }
+
+        if ((string) $service->service_date < CarbonImmutable::now(app(TenantContext::class)->timezone())->toDateString()) {
+            $warnings[] = ['code' => 'OPS-BR-43', 'message' => 'La fecha del servicio ya pasó.'];
+        }
+
+        if ($service->confirmation_code === null || trim((string) $service->confirmation_code) === '') {
+            $warnings[] = ['code' => 'OPS-BR-43', 'message' => 'El servicio no tiene código de confirmación del proveedor.'];
+        }
+
+        return [
+            'service' => ['id' => $service->id, 'code' => $service->code, 'name' => $service->name, 'date' => $service->service_date, 'status' => $service->status],
+            'provider' => $provider ? ['id' => $provider->id, 'name' => $provider->name] : null,
+            'can_issue' => $blocks === [],
+            'blocks' => $blocks,
+            'warnings' => $warnings,
+        ];
+    }
+
+    public function resend(string $code, User $actor): int
+    {
+        $voucher = $this->current($code);
+        $sent = app(OpsMail::class)->voucher((string) $voucher->id, 'issued');
+        $this->audit->log('Voucher', $code, 'reenviar', null, $sent > 0 ? "{$sent} correos" : 'sin destinatarios', actor: $actor);
+
+        return $sent;
+    }
+
+    private function service(string $reference, bool $lock): object
+    {
+        return DB::table('booking_reservation_services as s')
+            ->join('booking_reservations as r', 'r.id', '=', 's.reservation_id')
+            ->leftJoin('catalog_products as pr', 'pr.id', '=', 's.product_id')
+            ->where(Str::isUuid($reference) ? 's.id' : 's.code', $reference)
+            ->when($lock, fn ($query) => $query->lock('for update of s'))
+            ->first(['s.id', 's.code', 's.name', 's.service_date', 's.service_time', 's.status', 's.confirmation_code', 's.provider_id', 'pr.main_provider_id', 'r.id as reservation_id', 'r.code as reservation_code', 'r.status as reservation_status'])
+            ?? throw ApiException::notFound('El servicio no existe.');
+    }
+
+    private function issuable(object $service, ?string $providerId): object
+    {
+        if (in_array($service->reservation_status, ['cancelada', 'borrador'], true)) {
+            throw ApiException::unprocessable('OPS-BR-47', 'La reserva está cancelada o en borrador: no se emiten vouchers.');
+        }
+
+        if (! in_array($service->status, ['confirmado', 'completado'], true)) {
+            throw ApiException::unprocessable('OPS-BR-40', 'Solo los servicios confirmados por el proveedor emiten voucher.');
+        }
+
+        if (DB::table('ops_vouchers')->where('reservation_service_id', $service->id)->whereIn('status', ['emitido', 'utilizado'])->exists()) {
+            throw ApiException::conflict('OPS-BR-41', 'Este servicio ya tiene un voucher vigente. Para cambios, emite una nueva versión.');
+        }
+
+        $providerId = $service->provider_id ?? $service->main_provider_id ?? $providerId;
+        $provider = $providerId && Str::isUuid($providerId) ? DB::table('catalog_providers')->whereNull('deleted_at')->where('id', $providerId)->first(['id', 'name', 'status']) : null;
+
+        if ($provider === null) {
+            throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige el proveedor que prestará el servicio.');
+        }
+
+        if ($provider->status !== 'activo') {
+            throw ApiException::unprocessable('OPS-BR-42', "{$provider->name} no tiene contrato vigente: no se puede emitir el voucher.");
+        }
+
+        $this->travelDocs->assertCanIssue((string) $service->reservation_id, (string) $service->name);
+
+        return $provider;
     }
 
     public function newVersion(string $code, string $reason, User $actor): void

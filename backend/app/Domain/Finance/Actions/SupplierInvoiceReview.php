@@ -9,10 +9,13 @@ use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class SupplierInvoiceReview
 {
     public const DIFFERENCE_TOLERANCE = 0.01;
+
+    private const AUDIT_ACTIONS = ['validada' => 'validar_factura_proveedor', 'observada' => 'observar_factura_proveedor', 'rechazada' => 'rechazar_factura_proveedor'];
 
     public function __construct(private readonly AuditLogger $audit) {}
 
@@ -37,6 +40,26 @@ final class SupplierInvoiceReview
         });
     }
 
+    public function reject(string $reference, string $note, User $actor): object
+    {
+        return DB::transaction(function () use ($reference, $note, $actor): object {
+            [$payable, $invoice] = $this->open($this->payableCode($reference));
+            $this->decide($payable, $invoice, 'rechazada', $note, $actor);
+
+            return DB::table('supplier_invoices')->where('id', $invoice->id)->first(['id', 'payable_id', 'provider_id', 'number', 'issue_date', 'amount', 'currency', 'amount_difference', 'status', 'validated_at', 'validation_note', 'uploaded_at']);
+        });
+    }
+
+    private function payableCode(string $reference): string
+    {
+        if (! Str::isUuid($reference)) {
+            return $reference;
+        }
+
+        return (string) (DB::table('supplier_invoices as i')->join('fin_payables as p', 'p.id', '=', 'i.payable_id')->where('i.id', $reference)->whereNull('i.deleted_at')->value('p.code')
+            ?? throw ApiException::notFound('La factura del proveedor no existe.'));
+    }
+
     private function decide(object $payable, object $invoice, string $status, ?string $note, User $actor): void
     {
         DB::table('supplier_invoices')->where('id', $invoice->id)->update([
@@ -48,12 +71,12 @@ final class SupplierInvoiceReview
             'updated_at' => now(),
         ]);
 
-        if ($status === 'observada') {
+        if (in_array($status, ['observada', 'rechazada'], true)) {
             DB::table('fin_payables')->where('id', $payable->id)->where('supplier_doc_number', $invoice->number)->update(['supplier_doc_number' => null, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         }
 
         FinanceHistory::record('payable', $payable->id, (string) $payable->status, trim("Factura {$invoice->number} {$status}".($note ? ": {$note}" : '')), $actor);
-        $this->audit->log('Cuenta por pagar', $payable->code, $status === 'validada' ? 'validar_factura_proveedor' : 'observar_factura_proveedor', 'registrada', trim("{$invoice->number} · {$status}".($note ? " · {$note}" : '')));
+        $this->audit->log('Cuenta por pagar', $payable->code, self::AUDIT_ACTIONS[$status], 'registrada', trim("{$invoice->number} · {$status}".($note ? " · {$note}" : '')));
     }
 
     private function open(string $payableCode): array

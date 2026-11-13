@@ -1,8 +1,8 @@
 "use client";
 
-import { AlarmClock, BadgeCheck, Hash, ReceiptText, Upload, Wallet, XCircle } from "lucide-react";
+import { AlarmClock, BadgeCheck, Hash, ReceiptText, Upload, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { annulInvoice, registerInvoice } from "@/app/(proveedor)/proveedor/actions";
+import { registerInvoice } from "@/app/(proveedor)/proveedor/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -11,7 +11,7 @@ import { FilePicker } from "@/components/ui/FilePicker";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
-import { ConfirmAction, STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
+import { STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
 import { DetailPanel, MoneyLines, PanelSection, Timeline } from "@/features/channels/ChannelUi";
 import { PortalTitle } from "@/features/portal/PortalUi";
 import { cn } from "@/lib/cn";
@@ -146,7 +146,6 @@ export function SupplierPaymentsView({ data }: { data: SupplierPayables }) {
         <RowActions>
           <PayableDetail row={row} />
           {row.can_invoice && <InvoicePanel row={row} today={data.today} maxKb={data.max_kb} />}
-          {row.invoice?.status === "registrada" && <ConfirmAction id={`anular-${row.code}`} label="Anular factura" title={`Anular factura ${row.invoice.number}`} description="La factura deja de estar asociada al documento y podrá registrar otra. Finanzas aún no la había validado." submitLabel="Anular factura" icon={<XCircle size={15} />} action={annulInvoice.bind(null, row.code)} hidden={{}} />}
         </RowActions>
       ),
     },

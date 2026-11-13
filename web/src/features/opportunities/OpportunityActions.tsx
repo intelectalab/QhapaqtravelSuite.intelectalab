@@ -1,8 +1,11 @@
 "use client";
 
-import { ArrowRightLeft, CircleX, RotateCcw, TriangleAlert, Trophy, UserRoundCog } from "lucide-react";
-import { useState } from "react";
-import { changeStage, reassignOpportunity, type StageState } from "@/app/(backoffice)/crm/oportunidades/actions";
+import { ArrowRight, ArrowRightLeft, CircleX, RotateCcw, TriangleAlert, Trophy, UserRoundCog } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { changeStage, moveOpportunity, reassignOpportunity, type StageState } from "@/app/(backoffice)/crm/oportunidades/actions";
+import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/cn";
 import { useCan } from "@/components/shell/SessionProvider";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
@@ -134,5 +137,39 @@ export function OpportunityReassignAction({ opportunity, advisors }: { opportuni
         </>
       )}
     </PanelAction>
+  );
+}
+
+export function OpportunityStageButtons({ opportunity }: { opportunity: OpportunityDetail }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [target, setTarget] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ tone: "bad" | "warn"; text: string } | null>(null);
+  const stages = opportunity.stages.filter((stage) => OPEN_STAGES.includes(stage.code) && stage.code !== opportunity.stage);
+  if (!OPEN_STAGES.includes(opportunity.stage) || stages.length === 0) return null;
+  const move = (stage: string) => {
+    setTarget(stage);
+    setNotice(null);
+    start(async () => {
+      const result = await moveOpportunity(opportunity.code, stage, opportunity.lock_version);
+      setTarget(null);
+      if (!result.done) setNotice({ tone: "bad", text: result.message ?? "No pudimos mover la oportunidad." });
+      else if (result.warnings?.length) setNotice({ tone: "warn", text: result.warnings.join(" ") });
+      router.refresh();
+    });
+  };
+
+  return (
+    <div className="mt-4 border-t border-line-2 pt-3">
+      <p className="mb-2 text-[12px] font-medium text-fg-3">Mover a</p>
+      <div className="flex flex-wrap gap-1.5">
+        {stages.map((stage) => (
+          <Button key={stage.code} size="sm" variant="secondary" disabled={pending} icon={<ArrowRight size={14} />} onClick={() => move(stage.code)} data-testid={`move-to:${stage.code}`}>
+            {target === stage.code ? "Moviendo…" : stage.name}
+          </Button>
+        ))}
+      </div>
+      {notice && <p role="status" className={cn("mt-2 text-[12.5px]", notice.tone === "bad" ? "text-bad" : "text-warn")}>{notice.text}</p>}
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+import { ConsultModeNotice } from "@/components/ui/ConsultMode";
 import { CalendarCheck, FileText, History, LayoutDashboard, Mail, Receipt, Route, Target, Ticket, UserRound, Users, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -133,6 +134,7 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
           </>
         }
       />
+      <ConsultModeNotice permissions={["crm.clients.manage"]} what="editar el cliente ni registrar contactos" />
 
       {client.tags.length > 0 && (
         <div className="-mt-2 mb-4 flex flex-wrap gap-1.5">
@@ -154,15 +156,16 @@ export default async function ClientePage({ params, searchParams }: PageProps<"/
       )}
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Viajes con tu agencia" value={client.trips} note={client.cancelledTrips > 0 ? `${client.cancelledTrips} cancelado${client.cancelledTrips === 1 ? "" : "s"}` : client.trips === 1 ? "El primero" : undefined} />
-        <StatCard label="Total comprado" value={formatMoney(client.totalPen)} note={client.trips > 1 ? `Ticket promedio ${formatMoney(ticket)}` : undefined} />
+        <StatCard label="Viajes con tu agencia" info="Reservas del cliente que no son borrador ni están canceladas. Las canceladas se cuentan aparte." value={client.trips} note={client.cancelledTrips > 0 ? `${client.cancelledTrips} cancelado${client.cancelledTrips === 1 ? "" : "s"}` : client.trips === 1 ? "El primero" : undefined} />
+        <StatCard label="Total comprado" info="Suma de esas reservas en soles, al tipo de cambio de cada una. El ticket promedio divide el total entre el número de viajes." value={formatMoney(client.totalPen)} note={client.trips > 1 ? `Ticket promedio ${formatMoney(ticket)}` : undefined} />
         <StatCard
           label="Pagos"
+          info="Lo que falta pagar en sus cuentas por cobrar abiertas. Se marca vencido si alguna cuota pasó su fecha de vencimiento."
           value={client.overduePen > 0 ? formatMoney(client.overduePen) : client.balancePen > 0 ? formatMoney(client.balancePen) : "Al día"}
           note={client.overduePen > 0 ? "Vencido" : client.balancePen > 0 ? "Por cobrar, aún sin vencer" : "No debe nada"}
           tone={client.overduePen > 0 ? "bad" : client.balancePen > 0 ? undefined : "ok"}
         />
-        <StatCard label="Satisfacción" value={client.satisfaction === null ? "Sin encuesta" : `${client.satisfaction} / 10`} />
+        <StatCard label="Satisfacción" info="Puntaje de 0 a 10 de la última encuesta de satisfacción que respondió." value={client.satisfaction === null ? "Sin encuesta" : `${client.satisfaction} / 10`} />
       </div>
 
       {client.partial && (

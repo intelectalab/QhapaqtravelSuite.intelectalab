@@ -5,7 +5,8 @@ import { SimpleTable } from "@/components/ui/SimpleTable";
 import { TintTile } from "@/components/ui/Tinted";
 import type { ExecutiveData, ManagerData } from "@/lib/dashboard";
 import { capitalize, formatDateTime, formatMoney, formatPercent } from "@/lib/format";
-import { CriticalAlert, DepartureList, HBars, IncidentList, MaybeLink, PanelCard, PanelLink, RowList, ServicesTable, StatLine, shortDate, type CanOpen } from "./DashboardBlocks";
+import { CriticalAlert, DepartureList, HBars, IncidentList, MaybeLink, PanelCard, PanelLink, RowList, ServicesTable, StatLine, SubHeading, shortDate, type CanOpen } from "./DashboardBlocks";
+import { ApproveQuoteAction } from "./PanelActions";
 import { closedMonths, deltaNote, money } from "./panelFormat";
 import { TrendBars } from "./TrendBars";
 
@@ -131,6 +132,26 @@ function ManagerBlock({ data, can }: { data: ManagerData; can: CanOpen }) {
             ),
           }))}
         />
+        {(data.quote_approvals?.length ?? 0) > 0 && (
+          <>
+            <SubHeading>Cotizaciones fuera de política</SubHeading>
+            <RowList
+              empty=""
+              items={(data.quote_approvals ?? []).map((item) => ({
+                key: item.key,
+                icon: FileText,
+                tone: "warn",
+                title: (
+                  <MaybeLink href={`/cotizaciones/${item.target}`} can={can}>
+                    {item.code} · {item.title}
+                  </MaybeLink>
+                ),
+                detail: [item.requester, formatMoney(item.amount, item.currency), item.impact].filter(Boolean).join(" · "),
+                aside: <ApproveQuoteAction item={item} />,
+              }))}
+            />
+          </>
+        )}
       </PanelCard>
       <PanelCard icon={Target} title={targets ? `Metas de ${targets.period.toLowerCase()}` : "Metas del mes"} tone="ok" className="lg:col-span-5" aside={<PanelLink href="/crm/metas" can={can}>Metas</PanelLink>}>
         {targets ? (

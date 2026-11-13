@@ -81,7 +81,7 @@ export interface ProvisionState {
   code?: string;
 }
 
-const TENANT_FIELDS = ["commercial_name", "legal_name", "ruc", "fiscal_address", "business_type", "subdomain"] as const;
+const TENANT_FIELDS = ["commercial_name", "legal_name", "ruc", "fiscal_address", "business_type", "subdomain", "country", "locale", "base_currency", "alt_currency", "timezone"] as const;
 
 async function tenantRequest(path: string, method: "POST" | "PATCH", body: Record<string, unknown>): Promise<ProvisionState> {
   const result = await apiFetch(path, { method, body, realm: "platform" });

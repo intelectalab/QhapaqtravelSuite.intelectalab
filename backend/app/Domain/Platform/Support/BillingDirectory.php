@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Platform\Support;
 
+use App\Domain\Platform\Actions\StartTrial;
+use Brick\Math\BigDecimal;
+use Brick\Math\RoundingMode;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
@@ -102,6 +105,32 @@ final class BillingDirectory
                     })->prepend(['label' => 'D0', 'date' => $failed->toDateString(), 'state' => 'done'])->values(),
                 ];
             })->values(),
+            ...$this->dunningHistory(),
+        ];
+    }
+
+    private function dunningHistory(): array
+    {
+        $since = Carbon::today('America/Lima')->subDays(90)->toDateString();
+        $rows = $this->invoiceQuery()->whereNotNull('i.dunning_failed_at')->where('i.dunning_failed_at', '>=', $since)->whereIn('i.status', ['paid', 'uncollectible'])->orderByDesc('i.dunning_failed_at')->get();
+        $attempts = $this->db()->table('payment_attempts')->whereIn('invoice_id', $rows->pluck('id'))->selectRaw('invoice_id, count(*) as total')->groupBy('invoice_id')->pluck('total', 'invoice_id');
+        $recovered = $rows->where('status', 'paid');
+        $lost = $rows->where('status', 'uncollectible');
+        $sum = fn (Collection $items): float => $items->reduce(fn (BigDecimal $carry, object $row): BigDecimal => $carry->plus((string) $row->total), BigDecimal::zero())->toScale(2, RoundingMode::HALF_UP)->toFloat();
+
+        return [
+            'history' => $rows->map(fn (object $row): array => [
+                ...$this->invoiceSummary($row, null, (int) ($attempts[$row->id] ?? 0)),
+                'outcome' => $row->status === 'paid' ? 'recovered' : 'lost',
+                'failed_at' => Carbon::parse($row->dunning_failed_at, 'America/Lima')->toDateString(),
+            ])->values(),
+            'recovery' => [
+                'days' => 90,
+                'recovered_count' => $recovered->count(),
+                'recovered_amount' => $sum($recovered),
+                'lost_count' => $lost->count(),
+                'lost_amount' => $sum($lost),
+            ],
         ];
     }
 
@@ -110,6 +139,7 @@ final class BillingDirectory
         $today = Carbon::today('America/Lima');
         $methods = $this->methods();
         $users = $this->db()->table('iam_users')->whereNull('deleted_at')->where('status', 'activo')->selectRaw('tenant_id, count(*) as total')->groupBy('tenant_id')->pluck('total', 'tenant_id');
+        $reservations = $this->db()->table('booking_reservations')->whereNull('deleted_at')->selectRaw('tenant_id, count(*) as total')->groupBy('tenant_id')->pluck('total', 'tenant_id');
 
         $items = $this->db()->table('subscriptions as s')->join('tenants as t', 't.id', '=', 's.tenant_id')->join('plans as p', 'p.id', '=', 's.plan_id')
             ->where('s.status', 'trialing')->orderBy('s.trial_ends_at')
@@ -127,6 +157,7 @@ final class BillingDirectory
                 'can_extend' => (int) $row->trial_extended_days + 7 <= 14,
                 'payment_method' => $this->gateway->label($methods[$row->tenant_id] ?? null),
                 'users' => (int) ($users[$row->tenant_id] ?? 0),
+                'reservations' => (int) ($reservations[$row->tenant_id] ?? 0),
             ]);
 
         $coupons = $this->db()->table('coupons')->where('status', 'active')->where(fn ($query) => $query->whereNull('valid_to')->orWhere('valid_to', '>=', $today))
@@ -135,6 +166,7 @@ final class BillingDirectory
 
         return [
             'items' => $items->values(),
+            'eligible' => StartTrial::eligible(),
             'coupons' => $coupons->map(fn (object $coupon) => ['code' => $coupon->code, 'label' => $this->couponLabel($coupon), 'plans' => $plans->whereIn('id', $this->uuids($coupon->plan_ids))->pluck('code')->values()])->values(),
             'plans' => $plans->map(fn (object $plan) => ['code' => $plan->code, 'name' => $plan->name, 'rank' => (int) $plan->rank, 'price_month' => (float) $plan->price_month, 'price_year' => (float) $plan->price_year])->values(),
         ];

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Marketing\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Marketing\Actions\CampaignWorkflow;
 use App\Domain\Marketing\Actions\TemplateWorkflow;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Carbon;
@@ -16,6 +17,8 @@ final class CampaignDirectory
     public const STATUSES = ['borrador' => 'Borrador', 'programada' => 'Programada', 'enviando' => 'Enviando', 'enviada' => 'Enviada', 'cancelada' => 'Cancelada'];
 
     public const CHANNELS = ['email' => 'Email', 'whatsapp' => 'WhatsApp'];
+
+    public const RECIPIENT_STATUSES = ['pendiente' => 'En cola', 'enviado' => 'Enviado', 'entregado' => 'Entregado', 'rebotado' => 'Rebotado', 'fallido' => 'Fallido'];
 
     private const WINDOW_DAYS = 30;
 
@@ -60,7 +63,72 @@ final class CampaignDirectory
                 'revoked_30' => DB::table('mkt_consents')->where('status', 'revocado')->where('revoked_at', '>=', Carbon::now()->subDays(30))->count(),
                 'subscribers' => DB::table('mkt_contacts_subscribers')->whereNull('deleted_at')->count(),
             ],
+            'test_options' => [
+                'recipients' => DB::table('iam_users as u')->join('model_has_roles as mr', 'mr.model_id', '=', 'u.id')->join('roles as r', 'r.id', '=', 'mr.role_id')
+                    ->whereIn('r.name', CampaignWorkflow::TEST_ROLES)->where('u.status', 'activo')->whereNull('u.deleted_at')->orderBy('u.name')->distinct()
+                    ->get(['u.id', 'u.name', 'u.email', 'u.phone'])
+                    ->map(fn (object $user): array => ['value' => $user->id, 'label' => $user->name, 'email' => $user->email, 'phone' => $user->phone])->values(),
+                'samples' => $all->filter(fn (array $contact): bool => $contact['type'] !== 'subscriber')->take(30)
+                    ->map(fn (array $contact): array => ['value' => $contact['code'], 'label' => $contact['name'], 'hint' => $contact['code']])->values(),
+                'me' => $viewer->getKey(),
+            ],
             'can' => ['manage' => $viewer->can('marketing.campaigns.manage')],
+        ];
+    }
+
+    public function detail(string $code, User $viewer): array
+    {
+        $row = DB::table('mkt_campaigns as c')->leftJoin('iam_users as u', 'u.id', '=', 'c.owner_id')->where('c.code', $code)->first(['c.*', 'u.name as owner'])
+            ?? throw ApiException::notFound('La campaña no existe.');
+        $recipients = DB::table('mkt_campaign_recipients')->where('campaign_id', $row->id)->get();
+        $tests = DB::table('mkt_campaign_tests')->where('campaign_id', $row->id)->whereNull('invalidated_at')->get(['campaign_id', 'to_address', 'sent_at']);
+        $segments = DB::table('mkt_segments')->where('id', $row->segment_id)->get()->keyBy('id');
+        $templates = DB::table('mkt_templates')->where('id', $row->template_id)->get()->keyBy('id');
+        $campaign = $this->campaign($row, $recipients, $tests, $segments, $templates);
+
+        return [
+            ...$campaign,
+            'recipient_statuses' => collect(self::RECIPIENT_STATUSES)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label, 'count' => $recipients->where('status', $value)->count()])->values()->all(),
+            'history' => DB::table('audit_events as e')->leftJoin('iam_users as u', 'u.id', '=', 'e.actor_id')->where('e.entity', 'Campaña')->where('e.entity_id', $row->code)
+                ->orderByDesc('e.occurred_at')->limit(30)->get(['e.action', 'e.before_value', 'e.after_value', 'e.occurred_at', 'u.name as by'])
+                ->map(fn (object $event): array => ['action' => $event->action, 'before' => $event->before_value, 'detail' => $event->after_value, 'at' => $event->occurred_at, 'by' => $event->by ?? 'Sistema'])->all(),
+            'can' => ['manage' => $viewer->can('marketing.campaigns.manage'), 'edit' => $row->status === 'borrador'],
+        ];
+    }
+
+    public function audienceOf(string $code, ?Carbon $at = null): array
+    {
+        $campaign = DB::table('mkt_campaigns')->where('code', $code)->first(['id', 'code', 'channel', 'status', 'segment_id', 'audience_snapshot', 'sent_at'])
+            ?? throw ApiException::notFound('La campaña no existe.');
+        $names = $this->contacts->all()->keyBy(fn (array $contact): string => "{$contact['type']}:{$contact['id']}");
+
+        if ($campaign->audience_snapshot !== null) {
+            $snapshot = json_decode((string) $campaign->audience_snapshot, true) ?: [];
+            $suppressed = DB::table('mkt_campaign_suppressions')->where('campaign_id', $campaign->id)->orderBy('reason')->get(['subject_type', 'subject_id', 'reason'])
+                ->map(fn (object $row): array => $this->suppressedRow($names->get("{$row->subject_type}:{$row->subject_id}"), (string) $row->subject_type, (string) $row->subject_id, (string) $row->reason))->values()->all();
+
+            return ['code' => $campaign->code, 'snapshot' => true, 'at' => $snapshot['at'] ?? $campaign->sent_at, 'summary' => $this->summary($snapshot), 'suppressed' => $suppressed];
+        }
+
+        $segment = DB::table('mkt_segments')->where('id', $campaign->segment_id)->first(['match', 'rules']);
+
+        if ($segment === null) {
+            return ['code' => $campaign->code, 'snapshot' => false, 'at' => ($at ?? now())->toIso8601String(), 'summary' => $this->summary([]), 'suppressed' => []];
+        }
+
+        $when = $at ?? now();
+        $fatigued = DB::table('mkt_campaign_recipients as r')->join('mkt_campaigns as c', 'c.id', '=', 'r.campaign_id')
+            ->where('c.id', '!=', $campaign->id)->whereIn('c.status', ['enviando', 'enviada'])->whereBetween('c.sent_at', [$when->copy()->subHours(72), $when])
+            ->get(['r.subject_type', 'r.subject_id'])->mapWithKeys(fn (object $row): array => ["{$row->subject_type}:{$row->subject_id}" => true])->all();
+        $split = $this->contacts->split($segment->match, json_decode((string) $segment->rules, true) ?: [], $campaign->channel, $fatigued);
+        $suppressed = collect($split['suppressed'])->flatMap(fn (array $contacts, string $reason) => collect($contacts)->map(fn (array $contact): array => $this->suppressedRow($contact, $contact['type'], $contact['id'], $reason)))->values()->all();
+
+        return [
+            'code' => $campaign->code,
+            'snapshot' => false,
+            'at' => $when->toIso8601String(),
+            'summary' => $this->summary(['matched' => $split['matched'], 'eligible' => count($split['eligible']), ...array_map('count', $split['suppressed'])]),
+            'suppressed' => $suppressed,
         ];
     }
 
@@ -99,6 +167,26 @@ final class CampaignDirectory
             'history' => DB::table('audit_events as e')->leftJoin('iam_users as u', 'u.id', '=', 'e.actor_id')->where('e.entity', 'Segmento')->where('e.entity_id', $row->code)
                 ->orderByDesc('e.occurred_at')->limit(20)->get(['e.action', 'e.after_value', 'e.occurred_at', 'u.name as by'])
                 ->map(fn (object $event): array => ['action' => $event->action, 'detail' => $event->after_value, 'at' => $event->occurred_at, 'by' => $event->by])->all(),
+        ];
+    }
+
+    private function summary(array $values): array
+    {
+        return [
+            'matched' => (int) ($values['matched'] ?? 0),
+            'eligible' => (int) ($values['eligible'] ?? 0),
+            'reasons' => collect(ContactBook::SUPPRESSIONS)->map(fn (string $label, string $reason): array => ['reason' => $reason, 'label' => $label, 'count' => (int) ($values[$reason] ?? 0)])->values()->all(),
+        ];
+    }
+
+    private function suppressedRow(?array $contact, string $type, string $id, string $reason): array
+    {
+        return [
+            'type' => $type,
+            'id' => $id,
+            'name' => $contact['name'] ?? 'Contacto sin datos',
+            'reason' => $reason,
+            'reason_label' => ContactBook::SUPPRESSIONS[$reason] ?? $reason,
         ];
     }
 

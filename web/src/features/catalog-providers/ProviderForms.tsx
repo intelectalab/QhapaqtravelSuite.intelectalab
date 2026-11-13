@@ -59,7 +59,7 @@ function ProviderFields({ overview, provider }: { overview: ProviderFormContext;
 export function ProviderCreateAction({ overview }: { overview: ProvidersOverview }) {
   const router = useRouter();
   return (
-    <PanelAction<StepResult>
+    <PanelAction<StepResult & { ref?: string }>
       label="Nuevo proveedor"
       icon={<Plus size={16} strokeWidth={2.4} />}
       variant="primary"
@@ -69,7 +69,7 @@ export function ProviderCreateAction({ overview }: { overview: ProvidersOverview
       submitLabel="Crear proveedor"
       action={createProvider}
       initial={STEP_INITIAL}
-      onDone={() => router.refresh()}
+      onDone={(state) => (state.ref ? router.push(`/catalogo/proveedores/${encodeURIComponent(state.ref)}`) : router.refresh())}
     >
       {() => <ProviderFields overview={overview} />}
     </PanelAction>
@@ -103,6 +103,7 @@ export function ProviderEditAction({ overview, provider, button = false }: { ove
 
 export function ProviderToggleAction({ provider, button = false }: { provider: ProviderRow; button?: boolean }) {
   const activate = provider.status !== "activo";
+  const activeProducts = provider.products.filter((product) => product.status === "ACTIVE");
   if (activate && provider.contract_days < 0 && button) return null;
   if (activate && provider.contract_days < 0) return <RowIcon tone="neutral" label="Activar" icon={<CirclePlay size={16} />} disabledHint="Contrato vencido: extiéndelo para activarlo" />;
   return (
@@ -115,9 +116,9 @@ export function ProviderToggleAction({ provider, button = false }: { provider: P
       description={
         activate
           ? `${provider.name} queda disponible para servicios, productos y salidas.`
-          : provider.products.length
-            ? `${provider.name} es proveedor principal de ${provider.products.length} productos. Sus servicios dejan de poder usarse.`
-            : `${provider.name} deja de estar disponible para servicios y salidas.`
+          : activeProducts.length
+            ? `Impacto: ${activeProducts.length} productos activos dependen de ${provider.name} (${activeProducts.map((product) => `${product.name}, ${product.role}`).join("; ")}) y dejan de estar disponibles para nuevas ventas. Las reservas confirmadas y las cuentas por pagar no cambian.`
+            : `${provider.name} deja de estar disponible para servicios y salidas. Ningún producto activo depende de él.`
       }
       submitLabel={activate ? "Activar" : "Desactivar"}
       action={toggleProvider}

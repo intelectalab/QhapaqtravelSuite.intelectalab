@@ -15,7 +15,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { formatDate, initials } from "@/lib/format";
-import { DOCUMENT_STATE, LICENSE_CLASSES, PERSON_STATUS, VEHICLE_STATUS, type Assignment, type Driver, type Guide, type LinkableUser, type LinkedUser, type ResourceAvailability, type ResourceOverview, type Vehicle } from "@/lib/operations";
+import { DOCUMENT_STATE, LICENSE_CLASSES, PERSON_STATUS, VEHICLE_STATUS, type Assignment, type Driver, type Guide, type LinkableUser, type LinkedUser, type ResourceAvailability, type ResourceDeparture, type ResourceOverview, type Vehicle } from "@/lib/operations";
 import { statusLabel, toneStyle, type Tone } from "@/lib/tone";
 import { AvailabilityMatrix } from "./AvailabilityMatrix";
 import { AssignAction, AssignmentQuickActions } from "./OrderActions";
@@ -27,6 +27,8 @@ type Kind = "guide" | "driver" | "vehicle";
 const LABEL: Record<Kind, string> = { guide: "guía", driver: "conductor", vehicle: "vehículo" };
 
 const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es"));
+
+const missingResources = (row: Assignment) => [row.guide ? null : "guía", row.driver ? null : "conductor", row.vehicle ? null : "vehículo"].filter((item): item is string => item !== null);
 
 function NextService({ next, upcoming }: { next: Assignment | null; upcoming: number }) {
   if (!next) return <span className="text-[12.5px] text-fg-3">Sin servicios próximos</span>;
@@ -41,28 +43,51 @@ function NextService({ next, upcoming }: { next: Assignment | null; upcoming: nu
   );
 }
 
-function AgendaPanel({ title, subtitle, assignments }: { title: string; subtitle: string; assignments: Assignment[] }) {
+type AgendaEntry = { source: "order"; key: string; date: string; time: string | null; assignment: Assignment } | { source: "departure"; key: string; date: string; time: string | null; departure: ResourceDeparture };
+
+function AgendaPanel({ title, subtitle, assignments, departures }: { title: string; subtitle: string; assignments: Assignment[]; departures: ResourceDeparture[] }) {
   const [open, setOpen] = useState(false);
+  const entries: AgendaEntry[] = [
+    ...assignments.map((item): AgendaEntry => ({ source: "order", key: item.id, date: item.date, time: item.time, assignment: item })),
+    ...departures.map((item): AgendaEntry => ({ source: "departure", key: `${item.ref}-${item.date}`, date: item.date, time: item.time, departure: item })),
+  ].sort((a, b) => `${a.date} ${a.time ?? "99:99"}`.localeCompare(`${b.date} ${b.time ?? "99:99"}`));
   return (
     <>
       <RowIcon tone="view" label="Ver agenda" onClick={() => setOpen(true)} />
       <SidePanel open={open} onOpenChange={setOpen} title={title} description={subtitle}>
-        {assignments.length === 0 ? (
-          <p className="text-[13.5px] text-fg-3">No tiene servicios desde hoy.</p>
+        {entries.length === 0 ? (
+          <p className="text-[13.5px] text-fg-3">No tiene servicios ni salidas desde hoy.</p>
         ) : (
           <ul className="flex flex-col gap-2">
-            {assignments.map((item, index) => (
-              <li key={item.id} style={{ animationDelay: `${index * 40}ms` }} className="lift animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] rounded-[12px] bg-surface-2 px-3 py-2.5">
-                <span className="flex items-center justify-between gap-2">
-                  <b className="truncate text-[13.5px] font-semibold">{item.label}</b>
-                  <StatusBadge status={item.status} />
-                </span>
-                <span className="text-xs text-fg-3">
-                  {formatDate(item.date)} · {item.time ?? "—"} ·{" "}
-                  <Link href={`/operaciones/ordenes/${item.order_code}`} className="hover:text-accent hover:underline">
-                    {item.order_code}
-                  </Link>
-                </span>
+            {entries.map((entry, index) => (
+              <li key={entry.key} style={{ animationDelay: `${index * 40}ms` }} className="lift animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] rounded-[12px] bg-surface-2 px-3 py-2.5">
+                {entry.source === "order" ? (
+                  <>
+                    <span className="flex items-center justify-between gap-2">
+                      <b className="truncate text-[13.5px] font-semibold">{entry.assignment.label}</b>
+                      <StatusBadge status={entry.assignment.status} />
+                    </span>
+                    <span className="text-xs text-fg-3">
+                      {formatDate(entry.date)} · {entry.time ?? "—"} ·{" "}
+                      <Link href={`/operaciones/ordenes/${entry.assignment.order_code}`} className="hover:text-accent hover:underline">
+                        {entry.assignment.order_code}
+                      </Link>
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex items-center justify-between gap-2">
+                      <b className="truncate text-[13.5px] font-semibold">{entry.departure.label}</b>
+                      <Badge tone="violet">Salida programada</Badge>
+                    </span>
+                    <span className="text-xs text-fg-3">
+                      {formatDate(entry.date)} · {entry.time ?? "—"} ·{" "}
+                      <Link href="/catalogo/salidas" className="hover:text-accent hover:underline">
+                        {entry.departure.ref}
+                      </Link>
+                    </span>
+                  </>
+                )}
               </li>
             ))}
           </ul>
@@ -178,6 +203,7 @@ function personMetrics<T extends { status: string; upcoming: number }>(extra: Me
 export function ResourcesBoard({ data, availability }: { data: ResourceOverview; availability: ResourceAvailability | null }) {
   const can = data.can.assign;
   const agenda = (key: "guide" | "driver" | "vehicle", id: string) => data.assignments.filter((item) => item[key]?.id === id && item.date >= data.today && item.status !== "completada");
+  const departuresOf = (kind: "guide" | "driver" | "vehicle", id: string) => (data.departures ?? []).filter((item) => item.kind === kind && item.resource_id === id);
 
   const guideColumns: Column<Guide>[] = [
     { id: "name", header: "Guía", mobile: "title", cell: (row) => (<span className="group flex items-center gap-3"><Avatar name={row.name} tone="t1" /><span className="min-w-0"><b className="block truncate text-[13.5px] font-semibold">{row.name}</b><span className="text-xs text-fg-3">{row.code} · {row.license}</span></span></span>) },
@@ -186,7 +212,7 @@ export function ResourcesBoard({ data, availability }: { data: ResourceOverview;
     { id: "rating", header: "Calificación", wideOnly: true, cell: (row) => (row.rating === null ? <span className="text-fg-3">—</span> : <span className="inline-flex items-center gap-1 text-[13px] font-semibold"><Star size={13} className="fill-current text-warn" />{row.rating.toFixed(1)}</span>) },
     { id: "next", header: "Próximo servicio", cell: (row) => <NextService next={row.next} upcoming={row.upcoming} /> },
     { id: "status", header: "Estado", cell: (row) => <StatusBadge status={row.status} /> },
-    { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => (<RowActions><AgendaPanel title={row.name} subtitle={`Agenda desde hoy · ${row.phone ?? "sin teléfono"}`} assignments={agenda("guide", row.id)} />{can && <GuideForm guide={row} languages={data.languages} users={data.users?.guide} trigger={(open) => <RowIcon tone="edit" label="Editar" onClick={open} />} />}{can && <ArchiveAction kind="guide" id={row.id} name={row.name} upcoming={row.upcoming} />}</RowActions>) },
+    { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => (<RowActions><AgendaPanel title={row.name} subtitle={`Agenda desde hoy · ${row.phone ?? "sin teléfono"}`} assignments={agenda("guide", row.id)} departures={departuresOf("guide", row.id)} />{can && <GuideForm guide={row} languages={data.languages} users={data.users?.guide} trigger={(open) => <RowIcon tone="edit" label="Editar" onClick={open} />} />}{can && <ArchiveAction kind="guide" id={row.id} name={row.name} upcoming={row.upcoming} />}</RowActions>) },
   ];
 
   const driverColumns: Column<Driver>[] = [
@@ -195,7 +221,7 @@ export function ResourcesBoard({ data, availability }: { data: ResourceOverview;
     { id: "app", header: "App del operador", wideOnly: true, cell: (row) => <AppAccess user={row.user} /> },
     { id: "next", header: "Próximo servicio", cell: (row) => <NextService next={row.next} upcoming={row.upcoming} /> },
     { id: "status", header: "Estado", cell: (row) => <StatusBadge status={row.status} /> },
-    { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => (<RowActions><AgendaPanel title={row.name} subtitle={`Agenda desde hoy · ${row.phone ?? "sin teléfono"}`} assignments={agenda("driver", row.id)} />{can && <DriverForm driver={row} users={data.users?.driver} trigger={(open) => <RowIcon tone="edit" label="Editar" onClick={open} />} />}{can && <ArchiveAction kind="driver" id={row.id} name={row.name} upcoming={row.upcoming} />}</RowActions>) },
+    { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => (<RowActions><AgendaPanel title={row.name} subtitle={`Agenda desde hoy · ${row.phone ?? "sin teléfono"}`} assignments={agenda("driver", row.id)} departures={departuresOf("driver", row.id)} />{can && <DriverForm driver={row} users={data.users?.driver} trigger={(open) => <RowIcon tone="edit" label="Editar" onClick={open} />} />}{can && <ArchiveAction kind="driver" id={row.id} name={row.name} upcoming={row.upcoming} />}</RowActions>) },
   ];
 
   const vehicleColumns: Column<Vehicle>[] = [
@@ -204,13 +230,13 @@ export function ResourcesBoard({ data, availability }: { data: ResourceOverview;
     { id: "soat", header: "SOAT", cell: (row) => <DocBadge state={row.document} date={row.soat_expires_on} /> },
     { id: "next", header: "Próximo servicio", cell: (row) => <NextService next={row.next} upcoming={row.upcoming} /> },
     { id: "status", header: "Estado", cell: (row) => <StatusBadge status={row.status} /> },
-    { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => (<RowActions><AgendaPanel title={row.plate} subtitle={`${row.type} · agenda desde hoy`} assignments={agenda("vehicle", row.id)} />{can && <VehicleForm vehicle={row} carriers={data.carriers} trigger={(open) => <RowIcon tone="edit" label="Editar" onClick={open} />} />}{can && <ArchiveAction kind="vehicle" id={row.id} name={row.plate} upcoming={row.upcoming} />}</RowActions>) },
+    { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => (<RowActions><AgendaPanel title={row.plate} subtitle={`${row.type} · agenda desde hoy`} assignments={agenda("vehicle", row.id)} departures={departuresOf("vehicle", row.id)} />{can && <VehicleForm vehicle={row} carriers={data.carriers} trigger={(open) => <RowIcon tone="edit" label="Editar" onClick={open} />} />}{can && <ArchiveAction kind="vehicle" id={row.id} name={row.plate} upcoming={row.upcoming} />}</RowActions>) },
   ];
 
   const assignmentColumns: Column<Assignment>[] = [
     { id: "service", header: "Servicio", mobile: "title", cell: (row) => (<span className="block min-w-0"><b className="block truncate text-[13.5px] font-semibold">{row.label}</b><span className="text-xs text-fg-3"><Link href={`/operaciones/ordenes/${row.order_code}`} className="hover:text-accent hover:underline">{row.order_code}</Link> · {row.order_title}</span></span>) },
     { id: "when", header: "Fecha", cell: (row) => (<span className="text-[13px]">{formatDate(row.date)}<span className="block"><TimeSlot time={row.time} className="text-xs" /></span></span>) },
-    { id: "resources", header: "Recursos", cell: (row) => { const people = [row.guide?.name, row.driver?.name, row.vehicle?.name].filter(Boolean); return people.length ? <span className="block max-w-[260px] truncate text-[12.5px] text-fg-2" title={people.join(" · ")}>{people.join(" · ")}</span> : <span className="text-[12.5px] font-medium text-warn">Sin recursos</span>; } },
+    { id: "resources", header: "Recursos", cell: (row) => { const people = [row.guide?.name, row.driver?.name, row.vehicle?.name].filter(Boolean); const missing = missingResources(row); return (<span className="block max-w-[260px]">{people.length > 0 && <span className="block truncate text-[12.5px] text-fg-2" title={people.join(" · ")}>{people.join(" · ")}</span>}{missing.length > 0 && <span className="block text-[12px] font-medium text-warn">{people.length === 0 ? "Sin recursos" : `Falta ${missing.join(" y ")}`}</span>}</span>); } },
     { id: "pax", header: "Pax", align: "right", wideOnly: true, cell: (row) => <span className="font-mono text-[13px]">{row.passengers}</span> },
     { id: "status", header: "Estado", cell: (row) => <StatusBadge status={row.status} /> },
     {
@@ -265,7 +291,7 @@ export function ResourcesBoard({ data, availability }: { data: ResourceOverview;
                   searchText={(row) => `${row.label} ${row.order_code} ${row.order_title} ${row.guide?.name ?? ""} ${row.driver?.name ?? ""} ${row.vehicle?.name ?? ""}`}
                   searchPlaceholder="Buscar servicio, orden o recurso"
                   metrics={[
-                    { id: "pending", label: "Sin recursos", tone: "warn", icon: <UserRoundX size={19} />, matches: (row) => row.status === "pendiente" },
+                    { id: "pending", label: "Recursos incompletos", tone: "warn", icon: <UserRoundX size={19} />, matches: (row) => missingResources(row).length > 0 && !["completada", "cancelada"].includes(row.status) },
                     { id: "assigned", label: "Por confirmar", tone: "info", icon: <Clock3 size={19} />, matches: (row) => row.status === "asignada" },
                     { id: "confirmed", label: "Confirmadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "confirmada" },
                     { id: "today", label: "Hoy", tone: "t4", icon: <CalendarCheck size={19} />, matches: (row) => row.date === data.today },

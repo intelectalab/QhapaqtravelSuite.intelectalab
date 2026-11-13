@@ -155,7 +155,7 @@ export function ProductProfitability({ code, rates, today, markup, componentsCos
     <div className="grid gap-5">
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <section className="lift rounded-tile border border-line p-4">
-          <TintCardTitle icon={Coins} title="Desglose de utilidad" tone="t2" aside={componentsCost !== null ? <span className="text-[12px] text-fg-3">Componentes {formatMoney(componentsCost)}</span> : undefined} />
+          <TintCardTitle icon={Coins} title="Desglose de utilidad" tone="t2" aside={componentsCost !== null ? <span className="text-[12px] text-fg-3">Componentes {componentsCost}</span> : undefined} />
           <p className="mb-3 text-[12.5px] text-fg-3">Venta − costo proveedor − otros costos − comisión = utilidad.</p>
           <Breakdown rates={rates} />
         </section>

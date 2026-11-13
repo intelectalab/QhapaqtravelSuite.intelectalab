@@ -75,10 +75,11 @@ final class WriteCoverageCommand extends Command
     {
         $calls = [];
         foreach (File::allFiles(base_path('tests')) as $file) {
-            $source = $file->getContents();
+            $source = (string) preg_replace('/\{\$[^}]+\}/', 'x', $file->getContents());
             preg_match_all('/(postJson|putJson|patchJson|deleteJson|post|put|patch|delete)\(\s*["\'](\/api\/v1\/[^"\'?]+)/', $source, $matches, PREG_SET_ORDER);
-            foreach ($matches as [, $method, $url]) {
-                $calls[strtoupper(str_replace('Json', '', $method))][] = preg_replace('/\{\$[^}]+\}|\$[A-Za-z_][A-Za-z0-9_]*(->[A-Za-z_][A-Za-z0-9_]*)*/', 'x', $url);
+            preg_match_all('/call\(\s*["\'](POST|PUT|PATCH|DELETE)["\']\s*,\s*["\'](\/api\/v1\/[^"\'?]+)/', $source, $direct, PREG_SET_ORDER);
+            foreach ([...$matches, ...$direct] as [, $method, $url]) {
+                $calls[strtoupper(str_replace('Json', '', $method))][] = preg_replace('/\$[A-Za-z_][A-Za-z0-9_]*(->[A-Za-z_][A-Za-z0-9_]*)*/', 'x', $url);
             }
         }
 

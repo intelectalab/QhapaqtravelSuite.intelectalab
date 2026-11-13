@@ -1,7 +1,9 @@
-import { BadgeCheck, CalendarDays, ClipboardList, FileText, History, Layers, Route, Send, Target, TrendingUp, UserRound, Users, Wallet } from "lucide-react";
+import { ConsultModeNotice } from "@/components/ui/ConsultMode";
+import { BadgeCheck, BriefcaseBusiness, CalendarDays, ClipboardList, FileText, History, Layers, Percent, Route, Send, Target, TrendingUp, UserRound, Users, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { Avatar } from "@/components/ui/Avatar";
 import { StatusBadge } from "@/components/ui/Badge";
 import { DownloadButton } from "@/components/ui/DownloadButton";
 import { SectionLayout, SectionNav } from "@/components/ui/SectionNav";
@@ -91,6 +93,7 @@ export default async function CotizacionPage({ params, searchParams }: PageProps
           </div>
         }
       />
+      <ConsultModeNotice permissions={["quotes.create", "quotes.send"]} what="editar, enviar ni aprobar cotizaciones" />
 
       <HeroBand>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
@@ -116,7 +119,7 @@ export default async function CotizacionPage({ params, searchParams }: PageProps
         </div>
       </HeroBand>
 
-      <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <TintTile icon={UserRound} tone="t1" label="Cliente" value={<Link href={`/crm/clientes/${quote.client.code}`} className="text-[16px] hover:underline">{quote.client.name}</Link>} note={quote.client.code} />
         <TintTile icon={Target} tone="violet" label="Oportunidad" value={quote.opportunity ? <Link href={`/crm/oportunidades/${quote.opportunity.code}`} className="text-[16px] hover:underline">{quote.opportunity.code}</Link> : <span className="text-[14px] text-fg-3">Sin oportunidad</span>} note={quote.opportunity ? `${quote.opportunity.title}${quote.opportunity.stage ? ` · etapa ${statusLabel(quote.opportunity.stage).toLowerCase()}` : ""}` : undefined} />
         <TintTile
@@ -126,7 +129,12 @@ export default async function CotizacionPage({ params, searchParams }: PageProps
           value={quote.reservation ? <Link href={`/reservas/${quote.reservation.code}`} data-testid="quote-reservation-link" className="text-[16px] hover:underline">{quote.reservation.code}</Link> : <span className="text-[16px]">{quote.days_left === null ? formatDate(quote.valid_until) : quote.days_left < 0 ? "Vencida" : quote.days_left === 0 ? "Vence hoy" : quote.days_left === 1 ? "1 día" : `${quote.days_left} días`}</span>}
           note={quote.reservation ? "Generada desde esta cotización" : `Hasta el ${formatDate(quote.valid_until)}`}
         />
-        <TintTile icon={Wallet} tone="t4" label="Margen" value={quote.margin_pct === null ? <span className="text-[14px] text-fg-3">Solo Finanzas y Gerencia</span> : `${quote.margin_pct} %`} note={`Responsable: ${shortName(quote.owner.name)}`} />
+        {quote.margin_pct === null ? (
+          <TintTile icon={Percent} tone="t4" label="Descuento" value={`${Number(quote.versions[0]?.discount_pct ?? 0)} %`} note={`Versión ${quote.version}`} />
+        ) : (
+          <TintTile icon={Wallet} tone="t4" label="Margen" value={`${quote.margin_pct} %`} note={`Descuento ${Number(quote.versions[0]?.discount_pct ?? 0)} %`} />
+        )}
+        <TintTile icon={BriefcaseBusiness} tone="t2" label="Vendedor" value={<span className="flex items-center gap-2 text-[16px]"><Avatar name={quote.owner.name} size="xs" solid />{shortName(quote.owner.name)}</span>} note="Responsable de la cotización" />
       </section>
 
       {quote.status === "vencida" && (

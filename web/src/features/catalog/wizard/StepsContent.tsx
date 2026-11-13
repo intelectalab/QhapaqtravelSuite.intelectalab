@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight, CircleCheck, CircleX, Star } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { RowsEditor } from "@/components/ui/RowsEditor";
 import { SelectField } from "@/components/ui/SelectField";
@@ -10,7 +10,7 @@ import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { AVAILABILITY_LABEL, CHANNEL_INFO, CHECK_STEP, PRODUCT_STATUS, type ProductContentDraft, type ProductPoliciesDraft, type ProductReview } from "@/lib/catalog";
-import { formatMoney } from "@/lib/format";
+import { costRange } from "@/lib/catalog-cost";
 import { PenaltyTiersEditor } from "../PenaltyTiers";
 import { ErrorList, Group, type StepProps } from "./fields";
 
@@ -31,8 +31,37 @@ function LineList({ label, name, lines, onChange, placeholder, error }: { label:
 
 const clean = (lines: string[]) => lines.map((line) => line.trim()).filter(Boolean);
 
+export const slugify = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+/, "")
+    .replace(/-{2,}/g, "-");
+
+function Counter({ value, limit }: { value: number; limit: number }) {
+  return <span className={cn("font-mono", value > limit ? "font-semibold text-bad" : value > limit * 0.9 ? "text-warn" : "text-fg-3")}>{value}/{limit}</span>;
+}
+
+function SearchPreview({ title, description, slug }: { title: string; description: string; slug: string }) {
+  return (
+    <div className="lift rounded-tile border border-line bg-surface px-4 py-3">
+      <p className="mb-1.5 flex flex-wrap gap-x-3 text-[11.5px] text-fg-3">
+        Vista previa en buscadores
+        <span>Título <Counter value={title.length} limit={60} /></span>
+        <span>Descripción <Counter value={description.length} limit={160} /></span>
+      </p>
+      <p className="truncate text-[12px] text-ok">tusitio.com › tours › {slug || "enlace-del-producto"}</p>
+      <p className="truncate text-[16px] font-medium text-info">{title.slice(0, 70) || "Título del producto"}</p>
+      <p className="line-clamp-2 text-[12.5px] text-fg-2">{description.slice(0, 170) || "La descripción que verá quien busque el producto."}</p>
+    </div>
+  );
+}
+
 export function ContentStep({ draft, set, options, errors }: StepProps) {
   const content = draft.content;
+  const [slugNote, setSlugNote] = useState<{ typed: string; slug: string } | null>(null);
   const change = (patch: Partial<ProductContentDraft>) => set((current) => ({ content: { ...current.content, ...patch } }));
   const policy = (patch: Partial<ProductPoliciesDraft>) => set((current) => ({ policies: { ...current.policies, ...patch } }));
   const field = (key: string) => errors[key] ?? errors[`content.${key}`];
@@ -43,6 +72,7 @@ export function ContentStep({ draft, set, options, errors }: StepProps) {
     <div className="flex flex-col gap-7">
       <Group title="Descripción">
         <TextArea label="Descripción completa" name="long_description" rows={5} maxLength={6000} value={content.long_description ?? ""} error={field("long_description")} placeholder="Cuenta la experiencia completa: qué se visita, cómo es el día, qué la hace especial." onChange={(event) => change({ long_description: event.target.value })} />
+        <LineList label="Características destacadas" name="features" lines={content.features ?? []} error={Object.entries(errors).find(([key]) => key.includes("features"))?.[1]} placeholder={"Grupo reducido\nGuía bilingüe"} onChange={(features) => change({ features })} />
       </Group>
       <Group
         title="Incluye y no incluye"
@@ -138,10 +168,25 @@ export function ContentStep({ draft, set, options, errors }: StepProps) {
       <Group title="Posicionamiento en buscadores">
         <div className="grid gap-3 lg:grid-cols-2">
           <TextField label="Título SEO" name="seo_title" maxLength={160} value={content.seo_title ?? ""} error={field("seo_title")} placeholder={draft.master.name} onChange={(event) => change({ seo_title: event.target.value })} />
-          <TextField label="Slug" name="slug" value={content.slug ?? ""} error={field("slug")} placeholder="valle-sagrado-vip" tip="Parte final del enlace en el sitio web. Minúsculas, números y guiones." onChange={(event) => change({ slug: event.target.value.toLowerCase().replace(/\s+/g, "-") })} />
+          <TextField
+            label="Slug"
+            name="slug"
+            value={content.slug ?? ""}
+            error={field("slug")}
+            placeholder="valle-sagrado-vip"
+            tip="Parte final del enlace en el sitio web. Minúsculas, números y guiones."
+            hint={slugNote ? `Lo normalizamos: «${slugNote.typed}» quedó como «${slugNote.slug}».` : undefined}
+            onChange={(event) => {
+              const typed = event.target.value;
+              const slug = slugify(typed);
+              setSlugNote(slug !== typed.toLowerCase().replace(/\s+/g, "-") ? { typed, slug } : null);
+              change({ slug });
+            }}
+          />
           <TextArea label="Descripción SEO" name="seo_description" rows={2} maxLength={320} value={content.seo_description ?? ""} error={field("seo_description")} placeholder={draft.master.short_description} onChange={(event) => change({ seo_description: event.target.value })} />
           <TextField label="Video" name="video_url" type="url" value={content.video_url ?? ""} error={field("video_url")} placeholder="https://" onChange={(event) => change({ video_url: event.target.value })} />
         </div>
+        <SearchPreview title={content.seo_title || draft.master.name} description={content.seo_description || draft.master.short_description} slug={content.slug ?? ""} />
       </Group>
     </div>
   );
@@ -150,6 +195,8 @@ export function ContentStep({ draft, set, options, errors }: StepProps) {
 export function cleanContent(content: ProductContentDraft): ProductContentDraft {
   return {
     ...content,
+    slug: content.slug ? content.slug.replace(/-+$/, "") : content.slug,
+    features: clean(content.features ?? []),
     inclusions: clean(content.inclusions),
     exclusions: clean(content.exclusions),
     requirements: content.requirements.filter((item) => item.text.trim() !== ""),
@@ -171,7 +218,7 @@ export function PublishStep({ draft, set, review, creating, onGo }: StepProps & 
         ["Categoría", [summary.category, summary.subcategory].filter(Boolean).join(" › ")],
         ["Destino", summary.destination],
         ["Proveedor principal", summary.provider ?? "Sin asignar"],
-        ["Componentes", `${summary.components}${summary.components_cost != null ? ` · costo ${formatMoney(summary.components_cost)}` : ""}`],
+        ["Componentes", `${summary.components}${summary.cost_breakdown ? ` · ${costRange(summary.cost_breakdown)}` : ""}`],
         ["Itinerario", `${summary.itinerary_days} día(s)`],
         ["Tarifas", summary.rates],
         ["Temporadas", summary.seasons],

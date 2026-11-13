@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import type { SupplierSession } from "@/lib/supplier-portal";
 import { applyTheme, parseTheme, THEME_STORAGE_KEY, type Theme } from "@/lib/theme";
 import { useStoredValue } from "@/lib/useStoredValue";
+import { SupplierFrame } from "./SupplierFrame";
 
 interface NavItem {
   href: string;
@@ -117,7 +118,10 @@ export function SupplierShell({ session, children }: { session: SupplierSession 
           </nav>
         )}
       </header>
-      <main className="relative mx-auto w-full max-w-[1280px] flex-1 px-4 pb-14 pt-6 sm:px-6">{children}</main>
+      <main className="relative mx-auto w-full max-w-[1280px] flex-1 px-4 pb-14 pt-6 sm:px-6">
+        {session && pathname !== "/proveedor" && <SupplierFrame frame={session.frame} pathname={pathname} />}
+        {children}
+      </main>
       <footer className="border-t border-line bg-surface/60">
         <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-3 px-4 py-5 text-[12.5px] text-fg-3 sm:px-6">
           <span>Solo se muestran datos vinculados a su empresa. Los precios de venta de la agencia no forman parte de la extranet.</span>

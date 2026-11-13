@@ -18,6 +18,27 @@ export interface PaxService {
   guide?: { name: string; phone: string | null } | string | null;
   driver?: { name: string; phone: string | null } | string | null;
   vehicle?: string | null;
+  guide_languages?: string[];
+  meeting_point?: string | null;
+  provider?: { name: string; phone: string | null } | null;
+  includes?: string[];
+}
+
+export interface Stay {
+  hotel: string;
+  city: string | null;
+  check_in: string;
+  check_out: string;
+  room: string | null;
+  room_type: string | null;
+}
+
+export interface CriticalAlert {
+  id: string;
+  code: string;
+  severity: string;
+  title: string;
+  message: string | null;
 }
 
 export interface Contact {
@@ -42,11 +63,45 @@ export interface Trip {
   passengers: { seq: number; name: string; type: string; nationality: string | null; document: string | null; lead: boolean; missing: boolean }[];
   advisor: Contact | null;
   alerts: number;
+  next_detail: (PaxService & { starts_at: string }) | null;
+  critical_alert: CriticalAlert | null;
+  hotel: Stay | null;
 }
 
 export interface Itinerary {
   code: string;
-  days: { date: string; number: number; services: PaxService[] }[];
+  days: { date: string; number: number; services: PaxService[]; stay: Stay | null }[];
+}
+
+export interface TravelDocLine {
+  passenger: string;
+  status: string | null;
+  number?: string | null;
+  document?: string | null;
+  nationality?: string | null;
+  expires_on: string | null;
+  note?: string | null;
+}
+
+export interface FeedbackOverview {
+  trip: { code: string; title: string };
+  types: { value: string; label: string }[];
+  services: { code: string; name: string; date: string }[];
+  history: { code: string; type: string; type_label: string; rating: number | null; text: string; status: string; reply: string | null; created_at: string; service: string | null }[];
+}
+
+export interface ReviewItem {
+  product: { id: string; code: string; name: string };
+  date: string;
+  eligible: boolean;
+  reason: string | null;
+  review: { code: string; stars: number; title: string; status: string } | null;
+}
+
+export interface ReviewOverview {
+  trip: { code: string; title: string; status: string };
+  subratings: { key: string; label: string }[];
+  items: ReviewItem[];
 }
 
 export interface Vouchers {
@@ -58,12 +113,20 @@ export interface Documents {
   code: string;
   items: { kind: string; code?: string; label: string; available: boolean }[];
   policy: { cancellation: string | null; tiers: unknown[] };
+  invoices?: { number: string; type: string; date: string; status: string }[];
+  insurance?: TravelDocLine[];
+  passports?: TravelDocLine[];
 }
 
 export interface Alerts {
   code: string;
   alerts: { id: string; code: string; type: string; severity: string; title: string; message: string | null; at: string; acked: boolean }[];
-  notices: { code: string; subject: string; body: string; at: string; channel: string }[];
+  notices: { code: string; subject: string; body: string; at: string; channel: string; read?: boolean }[];
+}
+
+export function unreadAlerts(data: Alerts | null): number {
+  if (!data) return 0;
+  return data.alerts.filter((alert) => !alert.acked).length + data.notices.filter((notice) => notice.read === false).length;
 }
 
 export interface Messages {
@@ -88,18 +151,18 @@ export interface Remote<T> {
   reload: () => Promise<void>;
 }
 
-export function usePassenger<T>(path: string): Remote<T> {
+export function usePassenger<T>(path: string, base = "/mobile/passenger"): Remote<T> {
   const { version } = useApp();
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stale, setStale] = useState(false);
-  const key = `pax:${path}`;
+  const key = `pax:${base}/${path}`;
 
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const fresh = await api<T>(`/mobile/passenger/${path}`);
+      const fresh = await api<T>(`${base}/${path}`);
       setData(fresh);
       setStale(false);
       setError(null);
@@ -114,7 +177,7 @@ export function usePassenger<T>(path: string): Remote<T> {
     } finally {
       setLoading(false);
     }
-  }, [path, key]);
+  }, [path, base, key]);
 
   useEffect(() => {
     void reload();

@@ -1,4 +1,5 @@
-import { AlarmClock, CircleCheckBig, Inbox, MessagesSquare, Timer, UserX } from "lucide-react";
+import { AlarmClock, CircleCheckBig, Eye, Inbox, MessagesSquare, SearchX, Timer } from "lucide-react";
+import { AuditPanelButton, type AuditEntry } from "@/features/audit/AuditTimeline";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
@@ -10,7 +11,8 @@ import { ChannelIcon, ContactCard, ConversationList, MessageBubble } from "@/fea
 import { ConversationCrmActions } from "@/features/leads/ConversationCrmActions";
 import { getRelatedOptions } from "@/lib/server/activities";
 import { getAdvisors, getCatalogs } from "@/lib/server/leads";
-import type { ConversationThread, InboxOverview } from "@/lib/inbox";
+import { ChannelAccountsPanel } from "@/features/inbox/ChannelAccountsPanel";
+import { INBOX_SCOPE, type ChannelAccount, type ConversationThread, type InboxOverview } from "@/lib/inbox";
 import { getResource } from "@/lib/server/resource";
 import { currentUser } from "@/lib/server/me";
 
@@ -23,13 +25,18 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
     return <PageHeader title="Bandeja omnicanal" subtitle="Tu rol no tiene acceso a esta sección." />;
   }
 
-  const selected = overview.items.find((item) => item.code === c) ?? overview.items.find((item) => item.status !== "resuelta") ?? overview.items[0];
-  const [thread, me, catalogs, advisors, activityOptions] = await Promise.all([
+  const requested = c ? overview.items.find((item) => item.code === c) : undefined;
+  const missing = Boolean(c) && !requested;
+  const selected = requested ?? (missing ? undefined : overview.items.find((item) => item.status !== "resuelta") ?? overview.items[0]);
+  const scope = INBOX_SCOPE[overview.scope ?? (overview.can.reassign ? "all" : "own")];
+  const [thread, me, catalogs, advisors, activityOptions, channels, audit] = await Promise.all([
     selected ? getResource<ConversationThread>(`/inbox/conversations/${encodeURIComponent(selected.code)}`, "No pudimos abrir la conversación.") : Promise.resolve(null),
     currentUser(),
     overview.can.manage ? getCatalogs() : Promise.resolve(null),
     overview.can.manage ? getAdvisors() : Promise.resolve([]),
     overview.can.manage ? getRelatedOptions() : Promise.resolve(null),
+    overview.can.manage ? getResource<ChannelAccount[]>("/inbox/channel-accounts", "No pudimos cargar los canales.") : Promise.resolve(null),
+    selected ? getResource<AuditEntry[]>(`/inbox/conversations/${encodeURIComponent(selected.code)}/audit`, "No pudimos cargar la auditoría.") : Promise.resolve(null),
   ]);
   const { kpis } = overview;
 
@@ -37,7 +44,18 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
     <>
       <PageHeader
         title="Bandeja omnicanal"
-        subtitle="WhatsApp, correo, chat web, formularios y tickets del portal en una sola bandeja."
+        subtitle={
+          <span className="flex flex-wrap items-center gap-2">
+            WhatsApp, correo, chat web, formularios y tickets del portal en una sola bandeja.
+            <span title={scope.detail} className="inline-flex">
+              <Badge tone="info" dot={false}>
+                <Eye size={12} className="mr-1 inline" />
+                {scope.label}
+              </Badge>
+            </span>
+          </span>
+        }
+        actions={channels ? <ChannelAccountsPanel accounts={channels} /> : undefined}
         info={<InfoTip>Responder una conversación sin responsable te la asigna. Las notas internas nunca llegan al cliente.</InfoTip>}
       />
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -60,22 +78,20 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
                       <span>{thread.code}</span>
                       <StatusBadge status={thread.status} label={thread.status_label} />
                       <StatusBadge status={thread.priority} />
-                      {thread.tags.map((tag) => (
-                        <Badge key={tag} tone="mute" dot={false}>
-                          {tag}
-                        </Badge>
-                      ))}
                     </p>
                   </div>
                 </div>
-                <ThreadActions thread={thread} agents={overview.agents} canReassign={overview.can.reassign} canManage={overview.can.manage} />
+                <div className="flex flex-wrap items-center gap-2">
+                  {audit && <AuditPanelButton title={`Auditoría de ${thread.code}`} description="Quién respondió, asignó, vinculó o cambió el estado, con fecha e IP." entries={audit} />}
+                  <ThreadActions thread={thread} agents={overview.agents} canReassign={overview.can.reassign} canManage={overview.can.manage} />
+                </div>
               </header>
               <ol className="scroll-thin flex max-h-[520px] flex-1 flex-col gap-3 overflow-y-auto bg-[color-mix(in_srgb,var(--surface-2)_55%,var(--surface))] px-4 py-5">
                 {thread.messages.map((message, index) => (
-                  <MessageBubble key={message.id} message={message} index={index} />
+                  <MessageBubble key={message.id} message={message} index={index} conversation={thread.code} />
                 ))}
               </ol>
-              {overview.can.manage && <Composer thread={thread} templates={overview.templates} me={me.name} />}
+              {overview.can.manage && <Composer thread={thread} templates={overview.templates} me={me.name} agency={overview.agency} />}
             </div>
             <div className="lg:col-span-2 2xl:col-span-1">
               <ContactCard thread={thread} canLink={overview.can.link ?? []} canQuote={overview.can.quote ?? false} />
@@ -84,15 +100,14 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
           </>
         ) : (
           <div className="lg:col-span-2">
-            <EmptyState icon={<MessagesSquare size={22} />} title="No hay conversaciones" description="Cuando un cliente escriba por un canal conectado aparecerá aquí." />
+            {missing ? (
+              <EmptyState icon={<SearchX size={22} />} title={`No encontramos la conversación ${c}`} description={`No existe o está fuera de tu alcance. ${scope.detail} Elige otra en la lista.`} />
+            ) : (
+              <EmptyState icon={<MessagesSquare size={22} />} title="No hay conversaciones" description="Cuando un cliente escriba por un canal conectado aparecerá aquí." />
+            )}
           </div>
         )}
       </section>
-      {overview.items.length > 0 && overview.agents.length === 0 && !overview.can.reassign && (
-        <p className="mt-3 flex items-center gap-1.5 text-[12.5px] text-fg-3">
-          <UserX size={14} /> Ves las conversaciones asignadas a ti y las que aún no tienen responsable.
-        </p>
-      )}
     </>
   );
 }

@@ -1,7 +1,9 @@
 "use client";
 
+import { Columns3 } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
+import { PipelineBoard } from "./PipelineBoard";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, SortOption } from "@/components/table/types";
 import { Avatar } from "@/components/ui/Avatar";
@@ -130,7 +132,10 @@ export function OpportunitiesTable({ board, today }: { board: OpportunityBoard; 
       searchPlaceholder="Buscar título, cliente o destino"
       filters={filters}
       sorts={sorts}
+      defaultView="kanban"
+      views={[{ id: "kanban", label: "Kanban", icon: Columns3, render: (rows) => <PipelineBoard items={rows} stages={board.stages} today={today} /> }]}
       csv={{
+        title: "Oportunidades",
         fileName: "oportunidades",
         columns: [
           { header: "Código", value: (item) => item.code },
@@ -139,9 +144,9 @@ export function OpportunitiesTable({ board, today }: { board: OpportunityBoard; 
           { header: "Etapa", value: (item) => stageName(item.stage) },
           { header: "Moneda", value: (item) => item.currency },
           { header: "Monto", value: (item) => item.amount },
-          { header: "Monto en soles", value: (item) => item.amount_pen },
+          { header: "Monto en soles", value: (item) => item.amount_pen, type: "money", total: true },
           { header: "Probabilidad", value: (item) => item.probability },
-          { header: "Ponderado en soles", value: (item) => (OPEN_STAGES.includes(item.stage) ? Math.round(weighted(item)) : 0) },
+          { header: "Ponderado en soles", value: (item) => (OPEN_STAGES.includes(item.stage) ? Math.round(weighted(item)) : 0), type: "money", total: true },
           { header: "Cierre esperado", value: (item) => item.expected_close_date },
           { header: "Cerrada el", value: (item) => item.closed_at },
           { header: "Cotizaciones", value: (item) => item.quotes_count ?? 0 },

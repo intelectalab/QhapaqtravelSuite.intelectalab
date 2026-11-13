@@ -43,6 +43,7 @@ final class ProductReview
                 'provider' => $names?->provider,
                 'components' => $components->count(),
                 'components_cost' => CatalogAccess::seesCost($viewer) ? (string) $components->reduce(fn (BigDecimal $sum, array $item) => $sum->plus($item['subtotal_pen']), BigDecimal::zero())->toScale(2, RoundingMode::HALF_UP) : null,
+                'cost_breakdown' => CatalogAccess::seesCost($viewer) ? $this->breakdown($product->id, $components) : null,
                 'itinerary_days' => $itinerary ? DB::table('catalog_itinerary_days')->where('itinerary_id', $itinerary)->count() : 0,
                 'rates' => DB::table('catalog_rates')->where('product_id', $product->id)->count(),
                 'seasons' => $seasons->count(),
@@ -93,6 +94,33 @@ final class ProductReview
             'currency' => $currency,
             'subtotal_pen' => $pen->toScale(2, RoundingMode::HALF_UP),
         ];
+    }
+
+    public function breakdown(string $productId, Collection $components): array
+    {
+        $pax = DB::table('catalog_products')->where('id', $productId)->first(['minimum_passengers', 'maximum_passengers']);
+
+        return ComponentCostBreakdown::of(
+            $components,
+            $pax?->minimum_passengers === null ? null : (int) $pax->minimum_passengers,
+            $pax?->maximum_passengers === null ? null : (int) $pax->maximum_passengers,
+            $this->publicPrice($productId),
+        );
+    }
+
+    public function publicPrice(string $productId): ?BigDecimal
+    {
+        $rates = DB::table('catalog_rates')->where('product_id', $productId)
+            ->get(['segment', 'channel', 'rate_type', 'status', 'valid_from', 'valid_to', 'price', 'currency', 'season_id']);
+        $rate = RateResolver::pick($rates, CatalogAccess::today(), ['Adulto', 'Pasajero'], RateResolver::FALLBACK_CHANNEL);
+
+        if (! is_object($rate)) {
+            return null;
+        }
+
+        $price = BigDecimal::of((string) $rate->price);
+
+        return trim((string) $rate->currency) === 'PEN' ? $price : $price->multipliedBy($this->fx());
     }
 
     public function fx(): BigDecimal

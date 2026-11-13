@@ -25,7 +25,7 @@ final class SiteDesignController
     public function saveDraft(Request $request, SiteDesignStudio $studio): JsonResponse
     {
         $data = $request->validate([...SiteDesign::rules(), 'lock_version' => ['required', 'integer', 'min:0']], SiteDesign::messages());
-        $errors = SiteDesign::textErrors((array) ($request->input('design.texts') ?? []));
+        $errors = [...SiteDesign::textErrors((array) ($request->input('design.texts') ?? [])), ...SiteDesign::andesErrors((array) ($request->input('design.andes') ?? []))];
 
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);

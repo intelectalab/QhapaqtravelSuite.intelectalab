@@ -5,22 +5,48 @@ declare(strict_types=1);
 namespace App\Domain\Catalog\Support;
 
 use App\Domain\Iam\Models\User;
+use Brick\Math\BigDecimal;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final class ProductDirectory
 {
-    public function list(): Collection
+    public function list(?User $viewer = null): Collection
     {
-        $today = CatalogAccess::today();
-        $from = DB::table('catalog_rates')->where('status', 'vigente')->where('valid_from', '<=', $today)->where('valid_to', '>=', $today)->where('rate_type', 'Venta')->whereIn('segment', ['Adulto', 'Pasajero'])
-            ->orderBy('price')->get(['product_id', 'price', 'currency'])->groupBy('product_id');
+        $from = self::pricesFrom($viewer);
 
         return $this->rows()->orderBy('p.name')->get()->map(fn (object $row) => [
             ...$this->summary($row),
-            'price_from' => isset($from[$row->id]) ? ['amount' => $from[$row->id]->first()->price, 'currency' => $from[$row->id]->first()->currency] : null,
+            'price_from' => $from[$row->id] ?? null,
         ]);
+    }
+
+    public static function pricesFrom(?User $viewer = null, ?array $productIds = null): Collection
+    {
+        $today = CatalogAccess::today();
+        $seesNet = $viewer !== null && CatalogAccess::seesNetRates($viewer);
+
+        return DB::table('catalog_rates')->where('status', 'vigente')->where('valid_from', '<=', $today)->where('valid_to', '>=', $today)
+            ->whereNotIn('rate_type', ['Proveedor', 'Costo'])
+            ->when($productIds !== null, fn ($query) => $query->whereIn('product_id', $productIds))
+            ->get(['product_id', 'rate_type', 'segment', 'channel', 'price', 'currency'])
+            ->filter(fn (object $rate) => $seesNet || ! RateDirectory::isNet($rate->rate_type, $rate->channel))
+            ->groupBy('product_id')
+            ->map(function (Collection $rates): array {
+                $best = $rates->sort(fn (object $a, object $b): int => (self::fromTier($a) <=> self::fromTier($b)) ?: BigDecimal::of($a->price)->compareTo(BigDecimal::of($b->price)))->first();
+
+                return ['amount' => $best->price, 'currency' => trim($best->currency), 'segment' => $best->segment, 'channel' => $best->channel];
+            });
+    }
+
+    private static function fromTier(object $rate): int
+    {
+        return match (true) {
+            $rate->channel === 'Directo' && in_array($rate->segment, ['Adulto', 'Pasajero'], true) => 0,
+            $rate->channel === 'Directo' => 1,
+            default => 2,
+        };
     }
 
     public function find(string $code, User $viewer): ?array
@@ -62,6 +88,7 @@ final class ProductDirectory
             'age' => ['min' => (int) $row->minimum_age, 'max' => (int) $row->maximum_age],
             'advance_days' => ['min' => (int) $row->booking_advance_min_days, 'max' => (int) $row->booking_advance_max_days],
             'markup_pct' => $showCost ? $row->markup_pct : null,
+            'price_from' => self::pricesFrom($viewer, [$row->id])[$row->id] ?? null,
             'provider' => $row->provider_name ? ['name' => $row->provider_name, 'type' => $row->provider_type, 'phone' => $row->provider_phone] : null,
             'itinerary' => $days->map(fn (object $day) => [
                 'day' => (int) $day->day_number,

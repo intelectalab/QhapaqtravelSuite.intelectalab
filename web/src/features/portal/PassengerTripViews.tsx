@@ -10,7 +10,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/format";
-import type { PaxAlerts, PaxCompanions } from "@/lib/portal";
+import { OTHER_PICKUP, type PaxAlerts, type PaxCompanions } from "@/lib/portal";
 
 const SEVERITY: Record<string, "mute" | "warn" | "bad"> = { baja: "mute", media: "warn", alta: "bad", critica: "bad" };
 
@@ -143,7 +143,10 @@ export function CompanionsForm({ data }: { data: PaxCompanions }) {
   const pendingSeqs = data.passengers.filter((passenger) => passenger.pending).map((passenger) => passenger.seq);
   const [editing, setEditing] = useState<number[]>(pendingSeqs);
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
-  const [pickup, setPickup] = useState({ address: data.pickup?.address ?? "", flight: data.pickup?.flight ?? "", arrival: data.pickup?.arrival?.slice(0, 16) ?? "" });
+  const points = data.pickup?.points ?? [];
+  const known = points.some((point) => point.label === data.pickup?.point);
+  const [pickup, setPickup] = useState({ point: known ? (data.pickup?.point ?? "") : data.pickup?.point ? OTHER_PICKUP : "", address: data.pickup?.address ?? "", flight: data.pickup?.flight ?? "", arrival: data.pickup?.arrival?.slice(0, 16) ?? "" });
+  const needsAddress = pickup.point === OTHER_PICKUP || points.some((point) => point.label === pickup.point && point.requires_address);
   const [pending, start] = useTransition();
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   const draft = (seq: number): Draft => drafts[seq] ?? { first_name: "", last_name: "", birth_date: "", doc_type: "Pasaporte", doc_number: "", nationality: "Perú", diet: "" };
@@ -200,8 +203,13 @@ export function CompanionsForm({ data }: { data: PaxCompanions }) {
         <Card>
           <h2 className="text-[15px] font-semibold text-fg">Recojo</h2>
           <p className="text-[12.5px] text-fg-3">{data.pickup.point ? `Punto elegido: ${data.pickup.point}.` : "Indícanos dónde te recogemos."}</p>
+          {points.length > 0 && (
+            <div className="mt-3 max-w-md">
+              <SelectField label="Punto de recojo" name="pickup_point" options={[...points.map((point) => ({ value: point.label, label: point.label })), { value: OTHER_PICKUP, label: OTHER_PICKUP }]} value={pickup.point || undefined} placeholder="Elige un punto" disabled={!data.editable} onChange={(next) => setPickup({ ...pickup, point: next })} />
+            </div>
+          )}
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <TextField label="Hotel o dirección" value={pickup.address} disabled={!data.editable} onChange={(event) => setPickup({ ...pickup, address: event.target.value })} />
+            <TextField label={needsAddress ? "Dirección o nombre del hotel" : "Hotel o dirección"} value={pickup.address} disabled={!data.editable} required={needsAddress} onChange={(event) => setPickup({ ...pickup, address: event.target.value })} />
             <TextField label="Vuelo (si llegas en avión)" value={pickup.flight} disabled={!data.editable} onChange={(event) => setPickup({ ...pickup, flight: event.target.value })} />
             <TextField label="Llegada" type="datetime-local" value={pickup.arrival} disabled={!data.editable} onChange={(event) => setPickup({ ...pickup, arrival: event.target.value })} />
           </div>
@@ -215,7 +223,7 @@ export function CompanionsForm({ data }: { data: PaxCompanions }) {
             onClick={() =>
               start(async () => {
                 const passengers = editing.map((seq) => ({ seq, ...draft(seq) }));
-                const response = await saveCompanions(data.code, data.lock_version, { passengers, ...(data.pickup ? { pickup: { address: pickup.address || null, flight: pickup.flight || null, arrival: pickup.arrival || null } } : {}) });
+                const response = await saveCompanions(data.code, data.lock_version, { passengers, ...(data.pickup ? { pickup: { point: pickup.point || null, address: pickup.address || null, flight: pickup.flight || null, arrival: pickup.arrival || null } } : {}) });
                 setResult({ ok: response.done, message: response.done ? "Guardamos los datos de los viajeros." : (response.message ?? "No pudimos guardar.") });
                 if (response.done) setEditing([]);
               })

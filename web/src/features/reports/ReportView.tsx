@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import { exportReport, scheduleReport } from "@/app/(backoffice)/reportes/actions";
 import { DataTable } from "@/components/table/DataTable";
-import type { Column, SortOption } from "@/components/table/types";
+import type { Column, FilterConfig, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -23,6 +23,7 @@ import { cn } from "@/lib/cn";
 import type { ReportPayload } from "@/lib/reports";
 import { statusTone, type Tone } from "@/lib/tone";
 import { formatReportValue, ReportChartView } from "./ReportCharts";
+import { REPORT_FREQUENCIES } from "./frequencies";
 
 type Row = Record<string, string | number | null>;
 
@@ -129,7 +130,7 @@ function Actions({ report }: { report: ReportPayload }) {
         {() => (
           <>
             <Hidden report={report} />
-            <SelectField label="Frecuencia" name="frequency" options={[{ value: "weekly", label: "Semanal (lunes)" }, { value: "daily", label: "Diaria" }, { value: "monthly", label: "Mensual (día 1)" }]} defaultValue="weekly" />
+            <SelectField label="Frecuencia" name="frequency" options={REPORT_FREQUENCIES} defaultValue="weekly" />
             <TextField label="Hora" name="time" required defaultValue="07:00" maxLength={5} placeholder="HH:MM" hint="Hora de Lima." />
             <ChoiceGroup label="Formato" name="format" options={[{ value: "PDF", label: "PDF" }, { value: "XLSX", label: "Excel" }, { value: "CSV", label: "CSV" }]} defaultValue="PDF" />
             <TextArea label="Destinatarios" name="recipients" rows={3} required placeholder="gerencia@agencia.pe, finanzas@agencia.pe" hint="Hasta 10 correos, separados por coma o en líneas." />
@@ -175,6 +176,15 @@ function ReportTable({ report }: { report: ReportPayload }) {
     cell: (row) => cellOf(column, row, report.table.link, index === 0),
   }));
   const sorts: SortOption<Row>[] = report.table.columns.filter((column) => numeric.includes(column.format) || column.format === "date").map((column) => ({ id: column.key, label: column.label, type: column.format === "date" ? "date" : "number", value: (row) => row[column.key] }));
+  const filters: FilterConfig<Row>[] = report.table.columns
+    .filter((column) => column.filter)
+    .map((column) => ({
+      id: column.key,
+      label: column.label,
+      options: [...new Set(report.table.rows.map((row) => String(row[column.key] ?? "")).filter((value) => value !== ""))].sort((a, b) => a.localeCompare(b, "es")).map((value) => ({ value, label: value })),
+      value: (row: Row) => String(row[column.key] ?? ""),
+    }))
+    .filter((filter) => filter.options.length > 1);
   return (
     <div>
       <DataTable
@@ -186,6 +196,7 @@ function ReportTable({ report }: { report: ReportPayload }) {
         searchText={(row) => Object.values(row).join(" ")}
         searchPlaceholder="Buscar en el detalle"
         sorts={sorts}
+        filters={filters}
         footer={
           report.table.totals
             ? Object.fromEntries(report.table.columns.map((column, index) => [column.key, index === 0 ? "Total" : report.table.totals?.[column.key] !== undefined && report.table.totals?.[column.key] !== null ? <span className="font-mono">{formatReportValue(report.table.totals[column.key] ?? null, column.format)}</span> : null]))

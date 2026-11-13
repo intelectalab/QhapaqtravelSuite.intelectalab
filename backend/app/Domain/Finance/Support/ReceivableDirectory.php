@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Finance\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
+use Brick\Math\BigDecimal;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -79,6 +82,42 @@ final class ReceivableDirectory
         ];
     }
 
+    public function summary(User $viewer): array
+    {
+        $overview = $this->overview($viewer);
+        $upcoming = $overview['rows']->whereNotIn('status', ['pagada', 'cancelada', 'vencida'])->sortBy('due_date')->take(10)
+            ->map(fn (array $row): array => ['code' => $row['code'], 'concept' => $row['concept'], 'due_date' => $row['due_date'], 'balance' => $row['balance'], 'balance_pen' => $row['balance_pen'], 'currency' => $row['currency'], 'reservation' => $row['reservation'], 'client' => $row['client']])
+            ->values()->all();
+
+        return [
+            'today' => $overview['today'],
+            'kpis' => [...$overview['kpis'], 'collected_uninvoiced_pen' => app(InvoiceDirectory::class)->uninvoiced()],
+            'aging' => $overview['aging'],
+            'upcoming' => $upcoming,
+        ];
+    }
+
+    public function account(string $reservationCode): array
+    {
+        $reservation = DB::table('booking_reservations')->where('code', $reservationCode)->whereNull('deleted_at')->first(['id', 'code', 'title', 'status', 'currency', 'total_amount'])
+            ?? throw ApiException::notFound('La reserva no existe.');
+        $receivables = DB::table('fin_receivables')->where('reservation_id', $reservation->id)->whereNull('deleted_at')->where('status', '<>', 'cancelada')->get(['amount', 'paid_amount']);
+        $committed = $receivables->reduce(fn (BigDecimal $sum, object $row): BigDecimal => $sum->plus((string) $row->amount), BigDecimal::zero());
+        $paid = $receivables->reduce(fn (BigDecimal $sum, object $row): BigDecimal => $sum->plus((string) $row->paid_amount), BigDecimal::zero());
+        $total = Decimal::money((string) $reservation->total_amount);
+
+        return [
+            'reservation' => ['code' => $reservation->code, 'title' => $reservation->title, 'status' => $reservation->status],
+            'currency' => $reservation->currency,
+            'total' => (string) $total,
+            'committed' => (string) Decimal::round2($committed),
+            'available' => (string) ReceivableLedger::available($reservation),
+            'paid' => (string) Decimal::round2($paid),
+            'balance' => (string) Decimal::round2($committed->minus($paid)),
+            'receivables' => $receivables->count(),
+        ];
+    }
+
     private function advanceReservations(): array
     {
         $committed = DB::table('fin_receivables')->whereNull('deleted_at')->where('status', '<>', 'cancelada')->groupBy('reservation_id')->selectRaw('reservation_id, sum(amount) as total')->pluck('total', 'reservation_id');
@@ -89,7 +128,7 @@ final class ReceivableDirectory
                 $total = round((float) $row->total_amount, 2);
                 $used = round((float) ($committed[$row->id] ?? 0), 2);
 
-                return ['value' => $row->code, 'label' => "{$row->code} · {$row->title}", 'client' => $row->client, 'currency' => $row->currency, 'total' => $total, 'committed' => $used, 'available' => round(max(0, $total - $used), 2)];
+                return ['value' => $row->code, 'label' => "{$row->code} · {$row->title}", 'title' => $row->title, 'client' => $row->client, 'currency' => $row->currency, 'total' => $total, 'committed' => $used, 'available' => round(max(0, $total - $used), 2)];
             })
             ->filter(fn (array $row): bool => $row['available'] > 0)->values()->all();
     }

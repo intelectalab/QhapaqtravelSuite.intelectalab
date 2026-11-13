@@ -1,8 +1,10 @@
 "use client";
 
-import { CheckCheck, Code2, ExternalLink, Eye, Gauge, Inbox, KeyRound, LayoutTemplate, Link2, MessageSquareReply, MessagesSquare, PlugZap, Settings2, Star, TriangleAlert } from "lucide-react";
+import { Check, CheckCheck, Code2, Copy, ExternalLink, Eye, Gauge, Inbox, KeyRound, LayoutTemplate, Link2, MessageSquareReply, MessagesSquare, Send, Settings2, Sparkles, Star, TriangleAlert } from "lucide-react";
+import { useState } from "react";
 import { markExternalPublished, replyExternalReview, saveReviewWidget } from "@/app/(backoffice)/canales/resenas/actions";
 import { DataTable } from "@/components/table/DataTable";
+import { Button } from "@/components/ui/Button";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { ChipToggleGroup } from "@/components/ui/ChipToggleGroup";
@@ -14,12 +16,14 @@ import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
-import { channelStatus, type ExternalReview, type ExternalReviewsOverview, type ReviewSource, type ReviewWidgetSettings } from "@/lib/channels";
+import type { ReactNode } from "react";
+import { channelStatus, type ExternalReview, type ExternalReviewsOverview, type ReviewSource, type ReviewSourceAdmin, type ReviewWidgetSettings } from "@/lib/channels";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatNumber, formatPercent } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { avatarTone, toneStyle } from "@/lib/tone";
 import { ChannelBadge, CodeSnippet, DetailPanel, PanelSection, Stars, TileGrid } from "./ChannelUi";
+import { EscalateReviewAction, ReviewSourceActions } from "./ReviewSourceActions";
 
 const initial: StepResult = { message: null, done: false };
 
@@ -30,14 +34,14 @@ export function ExternalTiles({ overview }: { overview: ExternalReviewsOverview 
   return (
     <TileGrid>
       <TintTile icon={Star} tone="sun" label="Calificación ponderada" value={kpis.average !== null ? <span className="flex items-center gap-2">{kpis.average.toFixed(2)} <Stars value={kpis.average} size={13} /></span> : "—"} note={best ? `Mejor en ${best.label}` : undefined} info={<p>Promedio de las plataformas conectadas, pesado por cuántas reseñas tiene cada una.</p>} />
-      <TintTile icon={MessagesSquare} tone="t1" label="Reseñas publicadas" value={formatNumber(kpis.total)} note="En las plataformas conectadas" info={<p>Total que informa cada plataforma en su última sincronización. La bandeja trae las más recientes para responderlas.</p>} />
+      <TintTile icon={MessagesSquare} tone="t1" label="Reseñas publicadas" value={formatNumber(kpis.total)} note={`En ${kpis.connected} de ${sources.length} plataformas conectadas`} info={<p>Total que informa cada plataforma en su última sincronización. La administración de la agencia conecta cada plataforma en la pestaña Conectores; la credencial nunca se vuelve a mostrar.</p>} />
       <TintTile icon={Gauge} tone="violet" label="Tasa de respuesta" value={kpis.inbox > 0 ? formatPercent((answered / kpis.inbox) * 100, 0) : "—"} note="Con respuesta guardada o publicada" info={<p>Reseñas de la bandeja que ya tienen respuesta: {formatNumber(answered)} de {formatNumber(kpis.inbox)}.</p>} />
-      <TintTile icon={PlugZap} tone="ok" label="Plataformas conectadas" value={`${kpis.connected} de ${sources.length}`} note="Sincronizan cada día" info={<p>Las credenciales de cada plataforma se cargan y prueban en la consola de la plataforma; aquí se ve su estado.</p>} />
+      <TintTile icon={Send} tone={kpis.invites_active ? "ok" : "mute"} label="Invitaciones postviaje" value={kpis.invites_active ? "Activas" : "Inactivas"} note={`${formatNumber(kpis.invites_sent)} enviadas en 30 días`} info={<p>Estado de la regla de invitación a reseña (R-REVIEW-INVITE) en Reglas de reserva, y las invitaciones enviadas, abiertas o respondidas en los últimos 30 días. Se invita a todos los pasajeros por igual, sin filtrar por satisfacción.</p>} />
     </TileGrid>
   );
 }
 
-export function ConnectorsGrid({ sources }: { sources: ReviewSource[] }) {
+export function ConnectorsGrid({ sources, actions }: { sources: ReviewSource[]; actions?: (source: ReviewSource) => ReactNode }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {sources.map((source, index) => {
@@ -77,6 +81,7 @@ export function ConnectorsGrid({ sources }: { sources: ReviewSource[] }) {
               <span className={cn("rounded-md px-2 py-0.5", source.can_reply ? "bg-ok/10 text-ok" : "bg-surface-2 text-fg-3")}>{source.can_reply ? "Respuesta por API" : "Respuesta manual"}</span>
               {source.invites && <span className="rounded-md bg-surface-2 px-2 py-0.5 text-fg-2">Invitaciones</span>}
             </p>
+            {actions && <div className="mt-3 flex justify-end border-t border-[color-mix(in_srgb,var(--tint)_18%,transparent)] pt-2.5">{actions(source)}</div>}
           </article>
         );
       })}
@@ -103,10 +108,46 @@ function ReplyAction({ review }: { review: ExternalReview }) {
             <Stars value={review.rating} size={12} className="mb-1" />
             {review.body}
           </blockquote>
-          <TextArea label="Respuesta" name="text" rows={6} required minLength={5} maxLength={1500} defaultValue={review.reply ?? undefined} placeholder={`Gracias, ${review.author.split(" ")[0]}…`} />
+          <ReplyEditor review={review} />
         </>
       )}
     </PanelAction>
+  );
+}
+
+function suggestedReply(review: ExternalReview): string {
+  const name = review.author.split(" ")[0];
+  return review.rating >= 4
+    ? `Muchas gracias, ${name}, por compartir su experiencia. Nos alegra que haya disfrutado el viaje; transmitiremos sus palabras al equipo.`
+    : `Estimado/a ${name}: lamentamos lo ocurrido y agradecemos que nos lo cuente. Revisamos el caso con operaciones y nos gustaría contactarle para ofrecerle una solución. Escríbanos por mensaje privado indicando su código de reserva.`;
+}
+
+function CopyButton({ text, label = "Copiar" }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  };
+  return (
+    <Button size="sm" variant="ghost" icon={copied ? <Check size={14} /> : <Copy size={14} />} onClick={copy} disabled={!text.trim()}>
+      {copied ? "Copiado" : label}
+    </Button>
+  );
+}
+
+function ReplyEditor({ review }: { review: ExternalReview }) {
+  const [text, setText] = useState(review.reply ?? "");
+  return (
+    <div className="flex flex-col gap-2">
+      <TextArea label="Respuesta" name="text" rows={6} required minLength={20} maxLength={1500} value={text} onChange={(event) => setText(event.target.value)} placeholder={`Gracias, ${review.author.split(" ")[0]}…`} hint="Mínimo 20 caracteres. Sin datos personales del viajero: agradezca y, si hubo un problema, ofrezca un canal privado." />
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Button size="sm" variant="secondary" icon={<Sparkles size={14} />} onClick={() => setText(suggestedReply(review))}>
+          Usar respuesta sugerida
+        </Button>
+        {!review.can_reply && <CopyButton text={text} label="Copiar para publicar" />}
+      </div>
+    </div>
   );
 }
 
@@ -138,6 +179,11 @@ function ReviewDetail({ review }: { review: ExternalReview }) {
       {review.reply && (
         <PanelSection title="Nuestra respuesta" aside={review.replied_by ? `${review.replied_by}${review.replied_at ? ` · ${formatDateTime(review.replied_at)}` : ""}` : undefined}>
           <p className="rounded-tile bg-accent/5 px-3 py-2 text-[13px]">{review.reply}</p>
+          {review.status !== "publicada" && (
+            <div className="mt-1.5 flex justify-end">
+              <CopyButton text={review.reply} label="Copiar respuesta" />
+            </div>
+          )}
         </PanelSection>
       )}
       <PanelSection title="Datos">
@@ -147,6 +193,7 @@ function ReviewDetail({ review }: { review: ExternalReview }) {
             { label: "Producto", value: review.product?.name ?? "General de la agencia" },
             { label: "Idioma", value: review.lang?.toUpperCase() ?? "—" },
             { label: "Referencia", value: review.code },
+            { label: "Postventa", value: review.conversation ? `Derivada en ${review.conversation}` : "Sin derivar" },
             {
               label: "Original",
               value: review.url ? (
@@ -190,6 +237,7 @@ export function ExternalInbox({ overview }: { overview: ExternalReviewsOverview 
           <ReviewDetail review={row} />
           {overview.can_reply && row.status !== "publicada" && <ReplyAction review={row} />}
           {overview.can_reply && (row.status === "pendiente_publicar" || (row.status === "no_admite" && Boolean(row.reply))) && <PublishedAction review={row} />}
+          {overview.can_reply && row.rating <= 3 && !row.conversation && <EscalateReviewAction review={row} />}
         </RowActions>
       ),
     },
@@ -303,8 +351,8 @@ export function ReviewWidgetSection({ overview }: { overview: ExternalReviewsOve
   );
 }
 
-export function ExternalReviewsWorkspace({ overview, section }: { overview: ExternalReviewsOverview; section: "inbox" | "connectors" | "widget" }) {
-  if (section === "connectors") return <ConnectorsGrid sources={overview.sources} />;
+export function ExternalReviewsWorkspace({ overview, section, managed }: { overview: ExternalReviewsOverview; section: "inbox" | "connectors" | "widget"; managed?: ReviewSourceAdmin[] | null }) {
+  if (section === "connectors") return <ConnectorsGrid sources={managed ?? overview.sources} actions={managed ? (source) => <ReviewSourceActions source={source as ReviewSourceAdmin} /> : undefined} />;
   if (section === "widget") return <ReviewWidgetSection overview={overview} />;
   return <ExternalInbox overview={overview} />;
 }

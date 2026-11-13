@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Catalog\Support;
 
 use App\Domain\Iam\Models\User;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -12,53 +13,72 @@ final class AvailabilityDirectory
 {
     public const RANGE_STATUSES = ['disponible', 'cerrado', 'agotado'];
 
+    public static function rangesQuery(): Builder
+    {
+        return DB::table('catalog_availability_ranges as r')
+            ->join('catalog_products as p', 'p.id', '=', 'r.product_id')
+            ->whereNull('r.deleted_at')->whereNull('p.deleted_at')
+            ->select(['r.*', 'p.code as product_code', 'p.name as product_name']);
+    }
+
+    public static function presentRange(object $range, string $today): array
+    {
+        return [
+            'code' => $range->code,
+            'product' => ['id' => $range->product_id, 'code' => $range->product_code, 'name' => $range->product_name],
+            'date_from' => $range->date_from,
+            'date_to' => $range->date_to,
+            'days' => Carbon::parse($range->date_from)->diffInDays(Carbon::parse($range->date_to)) + 1,
+            'status' => $range->status,
+            'capacity_per_day' => (int) $range->capacity_per_day,
+            'note' => $range->note,
+            'phase' => match (true) {
+                $range->date_to < $today => 'pasado',
+                $range->date_from > $today => 'proximo',
+                default => 'en_curso',
+            },
+        ];
+    }
+
+    public static function holdsQuery(): Builder
+    {
+        return DB::table('catalog_availability_holds as h')
+            ->leftJoin('catalog_product_departures as d', 'd.id', '=', 'h.departure_id')
+            ->leftJoin('catalog_products as p', 'p.id', '=', DB::raw('coalesce(d.product_id, h.product_id)'))
+            ->leftJoin('iam_users as u', 'u.id', '=', 'h.created_by')
+            ->select(['h.*', 'd.ref as departure_ref', 'd.departure_date', 'd.departure_time', 'p.code as product_code', 'p.name as product_name', 'u.name as user_name']);
+    }
+
+    public static function presentHold(object $hold, Carbon $now): array
+    {
+        return [
+            'ref' => $hold->ref,
+            'lock_version' => (int) $hold->lock_version,
+            'departure' => $hold->departure_ref ? ['ref' => $hold->departure_ref, 'date' => $hold->departure_date, 'time' => substr((string) $hold->departure_time, 0, 5)] : null,
+            'product' => ['code' => $hold->product_code, 'name' => $hold->product_name],
+            'service_date' => $hold->service_date ?? $hold->departure_date,
+            'quantity' => (int) $hold->quantity,
+            'reference' => $hold->reference,
+            'status' => $hold->status,
+            'expired' => $hold->status === 'hold' && Carbon::parse($hold->expires_at)->lt($now),
+            'expires_at' => Carbon::parse($hold->expires_at)->toIso8601String(),
+            'created_at' => Carbon::parse($hold->created_at)->toIso8601String(),
+            'user' => $hold->user_name,
+            'released_reason' => $hold->released_reason,
+            'notes' => $hold->notes,
+        ];
+    }
+
     public function overview(User $viewer): array
     {
         $today = CatalogAccess::today();
         $now = now();
 
-        $ranges = DB::table('catalog_availability_ranges as r')
-            ->join('catalog_products as p', 'p.id', '=', 'r.product_id')
-            ->whereNull('r.deleted_at')->whereNull('p.deleted_at')
-            ->orderBy('p.name')->orderBy('r.date_from')
-            ->get(['r.*', 'p.code as product_code', 'p.name as product_name'])
-            ->map(fn (object $range) => [
-                'code' => $range->code,
-                'product' => ['id' => $range->product_id, 'code' => $range->product_code, 'name' => $range->product_name],
-                'date_from' => $range->date_from,
-                'date_to' => $range->date_to,
-                'days' => Carbon::parse($range->date_from)->diffInDays(Carbon::parse($range->date_to)) + 1,
-                'status' => $range->status,
-                'capacity_per_day' => (int) $range->capacity_per_day,
-                'note' => $range->note,
-                'phase' => match (true) {
-                    $range->date_to < $today => 'pasado',
-                    $range->date_from > $today => 'proximo',
-                    default => 'en_curso',
-                },
-            ]);
+        $ranges = self::rangesQuery()->orderBy('p.name')->orderBy('r.date_from')->get()
+            ->map(fn (object $range) => self::presentRange($range, $today));
 
-        $holds = DB::table('catalog_availability_holds as h')
-            ->leftJoin('catalog_product_departures as d', 'd.id', '=', 'h.departure_id')
-            ->leftJoin('catalog_products as p', 'p.id', '=', DB::raw('coalesce(d.product_id, h.product_id)'))
-            ->leftJoin('iam_users as u', 'u.id', '=', 'h.created_by')
-            ->orderByDesc('h.created_at')
-            ->get(['h.*', 'd.ref as departure_ref', 'd.departure_date', 'd.departure_time', 'p.code as product_code', 'p.name as product_name', 'u.name as user_name'])
-            ->map(fn (object $hold) => [
-                'ref' => $hold->ref,
-                'lock_version' => (int) $hold->lock_version,
-                'departure' => $hold->departure_ref ? ['ref' => $hold->departure_ref, 'date' => $hold->departure_date, 'time' => substr((string) $hold->departure_time, 0, 5)] : null,
-                'product' => ['code' => $hold->product_code, 'name' => $hold->product_name],
-                'quantity' => (int) $hold->quantity,
-                'reference' => $hold->reference,
-                'status' => $hold->status,
-                'expired' => $hold->status === 'hold' && Carbon::parse($hold->expires_at)->lt($now),
-                'expires_at' => Carbon::parse($hold->expires_at)->toIso8601String(),
-                'created_at' => Carbon::parse($hold->created_at)->toIso8601String(),
-                'user' => $hold->user_name,
-                'released_reason' => $hold->released_reason,
-                'notes' => $hold->notes,
-            ]);
+        $holds = self::holdsQuery()->orderByDesc('h.created_at')->get()
+            ->map(fn (object $hold) => self::presentHold($hold, $now));
 
         $held = DB::table('catalog_availability_holds')->where('status', 'hold')->whereNotNull('departure_id')
             ->selectRaw('departure_id, sum(quantity) as total')->groupBy('departure_id')->pluck('total', 'departure_id');

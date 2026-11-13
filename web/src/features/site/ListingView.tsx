@@ -56,7 +56,7 @@ export async function ListingView({ agencia, params, mode }: { agencia: string; 
                       {t.clear}
                     </Link>
                   )}
-                  <Link href={siteHref(base, `/viajes-a-medida${listingQuery({ destino: params.destino, fecha: params.fecha, viajeros: params.viajeros })}`)} className="inline-flex h-10 items-center rounded-control bg-brand px-4 text-[13.5px] font-semibold text-brand-fg transition hover:-translate-y-0.5">
+                  <Link href={siteHref(base, `/viajes-a-medida${listingQuery({ destino: params.destino, fecha: params.fecha, viajeros: params.viajeros })}`)} data-site-cta className="inline-flex h-10 items-center rounded-control bg-brand px-4 text-[13.5px] font-semibold text-brand-fg transition hover:-translate-y-0.5">
                     {common.tailor}
                   </Link>
                 </div>

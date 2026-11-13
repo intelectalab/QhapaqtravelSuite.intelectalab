@@ -115,6 +115,8 @@ function StyleForm({ studio }: { studio: StudioContext }) {
         </div>
       </Card>
 
+      {design.theme.style === "andes" && <AndesSettingsCard studio={studio} />}
+
       <Card>
         <CardHeader title="Colores del sitio" subtitle="Usa los mismos colores del panel o elige una paleta propia para tus clientes." />
         <Segmented
@@ -192,6 +194,27 @@ function StyleForm({ studio }: { studio: StudioContext }) {
         </div>
       </Card>
     </>
+  );
+}
+
+function AndesSettingsCard({ studio }: { studio: StudioContext }) {
+  const { design, change, data, errors } = studio;
+  const { ink, defaults } = data.catalog.andes;
+  const gold: ColorRoleSpec<"gold"> = { key: "gold", label: "Acción principal", hint: "Solo los botones Reservar, Cotizar a medida y Buscar, y el Libro de Reclamaciones del pie. El texto va en marrón oscuro.", presets: [defaults.gold, "#f5c04a", "#e9a23b", "#f0c75e", "#7dd3c0", "#fbd38d"], ink };
+  return (
+    <Card>
+      <CardHeader title="Ajustes de Andes Clásico" subtitle="Lo que la plantilla te deja cambiar. Lo demás sigue tus colores y textos." />
+      <div className="grid gap-3">
+        <div>
+          <ColorRole role={gold} value={design.andes.gold} disabled={false} onChange={(value) => change((draft) => void (draft.andes.gold = value))} />
+          {errors["andes.gold"] && <p className="mt-1 text-[12px] font-semibold text-bad">{errors["andes.gold"]}</p>}
+        </div>
+        <div className="grid gap-3 rounded-[14px] border border-line p-3.5 sm:grid-cols-2">
+          <SwitchField label="Títulos con serifa" name="andes-serif" checked={design.andes.serif_titles} onCheckedChange={(value) => change((draft) => void (draft.andes.serif_titles = value))} hint="Noto Serif en los títulos; los textos y botones siguen en tu letra." />
+          <SwitchField label="Destinos en mosaico" name="andes-mosaic" checked={design.andes.mosaic} onCheckedChange={(value) => change((draft) => void (draft.andes.mosaic = value))} hint="Los dos primeros destinos más grandes. Apagado, todos del mismo tamaño." />
+        </div>
+      </div>
+    </Card>
   );
 }
 

@@ -20,6 +20,25 @@ final class ReceivableController
         return response()->json(['data' => $directory->overview($this->actor($request))]);
     }
 
+    public function summary(Request $request, ReceivableDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->summary($this->actor($request))]);
+    }
+
+    public function account(string $code, ReceivableDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->account($code)]);
+    }
+
+    public function statement(Request $request, string $code, ReceivableWorkflow $workflow): JsonResponse
+    {
+        $actor = $this->actor($request);
+        $this->requireOperator($actor);
+        $data = $request->validate(['email' => ['nullable', 'email', 'max:150']], ['email.*' => 'Revisa el correo.']);
+
+        return response()->json(['data' => $workflow->sendStatement($code, $data['email'] ?? null, $actor)]);
+    }
+
     public function registerPayment(Request $request, ReceivableWorkflow $workflow): JsonResponse
     {
         $data = $request->validate([

@@ -5,15 +5,16 @@ import { CheckoutWizard } from "@/features/site/CheckoutWizard";
 import { TrackEvent } from "@/features/site/SiteAnalytics";
 import { Breadcrumbs, PageHero } from "@/features/site/Hero";
 import { capitalize, formatDate, formatMoney } from "@/lib/format";
-import { getCheckoutTerms, getSiteCart, getSiteProfile, siteBase } from "@/lib/server/site";
-import { siteHref } from "@/lib/site";
+import { accountFetch, accountToken, getCheckoutTerms, getSiteCart, getSiteProfile, siteBase } from "@/lib/server/site";
+import { siteHref, type AccountMe } from "@/lib/site";
 
 export const metadata: Metadata = { title: "Finalizar compra", robots: { index: false, follow: false } };
 
 export default async function CheckoutPage({ params }: PageProps<"/sitio/[agencia]/checkout">) {
   const { agencia } = await params;
-  const [cart, base, terms, profile] = await Promise.all([getSiteCart(agencia), siteBase(agencia), getCheckoutTerms(agencia), getSiteProfile(agencia)]);
+  const [cart, base, terms, profile, me] = await Promise.all([getSiteCart(agencia), siteBase(agencia), getCheckoutTerms(agencia), getSiteProfile(agencia), accountToken(agencia).then((token) => (token ? accountFetch<AccountMe>(agencia, "/me") : null))]);
   if (cart.items.length === 0 || cart.items.some((item) => item.quote === null) || terms === null) redirect(siteHref(base, "/carrito"));
+  const account = me?.ok ? me.data : null;
 
   return (
     <>
@@ -24,7 +25,7 @@ export default async function CheckoutPage({ params }: PageProps<"/sitio/[agenci
         </div>
       </PageHero>
       <div className="mx-auto grid max-w-[1240px] gap-6 px-5 pt-10 sm:px-8 lg:grid-cols-[1fr_360px]">
-        <CheckoutWizard terms={terms} walletPhone={profile.agency.phone} cart={cart} />
+        <CheckoutWizard terms={terms} walletPhone={profile.agency.phone} cart={cart} account={account} loginHref={siteHref(base, "/cuenta/ingresar?next=/checkout")} />
         <aside className="grid gap-4 lg:sticky lg:top-24 lg:self-start">
           <ul className="grid gap-2">
             {cart.items.map((item) => (

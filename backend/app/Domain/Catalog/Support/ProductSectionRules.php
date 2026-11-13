@@ -130,6 +130,8 @@ final class ProductSectionRules
             "{$prefix}seo_description" => ['nullable', 'string', 'max:320'],
             "{$prefix}slug" => ['nullable', 'string', 'max:160', 'regex:/^[a-z0-9]+(-[a-z0-9]+)*$/'],
             "{$prefix}video_url" => ['nullable', 'url', 'max:300'],
+            "{$prefix}features" => ['nullable', 'array', 'max:12'],
+            "{$prefix}features.*" => ['string', 'min:2', 'max:120', 'distinct:ignore_case'],
             "{$prefix}inclusions" => ['present', 'array', 'max:40'],
             "{$prefix}inclusions.*" => ['string', 'min:2', 'max:200', 'distinct:ignore_case'],
             "{$prefix}exclusions" => ['present', 'array', 'max:40'],

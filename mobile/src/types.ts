@@ -19,6 +19,7 @@ export interface Passenger {
 }
 
 export interface Pickup {
+  applies?: boolean;
   flight: string | null;
   arrival: string | null;
   sign: string | null;
@@ -50,6 +51,7 @@ export interface Assignment {
   vehicle: string | null;
   meeting_point: { text: string; source: "salida" | "cliente" | "producto" } | null;
   pickup?: Pickup;
+  incidents?: { code: string; type: string; severity: string; title: string; status: string }[];
   partner: Contact | null;
   coordinator: Contact | null;
   confirmed_at: string | null;
@@ -71,6 +73,8 @@ export interface OperatorMe {
   name: string;
   phone: string | null;
   status: string;
+  status_label?: string;
+  rating?: number | null;
   license: string | null;
   license_class: string | null;
   license_expires_on: string | null;

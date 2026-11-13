@@ -1,9 +1,11 @@
-import { BedDouble, Coins, Gauge, Ticket, TimerReset, TrainFront } from "lucide-react";
+import { ArrowUpRight, BedDouble, CalendarDays, Coins, FileText, Gauge, History, ListChecks, Ticket, TimerReset, TrainFront } from "lucide-react";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Badge } from "@/components/ui/Badge";
-import { TabbedCard } from "@/components/ui/RouteTabs";
+import { Card } from "@/components/ui/Card";
+import { PathSectionNav } from "@/components/ui/PathSectionNav";
+import { SectionLayout } from "@/components/ui/SectionNav";
 import { TintTile } from "@/components/ui/Tinted";
 import { ContractDeleteAction, ContractEditAction, ContractReleaseAction } from "@/features/catalog-allotments/AllotmentForms";
 import { ALLOTMENT_STATUS, isClosed } from "@/lib/catalog-allotments";
@@ -84,16 +86,29 @@ export default async function CupoLayout({ children, params }: { children: React
           }
         />
       </section>
-      <TabbedCard
-        tabs={[
-          { href: base, label: "Calendario" },
-          { href: `${base}/condiciones`, label: "Condiciones" },
-          { href: `${base}/consumo`, label: "Consumo" },
-          { href: `${base}/ampliaciones`, label: "Ampliaciones" },
-        ]}
+      <SectionLayout
+        nav={
+          <PathSectionNav
+            label="Secciones del contrato"
+            testId="allotment-nav"
+            groups={[
+              {
+                title: "Contrato de cupo",
+                items: [
+                  { href: base, label: "Calendario", icon: <CalendarDays size={16} /> },
+                  { href: `${base}/condiciones`, label: "Condiciones", icon: <FileText size={16} /> },
+                  { href: `${base}/consumo`, label: "Consumo", count: detail.consumptions.length, icon: <ListChecks size={16} /> },
+                  { href: `${base}/ampliaciones`, label: "Ampliaciones", count: detail.requests.length, icon: <ArrowUpRight size={16} /> },
+                  { href: `${base}/penalidades`, label: "Penalidades", count: detail.charges.length, icon: <Coins size={16} /> },
+                  { href: `${base}/historial`, label: "Historial", icon: <History size={16} /> },
+                ],
+              },
+            ]}
+          />
+        }
       >
-        {children}
-      </TabbedCard>
+        <Card padded={false} className="overflow-hidden [&_.shadow-card]:shadow-none">{children}</Card>
+      </SectionLayout>
     </>
   );
 }

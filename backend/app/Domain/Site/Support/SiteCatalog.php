@@ -166,6 +166,8 @@ final class SiteCatalog
         $today = $this->today();
         $from = null;
         $list = null;
+        $fromDate = null;
+        $fromSeason = null;
         $firstSellable = null;
 
         for ($i = 0; $i <= self::HORIZON; $i++) {
@@ -181,6 +183,8 @@ final class SiteCatalog
             if ($from === null || $day['price']['adult'] < $from['amount']) {
                 $from = ['amount' => $day['price']['adult'], 'currency' => $day['price']['currency']];
                 $list = $day['price']['list'];
+                $fromDate = $date;
+                $fromSeason = $day['price']['season'] === null ? null : ['name' => $day['price']['season']['name'], 'factor' => $day['price']['season']['factor'], 'discount_pct' => $day['price']['season']['discount_pct'] ?? null];
             }
         }
 
@@ -204,6 +208,8 @@ final class SiteCatalog
             'languages' => $product->languages,
             'rating' => $product->rating,
             'from' => $from,
+            'from_date' => $fromDate,
+            'from_season' => $fromSeason,
             'list' => $list,
             'first_date' => $firstSellable,
             'next_departure' => $nextDeparture,

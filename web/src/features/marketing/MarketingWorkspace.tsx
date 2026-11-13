@@ -1,15 +1,16 @@
 "use client";
 
-import { CalendarClock, Clock3, FilePen, Filter, Mail, MessageCircle, Send, Users } from "lucide-react";
+import { CalendarClock, Clock3, FilePen, Filter, Mail, Megaphone, MessageCircle, Send, Users } from "lucide-react";
+import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
-import { RowActions } from "@/components/table/RowActions";
+import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { formatDate, formatDateTime, formatMoney, formatPercent } from "@/lib/format";
-import { rate, TEMPLATE_STATUS, type Campaign, type MarketingOverview, type MarketingTemplate } from "@/lib/marketing";
+import { campaignHref, rate, TEMPLATE_STATUS, type Campaign, type MarketingOverview, type MarketingTemplate } from "@/lib/marketing";
 import { toneStyle } from "@/lib/tone";
 import { CampaignCancelAction, CampaignDetailAction, CampaignDuplicateAction, CampaignFormAction } from "./CampaignForms";
 import { SegmentDeleteAction, SegmentDuplicateAction, SegmentFormAction } from "./SegmentForms";
@@ -28,7 +29,9 @@ function CampaignsTable({ overview }: { overview: MarketingOverview }) {
             <span style={toneStyle(row.channel === "email" ? "info" : "ok")} className="grid h-6 w-6 place-items-center rounded-md bg-[color-mix(in_srgb,var(--tint)_14%,transparent)] text-[var(--tint)]">
               {row.channel === "email" ? <Mail size={13} /> : <MessageCircle size={13} />}
             </span>
-            <b className="max-w-[340px] truncate text-[13.5px]">{row.name}</b>
+            <Link href={campaignHref(row.code)} className="max-w-[340px] truncate text-[13.5px] font-bold transition-colors hover:text-accent">
+              {row.name}
+            </Link>
           </span>
           <span className="mt-0.5 block text-[12px] text-fg-3">
             {row.code} · {row.segment?.name ?? "Sin segmento"}
@@ -50,6 +53,20 @@ function CampaignsTable({ overview }: { overview: MarketingOverview }) {
       cell: (row) => (row.status === "enviada" ? <span className="font-mono text-[13px]" title={`${row.metrics.opened} aperturas · ${row.metrics.clicked} clics`}>{formatPercent(rate(row.metrics.opened, row.metrics.delivered), 0)}</span> : <span className="text-fg-3">—</span>),
     },
     {
+      id: "conversions",
+      header: "Conversiones",
+      align: "right",
+      cell: (row) =>
+        row.status === "enviada" ? (
+          <span className="font-mono text-[13px]" title={`${row.attribution.reservations} reservas atribuidas de ${row.metrics.delivered} entregados`}>
+            {row.attribution.reservations}
+            <span className="block text-[11px] text-fg-3">{formatPercent(rate(row.attribution.reservations, row.metrics.delivered), 1)}</span>
+          </span>
+        ) : (
+          <span className="text-fg-3">—</span>
+        ),
+    },
+    {
       id: "revenue",
       header: "Ingresos",
       align: "right",
@@ -63,7 +80,7 @@ function CampaignsTable({ overview }: { overview: MarketingOverview }) {
       cell: (row) =>
         overview.can.manage ? (
         <RowActions>
-          <CampaignDetailAction campaign={row} canManage={overview.can.manage} />
+          <CampaignDetailAction campaign={row} canManage={overview.can.manage} testOptions={overview.test_options} />
           <CampaignFormAction overview={overview} campaign={row} />
           <CampaignDuplicateAction campaign={row} />
           <CampaignCancelAction campaign={row} />
@@ -110,6 +127,27 @@ function RuleChips({ parts, match, fallback }: { parts: string[]; match: "all" |
   );
 }
 
+function SegmentCampaigns({ campaigns }: { campaigns: Campaign[] }) {
+  if (campaigns.length === 0) return <p className="mt-3 text-[12px] text-fg-3">Ninguna campaña lo usa todavía.</p>;
+  const shown = campaigns.slice(0, 3);
+  return (
+    <ul className="mt-3 flex flex-col gap-1">
+      {shown.map((campaign) => (
+        <li key={campaign.code}>
+          <Link href={campaignHref(campaign.code)} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1 text-[12.5px] transition-colors hover:bg-surface-2">
+            <span className="flex min-w-0 items-center gap-1.5">
+              {campaign.channel === "email" ? <Mail size={12} className="flex-none text-info" /> : <MessageCircle size={12} className="flex-none text-ok" />}
+              <span className="truncate">{campaign.name}</span>
+            </span>
+            <StatusBadge status={campaign.status} label={campaign.status_label} />
+          </Link>
+        </li>
+      ))}
+      {campaigns.length > shown.length && <li className="px-2 text-[11.5px] text-fg-3">y {campaigns.length - shown.length} más</li>}
+    </ul>
+  );
+}
+
 function SegmentsGrid({ overview }: { overview: MarketingOverview }) {
   const manage = overview.can.manage;
   return (
@@ -145,13 +183,15 @@ function SegmentsGrid({ overview }: { overview: MarketingOverview }) {
                   <span className="text-[11px] text-fg-3">WhatsApp</span>
                 </div>
               </div>
+              <SegmentCampaigns campaigns={overview.campaigns.filter((campaign) => campaign.segment?.code === segment.code)} />
               <div className="mt-auto flex items-end justify-between gap-2 pt-3">
                 <p className="text-[11.5px] text-fg-3">
-                  {segment.campaigns === 0 ? "Sin campañas" : `${segment.campaigns} ${segment.campaigns === 1 ? "campaña" : "campañas"}`} · {segment.match === "all" ? "todas las reglas" : "alguna regla"}
+                  {segment.match === "all" ? "Cumple todas las reglas" : "Cumple alguna regla"}
                   <span className="block">Actualizado {formatDate(segment.updated_at)}{segment.owner ? ` · ${segment.owner}` : ""}</span>
                 </p>
                 {manage && (
                   <RowActions>
+                    <CampaignFormAction overview={overview} segmentCode={segment.code} trigger={(open) => <RowIcon tone="neutral" label="Crear campaña con este segmento" icon={<Megaphone size={15} />} onClick={open} />} />
                     <SegmentFormAction fields={overview.segment_fields} segment={segment} />
                     <SegmentDuplicateAction segment={segment} />
                     <SegmentDeleteAction segment={segment} />

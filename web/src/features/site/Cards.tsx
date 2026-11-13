@@ -12,7 +12,8 @@ import { useSite } from "./SiteContext";
 const RISE = "animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]";
 
 export function ProductCard({ product, base, index = 0, className }: { product: Product; base: string; index?: number; className?: string }) {
-  const { t, dateLocale } = useSite();
+  const { t, dateLocale, design } = useSite();
+  const andes = design?.theme.style === "andes";
   const tagTone = { offer: "brand", guaranteed: "ok", last: "warn", featured: "t2" } as const;
   return (
     <Link
@@ -34,7 +35,7 @@ export function ProductCard({ product, base, index = 0, className }: { product: 
           <MapPin size={12} />
           {product.destination.name}
         </span>
-        <span className="absolute bottom-3 right-3 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-fg opacity-0 transition duration-300 group-hover:opacity-100">
+        <span className={cn("absolute bottom-3 right-3 grid h-8 w-8 place-items-center rounded-full bg-white/90 text-fg opacity-0 transition duration-300 group-hover:opacity-100", andes && "hidden")}>
           <ArrowUpRight size={16} />
         </span>
       </Scenery>
@@ -62,7 +63,13 @@ export function ProductCard({ product, base, index = 0, className }: { product: 
         </ul>
         <div className="mt-auto flex items-end justify-between gap-3 pt-4">
           <PriceTag from={product.from} list={product.list} label={product.on_date ? t.cards.onDate(formatDate(product.on_date.date, "short", dateLocale)) : t.common.from} unit={product.kind === "traslados" ? t.cards.perVehicle : t.cards.perPerson} />
-          <span className="text-right text-[11.5px] leading-tight text-fg-3">
+          {andes && (
+            <span data-site-cta className="inline-flex h-9 flex-none items-center gap-1 rounded-control px-3.5 text-[13px] transition group-hover:-translate-y-0.5">
+              {t.cards.book}
+              <ArrowUpRight size={14} />
+            </span>
+          )}
+          <span className={cn("text-right text-[11.5px] leading-tight text-fg-3", andes && "hidden")}>
             {product.next_departure ? (
               <>
                 {t.cards.nextDeparture}
@@ -81,10 +88,10 @@ export function ProductCard({ product, base, index = 0, className }: { product: 
   );
 }
 
-export function DestinationTile({ destination, base, index = 0, large = false }: { destination: Destination; base: string; index?: number; large?: boolean }) {
+export function DestinationTile({ destination, base, index = 0, large = false, className }: { destination: Destination; base: string; index?: number; large?: boolean; className?: string }) {
   const { t } = useSite();
   return (
-    <Link href={siteHref(base, `/destinos/${destination.slug}`)} className={cn("lift group relative block overflow-hidden rounded-card", RISE, large ? "min-h-[300px] sm:row-span-2 sm:min-h-[420px]" : "min-h-[200px]")} style={{ animationDelay: `${index * 70}ms` }}>
+    <Link href={siteHref(base, `/destinos/${destination.slug}`)} className={cn("lift group relative block overflow-hidden rounded-card", RISE, large ? (className ? "min-h-[260px] sm:min-h-[340px]" : "min-h-[300px] sm:row-span-2 sm:min-h-[420px]") : "min-h-[200px]", className)} style={{ animationDelay: `${index * 70}ms` }}>
       <div className="absolute inset-0">
         <Scenery seed={destination.slug} image={destination.image} className="h-full w-full" />
       </div>

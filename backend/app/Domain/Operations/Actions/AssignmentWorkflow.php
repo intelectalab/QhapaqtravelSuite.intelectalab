@@ -18,6 +18,8 @@ use Illuminate\Support\Str;
 
 final class AssignmentWorkflow
 {
+    public const ASSIGNABLE_KINDS = ['tour', 'traslado'];
+
     private const GAP_MINUTES = 360;
 
     private const NATIONALITY_LANGUAGE = ['Alemana' => 'DE', 'Francesa' => 'FR', 'Brasileña' => 'PT', 'Portuguesa' => 'PT', 'Italiana' => 'IT', 'Estadounidense' => 'EN', 'Británica' => 'EN', 'Canadiense' => 'EN', 'Australiana' => 'EN'];
@@ -180,6 +182,57 @@ final class AssignmentWorkflow
     private function resourcesOf(array $data): array
     {
         return ['guide_id' => $data['guide_id'] ?? null, 'driver_id' => $data['driver_id'] ?? null, 'vehicle_id' => $data['vehicle_id'] ?? null];
+    }
+
+    public function ensure(string $orderReference, string $serviceReference, User $actor): array
+    {
+        $id = DB::transaction(function () use ($orderReference, $serviceReference, $actor): string {
+            $order = DB::table('ops_orders')->whereNull('deleted_at')->where(Str::isUuid($orderReference) ? 'id' : 'code', $orderReference)->lock('for no key update')->first()
+                ?? throw ApiException::notFound('La orden operativa no existe.');
+
+            if (in_array($order->status, ['completada', 'cancelada'], true)) {
+                throw ApiException::conflict('OPS-BR-05', 'La orden ya está cerrada.');
+            }
+
+            $service = DB::table('booking_reservation_services')->where('reservation_id', $order->reservation_id)->where(Str::isUuid($serviceReference) ? 'id' : 'code', $serviceReference)->lock('for no key update')
+                ->first(['id', 'code', 'name', 'status', 'service_kind', 'service_date', 'service_time']) ?? throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige un servicio de la reserva de esta orden.');
+
+            if ($service->status === 'cancelado') {
+                throw ApiException::conflict('OPS-BR-05', 'El servicio está cancelado: no se asignan recursos.');
+            }
+
+            if (! in_array($service->service_kind, self::ASSIGNABLE_KINDS, true)) {
+                throw ApiException::unprocessable('OPS-BR-05', 'Solo los tours y traslados llevan guía, conductor o vehículo.');
+            }
+
+            if (DB::table('ops_assignments')->where('order_id', $order->id)->where('reservation_service_id', $service->id)->exists()) {
+                throw ApiException::conflict('OPS-BR-05', 'Este servicio ya tiene su asignación en la orden.');
+            }
+
+            $id = (string) Str::uuid7();
+            DB::table('ops_assignments')->insert([
+                'id' => $id,
+                'order_id' => $order->id,
+                'reservation_service_id' => $service->id,
+                'service_date' => $service->service_date,
+                'service_time' => $service->service_time,
+                'service_label' => $service->name,
+                'status' => 'pendiente',
+                'created_by' => $actor->getKey(),
+            ]);
+
+            if ($order->status === 'planificada') {
+                DB::table('ops_orders')->where('id', $order->id)->update(['status' => 'pendiente_asignacion', 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
+            } else {
+                $this->recompute($order->id);
+            }
+
+            $this->audit->log('Asignación', $order->code.' · '.$service->name, 'crear', null, "pendiente · {$service->code}", actor: $actor);
+
+            return $id;
+        });
+
+        return $this->resources->assignments(['a.id' => $id])->first() ?? ['id' => $id];
     }
 
     public function confirm(string $id, User $actor): void

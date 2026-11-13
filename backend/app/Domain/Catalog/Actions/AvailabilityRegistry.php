@@ -33,6 +33,58 @@ final class AvailabilityRegistry
         });
     }
 
+    public function closeDates(string $productId, array $data, User $actor): array
+    {
+        $dates = collect($data['dates'])->map(fn (string $date): string => Carbon::parse($date)->toDateString())->unique()->sort()->values();
+
+        if ($dates->first() < CatalogAccess::today()) {
+            throw ApiException::unprocessable('CAT-AV-05', 'No se pueden cerrar fechas pasadas.', ['dates' => ['No se pueden cerrar fechas pasadas.']]);
+        }
+
+        $sold = DB::table('booking_reservation_services as s')->join('booking_reservations as r', 'r.id', '=', 's.reservation_id')
+            ->where('s.product_id', $productId)->whereIn('s.service_date', $dates->all())->where('s.status', '<>', 'cancelado')
+            ->whereNotIn('r.status', ['borrador', 'cancelada'])->whereNull('r.deleted_at')
+            ->distinct()->orderBy('s.service_date')->pluck('s.service_date')->map(fn (mixed $date): string => substr((string) $date, 0, 10))->all();
+
+        if ($sold !== [] && ! ($data['confirm_sales'] ?? false)) {
+            throw ApiException::conflict('CAT-AV-04', 'Hay ventas en '.count($sold).' de esas fechas. Confirma para cerrarlas igual: las reservas no se anulan y se avisa a Operaciones.', ['affected_dates' => $sold]);
+        }
+
+        $groups = [];
+
+        foreach ($dates as $date) {
+            $last = array_key_last($groups);
+
+            if ($last !== null && Carbon::parse($groups[$last][1])->addDay()->toDateString() === $date) {
+                $groups[$last][1] = $date;
+            } else {
+                $groups[] = [$date, $date];
+            }
+        }
+
+        return DB::transaction(function () use ($productId, $groups, $data, $sold, $actor): array {
+            $codes = array_map(fn (array $group): string => $this->createRange([
+                'product_id' => $productId,
+                'date_from' => $group[0],
+                'date_to' => $group[1],
+                'status' => $data['status'],
+                'capacity_per_day' => null,
+                'note' => $data['note'] ?? null,
+            ], $actor), $groups);
+
+            if ($sold !== []) {
+                $product = (string) DB::table('catalog_products')->where('id', $productId)->value('code');
+                app(StaffNotices::class)->toRoles(['operations', 'manager'], 'disponibilidad.cerrada_con_ventas', "Fechas cerradas con ventas en {$product}", 'Revisa las reservas de: '.implode(', ', $sold).'.', 'catalog_product', $productId, null, [], (string) $actor->getKey());
+            }
+
+            return [
+                'ranges' => array_map(fn (array $group, string $code): array => ['code' => $code, 'date_from' => $group[0], 'date_to' => $group[1], 'status' => $data['status']], $groups, $codes),
+                'dates' => array_sum(array_map(fn (array $group): int => (int) Carbon::parse($group[0])->diffInDays(Carbon::parse($group[1])) + 1, $groups)),
+                'affected_sales' => $sold,
+            ];
+        });
+    }
+
     public function updateRange(string $code, array $data, User $actor): string
     {
         return $this->guarded(function () use ($code, $data, $actor): string {

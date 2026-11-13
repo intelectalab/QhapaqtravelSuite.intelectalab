@@ -10,6 +10,7 @@ use App\Domain\Portal\Actions\PortalMessages;
 use App\Domain\Portal\Actions\PortalProfile;
 use App\Domain\Portal\Actions\PortalQuoteDecision;
 use App\Domain\Portal\Actions\ReportPortalPayment;
+use App\Domain\Portal\Support\PassengerMenu;
 use App\Domain\Portal\Support\PortalAccount;
 use App\Domain\Portal\Support\PortalDirectory;
 use App\Domain\Shared\Errors\ApiException;
@@ -23,9 +24,11 @@ final class PortalController
 {
     public function __construct(private readonly PortalDirectory $directory) {}
 
-    public function session(Request $request): JsonResponse
+    public function session(Request $request, PassengerMenu $menu): JsonResponse
     {
-        return $this->json($this->directory->session($this->account($request)));
+        $account = $this->account($request);
+
+        return $this->json([...$this->directory->session($account), 'menu' => $account->isPassenger() ? $menu->for($account) : null]);
     }
 
     public function home(Request $request): JsonResponse
@@ -194,7 +197,8 @@ final class PortalController
             'conversation' => ['nullable', 'string', 'max:20'],
             'trip' => ['nullable', 'string', 'max:30'],
             'topic' => ['nullable', 'in:general,pagos,documentos,cambios,salud'],
-        ], ['body.*' => 'Escribe tu mensaje.']);
+            'priority' => ['nullable', 'in:baja,media,alta'],
+        ], ['body.*' => 'Escribe tu mensaje.', 'priority.*' => 'Elige la prioridad: baja, normal o alta.']);
 
         return $this->json(['code' => $messages->send($this->account($request), $data)]);
     }

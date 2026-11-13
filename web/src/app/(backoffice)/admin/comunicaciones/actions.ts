@@ -2,6 +2,22 @@
 
 import type { AdminActionState } from "@/lib/admin";
 import { fields, flag, list, sendAdmin, text } from "@/lib/server/admin";
+import { apiFetch } from "@/lib/server/api";
+
+export interface PaxTemplatePreview {
+  code: string;
+  name: string;
+  channel: string;
+  lang: string;
+  reservation: string;
+  recipient: string | null;
+  subject: string | null;
+  body: string;
+  scheduled_at: string | null;
+  eligible: boolean;
+  blocked_reason: string | null;
+  reservation_lang: string;
+}
 
 const PATH = "/admin/comunicaciones";
 
@@ -51,4 +67,14 @@ export async function reschedulePaxMessages(): Promise<AdminActionState> {
 
 export async function testPaxTemplate(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
   return sendAdmin(`/notifications/pax-templates/${code(form)}/test`, "POST", {}, PATH, "No pudimos enviar la prueba.");
+}
+
+export async function duplicatePaxTemplate(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
+  return sendAdmin(`/notifications/pax-templates/${code(form)}/duplicate`, "POST", {}, PATH, "No pudimos duplicar la plantilla.");
+}
+
+export async function previewPaxTemplate(template: string, channel: string, reservation?: string): Promise<{ ok: true; data: PaxTemplatePreview } | { ok: false; message: string }> {
+  const result = await apiFetch<PaxTemplatePreview>(`/notifications/pax-templates/${encodeURIComponent(template)}/preview`, { method: "POST", body: { channel, ...(reservation ? { reservation } : {}) } });
+  if (!result.ok || !result.data) return { ok: false, message: result.error?.message ?? "No pudimos preparar la vista previa." };
+  return { ok: true, data: result.data };
 }

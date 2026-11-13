@@ -12,19 +12,21 @@ import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
-import { ATTACHMENT_ACCEPT, ATTACHMENT_MAX_BYTES, ATTACHMENT_MAX_FILES, LINK_KINDS, PRIORITY_OPTIONS, type ConversationThread, type LinkKind, type LinkOption, type ReplyTemplate } from "@/lib/inbox";
+import { ATTACHMENT_ACCEPT, ATTACHMENT_MAX_BYTES, ATTACHMENT_MAX_FILES, LINK_KINDS, PRIORITY_OPTIONS, type ConversationThread, type InboxOverview, type LinkKind, type LinkOption, type ReplyTemplate } from "@/lib/inbox";
 import type { StepResult } from "@/lib/server/resource";
 
 const initial: StepResult = { message: null, done: false };
 
-function fill(body: string, thread: ConversationThread, me: string) {
+function fill(body: string, thread: ConversationThread, me: string, agency?: InboxOverview["agency"]) {
   const reservation = thread.card.reservations.find((item) => item.linked) ?? thread.card.reservations[0];
   const quote = thread.card.quotes.find((item) => item.linked) ?? thread.card.quotes[0];
   return body
     .replaceAll("{{nombre}}", thread.contact.name.split(" ")[0])
     .replaceAll("{{asesor}}", me)
     .replaceAll("{{cotizacion}}", quote?.code ?? "")
-    .replaceAll("{{reserva}}", reservation?.code ?? "");
+    .replaceAll("{{reserva}}", reservation?.code ?? "")
+    .replaceAll("{{empresa}}", agency?.name ?? "")
+    .replaceAll("{{telefono_emergencia}}", agency?.emergency_phone ?? "");
 }
 
 function StepFields({ thread, step }: { thread: ConversationThread; step: string }) {
@@ -199,7 +201,7 @@ export function ConversationUnlinkAction({ thread, kind, code }: { thread: Conve
   );
 }
 
-export function Composer({ thread, templates, me }: { thread: ConversationThread; templates: ReplyTemplate[]; me: string }) {
+export function Composer({ thread, templates, me, agency }: { thread: ConversationThread; templates: ReplyTemplate[]; me: string; agency?: InboxOverview["agency"] }) {
   const [body, setBody] = useState("");
   const [template, setTemplate] = useState("");
   const [internal, setInternal] = useState(false);
@@ -244,7 +246,7 @@ export function Composer({ thread, templates, me }: { thread: ConversationThread
           onChange={(value) => {
             setTemplate(value);
             const found = usable.find((item) => item.code === value);
-            if (found) setBody(fill(found.body, thread, me));
+            if (found) setBody(fill(found.body, thread, me, agency));
           }}
         />
         <SwitchField label="Nota interna" hint="Solo la ve el equipo." name="internal" checked={internal} onCheckedChange={setInternal} />

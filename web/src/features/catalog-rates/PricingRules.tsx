@@ -1,6 +1,6 @@
 "use client";
 
-import { Calculator, CircleCheck, CirclePause, Plus, Power } from "lucide-react";
+import { Calculator, ChevronRight, CircleCheck, CirclePause, Plus, Power } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { createPriceRule, deletePriceRule, simulatePrice, togglePriceRule, updatePriceRule } from "@/app/(backoffice)/catalogo/tarifas/actions";
@@ -163,6 +163,39 @@ function Simulator({ overview }: { overview: PricingOverview }) {
         </div>
       </SidePanel>
     </>
+  );
+}
+
+const CHAIN: { label: string; tip: string }[] = [
+  { label: "Tarifa", tip: "La tarifa vigente del producto para el segmento y el canal." },
+  { label: "Reglas", tip: "Markup, comisión y utilidad que aplican al producto o al canal." },
+  { label: "Temporada", tip: "El factor de la temporada activa de menor prioridad que cubre la fecha." },
+  { label: "Segmento", tip: "Adulto, niño, infante, pasajero o grupo." },
+  { label: "Ocupación", tip: "Precio por persona, por grupo, por habitación o por unidad." },
+  { label: "Canal", tip: "Directo, B2B, corporativo, e-commerce o mayorista." },
+  { label: "Descuento", tip: "Descuentos y promociones vigentes." },
+  { label: "Impuesto", tip: "Los impuestos que correspondan, como el IGV." },
+  { label: "Redondeo", tip: "El redondeo configurado, dentro del precio mínimo y máximo." },
+  { label: "Precio", tip: "El precio final que ve el cliente." },
+];
+
+export function PricingChain() {
+  return (
+    <section className="mb-5 rounded-tile border border-line bg-surface-2/50 px-4 py-3.5" aria-label="Cadena de cálculo">
+      <p className="mb-2.5 text-[13.5px] font-semibold">Cadena de cálculo</p>
+      <ol className="flex flex-wrap items-center gap-1.5">
+        {CHAIN.map((step, index) => (
+          <li key={step.label} className="flex items-center gap-1.5">
+            {index > 0 && <ChevronRight size={14} className="text-fg-3" />}
+            <span title={step.tip} style={{ animationDelay: `${index * 50}ms` }} className={cn("lift flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12.5px] font-semibold motion-safe:animate-[rise-in_380ms_cubic-bezier(0.22,1,0.36,1)_backwards]", index === CHAIN.length - 1 ? "border-accent bg-accent text-white" : "border-line bg-surface text-fg-2")}>
+              <b className={cn("font-mono text-[11px]", index === CHAIN.length - 1 ? "text-white/80" : "text-fg-3")}>{index + 1}</b>
+              {step.label}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-2.5 text-[12.5px] text-fg-3">Costo más costos adicionales más markup, menos descuentos, más impuestos: el precio final. El simulador recorre la misma cadena.</p>
+    </section>
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleAlert, CircleCheck, TriangleAlert } from "lucide-react";
+import { CircleAlert, CircleCheck, Scale, TriangleAlert } from "lucide-react";
 import { PROFIT_CSV } from "@/lib/finance-csv";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
@@ -69,6 +69,7 @@ export function ProfitabilityTable({ data }: { data: ProfitabilityOverview }) {
       align: "right",
       cell: (row) => (
         <RowActions>
+          <RowIcon tone="neutral" label="Liquidación" icon={<Scale size={15} />} href={`/reservas/${row.code}?seccion=liquidacion`} opensRow={false} />
           <RowIcon tone="view" label="Ver reserva" href={`/reservas/${row.code}`} />
         </RowActions>
       ),

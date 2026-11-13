@@ -6,6 +6,7 @@ namespace App\Domain\Finance\Http\Controllers;
 
 use App\Domain\Finance\Http\Controllers\Concerns\ResolvesActor;
 use App\Domain\Finance\Support\FinanceDetails;
+use App\Domain\Finance\Support\FinanceNotices;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
@@ -45,21 +46,22 @@ final class FinanceDetailController
         return response()->json(['data' => $this->details->settlement($code) ?? throw ApiException::notFound('La reserva no existe.')]);
     }
 
-    public function closeSettlement(Request $request, string $code, AuditLogger $audit, TenantContext $context): JsonResponse
+    public function closeSettlement(Request $request, string $code, AuditLogger $audit, TenantContext $context, FinanceNotices $notices): JsonResponse
     {
         $actor = $this->actor($request);
+        $this->requireOperator($actor);
 
-        $result = DB::transaction(function () use ($code, $actor, $audit, $context): array {
+        $result = DB::transaction(function () use ($code, $actor, $audit, $context, $notices): array {
             $reservation = DB::table('booking_reservations')->where('code', $code)->whereNull('deleted_at')->lock('for no key update')->first(['id', 'code']) ?? throw ApiException::notFound('La reserva no existe.');
             $settlement = $this->details->settlement($code) ?? throw ApiException::notFound('La reserva no existe.');
 
             if ($settlement['closed'] !== null) {
-                throw ApiException::conflict('FIN-BR-20', 'La liquidación de esta reserva ya está cerrada.');
+                throw ApiException::conflict('FIN-BR-37', 'La liquidación de esta reserva ya está cerrada.');
             }
 
             $pending = collect($settlement['checks'])->reject(fn (array $check): bool => $check['ok'])->pluck('label')->all();
             if ($pending !== []) {
-                throw ApiException::conflict('FIN-BR-20', 'Aún no se puede liquidar: '.mb_strtolower(implode(', ', $pending)).'.', ['pending' => $pending]);
+                throw ApiException::conflict('FIN-BR-36', 'Aún no se puede liquidar: '.mb_strtolower(implode(', ', $pending)).'.', ['pending' => $pending]);
             }
 
             $statement = $settlement['statement'];
@@ -69,6 +71,7 @@ final class FinanceDetailController
                 'gross_margin_pct' => $statement['margin_pct'], 'snapshot' => json_encode($settlement, JSON_UNESCAPED_UNICODE), 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey(),
             ]);
             $audit->log('Liquidación de reserva', $reservation->code, 'cerrar', null, "neto S/ {$statement['net']}");
+            $notices->settled((string) $reservation->id, $statement['net']);
 
             return $statement;
         });

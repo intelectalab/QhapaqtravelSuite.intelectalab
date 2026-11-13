@@ -50,7 +50,7 @@ final class PaxTemplateDirectory
         $templates = DB::table('notif_pax_message_templates as t')
             ->leftJoin('iam_users as u', 'u.id', '=', 't.updated_by')
             ->orderBy('t.code')
-            ->get(['t.id', 't.code', 't.name', 't.event', 't.offset_hours', 't.offset_from_rule', 't.channels', 't.subject', 't.body', 't.lang', 't.conditions', 't.active', 't.updated_at', 'u.name as user_name'])
+            ->get(['t.id', 't.code', 't.name', 't.event', 't.offset_hours', 't.offset_from_rule', 't.channels', 't.subject', 't.body', 't.lang', 't.group_code', 't.conditions', 't.active', 't.updated_at', 'u.name as user_name'])
             ->map(function (object $row) use ($sent, $rules): array {
                 $conditions = (array) json_decode((string) $row->conditions, true);
                 $rule = isset($conditions['requiresRule']) ? ($rules[$conditions['requiresRule']] ?? null) : null;
@@ -71,6 +71,7 @@ final class PaxTemplateDirectory
                     'subject' => $row->subject,
                     'body' => $row->body,
                     'lang' => $row->lang,
+                    'group_code' => $row->group_code,
                     'only_if_balance' => (bool) ($conditions['onlyIfBalance'] ?? false),
                     'products' => array_values((array) ($conditions['products'] ?? [])),
                     'sales_channels' => array_values((array) ($conditions['channels'] ?? [])),

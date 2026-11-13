@@ -10,6 +10,7 @@ use App\Domain\Inbox\Actions\ConversationWorkflow;
 use App\Domain\Inbox\Support\ConversationDirectory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class ConversationController
 {
@@ -21,6 +22,16 @@ final class ConversationController
     public function show(Request $request, string $code, ConversationDirectory $directory): JsonResponse
     {
         return response()->json(['data' => $directory->thread($code, $this->user($request))]);
+    }
+
+    public function audit(Request $request, string $code, ConversationDirectory $directory): JsonResponse
+    {
+        return response()->json(['data' => $directory->audit($code, $this->user($request))]);
+    }
+
+    public function download(Request $request, string $code, string $attachment, ConversationDirectory $directory): StreamedResponse
+    {
+        return $directory->download($code, $attachment, $this->user($request), $request->boolean('inline'));
     }
 
     public function reply(Request $request, string $code, ConversationWorkflow $workflow): JsonResponse

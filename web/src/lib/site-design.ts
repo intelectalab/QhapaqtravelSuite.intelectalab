@@ -24,8 +24,15 @@ export interface SitePromo {
   visible: boolean;
 }
 
+export interface SiteAndesSettings {
+  gold: string;
+  serif_titles: boolean;
+  mosaic: boolean;
+}
+
 export interface SiteDesign {
   theme: { colors: "panel" | "propios"; brand: string; accent: string; menu: string; font: SiteFont; corners: SiteCorners; style: SiteStyle };
+  andes: SiteAndesSettings;
   hero: { style: "noche" | "color" | "imagen"; image_id: string | null; overlay: number; align: "izquierda" | "centro"; show_search: boolean; show_stats: boolean };
   sections: { id: SiteSectionId; visible: boolean }[];
   announcement: { mode: "cms" | "propio" | "oculto"; text: string; link_label: string; link_href: string };
@@ -79,6 +86,7 @@ export interface SiteDesignCatalog {
   social: Option<SiteSocial>[];
   texts: { key: string; max: number }[];
   max_promos: number;
+  andes: { ink: string; min_contrast: number; defaults: SiteAndesSettings };
 }
 
 export interface SiteDesignOverview {
@@ -144,8 +152,13 @@ export function siteThemeStyle(theme: SiteThemeVars): CSSProperties {
     "--radius-card": radii.card,
     "--radius-tile": radii.tile,
     "--radius-control": radii.control,
+    "--site-font": FONT_STACK[theme.font],
     fontFamily: FONT_STACK[theme.font],
   } as CSSProperties;
+}
+
+export function andesStyle(andes: SiteAndesSettings | undefined): CSSProperties {
+  return andes ? ({ "--andes-gold": andes.gold } as CSSProperties) : {};
 }
 
 export function siteImageHref(base: string, id: string): string {

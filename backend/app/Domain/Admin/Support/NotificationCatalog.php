@@ -24,6 +24,8 @@ final class NotificationCatalog
         'viaje.proximo' => 'Viaje próximo',
         'cotizacion.vista' => 'Cotización abierta por el cliente',
         'pago.recordatorio' => 'Recordatorio de pago',
+        'reserva.liquidada' => 'Reserva liquidada',
+        'estado_cuenta.enviado' => 'Estado de cuenta',
         'integracion.fallo' => 'Falla de integración',
         'usuario.invitado' => 'Usuario invitado',
         'seguridad.mfa_reset' => 'Verificación en dos pasos reiniciada',
@@ -32,9 +34,11 @@ final class NotificationCatalog
         'reporte.programado' => 'Reporte programado enviado',
         'actividad.vencida' => 'Actividades vencidas',
         'documentos.recordatorio' => 'Recordatorio de documentos de viaje',
+        'documentos.solicitud' => 'Solicitud de documentos de viaje',
         'proveedor.contrato_vencido' => 'Contrato de proveedor vencido',
         'reclamacion.por_vencer' => 'Reclamo por vencer',
         'reclamacion.vencida' => 'Reclamo fuera de plazo',
+        'meta.asignada' => 'Meta comercial asignada o ajustada',
         'incidencia.sla_vencido' => 'SLA de incidencia vencido',
     ];
 
@@ -46,7 +50,7 @@ final class NotificationCatalog
 
     public const TEMPLATE_CHANNELS = ['email' => 'Correo', 'whatsapp' => 'WhatsApp', 'push' => 'Push'];
 
-    public const VARIABLES = ['cliente', 'reserva', 'cotizacion', 'fecha_viaje', 'monto', 'servicio', 'hora', 'enlace', 'agencia', 'vendedor'];
+    public const VARIABLES = ['cliente', 'reserva', 'cotizacion', 'fecha_viaje', 'monto', 'servicio', 'hora', 'enlace', 'agencia', 'vendedor', 'documentos'];
 
     public const SAMPLE = [
         'cliente' => 'Ana Torres',
@@ -59,6 +63,7 @@ final class NotificationCatalog
         'enlace' => 'https://andes.kipucontrol.local/portal',
         'agencia' => 'Andes Horizonte',
         'vendedor' => 'Lucía Paredes',
+        'documentos' => "\n- Ana Torres: pasaporte (vencido)\n- Luis Torres: seguro de viaje",
     ];
 
     public const MESSAGES = [
@@ -73,7 +78,9 @@ final class NotificationCatalog
         'servicio.inicio' => '{{servicio}} comienza el {{fecha_viaje}} a las {{hora}}. Te esperamos.',
         'viaje.cierre' => 'Gracias por viajar con {{agencia}}. Cuéntanos cómo te fue: {{enlace}}',
         'pago.recordatorio' => 'Te recordamos el pago pendiente de {{monto}} de tu reserva {{reserva}}. Tu viaje empieza el {{fecha_viaje}}.',
+        'estado_cuenta.enviado' => 'Te compartimos el estado de cuenta de tu reserva {{reserva}}: el saldo pendiente es {{monto}}.',
         'documentos.recordatorio' => 'Para tu viaje del {{fecha_viaje}} (reserva {{reserva}}) aún faltan documentos de los pasajeros. Complétalos aquí: {{enlace}}',
+        'documentos.solicitud' => "Para preparar tu viaje del {{fecha_viaje}} (reserva {{reserva}}) necesitamos estos documentos:\n{{documentos}}\n\nPuedes subirlos aquí: {{enlace}}",
         'viaje.proximo' => 'Tu viaje de la reserva {{reserva}} comienza el {{fecha_viaje}}. Revisa tus documentos y el punto de encuentro.',
     ];
 

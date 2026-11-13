@@ -1,7 +1,10 @@
 "use client";
 
-import { Building2, MapPin, Pencil, Phone, Plus, Power, PowerOff, Star, Trash2, Users } from "lucide-react";
+import { Building2, LayoutGrid, MapPin, Pencil, Phone, Plus, Power, PowerOff, Star, Trash2, Users } from "lucide-react";
 import { createSede, deleteSede, toggleSede, updateSede, type UserActionState } from "@/app/(backoffice)/admin/usuarios/actions";
+import { DataTable } from "@/components/table/DataTable";
+import { RowActions, RowIcon } from "@/components/table/RowActions";
+import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
@@ -48,7 +51,6 @@ export function SedeCreateAction({ managers, disabledReason }: { managers: Manag
 
 function SedeCard({ sede, managers, index }: { sede: TeamSede; managers: Manager[]; index: number }) {
   const active = sede.status === "activa";
-  const locked = sede.users > 0 || sede.reservations > 0 || sede.is_main;
 
   return (
     <ToneScope tone={active ? (sede.is_main ? "t1" : "t4") : "mute"}>
@@ -91,43 +93,55 @@ function SedeCard({ sede, managers, index }: { sede: TeamSede; managers: Manager
           <p className="text-[12.5px] text-fg-3">Responsable: {sede.manager?.name ?? "sin asignar"}</p>
         </div>
         <footer className="flex flex-wrap justify-end gap-1.5 border-t border-line-2 px-3 py-2.5">
-          <PanelAction<UserActionState> label="Editar" icon={<Pencil size={15} />} variant="ghost" size="sm" formId={`sede-edit-${sede.code}`} title="Editar sede" description={`${sede.name} · ${sede.code}`} submitLabel="Guardar cambios" action={updateSede} initial={initial}>
-            {() => (
-              <>
-                <input type="hidden" name="code" value={sede.code} />
-                <SedeFields managers={managers} sede={sede} />
-              </>
-            )}
-          </PanelAction>
-          {!sede.is_main && (
-            <PanelAction<UserActionState>
-              label={active ? "Desactivar" : "Activar"}
-              icon={active ? <PowerOff size={15} /> : <Power size={15} />}
-              variant="ghost"
-              size="sm"
-              formId={`sede-toggle-${sede.code}`}
-              title={active ? "Desactivar sede" : "Activar sede"}
-              description={active ? "No se puede desactivar si tiene usuarios activos. Su historial se conserva." : "Volverá a aparecer para asignar usuarios y reservas. Cuenta para el límite de tu plan."}
-              submitLabel={active ? "Desactivar" : "Activar"}
-              action={toggleSede}
-              initial={initial}
-            >
-              {() => (
-                <>
-                  <input type="hidden" name="code" value={sede.code} />
-                  <input type="hidden" name="mode" value={active ? "deactivate" : "activate"} />
-                </>
-              )}
-            </PanelAction>
-          )}
-          {!locked && (
-            <PanelAction<UserActionState> label="Eliminar" icon={<Trash2 size={15} />} variant="ghost" size="sm" formId={`sede-delete-${sede.code}`} title="Eliminar sede" description={`${sede.name} no tiene usuarios ni reservas, así que se puede eliminar.`} submitLabel="Eliminar sede" action={deleteSede} initial={initial}>
-              {() => <input type="hidden" name="code" value={sede.code} />}
-            </PanelAction>
-          )}
+          <SedeActions sede={sede} managers={managers} variant="buttons" />
         </footer>
       </article>
     </ToneScope>
+  );
+}
+
+function SedeActions({ sede, managers, variant }: { sede: TeamSede; managers: Manager[]; variant: "buttons" | "icons" }) {
+  const active = sede.status === "activa";
+  const locked = sede.users > 0 || sede.reservations > 0 || sede.is_main;
+  const icons = variant === "icons";
+  return (
+    <>
+      <PanelAction<UserActionState> label="Editar" icon={<Pencil size={15} />} variant="ghost" size="sm" formId={`sede-edit-${variant}-${sede.code}`} trigger={icons ? (open) => <RowIcon tone="edit" label="Editar" onClick={open} /> : undefined} title="Editar sede" description={`${sede.name} · ${sede.code}`} submitLabel="Guardar cambios" action={updateSede} initial={initial}>
+        {() => (
+          <>
+            <input type="hidden" name="code" value={sede.code} />
+            <SedeFields managers={managers} sede={sede} />
+          </>
+        )}
+      </PanelAction>
+      {!sede.is_main && (
+        <PanelAction<UserActionState>
+          label={active ? "Desactivar" : "Activar"}
+          icon={active ? <PowerOff size={15} /> : <Power size={15} />}
+          variant="ghost"
+          size="sm"
+          formId={`sede-toggle-${variant}-${sede.code}`}
+          trigger={icons ? (open) => <RowIcon tone="neutral" label={active ? "Desactivar" : "Activar"} icon={active ? <PowerOff size={15} /> : <Power size={15} />} onClick={open} /> : undefined}
+          title={active ? "Desactivar sede" : "Activar sede"}
+          description={active ? "No se puede desactivar si tiene usuarios activos. Su historial se conserva." : "Volverá a aparecer para asignar usuarios y reservas. Cuenta para el límite de tu plan."}
+          submitLabel={active ? "Desactivar" : "Activar"}
+          action={toggleSede}
+          initial={initial}
+        >
+          {() => (
+            <>
+              <input type="hidden" name="code" value={sede.code} />
+              <input type="hidden" name="mode" value={active ? "deactivate" : "activate"} />
+            </>
+          )}
+        </PanelAction>
+      )}
+      {!locked && (
+        <PanelAction<UserActionState> label="Eliminar" icon={<Trash2 size={15} />} variant="ghost" size="sm" formId={`sede-delete-${variant}-${sede.code}`} trigger={icons ? (open) => <RowIcon tone="delete" label="Eliminar" icon={<Trash2 size={15} />} onClick={open} /> : undefined} title="Eliminar sede" description={`${sede.name} no tiene usuarios ni reservas, así que se puede eliminar.`} submitLabel="Eliminar sede" action={deleteSede} initial={initial}>
+          {() => <input type="hidden" name="code" value={sede.code} />}
+        </PanelAction>
+      )}
+    </>
   );
 }
 
@@ -138,5 +152,87 @@ export function SedesGrid({ sedes, managers }: { sedes: TeamSede[]; managers: Ma
         <SedeCard key={sede.code} sede={sede} managers={managers} index={index} />
       ))}
     </div>
+  );
+}
+
+export function SedesTable({ sedes, managers }: { sedes: TeamSede[]; managers: Manager[] }) {
+  const columns: Column<TeamSede>[] = [
+    {
+      id: "sede",
+      header: "Sede",
+      mobile: "title",
+      cell: (sede) => (
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-[13.5px] font-semibold">
+            {sede.is_main && <Star size={13} className="text-[var(--t1)]" />}
+            <span className="truncate">{sede.name}</span>
+          </p>
+          <p className="truncate text-[11.5px] text-fg-3">
+            <span className="font-mono">{sede.code}</span>
+            {sede.city ? ` · ${sede.city}` : ""}
+          </p>
+        </div>
+      ),
+    },
+    { id: "address", header: "Dirección", wideOnly: true, cell: (sede) => <span className="text-[13px] text-fg-2">{sede.address}</span> },
+    { id: "manager", header: "Responsable", cell: (sede) => <span className="text-[13px]">{sede.manager?.name ?? "Sin asignar"}</span> },
+    { id: "users", header: "Usuarios", align: "right", cell: (sede) => <span className="font-mono text-[13px]">{sede.users}</span> },
+    { id: "reservations", header: "Reservas", align: "right", wideOnly: true, cell: (sede) => <span className="font-mono text-[13px]">{sede.reservations}</span> },
+    { id: "status", header: "Estado", cell: (sede) => <Badge tone={sede.status === "activa" ? "ok" : "mute"}>{sede.status === "activa" ? (sede.is_main ? "Principal" : "Activa") : "Inactiva"}</Badge> },
+    {
+      id: "actions",
+      header: "",
+      align: "right",
+      mobile: "detail",
+      cell: (sede) => (
+        <RowActions>
+          <SedeActions sede={sede} managers={managers} variant="icons" />
+        </RowActions>
+      ),
+    },
+  ];
+  const metrics: MetricFilter<TeamSede>[] = [
+    { id: "active", label: "Activas", tone: "ok", icon: <Power size={19} />, matches: (sede) => sede.status === "activa" },
+    { id: "inactive", label: "Inactivas", tone: "mute", icon: <PowerOff size={19} />, matches: (sede) => sede.status !== "activa" },
+    { id: "empty", label: "Sin responsable", tone: "warn", icon: <Users size={19} />, matches: (sede) => sede.manager === null },
+  ];
+  const filters: FilterConfig<TeamSede>[] = [
+    { id: "city", label: "Ciudad", options: [...new Set(sedes.map((sede) => sede.city).filter((city): city is string => Boolean(city)))].map((city) => ({ value: city, label: city })), value: (sede) => sede.city ?? "" },
+  ];
+  const sorts: SortOption<TeamSede>[] = [
+    { id: "name", label: "Nombre", value: (sede) => sede.name },
+    { id: "users", label: "Usuarios", type: "number", value: (sede) => sede.users },
+    { id: "reservations", label: "Reservas", type: "number", value: (sede) => sede.reservations },
+  ];
+  return (
+    <DataTable
+      screen="sedes"
+      rows={sedes}
+      columns={columns}
+      getKey={(sede) => sede.code}
+      entityLabel="sedes"
+      searchText={(sede) => `${sede.name} ${sede.code} ${sede.city ?? ""} ${sede.address} ${sede.manager?.name ?? ""}`}
+      searchPlaceholder="Buscar sede, ciudad o responsable"
+      metrics={metrics}
+      filters={filters}
+      sorts={sorts}
+      defaultView="tarjetas"
+      views={[{ id: "tarjetas", label: "Tarjetas", icon: LayoutGrid, render: (rows) => <SedesGrid sedes={rows} managers={managers} /> }]}
+      csv={{
+        fileName: "sedes",
+        columns: [
+          { header: "Código", value: (sede) => sede.code },
+          { header: "Sede", value: (sede) => sede.name },
+          { header: "Ciudad", value: (sede) => sede.city },
+          { header: "Dirección", value: (sede) => sede.address },
+          { header: "Teléfono", value: (sede) => sede.phone },
+          { header: "Responsable", value: (sede) => sede.manager?.name },
+          { header: "Principal", value: (sede) => sede.is_main },
+          { header: "Estado", value: (sede) => (sede.status === "activa" ? "Activa" : "Inactiva") },
+          { header: "Usuarios", value: (sede) => sede.users, type: "number" },
+          { header: "Reservas", value: (sede) => sede.reservations, type: "number" },
+        ],
+      }}
+    />
   );
 }

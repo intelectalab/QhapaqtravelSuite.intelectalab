@@ -128,6 +128,9 @@ final class ProductQuotePreview
             'nights' => $quote->nights,
             'warnings' => $quote->warnings,
             'ok' => $quote->ok,
+            'legs' => array_map(fn (array $leg): array => ['leg_id' => $leg['legId'], 'city' => $leg['city'], 'nights' => $leg['nights'], 'min_nights' => $leg['minNights'], 'max_nights' => $leg['maxNights'], 'check_in' => $leg['checkIn'], 'check_out' => $leg['checkOut']], $quote->legs),
+            'trip_end' => $quote->tripEnd,
+            'by_category' => array_map(fn (Money $amount): string => self::money($amount), $quote->byCategory),
         ];
     }
 

@@ -1,3 +1,4 @@
+import { ConsultModeNotice } from "@/components/ui/ConsultMode";
 import { ArrowRight, CalendarCheck, CalendarClock, CircleX, FilePlus2, FileText, Filter, Mail, MapPin, Package, Percent, Phone, TriangleAlert, UserRound, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -10,7 +11,7 @@ import { HeroBand, HeroChip, HeroPanel, Journey, SOFT_TINT, TintCardTitle, TintT
 import { ActivityCreateAction } from "@/features/activities/ActivityForms";
 import { RelatedActivities } from "@/features/activities/ActivityRow";
 import { RecordHistory } from "@/features/crm/RecordHistory";
-import { OpportunityActions, OpportunityReassignAction } from "@/features/opportunities/OpportunityActions";
+import { OpportunityActions, OpportunityReassignAction, OpportunityStageButtons } from "@/features/opportunities/OpportunityActions";
 import { OpportunityEditAction } from "@/features/opportunities/OpportunityForms";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney, shortName } from "@/lib/format";
@@ -70,6 +71,7 @@ export default async function OportunidadPage({ params }: PageProps<"/crm/oportu
           </>
         }
       />
+      <ConsultModeNotice permissions={["crm.opportunities.manage"]} what="mover, ganar ni perder oportunidades" />
 
       {opportunity.close_overdue && (
         <p role="status" className="mb-4 flex items-start gap-2 rounded-xl bg-warn/10 px-4 py-3 text-[13px] text-warn">
@@ -107,7 +109,10 @@ export default async function OportunidadPage({ params }: PageProps<"/crm/oportu
                 </span>
               </p>
             ) : (
-              <Journey steps={steps} skippedLabel="Omitida" formatAt={(iso) => formatDate(iso).replace(/ \d{4}$/, "")} />
+              <>
+                <Journey steps={steps} skippedLabel="Omitida" formatAt={(iso) => formatDate(iso).replace(/ \d{4}$/, "")} />
+                {catalogs && <OpportunityStageButtons opportunity={opportunity} />}
+              </>
             )}
           </HeroPanel>
         </div>

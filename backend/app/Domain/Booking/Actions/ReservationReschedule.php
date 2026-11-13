@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Booking\Actions;
 
 use App\Domain\Booking\Events\ReservationRescheduled;
+use App\Domain\Booking\Support\LineRates;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Iam\Models\User;
@@ -28,6 +29,7 @@ final class ReservationReschedule
         private readonly AuditLogger $audit,
         private readonly ReservationMailer $mailer,
         private readonly SyncServicePayables $payables,
+        private readonly LineRates $lineRates,
     ) {}
 
     public function preview(string $code, ?string $newStart, User $actor): array
@@ -201,16 +203,9 @@ final class ReservationReschedule
             return '1';
         }
 
-        $factor = DB::table('catalog_seasons as s')
-            ->join('catalog_product_seasons as ps', 'ps.season_id', '=', 's.id')
-            ->where('ps.product_id', $productId)
-            ->whereNull('s.deleted_at')
-            ->where('s.date_from', '<=', $date)
-            ->where('s.date_to', '>=', $date)
-            ->orderByDesc('s.priority')
-            ->value('s.factor');
+        $factor = $this->lineRates->seasonFactor($date);
 
-        return $factor !== null && Decimal::of($factor)->isPositive() ? (string) $factor : '1';
+        return $factor !== null && Decimal::of($factor)->isPositive() ? $factor : '1';
     }
 
     private function open(string $code, User $actor, bool $lock = false): object

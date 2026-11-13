@@ -1,6 +1,7 @@
 "use client";
 
-import { AtSign, KeyRound, MailPlus, Pencil, Phone, Power, PowerOff, User, UserPlus } from "lucide-react";
+import { AlertTriangle, AtSign, KeyRound, MailPlus, Pencil, Phone, Power, PowerOff, User, UserPlus } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { activateUser, deactivateUser, inviteUser, resendInvitation, resetUserMfa, updateUser, type UserActionState } from "@/app/(backoffice)/admin/usuarios/actions";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -30,6 +31,35 @@ function RequireMfaField({ options }: { options: TeamOptions }) {
   const [checked, setChecked] = useState(false);
   const always = options.roles.filter((role) => role.mfa).map((role) => role.name);
   return <SwitchField label="Exigir verificación en dos pasos en el primer acceso" name="require_mfa" checked={checked} onCheckedChange={setChecked} hint={always.length > 0 ? `${always.join(", ")} la exigen siempre.` : undefined} />;
+}
+
+function ReassignNotice({ user }: { user: TeamUser }) {
+  const opportunities = user.workload?.opportunities ?? 0;
+  const activities = user.workload?.activities ?? 0;
+  if (opportunities + activities === 0) return null;
+  const items = [
+    { value: opportunities, one: "oportunidad abierta", many: "oportunidades abiertas", href: `/crm/oportunidades?q=${encodeURIComponent(user.name)}` },
+    { value: activities, one: "actividad pendiente", many: "actividades pendientes", href: `/crm/actividades?q=${encodeURIComponent(user.name)}` },
+  ].filter((item) => item.value > 0);
+  return (
+    <div className="rounded-[12px] border border-[color-mix(in_srgb,var(--warn)_30%,transparent)] bg-[color-mix(in_srgb,var(--warn)_8%,var(--surface))] p-3 text-[13px]">
+      <p className="mb-2 flex items-center gap-1.5 font-semibold text-warn">
+        <AlertTriangle size={15} />
+        Reasigna antes su trabajo
+      </p>
+      <ul className="grid grid-cols-2 gap-2">
+        {items.map((item) => (
+          <li key={item.one}>
+            <Link href={item.href} className="lift block rounded-[10px] bg-surface px-3 py-2 hover:text-accent">
+              <b className="block text-[18px] tabular-nums">{item.value}</b>
+              <span className="text-[11.5px] text-fg-3">{item.value === 1 ? item.one : item.many}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-[12px] text-fg-3">Puedes desactivarlo igual: lo que tenga a su cargo queda sin responsable activo.</p>
+    </div>
+  );
 }
 
 export function UserInviteAction({ options }: { options: TeamOptions }) {
@@ -88,6 +118,7 @@ export function UserRowActions({ user, options, isSelf, withView = true }: { use
             {() => (
               <>
                 <input type="hidden" name="code" value={user.code} />
+                <ReassignNotice user={user} />
                 <TextArea label="Motivo" name="reason" rows={2} required minLength={3} placeholder="Por ejemplo: dejó la empresa." />
               </>
             )}

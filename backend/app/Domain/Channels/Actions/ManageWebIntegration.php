@@ -22,9 +22,17 @@ final class ManageWebIntegration
             throw ApiException::conflict('WEB-BR-01', 'El widget todavía no está configurado para esta agencia.');
         }
 
-        $product = DB::table('catalog_products')->where('code', $data['product'])->value('ref');
         $before = json_decode((string) $config->defaults, true) ?: [];
-        $after = [...$before, ...$data, 'product' => $product ?? $data['product'], 'reviews' => (bool) ($data['reviews'] ?? false), 'radius' => (int) $data['radius']];
+        $mode = ($data['mode'] ?? $before['mode'] ?? 'producto') === 'catalogo' ? 'catalogo' : 'producto';
+        $code = $data['product'] ?? null;
+        $product = $code !== null ? DB::table('catalog_products')->where('code', $code)->value('ref') : null;
+        $category = isset($data['category']) && trim((string) $data['category']) !== '' ? trim((string) $data['category']) : null;
+
+        if ($category !== null && ! DB::table('catalog_product_categories')->where('name', $category)->exists()) {
+            throw ApiException::unprocessable('WEB-BR-04', 'Esa categoría no existe en el catálogo.', ['category' => ['Esa categoría no existe en el catálogo.']]);
+        }
+
+        $after = [...$before, ...$data, 'mode' => $mode, 'category' => $mode === 'catalogo' ? $category : null, 'product' => $product ?? $code ?? ($before['product'] ?? null), 'reviews' => (bool) ($data['reviews'] ?? false), 'radius' => (int) $data['radius']];
 
         DB::table('channel_widget_config')->where('id', $config->id)->update([
             'defaults' => json_encode($after, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
@@ -32,7 +40,7 @@ final class ManageWebIntegration
             'updated_at' => now(),
         ]);
 
-        $this->audit->log('Widget web', 'predeterminados', 'editar', $before['method'] ?? null, "{$after['method']} · {$after['lang']} · {$after['currency']}");
+        $this->audit->log('Widget web', 'predeterminados', 'editar', $before['method'] ?? null, "{$after['method']} · {$mode} · {$after['lang']} · {$after['currency']}");
     }
 
     public function rotateKey(string $reason, User $actor): array

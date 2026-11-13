@@ -21,6 +21,7 @@ final class ManagerPanel
     {
         return [
             'approvals' => $this->approvals(),
+            'quote_approvals' => $viewer->can('quotes.approve_internal') ? $this->quoteApprovals($viewer) : [],
             'targets' => $this->targets(),
             'team' => [
                 'overdue_activities' => DB::table('crm_activities')->where('status', '<>', 'completada')->where('due_at', '<', $this->data->now()->utc())->count(),
@@ -29,6 +30,13 @@ final class ManagerPanel
             ],
             'advisors' => Portfolio::ownOnly($viewer) ? [] : $this->advisors(),
         ];
+    }
+
+    private function quoteApprovals(User $viewer): array
+    {
+        return app(ApprovalInbox::class)->items($viewer)
+            ->filter(fn (array $item): bool => $item['type'] === 'quote' && $item['status'] === 'pendiente' && $item['can_decide'])
+            ->take(5)->values()->all();
     }
 
     private function approvals(): array

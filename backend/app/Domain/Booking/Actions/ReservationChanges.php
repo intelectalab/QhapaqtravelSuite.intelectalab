@@ -6,7 +6,9 @@ namespace App\Domain\Booking\Actions;
 
 use App\Domain\Admin\Support\TenantSettings;
 use App\Domain\Booking\Actions\Support\ServicesFromQuoteItem;
+use App\Domain\Booking\Support\LineRates;
 use App\Domain\Booking\Support\ReservationNotices;
+use App\Domain\Catalog\Support\RateResolver;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Finance\Actions\SyncServicePayables;
 use App\Domain\Finance\Support\ReceivableLedger;
@@ -33,6 +35,7 @@ final class ReservationChanges
         private readonly ServicesFromQuoteItem $services,
         private readonly ReservationMailer $mailer,
         private readonly SyncServicePayables $payables,
+        private readonly LineRates $lineRates,
     ) {}
 
     public function options(string $code, User $actor): array
@@ -157,10 +160,10 @@ final class ReservationChanges
             }
 
             $date = (string) ($data['service_date'] ?? '');
-            $rate = DB::table('catalog_rates')->where('product_id', $product->id)->where('status', 'vigente')->where('rate_type', 'Venta')
-                ->whereIn('segment', ['Adulto', 'Pasajero'])->where('valid_from', '<=', $date ?: now()->toDateString())->where('valid_to', '>=', $date ?: now()->toDateString())
-                ->orderByRaw("case when channel = ? then 0 when channel = 'Todos' then 1 else 2 end", [$reservation->channel])->first(['price', 'cost', 'currency']);
-            $price = $rate ? $this->convert((string) $rate->price, (string) $rate->currency, (string) $reservation->currency, (string) $reservation->fx_rate) : BigDecimal::zero();
+            $day = $date ?: now()->toDateString();
+            $rate = RateResolver::pick($this->lineRates->catalog([$product->id])->get($product->id, collect()), $day, ['Adulto', 'Pasajero'], (string) $reservation->channel, $this->lineRates->seasonIdFor($day));
+            $rate = is_object($rate) ? $rate : null;
+            $price = $rate ? $this->convert((string) RateResolver::seasonal($rate, $this->lineRates->seasonFactor($day)), (string) $rate->currency, (string) $reservation->currency, (string) $reservation->fx_rate) : BigDecimal::zero();
             $cost = $rate ? $this->convert((string) $rate->cost, (string) $rate->currency, (string) $reservation->currency, (string) $reservation->fx_rate) : BigDecimal::zero();
             $check = $this->productAvailability($product, $date, $pax);
 

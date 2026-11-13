@@ -9,7 +9,9 @@ import { FieldList } from "@/components/ui/Details";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextField } from "@/components/ui/TextField";
 import { EditSection, SectionCard } from "@/features/admin/Settings";
+import { FiscalWebhookCard } from "@/features/platform/FiscalWebhookCard";
 import { OutgoingMailCard } from "@/features/platform/OutgoingMail";
+import { WhatsappWebhookCard } from "@/features/platform/WhatsappWebhookCard";
 import { formatDateTime } from "@/lib/format";
 import type { PlatformSettingsOverview } from "@/lib/platform";
 import type { Tone } from "@/lib/tone";
@@ -163,7 +165,11 @@ export function PlatformSettingsSections({ data }: { data: PlatformSettingsOverv
 
       <OutgoingMailCard mail={mail} version={version} index={5} />
 
-      <SectionCard index={6} icon={ScanSearch} tone={antivirus.ok && !antivirus.simulated ? "ok" : "sun"} title="Antivirus de adjuntos">
+      <WhatsappWebhookCard webhook={data.sections.whatsapp_webhook} version={version} index={6} />
+
+      <FiscalWebhookCard webhook={data.sections.fiscal_webhook} version={version} index={7} />
+
+      <SectionCard index={8} icon={ScanSearch} tone={antivirus.ok && !antivirus.simulated ? "ok" : "sun"} title="Antivirus de adjuntos">
         <FieldList
           fields={[
             { label: "Estado", value: <Badge tone={antivirus.simulated ? "warn" : antivirus.ok ? "ok" : "bad"}>{antivirus.simulated ? "Simulado" : antivirus.ok ? "Conectado" : "No responde"}</Badge> },

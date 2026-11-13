@@ -2,7 +2,7 @@ import NetInfo from "@react-native-community/netinfo";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AppState } from "react-native";
 import { getToken } from "../api/client";
-import { deviceId, logout, sessionKind, type SessionKind } from "../api/session";
+import { deviceId, logout, sessionKind, wipeDevice, type SessionKind } from "../api/session";
 import { uploadPending } from "../data/evidence";
 import { refreshFromServer, reloadAssignment } from "../data/repository";
 import { DEFAULT_SYNC_MINUTES, registerBackgroundSync, syncMinutes, unregisterBackgroundSync } from "../offline/background";
@@ -58,6 +58,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       onSessionExpired: () => setSession("signed_out"),
       refreshFromServer,
       onChange: touch,
+      onDeviceRevoked: async (message) => {
+        engine.current?.stop();
+        engine.current = null;
+        await unregisterBackgroundSync();
+        await wipeDevice();
+        setNotice(message);
+        setSession("signed_out");
+      },
     });
     await engine.current.start();
   }, [stopEngine, touch]);
