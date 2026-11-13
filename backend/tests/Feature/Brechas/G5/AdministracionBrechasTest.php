@@ -19,7 +19,7 @@ it('el listado de usuarios trae su trabajo abierto y si es de canal', function (
         ->and($users->where('channel', true)->count())->toBeGreaterThan(0);
 });
 
-it('al invitar se bloquean las filas del cupo y el límite del plan se sigue respetando', function () {
+it('al invitar se toma el candado del cupo de la agencia y el límite del plan se sigue respetando', function () {
     actingAsSeed('U01');
 
     $this->withHeader('Idempotency-Key', (string) Str::uuid())->postJson('/api/v1/iam/users', ['name' => 'Persona Nueva', 'email' => 'g5.nueva@andeshorizonte.pe', 'role' => 'sales', 'sede_id' => withinTenant(tenantA(), fn () => DB::table('iam_sedes')->where('is_main', true)->value('id'))])->assertCreated();

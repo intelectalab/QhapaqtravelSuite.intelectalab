@@ -3,6 +3,8 @@
 use Database\Seeders\Modules\VitrinaSeeder;
 use Illuminate\Support\Facades\DB;
 
+beforeEach(fn () => lockShowcase());
+
 it('el seeder de la vitrina deja datos de demostración coherentes y es repetible', function () {
     foreach (['TNT-0001', 'TNT-0005', 'TNT-0006'] as $code) {
         $tenant = tenantByCode($code);

@@ -143,6 +143,8 @@ final class CampaignWorkflow
             throw ApiException::unprocessable('MKT-BR-07', 'El segmento no tiene destinatarios con consentimiento para este canal.');
         }
 
+        $this->ensurePromotion($campaign->promo_code, $at);
+
         DB::table('mkt_campaigns')->where('id', $campaign->id)->update(['status' => 'programada', 'scheduled_at' => $at->utc(), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
         $this->audit->log('Campaña', $campaign->code, 'programar', 'borrador', $at->format('Y-m-d H:i')." · {$audience['eligible']} destinatarios");
     }
@@ -268,7 +270,7 @@ final class CampaignWorkflow
             ->get(['r.subject_type', 'r.subject_id'])->mapWithKeys(fn (object $row): array => ["{$row->subject_type}:{$row->subject_id}" => true])->all();
     }
 
-    private function ensurePromotion(?string $code): void
+    private function ensurePromotion(?string $code, ?Carbon $at = null): void
     {
         if ($code === null) {
             return;
@@ -277,14 +279,16 @@ final class CampaignWorkflow
         $promotions = DB::table('catalog_product_promotions')->whereNull('deleted_at')->where('promo_code', $code)->get(['status', 'date_from', 'date_to']);
 
         if ($promotions->isEmpty()) {
-            return;
+            throw ApiException::unprocessable('MKT-BR-09', "El código {$code} no existe en Catálogo. Pide que creen la promoción o quita el código.");
         }
 
-        $today = Carbon::now($this->context->timezone())->toDateString();
-        $valid = $promotions->contains(fn (object $row): bool => $row->status === 'activa' && $row->date_from <= $today && $row->date_to >= $today);
+        $day = ($at ?? Carbon::now())->copy()->setTimezone($this->context->timezone())->toDateString();
+        $valid = $promotions->contains(fn (object $row): bool => $row->status === 'activa' && $row->date_from <= $day && $row->date_to >= $day);
 
         if (! $valid) {
-            throw ApiException::unprocessable('MKT-BR-09', "El código {$code} no está activo o ya venció. Actualiza la promoción o quita el código.");
+            throw ApiException::unprocessable('MKT-BR-09', $at === null
+                ? "El código {$code} no está activo o ya venció. Actualiza la promoción o quita el código."
+                : "El código {$code} no estará vigente el {$day}. Actualiza la promoción, cambia la fecha o quita el código.");
         }
     }
 

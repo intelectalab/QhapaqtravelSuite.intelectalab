@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\DB;
 
+beforeEach(fn () => lockShowcase());
+
 function vitrinaPlatformAudit(string $entity, string $entityId, string $action): bool
 {
     return DB::connection('pgsql_platform')->table('audit_events')->whereNull('tenant_id')->where(['entity' => $entity, 'entity_id' => $entityId, 'action' => $action])->exists();

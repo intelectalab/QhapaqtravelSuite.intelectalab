@@ -193,3 +193,26 @@ it('el correo reemplaza las variables y el enlace de baja de cada destinatario r
 
     $this->postJson('/api/v1/public/newsletter/unsubscribe', ['token' => 'c'.$recipient->id.'.'.str_repeat('a', 64)], siteOf(extra: critical()))->assertNotFound();
 });
+
+it('una campaña con un código que no existe en Catálogo no se envía ni se programa (MKT-BR-09)', function () {
+    Queue::fake();
+    actingAsSeed('U01');
+    $code = mktEnvioBorrador($this, ['promo_code' => 'NOEXISTE26']);
+    $this->postJson("/api/v1/marketing/campaigns/{$code}/test-send", [], critical())->assertCreated();
+
+    expect($this->postJson("/api/v1/marketing/campaigns/{$code}/send", [], critical((int) rowOf('mkt_campaigns', $code)->lock_version)))->toBeApiError(422, 'MKT-BR-09');
+    expect($this->postJson("/api/v1/marketing/campaigns/{$code}/schedule", ['scheduled_at' => '2026-10-02 10:00'], critical((int) rowOf('mkt_campaigns', $code)->lock_version)))->toBeApiError(422, 'MKT-BR-09');
+    expect(rowOf('mkt_campaigns', $code)->status)->toBe('borrador');
+    Queue::assertNotPushed(SendCampaign::class);
+});
+
+it('programar exige que el código siga vigente en la fecha elegida (MKT-BR-09)', function () {
+    actingAsSeed('U01');
+    $code = mktEnvioBorrador($this, ['promo_code' => 'PRIMAVERA8']);
+    $this->postJson("/api/v1/marketing/campaigns/{$code}/test-send", [], critical())->assertCreated();
+
+    expect($this->postJson("/api/v1/marketing/campaigns/{$code}/schedule", ['scheduled_at' => '2026-11-05 10:00'], critical((int) rowOf('mkt_campaigns', $code)->lock_version)))->toBeApiError(422, 'MKT-BR-09');
+
+    $this->postJson("/api/v1/marketing/campaigns/{$code}/schedule", ['scheduled_at' => '2026-10-02 10:00'], critical((int) rowOf('mkt_campaigns', $code)->lock_version))->assertOk();
+    expect(rowOf('mkt_campaigns', $code)->status)->toBe('programada');
+});

@@ -14,6 +14,8 @@ function billBody(array $overrides = []): array
     ];
 }
 
+beforeEach(fn () => lockPlatformBilling());
+
 it('actualizar los datos de facturación los guarda en la suscripción y la pantalla los muestra', function () {
     actingAsSeed('U01');
 

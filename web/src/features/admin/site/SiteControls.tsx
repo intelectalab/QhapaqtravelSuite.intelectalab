@@ -58,18 +58,18 @@ export function OrderedToggles<T extends string>({ items, labels, hints, onChang
     onChange(next);
   };
   return (
-    <ol className="grid gap-2" data-testid={testId}>
+    <ol className="grid grid-cols-1 gap-2" data-testid={testId}>
       {items.map((item, index) => (
-        <li key={item.id} data-testid={`${testId}:${item.id}`} className={cn("flex items-center gap-3 rounded-[14px] border border-line bg-surface px-3 py-2.5 transition hover:border-[color-mix(in_srgb,var(--accent)_30%,transparent)]", !item.visible && "bg-surface-2/60")}>
+        <li key={item.id} data-testid={`${testId}:${item.id}`} className={cn("flex min-w-0 items-center gap-2 rounded-[14px] border border-line bg-surface py-2.5 pl-3 pr-2 transition hover:border-[color-mix(in_srgb,var(--accent)_30%,transparent)]", !item.visible && "bg-surface-2/60")}>
           <span className="grid h-7 w-7 flex-none place-items-center rounded-lg bg-surface-2 text-[12px] font-bold tabular-nums text-fg-3">{index + 1}</span>
           <span className="min-w-0 flex-1">
-            <b className={cn("block truncate text-[13.5px] font-semibold", !item.visible && "text-fg-3 line-through decoration-fg-3/40")}>{labels[item.id]}</b>
-            {hints?.[item.id] && <span className="block truncate text-[12px] text-fg-3">{hints[item.id]}</span>}
+            <b className={cn("block break-words text-[13.5px] font-semibold leading-snug", !item.visible && "text-fg-3 line-through decoration-fg-3/40")}>{labels[item.id]}</b>
+            {hints?.[item.id] && <span className="mt-0.5 block break-words text-[12px] leading-snug text-fg-3">{hints[item.id]}</span>}
           </span>
-          <button type="button" disabled={index === 0} onClick={() => move(index, -1)} aria-label={`Subir ${labels[item.id]}`} className="grid h-8 w-8 place-items-center rounded-lg text-fg-3 transition hover:bg-surface-2 hover:text-fg disabled:opacity-30">
+          <button type="button" disabled={index === 0} onClick={() => move(index, -1)} aria-label={`Subir ${labels[item.id]}`} className="grid h-8 w-8 flex-none place-items-center rounded-lg text-fg-3 transition hover:bg-surface-2 hover:text-fg disabled:opacity-30">
             <ArrowUp size={15} />
           </button>
-          <button type="button" disabled={index === items.length - 1} onClick={() => move(index, 1)} aria-label={`Bajar ${labels[item.id]}`} className="grid h-8 w-8 place-items-center rounded-lg text-fg-3 transition hover:bg-surface-2 hover:text-fg disabled:opacity-30">
+          <button type="button" disabled={index === items.length - 1} onClick={() => move(index, 1)} aria-label={`Bajar ${labels[item.id]}`} className="grid h-8 w-8 flex-none place-items-center rounded-lg text-fg-3 transition hover:bg-surface-2 hover:text-fg disabled:opacity-30">
             <ArrowDown size={15} />
           </button>
           <button
@@ -77,11 +77,12 @@ export function OrderedToggles<T extends string>({ items, labels, hints, onChang
             disabled={locked.includes(item.id)}
             onClick={() => onChange(items.map((current) => (current.id === item.id ? { ...current, visible: !current.visible } : current)))}
             aria-pressed={item.visible}
+            aria-label={item.visible ? `Ocultar ${labels[item.id]}` : `Mostrar ${labels[item.id]}`}
+            title={item.visible ? "Visible. Clic para ocultar" : "Oculta. Clic para mostrar"}
             data-testid={`${testId}:${item.id}:toggle`}
-            className={cn("inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-semibold transition disabled:opacity-40", item.visible ? "bg-[color-mix(in_srgb,var(--ok)_12%,transparent)] text-ok" : "bg-surface-2 text-fg-3 hover:text-fg")}
+            className={cn("grid h-8 w-8 flex-none place-items-center rounded-lg transition disabled:opacity-40", item.visible ? "bg-[color-mix(in_srgb,var(--ok)_12%,transparent)] text-ok" : "bg-surface-2 text-fg-3 hover:text-fg")}
           >
-            {item.visible ? <Eye size={14} /> : <EyeOff size={14} />}
-            {item.visible ? "Visible" : "Oculta"}
+            {item.visible ? <Eye size={15} /> : <EyeOff size={15} />}
           </button>
         </li>
       ))}

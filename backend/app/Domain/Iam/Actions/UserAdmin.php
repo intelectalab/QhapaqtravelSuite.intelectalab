@@ -193,7 +193,7 @@ final class UserAdmin
     {
         $tenant = $this->context->tenant();
         $limit = EffectiveLimits::limit((string) $tenant->getKey(), (string) $tenant->plan_id, 'users');
-        DB::table('iam_users')->whereNull('deleted_at')->whereIn('status', ['activo', 'pendiente'])->orderBy('id')->lockForUpdate()->pluck('id');
+        DB::select('select pg_advisory_xact_lock(hashtext(?))', ['iam-seats:'.$tenant->getKey()]);
         $used = StaffSeats::count(DB::table('iam_users'));
 
         if ($limit !== null && $used >= (int) $limit) {

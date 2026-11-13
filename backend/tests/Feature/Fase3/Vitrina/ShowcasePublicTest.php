@@ -4,6 +4,8 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
+beforeEach(fn () => lockShowcase());
+
 function vitrinaDb(): ConnectionInterface
 {
     return DB::connection('pgsql_platform');

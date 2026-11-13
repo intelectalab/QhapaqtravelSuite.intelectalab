@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
@@ -70,6 +71,10 @@ it('GET /reports/insights genera alertas de cobranza atrasada desde datos reales
     actingAsSeed('U07');
     withinTenant(tenantA(), fn () => DB::table('fin_receivables')->where('code', 'CXC-00714')->update(['status' => 'vencida', 'due_date' => now()->subDays(20)->toDateString()]));
     $overdue = withinTenant(tenantA(), fn () => DB::table('fin_receivables')->whereNull('deleted_at')->where('status', 'vencida')->whereColumn('paid_amount', '<', 'amount')->count());
+
+    foreach ([-1, 0, 1] as $offset) {
+        Cache::forget('t:'.tenantA()->getKey().':insights:'.now()->addDays($offset)->toDateString());
+    }
 
     $page = $this->getJson('/api/v1/reports/insights?filter[kind]=cobranza_atrasada&page[size]=100')->assertOk()->json();
     $collections = collect($page['data']);

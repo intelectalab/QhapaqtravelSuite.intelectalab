@@ -201,6 +201,16 @@ function lockPlatformBilling(): void
     DB::connection('pgsql_platform')->select('select pg_advisory_xact_lock(7410302)');
 }
 
+function lockShowcase(): void
+{
+    DB::connection('pgsql_platform')->select('select pg_advisory_xact_lock(7410307)');
+}
+
+function lockWebAnalytics(): void
+{
+    DB::select('select pg_advisory_xact_lock(7410308)');
+}
+
 function lockCatalogProducts(): void
 {
     DB::select('select pg_advisory_xact_lock(7410303)');

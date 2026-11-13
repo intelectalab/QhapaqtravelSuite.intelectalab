@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\DB;
 
+beforeEach(fn () => lockShowcase());
+
 if (! function_exists('vitrinaTenantAudit')) {
     function vitrinaTenantAudit(array $where): bool
     {

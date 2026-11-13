@@ -2,18 +2,32 @@
 
 use App\Domain\Tracking\Actions\RecordCookieConsent;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 
 require_once __DIR__.'/SeguimientoHelpers.php';
 
-beforeEach(fn () => segCleanSlate());
+beforeEach(function () {
+    lockWebAnalytics();
+    segCleanSlate();
+    $GLOBALS['segVisitor'] = bin2hex(random_bytes(6));
+
+    foreach (['tenant:'.tenantA()->getKey(), 'tenant:'.tenantB()->getKey(), 'platform:vitrina', 'platform:todos'] as $key) {
+        Cache::forget('web-live:'.$key);
+    }
+});
 
 const SEG_BROWSER = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 
+function segBrowser(string $base = SEG_BROWSER): string
+{
+    return $base.' KipuTest/'.$GLOBALS['segVisitor'];
+}
+
 function segHit(array $body, array $headers = []): TestResponse
 {
-    return test()->postJson('/api/v1/public/analytics/hit', $body, siteOf(extra: ['User-Agent' => SEG_BROWSER, 'CF-IPCountry' => 'PE', ...$headers]));
+    return test()->postJson('/api/v1/public/analytics/hit', $body, siteOf(extra: ['User-Agent' => segBrowser(), 'CF-IPCountry' => 'PE', ...$headers]));
 }
 
 it('VIS-01 y VIS-02: cuenta la visita sin cookies, suma páginas vistas y deja de contar el rebote', function () {
@@ -48,7 +62,7 @@ it('VIS-01 y VIS-02: cuenta la visita sin cookies, suma páginas vistas y deja d
 });
 
 it('VIS-03: la fuente sale de la UTM, del referente o queda como directo', function () {
-    segHit(['path' => '/', 'referrer' => 'https://www.instagram.com/rutas'], ['User-Agent' => SEG_BROWSER.' Instagram'])->assertStatus(202);
+    segHit(['path' => '/', 'referrer' => 'https://www.instagram.com/rutas'], ['User-Agent' => segBrowser(SEG_BROWSER.' Instagram')])->assertStatus(202);
     actingAsSeed('U01');
 
     $sources = $this->getJson('/api/v1/analytics/web/sources?days=7')->assertOk()->json('data');
@@ -119,7 +133,7 @@ it('SEG-01 y SEG-05: el sitio recibe Consent Mode denegado y en el pago no carga
 });
 
 it('cuenta las visitas de la vitrina sin agencia y las muestra en la consola', function () {
-    $this->postJson('/api/v1/public/analytics/hit', ['path' => '/lima', 'site' => 'vitrina', 'utm_source' => 'tiktok', 'utm_medium' => 'paid', 'utm_campaign' => 'free-tours-lima'], ['User-Agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148'])->assertStatus(202);
+    $this->postJson('/api/v1/public/analytics/hit', ['path' => '/lima', 'site' => 'vitrina', 'utm_source' => 'tiktok', 'utm_medium' => 'paid', 'utm_campaign' => 'free-tours-lima'], ['User-Agent' => segBrowser('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148')])->assertStatus(202);
 
     actingAsPlatform();
     $overview = $this->getJson('/api/v1/platform/analytics/web/overview?site=vitrina&days=7')->assertOk()->json('data');

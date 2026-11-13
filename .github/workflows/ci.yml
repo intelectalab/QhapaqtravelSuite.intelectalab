@@ -58,6 +58,13 @@ jobs:
           php-version: '8.4'
           extensions: pdo_pgsql, pgsql, redis, intl, bcmath, gd, zip
           coverage: none
+      - name: Postgres con el mismo límite de locks que docker-compose
+        env: { PGPASSWORD: owner_ci }
+        run: |
+          psql -h 127.0.0.1 -U kipucontrol_owner -d kipucontrol_test -v ON_ERROR_STOP=1 -c "alter system set max_locks_per_transaction = 256"
+          docker restart ${{ job.services.postgres.id }}
+          for i in $(seq 1 30); do pg_isready -h 127.0.0.1 -U kipucontrol_owner -d kipucontrol_test && break; sleep 2; done
+          test "$(psql -h 127.0.0.1 -U kipucontrol_owner -d kipucontrol_test -tAc 'show max_locks_per_transaction')" = "256"
       - name: Roles de conexión (sin BYPASSRLS)
         env: { PGPASSWORD: owner_ci }
         run: |
