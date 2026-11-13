@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RedisStore;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Foundation\Testing\DatabaseTransactionsManager;
 use Illuminate\Support\Carbon;
@@ -194,8 +195,29 @@ final class TestDatabase
     {
         if (ParallelTesting::token() === false) {
             Cache::flush();
+
+            return;
+        }
+
+        $store = Cache::getStore();
+
+        if ($store instanceof RedisStore) {
+            $pattern = config('database.redis.options.prefix').$store->getPrefix().'*';
+            $store->connection()->client()->eval(self::DELETE_BY_PATTERN, [$pattern], 0);
         }
     }
+
+    private const DELETE_BY_PATTERN = <<<'LUA'
+        local cursor = "0"
+        repeat
+            local page = redis.call("SCAN", cursor, "MATCH", ARGV[1], "COUNT", 1000)
+            cursor = page[1]
+            for _, key in ipairs(page[2]) do
+                redis.call("DEL", key)
+            end
+        until cursor == "0"
+        return 1
+        LUA;
 
     private static function rebuild(): void
     {
@@ -204,6 +226,7 @@ final class TestDatabase
         CarbonImmutable::setTestNow($now);
 
         try {
+            self::dropTablesOneByOne();
             Artisan::call('migrate:fresh', [
                 '--database' => 'pgsql_owner',
                 '--force' => true,
@@ -222,6 +245,16 @@ final class TestDatabase
         $owner->table('zz_test_fingerprint')->insert(['value' => self::fingerprint()]);
 
         Cache::flush();
+    }
+
+    private static function dropTablesOneByOne(): void
+    {
+        $owner = DB::connection('pgsql_owner');
+        $tables = $owner->select("select c.relname as name from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('r', 'p') and not c.relispartition order by c.relname");
+
+        foreach ($tables as $table) {
+            $owner->statement('drop table if exists "public"."'.str_replace('"', '""', $table->name).'" cascade');
+        }
     }
 
     private static function storedFingerprint(): ?string
