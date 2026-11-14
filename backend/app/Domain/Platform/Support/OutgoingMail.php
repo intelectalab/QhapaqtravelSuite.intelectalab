@@ -13,7 +13,7 @@ final class OutgoingMail
 
     public const ENCRYPTIONS = ['ssl', 'tls', 'none'];
 
-    public const WEBHOOK_PROVIDERS = ['ses' => 'Secreto de acuses del correo', 'fcm' => 'Secreto de acuses push'];
+    public const WEBHOOK_PROVIDERS = ['ses' => 'Secreto de acuses del correo'];
 
     public function raw(): array
     {

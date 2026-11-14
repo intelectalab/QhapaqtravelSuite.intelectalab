@@ -11,6 +11,7 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { FormError } from "@/features/auth/AuthForms";
 import { cn } from "@/lib/cn";
@@ -163,7 +164,7 @@ function ConvertForm({ lead, catalogs, options, canReassign }: { lead: LeadDetai
           <TextField label="Monto estimado" name="amount" type="number" min={0} step="0.01" required defaultValue={lead.bant?.declared_amount ?? ""} />
           <SelectField label="Moneda" name="currency" options={[{ value: "PEN", label: "Soles" }, { value: "USD", label: "Dólares" }]} defaultValue={lead.bant?.currency ?? "PEN"} />
         </div>
-        <TextField label="Cierre esperado" name="expected_close_date" type="date" min={today()} required />
+        <DateField label="Cierre esperado" name="expected_close_date" min={today()} required />
         {canReassign && options && options.advisors.length > 0 && (
           <SelectField label="Responsable" name="owner_id" options={options.advisors.map((advisor) => ({ value: advisor.id, label: advisor.name }))} defaultValue={lead.owner_id ?? ""} placeholder="El del lead" />
         )}

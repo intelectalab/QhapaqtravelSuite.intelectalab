@@ -10,7 +10,7 @@ import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
-import { TextField } from "@/components/ui/TextField";
+import { DateField } from "@/components/ui/DateField";
 
 const initial: ProductActionState = { message: null, done: false };
 
@@ -26,7 +26,7 @@ export function NewVersionAction({ code }: { code: string }) {
         <>
           <input type="hidden" name="code" value={code} />
           <ChoiceGroup label="Tipo de cambio" name="kind" options={[{ value: "minor", label: "Menor (1.1 → 1.2)" }, { value: "major", label: "Mayor (1.2 → 2.0)" }]} defaultValue="minor" />
-          <TextField label="Vigente desde" name="valid_from" type="date" required />
+          <DateField label="Vigente desde" name="valid_from" required />
           <TextArea label="Motivo" name="reason" rows={2} required minLength={5} maxLength={500} placeholder="Por ejemplo: cambio de hotel en Aguas Calientes." />
         </>
       )}
@@ -121,7 +121,7 @@ export function ResolveRate({ code }: { code: string }) {
     <div className="mb-4 rounded-xl border border-line bg-surface-2 p-3.5">
       <p className="mb-2 text-[12.5px] font-semibold text-fg-2">¿Qué tarifa aplica?</p>
       <div className="flex flex-wrap items-end gap-3">
-        <TextField label="Fecha" name="resolve_date" type="date" value={date} onChange={(event) => setDate(event.target.value)} className="w-40" />
+        <DateField label="Fecha" name="resolve_date" value={date} onChange={(next) => setDate(next ?? "")} className="w-40" />
         <SelectField label="Segmento" name="resolve_segment" options={SEGMENTS} value={segment} onChange={setSegment} className="w-36" />
         <SelectField label="Canal" name="resolve_channel" options={CHANNELS} value={channel} onChange={setChannel} className="w-40" />
         <Button size="sm" variant="secondary" icon={<Calculator size={15} />} onClick={run} disabled={pending || date === ""}>

@@ -129,6 +129,7 @@ const sorts: SortOption<ClientRow>[] = [
 
 const csv: CsvExport<ClientRow> = {
   fileName: "clientes",
+  permission: "reports.view",
   columns: [
     { header: "Código", value: (client) => client.id },
     { header: "Cliente", value: (client) => client.name },

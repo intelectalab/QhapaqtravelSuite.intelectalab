@@ -8,6 +8,7 @@ use App\Domain\Admin\Support\SettingsCatalog;
 use App\Domain\Admin\Support\SettingsDirectory;
 use App\Domain\Admin\Support\TenantSettings;
 use App\Domain\Iam\Models\User;
+use App\Domain\Operations\Support\OperationsSettings;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
@@ -180,7 +181,7 @@ final class UpdateSettings
         return collect($data)->map(function (mixed $value, string $key): mixed {
             return match (true) {
                 in_array($key, self::INTEGERS, true), str_ends_with($key, '_min'), str_ends_with($key, '_hours'), str_ends_with($key, '_days'), str_ends_with($key, '_before'), $key === 'max_pax_per_guide' => (int) $value,
-                $key === 'price_with_tax' => (bool) $value,
+                $key === 'price_with_tax', $key === 'charge_multi_currency', in_array($key, OperationsSettings::SWITCHES, true) => (bool) $value,
                 default => $value,
             };
         })->all();

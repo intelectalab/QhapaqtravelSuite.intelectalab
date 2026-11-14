@@ -11,6 +11,7 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { formatDate } from "@/lib/format";
 import type { TravelDocDetail, TravelDocDetailPassenger, TravelDocument } from "@/lib/operations";
@@ -42,7 +43,7 @@ export function UploadDocAction({ document, passenger, target }: { document: Tra
           <FilePicker label="Archivo" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" formats="PDF, JPG o PNG" maxKb={10240} />
           <div className="grid grid-cols-2 gap-3">
             <TextField label={NUMBER_LABEL[document.type] ?? "Referencia"} name="doc_number" maxLength={40} defaultValue={document.number ?? ""} icon={<IdCard size={16} />} />
-            {["id_doc", "insurance", "visa"].includes(document.type) && <TextField label={document.type === "insurance" ? "Cobertura hasta" : "Vence"} name="expiry_date" type="date" defaultValue={document.expiry ?? ""} hint={document.min_expiry ? `Debe vencer después del ${formatDate(document.min_expiry)}` : undefined} />}
+            {["id_doc", "insurance", "visa"].includes(document.type) && <DateField label={document.type === "insurance" ? "Cobertura hasta" : "Vence"} name="expiry_date" defaultValue={document.expiry} hint={document.min_expiry ? `Debe vencer después del ${formatDate(document.min_expiry)}` : undefined} />}
           </div>
           <TextArea label="Nota" name="note" rows={2} maxLength={300} placeholder="Opcional" />
           <p className="text-[12px] text-fg-3">El archivo pasa por el antivirus antes de guardarse. Solo Operaciones puede abrirlo.</p>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { NoAccess } from "@/components/shell/NoAccess";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
+import { PortfolioBadge } from "@/components/ui/PortfolioBadge";
 import { QuotesTable } from "@/features/quotes/QuotesTable";
 import { QuoteWizardAction } from "@/features/quotes/wizard/QuoteWizard";
 import { formatMoney } from "@/lib/format";
@@ -21,7 +22,12 @@ export default async function CotizacionesPage({ searchParams }: PageProps<"/cot
     <>
       <PageHeader
         title="Cotizaciones"
-        subtitle={`${kpis.open} en curso · ${formatMoney(kpis.followup_pen, "PEN", { compact: true })} en seguimiento con el cliente${kpis.conversion !== null ? ` · ${kpis.conversion} % se aprueban` : ""}`}
+        subtitle={
+          <>
+            {list.meta.scope === "own" && <PortfolioBadge hint="Solo ves las cotizaciones que atiendes tú. Las de otros asesores no aparecen en la lista, la búsqueda ni los indicadores." />}
+            {`${kpis.open} en curso · ${formatMoney(kpis.followup_pen, "PEN", { compact: true })} en seguimiento con el cliente${kpis.conversion !== null ? ` · ${kpis.conversion} % se aprueban` : ""}`}
+          </>
+        }
         actions={options ? <QuoteWizardAction options={options} opportunityCode={typeof oportunidad === "string" ? oportunidad : undefined} defaultOpen={nueva === "1"} /> : undefined}
         info={<InfoTip>Una cotización vence al pasar su fecha de vigencia si nadie la aprobó. El monto en seguimiento suma en soles las enviadas, vistas y en negociación, sin borradores. El porcentaje de aprobación compara las aprobadas con todas las ya cerradas.</InfoTip>}
       />
@@ -40,7 +46,7 @@ export default async function CotizacionesPage({ searchParams }: PageProps<"/cot
             ))}
         </p>
       ) : null}
-      <QuotesTable rows={list.data} canManage={can.manage} />
+      <QuotesTable rows={list.data} canManage={can.manage} ownOnly={list.meta.scope === "own"} />
     </>
   );
 }

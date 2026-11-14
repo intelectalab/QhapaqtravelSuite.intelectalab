@@ -31,7 +31,7 @@ final class CorporateMember
 
     public static function of(User $user): self
     {
-        app(CorporatePortalRule::class)->assert();
+        app(CorporatePortalRule::class)->assertFor(request());
         $portal = PortalAccount::of($user);
 
         if ($portal->isPassenger()) {
@@ -75,6 +75,7 @@ final class CorporateMember
             'role' => $member->role(),
             'role_label' => CorporateDirectory::ROLES[$member->role()],
             'pending_approvals' => $member->can('approvals') ? app(CorporateApprovals::class)->pendingFor($member) : 0,
+            'read_only' => ! app(CorporatePortalRule::class)->enabled(),
         ];
     }
 

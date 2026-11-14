@@ -20,6 +20,8 @@ use App\Domain\Site\Support\SiteAltitude;
 use App\Domain\Site\Support\SiteBooking;
 use App\Domain\Site\Support\SiteProfile;
 use App\Domain\Site\Support\SiteQuote;
+use App\Domain\Site\Support\TransferDeadlines;
+use App\Domain\Site\Support\TransferProofs;
 use App\Domain\Site\Support\WebClients;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
@@ -103,7 +105,7 @@ final class SiteCheckout
                 'id' => $orderId,
                 'tenant_id' => $this->context->idOrFail(),
                 'code' => $orderCode,
-                'ordered_at' => $now,
+                'ordered_at' => $now->copy()->utc(),
                 'crm_client_id' => $clientId,
                 'customer_name' => trim($buyer['name']),
                 'customer_email' => Str::lower(trim($buyer['email'])),
@@ -237,6 +239,8 @@ final class SiteCheckout
             'due' => $this->dueAmount($order),
             'methods' => collect(CheckoutTerms::METHODS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values()->all(),
             'bank_accounts' => CheckoutTerms::bankAccounts(),
+            'proof' => app(TransferProofs::class)->forOrder($order),
+            'auto_cancel_at' => app(TransferDeadlines::class)->cancelAt($order)?->toIso8601String(),
             'passengers' => DB::table('channel_ecom_passengers')->where('order_id', $order->id)->orderBy('position')->get(['full_name', 'pax_type'])->map(fn (stdClass $p): array => ['name' => $p->full_name, 'type' => $p->pax_type])->all(),
             'attempts' => DB::table('channel_ecom_payment_attempts')->where('order_id', $order->id)->orderByDesc('attempted_at')->get(['attempted_at', 'method', 'card_masked', 'operation_ref', 'result', 'gateway_code', 'message', 'amount', 'currency'])
                 ->map(fn (stdClass $a): array => ['at' => Carbon::parse($a->attempted_at)->toIso8601String(), 'method' => CheckoutTerms::METHODS[$a->method] ?? $a->method, 'card' => $a->card_masked, 'operation' => $a->operation_ref, 'result' => $a->result, 'code' => $a->gateway_code, 'message' => $a->message, 'amount' => $a->amount === null ? null : Decimal::toApi((string) $a->amount), 'currency' => $a->currency])->all(),
@@ -381,7 +385,7 @@ final class SiteCheckout
 
         DB::table('channel_ecom_payment_attempts')->insert([
             'order_id' => $order->id,
-            'attempted_at' => $now,
+            'attempted_at' => $now->copy()->utc(),
             'method' => $method,
             'card_masked' => $card['masked'] ?? null,
             'operation_ref' => $method === 'tarjeta' ? null : $payment['operation_ref'],
@@ -419,6 +423,10 @@ final class SiteCheckout
         }
 
         $this->audit->log('Pedido web', $order->code, $result === 'aprobado' ? 'pago_aprobado' : 'pago_por_validar', $order->status, ($balanceOnly ? 'saldo · ' : '').CheckoutTerms::METHODS[$method]." · {$order->currency} {$amount}");
+
+        if ($result === 'por_validar') {
+            app(TransferDeadlines::class)->emailPending($order, $method, $amount);
+        }
 
         return ['result' => $result, 'message' => $result === 'aprobado' ? 'Pago aprobado.' : 'Recibimos tu número de operación. Validamos el pago en un plazo de 4 horas hábiles.'];
     }
@@ -467,7 +475,7 @@ final class SiteCheckout
 
         $lines = $items->map(function (stdClass $item) use ($cart, $lock): array {
             $product = $this->quotes->product((string) DB::table('catalog_products')->where('id', $item->product_id)->value('slug'));
-            $quote = $this->quotes->quote($product, $item->service_date, (int) $item->pax_adults, (int) $item->pax_children, (int) $item->pax_infants, $cart->promo_code, SiteBooking::decode($item));
+            $quote = $this->quotes->quote($product, $item->service_date, (int) $item->pax_adults, (int) $item->pax_children, (int) $item->pax_infants, $cart->promo_code, SiteBooking::decode($item), false, null, null, trim((string) $cart->currency));
             $hold = $item->hold_id ? DB::table('catalog_availability_holds')->where('id', $item->hold_id)->first(['status', 'expires_at']) : null;
 
             if ($lock && $item->hold_id && ($hold === null || $hold->status !== 'hold' || Carbon::parse($hold->expires_at)->isPast())) {

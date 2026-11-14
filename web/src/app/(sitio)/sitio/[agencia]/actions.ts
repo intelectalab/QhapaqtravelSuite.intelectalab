@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { accountCookie, cartCookie, NO_EXTRAS, orderCookie, siteHref, type AccountMe, type ChatMessage, type BookingExtras, type CalendarMonth, type PaymentMode, type Quote, type SiteFormState } from "@/lib/site";
+import { accountCookie, cartCookie, NO_EXTRAS, orderCookie, SITE_CURRENCY_COOKIE, siteHref, type AccountMe, type ChatMessage, type BookingExtras, type CalendarMonth, type PaymentMode, type Quote, type SiteFormState } from "@/lib/site";
 import { parseSiteLocale, SITE_LOCALE_COOKIE } from "@/lib/site-i18n";
 import { captchaHeaders } from "@/lib/server/captcha";
 import { apiFetch } from "@/lib/server/api";
@@ -228,6 +228,14 @@ export async function payOrder(agencia: string, code: string, payment: Record<st
 
 export async function setSiteLocale(locale: string): Promise<void> {
   (await cookies()).set(SITE_LOCALE_COOKIE, parseSiteLocale(locale), { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+}
+
+export async function setSiteCurrency(agencia: string, currency: string): Promise<void> {
+  if (!/^[A-Z]{3}$/.test(currency)) return;
+  const store = await cookies();
+  store.set(SITE_CURRENCY_COOKIE, currency, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  const token = store.get(cartCookie(agencia))?.value;
+  if (token && (currency === "PEN" || currency === "USD")) await sendSite(agencia, "/carts/current/preferences", { currency }, cartHeaders(token), "PUT");
 }
 
 const ACCOUNT_DAYS = 30;

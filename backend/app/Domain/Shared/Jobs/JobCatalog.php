@@ -8,6 +8,7 @@ use App\Jobs\AlertClaimDeadlines;
 use App\Jobs\ApprovalSlaCheck;
 use App\Jobs\CashDepositAlerts;
 use App\Jobs\CatalogValidityAlerts;
+use App\Jobs\CheckPushReceipts;
 use App\Jobs\CloseTrials;
 use App\Jobs\ConsolidateUsage;
 use App\Jobs\DetectPendingSupplierServices;
@@ -45,6 +46,7 @@ use App\Jobs\SendPaymentReminders;
 use App\Jobs\SendScheduledReports;
 use App\Jobs\SnapshotPlatformMetrics;
 use App\Jobs\SyncSupplierAdapters;
+use App\Jobs\TransferValidationWatch;
 use App\Jobs\TreasuryCashFlowSnapshot;
 use App\Jobs\TreasuryOpenSessionCheck;
 use App\Jobs\VoucherDeadlineAlerts;
@@ -89,6 +91,8 @@ final class JobCatalog
         'JOB-TES-1' => ['class' => TreasuryOpenSessionCheck::class, 'name' => 'Cajas chicas sin abrir', 'cron' => '0 10 * * *', 'label' => 'diario 10:00', 'queue' => 'low'],
         'JOB-TES-2' => ['class' => TreasuryCashFlowSnapshot::class, 'name' => 'Foto del flujo de caja proyectado', 'cron' => '0 6 * * *', 'label' => 'diario 06:00', 'queue' => 'reports'],
         'JOB-TRAMOS-1' => ['class' => ExpireInTripOffers::class, 'name' => 'Vencer ofertas de venta en ruta', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'default'],
+        'JOB-PUSH-1' => ['class' => CheckPushReceipts::class, 'name' => 'Recibos de push de Expo', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'notifications'],
+        'JOB-SITIO-1' => ['class' => TransferValidationWatch::class, 'name' => 'Vigilar transferencias por validar', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'notifications'],
     ];
 
     public const PLATFORM = [

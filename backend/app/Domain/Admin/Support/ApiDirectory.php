@@ -92,6 +92,7 @@ final class ApiDirectory
             'calls_month' => (int) ($calls ?? 0),
             'calls_history' => $history->reverse()->map(fn (object $row): array => ['month' => substr((string) $row->month, 0, 7), 'value' => (int) $row->value])->values(),
             'api_version' => self::API_VERSION,
+            'public_endpoints' => ApiKeyEndpoints::all(),
             'scopes' => collect(self::SCOPES)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
             'events' => collect(self::EVENTS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
             'history' => $this->audit->recent(['Clave de API', 'Webhook'], 8),
@@ -107,7 +108,7 @@ final class ApiDirectory
             ->leftJoin('iam_users as r', 'r.id', '=', 'k.revoked_by')
             ->orderByRaw("case k.status when 'active' then 0 else 1 end")
             ->orderByDesc('k.created_at')
-            ->get(['k.code', 'k.name', 'k.environment', 'k.prefix', 'k.last4', 'k.scopes', 'k.ip_allowlist', 'k.expires_at', 'k.last_used_at', 'k.last_used_ip', 'k.status', 'k.revoked_at', 'k.revoke_reason', 'k.created_at', 'u.name as created_by', 'r.name as revoked_by'])
+            ->get(['k.id', 'k.code', 'k.name', 'k.environment', 'k.prefix', 'k.last4', 'k.scopes', 'k.ip_allowlist', 'k.expires_at', 'k.last_used_at', 'k.last_used_ip', 'k.status', 'k.revoked_at', 'k.revoke_reason', 'k.created_at', 'u.name as created_by', 'r.name as revoked_by'])
             ->map(fn (object $row): array => [
                 'code' => $row->code,
                 'name' => $row->name,
@@ -124,6 +125,7 @@ final class ApiDirectory
                 'revoke_reason' => $row->revoke_reason,
                 'created_at' => $row->created_at,
                 'created_by' => $row->created_by,
+                'usage' => app(ApiKeyUsage::class)->summary((string) $row->id),
             ])
             ->values();
     }

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Domain\Admin\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Operations\Support\OperationsSettings;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Http\CursorPage;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\Shared\Time\BusinessHours;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -26,6 +28,7 @@ final class SettingsDirectory
         $tenant = $this->context->tenant();
         $rank = $this->planRank();
         $sections = $this->settings->sections(SettingsCatalog::SECTIONS);
+        $sections['operations']['values'] = OperationsSettings::withDefaults($sections['operations']['values']);
         $channels = $sections['channels']['values'];
         $general = $sections['general']['values'];
         $fx = DB::table('fin_fx_rates')->where('currency_code', $sections['currency']['values']['alt_currency'] ?? 'USD')->orderByDesc('rate_date')->orderByDesc('effective_at')->first(['rate_pen', 'rate_date', 'source']);
@@ -49,6 +52,7 @@ final class SettingsDirectory
                 'lock_version' => (int) $tenant->lock_version,
             ],
             'sections' => $sections,
+            'business_hours' => app(BusinessHours::class)->overview(),
             'main_sede' => $sedes->firstWhere('id', $general['main_sede_id'] ?? null)?->name,
             'fx' => $fx ? ['rate' => (float) $fx->rate_pen, 'date' => $fx->rate_date, 'source' => $fx->source] : null,
             'base_locked' => DB::table('booking_reservations')->exists() || DB::table('fin_payments')->exists(),

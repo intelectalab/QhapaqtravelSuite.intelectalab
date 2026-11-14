@@ -1,15 +1,16 @@
 "use client";
 
-import { Check, Layers, Link2, Lock, PencilRuler, Plus, Power, PowerOff, RotateCcw, SlidersHorizontal, Sparkles, Trash2 } from "lucide-react";
+import { Check, Layers, Link2, Lock, PencilRuler, Plus, Power, PowerOff, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useOptimistic, useState, useTransition } from "react";
-import { applyRuleTemplate, createRule, deleteRule, resetRule, toggleRule, updateRule, updateRuleParams } from "@/app/(backoffice)/admin/reglas/actions";
+import { applyRuleTemplate, createRule, deleteRule, requestRuleAutomation, resetRule, toggleRule, updateRule, updateRuleParams } from "@/app/(backoffice)/admin/reglas/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ChipToggleGroup } from "@/components/ui/ChipToggleGroup";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
@@ -23,7 +24,12 @@ import { RISE, ToggleField } from "./AdminParts";
 
 export const RULE_GROUPS = ["Disponibilidad", "Pasajeros", "Alojamiento", "Adicionales", "Precios", "Monedas y pagos", "Checkout", "Comunicación"];
 
-const GROUP_TONES: Record<string, "t1" | "t4" | "sun" | "violet" | "t3" | "accent" | "info" | "brand"> = {
+const PLAN_GROUP = "Funciones del plan";
+
+const RULE_SCOPES = ["Catálogo", "Sitio web", "Widget", "Cotizaciones", "Reservas", "B2B", "Operaciones", "Portal cliente", "Portal pasajero", "App pasajero", "Comunicaciones", "Reseñas", "WhatsApp", "Finanzas"];
+
+const GROUP_TONES: Record<string, "t1" | "t4" | "sun" | "violet" | "t3" | "accent" | "info" | "brand" | "ok"> = {
+  [PLAN_GROUP]: "ok",
   Disponibilidad: "t1",
   Pasajeros: "t4",
   Alojamiento: "sun",
@@ -103,7 +109,48 @@ function RuleFields({ rule }: { rule?: BookingRule }) {
       <TextField label="Nombre" name="name" required minLength={3} defaultValue={rule?.name} placeholder="Ej.: Seguro de viaje obligatorio" />
       <TextArea label="Qué hará la regla" name="description" rows={3} required minLength={10} defaultValue={rule?.description} />
       <SelectField label="Grupo" name="group" options={RULE_GROUPS.map((group) => ({ value: group, label: group }))} defaultValue={rule?.group ?? "Checkout"} />
+      <ChipToggleGroup label="Aplica en" name="scope" options={RULE_SCOPES.map((scope) => ({ value: scope, label: scope }))} defaultValue={rule?.scope ?? []} hint="Dato informativo: la regla no tiene efecto automático hasta que se programe." />
     </>
+  );
+}
+
+const AUTOMATION_TONE: Record<NonNullable<BookingRule["automation"]>["status"], "info" | "sun" | "bad" | "ok"> = { enviado: "info", en_evaluacion: "sun", rechazado: "bad", publicado: "ok" };
+
+function AutomationBadge({ rule }: { rule: BookingRule }) {
+  if (!rule.custom) return null;
+  if (!rule.automation) return <Badge tone="mute">Sin efecto automático</Badge>;
+  const { automation } = rule;
+  const title = automation.status === "rechazado" ? `Motivo: ${automation.reason ?? ""}` : automation.status === "publicado" ? `Enlazada a ${automation.linked_rule}` : `Pedido ${automation.code}`;
+  return (
+    <span title={title} className="inline-flex items-center gap-1">
+      <Badge tone={AUTOMATION_TONE[automation.status]}>{automation.status === "publicado" ? `Automatizada · ${automation.linked_rule}` : `Automatización: ${automation.status_label.toLowerCase()}`}</Badge>
+    </span>
+  );
+}
+
+function RequestAutomationAction({ rule }: { rule: BookingRule }) {
+  return (
+    <PanelAction<AdminActionState>
+      label="Pedir automatización"
+      variant="ghost"
+      size="sm"
+      formId={`rule-automation-${rule.code}`}
+      trigger={(open) => <RowIcon tone="neutral" label="Pedir automatización" icon={<Wand2 size={15} />} onClick={open} />}
+      title="Pedir automatización"
+      description={`${rule.name} hoy es solo una bandera. Cuéntanos qué debe hacer y el equipo de KipuControl evaluará programarla como regla estándar. Te avisaremos en la campana.`}
+      submitLabel="Enviar pedido"
+      action={requestRuleAutomation}
+      initial={ADMIN_INITIAL}
+    >
+      {() => (
+        <>
+          <input type="hidden" name="code" value={rule.code} />
+          <TextArea label="Qué debe pasar" name="expected" rows={3} required minLength={10} maxLength={1000} placeholder="Por ejemplo: que no se pueda pagar sin adjuntar la póliza del seguro." />
+          <TextArea label="Cuándo" name="trigger_when" rows={2} required minLength={5} maxLength={600} placeholder="Por ejemplo: al reservar un tour de aventura o de altura." />
+          <TextArea label="Ejemplo" name="example" rows={3} required minLength={10} maxLength={1000} placeholder="Por ejemplo: un cliente reserva el Camino Inca y debe subir su póliza antes de pagar." />
+        </>
+      )}
+    </PanelAction>
   );
 }
 
@@ -158,6 +205,7 @@ function RuleRowActions({ rule }: { rule: BookingRule }) {
           )}
         </PanelAction>
       )}
+      {rule.custom && (!rule.automation || rule.automation.status === "rechazado") && <RequestAutomationAction rule={rule} />}
       {rule.custom && (
         <PanelAction<AdminActionState> label="Editar" variant="ghost" size="sm" formId={`rule-edit-${rule.code}`} trigger={(open) => <RowIcon tone="edit" label="Editar regla" icon={<PencilRuler size={15} />} onClick={open} />} title="Editar regla personalizada" description={rule.code} submitLabel="Guardar cambios" action={updateRule} initial={ADMIN_INITIAL}>
           {() => (
@@ -208,6 +256,7 @@ export function RulesTable({ rules, manage }: { rules: BookingRule[]; manage: bo
           <p className="flex flex-wrap items-center gap-1.5 text-[11.5px] text-fg-3">
             <span className="font-mono">{rule.code}</span>
             {rule.custom && <Badge tone="violet">Personalizada</Badge>}
+            <AutomationBadge rule={rule} />
             {rule.modified && <span className="text-accent">Ajustada</span>}
             <DependencyNote rule={rule} rules={rules} />
           </p>
@@ -244,7 +293,7 @@ export function RulesTable({ rules, manage }: { rules: BookingRule[]; manage: bo
     ...(rules.some((rule) => rule.locked) ? [{ id: "locked", label: "Fuera de tu plan", tone: "warn" as const, icon: <Lock size={19} />, matches: (rule: BookingRule) => rule.locked }] : []),
   ];
   const filters: FilterConfig<BookingRule>[] = [
-    { id: "group", label: "Grupo", options: RULE_GROUPS.filter((group) => rules.some((rule) => rule.group === group)).map((group) => ({ value: group, label: group })), value: (rule) => rule.group },
+    { id: "group", label: "Grupo", options: [...RULE_GROUPS, PLAN_GROUP].filter((group) => rules.some((rule) => rule.group === group)).map((group) => ({ value: group, label: group })), value: (rule) => rule.group },
     { id: "scope", label: "Dónde aplica", options: [...new Set(rules.flatMap((rule) => rule.scope))].map((scope) => ({ value: scope, label: scope })), value: (rule) => rule.scope },
     { id: "plan", label: "Plan mínimo", options: ["Starter", "Professional", "Enterprise"].map((plan) => ({ value: plan, label: plan })), value: (rule) => rule.min_plan },
   ];

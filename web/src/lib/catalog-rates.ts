@@ -23,6 +23,7 @@ export interface RateRow {
   status: "vigente" | "inactiva";
   state: RateState;
   lock_version: number;
+  alt_prices?: { currency: string; price: string }[];
 }
 
 export interface SeasonRow {
@@ -58,6 +59,7 @@ export interface SeasonResolution {
 
 export interface RatesOverview {
   today: string;
+  multi_currency?: { enabled: boolean; currencies: string[] };
   rates: RateRow[];
   seasons: SeasonRow[];
   overlaps: SeasonOverlap[];

@@ -39,7 +39,7 @@ export function TrialsBoard({ overview }: { overview: TrialsOverview }) {
             icon={<Gift size={15} />}
             variant="primary"
             title="Dar una prueba gratis"
-            description="Para agencias sin suscripción o con la prueba vencida en solo lectura. La agencia recupera todas las funciones del plan durante los días que elijas y se le avisa por correo."
+            description="Para agencias sin suscripción o con la prueba vencida en solo lectura. Se da una prueba cada 12 meses por RUC o dominio de correo; para más días, extiende la prueba antes de que venza. Se le avisa por correo."
             submitLabel="Dar prueba"
             action={startTrial}
           >

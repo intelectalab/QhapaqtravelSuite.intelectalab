@@ -10,14 +10,18 @@ use App\Domain\Integrations\Data\FxRate;
 
 final class FakeFxRateProvider implements FxRateProvider
 {
-    public function __construct(private readonly array $rates = ['USD' => '3.740000', 'EUR' => '4.050000', 'GBP' => '4.780000', 'BRL' => '0.680000']) {}
+    public function __construct(
+        private readonly array $rates = ['USD' => '3.740000', 'EUR' => '4.050000', 'GBP' => '4.780000', 'BRL' => '0.680000'],
+        private readonly string $source = 'Simulado (demo)',
+        private readonly array $missing = [],
+    ) {}
 
     public function latest(array $currencies, string $date): array
     {
         $out = [];
         foreach ($currencies as $code) {
             if (isset($this->rates[$code])) {
-                $out[] = new FxRate($code, $this->rates[$code], $date, 'Simulado (demo)');
+                $out[] = new FxRate($code, $this->rates[$code], $date, $this->source);
             }
         }
 
@@ -26,6 +30,10 @@ final class FakeFxRateProvider implements FxRateProvider
 
     public function healthcheck(): AdapterResult
     {
+        if ($this->missing !== []) {
+            return AdapterResult::permanent('Faltan credenciales: '.implode(', ', $this->missing).'.');
+        }
+
         return AdapterResult::success('ok', null, ['simulated' => true]);
     }
 }

@@ -8,6 +8,7 @@ use App\Domain\Channels\Support\ExternalReviewDirectory;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Iam\Models\User;
 use App\Domain\Inbox\Support\InboxNotices;
+use App\Domain\Inbox\Support\MessageCipher;
 use App\Domain\Integrations\Contracts\ReviewsProvider;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -92,7 +93,7 @@ final class ExternalReviewDesk
                 'conversation_id' => $conversation,
                 'channel' => 'form',
                 'direction' => 'in',
-                'body' => $body !== '' ? $body : 'Reseña sin texto.',
+                'body' => MessageCipher::seal($body !== '' ? $body : 'Reseña sin texto.'),
                 'sent_at' => $now,
             ]);
             DB::table('channel_external_reviews')->where('id', $id)->update(['conversation_id' => $conversation, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);

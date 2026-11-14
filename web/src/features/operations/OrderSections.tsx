@@ -13,6 +13,7 @@ import { SEVERITY_LABEL, type EvidenceFile, type IncidentList, type OrderDetail,
 import { PAX_TYPE, SERVICE_KIND } from "@/lib/reservations";
 import { EvidenceSection, ServiceCompleteAction } from "./Evidence";
 import { OrderIncidentCreateAction } from "./Incidents";
+import { NoShowAction, NoShowsCard } from "./NoShows";
 import { TimeSlot } from "./OpsBits";
 import { AssignmentControls, CheckinAction, CloseChecklist, TaskList } from "./OrderActions";
 import { RoomingPrefillAction } from "./Rooming";
@@ -140,10 +141,12 @@ export function ServicesSection({ order, editable }: { order: OrderDetail; edita
                 <ServiceRowActions code={order.reservation.code} service={{ code: service.code, name: service.name, date: service.date, time: service.time, kind: service.kind, status: service.status, confirmation: service.confirmation, reject_reason: service.reject_reason, replaced: service.replaced, provider: service.provider ? { name: service.provider.name, active: service.provider.active } : null, cost: service.cost, currency: service.currency }} reasons={order.reject_reasons} />
               )}
               {editable && <ServiceCompleteAction service={service} today={order.today} orderCode={order.code} />}
+              {editable && <NoShowAction order={order} service={service} />}
             </li>
           ))}
         </ul>
       </Card>
+      <NoShowsCard order={order} editable={editable} />
     </div>
   );
 }

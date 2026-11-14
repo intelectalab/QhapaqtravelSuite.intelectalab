@@ -33,7 +33,8 @@ export type SiteEventName =
   | "contact_whatsapp"
   | "select_language"
   | "select_currency"
-  | "claim_submitted";
+  | "claim_submitted"
+  | "select_date";
 
 export interface SiteEvent {
   event: SiteEventName;

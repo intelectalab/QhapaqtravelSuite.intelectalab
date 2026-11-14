@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { FieldError } from "@/components/ui/FieldError";
 import { SelectField } from "@/components/ui/SelectField";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import type { RuleSimulation, SimulatorOptions } from "@/lib/admin";
 import { cn } from "@/lib/cn";
@@ -104,7 +105,7 @@ export function RuleSimulator({ options }: { options: SimulatorOptions }) {
     <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
       <form action={run} className="flex flex-col gap-3">
         <SelectField label="Producto" name="product" options={options.products} searchable placeholder="Elige un producto" defaultValue={options.products[0]?.value} />
-        <TextField label="Fecha del servicio" name="date" type="date" required defaultValue={options.today} />
+        <DateField label="Fecha del servicio" name="date" required defaultValue={options.today} />
         <div className="grid grid-cols-3 gap-2">
           <TextField label="Adultos" name="adt" type="number" min={0} max={50} required defaultValue="2" icon={<Users size={16} />} />
           <TextField label="Niños" name="chd" type="number" min={0} max={50} defaultValue="0" />

@@ -7,6 +7,7 @@ import { FieldError } from "@/components/ui/FieldError";
 import { Select } from "@/components/ui/Select";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { amountAttr, formatDate, formatMoney } from "@/lib/format";
@@ -183,7 +184,7 @@ export function TripStep({ form, set, options, errors, plan, checkError, checkin
               error={errors.departure_id}
             />
           )}
-          {product && !perDeparture && <TextField label="Fecha del servicio" type="date" min={options.today} value={form.date} onChange={(event) => set({ date: event.target.value, rate_id: "" })} icon={<CalendarDays size={17} />} hint={product.advance_min_days > 0 ? `Se reserva con al menos ${plural(product.advance_min_days, "día", "días")} de anticipación.` : undefined} error={errors.date} data-testid="field:date" />}
+          {product && !perDeparture && <DateField label="Fecha del servicio" name="date" hiddenInput={false} min={options.today} value={form.date} onChange={(next) => set({ date: next ?? "", rate_id: "" })} icon={<CalendarDays size={17} />} hint={product.advance_min_days > 0 ? `Se reserva con al menos ${plural(product.advance_min_days, "día", "días")} de anticipación.` : undefined} error={errors.date} />}
           {product && plan?.rates?.length ? (
             <div>
               <span className="mb-1.5 block text-[13px] font-semibold text-fg">Tarifa</span>

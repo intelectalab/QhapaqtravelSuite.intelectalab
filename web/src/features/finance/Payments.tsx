@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, CircleX, Hourglass, Landmark, RotateCcw, Undo2 } from "lucide-react";
+import { CircleCheck, CircleX, Hourglass, Landmark, Paperclip, RotateCcw, Undo2 } from "lucide-react";
 import { PAYMENTS_CSV } from "@/lib/finance-csv";
 import type { ReactNode } from "react";
 import Link from "next/link";
@@ -10,8 +10,9 @@ import type { Column, FilterConfig, MetricFilter, SortOption } from "@/component
 import { StatusBadge } from "@/components/ui/Badge";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
-import type { PaymentRow, PaymentsOverview } from "@/lib/finance";
-import { formatDate, formatMoney } from "@/lib/format";
+import { cn } from "@/lib/cn";
+import type { PaymentRow, PaymentsOverview, TransferProofState } from "@/lib/finance";
+import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { statusLabel } from "@/lib/tone";
 import { FinanceStep, SummaryBox } from "./FinanceStep";
 
@@ -100,8 +101,43 @@ export function RetryPaymentAction({ code, lockVersion, retries, summary, trigge
   );
 }
 
+export function businessTime(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest} min`;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}
+
+function ProofTag({ code, proof }: { code: string; proof: TransferProofState }) {
+  return (
+    <a
+      href={`/finanzas/pagos/${encodeURIComponent(code)}/constancia`}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={`${proof.file_name} · subida el ${formatDateTime(proof.uploaded_at, false)}${proof.escalated ? " · escalada a Gerencia" : ""}`}
+      className={cn("inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11.5px] font-semibold transition hover:brightness-110", proof.escalated ? "bg-[color-mix(in_srgb,var(--bad)_12%,transparent)] text-bad" : "bg-[color-mix(in_srgb,var(--info)_12%,transparent)] text-info")}
+    >
+      <Paperclip size={12} />
+      Constancia · {businessTime(proof.business_minutes)} hábiles
+    </a>
+  );
+}
+
+const PROOF_RANK = { escalada: 0, recordada: 1, recibida: 2 } as const;
+
+function proofFirst(rows: PaymentRow[]): PaymentRow[] {
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const rank = (row: PaymentRow) => (row.proof ? PROOF_RANK[row.proof.stage] : 3);
+      return rank(a.row) - rank(b.row) || (a.row.proof && b.row.proof ? b.row.proof.business_minutes - a.row.proof.business_minutes : 0) || a.index - b.index;
+    })
+    .map(({ row }) => row);
+}
+
 export function PaymentsTable({ data }: { data: PaymentsOverview }) {
-  const { rows, can } = data;
+  const { can } = data;
+  const rows = proofFirst(data.rows);
 
   const columns: Column<PaymentRow>[] = [
     {
@@ -148,6 +184,7 @@ export function PaymentsTable({ data }: { data: PaymentsOverview }) {
         <span className="grid justify-items-start gap-0.5" title={row.reason ?? undefined}>
           <StatusBadge status={row.status} />
           {row.reason && <span className="max-w-[200px] truncate text-[11.5px] text-fg-3">{row.reason}</span>}
+          {row.proof && <ProofTag code={row.code} proof={row.proof} />}
         </span>
       ),
     },

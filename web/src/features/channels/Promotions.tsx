@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { HiddenFields } from "@/features/catalog-shared/CatalogPanels";
 import type { Promotion, PromotionCatalog } from "@/lib/channels";
@@ -35,21 +36,25 @@ const KIND_HINT: Record<string, string> = {
   "Código promocional": "Porcentaje que se aplica al ingresar el código.",
 };
 
-function PromotionForm({ catalog, promotion, product, trigger }: { catalog: PromotionCatalog; promotion?: Promotion; product?: string; trigger: (open: () => void) => React.ReactNode }) {
+function PromotionForm({ catalog, promotion, product, trigger, onCreated }: { catalog: PromotionCatalog; promotion?: Promotion; product?: string; trigger: (open: () => void) => React.ReactNode; onCreated?: (code: string) => void }) {
   const router = useRouter();
-  const [kind, setKind] = useState(promotion?.kind ?? "Descuento %");
+  const [kind, setKind] = useState(promotion?.kind ?? (onCreated ? "Código promocional" : "Descuento %"));
+  const [code, setCode] = useState(promotion?.promo_code ?? "");
   const percent = catalog.percent_kinds.includes(kind);
   return (
     <PanelAction<StepResult>
       label={promotion ? "Editar" : "Nueva promoción"}
-      formId={`promotion-${promotion?.ref ?? product ?? "new"}`}
+      formId={`promotion-${promotion?.ref ?? product ?? (onCreated ? "campaign" : "new")}`}
       title={promotion ? `Editar ${promotion.name}` : "Nueva promoción"}
       description={promotion ? `${promotion.ref} · ${promotion.product.name}` : "Se aplica sobre la tarifa vigente del producto en el canal que elijas. Los porcentajes van hasta " + `${catalog.max_percent - 1} %.`}
       submitLabel={promotion ? "Guardar" : "Crear promoción"}
       action={promotionStep}
       initial={initial}
       trigger={trigger}
-      onDone={() => router.refresh()}
+      onDone={() => {
+        onCreated?.(code.trim().toUpperCase());
+        router.refresh();
+      }}
     >
       {() => (
         <>
@@ -62,11 +67,15 @@ function PromotionForm({ catalog, promotion, product, trigger }: { catalog: Prom
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <SelectField label="Canal" name="channel" defaultValue={promotion?.channel ?? "E-commerce"} options={catalog.channels.map((value) => ({ value, label: value }))} />
-            <TextField label="Código" name="promo_code" maxLength={40} defaultValue={promotion?.promo_code ?? ""} placeholder={kind === "Código promocional" ? "Obligatorio" : "Opcional"} hint="Se guarda en mayúsculas y no se repite." />
+            {onCreated ? (
+              <TextField label="Código" name="promo_code" required minLength={4} maxLength={20} pattern="[A-Za-z0-9]{4,20}" value={code} onChange={(event) => setCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))} placeholder="PRIMAVERA8" hint="De 4 a 20 letras o números. Es el que recibirá la campaña." />
+            ) : (
+              <TextField label="Código" name="promo_code" maxLength={40} defaultValue={promotion?.promo_code ?? ""} placeholder={kind === "Código promocional" ? "Obligatorio" : "Opcional"} hint="Se guarda en mayúsculas y no se repite." />
+            )}
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <TextField label="Desde" name="valid_from" type="date" required defaultValue={promotion?.valid_from ?? catalog.today} />
-            <TextField label="Hasta" name="valid_to" type="date" required min={catalog.today} defaultValue={promotion?.valid_to} />
+            <DateField label="Desde" name="valid_from" required defaultValue={promotion?.valid_from ?? catalog.today} />
+            <DateField label="Hasta" name="valid_to" required min={catalog.today} defaultValue={promotion?.valid_to} />
             <TextField label="Mínimo de pasajeros" name="min_pax" type="number" min={1} max={99} defaultValue={promotion?.min_pax ?? ""} placeholder={kind === "Descuento por cantidad" ? "Obligatorio" : "Opcional"} />
           </div>
         </>
@@ -112,6 +121,21 @@ function DeleteAction({ promotion }: { promotion: Promotion }) {
     >
       {() => <HiddenFields values={{ step: "delete", ref: promotion.ref, product: promotion.product.code }} />}
     </PanelAction>
+  );
+}
+
+export function CampaignPromotionAction({ catalog, onCreated }: { catalog: PromotionCatalog; onCreated: (code: string) => void }) {
+  return (
+    <PromotionForm
+      catalog={catalog}
+      onCreated={onCreated}
+      trigger={(open) => (
+        <button type="button" onClick={open} data-testid="campaign-create-promotion" className="-mt-2 inline-flex items-center gap-1 self-start text-[12.5px] font-semibold text-accent hover:underline">
+          <Plus size={13} />
+          Crear promoción
+        </button>
+      )}
+    />
   );
 }
 

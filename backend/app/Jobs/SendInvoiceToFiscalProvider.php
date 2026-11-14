@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Domain\Admin\Support\AdapterRetryPolicy;
 use App\Domain\Finance\Support\FinanceHistory;
+use App\Domain\Finance\Support\FiscalFiles;
 use App\Domain\Integrations\Contracts\FiscalGateway;
 use App\Domain\Integrations\Data\AdapterResult;
 use App\Domain\Integrations\Data\FiscalDocument;
@@ -96,8 +97,10 @@ final class SendInvoiceToFiscalProvider implements ShouldBeUnique, ShouldQueue
         $message = $result->ok
             ? ($status === 'aceptado' ? 'Aceptado por el OSE'.($simulated ? ' (respuesta simulada)' : '') : ($result->message ?? 'Observado por el OSE'))
             : ($result->message ?? 'Rechazado por el OSE');
+        $files = $result->ok ? app(FiscalFiles::class)->store($invoice, $result->payload) : [];
 
         DB::table('fin_invoices')->where('id', $invoice->id)->update([
+            ...$files,
             'status' => $status,
             'ose_ticket' => $result->externalId,
             'ose_response_code' => $result->ok ? '0' : 'ERR',

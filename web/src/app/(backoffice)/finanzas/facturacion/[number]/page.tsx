@@ -1,4 +1,4 @@
-import { CalendarDays, FileText, History, ReceiptText, Route, ScrollText, UserRound, Wallet } from "lucide-react";
+import { CalendarDays, FileCode2, FileText, History, ReceiptText, Route, ScrollText, UserRound, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -13,7 +13,12 @@ import { amountAttr, formatDate, formatDateTime, formatMoney } from "@/lib/forma
 import { getResource } from "@/lib/server/resource";
 import { statusLabel, statusTone } from "@/lib/tone";
 
-type InvoicePage = InvoiceDetail & { reasons: FinanceOption[]; can: { issue: boolean } };
+type InvoicePage = InvoiceDetail & { reasons: FinanceOption[]; can: { issue: boolean }; fiscal_files?: { xml: string | null; cdr: string | null } };
+
+const FISCAL_FILES = [
+  { key: "xml", label: "XML", title: "Comprobante electrónico firmado (XML)" },
+  { key: "cdr", label: "CDR", title: "Constancia de recepción del OSE (CDR)" },
+] as const;
 
 const PRINTABLE = ["aceptado", "observado", "anulado"];
 
@@ -65,6 +70,15 @@ export default async function ComprobantePage({ params }: PageProps<"/finanzas/f
         actions={
           <div className="flex flex-wrap items-center justify-end gap-2" data-testid="invoice-actions">
             {PRINTABLE.includes(invoice.status) && <DownloadButton href={`/finanzas/facturacion/${invoice.number}/pdf`} label="Representación impresa" iconOnlyOnMobile />}
+            {FISCAL_FILES.map((file) => {
+              const id = invoice.fiscal_files?.[file.key];
+              return id ? (
+                <a key={file.key} href={`/finanzas/facturacion/${invoice.number}/archivo/${id}`} target="_blank" rel="noreferrer" title={file.title} data-testid={`fiscal-file-${file.key}`} className="lift inline-flex h-10 items-center gap-1.5 rounded-control border border-line bg-surface px-3 text-[13px] font-semibold text-fg-2 transition hover:text-fg">
+                  <FileCode2 size={15} />
+                  {file.label}
+                </a>
+              ) : null;
+            })}
             {invoice.can.issue && <InvoiceRowActions row={invoice} reasons={invoice.reasons} />}
           </div>
         }

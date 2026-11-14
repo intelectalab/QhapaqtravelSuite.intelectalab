@@ -18,15 +18,15 @@ final class GiftCardController
 
     public function index(Request $request, GiftCardDirectory $directory, GiftCards $cards, GrowthFeatureGate $gate): JsonResponse
     {
-        $gate->require(GiftCards::RULE);
         $cards->expireDue();
+        $page = $directory->list($request);
+        $page['meta']['rule_enabled'] = $gate->enabled(GiftCards::RULE);
 
-        return response()->json($directory->list($request));
+        return response()->json($page);
     }
 
-    public function show(string $code, GiftCardDirectory $directory, GiftCards $cards, GrowthFeatureGate $gate): JsonResponse
+    public function show(string $code, GiftCardDirectory $directory, GiftCards $cards): JsonResponse
     {
-        $gate->require(GiftCards::RULE);
         $cards->expireDue();
 
         return response()->json(['data' => $directory->detail($code) ?? throw ApiException::notFound('El vale no existe.')]);

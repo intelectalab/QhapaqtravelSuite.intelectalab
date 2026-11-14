@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { StatusBadge } from "@/components/ui/Badge";
 import { DownloadButton } from "@/components/ui/DownloadButton";
+import { TransferProofUpload } from "@/features/site/TransferProof";
+import { uploadAccountProof } from "@/app/(sitio)/sitio/[agencia]/transfer-actions";
 import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatMoney } from "@/lib/format";
 import { requireAccount, siteBase } from "@/lib/server/site";
@@ -119,17 +121,20 @@ export default async function AccountReservationPage({ params }: PageProps<"/sit
           <Panel title="Pagos">
             <ul className="grid gap-2">
               {reservation.payments.map((payment) => (
-                <li key={payment.code} className="flex items-center justify-between gap-3 text-[13.5px]">
-                  <span>
-                    <b className="block font-semibold text-fg">{METHOD[payment.method] ?? capitalize(payment.method.replaceAll("_", " "))}</b>
-                    <span className="text-[12px] text-fg-3">
-                      {payment.code} · {formatDate(payment.date)}
+                <li key={payment.code} className="grid gap-2.5 text-[13.5px]">
+                  <span className="flex items-center justify-between gap-3">
+                    <span>
+                      <b className="block font-semibold text-fg">{METHOD[payment.method] ?? capitalize(payment.method.replaceAll("_", " "))}</b>
+                      <span className="text-[12px] text-fg-3">
+                        {payment.code} · {formatDate(payment.date)}
+                      </span>
+                    </span>
+                    <span className="text-right">
+                      <b className="block text-fg">{formatMoney(payment.amount, payment.currency)}</b>
+                      {payment.proof_at ? <span className="text-[12px] font-semibold text-ok">Constancia recibida</span> : <StatusBadge status={payment.status} />}
                     </span>
                   </span>
-                  <span className="text-right">
-                    <b className="block text-fg">{formatMoney(payment.amount, payment.currency)}</b>
-                    <StatusBadge status={payment.status} />
-                  </span>
+                  {payment.can_upload_proof && <TransferProofUpload compact action={uploadAccountProof.bind(null, agencia, payment.code, reservation.code)} uploadedAt={payment.proof_at ?? null} />}
                 </li>
               ))}
             </ul>

@@ -15,7 +15,7 @@ final class EnsureCorporatePortal
 
     public function handle(Request $request, Closure $next): Response
     {
-        $this->rule->assert();
+        $this->rule->assertFor($request);
 
         return $next($request);
     }

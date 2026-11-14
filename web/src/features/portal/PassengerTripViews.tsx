@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectField } from "@/components/ui/SelectField";
+import { DateField } from "@/components/ui/DateField";
+import { DateTimeField } from "@/components/ui/DateTimeField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -187,7 +189,7 @@ export function CompanionsForm({ data }: { data: PaxCompanions }) {
                   <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <TextField label="Nombres" value={value.first_name} onChange={(event) => set(passenger.seq, "first_name", event.target.value)} />
                     <TextField label="Apellidos" value={value.last_name} onChange={(event) => set(passenger.seq, "last_name", event.target.value)} />
-                    <TextField label="Fecha de nacimiento" type="date" value={value.birth_date} onChange={(event) => set(passenger.seq, "birth_date", event.target.value)} />
+                    <DateField label="Fecha de nacimiento" name={`birth_date_${passenger.seq}`} hiddenInput={false} value={value.birth_date} onChange={(next) => set(passenger.seq, "birth_date", next ?? "")} />
                     <SelectField label="Documento" name={`doc_type_${passenger.seq}`} options={DOCS} value={value.doc_type} onChange={(next) => set(passenger.seq, "doc_type", next)} />
                     <TextField label="Número" value={value.doc_number} onChange={(event) => set(passenger.seq, "doc_number", event.target.value)} />
                     <TextField label="Nacionalidad" value={value.nationality} onChange={(event) => set(passenger.seq, "nationality", event.target.value)} />
@@ -211,7 +213,7 @@ export function CompanionsForm({ data }: { data: PaxCompanions }) {
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <TextField label={needsAddress ? "Dirección o nombre del hotel" : "Hotel o dirección"} value={pickup.address} disabled={!data.editable} required={needsAddress} onChange={(event) => setPickup({ ...pickup, address: event.target.value })} />
             <TextField label="Vuelo (si llegas en avión)" value={pickup.flight} disabled={!data.editable} onChange={(event) => setPickup({ ...pickup, flight: event.target.value })} />
-            <TextField label="Llegada" type="datetime-local" value={pickup.arrival} disabled={!data.editable} onChange={(event) => setPickup({ ...pickup, arrival: event.target.value })} />
+            <DateTimeField label="Llegada" name="pickup_arrival" className="sm:col-span-3 sm:max-w-md" value={pickup.arrival} disabled={!data.editable} onChange={(next) => setPickup({ ...pickup, arrival: next })} />
           </div>
         </Card>
       )}

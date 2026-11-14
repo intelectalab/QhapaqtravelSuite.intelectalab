@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Admin\Actions;
 
+use App\Domain\Admin\Support\PgArray;
 use App\Domain\Admin\Support\RuleParams;
 use App\Domain\Admin\Support\RuleTemplates;
 use App\Domain\Admin\Support\SettingsDirectory;
@@ -155,7 +156,7 @@ final class ManageBookingRules
                 'enabled' => false,
                 'params' => '{}',
                 'params_schema' => '{}',
-                'scope' => '{}',
+                'scope' => PgArray::from(array_values(array_unique($data['scope'] ?? []))),
                 'product_override' => false,
                 'is_custom' => true,
                 'min_plan' => 'Starter',
@@ -177,7 +178,7 @@ final class ManageBookingRules
             throw ApiException::unprocessable('CR-04', 'Solo las reglas personalizadas cambian de nombre o descripción.');
         }
 
-        DB::table('sys_booking_rules')->where('id', $rule->id)->update(['name' => $data['name'], 'description' => $data['description'], 'rule_group' => $data['group'], 'updated_by' => $actor->getKey(), 'updated_at' => now(), 'lock_version' => DB::raw('lock_version + 1')]);
+        DB::table('sys_booking_rules')->where('id', $rule->id)->update(['name' => $data['name'], 'description' => $data['description'], 'rule_group' => $data['group'], ...(array_key_exists('scope', $data) ? ['scope' => PgArray::from(array_values(array_unique($data['scope'] ?? [])))] : []), 'updated_by' => $actor->getKey(), 'updated_at' => now(), 'lock_version' => DB::raw('lock_version + 1')]);
         $this->audit->log('Regla de reserva', $code, 'editar', "{$rule->name} · {$rule->rule_group}", "{$data['name']} · {$data['group']}");
     }
 

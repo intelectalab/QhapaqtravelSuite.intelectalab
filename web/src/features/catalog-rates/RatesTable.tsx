@@ -27,6 +27,7 @@ function RateDetail({ rate, overview, trigger }: { rate: RateRow; overview: Rate
     { label: "Canal", value: rate.channel },
     { label: "Se cobra", value: rate.basis.toLowerCase() },
     { label: "Precio", value: <b className="font-mono">{money(rate.price, rate.currency)}</b> },
+    ...((rate.alt_prices ?? []).length > 0 ? [{ label: "En otras monedas", value: <span className="font-mono">{(rate.alt_prices ?? []).map((alt) => money(alt.price, alt.currency)).join(" · ")}</span> }] : []),
     ...(overview.can.see_cost ? [{ label: "Costo", value: <span className="font-mono">{money(rate.cost, rate.currency)}</span> }] : []),
     ...(rate.margin_pct !== null ? [{ label: "Margen", value: `${rate.margin_pct.toFixed(1)} %` }] : []),
     ...(rate.min_price || rate.max_price ? [{ label: "Rango permitido", value: `${money(rate.min_price, rate.currency)} a ${money(rate.max_price, rate.currency)}` }] : []),
@@ -64,6 +65,11 @@ export function RatesTable({ overview }: { overview: RatesOverview }) {
       cell: (rate) => (
         <span className="block text-right">
           <b className="font-mono text-[13.5px] font-semibold">{money(rate.price, rate.currency)}</b>
+          {(rate.alt_prices ?? []).map((alt) => (
+            <small key={alt.currency} className="block font-mono text-[11.5px] text-fg-2">
+              {money(alt.price, alt.currency)}
+            </small>
+          ))}
           {can.see_cost && <small className="block font-mono text-[11.5px] text-fg-3">costo {money(rate.cost, rate.currency)}</small>}
         </span>
       ),

@@ -174,7 +174,9 @@ Cómo regenerarlo: exportar el OpenAPI (`php artisan scramble:export --path=stor
 | Ruta | Grupo | Equivalente en el contrato o motivo |
 | --- | --- | --- |
 | `POST /billing/invoices/{}/send` | Acción propia | «Reenviar por correo» del detalle de la factura de plataforma (prototipo). Envía el resumen de la factura al correo para comprobantes y lo audita como `reenviar`. El contrato no la incluye. |
-| `GET /iam/roles/{}` | Lectura de pantalla | Detalle del rol en una sola llamada: experiencia, pantallas que ve (del mapa de acceso), usuarios con el rol y los últimos 30 cambios de permisos de la auditoría. El contrato solo trae la lista de roles y la matriz. Requiere `admin.roles.manage`. |
+| `GET /iam/roles/{}` | Lectura de pantalla | Detalle del rol en una sola llamada: experiencia, pantallas que ve (del mapa de acceso), usuarios con el rol y los últimos 30 cambios de permisos de la auditoría. El contrato solo trae la lista de roles y la matriz. Requiere `admin.roles.manage` o `admin.users.manage` (solo lectura, G5-20). |
+| `GET /settings/business-hours` | Lectura de pantalla | Horario de atención de la agencia (G7-25): días, resumen ES/EN, si está abierto ahora, próxima apertura y aviso «Carga tu horario de atención» mientras se usa el valor por defecto (lunes a viernes 08:00–19:00). También viene en `GET /settings` como `business_hours`. `admin.settings.manage`. |
+| `PUT /settings/business-hours` | Editar, borrar o cambiar estado | Guarda el horario estructurado (por día: abierto, apertura y cierre) en `sys_settings` › `general.business_hours`, con `lock_version` de la sección general y auditoría con el resumen antes y después. Lo usan el sitio, los avisos «Solo en horario de atención», el chat fuera de horario y los plazos en horas hábiles. `admin.settings.manage`. |
 | `GET /admin/api` | Lectura de pantalla | Agregado de la pantalla API y webhooks: entregas, apps OAuth, límites del plan, consumo, catálogos de permisos y eventos. Las listas del contrato (`/integrations/api-keys` y `/integrations/webhooks`) ya existen. |
 | `GET /admin/branding` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
 | `GET /dashboard/home` | Lectura de pantalla | Lectura agregada para pintar una pantalla en una sola llamada (inicio de portal, opciones de formulario, sesión, contadores, resúmenes). |
@@ -341,3 +343,93 @@ Agregadas el 12 de noviembre de 2026, con las cuentas corporativas y los estados
 | `GET /showcase/overview` | Lectura de pantalla | Resumen público para la web de Rutas Libres en una sola llamada: ciudades con número de tours, temas, cifras del mes del embudo, reglas de cupo y comisión, beneficios, planes y add-ons para la página «Para agencias». Sin datos de agencias ni viajeros. |
 | `GET /public/stories` | Lectura de pantalla | Historias publicadas con consentimiento vigente para la página `/aventuras` del sitio de la agencia (spec 22 §2, `(sitio)/aventuras`). El nombre del viajero se muestra según `consent_name_mode`. |
 | `GET /public/stories/{}` | Lectura de pantalla | Detalle de una historia publicada para `/aventuras/{slug}`; suma una lectura. 404 si el cliente retiró el consentimiento. |
+
+### Decisiones · finanzas: tipo de cambio y facturación electrónica (16)
+
+| Ruta | Grupo | Equivalente en el contrato o motivo |
+| --- | --- | --- |
+| `PUT /finance/fx-provider` | Editar, borrar o cambiar estado | La agencia elige en Monedas el proveedor de tipo de cambio entre los validados por la plataforma (`code: null` = solo carga manual). G4-29. |
+| `GET /finance/ose` | Lectura de pantalla | Estado de la facturación electrónica de la agencia: OSE elegido, modo simulado o conectado, paso pendiente y OSE homologados. |
+| `PUT /finance/ose` | Editar, borrar o cambiar estado | La agencia elige uno de los OSE homologados (`code: null` = sin OSE, modo simulado). Borra las credenciales cargadas. |
+| `GET /platform/fx-providers` | Lectura de pantalla | Consola › Integraciones › Tipo de cambio: catálogo de proveedores con estado validado / por validar y credenciales enmascaradas. |
+| `POST /platform/fx-providers` | Editar, borrar o cambiar estado | Alta de proveedor de tipo de cambio con claves cifradas; nace por validar. |
+| `PATCH /platform/fx-providers/{code}` | Editar, borrar o cambiar estado | Edita nombre, nota o claves; cambiar claves lo devuelve a por validar. |
+| `DELETE /platform/fx-providers/{code}` | Editar, borrar o cambiar estado | Retira el proveedor del catálogo. |
+| `POST /platform/fx-providers/{code}/test` | Acción propia | Prueba de conexión: si pasa queda validado; auditada. |
+| `GET /platform/ose-providers` | Lectura de pantalla | Consola › Integraciones › Facturación electrónica: catálogo de OSE con estado homologado y agencias que lo eligieron. |
+| `POST /platform/ose-providers` | Editar, borrar o cambiar estado | Alta de OSE en el catálogo. |
+| `PATCH /platform/ose-providers/{code}` | Editar, borrar o cambiar estado | Edita nombre, nota u homologación. |
+| `DELETE /platform/ose-providers/{code}` | Editar, borrar o cambiar estado | Retira el OSE si ninguna agencia lo tiene elegido (`OSE-IN-USE`). |
+| `GET /platform/tenants/{id}/ose` | Lectura de pantalla | Tarjeta Facturación electrónica de la ficha de la agencia. |
+| `PUT /platform/tenants/{id}/ose/credentials` | Editar, borrar o cambiar estado | El Super Admin carga las credenciales cifradas de la agencia ante su OSE. |
+| `DELETE /platform/tenants/{id}/ose/credentials` | Editar, borrar o cambiar estado | Quita las credenciales de la agencia. |
+| `POST /platform/tenants/{id}/ose/test` | Acción propia | Prueba la conexión con el OSE de la agencia; auditada. |
+
+### Decisiones · WhatsApp, webhooks, cifrado y push (9)
+
+| Ruta | Grupo | Equivalente en el contrato o motivo |
+| --- | --- | --- |
+| `GET /platform/integrations/whatsapp` | Lectura de pantalla | Consola › Integraciones › WhatsApp: app de Meta de KipuControl (ID, secreto enmascarado, token de verificación, registro guiado, versión de la API, rotación y última prueba). Decisión «Firma de WhatsApp». |
+| `PUT /platform/integrations/whatsapp` | Editar, borrar o cambiar estado | Guarda la app de Meta cifrada en `platform_settings`. Un secreto nuevo rota el anterior, que sigue validando firmas 24 horas. Auditado por campo. |
+| `POST /platform/integrations/whatsapp/test` | Acción propia | «Probar»: valida el ID y el secreto con el adaptador de Meta (simulado mientras no haya conector real). Auditado. |
+| `GET /inbox/whatsapp/connection` | Lectura de pantalla | Estado de «Conectar WhatsApp»: número, modo (registro guiado o app propia), WABA enmascarada, URL de aviso propia y si la app de la plataforma está lista. `admin.settings.manage`. |
+| `POST /inbox/whatsapp/connection` | Editar, borrar o cambiar estado | Registro guiado: canjea el código de Meta, guarda el ID del número, la WABA cifrada con su hash y el token cifrado. Exige R-WHATSAPP-OFFICIAL. |
+| `PUT /inbox/whatsapp/connection/own-app` | Editar, borrar o cambiar estado | «Usar mi propia app de Meta»: ID de app, secreto (`webhook_secret`, spec 10), token permanente e ID del número, cifrados; genera el token de verificación de su URL propia. |
+| `DELETE /inbox/whatsapp/connection` | Editar, borrar o cambiar estado | Desconecta el número: estado inactivo y borra las credenciales. |
+| `GET /integrations/whatsapp/webhook/{agencia}` | Webhook | Verificación de Meta para la app propia de la agencia (token de verificación de su cuenta de canal). |
+| `POST /integrations/whatsapp/webhook/{agencia}` | Webhook | Avisos de la app propia de la agencia, firmados con su secreto; se reparten igual que el URL único (mensajes, estados y plantillas). |
+
+Cambio de comportamiento en rutas del contrato: `POST /integrations/whatsapp/webhook` valida la firma con el secreto de la app de la plataforma y reparte `messages` a la bandeja, `statuses` a la entrega (campañas, recordatorios de pago, mensajes al pasajero) y `message_template_status_update` a la revisión de plantillas (agencia por hash de la WABA); un número desconocido se ignora con 202. `POST /webhooks/providers/fcm` responde 404: los acuses push se consultan a Expo con el job JOB-PUSH-1.
+
+### Decisiones · operaciones y app móvil (7)
+
+| Ruta | Grupo | Equivalente en el contrato o motivo |
+| --- | --- | --- |
+| `GET /ops/no-shows` | Lectura de pantalla | Listado paginado de no-show por pasajero (`ops_no_shows`), con filtros por reserva, origen y fechas; los anulados solo con `filter[voided]=1`. `operations.view`. Decisión G3-28. |
+| `GET /ops/reservation-services/{}/no-shows` | Lectura de pantalla | No-show registrados de un servicio, con su efecto (aviso al asesor, incidencia, cargo). `operations.view`. |
+| `POST /ops/reservation-services/{}/no-shows` | Acción propia | Registra a los pasajeros que no se presentaron (sin check-in, desde el día del servicio) y aplica lo que diga Configuración › Operaciones: aviso al asesor, incidencia, cargo según la política de no-show del producto. `operations.assign`, auditado. |
+| `PATCH /ops/no-shows/{}` | Editar, borrar o cambiar estado | Corrige la nota del registro. `operations.assign`, auditado. |
+| `DELETE /ops/no-shows/{}` | Editar, borrar o cambiar estado | Anula el registro con un motivo; si generó un cargo sin pagos, cancela la cuenta por cobrar. `operations.assign`, auditado. |
+| `GET /platform/settings/mobile-app` | Lectura de pantalla | Consola › Integraciones › App móvil: versión mínima y enlace a la tienda por plataforma. Decisión G3-27. |
+| `PUT /platform/settings/mobile-app` | Editar, borrar o cambiar estado | Guarda la versión mínima de iOS y Android con su enlace (obligatorio si hay versión) en `platform_settings`. Auditado por campo. |
+
+Cambio de comportamiento en rutas del contrato: toda ruta de la API que reciba `X-App-Version` y `X-App-Platform` (las manda la app) responde `426 UPGRADE_REQUIRED` con `details.min_version` y `details.store_url` si la versión es menor a la mínima. Al finalizar un servicio (`POST /mobile/operator/actions` tipo `finish` y `POST /ops/reservation-services/{}/complete`), los pasajeros sin check-in quedan registrados como no-show. La extranet (`/supplier/session`, `/supplier/requests`) usa `catalog_providers.response_sla_hours` o, si falta, `supplier_response_hours` de la agencia (G3-34).
+
+### Decisiones · plataforma: roles, reglas de plan, pedidos de reglas y llaves de API (3)
+
+Agregadas el 13 de noviembre de 2026, con la tanda de decisiones del grupo plataforma.
+
+| Ruta | Grupo | Equivalente en el contrato o motivo |
+| --- | --- | --- |
+| `POST /admin/booking-rules/{}/automation-requests` | Acción propia | «Pedir automatización» de una regla personalizada (G5-27): qué debe pasar, cuándo y un ejemplo. Llega a la consola en «Pedidos de reglas». Un solo pedido abierto por regla (409 `CR-05`); las reglas estándar responden 422. `admin.settings.manage`. Auditado. |
+| `GET /platform/rule-requests` | Lectura de pantalla | Consola › Planes › Pedidos de reglas: pedidos de todas las agencias con su estado, conteos y el catálogo de reglas estándar para enlazar. |
+| `POST /platform/rule-requests/{}/decision` | Editar, borrar o cambiar estado | Decide un pedido: `evaluar` (En evaluación), `rechazar` (motivo obligatorio) o `publicar` (enlaza una regla estándar del catálogo). Avisa en la campana al administrador de la agencia y a quien pidió; auditado en la plataforma. Acepta `lock_version`. |
+
+Cambios de permiso sobre rutas del contrato (G5-20): `GET /iam/roles`, `GET /iam/roles/{id}`, `GET /iam/permissions`, `GET /iam/role-permissions` y `GET /iam/access-map` aceptan `admin.roles.manage` **o** `admin.users.manage` (solo lectura); las escrituras de roles siguen pidiendo `admin.roles.manage`. La pantalla `/admin/roles` también se abre con cualquiera de los dos.
+
+Cambios de comportamiento en rutas del contrato: `POST /exports` (CRM) exige además `reports.view` (403 `CRM-EXP-02`), igual que `POST /me/data-exports` para las listas del CRM. `POST /platform/trials` aplica LND-08: una prueba cada 12 meses por agencia, RUC o dominio de correo (409 `TRIAL_ALREADY_USED` con `details.available_from`). Con la regla fuera de plan o apagada, se consultan y canjean los vales vigentes (`GET /finance/gift-cards`, `GET /finance/gift-cards/{}`, canje y anulación), se listan y anulan los links de pago (el cliente los paga hasta su vencimiento), los pases QR emitidos sirven en el check-in y el portal corporativo queda en solo lectura (los GET responden; las escrituras dan 403 `RULE_NOT_IN_PLAN`). El listado de vales y de links trae `meta.rule_enabled`.
+
+Guard de llaves de API (API-BR-01): middleware `App\Domain\Admin\Http\Middleware\AuthenticateApiKey` y `RequireApiScope:<scope>`. Todavía no está puesto en ninguna ruta del contrato (ver dudas del informe del 13 de noviembre); la tabla de endpoints de `/admin/api` se arma sola con las rutas que lo usen.
+
+### Decisiones · sitio: transferencias, reseñas externas, select_date y plazos de la bandeja (16)
+
+Agregadas el 13 de noviembre de 2026, con la tanda de decisiones del grupo sitio (`routes/modules/decisiones-sitio.php` y `routes/public/decisiones-sitio.php`).
+
+| Ruta | Grupo | Equivalente en el contrato o motivo |
+| --- | --- | --- |
+| `GET /settings/transfer-validation` | Lectura de pantalla | Configuración › Pagos y transferencias (G7-24): aviso a Finanzas, cancelación automática y escalamiento en horas hábiles, guardados en `sys_settings` › `ecommerce.transfers`. `admin.settings.manage`. |
+| `PUT /settings/transfer-validation` | Editar, borrar o cambiar estado | Guarda `alert_finance`, `alert_minutes` (120/240/480), `auto_cancel`, `cancel_hours` (24/48/72), `reminder_minutes` (30/60/120), `escalate_minutes` (60/120/240) y `lock_version`. Auditado por campo; 422 `CFG-BR-01` sin cambios. |
+| `POST /public/orders/{}/transfer-proof` | Acción propia | «Subir constancia» desde el enlace del correo con datos bancarios (multipart `file`, foto o PDF de hasta 10 MB, antivirus). Exige `X-Order-Token`. El pedido queda «Constancia recibida» y se pausa la cancelación automática; campana y correo a Finanzas. |
+| `POST /public/me/payments/{}/transfer-proof` | Acción propia | Lo mismo desde Mi cuenta del sitio, sobre un pago pendiente de la cuenta. Nombre `public.me.sitio.payments.transfer-proof` (el prefijo `public.me.` lo exige el acceso de cuentas del sitio). |
+| `GET /finance/payments/{}/transfer-proof` | Lectura de pantalla | Descarga la última constancia del pago. `finance.receivables` o `finance.payments.register`. |
+| `GET /reservations/{}/web-reactivation` | Lectura de pantalla | Vista previa de «Reactivar» en una reserva web cancelada por pago no validado: monto informado, cupos libres por salida y opciones (reactivar, o reprogramar / devolver si no hay cupos). `finance.payments.register`. |
+| `POST /reservations/{}/web-reactivation` | Acción propia | `mode` = `reactivar` (recupera los cupos, valida y aplica el pago), `reprogramar` (valida el pago y deja la reserva pendiente de disponibilidad) o `devolver` (valida el pago y crea un reembolso pendiente). 409 `SIT-REACT-01` / `SIT-REACT-02`. Auditado y con correo al cliente. Idempotencia opcional. |
+| `GET /channels/review-links` | Lectura de pantalla | Reseñas › Conectores: enlaces públicos de Google y TripAdvisor (G7-27), en `sys_settings` › `notifications.review_links`. `channels.ecommerce.manage` o `crm.clients.manage`. |
+| `PUT /channels/review-links` | Editar, borrar o cambiar estado | Guarda o quita los enlaces (validados por formato y dominio). `channels.ecommerce.manage`. Auditado. |
+| `POST /channels/review-links/test` | Acción propia | «Probar»: valida formato `https`, dominio de la plataforma y que tenga la dirección del negocio, sin llamar a internet. Auditado. |
+| `GET /channels/review-invitations` | Lectura de pantalla | Pestaña «Invitaciones postviaje»: reservas terminadas (120 días), su invitación, invitados y clics por enlace (propia, Google, TripAdvisor). |
+| `POST /public/reviews/by-token/{}/external-click` | Acción propia | Redirección propia del enlace «Opina también en …»: valida el token de la invitación, registra el clic en `crm_review_link_clicks` y devuelve la URL de la plataforma. La usa la ruta del sitio `/resena/{código}/{google|tripadvisor}`. |
+| `GET /inbox/response-times` | Lectura de pantalla | Canales e integración: plazos de primera respuesta del chat web, formularios y portal (G8-11), en `sys_settings` › `notifications.inbox_sla`. `admin.settings.manage`. |
+| `PUT /inbox/response-times` | Editar, borrar o cambiar estado | Guarda `webchat`, `form`, `portal` (15, 30, 60, 120, 240 o 480 min; por defecto 15, 120 y 240). Auditado por canal. |
+
+Cambios de comportamiento en rutas del contrato: `POST /public/analytics/events` acepta `select_date` (solo `item_id`, `date`, `adults`, `children`, `pax`, `available`, `source`, `destination`, `type`; el resto de parámetros se descarta). `GET /channels/ecommerce` suma el paso `dates` («Eligieron fecha») al embudo, `unmet_demand` y `orders[].proof_at`. `GET /public/orders/{}` suma `proof` y `auto_cancel_at`. `GET /finance/payments` suma `rows[].proof` (con minutos hábiles y si ya se escaló). `GET /public/me/reservations/{}` suma `payments[].proof_at` y `can_upload_proof`. `GET /inbox/conversations` suma `items[].awaiting_reply`. Las conversaciones nuevas de los cinco canales calculan `first_response_due_at` en horas hábiles. Los candidatos de la conciliación bancaria muestran el pedido web del pago (`order`). Nuevo proceso `JOB-SITIO-1` (cada 15 min): escalamiento de constancias, aviso de pagos sin validar y cancelación automática.

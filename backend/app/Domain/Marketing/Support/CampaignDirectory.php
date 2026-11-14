@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Marketing\Support;
 
+use App\Domain\Catalog\Support\PromotionDirectory;
 use App\Domain\Iam\Models\User;
 use App\Domain\Marketing\Actions\CampaignWorkflow;
 use App\Domain\Marketing\Actions\TemplateWorkflow;
@@ -22,7 +23,7 @@ final class CampaignDirectory
 
     private const WINDOW_DAYS = 30;
 
-    public function __construct(private readonly ContactBook $contacts) {}
+    public function __construct(private readonly ContactBook $contacts, private readonly PromotionDirectory $promotions) {}
 
     public function overview(User $viewer): array
     {
@@ -72,7 +73,8 @@ final class CampaignDirectory
                     ->map(fn (array $contact): array => ['value' => $contact['code'], 'label' => $contact['name'], 'hint' => $contact['code']])->values(),
                 'me' => $viewer->getKey(),
             ],
-            'can' => ['manage' => $viewer->can('marketing.campaigns.manage')],
+            'can' => ['manage' => $viewer->can('marketing.campaigns.manage'), 'create_promotion' => $viewer->can('catalog.products.update')],
+            'promotion_form' => $viewer->can('catalog.products.update') ? $this->promotions->form() : null,
         ];
     }
 

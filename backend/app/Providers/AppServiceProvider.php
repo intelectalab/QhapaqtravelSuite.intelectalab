@@ -60,6 +60,9 @@ final class AppServiceProvider extends ServiceProvider
         RateLimiter::for('login', fn (Request $request) => Limit::perMinute(5)
             ->by(mb_strtolower((string) $request->input('email')).'|'.$request->ip()));
 
+        RateLimiter::for('mfa', fn (Request $request) => Limit::perMinute(5)
+            ->by('mfa|'.($request->user()?->getMorphClass() ?? 'ip').':'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
+
         RateLimiter::for('exports', fn (Request $request) => Limit::perHour(10)->by($tenantKey($request)));
 
         RateLimiter::for('public-bookings', fn (Request $request) => Limit::perMinute(10)

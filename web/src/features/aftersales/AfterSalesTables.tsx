@@ -15,6 +15,7 @@ import { CaseDetailAction, CaseFormAction, SurveyAction } from "./AfterSalesForm
 
 const casesCsv: CsvExport<CaseItem> = {
   fileName: "casos-postventa",
+  permission: "reports.view",
   columns: [
     { header: "Código", value: (row) => row.code },
     { header: "Asunto", value: (row) => row.subject },

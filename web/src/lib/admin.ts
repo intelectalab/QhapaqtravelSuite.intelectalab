@@ -76,6 +76,7 @@ export interface CurrencySettings {
   rounding?: string;
   round_mode?: string;
   invoice_void_days?: number;
+  charge_multi_currency?: boolean;
 }
 
 export interface PolicySettings {
@@ -152,6 +153,38 @@ export interface SettingsSequence {
   updated_at: string;
 }
 
+export type WeekDay = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+
+export type BusinessDay = { open: boolean; from: string; to: string };
+
+export interface BusinessHoursOverview {
+  configured: boolean;
+  notice: string | null;
+  timezone: string;
+  days: Record<WeekDay, BusinessDay>;
+  summary: { es: string; en: string };
+  open_now: boolean;
+  next_open: string;
+  updated_at: string | null;
+  updated_by: string | null;
+  lock_version: number;
+}
+
+export interface TransferValidationSettings {
+  alert_finance: boolean;
+  alert_minutes: number;
+  auto_cancel: boolean;
+  cancel_hours: number;
+  reminder_minutes: number;
+  escalate_minutes: number;
+  options: { cancel_hours: number[]; alert_minutes: number[]; reminder_minutes: number[]; escalate_minutes: number[] };
+  client_warning_minutes: number;
+  business_hours: { summary: string; configured: boolean };
+  lock_version: number;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
 export interface SettingsOverview {
   agency: {
     legal_name: string;
@@ -174,6 +207,7 @@ export interface SettingsOverview {
     operations: SectionState<OperationSettings>;
     channels: SectionState<Record<string, boolean>>;
   };
+  business_hours: BusinessHoursOverview;
   main_sede: string | null;
   fx: { rate: number; date: string; source: string } | null;
   base_locked: boolean;
@@ -234,6 +268,7 @@ export interface BookingRule {
   scope: string[];
   product_override: boolean;
   custom: boolean;
+  automation?: { code: string; status: "enviado" | "en_evaluacion" | "rechazado" | "publicado"; status_label: string; reason: string | null; linked_rule: string | null; requested_at: string; decided_at: string | null } | null;
   depends_on: string | null;
   min_plan: string;
   locked: boolean;
@@ -509,6 +544,7 @@ export interface PlanChangePreview {
   proration: { days_left: number; period_days: number; charge: string; credit: string; net: string } | null;
   blockers: string[];
   rules: { gained: string[]; lost: string[] };
+  carry_over?: { items: { rule: string; count: number; noun: string; label: string; kept: string }[]; notice: string | null };
 }
 
 export interface SubscriptionOverview {
@@ -558,6 +594,7 @@ export interface ApiKey {
   revoke_reason: string | null;
   created_at: string;
   created_by: string | null;
+  usage?: { calls_30d: number; rejected_24h: number };
 }
 
 export interface Webhook {
@@ -603,6 +640,7 @@ export interface ApiOverview {
   calls_month: number;
   calls_history: { month: string; value: number }[];
   api_version: string;
+  public_endpoints?: { method: string; path: string; scopes: string[]; label: string }[];
   scopes: Option[];
   events: Option[];
   history: AuditEntry[];

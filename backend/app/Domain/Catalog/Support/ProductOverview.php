@@ -16,7 +16,20 @@ use Illuminate\Support\Facades\DB;
 
 final class ProductOverview
 {
-    public function __construct(private readonly ProductReview $review, private readonly B2bRateDirectory $rates) {}
+    public function __construct(private readonly ProductReview $review, private readonly B2bRateDirectory $rates, private readonly ProductQuotePreview $quotes) {}
+
+    private function seasonPrices(object $product): array
+    {
+        $ids = DB::table('catalog_product_seasons')->where('product_id', $product->id)->pluck('season_id')
+            ->concat(DB::table('catalog_rates')->where('product_id', $product->id)->whereNotNull('season_id')->pluck('season_id'))
+            ->unique()->values()->all();
+
+        if ($ids === []) {
+            return [];
+        }
+
+        return $this->quotes->seasonPrices((string) $product->id, DB::table('catalog_seasons')->whereIn('id', $ids)->whereNull('deleted_at')->get(['id', 'date_from', 'date_to']));
+    }
 
     private static function diffPct(string $price, string $currency, ?object $public): ?float
     {
@@ -92,6 +105,7 @@ final class ProductOverview
                 ->get(['a.code as agency_code', 'a.legal_name as agency', 'a.status as agency_status', 'b.price_list', 'b.price', 'b.currency', 'b.commission_pct', 'b.is_credit', 'b.valid_to', 'b.conditions', 'b.restrictions'])
                 ->map(fn (object $row): array => [...(array) $row, 'diff_pct' => self::diffPct((string) $row->price, $row->currency, $public)]) : null,
             'public_price' => $public ? ['amount' => Decimal::toApi((string) $public->price), 'currency' => trim((string) $public->currency), 'channel' => $public->channel] : null,
+            'season_prices' => $this->seasonPrices($product),
             'promotions' => DB::table('catalog_product_promotions')->where('product_id', $product->id)->whereNull('deleted_at')->orderByDesc('date_from')
                 ->get(['ref', 'name', 'kind', 'value', 'channel', 'promo_code', 'min_pax', 'date_from', 'date_to', 'status'])
                 ->map(fn (object $row): array => [...(array) $row, 'result_price' => self::promotionPrice($row, $public)]),

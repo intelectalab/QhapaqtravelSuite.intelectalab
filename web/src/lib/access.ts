@@ -3,7 +3,18 @@ export interface AccessInfo {
   home: string;
   routes: string[];
   screens: Record<string, boolean>;
+  required?: Record<string, string[]>;
   locked?: Record<string, LockedFeature>;
+}
+
+function longestPrefix(keys: string[], path: string): string | undefined {
+  return keys.filter((prefix) => path === prefix || path.startsWith(`${prefix}/`)).sort((a, b) => b.length - a.length)[0];
+}
+
+export function requiredPermissions(required: Record<string, string[]> | null | undefined, path: string): string[] {
+  if (!required) return [];
+  const match = longestPrefix(Object.keys(required), path);
+  return match === undefined ? [] : required[match];
 }
 
 export interface LockedFeature {
@@ -13,16 +24,12 @@ export interface LockedFeature {
 
 export function lockedFeature(locked: Record<string, LockedFeature> | null | undefined, path: string): LockedFeature | null {
   if (!locked) return null;
-  const match = Object.keys(locked)
-    .filter((prefix) => path === prefix || path.startsWith(`${prefix}/`))
-    .sort((a, b) => b.length - a.length)[0];
+  const match = longestPrefix(Object.keys(locked), path);
   return match === undefined ? null : locked[match];
 }
 
 export function isAllowed(screens: Record<string, boolean> | null, path: string): boolean {
   if (!screens) return true;
-  const match = Object.keys(screens)
-    .filter((prefix) => path === prefix || path.startsWith(`${prefix}/`))
-    .sort((a, b) => b.length - a.length)[0];
+  const match = longestPrefix(Object.keys(screens), path);
   return match === undefined || screens[match];
 }

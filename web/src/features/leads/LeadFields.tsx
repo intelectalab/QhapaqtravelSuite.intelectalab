@@ -4,6 +4,7 @@ import { CalendarDays, Mail, Phone, User, Users } from "lucide-react";
 import { useCan } from "@/components/shell/SessionProvider";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { TIME_ZONE } from "@/lib/format";
 import { catalogOptions, destinationOptions, productOptions, type Advisor, type CrmCatalogs, type LeadDetail } from "@/lib/leads";
@@ -63,7 +64,7 @@ export function LeadFields({ catalogs, advisors, lead, defaults, autoFocus = fal
         {legacyDestination && <input type="hidden" name="destination" value={legacyDestination} />}
         <SelectField label="Producto de interés (opcional)" name="product_id" options={productOptions(catalogs.products)} defaultValue={lead?.product?.id ?? ""} placeholder="Elegir un producto activo" searchable clearable />
         <div className="grid grid-cols-2 gap-3">
-          <TextField label="Fecha de viaje" name="travel_date" type="date" min={lead ? undefined : today()} defaultValue={lead?.travel_date ?? undefined} icon={<CalendarDays size={17} />} />
+          <DateField label="Fecha de viaje" name="travel_date" min={lead ? undefined : today()} defaultValue={lead?.travel_date} icon={<CalendarDays size={17} />} />
           <TextField label="Pasajeros" name="pax" type="number" min={0} defaultValue={lead?.pax || undefined} icon={<Users size={17} />} />
         </div>
       </FormSection>

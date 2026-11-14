@@ -11,6 +11,7 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { amountAttr, formatDate, formatMoney } from "@/lib/format";
@@ -88,7 +89,7 @@ function PassengerFields({ passenger }: { passenger?: ReservationPassenger }) {
         <TextField label="Número" name="doc_number" required maxLength={30} defaultValue={passenger?.doc_number ?? ""} />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <TextField label="Nacimiento" name="birth_date" type="date" required defaultValue={passenger?.birth_date ?? ""} tip="La edad a la fecha del viaje define el tipo según las reglas del producto." />
+        <DateField label="Nacimiento" name="birth_date" required defaultValue={passenger?.birth_date} tip="La edad a la fecha del viaje define el tipo según las reglas del producto." />
         <TextField label="Nacionalidad" name="nationality" required maxLength={60} defaultValue={passenger?.nationality ?? ""} placeholder="Peruana" />
       </div>
       <div className="grid grid-cols-2 gap-3">

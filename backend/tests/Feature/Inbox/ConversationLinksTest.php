@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Inbox\Support\MessageCipher;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 
@@ -38,7 +39,7 @@ it('Ventas vincula la conversación a un cliente de su cartera y queda en el hil
 
     expect(rowOf('collab_conversations', 'CNV-0104')->client_id)->toBe(idOf('crm_clients', 'CLI-0006'))
         ->and(vincCnvUltimoMensaje('CNV-0104')->direction)->toBe('system')
-        ->and(vincCnvUltimoMensaje('CNV-0104')->body)->toContain('CLI-0006')
+        ->and(MessageCipher::open(vincCnvUltimoMensaje('CNV-0104')->body))->toContain('CLI-0006')
         ->and(vincCnvAuditada('CNV-0104', 'vincular_cliente'))->toBeTrue()
         ->and($this->getJson('/api/v1/inbox/conversations/CNV-0104')->json('data.card.client.code'))->toBe('CLI-0006');
 

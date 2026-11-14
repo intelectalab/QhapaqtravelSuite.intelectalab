@@ -48,6 +48,38 @@ final class ProductQuotePreview
         ];
     }
 
+    public function seasonPrices(string $productId, iterable $seasons): array
+    {
+        $today = CatalogAccess::today();
+        $prices = [];
+
+        foreach ($seasons as $season) {
+            $id = (string) $season->id;
+            if ((string) $season->date_to < $today) {
+                $prices[$id] = ['date' => null, 'amount' => null, 'currency' => null, 'applied_season_id' => null, 'applied_season' => null, 'ended' => true];
+
+                continue;
+            }
+
+            $date = max((string) $season->date_from, $today);
+            $product = $this->config->engineProduct($productId, $date);
+            $quote = $this->run($product, ['date' => $date, 'pax' => ['adt' => 1], 'currency' => $this->rateCurrency($product)]);
+            $line = collect($quote->lines)->first(fn (QuoteLine $line): bool => $line->key === 'base-adt');
+            $priced = $line instanceof QuoteLine && ! $line->unit->isZero();
+
+            $prices[$id] = [
+                'date' => $date,
+                'amount' => $priced ? self::money($line->unit) : null,
+                'currency' => $priced ? $quote->currency : null,
+                'applied_season_id' => $quote->season?->id,
+                'applied_season' => $quote->season?->name,
+                'ended' => false,
+            ];
+        }
+
+        return $prices;
+    }
+
     public function lodgingExample(string $productId, array $legs): ?array
     {
         $lodging = [];

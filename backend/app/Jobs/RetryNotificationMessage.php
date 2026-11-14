@@ -8,6 +8,7 @@ use App\Domain\Admin\Support\IntegrationErrors;
 use App\Domain\Integrations\Contracts\MessagingChannel;
 use App\Domain\Integrations\Contracts\PushSender;
 use App\Domain\Integrations\Data\OutboundMessage;
+use App\Domain\Integrations\Support\PushTickets;
 use App\Domain\Shared\Tenancy\Jobs\RestoreTenantContext;
 use App\Domain\Shared\Tenancy\Jobs\TenantAware;
 use Illuminate\Bus\Queueable;
@@ -53,8 +54,12 @@ final class RetryNotificationMessage implements ShouldQueue
         }
 
         if ($message->channel === 'push') {
-            $tokens = DB::table('ops_mobile_devices')->where('user_id', $message->recipient_user_id)->whereNull('revoked_at')->whereNotNull('expo_push_token')->pluck('expo_push_token')->all();
-            $result = $tokens === [] ? null : $push->send($tokens, (string) $message->subject, (string) $message->body_rendered);
+            $devices = PushTickets::devices([(string) $message->recipient_user_id]);
+            $result = $devices->isEmpty() ? null : $push->send($devices->pluck('expo_push_token')->all(), (string) $message->subject, (string) $message->body_rendered);
+
+            if ($result !== null && $result->ok) {
+                app(PushTickets::class)->record($result, $devices);
+            }
         } else {
             $result = $message->recipient_address ? $channel->send(new OutboundMessage(channel: (string) $message->channel, to: (string) $message->recipient_address, subject: $message->subject, body: (string) $message->body_rendered)) : null;
         }

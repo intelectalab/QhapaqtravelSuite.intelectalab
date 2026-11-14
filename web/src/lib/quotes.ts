@@ -26,6 +26,7 @@ export interface QuoteListMeta {
   kpis: { open: number; open_pen: string; expiring: number; approved: number; conversion: number | null; total: number; pending_internal: number | null; followup_pen: string };
   can: { manage: boolean };
   today: string;
+  scope: "own" | "tenant";
 }
 
 export interface QuoteItem {

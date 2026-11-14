@@ -9,6 +9,7 @@ import type { Column, FilterConfig, MetricFilter, SortOption } from "@/component
 import { FieldList } from "@/components/ui/Details";
 import { FilePicker } from "@/components/ui/FilePicker";
 import { PanelAction } from "@/components/ui/PanelAction";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
 import { STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
@@ -38,7 +39,7 @@ function InvoicePanel({ row, today, maxKb }: { row: SupplierPayable; today: stri
         <>
           <TextField label="Serie y número" name="number" required maxLength={13} pattern="[A-Za-z0-9]{4}-[0-9]{1,8}" placeholder="F001-4521" icon={<Hash size={17} />} hint="Serie de 4 caracteres, guion y correlativo." />
           <div className="grid grid-cols-2 gap-3">
-            <TextField label="Fecha de emisión" name="issue_date" type="date" max={today} defaultValue={today} required />
+            <DateField label="Fecha de emisión" name="issue_date" max={today} defaultValue={today} required />
             <TextField label={`Importe (${row.currency})`} name="amount" type="number" step="0.01" min="0.01" defaultValue={row.balance.toFixed(2)} required />
           </div>
           <FilePicker label="Archivo de la factura" accept=".pdf,.xml,.zip" formats="PDF, XML o ZIP" maxKb={maxKb} />

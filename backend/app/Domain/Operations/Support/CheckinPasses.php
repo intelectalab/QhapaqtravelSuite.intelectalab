@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Operations\Support;
 
+use App\Domain\Booking\Rules\RuleResolver;
 use App\Domain\Finance\Support\DerivedTokens;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
@@ -21,13 +22,19 @@ final class CheckinPasses
 
     private const CLOSED_SERVICES = ['cancelado', 'rechazado', 'anulado', 'reemplazado'];
 
-    public function __construct(private readonly TenantContext $context) {}
+    public function __construct(private readonly TenantContext $context, private readonly RuleResolver $rules) {}
 
     public function ensure(string $reservationId): void
     {
         $reservation = DB::table('booking_reservations')->where('id', $reservationId)->whereNull('deleted_at')->first(['id', 'status']);
 
         if ($reservation === null || in_array($reservation->status, ['borrador', 'cancelada'], true)) {
+            return;
+        }
+
+        if (! $this->rules->on(self::RULE)) {
+            $this->voidClosed($reservationId);
+
             return;
         }
 
@@ -65,6 +72,11 @@ final class CheckinPasses
             DB::table('ops_checkin_passes')->insertOrIgnore($rows);
         }
 
+        $this->voidClosed($reservationId);
+    }
+
+    private function voidClosed(string $reservationId): void
+    {
         $closed = DB::table('booking_reservation_services')->where('reservation_id', $reservationId)->whereIn('status', self::CLOSED_SERVICES)->pluck('id');
 
         if ($closed->isNotEmpty()) {

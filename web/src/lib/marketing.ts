@@ -1,3 +1,5 @@
+import type { PromotionCatalog } from "./channels";
+
 export interface CampaignAudience {
   matched: number;
   eligible: number;
@@ -138,7 +140,8 @@ export interface MarketingOverview {
   variables: string[];
   consents: { email: number; whatsapp: number; revoked_30: number; subscribers: number };
   test_options?: { recipients: { value: string; label: string; email: string | null; phone: string | null }[]; samples: { value: string; label: string; hint?: string }[]; me: string };
-  can: { manage: boolean };
+  can: { manage: boolean; create_promotion?: boolean };
+  promotion_form?: Omit<PromotionCatalog, "rows"> | null;
 }
 
 export const rate = (part: number, total: number) => (total > 0 ? (part / total) * 100 : 0);

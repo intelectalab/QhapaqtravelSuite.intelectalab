@@ -9,6 +9,7 @@ use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Mobile\Support\OperatorDirectory;
 use App\Domain\Mobile\Support\OperatorResource;
 use App\Domain\Operations\Actions\EvidenceWorkflow;
+use App\Domain\Operations\Actions\NoShowRegistry;
 use App\Domain\Operations\Support\IncidentDirectory;
 use App\Domain\Operations\Support\OpsNotices;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -34,6 +35,7 @@ final class OperatorActions
         private readonly AuditLogger $audit,
         private readonly OpsNotices $notices,
         private readonly ReservationIncidents $reservations,
+        private readonly NoShowRegistry $noShows,
     ) {}
 
     public function sync(OperatorResource $resource, array $actions): array
@@ -315,6 +317,7 @@ final class OperatorActions
         DB::table('booking_reservation_services')->where('id', $assignment->reservation_service_id)->whereIn('status', ['confirmado', 'en_curso'])->update(['status' => 'completado', 'lock_version' => DB::raw('lock_version + 1'), 'updated_at' => now()]);
         $this->log($assignment, 'finalizar', 'en_curso', 'completada'.($noShow->isEmpty() ? '' : ' · no-show: '.$noShow->implode(', ')), $at, $offline);
         $this->notify($assignment, 'asignacion.finalizada', "{$resource->row->full_name} finalizó {$assignment->service_label}", $at, $noShow->isEmpty() ? null : 'No se presentaron: '.$noShow->implode(', ').'.');
+        $this->noShows->onFinish((string) $assignment->reservation_service_id, (string) $assignment->id, 'app_operador', $resource->user);
 
         return ['result' => 'applied', 'data' => ['no_show' => $noShow->values()->all()]];
     }

@@ -19,6 +19,7 @@ use App\Domain\Integrations\Contracts\ReviewsProvider;
 use App\Domain\Integrations\Contracts\SalesAssistant;
 use App\Domain\Integrations\Contracts\SiteContentAi;
 use App\Domain\Integrations\Contracts\TravelInventory;
+use App\Domain\Integrations\Contracts\WhatsappCloud;
 use App\Domain\Integrations\Fake\FakeAccountingGateway;
 use App\Domain\Integrations\Fake\FakeFiscalGateway;
 use App\Domain\Integrations\Fake\FakeFxRateProvider;
@@ -31,6 +32,7 @@ use App\Domain\Integrations\Fake\FakeReviewsProvider;
 use App\Domain\Integrations\Fake\FakeSalesAssistant;
 use App\Domain\Integrations\Fake\FakeSiteContentAi;
 use App\Domain\Integrations\Fake\FakeTravelInventory;
+use App\Domain\Integrations\Fake\FakeWhatsappCloud;
 use App\Domain\Integrations\Mail\PlatformMailTransport;
 use App\Domain\Integrations\Mail\SmtpConnector;
 use App\Domain\Integrations\Support\ConfiguredCaptchaVerifier;
@@ -46,6 +48,7 @@ final class IntegrationServiceProvider extends ServiceProvider
         FiscalGateway::class => ['config' => 'integrations.drivers.fiscal', 'drivers' => ['fake' => FakeFiscalGateway::class]],
         PaymentGateway::class => ['config' => 'integrations.drivers.payments', 'drivers' => ['fake' => FakePaymentGateway::class]],
         MessagingChannel::class => ['config' => 'integrations.drivers.messaging', 'drivers' => ['fake' => FakeMessagingChannel::class]],
+        WhatsappCloud::class => ['config' => 'integrations.drivers.whatsapp', 'drivers' => ['fake' => FakeWhatsappCloud::class]],
         ReviewsProvider::class => ['config' => 'integrations.drivers.reviews', 'drivers' => ['fake' => FakeReviewsProvider::class]],
         FxRateProvider::class => ['config' => 'integrations.drivers.fx', 'drivers' => ['fake' => FakeFxRateProvider::class]],
         MalwareScanner::class => ['config' => 'integrations.drivers.antivirus', 'drivers' => ['fake' => FakeMalwareScanner::class, 'clamav' => ClamAvMalwareScanner::class]],

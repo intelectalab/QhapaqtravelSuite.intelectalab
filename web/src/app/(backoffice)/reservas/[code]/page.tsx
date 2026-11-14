@@ -2,6 +2,7 @@ import { ConsultModeNotice, LockedButton } from "@/components/ui/ConsultMode";
 import { CalendarDays, ClipboardCheck, ClipboardList, FileText, History, LayoutDashboard, MapPin, MessageSquareText, Receipt, Route, Scale, Signpost, Sparkles, TriangleAlert, UserRound, Users, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ScopeDenied } from "@/components/shell/ScopeDenied";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Badge, LiveTag, StatusBadge } from "@/components/ui/Badge";
 import { DownloadButton } from "@/components/ui/DownloadButton";
@@ -21,15 +22,18 @@ import { SettlementSection } from "@/features/finance/Settlement";
 import { CLOSED_RESERVATION, PENDING_PROVIDER_SERVICE, specialRequestTags, type ReservationService } from "@/lib/reservations";
 import { getAdvisors } from "@/lib/server/leads";
 import { currentUser } from "@/lib/server/me";
+import { isOutOfPortfolio } from "@/lib/server/detail";
 import { getChangeOptions, getReservation, getReservationCancellation, getReservationFeedback, getReservationHistory, getReservationPaxMessages, getReservationWebSnapshot } from "@/lib/server/reservations";
 import { getResource } from "@/lib/server/resource";
 import type { ReservationTripView } from "@/lib/trip";
 import { ReservationTripSection } from "@/features/reservations/ReservationTripSection";
+import { WebReactivationCard, type WebReactivationPreview } from "@/features/reservations/WebReactivation";
 import { statusTone } from "@/lib/tone";
 
 export async function generateMetadata({ params }: PageProps<"/reservas/[code]">): Promise<Metadata> {
   const { code } = await params;
-  return { title: (await getReservation(code)).title };
+  const reservation = await getReservation(code);
+  return { title: isOutOfPortfolio(reservation) ? "Fuera de tu cartera" : reservation.title };
 }
 
 const ACTION_LABEL: Record<string, string> = {
@@ -94,6 +98,7 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
   const { code } = await params;
   const query = await searchParams;
   const reservation = await getReservation(code);
+  if (isOutOfPortfolio(reservation)) return <ScopeDenied message={reservation.outOfPortfolio} back={{ href: "/reservas", label: "Ver mis reservas" }} />;
   const closed = CLOSED_RESERVATION.includes(reservation.status);
   const canCancel = !closed && (reservation.can.cancel || reservation.can.request_cancel);
   const [preview, advisors, changeOptions] = await Promise.all([canCancel ? getReservationCancellation(code) : null, reservation.can.reassign ? getAdvisors() : [], !closed && reservation.can.modify ? getChangeOptions(code) : null]);
@@ -109,7 +114,11 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
   const base = `/reservas/${encodeURIComponent(reservation.code)}`;
   const orderAction = reservation.can.operation_order ? <ReservationOrderAction code={reservation.code} /> : null;
 
-  const [trip, webSnapshot] = await Promise.all([getResource<ReservationTripView>(`/reservations/${encodeURIComponent(reservation.code)}/trip`, "No pudimos cargar el viaje por tramos."), reservation.counts.web > 0 ? getReservationWebSnapshot(code) : null]);
+  const [trip, webSnapshot, reactivation] = await Promise.all([
+    getResource<ReservationTripView>(`/reservations/${encodeURIComponent(reservation.code)}/trip`, "No pudimos cargar el viaje por tramos."),
+    reservation.counts.web > 0 ? getReservationWebSnapshot(code) : null,
+    reservation.status === "cancelada" ? getResource<WebReactivationPreview>(`/reservations/${encodeURIComponent(reservation.code)}/web-reactivation`, "No pudimos revisar la reactivación.") : null,
+  ]);
   const specialRequest = closed ? null : (webSnapshot?.comments?.trim() ?? null);
   const pendingServices = reservation.services.filter((service) => !service.replaced && PENDING_PROVIDER_SERVICE.includes(service.status)).length;
   const { active: current, groups } = resolveSections(base, [
@@ -256,6 +265,8 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
             {reservation.cancellation?.penalty_amount !== undefined && ` · Penalidad ${formatMoney(reservation.cancellation.penalty_amount, reservation.currency)}${Number(reservation.cancellation.refund_amount ?? 0) > 0 ? ` · Reembolso ${formatMoney(reservation.cancellation.refund_amount ?? 0, reservation.currency)}` : ""}`}
           </p>
         )}
+
+        {reactivation && <WebReactivationCard code={reservation.code} preview={reactivation} />}
 
         {!closed && reservation.cancel_request && (
           <div className="mb-5 flex animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] flex-wrap items-center gap-3 rounded-card border border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-4 py-3 text-[13.5px]">

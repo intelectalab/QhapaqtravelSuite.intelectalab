@@ -66,6 +66,7 @@ final class InvoiceDirectory
                 ->get(['h.status', 'h.note', 'h.created_at', 'u.name as user']),
             'credit_notes' => DB::table('fin_invoices')->where('ref_invoice_id', $row->id)->orderBy('issue_date')->get(['number', 'status', 'total_amount', 'credit_note_reason']),
             'ose_ticket' => $row->ose_ticket,
+            'fiscal_files' => ['xml' => $row->xml_document_id, 'cdr' => $row->cdr_document_id],
             'hash' => $row->hash_code,
             'lock_version' => (int) $row->lock_version,
             'reasons' => $this->reasons(),

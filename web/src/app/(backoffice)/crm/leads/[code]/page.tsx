@@ -2,6 +2,7 @@ import { ConsultModeNotice } from "@/components/ui/ConsultMode";
 import { ArrowRight, CalendarDays, Check, CircleSlash, Gauge, Mail, MapPin, Merge, MessageSquareText, Package, Phone, Route, Target, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ScopeDenied } from "@/components/shell/ScopeDenied";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -16,6 +17,7 @@ import { RecordHistory } from "@/features/crm/RecordHistory";
 import { LeadActions } from "@/features/leads/LeadActions";
 import { LeadDuplicates } from "@/features/leads/LeadDuplicates";
 import { getRelatedOptions } from "@/lib/server/activities";
+import { isOutOfPortfolio } from "@/lib/server/detail";
 import { getAdvisors, getCatalogs, getLead } from "@/lib/server/leads";
 import { getOpportunityFormOptions } from "@/lib/server/opportunities";
 import { currentUser } from "@/lib/server/me";
@@ -23,7 +25,8 @@ import { statusLabel, statusTone } from "@/lib/tone";
 
 export async function generateMetadata({ params }: PageProps<"/crm/leads/[code]">): Promise<Metadata> {
   const { code } = await params;
-  return { title: (await getLead(code)).name };
+  const lead = await getLead(code);
+  return { title: isOutOfPortfolio(lead) ? "Fuera de tu cartera" : lead.name };
 }
 
 function journey(lead: LeadDetail) {
@@ -40,7 +43,9 @@ function journey(lead: LeadDetail) {
 export default async function LeadPage({ params, searchParams }: PageProps<"/crm/leads/[code]">) {
   const { code } = await params;
   const { editar } = await searchParams;
-  const [lead, catalogs, me, advisors, opportunityOptions, activityOptions] = await Promise.all([getLead(code), getCatalogs(), currentUser(), getAdvisors(), getOpportunityFormOptions(), getRelatedOptions()]);
+  const [found, catalogs, me, advisors, opportunityOptions, activityOptions] = await Promise.all([getLead(code), getCatalogs(), currentUser(), getAdvisors(), getOpportunityFormOptions(), getRelatedOptions()]);
+  if (isOutOfPortfolio(found)) return <ScopeDenied message={found.outOfPortfolio} back={{ href: "/crm/leads", label: "Ver mis leads" }} />;
+  const lead = found;
   const mine = lead.owner_id === null || lead.owner_id === me.id || me.permissions.includes("crm.records.reassign");
   const closed = lead.status === "descartado" || lead.status === "duplicado";
   const steps = journey(lead);

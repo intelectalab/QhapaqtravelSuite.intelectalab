@@ -6,6 +6,7 @@ namespace App\Domain\Iam\Support;
 
 use App\Domain\Iam\Models\User;
 use App\Domain\Platform\Support\Entitlements;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final class AccessMap
@@ -16,14 +17,28 @@ final class AccessMap
         $experience = RoleExperience::for($user);
         $backoffice = $experience['experience'] === 'backoffice';
         $screens = collect(config('access.routes'))->map(fn (array $required) => $backoffice && $this->satisfies($required, $permissions->all()));
+        $platform = collect((array) config('access.platform_routes'));
 
         return [
             'experience' => $experience['experience'],
             'home' => $experience['home'],
             'routes' => $screens->filter()->keys()->values(),
-            'screens' => $screens,
+            'screens' => $screens->merge($platform->map(fn (): bool => false)),
+            'required' => $this->requirements(collect(config('access.routes'))->reject(fn (array $required, string $path): bool => $screens[$path]))->merge($platform),
             'locked' => $this->locked((string) $user->tenant_id),
         ];
+    }
+
+    public function outsideAgency(): array
+    {
+        $routes = collect(config('access.routes'));
+
+        return ['screens' => $routes->map(fn (): bool => false), 'required' => $this->requirements($routes)];
+    }
+
+    private function requirements(Collection $routes): Collection
+    {
+        return $routes->map(fn (array $required): array => array_values(array_diff($required, ['*'])));
     }
 
     private function locked(string $tenantId): array

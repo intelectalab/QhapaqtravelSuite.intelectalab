@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Inbox\Support\MessageCipher;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -211,7 +212,7 @@ it('desde una conversación se crea el lead vinculado y una actividad que queda 
     $last = withinTenant(tenantA(), fn () => DB::table('collab_messages')->where('conversation_id', $conversation->id)->orderByDesc('sent_at')->orderByDesc('id')->first());
 
     expect(rowOf('crm_activities', $activity)->related_id)->toBe(idOf('crm_leads', $lead))
-        ->and($last->body)->toContain($activity);
+        ->and(MessageCipher::open($last->body))->toContain($activity);
 });
 
 it('Finanzas no crea leads ni actividades desde la bandeja', function () {

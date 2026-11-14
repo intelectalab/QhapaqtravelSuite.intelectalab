@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Domain\Integrations\Contracts\PushSender;
+use App\Domain\Integrations\Support\PushTickets;
 use App\Domain\Shared\Tenancy\Jobs\RestoreTenantContext;
 use App\Domain\Shared\Tenancy\Jobs\TenantAware;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 final class SendPushNotification implements ShouldQueue
@@ -40,17 +40,18 @@ final class SendPushNotification implements ShouldQueue
 
     public function handle(PushSender $push): void
     {
-        $tokens = DB::table('ops_mobile_devices')->whereIn('user_id', $this->userIds)->whereNull('revoked_at')->whereNotNull('expo_push_token')
-            ->pluck('expo_push_token')->unique()->values()->all();
+        $devices = PushTickets::devices($this->userIds);
 
-        if ($tokens === []) {
+        if ($devices->isEmpty()) {
             return;
         }
 
-        $result = $push->send($tokens, $this->title, $this->body, $this->data);
+        $result = $push->send($devices->pluck('expo_push_token')->all(), $this->title, $this->body, $this->data);
 
         if (! $result->ok && $result->errorClass === 'transitorio') {
             throw new RuntimeException((string) $result->message);
         }
+
+        app(PushTickets::class)->record($result, $devices);
     }
 }

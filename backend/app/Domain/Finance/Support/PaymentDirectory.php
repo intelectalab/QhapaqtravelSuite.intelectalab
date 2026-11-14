@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Finance\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Site\Support\TransferProofs;
 use Illuminate\Support\Facades\DB;
 
 final class PaymentDirectory
@@ -22,6 +23,9 @@ final class PaymentDirectory
         $lines = DB::table('fin_bank_lines')->whereNotNull('matched_payment_id')->pluck('code', 'matched_payment_id');
         $applied = DB::table('fin_payment_applications as a')->join('fin_receivables as r', 'r.id', '=', 'a.receivable_id')->whereNull('a.reversed_at')
             ->get(['a.payment_id', 'a.amount', 'r.code', 'r.amount as receivable_amount', 'r.paid_amount'])->keyBy('payment_id');
+        $transferProofs = app(TransferProofs::class);
+        $proofs = $transferProofs->latest(DB::table('fin_payments')->where('status', 'pendiente')->pluck('id')->map(fn (mixed $id): string => (string) $id)->all())
+            ->map(fn (array $proof): array => ['uploaded_at' => $proof['first_at'], 'file_name' => $proof['file_name'], ...$transferProofs->stage($proof['first_at'])]);
 
         $rows = DB::table('fin_payments as p')
             ->join('booking_reservations as b', 'b.id', '=', 'p.reservation_id')
@@ -31,7 +35,7 @@ final class PaymentDirectory
             ->orderByDesc('p.paid_on')
             ->orderByDesc('p.created_at')
             ->get(['p.id', 'p.code', 'p.lock_version', 'p.kind', 'p.source', 'p.method', 'p.amount', 'p.currency', 'p.fx_rate', 'p.paid_on', 'p.reference', 'p.note', 'p.status', 'p.reject_reason', 'p.revert_reason', 'p.reverted_at', 'p.retries', 'p.reservation_id', 'b.code as reservation_code', 'b.title as reservation_title', 'c.name as client_name', 'r.code as receivable_code', 'u.name as registered_by'])
-            ->map(function (object $row) use ($labels, $open, $today, $lines, $applied): array {
+            ->map(function (object $row) use ($labels, $open, $today, $lines, $applied, $proofs): array {
                 $application = $applied->get($row->id);
                 $candidates = $row->kind === 'cobro' && in_array($row->status, ['pendiente', 'confirmado'], true) ? $this->candidates($open->get($row->reservation_id.'|'.$row->currency)?->all() ?? [], (float) $row->amount, $today) : [];
 
@@ -56,6 +60,7 @@ final class PaymentDirectory
                     'client' => $row->client_name,
                     'registered_by' => $row->registered_by ?? 'Sistema',
                     'bank_line' => $lines[$row->id] ?? null,
+                    'proof' => $row->status === 'pendiente' ? ($proofs[$row->id] ?? null) : null,
                     'apply_to' => $candidates,
                     'application' => $application === null ? null : [
                         'receivable' => $application->code,

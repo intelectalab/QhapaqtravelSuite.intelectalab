@@ -118,12 +118,13 @@ it('CP-02: un cliente de otra empresa no ve el panel y su sesión no lo muestra'
     expect($this->getJson('/api/v1/portal/client/corporate/summary'))->toBeApiError(403);
 });
 
-it('CP-01: con la regla apagada el panel responde 403 y desaparece de la sesión', function () {
+it('CP-01: con la regla apagada el panel queda en solo lectura', function () {
     corpRule(false);
     actingAsSeed('U18');
 
-    expect($this->getJson('/api/v1/portal/client/corporate/summary'))->toBeApiError(403, 'RULE_NOT_IN_PLAN')
-        ->and($this->getJson('/api/v1/portal/client/session')->json('data.corporate'))->toBeNull();
+    $this->getJson('/api/v1/portal/client/corporate/summary')->assertOk();
+    expect($this->getJson('/api/v1/portal/client/session')->json('data.corporate.read_only'))->toBeTrue()
+        ->and($this->postJson('/api/v1/portal/client/corporate/users', ['full_name' => 'Rosa Miranda Paz', 'email' => 'rmiranda@mcblanca.com.pe', 'portal_role' => 'viajero'], critical()))->toBeApiError(403, 'RULE_NOT_IN_PLAN');
 });
 
 it('el administrador de la empresa invita usuarios, cambia roles, crea centros de costo y viajeros', function () {

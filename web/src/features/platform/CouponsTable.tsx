@@ -9,6 +9,7 @@ import type { Column, FilterConfig, MetricFilter, SortOption } from "@/component
 import { Badge } from "@/components/ui/Badge";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format";
@@ -82,7 +83,7 @@ export function CouponFormAction({ coupon, plans }: { coupon?: Coupon; plans: Pl
         <TextField label="Valor" name="value" type="number" min={0.01} step="0.01" required defaultValue={coupon?.value ?? ""} hint="Hasta 50 si es porcentaje." />
         <TextField label="Ciclos que dura" name="duration_cycles" type="number" min={1} max={12} required defaultValue={coupon?.duration_cycles ?? 3} />
         <TextField label="Canjes máximos" name="max_redemptions" type="number" min={Math.max(1, coupon?.redeemed ?? 1)} defaultValue={coupon?.max_redemptions ?? ""} hint="Vacío: sin tope." />
-        <TextField label="Válido hasta" name="valid_to" type="date" defaultValue={coupon?.valid_to ?? ""} hint="Vacío: sin vencimiento." />
+        <DateField label="Válido hasta" name="valid_to" defaultValue={coupon?.valid_to} hint="Vacío: sin vencimiento." />
       </div>
       <PlanPicker plans={plans} selected={coupon?.plans.map((plan) => plan.code) ?? plans.map((plan) => plan.code)} />
       <TextArea label="Nota interna" name="note" maxLength={200} defaultValue={coupon?.note ?? ""} placeholder="Para qué campaña o caso se creó." />

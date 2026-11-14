@@ -4,6 +4,7 @@ import { cache } from "react";
 import type { QuoteAuditEvent, QuoteConversion, QuoteDetail, QuoteFormOptions, QuoteListMeta, QuoteRow } from "@/lib/quotes";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
+import { getDetail, type OutOfPortfolio } from "./detail";
 import { type Collection, fetchPages } from "./pages";
 
 async function get<T>(path: string): Promise<T | null> {
@@ -25,7 +26,7 @@ export async function listQuotes(): Promise<Collection<QuoteRow, QuoteListMeta> 
   return result.data;
 }
 
-export const getQuote = cache(async (code: string): Promise<QuoteDetail> => (await get<QuoteDetail>(`/quotes/${encodeURIComponent(code)}`)) ?? notFound());
+export const getQuote = cache(async (code: string): Promise<QuoteDetail | OutOfPortfolio> => getDetail<QuoteDetail>(`/quotes/${encodeURIComponent(code)}`, "No pudimos cargar la cotización."));
 
 export const getQuoteConversion = async (code: string): Promise<QuoteConversion | null> => get<QuoteConversion>(`/quotes/${encodeURIComponent(code)}/conversion-preview`);
 

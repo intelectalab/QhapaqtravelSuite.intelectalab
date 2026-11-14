@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Inbox\Actions;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Inbox\Support\MessageCipher;
 use App\Domain\Integrations\Support\AttachmentGuard;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
@@ -42,7 +43,7 @@ final class ConversationAttachments
         $uploadId = (string) Str::uuid7();
         $path = $this->path($tenantId, $uploadId, $mime);
 
-        if ($this->disk()->putFileAs(dirname($path), $file, basename($path)) === false) {
+        if ($this->disk()->put($path, MessageCipher::sealFile((string) file_get_contents((string) $file->getRealPath()))) === false) {
             throw ApiException::conflict('INB-BR-11', 'No pudimos guardar el archivo. Inténtalo de nuevo en unos segundos.');
         }
 
@@ -66,7 +67,7 @@ final class ConversationAttachments
         $this->guard->ensureClean($contents, $name, 'Conversación', $conversationCode);
         $path = $this->path($this->context->idOrFail(), (string) Str::uuid7(), $mime);
 
-        if ($this->disk()->put($path, $contents) === false) {
+        if ($this->disk()->put($path, MessageCipher::sealFile($contents)) === false) {
             throw ApiException::conflict('INB-BR-11', 'No pudimos guardar el archivo.');
         }
 
@@ -118,8 +119,10 @@ final class ConversationAttachments
                     throw ApiException::unprocessable('INB-BR-11', "El archivo {$pending['file_name']} todavía no se terminó de subir.");
                 }
 
+                $contents = (string) $disk->get($pending['path']);
+
                 try {
-                    $this->guard->ensureClean((string) $disk->get($pending['path']), (string) $pending['file_name'], 'Conversación', $conversationCode);
+                    $this->guard->ensureClean($contents, (string) $pending['file_name'], 'Conversación', $conversationCode);
                 } catch (ApiException $blocked) {
                     if ($blocked->ruleCode === 'FILE_INFECTED') {
                         $disk->delete($pending['path']);
@@ -128,6 +131,10 @@ final class ConversationAttachments
 
                     throw $blocked;
                 }
+
+                $disk->put($pending['path'], MessageCipher::sealFile($contents));
+                $pending['scanned'] = true;
+                Cache::put($this->key($tenantId, $uploadId), $pending, now()->addMinutes(self::TTL_MINUTES));
             }
 
             return [...$pending, 'upload_id' => $uploadId];

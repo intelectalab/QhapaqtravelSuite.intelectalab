@@ -11,6 +11,7 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { SwitchField } from "@/components/ui/SwitchField";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import type { AdvanceOption, PaymentMethodOption, ReceivableRow, ReceivablesOverview } from "@/lib/finance";
@@ -38,7 +39,7 @@ function PaymentFields({ row, methods, today, usdRate }: { row: PayableReceivabl
       <SelectField label="Medio de pago" name="method" options={methods.map(({ value, label }) => ({ value, label }))} defaultValue={method} onChange={setMethod} />
       <div className="grid grid-cols-2 gap-3">
         <TextField label={`Monto (${row.currency})`} name="amount" type="number" step="0.01" min="0.01" max={row.balance} required defaultValue={row.balance.toFixed(2)} />
-        <TextField label="Fecha del pago" name="paid_on" type="date" required max={today} defaultValue={today} />
+        <DateField label="Fecha del pago" name="paid_on" required max={today} defaultValue={today} />
       </div>
       <TextField
         label={selected?.requires_reference ? "Número de operación" : "Número de operación (opcional)"}
@@ -133,7 +134,7 @@ function AdvanceFields({ options, today }: { options: AdvanceOption[]; today: st
         <TextField label="% del total" name="pct" type="number" step="0.01" min="1" max="100" value={pct} onChange={(event) => fromPct(event.target.value)} />
         <TextField label={`Importe${option ? ` (${option.currency})` : ""}`} name="amount" type="number" step="0.01" min="0.01" max={option?.available} required value={amount} onChange={(event) => setAmount(event.target.value)} hint={option && option.available < (option.total * Number(pct || 0)) / 100 ? "Se limitó a lo disponible de la reserva." : undefined} />
       </div>
-      <TextField label="Vence" name="due_date" type="date" required min={today} defaultValue={addDays(today, 3)} />
+      <DateField label="Vence" name="due_date" required min={today} defaultValue={addDays(today, 3)} />
       <TextField label="Concepto" name="concept" required minLength={3} maxLength={255} value={concept} onChange={(event) => setConcept(event.target.value)} placeholder="Ejemplo: anticipo para reservar el tren a Machu Picchu" />
       <SwitchField label="Avisar al cliente por correo" name="notify_switch" checked={notify} onCheckedChange={setNotify} hint="Le llega el aviso de pago pendiente con el importe." />
       <input type="hidden" name="notify" value={notify ? "1" : "0"} />

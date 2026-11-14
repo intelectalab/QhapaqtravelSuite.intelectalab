@@ -13,6 +13,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { Tabs } from "@/components/ui/Tabs";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
 import { formatDateTime, formatMoney } from "@/lib/format";
@@ -106,7 +107,7 @@ function SellForm({ listing }: { listing: MarketListing }) {
           <input type="hidden" name="listing" value={listing.id} />
           <div className="grid grid-cols-2 gap-3">
             <TextField label="Pasajeros" name="pax" type="number" min={1} max={99} required defaultValue="2" />
-            <TextField label="Fecha de viaje" name="travel_date" type="date" required />
+            <DateField label="Fecha de viaje" name="travel_date" required />
           </div>
           <TextField label="Monto de la venta" name="gross_amount" type="number" step="0.01" min={0} required={!listing.from_price} hint={listing.from_price ? `Si lo dejas vacío: ${formatMoney(listing.from_price, listing.currency)} por pasajero.` : "La publicación no tiene precio desde."} />
         </>

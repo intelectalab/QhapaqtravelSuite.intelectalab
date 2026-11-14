@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ChipToggleGroup } from "@/components/ui/ChipToggleGroup";
 import { SelectField } from "@/components/ui/SelectField";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { FormError } from "@/features/auth/AuthForms";
 import type { AccountingExportRow, AccountMappings, Option } from "@/lib/growth-ops";
@@ -26,8 +27,8 @@ export function NewExportAction({ targets, scopes, ready }: { targets: Option[];
     <GrowthStep step="export_create" label="Nueva exportación" icon={<FileSpreadsheet size={15} />} variant="primary" title="Generar exportación contable" description="Solo entran comprobantes aceptados u observados por SUNAT, con las cuentas de tu plan." submitLabel="Generar archivo">
       <SelectField label="Sistema contable" name="target" options={targets.map((item) => ({ value: item.key, label: ready.includes(item.key) ? item.label : `${item.label} · plan incompleto` }))} defaultValue={ready[0] ?? targets[0]?.key} />
       <div className="grid grid-cols-2 gap-3">
-        <TextField label="Desde" name="period_from" type="date" required defaultValue={first} />
-        <TextField label="Hasta" name="period_to" type="date" required defaultValue={last} />
+        <DateField label="Desde" name="period_from" required defaultValue={first} />
+        <DateField label="Hasta" name="period_to" required defaultValue={last} />
       </div>
       <ChipToggleGroup label="Qué exportar" name="scope" options={scopes.map((item) => ({ value: item.key, label: item.label }))} defaultValue={scopes.map((item) => item.key)} />
     </GrowthStep>

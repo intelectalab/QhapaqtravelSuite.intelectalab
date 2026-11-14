@@ -9,6 +9,7 @@ use App\Domain\Catalog\Actions\SeasonRegistry;
 use App\Domain\Catalog\Http\Controllers\Concerns\ResolvesActor;
 use App\Domain\Catalog\Http\Controllers\Concerns\ResolvesProduct;
 use App\Domain\Catalog\Support\CatalogAccess;
+use App\Domain\Catalog\Support\RateCurrencyPrices;
 use App\Domain\Catalog\Support\RateDirectory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -114,7 +115,9 @@ final class RateController
             'conditions' => ['nullable', 'string', 'max:300'],
             'reason' => ['nullable', 'string', 'max:300'],
             'lock_version' => [Rule::requiredIf(! $creating), 'integer'],
+            ...RateCurrencyPrices::rules(),
         ], [
+            ...RateCurrencyPrices::messages(),
             'rate_type.*' => 'Elige el tipo de tarifa.',
             'segment.*' => 'Elige el segmento.',
             'channel.*' => 'Elige el canal.',

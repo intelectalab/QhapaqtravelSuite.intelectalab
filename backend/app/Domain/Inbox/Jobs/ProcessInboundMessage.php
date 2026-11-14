@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Inbox\Jobs;
 
 use App\Domain\Inbox\Actions\InboundMessages;
+use App\Domain\Inbox\Support\MessageCipher;
 use App\Domain\Shared\Tenancy\TenantDatabase;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -51,8 +52,9 @@ final class ProcessInboundMessage implements ShouldQueue
         }
 
         $payload = (array) json_decode((string) $event->payload, true);
-        $message = (array) ($payload['message'] ?? []);
+        $message = MessageCipher::openPayload((array) ($payload['message'] ?? []));
         $result = $messages->receive((string) $event->channel, (string) $payload['account_id'], $message);
+        $message['body'] = MessageCipher::seal((string) ($message['body'] ?? ''));
 
         if (isset($message['attachments'])) {
             $message['attachments'] = array_map(fn (array $file): array => ['file_name' => $file['file_name'] ?? null, 'mime' => $file['mime'] ?? null, 'size' => (int) floor(strlen((string) ($file['content'] ?? '')) * 3 / 4)], (array) $message['attachments']);

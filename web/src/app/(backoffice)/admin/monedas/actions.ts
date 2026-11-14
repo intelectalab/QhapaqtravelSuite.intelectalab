@@ -33,3 +33,8 @@ export async function refreshFxRates(): Promise<StepResult> {
 export async function saveFxSettings(_state: StepResult, form: FormData): Promise<StepResult> {
   return refresh(await sendStep("/finance/fx-settings", "PATCH", formValues(form, ["margin_pct", "alert_pct"]), "No pudimos guardar el margen."));
 }
+
+export async function selectFxProvider(_state: StepResult, form: FormData): Promise<StepResult> {
+  const code = String(form.get("code") ?? "");
+  return refresh(await sendStep("/finance/fx-provider", "PUT", { code: code === "" ? null : code }, "No pudimos cambiar el proveedor de tipo de cambio."));
+}

@@ -21,3 +21,11 @@ export function NotFound({ home = "/" }: { home?: string }) {
     </div>
   );
 }
+
+export function NotFoundPage({ home = "/" }: { home?: string }) {
+  return (
+    <main className="mx-auto max-w-xl px-4 py-16">
+      <NotFound home={home} />
+    </main>
+  );
+}

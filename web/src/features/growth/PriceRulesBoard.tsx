@@ -11,6 +11,7 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { Tabs } from "@/components/ui/Tabs";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
@@ -89,8 +90,8 @@ function RuleForm({ page, rule }: { page: PriceRulesPage; rule?: PriceRule }) {
           <TextField label="Prioridad" name="priority" type="number" min={1} max={999} defaultValue={rule?.priority ?? 100} hint="Menor número, antes se aplica." />
           <ChipToggleGroup label="Canales" name="channels" options={labelOptions(catalogs.channels)} defaultValue={rule?.channels ?? Object.keys(catalogs.channels)} />
           <div className="grid grid-cols-2 gap-3">
-            <TextField label="Vigente desde" name="valid_from" type="date" defaultValue={rule?.valid_from ?? undefined} />
-            <TextField label="Vigente hasta" name="valid_to" type="date" defaultValue={rule?.valid_to ?? undefined} />
+            <DateField label="Vigente desde" name="valid_from" defaultValue={rule?.valid_from} />
+            <DateField label="Vigente hasta" name="valid_to" defaultValue={rule?.valid_to} />
           </div>
           <SwitchField label="Regla activa" name="active_switch" checked={active} onCheckedChange={setActive} hint="Lo ya cotizado o vendido conserva su precio aunque cambies la regla." />
         </>
@@ -125,7 +126,7 @@ function Simulator({ page }: { page: PriceRulesPage }) {
         <SelectField label="Producto" name="product" searchable options={[{ value: "*", label: "Sin producto, con precio base" }, ...page.meta.products]} defaultValue="*" />
         <TextField label="Precio base" name="base_price" type="number" step="0.01" min={0} hint="Si eliges un producto y lo dejas vacío, se usa su tarifa vigente." />
         <div className="grid grid-cols-2 gap-3">
-          <TextField label="Fecha de viaje" name="date" type="date" required />
+          <DateField label="Fecha de viaje" name="date" required />
           <SelectField label="Canal" name="channel" options={labelOptions(page.meta.catalogs.channels)} defaultValue="web" />
         </div>
         <div className="grid grid-cols-2 gap-3">

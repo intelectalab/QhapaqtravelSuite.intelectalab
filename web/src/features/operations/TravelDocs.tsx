@@ -7,6 +7,7 @@ import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { formatDate } from "@/lib/format";
 import type { TravelDocList, TravelDocRow, TravelDocument } from "@/lib/operations";
@@ -30,7 +31,7 @@ export function DocumentActions({ document, passenger, target, fileHref }: { doc
           {document.min_expiry && <ConfirmNote>Para validarlo debe vencer después del <b>{formatDate(document.min_expiry)}</b>.</ConfirmNote>}
           <div className="grid grid-cols-2 gap-3">
             <TextField label="Número" name="doc_number" maxLength={40} defaultValue={document.number ?? ""} />
-            <TextField label="Vence" name="expiry_date" type="date" required={document.type === "id_doc"} defaultValue={document.expiry ?? ""} />
+            <DateField label="Vence" name="expiry_date" required={document.type === "id_doc"} defaultValue={document.expiry} />
           </div>
         </OpsStep>
       )}

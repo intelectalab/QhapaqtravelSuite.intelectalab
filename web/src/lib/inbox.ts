@@ -18,9 +18,18 @@ export interface ConversationSummary {
   preview: string | null;
   preview_inbound: boolean;
   preview_note?: boolean;
+  awaiting_reply?: boolean;
   sla: { due_at: string; responded_at: string | null; state: "met" | "late" | "breached" | "warning" | "running" };
   window_open: boolean;
   lock_version: number;
+}
+
+export interface InboxResponseTimes {
+  channels: { channel: "webchat" | "form" | "portal"; label: string; minutes: number; default: number }[];
+  options: number[];
+  business_hours: { summary: string; configured: boolean; open_now: boolean };
+  lock_version: number;
+  updated_at: string | null;
 }
 
 export interface ConversationMessage {
@@ -133,9 +142,27 @@ export interface ChannelAccount {
   status: ChannelAccountStatus;
   status_label: string;
   webhook_secret_set: boolean;
+  connection_mode?: "plataforma" | "propia" | null;
+  display_phone?: string | null;
+  waba_masked?: string | null;
+  guided?: boolean;
   webhook_url: string;
   signature_header: string;
   updated_at: string | null;
+}
+
+export interface WhatsappConnection {
+  connected: boolean;
+  mode: "plataforma" | "propia";
+  mode_label: string;
+  status: ChannelAccountStatus | null;
+  display_phone: string | null;
+  phone_number_id: string | null;
+  waba_masked: string | null;
+  connected_at: string | null;
+  enabled: boolean;
+  platform: { ready: boolean; app_id: string | null; config_id: string | null; api_version: string; simulated: boolean };
+  own_app: { app_id: string | null; app_secret_set: boolean; access_token_set: boolean; verify_token: string | null; webhook_url: string; signature_header: string };
 }
 
 export const CHANNEL_ACCOUNT_STATUS: Record<ChannelAccountStatus, { label: string; tone: Tone }> = {

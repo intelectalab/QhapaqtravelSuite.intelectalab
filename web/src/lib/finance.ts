@@ -113,6 +113,15 @@ export interface PaymentRow {
   bank_line: string | null;
   apply_to: ApplyOption[];
   application?: { receivable: string; amount: number; balance_before: number; balance_after: number } | null;
+  proof?: TransferProofState | null;
+}
+
+export interface TransferProofState {
+  uploaded_at: string;
+  file_name: string;
+  business_minutes: number;
+  stage: "recibida" | "recordada" | "escalada";
+  escalated: boolean;
 }
 
 export interface PaymentsOverview {

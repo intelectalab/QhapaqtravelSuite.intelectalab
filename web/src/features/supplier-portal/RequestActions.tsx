@@ -9,6 +9,7 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
@@ -78,11 +79,11 @@ export function AlternativePanel({ row, kinds, catalog, today, size = "md", asIc
         <>
           <Summary row={row} />
           <SelectField label="Tipo de alternativa" name="alt_kind" options={kinds.map((value) => ({ value, label: value }))} defaultValue={kind} onChange={setKind} />
-          {(kind === "Otra fecha" || kind === "Otro") && <TextField label="Fecha propuesta" name="alt_date" type="date" min={today} required={kind === "Otra fecha"} icon={<CalendarClock size={17} />} />}
+          {(kind === "Otra fecha" || kind === "Otro") && <DateField label="Fecha propuesta" name="alt_date" min={today} required={kind === "Otra fecha"} icon={<CalendarClock size={17} />} />}
           {catalog.length > 0 && <SelectField label="Servicio o tarifa propuesta" name="alt_service" options={catalog} placeholder="El mismo servicio" searchable clearable hint="Solo servicios activos de su catálogo." />}
           <div className="grid grid-cols-2 gap-3">
             <TextField label={`Tarifa neta (${row.currency})`} name="alt_net_cost" type="number" step="0.01" min="0.01" icon={<Wallet size={16} />} placeholder={String(row.net_cost)} hint="Déjela vacía si no cambia." />
-            <TextField label="Mantener bloqueo hasta" name="hold_until" type="date" min={today} hint="Después vence sola." />
+            <DateField label="Mantener bloqueo hasta" name="hold_until" min={today} hint="Después vence sola." />
           </div>
           <TextArea label="Detalle" name="note" rows={3} required minLength={5} maxLength={1000} placeholder="Describa la alternativa: horario, tipo de habitación, condiciones." />
         </>
@@ -116,7 +117,7 @@ export function RejectPanel({ row, reasons, today, size = "md", asIcon = false }
           <SelectField label="Motivo" name="reason" placeholder="Elija el motivo" options={reasons.map((value) => ({ value, label: value }))} />
           <TextArea label="Detalle" name="note" rows={3} required minLength={5} maxLength={1000} placeholder="Explique la situación para que la agencia pueda resolverla." />
           <SwitchField label="Proponer otra fecha" name="propose_alternative" hint="Se crea un servicio alternativo para que la agencia lo solicite." checked={alternative} onCheckedChange={setAlternative} />
-          {alternative && <TextField label="Fecha alternativa" name="alt_date" type="date" min={today} required />}
+          {alternative && <DateField label="Fecha alternativa" name="alt_date" min={today} required />}
         </>
       )}
     </PanelAction>

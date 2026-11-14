@@ -7,6 +7,7 @@ namespace App\Domain\Site\Support;
 use App\Domain\Admin\Support\Branding;
 use App\Domain\Booking\Rules\RuleResolver;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\Shared\Time\BusinessHours;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use stdClass;
@@ -49,7 +50,9 @@ final class SiteProfile
                 'registry' => $general['mincetur_registry'] ?? null,
                 'emergency_phone' => $general['emergency_phone'] ?? $general['phone'] ?? DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->orderByDesc('is_main')->value('phone'),
                 'payment_methods' => array_keys(CheckoutTerms::METHODS),
+                'whatsapp' => app(SiteWhatsapp::class)->link($presentation['design']['footer']['social']['whatsapp'] ?? null),
             ],
+            'hours' => app(BusinessHours::class)->publicView(),
             'branding' => $presentation['branding'],
             'design' => $presentation['design'],
             'sedes' => DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->orderByDesc('is_main')->orderBy('name')
@@ -57,6 +60,7 @@ final class SiteProfile
                 ->map(fn (stdClass $sede): array => ['id' => $sede->id, 'name' => $sede->name, 'city' => $sede->city, 'address' => $sede->address, 'phone' => $sede->phone, 'is_main' => (bool) $sede->is_main])
                 ->all(),
             'fx' => $fx ? ['rate' => round((float) $fx->rate_pen, 3), 'date' => $fx->rate_date] : null,
+            'currency' => app(SiteCurrency::class)->settings(),
             'banner' => $presentation['banner'],
             'policies' => [
                 'cancel' => $policies['cancel_text'] ?? null,

@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Inbox\Support\MessageCipher;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -28,7 +29,7 @@ it('responder una conversación sin responsable deja el evento de autoasignació
 
     $messages = collect(g8InboxMessages('CNV-0105'));
     $system = $messages->where('direction', 'system')->last();
-    expect($system->body)->toBe("Asignada automáticamente a {$seller->name} al responder.")
+    expect(MessageCipher::open($system->body))->toBe("Asignada automáticamente a {$seller->name} al responder.")
         ->and($messages->last()->direction)->toBe('out');
 
     $this->postJson('/api/v1/inbox/conversations/CNV-0105/messages', ['body' => 'Te escribo de nuevo.'], critical())->assertCreated();

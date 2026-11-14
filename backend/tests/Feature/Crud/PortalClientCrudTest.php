@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Inbox\Support\MessageCipher;
 use Illuminate\Support\Facades\DB;
 
 function portalConsentimiento(string $client, string $channel): ?object
@@ -134,7 +135,7 @@ it('el mensaje del portal abre un ticket que llega a la bandeja de la agencia as
         ->and($conversation->assignee_id)->toBe(seedUser('U04')->id)
         ->and((int) $conversation->unread_count)->toBe(1)
         ->and($message->direction)->toBe('in')
-        ->and($message->body)->toBe('Quisiera cambiar el hotel de Cusco.')
+        ->and(MessageCipher::open($message->body))->toBe('Quisiera cambiar el hotel de Cusco.')
         ->and(portalAuditoria($code, 'mensaje_portal'))->not->toBeNull();
     expect(collect($this->getJson('/api/v1/portal/client/tickets')->assertOk()->json('data'))->flatten()->all())->toContain($code);
 

@@ -17,7 +17,13 @@ final class SiteQuote
     public function __construct(
         private readonly SiteCatalog $catalog,
         private readonly SiteBooking $booking,
+        private readonly SiteCurrency $currency,
     ) {}
+
+    public function currency(): SiteCurrency
+    {
+        return $this->currency;
+    }
 
     public function catalog(): SiteCatalog
     {
@@ -66,7 +72,7 @@ final class SiteQuote
         return $errors;
     }
 
-    public function quote(stdClass $product, string $date, int $adults, int $children, int $infants, ?string $promoCode = null, array $extras = [], bool $strict = false, ?string $mode = null, ?string $method = null): array
+    public function quote(stdClass $product, string $date, int $adults, int $children, int $infants, ?string $promoCode = null, array $extras = [], bool $strict = false, ?string $mode = null, ?string $method = null, ?string $currency = null): array
     {
         $errors = $this->rules($product, $adults, $children, $infants);
         $availability = $this->catalog->availability();
@@ -84,8 +90,10 @@ final class SiteQuote
         $pax = ['adt' => $adults, 'chd' => $children, 'inf' => $infants];
         $units = SiteBooking::serviceUnits($product, $price['basis'], $pax);
         $perService = $units !== null;
-        $promotion = SitePromotions::best($product, $adults + $children, $promoCode, (string) $price['currency']);
-        $extra = $this->booking->price($product, $date, $pax, (string) $price['currency'], $extras, $strict, $mode, $method, $promotion, $units);
+        $override = $this->currency->override((string) $product->id, isset($price['rate_id']) ? (string) $price['rate_id'] : null, (string) $price['currency'], $currency);
+        $charge = $override === null ? (string) $price['currency'] : (string) $override['currency'];
+        $promotion = SitePromotions::best($product, $adults + $children, $promoCode, $charge);
+        $extra = $this->booking->price($product, $date, $pax, $charge, $extras, $strict, $mode, $method, $promotion, $units, $override);
 
         $paxErrors = $perService ? array_values(array_filter($extra['pax_errors'], fn (string $error): bool => ! str_contains($error, 'pasajeros por reserva'))) : $extra['pax_errors'];
 
@@ -105,13 +113,15 @@ final class SiteQuote
 
         return [
             'date' => $date,
-            'currency' => $price['currency'],
+            'currency' => $charge,
+            'rate_currency' => $price['currency'],
+            'own_price' => $override !== null,
             'season' => $price['season'],
             'lines' => $lines,
             'subtotal' => $quote['subtotal'],
             'discount' => $promo === null ? null : ['label' => $promo['label'], 'amount' => (string) BigDecimal::of($promo['amount'])->abs(), 'code' => $promotion['code'] ?? null],
             'total' => (string) $total,
-            'list_total' => $price['list'] !== null && ! $perService && $children === 0 ? (string) self::money($price['list'])->multipliedBy($adults)->plus($extrasTotal) : null,
+            'list_total' => $override === null && $price['list'] !== null && ! $perService && $children === 0 ? (string) self::money($price['list'])->multipliedBy($adults)->plus($extrasTotal) : null,
             'extras_total' => (string) $extrasTotal,
             'extras' => $extra['selection'],
             'adjustments' => $quote['adjustments'],

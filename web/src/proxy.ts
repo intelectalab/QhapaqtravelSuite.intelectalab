@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { AGENCY_PREVIEW_RETURN, PREVIEW_BACK_COOKIE, previewBack } from "@/lib/agency-preview";
-import { REALMS, realmFor } from "@/lib/realms";
+import { REALMS, foreignSession, realmFor } from "@/lib/realms";
 import { SITE_LOCALE_COOKIE, SITE_LOCALES } from "@/lib/site-i18n";
 import { TEMPLATE_PREVIEW_COOKIE, TEMPLATE_PREVIEW_SECONDS, templatePreviewToken } from "@/lib/templatePreview";
 import { FRAMEABLE_PREFIX, HSTS_HEADER, NONCE_HEADER, WIDGET_ASSETS_PREFIX, WIDGET_PREFIX, contentSecurityPolicy, createNonce, isSecureRequest } from "@/lib/security-headers";
@@ -50,7 +50,9 @@ function route(request: NextRequest, nonce: string, policy: string) {
     return restored;
   }
 
-  if (!hasSession && !isPublic) {
+  const foreign = !hasSession && foreignSession(realmFor(pathname), (cookie) => request.cookies.has(cookie));
+
+  if (!hasSession && !isPublic && !foreign) {
     const url = new URL(realm.login, request.url);
     if (pathname !== "/" && pathname !== realm.home && pathname !== realm.mfaPage) url.searchParams.set("next", `${pathname}${search}`);
     return NextResponse.redirect(url);

@@ -7,6 +7,7 @@ import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { TIME_ZONE } from "@/lib/format";
 import type { OpportunityDetail, OpportunityFormOptions } from "@/lib/opportunities";
@@ -40,7 +41,7 @@ function OpportunityFields({ options, opportunity, clientCode }: { options: Oppo
       </Section>
       <Section title="Cuándo y para quiénes">
         <div className="grid grid-cols-2 gap-3">
-          <TextField label="Cierre esperado" name="expected_close_date" type="date" required min={opportunity ? undefined : today()} defaultValue={opportunity?.expected_close_date} icon={<CalendarDays size={17} />} />
+          <DateField label="Cierre esperado" name="expected_close_date" required min={opportunity ? undefined : today()} defaultValue={opportunity?.expected_close_date} icon={<CalendarDays size={17} />} />
           {opportunity ? (
             <TextField label="Probabilidad (%)" name="probability" type="number" min={0} max={100} required disabled={closed} defaultValue={opportunity.probability} hint={closed ? "Se fija al cerrar." : "Al cambiar de etapa vuelve a la de la etapa."} />
           ) : (

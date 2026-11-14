@@ -9,6 +9,7 @@ use App\Http\Middleware\EnsureExperience;
 use App\Http\Middleware\EnsureFeature;
 use App\Http\Middleware\EnsureLockVersion;
 use App\Http\Middleware\EnsureMfaVerified;
+use App\Http\Middleware\EnsureMinimumAppVersion;
 use App\Http\Middleware\EnsurePlatformUser;
 use App\Http\Middleware\EnsureTenantActive;
 use App\Http\Middleware\IdempotencyMiddleware;
@@ -42,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prependToGroup('api', AssignCorrelationId::class);
         $middleware->appendToGroup('api', EnsureChannelEnabled::class);
+        $middleware->appendToGroup('api', EnsureMinimumAppVersion::class);
         $middleware->append(SecurityHeaders::class);
         $middleware->replace(TrustProxies::class, TrustConfiguredProxies::class);
         $middleware->redirectGuestsTo(fn () => null);

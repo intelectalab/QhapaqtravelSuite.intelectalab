@@ -7,6 +7,8 @@ namespace App\Domain\Growth\Whatsapp;
 use App\Domain\Growth\Shared\GrowthRules;
 use App\Domain\Iam\Models\User;
 use App\Domain\Inbox\Support\ConversationDirectory;
+use App\Domain\Inbox\Support\MessageCipher;
+use App\Domain\Inbox\Support\WhatsappAccounts;
 use App\Domain\Integrations\Contracts\MessagingChannel;
 use App\Domain\Integrations\Data\OutboundMessage;
 use App\Domain\Marketing\Support\SandboxTemplateReviewer;
@@ -147,7 +149,7 @@ final class WhatsappTemplates
         }
 
         $body = (string) preg_replace_callback('/\{\{\s*([a-z0-9_]+)\s*\}\}/', fn (array $match): string => $variables[$match[1]] ?? $match[0], (string) $template->body);
-        $result = $this->messaging->send(new OutboundMessage('whatsapp', (string) $conversation->contact_phone, null, $body, (string) $template->name, $variables, (string) $template->lang));
+        $result = $this->messaging->send(new OutboundMessage('whatsapp', (string) $conversation->contact_phone, null, $body, (string) $template->name, $variables, (string) $template->lang, app(WhatsappAccounts::class)->sender()));
         $messageId = (string) Str::uuid7();
 
         DB::transaction(function () use ($conversation, $template, $body, $result, $messageId, $actor): void {
@@ -157,7 +159,7 @@ final class WhatsappTemplates
                 'channel' => 'whatsapp',
                 'direction' => 'out',
                 'author_user_id' => $actor->getKey(),
-                'body' => $body,
+                'body' => MessageCipher::seal($body),
                 'external_message_id' => $result->externalId,
                 'delivery_status' => $result->ok ? 'enviado' : 'fallido',
                 'failure_reason' => $result->ok ? null : $result->message,

@@ -13,6 +13,7 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { recencyBuckets, type LoyaltyMeta, type LoyaltyRow } from "@/lib/aftersales";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -66,7 +67,7 @@ function RebuyFields({ row, owners }: { row: LoyaltyRow; owners: { id: string; n
         <TextField label="Monto estimado" name="amount" type="number" min={1} step="0.01" required defaultValue={proposal.amount} hint={row.purchases > 0 ? "Su ticket promedio." : "Monto de referencia sin historial."} />
         <ChoiceGroup label="Moneda" name="currency" defaultValue={proposal.currency} options={[{ value: "PEN", label: "Soles" }, { value: "USD", label: "Dólares" }]} />
       </div>
-      <TextField label="Cierre esperado" name="expected_close_date" type="date" required defaultValue={proposal.expected_close_date} icon={<CalendarDays size={17} />} hint="Entra en la etapa Calificación." />
+      <DateField label="Cierre esperado" name="expected_close_date" required defaultValue={proposal.expected_close_date} icon={<CalendarDays size={17} />} hint="Entra en la etapa Calificación." />
       {owners.length > 0 && <SelectField label="Responsable" name="owner_id" options={owners.map((owner) => ({ value: owner.id, label: owner.name }))} defaultValue={proposal.owner_id} />}
       <TextArea label="Notas" name="notes" rows={3} maxLength={2000} defaultValue={proposal.notes} />
     </>
@@ -174,6 +175,7 @@ export function LoyaltyTable({ rows, meta, owners }: { rows: LoyaltyRow[]; meta:
       sorts={sorts}
       csv={{
         fileName: "segmentacion-fidelizacion",
+        permission: "reports.view",
         columns: [
           { header: "Código", value: (row) => row.code },
           { header: "Cliente", value: (row) => row.name },

@@ -1,26 +1,9 @@
 import type { ReactNode } from "react";
-import { AppShell } from "@/components/shell/AppShell";
-import { BrandStyle } from "@/components/shell/BrandStyle";
-import { WorkspaceProvider, type WorkspaceInfo } from "@/components/shell/Workspace";
-import { REALMS } from "@/lib/realms";
-import { currentPlatformUser } from "@/lib/server/platform";
+import { AgencyWorkspace } from "@/components/shell/AgencyWorkspace";
+import { PlatformWorkspace } from "@/components/shell/PlatformWorkspace";
+import { sessionToken } from "@/lib/server/session";
 
 export default async function PlatformConsoleLayout({ children }: { children: ReactNode }) {
-  const me = await currentPlatformUser();
-  const workspace: WorkspaceInfo = {
-    navigation: "platform",
-    userId: me.id,
-    account: { name: "Consola de plataforma", detail: "KipuControl", initials: "KC" },
-    person: { name: me.name, email: me.email, detail: "Super Admin", color: null },
-    logoutHref: REALMS.platform.logout,
-    counts: {},
-    screens: null,
-  };
-
-  return (
-    <WorkspaceProvider value={workspace}>
-      <BrandStyle branding={me.branding} />
-      <AppShell>{children}</AppShell>
-    </WorkspaceProvider>
-  );
+  if (!(await sessionToken("platform")) && (await sessionToken())) return <AgencyWorkspace />;
+  return <PlatformWorkspace>{children}</PlatformWorkspace>;
 }

@@ -10,6 +10,7 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -51,7 +52,7 @@ function ChangeFields({ code, currency, options }: { code: string; currency: str
       {type === "servicio" && (
         <div className="grid grid-cols-[1.4fr_1fr] gap-3">
           <SelectField label="Servicio" name="product_code" options={options.products.map((item) => ({ value: item.code, label: item.name }))} placeholder="Elegir" onChange={setProduct} />
-          <TextField label="Fecha" name="service_date" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+          <DateField label="Fecha" name="service_date" value={date} onChange={(next) => setDate(next ?? "")} />
         </div>
       )}
 
@@ -185,7 +186,7 @@ function RescheduleFields({ code }: { code: string }) {
 
   return (
     <>
-      <TextField label="Nueva fecha de inicio" name="new_start" type="date" required value={start} onChange={(event) => setStart(event.target.value)} hint={plan ? `Hoy empieza el ${formatDate(plan.from)}. Todo el viaje se mueve ${Math.abs(plan.shift)} ${Math.abs(plan.shift) === 1 ? "día" : "días"} ${plan.shift >= 0 ? "después" : "antes"}.` : undefined} />
+      <DateField label="Nueva fecha de inicio" name="new_start" required value={start} onChange={(next) => setStart(next ?? "")} hint={plan ? `Hoy empieza el ${formatDate(plan.from)}. Todo el viaje se mueve ${Math.abs(plan.shift)} ${Math.abs(plan.shift) === 1 ? "día" : "días"} ${plan.shift >= 0 ? "después" : "antes"}.` : undefined} />
       {error && <p className="text-[13px] text-bad">{error}</p>}
       {plan && (
         <section className="flex flex-col gap-2">

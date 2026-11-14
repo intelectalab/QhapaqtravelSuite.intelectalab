@@ -15,6 +15,8 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class ConversationDirectory
@@ -44,9 +46,12 @@ final class ConversationDirectory
             ->limit(200)
             ->get(['c.*', 'u.name as assignee_name']);
         $previews = DB::table('collab_messages')->whereIn('conversation_id', $rows->pluck('id'))->where('direction', '<>', 'system')
-            ->orderByDesc('sent_at')->get(['conversation_id', 'body', 'direction'])->unique('conversation_id')->keyBy('conversation_id');
+            ->orderByDesc('sent_at')->get(['conversation_id', 'body', 'direction'])->unique('conversation_id')->keyBy('conversation_id')
+            ->map(fn (object $row): object => (object) [...(array) $row, 'body' => MessageCipher::open($row->body)]);
+        $awaiting = DB::table('collab_messages')->whereIn('conversation_id', $rows->pluck('id'))->whereIn('direction', ['in', 'out'])
+            ->orderByDesc('sent_at')->get(['conversation_id', 'direction'])->unique('conversation_id')->filter(fn (object $row): bool => $row->direction === 'in')->pluck('conversation_id')->flip();
         $now = Carbon::now();
-        $items = $rows->map(fn (object $row): array => $this->summary($row, $previews->get($row->id), $viewer));
+        $items = $rows->map(fn (object $row): array => [...$this->summary($row, $previews->get($row->id), $viewer), 'awaiting_reply' => $row->status !== 'resuelta' && $awaiting->has($row->id)]);
         $responded = $rows->filter(fn (object $row): bool => $row->first_response_at !== null);
         $minutes = $responded->map(fn (object $row): float => Carbon::parse($row->created_at)->diffInMinutes(Carbon::parse($row->first_response_at)));
 
@@ -107,7 +112,7 @@ final class ConversationDirectory
             'messages' => $messages->map(fn (object $message): array => [
                 'id' => $message->id,
                 'direction' => $message->direction,
-                'body' => $message->body,
+                'body' => MessageCipher::open($message->body),
                 'at' => $message->sent_at,
                 'author' => $message->direction === 'in' ? $row->contact_name : ($message->author ?? 'Sistema'),
                 'delivery' => $message->delivery_status,
@@ -142,11 +147,19 @@ final class ConversationDirectory
             throw ApiException::notFound('El archivo ya no está disponible en el almacenamiento.');
         }
 
-        $headers = ['Content-Type' => (string) $file->mime, 'Cache-Control' => 'private, no-store', 'X-Content-Type-Options' => 'nosniff'];
+        $contents = MessageCipher::openFile((string) $disk->get((string) $file->storage_path));
+        $name = (string) $file->file_name;
+        $fallback = Str::ascii($name) !== '' ? str_replace(['/', '\\', '%'], '-', Str::ascii($name)) : 'adjunto';
 
-        return $inline
-            ? $disk->response((string) $file->storage_path, (string) $file->file_name, $headers)
-            : $disk->download((string) $file->storage_path, (string) $file->file_name, $headers);
+        return new StreamedResponse(function () use ($contents): void {
+            echo $contents;
+        }, 200, [
+            'Content-Type' => (string) $file->mime,
+            'Content-Length' => (string) strlen($contents),
+            'Content-Disposition' => HeaderUtils::makeDisposition($inline ? HeaderUtils::DISPOSITION_INLINE : HeaderUtils::DISPOSITION_ATTACHMENT, $name, $fallback),
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     public function linkOptions(string $code, string $kind, string $search, User $viewer): array

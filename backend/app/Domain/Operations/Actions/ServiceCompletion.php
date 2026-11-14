@@ -16,7 +16,7 @@ final class ServiceCompletion
 {
     public const COMPLETABLE = ['confirmado', 'en_curso'];
 
-    public function __construct(private readonly OpsCommon $common, private readonly AuditLogger $audit) {}
+    public function __construct(private readonly OpsCommon $common, private readonly AuditLogger $audit, private readonly NoShowRegistry $noShows) {}
 
     public function complete(string $reference, ?string $note, User $actor): array
     {
@@ -55,8 +55,9 @@ final class ServiceCompletion
             }
 
             $this->audit->log('Servicio', $service->code, 'completar', $service->status, 'completado', evidence: ['orden' => $order->code, 'servicio' => $service->name, 'observacion' => $note], actor: $actor);
+            $noShows = $assignment !== null ? $this->noShows->onFinish((string) $service->id, (string) $assignment->id, 'web', $actor)['registered'] : 0;
 
-            return ['code' => $service->code, 'status' => 'completado', 'lock_version' => (int) $service->lock_version + 1, 'order_code' => $order->code];
+            return ['code' => $service->code, 'status' => 'completado', 'lock_version' => (int) $service->lock_version + 1, 'order_code' => $order->code, 'no_shows' => $noShows];
         });
     }
 }

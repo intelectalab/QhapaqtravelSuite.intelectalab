@@ -6,6 +6,7 @@ import { rateProvider, renewProviderContract } from "@/app/(backoffice)/catalogo
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { HiddenFields, STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
 import type { ProviderRow } from "@/lib/catalog-providers";
@@ -30,7 +31,7 @@ export function ProviderRenewAction({ provider, today }: { provider: ProviderRow
       {() => (
         <>
           <HiddenFields values={{ ref: provider.ref }} />
-          <TextField label="Nuevo fin del contrato" name="contract_end" type="date" required min={provider.contract_end > today ? provider.contract_end : today} />
+          <DateField label="Nuevo fin del contrato" name="contract_end" required min={provider.contract_end > today ? provider.contract_end : today} />
           <TextField label="Condiciones de pago" name="payment_terms" maxLength={120} defaultValue={provider.payment_terms ?? undefined} placeholder="Por ejemplo: crédito 30 días" hint="Déjalas como están si no cambian." />
         </>
       )}

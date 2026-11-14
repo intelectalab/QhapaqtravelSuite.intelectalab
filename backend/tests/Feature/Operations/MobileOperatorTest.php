@@ -84,7 +84,8 @@ it('el guía confirma, inicia, hace check-in, sube evidencia y finaliza con no-s
         ->and(rowOf('booking_reservation_services', $assignment->reservation_service_id, column: 'id')->status)->toBe('completado')
         ->and(count($finish['data']['no_show']))->toBe(count($passengers) - 1)
         ->and(collect($finish['assignment']['passengers'])->where('no_show', true)->count())->toBe(count($passengers) - 1);
-    expect(withinTenant(tenantA(), fn () => DB::table('ops_sync_actions')->where('assignment_id', $assignment->id)->count()))->toBeGreaterThanOrEqual(8);
+    expect(withinTenant(tenantA(), fn () => DB::table('ops_sync_actions')->where('assignment_id', $assignment->id)->count()))->toBeGreaterThanOrEqual(8)
+        ->and(withinTenant(tenantA(), fn () => DB::table('ops_no_shows')->where('assignment_id', $assignment->id)->where('source', 'app_operador')->whereNull('voided_at')->count()))->toBe(count($passengers) - 1);
 });
 
 it('iniciar un servicio desde la app no pone en ejecución una orden que aún no está confirmada', function () {

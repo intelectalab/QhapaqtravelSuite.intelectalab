@@ -9,6 +9,7 @@ use App\Domain\Iam\Support\StaffSeats;
 use App\Domain\Platform\Actions\CollectInvoice;
 use App\Domain\Platform\Support\DowngradeValidator;
 use App\Domain\Platform\Support\Entitlements;
+use App\Domain\Platform\Support\PlanRuleCarryOver;
 use App\Domain\Platform\Support\PlatformInvoicer;
 use App\Domain\Platform\Support\ReadOnlyWindow;
 use App\Domain\Reports\Support\ReportExports;
@@ -455,6 +456,7 @@ final class ManageSubscription
         }
         $effective = $immediate ? Carbon::today('America/Lima') : Carbon::parse($subscription->current_period_end)->addDay();
         $blockers = $toRank < $fromRank ? $this->validator->blockers((string) $subscription->tenant_id, (string) $target->id) : [];
+        $rules = $this->rules($fromRank, $toRank);
 
         return [
             'kind' => $kind,
@@ -466,7 +468,8 @@ final class ManageSubscription
             'price' => (string) $this->invoicer->price($target, $cycle),
             'proration' => $immediate && $subscription->status !== 'trialing' ? $this->proration($subscription, $current, $target, $cycle) : null,
             'blockers' => $blockers,
-            'rules' => $this->rules($fromRank, $toRank),
+            'rules' => $rules,
+            'carry_over' => $rules['lost_codes'] === [] ? ['items' => [], 'notice' => null] : app(PlanRuleCarryOver::class)->summary((string) $subscription->tenant_id, $rules['lost_codes']),
         ];
     }
 
@@ -573,10 +576,11 @@ final class ManageSubscription
 
     private function rules(int $fromRank, int $toRank): array
     {
-        $rules = $this->db()->table('plan_rule_entitlements as e')->join('sys_booking_rule_catalog as r', 'r.code', '=', 'e.rule_code')->orderBy('r.name')->get(['r.name', 'e.min_plan']);
+        $rules = $this->db()->table('plan_rule_entitlements as e')->join('sys_booking_rule_catalog as r', 'r.code', '=', 'e.rule_code')->orderBy('r.name')->get(['r.code', 'r.name', 'e.min_plan']);
         $plans = $this->db()->table('plans')->pluck('rank', 'name');
         $gained = [];
         $lost = [];
+        $lostCodes = [];
 
         foreach ($rules as $rule) {
             $rank = (int) ($plans[$rule->min_plan] ?? PHP_INT_MAX);
@@ -585,10 +589,11 @@ final class ManageSubscription
                 $gained[] = $rule->name;
             } elseif ($rank > $toRank && $rank <= $fromRank) {
                 $lost[] = $rule->name;
+                $lostCodes[] = $rule->code;
             }
         }
 
-        return ['gained' => $gained, 'lost' => $lost];
+        return ['gained' => $gained, 'lost' => $lost, 'lost_codes' => $lostCodes];
     }
 
     private function record(object $subscription, string $kind, ?object $target, ?string $cycle, string $effective, string $status, ?array $proration, ?string $invoiceId, string $userId): void

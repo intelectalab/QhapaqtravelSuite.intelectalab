@@ -112,6 +112,25 @@ export const EVIDENCE_RULES: EvidenceRules = { max_bytes: 10 * 1024 * 1024, mime
 
 export const COMPLETABLE_SERVICE = ["confirmado", "en_curso"];
 
+export const NO_SHOW_SERVICE = ["confirmado", "en_curso", "completado"];
+
+export interface NoShow {
+  id: string;
+  lock_version: number;
+  passenger: { id: string; name: string; type: string };
+  service: { code: string; name: string; date: string };
+  reservation: string;
+  source: "web" | "app_operador";
+  recorded_at: string;
+  recorded_by: string | null;
+  note: string | null;
+  advisor_notified: boolean;
+  incident: string | null;
+  charge: { receivable: string; status: string; pct: number; amount: string; currency: string } | null;
+  voided_at: string | null;
+  void_reason: string | null;
+}
+
 export interface OrderDetail {
   code: string;
   lock_version: number;
@@ -137,6 +156,7 @@ export interface OrderDetail {
   economics: { sale: string; cost: string; currency: string } | null;
   reject_reasons: string[];
   incidents: { code: string; title: string; type: string; severity: string; status: string; sla_due_at: string; created_at: string }[];
+  no_shows: NoShow[];
   evidences: number;
   evidence_files: EvidenceFile[];
   evidence_rules: EvidenceRules;

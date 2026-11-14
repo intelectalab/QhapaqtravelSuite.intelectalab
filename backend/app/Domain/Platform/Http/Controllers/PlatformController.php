@@ -7,6 +7,7 @@ namespace App\Domain\Platform\Http\Controllers;
 use App\Domain\Iam\Http\Requests\LoginRequest;
 use App\Domain\Iam\Http\Requests\MfaVerifyRequest;
 use App\Domain\Iam\Models\AccessToken;
+use App\Domain\Iam\Support\AccessMap;
 use App\Domain\Platform\Actions\ChangeTenantStatus;
 use App\Domain\Platform\Actions\ManageTenant;
 use App\Domain\Platform\Actions\PlatformSession;
@@ -58,7 +59,7 @@ final class PlatformController
     {
         $user = $this->user($request);
 
-        return response()->json(['data' => ['id' => $user->getKey(), 'name' => $user->name, 'email' => $user->email, 'home' => PlatformSession::HOME, 'branding' => app(PlatformBranding::class)->current()]]);
+        return response()->json(['data' => ['id' => $user->getKey(), 'name' => $user->name, 'email' => $user->email, 'home' => PlatformSession::HOME, 'branding' => app(PlatformBranding::class)->current(), 'agency_access' => app(AccessMap::class)->outsideAgency()]]);
     }
 
     public function tenants(TenantDirectory $directory): JsonResponse

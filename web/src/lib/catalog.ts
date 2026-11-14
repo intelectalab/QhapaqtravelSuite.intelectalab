@@ -18,7 +18,15 @@ export interface ProductRow {
   channels: string[];
   featured: boolean;
   price_from?: { amount: string; currency: string; segment?: string; channel?: string } | null;
+  store_without_rate?: boolean;
 }
+
+export function priceFromChannel(price: ProductRow["price_from"]): string | null {
+  if (!price?.channel) return null;
+  return price.channel === "Todos" ? "todos los canales" : price.channel;
+}
+
+export const STORE_WITHOUT_RATE_HINT = "Publicado en la tienda en línea (sitio, widget y motor de reservas) sin tarifa vigente E-commerce, Directo o Todos: el cliente lo ve con «Tarifa por publicar» y no puede reservarlo.";
 
 export interface ProductDetail extends ProductRow {
   internal_name: string;
@@ -336,7 +344,16 @@ export interface RelatedProduct {
   status: ProductStatus;
   relation: string;
   type: string;
-  price_from: { amount: string; currency: string } | null;
+  price_from: { amount: string; currency: string; segment?: string; channel?: string } | null;
+}
+
+export interface SeasonPrice {
+  date: string | null;
+  amount: string | null;
+  currency: string | null;
+  applied_season_id: string | null;
+  applied_season: string | null;
+  ended: boolean;
 }
 
 export interface ProductOverview {
@@ -349,6 +366,7 @@ export interface ProductOverview {
   referenced_by: RelatedProduct[];
   b2b: { agency_code: string | null; agency: string | null; agency_status: string | null; price_list: string | null; price: string; currency: string; commission_pct: string | null; is_credit: boolean; valid_to: string | null; conditions: string | null; restrictions: string | null; diff_pct: number | null }[] | null;
   public_price: { amount: string; currency: string; channel: string } | null;
+  season_prices: Record<string, SeasonPrice>;
   promotions: { ref: string; name: string; kind: string; value: string; channel: string | null; promo_code: string | null; min_pax: number | null; date_from: string; date_to: string; status: string; result_price: { amount: string; currency: string } | null }[];
   profitability: { id: string; ref: string; rate_type: string; segment: string; channel: string; currency: string; cost: string; price: string; status: string; margin: string; margin_pct: number | null }[] | null;
   config_groups: { name: string; options: { label: string; price_delta: string }[] }[];

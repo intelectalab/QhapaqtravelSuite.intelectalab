@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { apiFetch } from "@/lib/server/api";
 import { formValues, sendStep, type StepResult } from "@/lib/server/resource";
 
-const FIELDS = ["name", "type", "ruc", "city", "stars", "contact_name", "phone", "email", "contract_start", "contract_end", "currency", "payment_terms", "rating", "rating_note"];
+const FIELDS = ["name", "type", "ruc", "city", "stars", "contact_name", "phone", "email", "contract_start", "contract_end", "currency", "payment_terms", "rating", "rating_note", "response_sla_hours"];
 
 const ref = (form: FormData) => encodeURIComponent(String(form.get("ref") ?? ""));
 

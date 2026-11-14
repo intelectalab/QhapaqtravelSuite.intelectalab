@@ -8,6 +8,7 @@ use App\Domain\Admin\Actions\ManagePaxMessages;
 use App\Domain\Admin\Actions\PaxMessageScheduler;
 use App\Domain\Channels\Support\ChannelKit;
 use App\Domain\Iam\Models\User;
+use App\Domain\Inbox\Support\MessageCipher;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Facades\DB;
@@ -103,7 +104,7 @@ final class AnswerPaxFeedback
             'channel' => $conversation->channel,
             'direction' => 'out',
             'author_user_id' => $actor->getKey(),
-            'body' => $text,
+            'body' => MessageCipher::seal($text),
             'delivery_status' => 'enviado',
             'sent_at' => $now,
             'created_by' => $actor->getKey(),

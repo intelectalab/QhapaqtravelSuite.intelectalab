@@ -297,6 +297,10 @@ export function OperationsSection({ overview, children }: { overview: Operations
         { href: "/plataforma/integraciones", label: "Tareas y colas" },
         { href: "/plataforma/integraciones/salud", label: "Salud por agencia" },
         { href: "/plataforma/integraciones/errores", label: "Errores", count: overview.errors.length },
+        { href: "/plataforma/integraciones/app-movil", label: "App móvil" },
+        { href: "/plataforma/integraciones/whatsapp", label: "WhatsApp" },
+        { href: "/plataforma/integraciones/tipo-de-cambio", label: "Tipo de cambio" },
+        { href: "/plataforma/integraciones/facturacion-electronica", label: "Facturación electrónica" },
       ]}
     >
       {children}

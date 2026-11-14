@@ -7,6 +7,7 @@ import { RowIcon } from "@/components/table/RowActions";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { ConfirmAction, HiddenFields, STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
 import { SUPPLY_STATE, type ServiceRow, type ServicesOverview } from "@/lib/catalog-services";
@@ -30,8 +31,8 @@ function ServiceFields({ overview, service }: { overview: ServiceFormContext; se
       <div className="grid grid-cols-2 gap-3">
         <TextField label="Costo" name="cost" type="number" step="0.01" min="0" required defaultValue={service?.cost ?? undefined} placeholder="0.00" />
         <TextField label="Capacidad" name="capacity" type="number" min={1} defaultValue={service?.capacity ?? undefined} hint="Vacío si no tiene límite." />
-        <TextField label="Vigente desde" name="valid_from" type="date" required defaultValue={service?.valid_from ?? overview.today} />
-        <TextField label="Hasta" name="valid_to" type="date" required defaultValue={service?.valid_to} />
+        <DateField label="Vigente desde" name="valid_from" required defaultValue={service?.valid_from ?? overview.today} />
+        <DateField label="Hasta" name="valid_to" required defaultValue={service?.valid_to} />
       </div>
     </>
   );

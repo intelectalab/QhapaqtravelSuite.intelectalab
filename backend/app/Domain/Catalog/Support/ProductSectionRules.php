@@ -48,6 +48,7 @@ final class ProductSectionRules
         return [
             "{$prefix}.service_id" => $partial ? ['nullable', 'uuid'] : ['nullable', 'uuid', "required_without:{$prefix}.component_product_id"],
             "{$prefix}.component_product_id" => ['nullable', 'uuid'],
+            "{$prefix}.unit" => ['nullable', 'string', 'max:40'],
             "{$prefix}.quantity" => [$required, 'numeric', 'min:1', 'max:999'],
             "{$prefix}.is_required" => ['nullable', 'boolean'],
             "{$prefix}.is_included" => ['nullable', 'boolean'],

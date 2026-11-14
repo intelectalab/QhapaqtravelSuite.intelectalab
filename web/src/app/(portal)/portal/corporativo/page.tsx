@@ -54,6 +54,11 @@ export default async function CorporatePanelPage({ searchParams }: { searchParam
         }
         actions={<CorporatePeriodPicker periods={panel.periods} value={summary.period.key} />}
       />
+      {panel.read_only && (
+        <p role="status" className="mb-5 rounded-[14px] border border-[color-mix(in_srgb,var(--warn)_30%,transparent)] bg-[color-mix(in_srgb,var(--warn)_7%,var(--surface))] px-4 py-3 text-[13px] text-fg-2">
+          El panel está en solo lectura: puedes consultar compras, movimientos y estados de cuenta, pero no aprobar, invitar usuarios ni cambiar centros de costo. Escribe a tu agencia si necesitas hacerlo.
+        </p>
+      )}
       <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <TintTile icon={ShoppingBag} tone="t1" label="Total comprado" value={formatMoney(summary.kpis.total, cur)} note={`${summary.kpis.purchases} compras · ${summary.period.label}`} info="Suma de las reservas de tu empresa creadas en el período, convertidas a la moneda de la cuenta. Las compras de meses cerrados salen del estado de cuenta emitido." />
         <TintTile icon={Wallet} tone={num(summary.kpis.balance) > 0 ? "sun" : "ok"} label="Saldo por pagar" value={formatMoney(summary.kpis.balance, cur)} note="A la fecha, todas las compras" info="Compras menos pagos aplicados y notas de crédito, desde la primera compra hasta hoy." />

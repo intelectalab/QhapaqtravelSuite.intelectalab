@@ -28,6 +28,7 @@ export interface CorporatePanel {
   can: { statements: boolean; statements_manage: boolean; approvals: boolean; manage: boolean; travelers: boolean };
   periods: CorporatePeriodOption[];
   pending_approvals: number;
+  read_only?: boolean;
 }
 
 export interface CostCenter {

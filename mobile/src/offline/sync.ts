@@ -1,4 +1,5 @@
 import NetInfo from "@react-native-community/netinfo";
+import { appHeaders, isUpgradeRequired, reportUpgrade, upgradeFrom } from "../api/upgrade";
 import { API_URL } from "../config";
 import { due, markFailed, markRetry, markSynced, markSyncing, recoverInterrupted, type OutboxAction } from "./outbox";
 
@@ -108,6 +109,7 @@ export class SyncEngine {
       response = await fetch(`${API_URL}/mobile/operator/sync`, {
         method: "POST",
         headers: {
+          ...appHeaders(),
           "Content-Type": "application/json",
           Accept: "application/json",
           Authorization: `Bearer ${token ?? ""}`,
@@ -124,6 +126,13 @@ export class SyncEngine {
     if (response.status === 401) {
       await this.scheduleRetry(batch, "Sesión vencida: inicia sesión para sincronizar");
       this.deps.onSessionExpired();
+      return false;
+    }
+    if (isUpgradeRequired(response.status)) {
+      const body = (await response.json().catch(() => ({}))) as { message?: string; details?: { min_version?: string | null; store_url?: string | null } };
+      const info = upgradeFrom(body);
+      await this.scheduleRetry(batch, info.message);
+      reportUpgrade(info);
       return false;
     }
     if (response.status === 429 || response.status >= 500) {

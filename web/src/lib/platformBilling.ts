@@ -286,6 +286,32 @@ export interface AuditEventDetail extends AuditEvent {
   related: (AuditEvent & { same_request: boolean })[];
 }
 
+export type RuleRequestStatus = "enviado" | "en_evaluacion" | "rechazado" | "publicado";
+
+export interface RuleRequestItem {
+  code: string;
+  tenant: { code: string; name: string };
+  rule: { code: string; name: string };
+  expected: string;
+  trigger_when: string;
+  example: string;
+  status: RuleRequestStatus;
+  status_label: string;
+  reason: string | null;
+  linked_rule: string | null;
+  requested_by: string;
+  decided_by: string | null;
+  decided_at: string | null;
+  requested_at: string;
+  lock_version: number;
+}
+
+export interface RuleRequestsOverview {
+  items: RuleRequestItem[];
+  counts: Record<RuleRequestStatus, number>;
+  standard_rules: { code: string; name: string; group: string }[];
+}
+
 export interface PlanRuleMatrix {
   plans: { code: string; name: string; rank: number; rules: number; tenants: number }[];
   groups: { group: string; rules: { code: string; name: string; description: string | null; min_plan: string | null; default_plan: string | null; tenants: number; updated_at: string | null }[] }[];

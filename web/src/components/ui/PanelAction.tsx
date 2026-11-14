@@ -46,6 +46,7 @@ export function PanelAction<S extends PanelActionState>({ label, icon, variant =
     return next;
   }, initial as Awaited<S>);
   const submit = (event: FormEvent<HTMLFormElement>) => {
+    if (event.target !== event.currentTarget) return;
     event.preventDefault();
     const submitter = (event.nativeEvent as SubmitEvent).submitter;
     const form = new FormData(event.currentTarget, submitter instanceof HTMLButtonElement ? submitter : null);

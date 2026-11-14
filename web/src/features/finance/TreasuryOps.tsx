@@ -10,6 +10,7 @@ import { FilePicker } from "@/components/ui/FilePicker";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import type { CashCount, TreasuryAccount, TreasuryOverview } from "@/lib/finance";
 import { formatMoney } from "@/lib/format";
@@ -64,7 +65,7 @@ function AccountFields({ data, account }: { data: TreasuryOverview; account?: Tr
       {!account && (
         <div className="grid grid-cols-2 gap-3">
           <TextField label="Saldo de apertura" name="opening_balance" type="number" step="0.01" min="0" defaultValue="0" />
-          <TextField label="Fecha de apertura" name="opening_date" type="date" max={data.today} defaultValue={data.today} />
+          <DateField label="Fecha de apertura" name="opening_date" max={data.today} defaultValue={data.today} />
         </div>
       )}
       {account && (
@@ -108,7 +109,7 @@ function TransferFields({ data, from }: { data: TreasuryOverview; from?: string 
       {b?.kind === "petty_cash" && b.session_today !== "open" && <p className="rounded-xl bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] px-3.5 py-2.5 text-[12.5px] text-fg-2">{b.name} no está abierta hoy. Ábrela antes de transferirle efectivo.</p>}
       <div className="grid grid-cols-2 gap-3">
         <TextField label={`Importe${a ? ` (${a.currency})` : ""}`} name="amount" type="number" step="0.01" min="0.01" required />
-        <TextField label="Fecha" name="date" type="date" required max={data.today} defaultValue={data.today} />
+        <DateField label="Fecha" name="date" required max={data.today} defaultValue={data.today} />
       </div>
       {mixed && <TextField label="Tipo de cambio pactado" name="deal_rate" type="number" step="0.0001" min="0.5" max="20" defaultValue={String(data.usd_rate)} hint={`Se convierte de ${a.currency} a ${b.currency} con este tipo.`} />}
       <TextField label="Número de operación" name="reference" required maxLength={80} placeholder="OP 00887120" />
@@ -134,7 +135,7 @@ export function SettleGatewayAction({ account, feePct, today }: { account: Treas
         <TextField label="Comisión %" name="fee_pct" type="number" step="0.01" min="0" max="20" defaultValue={feePct ?? "0"} />
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <TextField label="Fecha del depósito" name="date" type="date" required max={today} defaultValue={today} />
+        <DateField label="Fecha del depósito" name="date" required max={today} defaultValue={today} />
         <TextField label="Número de lote" name="batch" required maxLength={80} />
       </div>
     </FinanceStep>
@@ -166,7 +167,7 @@ function ExpenseFields({ account, today, max, options }: { account: TreasuryAcco
       {account.session_today !== undefined && account.session_today !== "open" && <p className="rounded-xl bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] px-3.5 py-2.5 text-[12.5px] text-fg-2">{account.name} no está abierta hoy: ábrela antes de registrar gastos.</p>}
       <div className="grid grid-cols-2 gap-3">
         <TextField label="Importe (S/)" name="amount" type="number" step="0.01" min="0.01" max={max ?? undefined} required hint={max ? `Máximo por gasto: S/ ${max}` : undefined} />
-        <TextField label="Fecha" name="date" type="date" min={today} max={today} defaultValue={today} hint="Se registra el mismo día de la caja abierta." />
+        <DateField label="Fecha" name="date" min={today} max={today} defaultValue={today} hint="Se registra el mismo día de la caja abierta." />
       </div>
       <SelectField label="Categoría" name="category" options={categories} defaultValue={categories[0]?.value} />
       <TextField label="Descripción" name="description" required minLength={3} maxLength={255} placeholder="Ejemplo: taxi al aeropuerto para recoger documentos" />
@@ -310,7 +311,7 @@ export function ReplenishmentActions({ row, viewerId, banks, today }: { row: Tre
         <SummaryBox rows={[{ label: "Caja", value: row.account }, { label: "Importe", value: formatMoney(row.amount), strong: true }]} />
         <SelectField label="Desde" name="from" options={banks} placeholder="Cuenta bancaria" />
         <div className="grid grid-cols-2 gap-3">
-          <TextField label="Fecha" name="date" type="date" required max={today} defaultValue={today} />
+          <DateField label="Fecha" name="date" required max={today} defaultValue={today} />
           <TextField label="Número de operación" name="reference" required maxLength={80} />
         </div>
       </FinanceStep>

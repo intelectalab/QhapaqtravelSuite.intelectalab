@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Inbox\Http\Controllers;
 
 use App\Domain\Inbox\Actions\InboundEvents;
+use App\Domain\Inbox\Actions\WhatsappWebhookRouter;
 use App\Domain\Inbox\Support\InboundPayloads;
 use App\Domain\Integrations\Support\ChannelWebhooks;
 use App\Domain\Platform\Support\WhatsappWebhook;
@@ -31,24 +32,27 @@ final class InboundChannelController
         return response($challenge, 200, ['Content-Type' => 'text/plain; charset=UTF-8']);
     }
 
-    public function whatsapp(Request $request): JsonResponse
+    public function whatsapp(Request $request, WhatsappWebhook $settings, WhatsappWebhookRouter $router): JsonResponse
     {
         $raw = $request->getContent();
-        $payload = Validator::make((array) json_decode($raw, true), [
+
+        if (! $settings->signedByPlatform($raw, $this->signature($request))) {
+            throw ApiException::unauthorized('WEBHOOK_SIGNATURE_INVALID', 'La firma no corresponde al secreto de la app de Meta de KipuControl.');
+        }
+
+        return response()->json(['data' => $router->route(self::meta($raw))], 202);
+    }
+
+    public static function meta(string $raw): array
+    {
+        $payload = (array) json_decode($raw, true);
+        Validator::make($payload, [
             'object' => ['required', 'in:whatsapp_business_account'],
             'entry' => ['required', 'array', 'min:1'],
             'entry.*.changes' => ['required', 'array'],
         ], ['*' => 'El evento de WhatsApp no tiene el formato de Meta Cloud API.'])->validate();
 
-        $groups = $this->payloads->whatsapp($payload);
-        $results = [];
-
-        foreach ($groups as $phoneNumberId => $messages) {
-            $account = $this->webhooks->account('whatsapp', (string) $phoneNumberId, null);
-            $results = [...$results, ...$this->events->accept('whatsapp', $account, $raw, $this->signature($request), $messages)];
-        }
-
-        return $this->accepted($results);
+        return $payload;
     }
 
     public function email(Request $request): JsonResponse

@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Inbox\Support\MessageCipher;
 use Illuminate\Support\Facades\DB;
 
 require_once __DIR__.'/Support.php';
@@ -70,7 +71,7 @@ it('agrega una nota interna a la conversación', function () {
     $this->postJson("/api/v1/inbox/conversations/{$code}/notes", ['body' => 'Nota interna de prueba'])->assertCreated();
 
     $note = withinTenant(tenantA(), fn () => DB::table('collab_messages as m')->join('collab_conversations as c', 'c.id', '=', 'm.conversation_id')
-        ->where('c.code', $code)->where('m.direction', 'internal')->where('m.body', 'Nota interna de prueba')->exists());
+        ->where('c.code', $code)->where('m.direction', 'internal')->pluck('m.body')->map(fn ($body) => MessageCipher::open($body))->contains('Nota interna de prueba'));
     expect($note)->toBeTrue()
         ->and(crmInboxAudited(['entity' => 'Conversación', 'entity_id' => $code, 'action' => 'nota_interna']))->toBeTrue();
 

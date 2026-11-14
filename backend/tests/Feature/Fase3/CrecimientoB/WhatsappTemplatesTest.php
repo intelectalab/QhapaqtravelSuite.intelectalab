@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Inbox\Support\MessageCipher;
 use Illuminate\Support\Facades\DB;
 
 if (! function_exists('crecbAudited')) {
@@ -81,7 +82,7 @@ it('SC-05: envía una plantilla aprobada solo con opt-in del cliente y variables
         ->assertJsonPath('data.message.body', 'Hola Ana, tu link de pago de S/ 120 está listo.')
         ->assertJsonPath('data.message.delivery_status', 'enviado');
 
-    expect(withinTenant(tenantA(), fn () => DB::table('collab_messages')->where('conversation_id', $conversation->id)->where('body', 'Hola Ana, tu link de pago de S/ 120 está listo.')->exists()))->toBeTrue()
+    expect(withinTenant(tenantA(), fn () => DB::table('collab_messages')->where('conversation_id', $conversation->id)->pluck('body')->map(fn ($body) => MessageCipher::open($body))->contains('Hola Ana, tu link de pago de S/ 120 está listo.')))->toBeTrue()
         ->and(crecbAudited(['entity' => 'Conversación', 'entity_id' => $conversation->code, 'action' => 'enviar_plantilla']))->toBeTrue();
 });
 

@@ -6,6 +6,7 @@ namespace App\Domain\Booking\Rules;
 
 use App\Domain\Booking\Data\ProductData;
 use App\Domain\Booking\Data\RuleSet;
+use App\Domain\Platform\Support\PlanFeatureRules;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -64,13 +65,27 @@ final class RuleResolver
             $rows = DB::table('sys_booking_rules as r')
                 ->leftJoin('plan_rule_entitlements as e', 'e.rule_code', '=', 'r.code')
                 ->orderBy('r.sort_order')
-                ->get(['r.code', 'r.enabled', 'r.params', 'r.product_override', DB::raw('coalesce(e.min_plan, r.min_plan) as min_plan')]);
+                ->get(['r.code', 'r.enabled', 'r.params', 'r.product_override', DB::raw('coalesce(r.min_plan, e.min_plan) as min_plan')]);
 
             $rules = [];
             foreach ($rows as $row) {
                 $rules[$row->code] = [
                     'enabled' => (bool) $row->enabled,
                     'params' => (array) json_decode((string) $row->params, true),
+                    'product_override' => (bool) $row->product_override,
+                    'min_plan' => $row->min_plan,
+                ];
+            }
+
+            $catalog = DB::table('sys_booking_rule_catalog as r')
+                ->leftJoin('plan_rule_entitlements as e', 'e.rule_code', '=', 'r.code')
+                ->whereIn('r.code', PlanFeatureRules::codes())
+                ->get(['r.code', 'r.default_enabled', 'r.default_params', 'r.product_override', DB::raw('coalesce(e.min_plan, r.min_plan) as min_plan')]);
+
+            foreach ($catalog as $row) {
+                $rules[$row->code] ??= [
+                    'enabled' => (bool) $row->default_enabled,
+                    'params' => (array) json_decode((string) $row->default_params, true),
                     'product_override' => (bool) $row->product_override,
                     'min_plan' => $row->min_plan,
                 ];

@@ -48,12 +48,16 @@ final class SiteCart
     public function add(?string $token, array $data): array
     {
         $product = $this->quotes->product($data['product']);
-        $quote = $this->quotes->quote($product, $data['date'], (int) $data['adults'], (int) ($data['children'] ?? 0), (int) ($data['infants'] ?? 0), $data['promo'] ?? null, SiteBooking::extrasFrom($data), true);
+        $cart = $this->find($token);
+        $requested = $this->quotes->currency()->payable($data['currency'] ?? null);
+        $quote = $this->quotes->quote($product, $data['date'], (int) $data['adults'], (int) ($data['children'] ?? 0), (int) ($data['infants'] ?? 0), $data['promo'] ?? null, SiteBooking::extrasFrom($data), true, null, null, $requested ?? ($cart === null ? null : trim((string) $cart->currency)));
+        if ($cart !== null && $requested !== null && $requested !== trim((string) $cart->currency)) {
+            DB::table('channel_web_carts')->where('id', $cart->id)->update(['currency' => $requested, 'updated_at' => now()]);
+        }
         if (isset($data['quote_token']) && $data['quote_token'] !== '') {
             QuoteTokens::verify((string) $data['quote_token'], $this->context->idOrFail(), $product->id, $quote);
         }
         $extras = $quote['extras'];
-        $cart = $this->find($token);
 
         if ($cart === null) {
             $token = Str::random(48);
@@ -63,7 +67,7 @@ final class SiteCart
                 'tenant_id' => $this->context->idOrFail(),
                 'code' => $this->codes->next('channel_web_carts', 'CART-', 5),
                 'token_hash' => hash('sha256', $token),
-                'currency' => $quote['currency'],
+                'currency' => $requested ?? $quote['currency'],
                 'locale' => 'es',
                 'status' => 'activo',
                 'promo_code' => isset($data['promo']) ? strtoupper(trim($data['promo'])) : null,
@@ -127,7 +131,7 @@ final class SiteCart
             $item = DB::table('channel_web_cart_items as i')->join('catalog_products as p', 'p.id', '=', 'i.product_id')->where('i.cart_id', $cart->id)->where('i.line_no', $line)->first(['i.*', 'p.slug'])
                 ?? throw ApiException::notFound('Esa línea ya no está en tu carrito.');
             $extras = SiteBooking::decode($item);
-            $quote = $this->quotes->quote($this->quotes->product($item->slug), $item->service_date, (int) $item->pax_adults, (int) $item->pax_children, (int) $item->pax_infants, $cart->promo_code, [...$extras, 'removed' => array_values(array_diff($extras['removed'], [$key]))]);
+            $quote = $this->quotes->quote($this->quotes->product($item->slug), $item->service_date, (int) $item->pax_adults, (int) $item->pax_children, (int) $item->pax_infants, $cart->promo_code, [...$extras, 'removed' => array_values(array_diff($extras['removed'], [$key]))], false, null, null, trim((string) $cart->currency));
             $target = collect($quote['lines'])->firstWhere('key', $key);
 
             if (! $quote['can_remove']) {
@@ -161,7 +165,7 @@ final class SiteCart
             ];
             $current = SiteBooking::decode($item);
             $extras = [...$current, ...array_intersect_key(SiteBooking::extrasFrom($data), $data)];
-            $quote = $this->quotes->quote($this->quotes->product($item->slug), $item->service_date, $pax['adults'], $pax['children'], $pax['infants'], $cart->promo_code, $extras, true);
+            $quote = $this->quotes->quote($this->quotes->product($item->slug), $item->service_date, $pax['adults'], $pax['children'], $pax['infants'], $cart->promo_code, $extras, true, null, null, trim((string) $cart->currency));
             $priced = $quote['extras'];
             DB::table('channel_web_cart_items')->where('id', $item->id)->update([
                 'pax_adults' => $pax['adults'],
@@ -249,7 +253,7 @@ final class SiteCart
             $error = null;
 
             try {
-                $quote = $this->quotes->quote($this->quotes->product($item->slug), $item->service_date, (int) $item->pax_adults, (int) $item->pax_children, (int) $item->pax_infants, $cart->promo_code, SiteBooking::decode($item));
+                $quote = $this->quotes->quote($this->quotes->product($item->slug), $item->service_date, (int) $item->pax_adults, (int) $item->pax_children, (int) $item->pax_infants, $cart->promo_code, SiteBooking::decode($item), false, null, null, trim((string) $cart->currency));
             } catch (ApiException $e) {
                 $error = $e->getMessage();
             } catch (Throwable) {

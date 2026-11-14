@@ -1,12 +1,12 @@
 "use client";
 
-import { CircleCheck, CirclePause, FilePen, Hourglass, MapPin, Star } from "lucide-react";
+import { CircleCheck, CirclePause, FilePen, Hourglass, MapPin, Star, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
-import { durationLabel, PRODUCT_STATUS, type ProductRow } from "@/lib/catalog";
+import { durationLabel, priceFromChannel, PRODUCT_STATUS, STORE_WITHOUT_RATE_HINT, type ProductRow } from "@/lib/catalog";
 import { formatMoney } from "@/lib/format";
 import { ProductDeleteAction } from "./ProductForms";
 
@@ -42,7 +42,23 @@ const buildColumns = (can: { edit: boolean; remove: boolean }): Column<ProductRo
     ),
   },
   { id: "duration", header: "Duración", wideOnly: true, cell: (product) => <span className="text-[13px]">{durationLabel(product.duration)} · {product.modality.toLowerCase()}</span> },
-  { id: "price", header: "Desde", align: "right", cell: (product) => (product.price_from ? <span className="font-mono text-[13px] font-semibold">{formatMoney(product.price_from.amount, product.price_from.currency)}</span> : <span className="text-[12.5px] text-fg-3">Sin tarifa</span>) },
+  {
+    id: "price",
+    header: "Desde",
+    align: "right",
+    cell: (product) => (
+      <span className="inline-flex flex-col items-end">
+        {product.price_from ? <span className="font-mono text-[13px] font-semibold">{formatMoney(product.price_from.amount, product.price_from.currency)}</span> : <span className="text-[12.5px] text-fg-3">Sin tarifa</span>}
+        {priceFromChannel(product.price_from) && <small className="text-[11.5px] text-fg-3">{priceFromChannel(product.price_from)}</small>}
+        {product.store_without_rate && (
+          <span title={STORE_WITHOUT_RATE_HINT} className="mt-0.5 inline-flex items-center gap-1 text-[11.5px] font-semibold text-bad">
+            <TriangleAlert size={12} />
+            Sin precio en la tienda
+          </span>
+        )}
+      </span>
+    ),
+  },
   { id: "category", header: "Categoría", wideOnly: true, cell: (product) => <span className="text-[13px] text-fg-2">{product.category}{product.subcategory ? ` · ${product.subcategory}` : ""}</span> },
   { id: "status", header: "Estado", cell: (product) => <Badge tone={PRODUCT_STATUS[product.status].tone}>{PRODUCT_STATUS[product.status].label}</Badge> },
   {
@@ -82,18 +98,39 @@ export function ProductsTable({ products, can }: { products: ProductRow[]; can: 
     { id: "channel", label: "Canal", options: unique(products.flatMap((product) => product.channels)), value: (product) => product.channels },
   ];
 
+  const unpriced = products.filter((product) => product.store_without_rate);
+
   return (
-    <DataTable
-      screen="productos"
-      rows={products}
-      columns={buildColumns(can)}
-      getKey={(product) => product.code}
-      entityLabel="productos"
-      searchText={(product) => `${product.name} ${product.code} ${product.destination_path} ${product.category} ${product.type}`}
-      searchPlaceholder="Buscar producto, código o destino"
-      metrics={metrics}
-      filters={filters}
-      sorts={sorts}
-    />
+    <>
+      {unpriced.length > 0 && (
+        <div role="status" data-testid="store-without-rate" className="mb-5 flex items-start gap-2.5 rounded-xl border border-bad/30 bg-bad/[0.07] px-4 py-3 text-[13.5px]">
+          <TriangleAlert size={17} className="mt-0.5 flex-none text-bad" />
+          <span>
+            <b className="font-semibold text-bad">{unpriced.length === 1 ? "1 producto publicado en la tienda en línea no se puede reservar" : `${unpriced.length} productos publicados en la tienda en línea no se pueden reservar`}</b>: no tienen tarifa vigente E-commerce, Directo o Todos y el cliente los ve con «Tarifa por publicar».{" "}
+            {unpriced.slice(0, 3).map((product, index) => (
+              <span key={product.code}>
+                {index > 0 && ", "}
+                <Link href={`${href(product)}?seccion=tarifas`} className="font-semibold text-accent hover:underline">
+                  {product.name}
+                </Link>
+              </span>
+            ))}
+            {unpriced.length > 3 && ` y ${unpriced.length - 3} más`}.
+          </span>
+        </div>
+      )}
+      <DataTable
+        screen="productos"
+        rows={products}
+        columns={buildColumns(can)}
+        getKey={(product) => product.code}
+        entityLabel="productos"
+        searchText={(product) => `${product.name} ${product.code} ${product.destination_path} ${product.category} ${product.type}`}
+        searchPlaceholder="Buscar producto, código o destino"
+        metrics={metrics}
+        filters={filters}
+        sorts={sorts}
+      />
+    </>
   );
 }

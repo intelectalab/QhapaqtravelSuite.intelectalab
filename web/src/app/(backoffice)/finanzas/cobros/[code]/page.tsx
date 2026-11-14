@@ -139,7 +139,7 @@ export default async function CuotaPage({ params }: PageProps<"/finanzas/cobros/
               <ul className="flex flex-col">
                 {row.reminders.map((reminder, index) => (
                   <li key={`r${index}`} className="border-t border-line-2 py-2 text-[13px] first:border-t-0">
-                    <b className="font-semibold">Recordatorio {reminder.channels ? `por ${reminder.channels.replace(/[{}"]/g, "")}` : ""}</b>
+                    <b className="font-semibold">Recordatorio {reminder.channels ? `por ${reminder.channels.replace(/[{}"]/g, "").split(",").map((channel) => ({ email: "correo", whatsapp: "WhatsApp" })[channel.trim()] ?? channel.trim()).join(" y ")}` : ""}</b>
                     <span className="block text-xs text-fg-3">
                       {formatDateTime(reminder.sent_at)}
                       {reminder.sent_by && ` · ${reminder.sent_by}`}

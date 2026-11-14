@@ -7,6 +7,8 @@ import { HoldTimer } from "@/features/site/Cart";
 import { PageHero } from "@/features/site/Hero";
 import { OrderPayment } from "@/features/site/PayButton";
 import { TrackEvent } from "@/features/site/SiteAnalytics";
+import { TransferProofUpload } from "@/features/site/TransferProof";
+import { uploadOrderProof } from "@/app/(sitio)/sitio/[agencia]/transfer-actions";
 import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { getSiteOrder, getSiteProfile, siteBase } from "@/lib/server/site";
@@ -43,7 +45,9 @@ export default async function ConfirmationPage({ params }: PageProps<"/sitio/[ag
             : closed
               ? "Los cupos se liberaron. Si aún quieres viajar, arma un pedido nuevo o escríbenos."
               : order.status === "pago_por_validar"
-                ? "Recibimos tu número de operación. Te avisaremos por correo cuando lo confirmemos."
+                ? order.proof
+                  ? "Recibimos tu constancia. Te avisaremos por correo cuando confirmemos el pago."
+                  : "Recibimos tu número de operación. Te avisaremos por correo cuando lo confirmemos."
                 : "Creamos tu reserva con los cupos bloqueados. Completa el pago para confirmarla."
         }
       />
@@ -51,8 +55,14 @@ export default async function ConfirmationPage({ params }: PageProps<"/sitio/[ag
         <div className="grid gap-5">
           {order.status === "pago_por_validar" && (
             <section className="rounded-card border border-[color-mix(in_srgb,var(--info)_35%,transparent)] bg-[color-mix(in_srgb,var(--info)_8%,var(--surface))] p-5">
-              <h2 className="text-[16px] font-semibold text-fg">Estamos validando tu pago</h2>
-              <p className="mt-1.5 text-[13.5px] leading-relaxed text-fg-2">Recibimos tu número de operación. Lo validamos en un plazo de 4 horas hábiles y te avisamos por correo. Tus cupos ya están reservados.</p>
+              <h2 className="text-[16px] font-semibold text-fg">{order.proof ? "Constancia recibida" : "Estamos validando tu pago"}</h2>
+              <p className="mt-1.5 text-[13.5px] leading-relaxed text-fg-2">
+                {order.proof ? "Ya tenemos tu constancia: la revisamos en horario de atención y te avisamos por correo. Tus cupos están reservados." : "Recibimos tu número de operación. Sube la foto o el PDF de tu constancia para validarla más rápido. Tus cupos ya están reservados."}
+                {order.auto_cancel_at && ` Si no podemos validarla antes del ${formatDateTime(order.auto_cancel_at)}, el pedido se cancela; con la constancia subida no se cancela.`}
+              </p>
+              <div className="mt-4">
+                <TransferProofUpload action={uploadOrderProof.bind(null, agencia, order.code)} uploadedAt={order.proof?.uploaded_at ?? null} />
+              </div>
             </section>
           )}
 

@@ -6,6 +6,7 @@ namespace App\Domain\Catalog\Support;
 
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
+use App\Domain\Operations\Support\OperationsSettings;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -152,12 +153,13 @@ final class ProviderDirectory
             'state' => ServiceDirectory::providerState($provider, $today),
             'rating' => (float) $provider->rating,
             'rating_note' => $provider->rating_note,
+            'response_sla_hours' => $provider->response_sla_hours === null ? null : (int) $provider->response_sla_hours,
         ];
     }
 
     private function options(): array
     {
-        return ['types' => self::TYPES, 'currencies' => CatalogAccess::CURRENCIES];
+        return ['types' => self::TYPES, 'currencies' => CatalogAccess::CURRENCIES, 'agency_response_hours' => app(OperationsSettings::class)->supplierResponseHours()];
     }
 
     private function can(User $viewer): array

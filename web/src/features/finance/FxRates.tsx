@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowDownRight, ArrowUpRight, Banknote, CircleCheck, CircleOff, Coins, Minus, Percent, PlugZap, Plus, Power, PowerOff, RefreshCw, Wallet } from "lucide-react";
-import { refreshFxRates, registerFxRate, saveFxSettings, testFxProvider, updateCurrency } from "@/app/(backoffice)/admin/monedas/actions";
+import { refreshFxRates, registerFxRate, saveFxSettings, selectFxProvider, testFxProvider, updateCurrency } from "@/app/(backoffice)/admin/monedas/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -10,6 +10,7 @@ import { Sparkline } from "@/components/ui/Charts";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import type { CurrenciesOverview, CurrencyRow } from "@/lib/admin";
 import { cn } from "@/lib/cn";
@@ -92,7 +93,7 @@ export function FxRegisterAction({ currencies }: { currencies: FxCurrency[] }) {
             <TextField label="Compra (opcional)" name="buy" type="number" step="0.0001" />
             <TextField label="Venta (opcional)" name="sell" type="number" step="0.0001" />
           </div>
-          <TextField label="Fecha" name="rate_date" type="date" hint="Si la dejas vacía, se registra con la fecha de hoy." />
+          <DateField label="Fecha" name="rate_date" hint="Si la dejas vacía, se registra con la fecha de hoy." />
           <SelectField label="Fuente" name="source" options={FX_SOURCES.map((value) => ({ value, label: value }))} defaultValue="SBS referencial" />
           <ConfirmVariation hint="Márcalo solo si el sistema te avisó que el cambio supera la alerta de variación y verificaste el valor." />
         </>
@@ -237,35 +238,74 @@ export function FxSettingsAction({ settings }: { settings: CurrenciesOverview["s
   );
 }
 
+export interface FxProvider {
+  id: string | null;
+  code: string;
+  name: string;
+  kind: string;
+  status: string;
+  status_label: string;
+  active: boolean;
+  selectable: boolean;
+  platform: boolean;
+  schedule_cron: string | null;
+  last_run_at: string | null;
+  last_error: string | null;
+  note: string | null;
+}
+
 export interface FxProvidersData {
-  providers: { id: string; code: string; name: string; kind: string; status: string; status_label: string; active: boolean; schedule_cron: string | null; last_run_at: string | null; last_error: string | null; note: string | null }[];
+  providers: FxProvider[];
   active: string | null;
+  manual_always: boolean;
   simulated: boolean;
   last_rate: { date: string; source: string } | null;
 }
 
-const PROVIDER_TONE: Record<string, Tone> = { activo: "ok", por_validar: "warn", inactivo: "mute", error: "bad" };
+const PROVIDER_TONE: Record<string, Tone> = { activo: "ok", disponible: "t1", por_validar: "warn", inactivo: "mute", error: "bad" };
+
+function FxChooseAction({ provider }: { provider: FxProvider | null }) {
+  return (
+    <PanelAction<StepResult>
+      label={provider ? "Usar este" : "Solo carga manual"}
+      formId={`fx-provider-select-${provider?.code ?? "manual"}`}
+      title={provider ? `Usar ${provider.name}` : "Trabajar solo con carga manual"}
+      description={provider ? "«Actualizar ahora» consultará este proveedor. Los tipos de cambio ya registrados no cambian y la carga manual sigue disponible." : "«Actualizar ahora» se desactiva. Registra el tipo de cambio de cada día a mano."}
+      submitLabel={provider ? "Usar proveedor" : "Confirmar"}
+      action={selectFxProvider}
+      initial={{ message: null, done: false }}
+      trigger={(open) => (
+        <button type="button" onClick={open} className="inline-flex h-8 flex-none items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 text-[12.5px] font-semibold text-fg-2 transition hover:border-[var(--tint,var(--accent))] hover:text-fg">
+          {provider ? <CircleCheck size={14} /> : <CircleOff size={14} />}
+          {provider ? "Usar este" : "Solo carga manual"}
+        </button>
+      )}
+    >
+      {() => <input type="hidden" name="code" value={provider?.code ?? ""} />}
+    </PanelAction>
+  );
+}
 
 export function FxProvidersCard({ data, canTest }: { data: FxProvidersData; canTest: boolean }) {
   return (
     <div className="flex flex-col gap-3">
-      {data.simulated && <p className="rounded-xl bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] px-3.5 py-2.5 text-[12.5px] text-fg-2">El proveedor responde con valores de prueba hasta que se conecte uno real desde la consola de la plataforma.</p>}
+      {data.simulated && <p className="rounded-xl bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] px-3.5 py-2.5 text-[12.5px] text-fg-2">Los proveedores responden con valores de prueba hasta que KipuControl active las conexiones reales.</p>}
       <ul className="flex flex-col gap-2">
         {data.providers.map((provider) => (
-          <li key={provider.id} className="lift flex items-start gap-3 rounded-[12px] bg-surface-2 px-3.5 py-3">
+          <li key={provider.code} className={cn("lift flex items-start gap-3 rounded-[12px] px-3.5 py-3", provider.active ? "bg-[color-mix(in_srgb,var(--ok)_9%,var(--surface-2))] ring-1 ring-[color-mix(in_srgb,var(--ok)_30%,transparent)]" : "bg-surface-2", !provider.selectable && !provider.active && "opacity-70")}>
             <span className="min-w-0 flex-1">
               <span className="flex flex-wrap items-center gap-1.5">
                 <b className="text-[13.5px] font-semibold">{provider.name}</b>
                 <Badge tone={PROVIDER_TONE[provider.status] ?? "mute"}>{provider.status_label}</Badge>
-                {provider.active && <Badge tone="t1" dot={false}>En uso</Badge>}
               </span>
               <span className="mt-0.5 block text-[12px] text-fg-3">
                 {provider.kind}
-                {provider.last_run_at ? ` · última actualización ${formatDateTime(provider.last_run_at)}` : " · sin ejecuciones"}
+                {provider.last_run_at ? ` · última actualización ${formatDateTime(provider.last_run_at)}` : provider.active ? " · sin actualizaciones todavía" : ""}
               </span>
-              {provider.last_error ? <span className="mt-0.5 block text-[12px] text-bad">{provider.last_error}</span> : provider.note && <span className="mt-0.5 block text-[12px] text-fg-2">{provider.note}</span>}
+              {provider.last_error ? <span className="mt-0.5 block text-[12px] text-bad">{provider.last_error}</span> : !provider.selectable && provider.platform ? <span className="mt-0.5 block text-[12px] text-fg-2">La plataforma aún no lo valida: podrás elegirlo cuando quede validado.</span> : provider.note && <span className="mt-0.5 block text-[12px] text-fg-2">{provider.note}</span>}
             </span>
-            {canTest && (
+            {canTest && provider.selectable && !provider.active && <FxChooseAction provider={provider} />}
+            {canTest && provider.selectable && (
               <PanelAction<StepResult>
                 label="Probar conexión"
                 formId={`fx-provider-test-${provider.code}`}
@@ -282,6 +322,10 @@ export function FxProvidersCard({ data, canTest }: { data: FxProvidersData; canT
           </li>
         ))}
       </ul>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-dashed border-line px-3.5 py-2.5">
+        <span className="text-[12.5px] text-fg-2">{data.active ? "La carga manual sigue disponible aunque uses un proveedor." : "Sin proveedor elegido: el tipo de cambio se registra a mano."}</span>
+        {canTest && data.active && <FxChooseAction provider={null} />}
+      </div>
       {data.last_rate && <p className="text-[12px] text-fg-3">Último registro: {formatDate(data.last_rate.date)} · {data.last_rate.source}</p>}
     </div>
   );

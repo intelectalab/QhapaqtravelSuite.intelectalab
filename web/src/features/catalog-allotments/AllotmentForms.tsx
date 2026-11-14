@@ -8,6 +8,7 @@ import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { ConfirmAction, HiddenFields, PanelSection, STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
 import { KIND_LABEL, type AllotmentCell, type AllotmentOptions, type AllotmentRequest, type AllotmentSummary } from "@/lib/catalog-allotments";
@@ -25,8 +26,8 @@ function ContractTerms({ contract, today, suggested }: { contract?: AllotmentSum
     <>
       <PanelSection title="Vigencia y cantidad">
         <div className="grid grid-cols-2 gap-3">
-          <TextField label="Vigente desde" name="valid_from" type="date" required defaultValue={contract?.valid_from ?? today} />
-          <TextField label="Vigente hasta" name="valid_to" type="date" required min={today} defaultValue={contract?.valid_to ?? addDays(today, 90)} />
+          <DateField label="Vigente desde" name="valid_from" required defaultValue={contract?.valid_from ?? today} />
+          <DateField label="Vigente hasta" name="valid_to" required min={today} defaultValue={contract?.valid_to ?? addDays(today, 90)} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <TextField label="Bloqueo base por fecha" name="base_qty" type="number" min={1} max={500} required defaultValue={contract?.base_qty ?? 4} hint="Habitaciones, asientos o entradas por día." />
@@ -199,8 +200,8 @@ export function ExpansionRequestAction({ contract, today }: { contract: Allotmen
         <>
           <HiddenFields values={{ code: contract.code }} />
           <div className="grid grid-cols-2 gap-3">
-            <TextField label="Desde" name="date_from" type="date" required min={today > contract.valid_from ? today : contract.valid_from} max={contract.valid_to} defaultValue={start > contract.valid_to ? contract.valid_to : start} />
-            <TextField label="Hasta" name="date_to" type="date" required max={contract.valid_to} defaultValue={addDays(start, 2) > contract.valid_to ? contract.valid_to : addDays(start, 2)} />
+            <DateField label="Desde" name="date_from" required min={today > contract.valid_from ? today : contract.valid_from} max={contract.valid_to} defaultValue={start > contract.valid_to ? contract.valid_to : start} />
+            <DateField label="Hasta" name="date_to" required max={contract.valid_to} defaultValue={addDays(start, 2) > contract.valid_to ? contract.valid_to : addDays(start, 2)} />
           </div>
           <TextField label={`Unidades adicionales por fecha (${contract.unit})`} name="extra_qty" type="number" min={1} max={500} required defaultValue={2} />
           <TextArea label="Motivo para el proveedor" name="note" rows={3} required minLength={3} maxLength={500} placeholder="Por ejemplo: grupo corporativo en negociación." />

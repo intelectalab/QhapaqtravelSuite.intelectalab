@@ -228,7 +228,7 @@ it('POST /webhooks/providers/{provider} valida la firma de la plataforma para SE
     expect(mensajesRecipient('cmp-0008-004'))->status->toBe('fallido')->error->toBe('Dirección rechazada');
 
     expect(mensajes_post('/api/v1/webhooks/providers/ses', ['provider_message_id' => 'no-existe', 'status' => 'entregado'], 'X-Signature', ''))->toBeApiError(404);
-    expect(mensajes_post('/api/v1/webhooks/providers/fcm', ['provider_message_id' => 'cmp-0008-004', 'status' => 'entregado'], 'X-Signature', ''))->toBeApiError(401, 'WEBHOOK_SIGNATURE_INVALID');
+    expect(mensajes_post('/api/v1/webhooks/providers/fcm', ['provider_message_id' => 'cmp-0008-004', 'status' => 'entregado'], 'X-Signature', ''))->toBeApiError(404);
     mensajes_post('/api/v1/webhooks/providers/ses', ['provider_message_id' => 'cmp-0008-004', 'status' => 'abierto'], 'X-Signature', '')->assertUnprocessable();
     test()->call('POST', '/api/v1/webhooks/providers/sendgrid', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'], '{}')->assertNotFound();
 });
@@ -239,11 +239,11 @@ it('PUT /platform/settings/outgoing-mail guarda los secretos de acuses cifrados 
     $summary = test()->putJson('/api/v1/platform/settings/outgoing-mail', ['enabled' => false, 'encryption' => 'ssl', 'ses_webhook_secret' => MENSAJES_SES_SECRET])->assertOk()->json('data');
     $stored = (array) json_decode((string) DB::connection('pgsql_platform')->table('platform_settings')->where('key', OutgoingMail::KEY)->value('value'), true);
 
-    expect($summary['webhook_secrets'])->toBe(['ses' => true, 'fcm' => false])
+    expect($summary['webhook_secrets'])->toBe(['ses' => true])
         ->and(json_encode($summary))->not->toContain(MENSAJES_SES_SECRET)
         ->and(json_encode($stored))->not->toContain(MENSAJES_SES_SECRET)
         ->and(app(OutgoingMail::class)->webhookSecret('ses'))->toBe(MENSAJES_SES_SECRET);
 
-    expect(test()->putJson('/api/v1/platform/settings/outgoing-mail', ['enabled' => false, 'encryption' => 'ssl', 'fcm_webhook_secret' => 'corto']))->toBeApiError(422);
+    expect(test()->putJson('/api/v1/platform/settings/outgoing-mail', ['enabled' => false, 'encryption' => 'ssl', 'ses_webhook_secret' => 'corto']))->toBeApiError(422);
     expect(test()->putJson('/api/v1/platform/settings/outgoing-mail', ['enabled' => false, 'encryption' => 'ssl', 'ses_webhook_secret' => MENSAJES_SES_SECRET]))->toBeApiError(422, 'CFG-BR-01');
 });

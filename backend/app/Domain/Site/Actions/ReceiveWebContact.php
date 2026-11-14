@@ -6,6 +6,8 @@ namespace App\Domain\Site\Actions;
 
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Inbox\Support\InboxNotices;
+use App\Domain\Inbox\Support\InboxResponseTimes;
+use App\Domain\Inbox\Support\MessageCipher;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
@@ -59,7 +61,7 @@ final class ReceiveWebContact
             'client_id' => $client,
             'lead_id' => $lead ? DB::table('crm_leads')->where('code', $lead['code'])->value('id') : null,
             'reservation_id' => $client !== null && $reservation?->client_id === $client ? $reservation->id : null,
-            'first_response_due_at' => $now->copy()->addMinutes(120),
+            'first_response_due_at' => app(InboxResponseTimes::class)->dueFor('form', $now),
             'last_inbound_at' => $now,
             'last_message_at' => $now,
             'unread_count' => 1,
@@ -70,7 +72,7 @@ final class ReceiveWebContact
             'conversation_id' => $id,
             'channel' => 'form',
             'direction' => 'in',
-            'body' => trim($data['message']),
+            'body' => MessageCipher::seal(trim($data['message'])),
             'sent_at' => $now,
         ]);
         $this->audit->log('Conversación', $code, 'crear', after: 'form');

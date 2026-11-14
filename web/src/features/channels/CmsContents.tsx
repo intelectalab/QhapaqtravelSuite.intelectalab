@@ -12,6 +12,7 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { RichText } from "@/components/ui/RichText";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { CMS_ACTIONS, CMS_FLOW, channelStatus, type CmsContent, type CmsOverview, type CmsPreview } from "@/lib/channels";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -121,8 +122,8 @@ export function ContentFormAction({ content, overview, iconOnly = false }: { con
           </PanelSection>
           <PanelSection title="Vigencia (banners y landings)">
             <div className="grid grid-cols-2 gap-3">
-              <TextField label="Desde" name="valid_from" type="date" defaultValue={content?.valid_from ?? undefined} />
-              <TextField label="Hasta" name="valid_to" type="date" defaultValue={content?.valid_to ?? undefined} />
+              <DateField label="Desde" name="valid_from" defaultValue={content?.valid_from} />
+              <DateField label="Hasta" name="valid_to" defaultValue={content?.valid_to} />
             </div>
           </PanelSection>
           <EditorPreview code={content?.code} formId={content ? `cms-${content.code}` : "cms-new"} />

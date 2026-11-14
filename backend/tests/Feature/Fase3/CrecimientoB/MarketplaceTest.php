@@ -1,6 +1,12 @@
 <?php
 
+use App\Domain\Booking\Rules\RuleResolver;
 use Illuminate\Support\Facades\DB;
+
+beforeEach(function () {
+    withinTenant(tenantB(), fn () => DB::table('sys_booking_rules')->updateOrInsert(['tenant_id' => tenantB()->getKey(), 'code' => 'R-MARKETPLACE'], ['rule_group' => 'Funciones del plan', 'name' => 'Marketplace entre agencias', 'description' => 'Red B2B entre agencias para la prueba.', 'enabled' => true, 'params' => '{}', 'params_schema' => '{}', 'scope' => '{}', 'product_override' => false, 'is_custom' => false, 'min_plan' => 'Professional', 'sort_order' => 999]));
+    RuleResolver::invalidate(tenantB()->getKey());
+});
 
 if (! function_exists('crecbAudited')) {
     function crecbAudited(array $where): bool

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import type { ProductDetail, ProductEditorState, ProductFormOptions, ProductOverview } from "@/lib/catalog";
 import { capitalize, formatDate, formatDateTime, formatMoney } from "@/lib/format";
@@ -171,7 +172,7 @@ export function PriceConfigurator({ code, editor, groups, today }: { code: strin
           <SelectField key={group.name} label={group.name} name={`quote_${group.name}`} value={choices[group.name] ?? ""} onChange={(value) => setChoices({ ...choices, [group.name]: value })} options={group.options.map((option) => ({ value: option.label, label: option.label, hint: Number(option.price_delta) === 0 ? "sin ajuste" : formatMoney(option.price_delta) }))} />
         ))}
         <TextField label="Pasajeros" name="quote_pax" type="number" min={1} max={500} value={pax} onChange={(event) => setPax(event.target.value)} />
-        <TextField label="Fecha" name="quote_date" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+        <DateField label="Fecha" name="quote_date" value={date} onChange={(next) => setDate(next ?? "")} />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <Button type="button" variant="primary" size="sm" onClick={calculate} disabled={pending}>{pending ? "Calculando" : "Calcular precio"}</Button>

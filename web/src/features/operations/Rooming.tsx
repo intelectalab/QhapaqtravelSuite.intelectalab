@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectField } from "@/components/ui/SelectField";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -67,8 +68,8 @@ export function RoomingCreateAction({ candidates, hotels }: { candidates: Roomin
       <SelectField label="Reserva" name="reservation_code" options={candidates} defaultValue={reservation} onChange={setReservation} />
       <SelectField label="Hotel" name="hotel_id" options={hotels} placeholder="Elegir hotel" />
       <div key={reservation} className="grid grid-cols-2 gap-3">
-        <TextField label="Ingreso" name="check_in" type="date" required defaultValue={picked?.from ?? ""} />
-        <TextField label="Salida" name="check_out" type="date" required defaultValue={picked?.to ?? ""} />
+        <DateField label="Ingreso" name="check_in" required defaultValue={picked?.from} />
+        <DateField label="Salida" name="check_out" required defaultValue={picked?.to} />
       </div>
     </OpsStep>
   );

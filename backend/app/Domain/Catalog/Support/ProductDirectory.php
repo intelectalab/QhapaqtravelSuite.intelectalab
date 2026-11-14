@@ -15,11 +15,28 @@ final class ProductDirectory
     public function list(?User $viewer = null): Collection
     {
         $from = self::pricesFrom($viewer);
+        $unpriced = array_flip(self::storeWithoutRate());
 
         return $this->rows()->orderBy('p.name')->get()->map(fn (object $row) => [
             ...$this->summary($row),
             'price_from' => $from[$row->id] ?? null,
+            'store_without_rate' => isset($unpriced[$row->id]),
         ]);
+    }
+
+    public const STORE_RATE_CHANNELS = ['E-commerce', 'Directo', 'Todos'];
+
+    public static function storeWithoutRate(?array $productIds = null): array
+    {
+        $today = CatalogAccess::today();
+
+        return DB::table('catalog_product_channels as ch')->join('catalog_products as p', 'p.id', '=', 'ch.product_id')
+            ->where('ch.channel', 'ecommerce')->where('ch.is_published', true)->whereNull('p.deleted_at')->where('p.status', '!=', 'ARCHIVED')
+            ->when($productIds !== null, fn ($query) => $query->whereIn('p.id', $productIds))
+            ->whereNotExists(fn ($query) => $query->from('catalog_rates as r')->whereColumn('r.product_id', 'p.id')
+                ->where('r.status', 'vigente')->where('r.valid_from', '<=', $today)->where('r.valid_to', '>=', $today)
+                ->whereNotIn('r.rate_type', ['Proveedor', 'Costo', 'B2B'])->whereIn('r.channel', self::STORE_RATE_CHANNELS))
+            ->distinct()->pluck('p.id')->map(fn (mixed $id): string => (string) $id)->all();
     }
 
     public static function pricesFrom(?User $viewer = null, ?array $productIds = null): Collection
@@ -89,6 +106,7 @@ final class ProductDirectory
             'advance_days' => ['min' => (int) $row->booking_advance_min_days, 'max' => (int) $row->booking_advance_max_days],
             'markup_pct' => $showCost ? $row->markup_pct : null,
             'price_from' => self::pricesFrom($viewer, [$row->id])[$row->id] ?? null,
+            'store_without_rate' => self::storeWithoutRate([(string) $row->id]) !== [],
             'provider' => $row->provider_name ? ['name' => $row->provider_name, 'type' => $row->provider_type, 'phone' => $row->provider_phone] : null,
             'itinerary' => $days->map(fn (object $day) => [
                 'day' => (int) $day->day_number,

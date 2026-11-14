@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpenText, CreditCard, LifeBuoy, Mail, MapPin, MessageCircle, Phone, Share2 } from "lucide-react";
+import { BookOpenText, Clock3, CreditCard, LifeBuoy, Mail, MapPin, MessageCircle, Phone, Share2 } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/format";
 import { siteHref, type SiteProfile } from "@/lib/site";
@@ -93,6 +93,12 @@ export function SiteFooter({ profile, base }: { profile: SiteProfile; base: stri
                 <a href={`mailto:${agency.email}`} className="break-all transition hover:text-white">
                   {agency.email}
                 </a>
+              </li>
+            )}
+            {profile.hours && (
+              <li data-testid="site-footer-hours" className="flex items-center gap-2.5">
+                <Clock3 size={15} className="flex-none text-t2" />
+                <span>{profile.hours.summary[locale]}</span>
               </li>
             )}
             {showSedes && sedes.map((sede) => (

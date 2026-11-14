@@ -126,7 +126,7 @@ final class TenantBookingEngine
             ->whereNotIn('r.rate_type', RateResolver::NON_SALE_TYPES)
             ->orderByRaw("case when r.rate_type = 'Venta' then 0 else 1 end")
             ->orderBy('r.price')
-            ->get(['r.segment', 'r.channel', 'r.currency', 'r.price', 'r.cost', 'r.status', 'r.rate_type', 'r.season_id'])
+            ->get(['r.id', 'r.segment', 'r.channel', 'r.currency', 'r.price', 'r.cost', 'r.status', 'r.rate_type', 'r.season_id'])
             ->map(fn (object $rate): array => (array) $rate)
             ->all();
     }
@@ -146,6 +146,11 @@ final class TenantBookingEngine
             'max_infants_per_adult' => $row->max_infants_per_adult,
             'min_adults' => $row->min_adults,
         ];
+    }
+
+    public function fx(): FxTable
+    {
+        return $this->fxTable();
     }
 
     private function fxTable(): FxTable

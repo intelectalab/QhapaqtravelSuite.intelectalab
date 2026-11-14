@@ -20,13 +20,20 @@ async function run(path: string, method: "POST" | "PATCH" | "DELETE", body: Reco
   return result;
 }
 
+function altPrices(form: FormData): Record<string, unknown> {
+  if (form.get("alt_prices_present") !== "1") return {};
+  const currencies = form.getAll("alt_currency").map(String);
+  const prices = form.getAll("alt_price").map(String);
+  return { alt_prices: currencies.map((currency, index) => ({ currency, price: prices[index] ?? "" })).filter((row) => row.currency !== "" || row.price !== "") };
+}
+
 export async function createRate(_state: StepResult, form: FormData): Promise<StepResult> {
   if (!form.get("product_id")) return { message: "Elige el producto.", done: false };
-  return run(rates(form, "product_id"), "POST", formValues(form, RATE_FIELDS), "No pudimos crear la tarifa.");
+  return run(rates(form, "product_id"), "POST", { ...formValues(form, RATE_FIELDS), ...altPrices(form) }, "No pudimos crear la tarifa.");
 }
 
 export async function updateRate(_state: StepResult, form: FormData): Promise<StepResult> {
-  return run(`${rates(form)}/${ref(form)}/price`, "PATCH", formValues(form, RATE_FIELDS), "No pudimos guardar la tarifa.");
+  return run(`${rates(form)}/${ref(form)}/price`, "PATCH", { ...formValues(form, RATE_FIELDS), ...altPrices(form) }, "No pudimos guardar la tarifa.");
 }
 
 export async function toggleRate(_state: StepResult, form: FormData): Promise<StepResult> {

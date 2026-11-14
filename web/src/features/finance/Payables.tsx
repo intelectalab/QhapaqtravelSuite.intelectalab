@@ -11,6 +11,7 @@ import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
 import { DetailPanel } from "@/features/channels/ChannelUi";
@@ -47,7 +48,7 @@ function CostFields({ options, today, usdRate, row }: { options: PayablesOvervie
       <ChoiceGroup key={currency} label="Moneda" name="currency" options={[{ value: "PEN", label: "Soles" }, { value: "USD", label: "Dólares" }]} defaultValue={currency} onChange={setCurrency} />
       <div className="grid grid-cols-2 gap-3">
         <TextField label="Importe" name="amount" type="number" step="0.01" min="0.01" required defaultValue={row ? row.amount.toFixed(2) : undefined} />
-        <TextField label="Vence" name="due_date" type="date" min={row ? undefined : today} required={Boolean(row)} defaultValue={row?.due_date ?? addDays(today, 15)} />
+        <DateField label="Vence" name="due_date" min={row ? undefined : today} required={Boolean(row)} defaultValue={row?.due_date ?? addDays(today, 15)} />
       </div>
       {currency === "USD" && <TextField label="Tipo de cambio" name="fx_rate" type="number" step="0.0001" min="0.5" max="20" defaultValue={String(row?.fx_rate ?? usdRate)} />}
       <TextField label="Documento del proveedor (opcional)" name="supplier_doc" maxLength={30} defaultValue={row?.supplier_doc ?? ""} placeholder="F001-000123" />
@@ -81,7 +82,7 @@ function EditPayableAction({ row, data }: { row: PayableRow; data: PayablesOverv
       <TextField label="Concepto" name="concept" required maxLength={255} defaultValue={row.concept} />
       <div className="grid grid-cols-2 gap-3">
         <TextField label={`Importe (${row.currency})`} name="amount" type="number" step="0.01" min="0.01" defaultValue={row.amount.toFixed(2)} disabled={row.managed || row.approved || row.paid > 0} hint={row.managed ? "Sale del costo del servicio." : row.approved ? "Aprobada: el importe ya no cambia." : undefined} />
-        <TextField label="Vence" name="due_date" type="date" required defaultValue={row.due_date} disabled={row.managed} hint={row.managed ? "Sigue la condición de pago del proveedor." : undefined} />
+        <DateField label="Vence" name="due_date" required defaultValue={row.due_date} disabled={row.managed} hint={row.managed ? "Sigue la condición de pago del proveedor." : undefined} />
       </div>
       {row.managed && <input type="hidden" name="due_date" value={row.due_date} />}
       {row.managed && <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[12.5px] text-fg-2">Esta obligación se genera desde el servicio {row.service?.code} y se ajusta sola mientras no esté aprobada. Para pagar en otra fecha, apruébala y programa el pago; una diferencia de precio se registra como costo adicional.</p>}
@@ -107,7 +108,7 @@ export function SchedulePayableAction({ row, banks, today, trigger }: { row: Pic
     <FinanceStep step="payable_schedule" itemKey={row.code} label="Programar pago" title="Programar pago" description="Fija la fecha y la cuenta desde la que se pagará. Aparece en el flujo proyectado." submitLabel={row.scheduled_date ? "Reprogramar" : "Programar"} trigger={trigger ?? ((open) => <RowIcon tone="neutral" label={row.scheduled_date ? "Reprogramar pago" : "Programar pago"} icon={<CalendarClock size={15} />} onClick={open} />)}>
       <input type="hidden" name="lock_version" value={row.lock_version} />
       <SummaryBox rows={[{ label: "Obligación", value: `${row.code} · ${row.concept}` }, { label: "Proveedor", value: row.provider.name }, { label: "Vence", value: formatDate(row.due_date) }, { label: "Saldo", value: formatMoney(row.balance, row.currency), strong: true }]} />
-      <TextField label="Fecha programada" name="scheduled_date" type="date" required min={today} defaultValue={row.scheduled_date ?? (row.due_date >= today ? row.due_date : today)} />
+      <DateField label="Fecha programada" name="scheduled_date" required min={today} defaultValue={row.scheduled_date ?? (row.due_date >= today ? row.due_date : today)} />
       {accounts.length > 0 ? <SelectField label="Cuenta de origen" name="bank_account" options={accounts} defaultValue={row.scheduled_account ?? accounts[0]?.value} /> : <p className="rounded-xl bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] px-3.5 py-2.5 text-[12.5px] text-fg-2">No hay cuentas bancarias activas en {row.currency}. Créala en Tesorería › Cuentas.</p>}
     </FinanceStep>
   );
@@ -123,7 +124,7 @@ function PayPayableAction({ row, methods, banks, today, usdRate }: { row: Payabl
       {accounts.length > 0 && <SelectField label="Cuenta de origen" name="bank_account" options={accounts} defaultValue={row.scheduled_account ?? accounts[0]?.value} />}
       <div className="grid grid-cols-2 gap-3">
         <TextField label={`Monto (${row.currency})`} name="amount" type="number" step="0.01" min="0.01" max={row.balance} required defaultValue={row.balance.toFixed(2)} />
-        <TextField label="Fecha" name="paid_on" type="date" required max={today} defaultValue={today} />
+        <DateField label="Fecha" name="paid_on" required max={today} defaultValue={today} />
       </div>
       <TextField label="Número de operación" name="operation_ref" required maxLength={80} placeholder="OP 00910022" />
       {row.currency !== "PEN" && <TextField label="Tipo de cambio" name="fx_rate" type="number" step="0.0001" min="0.5" max="20" defaultValue={String(row.fx_rate ?? usdRate)} />}

@@ -112,11 +112,14 @@ final class RuleController
         return $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:160'],
             'description' => ['required', 'string', 'min:10', 'max:600'],
-            'group' => ['required', 'in:'.implode(',', RuleDirectory::GROUPS)],
+            'group' => ['required', 'in:'.implode(',', RuleDirectory::CUSTOM_GROUPS)],
+            'scope' => ['nullable', 'array', 'max:'.count(RuleDirectory::SCOPES)],
+            'scope.*' => ['string', 'in:'.implode(',', RuleDirectory::SCOPES)],
         ], [
             'name.*' => 'Escribe un nombre de al menos 3 caracteres.',
             'description.*' => 'Describe qué hará la regla (mínimo 10 caracteres).',
             'group.*' => 'Elige el grupo.',
+            'scope.*' => 'Elige dónde aplicaría la regla.',
         ]);
     }
 

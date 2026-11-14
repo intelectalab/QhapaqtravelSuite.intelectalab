@@ -30,11 +30,15 @@ export async function applyRuleTemplate(_state: AdminActionState, form: FormData
 }
 
 export async function createRule(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
-  return sendAdmin("/admin/booking-rules", "POST", fields(form, ["name", "description", "group"]), PATH, "No pudimos crear la regla.");
+  return sendAdmin("/admin/booking-rules", "POST", { ...fields(form, ["name", "description", "group"]), scope: list(form, "scope") }, PATH, "No pudimos crear la regla.");
 }
 
 export async function updateRule(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
-  return sendAdmin(`/admin/booking-rules/${rule(form)}`, "PATCH", fields(form, ["name", "description", "group", "lock_version"]), PATH);
+  return sendAdmin(`/admin/booking-rules/${rule(form)}`, "PATCH", { ...fields(form, ["name", "description", "group", "lock_version"]), scope: list(form, "scope") }, PATH);
+}
+
+export async function requestRuleAutomation(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
+  return sendAdmin(`/admin/booking-rules/${rule(form)}/automation-requests`, "POST", fields(form, ["expected", "trigger_when", "example"]), PATH, "No pudimos enviar el pedido.");
 }
 
 export async function deleteRule(_state: AdminActionState, form: FormData): Promise<AdminActionState> {

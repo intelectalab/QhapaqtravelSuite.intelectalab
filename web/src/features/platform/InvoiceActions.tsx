@@ -4,6 +4,7 @@ import { Banknote, CalendarPlus, CirclePause, FileX2, Hash, Link2, Mail, RotateC
 import { extendDunning, registerManualPayment, resendInvoice, retryInvoice, sendPaymentLink, suspendForDebt, voidInvoice } from "@/app/plataforma/(consola)/facturacion/actions";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { formatMoney } from "@/lib/format";
 import { MANUAL_METHODS, type InvoiceSummary } from "@/lib/platformBilling";
@@ -53,7 +54,7 @@ export function ManualPaymentAction({ invoice, row, size }: ActionProps) {
     >
       <SelectField label="Medio de pago" name="method" options={MANUAL_METHODS.map((method) => ({ value: method, label: method }))} defaultValue={MANUAL_METHODS[0]} />
       <TextField label="Número de operación" name="reference" required minLength={4} maxLength={60} icon={<Hash size={16} />} placeholder="Por ejemplo: 00482913" />
-      <TextField label="Fecha del pago" name="paid_on" type="date" required defaultValue={today()} max={today()} />
+      <DateField label="Fecha del pago" name="paid_on" required defaultValue={today()} max={today()} />
     </ConsoleAction>
   );
 }

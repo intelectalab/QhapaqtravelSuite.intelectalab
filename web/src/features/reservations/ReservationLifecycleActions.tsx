@@ -5,6 +5,7 @@ import { RowIcon } from "@/components/table/RowActions";
 import { Button } from "@/components/ui/Button";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { formatDate } from "@/lib/format";
 import type { Advisor } from "@/lib/leads";
@@ -115,7 +116,7 @@ function RejectFields({ service, reasons, late }: { service: ReservationService;
       <TextArea label="Detalle" name="detail" rows={3} required minLength={3} maxLength={500} placeholder={late ? "Qué pasó y cuándo avisó el proveedor." : "Qué respondió el proveedor."} />
       <div className="grid gap-3 sm:grid-cols-2">
         <SelectField label="Otro proveedor (opcional)" name="alternative_provider_id" options={(service.alternatives ?? []).map((item) => ({ value: item.id, label: item.name, hint: item.city ?? undefined }))} placeholder={service.alternatives?.length ? "Mismo proveedor" : "No hay otro del mismo tipo"} clearable hint="Activo y del mismo tipo." />
-        <TextField label="Otra fecha (opcional)" name="alternative_date" type="date" hint="Vacía si se mantiene la fecha." />
+        <DateField label="Otra fecha (opcional)" name="alternative_date" hint="Vacía si se mantiene la fecha." />
       </div>
       <p className="text-[12.5px] text-fg-3">Con proveedor o fecha alternativa se crea un servicio nuevo pendiente que reemplaza a este.</p>
     </>

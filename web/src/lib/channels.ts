@@ -18,6 +18,7 @@ const STATUS: Record<string, { label: string; tone: Tone }> = {
   verificado: { label: "Verificado", tone: "ok" },
   expirado: { label: "Expirado", tone: "mute" },
   pago_por_validar: { label: "Pago por validar", tone: "info" },
+  constancia_recibida: { label: "Constancia recibida", tone: "violet" },
   aprobado: { label: "Aprobado", tone: "info" },
   vencida: { label: "Vencida", tone: "bad" },
 };
@@ -99,6 +100,7 @@ export interface EcomOrder {
   promo_code: string | null;
   reservation: string | null;
   cancel_reason: string | null;
+  proof_at?: string | null;
   can_cancel: boolean;
   can_send_link: boolean;
   attempts: { at: string; method: string; card: string | null; operation: string | null; result: "aprobado" | "rechazado" | "por_validar"; code: string | null; message: string | null; amount: number | null; currency: string | null }[];
@@ -123,9 +125,38 @@ export interface EcomProduct {
   sales: Money;
 }
 
+export interface ReviewLinksOverview {
+  platforms: { platform: "google" | "tripadvisor"; label: string; url: string | null; example: string; invite: string }[];
+  lock_version: number;
+  updated_at: string | null;
+  updated_by: string | null;
+}
+
+export interface PostTripInvitationRow {
+  reservation: { code: string; title: string; client: string | null };
+  travel_to: string;
+  invitation: { code: string; status: string; channel: string; sent_at: string | null } | null;
+  invited: number;
+  clicks: { own: number; google: number; tripadvisor: number };
+}
+
+export interface PostTripInvitations {
+  rows: PostTripInvitationRow[];
+  platforms: { platform: "google" | "tripadvisor"; label: string; loaded: boolean }[];
+  rule_active: boolean;
+  kpis: { finished: number; invited: number; own: number; external: number };
+  days: number;
+}
+
+export interface UnmetDemand {
+  total: number;
+  items: { product: { slug: string; name: string } | null; date: string | null; sessions: number; travelers: number; last_at: string }[];
+}
+
 export interface EcommerceOverview {
   kpis: { orders: number; confirmed: number; pending: number; rejected: number; conversion: number; revenue: Money; published: number };
   funnel: { id: string; label: string; value: number }[];
+  unmet_demand?: UnmetDemand;
   orders: EcomOrder[];
   site_url: string;
   products: EcomProduct[];

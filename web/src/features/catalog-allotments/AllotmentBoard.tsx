@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/MiniTable";
 import { Select } from "@/components/ui/Select";
 import { SwitchField } from "@/components/ui/SwitchField";
-import { TextField } from "@/components/ui/TextField";
+import { DateField } from "@/components/ui/DateField";
 import { ALERT_TYPE, ALLOTMENT_STATUS, KIND_LABEL, RECOMMENDATION, type AllotmentAlert, type AllotmentCell, type AllotmentGrid, type AllotmentPickup, type AllotmentRow, type AllotmentSummary, type AllotmentsOverview, type PickupRow } from "@/lib/catalog-allotments";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
@@ -58,7 +58,7 @@ export function AllotmentGridView({ grid, canManage }: { grid: AllotmentGrid; ca
           7 días <ChevronRight size={15} />
         </Button>
         <div className="w-[160px]">
-          <TextField label="Desde" type="date" value={grid.from} onChange={(event) => event.target.value && go({ from: event.target.value })} />
+          <DateField label="Desde" name="from" hiddenInput={false} clearable={false} value={grid.from} onChange={(next) => next && go({ from: next })} />
         </div>
         <div className="w-[170px]">
           <Select value={grid.kind ?? ""} onChange={(kind) => go({ kind })} ariaLabel="Tipo de cupo" options={[{ value: "", label: "Todos los tipos" }, ...Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label }))]} className="h-10 w-full" />

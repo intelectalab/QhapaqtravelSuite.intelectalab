@@ -8,6 +8,7 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateTimeField } from "@/components/ui/DateTimeField";
 import { TextField } from "@/components/ui/TextField";
 import { ACTIVITY_TYPES, RELATION_LABEL, RELATION_TYPES, type ActivityItem, type RelatedOptions } from "@/lib/activities";
 
@@ -60,10 +61,8 @@ function ActivityFields({ options, activity, preset, relationNote, defaults }: {
       ) : (
         <SelectField label="Relacionada con (opcional)" name="related" options={related} defaultValue={current} placeholder="Buscar lead, oportunidad, cliente o cotización" searchable clearable />
       )}
-      <div className="grid grid-cols-2 gap-3">
-        <TextField label="Fecha y hora" name="due_at" type="datetime-local" required defaultValue={activity ? localDateTime(activity.due_at) : defaults?.due_at} icon={<CalendarClock size={17} />} />
-        {options.owners.length > 0 && <SelectField label="Responsable" name="owner_id" options={options.owners.map((owner) => ({ value: owner.id, label: owner.name }))} defaultValue={activity?.owner.id ?? ""} placeholder="Tú" />}
-      </div>
+      <DateTimeField label="Fecha y hora" name="due_at" required defaultValue={activity ? localDateTime(activity.due_at) : defaults?.due_at} icon={<CalendarClock size={17} />} />
+      {options.owners.length > 0 && <SelectField label="Responsable" name="owner_id" options={options.owners.map((owner) => ({ value: owner.id, label: owner.name }))} defaultValue={activity?.owner.id ?? ""} placeholder="Tú" />}
       <TextArea label="Descripción o guion (opcional)" name="description" rows={3} maxLength={2000} defaultValue={activity?.description ?? undefined} />
     </>
   );
@@ -129,7 +128,7 @@ function NextFields() {
         <div className="flex flex-col gap-3 rounded-xl bg-surface-2 p-3.5">
           <SelectField label="Tipo" name="next_type" options={typeOptions} defaultValue="llamada" />
           <TextField label="Asunto" name="next_subject" placeholder="Qué sigue" />
-          <TextField label="Fecha y hora" name="next_due_at" type="datetime-local" icon={<CalendarClock size={17} />} />
+          <DateTimeField label="Fecha y hora" name="next_due_at" icon={<CalendarClock size={17} />} />
         </div>
       )}
     </>
@@ -233,7 +232,7 @@ export function ActivityRowActions({ activity, options }: { activity: ActivityIt
         {() => (
           <>
             <Hidden activity={activity} />
-            <TextField label="Nueva fecha y hora" name="due_at" type="datetime-local" required defaultValue={localDateTime(activity.due_at)} icon={<CalendarClock size={17} />} />
+            <DateTimeField label="Nueva fecha y hora" name="due_at" required defaultValue={localDateTime(activity.due_at)} icon={<CalendarClock size={17} />} />
             <TextArea label="Motivo (opcional)" name="reason" rows={2} maxLength={300} placeholder="Por ejemplo: el cliente pidió llamarlo el viernes." />
           </>
         )}

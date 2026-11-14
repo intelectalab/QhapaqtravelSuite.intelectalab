@@ -31,6 +31,12 @@ final class RequestCrmExport
             throw ApiException::forbidden('CRM-EXP-01', "Para exportar {$meta['title']} necesitas el permiso para verlos.", $meta['permissions']);
         }
 
+        if (! $actor->can('reports.view')) {
+            $this->audit->logOutsideTransaction('Exportación', $resource, 'exportar_denegado', null, 'Requiere permiso reports.view');
+
+            throw ApiException::forbidden('CRM-EXP-02', 'Para exportar necesitas el permiso para ver reportes, el mismo que pide la descarga del archivo.', ['reports.view']);
+        }
+
         $filters = CrmExports::filters($resource, $filters);
         $tenantId = $this->context->idOrFail();
         $id = (string) Str::uuid7();

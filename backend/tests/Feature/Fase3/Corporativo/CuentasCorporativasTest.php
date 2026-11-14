@@ -259,10 +259,13 @@ it('Operaciones no gestiona cuentas corporativas y Contabilidad no las edita', f
     $this->getJson('/api/v1/finance/corporate-statements')->assertOk();
 });
 
-it('CP-01: con la regla apagada los endpoints del módulo responden 403', function () {
+it('CP-01: con la regla apagada el módulo queda en solo lectura: se consulta, pero no se crea nada', function () {
     corpRule(false);
     actingAsSeed('U01');
 
-    expect($this->getJson('/api/v1/crm/corporate-accounts'))->toBeApiError(403, 'RULE_NOT_IN_PLAN')
-        ->and($this->getJson('/api/v1/finance/corporate-statements')->json('required_permissions'))->toContain('R-CORP-PORTAL');
+    $this->getJson('/api/v1/crm/corporate-accounts')->assertOk();
+    $this->getJson('/api/v1/finance/corporate-statements')->assertOk();
+    $denied = $this->postJson('/api/v1/crm/corporate-accounts', ['client_id' => 'CLI-0004'], critical());
+    expect($denied)->toBeApiError(403, 'RULE_NOT_IN_PLAN')
+        ->and($denied->json('required_permissions'))->toContain('R-CORP-PORTAL');
 });

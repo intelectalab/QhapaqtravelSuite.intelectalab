@@ -20,19 +20,21 @@ final class ReconciliationDirectory
         $rows = DB::table('fin_bank_lines as l')
             ->leftJoin('fin_payments as p', 'p.id', '=', 'l.matched_payment_id')
             ->leftJoin('booking_reservations as b', 'b.id', '=', 'p.reservation_id')
+            ->leftJoin('channel_ecom_orders as o', 'o.id', '=', 'b.ecom_order_id')
             ->leftJoin('fin_payables as x', 'x.id', '=', 'l.matched_payable_id')
             ->leftJoin('catalog_providers as v', 'v.id', '=', 'x.provider_id')
             ->leftJoin('fin_reconciliation_closures as c', 'c.id', '=', 'l.closure_id')
             ->leftJoin('iam_users as u', 'u.id', '=', 'l.resolved_by')
             ->orderByDesc('l.value_date')
             ->orderByDesc('l.code')
-            ->get(['l.code', 'l.bank', 'l.value_date', 'l.description', 'l.amount', 'l.currency', 'l.status', 'l.resolution', 'l.resolution_note', 'p.code as payment_code', 'p.amount as payment_amount', 'p.currency as payment_currency', 'p.fx_rate as payment_fx', 'p.status as payment_status', 'p.reference as payment_reference', 'b.code as reservation_code', 'x.code as payable_code', 'x.amount as payable_amount', 'x.currency as payable_currency', 'x.fx_rate as payable_fx', 'x.concept as payable_concept', 'v.name as provider_name', 'c.code as closure_code', 'u.name as resolved_by'])
+            ->get(['l.code', 'l.bank', 'l.value_date', 'l.description', 'l.amount', 'l.currency', 'l.status', 'l.resolution', 'l.resolution_note', 'p.code as payment_code', 'p.amount as payment_amount', 'p.currency as payment_currency', 'p.fx_rate as payment_fx', 'p.status as payment_status', 'p.reference as payment_reference', 'b.code as reservation_code', 'o.code as order_code', 'x.code as payable_code', 'x.amount as payable_amount', 'x.currency as payable_currency', 'x.fx_rate as payable_fx', 'x.concept as payable_concept', 'v.name as provider_name', 'c.code as closure_code', 'u.name as resolved_by'])
             ->map(function (object $row): array {
                 $match = match (true) {
                     $row->payment_code !== null => [
                         'kind' => 'payment',
                         'code' => $row->payment_code,
-                        'label' => trim(($row->reservation_code ?? '').' · '.($row->payment_reference ?? ''), ' ·'),
+                        'label' => trim(($row->order_code ? "Pedido {$row->order_code} · " : '').($row->reservation_code ?? '').' · '.($row->payment_reference ?? ''), ' ·'),
+                        'order' => $row->order_code,
                         'amount' => (float) $row->payment_amount,
                         'currency' => $row->payment_currency,
                         'pen' => $this->money->pen($row->payment_amount, $row->payment_currency, $row->payment_fx),

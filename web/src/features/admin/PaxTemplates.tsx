@@ -13,6 +13,7 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SidePanel } from "@/components/ui/SidePanel";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateTimeField } from "@/components/ui/DateTimeField";
 import { TextField } from "@/components/ui/TextField";
 import { TintCardTitle, ToneScope } from "@/components/ui/Tinted";
 import { ADMIN_INITIAL, CHANNEL_LABELS, fillTemplate, offsetLabel, type AdminActionState, type Option, type PaxMessage, type PaxTemplate, type PaxTemplatesOverview } from "@/lib/admin";
@@ -414,7 +415,7 @@ function ManualFields({ data }: { data: PaxTemplatesOverview }) {
         </>
       )}
       {chosen && <MessagePreview subject={chosen.subject} body={chosen.body} channel={channel} sample={data.sample} />}
-      <TextField label="Programar para (opcional)" name="scheduled_at" type="datetime-local" hint="Vacío: sale ahora." />
+      <DateTimeField label="Programar para (opcional)" name="scheduled_at" hint="Vacío: sale ahora." />
     </>
   );
 }

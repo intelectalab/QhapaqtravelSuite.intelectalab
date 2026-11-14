@@ -2,7 +2,7 @@ import { ArrowRight, CalendarRange, Coins, Layers, Percent, ShoppingBag, Triangl
 import Link from "next/link";
 import { Fragment } from "react";
 import { cn } from "@/lib/cn";
-import { PRODUCT_STATUS, type ProductDetail, type ProductOverview, type ProductStatus } from "@/lib/catalog";
+import { priceFromChannel, PRODUCT_STATUS, STORE_WITHOUT_RATE_HINT, type ProductDetail, type ProductOverview, type ProductStatus } from "@/lib/catalog";
 import { formatMoney } from "@/lib/format";
 import { costRange } from "@/lib/catalog-cost";
 
@@ -13,7 +13,7 @@ const FLOW: { status: ProductStatus; label: string }[] = [
   { status: "ACTIVE", label: "Activo" },
 ];
 
-function Kpi({ icon: Icon, label, value, tone, href, cta }: { icon: LucideIcon; label: string; value: string; tone?: "ok" | "bad"; href: string; cta: string }) {
+function Kpi({ icon: Icon, label, value, note, tone, href, cta }: { icon: LucideIcon; label: string; value: string; note?: string | null; tone?: "ok" | "bad"; href: string; cta: string }) {
   return (
     <Link href={href} scroll={false} title={cta} data-testid={`kpi:${label}`} className="lift group block rounded-tile border border-line bg-surface px-4 py-3 hover:border-accent/35">
       <p className="flex items-center gap-1.5 text-[12px] font-semibold text-fg-3">
@@ -21,11 +21,25 @@ function Kpi({ icon: Icon, label, value, tone, href, cta }: { icon: LucideIcon; 
         {label}
       </p>
       <p className={cn("mt-1 text-[18px] font-bold tracking-tight", tone === "ok" && "text-ok", tone === "bad" && "text-bad")}>{value}</p>
+      {note && <p className="text-[11.5px] text-fg-3">{note}</p>}
       <p className="mt-0.5 flex items-center gap-1 text-[11.5px] font-semibold text-accent opacity-0 transition group-hover:opacity-100">
         {cta}
         <ArrowRight size={12} />
       </p>
     </Link>
+  );
+}
+
+export function StoreWithoutRateNotice({ product }: { product: ProductDetail }) {
+  if (!product.store_without_rate) return null;
+  return (
+    <div role="status" data-testid="store-without-rate" className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-bad/30 bg-bad/[0.07] px-4 py-3 text-[13.5px] text-bad">
+      <TriangleAlert size={17} />
+      <span>{STORE_WITHOUT_RATE_HINT}</span>
+      <Link href={`/catalogo/productos/${encodeURIComponent(product.code)}?seccion=tarifas`} className="font-semibold text-accent hover:underline">
+        Ver tarifas
+      </Link>
+    </div>
   );
 }
 
@@ -85,7 +99,7 @@ export function ProductLifecycle({ product, overview, seesCost, seesMargin }: { 
         </ol>
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <Kpi icon={Coins} label="Precio desde" value={product.price_from ? formatMoney(product.price_from.amount, product.price_from.currency) : "Sin tarifa"} href={`${link}?seccion=tarifas`} cta="Ver tarifas" />
+        <Kpi icon={Coins} label="Precio desde" value={product.price_from ? formatMoney(product.price_from.amount, product.price_from.currency) : "Sin tarifa"} note={priceFromChannel(product.price_from) ? `Tarifa ${priceFromChannel(product.price_from)}${product.price_from?.segment ? ` · ${product.price_from.segment.toLowerCase()}` : ""}` : null} href={`${link}?seccion=tarifas`} cta="Ver tarifas" />
         {seesMargin && <Kpi icon={Percent} label="Margen tarifa base" value={base?.margin_pct != null ? `${base.margin_pct} %` : "—"} href={`${link}?seccion=rentabilidad`} cta="Ver rentabilidad" />}
         {seesCost && <Kpi icon={Layers} label="Costo componentes" value={overview.kpis.cost_breakdown ? costRange(overview.kpis.cost_breakdown) : "—"} href={`${link}?seccion=componentes`} cta="Ver el detalle" />}
         <Kpi icon={CalendarRange} label="Salidas futuras" value={String(overview.kpis.future_departures)} href={`${link}?seccion=salidas`} cta="Ver salidas" />

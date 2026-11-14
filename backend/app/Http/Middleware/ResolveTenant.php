@@ -38,10 +38,11 @@ final class ResolveTenant
             throw ApiException::forbidden('TENANT_REQUIRED', 'No se pudo determinar la empresa (tenant) de la solicitud.');
         }
 
-        $this->ignoreClientSuppliedTenant($request, $tenantId);
-
         $this->context->set($tenantId);
         $request->attributes->set('tenant_id', $tenantId);
+
+        $this->rejectForcedTenant($request, $tenantId);
+        $this->ignoreClientSuppliedTenant($request, $tenantId);
 
         return $next($request);
     }
@@ -86,6 +87,22 @@ final class ResolveTenant
         );
 
         return $row?->tenant_id;
+    }
+
+    private function rejectForcedTenant(Request $request, string $tenantId): void
+    {
+        $filter = $request->query('filter');
+        $forced = is_array($filter) && is_scalar($filter['tenant'] ?? null) ? trim((string) $filter['tenant']) : '';
+
+        if ($forced === '' || $forced === $tenantId) {
+            return;
+        }
+
+        $code = DB::connection(self::PLATFORM_CONNECTION)->table('tenants')->where('id', $tenantId)->value('code');
+
+        if ($forced !== (string) $code) {
+            throw ApiException::forbidden('TENANT_SCOPE_VIOLATION', 'No puedes operar sobre otra empresa.');
+        }
     }
 
     private function ignoreClientSuppliedTenant(Request $request, string $tenantId): void

@@ -15,6 +15,7 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { SwitchField } from "@/components/ui/SwitchField";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { DOC_TYPES, segmentLabel, type ClientDetail, type ClientFormOptions } from "@/lib/clients";
 import { formatDate } from "@/lib/format";
@@ -119,7 +120,7 @@ function ClientFields({ options, client }: { options: ClientFormOptions; client?
           <SelectField label="Documento" name="doc_type" options={DOC_TYPES} value={docType} onChange={setDocType} />
           <TextField label="Número" name="doc_number" required defaultValue={client?.docNumber} onChange={(event) => setDocNumber(event.target.value)} inputMode="text" autoComplete="off" />
         </div>
-        {!company && <TextField label="Fecha de nacimiento (opcional)" name="birth_date" type="date" defaultValue={client?.birth ?? undefined} icon={<CalendarDays size={17} />} />}
+        {!company && <DateField label="Fecha de nacimiento (opcional)" name="birth_date" defaultValue={client?.birth} icon={<CalendarDays size={17} />} />}
       </Section>
       <Section title="Contacto">
         <div className="grid grid-cols-2 gap-3">

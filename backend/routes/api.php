@@ -59,10 +59,10 @@ Route::prefix('portal/passenger/auth')->middleware(['throttle:public', 'public.s
 });
 
 Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'permissions.team', EnsurePreviewReadOnly::class])->group(function (): void {
-    Route::post('auth/mfa/verify', [SessionController::class, 'verifyMfa'])->middleware(['ability:mfa:verify', 'throttle:login'])->name('auth.mfa.verify');
+    Route::post('auth/mfa/verify', [SessionController::class, 'verifyMfa'])->middleware(['ability:mfa:verify', 'throttle:mfa'])->name('auth.mfa.verify');
     Route::post('auth/logout', [SessionController::class, 'logout'])->name('auth.logout');
-    Route::post('me/mfa/enroll', [SessionController::class, 'enrollMfa'])->middleware(['ability:mfa:verify', 'throttle:login'])->name('me.mfa.enroll');
-    Route::post('me/mfa/confirm', [SessionController::class, 'confirmMfa'])->middleware(['ability:mfa:verify', 'throttle:login'])->name('me.mfa.confirm');
+    Route::post('me/mfa/enroll', [SessionController::class, 'enrollMfa'])->middleware(['ability:mfa:verify', 'throttle:mfa'])->name('me.mfa.enroll');
+    Route::post('me/mfa/confirm', [SessionController::class, 'confirmMfa'])->middleware(['ability:mfa:verify', 'throttle:mfa'])->name('me.mfa.confirm');
     Route::delete('me/mfa', [MeController::class, 'disableMfa'])->middleware('mfa')->name('me.mfa.destroy');
 
     Route::middleware(['mfa', 'experience', 'feature'])->group(function (): void {
@@ -209,18 +209,21 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
             Route::post('quotes/{code}/reject', [QuoteController::class, 'reject'])->middleware('permission:quotes.send')->name('quotes.reject');
         });
 
-        Route::middleware('permission:admin.roles.manage')->group(function (): void {
+        Route::middleware('permission:admin.roles.manage|admin.users.manage')->group(function (): void {
             Route::get('iam/roles', [RoleController::class, 'index'])->name('iam.roles.index');
-            Route::post('iam/roles', [RoleController::class, 'store'])->name('iam.roles.store');
             Route::get('iam/roles/{code}', [RoleController::class, 'show'])->name('iam.roles.show');
+            Route::get('iam/permissions', [RoleController::class, 'catalog'])->name('iam.permissions.index');
+            Route::get('iam/role-permissions', [RoleController::class, 'matrix'])->name('iam.role-permissions.index');
+            Route::get('iam/access-map', [RoleController::class, 'accessMap'])->name('iam.access-map');
+        });
+
+        Route::middleware('permission:admin.roles.manage')->group(function (): void {
+            Route::post('iam/roles', [RoleController::class, 'store'])->name('iam.roles.store');
             Route::patch('iam/roles/{code}', [RoleController::class, 'update'])->name('iam.roles.update');
             Route::delete('iam/roles/{code}', [RoleController::class, 'destroy'])->name('iam.roles.destroy');
             Route::post('iam/roles/{code}/permissions/bulk', [RoleController::class, 'permissions'])->name('iam.roles.permissions');
             Route::put('iam/roles/{id}/permissions/{permission}', [RoleController::class, 'grant'])->name('iam.roles.permissions.grant');
             Route::delete('iam/roles/{id}/permissions/{permission}', [RoleController::class, 'revoke'])->name('iam.roles.permissions.revoke');
-            Route::get('iam/permissions', [RoleController::class, 'catalog'])->name('iam.permissions.index');
-            Route::get('iam/role-permissions', [RoleController::class, 'matrix'])->name('iam.role-permissions.index');
-            Route::get('iam/access-map', [RoleController::class, 'accessMap'])->name('iam.access-map');
         });
 
         Route::middleware('permission:admin.users.manage')->group(function (): void {
@@ -268,7 +271,7 @@ Route::prefix('platform')->name('platform.')->group(function (): void {
     Route::post('auth/login', [PlatformController::class, 'login'])->middleware('throttle:login')->name('auth.login');
 
     Route::middleware('auth:sanctum')->group(function (): void {
-        Route::post('auth/mfa/verify', [PlatformController::class, 'verifyMfa'])->middleware(['platform.user:pending', 'ability:mfa:verify', 'throttle:login'])->name('auth.mfa.verify');
+        Route::post('auth/mfa/verify', [PlatformController::class, 'verifyMfa'])->middleware(['platform.user:pending', 'ability:mfa:verify', 'throttle:mfa'])->name('auth.mfa.verify');
         Route::post('auth/logout', [PlatformController::class, 'logout'])->middleware('platform.user:pending')->name('auth.logout');
 
         Route::middleware('platform.user')->group(function (): void {

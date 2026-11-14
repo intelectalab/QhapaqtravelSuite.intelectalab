@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Platform\Actions;
 
+use App\Domain\Landing\Actions\RegisterSignup;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Support\Entitlements;
 use App\Domain\Platform\Support\TenantNotice;
@@ -19,6 +20,8 @@ final class StartTrial
     public const MIN_DAYS = 7;
 
     public const MAX_DAYS = 60;
+
+    public const TRIAL_EVERY_MONTHS = 12;
 
     private const CONNECTION = 'pgsql_platform';
 
@@ -41,6 +44,13 @@ final class StartTrial
 
             $subscription = $this->db()->table('subscriptions')->where('tenant_id', $tenant->id)->where('status', '<>', 'canceled')->lockForUpdate()->first();
             $this->assertEligible($subscription);
+            $used = self::lastTrial((string) $tenant->id, $tenant->ruc, $tenant->admin_email);
+
+            if ($used !== null) {
+                $again = Carbon::parse($used)->addMonths(self::TRIAL_EVERY_MONTHS)->format('d/m/Y');
+
+                throw ApiException::conflict('TRIAL_ALREADY_USED', 'Esta empresa ya tuvo una prueba el '.Carbon::parse($used)->format('d/m/Y')." (mismo RUC o dominio de correo). Solo se da una cada 12 meses: la próxima podría ser desde el {$again}. Para más días, extiende la prueba antes de que venza.", ['since' => $used, 'available_from' => Carbon::parse($used)->addMonths(self::TRIAL_EVERY_MONTHS)->toDateString()]);
+            }
             $plan = $this->plan($planCode, $subscription->plan_id ?? $tenant->plan_id);
             $length = $days ?? ((int) $plan->trial_days ?: 14);
             $today = Carbon::today(self::TIMEZONE);
@@ -114,13 +124,38 @@ final class StartTrial
             ->where('t.status', '<>', 'suspendido')
             ->where(fn ($query) => $query->whereNull('s.id')->orWhere(fn ($lapsed) => $lapsed->where('s.status', 'suspended')->whereNotNull('s.trial_ends_at')))
             ->orderBy('t.commercial_name')
-            ->get(['t.code', 't.commercial_name', 's.id as subscription_id', 'p.code as plan_code'])
+            ->get(['t.id', 't.code', 't.commercial_name', 't.ruc', 't.admin_email', 's.id as subscription_id', 'p.code as plan_code'])
+            ->filter(fn (object $row): bool => self::lastTrial((string) $row->id, $row->ruc, $row->admin_email) === null)
             ->map(fn (object $row): array => [
                 'code' => $row->code,
                 'name' => $row->commercial_name,
                 'plan' => $row->plan_code,
                 'reason' => $row->subscription_id === null ? 'Sin suscripción' : 'Prueba vencida en solo lectura',
             ])->values();
+    }
+
+    public static function lastTrial(string $tenantId, ?string $ruc, ?string $email): ?string
+    {
+        $domain = $email !== null && str_contains($email, '@') ? Str::lower(Str::after($email, '@')) : null;
+        $domain = $domain !== null && ! in_array($domain, RegisterSignup::FREE_MAIL, true) ? $domain : null;
+        $ruc = $ruc !== null && trim($ruc) !== '' ? trim($ruc) : null;
+
+        $last = DB::connection(self::CONNECTION)->table('subscriptions as s')
+            ->join('tenants as t', 't.id', '=', 's.tenant_id')
+            ->whereNotNull('s.trial_starts_at')
+            ->where('s.trial_starts_at', '>=', Carbon::today(self::TIMEZONE)->subMonths(self::TRIAL_EVERY_MONTHS)->toDateString())
+            ->where(function ($query) use ($tenantId, $ruc, $domain): void {
+                $query->where('t.id', $tenantId);
+                if ($ruc !== null) {
+                    $query->orWhere('t.ruc', $ruc);
+                }
+                if ($domain !== null) {
+                    $query->orWhereRaw('lower(t.admin_email) like ?', ['%@'.addcslashes($domain, '%_\\')]);
+                }
+            })
+            ->max('s.trial_starts_at');
+
+        return $last === null ? null : Carbon::parse((string) $last)->toDateString();
     }
 
     private function assertEligible(?object $subscription): void

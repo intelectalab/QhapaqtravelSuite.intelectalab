@@ -2,6 +2,7 @@ import { ConsultModeNotice } from "@/components/ui/ConsultMode";
 import { BadgeCheck, BriefcaseBusiness, CalendarDays, ClipboardList, FileText, History, Layers, Percent, Route, Send, Target, TrendingUp, UserRound, Users, Wallet } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ScopeDenied } from "@/components/shell/ScopeDenied";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Avatar } from "@/components/ui/Avatar";
 import { StatusBadge } from "@/components/ui/Badge";
@@ -16,13 +17,15 @@ import { QuoteWizardAction } from "@/features/quotes/wizard/QuoteWizard";
 import { formatDate, formatDateTime, formatMoney, shortName } from "@/lib/format";
 import { paxLabel, QUOTE_JOURNEY } from "@/lib/quotes";
 import { resolveSections } from "@/lib/sections";
+import { isOutOfPortfolio } from "@/lib/server/detail";
 import { getAdvisors } from "@/lib/server/leads";
 import { getQuote, getQuoteActivity, getQuoteConversion, getQuoteFormOptions } from "@/lib/server/quotes";
 import { statusLabel, statusTone } from "@/lib/tone";
 
 export async function generateMetadata({ params }: PageProps<"/cotizaciones/[code]">): Promise<Metadata> {
   const { code } = await params;
-  return { title: (await getQuote(code)).title };
+  const quote = await getQuote(code);
+  return { title: isOutOfPortfolio(quote) ? "Fuera de tu cartera" : quote.title };
 }
 
 const ACTION_LABEL: Record<string, string> = { registrar_vista: "Vista registrada", crear: "Creada", editar: "Editada", enviar: "Enviada", aprobar: "Aprobada", rechazar: "Rechazada", nueva_version: "Nueva versión", convertir: "Convertida en reserva", negociacion: "Negociación", solicitar_aprobacion: "Aprobación interna pedida", aprobar_interna: "Aprobada por Gerencia", rechazar_interna: "Gerencia no la aprobó", duplicar: "Duplicada", reasignar: "Reasignada", vencer: "Venció", anular_aprobacion_interna: "Aprobación interna anulada" };
@@ -30,6 +33,7 @@ const ACTION_LABEL: Record<string, string> = { registrar_vista: "Vista registrad
 export default async function CotizacionPage({ params, searchParams }: PageProps<"/cotizaciones/[code]">) {
   const [{ code }, { editar, seccion }] = await Promise.all([params, searchParams]);
   const quote = await getQuote(code);
+  if (isOutOfPortfolio(quote)) return <ScopeDenied message={quote.outOfPortfolio} back={{ href: "/cotizaciones", label: "Ver mis cotizaciones" }} />;
   const editOptions = quote.status === "borrador" && quote.can.edit ? await getQuoteFormOptions() : null;
   const advisors = quote.can.reassign ? await getAdvisors() : [];
   const conversion = quote.status === "aprobada" && quote.can.register_approval ? await getQuoteConversion(code) : null;

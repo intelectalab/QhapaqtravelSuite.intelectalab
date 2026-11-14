@@ -8,6 +8,7 @@ import type { PanelActionState } from "@/components/ui/PanelAction";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
 import { requestCancel, savePassenger, withdrawCancel } from "@/app/(agencia)/agencia/actions";
@@ -48,7 +49,7 @@ function PassengerPanel({ code, passenger, docTypes }: { code: string; passenger
             <TextField label="Número" name="doc_number" defaultValue={passenger.doc_number ?? ""} maxLength={20} hint="Necesario para emitir entradas nominativas." />
           </div>
           <TextField label="Nacionalidad" name="nationality" defaultValue={passenger.nationality ?? ""} maxLength={60} />
-          <TextField label="Fecha de nacimiento" name="birth_date" type="date" defaultValue={passenger.birth_date ?? ""} />
+          <DateField label="Fecha de nacimiento" name="birth_date" defaultValue={passenger.birth_date} />
           {state.message && <p className="text-[13px] font-medium text-bad">{state.message}</p>}
         </>
       )}

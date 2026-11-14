@@ -9,6 +9,7 @@ import { InfoTip } from "@/components/ui/InfoTip";
 import { RowsEditor } from "@/components/ui/RowsEditor";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { SeasonCreateAction } from "@/features/catalog-rates/RateForms";
 import { cn } from "@/lib/cn";
@@ -58,8 +59,9 @@ export function ComponentsStep({ draft, set, options, errors, review }: StepProp
           empty={options.types.find((type) => type.id === draft.master.type_id)?.requires_components === false ? "Este tipo no exige componentes." : "Aún no hay componentes. El checklist de activación los exige."}
           render={(row, update, index) => {
             const isProduct = row.component_product_id !== null && row.service_id === null;
+            const unit = isProduct ? "unidad" : (options.services.find((service) => service.id === row.service_id)?.unit ?? "");
             return (
-              <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)_110px] xl:grid-cols-[220px_minmax(0,1fr)_110px_minmax(0,0.8fr)]">
+              <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)_110px_140px] xl:grid-cols-[220px_minmax(0,1fr)_110px_140px_minmax(0,0.8fr)]">
                 <ChoiceGroup
                   label="Origen"
                   name={`components.${index}.kind`}
@@ -76,8 +78,9 @@ export function ComponentsStep({ draft, set, options, errors, review }: StepProp
                   <SelectField label="Servicio" name={`components.${index}.service_id`} value={row.service_id ?? ""} error={rowError(errors, "components", index, "service_id")} placeholder="Elegir servicio" options={services(row.service_id)} onChange={(value) => update({ service_id: value })} />
                 )}
                 <TextField label="Cantidad" name={`components.${index}.quantity`} type="number" min={1} value={row.quantity} error={rowError(errors, "components", index, "quantity")} onChange={(event) => update({ quantity: numberValue(event.target.value) })} />
-                <TextField label="Nota" name={`components.${index}.notes`} value={row.notes ?? ""} placeholder="Opcional" onChange={(event) => update({ notes: event.target.value })} className="lg:col-span-2 xl:col-span-1" />
-                <div className="flex flex-wrap items-center gap-5 lg:col-span-3 xl:col-span-4">
+                <TextField label="Unidad" name={`components.${index}.unit`} value={unit} placeholder="Según el servicio" readOnly aria-readonly tip="La unidad es la del servicio y no se cambia aquí. Si necesitas otra unidad, crea otro servicio en Catálogo › Servicios." />
+                <TextField label="Nota" name={`components.${index}.notes`} value={row.notes ?? ""} placeholder="Opcional" onChange={(event) => update({ notes: event.target.value })} className="lg:col-span-4 xl:col-span-1" />
+                <div className="flex flex-wrap items-center gap-5 lg:col-span-4 xl:col-span-5">
                   <SwitchField label="Requerido" name={`components.${index}.is_required`} checked={row.is_required} onCheckedChange={(checked) => update({ is_required: checked })} />
                   <SwitchField label="Incluido en el precio" name={`components.${index}.is_included`} checked={row.is_included} onCheckedChange={(checked) => update({ is_included: checked })} />
                   {row.subtotal_pen && <span className="ml-auto text-[12.5px] text-fg-3">Subtotal {formatMoney(row.subtotal_pen)}</span>}
@@ -193,8 +196,8 @@ function RateForm({ options, suggestedCost, error, onAdd }: { options: StepProps
         <SelectField label="Se cobra" name="price_basis" value={rate.price_basis} error={error("price_basis")} options={select(options.rates.bases)} onChange={(value) => patch({ price_basis: value })} />
         {options.sees_cost && <TextField label="Costo" name="cost" type="number" min={0} step="0.01" value={rate.cost ?? ""} error={error("cost")} onChange={(event) => patch({ cost: event.target.value })} />}
         <TextField label="Precio de venta" name="price" type="number" min={0} step="0.01" value={rate.price} error={error("price")} onChange={(event) => patch({ price: event.target.value })} />
-        <TextField label="Vigente desde" name="valid_from" type="date" value={rate.valid_from} error={error("valid_from")} onChange={(event) => patch({ valid_from: event.target.value })} />
-        <TextField label="Vigente hasta" name="valid_to" type="date" min={rate.valid_from} value={rate.valid_to} error={error("valid_to")} onChange={(event) => patch({ valid_to: event.target.value })} />
+        <DateField label="Vigente desde" name="valid_from" value={rate.valid_from} error={error("valid_from")} onChange={(next) => patch({ valid_from: next ?? "" })} />
+        <DateField label="Vigente hasta" name="valid_to" min={rate.valid_from} value={rate.valid_to} error={error("valid_to")} onChange={(next) => patch({ valid_to: next ?? "" })} />
         <SelectField label="Temporada" name="season_id" value={rate.season_id ?? ""} clearable placeholder="Sin temporada" options={options.seasons.filter((season) => season.status === "activa").map((season) => ({ value: season.id, label: season.name, hint: `${formatDate(season.date_from)} al ${formatDate(season.date_to)}` }))} onChange={(value) => patch({ season_id: value || null })} />
         <RateLimitsFields rate={rate} error={error} patch={patch} />
       </div>
@@ -245,8 +248,8 @@ function RateEditForm({ initial, options, error, onSave, onCancel }: { initial: 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
         {options.sees_cost && <TextField label="Costo" name="edit_cost" type="number" min={0} step="0.01" value={rate.cost ?? ""} error={error("cost")} onChange={(event) => patch({ cost: event.target.value })} />}
         <TextField label="Precio de venta" name="edit_price" type="number" min={0} step="0.01" value={rate.price} error={error("price")} onChange={(event) => patch({ price: event.target.value })} />
-        <TextField label="Vigente desde" name="edit_valid_from" type="date" value={rate.valid_from} error={error("valid_from")} onChange={(event) => patch({ valid_from: event.target.value })} />
-        <TextField label="Vigente hasta" name="edit_valid_to" type="date" min={rate.valid_from} value={rate.valid_to} error={error("valid_to")} onChange={(event) => patch({ valid_to: event.target.value })} />
+        <DateField label="Vigente desde" name="edit_valid_from" value={rate.valid_from} error={error("valid_from")} onChange={(next) => patch({ valid_from: next ?? "" })} />
+        <DateField label="Vigente hasta" name="edit_valid_to" min={rate.valid_from} value={rate.valid_to} error={error("valid_to")} onChange={(next) => patch({ valid_to: next ?? "" })} />
         <RateLimitsFields rate={rate} error={error} patch={patch} />
         {priceChanged && (
           <div className="sm:col-span-2 lg:col-span-4 xl:col-span-5">

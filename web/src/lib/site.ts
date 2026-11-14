@@ -36,16 +36,43 @@ export interface SiteProfile {
     registry: string | null;
     emergency_phone?: string | null;
     payment_methods?: string[];
+    whatsapp?: { number: string | null; url: string; source: "inbox" | "site" } | null;
   };
+  hours?: { summary: { es: string; en: string }; open_now: boolean; next_open: string; timezone: string };
   branding: { brand: string; accent: string; menu: string };
   design: SiteDesign;
   preview?: boolean;
   templatePreview?: TemplatePreview;
   sedes: SiteSede[];
   fx: { rate: number; date: string } | null;
+  currency?: SiteCurrencySettings;
   banner: SiteBannerData | null;
   policies: { cancel: string | null; modify: string | null; refund: string | null; hold_minutes: number };
   claims_days: number;
+}
+
+export const SITE_CURRENCY_COOKIE = "qts_site_currency";
+
+export interface SiteCurrencyOption {
+  code: string;
+  name: string;
+  symbol: string;
+  charge: boolean;
+  rate: number;
+}
+
+export interface SiteCurrencySettings {
+  currencies: SiteCurrencyOption[];
+  margin_pct: number;
+  charge_multi: boolean;
+}
+
+export function convertForDisplay(amount: number, from: string, to: string, settings: SiteCurrencySettings): number | null {
+  if (from === to) return amount;
+  const source = settings.currencies.find((item) => item.code === from)?.rate;
+  const target = settings.currencies.find((item) => item.code === to)?.rate;
+  if (!source || !target) return null;
+  return ((amount * source) / target) * (1 + settings.margin_pct / 100);
 }
 
 export interface Rating {
@@ -233,6 +260,7 @@ export interface ListingData {
   destination: { slug: string; name: string } | null;
   facets: ListingFacets;
   fx: number;
+  nearby_dates?: { date: string; count: number }[];
 }
 
 export interface CalendarDay {
@@ -587,6 +615,8 @@ export interface SiteOrder {
   due: string;
   methods: { value: string; label: string }[];
   bank_accounts: CheckoutTerms["bank_accounts"];
+  proof?: { uploaded_at: string; file_name: string; count: number } | null;
+  auto_cancel_at?: string | null;
   passengers: { name: string; type: string }[];
   attempts: { at: string; method: string; card: string | null; operation: string | null; result: "aprobado" | "rechazado" | "por_validar"; code: string | null; message: string | null; amount: string | null; currency: string | null }[];
   reservations: {
@@ -701,7 +731,7 @@ export interface AccountReservationDetail {
   passengers: { name: string; type: string; pending: boolean; lead: boolean }[];
   receivables: AccountReceivable[];
   vouchers: AccountVoucher[];
-  payments: { code: string; method: string; amount: string; currency: string; status: string; date: string }[];
+  payments: { code: string; method: string; amount: string; currency: string; status: string; date: string; proof_at?: string | null; can_upload_proof?: boolean }[];
 }
 
 export interface AccountReceivables {

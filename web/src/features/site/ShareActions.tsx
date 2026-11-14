@@ -17,10 +17,11 @@ function whatsappLink(base: string, text: string): string | null {
 }
 
 export function ShareActions({ slug, name, className }: { slug: string; name: string; className?: string }) {
-  const { design, locale } = useSite();
+  const { design, locale, whatsapp: connected } = useSite();
   const [copied, setCopied] = useState(false);
   const en = locale === "en";
-  const whatsapp = design?.footer.social.whatsapp ? whatsappLink(design.footer.social.whatsapp, en ? `Hello, I am interested in ${name}.` : `Hola, me interesa ${name}.`) : null;
+  const target = connected || design?.footer.social.whatsapp;
+  const whatsapp = target ? whatsappLink(target, en ? `Hello, I am interested in ${name}.` : `Hola, me interesa ${name}.`) : null;
   const share = async () => {
     trackSiteEvent("share", { item_id: slug });
     const url = window.location.href.split("#")[0];

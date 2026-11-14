@@ -12,6 +12,7 @@ import { listingQuery, NO_EXTRAS, type BookingConfig, type BookingExtras, type C
 import { QuoteLines, TripCategories } from "./QuoteLines";
 import { Stepper } from "./SearchBar";
 import { useSite } from "./SiteContext";
+import { Referential } from "./SiteMoney";
 
 interface Pax {
   adults: number;
@@ -139,7 +140,15 @@ export function AvailabilityCalendar() {
       </div>
       <div className={cn("grid gap-6 transition-opacity md:grid-cols-2", loading && "opacity-60")}>
         {visible.map((month) => (
-          <MonthGrid key={month.month} month={month} selected={date} onSelect={setDate} />
+          <MonthGrid
+            key={month.month}
+            month={month}
+            selected={date}
+            onSelect={(value, available) => {
+              trackSiteEvent("select_date", { item_id: slug, date: value, adults: pax.adults, children: pax.children, available, source: "ficha" });
+              if (available) setDate(value);
+            }}
+          />
         ))}
       </div>
       <ul className="mt-5 flex flex-wrap gap-x-4 gap-y-2 border-t border-line pt-4 text-[11.5px] text-fg-3">
@@ -161,7 +170,9 @@ export function AvailabilityCalendar() {
   );
 }
 
-function MonthGrid({ month, selected, onSelect }: { month: CalendarMonth; selected: string | null; onSelect: (date: string) => void }) {
+const SOLD_OUT = ["agotado", "sin_cupo"];
+
+function MonthGrid({ month, selected, onSelect }: { month: CalendarMonth; selected: string | null; onSelect: (date: string, available: boolean) => void }) {
   const first = new Date(`${month.month}-01T12:00:00`);
   const { t, dateLocale } = useSite();
   const offset = (first.getDay() + 6) % 7;
@@ -189,8 +200,9 @@ function MonthGrid({ month, selected, onSelect }: { month: CalendarMonth; select
             <button
               key={day.date}
               type="button"
-              disabled={!day.sellable}
-              onClick={() => onSelect(day.date)}
+              disabled={!day.sellable && !SOLD_OUT.includes(day.status)}
+              aria-disabled={!day.sellable}
+              onClick={() => onSelect(day.date, day.sellable)}
               title={day.sellable ? `${formatDate(day.date, "long", dateLocale)} · ${day.season?.name ?? ""}${day.spots !== null ? t.booking.daySpots(day.spots) : ""}` : `${day.label}${day.note ? ` · ${day.note}` : ""}`}
               className={cn(
                 "relative flex h-[50px] flex-col items-center justify-center rounded-xl border text-[12.5px] transition",
@@ -360,6 +372,7 @@ export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { 
               <dd className="text-right">
                 {current.list_total !== null && <s className="mr-2 text-[12px] text-fg-3">{formatMoney(current.list_total, current.currency)}</s>}
                 <b className="text-[20px] font-bold tabular-nums text-fg">{formatMoney(current.total, current.currency)}</b>
+                <Referential amount={current.total} currency={current.currency} />
               </dd>
             </div>
             {current.modes.length > 1 && (

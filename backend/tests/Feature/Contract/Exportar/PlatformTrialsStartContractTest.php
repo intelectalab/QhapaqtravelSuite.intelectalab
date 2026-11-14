@@ -17,7 +17,7 @@ function exportarSubscription(): ?object
 }
 
 it('da una nueva prueba a una agencia con la prueba vencida en solo lectura y lo audita', function () {
-    exportarPlatform()->table('subscriptions')->where('tenant_id', tenantA()->getKey())->update(['status' => 'suspended', 'trial_starts_at' => '2026-09-01', 'trial_ends_at' => '2026-09-15', 'trial_extended_days' => 7]);
+    exportarPlatform()->table('subscriptions')->where('tenant_id', tenantA()->getKey())->update(['status' => 'suspended', 'trial_starts_at' => now()->subMonths(14)->toDateString(), 'trial_ends_at' => now()->subMonths(14)->addDays(14)->toDateString(), 'trial_extended_days' => 7]);
     actingAsPlatform();
     $today = Carbon::today('America/Lima');
 
@@ -43,7 +43,7 @@ it('da una nueva prueba a una agencia con la prueba vencida en solo lectura y lo
 });
 
 it('crea la suscripción en prueba cuando la agencia no tiene una vigente, con los días del plan', function () {
-    exportarPlatform()->table('subscriptions')->where('tenant_id', tenantA()->getKey())->update(['status' => 'canceled']);
+    exportarPlatform()->table('subscriptions')->where('tenant_id', tenantA()->getKey())->update(['status' => 'canceled', 'trial_starts_at' => null]);
     actingAsPlatform();
     $days = (int) exportarPlatform()->table('plans')->where('id', exportarPlatform()->table('tenants')->where('id', tenantA()->getKey())->value('plan_id'))->value('trial_days') ?: 14;
 
@@ -70,7 +70,7 @@ it('no da prueba a agencias con suscripción pagada, ya en prueba, suspendidas o
 });
 
 it('valida el motivo, los días y el plan', function () {
-    exportarPlatform()->table('subscriptions')->where('tenant_id', tenantA()->getKey())->update(['status' => 'canceled']);
+    exportarPlatform()->table('subscriptions')->where('tenant_id', tenantA()->getKey())->update(['status' => 'canceled', 'trial_starts_at' => null]);
     actingAsPlatform();
 
     $this->postJson('/api/v1/platform/trials', ['tenant' => 'TNT-0001'])->assertStatus(422)->assertJsonValidationErrors('reason');

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Domain\Platform\Models\Plan;
+use App\Domain\Platform\Support\PlanFeatureRules;
 use Database\Support\KitSeeds;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -167,6 +168,20 @@ final class PlanCatalogSeeder
                 'min_plan' => $rule['minPlan'] ?? 'Starter',
             ]);
             DB::table('plan_rule_entitlements')->updateOrInsert(['rule_code' => $rule['id']], ['min_plan' => $rule['minPlan'] ?? 'Starter', 'is_demo' => true]);
+        }
+
+        foreach (PlanFeatureRules::RULES as $code => $rule) {
+            DB::table('sys_booking_rule_catalog')->updateOrInsert(['code' => $code], [
+                'rule_group' => PlanFeatureRules::GROUP,
+                'name' => $rule['name'],
+                'description' => $rule['description'],
+                'default_enabled' => true,
+                'default_params' => '{}',
+                'scope' => '{'.implode(',', array_map(fn (string $scope) => '"'.$scope.'"', $rule['scope'])).'}',
+                'product_override' => false,
+                'min_plan' => $rule['min_plan'],
+            ]);
+            DB::table('plan_rule_entitlements')->updateOrInsert(['rule_code' => $code], ['min_plan' => $rule['min_plan'], 'is_demo' => true]);
         }
     }
 }

@@ -1,7 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { REALMS, type Realm } from "@/lib/realms";
+import { REALMS, realmFor, type Realm } from "@/lib/realms";
 import { apiFetch } from "./api";
 import { completeMfa, endSession, sessionToken, startSession } from "./session";
 
@@ -37,7 +37,7 @@ function failureMessage(result: { status: number; error: { code?: string; messag
 
 function safeNext(value: FormDataEntryValue | null, realm: Realm, fallback: string): string {
   const next = typeof value === "string" ? value : "";
-  const inside = realm === "platform" ? next.startsWith(`${REALMS.platform.path}/`) : !next.startsWith(`${REALMS.platform.path}`);
+  const inside = realmFor(next) === realm;
   return next.startsWith("/") && !next.startsWith("//") && inside ? next : fallback;
 }
 

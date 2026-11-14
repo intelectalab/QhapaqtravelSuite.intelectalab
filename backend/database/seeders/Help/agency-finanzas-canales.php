@@ -41,6 +41,7 @@ return [
             ['title' => 'Rechazar un pago', 'text' => 'Para un pago pendiente que no llegó al banco, pulsa «Rechazar», escribe el motivo y confirma con «Rechazar pago». La cuota conserva su saldo y el motivo queda visible en la columna «Estado».'],
             ['title' => 'Revertir un pago', 'text' => 'Pulsa «Revertir» en un pago confirmado o aplicado, escribe el motivo y confirma. Se desaplica de la cuota y su saldo vuelve a quedar pendiente. Es definitivo.'],
             ['title' => 'Revisar pagos sin banco', 'text' => 'La tarjeta «Sin línea de banco» muestra los pagos vigentes que aún no se cruzan con el extracto. Complétalos desde «Conciliación bancaria».'],
+            ['title' => 'Constancias del sitio', 'text' => 'Cuando el cliente sube la foto o el PDF de su transferencia, el pago sale primero en «Por validar» con «Constancia» y el tiempo en horas hábiles; en rojo si ya se escaló a Gerencia. Pulsa «Constancia» para abrir el archivo antes de validar.'],
         ],
         'faqs' => [
             ['question' => '¿Por qué un pago aparece pendiente?', 'answer' => 'Los pagos que reporta un asesor o el cliente desde su portal quedan pendientes hasta que Finanzas los valida. Los que registras en «Cuentas por cobrar» nacen confirmados y aplicados.'],
@@ -145,15 +146,18 @@ return [
         'module' => 'Finanzas',
         'screen' => '/finanzas/facturacion',
         'title' => 'Facturación',
-        'summary' => 'Facturas, boletas y notas de crédito electrónicas, su envío al OSE y su entrega al cliente. La conexión con el OSE todavía es simulada.',
+        'summary' => 'Facturas, boletas y notas de crédito electrónicas, su envío al OSE que eligió la agencia y su entrega al cliente con el XML y el CDR.',
         'steps' => [
+            ['title' => 'Elegir el OSE', 'text' => 'El recuadro de arriba indica si emites en modo simulado o conectado y qué falta. Con permiso de administración pulsa «Elegir OSE» y escoge uno de los homologados por KipuControl. Después KipuControl carga tus credenciales y prueba la conexión; los pasos se marcan en el mismo recuadro.'],
             ['title' => 'Emitir un comprobante', 'text' => 'En «Cobrado por facturar» pulsa «Emitir» junto al cobro. Elige factura o boleta, revisa documento, nombre, tipo de adquirente e importe. El panel valida los datos y calcula base, IGV y total mientras escribes. Confirma con «Validar y emitir».'],
             ['title' => 'Seguir la respuesta del OSE', 'text' => 'Un comprobante emitido o en cola muestra «Consultar respuesta del OSE». Si queda observado, usa «Corregir y reenviar» para ajustar el tipo de cambio o la descripción y pulsa «Reenviar al OSE».'],
             ['title' => 'Entregar al cliente', 'text' => 'En un comprobante aceptado pulsa «Entregar al cliente». Si dejas vacío el correo se usa el del cliente; además queda disponible en su portal. Después el botón cambia a «Reenviar al cliente».'],
             ['title' => 'Anular con nota de crédito', 'text' => 'Pulsa «Anular con nota de crédito», elige el motivo del catálogo 09, el importe y el sustento. Si la nota cubre todo el saldo, el comprobante queda anulado cuando el OSE la acepta.'],
-            ['title' => 'Ver el detalle', 'text' => 'Abre el número del comprobante para ver líneas, base e IGV, envíos al OSE, notas de crédito e historial. Si está aceptado, observado o anulado, descarga la «Representación impresa».'],
+            ['title' => 'Ver el detalle', 'text' => 'Abre el número del comprobante para ver líneas, base e IGV, envíos al OSE, notas de crédito e historial. Si está aceptado, observado o anulado, descarga la «Representación impresa». Cuando el OSE responde, también aparecen los botones «XML» y «CDR».'],
         ],
         'faqs' => [
+            ['question' => '¿Qué significa «Modo simulado»?', 'answer' => 'Que la agencia aún no tiene un OSE homologado listo: los comprobantes siguen el flujo completo pero no tienen validez ante SUNAT. El recuadro indica el paso pendiente.'],
+            ['question' => '¿Dónde quedan el XML y el CDR?', 'answer' => 'En Documentos de la agencia, enlazados a cada comprobante. Se descargan desde la ficha del comprobante y el cliente los ve en su portal junto al PDF.'],
             ['question' => '¿Factura o boleta?', 'answer' => 'Con RUC corresponde factura, que exige un RUC válido de 11 dígitos. La boleta requiere DNI de 8 dígitos, o pasaporte o carné de extranjería de 6 a 12 caracteres.'],
             ['question' => '¿Puedo anular un comprobante aceptado?', 'answer' => 'Solo con una nota de crédito. La nota se emite sobre una factura o boleta aceptada por el OSE y su importe no puede superar el saldo del comprobante.'],
             ['question' => '¿Cuándo se emite sin IGV?', 'answer' => 'Cuando marcas el adquirente como «No domiciliado (exportación)». En ese caso el comprobante sale como exportación.'],
@@ -247,7 +251,9 @@ return [
             ['title' => 'Seguir los pedidos', 'text' => 'En la pestaña «Pedidos web» filtra con «Pagados», «Pago pendiente» o «Pago rechazado». Pulsa «Ver pedido» para ver producto, pasajeros, total, código promocional, reserva y datos del comprador.'],
             ['title' => 'Anular un pedido', 'text' => 'En un pedido con pago pendiente o rechazado pulsa «Anular pedido», escribe el motivo y confirma. Se liberan los cupos y la reserva asociada queda cancelada.'],
             ['title' => 'Publicar un producto en la tienda', 'text' => 'En la pestaña «Productos en la tienda» pulsa «Publicar» para que aparezca en el sitio y en el widget, o «Despublicar» para retirarlo. Los pedidos existentes no cambian. La tabla muestra el precio web «Desde», la promoción vigente y la dirección de la ficha; «Ver tienda pública» abre el sitio de la agencia.'],
-            ['title' => 'Medir la conversión', 'text' => 'El «Embudo de conversión» muestra cuántos visitantes avanzan en cada paso y el porcentaje respecto del paso anterior, hasta el pago.'],
+            ['title' => 'Medir la conversión', 'text' => 'El «Embudo de conversión» muestra cuántos visitantes avanzan en cada paso (sesiones, vistas, «Eligieron fecha», pedidos y pagados) y el porcentaje respecto del paso anterior, hasta el pago.'],
+            ['title' => 'Ver la demanda sin cupo', 'text' => 'La pestaña «Demanda sin cupo» agrupa por tour y fecha las veces que un visitante eligió una fecha sin disponibilidad, con cuántos viajeros buscaba. Úsala para abrir salidas o ampliar cupos. Se registra sin datos personales y solo con el consentimiento de cookies analíticas.'],
+            ['title' => 'Constancia recibida', 'text' => 'Un pedido por transferencia pasa a «Constancia recibida» cuando el cliente sube la constancia desde su cuenta o desde el enlace del correo. Finanzas la valida en «Pagos y aplicaciones».'],
         ],
         'faqs' => [
             ['question' => '¿Cuándo se crea la reserva de un pedido?', 'answer' => 'Al primer intento de pago se crean la reserva y su cuenta por cobrar. Su código aparece en «Ver pedido».'],
@@ -335,6 +341,8 @@ return [
             ['title' => 'Priorizar la bandeja', 'text' => 'Usa «Sin responder», «Críticas», «Por publicar» y «Respondidas». Filtra por «Plataforma», «Respuesta» o «Estrellas» y pulsa «Ver reseña» para leerla completa o abrir el original.'],
             ['title' => 'Responder', 'text' => 'Pulsa «Responder», escribe al menos 20 caracteres o usa «Usar respuesta sugerida» y ajústala, y confirma con «Guardar respuesta». Si la plataforma admite respuestas por API, se publica al sincronizar.'],
             ['title' => 'Marcar una respuesta manual', 'text' => 'Si la plataforma no admite respuestas por API, pulsa «Copiar para publicar», pégala en la plataforma y luego pulsa «Marcar publicada» para cerrar la reseña.'],
+            ['title' => 'Enlaces de Google y TripAdvisor', 'text' => 'En «Conectores», pulsa «Editar enlaces», pega el enlace público de reseñas de tu perfil y usa «Probar» para revisar el formato y el dominio. La invitación postviaje lleva la reseña propia y debajo «Opina también en Google / en TripAdvisor», solo con los enlaces cargados.'],
+            ['title' => 'Seguir las invitaciones postviaje', 'text' => 'La pestaña «Invitaciones postviaje» lista las reservas terminadas con su invitación, cuántos invitados y los clics en cada enlace (reseña propia, Google y TripAdvisor). Solo se sabe el clic, no si publicaron.'],
         ],
         'faqs' => [
             ['question' => '¿Cómo llegan las reseñas?', 'answer' => 'Se leen por las APIs oficiales de cada plataforma conectada, que sincronizan cada día. No se copian páginas.'],

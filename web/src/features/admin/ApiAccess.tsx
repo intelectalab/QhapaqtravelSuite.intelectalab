@@ -16,6 +16,7 @@ import { InfoTip } from "@/components/ui/InfoTip";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SidePanel } from "@/components/ui/SidePanel";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { TintCardTitle, ToneScope } from "@/components/ui/Tinted";
 import { ADMIN_INITIAL, type AdminActionState, type ApiKey, type AuditEntry, type ApiOverview, type Option, type Webhook, type WebhookDelivery, type WebhookDeliveryDetail } from "@/lib/admin";
@@ -71,7 +72,7 @@ export function ApiKeyCreateAction({ scopes, full }: { scopes: Option[]; full: s
             <FieldLabel hint="Concede solo lo necesario.">Permisos</FieldLabel>
             <CheckChips name="scopes" options={scopes} />
           </div>
-          <TextField label="Vence el (opcional)" name="expires_at" type="date" />
+          <DateField label="Vence el (opcional)" name="expires_at" />
           <TextField label="IP permitidas (opcional)" name="ips" placeholder="200.48.22.17, 161.132.8.0/24" hint="Direcciones o rangos CIDR separados por comas. Si lo dejas vacío, acepta llamadas desde cualquier IP." />
         </>
       )}
@@ -183,7 +184,45 @@ function KeyDetail({ apiKey, scopes, history }: { apiKey: ApiKey; scopes: Option
   );
 }
 
+export function ApiKeysAccessNotice({ data }: { data: ApiOverview }) {
+  const endpoints = data.public_endpoints ?? [];
+  if (endpoints.length === 0) {
+    return (
+      <div className="lift mb-4 flex items-start gap-3 rounded-card border border-[color-mix(in_srgb,var(--info)_30%,transparent)] bg-[color-mix(in_srgb,var(--info)_6%,var(--surface))] px-4 py-3.5">
+        <span className="grid h-9 w-9 flex-none place-items-center rounded-[11px] bg-[color-mix(in_srgb,var(--info)_14%,transparent)] text-info">
+          <KeyRound size={17} />
+        </span>
+        <div>
+          <p className="text-[13.5px] font-semibold">Las llaves todavía no dan acceso a la API</p>
+          <p className="text-[12.5px] text-fg-2">Se habilitan con la API pública. Puedes crearlas desde ya y dejarlas listas.</p>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <Card className="mb-4">
+      <TintCardTitle icon={Link2} title="Endpoints disponibles para las llaves" aside={`${endpoints.length} ${endpoints.length === 1 ? "ruta" : "rutas"}`} tone="info" />
+      <ul className="mt-3 grid gap-1.5 md:grid-cols-2">
+        {endpoints.map((endpoint) => (
+          <li key={`${endpoint.method} ${endpoint.path}`} className="flex items-center gap-2 rounded-[10px] bg-surface-2 px-2.5 py-1.5 text-[12.5px] transition-transform duration-200 hover:-translate-y-0.5">
+            <Badge tone={endpoint.method === "GET" ? "ok" : "t1"} dot={false}>
+              {endpoint.method}
+            </Badge>
+            <span className="min-w-0 flex-1 truncate font-mono" title={endpoint.path}>
+              {endpoint.path}
+            </span>
+            <span className="truncate text-[11.5px] text-fg-3" title={endpoint.scopes.join(", ")}>
+              {endpoint.label}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 export function ApiKeysTable({ data }: { data: ApiOverview }) {
+  const live = (data.public_endpoints ?? []).length > 0;
   const columns: Column<ApiKey>[] = [
     {
       id: "key",
@@ -208,6 +247,21 @@ export function ApiKeysTable({ data }: { data: ApiOverview }) {
       ),
     },
     { id: "used", header: "Último uso", cell: (apiKey) => <span className="text-[12.5px] text-fg-3">{apiKey.last_used_at ? formatDateTime(apiKey.last_used_at, false) : "Nunca"}</span> },
+    ...(live
+      ? [
+          {
+            id: "usage",
+            header: "Llamadas 30 d",
+            wideOnly: true,
+            cell: (apiKey: ApiKey) => (
+              <span className="flex flex-col text-[12.5px]">
+                <span className="font-semibold tabular-nums">{formatNumber(apiKey.usage?.calls_30d ?? 0)}</span>
+                {(apiKey.usage?.rejected_24h ?? 0) > 0 && <span className="text-[11.5px] text-warn">{formatNumber(apiKey.usage?.rejected_24h ?? 0)} con 429 en 24 h</span>}
+              </span>
+            ),
+          },
+        ]
+      : []),
     { id: "status", header: "Estado", cell: (apiKey) => <Badge tone={KEY_STATUS[apiKey.status].tone}>{KEY_STATUS[apiKey.status].label}</Badge> },
     {
       id: "actions",

@@ -369,9 +369,12 @@ final class SiteBooking
         return [$nights, $tours, $transport, $errors];
     }
 
-    public function price(stdClass $product, string $date, array $pax, string $currency, array $extras, bool $strict, ?string $mode = null, ?string $method = null, ?array $promotion = null, ?int $units = null): array
+    public function price(stdClass $product, string $date, array $pax, string $currency, array $extras, bool $strict, ?string $mode = null, ?string $method = null, ?array $promotion = null, ?int $units = null, ?array $override = null): array
     {
         $data = $this->data($product->id, $date);
+        if ($override !== null) {
+            $data = app(SiteCurrency::class)->apply($data, $override);
+        }
         $selection = $this->normalize($data, $pax, $extras, $strict);
         $engine = $this->engine->engine();
         $request = [

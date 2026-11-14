@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Inbox\Actions;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Inbox\Support\WhatsappAccounts;
 use App\Domain\Integrations\Support\ChannelWebhooks;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -74,7 +75,7 @@ final class ChannelAccounts
             throw ApiException::unprocessable('INB-CH-02', $channel === 'whatsapp' ? 'Escribe el ID del número que te da Meta.' : 'Escribe el buzón que recibe los correos.');
         }
 
-        if ($after['status'] === 'activo' && $secret === null && $this->secret($existing) === '') {
+        if ($after['status'] === 'activo' && $secret === null && $this->secret($existing) === '' && ! $this->guided($channel, $existing)) {
             throw ApiException::unprocessable('INB-CH-03', 'Para conectar el canal necesitas el secreto del webhook.');
         }
 
@@ -120,6 +121,10 @@ final class ChannelAccounts
             'status' => $row->status ?? 'sandbox',
             'status_label' => self::STATUSES[$row->status ?? 'sandbox'],
             'webhook_secret_set' => $this->secret($row) !== '',
+            'connection_mode' => $channel === 'whatsapp' ? (string) ($row->connection_mode ?? 'plataforma') : null,
+            'display_phone' => $channel === 'whatsapp' ? ($row->display_phone ?? null) : null,
+            'waba_masked' => $channel === 'whatsapp' ? WhatsappAccounts::mask(app(WhatsappAccounts::class)->waba($row)) : null,
+            'guided' => $this->guided($channel, $row),
             'webhook_url' => rtrim((string) config('app.url'), '/').$meta['path'],
             'signature_header' => ChannelWebhooks::SIGNATURE_HEADER,
             'updated_at' => $row?->updated_at ? (string) $row->updated_at : null,
@@ -128,7 +133,12 @@ final class ChannelAccounts
 
     private function row(string $channel): ?object
     {
-        return DB::table('collab_channel_accounts')->where('channel', $channel)->orderBy('created_at')->first(['id', 'name', 'phone_number_id', 'mailbox', 'first_response_sla_minutes', 'status', 'webhook_secret_encrypted', 'updated_at']);
+        return DB::table('collab_channel_accounts')->where('channel', $channel)->orderBy('created_at')->first(['id', 'name', 'phone_number_id', 'mailbox', 'first_response_sla_minutes', 'status', 'webhook_secret_encrypted', 'connection_mode', 'display_phone', 'waba_id_encrypted', 'connected_at', 'updated_at']);
+    }
+
+    private function guided(string $channel, ?object $row): bool
+    {
+        return $channel === 'whatsapp' && $row !== null && ($row->connection_mode ?? 'plataforma') === 'plataforma' && filled($row->waba_id_encrypted ?? null);
     }
 
     private function secret(?object $row): string

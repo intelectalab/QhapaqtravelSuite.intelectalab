@@ -8,6 +8,7 @@ export interface PlatformMe {
   email: string;
   home: string;
   branding: Branding;
+  agency_access: { screens: Record<string, boolean>; required: Record<string, string[]> };
 }
 
 export interface PlatformSettingsOverview {
@@ -29,6 +30,23 @@ export interface PlatformSettingsOverview {
 
 export type MailEncryption = "ssl" | "tls" | "none";
 
+export interface WhatsappAppSummary {
+  status: "lista" | "incompleta" | "sin_configurar";
+  app_id: string;
+  app_secret_set: boolean;
+  app_secret_hint: string | null;
+  verify_token_set: boolean;
+  config_id: string;
+  api_version: string;
+  callback_url: string;
+  signature_header: string;
+  secret_rotated_at: string | null;
+  previous_secret_until: string | null;
+  last_test: { ok: boolean; message: string; at: string } | null;
+  changed_at: string | null;
+  simulated: boolean;
+}
+
 export interface OutgoingMailSummary {
   enabled: boolean;
   host: string;
@@ -41,7 +59,7 @@ export interface OutgoingMailSummary {
   verified_at: string | null;
   last_test: { to: string; ok: boolean; at: string } | null;
   status: "activa" | "incompleta" | "apagada";
-  webhook_secrets: { ses: boolean; fcm: boolean };
+  webhook_secrets: { ses: boolean };
 }
 
 export interface TenantSummary {

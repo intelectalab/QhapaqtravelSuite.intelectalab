@@ -8,6 +8,7 @@ import { FieldError } from "@/components/ui/FieldError";
 import { Select } from "@/components/ui/Select";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -86,7 +87,7 @@ export function GeneralStep({ draft, set, options, errors }: QuoteStepProps) {
       <Section title="Propuesta">
         <div className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <TextField label="Título" value={draft.title} onChange={(event) => set({ title: event.target.value })} placeholder="Por ejemplo: Luna de miel Cusco 5D/4N" maxLength={200} error={errors.title} data-testid="field:title" />
-          <TextField label="Válida hasta" type="date" value={draft.validUntil} onChange={(event) => set({ validUntil: event.target.value })} icon={<CalendarDays size={17} />} tip={`Pasada esta fecha la cotización vence si el cliente no la aprobó. La agencia propone ${options.defaults.validity_days} días.`} error={errors.valid_until} />
+          <DateField label="Válida hasta" name="valid_until" hiddenInput={false} value={draft.validUntil} onChange={(next) => set({ validUntil: next ?? "" })} icon={<CalendarDays size={17} />} tip={`Pasada esta fecha la cotización vence si el cliente no la aprobó. La agencia propone ${options.defaults.validity_days} días.`} error={errors.valid_until} />
         </div>
         <div className="max-w-sm">
           <ChoiceGroup label="Moneda" name="currency" defaultValue={draft.currency} onChange={(value) => set({ currency: value })} options={[{ value: "USD", label: "Dólares" }, { value: "PEN", label: "Soles" }]} hint="Las tarifas se convierten con el tipo de cambio vigente." />
@@ -109,8 +110,8 @@ export function TripStep({ draft, set, errors }: QuoteStepProps) {
     <div className="flex flex-col gap-6">
       <Section title="Fechas del viaje" hint="Los ítems que aún tienen la fecha de inicio se mueven junto con ella.">
         <div className="grid gap-4 md:grid-cols-2">
-          <TextField label="Viaje desde" type="date" value={draft.travelFrom} onChange={(event) => changeTravelFrom(event.target.value)} icon={<CalendarDays size={17} />} error={errors.travel_from} data-testid="field:travel_from" />
-          <TextField label="Viaje hasta" type="date" value={draft.travelTo} min={draft.travelFrom || undefined} onChange={(event) => set({ travelTo: event.target.value })} icon={<CalendarDays size={17} />} error={errors.travel_to} data-testid="field:travel_to" />
+          <DateField label="Viaje desde" name="travel_from" hiddenInput={false} value={draft.travelFrom} onChange={(next) => changeTravelFrom(next ?? "")} icon={<CalendarDays size={17} />} error={errors.travel_from} />
+          <DateField label="Viaje hasta" name="travel_to" hiddenInput={false} value={draft.travelTo} min={draft.travelFrom || undefined} onChange={(next) => set({ travelTo: next ?? "" })} icon={<CalendarDays size={17} />} error={errors.travel_to} />
         </div>
       </Section>
       <Section title="Pasajeros" hint="Al agregar ítems, los pasajeros de cada línea se completan según el tipo elegido.">
@@ -250,7 +251,7 @@ export function ItemsStep({ draft, set, options, errors, preview }: QuoteStepPro
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-[minmax(0,1.15fr)_minmax(0,0.75fr)_minmax(0,0.75fr)_minmax(0,0.85fr)_minmax(0,0.95fr)]">
-                  <TextField className="min-w-0" label="Fecha" type="date" value={line.date} min={travelFrom || undefined} max={travelTo || undefined} onChange={(event) => changeDate(line, event.target.value)} />
+                  <DateField className="min-w-0" label="Fecha" name={`items.${position}.service_date`} hiddenInput={false} value={line.date} min={travelFrom || undefined} max={travelTo || undefined} onChange={(next) => changeDate(line, next ?? "")} />
                   <TextField className="min-w-0" label="Pasajeros" tip="Cuántos pasajeros del tipo elegido toman este producto. Al cambiar el tipo se completa con los adultos, niños o infantes de la cotización." type="number" min={1} value={line.pax} onChange={(event) => updateLine(line.key, { pax: Number(event.target.value) })} />
                   <TextField className="min-w-0" label="Cantidad" tip="Cuántas veces se toma el producto para esos pasajeros, por ejemplo 2 traslados (llegada y salida) o la misma excursión en dos fechas seguidas. El total de la línea es precio × pasajeros × cantidad; lo normal es 1." type="number" min={1} value={line.qty} onChange={(event) => updateLine(line.key, { qty: Number(event.target.value) })} />
                   <div className="min-w-0">

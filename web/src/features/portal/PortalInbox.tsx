@@ -22,6 +22,7 @@ export interface PortalDocument {
   reservation: string | null;
   ready: boolean;
   href: string | null;
+  fiscal_files?: { kind: "xml" | "cdr"; label: string; href: string }[];
 }
 
 export interface PortalDocumentList {
@@ -93,6 +94,11 @@ export function PortalDocuments({ data }: { data: PortalDocumentList }) {
                             {doc.version > 1 ? ` · versión ${doc.version}` : ""}
                           </span>
                         </span>
+                        {doc.fiscal_files?.map((file) => (
+                          <a key={file.kind} href={file.href} target="_blank" rel="noreferrer" title={file.kind === "xml" ? "Comprobante electrónico en XML" : "Constancia de recepción del OSE"} className="inline-flex h-8 flex-none items-center rounded-lg px-2 text-[12px] font-semibold text-fg-2 transition hover:bg-surface-2 hover:text-fg">
+                            {file.label}
+                          </a>
+                        ))}
                         {doc.ready && doc.href ? (
                           <a href={doc.href} target="_blank" rel="noreferrer" className="inline-flex h-8 flex-none items-center gap-1.5 rounded-lg px-2.5 text-[12.5px] font-semibold text-t1 transition hover:bg-surface-2">
                             <Download size={14} /> Ver

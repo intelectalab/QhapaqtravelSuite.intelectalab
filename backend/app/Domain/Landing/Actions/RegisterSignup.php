@@ -27,7 +27,7 @@ final class RegisterSignup
 {
     private const COMMON_PASSWORDS = ['1234567890', '0123456789', 'contraseña', 'contrasena', 'password12', 'password123', 'qwertyuiop', '1q2w3e4r5t', 'kipucontrol', 'admin12345', 'peru123456', 'iloveyou12', '11111111111', 'abcdefghij', 'turismo123'];
 
-    private const FREE_MAIL = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'yahoo.es', 'live.com', 'icloud.com', 'proton.me', 'protonmail.com'];
+    public const FREE_MAIL = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'yahoo.es', 'live.com', 'icloud.com', 'proton.me', 'protonmail.com'];
 
     public function __construct(
         private readonly SignupQuote $quote,

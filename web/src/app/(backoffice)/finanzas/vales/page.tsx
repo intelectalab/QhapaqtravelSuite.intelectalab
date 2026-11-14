@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TintTile } from "@/components/ui/Tinted";
+import { RuleOffNotice } from "@/features/billing/RuleOffNotice";
 import { GiftCardsTable, IssueCardAction } from "@/features/growth-ops/GiftCards";
 import type { CursorPage, GiftCardKpis, GiftCardRow, PaymentLinkKpis, PaymentLinkRow, PaymentTarget } from "@/lib/growth-ops";
 import { formatMoney } from "@/lib/format";
@@ -29,8 +30,9 @@ export default async function GiftCardsPage() {
         title="Vales de regalo"
         subtitle="Vales con saldo que se venden en el sitio o se emiten desde aquí, y se canjean contra cualquier cuota."
         info={<InfoTip>El código de canje solo se muestra al emitir el vale; guardamos su huella, no el código. Cada canje queda como pago con vale y como movimiento del vale.</InfoTip>}
-        actions={<IssueCardAction />}
+        actions={data.meta.rule_enabled !== false ? <IssueCardAction /> : undefined}
       />
+      {data.meta.rule_enabled === false && <RuleOffNotice feature="Vales de regalo" kept="Los vales vigentes se consultan y canjean hasta su vencimiento." />}
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <TintTile icon={Gift} tone="ok" label="Vales activos" value={kpis.activa.count} note={both(kpis.activa.balance_pen, kpis.activa.balance_usd)} info={<p>Vales que se pueden canjear hoy y el saldo que suman por moneda.</p>} />
         <TintTile icon={HandCoins} tone="info" label="Canjeado" value={both(kpis.redeemed.pen, kpis.redeemed.usd)} info={<p>Suma de todos los canjes registrados contra cuotas o reservas.</p>} />

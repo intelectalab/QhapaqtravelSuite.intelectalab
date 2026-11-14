@@ -7,6 +7,7 @@ import type { PanelActionState } from "@/components/ui/PanelAction";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
 import { payOnline, reportPayment } from "@/app/(portal)/portal/actions";
@@ -42,7 +43,7 @@ function ReportPanel({ row, methods, today }: { row: PortalInstallment; methods:
           <TextField label={`Monto pagado (${row.currency})`} name="amount" type="number" step="0.01" min="0.01" max={available} defaultValue={available.toFixed(2)} required />
           <SelectField label="Medio de pago" name="method" placeholder="Elige cómo pagaste" options={methods.map((item) => ({ value: item.value, label: item.label }))} onChange={setMethod} />
           <TextField label="Número de operación" name="reference" maxLength={60} required={needsReference} hint="Lo encuentras en la constancia de tu banco o billetera." />
-          <TextField label="Fecha del pago" name="paid_on" type="date" defaultValue={today} max={today} />
+          <DateField label="Fecha del pago" name="paid_on" defaultValue={today} max={today} />
           <TextArea label="Comentario" name="note" rows={3} maxLength={500} placeholder="Opcional" />
         </>
       )}

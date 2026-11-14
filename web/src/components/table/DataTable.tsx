@@ -2,6 +2,7 @@
 
 import { Check, Minus, SearchX, Table2, X, type LucideIcon } from "lucide-react";
 import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useOptionalMe } from "@/components/shell/SessionProvider";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { MetricCard, MetricCardRow } from "@/components/ui/MetricCard";
 import { Select } from "@/components/ui/Select";
@@ -72,6 +73,7 @@ export function DataTable<T>({
   views = [],
   defaultView = "",
 }: DataTableProps<T>) {
+  const me = useOptionalMe();
   const [storedView, setView] = useStoredValue(`table-view:${screen}`, parseView, String);
   const view = views.find((option) => option.id === (storedView === DEFAULT_VIEW ? defaultView : storedView)) ?? null;
   const [query, setQuery] = useState<TableQuery>(() => ({ ...EMPTY_QUERY, search: initialSearch ?? "", filters: initialFilters ?? {} }));
@@ -164,7 +166,7 @@ export function DataTable<T>({
             {filters.length > 0 && (
               <ToggleButton active={open === "filters"} onClick={() => setOpen(open === "filters" ? null : "filters")} icon={FilterIcon} label="Filtro" badge={activeFilters} collapseLabel />
             )}
-            {csv && <ExportMenu title={csv.title ?? titleFromSlug(csv.fileName)} screen={screen} columns={csv.columns} filtered={visible} selected={selectedRows} filters={describeFilters()} />}
+            {csv && (!csv.permission || !me || me.permissions.includes(csv.permission)) && <ExportMenu title={csv.title ?? titleFromSlug(csv.fileName)} screen={screen} columns={csv.columns} filtered={visible} selected={selectedRows} filters={describeFilters()} />}
             {sorts.length > 0 && (
               <ToggleButton
                 active={open === "sort"}

@@ -10,6 +10,7 @@ export interface CsvColumn<T> {
 export interface CsvExport<T> {
   fileName: string;
   title?: string;
+  permission?: string;
   columns: CsvColumn<T>[];
 }
 

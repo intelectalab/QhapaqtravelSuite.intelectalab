@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Admin\Support;
 
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\Shared\Time\BusinessHours;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -13,13 +14,9 @@ final class NotificationRules
 {
     public const AMOUNT_THRESHOLD_PEN = '5000';
 
-    public const BUSINESS_FROM = 8;
-
-    public const BUSINESS_TO = 19;
-
     public const FACTS = ['amount', 'currency', 'marketing'];
 
-    public function __construct(private readonly TenantContext $context) {}
+    public function __construct(private readonly TenantContext $context, private readonly BusinessHours $hours) {}
 
     public static function withoutFacts(array $link): array
     {
@@ -53,13 +50,7 @@ final class NotificationRules
 
     private function nextBusinessMoment(CarbonImmutable $now): ?CarbonImmutable
     {
-        if ($now->hour >= self::BUSINESS_FROM && $now->hour < self::BUSINESS_TO) {
-            return null;
-        }
-
-        $day = $now->hour < self::BUSINESS_FROM ? $now : $now->addDay();
-
-        return $day->setTime(self::BUSINESS_FROM, 0);
+        return $this->hours->isOpen($now) ? null : $this->hours->nextOpen($now);
     }
 
     private function consented(array $facts): bool

@@ -27,7 +27,7 @@ export const REALMS: Record<Realm, RealmConfig> = {
   platform: {
     session: "kipucontrol_platform_session",
     mfa: "kipucontrol_platform_mfa",
-    path: "/plataforma",
+    path: "/",
     hours: 8,
     login: "/login",
     mfaPage: "/plataforma/verificar",
@@ -36,6 +36,10 @@ export const REALMS: Record<Realm, RealmConfig> = {
     publicPaths: ["/plataforma/salir"],
   },
 };
+
+export function foreignSession(realm: Realm, has: (cookie: string) => boolean): boolean {
+  return (Object.keys(REALMS) as Realm[]).some((other) => other !== realm && has(REALMS[other].session) && !has(REALMS[other].mfa));
+}
 
 export function realmFor(pathname: string): Realm {
   return pathname === "/plataforma" || pathname.startsWith("/plataforma/") ? "platform" : "agency";

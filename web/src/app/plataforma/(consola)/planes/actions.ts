@@ -19,6 +19,12 @@ export async function applyPlanRule(_state: ConsoleResult, form: FormData): Prom
   return outcome;
 }
 
+export async function decideRuleRequest(_state: ConsoleResult, form: FormData): Promise<ConsoleResult> {
+  const outcome = await platformSend(`/rule-requests/${encodeURIComponent(text(form, "code"))}/decision`, "POST", { decision: text(form, "decision"), reason: text(form, "reason") || null, linked_rule: text(form, "linked_rule") || null, lock_version: Number(text(form, "lock_version")) || null }, "No pudimos guardar la decisión.");
+  revalidatePath("/plataforma/planes/pedidos");
+  return outcome;
+}
+
 export async function resetPlanRules(): Promise<ConsoleResult> {
   const outcome = await platformSend("/plan-rules/reset-demo", "POST", {}, "No pudimos restablecer la matriz.");
   revalidatePath("/plataforma", "layout");

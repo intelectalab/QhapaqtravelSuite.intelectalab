@@ -169,8 +169,6 @@ final class PaymentLinks
 
     public function cancel(string $code, ?string $reason, User $actor): array
     {
-        $this->gate->require(self::RULE);
-
         return DB::transaction(function () use ($code, $reason, $actor): array {
             $link = $this->open($code, $actor);
 

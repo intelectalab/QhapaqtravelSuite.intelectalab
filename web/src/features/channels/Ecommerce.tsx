@@ -60,7 +60,7 @@ export function EcommerceTiles({ kpis, funnel, products }: { kpis: EcommerceOver
           </div>
         }
       />
-      <TintTile icon={MousePointerClick} tone="t1" label="Visitas a la tienda" value={formatNumber(step("sessions"))} note={`${formatNumber(step("views"))} vistas de página`} info={<p>Sesiones y vistas de página registradas por los eventos del sitio y del widget, con el consentimiento del visitante.</p>} />
+      <TintTile icon={MousePointerClick} tone="t1" label="Visitas a la tienda" value={formatNumber(step("sessions"))} note={`${formatNumber(step("views"))} vistas · ${formatNumber(step("dates"))} eligieron fecha`} info={<p>Sesiones, vistas de página y sesiones que eligieron una fecha en el buscador o en la ficha, según los eventos del sitio y del widget, con el consentimiento del visitante.</p>} />
       <TintTile icon={Globe} tone="sun" label="Productos publicados" value={formatNumber(kpis.published)} note={`De ${formatNumber(products)} en la tienda`} info={<p>Productos visibles en el sitio y el widget. Los demás están en la tienda pero sin publicar.</p>} />
     </TileGrid>
   );
@@ -141,10 +141,20 @@ function AttemptList({ order }: { order: EcomOrder }) {
   );
 }
 
+function OrderStatus({ order }: { order: EcomOrder }) {
+  if (!order.proof_at) return <ChannelBadge status={order.status} />;
+  return (
+    <span className="grid justify-items-start gap-0.5" title={`Constancia subida el ${formatDateTime(order.proof_at)}`}>
+      <ChannelBadge status="constancia_recibida" />
+      <span className="text-[11.5px] text-fg-3">{formatDateTime(order.proof_at, false)}</span>
+    </span>
+  );
+}
+
 function OrderDetail({ order }: { order: EcomOrder }) {
   return (
     <DetailPanel label="Ver pedido" title={order.code} description={`${order.customer} · ${formatDateTime(order.ordered_at)}`}>
-      <ChannelBadge status={order.status} />
+      <OrderStatus order={order} />
       <PanelSection title="Compra">
         <FieldList
           fields={[
@@ -199,7 +209,7 @@ function OrdersTable({ rows, canManage }: { rows: EcomOrder[]; canManage: boolea
     { id: "product", header: "Producto", cell: (row) => <span className="text-[13px]">{row.product?.name ?? "—"}</span> },
     { id: "pax", header: "Pax", align: "right", wideOnly: true, cell: (row) => <span className="font-mono text-[13px]">{row.pax}</span> },
     { id: "total", header: "Total", align: "right", cell: (row) => <b className="text-[13.5px] font-semibold">{formatMoney(row.total, row.currency)}</b> },
-    { id: "status", header: "Estado", mobile: "detail", cell: (row) => <ChannelBadge status={row.status} /> },
+    { id: "status", header: "Estado", mobile: "detail", cell: (row) => <OrderStatus order={row} /> },
     {
       id: "actions",
       header: "",

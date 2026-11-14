@@ -12,7 +12,8 @@ import { ConversationCrmActions } from "@/features/leads/ConversationCrmActions"
 import { getRelatedOptions } from "@/lib/server/activities";
 import { getAdvisors, getCatalogs } from "@/lib/server/leads";
 import { ChannelAccountsPanel } from "@/features/inbox/ChannelAccountsPanel";
-import { INBOX_SCOPE, type ChannelAccount, type ConversationThread, type InboxOverview } from "@/lib/inbox";
+import { WhatsappConnectPanel } from "@/features/inbox/WhatsappConnectPanel";
+import { INBOX_SCOPE, type ChannelAccount, type ConversationThread, type InboxOverview, type InboxResponseTimes, type WhatsappConnection } from "@/lib/inbox";
 import { getResource } from "@/lib/server/resource";
 import { currentUser } from "@/lib/server/me";
 
@@ -29,7 +30,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
   const missing = Boolean(c) && !requested;
   const selected = requested ?? (missing ? undefined : overview.items.find((item) => item.status !== "resuelta") ?? overview.items[0]);
   const scope = INBOX_SCOPE[overview.scope ?? (overview.can.reassign ? "all" : "own")];
-  const [thread, me, catalogs, advisors, activityOptions, channels, audit] = await Promise.all([
+  const [thread, me, catalogs, advisors, activityOptions, channels, audit, whatsapp] = await Promise.all([
     selected ? getResource<ConversationThread>(`/inbox/conversations/${encodeURIComponent(selected.code)}`, "No pudimos abrir la conversación.") : Promise.resolve(null),
     currentUser(),
     overview.can.manage ? getCatalogs() : Promise.resolve(null),
@@ -37,7 +38,9 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
     overview.can.manage ? getRelatedOptions() : Promise.resolve(null),
     overview.can.manage ? getResource<ChannelAccount[]>("/inbox/channel-accounts", "No pudimos cargar los canales.") : Promise.resolve(null),
     selected ? getResource<AuditEntry[]>(`/inbox/conversations/${encodeURIComponent(selected.code)}/audit`, "No pudimos cargar la auditoría.") : Promise.resolve(null),
+    overview.can.manage ? getResource<WhatsappConnection>("/inbox/whatsapp/connection", "No pudimos cargar la conexión de WhatsApp.") : Promise.resolve(null),
   ]);
+  const responseTimes = channels ? await getResource<InboxResponseTimes>("/inbox/response-times", "No pudimos cargar los plazos de la bandeja.") : null;
   const { kpis } = overview;
 
   return (
@@ -55,7 +58,14 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
             </span>
           </span>
         }
-        actions={channels ? <ChannelAccountsPanel accounts={channels} /> : undefined}
+        actions={
+          channels || whatsapp ? (
+            <>
+              {whatsapp && <WhatsappConnectPanel connection={whatsapp} />}
+              {channels && <ChannelAccountsPanel accounts={channels} responseTimes={responseTimes} />}
+            </>
+          ) : undefined
+        }
         info={<InfoTip>Responder una conversación sin responsable te la asigna. Las notas internas nunca llegan al cliente.</InfoTip>}
       />
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">

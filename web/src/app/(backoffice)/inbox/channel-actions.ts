@@ -23,9 +23,27 @@ function changes(form: FormData, channel: InboxChannel): Record<string, unknown>
   return Object.keys(body).length > 0 ? body : null;
 }
 
+function responseTimes(form: FormData): Record<string, unknown> | null {
+  const body: Record<string, unknown> = {};
+  for (const channel of ["webchat", "form", "portal"]) {
+    const value = text(form, `response_times.${channel}`);
+    if (value !== "" && value !== text(form, `response_times.${channel}.before`)) body[channel] = Number(value);
+  }
+  return Object.keys(body).length > 0 ? { ...body, lock_version: Number(text(form, "response_times.lock_version") || 0) } : null;
+}
+
 export async function saveChannelAccounts(_state: StepResult, form: FormData): Promise<StepResult> {
   const pending = CHANNELS.map((channel) => [channel, changes(form, channel)] as const).filter((entry): entry is readonly [InboxChannel, Record<string, unknown>] => entry[1] !== null);
-  if (pending.length === 0) return { done: false, message: "No hay cambios que guardar." };
+  const times = responseTimes(form);
+  if (pending.length === 0 && times === null) return { done: false, message: "No hay cambios que guardar." };
+  if (times !== null) {
+    const result = await apiFetch("/inbox/response-times", { method: "PUT", body: times });
+    if (!result.ok) {
+      const first = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
+      revalidatePath("/inbox");
+      return { done: false, message: `Plazos: ${first ?? result.error?.message ?? "No pudimos guardar los plazos."}` };
+    }
+  }
   for (const [channel, body] of pending) {
     const result = await apiFetch(`/inbox/channel-accounts/${channel}`, { method: "PUT", body });
     if (!result.ok) {

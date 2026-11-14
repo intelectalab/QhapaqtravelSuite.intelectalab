@@ -13,6 +13,7 @@ import { MetricCard, MetricCardRow } from "@/components/ui/MetricCard";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { ConfirmAction, HiddenFields, PanelSection, STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
 import { cn } from "@/lib/cn";
@@ -64,8 +65,8 @@ function SeasonAction({ data }: { data: TripCatalogView }) {
       <SelectField label="Hotel" name="hotel" searchable defaultValue={hotels[0]?.value ?? ""} options={hotels} />
       <TextField label="Nombre" name="label" required maxLength={60} placeholder="Temporada alta" />
       <div className="grid grid-cols-2 gap-3">
-        <TextField label="Desde" name="date_from" type="date" required />
-        <TextField label="Hasta" name="date_to" type="date" required />
+        <DateField label="Desde" name="date_from" required />
+        <DateField label="Hasta" name="date_to" required />
       </div>
       <TextField label="Ajuste (%)" name="adjust_pct" type="number" step="0.01" min={-50} max={300} required defaultValue={20} hint="De −50 % a 300 %. Negativo para temporada baja." />
     </Panel>

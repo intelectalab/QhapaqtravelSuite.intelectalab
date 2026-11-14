@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Operations\Actions;
 
 use App\Domain\Finance\Support\DerivedTokens;
-use App\Domain\Finance\Support\GrowthFeatureGate;
 use App\Domain\Iam\Models\User;
 use App\Domain\Operations\Support\CheckinPasses;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -24,13 +23,10 @@ final class Checkin
         private readonly TenantContext $context,
         private readonly CheckinPasses $passes,
         private readonly AuditLogger $audit,
-        private readonly GrowthFeatureGate $gate,
     ) {}
 
     public function scan(string $token, ?string $device, User $actor): array
     {
-        $this->gate->require(CheckinPasses::RULE);
-
         return DB::transaction(function () use ($token, $device, $actor): array {
             $pass = DB::table('ops_checkin_passes')->where('token_hash', DerivedTokens::hash(trim($token)))->lockForUpdate()->first();
 
@@ -85,8 +81,6 @@ final class Checkin
 
     public function manifest(string $serviceKey, User $actor): array
     {
-        $this->gate->require(CheckinPasses::RULE);
-
         if ($serviceKey === 'hoy' || preg_match('/^\d{4}-\d{2}-\d{2}$/', $serviceKey) === 1) {
             return $this->day($serviceKey === 'hoy' ? Carbon::now($this->context->timezone())->toDateString() : $serviceKey, $actor);
         }

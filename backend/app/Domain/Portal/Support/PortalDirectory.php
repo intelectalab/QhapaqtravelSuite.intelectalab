@@ -10,6 +10,7 @@ use App\Domain\Corporate\Support\CorporateMember;
 use App\Domain\Crm\Actions\ArcoRequests;
 use App\Domain\Crm\Support\ClaimConsumer;
 use App\Domain\Finance\Support\PaymentMethods;
+use App\Domain\Inbox\Support\MessageCipher;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -311,7 +312,7 @@ final class PortalDirectory
                 'last_message_at' => $row->last_message_at,
                 'reservation' => $row->reservation,
                 'assignee' => $row->assignee,
-                'messages' => collect($messages[$row->id] ?? [])->map(fn ($message): array => ['mine' => $message->direction === 'in', 'author' => $message->direction === 'in' ? null : $message->author, 'body' => $message->body, 'at' => $message->sent_at])->values(),
+                'messages' => collect($messages[$row->id] ?? [])->map(fn ($message): array => ['mine' => $message->direction === 'in', 'author' => $message->direction === 'in' ? null : $message->author, 'body' => MessageCipher::open($message->body), 'at' => $message->sent_at])->values(),
             ])->values(),
         ];
     }

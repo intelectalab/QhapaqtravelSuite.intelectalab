@@ -29,6 +29,7 @@ export default async function EcommerceLayout({ children }: { children: ReactNod
         tabs={[
           { href: "/canales/ecommerce", label: "Pedidos web", count: overview.orders.length },
           { href: "/canales/ecommerce/productos", label: "Productos en la tienda", count: overview.products.length },
+          { href: "/canales/ecommerce/demanda", label: "Demanda sin cupo", count: overview.unmet_demand?.items.length || undefined },
           ...(promotions ? [{ href: "/canales/ecommerce/promociones", label: "Promociones y códigos", count: promotions.rows.filter((row) => row.state === "vigente").length }] : []),
         ]}
       >

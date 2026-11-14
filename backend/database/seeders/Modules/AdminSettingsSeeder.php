@@ -6,6 +6,7 @@ namespace Database\Seeders\Modules;
 
 use App\Domain\Admin\Support\PgArray;
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Platform\Support\PlanFeatureRules;
 use App\Domain\Quotes\Support\QuoteApprovalPolicy;
 use Database\Support\KitSeeds;
 use Database\Support\SeedsTenant;
@@ -157,6 +158,26 @@ final class AdminSettingsSeeder
                 'is_custom' => false,
                 'min_plan' => $rule['minPlan'] ?? ($base->min_plan ?? 'Starter'),
                 'sort_order' => $index + 1,
+                'created_by' => $by,
+                'updated_by' => $by,
+            ]);
+        }
+
+        $order = count($rules);
+
+        foreach (PlanFeatureRules::RULES as $code => $rule) {
+            $this->upsert('sys_booking_rules', ['code' => $code], [
+                'rule_group' => PlanFeatureRules::GROUP,
+                'name' => $rule['name'],
+                'description' => $rule['description'],
+                'enabled' => true,
+                'params' => '{}',
+                'params_schema' => '{}',
+                'scope' => PgArray::from($rule['scope']),
+                'product_override' => false,
+                'is_custom' => false,
+                'min_plan' => $catalog[$code]->min_plan ?? $rule['min_plan'],
+                'sort_order' => ++$order,
                 'created_by' => $by,
                 'updated_by' => $by,
             ]);

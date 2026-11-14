@@ -40,17 +40,19 @@ final class ReconciliationCandidates
 
         return DB::table('fin_payments as p')
             ->leftJoin('booking_reservations as b', 'b.id', '=', 'p.reservation_id')
+            ->leftJoin('channel_ecom_orders as o', 'o.id', '=', 'b.ecom_order_id')
             ->where('p.kind', 'cobro')
             ->whereNotIn('p.status', ['revertido', 'rechazado'])
             ->whereNotIn('p.id', $this->taken('matched_payment_id', $lineId))
             ->orderByDesc('p.paid_on')
             ->limit(400)
-            ->get(['p.id', 'p.code', 'p.method', 'p.amount', 'p.currency', 'p.fx_rate', 'p.reference', 'p.status', 'b.code as reservation_code'])
+            ->get(['p.id', 'p.code', 'p.method', 'p.amount', 'p.currency', 'p.fx_rate', 'p.reference', 'p.status', 'b.code as reservation_code', 'o.code as order_code'])
             ->map(fn (object $row): array => [
                 'kind' => 'payment',
                 'id' => $row->id,
                 'code' => $row->code,
-                'label' => trim(implode(' · ', array_filter([$row->reservation_code, $labels[$row->method] ?? $row->method, $row->reference]))),
+                'order' => $row->order_code,
+                'label' => trim(implode(' · ', array_filter([$row->order_code ? "Pedido {$row->order_code}" : null, $row->reservation_code, $labels[$row->method] ?? $row->method, $row->reference]))),
                 'amount' => (float) $row->amount,
                 'currency' => $row->currency,
                 'pen' => $this->money->pen($row->amount, $row->currency, $row->fx_rate),

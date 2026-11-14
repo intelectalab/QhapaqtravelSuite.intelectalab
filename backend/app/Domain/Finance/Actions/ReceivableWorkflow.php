@@ -10,6 +10,7 @@ use App\Domain\Finance\Events\PaymentApplied;
 use App\Domain\Finance\Support\Consolidation;
 use App\Domain\Finance\Support\FinanceHistory;
 use App\Domain\Finance\Support\PaymentMethods;
+use App\Domain\Finance\Support\PaymentReminderWhatsapp;
 use App\Domain\Finance\Support\ReceivableLedger;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
@@ -184,22 +185,23 @@ final class ReceivableWorkflow
             }
 
             $reservation = DB::table('booking_reservations as b')->join('crm_clients as c', 'c.id', '=', 'b.client_id')->where('b.id', $receivable->reservation_id)
-                ->first(['b.id', 'b.code', 'b.client_id', 'b.travel_from', 'c.name as client_name', 'c.email as client_email']);
+                ->first(['b.id', 'b.code', 'b.client_id', 'b.travel_from', 'c.name as client_name', 'c.email as client_email', 'c.phone as client_phone']);
 
             if ($reservation === null || ! str_contains((string) $reservation->client_email, '@')) {
                 throw ApiException::unprocessable('FIN-BR-05', 'El cliente no tiene un correo registrado. Agrégalo en su ficha para enviarle el recordatorio.');
             }
 
             $message = $this->notifyClient($receivable, $reservation, $balance, $actor);
+            $whatsapp = app(PaymentReminderWhatsapp::class)->send($reservation->client_phone, $this->reminderVariables($receivable, $reservation, $balance, (string) $actor->name), $this->reminderSource($receivable, $reservation));
             $sentAt = now();
             DB::table('fin_receivable_reminders')->insert([
-                'id' => (string) Str::uuid7(), 'tenant_id' => $receivable->tenant_id, 'receivable_id' => $receivable->id, 'channels' => 'email',
+                'id' => (string) Str::uuid7(), 'tenant_id' => $receivable->tenant_id, 'receivable_id' => $receivable->id, 'channels' => $whatsapp['sent'] ? 'email,whatsapp' : 'email',
                 'sent_by' => $actor->getKey(), 'sent_at' => $sentAt, 'balance_at_send' => (string) $balance->toScale(2), 'created_by' => $actor->getKey(), 'created_at' => $sentAt,
             ]);
             DB::table('fin_receivables')->where('id', $receivable->id)->update(['last_reminder_at' => $sentAt, 'updated_by' => $actor->getKey(), 'updated_at' => $sentAt]);
-            $this->audit->log('Cuenta por cobrar', $receivable->code, 'recordar', null, "{$reservation->client_email} · saldo {$receivable->currency} {$balance->toScale(2)}");
+            $this->audit->log('Cuenta por cobrar', $receivable->code, 'recordar', null, "{$reservation->client_email}".($whatsapp['sent'] ? " y WhatsApp {$whatsapp['to']}" : '')." · saldo {$receivable->currency} {$balance->toScale(2)}");
 
-            $result = ['code' => (string) $receivable->code, 'sent_to' => (string) $reservation->client_email, 'message' => $message];
+            $result = ['code' => (string) $receivable->code, 'sent_to' => (string) $reservation->client_email, 'message' => $message, 'channels' => $whatsapp['sent'] ? ['email', 'whatsapp'] : ['email'], 'whatsapp' => ['sent' => $whatsapp['sent'], 'note' => $whatsapp['reason']]];
         });
 
         return $result;
@@ -239,13 +241,23 @@ final class ReceivableWorkflow
 
     private function notifyClient(object $receivable, object $reservation, BigDecimal $amount, User $actor): ?string
     {
-        return $this->notifications->queue('pago.recordatorio', (string) $reservation->client_email, [
+        return $this->notifications->queue('pago.recordatorio', (string) $reservation->client_email, $this->reminderVariables($receivable, $reservation, $amount, (string) $actor->name), $this->reminderSource($receivable, $reservation));
+    }
+
+    private function reminderVariables(object $receivable, object $reservation, BigDecimal $amount, string $seller): array
+    {
+        return [
             'cliente' => (string) $reservation->client_name,
             'reserva' => (string) $reservation->code,
             'monto' => Decimal::display($amount, (string) $receivable->currency),
             'fecha_viaje' => $reservation->travel_from ? CarbonImmutable::parse((string) $reservation->travel_from)->format('d/m/Y') : '',
-            'vendedor' => (string) $actor->name,
-        ], ['source_type' => 'fin_receivable', 'source_id' => $receivable->id, 'client_id' => $reservation->client_id, 'reservation_id' => $reservation->id]);
+            'vendedor' => $seller,
+        ];
+    }
+
+    private function reminderSource(object $receivable, object $reservation): array
+    {
+        return ['source_type' => 'fin_receivable', 'source_id' => $receivable->id, 'client_id' => $reservation->client_id, 'reservation_id' => $reservation->id];
     }
 
     private function open(string $code): object

@@ -16,6 +16,10 @@ final class SitePages
 {
     private const PROVIDERS = ['tripadvisor' => 'Tripadvisor', 'google' => 'Google', 'facebook' => 'Facebook', 'trustpilot' => 'Trustpilot', 'getyourguide' => 'GetYourGuide', 'viator' => 'Viator'];
 
+    private const NEARBY_DAYS = 14;
+
+    private const NEARBY_LIMIT = 4;
+
     private readonly SitePricing $pricing;
 
     private readonly SiteAvailability $availability;
@@ -103,7 +107,7 @@ final class SitePages
         $destination = isset($filters['destino']) ? $this->catalog->destinations()->firstWhere('slug', $filters['destino']) : null;
         $query = isset($filters['q']) ? Str::lower(Str::ascii($filters['q'])) : null;
 
-        $items = $this->catalog->products()
+        $match = fn (?string $on): Collection => $this->catalog->products()
             ->filter(fn (stdClass $p): bool => $destination === null || $this->catalog->belongs($p, $destination->path))
             ->filter(fn (stdClass $p): bool => ! isset($filters['tipo']) || $p->kind === $filters['tipo'])
             ->filter(fn (stdClass $p): bool => ! isset($filters['categoria']) || $p->category_name === $filters['categoria'])
@@ -112,11 +116,11 @@ final class SitePages
             ->filter(fn (stdClass $p): bool => ! isset($filters['modalidad']) || $p->modality === $filters['modalidad'])
             ->filter(fn (stdClass $p): bool => ! isset($filters['duracion']) || $this->durationBucket($p) === $filters['duracion'])
             ->filter(fn (stdClass $p): bool => $query === null || str_contains(Str::lower(Str::ascii($p->name.' '.$p->short_description.' '.$p->destination_name.' '.$p->category_name)), $query))
-            ->map(function (stdClass $p) use ($date, $pax, $today, $filters): ?array {
+            ->map(function (stdClass $p) use ($on, $pax, $today, $filters): ?array {
                 $card = $this->catalog->card($p);
 
-                if ($date !== null) {
-                    $day = $this->availability->day($p, $date, $pax, $today);
+                if ($on !== null) {
+                    $day = $this->availability->day($p, $on, $pax, $today);
 
                     if (! $this->availability->sellable($day)) {
                         return null;
@@ -124,7 +128,7 @@ final class SitePages
 
                     $card['from'] = ['amount' => $day['price']['adult'], 'currency' => $day['price']['currency']];
                     $card['list'] = $day['price']['list'];
-                    $card['on_date'] = ['date' => $date, 'spots' => $day['spots'], 'season' => $day['price']['season']];
+                    $card['on_date'] = ['date' => $on, 'spots' => $day['spots'], 'season' => $day['price']['season']];
                 }
 
                 if (isset($filters['viajeros']) && ($pax > (int) $p->maximum_passengers || $pax < (int) $p->minimum_passengers)) {
@@ -137,6 +141,7 @@ final class SitePages
             ->filter(fn (array $c): bool => ! isset($filters['precio_min']) || $this->inPen($c['from'], $fx) >= (float) $filters['precio_min'])
             ->filter(fn (array $c): bool => ! isset($filters['precio_max']) || $this->inPen($c['from'], $fx) <= (float) $filters['precio_max'])
             ->values();
+        $items = $match($date);
 
         $sorted = match ($filters['orden'] ?? 'recomendados') {
             'precio_asc' => $items->sortBy(fn (array $c): float => $this->inPen($c['from'], $fx)),
@@ -152,7 +157,30 @@ final class SitePages
             'destination' => $destination ? ['slug' => $destination->slug, 'name' => $destination->name] : null,
             'facets' => $this->facets(),
             'fx' => $fx,
+            'nearby_dates' => $date !== null && $sorted->isEmpty() ? $this->nearbyDates($date, $today, $match) : [],
         ];
+    }
+
+    private function nearbyDates(string $date, Carbon $today, callable $match): array
+    {
+        $chosen = Carbon::parse($date);
+        $found = [];
+
+        for ($distance = 1; $distance <= self::NEARBY_DAYS && count($found) < self::NEARBY_LIMIT; $distance++) {
+            foreach ([$chosen->copy()->subDays($distance), $chosen->copy()->addDays($distance)] as $candidate) {
+                if ($candidate->lt($today->copy()->startOfDay()) || count($found) >= self::NEARBY_LIMIT) {
+                    continue;
+                }
+
+                $count = $match($candidate->toDateString())->count();
+
+                if ($count > 0) {
+                    $found[] = ['date' => $candidate->toDateString(), 'count' => $count];
+                }
+            }
+        }
+
+        return collect($found)->sortBy('date')->values()->all();
     }
 
     public function product(string $slug, int $pax): array

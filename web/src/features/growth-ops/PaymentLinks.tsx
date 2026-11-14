@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ChipToggleGroup } from "@/components/ui/ChipToggleGroup";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateTimeField } from "@/components/ui/DateTimeField";
 import { TextField } from "@/components/ui/TextField";
 import { SummaryBox } from "@/features/finance/FinanceStep";
 import type { Option, PaymentLinkRow, PaymentTarget } from "@/lib/growth-ops";
@@ -43,7 +44,7 @@ export function CreateLinkAction({ targets, methods }: { targets: PaymentTarget[
           <TextField label={`Monto (${current?.currency ?? "PEN"})`} name="amount" type="number" step="0.01" min="0.01" max={current?.open} defaultValue={current?.open} key={current?.code} hint="Por defecto, el saldo completo de la cuota." />
           <ChipToggleGroup label="Medios de pago" name="methods" options={methods.map((item) => ({ value: item.key, label: item.label }))} defaultValue={["card", "yape", "plin"]} />
           <TextField label="Cuotas máximas con tarjeta" name="installments_max" type="number" min="1" max="24" defaultValue="1" hint="Solo aplica cuando el link incluye tarjeta." />
-          <TextField label="Vence (opcional)" name="expires_at" type="datetime-local" hint="Si lo dejas vacío, el link vence en 72 horas." />
+          <DateTimeField label="Vence (opcional)" name="expires_at" hint="Si lo dejas vacío, el link vence en 72 horas." />
         </>
       )}
     </GrowthStep>
@@ -84,7 +85,7 @@ function CopyLink({ url }: { url: string }) {
   );
 }
 
-export function PaymentLinksTable({ rows }: { rows: PaymentLinkRow[] }) {
+export function PaymentLinksTable({ rows, canSend = true }: { rows: PaymentLinkRow[]; canSend?: boolean }) {
   const columns: Column<PaymentLinkRow>[] = [
     {
       id: "client",
@@ -130,7 +131,7 @@ export function PaymentLinksTable({ rows }: { rows: PaymentLinkRow[] }) {
       cell: (row) => (
         <RowActions>
           {row.status === "activo" && row.url && <CopyLink url={row.url} />}
-          {row.status === "activo" ? <SendLinkAction row={row} /> : <RowIcon tone="neutral" label="Enviar" icon={<Send size={15} />} disabledHint="Solo se envían links activos" />}
+          {row.status === "activo" && canSend ? <SendLinkAction row={row} /> : <RowIcon tone="neutral" label="Enviar" icon={<Send size={15} />} disabledHint={canSend ? "Solo se envían links activos" : "Tu plan no incluye links de pago: el cliente puede pagar el que ya tiene"} />}
           {row.status === "activo" ? <CancelLinkAction row={row} /> : <RowIcon tone="delete" label="Anular" icon={<Ban size={15} />} disabledHint={`El link está ${row.status_label.toLowerCase()}`} />}
         </RowActions>
       ),

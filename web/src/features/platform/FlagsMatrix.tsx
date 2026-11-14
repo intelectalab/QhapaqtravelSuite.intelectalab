@@ -9,7 +9,7 @@ import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
-import { TextField } from "@/components/ui/TextField";
+import { DateField } from "@/components/ui/DateField";
 import { TintCardTitle } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
 import { capitalize, formatDate } from "@/lib/format";
@@ -159,7 +159,7 @@ export function OverrideFormAction({ overview }: { overview: FlagsOverview }) {
         ]}
         defaultValue="1"
       />
-      <TextField label="Vigente hasta" name="valid_until" type="date" required min={isoIn(0)} max={isoIn(180)} defaultValue={isoIn(30)} hint="Como máximo 180 días desde hoy." />
+      <DateField label="Vigente hasta" name="valid_until" required min={isoIn(0)} max={isoIn(180)} defaultValue={isoIn(30)} hint="Como máximo 180 días desde hoy." />
       <TextArea label="Motivo" name="reason" required minLength={10} maxLength={300} placeholder="Por ejemplo: piloto comercial aprobado por producto." />
     </ConsoleAction>
   );

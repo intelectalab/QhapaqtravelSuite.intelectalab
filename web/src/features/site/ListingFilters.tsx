@@ -3,6 +3,7 @@
 import { SlidersHorizontal, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { DateField } from "@/components/ui/DateField";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import { listingQuery, type ListingFacets, type ListingKey, type Option } from "@/lib/site";
@@ -48,7 +49,7 @@ function ChipFilter({ label, options, value, onChange }: { label: string; option
 }
 
 export function ListingFilters({ facets, params }: { facets: ListingFacets; params: Params }) {
-  const { t } = useSite();
+  const { t, locale } = useSite();
   const f = t.filters;
   const labels: Partial<Record<ListingKey, string>> = f.labels;
   const { go, pending } = useListingNav(params);
@@ -86,13 +87,13 @@ export function ListingFilters({ facets, params }: { facets: ListingFacets; para
           <Select value={params.destino ?? ""} onChange={(value) => go({ destino: value || undefined })} options={[{ value: "", label: t.search.allDestinations }, ...facets.destinations.map((d) => ({ value: d.value, label: d.label, hint: `${d.count}` }))]} ariaLabel={f.labels.destino} />
         </div>
         <div className="grid grid-cols-[1fr_auto] gap-2">
-          <label>
+          <div className="min-w-0">
             <span className="mb-2 block text-[12.5px] font-semibold text-fg">{f.labels.fecha}</span>
-            <input type="date" min={today} value={params.fecha ?? ""} onChange={(event) => go({ fecha: event.target.value || undefined })} className="h-10 w-full rounded-control border border-line bg-surface px-3 text-[13.5px] text-fg outline-none focus:border-accent" />
-          </label>
+            <DateField label={f.labels.fecha} name="fecha" hideLabel hiddenInput={false} locale={locale} disablePast today={today} value={params.fecha ?? null} onChange={(next) => go({ fecha: next ?? undefined })} inputClassName="text-[13.5px]" testId="site-listing-date" />
+          </div>
           <div>
             <span className="mb-2 block text-[12.5px] font-semibold text-fg">{f.labels.viajeros}</span>
-            <Select value={params.viajeros ?? ""} onChange={(value) => go({ viajeros: value || undefined })} options={[{ value: "", label: f.all }, ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))]} ariaLabel={f.labels.viajeros} className="w-[92px]" />
+            <Select value={params.viajeros ?? ""} onChange={(value) => go({ viajeros: value || undefined })} options={[{ value: "", label: f.all }, ...Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))]} ariaLabel={f.labels.viajeros} className="h-12 w-[92px]" />
           </div>
         </div>
         <ChipFilter label={f.kind} options={facets.kinds} value={params.tipo} onChange={(value) => go({ tipo: value })} />

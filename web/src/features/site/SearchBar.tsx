@@ -3,6 +3,7 @@
 import { CalendarDays, MapPin, Minus, Plus, Search, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { DateField } from "@/components/ui/DateField";
 import { Select } from "@/components/ui/Select";
 import { cn } from "@/lib/cn";
 import { listingQuery, type Option } from "@/lib/site";
@@ -26,7 +27,7 @@ export function Stepper({ value, min, max, onChange, label, removeLabel, addLabe
 
 export function SearchBar({ destinations, className, initial }: { destinations: Option[]; className?: string; initial?: { destino?: string; fecha?: string; viajeros?: string } }) {
   const router = useRouter();
-  const { href, t } = useSite();
+  const { href, t, locale } = useSite();
   const [destino, setDestino] = useState(initial?.destino ?? "");
   const [fecha, setFecha] = useState(initial?.fecha ?? "");
   const [viajeros, setViajeros] = useState(Number(initial?.viajeros ?? 2));
@@ -48,13 +49,13 @@ export function SearchBar({ destinations, className, initial }: { destinations: 
           <span className="flex h-8 items-center"><Select value={destino} onChange={setDestino} options={[{ value: "", label: t.search.allDestinations }, ...destinations]} placeholder={t.search.where} ariaLabel={t.search.destination} className="h-8! w-full border-0! bg-transparent! px-0! text-[14px]" /></span>
         </span>
       </label>
-      <label className="flex h-16 min-w-0 items-center gap-3 rounded-2xl px-3 transition hover:bg-surface-2">
+      <div className="flex h-16 min-w-0 items-center gap-3 rounded-2xl px-3 transition hover:bg-surface-2">
         <CalendarDays size={18} className="flex-none text-brand" />
         <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
           <span className="block text-[11.5px] font-semibold leading-4 text-fg-3">{t.search.date}</span>
-          <input type="date" value={fecha} min={today} onChange={(event) => setFecha(event.target.value)} aria-label={t.search.tripDate} className="block h-8! min-h-0! w-full border-0! bg-transparent! p-0! text-[14px] leading-8 text-fg shadow-none! outline-none" />
+          <DateField label={t.search.tripDate} name="fecha" hideLabel variant="bare" locale={locale} disablePast today={today} value={fecha || null} onChange={(next) => setFecha(next ?? "")} testId="site-search-date" />
         </span>
-      </label>
+      </div>
       <div className="flex h-16 min-w-0 items-center gap-3 rounded-2xl px-3 transition hover:bg-surface-2">
         <Users size={18} className="flex-none text-brand" />
         <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">

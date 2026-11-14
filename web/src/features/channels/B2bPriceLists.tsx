@@ -12,6 +12,7 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SidePanel } from "@/components/ui/SidePanel";
 import { SwitchField } from "@/components/ui/SwitchField";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { HiddenFields } from "@/features/catalog-shared/CatalogPanels";
 import type { B2bProductRates, B2bRate } from "@/lib/channels";
@@ -45,7 +46,7 @@ function RateFields({ product, agencies, rate }: { product: Product; agencies: A
         <SelectField label="Moneda" name="currency" defaultValue={currency} options={[{ value: "PEN", label: "Soles" }, { value: "USD", label: "Dólares" }]} />
         <TextField label="Comisión (%)" name="commission_pct" type="number" step="0.5" min="0" max="30" required defaultValue={current?.commission_pct ?? agency?.commission_pct ?? 10} />
       </div>
-      <TextField label="Vigente hasta" name="valid_to" type="date" defaultValue={current?.valid_to ?? ""} hint="Vacío: rige mientras dure el convenio de la agencia." />
+      <DateField label="Vigente hasta" name="valid_to" defaultValue={current?.valid_to} hint="Vacío: rige mientras dure el convenio de la agencia." />
       <SwitchField label="Permite reservar a crédito" name="credit_allowed" checked={credit && Boolean(agency?.credit)} onCheckedChange={setCredit} disabled={!agency?.credit} hint={agency?.credit ? "Descuenta de la línea de crédito de la agencia." : "La agencia no tiene línea de crédito: solo prepago."} />
       <TextField label="Condiciones" name="conditions" maxLength={300} defaultValue={current?.conditions ?? ""} placeholder="Opcional" />
       <TextField label="Restricciones" name="restrictions" maxLength={300} defaultValue={current?.restrictions ?? ""} placeholder="Opcional" />

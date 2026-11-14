@@ -38,6 +38,7 @@ return [
         'finance.treasury.expenses.store',
         'finance.treasury.replenishments.pay',
         'approvals.portal.invoices.observe',
+        'sitio.reservations.web-reactivation.store',
         'approvals.portal.invoices.validate',
         'platform.invoices.dunning.suspend',
         'supplier.payables.invoices.destroy',

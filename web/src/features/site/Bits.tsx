@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
 import type { Money, Rating } from "@/lib/site";
 import { useSite } from "./SiteContext";
+import { Referential } from "./SiteMoney";
 
 export function Stars({ value, size = 14, className }: { value: number; size?: number; className?: string }) {
   const { t } = useSite();
@@ -47,6 +48,7 @@ export function PriceTag({ from, list, label, size = "md", unit }: { from: Money
         {list != null && <s className="text-[12.5px] text-fg-3">{formatMoney(list, from.currency)}</s>}
       </span>
       <span className="block text-[11px] text-fg-3">{unit ?? t.cards.perPerson}</span>
+      <Referential amount={from.amount} currency={from.currency} />
     </span>
   );
 }

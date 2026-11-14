@@ -78,7 +78,7 @@ export function AgencyShell({ session, preview = false, children }: { session: A
   const isActive = (href: string) => (href === AGENCY_HOME ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
 
   return (
-    <div className="relative flex min-h-dvh flex-col">
+    <div className="relative flex min-h-dvh flex-col" data-testid="app-shell">
       {preview && (
         <div className="z-40 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-fg px-4 py-2 text-center text-[12.5px] text-bg">
           <span className="flex items-center gap-1.5"><Eye size={14} /> Vista previa de solo lectura{session ? ` como ${session.user.name}` : ""}. No se guarda ningún cambio.</span>

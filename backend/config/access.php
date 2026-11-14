@@ -33,6 +33,10 @@ return [
 
     'platform_permissions' => ['admin.tenant.manage', 'admin.audit.view'],
 
+    'platform_routes' => [
+        '/plataforma' => ['admin.tenant.manage'],
+    ],
+
     'experience_routes' => [
         'shared' => ['me', 'me.access', 'me.counts', 'me.permissions', 'me.notifications.index', 'me.notifications.read-all', 'ops.evidences.presign', 'mobile.devices.', 'documents.download', 'crecimiento-a.ops.checkin.'],
         'portal' => ['b2b.', 'supplier.', 'portal.', 'public.me.', 'mobile.passenger.'],
@@ -109,7 +113,7 @@ return [
         '/admin' => ['admin.users.manage', 'admin.tenant.manage'],
         '/admin/usuarios' => ['admin.users.manage'],
         '/admin/sedes' => ['admin.users.manage'],
-        '/admin/roles' => ['admin.roles.manage'],
+        '/admin/roles' => ['admin.roles.manage', 'admin.users.manage'],
         '/admin/configuracion' => ['admin.settings.manage'],
         '/admin/personalizacion' => ['admin.settings.manage'],
         '/admin/reglas' => ['admin.settings.manage'],

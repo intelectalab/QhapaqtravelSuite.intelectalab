@@ -73,8 +73,9 @@ final class SiteAccountDirectory
         $row = $account->reservation($code);
         $services = DB::table('booking_reservation_services')->where('reservation_id', $row->id)->orderBy('service_date')->orderBy('service_time')->get(['name', 'service_date', 'service_time', 'pax', 'status', 'confirmation_code']);
         $passengers = DB::table('booking_passengers')->where('reservation_id', $row->id)->orderBy('seq')->get(['full_name', 'pax_type', 'pending', 'is_lead']);
-        $payments = DB::table('fin_payments')->where('reservation_id', $row->id)->where('kind', 'cobro')->orderByDesc('paid_on')->get(['code', 'method', 'amount', 'currency', 'status', 'paid_on']);
+        $payments = DB::table('fin_payments')->where('reservation_id', $row->id)->where('kind', 'cobro')->orderByDesc('paid_on')->get(['id', 'code', 'method', 'amount', 'currency', 'status', 'paid_on']);
         $order = DB::table('booking_reservations as r')->join('channel_ecom_orders as o', 'o.id', '=', 'r.ecom_order_id')->where('r.id', $row->id)->value('o.code');
+        $proofs = app(TransferProofs::class)->latest($payments->where('status', 'pendiente')->pluck('id')->map(fn (mixed $id): string => (string) $id)->all());
 
         return [
             'code' => $row->code,
@@ -89,7 +90,7 @@ final class SiteAccountDirectory
             'passengers' => $passengers->map(fn (stdClass $p): array => ['name' => $p->full_name, 'type' => $p->pax_type, 'pending' => (bool) $p->pending, 'lead' => (bool) $p->is_lead])->all(),
             'receivables' => $account->isPassenger() ? [] : $this->receivableRows($account, [$row->id])->map(fn (array $r): array => $this->receivable($r))->values()->all(),
             'vouchers' => $this->voucherRows([$row->id])->all(),
-            'payments' => $account->isPassenger() ? [] : $payments->map(fn (stdClass $p): array => ['code' => $p->code, 'method' => $p->method, 'amount' => Decimal::toApi((string) $p->amount), 'currency' => $p->currency, 'status' => $p->status, 'date' => $p->paid_on])->all(),
+            'payments' => $account->isPassenger() ? [] : $payments->map(fn (stdClass $p): array => ['code' => $p->code, 'method' => $p->method, 'amount' => Decimal::toApi((string) $p->amount), 'currency' => $p->currency, 'status' => $p->status, 'date' => $p->paid_on, 'proof_at' => $proofs[(string) $p->id]['last_at'] ?? null, 'can_upload_proof' => $p->status === 'pendiente' && $p->method !== 'tarjeta_e_commerce'])->all(),
         ];
     }
 

@@ -10,6 +10,7 @@ import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { ConfirmAction, HiddenFields, PanelSection, STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
 import type { ProviderContact, ProviderRow, ProvidersOverview } from "@/lib/catalog-providers";
@@ -40,11 +41,14 @@ function ProviderFields({ overview, provider }: { overview: ProviderFormContext;
       </PanelSection>
       <PanelSection title="Contrato">
         <div className="grid grid-cols-2 gap-3">
-          <TextField label="Inicio" name="contract_start" type="date" required defaultValue={provider?.contract_start ?? overview.today} />
-          <TextField label="Fin" name="contract_end" type="date" required defaultValue={provider?.contract_end} />
+          <DateField label="Inicio" name="contract_start" required defaultValue={provider?.contract_start ?? overview.today} />
+          <DateField label="Fin" name="contract_end" required defaultValue={provider?.contract_end} />
         </div>
         <ChoiceGroup label="Moneda" name="currency" options={list(overview.options.currencies)} defaultValue={provider?.currency ?? "PEN"} />
-        <TextField label="Condiciones de pago" name="payment_terms" maxLength={120} defaultValue={provider?.payment_terms ?? undefined} placeholder="Por ejemplo: crédito 15 días" />
+        <div className="grid grid-cols-[1fr_150px] gap-3">
+          <TextField label="Condiciones de pago" name="payment_terms" maxLength={120} defaultValue={provider?.payment_terms ?? undefined} placeholder="Por ejemplo: crédito 15 días" />
+          <TextField label="Plazo de respuesta (h)" name="response_sla_hours" type="number" inputMode="numeric" min={1} max={240} defaultValue={provider?.response_sla_hours ?? undefined} placeholder={String(overview.options.agency_response_hours)} hint="Vacío: el de la agencia." />
+        </div>
         {provider && (
           <div className="grid grid-cols-[110px_1fr] gap-3">
             <TextField label="Calificación" name="rating" type="number" step="0.1" min={1} max={5} defaultValue={provider.rating || undefined} />

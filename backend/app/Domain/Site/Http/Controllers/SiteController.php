@@ -10,6 +10,7 @@ use App\Domain\Site\Support\QuoteTokens;
 use App\Domain\Site\Support\SiteBooking;
 use App\Domain\Site\Support\SiteCatalog;
 use App\Domain\Site\Support\SiteContent;
+use App\Domain\Site\Support\SiteCurrency;
 use App\Domain\Site\Support\SitePages;
 use App\Domain\Site\Support\SiteProfile;
 use App\Domain\Site\Support\SiteQuote;
@@ -221,7 +222,7 @@ final class SiteController
         ]);
 
         $product = $quote->product($data['product']);
-        $result = $quote->quote($product, $data['date'], (int) $data['adults'], (int) ($data['children'] ?? 0), (int) ($data['infants'] ?? 0), $data['promo'] ?? null, SiteBooking::extrasFrom($data), false, $data['payment_mode'] ?? null);
+        $result = $quote->quote($product, $data['date'], (int) $data['adults'], (int) ($data['children'] ?? 0), (int) ($data['infants'] ?? 0), $data['promo'] ?? null, SiteBooking::extrasFrom($data), false, $data['payment_mode'] ?? null, null, $request->input('currency') ?? $request->header(SiteCurrency::HEADER));
 
         return response()->json(['data' => [...$result, ...QuoteTokens::issue($context->idOrFail(), $product->id, $result)]]);
     }

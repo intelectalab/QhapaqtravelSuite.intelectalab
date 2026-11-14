@@ -4,8 +4,9 @@ import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { SimpleTable } from "@/components/ui/SimpleTable";
-import { AVAILABILITY_HINT, AVAILABILITY_LABEL, durationLabel, PRODUCT_STATUS, type ProductDetail, type ProductEditorState, type ProductFormOptions, type ProductOverview, type ProductStatus, type ProductTranslations, type RelatedProduct } from "@/lib/catalog";
+import { AVAILABILITY_HINT, AVAILABILITY_LABEL, durationLabel, priceFromChannel, PRODUCT_STATUS, type ProductDetail, type ProductEditorState, type ProductFormOptions, type ProductOverview, type ProductStatus, type ProductTranslations, type RelatedProduct, type SeasonPrice } from "@/lib/catalog";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
 import { statusLabel } from "@/lib/tone";
@@ -76,6 +77,22 @@ function editAt(ctx: ProductTabContext, step: number, label?: string): ReactNode
   return ctx.options.can_update && ctx.product.status !== "ARCHIVED" ? <EditStepButton options={ctx.options} initial={ctx.editor} step={step} label={label} /> : undefined;
 }
 
+function SeasonPriceCell({ price, seasonId }: { price: SeasonPrice | undefined; seasonId: string }) {
+  if (!price) return <span className="text-fg-3">—</span>;
+  if (price.ended) return <span className="text-fg-3">Terminada</span>;
+  if (!price.amount || !price.currency) return <span className="text-[12.5px] text-bad">Sin tarifa vigente</span>;
+  const other = price.applied_season_id !== seasonId;
+  return (
+    <span className="inline-flex items-center justify-end gap-1">
+      <span>
+        <b className="block font-semibold">{formatMoney(price.amount, price.currency)}</b>
+        <span className="text-[11.5px] text-fg-3">{other ? `al ${formatDate(price.date ?? "")}, aplica ${price.applied_season ?? "sin temporada"}` : `adulto al ${formatDate(price.date ?? "")}`}</span>
+      </span>
+      <InfoTip label="De dónde sale el precio">Lo calcula el motor de reservas para un adulto en la primera fecha vendible de la temporada, con la tarifa y el factor que aplicaría hoy. Es el mismo precio que se cobra.{other ? " En esa fecha manda otra temporada de prioridad menor." : ""}</InfoTip>
+    </span>
+  );
+}
+
 function statusBadge(status: ProductStatus) {
   return <Badge tone={PRODUCT_STATUS[status]?.tone ?? "mute"}>{PRODUCT_STATUS[status]?.label ?? status}</Badge>;
 }
@@ -94,7 +111,14 @@ function RelatedTable({ rows, empty }: { rows: RelatedProduct[]; empty: string }
           </span>,
           row.relation,
           row.type,
-          row.price_from ? formatMoney(row.price_from.amount, row.price_from.currency) : "Sin tarifa",
+          row.price_from ? (
+            <span key="price">
+              {formatMoney(row.price_from.amount, row.price_from.currency)}
+              {priceFromChannel(row.price_from) && <span className="block text-[11.5px] text-fg-3">{priceFromChannel(row.price_from)}</span>}
+            </span>
+          ) : (
+            "Sin tarifa"
+          ),
           statusBadge(row.status),
         ],
       }))}
@@ -296,9 +320,10 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
           action={<span className="flex flex-wrap gap-2">{canSeasons && <SeasonAssociateAction product={product} options={options} associated={[...seasonIds]} />}<ModuleLink href="/catalogo/tarifas/temporadas" label="Administrar temporadas" /></span>}
         >
           <SimpleTable
-            columns={[{ header: "Temporada" }, { header: "Fechas" }, { header: "Prioridad", align: "right" }, { header: "Factor", align: "right" }, { header: "Tarifas que la usan" }, { header: "Estado" }, ...(canSeasons ? [{ header: "" }] : [])]}
+            columns={[{ header: "Temporada" }, { header: "Fechas" }, { header: "Prioridad", align: "right" }, { header: "Factor", align: "right" }, { header: "Precio en temporada", align: "right" }, { header: "Tarifas que la usan" }, { header: "Estado" }, ...(canSeasons ? [{ header: "" }] : [])]}
             rows={options.seasons.filter((season) => seasonIds.has(season.id)).sort((a, b) => a.priority - b.priority).map((season) => {
               const used = editor.rates.filter((rate) => rate.season_id === season.id);
+              const price = overview.season_prices?.[season.id];
               return {
                 key: season.id,
                 muted: season.status !== "activa",
@@ -307,6 +332,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
                   `${formatDate(season.date_from)} al ${formatDate(season.date_to)}`,
                   <span key="priority" className="font-mono">{season.priority}</span>,
                   `×${Number(season.factor).toFixed(2)}`,
+                  <SeasonPriceCell key="price" price={price} seasonId={season.id} />,
                   used.length ? <span key="rates" className="font-mono text-[12.5px]">{used.map((rate) => rate.ref).join(", ")}</span> : <span key="rates" className="text-fg-3">Asociación directa</span>,
                   <Badge key="status" tone={season.status === "activa" ? "ok" : "mute"}>{season.status === "activa" ? "Activa" : "Inactiva"}</Badge>,
                   ...(canSeasons ? [associated.has(season.id) && used.length === 0 ? <SeasonDissociateAction key="off" product={product} season={season} /> : ""] : []),

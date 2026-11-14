@@ -9,6 +9,7 @@ use App\Domain\Finance\Actions\InvoiceFollowUp;
 use App\Domain\Iam\Models\Sede;
 use App\Domain\Iam\Models\User;
 use App\Domain\Iam\Support\Invitations;
+use App\Domain\Operations\Support\OperationsSettings;
 use App\Domain\Platform\Http\Requests\TenantProvisionRequest;
 use App\Domain\Platform\Models\Plan;
 use App\Domain\Platform\Models\PlatformUser;
@@ -224,7 +225,7 @@ final class ProvisionTenant
                 'noshow_text' => 'No-show se factura al 100 %.',
                 'refund_text' => 'Reembolsos en 7 a 15 días hábiles por el mismo medio de pago.',
             ],
-            'operations' => ['voucher_hours_before' => 72, 'assign_expiry_min' => 120, 'checkin_tolerance_min' => 15, 'modify_min_hours' => 48, 'max_pax_per_guide' => 16, 'offline_sync_min' => 10, 'pay_reminder_days' => 3, 'trip_notice_hours' => 48, 'incident_escalate_min' => 30],
+            'operations' => ['voucher_hours_before' => 72, 'assign_expiry_min' => 120, 'checkin_tolerance_min' => 15, 'modify_min_hours' => 48, 'max_pax_per_guide' => 16, 'offline_sync_min' => 10, 'pay_reminder_days' => 3, 'trip_notice_hours' => 48, 'incident_escalate_min' => 30, ...OperationsSettings::DEFAULTS],
             'channels' => $channels,
         ];
 

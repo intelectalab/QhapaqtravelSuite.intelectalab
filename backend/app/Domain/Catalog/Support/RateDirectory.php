@@ -122,9 +122,13 @@ final class RateDirectory
             ->filter(fn (object $rate) => $seesNet || ! self::isNet($rate->rate_type, $rate->channel))
             ->map(fn (object $rate) => self::presentRate($rate, $today, $seesCost, $seesMargin))
             ->values();
+        $prices = app(RateCurrencyPrices::class);
+        $alt = $prices->forRates($rates->pluck('id')->all());
+        $rates = $rates->map(fn (array $rate): array => [...$rate, 'alt_prices' => $alt[$rate['id']] ?? []]);
 
         return [
             'today' => $today,
+            'multi_currency' => ['enabled' => $prices->enabled(), 'currencies' => $prices->chargeCurrencies()],
             'rates' => $rates,
             'seasons' => $seasons,
             'overlaps' => $this->overlaps($seasons),

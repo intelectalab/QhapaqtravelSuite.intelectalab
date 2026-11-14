@@ -11,6 +11,7 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { SwitchField } from "@/components/ui/SwitchField";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import type { CommissionRow, CommissionRule, CommissionsOverview } from "@/lib/finance";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -93,8 +94,8 @@ function RuleFields({ rule, today }: { rule?: CommissionRule; today: string }) {
       )}
       <SelectField label="Base de cálculo" name="base_type" options={BASES} defaultValue={rule?.base_type ?? (condition === "b2b_convenio" ? "total" : "neto_sin_igv")} />
       <div className="grid grid-cols-2 gap-3">
-        <TextField label="Rige desde" name="valid_from" type="date" required defaultValue={rule?.valid_from ?? today} />
-        <TextField label="Hasta (opcional)" name="valid_to" type="date" defaultValue={rule?.valid_to ?? ""} />
+        <DateField label="Rige desde" name="valid_from" required defaultValue={rule?.valid_from ?? today} />
+        <DateField label="Hasta (opcional)" name="valid_to" defaultValue={rule?.valid_to} />
       </div>
       {rule && (
         <>

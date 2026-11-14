@@ -13,6 +13,8 @@ import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatDateTime, formatMoney, initials } from "@/lib/format";
 import { CYCLE_LABEL, planTone, type TenantDetail } from "@/lib/platform";
 import { getProvisionOptions, getTenant, listPlans } from "@/lib/server/platform";
+import { TenantOseCard } from "@/features/platform/FinanceIntegrations";
+import { getTenantOse } from "@/lib/server/platformFinance";
 
 const ACTIONS: Record<string, { label: string; tone: "bad" | "ok" | "t1" | "warn"; icon: typeof History }> = {
   suspender: { label: "Suspendida", tone: "bad", icon: CirclePause },
@@ -36,7 +38,7 @@ export async function generateMetadata({ params }: PageProps<"/plataforma/agenci
 export default async function AgenciaPage({ params, searchParams }: PageProps<"/plataforma/agencias/[code]">) {
   const { code } = await params;
   const { editar } = await searchParams;
-  const [tenant, plans, options] = await Promise.all([getTenant(code), listPlans(), getProvisionOptions()]);
+  const [tenant, plans, options, ose] = await Promise.all([getTenant(code), listPlans(), getProvisionOptions(), getTenantOse(code)]);
   const tone = tenant.status === "suspendido" ? "mute" : planTone(tenant.plan?.rank ?? 1);
 
   return (
@@ -141,6 +143,8 @@ export default async function AgenciaPage({ params, searchParams }: PageProps<"/
           )}
         </Card>
       </div>
+
+      <TenantOseCard data={ose} />
 
       <Card className="mt-5">
         <TintCardTitle icon={History} title="Historial de estado" />

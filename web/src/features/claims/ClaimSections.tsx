@@ -12,6 +12,7 @@ import { HiddenFields } from "@/features/catalog-shared/CatalogPanels";
 import { BarChart } from "@/components/ui/Charts";
 import { FieldList } from "@/components/ui/Details";
 import { PanelAction } from "@/components/ui/PanelAction";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
 import type { ClaimHoliday, ClaimReport, ClaimSheet, ClaimsOverview } from "@/lib/claims";
@@ -273,7 +274,7 @@ function HolidayForm({ overview, holiday }: { overview: ClaimsOverview; holiday?
       {() => (
         <>
           <HiddenFields values={{ step: "save", original: holiday?.date, current: JSON.stringify(overview.holidays) }} />
-          <TextField label="Fecha" name="date" type="date" required defaultValue={holiday?.date} />
+          <DateField label="Fecha" name="date" required defaultValue={holiday?.date} />
           <TextField label="Nombre" name="name" required minLength={3} maxLength={120} defaultValue={holiday?.name} placeholder="Día de la Independencia" />
         </>
       )}

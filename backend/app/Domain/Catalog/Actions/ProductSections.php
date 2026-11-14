@@ -195,6 +195,11 @@ final class ProductSections
                 $base = ['service_id' => null, 'component_product_id' => $productId, 'provider_id' => null, 'unit' => 'unidad'];
             }
 
+            $requestedUnit = trim((string) ($component['unit'] ?? ''));
+            if ($requestedUnit !== '' && mb_strtolower($requestedUnit) !== mb_strtolower(trim((string) $base['unit']))) {
+                throw ApiException::unprocessable('CAT-BR-10', "El componente {$position} usa la unidad de su servicio ({$base['unit']}). Si necesitas otra unidad, crea otro servicio.");
+            }
+
             $values = [
                 ...$base,
                 'quantity' => round((float) $component['quantity'], 2),

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { SelectField } from "@/components/ui/SelectField";
 import { SimpleTable } from "@/components/ui/SimpleTable";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { TintCardTitle } from "@/components/ui/Tinted";
 import { ResultView } from "@/features/catalog-rates/PricingRules";
@@ -113,7 +114,7 @@ function Simulator({ code, rates, today, markup, canSave }: { code: string; rate
       <div className="grid content-start gap-3">
         <SelectField label="Tarifa" name="sm_rate" value={values.rate_id} onChange={set("rate_id")} options={live.map((row) => ({ value: row.id, label: `${row.ref} · ${row.rate_type} ${row.segment}`, hint: `costo ${formatMoney(row.cost, row.currency)}` }))} />
         <div className="grid grid-cols-2 gap-3">
-          <TextField label="Fecha" type="date" value={values.date} onChange={(event) => set("date")(event.target.value)} />
+          <DateField label="Fecha" name="date" hiddenInput={false} value={values.date} onChange={(next) => set("date")(next ?? "")} />
           <TextField label="Pasajeros" type="number" min={1} max={500} value={values.pax} onChange={(event) => set("pax")(event.target.value)} />
         </div>
         <div className="grid grid-cols-2 gap-3">

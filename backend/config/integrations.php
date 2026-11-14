@@ -7,6 +7,7 @@ return [
         'fiscal' => env('FISCAL_GATEWAY', 'fake'),
         'payments' => env('PAYMENT_GATEWAY', 'fake'),
         'messaging' => env('MESSAGING_CHANNEL', 'fake'),
+        'whatsapp' => env('WHATSAPP_CLOUD', 'fake'),
         'reviews' => env('REVIEWS_PROVIDER', 'fake'),
         'fx' => env('FX_RATE_PROVIDER', 'fake'),
         'antivirus' => env('ANTIVIRUS_PROVIDER', 'fake'),

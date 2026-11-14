@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Inbox\Support\MessageCipher;
 use App\Domain\Integrations\Support\ChannelWebhooks;
 use App\Domain\Platform\Support\WhatsappWebhook;
 use Illuminate\Routing\Middleware\ThrottleRequests;
@@ -108,10 +109,11 @@ it('GET /integrations/whatsapp/webhook devuelve el challenge solo con el token d
 it('POST /integrations/whatsapp/webhook valida la firma, crea la conversación una sola vez y reabre la resuelta', function () {
     $phone = (string) random_int(100000000000, 999999999999);
     $account = inboxCtAccount('whatsapp', $phone);
+    app(WhatsappWebhook::class)->storeApp(['app_id' => '1234567890123'], 'secreto-del-webhook-inbox', null, (string) platformUser()->getKey());
     $payload = inboxCtWhatsapp($phone, 'wamid.'.Str::random(20), 'Hola, quiero cambiar la fecha de mi tour.');
 
     expect(inboxCtWaPost($payload, 'firma-equivocada-del-todo'))->toBeApiError(401, 'WEBHOOK_SIGNATURE_INVALID');
-    expect(inboxCtWaPost(inboxCtWhatsapp('000111222', 'wamid.x', 'Hola')))->toBeApiError(404);
+    inboxCtWaPost(inboxCtWhatsapp('000111222', 'wamid.x', 'Hola'))->assertStatus(202)->assertJsonPath('data.ignored', 1);
 
     inboxCtWaPost($payload)->assertStatus(202)->assertJsonPath('data.received', 1)->assertJsonPath('data.duplicates', 0);
     inboxCtWaPost($payload)->assertStatus(202)->assertJsonPath('data.received', 0)->assertJsonPath('data.duplicates', 1)->assertJsonPath('data.events.0.status', 'duplicado');
@@ -178,7 +180,8 @@ it('POST /integrations/email/inbound resuelve la agencia por buzón, guarda adju
         ->and($conversation->contact_email)->toBe('gabriela.rios@correo.pe')
         ->and($conversation->client_id)->not->toBeNull()
         ->and($messages)->toHaveCount(2)
-        ->and($messages->first()->body)->toContain('¿Tienen cupos para el 20?')
+        ->and($messages->first()->body)->not->toContain('¿Tienen cupos para el 20?')
+        ->and(MessageCipher::open($messages->first()->body))->toContain('¿Tienen cupos para el 20?')
         ->and($attachment->file_name)->toBe('pasaporte.pdf')
         ->and(Storage::disk((string) config('filesystems.default'))->exists($attachment->storage_path))->toBeTrue()
         ->and($event->status)->toBe('procesado')

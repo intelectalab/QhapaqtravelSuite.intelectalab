@@ -137,6 +137,7 @@ export function OpportunitiesTable({ board, today }: { board: OpportunityBoard; 
       csv={{
         title: "Oportunidades",
         fileName: "oportunidades",
+        permission: "reports.view",
         columns: [
           { header: "Código", value: (item) => item.code },
           { header: "Oportunidad", value: (item) => item.title },

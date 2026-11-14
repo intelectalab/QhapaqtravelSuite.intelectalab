@@ -6,9 +6,10 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { onNotificationOpened, onNotificationReceived } from "../src/push";
 import { AppProvider, useApp } from "../src/state/AppProvider";
 import { colors } from "../src/theme";
+import { UpdateRequired } from "../src/ui/UpdateRequired";
 
 function Gate() {
-  const { session, kind, sync } = useApp();
+  const { session, kind, sync, upgrade } = useApp();
   const segments = useSegments();
   const router = useRouter();
 
@@ -34,6 +35,8 @@ function Gate() {
     if (kind === "passenger" && area !== "pasajero") router.replace("/pasajero");
     if (kind === "operator" && (area === "login" || area === "pasajero")) router.replace("/");
   }, [session, kind, segments, router]);
+
+  if (upgrade) return <UpdateRequired info={upgrade} />;
 
   if (session === "loading") {
     return (

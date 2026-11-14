@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Domain\Reports\Http\Controllers;
 
 use App\Domain\Shared\Audit\AuditLogger;
+use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 final class DataExportController
 {
+    public const CRM_SCREENS = ['leads', 'opportunities', 'clientes', 'postventa-casos', 'postventa-segmentacion'];
+
     public function store(Request $request, AuditLogger $audit): JsonResponse
     {
         $data = $request->validate([
@@ -23,6 +26,10 @@ final class DataExportController
             'filters' => ['nullable', 'array', 'max:30'],
             'filters.*' => ['string', 'max:200'],
         ]);
+
+        if (in_array($data['screen'], self::CRM_SCREENS, true) && ! $request->user()?->can('reports.view')) {
+            throw ApiException::forbidden('CRM-EXP-02', 'Para exportar necesitas el permiso para ver reportes.', ['reports.view']);
+        }
 
         $scope = ['all' => 'todas las filas filtradas', 'first' => 'primeras filas', 'selected' => 'filas seleccionadas'][$data['scope']];
         $audit->log(

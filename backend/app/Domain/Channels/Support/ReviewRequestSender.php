@@ -25,6 +25,8 @@ final class ReviewRequestSender
         $values = ['{nombre}' => $name !== '' ? $name : 'viajero', '{tour}' => (string) ($reservation->title ?? 'tu viaje'), '{agencia}' => (string) $tenant->commercial_name, '{enlace}' => $link];
         $body = strtr((string) $settings['body'], $values);
         $body = str_contains((string) $settings['body'], '{enlace}') ? $body : $body."\n\n".$link;
+        $external = app(ExternalReviewLinks::class)->invitationLines((string) $tenant->subdomain, (string) $tenant->getKey(), (string) $request->code);
+        $body = $external === [] ? $body : $body."\n\n".implode("\n", $external);
         $subject = strtr((string) $settings['subject'], $values);
 
         $result = $this->messaging->send(new OutboundMessage((string) $request->channel, (string) $request->to_address, $reminder ? "Recordatorio: {$subject}" : $subject, $body, null, ['link' => $link], (string) ($request->lang ?? 'es')));

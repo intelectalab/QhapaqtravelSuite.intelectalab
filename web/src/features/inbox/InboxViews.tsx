@@ -103,9 +103,18 @@ export function ConversationList({ items, selected }: { items: ConversationSumma
                   <span className="flex-none text-[11px] text-fg-3">{formatDateTime(item.last_message_at, false)}</span>
                 </span>
                 <span className="block truncate text-[12.5px] text-fg-2">{item.subject}</span>
-                {item.preview && <span className="mt-0.5 block truncate text-[12px] text-fg-3">{item.preview_note ? "Nota: " : item.preview_inbound ? "" : "Tú: "}{item.preview}</span>}
+                {item.preview && (
+                  <span className={cn("mt-0.5 flex min-w-0 items-center gap-1 text-[12px]", item.preview_note ? "text-warn" : "text-fg-3")}>
+                    {item.preview_note && <StickyNote size={12} className="flex-none" aria-hidden />}
+                    <span className="truncate">
+                      {item.preview_note ? <b className="font-semibold">Nota: </b> : item.preview_inbound ? "" : "Tú: "}
+                      {item.preview}
+                    </span>
+                  </span>
+                )}
                 <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
                   {item.unread > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1.5 text-[10.5px] font-bold text-white">{item.unread}</span>}
+                  {item.awaiting_reply && !["breached", "running", "warning"].includes(item.sla.state) && <Badge tone="warn" dot={false}>Sin responder</Badge>}
                   {item.sla.state === "breached" && <Badge tone="bad">Fuera de plazo</Badge>}
                   {(item.sla.state === "running" || item.sla.state === "warning") && item.status !== "resuelta" && <Badge tone={item.sla.state === "warning" ? "warn" : "info"} dot={false}>Responder en {slaCountdown(item.sla.due_at, now)}</Badge>}
                   {(item.priority === "alta" || item.priority === "critica") && <StatusBadge status={item.priority} />}

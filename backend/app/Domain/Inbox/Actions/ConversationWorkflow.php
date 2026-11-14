@@ -9,6 +9,7 @@ use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Inbox\Support\ConversationDirectory;
 use App\Domain\Inbox\Support\InboxNotices;
+use App\Domain\Inbox\Support\MessageCipher;
 use App\Domain\Portal\Support\PassengerNotices;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -49,7 +50,7 @@ final class ConversationWorkflow
                 'channel' => $conversation->channel,
                 'direction' => $internal ? 'internal' : 'out',
                 'author_user_id' => $actor->getKey(),
-                'body' => (string) ($data['body'] ?? ''),
+                'body' => MessageCipher::seal((string) ($data['body'] ?? '')),
                 'template_id' => $template->id ?? null,
                 'delivery_status' => $internal ? null : 'enviado',
                 'sent_at' => $now,
@@ -93,7 +94,7 @@ final class ConversationWorkflow
                     'channel' => $conversation->channel,
                     'direction' => 'system',
                     'author_user_id' => $actor->getKey(),
-                    'body' => "Asignada automáticamente a {$actor->name} al responder.",
+                    'body' => MessageCipher::seal("Asignada automáticamente a {$actor->name} al responder."),
                     'sent_at' => $now->copy()->subMillisecond(),
                     'created_by' => $actor->getKey(),
                 ]);
@@ -165,7 +166,7 @@ final class ConversationWorkflow
                 'channel' => $conversation->channel,
                 'direction' => 'system',
                 'author_user_id' => $actor->getKey(),
-                'body' => $resolved ? "Conversación resuelta por {$actor->name}." : "Conversación reabierta por {$actor->name}.",
+                'body' => MessageCipher::seal($resolved ? "Conversación resuelta por {$actor->name}." : "Conversación reabierta por {$actor->name}."),
                 'sent_at' => now(),
                 'created_by' => $actor->getKey(),
             ]);
@@ -255,7 +256,7 @@ final class ConversationWorkflow
                 'channel' => $conversation->channel,
                 'direction' => 'system',
                 'author_user_id' => $actor->getKey(),
-                'body' => $note,
+                'body' => MessageCipher::seal($note),
                 'sent_at' => now(),
                 'created_by' => $actor->getKey(),
             ]);

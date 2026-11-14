@@ -153,6 +153,7 @@ const buildMetrics = (today: string): MetricFilter<LeadRow>[] => [
 
 const csv: CsvExport<LeadRow> = {
   fileName: "leads",
+  permission: "reports.view",
   columns: [
     { header: "Código", value: (lead) => lead.code },
     { header: "Nombre", value: (lead) => lead.name },

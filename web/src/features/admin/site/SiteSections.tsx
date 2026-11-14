@@ -10,6 +10,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { AuditTrail } from "@/features/admin/AdminParts";
 import { ColorRole, PalettePicker, type ColorRoleKey, type ColorRoleSpec } from "@/features/admin/Branding";
@@ -371,8 +372,8 @@ function BannersForm({ studio }: { studio: StudioContext }) {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <TextField label="Texto del botón" name={`promo_${index}_cta_label`} value={promo.cta_label} maxLength={30} onChange={(event) => set((item) => void (item.cta_label = event.target.value))} error={field("cta_label")} placeholder="Reservar ahora" />
                     <TextField label="A dónde lleva" name={`promo_${index}_cta_href`} value={promo.cta_href} maxLength={200} onChange={(event) => set((item) => void (item.cta_href = event.target.value))} error={field("cta_href")} placeholder="/tours/machu-picchu" />
-                    <TextField label="Desde" name={`promo_${index}_starts_on`} type="date" value={promo.starts_on ?? ""} onChange={(event) => set((item) => void (item.starts_on = event.target.value || null))} error={field("starts_on")} />
-                    <TextField label="Hasta" name={`promo_${index}_ends_on`} type="date" value={promo.ends_on ?? ""} onChange={(event) => set((item) => void (item.ends_on = event.target.value || null))} error={field("ends_on")} />
+                    <DateField label="Desde" name={`promo_${index}_starts_on`} value={promo.starts_on} onChange={(next) => set((item) => void (item.starts_on = next))} error={field("starts_on")} />
+                    <DateField label="Hasta" name={`promo_${index}_ends_on`} value={promo.ends_on} onChange={(next) => set((item) => void (item.ends_on = next))} error={field("ends_on")} />
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <SwitchField label="Visible" name={`promo_${index}_visible`} checked={promo.visible} onCheckedChange={(checked) => set((item) => void (item.visible = checked))} />

@@ -6,6 +6,8 @@ namespace App\Domain\Inbox\Actions;
 
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Inbox\Support\InboxNotices;
+use App\Domain\Inbox\Support\InboxResponseTimes;
+use App\Domain\Inbox\Support\MessageCipher;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Carbon;
@@ -56,7 +58,7 @@ final class InboundMessages
             ]);
 
             if ($before !== 'abierta') {
-                DB::table('collab_messages')->insert(['id' => (string) Str::uuid7(), 'conversation_id' => $id, 'channel' => $channel, 'direction' => 'system', 'body' => 'La conversación se reabrió porque el cliente escribió de nuevo.', 'sent_at' => $now]);
+                DB::table('collab_messages')->insert(['id' => (string) Str::uuid7(), 'conversation_id' => $id, 'channel' => $channel, 'direction' => 'system', 'body' => MessageCipher::seal('La conversación se reabrió porque el cliente escribió de nuevo.'), 'sent_at' => $now]);
             }
         }
 
@@ -66,7 +68,7 @@ final class InboundMessages
             'conversation_id' => $id,
             'channel' => $channel,
             'direction' => 'in',
-            'body' => $message['body'],
+            'body' => MessageCipher::seal((string) $message['body']),
             'external_message_id' => $message['external_id'],
             'sent_at' => $sentAt,
         ]);
@@ -122,7 +124,7 @@ final class InboundMessages
             'priority' => 'media',
             'tags' => self::TAGS[$channel] ?? '{}',
             'client_id' => $client,
-            'first_response_due_at' => $now->copy()->addMinutes($sla),
+            'first_response_due_at' => app(InboxResponseTimes::class)->due($now, $sla),
             'last_inbound_at' => $now,
             'last_message_at' => $now,
             'unread_count' => 1,

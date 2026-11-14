@@ -8,6 +8,7 @@ use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class Portfolio
 {
@@ -48,7 +49,7 @@ final class Portfolio
     public static function missing(User $viewer, string $table, string $code, string $notFound, string $entity, string $ownerColumn = 'owner_id'): ApiException
     {
         if (self::ownOnly($viewer)) {
-            $owner = DB::table($table)->where('code', $code)->value($ownerColumn);
+            $owner = DB::table($table)->where(Str::isUuid($code) ? 'id' : 'code', $code)->value($ownerColumn);
 
             if ($owner !== null && (string) $owner !== (string) $viewer->getKey()) {
                 return ApiException::forbidden('SEC-BR-09', "{$entity} pertenece a la cartera de otro asesor. Si necesitas trabajarla, pide a tu gerente que te la reasigne.");

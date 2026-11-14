@@ -4,6 +4,7 @@ import { cache } from "react";
 import type { ChangeOptions, Occupancy, DirectFormOptions, ReservationCancellation, ReservationDetail, ReservationFeedback, ReservationHistoryEvent, ReservationList, ReservationListMeta, ReservationPaxMessage, ReservationRow, ReservationWebSnapshot } from "@/lib/reservations";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
+import { getDetail, type OutOfPortfolio } from "./detail";
 import { fetchPages } from "./pages";
 
 async function get<T>(path: string, method: "GET" | "POST" = "GET"): Promise<T | null> {
@@ -30,7 +31,7 @@ export async function listReservations(): Promise<ReservationList> {
 
 export const getOccupancy = (month?: string) => get<Occupancy>(`/reservations/occupancy${month && /^\d{4}-\d{2}$/.test(month) ? `?month=${month}` : ""}`);
 
-export const getReservation = cache(async (code: string): Promise<ReservationDetail> => (await get<ReservationDetail>(`/reservations/${encodeURIComponent(code)}`)) ?? notFound());
+export const getReservation = cache(async (code: string): Promise<ReservationDetail | OutOfPortfolio> => getDetail<ReservationDetail>(`/reservations/${encodeURIComponent(code)}`, "No pudimos cargar la reserva."));
 
 export const getReservationCancellation = async (code: string): Promise<ReservationCancellation | null> => get<ReservationCancellation>(`/reservations/${encodeURIComponent(code)}/cancellation/preview`, "POST");
 

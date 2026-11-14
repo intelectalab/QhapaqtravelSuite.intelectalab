@@ -13,6 +13,7 @@ import { FieldList } from "@/components/ui/Details";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SidePanel } from "@/components/ui/SidePanel";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { ConfirmAction, HiddenFields, PanelSection, STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
 import { RESIDENCY_LABEL, ruleValue, type PriceRule, type PricingOverview, type PricingResult } from "@/lib/catalog-pricing";
@@ -141,7 +142,7 @@ function Simulator({ overview }: { overview: PricingOverview }) {
           <PanelSection title="Datos de la venta">
             <SelectField label="Tarifa" name="rate_id" searchable value={values.rate_id} onChange={set("rate_id")} options={rates.map((rate) => ({ value: rate.id, label: `${overview.options.products.find((product) => product.id === rate.product_id)?.name ?? rate.ref}`, hint: `${rate.ref} · ${rate.rate_type} ${rate.segment} · ${rate.channel} · costo ${formatMoney(rate.cost, rate.currency)}` }))} />
             <div className="grid grid-cols-2 gap-3">
-              <TextField label="Fecha del servicio" type="date" value={values.date} onChange={(event) => set("date")(event.target.value)} />
+              <DateField label="Fecha del servicio" name="date" hiddenInput={false} value={values.date} onChange={(next) => set("date")(next ?? "")} />
               <TextField label="Pasajeros" type="number" min={1} max={500} value={values.pax} onChange={(event) => set("pax")(event.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-3">

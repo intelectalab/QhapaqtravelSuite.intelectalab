@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { SESSION_TODAY, type TreasuryAccount, type TreasuryMovement, type TreasuryOverview } from "@/lib/finance";
@@ -93,7 +94,7 @@ function MovementFields({ data, account }: { data: TreasuryOverview; account?: s
       <SelectField label="Cuenta bancaria" name="account" options={accounts} defaultValue={account} placeholder="Elige la cuenta" hint="Las cajas chicas registran gastos y las pasarelas su liquidación." />
       <div className="grid grid-cols-2 gap-3">
         <TextField label="Importe" name="amount" type="number" step="0.01" min="0.01" required />
-        <TextField label="Fecha" name="date" type="date" required max={data.today} defaultValue={data.today} />
+        <DateField label="Fecha" name="date" required max={data.today} defaultValue={data.today} />
       </div>
       <SelectField key={direction} label="Categoría" name="category" options={categories} defaultValue={categories[0]?.value} />
       <TextField label="Descripción" name="description" required maxLength={255} placeholder="Ejemplo: alquiler de oficina Cusco — noviembre" />

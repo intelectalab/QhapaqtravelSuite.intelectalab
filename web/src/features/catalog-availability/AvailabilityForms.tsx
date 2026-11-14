@@ -8,6 +8,7 @@ import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { ConfirmAction, HiddenFields, STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
 import { RANGE_STATUS, type AvailabilityOverview, type HoldRow, type RangeRow } from "@/lib/catalog-availability";
@@ -26,8 +27,8 @@ function RangeFields({ overview, range }: { overview: AvailabilityOverview; rang
         <SelectField label="Producto" name="product_id" options={overview.options.products.map((product) => ({ value: product.id, label: product.name, hint: product.code }))} placeholder="Elegir producto" />
       )}
       <div className="grid grid-cols-2 gap-3">
-        <TextField label="Desde" name="date_from" type="date" required defaultValue={range?.date_from ?? overview.today} />
-        <TextField label="Hasta" name="date_to" type="date" required defaultValue={range?.date_to} />
+        <DateField label="Desde" name="date_from" required defaultValue={range?.date_from ?? overview.today} />
+        <DateField label="Hasta" name="date_to" required defaultValue={range?.date_to} />
       </div>
       <ChoiceGroup label="Estado" name="status" defaultValue={range?.status ?? "disponible"} options={Object.entries(RANGE_STATUS).map(([value, item]) => ({ value, label: item.label }))} hint="Disponible abre venta; cerrado y agotado la bloquean en esas fechas." />
       <TextField label="Cupos por día" name="capacity_per_day" type="number" min={1} max={500} defaultValue={range?.capacity_per_day || 12} hint="Solo cuenta si el rango está disponible." />

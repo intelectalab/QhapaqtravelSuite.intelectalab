@@ -6,6 +6,8 @@ namespace App\Domain\Portal\Actions;
 
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Inbox\Support\InboxNotices;
+use App\Domain\Inbox\Support\InboxResponseTimes;
+use App\Domain\Inbox\Support\MessageCipher;
 use App\Domain\Portal\Support\PortalAccount;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -14,8 +16,6 @@ use Illuminate\Support\Str;
 
 final class PortalMessages
 {
-    private const DEFAULT_SLA_MINUTES = 240;
-
     public function __construct(private readonly CodeSequence $sequence, private readonly AuditLogger $audit) {}
 
     public function send(PortalAccount $account, array $data): string
@@ -32,7 +32,7 @@ final class PortalMessages
                 : null;
 
             if ($conversation === null) {
-                $sla = (int) (DB::table('collab_channel_accounts')->where('channel', 'portal')->where('status', 'activo')->value('first_response_sla_minutes') ?: self::DEFAULT_SLA_MINUTES);
+                $times = app(InboxResponseTimes::class);
                 $code = $this->sequence->next('collab_conversations', 'CNV-');
                 $id = (string) DB::table('collab_conversations')->insertGetId([
                     'code' => $code,
@@ -46,7 +46,7 @@ final class PortalMessages
                     'assignee_id' => $account->advisorId(),
                     'client_id' => $account->client->id,
                     'reservation_id' => $reservation?->id,
-                    'first_response_due_at' => $now->copy()->addMinutes($sla),
+                    'first_response_due_at' => $times->dueFor('portal', $now),
                     'last_inbound_at' => $now,
                     'last_message_at' => $now,
                     'unread_count' => 1,
@@ -67,7 +67,7 @@ final class PortalMessages
                 'channel' => 'portal',
                 'direction' => 'in',
                 'author_user_id' => $user->getKey(),
-                'body' => $data['body'],
+                'body' => MessageCipher::seal((string) $data['body']),
                 'sent_at' => $now,
                 'created_by' => $user->getKey(),
             ]);

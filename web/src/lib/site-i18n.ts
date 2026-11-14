@@ -30,6 +30,10 @@ const es = {
     lightTheme: "Usar tema claro",
     darkTheme: "Usar tema oscuro",
     language: "Idioma",
+    currency: "Moneda",
+    approx: (amount: string) => `≈ ${amount}`,
+    paidIn: (currency: string) => `Se paga en ${currency}. Conversión referencial con el tipo de cambio del día.`,
+    paidShort: (currency: string) => `se paga en ${currency}`,
   },
   footer: {
     about: "Tours, paquetes y experiencias diseñados por un equipo local, con atención antes, durante y después del viaje.",
@@ -124,6 +128,10 @@ const es = {
     emptyTitle: "No encontramos opciones con esos filtros",
     emptyBody: "Prueba otra fecha o quita algún filtro. Si prefieres, te armamos un viaje a medida con lo que buscas.",
     clear: "Limpiar filtros",
+    noDepartures: (date: string) => `No hay salidas el ${date}`,
+    withoutDate: "Ver sin fecha",
+    nearbyTitle: "Fechas cercanas con cupo",
+    nearbyCount: (count: number) => (count === 1 ? "1 opción" : `${count} opciones`),
   },
   filters: {
     labels: { destino: "Destino", tipo: "Tipo", fecha: "Fecha", viajeros: "Viajeros", duracion: "Duración", precio_min: "Precio mínimo", precio_max: "Precio máximo", categoria: "Categoría", dificultad: "Condición física", idioma: "Idioma del guía", modalidad: "Modalidad", q: "Texto" },
@@ -438,6 +446,10 @@ const en: SiteText = {
     lightTheme: "Use light theme",
     darkTheme: "Use dark theme",
     language: "Language",
+    currency: "Currency",
+    approx: (amount: string) => `≈ ${amount}`,
+    paidIn: (currency: string) => `Paid in ${currency}. Reference conversion at today's exchange rate.`,
+    paidShort: (currency: string) => `paid in ${currency}`,
   },
   footer: {
     about: "Tours, packages and experiences designed by a local team, with support before, during and after your trip.",
@@ -532,6 +544,10 @@ const en: SiteText = {
     emptyTitle: "No options match those filters",
     emptyBody: "Try another date or remove a filter. If you prefer, we can put together a tailor-made trip around what you are looking for.",
     clear: "Clear filters",
+    noDepartures: (date: string) => `No departures on ${date}`,
+    withoutDate: "See without date",
+    nearbyTitle: "Nearby dates with availability",
+    nearbyCount: (count: number) => (count === 1 ? "1 option" : `${count} options`),
   },
   filters: {
     labels: { destino: "Destination", tipo: "Type", fecha: "Date", viajeros: "Travelers", duracion: "Duration", precio_min: "Minimum price", precio_max: "Maximum price", categoria: "Category", dificultad: "Fitness level", idioma: "Guide language", modalidad: "Format", q: "Text" },

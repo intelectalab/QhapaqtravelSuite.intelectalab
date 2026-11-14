@@ -76,7 +76,7 @@ export function SupplierShell({ session, children }: { session: SupplierSession 
   const isActive = (href: string) => (href === "/proveedor" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
 
   return (
-    <div className="relative flex min-h-dvh flex-col">
+    <div className="relative flex min-h-dvh flex-col" data-testid="app-shell">
       <div className="weave-band h-2 flex-none" />
       <div className="ambient-glow pointer-events-none absolute inset-x-0 top-2 h-[420px]" />
       <header className="sticky top-0 z-30 border-b border-line bg-surface/85 backdrop-blur-md">

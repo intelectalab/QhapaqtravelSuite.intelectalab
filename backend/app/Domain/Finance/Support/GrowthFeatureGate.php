@@ -21,6 +21,11 @@ final class GrowthFeatureGate
 
     public function __construct(private readonly RuleResolver $rules) {}
 
+    public function enabled(string $rule): bool
+    {
+        return $this->rules->on($rule);
+    }
+
     public function require(string $rule): void
     {
         if (! $this->rules->on($rule)) {

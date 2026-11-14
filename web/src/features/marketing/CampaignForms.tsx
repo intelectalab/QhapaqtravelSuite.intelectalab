@@ -10,10 +10,12 @@ import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateTimeField } from "@/components/ui/DateTimeField";
 import { TextField } from "@/components/ui/TextField";
 import { formatDate, formatDateTime, formatMoney, formatPercent } from "@/lib/format";
 import { rate, SAMPLE_VARIABLES, suppressedOf, type Campaign, type MarketingOverview } from "@/lib/marketing";
 import type { StepResult } from "@/lib/server/resource";
+import { CampaignPromotionAction } from "@/features/channels/Promotions";
 import { Preview, rulesHint } from "./TemplateForms";
 
 const initial: StepResult = { message: null, done: false };
@@ -124,10 +126,23 @@ export function CampaignFormAction({ overview, campaign, segmentCode, trigger }:
           ) : (
             <SelectField label="Código promocional (opcional)" name="promo_picker" options={activeCodes.map((code) => ({ value: code.code, label: code.code, hint: [code.product, code.valid_to ? `hasta ${formatDate(code.valid_to)}` : null].filter(Boolean).join(" · ") }))} value={promo} onChange={setPromo} placeholder="Sin código" />
           )}
-          {activeCodes.length > 0 && (
-            <button type="button" onClick={() => setCustomPromo(!customPromo)} className="-mt-2 self-start text-[12.5px] font-semibold text-accent hover:underline">
-              {customPromo ? "Elegir de las promociones activas" : "Escribir otro código"}
-            </button>
+          {(activeCodes.length > 0 || (overview.can.create_promotion && overview.promotion_form)) && (
+            <div className="-mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+              {activeCodes.length > 0 && (
+                <button type="button" onClick={() => setCustomPromo(!customPromo)} className="text-[12.5px] font-semibold text-accent hover:underline">
+                  {customPromo ? "Elegir de las promociones activas" : "Escribir otro código"}
+                </button>
+              )}
+              {overview.can.create_promotion && overview.promotion_form && (
+                <CampaignPromotionAction
+                  catalog={{ ...overview.promotion_form, rows: [] }}
+                  onCreated={(code) => {
+                    setPromo(code);
+                    setCustomPromo(true);
+                  }}
+                />
+              )}
+            </div>
           )}
           <div>
             <div className="mb-1.5 flex items-end justify-between gap-2">
@@ -262,7 +277,7 @@ export function CampaignDetailAction({ campaign, canManage, testOptions }: { cam
               <SelectField label="Datos de ejemplo" name="sample" options={testOptions.samples} placeholder="Sin contacto de ejemplo" clearable />
             </fieldset>
           )}
-          {canManage && draft && <TextField label="Enviar el" name="scheduled_at" type="datetime-local" icon={<CalendarClock size={17} />} hint="Al menos 15 minutos después de ahora. WhatsApp solo entre 08:00 y 20:00." />}
+          {canManage && draft && <DateTimeField label="Enviar el" name="scheduled_at" icon={<CalendarClock size={17} />} hint="Al menos 15 minutos después de ahora. WhatsApp solo entre 08:00 y 20:00." />}
           {canManage && scheduled && <p className="flex items-center gap-2 text-[12.5px] text-fg-3"><Undo2 size={14} /> Desprogramar la devuelve a borrador para editarla.</p>}
           {canManage && (draft || scheduled) && <p className="flex items-center gap-2 text-[12.5px] text-fg-3"><SendHorizontal size={14} /> Enviar ahora recalcula la audiencia, excluye bajas y a quien recibió otra campaña en 72 h, y despacha el envío por lotes.</p>}
           {campaign.status === "enviando" && <p className="rounded-xl bg-[color-mix(in_srgb,var(--sun)_12%,var(--surface))] px-3.5 py-2.5 text-[12.5px] text-fg-2">El envío está en curso por lotes. Antes de cada mensaje se vuelve a comprobar el consentimiento y la baja.</p>}

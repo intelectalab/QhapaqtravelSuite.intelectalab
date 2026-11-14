@@ -18,7 +18,7 @@ const serializeCollapsed = (value: boolean) => (value ? "1" : "0");
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { userId, groups, allows, lockedFor, navigation } = useWorkspace();
+  const { userId, groups, allows, lockedFor, requiredFor, navigation } = useWorkspace();
   const home = groups[0]?.screens[0]?.href ?? "/";
   const locked = lockedFor(pathname);
   const [collapsed, setCollapsed] = useStoredValue("kipucontrol-menu-collapsed", parseCollapsed, serializeCollapsed);
@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Topbar onOpenMenu={() => setMobileOpen(true)} />
         </div>
         <main className="relative w-full flex-1 px-4 pb-12 sm:px-6 xl:px-8">
-          {!allows(pathname) ? <NoAccess home={home} path={pathname} requestable={navigation === "agency"} /> : locked ? <FeatureLocked feature={locked} home={home} canManagePlan={allows("/admin/suscripcion")} /> : children}
+          {!allows(pathname) ? <NoAccess home={home} path={pathname} permissions={requiredFor(pathname)} requestable={navigation === "agency"} /> : locked ? <FeatureLocked feature={locked} home={home} canManagePlan={allows("/admin/suscripcion")} /> : children}
         </main>
       </div>
     </div>

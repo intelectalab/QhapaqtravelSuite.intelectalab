@@ -4,6 +4,7 @@ import { cache } from "react";
 import type { Advisor, CrmCatalogs, LeadDetail, LeadRow } from "@/lib/leads";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
+import { getDetail, type OutOfPortfolio } from "./detail";
 
 async function leadGet<T>(path: string): Promise<T | null> {
   const result = await apiFetch<T>(path);
@@ -19,9 +20,7 @@ export async function listLeads(): Promise<LeadRow[]> {
   return (await leadGet<LeadRow[]>("/crm/leads")) ?? [];
 }
 
-export const getLead = cache(async (code: string): Promise<LeadDetail> => {
-  return (await leadGet<LeadDetail>(`/crm/leads/${encodeURIComponent(code)}`)) ?? notFound();
-});
+export const getLead = cache(async (code: string): Promise<LeadDetail | OutOfPortfolio> => getDetail<LeadDetail>(`/crm/leads/${encodeURIComponent(code)}`, "No pudimos cargar el lead."));
 
 export const getCatalogs = cache(async (): Promise<CrmCatalogs | null> => leadGet<CrmCatalogs>("/crm/catalogs"));
 

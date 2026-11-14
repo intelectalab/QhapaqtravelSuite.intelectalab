@@ -12,6 +12,7 @@ use App\Domain\Corporate\Actions\CorporateStructure;
 use App\Domain\Corporate\Support\CorporateDirectory;
 use App\Domain\Corporate\Support\CorporateMember;
 use App\Domain\Corporate\Support\CorporatePeriod;
+use App\Domain\Corporate\Support\CorporatePortalRule;
 use App\Domain\Corporate\Support\CorporateReports;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Errors\ApiException;
@@ -245,6 +246,7 @@ final class CorporatePortalController
             ],
             'periods' => CorporatePeriod::options($this->directory->today()),
             'pending_approvals' => $member->can('approvals') ? app(CorporateApprovals::class)->pendingFor($member) : 0,
+            'read_only' => ! app(CorporatePortalRule::class)->enabled(),
         ];
     }
 

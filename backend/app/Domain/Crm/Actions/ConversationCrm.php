@@ -7,6 +7,7 @@ namespace App\Domain\Crm\Actions;
 use App\Domain\Iam\Models\User;
 use App\Domain\Inbox\Actions\ConversationWorkflow;
 use App\Domain\Inbox\Support\ConversationDirectory;
+use App\Domain\Inbox\Support\MessageCipher;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -78,7 +79,7 @@ final class ConversationCrm
                 'channel' => $conversation->channel,
                 'direction' => 'system',
                 'author_user_id' => $actor->getKey(),
-                'body' => "Actividad {$activity} agendada por {$actor->name}: {$data['subject']}.",
+                'body' => MessageCipher::seal("Actividad {$activity} agendada por {$actor->name}: {$data['subject']}."),
                 'sent_at' => now(),
                 'created_by' => $actor->getKey(),
             ]);

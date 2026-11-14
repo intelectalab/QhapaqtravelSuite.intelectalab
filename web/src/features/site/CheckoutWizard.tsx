@@ -9,6 +9,8 @@ import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { SelectField } from "@/components/ui/SelectField";
 import { StepIndicator } from "@/components/ui/StepIndicator";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
+import { DateTimeField } from "@/components/ui/DateTimeField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { capitalize, formatDate, formatDateTime, formatMoney } from "@/lib/format";
@@ -166,7 +168,7 @@ export function CheckoutWizard({ terms, walletPhone, cart, account = null, login
                   <FieldError message={allErrors.doc_number} />
                 </div>
               </div>
-              <TextField label="Fecha de nacimiento" type="date" value={buyer.birth_date} onChange={(event) => setBuyerField("birth_date")(event.target.value)} hint="Opcional" />
+              <DateField label="Fecha de nacimiento" name="buyer.birth_date" hiddenInput={false} value={buyer.birth_date} onChange={(next) => setBuyerField("birth_date")(next ?? "")} hint="Opcional" />
               <TextField label="Restricciones alimentarias" maxLength={120} value={buyer.diet} onChange={(event) => setBuyerField("diet")(event.target.value)} placeholder="Opcional" />
             </div>
           </Panel>
@@ -211,7 +213,7 @@ export function CheckoutWizard({ terms, walletPhone, cart, account = null, login
                   <FieldError message={allErrors[`${prefix}.last_name`]} />
                 </div>
                 <div>
-                  <TextField label="Fecha de nacimiento" type="date" value={traveler.birth_date || (auto ? buyer.birth_date : "")} onChange={(event) => setTraveler(index, "birth_date", event.target.value)} />
+                  <DateField label="Fecha de nacimiento" name={`${prefix}.birth_date`} hiddenInput={false} value={traveler.birth_date || (auto ? buyer.birth_date : "")} onChange={(next) => setTraveler(index, "birth_date", next ?? "")} />
                   <FieldError message={allErrors[`${prefix}.birth_date`]} />
                 </div>
                 <SelectField label="Nacionalidad" name={`${prefix}.nationality`} options={SITE_COUNTRIES} value={traveler.nationality} onChange={(value) => setTraveler(index, "nationality", value)} />
@@ -253,7 +255,7 @@ export function CheckoutWizard({ terms, walletPhone, cart, account = null, login
                         <TextField label="Vuelo de llegada" maxLength={10} value={lines[index].pickup_flight} onChange={(event) => setLine(index, "pickup_flight", event.target.value.toUpperCase())} placeholder="LA2047 (opcional)" />
                         <FieldError message={allErrors[`lines.${index}.pickup_flight`]} />
                       </div>
-                      <TextField label="Llegada" type="datetime-local" value={lines[index].pickup_arrival} onChange={(event) => setLine(index, "pickup_arrival", event.target.value)} />
+                      <DateTimeField label="Llegada" name={`lines.${index}.pickup_arrival`} value={lines[index].pickup_arrival} onChange={(next) => setLine(index, "pickup_arrival", next)} />
                     </div>
                   )}
                 </>

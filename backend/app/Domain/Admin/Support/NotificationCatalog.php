@@ -21,6 +21,7 @@ final class NotificationCatalog
 
     public const SYSTEM_EVENTS = [
         'incidencia.creada' => 'Incidencia registrada',
+        'pasajero.no_show' => 'Pasajero no se presentó',
         'viaje.proximo' => 'Viaje próximo',
         'cotizacion.vista' => 'Cotización abierta por el cliente',
         'pago.recordatorio' => 'Recordatorio de pago',
@@ -44,7 +45,7 @@ final class NotificationCatalog
 
     public const CHANNELS = ['email' => 'Correo', 'whatsapp' => 'WhatsApp', 'push' => 'Push', 'portal' => 'Portal'];
 
-    public const TIMINGS = ['immediate' => 'Inmediato', 'batch_15m' => 'Agrupado cada 15 min', 'business_hours' => 'Solo en horario laboral (08:00 a 19:00)'];
+    public const TIMINGS = ['immediate' => 'Inmediato', 'batch_15m' => 'Agrupado cada 15 min', 'business_hours' => 'Solo en horario de atención'];
 
     public const CONDITIONS = ['always' => 'Siempre', 'marketing_consent' => 'Solo con consentimiento de marketing', 'amount_gt_5000' => 'Solo si el monto supera S/ 5 000'];
 

@@ -1,13 +1,13 @@
 "use client";
 
-import { KeyRound, Plug } from "lucide-react";
+import { KeyRound, LockKeyhole, Plug, Timer } from "lucide-react";
 import { saveChannelAccounts } from "@/app/(backoffice)/inbox/channel-actions";
 import { ChannelIcon } from "@/features/inbox/InboxViews";
 import { Badge } from "@/components/ui/Badge";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextField } from "@/components/ui/TextField";
-import { CHANNEL_ACCOUNT_STATUS, type ChannelAccount } from "@/lib/inbox";
+import { CHANNEL_ACCOUNT_STATUS, type ChannelAccount, type InboxResponseTimes } from "@/lib/inbox";
 import type { StepResult } from "@/lib/server/resource";
 
 const initial: StepResult = { message: null, done: false };
@@ -30,49 +30,101 @@ function ChannelBlock({ account }: { account: ChannelAccount }) {
         </span>
         <span className="flex flex-wrap items-center gap-1.5">
           <Badge tone={account.connected ? status.tone : "mute"}>{account.connected ? status.label : "Sin configurar"}</Badge>
-          <Badge tone={account.webhook_secret_set ? "ok" : "warn"} dot={false}>
-            <KeyRound size={12} className="mr-1 inline" />
-            {account.webhook_secret_set ? "Secreto configurado" : "Sin secreto"}
-          </Badge>
+          {whatsapp ? (
+            <Badge tone="info" dot={false}>
+              <LockKeyhole size={12} className="mr-1 inline" />
+              Mensajes cifrados
+            </Badge>
+          ) : (
+            <Badge tone={account.webhook_secret_set ? "ok" : "warn"} dot={false}>
+              <KeyRound size={12} className="mr-1 inline" />
+              {account.webhook_secret_set ? "Secreto configurado" : "Sin secreto"}
+            </Badge>
+          )}
         </span>
       </header>
-      <p className="mb-3 rounded-lg bg-surface-2 px-3 py-2 text-[12px] text-fg-2">
-        {whatsapp ? "Dirección del webhook en Meta" : "Dirección de reenvío del proveedor de correo"}: <span className="break-all font-mono text-[11.5px]">{account.webhook_url}</span>. Cada envío llega firmado con <span className="font-mono text-[11.5px]">{account.signature_header}</span>.
-      </p>
-      <input type="hidden" name={`${name(key)}.before`} value={identifier} />
+      {whatsapp ? (
+        <dl className="mb-3 grid grid-cols-2 gap-2 text-[12px] sm:grid-cols-4">
+          {[
+            { label: "Número", value: account.display_phone ?? account.phone_number_id ?? "Sin conectar" },
+            { label: "ID del número", value: account.phone_number_id ?? "—", mono: true },
+            { label: "Cuenta de WhatsApp Business", value: account.waba_masked ?? "—", mono: true },
+            { label: "Conexión", value: account.connection_mode === "propia" ? "App de Meta propia" : "Registro guiado" },
+          ].map((item) => (
+            <div key={item.label} className="rounded-lg bg-surface-2 px-3 py-2">
+              <dt className="text-fg-3">{item.label}</dt>
+              <dd className={item.mono ? "mt-0.5 break-all font-mono text-[11.5px]" : "mt-0.5 font-semibold text-fg"}>{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="mb-3 rounded-lg bg-surface-2 px-3 py-2 text-[12px] text-fg-2">
+          Dirección de reenvío del proveedor de correo: <span className="break-all font-mono text-[11.5px]">{account.webhook_url}</span>. Cada envío llega firmado con <span className="font-mono text-[11.5px]">{account.signature_header}</span>.
+        </p>
+      )}
+      {!whatsapp && <input type="hidden" name={`${name(key)}.before`} value={identifier} />}
       <input type="hidden" name={`${name("sla")}.before`} value={String(account.first_response_sla_minutes)} />
       <input type="hidden" name={`${name("status")}.before`} value={account.status} />
       <div className="grid gap-3 sm:grid-cols-2">
-        {whatsapp ? (
-          <TextField label="ID del número" name={name(key)} defaultValue={identifier} inputMode="numeric" maxLength={30} spellCheck={false} hint="En Meta: WhatsApp → Configuración de la API → Identificador del número." />
-        ) : (
-          <TextField label="Buzón" name={name(key)} type="email" defaultValue={identifier} maxLength={190} spellCheck={false} hint="La dirección a la que te escriben los clientes." />
-        )}
+        {!whatsapp && <TextField label="Buzón" name={name(key)} type="email" defaultValue={identifier} maxLength={190} spellCheck={false} hint="La dirección a la que te escriben los clientes." />}
         <TextField label="Plazo de primera respuesta" name={name("sla")} type="number" inputMode="numeric" min={5} max={2880} defaultValue={account.first_response_sla_minutes} hint="En minutos, de 5 a 2880." />
-        <SelectField label="Estado" name={name("status")} options={STATUS_OPTIONS} defaultValue={account.status} hint="Desconectado deja de recibir mensajes." />
-        <TextField
-          label="Secreto del webhook"
-          name={name("webhook_secret")}
-          type="password"
-          revealable
-          maxLength={255}
-          autoComplete="new-password"
-          placeholder={account.webhook_secret_set ? "Configurado. Escribe uno nuevo para cambiarlo." : "Pega el secreto de firma"}
-          hint="Se guarda cifrado y no se vuelve a mostrar."
-        />
+        <SelectField label="Estado" name={name("status")} options={STATUS_OPTIONS} defaultValue={account.status} hint={whatsapp ? "Para conectar el número usa «Conectar WhatsApp»." : "Desconectado deja de recibir mensajes."} />
+        {!whatsapp && (
+          <TextField
+            label="Secreto del webhook"
+            name={name("webhook_secret")}
+            type="password"
+            revealable
+            maxLength={255}
+            autoComplete="new-password"
+            placeholder={account.webhook_secret_set ? "Configurado. Escribe uno nuevo para cambiarlo." : "Pega el secreto de firma"}
+            hint="Se guarda cifrado y no se vuelve a mostrar."
+          />
+        )}
       </div>
     </section>
   );
 }
 
-export function ChannelAccountsPanel({ accounts }: { accounts: ChannelAccount[] }) {
+const responseLabel = (minutes: number) => (minutes < 60 ? `${minutes} min` : `${minutes / 60} h`);
+
+function ResponseTimesBlock({ times }: { times: InboxResponseTimes }) {
+  const options = times.options.map((value) => ({ value: String(value), label: responseLabel(value) }));
+  return (
+    <section className="lift rounded-xl border border-line p-4">
+      <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <span className="flex items-center gap-2.5 text-[14px] font-semibold">
+          <Timer size={16} className="text-fg-3" />
+          Chat web, formularios y portal
+        </span>
+        <Badge tone={times.business_hours.open_now ? "ok" : "mute"} dot={false}>{times.business_hours.open_now ? "En horario de atención" : "Fuera de horario"}</Badge>
+      </header>
+      <p className="mb-3 rounded-lg bg-surface-2 px-3 py-2 text-[12px] text-fg-2">Los plazos de los cinco canales corren solo en el horario de atención: {times.business_hours.summary}.</p>
+      <input type="hidden" name="response_times.lock_version" value={times.lock_version} />
+      <div className="grid gap-3 sm:grid-cols-3">
+        {times.channels.map((channel) => (
+          <div key={channel.channel} className="grid gap-1.5">
+            <span className="flex items-center gap-2 text-[12.5px] font-semibold text-fg-2">
+              <ChannelIcon channel={channel.channel} size={13} />
+              {channel.label}
+            </span>
+            <input type="hidden" name={`response_times.${channel.channel}.before`} value={String(channel.minutes)} />
+            <SelectField label="Primera respuesta" name={`response_times.${channel.channel}`} options={options} defaultValue={String(channel.minutes)} hint={channel.minutes === channel.default ? "Valor por defecto" : `Por defecto ${responseLabel(channel.default)}`} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function ChannelAccountsPanel({ accounts, responseTimes }: { accounts: ChannelAccount[]; responseTimes?: InboxResponseTimes | null }) {
   return (
     <PanelAction<StepResult>
       label="Canales e integración"
       icon={<Plug size={15} />}
       formId="inbox-channel-accounts"
       title="Canales e integración"
-      description="Conecta el número de WhatsApp y el buzón de correo. Los mensajes que lleguen firmados con el secreto se convierten en conversaciones de esta bandeja."
+      description="Plazos y estado de los canales de la bandeja. El número de WhatsApp se conecta con «Conectar WhatsApp»; los mensajes se guardan cifrados."
       submitLabel="Guardar canales"
       action={saveChannelAccounts}
       initial={initial}
@@ -82,6 +134,7 @@ export function ChannelAccountsPanel({ accounts }: { accounts: ChannelAccount[] 
           {accounts.map((account) => (
             <ChannelBlock key={account.channel} account={account} />
           ))}
+          {responseTimes && <ResponseTimesBlock times={responseTimes} />}
         </div>
       )}
     </PanelAction>

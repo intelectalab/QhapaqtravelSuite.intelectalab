@@ -1,7 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import type { AuditEvent, AuditEventDetail, BillingOverview, Coupon, DunningOverview, FlagsOverview, InvoiceFull, InvoiceSummary, OperationsOverview, PlanRuleMatrix, PlatformHomeOverview, TenantHealthOverview, TenantHealthRow, TrialsOverview, UsageOverview } from "@/lib/platformBilling";
+import type { AuditEvent, AuditEventDetail, BillingOverview, Coupon, DunningOverview, FlagsOverview, InvoiceFull, InvoiceSummary, OperationsOverview, PlanRuleMatrix, PlatformHomeOverview, RuleRequestsOverview, TenantHealthOverview, TenantHealthRow, TrialsOverview, UsageOverview } from "@/lib/platformBilling";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
 import { fetchPages } from "./pages";
@@ -50,6 +50,8 @@ export async function platformSend<T = unknown>(path: string, method: "POST" | "
 }
 
 export const getPlanRules = () => platformGet<PlanRuleMatrix>("/plan-rules");
+
+export const getRuleRequests = () => platformGet<RuleRequestsOverview>("/rule-requests");
 
 export const getPlatformAuditEvent = (id: string) => platformGet<AuditEventDetail>(`/audit-events/${encodeURIComponent(id)}`);
 

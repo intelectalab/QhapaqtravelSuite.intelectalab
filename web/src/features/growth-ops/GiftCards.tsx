@@ -7,6 +7,7 @@ import type { Column, FilterConfig, MetricFilter, SortOption } from "@/component
 import { Badge } from "@/components/ui/Badge";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { SummaryBox } from "@/features/finance/FinanceStep";
 import type { GiftCardRow, PaymentTarget } from "@/lib/growth-ops";
@@ -34,7 +35,7 @@ export function IssueCardAction() {
       <TextField label="Para (nombre)" name="recipient_name" maxLength={160} />
       <TextField label="Correo del destinatario" name="recipient_email" type="email" maxLength={190} hint="Le enviamos el vale con su código de canje." />
       <TextArea label="Mensaje (opcional)" name="message" rows={3} maxLength={500} />
-      <TextField label="Vence (opcional)" name="expires_at" type="date" hint="Si lo dejas vacío, vence en 12 meses." />
+      <DateField label="Vence (opcional)" name="expires_at" hint="Si lo dejas vacío, vence en 12 meses." />
     </GrowthStep>
   );
 }

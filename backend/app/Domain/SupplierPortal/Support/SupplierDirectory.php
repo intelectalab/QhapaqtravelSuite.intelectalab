@@ -9,6 +9,7 @@ use App\Domain\Catalog\Support\CatalogAccess;
 use App\Domain\Catalog\Support\ServiceDirectory;
 use App\Domain\Finance\Support\PayableDirectory;
 use App\Domain\Finance\Support\ReceivableLedger;
+use App\Domain\Operations\Support\OperationsSettings;
 use App\Domain\Shared\Tenancy\TenantContext;
 use App\Domain\SupplierPortal\Actions\ProposeAlternative;
 use App\Domain\SupplierPortal\Actions\SupplierInvoices;
@@ -20,15 +21,18 @@ use Illuminate\Support\Str;
 
 final class SupplierDirectory
 {
-    public const RESPONSE_HOURS = 24;
-
     public const CONTRACT_WARNING_DAYS = 60;
 
     private const SCHEDULED = ['confirmado', 'en_curso', 'completado'];
 
     private const SERVICE_COLUMNS = ['s.id', 's.code', 's.lock_version', 's.name', 's.service_kind', 's.service_date', 's.service_time', 's.pax', 's.rooms', 's.nights', 's.status', 's.confirmation_code', 's.confirmed_by_name', 's.confirmed_at', 's.cost_amount', 's.currency', 's.requested_at', 's.reject_reason', 's.alt_of_id', 's.replaced_by_id', 's.reservation_id', 's.product_id', 's.departure_id', 'r.code as reservation_code', 'r.title as reservation_title'];
 
-    public function __construct(private readonly TenantContext $context, private readonly SupplierOperations $operations) {}
+    public function __construct(private readonly TenantContext $context, private readonly SupplierOperations $operations, private readonly OperationsSettings $settings) {}
+
+    public function responseHours(SupplierAccount $account): int
+    {
+        return $this->settings->responseHoursFor($account->provider->response_sla_hours ?? null);
+    }
 
     public function session(SupplierAccount $account): array
     {
@@ -53,7 +57,7 @@ final class SupplierDirectory
         return [
             'pending' => $requests->where('state', 'por_responder')->count(),
             'alternatives' => $requests->where('state', 'alternativa_propuesta')->count(),
-            'response_hours' => self::RESPONSE_HOURS,
+            'response_hours' => $this->responseHours($account),
             'upcoming' => $upcoming->count(),
             'upcoming_pax' => (int) $upcoming->sum('pax'),
             'receivable' => $this->byCurrency($this->payableRows($account)->where('balance', '>', ReceivableLedger::TOLERANCE), 'balance'),
@@ -95,7 +99,7 @@ final class SupplierDirectory
     {
         return [
             'today' => $this->today(),
-            'response_hours' => self::RESPONSE_HOURS,
+            'response_hours' => $this->responseHours($account),
             'rows' => $this->rows($account)->sortBy(fn (array $row): string => (in_array($row['state'], ['por_responder', 'alternativa_propuesta'], true) ? '0' : '1').$row['date'])->values(),
             'reasons' => ProviderServiceResponse::REJECT_REASONS,
             'alternative_kinds' => ProposeAlternative::KINDS,
@@ -263,11 +267,12 @@ final class SupplierDirectory
             ->unique('reservation_service_id')->keyBy('reservation_service_id');
         $now = Carbon::now($this->context->timezone());
         $today = $now->toDateString();
+        $hours = $this->responseHours($account);
 
-        return $services->map(function (object $row) use ($leads, $alternatives, $proposals, $now, $today): array {
+        return $services->map(function (object $row) use ($leads, $alternatives, $proposals, $now, $today, $hours): array {
             $open = in_array($row->status, ProviderServiceResponse::OPEN, true);
             $proposal = $proposals[$row->id] ?? null;
-            $deadline = $open && $row->requested_at ? Carbon::parse($row->requested_at)->addHours(self::RESPONSE_HOURS) : null;
+            $deadline = $open && $row->requested_at ? Carbon::parse($row->requested_at)->addHours($hours) : null;
             $pax = (int) ($row->pax ?? 0);
 
             return [

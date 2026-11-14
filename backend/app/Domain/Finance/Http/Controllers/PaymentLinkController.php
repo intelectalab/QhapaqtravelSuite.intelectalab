@@ -17,8 +17,8 @@ final class PaymentLinkController
 
     public function index(Request $request, PaymentLinkDirectory $directory, GrowthFeatureGate $gate): JsonResponse
     {
-        $gate->require(PaymentLinks::RULE);
         $page = $directory->list($request, $this->actor($request));
+        $page['meta']['rule_enabled'] = $gate->enabled(PaymentLinks::RULE);
 
         if (str_contains((string) $request->query('include', ''), 'targets')) {
             $page['meta']['targets'] = $directory->targets($this->actor($request));

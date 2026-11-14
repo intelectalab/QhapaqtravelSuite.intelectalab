@@ -9,6 +9,7 @@ use App\Domain\Site\Actions\SiteCart;
 use App\Domain\Site\Actions\SiteCheckout;
 use App\Domain\Site\Support\CheckoutRules;
 use App\Domain\Site\Support\SiteBooking;
+use App\Domain\Site\Support\SiteCurrency;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +41,7 @@ final class SiteCartController
             '*' => 'Revisa los viajeros.',
         ]);
 
-        return response()->json(['data' => $cart->add($this->token($request), $data)], 201);
+        return response()->json(['data' => $cart->add($this->token($request), [...$data, 'currency' => $request->input('currency') ?? $request->header(SiteCurrency::HEADER)])], 201);
     }
 
     public function bookings(Request $request, SiteCart $cart, SiteCheckout $checkout): JsonResponse

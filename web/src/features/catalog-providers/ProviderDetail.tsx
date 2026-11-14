@@ -40,6 +40,7 @@ export function ProviderSummary({ detail }: { detail: ProviderDetail }) {
                 { label: "Contrato", value: <span>{formatDate(provider.contract_start)} – <ContractCell provider={provider} /></span> },
                 { label: "Moneda", value: provider.currency },
                 { label: "Pago", value: provider.payment_terms ?? "—" },
+                { label: "Plazo de respuesta", value: provider.response_sla_hours ? `${provider.response_sla_hours} h` : <span className="text-fg-3">{detail.options.agency_response_hours} h, el de la agencia</span> },
                 { label: "Estado", value: <Badge tone={SUPPLY_STATE[provider.state].tone}>{SUPPLY_STATE[provider.state].label}</Badge> },
               ]}
             />

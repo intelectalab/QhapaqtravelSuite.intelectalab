@@ -1,6 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import { API_URL } from "../config";
 import type { ApiError } from "../types";
+import { appHeaders, isUpgradeRequired, reportUpgrade, upgradeFrom } from "./upgrade";
 
 const TOKEN_KEY = "kipucontrol.operador.token";
 
@@ -39,7 +40,7 @@ function buildQuery(query: RequestOptions["query"]): string {
 }
 
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const headers: Record<string, string> = { Accept: "application/json", ...options.headers };
+  const headers: Record<string, string> = { Accept: "application/json", ...appHeaders(), ...options.headers };
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (options.idempotencyKey) headers["Idempotency-Key"] = options.idempotencyKey;
   if (options.auth !== false) {
@@ -58,7 +59,8 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     throw new ApiRequestError({ status: 0, message: "Sin conexión con el servidor." });
   }
 
-  const payload = (await response.json().catch(() => ({}))) as { data?: T; message?: string; error?: string; code?: string; errors?: Record<string, string[]> };
+  const payload = (await response.json().catch(() => ({}))) as { data?: T; message?: string; error?: string; code?: string; errors?: Record<string, string[]>; details?: { min_version?: string | null; store_url?: string | null } };
+  if (isUpgradeRequired(response.status)) reportUpgrade(upgradeFrom(payload));
   if (!response.ok) {
     const firstError = payload.errors ? Object.values(payload.errors)[0]?.[0] : undefined;
     throw new ApiRequestError({ status: response.status, error: payload.error, code: payload.code, errors: payload.errors, message: firstError ?? payload.message ?? `Error ${response.status}` });

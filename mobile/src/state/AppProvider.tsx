@@ -3,6 +3,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { AppState } from "react-native";
 import { getToken } from "../api/client";
 import { deviceId, logout, sessionKind, wipeDevice, type SessionKind } from "../api/session";
+import { onUpgradeRequired, type UpgradeInfo } from "../api/upgrade";
 import { uploadPending } from "../data/evidence";
 import { refreshFromServer, reloadAssignment } from "../data/repository";
 import { DEFAULT_SYNC_MINUTES, registerBackgroundSync, syncMinutes, unregisterBackgroundSync } from "../offline/background";
@@ -16,6 +17,7 @@ interface AppValue {
   online: boolean;
   version: number;
   notice: string | null;
+  upgrade: UpgradeInfo | null;
   activate: () => Promise<void>;
   signOut: () => Promise<void>;
   sync: () => Promise<void>;
@@ -31,6 +33,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [online, setOnline] = useState(true);
   const [version, setVersion] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
+  const [upgrade, setUpgrade] = useState<UpgradeInfo | null>(null);
   const [minutes, setMinutes] = useState(DEFAULT_SYNC_MINUTES);
   const engine = useRef<SyncEngine | null>(null);
   const onlineRef = useRef(true);
@@ -106,6 +109,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return stopEngine;
   }, [activate, stopEngine]);
 
+  useEffect(() => onUpgradeRequired(setUpgrade), []);
+
   useEffect(
     () =>
       NetInfo.addEventListener((state) => {
@@ -131,7 +136,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(timer);
   }, [session, kind, minutes, touch]);
 
-  const value = useMemo<AppValue>(() => ({ session, kind, online, version, notice, activate, signOut, sync, touch, notify: setNotice }), [session, kind, online, version, notice, activate, signOut, sync, touch]);
+  const value = useMemo<AppValue>(() => ({ session, kind, online, version, notice, upgrade, activate, signOut, sync, touch, notify: setNotice }), [session, kind, online, version, notice, upgrade, activate, signOut, sync, touch]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

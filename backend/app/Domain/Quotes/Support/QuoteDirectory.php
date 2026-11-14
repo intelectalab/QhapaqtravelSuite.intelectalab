@@ -52,6 +52,7 @@ final class QuoteDirectory
             'kpis' => $this->kpis($scoped, $today, $viewer),
             'can' => ['manage' => $viewer->can('quotes.create')],
             'today' => $today,
+            'scope' => Portfolio::ownOnly($viewer) ? 'own' : 'tenant',
         ]);
     }
 
@@ -93,6 +94,10 @@ final class QuoteDirectory
                     $where->orWhere(fn (Builder $one): Builder => $this->status($one, $status, $today));
                 }
             });
+        }
+
+        if (isset($filters['code'])) {
+            $query->whereIn('q.code', array_values(array_filter(array_map('trim', explode(',', $filters['code'])))));
         }
 
         if (isset($filters['internal_approval'])) {
@@ -242,7 +247,7 @@ final class QuoteDirectory
 
     public function find(User $viewer, string $code): ?array
     {
-        $row = $this->rows($viewer)->where('q.code', $code)->first();
+        $row = $this->rows($viewer)->where(Str::isUuid($code) ? 'q.id' : 'q.code', $code)->first();
 
         if ($row === null) {
             return null;

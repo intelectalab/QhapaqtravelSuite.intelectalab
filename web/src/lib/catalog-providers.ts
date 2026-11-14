@@ -28,6 +28,7 @@ export interface ProviderRow {
   state: SupplyState;
   rating: number;
   rating_note: string | null;
+  response_sla_hours: number | null;
   contacts: ProviderContact[];
   services: { ref: string; name: string; type: string; status: string }[];
   products: { code: string; name: string; status: string; role: "principal" | "componente" }[];
@@ -36,7 +37,7 @@ export interface ProviderRow {
 export interface ProvidersOverview {
   today: string;
   providers: ProviderRow[];
-  options: { types: string[]; currencies: string[] };
+  options: { types: string[]; currencies: string[]; agency_response_hours: number };
   can: { manage: boolean };
 }
 

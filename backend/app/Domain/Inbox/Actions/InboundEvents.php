@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Inbox\Actions;
 
 use App\Domain\Inbox\Jobs\ProcessInboundMessage;
+use App\Domain\Inbox\Support\MessageCipher;
 use App\Domain\Integrations\Support\ChannelWebhooks;
 use App\Domain\Shared\Tenancy\TenantDatabase;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,16 @@ final class InboundEvents
             return array_map(fn (array $message): array => $this->record($channel, (string) $account->account_id, $message), $messages);
         });
 
+        return $this->dispatch($results, $tenantId);
+    }
+
+    public function recordVerified(string $channel, string $accountId, array $messages): array
+    {
+        return array_map(fn (array $message): array => $this->record($channel, $accountId, $message), $messages);
+    }
+
+    public function dispatch(array $results, string $tenantId): array
+    {
         foreach ($results as $result) {
             if ($result['status'] === 'recibido') {
                 ProcessInboundMessage::dispatch($result['event'], $tenantId);
@@ -35,7 +46,7 @@ final class InboundEvents
     private function record(string $channel, string $accountId, array $message): array
     {
         $externalId = Str::limit((string) $message['external_id'], 190, '');
-        $payload = json_encode(['account_id' => $accountId, 'message' => $message], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+        $payload = json_encode(['account_id' => $accountId, 'message' => MessageCipher::sealPayload($message)], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
         $id = (string) Str::uuid7();
         $inserted = DB::table('collab_inbound_events')->insertOrIgnore(['id' => $id, 'channel' => $channel, 'external_event_id' => $externalId, 'payload' => $payload, 'status' => 'recibido']);
 

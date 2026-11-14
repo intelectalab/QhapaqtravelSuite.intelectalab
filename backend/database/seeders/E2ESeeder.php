@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Domain\Iam\Models\MfaFactor;
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Shared\Tenancy\TenantContext;
 use Carbon\CarbonImmutable;
 use Database\Support\KitSeeds;
 use Illuminate\Database\Seeder;
@@ -54,10 +56,22 @@ final class E2ESeeder extends Seeder
             return;
         }
 
-        DB::transaction(function () use ($tenant, $seed): void {
-            DB::select('select app_set_tenant(?::uuid)', [$tenant->getKey()]);
-            DB::table('iam_users')->whereRaw('lower(email) = ?', [Str::lower($seed['adminEmail'])])
-                ->update(['status' => 'activo', 'mfa_required' => false, 'mfa_enabled' => false, 'updated_at' => now()]);
-        });
+        app(TenantContext::class)->set($tenant);
+
+        try {
+            DB::transaction(function () use ($tenant, $seed): void {
+                DB::select('select app_set_tenant(?::uuid)', [$tenant->getKey()]);
+                $admin = DB::table('iam_users')->whereRaw('lower(email) = ?', [Str::lower($seed['adminEmail'])])->value('id');
+
+                if ($admin === null) {
+                    return;
+                }
+
+                DB::table('iam_users')->where('id', $admin)->update(['status' => 'activo', 'mfa_required' => true, 'mfa_enabled' => true, 'updated_at' => now()]);
+                MfaFactor::query()->updateOrCreate(['user_id' => $admin], ['type' => 'totp', 'secret' => (string) config('demo.totp_secret'), 'confirmed_at' => now()]);
+            });
+        } finally {
+            app(TenantContext::class)->clear();
+        }
     }
 }

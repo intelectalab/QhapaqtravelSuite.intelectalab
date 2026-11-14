@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Domain\Admin\Support\EmailNotifications;
+use App\Domain\Finance\Support\PaymentReminderWhatsapp;
 use App\Domain\Shared\Money\Decimal;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
@@ -35,10 +36,12 @@ final class SendPaymentReminders extends TenantJob
             ->where(fn ($query) => $query->whereNull('r.last_reminder_at')->orWhere('r.last_reminder_at', '<', $today))
             ->orderBy('r.due_date')
             ->lock('for update of r')
-            ->get(['r.id', 'r.code', 'r.amount', 'r.paid_amount', 'r.currency', 'r.client_id', 'r.reservation_id', 'c.name as client_name', 'c.email', 'b.code as reservation_code', 'b.travel_from', 'u.name as owner_name']);
+            ->get(['r.id', 'r.code', 'r.amount', 'r.paid_amount', 'r.currency', 'r.client_id', 'r.reservation_id', 'c.name as client_name', 'c.email', 'c.phone', 'b.code as reservation_code', 'b.travel_from', 'u.name as owner_name']);
 
+        $whatsapp = app(PaymentReminderWhatsapp::class);
         $sent = 0;
         $missing = 0;
+        $byWhatsapp = 0;
 
         foreach ($rows as $row) {
             $pending = BigDecimal::of((string) $row->amount)->minus((string) $row->paid_amount);
@@ -47,13 +50,15 @@ final class SendPaymentReminders extends TenantJob
                 continue;
             }
 
-            $queued = $notifications->queue(self::EVENT, (string) $row->email, [
+            $variables = [
                 'cliente' => (string) $row->client_name,
                 'reserva' => (string) ($row->reservation_code ?? $row->code),
                 'monto' => Decimal::display($pending, (string) $row->currency),
                 'fecha_viaje' => $row->travel_from ? CarbonImmutable::parse((string) $row->travel_from)->format('d/m/Y') : '',
                 'vendedor' => (string) ($row->owner_name ?? ''),
-            ], ['source_type' => 'fin_receivable', 'source_id' => $row->id, 'client_id' => $row->client_id, 'reservation_id' => $row->reservation_id]);
+            ];
+            $source = ['source_type' => 'fin_receivable', 'source_id' => $row->id, 'client_id' => $row->client_id, 'reservation_id' => $row->reservation_id];
+            $queued = $notifications->queue(self::EVENT, (string) $row->email, $variables, $source);
 
             if ($queued === null) {
                 $missing++;
@@ -63,9 +68,10 @@ final class SendPaymentReminders extends TenantJob
 
             DB::table('fin_receivables')->where('id', $row->id)->update(['last_reminder_at' => now(), 'updated_at' => now()]);
             $sent++;
+            $byWhatsapp += $whatsapp->send($row->phone, $variables, $source)['sent'] ? 1 : 0;
         }
 
-        $result = $sent === 0 ? 'Sin cobros por recordar' : self::plural($sent, 'recordatorio en cola', 'recordatorios en cola');
+        $result = $sent === 0 ? 'Sin cobros por recordar' : self::plural($sent, 'recordatorio en cola', 'recordatorios en cola').($byWhatsapp > 0 ? ' · '.self::plural($byWhatsapp, 'también por WhatsApp', 'también por WhatsApp') : '');
 
         return $missing > 0 ? $this->warn($result.' · '.self::plural($missing, 'cliente sin correo', 'clientes sin correo')) : $result;
     }

@@ -1,4 +1,4 @@
-import { Building2, Coins, Hash, History, Layers, Radio, ScrollText, Wrench } from "lucide-react";
+import { Building2, Coins, Hash, History, Landmark, Layers, Radio, ScrollText, Wrench } from "lucide-react";
 import type { Metadata } from "next";
 import { NoAccess } from "@/components/shell/NoAccess";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -7,13 +7,20 @@ import { InfoTip } from "@/components/ui/InfoTip";
 import { SectionLayout, SectionNav } from "@/components/ui/SectionNav";
 import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
 import { AuditTrail, KpiGrid } from "@/features/admin/AdminParts";
+import { BusinessHoursCard } from "@/features/admin/BusinessHours";
 import { SequencesTable, SettingsSections, type SettingsView } from "@/features/admin/Settings";
-import type { SettingsOverview } from "@/lib/admin";
+import { TransferSettingsCard } from "@/features/admin/TransferSettings";
+import type { SettingsOverview, TransferValidationSettings } from "@/lib/admin";
 import { formatDateTime } from "@/lib/format";
 import { resolveSections } from "@/lib/sections";
 import { getResource } from "@/lib/server/resource";
 
 export const metadata: Metadata = { title: "Configuración" };
+
+async function TransferPayments({ manage }: { manage: boolean }) {
+  const settings = await getResource<TransferValidationSettings>("/settings/transfer-validation", "No pudimos cargar la configuración de pagos.");
+  return settings ? <TransferSettingsCard settings={settings} manage={manage} index={0} /> : null;
+}
 
 export default async function ConfiguracionPage({ searchParams }: PageProps<"/admin/configuracion">) {
   const [data, { seccion }] = await Promise.all([getResource<SettingsOverview>("/settings", "No pudimos cargar la configuración."), searchParams]);
@@ -22,10 +29,11 @@ export default async function ConfiguracionPage({ searchParams }: PageProps<"/ad
   const { active, groups } = resolveSections(
     "/admin/configuracion",
     [
-      { group: "Agencia", id: "agencia", label: "Datos y contacto", icon: <Building2 size={15} /> },
+      { group: "Agencia", id: "agencia", label: "Datos, contacto y horario", icon: <Building2 size={15} /> },
       { group: "Agencia", id: "moneda", label: "Moneda e impuestos", icon: <Coins size={15} /> },
       { group: "Cómo vende", id: "politicas", label: "Políticas comerciales", icon: <ScrollText size={15} /> },
       { group: "Cómo vende", id: "canales", label: "Canales", icon: <Radio size={15} /> },
+      { group: "Cómo vende", id: "pagos", label: "Pagos y transferencias", icon: <Landmark size={15} /> },
       { group: "Cómo opera", id: "operacion", label: "Parámetros operativos", icon: <Wrench size={15} /> },
       { group: "Cómo opera", id: "series", label: "Series y correlativos", icon: <Hash size={15} /> },
       { group: "Control", id: "historial", label: "Historial de cambios", icon: <History size={15} /> },
@@ -41,6 +49,13 @@ export default async function ConfiguracionPage({ searchParams }: PageProps<"/ad
       </Card>
     ) : active === "historial" ? (
       <AuditTrail entries={data.history} empty="Todavía no hay cambios de configuración." />
+    ) : active === "pagos" ? (
+      <TransferPayments manage={data.can_manage} />
+    ) : active === "agencia" ? (
+      <div className="grid gap-5">
+        <SettingsSections data={data} show="agencia" />
+        <BusinessHoursCard hours={data.business_hours} manage={data.can_manage} index={2} />
+      </div>
     ) : (
       <SettingsSections data={data} show={active as SettingsView} />
     );

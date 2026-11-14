@@ -15,7 +15,7 @@ import { getResource } from "@/lib/server/resource";
 import type { TripCatalogView } from "@/lib/trip";
 import { ProductDeleteAction, ProductLifecycleActions } from "@/features/catalog/ProductForms";
 import { ProductHighlights } from "@/features/catalog/ProductHighlights";
-import { ProductLifecycle, ProductStatusNotice } from "@/features/catalog/product360/ProductHeader";
+import { ProductLifecycle, ProductStatusNotice, StoreWithoutRateNotice } from "@/features/catalog/product360/ProductHeader";
 import { PRODUCT_SECTION_GROUPS, productTabs } from "@/features/catalog/product360/ProductTabs";
 import { DownloadButton } from "@/components/ui/DownloadButton";
 import { DuplicateProductAction } from "@/features/catalog/product360/ProductVersionTools";
@@ -114,6 +114,7 @@ export default async function ProductoPage({ params, searchParams }: PageProps<"
       />
 
       <ProductStatusNotice product={product} overview={overview} />
+      <StoreWithoutRateNotice product={product} />
       {hiddenSection && <p role="status" className="mb-5 rounded-xl border border-warn/35 bg-warn/[0.09] px-4 py-3 text-[13.5px]">La sección que pediste no está disponible para tu rol. Te mostramos la ficha general.</p>}
 
       <HeroBand>

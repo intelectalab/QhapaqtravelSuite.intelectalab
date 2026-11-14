@@ -19,12 +19,19 @@ final class PromotionDirectory
 
         return [
             'rows' => $rows->map(fn (object $row): array => $this->row($row, $uses, $today))->values()->all(),
+            ...$this->form(),
+        ];
+    }
+
+    public function form(): array
+    {
+        return [
             'products' => DB::table('catalog_products')->whereNull('deleted_at')->whereNotIn('status', ['ARCHIVED'])->orderBy('name')->get(['code', 'name', 'status'])->all(),
             'kinds' => ProductPromotions::KINDS,
             'percent_kinds' => ProductPromotions::PERCENT_KINDS,
             'channels' => ProductPromotions::CHANNELS,
             'max_percent' => ProductPromotions::MAX_PERCENT,
-            'today' => $today,
+            'today' => CatalogAccess::today(),
         ];
     }
 

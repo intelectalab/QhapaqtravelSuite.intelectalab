@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, Mail, Menu, MessageCircle, MessageSquareText, Moon, ShoppingBag, Sun, UserRound, X } from "lucide-react";
+import { Clock3, Heart, Mail, Menu, MessageCircle, MessageSquareText, Moon, ShoppingBag, Sun, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -13,6 +13,7 @@ import { applyTheme, parseTheme, THEME_STORAGE_KEY, type Theme } from "@/lib/the
 import { useStoredValue } from "@/lib/useStoredValue";
 import type { SiteNavLinkId } from "@/lib/site-design";
 import { useSite } from "./SiteContext";
+import { CurrencySwitch } from "./SiteMoney";
 
 const keepTheme = (theme: Theme) => theme;
 
@@ -120,9 +121,9 @@ function WishlistLink({ saved }: { saved: number | null }) {
   );
 }
 
-export function SiteTopBar({ email, whatsapp }: { email: string | null; whatsapp: string | null }) {
+export function SiteTopBar({ email, whatsapp, hours = null }: { email: string | null; whatsapp: string | null; hours?: string | null }) {
   const { t } = useSite();
-  if (!email && !whatsapp) return null;
+  if (!email && !whatsapp && !hours) return null;
   return (
     <div className="border-b border-line bg-surface-2/60 text-[12px] text-fg-2">
       <div className="mx-auto flex h-8 max-w-[1240px] items-center gap-5 px-4 sm:px-8">
@@ -137,6 +138,12 @@ export function SiteTopBar({ email, whatsapp }: { email: string | null; whatsapp
             <Mail size={13} className="text-fg-3" />
             {email}
           </a>
+        )}
+        {hours && (
+          <span data-testid="site-hours" className="hidden items-center gap-1.5 md:inline-flex">
+            <Clock3 size={13} className="text-fg-3" />
+            {hours}
+          </span>
         )}
       </div>
     </div>
@@ -184,6 +191,7 @@ export function SiteHeader({ name, initials, logo, wishlist = null }: { name: st
         </nav>
         <div className="ml-auto flex items-center gap-1.5">
           {(nav?.show_locale ?? true) && <LocaleSwitch />}
+          <CurrencySwitch />
           {(nav?.show_theme ?? true) && <ThemeSwitch />}
           <Link href={href("/cuenta")} aria-label={t.header.account} title={t.header.account} className={cn("grid h-10 w-10 flex-none place-items-center rounded-xl transition hover:-translate-y-0.5 hover:bg-surface-2 hover:text-fg", pathname.startsWith(href("/cuenta")) ? "bg-surface-2 text-fg" : "text-fg-2")}>
             <UserRound size={18} />

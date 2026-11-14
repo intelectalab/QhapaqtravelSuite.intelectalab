@@ -9,6 +9,7 @@ import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { ConfirmAction, HiddenFields, PanelSection, STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
 import type { RateRow, RatesOverview, SeasonRow } from "@/lib/catalog-rates";
@@ -16,6 +17,32 @@ import { formatDate } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 
 const list = (values: string[]) => values.map((value) => ({ value, label: value }));
+
+function AltPrices({ currencies, initial }: { currencies: string[]; initial: { currency: string; price: string }[] }) {
+  const [rows, setRows] = useState(initial);
+  const free = currencies.filter((code) => !rows.some((row) => row.currency === code));
+  return (
+    <PanelSection title="Precio en otras monedas de cobro">
+      <input type="hidden" name="alt_prices_present" value="1" />
+      <p className="text-[12.5px] text-fg-3">El primer precio sigue siendo el principal. Si el cliente de la tienda en línea elige una de estas monedas, se le cobra este precio; si no, ve el principal convertido como referencia. El precio mínimo y máximo se comparan al tipo de cambio del día.</p>
+      {rows.map((row, index) => (
+        <div key={`${row.currency}-${index}`} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-end gap-3">
+          <SelectField label="Moneda" name="alt_currency" options={currencies.filter((code) => code === row.currency || !rows.some((other) => other.currency === code)).map((value) => ({ value, label: value }))} value={row.currency} onChange={(currency) => setRows(rows.map((item, position) => (position === index ? { ...item, currency } : item)))} placeholder="Elegir" />
+          <TextField label="Precio" name="alt_price" type="number" step="0.01" min="0.01" required value={row.price} onChange={(event) => setRows(rows.map((item, position) => (position === index ? { ...item, price: event.target.value } : item)))} placeholder="0.00" />
+          <button type="button" onClick={() => setRows(rows.filter((_, position) => position !== index))} aria-label="Quitar precio" title="Quitar precio" className="mb-1 grid h-10 w-10 place-items-center rounded-xl text-fg-3 transition hover:bg-bad/10 hover:text-bad">
+            <Trash2 size={16} />
+          </button>
+        </div>
+      ))}
+      {free.length > 0 && rows.length < 3 && (
+        <button type="button" onClick={() => setRows([...rows, { currency: free[0], price: "" }])} className="inline-flex items-center gap-1 self-start text-[12.5px] font-semibold text-accent hover:underline">
+          <Plus size={13} />
+          Agregar precio en otra moneda
+        </button>
+      )}
+    </PanelSection>
+  );
+}
 
 function RateFields({ overview, rate }: { overview: RatesOverview; rate?: RateRow }) {
   const { options } = overview;
@@ -47,10 +74,11 @@ function RateFields({ overview, rate }: { overview: RatesOverview; rate?: RateRo
         </div>
         <SelectField label="Se cobra" name="price_basis" options={list(options.bases)} defaultValue={rate?.basis ?? "Por persona"} />
       </PanelSection>
+      {overview.multi_currency?.enabled && <AltPrices currencies={overview.multi_currency.currencies} initial={rate?.alt_prices ?? []} />}
       <PanelSection title="Vigencia">
         <div className="grid grid-cols-2 gap-3">
-          <TextField label="Desde" name="valid_from" type="date" required defaultValue={rate?.valid_from ?? overview.today} />
-          <TextField label="Hasta" name="valid_to" type="date" required min={overview.today} defaultValue={rate?.valid_to} />
+          <DateField label="Desde" name="valid_from" required defaultValue={rate?.valid_from ?? overview.today} />
+          <DateField label="Hasta" name="valid_to" required min={overview.today} defaultValue={rate?.valid_to} />
         </div>
         <SelectField label="Temporada" name="season_id" options={seasons.map((season) => ({ value: season.id, label: season.name, hint: `${formatDate(season.date_from)} – ${formatDate(season.date_to)}` }))} defaultValue={rate?.season?.id ?? ""} placeholder="Tarifa base, sin temporada" />
         <TextArea label="Condiciones" name="conditions" rows={2} maxLength={300} defaultValue={rate?.conditions ?? undefined} placeholder="Por ejemplo: mínimo 4 pasajeros, reservar con 7 días." />
@@ -152,8 +180,8 @@ function SeasonFields({ seasonTypes, seasons, season }: { seasonTypes: string[];
       <TextField label="Nombre" name="name" required minLength={3} maxLength={120} defaultValue={season?.name} placeholder="Por ejemplo: Semana Santa 2027" icon={<CalendarRange size={17} />} />
       <SelectField label="Tipo" name="type" options={list(seasonTypes)} defaultValue={season?.type ?? "Alta"} />
       <div className="grid grid-cols-2 gap-3">
-        <TextField label="Desde" name="date_from" type="date" required defaultValue={season?.date_from} onChange={(event) => setRange({ ...range, from: event.target.value })} />
-        <TextField label="Hasta" name="date_to" type="date" required defaultValue={season?.date_to} onChange={(event) => setRange({ ...range, to: event.target.value })} />
+        <DateField label="Desde" name="date_from" required defaultValue={season?.date_from} onChange={(next) => setRange({ ...range, from: next ?? "" })} />
+        <DateField label="Hasta" name="date_to" required defaultValue={season?.date_to} onChange={(next) => setRange({ ...range, to: next ?? "" })} />
         <TextField label="Prioridad" name="priority" type="number" min={0} max={99} required defaultValue={season?.priority ?? 1} hint="0 es la que más pesa." onChange={(event) => setRange({ ...range, priority: event.target.value })} />
         <TextField label="Factor" name="factor" type="number" step="0.01" min="0.01" max="3" required defaultValue={season?.factor ?? 1} hint="1.20 sube el costo base 20 %." />
       </div>

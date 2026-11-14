@@ -11,6 +11,7 @@ import { InfoTip } from "@/components/ui/InfoTip";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
 import { ConfirmAction, HiddenFields, STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
@@ -40,7 +41,7 @@ function RatePanel({ data, service, request }: { data: SupplierRates; service: S
         <>
           <HiddenFields values={{ service: service.ref }} />
           <TextField label={`Nueva tarifa neta (${service.currency}, sin IGV)`} name="proposed_cost" type="number" step="0.01" min="0.01" required defaultValue={request?.proposed ?? ""} icon={<Tags size={17} />} />
-          <TextField label="Rige desde" name="effective_from" type="date" min={data.earliest} required defaultValue={request?.effective_from ?? data.earliest} hint={`Con al menos ${data.notice_days} días de anticipación, según su contrato.`} />
+          <DateField label="Rige desde" name="effective_from" min={data.earliest} required defaultValue={request?.effective_from ?? data.earliest} hint={`Con al menos ${data.notice_days} días de anticipación, según su contrato.`} />
           <SelectField label="Motivo" name="reason_type" placeholder="Elija el motivo" defaultValue={request?.reason_type ?? ""} options={data.reasons.map((value) => ({ value, label: value }))} />
           <TextArea label="Sustento" name="reason_detail" rows={4} maxLength={1000} defaultValue={request?.reason_detail ?? ""} placeholder="Explique qué cambia y por qué." />
         </>

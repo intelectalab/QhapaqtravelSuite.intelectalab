@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TintTile } from "@/components/ui/Tinted";
 import { InvoicesTable, IssueAnyInvoiceAction, PendingInvoicing } from "@/features/finance/Invoices";
+import { OseNotice } from "@/features/finance/OseStatus";
+import { getAgencyOse } from "@/lib/server/financeProviders";
 import type { InvoiceInvoiceable, InvoiceKpis, InvoiceListMeta, InvoicePending, InvoiceRow } from "@/lib/finance";
 import { formatMoney } from "@/lib/format";
 import { REALMS } from "@/lib/realms";
@@ -18,7 +20,7 @@ export default async function FacturacionPage() {
   if (list.status === 401) redirect(REALMS.agency.logout);
   if (list.status === 403 && list.error?.code === "MFA_REQUIRED") redirect(REALMS.agency.mfaPage);
   if (!list.ok && list.status !== 403) throw new Error(list.error?.message ?? "No pudimos cargar los comprobantes.");
-  const summary = list.ok ? await getResource<{ kpis: InvoiceKpis; pending: InvoicePending[]; invoiceable: InvoiceInvoiceable[] }>("/finance/invoices/summary", "No pudimos cargar los cobros por facturar.") : null;
+  const [summary, ose] = list.ok ? await Promise.all([getResource<{ kpis: InvoiceKpis; pending: InvoicePending[]; invoiceable: InvoiceInvoiceable[] }>("/finance/invoices/summary", "No pudimos cargar los cobros por facturar."), getAgencyOse()]) : [null, null];
   const data = list.ok && list.data && summary ? { ...list.data.meta, rows: list.data.data, pending: summary.pending, invoiceable: summary.invoiceable ?? [] } : null;
 
   if (!data) {
@@ -32,9 +34,10 @@ export default async function FacturacionPage() {
       <PageHeader
         title="Facturación"
         subtitle="Facturas, boletas y notas de crédito electrónicas."
-        info={<InfoTip>La conexión con el OSE todavía es simulada: el proveedor fiscal, sus series y sus plazos deben validarse con el contador antes de usarla en producción. Un comprobante aceptado solo se anula con una nota de crédito.</InfoTip>}
+        info={<InfoTip>Cada comprobante se envía al OSE que eligió la agencia entre los homologados por KipuControl. El XML y la constancia de recepción (CDR) quedan guardados en la ficha del comprobante y en el portal del cliente. Un comprobante aceptado solo se anula con una nota de crédito.</InfoTip>}
         actions={data.can.issue ? <IssueAnyInvoiceAction options={data.invoiceable} /> : undefined}
       />
+      {ose && <OseNotice data={ose} />}
       <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <TintTile icon={Receipt} tone="t1" label="Emitido este mes" value={formatMoney(kpis.month_pen, "PEN", { compact: true })} note={kpis.month_count === 1 ? "1 comprobante" : `${kpis.month_count} comprobantes`} info="Suma en soles de las facturas y boletas emitidas este mes y ya enviadas al OSE, sin notas de crédito, anuladas ni rechazadas. La nota cuenta los comprobantes." />
         <TintTile icon={CircleCheck} tone="ok" label="Aceptados por el OSE" value={kpis.accepted} info="Comprobantes con respuesta de aceptación del operador de servicios electrónicos." />

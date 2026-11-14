@@ -67,12 +67,9 @@ function OutgoingMailFields({ mail }: { mail: OutgoingMailSummary }) {
       <div className="grid gap-3 border-t border-line-2 pt-4">
         <div>
           <p className="text-[13px] font-semibold text-fg">Acuses de entrega</p>
-          <p className="mt-0.5 text-[12.5px] text-fg-2">Con estos secretos comprobamos la firma de los avisos de entrega, lectura y rebote que envían los proveedores. Las respuestas «BAJA» también llegan por aquí.</p>
+          <p className="mt-0.5 text-[12.5px] text-fg-2">Con este secreto comprobamos la firma de los avisos de entrega, lectura y rebote del correo. Los acuses push se consultan solos a Expo cada 15 minutos.</p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <WebhookSecretField label="Secreto del correo (SES)" name="ses_webhook_secret" saved={mail.webhook_secrets.ses} />
-          <WebhookSecretField label="Secreto de push (FCM)" name="fcm_webhook_secret" saved={mail.webhook_secrets.fcm} />
-        </div>
+        <WebhookSecretField label="Secreto del correo (SES)" name="ses_webhook_secret" saved={mail.webhook_secrets.ses} />
       </div>
     </>
   );
@@ -96,10 +93,7 @@ function WebhookSecretField({ label, name, saved }: { label: string; name: strin
 }
 
 function webhookStatus(secrets: OutgoingMailSummary["webhook_secrets"]) {
-  if (secrets.ses && secrets.fcm) return "Correo y push configurados";
-  if (secrets.ses) return "Correo configurado · push sin configurar";
-  if (secrets.fcm) return "Push configurado · correo sin configurar";
-  return "Sin configurar";
+  return secrets.ses ? "Correo configurado" : "Sin configurar";
 }
 
 function TestMail({ mail }: { mail: OutgoingMailSummary }) {

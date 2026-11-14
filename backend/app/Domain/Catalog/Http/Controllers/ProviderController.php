@@ -8,6 +8,7 @@ use App\Domain\Catalog\Actions\ProviderRegistry;
 use App\Domain\Catalog\Http\Controllers\Concerns\ResolvesActor;
 use App\Domain\Catalog\Support\CatalogAccess;
 use App\Domain\Catalog\Support\ProviderDirectory;
+use App\Domain\Operations\Support\OperationsSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -118,8 +119,10 @@ final class ProviderController
             'payment_terms' => ['nullable', 'string', 'max:120'],
             'rating' => ['nullable', 'numeric', 'between:1,5'],
             'rating_note' => ['nullable', 'string', 'max:500'],
+            'response_sla_hours' => ['nullable', 'integer', 'between:1,'.OperationsSettings::MAX_RESPONSE_HOURS],
         ], [
             'name.*' => 'Escribe la razón social.',
+            'response_sla_hours.*' => 'El plazo de respuesta va de 1 a '.OperationsSettings::MAX_RESPONSE_HOURS.' horas. Déjalo vacío para usar el de la agencia.',
             'type.*' => 'Elige el tipo de proveedor.',
             'ruc.*' => 'El RUC tiene 11 dígitos y empieza en 10, 15, 17 o 20.',
             'city.*' => 'La ciudad admite hasta 80 caracteres.',

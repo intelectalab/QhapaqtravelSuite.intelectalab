@@ -166,8 +166,6 @@ final class GiftCards
 
     public function redeem(string $code, array $data, User $actor): array
     {
-        $this->gate->require(self::RULE);
-
         return DB::transaction(function () use ($code, $data, $actor): array {
             $card = DB::table('fin_gift_cards')->where('code', $code)->lockForUpdate()->first() ?? throw ApiException::notFound('El vale no existe.');
 
@@ -253,8 +251,6 @@ final class GiftCards
 
     public function void(string $code, ?string $reason, User $actor): array
     {
-        $this->gate->require(self::RULE);
-
         return DB::transaction(function () use ($code, $reason, $actor): array {
             $card = DB::table('fin_gift_cards')->where('code', $code)->lockForUpdate()->first() ?? throw ApiException::notFound('El vale no existe.');
 

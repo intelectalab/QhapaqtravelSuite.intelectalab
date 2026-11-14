@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 
 final class SupplierAccount
 {
-    public const PROVIDER_COLUMNS = ['id', 'ref', 'name', 'type', 'ruc', 'city', 'stars', 'contact_name', 'phone', 'email', 'contract_start', 'contract_end', 'currency', 'payment_terms', 'status'];
+    public const PROVIDER_COLUMNS = ['id', 'ref', 'name', 'type', 'ruc', 'city', 'stars', 'contact_name', 'phone', 'email', 'contract_start', 'contract_end', 'currency', 'payment_terms', 'status', 'response_sla_hours'];
 
     public function __construct(
         public readonly User $user,

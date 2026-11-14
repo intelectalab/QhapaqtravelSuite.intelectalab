@@ -33,6 +33,15 @@ const OPERATIONS: { key: string; label: string; unit: string; hint: string }[] =
   { key: "pay_reminder_days", label: "Recordatorio de pago", unit: "días antes", hint: "Aviso al cliente antes del vencimiento." },
   { key: "trip_notice_hours", label: "Aviso de viaje próximo", unit: "h antes", hint: "Correo al cliente antes del inicio." },
   { key: "incident_escalate_min", label: "Escalar incidencia", unit: "min", hint: "Sin respuesta, se avisa a gerencia." },
+  { key: "supplier_response_hours", label: "Respuesta del proveedor", unit: "h", hint: "Plazo para confirmar una solicitud. Se usa si el proveedor no tiene uno propio en su ficha." },
+];
+
+const OPERATION_LIMITS: Record<string, { min: number; max?: number }> = { max_pax_per_guide: { min: 1, max: 40 }, supplier_response_hours: { min: 1, max: 240 } };
+
+const NO_SHOW_RULES: { key: string; label: string; hint: string }[] = [
+  { key: "noshow_notify_advisor", label: "Avisar al asesor de la reserva", hint: "Recibe una notificación con el pasajero y el servicio." },
+  { key: "noshow_incident", label: "Abrir una incidencia", hint: "Queda en Operaciones › Incidencias, asignada al coordinador de la orden." },
+  { key: "noshow_charge", label: "Generar el cargo", hint: "Crea una cuenta por cobrar con el porcentaje de la política de no-show del producto." },
 ];
 
 export function SectionCard({ icon, title, tone, updated, children, action, index }: { icon: typeof Building2; title: string; tone: Tone; updated?: string | null; children: ReactNode; action?: ReactNode; index: number }) {
@@ -268,6 +277,7 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
               </div>
               <SelectField label="Fuente del tipo de cambio" name="fx_source" options={options.fx_sources.map((value) => ({ value, label: value }))} defaultValue={currency.fx_source} />
               {numberField("invoice_void_days", "Plazo para dar de baja un comprobante (días)", currency.invoice_void_days ?? 7, 1, 30, "Días desde la emisión en que una factura o boleta se puede dar de baja ante el OSE. Pasado el plazo, se anula con nota de crédito. Confírmalo con tu contador.")}
+              <ToggleField label="Cobrar en varias monedas" name="charge_multi_currency" defaultChecked={Boolean(currency.charge_multi_currency)} hint="Encendido, cada tarifa puede tener su precio en otra moneda de cobro y la tienda en línea cobra ese precio si el cliente elige esa moneda. Apagado, la moneda que elige el cliente solo cambia lo que ve: se cobra en la moneda de la tarifa." />
             </EditSection>
           )
         }
@@ -278,6 +288,7 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
             { label: "IGV", value: `${currency.tax_pct ?? 18} % · ${currency.price_with_tax ? "incluido en precios" : "se suma al final"}` },
             { label: "Redondeo", value: `${label(options.rounding, currency.rounding)} · ${label(options.round_modes, currency.round_mode).toLowerCase()}` },
             { label: "Baja de comprobantes", value: `Hasta ${currency.invoice_void_days ?? 7} días desde la emisión` },
+            { label: "Cobro en la tienda", value: currency.charge_multi_currency ? "En varias monedas: precio propio por moneda de cobro" : "Solo en la moneda de la tarifa" },
             {
               label: "Tipo de cambio",
               value: data.fx ? (
@@ -377,7 +388,13 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
             <EditSection section="operations" version={sections.operations.lock_version} title="Parámetros operativos" description="Todos son números enteros desde 0.">
               <div className="grid grid-cols-2 gap-3">
                 {OPERATIONS.map((item) => (
-                  <TextField key={item.key} label={`${item.label} (${item.unit})`} name={item.key} type="number" inputMode="numeric" min={item.key === "max_pax_per_guide" ? 1 : 0} max={item.key === "max_pax_per_guide" ? 40 : undefined} required defaultValue={ops[item.key]} />
+                  <TextField key={item.key} label={`${item.label} (${item.unit})`} name={item.key} type="number" inputMode="numeric" min={OPERATION_LIMITS[item.key]?.min ?? 0} max={OPERATION_LIMITS[item.key]?.max} required defaultValue={ops[item.key]} />
+                ))}
+              </div>
+              <div className="mt-2 flex flex-col gap-3 border-t border-line-2 pt-4">
+                <p className="text-[13px] font-semibold text-fg">Si un pasajero no se presenta</p>
+                {NO_SHOW_RULES.map((rule) => (
+                  <ToggleField key={rule.key} label={rule.label} name={rule.key} defaultChecked={Boolean(ops[rule.key])} hint={rule.hint} />
                 ))}
               </div>
             </EditSection>
@@ -393,6 +410,18 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
               </b>
             </li>
           ))}
+        </ul>
+        <p className="mt-4 text-[12.5px] font-semibold text-fg-3">Si un pasajero no se presenta</p>
+        <ul className="mt-1.5 grid gap-1.5 sm:grid-cols-3">
+          {NO_SHOW_RULES.map((rule) => {
+            const on = Boolean(ops[rule.key]);
+            return (
+              <li key={rule.key} title={rule.hint} className="flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-[13px] transition-colors hover:bg-surface-2">
+                <span className={cn("h-2 w-2 flex-none rounded-full", on ? "bg-ok" : "bg-[color-mix(in_srgb,var(--fg-3)_45%,transparent)]")} />
+                <span className={cn("truncate", on ? "text-fg" : "text-fg-3")}>{rule.label}</span>
+              </li>
+            );
+          })}
         </ul>
       </SectionCard>
       )}

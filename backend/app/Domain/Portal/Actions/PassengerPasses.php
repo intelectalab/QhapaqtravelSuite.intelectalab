@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Portal\Actions;
 
 use App\Domain\Documents\Support\QrImage;
-use App\Domain\Finance\Support\GrowthFeatureGate;
 use App\Domain\Operations\Actions\Checkin;
 use App\Domain\Operations\Support\CheckinPasses;
 use App\Domain\Portal\Support\PortalAccount;
@@ -25,12 +24,10 @@ final class PassengerPasses
         private readonly TenantContext $context,
         private readonly CheckinPasses $passes,
         private readonly AuditLogger $audit,
-        private readonly GrowthFeatureGate $gate,
     ) {}
 
     public function overview(PortalAccount $account, ?string $tripCode): array
     {
-        $this->gate->require(CheckinPasses::RULE);
         $reservation = $tripCode ? $account->reservation($tripCode) : $account->reservations()->first(fn (object $row) => ! in_array($row->status, ['cancelada', 'completada'], true)) ?? $account->reservations()->first();
 
         if ($reservation === null) {
@@ -80,8 +77,6 @@ final class PassengerPasses
 
     public function sign(PortalAccount $account, array $data, UploadedFile $file): array
     {
-        $this->gate->require(CheckinPasses::RULE);
-
         return DB::transaction(function () use ($account, $data, $file): array {
             $reservationIds = $account->reservations()->pluck('id');
             $passenger = DB::table('booking_passengers')->where('id', $data['passenger_id'])->whereIn('reservation_id', $reservationIds)->first(['id', 'reservation_id', 'full_name', 'birth_date', 'age', 'pax_type']);

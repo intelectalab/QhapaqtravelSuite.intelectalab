@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Domain\Admin\Support\StaffNotices;
+use App\Domain\Operations\Support\OperationsSettings;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -16,10 +17,11 @@ final class RemindPendingSupplierRequests extends TenantJob
     {
         $now = Carbon::now();
         $soon = $this->today()->addDays(2)->toDateString();
+        $agencyHours = app(OperationsSettings::class)->supplierResponseHours();
         $pending = DB::table('ops_supplier_requests as q')->join('booking_reservation_services as s', 's.id', '=', 'q.reservation_service_id')
             ->join('booking_reservations as r', 'r.id', '=', 's.reservation_id')->join('catalog_providers as p', 'p.id', '=', 'q.provider_id')
             ->whereNull('q.deleted_at')->where('q.status', 'solicitado')->where('s.status', '<>', 'cancelado')
-            ->where(fn ($query) => $query->where('q.requested_at', '<=', $now->copy()->subDay())->orWhere('s.service_date', '<=', $soon))
+            ->where(fn ($query) => $query->whereRaw('q.requested_at + make_interval(hours => coalesce(p.response_sla_hours, ?)::int) <= ?', [$agencyHours, $now])->orWhere('s.service_date', '<=', $soon))
             ->get(['q.id', 'p.name as provider', 'p.email', 's.name as service', 's.service_date', 'r.code as reservation']);
         $notices = app(StaffNotices::class);
         $sent = 0;

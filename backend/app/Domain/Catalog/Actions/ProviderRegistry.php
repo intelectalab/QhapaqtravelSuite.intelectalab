@@ -40,6 +40,10 @@ final class ProviderRegistry
             DB::table('catalog_providers')->where('id', $provider->id)->update([...$values, 'status' => $status, 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             $this->audit->log('Proveedor', $ref, 'modificar', "{$provider->name} · contrato hasta {$provider->contract_end}", "{$values['name']} · contrato hasta {$values['contract_end']}");
 
+            if (array_key_exists('response_sla_hours', $values) && $values['response_sla_hours'] !== ($provider->response_sla_hours === null ? null : (int) $provider->response_sla_hours)) {
+                $this->audit->log('Proveedor', $ref, 'plazo_respuesta', self::slaText($provider->response_sla_hours), self::slaText($values['response_sla_hours']));
+            }
+
             return $ref;
         });
     }
@@ -144,6 +148,12 @@ final class ProviderRegistry
             'payment_terms' => $data['payment_terms'] ?? null,
             'rating' => isset($data['rating']) ? round((float) $data['rating'], 1) : 0,
             'rating_note' => $data['rating_note'] ?? null,
+            ...(array_key_exists('response_sla_hours', $data) ? ['response_sla_hours' => $data['response_sla_hours'] === null ? null : (int) $data['response_sla_hours']] : []),
         ];
+    }
+
+    private static function slaText(mixed $hours): string
+    {
+        return $hours === null ? 'plazo de la agencia' : "{$hours} h";
     }
 }

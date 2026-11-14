@@ -12,6 +12,7 @@ import type { CartLine, QuoteLine, SiteCart } from "@/lib/site";
 import { QuoteLines } from "./QuoteLines";
 import { Stepper } from "./SearchBar";
 import { useSite } from "./SiteContext";
+import { Referential } from "./SiteMoney";
 
 function useNow(): number | null {
   const [now, setNow] = useState<number | null>(null);
@@ -228,7 +229,10 @@ export function CartSummary({ cart, action }: { cart: SiteCart; action?: React.R
             )}
             <div className="flex items-baseline justify-between border-t border-line pt-2">
               <dt className="font-semibold text-fg">{t.common.total}</dt>
-              <dd className="text-[20px] font-bold tabular-nums text-fg">{formatMoney(total.total, total.currency)}</dd>
+              <dd className="text-right text-[20px] font-bold tabular-nums text-fg">
+                {formatMoney(total.total, total.currency)}
+                <Referential amount={total.total} currency={total.currency} />
+              </dd>
             </div>
           </div>
         ))}

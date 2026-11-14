@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Catalog\Actions;
 
 use App\Domain\Catalog\Support\CatalogAccess;
+use App\Domain\Catalog\Support\RateCurrencyPrices;
 use App\Domain\Catalog\Support\RateDirectory;
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Iam\Models\User;
@@ -16,7 +17,12 @@ final class RateRegistry
 {
     private const FIELDS = ['rate_type', 'segment', 'channel', 'currency', 'price_basis', 'cost', 'price', 'min_price', 'max_price', 'valid_from', 'valid_to', 'season_id', 'conditions'];
 
-    public function __construct(private readonly AuditLogger $audit, private readonly CodeSequence $codes) {}
+    public function __construct(private readonly AuditLogger $audit, private readonly CodeSequence $codes, private readonly RateCurrencyPrices $prices) {}
+
+    private static function altPrices(array $data): ?array
+    {
+        return array_key_exists('alt_prices', $data) ? array_values((array) ($data['alt_prices'] ?? [])) : null;
+    }
 
     public function create(array $data, User $actor): array
     {
@@ -32,6 +38,7 @@ final class RateRegistry
             $this->guard($values, $actor);
             $ref = $this->codes->next('catalog_rates', 'TAR-', 3, 'ref');
             DB::table('catalog_rates')->insert([...$values, 'ref' => $ref, 'product_id' => $product->id, 'status' => 'vigente', 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey()]);
+            $this->prices->sync(DB::table('catalog_rates')->where('ref', $ref)->first(['id', 'ref', 'currency', 'min_price', 'max_price']), self::altPrices($data), $actor);
             $this->linkSeason($product->id, $values['season_id'], $actor);
             $this->audit->log('Tarifa', $ref, 'crear', after: "{$product->code} · {$values['rate_type']} {$values['segment']} {$values['channel']} · {$values['currency']} {$values['price']}");
 
@@ -64,6 +71,7 @@ final class RateRegistry
                 throw ApiException::conflict('STALE_VERSION', 'Alguien cambió esta tarifa mientras la veías. Recarga la página e inténtalo de nuevo.');
             }
 
+            $this->prices->sync((object) ['id' => $rate->id, 'ref' => $ref, ...array_intersect_key($values, array_flip(['currency', 'min_price', 'max_price']))], self::altPrices($data), $actor);
             $this->linkSeason($rate->product_id, $values['season_id'], $actor);
 
             if ($priceChanged) {

@@ -12,6 +12,7 @@ import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { SelectField } from "@/components/ui/SelectField";
 import { SidePanel } from "@/components/ui/SidePanel";
 import { Tabs } from "@/components/ui/Tabs";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import { formatDate, initials } from "@/lib/format";
@@ -150,7 +151,7 @@ export function DriverForm({ driver, users, trigger }: { driver?: Driver; users?
         <SelectField label="Categoría" name="license_class" options={LICENSE_CLASSES.map((value) => ({ value, label: value }))} defaultValue={driver?.license_class ?? "A-IIIb"} />
         <TextField label="Licencia" name="license_number" required maxLength={40} defaultValue={driver?.license ?? ""} icon={<IdCard size={17} />} />
       </div>
-      <TextField label="Vence" name="license_expires_on" type="date" required defaultValue={driver?.expires_on ?? ""} />
+      <DateField label="Vence" name="license_expires_on" required defaultValue={driver?.expires_on} />
       <TextField label="Teléfono" name="phone" maxLength={30} defaultValue={driver?.phone ?? ""} icon={<Phone size={16} />} />
       <UserLink users={users} current={driver?.user?.id ?? null} resourceId={driver?.id} role="Conductor" />
       <StatusChoice value={driver?.status ?? "disponible"} options={PERSON_STATUS} />
@@ -167,7 +168,7 @@ export function VehicleForm({ vehicle, carriers, trigger }: { vehicle?: Vehicle;
       </div>
       <TextField label="Tipo" name="vehicle_type" required minLength={3} maxLength={60} defaultValue={vehicle?.type ?? ""} placeholder="Sprinter 19 pax" />
       <SelectField label="Transportista" name="provider_id" options={carriers.map((carrier) => ({ value: carrier.id, label: carrier.name }))} defaultValue={vehicle?.provider_id ?? ""} placeholder="Flota propia" />
-      <TextField label="SOAT vence" name="soat_expires_on" type="date" required defaultValue={vehicle?.soat_expires_on ?? ""} />
+      <DateField label="SOAT vence" name="soat_expires_on" required defaultValue={vehicle?.soat_expires_on} />
       <StatusChoice value={vehicle?.status ?? "disponible"} options={VEHICLE_STATUS} />
     </OpsStep>
   );

@@ -8,6 +8,7 @@ import { Captcha } from "@/components/ui/Captcha";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { GuardianFields } from "@/features/claims/GuardianFields";
 import { formatDate, formatDateTime } from "@/lib/format";
@@ -91,10 +92,10 @@ export function TailorMadeForm({ destinations, initial }: { destinations: Option
         <ChipGroup name="destinations" label="Destinos" options={destinations} defaultValue={initial.destino ? [initial.destino] : []} error={errors.destinations} />
         <div className="grid gap-4 sm:grid-cols-2">
           <Field error={errors.start_date}>
-            <TextField label="Fecha de inicio" name="start_date" type="date" defaultValue={initial.fecha} disabled={undefinedDates} />
+            <DateField label="Fecha de inicio" name="start_date" defaultValue={initial.fecha} disabled={undefinedDates} />
           </Field>
           <Field error={errors.end_date}>
-            <TextField label="Fecha de regreso" name="end_date" type="date" disabled={undefinedDates} />
+            <DateField label="Fecha de regreso" name="end_date" disabled={undefinedDates} />
           </Field>
         </div>
         <CheckBox name="undefined_dates" label="Aún no defino las fechas" onChange={setUndefinedDates} />

@@ -3,7 +3,7 @@ import { cookies, headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import type { AboutData, CheckoutTerms, DestinationCard, DestinationDetail, FormOptions, HomeData, ListingData, ListingKey, OffersData, PostDetail, PostSummary, ProductDetail, SitePage, SiteProfile } from "@/lib/site";
-import { accountCookie, cartCookie, listingQuery, orderCookie, siteHref, type SiteCart, type SiteOrder } from "@/lib/site";
+import { accountCookie, cartCookie, listingQuery, orderCookie, SITE_CURRENCY_COOKIE, siteHref, type SiteCart, type SiteOrder } from "@/lib/site";
 import { REALMS } from "@/lib/realms";
 import { PREVIEW_COOKIE, withTextOverrides, type SitePreview } from "@/lib/site-design";
 import { parseSiteLocale, SITE_LOCALE_COOKIE, siteText, type SiteLocale, type SiteText } from "@/lib/site-i18n";
@@ -24,8 +24,14 @@ export function cartHeaders(token: string | undefined): Record<string, string> {
 
 export const siteLocale = cache(async (): Promise<SiteLocale> => parseSiteLocale((await cookies()).get(SITE_LOCALE_COOKIE)?.value));
 
+export const siteCurrency = cache(async (): Promise<string | null> => {
+  const value = (await cookies()).get(SITE_CURRENCY_COOKIE)?.value ?? "";
+  return /^[A-Z]{3}$/.test(value) ? value : null;
+});
+
 async function siteHeaders(agencia: string, extra: Record<string, string> = {}): Promise<Record<string, string>> {
-  return { "X-Forwarded-Host": `${agencia}.${SITES_DOMAIN}`, "X-Site-Locale": await siteLocale(), ...extra };
+  const currency = await siteCurrency();
+  return { "X-Forwarded-Host": `${agencia}.${SITES_DOMAIN}`, "X-Site-Locale": await siteLocale(), ...(currency ? { "X-Site-Currency": currency } : {}), ...extra };
 }
 
 export const siteRequestHeaders = siteHeaders;

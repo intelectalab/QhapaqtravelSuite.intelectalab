@@ -7,6 +7,7 @@ import type { PanelActionState } from "@/components/ui/PanelAction";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { reportPayment } from "@/app/(agencia)/agencia/actions";
 import { EmptyLine, RISE, rise } from "@/features/portal/PortalUi";
@@ -40,7 +41,7 @@ function ReportPanel({ row, methods, today }: { row: AgencyInstallment; methods:
           <TextField label={`Monto pagado (${row.currency})`} name="amount" type="number" step="0.01" min="0.01" max={available} defaultValue={available.toFixed(2)} required />
           <SelectField label="Medio de pago" name="method" placeholder="Elige el medio" options={methods.map((item) => ({ value: item.value, label: item.label }))} onChange={setMethod} />
           <TextField label="Número de operación" name="reference" minLength={3} maxLength={60} required hint={method ? "Lo encuentras en la constancia del banco." : undefined} />
-          <TextField label="Fecha del pago" name="paid_on" type="date" defaultValue={today} max={today} />
+          <DateField label="Fecha del pago" name="paid_on" defaultValue={today} max={today} />
           <TextArea label="Comentario" name="note" rows={3} maxLength={500} placeholder="Opcional" />
           {state.message && <p className="text-[13px] font-medium text-bad">{state.message}</p>}
         </>

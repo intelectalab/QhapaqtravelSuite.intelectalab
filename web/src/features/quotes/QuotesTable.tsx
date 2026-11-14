@@ -14,7 +14,7 @@ import { QuoteDeleteAction } from "./QuoteActions";
 
 const href = (row: QuoteRow) => `/cotizaciones/${row.code}`;
 
-export function QuotesTable({ rows, canManage }: { rows: QuoteRow[]; canManage: boolean }) {
+export function QuotesTable({ rows, canManage, ownOnly = false }: { rows: QuoteRow[]; canManage: boolean; ownOnly?: boolean }) {
   const showMargin = rows.some((row) => row.margin_pct !== null);
 
   const columns: Column<QuoteRow>[] = [
@@ -29,7 +29,7 @@ export function QuotesTable({ rows, canManage }: { rows: QuoteRow[]; canManage: 
           </Link>
           <small className="block text-xs text-fg-3">
             {row.code} · v{row.version}
-            {row.version_count > 1 ? ` de ${row.version_count}` : ""} · {row.client.name} · {row.owner.name}
+            {row.version_count > 1 ? ` de ${row.version_count}` : ""} · {row.client.name}{ownOnly ? "" : ` · ${row.owner.name}`}
           </small>
         </div>
       ),
@@ -110,7 +110,7 @@ export function QuotesTable({ rows, canManage }: { rows: QuoteRow[]; canManage: 
   const filters: FilterConfig<QuoteRow>[] = [
     { id: "status", label: "Estado", options: [...new Set(rows.map((row) => row.status))].map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status },
     { id: "internal", label: "Aprobación interna", options: [{ value: "pend", label: "Pendiente de Gerencia" }, { value: "req", label: "Requiere aprobación" }, { value: "rejected", label: "No aprobada" }, { value: "ok", label: "Aprobada" }], value: (row) => row.internal_status ?? "" },
-    { id: "owner", label: "Responsable", options: [...new Set(rows.map((row) => row.owner.name))].map((value) => ({ value, label: value })), value: (row) => row.owner.name },
+    ...(ownOnly ? [] : [{ id: "owner", label: "Responsable", options: [...new Set(rows.map((row) => row.owner.name))].map((value) => ({ value, label: value })), value: (row: QuoteRow) => row.owner.name }]),
   ];
 
   const sorts: SortOption<QuoteRow>[] = [

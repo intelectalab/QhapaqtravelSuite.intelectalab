@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "next typegen && tsc --noEmit",
+    "test:unit": "vitest run",
     "api:gen": "openapi-typescript ../docs/kit/api/openapi.yaml -o src/lib/api/schema.d.ts"
   },
   "dependencies": {

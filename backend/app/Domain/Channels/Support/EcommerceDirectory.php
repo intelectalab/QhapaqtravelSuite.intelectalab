@@ -8,6 +8,7 @@ use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
 use App\Domain\Site\Support\SiteCatalog;
+use App\Domain\Site\Support\TransferProofs;
 use Illuminate\Support\Facades\DB;
 
 final class EcommerceDirectory
@@ -74,6 +75,9 @@ final class EcommerceDirectory
             ->orderByDesc('occurred_at')->get(['entity_id', 'occurred_at', 'after_value']) as $l) {
             $links[(string) $l->entity_id][] = ['at' => $l->occurred_at, 'detail' => $l->after_value];
         }
+        $proofs = DB::table('sys_documents as d')->join('fin_payments as f', 'f.id', '=', 'd.entity_id')->join('booking_reservations as b', 'b.id', '=', 'f.reservation_id')
+            ->where('d.doc_type', TransferProofs::DOC_TYPE)->where('d.entity_type', TransferProofs::ENTITY)->where('f.status', 'pendiente')->whereIn('b.ecom_order_id', $orders->pluck('id'))
+            ->groupBy('b.ecom_order_id')->selectRaw('b.ecom_order_id, min(d.created_at) as uploaded_at')->pluck('uploaded_at', 'ecom_order_id');
         $sessions = DB::table('channel_web_events')->distinct()->count('session_id');
         $events = DB::table('channel_web_events')->selectRaw('event, count(*) as total')->groupBy('event')->pluck('total', 'event');
         $confirmed = $orders->where('status', 'confirmado');
@@ -91,9 +95,11 @@ final class EcommerceDirectory
             'funnel' => [
                 ['id' => 'sessions', 'label' => 'Sesiones', 'value' => $sessions],
                 ['id' => 'views', 'label' => 'Vistas de página', 'value' => (int) ($events['page_view'] ?? 0)],
+                ['id' => 'dates', 'label' => 'Eligieron fecha', 'value' => DB::table('channel_web_events')->where('event', 'select_date')->distinct()->count('session_id')],
                 ['id' => 'orders', 'label' => 'Pedidos', 'value' => $orders->count()],
                 ['id' => 'paid', 'label' => 'Pagados', 'value' => $confirmed->count()],
             ],
+            'unmet_demand' => $this->unmetDemand(),
             'orders' => $orders->map(fn (object $row): array => [
                 'code' => $row->code,
                 'ordered_at' => $row->ordered_at,
@@ -109,6 +115,7 @@ final class EcommerceDirectory
                 'promo_code' => $row->promo_code,
                 'reservation' => $row->reservation_code,
                 'cancel_reason' => $row->cancel_reason,
+                'proof_at' => $row->status === 'pago_por_validar' ? ($proofs[$row->id] ?? null) : null,
                 'can_cancel' => in_array($row->status, self::CANCELLABLE, true),
                 'can_send_link' => in_array($row->status, ['pago_pendiente', 'pago_rechazado'], true),
                 'attempts' => $attempts[(string) $row->id] ?? [],
@@ -133,6 +140,25 @@ final class EcommerceDirectory
                 'sales' => $orders->where('product_id', $row->id)->where('status', 'confirmado')->groupBy('currency')->map(fn ($group) => ChannelKit::money($group->sum('total')))->all(),
             ])->values(),
             'can_manage' => $viewer->can('channels.ecommerce.manage'),
+        ];
+    }
+
+    private function unmetDemand(): array
+    {
+        $rows = DB::table('channel_web_events')->where('event', 'select_date')->whereRaw("params->>'available' = 'false'")
+            ->selectRaw("params->>'item_id' as item, params->>'date' as date, count(distinct session_id) as sessions, coalesce(sum(coalesce((params->>'pax')::int, (params->>'adults')::int + coalesce((params->>'children')::int, 0), 0)), 0) as travelers, max(occurred_at) as last_at")
+            ->groupByRaw("params->>'item_id', params->>'date'")->orderByDesc('sessions')->orderByDesc('last_at')->limit(8)->get();
+        $names = DB::table('catalog_products')->whereIn('slug', $rows->pluck('item')->filter()->all())->pluck('name', 'slug');
+
+        return [
+            'total' => (int) DB::table('channel_web_events')->where('event', 'select_date')->whereRaw("params->>'available' = 'false'")->distinct()->count('session_id'),
+            'items' => $rows->map(fn (object $row): array => [
+                'product' => $row->item ? ['slug' => $row->item, 'name' => $names[$row->item] ?? $row->item] : null,
+                'date' => $row->date,
+                'sessions' => (int) $row->sessions,
+                'travelers' => (int) $row->travelers,
+                'last_at' => $row->last_at,
+            ])->all(),
         ];
     }
 

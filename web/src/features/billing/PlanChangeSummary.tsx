@@ -1,4 +1,4 @@
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { PlanChangePreview } from "@/lib/admin";
@@ -60,6 +60,28 @@ export function PlanChangeSummary({ preview, currency, audience = "tenant" }: { 
       )}
       {preview.rules.gained.length > 0 && <RuleList title={copy.gained} rules={preview.rules.gained} tone="ok" />}
       {preview.rules.lost.length > 0 && <RuleList title={copy.lost} rules={preview.rules.lost} tone="warn" />}
+      {preview.carry_over && preview.carry_over.items.length > 0 && <CarryOver items={preview.carry_over.items} notice={preview.carry_over.notice} />}
+    </div>
+  );
+}
+
+function CarryOver({ items, notice }: { items: NonNullable<PlanChangePreview["carry_over"]>["items"]; notice: string | null }) {
+  return (
+    <div className="rounded-[14px] border border-[color-mix(in_srgb,var(--info)_30%,transparent)] bg-[color-mix(in_srgb,var(--info)_6%,transparent)] p-3.5">
+      <p className="mb-2 flex items-center gap-1.5 text-[12.5px] font-semibold text-fg-2">
+        <ShieldCheck size={15} className="text-info" />
+        Lo ya vendido se respeta
+      </p>
+      <ul className="grid gap-1.5 sm:grid-cols-2">
+        {items.map((item) => (
+          <li key={item.rule} className="rounded-[10px] bg-surface px-2.5 py-2 text-[12.5px] transition-transform duration-200 hover:-translate-y-0.5">
+            <span className="block text-[15px] font-bold tabular-nums">{item.count}</span>
+            <span className="block text-fg-2">{item.noun}</span>
+            <span className="block text-[11.5px] text-fg-3">{item.kept}</span>
+          </li>
+        ))}
+      </ul>
+      {notice && <p className="mt-2 text-[12px] text-fg-3">{notice}</p>}
     </div>
   );
 }

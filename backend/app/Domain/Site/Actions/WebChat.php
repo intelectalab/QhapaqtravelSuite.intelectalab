@@ -6,9 +6,14 @@ namespace App\Domain\Site\Actions;
 
 use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Inbox\Support\InboxNotices;
+use App\Domain\Inbox\Support\InboxResponseTimes;
+use App\Domain\Inbox\Support\MessageCipher;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Domain\Shared\Time\BusinessHours;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -17,6 +22,8 @@ use stdClass;
 final class WebChat
 {
     private const AUTO_REPLY = 'Hola, gracias por escribirnos. Un asesor te responderá en breve por este chat; si ya cerraste la ventana, te contestaremos por correo o WhatsApp.';
+
+    private const AUTO_REPLY_CLOSED = 'Hola, gracias por escribirnos. Ahora estamos fuera de horario (atendemos %s). Un asesor te responderá %s por este chat; si ya cerraste la ventana, te contestaremos por correo o WhatsApp.';
 
     public function __construct(
         private readonly TenantContext $context,
@@ -45,13 +52,13 @@ final class WebChat
             'priority' => 'media',
             'tags' => '{Web,Chat}',
             'client_id' => $client,
-            'first_response_due_at' => $now->copy()->addMinutes(30),
+            'first_response_due_at' => app(InboxResponseTimes::class)->dueFor('webchat', $now),
             'last_inbound_at' => $now,
             'last_message_at' => $now,
             'unread_count' => 1,
         ]);
         $this->message($id, 'in', trim((string) $data['message']), $now);
-        $this->message($id, 'system', self::AUTO_REPLY, $now->copy()->addSecond());
+        $this->message($id, 'system', $this->autoReply($now), $now->copy()->addSecond());
         $this->audit->log('Conversación', $code, 'crear', after: 'webchat');
 
         app(InboxNotices::class)->created($id);
@@ -85,6 +92,25 @@ final class WebChat
         return ['session' => $conversation->code, 'messages' => $this->visible((string) $conversation->id)];
     }
 
+    public function autoReply(CarbonInterface $at): string
+    {
+        $hours = app(BusinessHours::class);
+
+        if ($hours->isOpen($at)) {
+            return self::AUTO_REPLY;
+        }
+
+        $local = CarbonImmutable::instance($at)->setTimezone($hours->timezone());
+        $next = $hours->nextOpen($at)->locale('es');
+        $when = match (true) {
+            $next->isSameDay($local) => 'hoy a las '.$next->format('H:i'),
+            $next->isSameDay($local->addDay()) => 'mañana a las '.$next->format('H:i'),
+            default => 'el '.$next->isoFormat('dddd D [de] MMMM').' a las '.$next->format('H:i'),
+        };
+
+        return sprintf(self::AUTO_REPLY_CLOSED, $hours->summary('es'), $when);
+    }
+
     public static function token(string $conversationId): string
     {
         return hash_hmac('sha256', 'webchat|'.$conversationId, (string) config('app.key'));
@@ -109,7 +135,7 @@ final class WebChat
             'conversation_id' => $conversationId,
             'channel' => 'webchat',
             'direction' => $direction,
-            'body' => $body,
+            'body' => MessageCipher::seal($body),
             'sent_at' => $at,
         ]);
     }
@@ -119,7 +145,7 @@ final class WebChat
         $items = [];
 
         foreach (DB::table('collab_messages as m')->leftJoin('iam_users as u', 'u.id', '=', 'm.author_user_id')->where('m.conversation_id', $conversationId)->whereIn('m.direction', ['in', 'out', 'system'])->orderBy('m.sent_at')->get(['m.direction', 'm.body', 'm.sent_at', 'u.name']) as $row) {
-            $items[] = ['from' => ['in' => 'contacto', 'out' => 'asesor', 'system' => 'sistema'][$row->direction], 'author' => $row->direction === 'out' ? $row->name : null, 'body' => $row->body, 'at' => Carbon::parse($row->sent_at)->toIso8601String()];
+            $items[] = ['from' => ['in' => 'contacto', 'out' => 'asesor', 'system' => 'sistema'][$row->direction], 'author' => $row->direction === 'out' ? $row->name : null, 'body' => MessageCipher::open($row->body), 'at' => Carbon::parse($row->sent_at)->toIso8601String()];
         }
 
         return $items;

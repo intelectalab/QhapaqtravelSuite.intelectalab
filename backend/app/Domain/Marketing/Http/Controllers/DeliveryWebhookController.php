@@ -7,20 +7,16 @@ namespace App\Domain\Marketing\Http\Controllers;
 use App\Domain\Integrations\Support\ChannelWebhooks;
 use App\Domain\Integrations\Support\ProviderSignature;
 use App\Domain\Marketing\Support\DeliveryReceipts;
-use App\Domain\Marketing\Support\TemplateReviews;
+use App\Domain\Marketing\Support\WhatsappDeliveries;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantDatabase;
-use Carbon\CarbonImmutable;
-use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 final class DeliveryWebhookController
 {
-    private const WHATSAPP_STATUSES = ['delivered' => 'delivered', 'read' => 'opened', 'failed' => 'failed'];
-
-    public function __construct(private readonly TenantDatabase $database, private readonly DeliveryReceipts $receipts) {}
+    public function __construct(private readonly TenantDatabase $database, private readonly DeliveryReceipts $receipts, private readonly WhatsappDeliveries $deliveries) {}
 
     public function email(Request $request, ProviderSignature $signature): JsonResponse
     {
@@ -47,7 +43,7 @@ final class DeliveryWebhookController
                 return ['result' => 'duplicado'];
             }
 
-            $at = $this->moment($event['occurred_at'] ?? null);
+            $at = WhatsappDeliveries::moment($event['occurred_at'] ?? null);
 
             return ($event['type'] === 'replied'
                 ? $this->receipts->reply('email', (string) $event['message_id'], null, $event['reply'] ?? null, $at)
@@ -63,38 +59,21 @@ final class DeliveryWebhookController
 
         $summary = $this->database->run((string) $account->tenant_id, function () use ($channels, $account, $raw, $request, $changes): array {
             $channels->verify((string) $account->account_id, $raw, (string) $request->header(ChannelWebhooks::SIGNATURE_HEADER, ''));
-            $summary = ['actualizados' => 0, 'duplicados' => 0, 'ignorados' => 0, 'bajas' => 0];
 
-            foreach ($changes as $value) {
-                foreach ((array) ($value['statuses'] ?? []) as $status) {
-                    $summary = $this->tally($summary, $this->status((array) $status));
-                }
-
-                foreach ((array) ($value['messages'] ?? []) as $message) {
-                    $summary = $this->tally($summary, $this->reply((array) $message));
-                }
-            }
-
-            return $summary;
+            return $this->deliveries->changes($changes);
         });
 
         return response()->json(['data' => $summary]);
     }
 
-    public function whatsappTemplates(Request $request, ChannelWebhooks $channels, TemplateReviews $reviews): JsonResponse
+    public function whatsappTemplates(Request $request, ChannelWebhooks $channels): JsonResponse
     {
         [$raw, $account, $changes] = $this->whatsapp($request, $channels, 'message_template_status_update');
 
-        $templates = $this->database->run((string) $account->tenant_id, function () use ($channels, $account, $raw, $request, $changes, $reviews): array {
+        $templates = $this->database->run((string) $account->tenant_id, function () use ($channels, $account, $raw, $request, $changes): array {
             $channels->verify((string) $account->account_id, $raw, (string) $request->header(ChannelWebhooks::SIGNATURE_HEADER, ''));
 
-            return $changes->map(function (array $value) use ($account, $reviews): array {
-                $key = implode(':', ['plantilla', $value['message_template_id'] ?? $value['message_template_name'] ?? '', $value['event'] ?? '', $value['time'] ?? '']);
-
-                return $this->receipts->claim('whatsapp', $key, $value)
-                    ? $reviews->apply((string) $account->account_id, $value)
-                    : ['result' => 'duplicado', 'template' => $value['message_template_name'] ?? null, 'status' => null];
-            })->values()->all();
+            return $changes->map(fn (array $value): array => $this->deliveries->template((string) $account->account_id, $value))->values()->all();
         });
 
         return response()->json(['data' => ['templates' => $templates]]);
@@ -102,6 +81,10 @@ final class DeliveryWebhookController
 
     public function providers(Request $request, string $provider, ProviderSignature $signature, ChannelWebhooks $channels): JsonResponse
     {
+        if ($provider === 'fcm') {
+            throw ApiException::notFound('Los acuses push ya no llegan por este aviso: KipuControl consulta los recibos de Expo cada 15 minutos.');
+        }
+
         $raw = $request->getContent();
 
         if ($provider !== 'whatsapp') {
@@ -129,7 +112,7 @@ final class DeliveryWebhookController
                 $channels->verify((string) $account->account_id, $raw, (string) $request->header(ChannelWebhooks::SIGNATURE_HEADER, ''));
             }
 
-            return $this->receipts->apply(DeliveryReceipts::ACKS[$event['status']], $messageId, $this->moment($event['occurred_at'] ?? null), $event['error'] ?? null)
+            return $this->receipts->apply(DeliveryReceipts::ACKS[$event['status']], $messageId, WhatsappDeliveries::moment($event['occurred_at'] ?? null), $event['error'] ?? null)
                 ?? throw ApiException::notFound('No encontramos el mensaje de este acuse.');
         });
 
@@ -153,55 +136,5 @@ final class DeliveryWebhookController
         $account = $channels->account('whatsapp', $phone, null);
 
         return [$raw, $account, $values->filter(fn (array $value): bool => ($value['metadata']['phone_number_id'] ?? $phone) === $phone)->values()];
-    }
-
-    private function status(array $status): string
-    {
-        $event = self::WHATSAPP_STATUSES[$status['status'] ?? ''] ?? null;
-
-        if ($event === null || blank($status['id'] ?? null)) {
-            return 'ignorado';
-        }
-
-        if (! $this->receipts->claim('whatsapp', "estado:{$status['id']}:{$status['status']}", $status)) {
-            return 'duplicado';
-        }
-
-        $error = $status['errors'][0]['title'] ?? $status['errors'][0]['message'] ?? null;
-
-        return $this->receipts->apply($event, (string) $status['id'], $this->moment($status['timestamp'] ?? null), is_string($error) ? $error : null)['result'] ?? 'ignorado';
-    }
-
-    private function reply(array $message): string
-    {
-        if (blank($message['id'] ?? null) || ! $this->receipts->claim('whatsapp', "respuesta:{$message['id']}", $message)) {
-            return blank($message['id'] ?? null) ? 'ignorado' : 'duplicado';
-        }
-
-        $text = $message['text']['body'] ?? $message['button']['text'] ?? $message['interactive']['button_reply']['title'] ?? null;
-
-        return $this->receipts->reply('whatsapp', $message['context']['id'] ?? null, $message['from'] ?? null, is_string($text) ? $text : null, $this->moment($message['timestamp'] ?? null))['result'] ?? 'ignorado';
-    }
-
-    private function tally(array $summary, string $result): array
-    {
-        $key = match ($result) {
-            'actualizado' => 'actualizados',
-            'baja' => 'bajas',
-            'duplicado' => 'duplicados',
-            default => 'ignorados',
-        };
-        $summary[$key]++;
-
-        return $summary;
-    }
-
-    private function moment(mixed $value): CarbonInterface
-    {
-        return match (true) {
-            is_numeric($value) => CarbonImmutable::createFromTimestampUTC((int) $value),
-            is_string($value) && $value !== '' => CarbonImmutable::parse($value)->utc(),
-            default => CarbonImmutable::now('UTC'),
-        };
     }
 }

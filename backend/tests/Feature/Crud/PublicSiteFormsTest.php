@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Inbox\Support\MessageCipher;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -274,7 +275,7 @@ it('el contacto para cotizar abre una conversación en la bandeja y crea su lead
         ->and($conversation->client_id)->toBe(idOf('crm_clients', 'CLI-0001'))
         ->and($conversation->lead_id)->toBe(rowOf('crm_leads', $data['lead'])->id)
         ->and($message->direction)->toBe('in')
-        ->and($message->body)->toBe('Quiero cotizar un viaje a Arequipa para mayo.')
+        ->and(MessageCipher::open($message->body))->toBe('Quiero cotizar un viaje a Arequipa para mayo.')
         ->and(json_decode(rowOf('crm_leads', $data['lead'])->web_request, true)['origin'])->toBe('contacto');
 
     actingAsSeed('U01');

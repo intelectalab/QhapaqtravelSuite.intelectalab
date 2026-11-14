@@ -36,6 +36,7 @@ export default async function ExternalReviewsLayout({ children }: { children: Re
         tabs={[
           { href: "/canales/resenas", label: "Bandeja de reseñas", count: overview.items.length },
           { href: "/canales/resenas/conectores", label: "Conectores" },
+          { href: "/canales/resenas/invitaciones", label: "Invitaciones postviaje" },
           { href: "/canales/resenas/widget", label: "Widget para el sitio" },
         ]}
       >

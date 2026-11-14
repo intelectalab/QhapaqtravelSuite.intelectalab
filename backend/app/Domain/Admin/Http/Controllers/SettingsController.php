@@ -9,6 +9,7 @@ use App\Domain\Admin\Support\Branding;
 use App\Domain\Admin\Support\SettingsCatalog;
 use App\Domain\Admin\Support\SettingsDirectory;
 use App\Domain\Iam\Models\User;
+use App\Domain\Operations\Support\OperationsSettings;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,6 +33,7 @@ final class SettingsController
 
         if ($section === 'currency') {
             $data['price_with_tax'] = $request->boolean('price_with_tax');
+            $data['charge_multi_currency'] = $request->boolean('charge_multi_currency');
         }
 
         $expected = $request->input('lock_version');
@@ -225,8 +227,16 @@ final class SettingsController
                 'pay_reminder_days' => ['required', 'integer', 'min:0', 'max:60'],
                 'trip_notice_hours' => ['required', 'integer', 'min:0', 'max:720'],
                 'incident_escalate_min' => ['required', 'integer', 'min:0', 'max:1440'],
+                'supplier_response_hours' => ['sometimes', 'required', 'integer', 'between:1,'.OperationsSettings::MAX_RESPONSE_HOURS],
+                'noshow_notify_advisor' => ['sometimes', 'boolean'],
+                'noshow_incident' => ['sometimes', 'boolean'],
+                'noshow_charge' => ['sometimes', 'boolean'],
             ], [
                 'max_pax_per_guide.*' => 'Los pasajeros por guía van de 1 a 40 (CFG-BR-10).',
+                'supplier_response_hours.*' => 'El plazo de respuesta del proveedor va de 1 a '.OperationsSettings::MAX_RESPONSE_HOURS.' horas.',
+                'noshow_notify_advisor.*' => 'Indica si se avisa al asesor cuando un pasajero no se presenta.',
+                'noshow_incident.*' => 'Indica si se abre una incidencia cuando un pasajero no se presenta.',
+                'noshow_charge.*' => 'Indica si se genera el cargo por no-show.',
                 '*.required' => 'Completa todos los parámetros operativos (CFG-BR-10).',
                 '*.*' => 'Los parámetros operativos son números enteros desde 0 (CFG-BR-10).',
             ]],

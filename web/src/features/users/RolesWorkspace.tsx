@@ -1,7 +1,7 @@
 "use client";
 
 import * as Switch from "@radix-ui/react-switch";
-import { CircleAlert, Copy, Pencil, Plus, ShieldCheck, Smartphone, Trash2, Users } from "lucide-react";
+import { CircleAlert, Copy, Eye, Lock, Pencil, Plus, ShieldCheck, Smartphone, Trash2, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useOptimistic, useState, useTransition } from "react";
 import { createRole, deleteRole, setRolePermissions, updateRole, type RoleActionState } from "@/app/(backoffice)/admin/roles/actions";
@@ -101,7 +101,7 @@ function PermissionSwitch({ checked, onChange, disabled, label, code }: { checke
   );
 }
 
-export function RolesWorkspace({ roles, catalog, initial: initialCode, detail }: { roles: TeamRole[]; catalog: PermissionModule[]; initial?: string; detail?: RoleDetail | null }) {
+export function RolesWorkspace({ roles, catalog, initial: initialCode, detail, canManage = true }: { roles: TeamRole[]; catalog: PermissionModule[]; initial?: string; detail?: RoleDetail | null; canManage?: boolean }) {
   const router = useRouter();
   const selected = initialCode && roles.some((role) => role.code === initialCode) ? initialCode : roles[0]?.code;
   const role = roles.find((item) => item.code === selected) ?? roles[0];
@@ -140,10 +140,24 @@ export function RolesWorkspace({ roles, catalog, initial: initialCode, detail }:
             <span className="relative rounded-full bg-white/15 px-3 py-1 text-[12.5px] font-semibold">
               {granted.length} de {catalog.reduce((total, group) => total + group.permissions.length, 0)} permisos
             </span>
-            <div className="relative [&_button]:text-white">
-              <RoleEditActions role={role} />
-            </div>
+            {canManage ? (
+              <div className="relative [&_button]:text-white">
+                <RoleEditActions role={role} />
+              </div>
+            ) : (
+              <span className="relative inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[12.5px] font-semibold">
+                <Eye size={14} />
+                Solo lectura
+              </span>
+            )}
           </header>
+
+          {!canManage && (
+            <p className="mx-5 mt-4 flex items-start gap-2 rounded-xl bg-[color-mix(in_srgb,var(--tint)_8%,transparent)] px-3.5 py-2.5 text-[13px] text-fg-2">
+              <Lock size={16} className="mt-0.5 flex-none text-[var(--tint)]" />
+              Puedes ver qué permite cada rol antes de asignarlo. Para crear, editar, duplicar o eliminar roles hace falta el permiso «Configurar roles y permisos».
+            </p>
+          )}
 
           {notice && (
             <p role="status" className="mx-5 mt-4 flex items-start gap-2 rounded-xl bg-warn/[0.1] px-3.5 py-2.5 text-[13px] text-warn">
@@ -164,14 +178,16 @@ export function RolesWorkspace({ roles, catalog, initial: initialCode, detail }:
                       <span className="font-mono text-[11.5px] text-fg-3">
                         {on}/{group.permissions.length}
                       </span>
-                      <button type="button" disabled={pending} onClick={() => change(group.permissions, !all)} className="rounded-full px-2.5 py-1 text-[12px] font-semibold text-[var(--tint)] transition-colors hover:bg-[color-mix(in_srgb,var(--tint)_12%,transparent)]">
-                        {all ? "Quitar todos" : "Dar todos"}
-                      </button>
+                      {canManage && (
+                        <button type="button" disabled={pending} onClick={() => change(group.permissions, !all)} className="rounded-full px-2.5 py-1 text-[12px] font-semibold text-[var(--tint)] transition-colors hover:bg-[color-mix(in_srgb,var(--tint)_12%,transparent)]">
+                          {all ? "Quitar todos" : "Dar todos"}
+                        </button>
+                      )}
                     </span>
                   </header>
                   <div className="flex flex-col">
                     {group.permissions.map((permission) => (
-                      <PermissionSwitch key={permission} code={permission} label={PERMISSION_LABEL[permission] ?? permission} checked={granted.includes(permission)} disabled={false} onChange={(value) => change([permission], value)} />
+                      <PermissionSwitch key={permission} code={permission} label={PERMISSION_LABEL[permission] ?? permission} checked={granted.includes(permission)} disabled={!canManage} onChange={(value) => change([permission], value)} />
                     ))}
                   </div>
                 </section>

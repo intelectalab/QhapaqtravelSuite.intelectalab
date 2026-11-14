@@ -268,6 +268,7 @@ final class OrderDirectory
             'reject_reasons' => $viewer->can('reservations.modify') ? ProviderServiceResponse::REJECT_REASONS : [],
             'passengers' => $passengers->map(fn (object $passenger): array => [...(array) $passenger, 'checkins' => $checkins->where('passenger_id', $passenger->id)->count(), 'last_checkin_at' => $checkins->where('passenger_id', $passenger->id)->max('checked_at')])->values(),
             'lodging_pending' => $this->prefill->pending($order->reservation_id)->map(fn (array $leg): array => ['city' => $leg['city'], 'hotel' => $leg['hotel'], 'check_in' => $leg['check_in'], 'check_out' => $leg['check_out'], 'rooms' => count($leg['rooms'])])->values(),
+            'no_shows' => app(NoShowDirectory::class)->forReservation((string) $order->reservation_id),
             'incidents' => $incidents,
             'evidences' => $evidences,
             'evidence_files' => $this->evidences->forOrder($order->id, $order->reservation_id),

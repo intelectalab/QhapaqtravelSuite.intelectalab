@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders\Modules;
 
+use App\Domain\Inbox\Support\MessageCipher;
 use App\Domain\Platform\Models\Tenant;
 use Database\Support\KitSeeds;
 use Database\Support\SeedsTenant;
@@ -97,7 +98,7 @@ final class InboxSeeder
                 'channel' => $channel,
                 'direction' => $direction,
                 'author_user_id' => in_array($direction, ['out', 'internal'], true) ? $this->userId($from) : null,
-                'body' => $message['text'],
+                'body' => MessageCipher::seal((string) $message['text']),
                 'delivery_status' => $direction === 'out' ? 'entregado' : null,
                 'sent_at' => $this->moment($message['ts']),
                 'created_at' => $this->moment($message['ts']),

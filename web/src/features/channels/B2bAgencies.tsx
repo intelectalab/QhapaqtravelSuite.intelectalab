@@ -9,6 +9,7 @@ import { FieldList } from "@/components/ui/Details";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
+import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
 import type { B2bAgency, B2bOverview } from "@/lib/channels";
@@ -71,8 +72,8 @@ export function AgencyFormAction({ agency, catalogs, iconOnly = false }: { agenc
               <TextField label="Comisión (%)" name="commission_pct" type="number" min={0} max={30} step="0.5" required defaultValue={agency?.commission_pct ?? 10} />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <TextField label="Vigente desde" name="valid_from" type="date" required defaultValue={agency?.valid_from} icon={<CalendarRange size={17} />} />
-              <TextField label="Vigente hasta" name="valid_to" type="date" required defaultValue={agency?.valid_to} />
+              <DateField label="Vigente desde" name="valid_from" required defaultValue={agency?.valid_from} icon={<CalendarRange size={17} />} />
+              <DateField label="Vigente hasta" name="valid_to" required defaultValue={agency?.valid_to} />
             </div>
           </PanelSection>
           <PanelSection title="Línea de crédito">

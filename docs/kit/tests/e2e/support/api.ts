@@ -10,18 +10,37 @@ export const API_URL = process.env.E2E_API_URL ?? 'http://andes.localhost:8000/a
 export const idemKey = (prefix = 'e2e') => `${prefix}-${randomUUID()}`;
 
 /** Login por API (Sanctum) con MFA TOTP si el usuario lo exige (esp. 00 §6). Devuelve el token completo. */
-export async function apiToken(email: string, opts: { mfa?: boolean; baseURL?: string } = {}): Promise<string> {
-  const ctx = await request.newContext({ baseURL: opts.baseURL ?? API_URL });
+const tokens = new Map<string, Promise<string>>();
+
+/**
+ * La API envuelve la respuesta en `data` y el MFA completa el mismo token (no emite otro).
+ * El código TOTP no se acepta dos veces en la misma ventana de 30 s (anti-replay): el token se
+ * reutiliza por proceso y, si el código ya se usó (p. ej. en global-setup), se espera la ventana siguiente.
+ */
+export function apiToken(email: string, opts: { mfa?: boolean; baseURL?: string } = {}): Promise<string> {
+  const base = opts.baseURL ?? API_URL;
+  const key = `${base}|${email}`;
+  if (!tokens.has(key)) tokens.set(key, freshToken(email, base).catch((e) => { tokens.delete(key); throw e; }));
+  return tokens.get(key)!;
+}
+
+async function freshToken(email: string, base: string): Promise<string> {
+  const ctx = await request.newContext({ baseURL: base.endsWith('/') ? base : `${base}/` });
   const res = await ctx.post(API.login.slice(1), { data: { email, password: PASSWORD } });
   if (!res.ok()) throw new Error(`Login ${email} → ${res.status()} ${await res.text()}`);
-  let body = await res.json();
+  const json = await res.json();
+  const body = json?.data?.token ? json.data : json;
   if (body.mfa_required || body.abilities?.includes?.('mfa:verify')) {
-    const mfa = await ctx.post(API.mfaVerify.slice(1), {
+    const verify = () => ctx.post(API.mfaVerify.slice(1), {
       headers: { Authorization: `Bearer ${body.token}` },
       data: { code: authenticator.generate(TOTP_SECRET) },
     });
-    if (!mfa.ok()) throw new Error(`MFA ${email} → ${mfa.status()}`);
-    body = await mfa.json();
+    let mfa = await verify();
+    if (mfa.status() === 422) {
+      await new Promise((r) => setTimeout(r, (authenticator.timeRemaining() + 1) * 1000));
+      mfa = await verify();
+    }
+    if (!mfa.ok()) throw new Error(`MFA ${email} → ${mfa.status()} ${await mfa.text()}`);
   }
   await ctx.dispose();
   return body.token as string;

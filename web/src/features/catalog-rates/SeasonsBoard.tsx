@@ -8,7 +8,7 @@ import { RowActions } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { TextField } from "@/components/ui/TextField";
+import { DateField } from "@/components/ui/DateField";
 import { daysBetween, SEASON_PHASE, SEASON_TONE, type RatesOverview, type SeasonResolution, type SeasonRow } from "@/lib/catalog-rates";
 import { cn } from "@/lib/cn";
 import { formatDate, monthName } from "@/lib/format";
@@ -127,7 +127,7 @@ function SeasonResolver({ today }: { today: string }) {
   return (
     <section className="lift rounded-tile border border-line bg-surface px-4 py-3.5">
       <div className="flex flex-wrap items-end gap-3">
-        <TextField className="w-48" label="Resolver temporada por fecha" name="resolve_date" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+        <DateField className="w-48" label="Resolver temporada por fecha" name="resolve_date" value={date} onChange={(next) => setDate(next ?? "")} />
         <Button type="button" variant="secondary" onClick={resolve} disabled={pending || !date}>
           <CalendarSearch size={16} /> {pending ? "Resolviendo" : "Resolver"}
         </Button>

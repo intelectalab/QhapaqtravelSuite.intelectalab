@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { siteHref } from "@/lib/site";
+import { siteHref, type SiteCurrencySettings } from "@/lib/site";
 import { withTextOverrides, type SiteDesign } from "@/lib/site-design";
 import { DATE_LOCALE, SITE_TEXT, type SiteLocale } from "@/lib/site-i18n";
 
@@ -11,6 +11,8 @@ interface SiteValue {
   name: string;
   locale: SiteLocale;
   design: SiteDesign | null;
+  whatsapp?: string | null;
+  currency?: (SiteCurrencySettings & { selected: string | null }) | null;
 }
 
 const SiteContext = createContext<SiteValue>({ agencia: "", base: "", name: "", locale: "es", design: null });

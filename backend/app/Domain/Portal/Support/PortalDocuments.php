@@ -41,8 +41,8 @@ final class PortalDocuments
         }
 
         if (! $account->isPassenger()) {
-            foreach (DB::table('fin_invoices')->whereIn('reservation_id', $ids)->whereIn('status', InvoiceSheet::PRINTABLE)->orderByDesc('issue_date')->get(['id', 'number', 'doc_type', 'issue_date', 'status', 'reservation_id']) as $row) {
-                $items->push([...$this->file(ClientDocuments::INVOICE, (string) $row->id), 'kind' => 'invoice', 'code' => $row->number, 'label' => ucfirst((string) $row->doc_type)." {$row->number}", 'date' => $row->issue_date, 'status' => $row->status, 'version' => 1, 'reservation' => $reservations[$row->reservation_id]->code]);
+            foreach (DB::table('fin_invoices')->whereIn('reservation_id', $ids)->whereIn('status', InvoiceSheet::PRINTABLE)->orderByDesc('issue_date')->get(['id', 'number', 'doc_type', 'issue_date', 'status', 'reservation_id', 'xml_document_id', 'cdr_document_id']) as $row) {
+                $items->push([...$this->file(ClientDocuments::INVOICE, (string) $row->id), 'kind' => 'invoice', 'code' => $row->number, 'label' => ucfirst((string) $row->doc_type)." {$row->number}", 'date' => $row->issue_date, 'status' => $row->status, 'version' => 1, 'reservation' => $reservations[$row->reservation_id]->code, 'fiscal_files' => self::fiscalFiles($row)]);
             }
 
             $quotes = DB::table('quote_quotes as q')->leftJoin('booking_reservations as r', 'r.quote_id', '=', 'q.id')->where('q.client_id', $account->client->id)->whereIn('q.status', self::APPROVED_QUOTES)->whereNotNull('q.current_version_id')
@@ -77,6 +77,14 @@ final class PortalDocuments
         }
 
         return ['document_id' => $current->id, 'ready' => true, 'href' => '/portal/documentos/'.$current->id];
+    }
+
+    private static function fiscalFiles(object $row): array
+    {
+        return array_values(array_filter([
+            $row->xml_document_id === null ? null : ['kind' => 'xml', 'label' => 'XML', 'href' => '/portal/documentos/'.$row->xml_document_id],
+            $row->cdr_document_id === null ? null : ['kind' => 'cdr', 'label' => 'CDR', 'href' => '/portal/documentos/'.$row->cdr_document_id],
+        ]));
     }
 
     public static function owns(PortalAccount $account, string $entityType, string $entityId): bool

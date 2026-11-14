@@ -10,7 +10,7 @@ import { SiteHeader, SiteTopBar } from "@/features/site/SiteHeader";
 import { StructuredData, agencyNode } from "@/features/site/StructuredData";
 import { TemplatePreviewBar } from "@/features/site/TemplatePreviewBar";
 import { REALMS } from "@/lib/realms";
-import { accountFetch, accountToken, getSiteProfile, siteBase, siteLocale } from "@/lib/server/site";
+import { accountFetch, accountToken, getSiteProfile, siteBase, siteCurrency, siteLocale } from "@/lib/server/site";
 import { siteOrigin } from "@/lib/server/site-seo";
 import { andesStyle, siteThemeStyle } from "@/lib/site-design";
 import { SITE_FONT_VARIABLES } from "@/lib/site-fonts";
@@ -32,17 +32,18 @@ export default async function SiteLayout({ children, params }: LayoutProps<"/sit
   const { agencia } = await params;
   const [profile, base, locale, origin, store, wish] = await Promise.all([getSiteProfile(agencia), siteBase(agencia), siteLocale(), siteOrigin(agencia), cookies(), accountToken(agencia).then((token) => (token ? accountFetch<{ items: unknown[] }>(agencia, "/me/wishlist") : null))]);
   const wishlist = wish?.ok && wish.data ? wish.data.items.length : null;
+  const currency = await siteCurrency();
   const { design } = profile;
   const andes = design.theme.style === "andes";
   const style = { ...siteThemeStyle({ ...profile.branding, font: design.theme.font, corners: design.theme.corners }), ...(andes ? andesStyle(design.andes) : {}) };
 
   return (
-    <SiteProvider value={{ agencia, base, name: profile.agency.name, locale, design }}>
+    <SiteProvider value={{ agencia, base, name: profile.agency.name, locale, design, whatsapp: profile.agency.whatsapp?.url ?? null, currency: profile.currency ? { ...profile.currency, selected: currency } : null }}>
       <div id="site-root" lang={locale} data-site-style={design.theme.style ?? "actual"} data-andes-serif={andes && design.andes?.serif_titles === false ? "off" : undefined} style={style} className={`${SITE_FONT_VARIABLES} flex min-h-screen flex-col bg-bg text-fg [--accent:var(--site-accent)] dark:[--accent:color-mix(in_srgb,var(--t1)_45%,#b9c2ff)]`}>
         <StructuredData data={agencyNode(profile, origin)} />
         {profile.preview && <PreviewBridge agencia={agencia} />}
         {profile.banner && <SiteBanner banner={profile.banner} base={base} />}
-        <SiteTopBar email={profile.agency.email} whatsapp={design.footer.social.whatsapp || null} />
+        <SiteTopBar email={profile.agency.email} whatsapp={profile.agency.whatsapp?.url ?? (design.footer.social.whatsapp || null)} hours={profile.hours?.summary[locale] ?? null} />
         <SiteHeader name={profile.agency.name} initials={profile.agency.initials} logo={profile.agency.logo} wishlist={wishlist} />
         <main className="flex-1">{children}</main>
         <SiteFooter profile={profile} base={base} />
