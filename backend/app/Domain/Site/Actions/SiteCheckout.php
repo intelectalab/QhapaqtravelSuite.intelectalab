@@ -18,6 +18,7 @@ use App\Domain\Site\Support\CheckoutRules;
 use App\Domain\Site\Support\CheckoutTerms;
 use App\Domain\Site\Support\SiteAltitude;
 use App\Domain\Site\Support\SiteBooking;
+use App\Domain\Site\Support\SiteCurrency;
 use App\Domain\Site\Support\SiteProfile;
 use App\Domain\Site\Support\SiteQuote;
 use App\Domain\Site\Support\TransferDeadlines;
@@ -90,7 +91,8 @@ final class SiteCheckout
             $owner = $this->clients->owner();
             $sede = DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->orderByDesc('is_main')->value('id');
             $currency = $terms['currency'];
-            $convert = fn (string $amount, string $from): BigDecimal => Decimal::round2(Decimal::convert($amount, $from, $currency, $rate));
+            $fx = app(SiteCurrency::class);
+            $convert = fn (string $amount, string $from): BigDecimal => Decimal::round2($fx->convert($amount, $from, $currency, $rate));
             $discount = (string) $lines->reduce(fn (BigDecimal $sum, array $l): BigDecimal => $sum->plus($convert($l['quote']['discount']['amount'] ?? '0', $l['quote']['currency'])), BigDecimal::zero()->toScale(2));
             $clientId = $this->clients->resolve($buyer, $owner, (bool) ($payment['marketing'] ?? false));
             $orderId = (string) Str::uuid7();
@@ -237,7 +239,7 @@ final class SiteCheckout
             'balance_due_date' => $order->balance_due_date,
             'pay_later' => DB::table('booking_reservation_web_snapshots')->where('order_code', $order->code)->where('payment_mode', CheckoutTerms::PAY_LATER)->exists(),
             'due' => $this->dueAmount($order),
-            'methods' => collect(CheckoutTerms::METHODS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values()->all(),
+            'methods' => CheckoutTerms::methods((string) $order->currency),
             'bank_accounts' => CheckoutTerms::bankAccounts(),
             'proof' => app(TransferProofs::class)->forOrder($order),
             'auto_cancel_at' => app(TransferDeadlines::class)->cancelAt($order)?->toIso8601String(),
@@ -349,6 +351,7 @@ final class SiteCheckout
         $balanceOnly = $due->every(fn (stdClass $r): bool => $r->kind === 'saldo');
         $amount = $this->dueAmount($order);
         $method = $payment['method'];
+        CheckoutTerms::assertMethod((string) $method, (string) $order->currency);
         $card = $method === 'tarjeta' ? ($settled ?? $this->cards->charge('order', (string) $order->code, $amount, (string) $order->currency, (string) $order->customer_email, (string) ($payment['card_token'] ?? ''), $payment['session_id'] ?? null)) : null;
         $result = $method === 'tarjeta' ? ($card['approved'] ? 'aprobado' : 'rechazado') : 'por_validar';
         $txn = $card['txn'] ?? null;
@@ -443,7 +446,8 @@ final class SiteCheckout
     private function dueAmount(stdClass $order): string
     {
         $rate = (string) $order->fx_rate;
-        $sum = $this->dueReceivables($order)->reduce(fn (BigDecimal $total, stdClass $r): BigDecimal => $total->plus(Decimal::round2(Decimal::convert((string) BigDecimal::of((string) $r->amount)->minus((string) $r->paid_amount), (string) $r->currency, (string) $order->currency, $rate))), BigDecimal::zero()->toScale(2));
+        $fx = app(SiteCurrency::class);
+        $sum = $this->dueReceivables($order)->reduce(fn (BigDecimal $total, stdClass $r): BigDecimal => $total->plus(Decimal::round2($fx->convert((string) BigDecimal::of((string) $r->amount)->minus((string) $r->paid_amount), (string) $r->currency, (string) $order->currency, $rate))), BigDecimal::zero()->toScale(2));
 
         return (string) $sum;
     }

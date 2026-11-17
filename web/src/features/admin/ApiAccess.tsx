@@ -1,9 +1,9 @@
 "use client";
 
-import { Activity, Ban, BarChart3, Check, CheckCircle2, Gauge, KeyRound, KeySquare, Link2, Minus, Pause, Play, Plus, Radar, RotateCw, Send, ShieldCheck, Trash2, Webhook as WebhookIcon, XCircle } from "lucide-react";
+import { Activity, Ban, BarChart3, Check, CheckCircle2, Gauge, KeyRound, KeySquare, Link2, Minus, Pause, Play, Plus, Radar, RotateCw, Send, ShieldCheck, Trash2, UserRound, Webhook as WebhookIcon, XCircle } from "lucide-react";
 import Link from "next/link";
 import { createContext, useContext, useState, useTransition, type ReactNode } from "react";
-import { createApiKey, createWebhook, deleteWebhook, loadDelivery, pingWebhook, redeliverWebhook, revokeApiKey, rotateWebhookSecret, setWebhookStatus, updateWebhook } from "@/app/(backoffice)/admin/api/actions";
+import { createApiKey, createWebhook, deleteWebhook, loadDelivery, pingWebhook, redeliverWebhook, revokeApiKey, rotateWebhookSecret, setWebhookStatus, updateApiKeyOwner, updateWebhook } from "@/app/(backoffice)/admin/api/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -14,6 +14,7 @@ import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { FieldList } from "@/components/ui/Details";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { PanelAction } from "@/components/ui/PanelAction";
+import { SelectField } from "@/components/ui/SelectField";
 import { SidePanel } from "@/components/ui/SidePanel";
 import { TextArea } from "@/components/ui/TextArea";
 import { DateField } from "@/components/ui/DateField";
@@ -49,7 +50,21 @@ const HOOK_STATUS: Record<Webhook["status"], { label: string; tone: Tone }> = { 
 
 const label = (options: Option[], value: string) => options.find((option) => option.value === value)?.label ?? value;
 
-export function ApiKeyCreateAction({ scopes, full }: { scopes: Option[]; full: string | null }) {
+type KeyOwners = { modes: Option[]; advisors: ApiOverview["advisors"] };
+
+const ownerLabel = (apiKey: ApiKey) => (apiKey.owner_mode === "fixed" ? (apiKey.owner_name ?? "Asesor fijo") : "Reparto por turno");
+
+function KeyOwnerFields({ owners, apiKey }: { owners: KeyOwners; apiKey?: ApiKey }) {
+  const [mode, setMode] = useState<string>(apiKey?.owner_mode ?? "round_robin");
+  return (
+    <>
+      <ChoiceGroup label="Responsable de lo que se cree sin asesor" name="owner_mode" options={owners.modes} defaultValue={mode} onChange={setMode} hint="Clientes, cotizaciones y reservas que llegan por la API sin owner_id. Los leads sin asesor van a la cola sin asignar." />
+      {mode === "fixed" && <SelectField label="Asesor" name="owner_id" options={owners.advisors.map((advisor) => ({ value: advisor.id, label: advisor.name }))} defaultValue={apiKey?.owner_id ?? ""} placeholder="Elige el asesor" searchable />}
+    </>
+  );
+}
+
+export function ApiKeyCreateAction({ scopes, owners, full }: { scopes: Option[]; owners: KeyOwners; full: string | null }) {
   const { reveal } = useContext(SecretContext);
   return (
     <PanelAction<AdminActionState>
@@ -72,6 +87,7 @@ export function ApiKeyCreateAction({ scopes, full }: { scopes: Option[]; full: s
             <FieldLabel hint="Concede solo lo necesario.">Permisos</FieldLabel>
             <CheckChips name="scopes" options={scopes} />
           </div>
+          <KeyOwnerFields owners={owners} />
           <DateField label="Vence el (opcional)" name="expires_at" />
           <TextField label="IP permitidas (opcional)" name="ips" placeholder="200.48.22.17, 161.132.8.0/24" hint="Direcciones o rangos CIDR separados por comas. Si lo dejas vacío, acepta llamadas desde cualquier IP." />
         </>
@@ -121,6 +137,7 @@ const SCOPE_RESOURCES: { key: string; label: string }[] = [
   { key: "crm", label: "CRM" },
   { key: "payments", label: "Pagos" },
   { key: "invoices", label: "Comprobantes" },
+  { key: "operations", label: "Operaciones" },
   { key: "webhooks", label: "Webhooks" },
 ];
 
@@ -171,6 +188,8 @@ function KeyDetail({ apiKey, scopes, history }: { apiKey: ApiKey; scopes: Option
             fields={[
               { label: "Estado", value: <Badge tone={KEY_STATUS[apiKey.status].tone}>{KEY_STATUS[apiKey.status].label}</Badge> },
               { label: "Último uso", value: apiKey.last_used_at ? `${formatDateTime(apiKey.last_used_at)}${apiKey.last_used_ip ? ` · ${apiKey.last_used_ip}` : ""}` : "Nunca" },
+              { label: "Responsable sin asesor", value: ownerLabel(apiKey) },
+              { label: "Llamadas en 30 días", value: `${formatNumber(apiKey.usage?.calls_30d ?? 0)}${(apiKey.usage?.rejected_24h ?? 0) > 0 ? ` · ${formatNumber(apiKey.usage?.rejected_24h ?? 0)} con 429 en 24 h` : ""}` },
               { label: "IP permitidas", value: apiKey.ips.length > 0 ? apiKey.ips.join(", ") : "Cualquiera" },
               { label: "Vence", value: apiKey.expires_at ? formatDate(apiKey.expires_at) : "No vence" },
               { label: "Creada", value: `${formatDateTime(apiKey.created_at)}${apiKey.created_by ? ` · ${apiKey.created_by}` : ""}` },
@@ -184,21 +203,9 @@ function KeyDetail({ apiKey, scopes, history }: { apiKey: ApiKey; scopes: Option
   );
 }
 
-export function ApiKeysAccessNotice({ data }: { data: ApiOverview }) {
+export function ApiKeyEndpoints({ data }: { data: ApiOverview }) {
   const endpoints = data.public_endpoints ?? [];
-  if (endpoints.length === 0) {
-    return (
-      <div className="lift mb-4 flex items-start gap-3 rounded-card border border-[color-mix(in_srgb,var(--info)_30%,transparent)] bg-[color-mix(in_srgb,var(--info)_6%,var(--surface))] px-4 py-3.5">
-        <span className="grid h-9 w-9 flex-none place-items-center rounded-[11px] bg-[color-mix(in_srgb,var(--info)_14%,transparent)] text-info">
-          <KeyRound size={17} />
-        </span>
-        <div>
-          <p className="text-[13.5px] font-semibold">Las llaves todavía no dan acceso a la API</p>
-          <p className="text-[12.5px] text-fg-2">Se habilitan con la API pública. Puedes crearlas desde ya y dejarlas listas.</p>
-        </div>
-      </div>
-    );
-  }
+  if (endpoints.length === 0) return null;
   return (
     <Card className="mb-4">
       <TintCardTitle icon={Link2} title="Endpoints disponibles para las llaves" aside={`${endpoints.length} ${endpoints.length === 1 ? "ruta" : "rutas"}`} tone="info" />
@@ -271,6 +278,16 @@ export function ApiKeysTable({ data }: { data: ApiOverview }) {
       cell: (apiKey) => (
         <RowActions>
           <KeyDetail apiKey={apiKey} scopes={data.scopes} history={data.key_history} />
+          {data.can_manage && apiKey.status === "active" && (
+            <PanelAction<AdminActionState> label="Responsable" variant="ghost" size="sm" formId={`key-owner-${apiKey.code}`} trigger={(open) => <RowIcon tone="edit" label="Cambiar responsable" icon={<UserRound size={15} />} onClick={open} />} title="Responsable sin asesor" description={`${apiKey.name} · ${ownerLabel(apiKey)}`} submitLabel="Guardar" action={updateApiKeyOwner} initial={ADMIN_INITIAL}>
+              {() => (
+                <>
+                  <input type="hidden" name="code" value={apiKey.code} />
+                  <KeyOwnerFields owners={{ modes: data.owner_modes, advisors: data.advisors }} apiKey={apiKey} />
+                </>
+              )}
+            </PanelAction>
+          )}
           {data.can_manage && apiKey.status === "active" && (
             <PanelAction<AdminActionState> label="Revocar" variant="ghost" size="sm" formId={`key-revoke-${apiKey.code}`} trigger={(open) => <RowIcon tone="delete" label="Revocar clave" icon={<Ban size={15} />} onClick={open} />} title="Revocar clave" description={`${apiKey.name} deja de funcionar al instante. Los sistemas que la usan recibirán un error 401.`} submitLabel="Revocar" action={revokeApiKey} initial={ADMIN_INITIAL}>
               {() => (

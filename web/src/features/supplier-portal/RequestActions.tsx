@@ -11,6 +11,7 @@ import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
+import { TimeField } from "@/components/ui/TimeField";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import type { SupplierRequest } from "@/lib/supplier-portal";
@@ -48,7 +49,7 @@ export function ConfirmPanel({ row, contact, size = "md", asIcon = false }: { ro
           <Summary row={row} />
           <input type="hidden" name="lock_version" value={row.lock_version} />
           <TextField label="Código de confirmación" name="confirmation_code" required minLength={4} maxLength={40} icon={<KeyRound size={17} />} placeholder="TR-55890" hint="Mínimo 4 caracteres. Se guarda en mayúsculas." />
-          <TextField label="Hora del servicio" name="service_time" type="time" defaultValue={row.time ?? ""} icon={<Clock size={17} />} hint="Ajústela si difiere de la solicitada." />
+          <TimeField label="Hora del servicio" name="service_time" step={5} defaultValue={row.time ?? null} icon={<Clock size={17} />} hint="Ajústela si difiere de la solicitada." />
           <TextField label="Confirmado por" name="confirmed_by_name" maxLength={120} defaultValue={contact} icon={<UserRound size={17} />} />
           <TextArea label="Observación" name="note" rows={3} maxLength={500} placeholder="Opcional" />
         </>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking;
 
+use App\Domain\Admin\Support\PriceTax;
 use App\Domain\Booking\Contracts\BookingEngineInterface;
 use App\Domain\Booking\Contracts\InventoryReader;
 use App\Domain\Booking\Data\BookingQuote;
@@ -214,6 +215,16 @@ final class BookingEngine implements BookingEngineInterface
             $total = $total->plus($a['amount']);
         }
 
+        $tax = null;
+        if ($sel->tax !== null) {
+            $tax = PriceTax::view(PriceTax::split($total->getAmount(), (string) ($sel->tax['pct'] ?? PriceTax::DEFAULT_PCT), (bool) ($sel->tax['included'] ?? true)));
+            if (! $tax['included'] && BigDecimal::of($tax['tax'])->isPositive()) {
+                $amount = Money::of($tax['tax'], $currency);
+                $adjustments[] = ['key' => 'tax', 'label' => 'IGV ('.$tax['pct'].' %)', 'amount' => $amount];
+                $total = $total->plus($amount);
+            }
+        }
+
         [$mode, $modes, $pct, $holdHours, $dueDays] = $this->paymentPlan($p, $sel);
         $deposit = $total->multipliedBy(BigDecimal::of($pct)->dividedBy(100, 4), RoundingMode::HALF_UP);
         $balance = $total->minus($deposit);
@@ -247,6 +258,7 @@ final class BookingEngine implements BookingEngineInterface
             legs: array_map(fn (array $leg): array => array_diff_key($leg, ['requested' => true]), $schedule),
             tripEnd: $schedule === [] ? null : $schedule[count($schedule) - 1]['checkOut'],
             byCategory: $this->byCategory($currency, $lines),
+            tax: $tax,
         );
     }
 
@@ -290,13 +302,31 @@ final class BookingEngine implements BookingEngineInterface
         return ['vehicle' => $vehicle, 'units' => $fit !== null ? 1 : (int) ceil(max(1, $people) / max(1, (int) $vehicle['maxPax']))];
     }
 
-    public function tripItemAmount(array $item, string $kind, array $pax): array
+    public function tourChildren(ProductData $p, array $tour, int $chd, ?int $answer): array
+    {
+        $minAge = (int) ($tour['minAge'] ?? 0);
+        $r = $this->paxRules($p);
+        $rule = match (true) {
+            $minAge <= 0, $minAge <= (int) ($r['childMinAge'] ?? 0) => 'all',
+            $minAge > (int) ($r['childMaxAge'] ?? 0) => 'none',
+            default => 'ask',
+        };
+        $eligible = match ($rule) {
+            'all' => $chd,
+            'none' => 0,
+            default => $answer === null ? $chd : max(0, min($chd, $answer)),
+        };
+
+        return ['rule' => $rule, 'ask' => $rule === 'ask' && $chd > 0, 'eligible' => $eligible, 'excluded' => $chd - $eligible, 'min_age' => $minAge > 0 ? $minAge : null];
+    }
+
+    public function tripItemAmount(array $item, string $kind, array $pax, ?int $eligibleChildren = null): array
     {
         $adt = (int) ($pax['adt'] ?? 0);
         $chd = (int) ($pax['chd'] ?? 0);
 
         if ($kind === 'tour') {
-            $children = BigDecimal::of((string) ($item['priceChd'] ?? 0))->isPositive() || empty($item['minAge']) ? $chd : 0;
+            $children = $eligibleChildren === null ? $chd : max(0, min($chd, $eligibleChildren));
             $amount = BigDecimal::of((string) $item['priceAdt'])->multipliedBy($adt)->plus(BigDecimal::of((string) ($item['priceChd'] ?? 0))->multipliedBy($children));
 
             return ['amount' => $amount, 'adt' => $adt, 'chd' => $children, 'vehicle' => null, 'units' => null];
@@ -361,13 +391,14 @@ final class BookingEngine implements BookingEngineInterface
                 continue;
             }
             $leg = $legs->get($tour['legId'], []);
-            $priced = $this->tripItemAmount($tour, 'tour', $sel->pax);
-            if (! empty($tour['minAge']) && $sel->pax['chd'] > 0) {
-                $warnings[] = $tour['name'].': edad mínima '.$tour['minAge'].' años; los niños menores no participan.';
+            $children = $this->tourChildren($p, $tour, (int) $sel->pax['chd'], $sel->tourChildren[(string) $tour['id']] ?? null);
+            $priced = $this->tripItemAmount($tour, 'tour', $sel->pax, $children['eligible']);
+            if ($children['excluded'] > 0) {
+                $warnings[] = 'No puede ir a '.$tour['name'].': edad mínima '.$children['min_age'].' años ('.($children['excluded'] === 1 ? '1 niño no paga ni ocupa cupo' : $children['excluded'].' niños no pagan ni ocupan cupo').').';
             }
             $date = $this->tourDate($tour, $leg);
             $add('tour-'.$tour['id'], 'tour', (isset($leg['city']) ? $leg['city'].' · ' : '').$tour['name'].($date !== null ? ' · '.substr($date, 8, 2).'/'.substr($date, 5, 2).' '.$tour['time'] : ''), 1, $priced['amount'], (string) ($tour['currency'] ?? $currency), true,
-                ['tour_id' => $tour['id'], 'leg_id' => $tour['legId'], 'city' => $leg['city'] ?? null, 'date' => $date, 'time' => $tour['time'] ?? null, 'adt' => $priced['adt'], 'chd' => $priced['chd'], 'provider_id' => $tour['providerId'] ?? null]);
+                ['tour_id' => $tour['id'], 'leg_id' => $tour['legId'], 'city' => $leg['city'] ?? null, 'date' => $date, 'time' => $tour['time'] ?? null, 'adt' => $priced['adt'], 'chd' => $priced['chd'], 'min_age' => $children['min_age'], 'children_rule' => $children['rule'], 'provider_id' => $tour['providerId'] ?? null]);
         }
 
         foreach ($this->pickTransport($p, $sel->transport) as $option) {
@@ -394,21 +425,22 @@ final class BookingEngine implements BookingEngineInterface
         return $out;
     }
 
-    public function segmentPrice(ProductData $p, string $segment, string $date, string $currency, string $channel = 'Directo'): ?array
+    public function segmentPrice(ProductData $p, string $segment, string $date, string $currency, string $channel = 'Directo', bool $round = false): ?array
     {
         $season = $this->rules->on('R-SEASON', $p) ? $this->seasons->for($date) : null;
         $rate = $this->baseRate($p, $segment, $channel, $season);
+        $rounded = fn (BigDecimal $price): BigDecimal => $round && $this->rounding !== null ? ($this->rounding)($price) : $price;
 
         if ($rate === null && $segment === 'Adulto') {
             $rate = $this->baseRate($p, 'Pasajero', $channel, $season);
         }
 
         if ($rate === null && $segment === 'Niño') {
-            $adult = $this->segmentPrice($p, 'Adulto', $date, $currency, $channel);
+            $adult = $this->segmentPrice($p, 'Adulto', $date, $currency, $channel, $round);
             $pct = (string) ($this->paxRules($p)['childPricePct'] ?? 100);
 
             return $adult === null ? null : [
-                'price' => $adult['price']->multipliedBy(BigDecimal::of($pct)->dividedBy(100, 6), RoundingMode::HALF_UP),
+                'price' => Money::of($rounded($adult['price']->getAmount()->multipliedBy(BigDecimal::of($pct)->dividedBy(100, 6))), $currency, null, RoundingMode::HALF_UP),
                 'cost' => $adult['cost'],
                 'source' => 'child_pct',
             ];
@@ -422,7 +454,7 @@ final class BookingEngine implements BookingEngineInterface
         $marginPct = $this->rules->on('R-MULTICURRENCY') ? (string) ($this->rules->param('R-MULTICURRENCY', 'fxMarginPct') ?? 0) : '0';
 
         return [
-            'price' => Money::of($this->fx->display(RateResolver::seasonal($rate, $season?->factor), $from, $currency, $marginPct), $currency, null, RoundingMode::HALF_UP),
+            'price' => Money::of($this->fx->display($rounded(RateResolver::seasonal($rate, $season?->factor)), $from, $currency, $marginPct), $currency, null, RoundingMode::HALF_UP),
             'cost' => Money::of($this->fx->convert(BigDecimal::of((string) ($rate['cost'] ?? 0)), $from, $currency), $currency, null, RoundingMode::HALF_UP),
             'source' => 'rate',
         ];

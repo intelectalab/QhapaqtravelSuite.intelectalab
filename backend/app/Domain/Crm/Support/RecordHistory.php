@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Crm\Support;
 
+use App\Domain\Shared\Audit\AuditActorName;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +23,7 @@ final class RecordHistory
             ->whereIn('e.entity_id', $codes)
             ->whereIn('e.entity', ['Lead', 'Oportunidad', 'Actividad', 'Cotización', 'Cotizacion'])
             ->orderByDesc('e.occurred_at')->orderByDesc('e.code')->limit($limit)
-            ->get(['e.id', 'e.entity', 'e.entity_id', 'e.action', 'e.before_value', 'e.after_value', 'e.actor_type', 'e.occurred_at', 'u.name as actor'])
+            ->get(['e.id', 'e.entity', 'e.entity_id', 'e.action', 'e.before_value', 'e.after_value', 'e.actor_type', 'e.actor_role', 'e.occurred_at', 'u.name as actor'])
             ->map(fn (object $row) => [
                 'id' => $row->id,
                 'entity' => $row->entity,
@@ -30,7 +31,7 @@ final class RecordHistory
                 'action' => $row->action,
                 'before' => $row->before_value,
                 'after' => $row->after_value,
-                'actor' => $row->actor ?? ($row->actor_type === 'system' ? 'Sistema' : null),
+                'actor' => AuditActorName::of($row->actor, $row->actor_type, $row->actor_role),
                 'occurred_at' => Carbon::parse($row->occurred_at)->toIso8601String(),
             ]);
     }

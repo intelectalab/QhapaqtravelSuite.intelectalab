@@ -292,7 +292,7 @@ final class GiftCards
         DB::table('fin_gift_cards')->where('id', $card->id)->update(['status' => 'vencida', 'balance' => '0.00']);
 
         if ($balance->isPositive()) {
-            $this->movement((string) $card->id, 'ajuste', $balance->negated(), BigDecimal::zero(), null, null, 'Vencimiento del vale el '.$card->expires_at, null);
+            $this->movement((string) $card->id, 'vencimiento', $balance->negated(), BigDecimal::zero(), null, null, 'Vencimiento del vale el '.$card->expires_at, null);
         }
     }
 

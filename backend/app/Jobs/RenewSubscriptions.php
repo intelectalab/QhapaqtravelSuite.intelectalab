@@ -106,7 +106,7 @@ final class RenewSubscriptions extends PlatformJob
         $from = Carbon::parse($subscription->current_period_end, 'America/Lima')->addDay();
         $to = ($cycle === 'annual' ? $from->copy()->addYearNoOverflow() : $from->copy()->addMonthNoOverflow())->subDay();
         $coupon = $this->coupon($subscription);
-        $addons = $db->table('subscription_items')->where('subscription_id', $id)->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $from->toDateString()))->where(fn ($query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', $from->toDateString()))->get(['addon_code', 'quantity', 'unit_price']);
+        $addons = $db->table('subscription_items')->where('subscription_id', $id)->where('billing_mode', 'mensual')->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $from->toDateString()))->where(fn ($query) => $query->whereNull('starts_at')->orWhere('starts_at', '<=', $from->toDateString()))->get(['addon_code', 'quantity', 'unit_price']);
         $invoice = app(PlatformInvoicer::class)->issue($subscription, $plan, (string) $cycle, $from, $to, $coupon, $addons);
 
         if ($coupon !== null) {

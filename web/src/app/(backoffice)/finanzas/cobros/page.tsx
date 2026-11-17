@@ -6,14 +6,15 @@ import { BarChart } from "@/components/ui/Charts";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
 import { PickPaymentAction, ReceivablesTable, RequestAdvanceAction } from "@/features/finance/Receivables";
-import type { ReceivablesOverview } from "@/lib/finance";
 import { formatMoney } from "@/lib/format";
-import { getResource } from "@/lib/server/resource";
+import { getReceivablesOverview } from "@/lib/server/collections";
 
 export const metadata: Metadata = { title: "Cuentas por cobrar" };
 
-export default async function CobrosPage() {
-  const data = await getResource<ReceivablesOverview>("/finance/receivables", "No pudimos cargar las cuentas por cobrar.");
+export default async function CobrosPage({ searchParams }: PageProps<"/finanzas/cobros">) {
+  const [data, search] = await Promise.all([getReceivablesOverview(), searchParams]);
+  const reservationFilter = search["filter[reservation]"];
+  const reservation = typeof reservationFilter === "string" && reservationFilter.trim() !== "" ? reservationFilter.trim() : undefined;
 
   if (!data) {
     return <PageHeader title="Cuentas por cobrar" subtitle="Tu rol no tiene acceso a esta sección." />;
@@ -47,7 +48,7 @@ export default async function CobrosPage() {
         <TintCardTitle icon={ChartColumnBig} title="Antigüedad del saldo" aside="En soles" />
         <BarChart data={aging.map((bucket, index) => ({ label: bucket.label, value: bucket.pen, caption: formatMoney(bucket.pen, "PEN", { compact: true }), detail: `${bucket.count === 1 ? "1 cuota" : `${bucket.count} cuotas`} · ${formatMoney(bucket.pen)}`, highlight: index > 0 && bucket.pen > 0 }))} />
       </Card>
-      <ReceivablesTable data={data} />
+      <ReceivablesTable data={data} reservation={reservation} />
     </>
   );
 }

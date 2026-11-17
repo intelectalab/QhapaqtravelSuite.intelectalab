@@ -15,7 +15,7 @@ final class PlatformBranding
 
     public const ENTITY = 'Personalización de plataforma';
 
-    public function __construct(private readonly PlatformSession $session, private readonly PlatformAudit $audit) {}
+    public function __construct(private readonly PlatformSession $session, private readonly PlatformAudit $audit, private readonly PlatformLogo $logo) {}
 
     public function current(): array
     {
@@ -29,6 +29,7 @@ final class PlatformBranding
             'defaults' => Branding::DEFAULTS,
             'variants' => collect(Branding::VARIANTS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
             'agency' => ['name' => 'Consola de plataforma', 'initials' => 'QT'],
+            'logo' => $this->logo->overview(),
             'history' => $this->audit->entries([self::ENTITY]),
             'can_manage' => true,
         ];

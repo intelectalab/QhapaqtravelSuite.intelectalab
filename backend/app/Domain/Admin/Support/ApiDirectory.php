@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Admin\Support;
 
 use App\Domain\Admin\Actions\ManageWebhookDeliveries;
+use App\Domain\Crm\Support\Advisors;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Database\Query\Builder;
@@ -17,13 +18,16 @@ final class ApiDirectory
     public const SCOPES = [
         'catalog:read' => 'Leer el catálogo',
         'availability:read' => 'Consultar disponibilidad',
+        'crm:read' => 'Leer contactos y clientes',
+        'crm:write' => 'Registrar contactos',
         'quotes:read' => 'Leer cotizaciones',
         'quotes:write' => 'Crear cotizaciones',
         'reservations:read' => 'Leer reservas',
         'reservations:write' => 'Crear reservas',
-        'crm:write' => 'Registrar contactos',
         'payments:read' => 'Leer pagos',
         'invoices:read' => 'Leer comprobantes',
+        'operations:read' => 'Leer operaciones',
+        'webhooks:manage' => 'Gestionar webhooks',
     ];
 
     public const EVENTS = [
@@ -95,6 +99,8 @@ final class ApiDirectory
             'public_endpoints' => ApiKeyEndpoints::all(),
             'scopes' => collect(self::SCOPES)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
             'events' => collect(self::EVENTS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
+            'owner_modes' => collect(ApiKeyActor::MODES)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
+            'advisors' => app(Advisors::class)->all()->values(),
             'history' => $this->audit->recent(['Clave de API', 'Webhook'], 8),
             'key_history' => $this->audit->recent(['Clave de API'], 200),
             'can_manage' => $viewer->can('admin.api.manage'),
@@ -106,9 +112,10 @@ final class ApiDirectory
         return DB::table('integration_api_keys as k')
             ->leftJoin('iam_users as u', 'u.id', '=', 'k.created_by')
             ->leftJoin('iam_users as r', 'r.id', '=', 'k.revoked_by')
+            ->leftJoin('iam_users as o', 'o.id', '=', 'k.owner_id')
             ->orderByRaw("case k.status when 'active' then 0 else 1 end")
             ->orderByDesc('k.created_at')
-            ->get(['k.id', 'k.code', 'k.name', 'k.environment', 'k.prefix', 'k.last4', 'k.scopes', 'k.ip_allowlist', 'k.expires_at', 'k.last_used_at', 'k.last_used_ip', 'k.status', 'k.revoked_at', 'k.revoke_reason', 'k.created_at', 'u.name as created_by', 'r.name as revoked_by'])
+            ->get(['k.id', 'k.code', 'k.name', 'k.environment', 'k.prefix', 'k.last4', 'k.scopes', 'k.ip_allowlist', 'k.expires_at', 'k.last_used_at', 'k.last_used_ip', 'k.status', 'k.revoked_at', 'k.revoke_reason', 'k.created_at', 'k.owner_mode', 'k.owner_id', 'o.name as owner_name', 'u.name as created_by', 'r.name as revoked_by'])
             ->map(fn (object $row): array => [
                 'code' => $row->code,
                 'name' => $row->name,
@@ -125,6 +132,9 @@ final class ApiDirectory
                 'revoke_reason' => $row->revoke_reason,
                 'created_at' => $row->created_at,
                 'created_by' => $row->created_by,
+                'owner_mode' => $row->owner_mode,
+                'owner_id' => $row->owner_id,
+                'owner_name' => $row->owner_name,
                 'usage' => app(ApiKeyUsage::class)->summary((string) $row->id),
             ])
             ->values();

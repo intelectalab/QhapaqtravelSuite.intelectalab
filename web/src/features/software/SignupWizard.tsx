@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, BadgeCheck, Building2, Check, LoaderCircle, Lock, Mail, Phone, Search, Tag, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, BadgeCheck, Building2, Check, ExternalLink, LoaderCircle, Lock, Mail, MessageSquare, Phone, Receipt, Search, Tag, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState, useTransition } from "react";
 import { checkCoupon, createSignup, lookupRuc } from "@/app/(software)/software/suscribirse/actions";
@@ -8,11 +8,14 @@ import { Button } from "@/components/ui/Button";
 import { Captcha } from "@/components/ui/Captcha";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { SelectField } from "@/components/ui/SelectField";
+import { SidePanel } from "@/components/ui/SidePanel";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextField } from "@/components/ui/TextField";
+import { SalesLeadForm } from "@/features/software/SalesLeadForm";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
-import { CYCLE_LABEL, type LandingCatalog, type LandingPlan, type SignupCycle, type SignupTotals, type Taxpayer } from "@/lib/landing";
+import { CYCLE_LABEL, SUNAT_RUC_GUIDE, type LandingCatalog, type LandingPlan, type SignupCycle, type SignupTotals, type Taxpayer } from "@/lib/landing";
+import type { DemoOptions } from "@/lib/software";
 import { planTone } from "@/lib/platform";
 import { toneStyle } from "@/lib/tone";
 
@@ -77,7 +80,26 @@ export function OrderSummary({ totals, compact = false }: { totals: SignupTotals
   );
 }
 
-export function SignupWizard({ catalog, businessTypes, initialPlan, initialCycle, attribution }: { catalog: LandingCatalog; businessTypes: string[]; initialPlan?: string; initialCycle: SignupCycle; attribution: Record<string, string> }) {
+function NoRucNotice({ onWrite }: { onWrite: () => void }) {
+  return (
+    <div className="lift flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[14px] border border-line bg-surface px-4 py-3 text-[13px]">
+      <p className="min-w-0 flex-1 text-fg-2">
+        <b className="block text-fg">¿No tienes RUC?</b>
+        Para usar KipuControl necesitas RUC activo. Si eres persona natural, puedes sacarlo en línea con tu DNI en SUNAT.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button href={SUNAT_RUC_GUIDE} target="_blank" variant="secondary" size="sm" icon={<ExternalLink size={14} />}>
+          Guía de SUNAT
+        </Button>
+        <Button type="button" variant="ghost" size="sm" icon={<MessageSquare size={14} />} onClick={onWrite}>
+          Escríbenos
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export function SignupWizard({ catalog, businessTypes, leadOptions, initialPlan, initialCycle, attribution }: { catalog: LandingCatalog; businessTypes: string[]; leadOptions: DemoOptions; initialPlan?: string; initialCycle: SignupCycle; attribution: Record<string, string> }) {
   const router = useRouter();
   const plans = catalog.plans.filter((plan) => plan.self_service);
   const [step, setStep] = useState(0);
@@ -90,6 +112,7 @@ export function SignupWizard({ catalog, businessTypes, initialPlan, initialCycle
   const [rucMessage, setRucMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
+  const [leadOpen, setLeadOpen] = useState(false);
   const [pending, start] = useTransition();
   const plan = plans.find((item) => item.code === planCode) ?? plans[0];
 
@@ -188,6 +211,7 @@ export function SignupWizard({ catalog, businessTypes, initialPlan, initialCycle
                 Consultar
               </Button>
             </div>
+            {!taxpayer && <NoRucNotice onWrite={() => setLeadOpen(true)} />}
             {taxpayer && (
               <p className="rounded-[14px] border border-[color-mix(in_srgb,var(--ok)_35%,var(--line))] bg-[color-mix(in_srgb,var(--ok)_7%,var(--surface))] px-4 py-3 text-[13px]">
                 <b className="block">{taxpayer.legal_name}</b>
@@ -200,7 +224,10 @@ export function SignupWizard({ catalog, businessTypes, initialPlan, initialCycle
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <SelectField label="Tipo de agencia" name="business_type" defaultValue={businessTypes[0]} options={businessTypes.map((value) => ({ value, label: value }))} error={errors.business_type} />
-              <SelectField label="Comprobante" name="doc_type" defaultValue="factura" options={[{ value: "factura", label: "Factura" }, { value: "boleta", label: "Boleta" }]} />
+              <p className="flex items-center gap-2 self-end rounded-[12px] bg-surface-2 px-3.5 py-3 text-[12.5px] text-fg-2">
+                <Receipt size={15} className="shrink-0 text-fg-3" />
+                Te enviamos factura electrónica a este RUC.
+              </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <TextField label="Tu nombre" name="admin_name" required minLength={3} icon={<User size={16} />} error={errors.admin_name} />
@@ -226,6 +253,9 @@ export function SignupWizard({ catalog, businessTypes, initialPlan, initialCycle
         )}
       </div>
       <OrderSummary totals={totals} />
+      <SidePanel open={leadOpen} onOpenChange={setLeadOpen} title="Escríbenos" description="Te ayudamos a empezar mientras tramitas tu RUC.">
+        <SalesLeadForm options={leadOptions} plan={plan.code} />
+      </SidePanel>
     </div>
   );
 }

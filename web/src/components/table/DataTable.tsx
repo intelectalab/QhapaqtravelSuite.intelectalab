@@ -22,6 +22,7 @@ interface DataTableProps<T> {
   rows: T[];
   columns: Column<T>[];
   getKey: (row: T) => string;
+  rowData?: (row: T) => Record<`data-${string}`, string | undefined>;
   entityLabel: string;
   searchText?: (row: T) => string;
   initialSearch?: string;
@@ -57,6 +58,7 @@ export function DataTable<T>({
   rows,
   columns,
   getKey,
+  rowData,
   entityLabel,
   searchText,
   initialSearch,
@@ -287,7 +289,7 @@ export function DataTable<T>({
                     const key = getKey(row);
                     const isSelected = selected.has(key);
                     return (
-                      <tr key={key} data-testid={`table-row:${key}`} className={cn("border-b border-line-2 last:border-0", isSelected && "bg-accent/5")}>
+                      <tr key={key} data-testid={`table-row:${key}`} {...rowData?.(row)} className={cn("border-b border-line-2 last:border-0", isSelected && "bg-accent/5")}>
                         {selectable && (
                           <td className="px-3.5 py-2.5">
                             <CheckBox state={isSelected ? "on" : "off"} onClick={() => toggleRow(key)} label="Seleccionar fila" />

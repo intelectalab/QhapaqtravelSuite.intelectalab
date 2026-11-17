@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Platform\Actions;
 
+use App\Domain\Landing\Support\SignupQuote;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Support\DowngradeValidator;
 use App\Domain\Platform\Support\Entitlements;
@@ -121,7 +122,7 @@ final class ManageTrial
         $problem = match (true) {
             $coupon === null => 'El cupón no existe.',
             $coupon->status !== 'active' => 'El cupón está desactivado.',
-            $coupon->valid_to !== null && Carbon::parse($coupon->valid_to, 'America/Lima')->lt(Carbon::today('America/Lima')) => 'El cupón ya venció.',
+            SignupQuote::isExpired($coupon) => SignupQuote::expiredMessage($coupon),
             $coupon->max_redemptions !== null && (int) $coupon->redeemed_count >= (int) $coupon->max_redemptions => 'El cupón ya no tiene canjes disponibles.',
             $plans !== [] && ! in_array($subscription->plan_id, $plans, true) => 'El cupón no aplica al plan de esta agencia.',
             $this->db()->table('coupon_redemptions')->where('coupon_id', $coupon->id)->where('tenant_id', $subscription->tenant_id)->exists() => 'La agencia ya usó este cupón.',

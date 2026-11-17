@@ -13,7 +13,9 @@ use Illuminate\Support\Str;
 
 final class PlanCatalog
 {
-    public const METRICS = ['users', 'sedes', 'storage_gb', 'reservations_month', 'whatsapp_month', 'email_month', 'api_calls_month', 'api_rate_per_min', 'webhooks', 'api_keys'];
+    public const METRICS = ['users', 'sedes', 'storage_gb', 'reservations_month', 'whatsapp_month', 'email_month', 'api_calls_month', 'api_rate_per_min', 'webhooks', 'api_keys', 'ai_requests'];
+
+    public const AI_REQUESTS = ['Starter' => 100, 'Professional' => 1000, 'Enterprise' => 5000];
 
     private const CONNECTION = 'pgsql_platform';
 

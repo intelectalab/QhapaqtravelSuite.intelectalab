@@ -10,6 +10,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
+import { TimeField } from "@/components/ui/TimeField";
 import { ConfirmAction, HiddenFields, PanelSection, STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
 import type { DepartureRow, DeparturesOverview } from "@/lib/catalog-departures";
 import { formatDate } from "@/lib/format";
@@ -30,7 +31,7 @@ function DepartureFields({ overview, departure }: { overview: DeparturesOverview
         )}
         <div className="grid grid-cols-2 gap-3">
           <DateField label="Fecha" name="departure_date" required min={departure ? undefined : overview.today} defaultValue={departure?.date} />
-          <TextField label="Hora" name="departure_time" type="time" required defaultValue={departure?.time ?? "08:00"} icon={<Clock size={16} />} />
+          <TimeField label="Hora" name="departure_time" step={5} required defaultValue={departure?.time ?? "08:00"} icon={<Clock size={16} />} />
         </div>
         <TextField label="Capacidad" name="capacity" type="number" min={departure ? Math.max(1, departure.sold + departure.held) : 1} max={60} required defaultValue={departure?.capacity ?? 16} hint={departure ? "No puede bajar de lo vendido más lo retenido." : "Entre 1 y 60 cupos."} />
         <ChoiceGroup

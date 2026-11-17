@@ -35,10 +35,11 @@ it('G3-01: el detalle de documentos trae la bitácora y el listado el asesor y l
 it('G3-02 y G3-03: la lista de órdenes cuenta los servicios y la reserva candidata dice cuántos se replicarán', function () {
     actingAsSeed('U01');
 
-    $data = $this->getJson('/api/v1/ops/orders')->assertOk()->json('data');
+    $page = $this->getJson('/api/v1/ops/orders')->assertOk()->json();
+    $data = $page['meta'];
 
-    expect($data['items'][0])->toHaveKey('services')
-        ->and($data['items'][0]['reservation'])->toHaveKey('channel');
+    expect($page['data'][0])->toHaveKeys(['id', 'services'])
+        ->and($page['data'][0]['reservation'])->toHaveKey('channel');
 
     if ($data['candidates'] !== []) {
         expect($data['candidates'][0])->toHaveKeys(['services', 'replicable', 'passengers'])

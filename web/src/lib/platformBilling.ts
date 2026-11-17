@@ -407,6 +407,7 @@ export interface IntegrationError {
   source: "job" | "notification" | "integration";
   ref: string;
   target: string;
+  connection: string | null;
   error: string;
   class: "transitorio" | "permanente";
   attempt: number;

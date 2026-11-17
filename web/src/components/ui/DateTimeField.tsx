@@ -1,10 +1,9 @@
 "use client";
 
-import { useId, useMemo, useState, type ReactNode } from "react";
-import { cn } from "@/lib/cn";
-import { splitDateTime, timeSlots } from "@/lib/date-field";
+import { useId, useState, type ReactNode } from "react";
+import { splitDateTime } from "@/lib/date-field";
 import { DateField, type DateFieldLocale } from "./DateField";
-import { Select } from "./Select";
+import { TimePicker } from "./TimeField";
 
 export interface DateTimeFieldProps {
   label: string;
@@ -59,7 +58,6 @@ export function DateTimeField({
   const date = outer ? outer.date : inner.date;
   const time = (outer ? outer.time : null) ?? inner.time ?? defaultTime;
   const combined = join(date, time);
-  const options = useMemo(() => timeSlots(step, time).map((slot) => ({ value: slot, label: slot })), [step, time]);
 
   const update = (nextDate: string | null, nextTime: string) => {
     setInner({ date: nextDate, time: nextTime });
@@ -91,7 +89,7 @@ export function DateTimeField({
           <span id={timeId} className="mb-1.5 block truncate text-[13px] font-semibold text-fg">
             {timeLabel}
           </span>
-          <Select value={time} onChange={(next) => next && update(date, next)} options={options} ariaLabel={`${timeLabel} · ${label}`} className={cn("h-12 w-full", error && "border-bad")} disabled={disabled} testId={`field:${name}.time`} />
+          <TimePicker value={time} onChange={(next) => next && update(date, next)} step={step} locale={locale} ariaLabel={`${timeLabel} · ${label}`} error={error} disabled={disabled} testId={`field:${name}.time`} />
         </div>
       </div>
       <input type="hidden" name={name} value={combined} disabled={disabled} />

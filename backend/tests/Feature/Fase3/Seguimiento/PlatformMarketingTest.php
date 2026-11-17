@@ -2,6 +2,7 @@
 
 use App\Domain\Iam\Models\AccessToken;
 use App\Domain\Platform\Models\PlatformUser;
+use App\Domain\Platform\Support\PayloadWebhook;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -36,7 +37,9 @@ function segSecondSuperAdmin(): void
 
 function segPayload(array $body, ?string $secret = 'payload-secreto-de-prueba', ?int $timestamp = null): TestResponse
 {
-    config(['seguimiento.payload.webhook_secret' => 'payload-secreto-de-prueba']);
+    if (app(PayloadWebhook::class)->secret() !== 'payload-secreto-de-prueba') {
+        app(PayloadWebhook::class)->storeSecret('payload-secreto-de-prueba', (string) platformUser()->getKey());
+    }
     $raw = json_encode($body);
     $ts = (string) ($timestamp ?? time());
 

@@ -10,6 +10,7 @@ export interface PaxService {
   date: string;
   time: string | null;
   kind: string;
+  mode?: string | null;
   status: string;
   state: string;
   pax: number;

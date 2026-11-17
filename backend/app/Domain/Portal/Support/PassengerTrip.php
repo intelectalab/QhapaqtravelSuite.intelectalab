@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Portal\Support;
 
+use App\Domain\Booking\Actions\TripBooking;
 use App\Domain\Channels\Support\ChannelKit;
 use App\Domain\Documents\Actions\ClientDocuments;
 use App\Domain\Documents\Support\QrImage;
@@ -262,7 +263,7 @@ final class PassengerTrip
             ->where('s.reservation_id', $reservation->id)->whereNotIn('s.status', ['cancelado', 'rechazado'])->whereNull('s.replaced_by_id')
             ->orderBy('s.service_date')->orderByRaw('s.service_time nulls last')->orderBy('s.code')
             ->get(['s.code', 's.name', 's.service_date', 's.service_time', 's.service_kind', 's.status', 's.pax', 's.nights', 's.confirmation_code', 's.provider_id', 'g.full_name as guide', 'g.phone as guide_phone', 'g.languages as guide_languages', 'd.full_name as driver', 'v.plate',
-                's.product_id', 'dep.meeting_point', 'p.pickup_text', 'pr.name as provider_name', 'pr.phone as provider_phone']);
+                's.product_id', 'dep.meeting_point', 'p.pickup_text', 'pr.name as provider_name', 'pr.phone as provider_phone', TripBooking::modeColumn()]);
     }
 
     private function service(stdClass $row, string $today, string $tripEnd, ?string $pickup = null): array
@@ -273,6 +274,7 @@ final class PassengerTrip
             'date' => $row->service_date,
             'time' => $row->service_time ? substr((string) $row->service_time, 0, 5) : null,
             'kind' => $row->service_kind,
+            'mode' => $row->transport_mode ?? null,
             'status' => $row->status,
             'state' => PortalDirectory::serviceState($row, $today, $tripEnd),
             'pax' => (int) $row->pax,

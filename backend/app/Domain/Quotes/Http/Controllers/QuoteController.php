@@ -21,6 +21,8 @@ final class QuoteController
 {
     public const EVIDENCE = ['Aceptación en portal (enlace con token)', 'Correo electrónico del cliente', 'Mensaje de WhatsApp', 'Firma de conformidad', 'Orden de compra / servicio'];
 
+    private const EVIDENCE_ALIASES = ['portal' => 'Aceptación en portal (enlace con token)', 'email' => 'Correo electrónico del cliente', 'whatsapp' => 'Mensaje de WhatsApp', 'firma' => 'Firma de conformidad', 'orden' => 'Orden de compra / servicio'];
+
     public function __construct(private readonly QuoteDirectory $directory) {}
 
     public function index(Request $request): JsonResponse
@@ -196,6 +198,12 @@ final class QuoteController
 
     public function approve(Request $request, string $code, QuoteLifecycle $lifecycle): JsonResponse
     {
+        $alias = self::EVIDENCE_ALIASES[mb_strtolower((string) $request->input('channel'))] ?? null;
+
+        if ($alias !== null) {
+            $request->merge(['channel' => $alias]);
+        }
+
         $data = $request->validate([
             'approved_by_name' => ['required', 'string', 'max:150'],
             'channel' => ['required', Rule::in(self::EVIDENCE)],

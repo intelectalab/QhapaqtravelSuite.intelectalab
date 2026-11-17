@@ -49,7 +49,7 @@ final class SiteCart
     {
         $product = $this->quotes->product($data['product']);
         $cart = $this->find($token);
-        $requested = $this->quotes->currency()->payable($data['currency'] ?? null);
+        $requested = $this->quotes->currency()->charge($data['currency'] ?? null);
         $quote = $this->quotes->quote($product, $data['date'], (int) $data['adults'], (int) ($data['children'] ?? 0), (int) ($data['infants'] ?? 0), $data['promo'] ?? null, SiteBooking::extrasFrom($data), true, null, null, $requested ?? ($cart === null ? null : trim((string) $cart->currency)));
         if ($cart !== null && $requested !== null && $requested !== trim((string) $cart->currency)) {
             DB::table('channel_web_carts')->where('id', $cart->id)->update(['currency' => $requested, 'updated_at' => now()]);

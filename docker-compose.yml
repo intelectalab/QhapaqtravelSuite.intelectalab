@@ -122,7 +122,7 @@ services:
   api-e2e:
     <<: *php
     profiles: [ "e2e" ]
-    command: php artisan serve --host=0.0.0.0 --port=8000
+    command: sh -c "cd public && exec php -S 0.0.0.0:8000 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php"
     environment:
       DB_DATABASE: kipucontrol_e2e
       APP_FROZEN_TODAY: "2026-09-29"
@@ -134,6 +134,9 @@ services:
       LOG_CHANNEL: stderr
       PHP_CLI_SERVER_WORKERS: "4"
     ports: [ "8100:8000" ]
+    networks:
+      default:
+        aliases: [ "selva.localhost" ]
 
   web-e2e:
     image: node:22-alpine
@@ -162,7 +165,7 @@ services:
       PLAYWRIGHT_BROWSERS_PATH: /pw-browsers
       E2E_BASE_URL: http://web-e2e:3000
       E2E_API_URL: http://api-e2e:8000/api/v1
-      E2E_TENANT_B_API_URL: http://api-e2e:8000/api/v1
+      E2E_TENANT_B_API_URL: http://selva.localhost:8000/api/v1
       E2E_PASSWORD: "KipuControl#E2E-2026"
       E2E_TOTP_SECRET: JBSWY3DPEHPK3PXP
       E2E_MAILPIT_URL: http://mailpit:8025

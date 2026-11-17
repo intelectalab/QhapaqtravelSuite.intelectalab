@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Quotes\Support;
 
+use App\Domain\Admin\Support\PriceTax;
 use App\Domain\Quotes\Actions\QuoteAccessTokens;
 use App\Domain\Quotes\Enums\QuoteStatus;
 use App\Domain\Quotes\Models\Quote;
@@ -61,7 +62,15 @@ final class PublicQuoteView
     {
         $quote = Quote::query()->whereKey($quoteId)->whereNull('deleted_at')->first() ?? throw ApiException::notFound('La cotización ya no está disponible.');
 
-        if (! in_array((string) $quote->status, self::VISIBLE, true)) {
+        $versionId = $quote->current_version_id;
+        $updating = false;
+
+        if ((string) $quote->status === QuoteStatus::Borrador->value && (int) $quote->current_version_no > 1) {
+            $versionId = DB::table('quote_versions')->where('quote_id', $quote->id)->where('version_no', '<', (int) $quote->current_version_no)->where('status', 'reemplazada')->orderByDesc('version_no')->value('id');
+            $updating = $versionId !== null;
+        }
+
+        if (! $updating && ! in_array((string) $quote->status, self::VISIBLE, true)) {
             throw ApiException::notFound('La cotización todavía no está disponible.');
         }
 
@@ -72,8 +81,8 @@ final class PublicQuoteView
             $this->recordView($quote, $request);
         }
 
-        $version = DB::table('quote_versions')->where('id', $quote->current_version_id)->first(['version_no', 'discount_pct', 'tax_pct', 'conditions', 'sale_total', 'discount_total', 'net_total', 'tax_total', 'grand_total']);
-        $items = DB::table('quote_items as i')->join('catalog_products as p', 'p.id', '=', 'i.product_id')->where('i.quote_version_id', $quote->current_version_id)->orderBy('i.line_no')
+        $version = DB::table('quote_versions')->where('id', $versionId)->first(['version_no', 'discount_pct', 'tax_pct', 'conditions', 'sale_total', 'discount_total', 'net_total', 'tax_total', 'grand_total']);
+        $items = DB::table('quote_items as i')->join('catalog_products as p', 'p.id', '=', 'i.product_id')->where('i.quote_version_id', $versionId)->orderBy('i.line_no')
             ->get(['p.name', 'i.service_date', 'i.qty', 'i.pax', 'i.segment', 'i.unit_price', 'i.sale_total']);
         $client = DB::table('crm_clients')->where('id', $quote->client_id)->value('name');
         $owner = DB::table('iam_users')->where('id', $quote->owner_id)->first(['name', 'email']);
@@ -85,7 +94,7 @@ final class PublicQuoteView
             'code' => $quote->code,
             'title' => $quote->title,
             'client' => $client,
-            'status' => $expired ? 'vencida' : (string) $quote->status,
+            'status' => $updating ? 'actualizando' : ($expired ? 'vencida' : (string) $quote->status),
             'version' => (int) ($version->version_no ?? $quote->current_version_no),
             'travel_from' => $quote->travel_from?->toDateString(),
             'travel_to' => $quote->travel_to?->toDateString(),
@@ -107,6 +116,7 @@ final class PublicQuoteView
                 'net' => Decimal::toApi((string) $version->net_total),
                 'tax' => Decimal::toApi((string) $version->tax_total),
                 'tax_pct' => (string) $version->tax_pct,
+                'tax_included' => PriceTax::storedIncluded($version),
                 'grand' => Decimal::toApi((string) $version->grand_total),
             ],
             'conditions' => $version->conditions ?? null,

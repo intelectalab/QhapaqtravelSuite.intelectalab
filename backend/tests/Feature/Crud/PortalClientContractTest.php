@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Inbox\Support\MessageCipher;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -45,12 +46,12 @@ it('PCL-BR-06: abrir una propuesta enviada la marca vista y pedir cambios crea u
 
     expect($done['status'])->toBe('vista')
         ->and(withinTenant(tenantA(), fn () => DB::table('quote_quotes')->where('code', $code)->value('status')))->toBe('vista')
-        ->and(withinTenant(tenantA(), fn () => DB::table('collab_conversations')->where('code', $done['ticket'])->value('subject')))->toContain($code);
+        ->and(MessageCipher::open(withinTenant(tenantA(), fn () => DB::table('collab_conversations')->where('code', $done['ticket'])->value('subject'))))->toContain($code);
 
     withinTenant(tenantA(), fn () => DB::table('quote_quotes')->where('code', $code)->update(['status' => 'vencida']));
     $expired = $this->postJson("/api/v1/portal/client/quotes/{$code}/update-request", ['message' => 'Necesitamos la propuesta con fechas nuevas.'])->assertOk()->json('data');
     expect($expired['status'])->toBe('vencida')
-        ->and(withinTenant(tenantA(), fn () => DB::table('collab_conversations')->where('code', $expired['ticket'])->value('subject')))->toStartWith('Actualizar la propuesta');
+        ->and(MessageCipher::open(withinTenant(tenantA(), fn () => DB::table('collab_conversations')->where('code', $expired['ticket'])->value('subject'))))->toStartWith('Actualizar la propuesta');
 
     withinTenant(tenantA(), fn () => DB::table('quote_quotes')->where('code', $code)->update(['status' => 'aprobada']));
     expect($this->postJson("/api/v1/portal/client/quotes/{$code}/update-request", ['message' => 'Otro cambio más para el viaje.']))->toBeApiError(409, 'PCL-BR-11');

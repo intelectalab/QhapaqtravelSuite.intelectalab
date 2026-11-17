@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Actions;
 
+use App\Domain\Admin\Support\ApiKeyActor;
 use App\Domain\Booking\Enums\ReservationStatus;
 use App\Domain\Booking\Events\ReservationConfirmed;
 use App\Domain\Booking\Events\ReservationCreated;
@@ -138,7 +139,7 @@ final class CreateDirectReservation
     private function owner(array $data, User $actor): string
     {
         if (Portfolio::ownOnly($actor) || empty($data['owner_id']) || $data['owner_id'] === $actor->getKey()) {
-            return (string) $actor->getKey();
+            return ApiKeyActor::owner($actor);
         }
 
         if (! $this->advisors->has((string) $data['owner_id'])) {

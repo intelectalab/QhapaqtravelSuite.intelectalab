@@ -17,17 +17,18 @@ import { ReservationCancelAction, ReservationEditAction, ReservationPartialCance
 import { ReservationOrderAction, ReservationReassignAction, ReservationStateActions } from "@/features/reservations/ReservationLifecycleActions";
 import { ReservationLockScope } from "@/features/reservations/ReservationLock";
 import { DocumentsSection, FeedbackSection, HistorySection, IncidentsSection, OperationSection, PassengersSection, PaymentsSection, ServicesSection, SummarySection, WebSection } from "@/features/reservations/ReservationSections";
-import type { ReceivablesOverview, SettlementDetail } from "@/lib/finance";
+import type { SettlementDetail } from "@/lib/finance";
 import { SettlementSection } from "@/features/finance/Settlement";
 import { CLOSED_RESERVATION, PENDING_PROVIDER_SERVICE, specialRequestTags, type ReservationService } from "@/lib/reservations";
 import { getAdvisors } from "@/lib/server/leads";
 import { currentUser } from "@/lib/server/me";
 import { isOutOfPortfolio } from "@/lib/server/detail";
 import { getChangeOptions, getReservation, getReservationCancellation, getReservationFeedback, getReservationHistory, getReservationPaxMessages, getReservationWebSnapshot } from "@/lib/server/reservations";
+import { getReceivablesOverview } from "@/lib/server/collections";
 import { getResource } from "@/lib/server/resource";
 import type { ReservationTripView } from "@/lib/trip";
 import { ReservationTripSection } from "@/features/reservations/ReservationTripSection";
-import { WebReactivationCard, type WebReactivationPreview } from "@/features/reservations/WebReactivation";
+import { ReservationReplacement, WebRecreationCard, type WebRecreationPreview } from "@/features/reservations/WebRecreation";
 import { statusTone } from "@/lib/tone";
 
 export async function generateMetadata({ params }: PageProps<"/reservas/[code]">): Promise<Metadata> {
@@ -114,10 +115,10 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
   const base = `/reservas/${encodeURIComponent(reservation.code)}`;
   const orderAction = reservation.can.operation_order ? <ReservationOrderAction code={reservation.code} /> : null;
 
-  const [trip, webSnapshot, reactivation] = await Promise.all([
+  const [trip, webSnapshot, recreation] = await Promise.all([
     getResource<ReservationTripView>(`/reservations/${encodeURIComponent(reservation.code)}/trip`, "No pudimos cargar el viaje por tramos."),
     reservation.counts.web > 0 ? getReservationWebSnapshot(code) : null,
-    reservation.status === "cancelada" ? getResource<WebReactivationPreview>(`/reservations/${encodeURIComponent(reservation.code)}/web-reactivation`, "No pudimos revisar la reactivación.") : null,
+    reservation.status === "cancelada" && !reservation.replaced_by ?getResource<WebRecreationPreview>(`/reservations/${encodeURIComponent(reservation.code)}/web-recreation`, "No pudimos revisar si se puede recrear.") : null,
   ]);
   const specialRequest = closed ? null : (webSnapshot?.comments?.trim() ?? null);
   const pendingServices = reservation.services.filter((service) => !service.replaced && PENDING_PROVIDER_SERVICE.includes(service.status)).length;
@@ -151,7 +152,7 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
       case "liquidacion":
         return <SettlementSection data={await getResource<SettlementDetail>(`/finance/reservations/${encodeURIComponent(code)}/settlement`, "No pudimos cargar la liquidación.")} />;
       case "pagos":
-        return <PaymentsSection reservation={reservation} finance={await getResource<ReceivablesOverview>("/finance/receivables", "No pudimos cargar las cuentas por cobrar.")} />;
+        return <PaymentsSection reservation={reservation} finance={await getReceivablesOverview()} />;
       case "documentos":
         return <DocumentsSection reservation={reservation} printable={printable} />;
       case "operacion":
@@ -266,7 +267,8 @@ export default async function ReservaPage({ params, searchParams }: PageProps<"/
           </p>
         )}
 
-        {reactivation && <WebReactivationCard code={reservation.code} preview={reactivation} />}
+        <ReservationReplacement replaces={reservation.replaces} replacedBy={reservation.replaced_by} />
+        {recreation && <WebRecreationCard code={reservation.code} preview={recreation} />}
 
         {!closed && reservation.cancel_request && (
           <div className="mb-5 flex animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] flex-wrap items-center gap-3 rounded-card border border-[color-mix(in_srgb,var(--warn)_35%,transparent)] bg-[color-mix(in_srgb,var(--warn)_10%,transparent)] px-4 py-3 text-[13.5px]">

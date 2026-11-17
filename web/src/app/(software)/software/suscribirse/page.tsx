@@ -26,7 +26,7 @@ export default async function SuscribirsePage({ searchParams }: { searchParams: 
         <h1 className="site-display mt-4 text-[32px] font-bold leading-[1.05] tracking-[-0.04em] sm:text-[44px]">Activa KipuControl para tu agencia.</h1>
         <p className="mb-10 mt-3 max-w-2xl text-[15.5px] text-fg-2">Tres pasos y tu equipo empieza hoy. Los precios no incluyen IGV; el resumen lo calcula antes de pagar.</p>
         {catalog && options ? (
-          <SignupWizard catalog={catalog} businessTypes={options.business_types} initialPlan={params.plan} initialCycle={cycle} attribution={attribution} />
+          <SignupWizard catalog={catalog} businessTypes={options.business_types} leadOptions={options} initialPlan={params.plan} initialCycle={cycle} attribution={attribution} />
         ) : (
           <EmptyState icon={<CloudOff size={22} />} title="La suscripción no está disponible" description="Vuelve a intentarlo en unos segundos." />
         )}

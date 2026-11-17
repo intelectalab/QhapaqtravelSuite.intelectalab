@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Inbox\Support;
 
+use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Support\Facades\Crypt;
 
@@ -12,6 +13,8 @@ final class MessageCipher
     public const PREFIX = 'kc1:';
 
     public const FILE_PREFIX = "KCENC1\n";
+
+    public const LABEL_MAX = 200;
 
     public static function seal(?string $text): string
     {
@@ -79,5 +82,18 @@ final class MessageCipher
         }
 
         return $message;
+    }
+
+    public static function sealLabel(string $text, string $field = 'subject'): string
+    {
+        if (self::sealed($text)) {
+            return $text;
+        }
+
+        if (mb_strlen($text) > self::LABEL_MAX) {
+            throw ApiException::unprocessable('INB-LABEL-LENGTH', 'El texto no puede superar los '.self::LABEL_MAX.' caracteres.', ['field' => $field]);
+        }
+
+        return self::seal($text);
     }
 }

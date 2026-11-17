@@ -12,6 +12,7 @@ use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
 use App\Domain\Shared\Time\BusinessHours;
+use App\Domain\Site\Support\SiteLocale;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -21,9 +22,15 @@ use stdClass;
 
 final class WebChat
 {
-    private const AUTO_REPLY = 'Hola, gracias por escribirnos. Un asesor te responderá en breve por este chat; si ya cerraste la ventana, te contestaremos por correo o WhatsApp.';
+    private const AUTO_REPLY = [
+        'es' => 'Hola, gracias por escribirnos. Un asesor te responderá en breve por este chat; si ya cerraste la ventana, te contestaremos por correo o WhatsApp.',
+        'en' => 'Hi, thanks for reaching out. An advisor will reply shortly in this chat; if you have already closed the window, we will answer by email or WhatsApp.',
+    ];
 
-    private const AUTO_REPLY_CLOSED = 'Hola, gracias por escribirnos. Ahora estamos fuera de horario (atendemos %s). Un asesor te responderá %s por este chat; si ya cerraste la ventana, te contestaremos por correo o WhatsApp.';
+    private const AUTO_REPLY_CLOSED = [
+        'es' => 'Hola, gracias por escribirnos. Ahora estamos fuera de horario (atendemos %s). Un asesor te responderá %s por este chat; si ya cerraste la ventana, te contestaremos por correo o WhatsApp.',
+        'en' => 'Hi, thanks for reaching out. We are currently closed (our hours: %s). An advisor will reply %s in this chat; if you have already closed the window, we will answer by email or WhatsApp.',
+    ];
 
     public function __construct(
         private readonly TenantContext $context,
@@ -31,7 +38,7 @@ final class WebChat
         private readonly AuditLogger $audit,
     ) {}
 
-    public function open(array $data): array
+    public function open(array $data, string $locale = SiteLocale::BASE): array
     {
         $now = Carbon::now($this->context->timezone());
         $email = isset($data['email']) ? Str::lower(trim((string) $data['email'])) : null;
@@ -47,7 +54,7 @@ final class WebChat
             'contact_name' => trim((string) $data['name']),
             'contact_email' => $email,
             'contact_phone' => $data['whatsapp'] ?? null,
-            'subject' => Str::limit('Chat web: '.trim((string) $data['message']), 195),
+            'subject' => MessageCipher::sealLabel(Str::limit('Chat web: '.trim((string) $data['message']), 195)),
             'status' => 'abierta',
             'priority' => 'media',
             'tags' => '{Web,Chat}',
@@ -58,7 +65,7 @@ final class WebChat
             'unread_count' => 1,
         ]);
         $this->message($id, 'in', trim((string) $data['message']), $now);
-        $this->message($id, 'system', $this->autoReply($now), $now->copy()->addSecond());
+        $this->message($id, 'system', $this->autoReply($now, $locale), $now->copy()->addSecond());
         $this->audit->log('Conversación', $code, 'crear', after: 'webchat');
 
         app(InboxNotices::class)->created($id);
@@ -92,23 +99,31 @@ final class WebChat
         return ['session' => $conversation->code, 'messages' => $this->visible((string) $conversation->id)];
     }
 
-    public function autoReply(CarbonInterface $at): string
+    public function autoReply(CarbonInterface $at, string $locale = SiteLocale::BASE): string
     {
+        $locale = in_array($locale, SiteLocale::LOCALES, true) ? $locale : SiteLocale::BASE;
         $hours = app(BusinessHours::class);
 
         if ($hours->isOpen($at)) {
-            return self::AUTO_REPLY;
+            return self::AUTO_REPLY[$locale];
         }
 
         $local = CarbonImmutable::instance($at)->setTimezone($hours->timezone());
-        $next = $hours->nextOpen($at)->locale('es');
-        $when = match (true) {
-            $next->isSameDay($local) => 'hoy a las '.$next->format('H:i'),
-            $next->isSameDay($local->addDay()) => 'mañana a las '.$next->format('H:i'),
-            default => 'el '.$next->isoFormat('dddd D [de] MMMM').' a las '.$next->format('H:i'),
+        $next = $hours->nextOpen($at)->locale($locale);
+        $time = $next->format('H:i');
+        $when = $locale === 'en'
+            ? match (true) {
+                $next->isSameDay($local) => "today at {$time}",
+                $next->isSameDay($local->addDay()) => "tomorrow at {$time}",
+                default => 'on '.$next->isoFormat('dddd, MMMM D')." at {$time}",
+            }
+        : match (true) {
+            $next->isSameDay($local) => "hoy a las {$time}",
+            $next->isSameDay($local->addDay()) => "mañana a las {$time}",
+            default => 'el '.$next->isoFormat('dddd D [de] MMMM')." a las {$time}",
         };
 
-        return sprintf(self::AUTO_REPLY_CLOSED, $hours->summary('es'), $when);
+        return sprintf(self::AUTO_REPLY_CLOSED[$locale], $hours->summary($locale), $when);
     }
 
     public static function token(string $conversationId): string

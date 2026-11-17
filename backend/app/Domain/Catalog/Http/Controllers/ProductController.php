@@ -21,7 +21,10 @@ final class ProductController
 
     public function index(Request $request): JsonResponse
     {
-        return response()->json(['data' => $this->directory->list($this->user($request))]);
+        $filter = $request->query('filter');
+        $code = is_array($filter) && is_scalar($filter['code'] ?? null) ? trim((string) $filter['code']) : null;
+
+        return response()->json(['data' => $this->directory->list($this->user($request), $code)]);
     }
 
     public function show(Request $request, string $code): JsonResponse

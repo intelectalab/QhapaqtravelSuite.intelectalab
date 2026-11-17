@@ -41,7 +41,6 @@ const OPERATION_LIMITS: Record<string, { min: number; max?: number }> = { max_pa
 const NO_SHOW_RULES: { key: string; label: string; hint: string }[] = [
   { key: "noshow_notify_advisor", label: "Avisar al asesor de la reserva", hint: "Recibe una notificación con el pasajero y el servicio." },
   { key: "noshow_incident", label: "Abrir una incidencia", hint: "Queda en Operaciones › Incidencias, asignada al coordinador de la orden." },
-  { key: "noshow_charge", label: "Generar el cargo", hint: "Crea una cuenta por cobrar con el porcentaje de la política de no-show del producto." },
 ];
 
 export function SectionCard({ icon, title, tone, updated, children, action, index }: { icon: typeof Building2; title: string; tone: Tone; updated?: string | null; children: ReactNode; action?: ReactNode; index: number }) {
@@ -92,15 +91,15 @@ export function EditSection({ section, version, title, description, children, ac
 
 const ROUNDERS: Record<string, (value: number) => number> = { up: Math.ceil, down: Math.floor, nearest: Math.round };
 
-function priceBreakdown(cost: number, markupPct: number, taxPct: number, rounding: string, mode: string) {
+function priceBreakdown(cost: number, markupPct: number, taxPct: number, rounding: string, mode: string, included: boolean) {
   const cents = (value: number) => Math.round(value * 100);
   const base = cents(cost);
   const markup = Math.round((base * markupPct) / 100);
-  const net = base + markup;
-  const tax = Math.round((net * taxPct) / 100);
   const step = Math.max(1, Math.round(Number(rounding || "0.01") * 100));
-  const total = (ROUNDERS[mode] ?? Math.round)((net + tax) / step) * step;
-  return { cost: base / 100, markup: markup / 100, net: net / 100, tax: tax / 100, adjustment: (total - net - tax) / 100, total: total / 100 };
+  const price = (ROUNDERS[mode] ?? Math.round)((base + markup) / step) * step;
+  const net = included ? Math.round((price * 100) / (100 + taxPct)) : price;
+  const tax = included ? price - net : Math.round((price * taxPct) / 100);
+  return { cost: base / 100, markup: markup / 100, adjustment: (price - base - markup) / 100, price: price / 100, net: net / 100, tax: tax / 100, total: (net + tax) / 100 };
 }
 
 function PricePreview({ data }: { data: SettingsOverview }) {
@@ -112,15 +111,17 @@ function PricePreview({ data }: { data: SettingsOverview }) {
   const base = currency.base_currency ?? "PEN";
   const alt = currency.alt_currency ?? "USD";
   const amount = Number(cost.replace(",", "."));
-  const result = priceBreakdown(Number.isFinite(amount) && amount > 0 ? amount : 0, markupPct, taxPct, currency.rounding ?? "0.01", currency.round_mode ?? "nearest");
+  const included = currency.price_with_tax ?? true;
+  const result = priceBreakdown(Number.isFinite(amount) && amount > 0 ? amount : 0, markupPct, taxPct, currency.rounding ?? "0.01", currency.round_mode ?? "nearest", included);
   const rounding = data.options.rounding.find((item) => item.value === currency.rounding)?.label ?? currency.rounding;
   const mode = data.options.round_modes.find((item) => item.value === currency.round_mode)?.label.toLowerCase() ?? "";
   const lines = [
     { label: "Costo de proveedores", value: result.cost },
     { label: `Margen sugerido ${markupPct} %`, value: result.markup },
-    { label: "Valor de venta", value: result.net, strong: true },
-    { label: `IGV ${taxPct} %`, value: result.tax },
     ...(result.adjustment !== 0 ? [{ label: `Redondeo ${rounding?.toLowerCase()} ${mode}`.trim(), value: result.adjustment }] : []),
+    { label: included ? "Precio por persona de la tarifa (con IGV)" : "Precio por persona de la tarifa (sin IGV)", value: result.price, strong: true },
+    { label: "Valor de venta", value: result.net },
+    { label: included ? `IGV incluido ${taxPct} %` : `IGV ${taxPct} %`, value: result.tax },
   ];
   return (
     <SectionCard index={6} icon={Calculator} tone="t4" title="Vista previa del cálculo" action={<InfoTip label="Cómo se calcula">Usa el margen sugerido de Políticas comerciales y el IGV, el redondeo y el tipo de cambio guardados aquí. Es un ejemplo: cada cotización aplica las reglas y tarifas de sus productos.</InfoTip>}>
@@ -145,7 +146,7 @@ function PricePreview({ data }: { data: SettingsOverview }) {
           </li>
         )}
       </ul>
-      <p className="mt-2 text-[12px] text-fg-3">{currency.price_with_tax ? "Los precios se muestran con el IGV incluido." : "Los precios se muestran sin IGV y el impuesto se suma al final."}</p>
+      <p className="mt-2 text-[12px] text-fg-3">{included ? "La tarifa es el precio final: el IGV se desglosa desde adentro en el sitio, las cotizaciones y las reservas directas. El margen se mide sobre el valor de venta." : "La tarifa no incluye IGV: el impuesto se suma encima en el sitio, las cotizaciones y las reservas directas."} El redondeo solo se aplica al precio por persona que sale de la tarifa.</p>
     </SectionCard>
   );
 }
@@ -396,6 +397,7 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
                 {NO_SHOW_RULES.map((rule) => (
                   <ToggleField key={rule.key} label={rule.label} name={rule.key} defaultChecked={Boolean(ops[rule.key])} hint={rule.hint} />
                 ))}
+                <p className="text-[12.5px] text-fg-3">No se genera un cargo: la política de no-show del producto solo impide devolver lo pagado.</p>
               </div>
             </EditSection>
           )
@@ -412,7 +414,7 @@ export function SettingsSections({ data, show }: { data: SettingsOverview; show:
           ))}
         </ul>
         <p className="mt-4 text-[12.5px] font-semibold text-fg-3">Si un pasajero no se presenta</p>
-        <ul className="mt-1.5 grid gap-1.5 sm:grid-cols-3">
+        <ul className="mt-1.5 grid gap-1.5 sm:grid-cols-2">
           {NO_SHOW_RULES.map((rule) => {
             const on = Boolean(ops[rule.key]);
             return (

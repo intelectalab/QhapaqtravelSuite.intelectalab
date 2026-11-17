@@ -55,6 +55,9 @@ export interface ReceivableRow {
   reservation: { code: string; title: string; status: string };
   client: { code: string; name: string };
   owner: string | null;
+  pending_extras?: SettlementDetail["payables"];
+  cost_form?: { providers: FinanceOption[]; cost_types: FinanceOption[]; default_provider: string | null; today: string; usd_rate: number };
+  can?: { register_cost: boolean; approve_cost: boolean };
 }
 
 export interface AgingBucket {
@@ -804,9 +807,12 @@ export interface SettlementDetail {
   statement: { income: string; service_cost?: string; extra_cost?: string; pending_extra_cost?: string; cost: string; gross?: string; commissions: string; net: string; margin_pct: string | null; net_pct?: string | null };
   cash: { collected: string; paid_out: string; position: string };
   receivables: { code: string; concept: string; amount: string; paid_amount: string; currency?: string; status: string; due_date: string }[];
-  payables: { code: string; kind?: string; concept: string; amount: string; paid_amount: string; currency: string; status: string; provider: string | null }[];
+  payables: { code: string; kind?: string; concept: string; amount: string; paid_amount: string; currency: string; status: string; provider: string | null; lock_version?: number; provider_ref?: string | null }[];
   commissions: { code: string; kind: string; amount: string; currency: string; status: string }[];
   checks: { key: string; label: string; ok: boolean; detail: string }[];
   can_close: boolean;
   closed: { closed_at: string; closed_by: string | null; net_pen: string; gross_margin_pct: string | null } | null;
+  pending_extras?: SettlementDetail["payables"];
+  cost_form?: { providers: FinanceOption[]; cost_types: FinanceOption[]; default_provider: string | null; today: string; usd_rate: number };
+  can?: { register_cost: boolean; approve_cost: boolean };
 }

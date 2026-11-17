@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Domain\Admin\Http\Middleware\AuthenticateApiKey;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
+use App\Http\Routing\RoutePermissions;
 use Closure;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
@@ -50,9 +52,18 @@ final class ResolveTenant
     private function tenantFromToken(Request $request): ?string
     {
         $bearer = $request->bearerToken();
+        $apiKey = $request->attributes->get(AuthenticateApiKey::ATTRIBUTE);
+
+        if (is_array($apiKey)) {
+            return (string) $apiKey['tenant_id'];
+        }
 
         if ($bearer === null) {
             return $request->user()->tenant_id ?? null;
+        }
+
+        if (AuthenticateApiKey::looksLikeKey($bearer)) {
+            throw ApiException::unauthorized('API_KEY_ROUTE', 'Esta ruta no se usa con llave de API. Revisa la lista de rutas habilitadas en Configuración › API.');
         }
 
         $hash = hash('sha256', str_contains($bearer, '|') ? explode('|', $bearer, 2)[1] : $bearer);
@@ -66,7 +77,7 @@ final class ResolveTenant
             ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))->exists();
 
         if ($platform) {
-            throw ApiException::forbidden('EXPERIENCE_MISMATCH', 'La consola de la plataforma no accede a los datos de una agencia.');
+            throw ApiException::forbidden('EXPERIENCE_MISMATCH', 'La consola de la plataforma no accede a los datos de una agencia.', RoutePermissions::agency($request));
         }
 
         throw new AuthenticationException;

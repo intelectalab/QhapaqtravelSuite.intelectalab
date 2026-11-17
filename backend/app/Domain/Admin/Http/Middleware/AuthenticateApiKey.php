@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Domain\Admin\Http\Middleware;
 
+use App\Domain\Admin\Support\ApiKeyActor;
 use App\Domain\Admin\Support\ApiKeyUsage;
 use App\Domain\Admin\Support\PgArray;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
 use App\Domain\Shared\Tenancy\TenantDatabase;
 use Closure;
+use Illuminate\Auth\RequestGuard;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
@@ -33,12 +36,27 @@ final class AuthenticateApiKey
         private readonly ApiKeyUsage $usage,
     ) {}
 
+    public static function looksLikeKey(?string $token): bool
+    {
+        return $token !== null && str_starts_with($token, 'qts_');
+    }
+
+    public static function sharesSession(Request $request): bool
+    {
+        return in_array('auth:sanctum', $request->route()?->gatherMiddleware() ?? [], true);
+    }
+
     public function handle(Request $request, Closure $next): Response
     {
         $token = (string) $request->bearerToken();
+        $shared = self::sharesSession($request);
+
+        if ($shared && ! self::looksLikeKey($token)) {
+            return $next($request);
+        }
 
         if (preg_match(self::TOKEN, $token, $match) !== 1) {
-            throw $this->unauthorized('Envía tu llave de API en la cabecera Authorization: Bearer qts_live_…');
+            throw $this->unauthorized($shared ? 'La llave de API no es válida.' : 'Envía tu llave de API en la cabecera Authorization: Bearer qts_live_…');
         }
 
         $key = $this->find($token, substr($token, 0, strlen("qts_{$match['env']}_") + 4));
@@ -61,11 +79,26 @@ final class AuthenticateApiKey
         RateLimiter::hit($bucket, 60);
         $this->usage->call((string) $key->id);
         $this->touch($key, (string) $request->ip());
-        $request->attributes->set(self::ATTRIBUTE, ['id' => (string) $key->id, 'code' => (string) $key->code, 'tenant_id' => (string) $key->tenant_id, 'scopes' => PgArray::parse($key->scopes), 'environment' => (string) $key->environment]);
-        try {
-            $response = $this->database->run((string) $key->tenant_id, fn () => $next($request));
-        } finally {
-            $this->context->clear();
+        $attributes = ['id' => (string) $key->id, 'code' => (string) $key->code, 'name' => (string) $key->name, 'tenant_id' => (string) $key->tenant_id, 'scopes' => PgArray::parse($key->scopes), 'environment' => (string) $key->environment];
+        $request->attributes->set(self::ATTRIBUTE, $attributes);
+
+        if ($shared) {
+            $guard = Auth::guard('sanctum');
+            $guard->setUser(ApiKeyActor::make($attributes));
+
+            try {
+                $response = $next($request);
+            } finally {
+                if ($guard instanceof RequestGuard) {
+                    $guard->forgetUser();
+                }
+            }
+        } else {
+            try {
+                $response = $this->database->run((string) $key->tenant_id, fn () => $next($request));
+            } finally {
+                $this->context->clear();
+            }
         }
 
         $response->headers->add($this->headers($limit, RateLimiter::remaining($bucket, $limit), RateLimiter::availableIn($bucket)));
@@ -76,7 +109,7 @@ final class AuthenticateApiKey
     private function find(string $token, string $prefix): object
     {
         $hash = hash('sha256', $token);
-        $key = DB::connection('pgsql_platform')->table('integration_api_keys')->where('prefix', $prefix)->get(['id', 'tenant_id', 'code', 'environment', 'token_hash', 'scopes', 'ip_allowlist', 'expires_at', 'status', 'last_used_at'])
+        $key = DB::connection('pgsql_platform')->table('integration_api_keys')->where('prefix', $prefix)->get(['id', 'tenant_id', 'code', 'name', 'environment', 'token_hash', 'scopes', 'ip_allowlist', 'expires_at', 'status', 'last_used_at'])
             ->first(fn (object $row): bool => hash_equals((string) $row->token_hash, $hash));
 
         if ($key === null) {

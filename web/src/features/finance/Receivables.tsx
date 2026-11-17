@@ -15,9 +15,9 @@ import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import type { AdvanceOption, PaymentMethodOption, ReceivableRow, ReceivablesOverview } from "@/lib/finance";
-import { formatDate, formatMoney } from "@/lib/format";
+import { amountAttr, formatDate, formatMoney } from "@/lib/format";
 import { statusLabel } from "@/lib/tone";
-import { FinanceStep, SummaryBox } from "./FinanceStep";
+import { FinanceStep, SummaryBox, type StepButton } from "./FinanceStep";
 import { IssueInvoiceAction } from "./Invoices";
 
 const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es"));
@@ -54,15 +54,16 @@ function PaymentFields({ row, methods, today, usdRate }: { row: PayableReceivabl
   );
 }
 
-export function RegisterPaymentAction({ row, methods, today, usdRate, trigger }: { row: PayableReceivable; methods: PaymentMethodOption[]; today: string; usdRate: number; trigger?: (open: () => void) => ReactNode }) {
+export function RegisterPaymentAction({ row, methods, today, usdRate, trigger, button }: { row: PayableReceivable; methods: PaymentMethodOption[]; today: string; usdRate: number; trigger?: (open: () => void) => ReactNode; button?: StepButton }) {
   return (
-    <FinanceStep
+    <FinanceStep button={button}
       step="receivable_payment"
       itemKey={row.code}
       label="Registrar pago"
       title="Registrar pago"
       description="Se registra confirmado y se aplica a esta cuota en la misma operación."
       submitLabel="Registrar y aplicar"
+      successToast="Pago registrado y aplicado a la cuota."
       trigger={trigger ?? ((open) => <RowIcon tone="edit" label="Registrar pago" icon={<Wallet size={15} />} onClick={open} />)}
     >
       <PaymentFields row={row} methods={methods} today={today} usdRate={usdRate} />
@@ -84,7 +85,7 @@ function PickedPaymentFields({ rows, methods, today, usdRate }: { rows: Receivab
 export function PickPaymentAction({ data }: { data: ReceivablesOverview }) {
   const open = data.rows.filter((row) => row.status !== "pagada" && row.status !== "cancelada" && row.balance > 0);
   return (
-    <FinanceStep step="receivable_payment_pick" label="Registrar pago" icon={<Wallet size={16} />} title="Registrar pago" description="Elige la cuota: el pago se registra confirmado y se aplica en la misma operación." submitLabel="Registrar y aplicar">
+    <FinanceStep step="receivable_payment_pick" label="Registrar pago" icon={<Wallet size={16} />} title="Registrar pago" description="Elige la cuota: el pago se registra confirmado y se aplica en la misma operación." submitLabel="Registrar y aplicar" successToast="Pago registrado y aplicado a la cuota.">
       <PickedPaymentFields rows={open} methods={data.methods} today={data.today} usdRate={data.usd_rate} />
     </FinanceStep>
   );
@@ -150,9 +151,9 @@ export function RequestAdvanceAction({ data }: { data: ReceivablesOverview }) {
   );
 }
 
-export function RemindAction({ row, trigger }: { row: Pick<ReceivableRow, "code" | "concept" | "balance" | "currency"> & { client: { name: string } }; trigger?: (open: () => void) => ReactNode }) {
+export function RemindAction({ row, trigger, button }: { row: Pick<ReceivableRow, "code" | "concept" | "balance" | "currency"> & { client: { name: string } }; trigger?: (open: () => void) => ReactNode; button?: StepButton }) {
   return (
-    <FinanceStep step="receivable_remind" itemKey={row.code} label="Enviar recordatorio" title="Enviar recordatorio de pago" description="Le llega al cliente un correo con el saldo pendiente. Queda en el historial de la cuota." submitLabel="Enviar" trigger={trigger ?? ((open) => <RowIcon tone="neutral" label="Enviar recordatorio" icon={<BellRing size={15} />} onClick={open} />)}>
+    <FinanceStep button={button} step="receivable_remind" itemKey={row.code} label="Enviar recordatorio" title="Enviar recordatorio de pago" description="Le llega al cliente un correo con el saldo pendiente. Queda en el historial de la cuota." submitLabel="Enviar" trigger={trigger ?? ((open) => <RowIcon tone="neutral" label="Enviar recordatorio" icon={<BellRing size={15} />} onClick={open} />)}>
       <SummaryBox
         rows={[
           { label: "Cuota", value: `${row.code} · ${row.concept}` },
@@ -187,7 +188,7 @@ export function CancelReceivableAction({ row }: { row: ReceivableRow }) {
   );
 }
 
-export function ReceivablesTable({ data }: { data: ReceivablesOverview }) {
+export function ReceivablesTable({ data, reservation }: { data: ReceivablesOverview; reservation?: string }) {
   const { rows, methods, today, usd_rate: usdRate, can } = data;
   const week = new Date(`${today}T12:00:00`);
   week.setDate(week.getDate() + 7);
@@ -285,7 +286,9 @@ export function ReceivablesTable({ data }: { data: ReceivablesOverview }) {
       rows={rows}
       columns={columns}
       getKey={(row) => row.code}
+      rowData={(row) => ({ "data-amount": amountAttr(row.amount), "data-status": row.status })}
       entityLabel="cuotas"
+      initialSearch={reservation}
       searchText={(row) => `${row.code} ${row.concept} ${row.client.name} ${row.reservation.code}`}
       searchPlaceholder="Buscar cuota, cliente o reserva"
       metrics={metrics}

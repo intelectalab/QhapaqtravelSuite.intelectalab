@@ -8,7 +8,6 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
-import { Button } from "@/components/ui/Button";
 import { RecalculateCommissionAction } from "@/features/finance/Commissions";
 import { AuditCard, StatusHistoryCard } from "@/features/finance/FinanceDetailParts";
 import { cn } from "@/lib/cn";
@@ -57,11 +56,7 @@ export default async function ComisionPage({ params }: PageProps<"/finanzas/comi
                 { label: "Porcentaje actual", value: `${Number(row.pct)} %` },
                 ...(rule ? [{ label: "Con la regla vigente", value: formatMoney(rule.expected, row.currency), strong: true }] : [{ label: "Comisión actual", value: formatMoney(row.amount, row.currency), strong: true }]),
               ]}
-              trigger={(show) => (
-                <Button variant="primary" icon={<RefreshCw size={16} />} onClick={show}>
-                  Recalcular
-                </Button>
-              )}
+              button={{ label: "Recalcular", icon: <RefreshCw size={16} />, variant: "primary" }}
             />
           ) : undefined
         }

@@ -3,10 +3,19 @@
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { financeStep } from "@/app/(backoffice)/finanzas/actions";
+import { Button } from "@/components/ui/Button";
 import { PanelAction } from "@/components/ui/PanelAction";
+import { useQuickAction } from "@/components/ui/QuickAction";
 import type { StepResult } from "@/lib/server/resource";
 
 const initial: StepResult = { message: null, done: false };
+
+export interface StepButton {
+  label: ReactNode;
+  icon?: ReactNode;
+  variant?: "primary" | "secondary" | "ghost";
+  testId?: string;
+}
 
 interface FinanceStepProps {
   step: string;
@@ -20,9 +29,12 @@ interface FinanceStepProps {
   trigger?: (open: () => void) => ReactNode;
   action?: (state: StepResult, form: FormData) => Promise<StepResult>;
   children?: ReactNode;
+  successToast?: string;
+  testId?: string;
+  button?: StepButton;
 }
 
-export function FinanceStep({ step, itemKey = "", label, icon, variant = "secondary", title, description, submitLabel, trigger, action = financeStep, children }: FinanceStepProps) {
+export function FinanceStep({ step, itemKey = "", label, icon, variant = "secondary", title, description, submitLabel, trigger, action = financeStep, children, successToast, testId, button }: FinanceStepProps) {
   const router = useRouter();
   return (
     <PanelAction<StepResult>
@@ -35,7 +47,9 @@ export function FinanceStep({ step, itemKey = "", label, icon, variant = "second
       submitLabel={submitLabel}
       action={action}
       initial={initial}
-      trigger={trigger}
+      trigger={button ? (open) => <Button variant={button.variant ?? "secondary"} icon={button.icon} onClick={open} data-testid={button.testId}>{button.label}</Button> : trigger}
+      testId={testId}
+      successToast={successToast}
       onDone={() => router.refresh()}
     >
       {() => (
@@ -46,6 +60,24 @@ export function FinanceStep({ step, itemKey = "", label, icon, variant = "second
         </>
       )}
     </PanelAction>
+  );
+}
+
+interface QuickStepProps {
+  step: string;
+  itemKey: string;
+  values?: Record<string, string | number>;
+  button: StepButton;
+  successToast: string;
+  size?: "md" | "sm";
+}
+
+export function QuickFinanceStep({ step, itemKey, values = {}, button, successToast, size = "sm" }: QuickStepProps) {
+  const { run, pending } = useQuickAction(financeStep, initial);
+  return (
+    <Button size={size} variant={button.variant ?? "secondary"} icon={button.icon} onClick={() => run({ step, key: itemKey, ...values }, successToast)} disabled={pending} data-testid={button.testId}>
+      {pending ? "Un momento…" : button.label}
+    </Button>
   );
 }
 

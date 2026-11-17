@@ -69,7 +69,7 @@ export function ProfitabilityTable({ data }: { data: ProfitabilityOverview }) {
       align: "right",
       cell: (row) => (
         <RowActions>
-          <RowIcon tone="neutral" label="Liquidación" icon={<Scale size={15} />} href={`/reservas/${row.code}?seccion=liquidacion`} opensRow={false} />
+          <RowIcon tone="neutral" label="Rentabilidad y liquidación" icon={<Scale size={15} />} href={`/finanzas/rentabilidad/${row.code}`} opensRow={false} />
           <RowIcon tone="view" label="Ver reserva" href={`/reservas/${row.code}`} />
         </RowActions>
       ),

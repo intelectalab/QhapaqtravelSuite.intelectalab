@@ -187,6 +187,22 @@ final class TripReservations
         return ['adt' => max(1, (int) ($types['ADT'] ?? 0)), 'chd' => (int) ($types['CHD'] ?? 0), 'inf' => (int) ($types['INF'] ?? 0)];
     }
 
+    public function eligibleChildren(string $reservationId, mixed $minAge, string $date): ?int
+    {
+        if ($minAge === null || (int) $minAge <= 0) {
+            return null;
+        }
+
+        $day = CarbonImmutable::parse($date);
+
+        return DB::table('booking_passengers')->where('reservation_id', $reservationId)->where('pax_type', 'CHD')->get(['birth_date', 'age'])
+            ->filter(fn (stdClass $child): bool => match (true) {
+                $child->birth_date !== null => (int) CarbonImmutable::parse((string) $child->birth_date)->diffInYears($day) >= (int) $minAge,
+                $child->age !== null => (int) $child->age >= (int) $minAge,
+                default => true,
+            })->count();
+    }
+
     public function minHours(?ProductData $data): int
     {
         return (int) ($this->rules->forTenant()->param('R-IN-TRIP-SALES', 'minHoursBefore', $data) ?? 12) ?: 12;
@@ -223,7 +239,7 @@ final class TripReservations
                 $this->startsAt($date, $tour['time'])->lt($cutoff) => "Se compra hasta {$minHours} h antes del inicio.",
                 default => null,
             };
-            $out[] = $this->row('tour', $tour, (string) $leg->city, $date, $tour['time'], $engine->tripItemAmount($tour, 'tour', $pax), $blocked, $leg->id);
+            $out[] = $this->row('tour', $tour, (string) $leg->city, $date, $tour['time'], $engine->tripItemAmount($tour, 'tour', $pax, $this->eligibleChildren((string) $reservation->id, $tour['minAge'] ?? null, $date)), $blocked, $leg->id);
         }
 
         foreach ($data->trip['transport'] ?? [] as $option) {

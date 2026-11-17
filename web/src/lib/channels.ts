@@ -489,7 +489,7 @@ export const FEEDBACK_TYPES: Record<string, string> = {
 
 export const MESSAGE_CHANNELS: Record<string, string> = { email: "Correo", whatsapp: "WhatsApp", portal: "Portal", push: "Notificación push" };
 
-export const SERVICE_KINDS: Record<string, string> = { tour: "Tour", traslado: "Traslado", tren_entrada: "Tren o entrada", alojamiento: "Alojamiento", libre: "Día libre" };
+export const SERVICE_KINDS: Record<string, string> = { tour: "Tour", traslado: "Traslado", tren_entrada: "Pasajes y entradas", alojamiento: "Alojamiento", libre: "Día libre" };
 
 export interface OwnReviewSettingsValues {
   auto_publish: boolean;

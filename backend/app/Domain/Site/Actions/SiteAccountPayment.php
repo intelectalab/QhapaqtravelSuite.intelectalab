@@ -52,6 +52,7 @@ final class SiteAccountPayment
             }
 
             $method = (string) $payment['method'];
+            CheckoutTerms::assertMethod($method, (string) $receivable->currency);
             $card = $method === 'tarjeta' ? $this->cards->charge('receivable', (string) $receivable->code, (string) $amount, (string) $receivable->currency, (string) ($account->user->email ?? ''), (string) $payment['card_token'], $payment['session_id'] ?? null) : null;
             $result = $method === 'tarjeta' ? ($card['approved'] ? 'aprobado' : 'rechazado') : 'por_validar';
             $txn = $card['txn'] ?? null;

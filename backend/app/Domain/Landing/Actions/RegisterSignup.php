@@ -51,7 +51,7 @@ final class RegisterSignup
             'ruc' => ['required', 'string'],
             'city' => ['required', 'string', 'min:2', 'max:80'],
             'business_type' => ['required', Rule::in(TenantProvisionRequest::BUSINESS_TYPES)],
-            'doc_type' => ['required', 'in:factura,boleta'],
+            'doc_type' => ['nullable', 'in:factura'],
             'coupon' => ['nullable', 'string', 'max:30'],
             'addons' => ['nullable', 'array', 'max:10'],
             'addons.*' => ['integer', 'min:1', 'max:50'],
@@ -75,7 +75,7 @@ final class RegisterSignup
             'ruc.*' => 'Escribe el RUC de tu agencia.',
             'city.*' => 'Escribe la ciudad de tu agencia.',
             'business_type.*' => 'Elige el tipo de agencia.',
-            'doc_type.*' => 'Elige factura o boleta.',
+            'doc_type.*' => 'KipuControl emite siempre factura electrónica al RUC de la agencia.',
             'addons.*' => 'Revisa los complementos elegidos.',
             'accept_terms.accepted' => 'Acepta los términos y la política de privacidad para continuar.',
             'terms_version.*' => 'Falta la versión de los términos aceptados.',
@@ -153,7 +153,7 @@ final class RegisterSignup
             'token_hash' => hash('sha256', $token),
             'plan' => $plan->code,
             'cycle' => $cycle,
-            'doc_type' => $data['doc_type'],
+            'doc_type' => 'factura',
             'coupon' => $coupon?->code,
             'addons' => collect($addons)->mapWithKeys(fn (array $addon) => [$addon['code'] => $addon['quantity']])->all(),
             'totals' => $totals,
@@ -168,7 +168,7 @@ final class RegisterSignup
         $this->db()->table('iam_users')->where('tenant_id', $tenant->getKey())->whereRaw('lower(email) = ?', [$email])
             ->update(['password' => Hash::make((string) $data['password']), 'status' => 'activo', 'created_via' => 'sitio_web', 'updated_at' => now()]);
         $this->db()->table('subscriptions')->where('tenant_id', $tenant->getKey())->update([
-            'billing_doc_type' => $data['doc_type'] === 'boleta' ? 'Boleta' : 'Factura',
+            'billing_doc_type' => 'Factura',
             ...($trial ? [] : ['status' => 'suspended', 'cycle' => SignupQuote::CYCLES[$cycle], 'trial_starts_at' => null, 'trial_ends_at' => null]),
             'updated_at' => now(),
         ]);

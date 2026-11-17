@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/server/api";
 export interface OpsState {
   message: string | null;
   done: boolean;
+  code?: string;
 }
 
 type Method = "POST" | "PATCH" | "PUT" | "DELETE";
@@ -16,6 +17,7 @@ interface Step {
   fields?: string[];
   lists?: string[];
   flags?: string[];
+  aliases?: Record<string, string>;
   failure: string;
 }
 
@@ -29,7 +31,7 @@ const orderAction = (code: string, form: FormData) => {
 };
 
 const STEPS: Record<string, Step> = {
-  order_create: { path: () => "/ops/orders", method: "POST", fields: ["reservation_code", "coordinator_id"], failure: "No pudimos crear la orden." },
+  order_create: { path: () => "/ops/orders", method: "POST", fields: ["reservation_id", "coordinator_id"], aliases: { reservation_id: "reservation_code" }, failure: "No pudimos crear la orden." },
   order_update: { path: (code) => `/ops/orders/${id(code)}`, method: "PATCH", fields: ["coordinator_id"], failure: "No pudimos guardar el coordinador." },
   order_status: { path: orderAction, method: "POST", failure: "No pudimos cambiar el estado." },
   task_add: { path: (code) => `/ops/orders/${id(code)}/tasks`, method: "POST", fields: ["title"], failure: "No pudimos agregar la tarea." },
@@ -123,8 +125,10 @@ export async function opsStep(_state: OpsState, form: FormData): Promise<OpsStat
   }
   const version = form.get("lock_version");
   if (typeof version === "string" && version !== "") body.lock_version = version;
+  const aliases = step.aliases ?? {};
+  const named = Object.fromEntries(Object.entries(body).map(([field, value]) => [aliases[field] ?? field, value]));
   const method = UPDATE_STEPS.has(name) && target ? "PATCH" : name === "room_save" && form.get("room") ? "PUT" : step.method;
-  const result = await apiFetch(path, { method, body: method === "DELETE" && Object.keys(body).length === 0 ? undefined : body });
+  const result = await apiFetch<{ code?: string }>(path, { method, body: method === "DELETE" && Object.keys(named).length === 0 ? undefined : named });
   if (!result.ok) {
     const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
     return { message: firstError ?? result.error?.message ?? step.failure, done: false };
@@ -132,5 +136,5 @@ export async function opsStep(_state: OpsState, form: FormData): Promise<OpsStat
   revalidatePath("/operaciones", "layout");
   if (name === "feedback_incident") revalidatePath("/reservas", "layout");
   if (name === "device_revoke") revalidatePath("/mobile/operador");
-  return { message: null, done: true };
+  return { message: null, done: true, code: result.data?.code };
 }

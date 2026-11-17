@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Crm\Actions;
 
+use App\Domain\Admin\Support\ApiKeyActor;
 use App\Domain\Crm\Support\Advisors;
 use App\Domain\Crm\Support\ClientDocument;
 use App\Domain\Crm\Support\ClientDuplicates;
@@ -67,7 +68,7 @@ final class ClientWorkflow
                 'id' => (string) Str::uuid7(),
                 'tenant_id' => $this->context->idOrFail(),
                 'code' => $code,
-                'owner_id' => $values['owner_id'] ?? $actor->getKey(),
+                'owner_id' => $values['owner_id'] ?? ApiKeyActor::owner($actor),
                 'created_by' => $actor->getKey(),
             ]);
             $this->audit->log('Cliente', $code, 'crear', after: $values['name']);

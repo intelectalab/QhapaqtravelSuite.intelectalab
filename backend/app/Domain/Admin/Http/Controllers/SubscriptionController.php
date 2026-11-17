@@ -65,9 +65,11 @@ final class SubscriptionController
             'doc_type.*' => 'El comprobante es factura o boleta.',
         ]);
 
-        if (($data['doc_type'] ?? 'Factura') === 'Boleta' && str_starts_with($data['ruc'], '20')) {
-            throw ApiException::unprocessable('SUB-BR-09', 'Las empresas con RUC 20 reciben factura electrónica.');
+        if (($data['doc_type'] ?? 'Factura') === 'Boleta') {
+            throw ApiException::unprocessable('SUB-BR-09', 'KipuControl emite siempre factura electrónica (serie FQ01) al RUC que indiques, también a un RUC 10 de persona natural.');
         }
+
+        $data['doc_type'] = 'Factura';
 
         $changed = $directory->updateBilling($data);
 

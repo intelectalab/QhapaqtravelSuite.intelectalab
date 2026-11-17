@@ -185,6 +185,8 @@ export function AssignAction({ assignment, options, trigger }: { assignment: Ass
       title={assignment.status === "pendiente" ? "Asignar recursos" : "Reasignar recursos"}
       description={`${assignment.label} · ${formatDate(assignment.date)}${assignment.time ? ` ${assignment.time}` : ""} · ${assignment.passengers} pax`}
       submitLabel="Guardar asignación"
+      confirmTestId="assign-save"
+      successToast={assignment.status === "pendiente" ? "Asignación guardada." : "Asignación actualizada."}
       trigger={(open) =>
         trigger(() => {
           open();
@@ -208,11 +210,11 @@ export function AssignAction({ assignment, options, trigger }: { assignment: Ass
           </span>
         </div>
       )}
-      <SelectField label="Guía" name="guide_id" options={[...none, ...options.guides]} defaultValue={picked.guide_id} onChange={pick("guide_id")} searchable />
-      <SelectField label="Conductor" name="driver_id" options={[...none, ...options.drivers]} defaultValue={picked.driver_id} onChange={pick("driver_id")} searchable />
-      <SelectField label="Vehículo" name="vehicle_id" options={[...none, ...options.vehicles]} defaultValue={picked.vehicle_id} onChange={pick("vehicle_id")} searchable />
+      <SelectField label="Guía" name="guide_id" testId="assign-guide" options={[...none, ...options.guides]} defaultValue={picked.guide_id} onChange={pick("guide_id")} searchable />
+      <SelectField label="Conductor" name="driver_id" testId="assign-driver" options={[...none, ...options.drivers]} defaultValue={picked.driver_id} onChange={pick("driver_id")} searchable />
+      <SelectField label="Vehículo" name="vehicle_id" testId="assign-vehicle" options={[...none, ...options.vehicles]} defaultValue={picked.vehicle_id} onChange={pick("vehicle_id")} searchable />
       <PreviewList preview={preview} checking={checking} />
-      {preview && preview.warnings.length > 0 && preview.blocks.length === 0 && <SwitchField label="Asumo las advertencias" hint="Quedan registradas con tu nombre en la asignación." name="ack_warnings" checked={ack} onCheckedChange={setAck} />}
+      {preview && preview.warnings.length > 0 && preview.blocks.length === 0 && <SwitchField label="Asumo las advertencias" hint="Quedan registradas con tu nombre en la asignación." name="ack_warnings" testId="assign-warning-ack" checked={ack} onCheckedChange={setAck} />}
       <fieldset className="flex flex-col gap-2.5">
         <legend className="mb-1.5 text-[13px] font-semibold text-fg">Avisar al equipo</legend>
         <SwitchField label="Push a la app del operador" name="notify_push" checked={push} onCheckedChange={setPush} />
@@ -257,7 +259,7 @@ export function AssignmentControls({ assignment, options, passengers, today }: {
   return (
     <span className="flex items-center gap-1.5">
       <CheckinAction assignment={assignment} passengers={passengers} today={today} />
-      <AssignAction assignment={assignment} options={options} trigger={(open) => <RowIcon tone="edit" label={assignment.status === "pendiente" ? "Asignar recursos" : "Reasignar"} icon={<Truck size={15} />} onClick={open} />} />
+      <AssignAction assignment={assignment} options={options} trigger={(open) => <RowIcon tone="edit" label={assignment.status === "pendiente" ? "Asignar recursos" : "Reasignar"} icon={<Truck size={15} />} onClick={open} testId={`order-assign:${assignment.service_code}`} />} />
       <AssignmentQuickActions assignment={assignment} />
     </span>
   );

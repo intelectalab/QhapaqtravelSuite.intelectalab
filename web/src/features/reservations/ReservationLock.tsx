@@ -8,7 +8,11 @@ export function ReservationLockScope({ version, children }: { version: number; c
   return <ReservationLockContext.Provider value={version}>{children}</ReservationLockContext.Provider>;
 }
 
+export function useReservationLock() {
+  return useContext(ReservationLockContext);
+}
+
 export function ReservationLockInput() {
-  const version = useContext(ReservationLockContext);
+  const version = useReservationLock();
   return version === null ? null : <input type="hidden" name="lock_version" value={version} />;
 }

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domain\SiteTemplates\Actions;
 
+use App\Domain\Platform\Support\AddonPurchases;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Concurrency\IfMatch;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Tenancy\TenantContext;
 use App\Domain\Site\Support\SiteDesignStudio;
 use App\Domain\SiteTemplates\Support\TemplateCatalog;
@@ -29,6 +31,7 @@ final class SiteThemes
         private readonly TemplateCatalog $catalog,
         private readonly SiteDesignStudio $studio,
         private readonly AuditLogger $audit,
+        private readonly AddonPurchases $purchases,
     ) {}
 
     public function overview(): array
@@ -139,12 +142,14 @@ final class SiteThemes
             throw ApiException::conflict('TEMPLATE_ALREADY_PURCHASED', 'Su cuenta ya tiene esta plantilla.');
         }
 
-        DB::transaction(function () use ($template, $userId, $byName): void {
+        $billing = DB::transaction(function () use ($template, $userId, $byName): array {
             DB::table('cms_template_purchases')->insert(['id' => (string) Str::uuid7(), 'template_id' => $template->id, 'source' => 'compra', 'price' => $template->price_once, 'currency' => $template->currency, 'purchased_by' => $userId, 'purchased_by_name' => $byName]);
             $this->audit->log(self::AUDIT, $template->code, 'comprar', null, $template->currency.' '.number_format((float) $template->price_once, 2, '.', ''));
+
+            return $this->purchases->once(AddonPurchases::TEMPLATE, "Plantilla premium {$template->name} · pago único", Decimal::money($template->price_once), ['template' => $template->code]);
         });
 
-        return ['template' => $template->code, 'price' => number_format((float) $template->price_once, 2, '.', ''), 'currency' => $template->currency, 'purchased' => true];
+        return ['template' => $template->code, 'price' => number_format((float) $template->price_once, 2, '.', ''), 'currency' => $template->currency, 'purchased' => true, 'billing' => $billing];
     }
 
     public function apply(string $code, ?string $versionNumber, ?int $expected, string $chosenBy, ?string $userId, string $byName, ?string $note = null): array

@@ -17,7 +17,7 @@ export interface WorkspaceInfo {
   counts: NavCounts;
   screens: Record<string, boolean> | null;
   required?: Record<string, string[]> | null;
-  locked?: Record<string, LockedFeature> | null;
+  locked?: Record<string, LockedFeature | null> | null;
 }
 
 export interface Workspace extends WorkspaceInfo {

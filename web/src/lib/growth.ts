@@ -21,6 +21,16 @@ export interface AiRequest {
   error: string | null;
   created_at: string;
   applied_at: string | null;
+  apply_impact?: AiApplyImpact | null;
+}
+
+export interface AiApplyImpact {
+  level: "warning" | "danger";
+  status: string;
+  current_version: number;
+  new_version: number;
+  message: string;
+  warning: string | null;
 }
 
 export interface AiUsage {
@@ -28,8 +38,9 @@ export interface AiUsage {
   month: string;
   plan: string;
   used: number;
-  limit: number;
-  remaining: number;
+  limit: number | null;
+  remaining: number | null;
+  exhausted: boolean;
   pct: number;
   warning: boolean;
   by_kind: Record<string, number>;

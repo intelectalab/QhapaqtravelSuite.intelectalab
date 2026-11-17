@@ -9,7 +9,6 @@ import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { MiniTable } from "@/components/ui/MiniTable";
 import { TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
-import { Button } from "@/components/ui/Button";
 import { AuditCard, StatusHistoryCard } from "@/features/finance/FinanceDetailParts";
 import { SchedulePayableAction } from "@/features/finance/Payables";
 import type { PayableDetail } from "@/lib/finance";
@@ -51,11 +50,7 @@ export default async function ObligacionPage({ params }: PageProps<"/finanzas/pr
               row={{ code: row.code, concept: row.concept, balance: Number(row.balance), currency: row.currency, lock_version: row.lock_version, scheduled_date: row.scheduled?.date ?? null, scheduled_account: row.scheduled?.account?.code ?? null, due_date: row.due_date, provider: { name: row.provider?.name ?? "Sin proveedor" } }}
               banks={row.bank_accounts}
               today={row.today}
-              trigger={(show) => (
-                <Button variant="primary" icon={<CalendarClock size={16} />} onClick={show}>
-                  {row.scheduled ? "Reprogramar pago" : "Programar pago"}
-                </Button>
-              )}
+              button={{ label: row.scheduled ? "Reprogramar pago" : "Programar pago", icon: <CalendarClock size={16} />, variant: "primary" }}
             />
           ) : undefined
         }

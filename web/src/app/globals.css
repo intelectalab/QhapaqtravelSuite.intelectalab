@@ -29,6 +29,9 @@
   --t3: #b3263e;
   --t4: #2c7a66;
 
+  --kit-navy: #0a3a73;
+  --kit-sun: #f4b400;
+
   --shadow-card: 0 1px 2px rgb(22 24 42 / 0.04), 0 6px 20px rgb(22 24 42 / 0.04);
   --glow-a: color-mix(in srgb, var(--t1) 11%, transparent);
   --glow-b: color-mix(in srgb, var(--t4) 11%, transparent);

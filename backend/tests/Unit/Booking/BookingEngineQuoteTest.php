@@ -91,7 +91,7 @@ describe('BookingEngine::quote · PRD-011 canónico (PEN)', function () {
 });
 
 describe('BookingEngine::quote · misma selección en USD', function () {
-    it('convierte sin margen porque USD es moneda de cobro', function () {
+    it('convierte con el margen de conversión aunque USD sea moneda de cobro (duda 4)', function () {
         [$engine, $p] = engineFromSeeds();
         $q = $engine->quote($p, QuoteSelection::fromArray(prd011Selection(['currency' => 'USD'])));
 

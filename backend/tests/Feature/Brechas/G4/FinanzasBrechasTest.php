@@ -79,7 +79,7 @@ it('las cuentas por pagar dicen si el proveedor ya cargó su factura', function 
 it('las reservas para anticipo traen su título para armar el concepto', function () {
     actingAsSeed('U07');
 
-    $options = $this->getJson('/api/v1/finance/receivables')->assertOk()->json('data.advance_reservations');
+    $options = $this->getJson('/api/v1/finance/receivables')->assertOk()->json('meta.advance_reservations');
 
     expect($options === [] || array_key_exists('title', $options[0]))->toBeTrue();
 });

@@ -1,13 +1,13 @@
 "use client";
 
-import { AlertTriangle, Bell, CircleCheck, CirclePause, CirclePlay, Cog, FileText, Gauge, Layers, Play, Plug, RefreshCw, RotateCw, ServerCog, Wrench, XCircle, type LucideIcon } from "lucide-react";
+import { AlertTriangle, ArrowLeftRight, Bell, BookOpen, CircleCheck, CirclePause, CirclePlay, Cog, FileText, Gauge, HeartPulse, Layers, ListChecks, Mail, MessageCircle, Play, Plug, Receipt, RefreshCw, RotateCw, ScanSearch, ServerCog, ShieldCheck, Smartphone, Wrench, XCircle, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { pausePlatformJob, resolveIntegrationError, retryIntegrationError, runPlatformJob } from "@/app/plataforma/(consola)/integraciones/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
-import { TabbedCard } from "@/components/ui/RouteTabs";
+import { PathSectionNav } from "@/components/ui/PathSectionNav";
 import { TextArea } from "@/components/ui/TextArea";
 import { TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
@@ -21,6 +21,19 @@ const QUEUE_ICON: Record<string, LucideIcon> = { critical: Gauge, default: Cog, 
 const RUN_TONE: Record<string, Tone> = { ok: "ok", advertencia: "warn", error: "bad", en_curso: "info" };
 
 const SOURCE: Record<IntegrationError["source"], string> = { job: "Tarea", notification: "Notificación", integration: "Integración" };
+
+const INTEGRATIONS_BASE = "/plataforma/integraciones";
+
+const CONNECTIONS: Record<string, { label: string; icon: LucideIcon }> = {
+  whatsapp: { label: "WhatsApp", icon: MessageCircle },
+  "app-movil": { label: "App móvil", icon: Smartphone },
+  "tipo-de-cambio": { label: "Tipo de cambio", icon: ArrowLeftRight },
+  "facturacion-electronica": { label: "Facturación electrónica", icon: Receipt },
+  "correo-de-salida": { label: "Correo de salida", icon: Mail },
+  "proteccion-de-formularios": { label: "Protección de formularios", icon: ShieldCheck },
+  antivirus: { label: "Antivirus", icon: ScanSearch },
+  "blog-de-la-vitrina": { label: "Blog de la vitrina", icon: BookOpen },
+};
 
 export function OperationsKpis({ overview }: { overview: OperationsOverview }) {
   const flagged = overview.jobs.filter((job) => job.last_status === "error" || job.last_status === "advertencia").length;
@@ -229,14 +242,23 @@ const errorColumns: Column<IntegrationError>[] = [
     id: "target",
     header: "Destino",
     mobile: "title",
-    cell: (error) => (
-      <div className="min-w-0">
-        <b className="block text-[13.5px] font-semibold">{error.target}</b>
-        <small className="block text-xs text-fg-3">
-          {error.tenant ?? "Plataforma"} · {SOURCE[error.source]} {error.ref}
-        </small>
-      </div>
-    ),
+    cell: (error) => {
+      const connection = error.connection ? CONNECTIONS[error.connection] : undefined;
+      return (
+        <div className="min-w-0">
+          <b className="block text-[13.5px] font-semibold">{error.target}</b>
+          <small className="block text-xs text-fg-3">
+            {error.tenant ?? "Plataforma"} · {SOURCE[error.source]} {error.ref}
+          </small>
+          {connection && (
+            <Link href={`${INTEGRATIONS_BASE}/${error.connection}`} className="mt-1 inline-flex items-center gap-1 text-[12px] font-semibold text-accent transition hover:translate-x-0.5 hover:underline">
+              <connection.icon size={13} />
+              Ver la conexión {connection.label}
+            </Link>
+          )}
+        </div>
+      );
+    },
   },
   { id: "error", header: "Error", cell: (error) => <span className="text-[13px] text-fg-2">{error.error}</span> },
   { id: "class", header: "Tipo", wideOnly: true, cell: (error) => <Badge tone={error.class === "permanente" ? "bad" : "info"} dot={false}>{error.class === "permanente" ? "Permanente" : "Transitorio"}</Badge> },
@@ -290,20 +312,22 @@ export function ErrorsTable({ errors }: { errors: IntegrationError[] }) {
   return <DataTable screen="plataforma-errores" rows={errors} columns={errorColumns} getKey={(error) => error.id} entityLabel="errores" searchText={(error) => `${error.target} ${error.error} ${error.tenant ?? ""} ${error.ref}`} searchPlaceholder="Buscar destino o error" metrics={errorMetrics} filters={filters} sorts={errorSorts} />;
 }
 
-export function OperationsSection({ overview, children }: { overview: OperationsOverview; children: React.ReactNode }) {
+export function IntegrationsNav({ errors }: { errors: number }) {
   return (
-    <TabbedCard
-      tabs={[
-        { href: "/plataforma/integraciones", label: "Tareas y colas" },
-        { href: "/plataforma/integraciones/salud", label: "Salud por agencia" },
-        { href: "/plataforma/integraciones/errores", label: "Errores", count: overview.errors.length },
-        { href: "/plataforma/integraciones/app-movil", label: "App móvil" },
-        { href: "/plataforma/integraciones/whatsapp", label: "WhatsApp" },
-        { href: "/plataforma/integraciones/tipo-de-cambio", label: "Tipo de cambio" },
-        { href: "/plataforma/integraciones/facturacion-electronica", label: "Facturación electrónica" },
+    <PathSectionNav
+      label="Secciones de integraciones"
+      testId="integraciones-nav"
+      groups={[
+        {
+          title: "Monitoreo",
+          items: [
+            { href: INTEGRATIONS_BASE, label: "Tareas y colas", icon: <ListChecks size={16} /> },
+            { href: `${INTEGRATIONS_BASE}/salud`, label: "Salud por agencia", icon: <HeartPulse size={16} /> },
+            { href: `${INTEGRATIONS_BASE}/errores`, label: "Errores", icon: <AlertTriangle size={16} />, count: errors },
+          ],
+        },
+        { title: "Conexiones", items: Object.entries(CONNECTIONS).map(([slug, connection]) => ({ href: `${INTEGRATIONS_BASE}/${slug}`, label: connection.label, icon: <connection.icon size={16} /> })) },
       ]}
-    >
-      {children}
-    </TabbedCard>
+    />
   );
 }

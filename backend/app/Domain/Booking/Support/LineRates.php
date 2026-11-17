@@ -96,8 +96,8 @@ final class LineRates
             rates: $rows,
         );
         $engine = $this->engines->engine();
-        $result = $engine->segmentPrice($product, $segment, $date, $currency, (string) $rate->channel)
-            ?? ($segment === (string) $rate->segment ? null : $engine->segmentPrice($product, (string) $rate->segment, $date, $currency, (string) $rate->channel));
+        $result = $engine->segmentPrice($product, $segment, $date, $currency, (string) $rate->channel, true)
+            ?? ($segment === (string) $rate->segment ? null : $engine->segmentPrice($product, (string) $rate->segment, $date, $currency, (string) $rate->channel, true));
 
         return $result === null ? null : [
             'price' => (string) Decimal::round2($result['price']->getAmount()),

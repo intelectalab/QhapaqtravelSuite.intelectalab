@@ -11,8 +11,17 @@ const code = (form: FormData) => encodeURIComponent(text(form, "code") ?? "");
 
 export async function createApiKey(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
   const ips = (text(form, "ips") ?? "").split(/[\s,]+/).filter(Boolean);
-  return sendAdmin("/integrations/api-keys", "POST", { ...fields(form, ["name", "environment", "expires_at"]), scopes: list(form, "scopes"), ips }, PATH, "No pudimos crear la clave.");
+  return sendAdmin("/integrations/api-keys", "POST", { ...fields(form, ["name", "environment", "expires_at"]), ...keyOwner(form), scopes: list(form, "scopes"), ips }, PATH, "No pudimos crear la clave.");
 }
+
+export async function updateApiKeyOwner(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
+  return sendAdmin(`/integrations/api-keys/${code(form)}/owner`, "PATCH", keyOwner(form), PATH, "No pudimos cambiar el responsable.");
+}
+
+const keyOwner = (form: FormData) => {
+  const mode = text(form, "owner_mode") ?? "round_robin";
+  return { owner_mode: mode, owner_id: mode === "fixed" ? text(form, "owner_id") : null };
+};
 
 export async function revokeApiKey(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
   return sendAdmin(`/integrations/api-keys/${code(form)}`, "DELETE", { reason: text(form, "reason") }, PATH, "No pudimos revocar la clave.");

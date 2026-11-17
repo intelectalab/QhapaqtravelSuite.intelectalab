@@ -225,55 +225,6 @@ it('con la constancia subida se pausa la cancelación automática', function () 
     expect(withinTenant(tenantA(), fn () => DB::table('channel_ecom_orders')->where('code', $order['code'])->value('status')))->toBe('pago_por_validar');
 });
 
-it('«Reactivar» la reserva cancelada si el dinero llegó: con cupos se reactiva y se confirma; auditado y con correo al cliente', function () {
-    $order = sitioOrder('reactivar.uno@viajes.pe', 'TR-510006');
-    $payment = withinTenant(tenantA(), fn () => DB::table('fin_payments')->where('reference', 'TR-510006')->first());
-    actingAsSeed('U07');
-    $this->postJson("/api/v1/finance/payments/{$payment->code}/reject", ['reason' => 'No aparece en el banco'], critical((int) $payment->lock_version))->assertOk();
-    $reservation = withinTenant(tenantA(), fn () => DB::table('booking_reservations')->where('id', $payment->reservation_id)->first());
-
-    $preview = $this->getJson("/api/v1/reservations/{$reservation->code}/web-reactivation")->assertOk()->json('data');
-    expect($preview['eligible'])->toBeTrue()->and($preview['seats_available'])->toBeTrue()->and(collect($preview['modes'])->pluck('value')->all())->toBe(['reactivar']);
-
-    expect($this->postJson("/api/v1/reservations/{$reservation->code}/web-reactivation", ['mode' => 'devolver']))->toBeApiError(409, 'SIT-REACT-02');
-    $this->postJson("/api/v1/reservations/{$reservation->code}/web-reactivation", ['mode' => 'reactivar', 'note' => 'El banco lo acreditó tarde'])->assertOk();
-
-    $order = withinTenant(tenantA(), fn () => DB::table('channel_ecom_orders')->where('code', $order['code'])->first());
-    expect(withinTenant(tenantA(), fn () => DB::table('booking_reservations')->where('id', $reservation->id)->value('status')))->not->toBe('cancelada')
-        ->and($order->status)->toBe('confirmado')
-        ->and(withinTenant(tenantA(), fn () => DB::table('fin_payments')->where('id', $payment->id)->value('status')))->toBe('aplicado')
-        ->and(withinTenant(tenantA(), fn () => DB::table('catalog_availability_holds')->where('reference_id', $order->id)->value('status')))->toBe('confirmada')
-        ->and(sitioAudit(['entity' => 'Reserva', 'entity_id' => $reservation->code, 'action' => 'reactivar']))->toBeTrue()
-        ->and(sitioNotices('reserva.reactivada', 'email')->pluck('recipient_address')->all())->toContain('reactivar.uno@viajes.pe');
-
-    expect($this->postJson("/api/v1/reservations/{$reservation->code}/web-reactivation", ['mode' => 'reactivar']))->toBeApiError(409, 'SIT-REACT-01');
-
-    actingAsSeed('U03');
-    expect($this->getJson("/api/v1/reservations/{$reservation->code}/web-reactivation"))->toBeApiError(403);
-});
-
-it('sin cupos libres solo se reprograma o se devuelve el dinero; devolver deja un reembolso pendiente', function () {
-    $order = sitioOrder('reactivar.dos@viajes.pe', 'TR-510007');
-    $payment = withinTenant(tenantA(), fn () => DB::table('fin_payments')->where('reference', 'TR-510007')->first());
-    actingAsSeed('U07');
-    $this->postJson("/api/v1/finance/payments/{$payment->code}/reject", ['reason' => 'No aparece en el banco'], critical((int) $payment->lock_version))->assertOk();
-    $orderId = withinTenant(tenantA(), fn () => DB::table('channel_ecom_orders')->where('code', $order['code'])->value('id'));
-    $departure = withinTenant(tenantA(), fn () => DB::table('catalog_availability_holds')->where('reference_id', $orderId)->value('departure_id'));
-    withinTenant(tenantA(), fn () => DB::table('catalog_product_departures')->where('id', $departure)->update(['sold' => DB::raw('capacity')]));
-    $code = withinTenant(tenantA(), fn () => DB::table('booking_reservations')->where('id', $payment->reservation_id)->value('code'));
-
-    $preview = $this->getJson("/api/v1/reservations/{$code}/web-reactivation")->assertOk()->json('data');
-    expect($preview['seats_available'])->toBeFalse()->and(collect($preview['modes'])->pluck('value')->all())->toBe(['reprogramar', 'devolver']);
-    expect($this->postJson("/api/v1/reservations/{$code}/web-reactivation", ['mode' => 'reactivar']))->toBeApiError(409, 'SIT-REACT-02');
-
-    $this->postJson("/api/v1/reservations/{$code}/web-reactivation", ['mode' => 'devolver'])->assertOk();
-
-    expect(withinTenant(tenantA(), fn () => DB::table('fin_payments')->where('id', $payment->id)->value('status')))->toBe('confirmado')
-        ->and(withinTenant(tenantA(), fn () => DB::table('fin_payments')->where('reservation_id', $payment->reservation_id)->where('kind', 'reembolso')->value('status')))->toBe('pendiente')
-        ->and(withinTenant(tenantA(), fn () => DB::table('booking_reservations')->where('code', $code)->value('status')))->toBe('cancelada')
-        ->and(sitioAudit(['entity' => 'Reserva', 'entity_id' => $code, 'action' => 'devolver']))->toBeTrue();
-});
-
 it('la conciliación bancaria sugiere el pedido web cuando el extracto trae el mismo monto', function () {
     $order = sitioOrder('concilia.uno@viajes.pe', 'TR-510008');
     $payment = withinTenant(tenantA(), fn () => DB::table('fin_payments')->where('reference', 'TR-510008')->first());

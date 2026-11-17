@@ -32,7 +32,7 @@ test.describe('E2E-05 · Ciclo financiero de una reserva @fase1 @e2e05', () => {
     await fin.getByTestId(T.field('reference')).fill('OP-BCP-E2E-5501');
     await fin.getByTestId(T.dialogConfirm).click();
     await expectToast(fin, /pago registrado/i, 'ok');
-    await fin.getByTestId(T.paymentApply).click();
+    // KipuControl registra y aplica el pago en un solo paso (sin botón «Aplicar»)
     await expect(fin.getByTestId(T.statusBadge)).toHaveAttribute('data-status', 'pagada');
 
     // Comprobante (Fase 1: sin OSE)

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Shared\Audit;
 
+use App\Domain\Admin\Support\ApiKeyActor;
+use App\Domain\Iam\Models\User;
 use App\Domain\Integrations\Models\ApiClient;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Shared\Tenancy\TenantContext;
@@ -87,6 +89,7 @@ final class AuditLogger
         return match (true) {
             $actor === null => 'system',
             $actor instanceof PlatformUser => 'platform_user',
+            ApiKeyActor::is($actor) => 'api_client',
             $actor instanceof ApiClient => 'api_client',
             default => 'user',
         };
@@ -94,6 +97,10 @@ final class AuditLogger
 
     private function actorRole(?Authenticatable $actor): ?string
     {
+        if ($actor instanceof User && ApiKeyActor::is($actor)) {
+            return ApiKeyActor::auditLabel($actor);
+        }
+
         if ($actor === null || ! method_exists($actor, 'getRoleNames')) {
             return null;
         }

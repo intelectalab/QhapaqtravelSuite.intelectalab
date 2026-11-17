@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Quotes\Actions;
 
+use App\Domain\Admin\Support\ApiKeyActor;
 use App\Domain\Crm\Support\Advisors;
 use App\Domain\Iam\Models\User;
 use App\Domain\Integrations\Contracts\MessagingChannel;
@@ -462,7 +463,7 @@ final class QuoteLifecycle
         $copy = (array) DB::table('quote_versions')->where('id', $version->id)->first();
         $newId = (string) Str::uuid7();
         unset($copy['id'], $copy['internal_approval_id'], $copy['frozen_at'], $copy['content_hash'], $copy['pdf_document_id']);
-        DB::table('quote_versions')->insert([...$copy, 'id' => $newId, 'quote_id' => $quoteId, 'version_no' => $number, 'status' => 'borrador', 'issued_on' => $this->today(), 'author_id' => $actor->getKey(), 'notes' => null, 'lock_version' => 0, 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey(), 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('quote_versions')->insert([...$copy, 'id' => $newId, 'quote_id' => $quoteId, 'version_no' => $number, 'status' => 'borrador', 'issued_on' => $this->today(), 'author_id' => ApiKeyActor::person($actor, 'quote_quotes', $quoteId), 'notes' => null, 'lock_version' => 0, 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey(), 'created_at' => now(), 'updated_at' => now()]);
 
         foreach (DB::table('quote_items')->where('quote_version_id', $version->id)->get() as $item) {
             $row = (array) $item;

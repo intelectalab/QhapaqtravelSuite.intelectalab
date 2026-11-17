@@ -2,7 +2,7 @@
 
 import { Ban, CheckCheck, CircleCheck, CopyPlus, Download, FileClock, Ticket, TicketCheck, TicketX } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -27,9 +27,11 @@ const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.local
 
 const VIA: Record<string, string> = { web: "la web", extranet: "la extranet del proveedor", app_operador: "la app del operador" };
 
-export function IssueAction({ service, providers }: { service: PendingVoucher; providers: VoucherOverview["providers"] }) {
+type IssuableService = Pick<PendingVoucher, "code" | "name" | "status" | "confirmation"> & { reservation: { code: string }; provider: { name: string } | null };
+
+export function IssueAction({ service, providers = [], trigger }: { service: IssuableService; providers?: VoucherOverview["providers"]; trigger?: (open: () => void) => ReactNode }) {
   return (
-    <OpsStep step="voucher_issue" formKey={service.code} label="Emitir" icon={<Ticket size={15} />} size="sm" title="Emitir voucher" description={`${service.name} · ${service.reservation.code}`} submitLabel="Emitir y publicar" trigger={(open) => <Button size="sm" variant="secondary" icon={<Ticket size={15} />} onClick={open}>Emitir</Button>}>
+    <OpsStep step="voucher_issue" formKey={service.code} label="Emitir" icon={<Ticket size={15} />} size="sm" title="Emitir voucher" description={`${service.name} · ${service.reservation.code}`} submitLabel="Emitir y publicar" successToast="Voucher emitido. El pasajero ya lo ve en su viaje." trigger={trigger ?? ((open) => <Button size="sm" variant="secondary" icon={<Ticket size={15} />} onClick={open}>Emitir</Button>)}>
       <input type="hidden" name="service_code" value={service.code} />
       {service.provider ? <ConfirmNote>Proveedor: <b>{service.provider.name}</b></ConfirmNote> : <SelectField label="Proveedor" name="provider_id" options={providers} placeholder="Elegir proveedor" hint="El servicio no tiene proveedor registrado en la reserva." />}
       {!service.confirmation && <ConfirmNote tone="warn">El servicio no tiene código de confirmación del proveedor. Puedes emitir igual y registrarlo después.</ConfirmNote>}
@@ -37,6 +39,10 @@ export function IssueAction({ service, providers }: { service: PendingVoucher; p
       <TextArea label="Nota para el pasajero (opcional)" name="note" rows={3} maxLength={500} placeholder="Presentarse 15 minutos antes en el lobby del hotel." />
     </OpsStep>
   );
+}
+
+export function ServiceIssueAction({ service }: { service: IssuableService }) {
+  return <IssueAction service={service} trigger={(open) => <RowIcon tone="view" label="Emitir voucher" icon={<Ticket size={15} />} onClick={open} testId={`voucher-issue:${service.code}`} />} />;
 }
 
 function VoucherPanel({ voucher }: { voucher: Voucher }) {

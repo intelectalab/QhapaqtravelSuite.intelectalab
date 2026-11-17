@@ -15,8 +15,8 @@ export default async function PlatformConfigurationPage() {
     <>
       <PageHeader
         title="Configuración"
-        subtitle="Cómo trabaja la plataforma: el emisor de las facturas, los impuestos, los avisos automáticos a las agencias, el correo de salida y la protección de los formularios públicos."
-        info={<InfoTip>Solo se guardan los campos que cambias y cada uno queda en la auditoría. Los cambios aplican a facturas y avisos nuevos.</InfoTip>}
+        subtitle="El emisor de las facturas, los impuestos y los avisos automáticos a las agencias."
+        info={<InfoTip>Solo se guardan los campos que cambias y cada uno queda en la auditoría. Los cambios aplican a facturas y avisos nuevos. El correo de salida, la protección de formularios y el antivirus están en Integraciones › Conexiones.</InfoTip>}
       />
       <PlatformSettingsSections data={data} />
       <div className="mt-5">

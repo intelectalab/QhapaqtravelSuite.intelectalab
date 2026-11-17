@@ -4,7 +4,7 @@ export interface AccessInfo {
   routes: string[];
   screens: Record<string, boolean>;
   required?: Record<string, string[]>;
-  locked?: Record<string, LockedFeature>;
+  locked?: Record<string, LockedFeature | null>;
 }
 
 function longestPrefix(keys: string[], path: string): string | undefined {
@@ -22,10 +22,10 @@ export interface LockedFeature {
   label: string;
 }
 
-export function lockedFeature(locked: Record<string, LockedFeature> | null | undefined, path: string): LockedFeature | null {
+export function lockedFeature(locked: Record<string, LockedFeature | null> | null | undefined, path: string): LockedFeature | null {
   if (!locked) return null;
   const match = longestPrefix(Object.keys(locked), path);
-  return match === undefined ? null : locked[match];
+  return match === undefined ? null : (locked[match] ?? null);
 }
 
 export function isAllowed(screens: Record<string, boolean> | null, path: string): boolean {

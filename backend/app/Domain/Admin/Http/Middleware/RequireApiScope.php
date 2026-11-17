@@ -15,6 +15,10 @@ final class RequireApiScope
     {
         $key = $request->attributes->get(AuthenticateApiKey::ATTRIBUTE);
 
+        if (! is_array($key) && AuthenticateApiKey::sharesSession($request)) {
+            return $next($request);
+        }
+
         if (! is_array($key)) {
             throw ApiException::unauthorized('API_KEY_INVALID', 'Esta ruta se usa con una llave de API.');
         }

@@ -31,5 +31,6 @@ final readonly class BookingQuote
         public array $legs = [],
         public ?string $tripEnd = null,
         public array $byCategory = [],
+        public ?array $tax = null,
     ) {}
 }

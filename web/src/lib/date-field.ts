@@ -86,6 +86,37 @@ export function timeSlots(step = 15, keep?: string | null): string[] {
   return slots;
 }
 
+export function parseTypedTime(text: string): string | null {
+  const value = text.trim().toLowerCase().replace(/\s+/g, "");
+  const match = /^(\d{1,2})(?:[:.h]?(\d{2}))?$/.exec(value) ?? /^(\d{1,2})[:.h](\d)$/.exec(value);
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2] ?? 0);
+  if (hours > 23 || minutes > 59) return null;
+  return `${pad(hours)}:${pad(minutes)}`;
+}
+
+export function maskTypedTime(raw: string): string {
+  if (/[:.h]/i.test(raw)) return raw.replace(/[^\d:.h]/gi, "").slice(0, 5);
+  const digits = raw.replace(/\D/g, "").slice(0, 4);
+  return digits.length > 2 ? `${digits.slice(0, digits.length - 2)}:${digits.slice(-2)}` : digits;
+}
+
+export function minutesOf(time: string): number {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+export function nearestSlot(slots: string[], time: string): string | null {
+  if (slots.length === 0) return null;
+  const target = minutesOf(time);
+  return slots.reduce((best, slot) => (Math.abs(minutesOf(slot) - target) < Math.abs(minutesOf(best) - target) ? slot : best), slots[0]);
+}
+
+export function nowTime(timeZone = "America/Lima"): string {
+  return new Date().toLocaleTimeString("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+}
+
 export function splitDateTime(value: string | null | undefined): { date: string | null; time: string | null } {
   const match = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}))?/.exec(value ?? "");
   if (!match || !parseIso(match[1])) return { date: null, time: null };

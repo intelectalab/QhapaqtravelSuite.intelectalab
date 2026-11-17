@@ -74,4 +74,6 @@ export function signupHref(plan: Pick<PublicPlan, "code" | "rank">, cycle: Billi
   return `/software/suscribirse?plan=${plan.code}&ciclo=${ciclo}`;
 }
 
+export const SUNAT_RUC_GUIDE = "https://www.gob.pe/295";
+
 export const CYCLE_LABEL: Record<SignupCycle, string> = { mensual: "Mensual", anual: "Anual · pagas 10 meses", prueba: "Prueba de 14 días" };

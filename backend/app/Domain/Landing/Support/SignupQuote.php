@@ -35,6 +35,16 @@ final class SignupQuote
         return $plan;
     }
 
+    public static function isExpired(object $coupon): bool
+    {
+        return $coupon->valid_to !== null && Carbon::parse($coupon->valid_to, 'America/Lima')->lt(Carbon::today('America/Lima'));
+    }
+
+    public static function expiredMessage(object $coupon): string
+    {
+        return "El cupón {$coupon->code} venció el ".Carbon::parse($coupon->valid_to, 'America/Lima')->format('d/m/Y').'.';
+    }
+
     public function coupon(string $code, object $plan, bool $lock = false): object
     {
         $query = $this->db()->table('coupons')->where('code', Str::upper(trim($code)));
@@ -43,7 +53,7 @@ final class SignupQuote
         $problem = match (true) {
             $coupon === null => 'El cupón no existe.',
             $coupon->status !== 'active' => 'El cupón no está vigente.',
-            $coupon->valid_to !== null && Carbon::parse($coupon->valid_to, 'America/Lima')->lt(Carbon::today('America/Lima')) => 'El cupón ya venció.',
+            self::isExpired($coupon) => self::expiredMessage($coupon),
             $coupon->max_redemptions !== null && (int) $coupon->redeemed_count >= (int) $coupon->max_redemptions => 'El cupón ya no tiene canjes disponibles.',
             $plans !== [] && ! in_array($plan->id, $plans, true) => "El cupón no aplica al plan {$plan->name}.",
             default => null,

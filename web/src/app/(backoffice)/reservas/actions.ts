@@ -9,6 +9,7 @@ import { stepByField, wizardFailure, type WizardResult } from "@/lib/wizard";
 export interface ReservationState {
   message: string | null;
   done: boolean;
+  errors?: Record<string, string>;
 }
 
 const STEPS: Record<string, { path: (form: FormData) => string; method: "POST" | "PATCH" | "PUT" | "DELETE"; fields: string[]; flags?: string[]; lists?: string[] }> = {
@@ -57,8 +58,9 @@ export async function reservationStep(_state: ReservationState, form: FormData):
   const method = name === "passenger" && form.get("passenger") ? "PUT" : step.method;
   const result = await apiFetch(`/reservations/${encodeURIComponent(code)}${step.path(form)}`, { method, body });
   if (!result.ok) {
-    const firstError = result.error?.errors ? Object.values(result.error.errors)[0]?.[0] : undefined;
-    return { message: firstError ?? result.error?.message ?? "No pudimos guardar el cambio.", done: false };
+    const errors = Object.fromEntries(Object.entries(result.error?.errors ?? {}).map(([field, messages]) => [field, messages[0] ?? ""]));
+    const firstError = Object.values(errors)[0];
+    return { message: firstError ?? result.error?.message ?? "No pudimos guardar el cambio.", done: false, errors };
   }
   revalidatePath("/reservas", "layout");
   revalidatePath("/dashboard");

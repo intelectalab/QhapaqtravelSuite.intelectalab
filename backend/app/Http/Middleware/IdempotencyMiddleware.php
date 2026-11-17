@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Domain\Admin\Support\ApiKeyActor;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Closure;
@@ -87,14 +88,18 @@ final class IdempotencyMiddleware
     {
         $id = $request->user()?->getAuthIdentifier();
 
-        return $tenantId === null || $id === null ? null : (string) $id;
+        return $tenantId === null || $id === null || ApiKeyActor::is($request->user()) ? null : (string) $id;
     }
 
     private function requestHash(Request $request, ?string $tenantId): string
     {
         $body = $request->json()->all();
         $this->ksortRecursive($body);
-        $actor = $tenantId === null && $request->user() !== null ? $request->user()::class.':'.$request->user()->getAuthIdentifier() : '';
+        $actor = match (true) {
+            ApiKeyActor::is($request->user()) => 'api_key:'.$request->user()?->getAuthIdentifier(),
+            $tenantId === null && $request->user() !== null => $request->user()::class.':'.$request->user()->getAuthIdentifier(),
+            default => '',
+        };
 
         return hash('sha256', $request->method().' '.$request->path().' '.$actor.' '.json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }

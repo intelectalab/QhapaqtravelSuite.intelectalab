@@ -9,7 +9,6 @@ import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { MiniTable, ProgressBar } from "@/components/ui/MiniTable";
 import { TintCardTitle, TintTile, ToneScope } from "@/components/ui/Tinted";
-import { Button } from "@/components/ui/Button";
 import { AuditCard } from "@/features/finance/FinanceDetailParts";
 import { IssueInvoiceAction } from "@/features/finance/Invoices";
 import { RegisterPaymentAction, RemindAction } from "@/features/finance/Receivables";
@@ -53,9 +52,9 @@ export default async function CuotaPage({ params }: PageProps<"/finanzas/cobros/
         actions={
           open || (row.can.invoice && Number(row.paid) > 0 && row.status !== "cancelada") ? (
             <div className="flex flex-wrap items-center gap-2">
-              {open && row.can.register && <RemindAction row={payable} trigger={(show) => <Button variant="secondary" icon={<Bell size={16} />} onClick={show}>Recordatorio</Button>} />}
-              {row.can.invoice && Number(row.paid) > 0 && row.status !== "cancelada" && <IssueInvoiceAction code={row.code} trigger={(show) => <Button variant="secondary" icon={<FilePlus2 size={16} />} onClick={show}>Emitir comprobante</Button>} />}
-              {open && row.can.register && <RegisterPaymentAction row={payable} methods={row.methods} today={row.today} usdRate={row.usd_rate} trigger={(show) => <Button variant="primary" icon={<Wallet size={16} />} onClick={show}>Registrar pago</Button>} />}
+              {open && row.can.register && <RemindAction row={payable} button={{ label: "Recordatorio", icon: <Bell size={16} /> }} />}
+              {row.can.invoice && Number(row.paid) > 0 && row.status !== "cancelada" && <IssueInvoiceAction code={row.code} button={{ label: "Emitir comprobante", icon: <FilePlus2 size={16} />, testId: "invoice-issue" }} />}
+              {open && row.can.register && <RegisterPaymentAction row={payable} methods={row.methods} today={row.today} usdRate={row.usd_rate} button={{ label: "Registrar pago", icon: <Wallet size={16} />, variant: "primary", testId: "payment-register" }} />}
             </div>
           ) : undefined
         }

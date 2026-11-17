@@ -1,4 +1,4 @@
-import { BedDouble, Bus, Car, Coffee, Map as MapIcon, TrainFront, type LucideIcon } from "lucide-react";
+import { BedDouble, Bus, Car, Coffee, Map as MapIcon, Plane, TrainFront, type LucideIcon } from "lucide-react";
 
 export interface ReservationRow {
   code: string;
@@ -94,6 +94,8 @@ export interface ReservationDetail extends Omit<ReservationRow, "passengers" | "
   sede: string | null;
   quote: { code: string; title: string } | null;
   cancel_reason: string | null;
+  replaces?: string | null;
+  replaced_by?: string | null;
   view: ReservationView;
   margin_pct?: number | null;
   economics?: { sale_net: number; cost: number; profit: number };
@@ -252,10 +254,20 @@ export const SERVICE_KIND: Record<string, { label: string; icon: LucideIcon }> =
   tour: { label: "Tour", icon: MapIcon },
   traslado: { label: "Traslado", icon: Car },
   alojamiento: { label: "Alojamiento", icon: BedDouble },
-  tren_entrada: { label: "Tren o entrada", icon: TrainFront },
+  tren_entrada: { label: "Pasajes y entradas", icon: TrainFront },
   libre: { label: "Libre", icon: Coffee },
   transporte: { label: "Transporte", icon: Bus },
 };
+
+export const TRANSPORT_MODE: Record<string, { label: string; icon: LucideIcon }> = {
+  vuelo: { label: "Vuelo", icon: Plane },
+  bus: { label: "Bus", icon: Bus },
+  tren: { label: "Tren", icon: TrainFront },
+};
+
+export function serviceIcon(kind: string, mode: string | null | undefined, fallback: Record<string, LucideIcon>, otherwise: LucideIcon): LucideIcon {
+  return (mode ? TRANSPORT_MODE[mode]?.icon : undefined) ?? fallback[kind] ?? otherwise;
+}
 
 export const PAX_TYPE: Record<string, string> = { ADT: "Adulto", CHD: "Niño", INF: "Infante" };
 
@@ -399,6 +411,8 @@ export interface DirectPlan {
   currency?: string;
   adult_price?: string;
   child_price?: string | null;
+  subtotal?: string;
+  tax?: { pct: string; included: boolean; taxable: string; tax: string; total: string };
   total?: string;
   cost?: string;
   available?: boolean;

@@ -147,13 +147,14 @@ it('valida el precio alternativo contra el precio mínimo convertido al tipo de 
     expect(dcPatchRate('CUS-HUM-FD', 'TAR-033', ['min_price' => 120, 'alt_prices' => [['currency' => 'USD', 'price' => 5]]]))->toBeApiError(422, 'CAT-BR-13');
 });
 
-it('cobra en el sitio el precio propio de la moneda elegida y, sin él, cotiza en la moneda de la tarifa', function () {
+it('cobra en el sitio el precio propio de la moneda elegida y, sin él, lo convierte con el tipo de cambio y el margen (duda 4)', function () {
     $rate = dcRate('TAR-033');
     $body = ['product' => 'laguna-humantay-full-day', 'date' => '2026-10-02', 'adults' => 2];
 
     $plain = $this->postJson('/api/v1/public/price-quote', $body, siteOf('andes', ['X-Site-Currency' => 'USD']))->assertOk();
-    expect($plain->json('data.currency'))->toBe('PEN')
-        ->and($plain->json('data.own_price'))->toBeFalse();
+    expect($plain->json('data.currency'))->toBe('USD')
+        ->and($plain->json('data.own_price'))->toBeFalse()
+        ->and($plain->json('data.converted'))->toBeTrue();
 
     dcSetting('currency', ['charge_multi_currency' => true]);
     withinTenant(tenantA(), fn () => DB::table('catalog_rate_prices')->insert(['rate_id' => $rate->id, 'currency' => 'USD', 'price' => '36.00']));

@@ -355,7 +355,7 @@ export interface TripConfig {
     min_nights: number;
     max_nights: number;
     seasonal: boolean;
-    tours: { id: string; name: string; day_offset: number; time: string; hours: string; currency: string; price_adult: string; price_child: string; min_age: number | null }[];
+    tours: { id: string; name: string; day_offset: number; time: string; hours: string; currency: string; price_adult: string; price_child: string; min_age: number | null; children_rule?: "all" | "ask" | "none" }[];
     local: TripTransport[];
     arrivals: TripTransport[];
   }[];
@@ -390,6 +390,7 @@ export interface BookingExtras {
   nights?: Record<string, number>;
   tours?: string[];
   transport?: string[];
+  tour_children?: Record<string, number>;
 }
 
 export const NO_EXTRAS: BookingExtras = { addons: [], lodging: [], no_lodging: false, options: [], removed: [], nights: {}, tours: [], transport: [] };
@@ -404,6 +405,9 @@ export interface Quote {
   adjustments?: { key: string; label: string; amount: string }[];
   total: string;
   list_total: string | null;
+  tax?: { pct: string; included: boolean; taxable: string; tax: string; total: string } | null;
+  own_price?: boolean;
+  converted?: boolean;
   extras_total: string;
   extras: BookingExtras;
   modes: PaymentMode[];
@@ -557,7 +561,7 @@ export interface CheckoutTerms {
   total: string;
   modes: { value: "total" | "adelanto" | "pagar_despues"; label: string; amount: string; balance?: string; balance_due?: string; pct?: number; hold_hours?: number; hold_until?: string }[];
   adelanto_unavailable: string | null;
-  methods: { value: string; label: string }[];
+  methods: { value: string; label: string; currency?: string | null; available?: boolean; note?: string | null }[];
   bank_accounts: { bank: string | null; name: string; currency: string; account_number: string; cci: string | null }[];
   group: { adt: number; chd: number; inf: number };
   first_date: string;
@@ -737,6 +741,8 @@ export interface AccountReservationDetail {
 export interface AccountReceivables {
   items: AccountReceivable[];
   totals: { payable: AccountMoney[]; pending: AccountMoney[] };
+  by_tour?: { code: string; title: string; amounts: AccountMoney[] }[];
+  split_hint?: string;
   methods: { value: string; label: string }[];
   bank_accounts: CheckoutTerms["bank_accounts"];
 }

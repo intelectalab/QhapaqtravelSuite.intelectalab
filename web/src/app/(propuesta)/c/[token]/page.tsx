@@ -19,7 +19,7 @@ interface PublicQuote {
   currency: string;
   pax: { adt: number; chd: number; inf: number };
   items: { product: string; date: string; qty: number; pax: number; segment: string; unit_price: string; total: string }[];
-  totals: { sale: string; discount: string; net: string; tax: string; tax_pct: string; grand: string } | null;
+  totals: { sale: string; discount: string; net: string; tax: string; tax_pct: string; tax_included?: boolean; grand: string } | null;
   conditions: string | null;
   portal_url: string;
 }
@@ -28,6 +28,7 @@ const STATUS_NOTE: Record<string, string> = {
   aprobada: "Ya aprobaste esta propuesta. Tu asesor te contactará para confirmar la reserva.",
   convertida: "Esta propuesta ya es una reserva confirmada.",
   vencida: "La validez de esta propuesta terminó. Pide a tu asesor una versión actualizada.",
+  actualizando: "Tu asesor está preparando una versión actualizada. Mientras tanto ves la última que te envió.",
 };
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
@@ -120,7 +121,7 @@ export default async function PublicQuotePage({ params }: PageProps<"/c/[token]"
                 <dd className="font-mono">{formatMoney(quote.totals.net, quote.currency)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-fg-3">IGV {Number(quote.totals.tax_pct)} %</dt>
+                <dt className="text-fg-3">{quote.totals.tax_included ? "IGV incluido" : "IGV"} {Number(quote.totals.tax_pct)} %</dt>
                 <dd className="font-mono">{formatMoney(quote.totals.tax, quote.currency)}</dd>
               </div>
               <div className="flex justify-between pt-1 text-[18px] font-bold">

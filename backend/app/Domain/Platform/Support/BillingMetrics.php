@@ -170,7 +170,7 @@ final class BillingMetrics
     public function subscriptions(?ConnectionInterface $db = null): Collection
     {
         $db ??= $this->db();
-        $addons = $db->table('subscription_items')->whereNull('ends_at')->selectRaw('subscription_id, sum(unit_price * quantity) as total')->groupBy('subscription_id')->pluck('total', 'subscription_id');
+        $addons = $db->table('subscription_items')->whereNull('ends_at')->where('billing_mode', 'mensual')->selectRaw('subscription_id, sum(unit_price * quantity) as total')->groupBy('subscription_id')->pluck('total', 'subscription_id');
 
         return $db->table('subscriptions as s')->join('tenants as t', 't.id', '=', 's.tenant_id')->join('plans as p', 'p.id', '=', 's.plan_id')
             ->where('s.status', '<>', 'canceled')

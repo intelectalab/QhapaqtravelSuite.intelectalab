@@ -74,7 +74,7 @@ export function QuoteVersions({ code, versions, currency, seeMargin }: { code: s
             </div>
           )}
           <div className="flex justify-between">
-            <dt className="text-fg-3">IGV ({version.tax_pct} %)</dt>
+            <dt className="text-fg-3">{version.totals.tax_included ? "IGV incluido" : "IGV"} ({version.tax_pct} %)</dt>
             <dd className="font-mono">{formatMoney(version.totals.tax, currency)}</dd>
           </div>
           <div className="flex justify-between border-t border-line-2 pt-1.5 text-[15px] font-bold">

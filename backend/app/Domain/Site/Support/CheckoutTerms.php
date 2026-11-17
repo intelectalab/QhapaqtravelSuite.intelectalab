@@ -6,6 +6,7 @@ namespace App\Domain\Site\Support;
 
 use App\Domain\Booking\Rules\RuleResolver;
 use App\Domain\Catalog\Support\CancellationTiers;
+use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
@@ -25,7 +26,28 @@ final class CheckoutTerms
 
     private const PAY_LATER_HOURS = 24;
 
+    public const PEN_ONLY = ['yape', 'plin'];
+
     public function __construct(private readonly RuleResolver $rules) {}
+
+    public static function methods(string $currency): array
+    {
+        return collect(self::METHODS)->map(fn (string $label, string $value): array => [
+            'value' => $value,
+            'label' => $label,
+            'currency' => in_array($value, self::PEN_ONLY, true) ? 'PEN' : null,
+            'available' => ! in_array($value, self::PEN_ONLY, true) || trim($currency) === 'PEN',
+            'note' => in_array($value, self::PEN_ONLY, true) && trim($currency) !== 'PEN' ? "{$label} cobra solo en soles: elige soles en el selector de moneda para pagar con {$label}." : null,
+        ])->values()->all();
+    }
+
+    public static function assertMethod(string $method, string $currency): void
+    {
+        if (in_array($method, self::PEN_ONLY, true) && trim($currency) !== 'PEN') {
+            $label = self::METHODS[$method];
+            throw ApiException::unprocessable('SIT-BR-11', "{$label} cobra solo en soles: elige soles en el selector de moneda o paga con tarjeta o transferencia.", ['method' => ["{$label} cobra solo en soles."]]);
+        }
+    }
 
     public static function bankAccounts(): array
     {
@@ -36,7 +58,8 @@ final class CheckoutTerms
     public function build(Collection $lines, string $today, string $rate): array
     {
         $currency = (string) $lines->first()['quote']['currency'];
-        $convert = fn (string $amount, string $from): BigDecimal => Decimal::round2(Decimal::convert($amount, $from, $currency, $rate));
+        $fx = app(SiteCurrency::class);
+        $convert = fn (string $amount, string $from): BigDecimal => Decimal::round2($fx->convert($amount, $from, $currency, $rate));
         $depositOn = $this->rules->on('R-DEPOSIT');
         $total = BigDecimal::zero()->toScale(2);
         $deposit = BigDecimal::zero()->toScale(2);
@@ -81,6 +104,8 @@ final class CheckoutTerms
                 ] : null,
                 'comments' => $this->rules->on('R-COMMENTS') ? (int) ($this->rules->param('R-COMMENTS', 'maxChars') ?? 1000) : null,
                 'altitude' => app(SiteAltitude::class)->requires((string) $product->id),
+                'tours' => collect($line['quote']['lines'] ?? [])->filter(fn (array $l): bool => ($l['kind'] ?? null) === 'tour' && ! ($l['removed'] ?? false) && ($l['meta']['children_rule'] ?? null) === 'ask')
+                    ->map(fn (array $l): array => ['id' => (string) $l['meta']['tour_id'], 'name' => (string) $l['label'], 'min_age' => (int) $l['meta']['min_age'], 'date' => (string) ($l['meta']['date'] ?? $item->service_date), 'children' => (int) ($l['meta']['chd'] ?? 0)])->values()->all(),
                 'cancellation' => $policies ? ['text' => $policies->cancellation, 'tiers' => CancellationTiers::describe(CancellationTiers::resolve($policies->penalty_tiers, $policies->cancellation))] : null,
             ];
         }
@@ -103,7 +128,7 @@ final class CheckoutTerms
             'total' => (string) $total,
             'modes' => $modes,
             'adelanto_unavailable' => $depositOn && ! $adelanto ? 'El adelanto no está disponible para esta compra: algún servicio no lo admite o su saldo vencería antes de hoy.' : null,
-            'methods' => collect(self::METHODS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values()->all(),
+            'methods' => self::methods($currency),
             'bank_accounts' => self::bankAccounts(),
             'group' => $group,
             'first_date' => $lines->min(fn (array $line): string => (string) $line['item']->service_date),

@@ -5,7 +5,7 @@ import { flag, sendAdmin, text } from "@/lib/server/admin";
 
 const PATH = "/admin/configuracion";
 
-const SWITCHES: Record<string, string[]> = { currency: ["price_with_tax"], operations: ["noshow_notify_advisor", "noshow_incident", "noshow_charge"] };
+const SWITCHES: Record<string, string[]> = { currency: ["price_with_tax"], operations: ["noshow_notify_advisor", "noshow_incident"] };
 
 export async function updateSettings(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
   const section = text(form, "section") ?? "";

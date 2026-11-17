@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Quotes\Support;
 
+use App\Domain\Admin\Support\PriceTax;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Iam\Models\User;
 use App\Domain\Quotes\Actions\QuoteAccessTokens;
 use App\Domain\Quotes\Actions\QuoteLifecycle;
 use App\Domain\Quotes\Http\Controllers\QuoteController;
+use App\Domain\Shared\Audit\AuditActorName;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Http\CursorPage;
 use App\Domain\Shared\Money\Decimal;
@@ -230,7 +232,7 @@ final class QuoteDirectory
 
         $query = DB::table('audit_events as e')->leftJoin('iam_users as u', 'u.id', '=', 'e.actor_id')
             ->where('e.entity', 'Cotización')->where('e.entity_id', $code)
-            ->select(['e.id', 'e.code', 'e.action', 'e.before_value', 'e.after_value', 'e.actor_type', 'e.occurred_at', 'e.ip', 'e.correlation_id', 'u.name as actor_name']);
+            ->select(['e.id', 'e.code', 'e.action', 'e.before_value', 'e.after_value', 'e.actor_type', 'e.actor_role', 'e.occurred_at', 'e.ip', 'e.correlation_id', 'u.name as actor_name']);
 
         return CursorPage::respond($request, $query, ['occurred_at' => 'e.occurred_at'], '-occurred_at', fn (object $event): array => [
             'id' => $event->id,
@@ -238,7 +240,7 @@ final class QuoteDirectory
             'action' => $event->action,
             'before' => $event->before_value,
             'after' => $event->after_value,
-            'actor' => $event->actor_name ?? ($event->actor_type === 'system' ? 'Sistema' : null),
+            'actor' => AuditActorName::of($event->actor_name, $event->actor_type, $event->actor_role),
             'at' => $event->occurred_at,
             'ip' => $event->ip,
             'correlation' => $event->correlation_id,
@@ -320,6 +322,7 @@ final class QuoteDirectory
                 'net' => Decimal::toApi((string) $version->net_total),
                 'tax' => Decimal::toApi((string) $version->tax_total),
                 'grand' => Decimal::toApi((string) $version->grand_total),
+                'tax_included' => PriceTax::storedIncluded($version),
                 'cost' => $seeMargin ? Decimal::toApi((string) $version->cost_total) : null,
                 'profit' => $seeMargin ? Decimal::toApi((string) $version->profit_total) : null,
                 'margin_pct' => $seeMargin ? (string) $version->margin_pct : null,

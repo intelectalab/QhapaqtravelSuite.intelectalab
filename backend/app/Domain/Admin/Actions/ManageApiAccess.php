@@ -6,6 +6,7 @@ namespace App\Domain\Admin\Actions;
 
 use App\Domain\Admin\Support\ApiDirectory;
 use App\Domain\Admin\Support\PgArray;
+use App\Domain\Crm\Support\Advisors;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
@@ -31,6 +32,7 @@ final class ManageApiAccess
                 throw ApiException::conflict('API-BR-02', "Tu plan permite {$limit} claves activas. Revoca una que ya no uses o mejora el plan.");
             }
 
+            $owner = $this->owner($data);
             $token = "qts_{$data['environment']}_".Str::random(32);
             $prefix = substr($token, 0, strlen("qts_{$data['environment']}_") + 4);
             $code = $this->nextCode('integration_api_keys', 'KEY-', 4);
@@ -45,12 +47,64 @@ final class ManageApiAccess
                 'ip_allowlist' => ($data['ips'] ?? []) !== [] ? PgArray::from($data['ips']) : null,
                 'expires_at' => $data['expires_at'] ?? null,
                 'status' => 'active',
+                ...$owner,
                 'created_by' => $actor->getKey(),
             ]);
-            $this->audit->log('Clave de API', $code, 'crear', null, "{$data['name']} · {$data['environment']} · ".implode(', ', $data['scopes']));
+            $this->audit->log('Clave de API', $code, 'crear', null, "{$data['name']} · {$data['environment']} · ".implode(', ', $data['scopes']).' · '.$this->ownerLabel($owner));
 
             return ['code' => $code, 'token' => $token];
         });
+    }
+
+    public function updateKeyOwner(string $code, array $data, User $actor): void
+    {
+        DB::transaction(function () use ($code, $data): void {
+            $key = DB::table('integration_api_keys')->where('code', $code)->lockForUpdate()->first(['id', 'status', 'owner_mode', 'owner_id']) ?? throw ApiException::notFound('La clave no existe.');
+
+            if ($key->status !== 'active') {
+                throw ApiException::unprocessable('API-BR-01', 'La clave ya no está activa.');
+            }
+
+            $owner = $this->owner($data);
+            $before = $this->ownerLabel(['owner_mode' => $key->owner_mode, 'owner_id' => $key->owner_id]);
+            $after = $this->ownerLabel($owner);
+
+            if ($before === $after) {
+                return;
+            }
+
+            DB::table('integration_api_keys')->where('id', $key->id)->update($owner);
+            $this->audit->log('Clave de API', $code, 'cambiar_responsable', $before, $after);
+        });
+    }
+
+    public function key(string $code): array
+    {
+        return app(ApiDirectory::class)->keys()->firstWhere('code', $code) ?? throw ApiException::notFound('La clave no existe.');
+    }
+
+    private function owner(array $data): array
+    {
+        $mode = $data['owner_mode'] ?? 'round_robin';
+
+        if ($mode !== 'fixed') {
+            return ['owner_mode' => 'round_robin', 'owner_id' => null];
+        }
+
+        if (! app(Advisors::class)->has((string) ($data['owner_id'] ?? ''))) {
+            throw ApiException::unprocessable('VALIDATION_ERROR', 'Elige un asesor activo de la agencia.', ['owner_id' => ['Elige un asesor activo de la agencia.']]);
+        }
+
+        return ['owner_mode' => 'fixed', 'owner_id' => (string) $data['owner_id']];
+    }
+
+    private function ownerLabel(array $owner): string
+    {
+        if ($owner['owner_mode'] !== 'fixed') {
+            return 'Responsable: reparto por turno';
+        }
+
+        return 'Responsable: '.(DB::table('iam_users')->where('id', $owner['owner_id'])->value('name') ?? 'asesor fijo');
     }
 
     public function revokeKey(string $code, string $reason, User $actor): void

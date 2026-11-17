@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Site\Support;
 
+use App\Domain\Admin\Support\PriceTax;
 use App\Domain\Booking\Data\BookingQuote;
 use App\Domain\Booking\Data\ProductData;
 use App\Domain\Booking\Data\QuoteSelection;
@@ -78,6 +79,8 @@ final class SiteBooking
             'transport' => ['nullable', 'array', 'max:20'],
             'transport.*' => ['required'],
             'transport.*.id' => ['sometimes', 'string', 'max:20'],
+            'tour_children' => ['nullable', 'array', 'max:40'],
+            'tour_children.*' => ['integer', 'between:0,20'],
         ];
     }
 
@@ -92,6 +95,7 @@ final class SiteBooking
             'nights.*' => 'Las noches por ciudad van de 1 a 30.',
             'tours.*' => 'Revisa los tours elegidos.',
             'transport.*' => 'Revisa la movilidad elegida.',
+            'tour_children.*' => 'Indica cuántos niños cumplen la edad mínima de cada tour.',
         ];
     }
 
@@ -106,7 +110,20 @@ final class SiteBooking
             'nights' => (array) ($data['nights'] ?? []),
             'tours' => self::ids((array) ($data['tours'] ?? [])),
             'transport' => self::ids((array) ($data['transport'] ?? [])),
+            'tour_children' => self::counts((array) ($data['tour_children'] ?? [])),
         ];
+    }
+
+    public static function counts(array $items): array
+    {
+        $out = [];
+        foreach ($items as $id => $count) {
+            if (is_numeric($count) && (string) $id !== '') {
+                $out[(string) $id] = max(0, min(20, (int) $count));
+            }
+        }
+
+        return $out;
     }
 
     public static function decode(stdClass $row, string $removedColumn = 'removed_line_keys'): array
@@ -124,12 +141,13 @@ final class SiteBooking
             'nights' => (array) ($trip['nights'] ?? []),
             'tours' => self::ids((array) ($trip['tours'] ?? [])),
             'transport' => self::ids((array) ($trip['transport'] ?? [])),
+            'tour_children' => self::counts((array) ($trip['tour_children'] ?? [])),
         ];
     }
 
     public static function tripJson(array $extras): string
     {
-        return json_encode(['nights' => (object) ($extras['nights'] ?? []), 'tours' => array_values($extras['tours'] ?? []), 'transport' => array_values($extras['transport'] ?? [])], JSON_UNESCAPED_UNICODE) ?: '{}';
+        return json_encode(['nights' => (object) ($extras['nights'] ?? []), 'tours' => array_values($extras['tours'] ?? []), 'transport' => array_values($extras['transport'] ?? []), 'tour_children' => (object) ($extras['tour_children'] ?? [])], JSON_UNESCAPED_UNICODE) ?: '{}';
     }
 
     public static function ids(array $items): array
@@ -250,6 +268,7 @@ final class SiteBooking
                     'price_adult' => $tour['priceAdt'],
                     'price_child' => $tour['priceChd'],
                     'min_age' => $tour['minAge'],
+                    'children_rule' => $this->engine->engine()->tourChildren($data, $tour, 1, null)['rule'],
                 ])->values()->all(),
                 'local' => $transport->where('fromLegId', $leg['id'])->whereNull('toLegId')->map(fn (array $option): array => $this->transportConfig($option))->values()->all(),
                 'arrivals' => $transport->where('toLegId', $leg['id'])->map(fn (array $option): array => $this->transportConfig($option))->values()->all(),
@@ -329,7 +348,18 @@ final class SiteBooking
             ? array_values(array_unique(array_filter(array_map('strval', (array) ($extras['removed'] ?? [])), fn (string $key): bool => Str::startsWith($key, self::REMOVABLE_PREFIXES) && ! in_array($key, $mandatory, true))))
             : [];
 
-        return ['addons' => array_values($addons), 'lodging' => $lodging, 'no_lodging' => $noLodging, 'options' => $options, 'removed' => $removed, 'nights' => $nights, 'tours' => $tours, 'transport' => $transport];
+        $engine = $this->engine->engine();
+        $catalogTours = collect($data->trip['tours'] ?? [])->keyBy('id');
+        $answers = self::counts((array) ($extras['tour_children'] ?? []));
+        $tourChildren = [];
+        foreach ($tours as $id) {
+            $rule = $engine->tourChildren($data, (array) $catalogTours->get($id, []), (int) ($pax['chd'] ?? 0), $answers[$id] ?? null);
+            if ($rule['ask']) {
+                $tourChildren[$id] = $rule['eligible'];
+            }
+        }
+
+        return ['addons' => array_values($addons), 'lodging' => $lodging, 'no_lodging' => $noLodging, 'options' => $options, 'removed' => $removed, 'nights' => $nights, 'tours' => $tours, 'transport' => $transport, 'tour_children' => $tourChildren];
     }
 
     private function trip(ProductData $data, RuleSet $set, array $extras): array
@@ -393,6 +423,8 @@ final class SiteBooking
             'channel' => self::CHANNEL,
             'payment_mode' => $mode,
             'payment_method' => $method,
+            'tax' => app(PriceTax::class)->terms(),
+            'tour_children' => $selection['tour_children'],
         ];
         $warnings = [];
 
@@ -459,6 +491,8 @@ final class SiteBooking
                 'payment_mode' => $data['payment_mode'] ?? null,
                 'payment_method' => $data['payment_method'] ?? null,
                 'promo_code' => $data['promo_code'] ?? null,
+                'tax' => app(PriceTax::class)->terms(),
+                'tour_children' => $selection['tour_children'],
             ]));
         } catch (DomainException) {
             throw ApiException::unprocessable('R-MULTICURRENCY', "La agencia cotiza solo en soles: {$currency} no está habilitada.", ['currency' => ['La moneda elegida no está habilitada para esta agencia.']]);

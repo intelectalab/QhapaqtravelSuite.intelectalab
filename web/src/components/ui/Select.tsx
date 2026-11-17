@@ -11,6 +11,7 @@ export interface SelectOption {
   label: string;
   hint?: string;
   disabled?: boolean;
+  code?: string;
 }
 
 interface SelectProps {
@@ -101,7 +102,7 @@ export function Select({
               <OptionRow value="" label={placeholder} selected={!value} muted onSelect={() => choose("")} />
             )}
             {visible.map((option) => (
-              <OptionRow key={option.value} value={option.value} label={option.label} hint={option.hint} disabled={option.disabled} selected={option.value === value} onSelect={() => choose(option.value)} />
+              <OptionRow key={option.value} value={option.value} code={option.code} label={option.label} hint={option.hint} disabled={option.disabled} selected={option.value === value} onSelect={() => choose(option.value)} />
             ))}
             {visible.length === 0 && <p className="px-3 py-2.5 text-[13px] text-fg-3">Sin coincidencias</p>}
           </div>
@@ -124,13 +125,14 @@ export function Select({
   );
 }
 
-function OptionRow({ value, label, hint, selected, muted, disabled = false, onSelect }: { value: string; label: string; hint?: string; selected: boolean; muted?: boolean; disabled?: boolean; onSelect: () => void }) {
+function OptionRow({ value, code, label, hint, selected, muted, disabled = false, onSelect }: { value: string; code?: string; label: string; hint?: string; selected: boolean; muted?: boolean; disabled?: boolean; onSelect: () => void }) {
+  const key = code ?? value;
   return (
     <button
       type="button"
       onClick={onSelect}
       disabled={disabled && !selected}
-      data-testid={`option:${value}`}
+      data-testid={key ? `option:${key}` : undefined}
       className={cn("flex w-full items-center gap-2 rounded-[10px] px-2.5 py-2 text-left text-[13.5px] hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent", selected && "font-semibold text-accent", muted && !selected && "text-fg-3")}
     >
       <span className="min-w-0 flex-1">

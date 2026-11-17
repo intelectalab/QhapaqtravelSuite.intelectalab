@@ -122,7 +122,7 @@ final class InTripOffers
                 'date' => (string) $offer->service_date,
                 'time' => $offer->kind === 'tour' ? substr((string) $item->start_time, 0, 5) : null,
                 'adults' => $pax['adt'],
-                'children' => $offer->kind === 'tour' && $item->min_age !== null && ! ((float) $item->price_child > 0) ? 0 : $pax['chd'],
+                'children' => $offer->kind === 'tour' ? min($pax['chd'], $this->trips->eligibleChildren((string) $reservation->id, $item->min_age, (string) $offer->service_date) ?? $pax['chd']) : $pax['chd'],
                 'vehicle' => $vehicle,
                 'units' => $units,
                 'amount' => (string) $offer->amount,

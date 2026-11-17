@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AuditTrail } from "@/features/admin/AdminParts";
-import { ApiKeysAccessNotice, ApiKeysTable } from "@/features/admin/ApiAccess";
+import { ApiKeyEndpoints, ApiKeysTable } from "@/features/admin/ApiAccess";
 import { getApiAccess } from "@/lib/server/adminSections";
 
 export const metadata: Metadata = { title: "API keys" };
@@ -11,7 +11,7 @@ export default async function ApiKeysPage() {
 
   return (
     <>
-      <ApiKeysAccessNotice data={data} />
+      <ApiKeyEndpoints data={data} />
       <ApiKeysTable data={data} />
       <div className="mt-5">
         <AuditTrail entries={data.history} empty="Aún no hay cambios en claves ni webhooks." />

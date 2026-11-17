@@ -7,9 +7,11 @@ namespace App\Domain\Finance\Http\Controllers;
 use App\Domain\Finance\Actions\ReceivableWorkflow;
 use App\Domain\Finance\Http\Controllers\Concerns\ResolvesActor;
 use App\Domain\Finance\Support\ReceivableDirectory;
+use App\Domain\Shared\Http\CursorPage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 
 final class ReceivableController
 {
@@ -17,7 +19,15 @@ final class ReceivableController
 
     public function index(Request $request, ReceivableDirectory $directory): JsonResponse
     {
-        return response()->json(['data' => $directory->overview($this->actor($request))]);
+        $overview = $directory->overview($this->actor($request));
+        $filters = CursorPage::filters($request);
+        $statuses = isset($filters['status']) ? array_map('trim', explode(',', $filters['status'])) : null;
+        $rows = $overview['rows']
+            ->when($statuses !== null, fn ($rows) => $rows->filter(fn (array $row): bool => in_array($row['status'], $statuses, true)))
+            ->when(isset($filters['reservation']), fn ($rows) => $rows->filter(fn (array $row): bool => $row['reservation']['code'] === $filters['reservation']))
+            ->when(isset($filters['code']), fn ($rows) => $rows->filter(fn (array $row): bool => $row['code'] === $filters['code']));
+
+        return response()->json(CursorPage::respondItems($request, $rows->values()->all(), Arr::except($overview, 'rows')));
     }
 
     public function summary(Request $request, ReceivableDirectory $directory): JsonResponse
@@ -41,6 +51,10 @@ final class ReceivableController
 
     public function registerPayment(Request $request, ReceivableWorkflow $workflow): JsonResponse
     {
+        if (! $request->filled('paid_on')) {
+            $request->merge(['paid_on' => today()->toDateString()]);
+        }
+
         $data = $request->validate([
             'receivable_id' => ['required', 'string', 'max:40'],
             'method' => ['required', 'string', 'max:40'],
@@ -63,7 +77,7 @@ final class ReceivableController
         $code = (string) Arr::pull($data, 'receivable_id');
         $payment = $workflow->registerPayment($code, $data, $this->actor($request));
 
-        return response()->json(['data' => ['payment' => $payment]], 201);
+        return response()->json(['data' => ['id' => (string) DB::table('fin_payments')->where('code', $payment)->value('id'), 'code' => $payment, 'payment' => $payment]], 201);
     }
 
     public function advance(Request $request, ReceivableWorkflow $workflow): JsonResponse

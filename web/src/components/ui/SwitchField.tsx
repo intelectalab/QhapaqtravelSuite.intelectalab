@@ -11,15 +11,16 @@ interface SwitchFieldProps {
   onCheckedChange: (checked: boolean) => void;
   disabled?: boolean;
   hint?: string;
+  testId?: string;
 }
 
-export function SwitchField({ label, name, checked, onCheckedChange, disabled = false, hint }: SwitchFieldProps) {
+export function SwitchField({ label, name, checked, onCheckedChange, disabled = false, hint, testId }: SwitchFieldProps) {
   const id = useId();
   return (
     <div className={cn("flex items-start gap-3", disabled && "opacity-60")}>
       <Switch.Root
         id={id}
-        data-testid={`field:${name}`}
+        data-testid={testId ?? `field:${name}`}
         checked={checked}
         onCheckedChange={onCheckedChange}
         disabled={disabled}

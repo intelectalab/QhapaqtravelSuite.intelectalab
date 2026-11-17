@@ -26,7 +26,7 @@ final class ReceivableDirectory
             ->leftJoin('iam_users as u', 'u.id', '=', 'b.owner_id')
             ->whereNull('r.deleted_at')
             ->orderBy('r.due_date')
-            ->get(['r.id', 'r.code', 'r.kind', 'r.concept', 'r.amount', 'r.paid_amount', 'r.currency', 'r.fx_rate', 'r.due_date', 'r.status', 'r.cancel_reason', 'r.cancelled_at', 'r.last_reminder_at', 'b.code as reservation_code', 'b.title as reservation_title', 'b.status as reservation_status', 'c.code as client_code', 'c.name as client_name', 'u.name as owner_name'])
+            ->get(['r.id', 'r.code', 'r.lock_version', 'r.kind', 'r.concept', 'r.amount', 'r.paid_amount', 'r.currency', 'r.fx_rate', 'r.due_date', 'r.status', 'r.cancel_reason', 'r.cancelled_at', 'r.last_reminder_at', 'b.code as reservation_code', 'b.title as reservation_title', 'b.status as reservation_status', 'c.code as client_code', 'c.name as client_name', 'u.name as owner_name'])
             ->map(function (object $row) use ($today): array {
                 $amount = (float) $row->amount;
                 $paid = (float) $row->paid_amount;
@@ -35,7 +35,9 @@ final class ReceivableDirectory
                 $overdue = $status === 'vencida' ? (int) Carbon::parse($row->due_date)->diffInDays(Carbon::parse($today)) : 0;
 
                 return [
+                    'id' => $row->id,
                     'code' => $row->code,
+                    'lock_version' => (int) $row->lock_version,
                     'kind' => $row->kind,
                     'concept' => $row->concept,
                     'amount' => $amount,

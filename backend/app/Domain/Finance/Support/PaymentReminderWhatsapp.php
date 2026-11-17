@@ -8,6 +8,7 @@ use App\Domain\Growth\Shared\GrowthRules;
 use App\Domain\Inbox\Support\WhatsappAccounts;
 use App\Domain\Integrations\Contracts\MessagingChannel;
 use App\Domain\Integrations\Data\OutboundMessage;
+use App\Domain\Shared\Audit\AuditLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -17,14 +18,28 @@ final class PaymentReminderWhatsapp
 
     public const TEMPLATE = 'pago_recordatorio';
 
+    public const OPTED_OUT = 'WhatsApp omitido: el cliente se dio de baja';
+
     public function __construct(
         private readonly WhatsappAccounts $accounts,
         private readonly MessagingChannel $messaging,
         private readonly GrowthRules $rules,
+        private readonly AuditLogger $audit,
     ) {}
+
+    public static function optedOut(?string $clientId): bool
+    {
+        return $clientId !== null && DB::table('mkt_consents')->where('subject_type', 'client')->where('subject_id', $clientId)->where('channel', 'whatsapp')->where('status', 'revocado')->exists();
+    }
 
     public function send(?string $phone, array $variables, array $source): array
     {
+        if (self::optedOut(isset($source['client_id']) ? (string) $source['client_id'] : null)) {
+            $this->recordOptOut($source);
+
+            return ['sent' => false, 'reason' => self::OPTED_OUT.'.', 'opted_out' => true];
+        }
+
         $digits = (string) preg_replace('/\D+/', '', (string) $phone);
         $sender = $this->rules->enabled('R-WHATSAPP-OFFICIAL') ? $this->accounts->sender() : null;
         $template = $sender === null ? null : $this->template();
@@ -66,6 +81,15 @@ final class PaymentReminderWhatsapp
         return $result->ok
             ? ['sent' => true, 'reason' => null, 'to' => $to]
             : ['sent' => false, 'reason' => 'WhatsApp no aceptó el mensaje: '.$result->message];
+    }
+
+    private function recordOptOut(array $source): void
+    {
+        $code = ($source['source_type'] ?? null) === 'fin_receivable' && isset($source['source_id']) ? DB::table('fin_receivables')->where('id', $source['source_id'])->value('code') : null;
+
+        if ($code !== null) {
+            $this->audit->log('Cuenta por cobrar', (string) $code, 'omitir_whatsapp', null, self::OPTED_OUT);
+        }
     }
 
     private function template(): ?object

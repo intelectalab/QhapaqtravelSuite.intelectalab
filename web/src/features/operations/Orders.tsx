@@ -2,6 +2,7 @@
 
 import { Ban, CalendarClock, ClipboardList, Pencil, Plus, Siren, TriangleAlert, UserCog, Users } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -40,13 +41,25 @@ function OrderPreview({ candidate }: { candidate: OrderCandidate | undefined }) 
 export function OrderCreateAction({ candidates, coordinators, viewerId }: { candidates: OrderCandidate[]; coordinators: Person[]; viewerId: string }) {
   const fallback = coordinators.some((person) => person.id === viewerId) ? viewerId : (coordinators[0]?.id ?? "");
   const [reservation, setReservation] = useState("");
+  const router = useRouter();
   return (
-    <OpsStep step="order_create" label="Nueva orden" icon={<Plus size={16} strokeWidth={2.4} />} variant="primary" title="Nueva orden operativa" description="Se crea desde una reserva confirmada. Los tours y traslados pasan a asignación con las cinco tareas habituales." submitLabel="Crear orden">
+    <OpsStep
+      step="order_create"
+      label="Nueva orden"
+      icon={<Plus size={16} strokeWidth={2.4} />}
+      variant="primary"
+      title="Nueva orden operativa"
+      description="Se crea desde una reserva confirmada. Los tours y traslados pasan a asignación con las cinco tareas habituales."
+      submitLabel="Crear orden"
+      testId="order-create"
+      successToast="Orden operativa creada."
+      onDone={(state) => (state.code ? router.push(href(state.code)) : router.refresh())}
+    >
       {candidates.length === 0 ? (
         <ConfirmNote>Todas las reservas confirmadas ya tienen su orden operativa.</ConfirmNote>
       ) : (
         <>
-          <SelectField label="Reserva" name="reservation_code" value={reservation} onChange={setReservation} options={candidates.map((item) => ({ value: item.code, label: `${item.code} · ${item.title}`, hint: `${item.client} · ${formatDate(item.travel_from)}` }))} placeholder="Elegir reserva" />
+          <SelectField label="Reserva" name="reservation_id" value={reservation} onChange={setReservation} options={candidates.map((item) => ({ value: item.code, label: `${item.code} · ${item.title}`, hint: `${item.client} · ${formatDate(item.travel_from)}` }))} placeholder="Elegir reserva" />
           <OrderPreview candidate={candidates.find((item) => item.code === reservation)} />
           <SelectField label="Coordinador" name="coordinator_id" options={coordinators.map((person) => ({ value: person.id, label: person.name }))} defaultValue={fallback} />
         </>

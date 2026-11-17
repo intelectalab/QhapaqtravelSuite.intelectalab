@@ -39,6 +39,9 @@ final class PlatformOperations
         $jobs = $this->db()->table('sys_scheduled_jobs')->whereNull('tenant_id')->orderBy('code')->get();
         $runs = $this->db()->table('sys_job_runs')->whereIn('scheduled_job_id', $jobs->pluck('id'))->orderByDesc('started_at')->get()->groupBy('scheduled_job_id');
         $tenants = $this->db()->table('tenants')->pluck('commercial_name', 'id');
+        $errors = $this->db()->table('integration_errors')->whereNotNull('tenant_id')->orderByDesc('created_at')->limit(200)->get();
+        $kinds = $this->db()->table('integration_adapters')->whereIn('code', $errors->where('source', 'integration')->pluck('ref_code')->unique()->values())->get(['tenant_id', 'code', 'kind'])
+            ->mapWithKeys(fn (object $adapter): array => ["{$adapter->tenant_id}|{$adapter->code}" => (string) $adapter->kind]);
 
         return [
             'jobs' => $jobs->map(fn (object $job) => [
@@ -59,7 +62,7 @@ final class PlatformOperations
             ])->values(),
             'queues' => $this->queues(),
             'agencies' => $this->agencies($tenants),
-            'errors' => $this->db()->table('integration_errors')->whereNotNull('tenant_id')->orderByDesc('created_at')->limit(200)->get()
+            'errors' => $errors
                 ->map(fn (object $error) => [
                     'id' => $error->id,
                     'code' => $error->code,
@@ -67,6 +70,7 @@ final class PlatformOperations
                     'source' => $error->source,
                     'ref' => $error->ref_code,
                     'target' => $error->target,
+                    'connection' => IntegrationConnections::for((string) $error->target, $error->source === 'integration' ? ($kinds["{$error->tenant_id}|{$error->ref_code}"] ?? null) : null),
                     'error' => $error->error,
                     'class' => $error->error_class,
                     'attempt' => (int) $error->attempt,

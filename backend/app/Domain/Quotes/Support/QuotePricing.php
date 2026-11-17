@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Quotes\Support;
 
+use App\Domain\Admin\Support\PriceTax;
 use App\Domain\Shared\Money\Decimal;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
@@ -26,7 +27,7 @@ final class QuotePricing
             : null;
     }
 
-    public static function totals(array $items, BigDecimal|string $discountPct, BigDecimal|string $taxPct): array
+    public static function totals(array $items, BigDecimal|string $discountPct, BigDecimal|string $taxPct, bool $taxIncluded = false): array
     {
         $cost = BigDecimal::zero();
         $sale = BigDecimal::zero();
@@ -37,8 +38,8 @@ final class QuotePricing
         }
 
         $discount = Decimal::round2($sale->multipliedBy((string) $discountPct)->dividedBy(100, 6, RoundingMode::HALF_UP));
-        $net = $sale->minus($discount);
-        $tax = Decimal::round2($net->multipliedBy((string) $taxPct)->dividedBy(100, 6, RoundingMode::HALF_UP));
+        $split = PriceTax::split($sale->minus($discount), $taxPct, $taxIncluded);
+        $net = $split['taxable'];
         $profit = $net->minus($cost);
 
         return [
@@ -46,8 +47,8 @@ final class QuotePricing
             'sale_total' => (string) Decimal::round2($sale),
             'discount_total' => (string) $discount,
             'net_total' => (string) Decimal::round2($net),
-            'tax_total' => (string) $tax,
-            'grand_total' => (string) Decimal::round2($net->plus($tax)),
+            'tax_total' => (string) $split['tax'],
+            'grand_total' => (string) $split['total'],
             'profit_total' => (string) Decimal::round2($profit),
             'margin_pct' => $net->isPositive() ? (string) $profit->multipliedBy(100)->dividedBy($net, 2, RoundingMode::HALF_UP) : '0.00',
         ];

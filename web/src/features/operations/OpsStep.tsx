@@ -23,10 +23,14 @@ interface OpsStepProps {
   trigger?: (open: () => void) => ReactNode;
   defaultOpen?: boolean;
   formKey?: string;
+  testId?: string;
+  confirmTestId?: string;
+  successToast?: string | false;
+  onDone?: (state: OpsState) => void;
   children?: ReactNode;
 }
 
-export function OpsStep({ step, target = "", version, label, icon, variant = "secondary", size, title, description, submitLabel, trigger, defaultOpen, formKey, children }: OpsStepProps) {
+export function OpsStep({ step, target = "", version, label, icon, variant = "secondary", size, title, description, submitLabel, trigger, defaultOpen, formKey, testId, confirmTestId, successToast, onDone, children }: OpsStepProps) {
   const router = useRouter();
   return (
     <PanelAction<OpsState>
@@ -42,7 +46,10 @@ export function OpsStep({ step, target = "", version, label, icon, variant = "se
       initial={initial}
       trigger={trigger}
       defaultOpen={defaultOpen}
-      onDone={() => router.refresh()}
+      testId={testId}
+      confirmTestId={confirmTestId}
+      successToast={successToast}
+      onDone={onDone ?? (() => router.refresh())}
     >
       {() => (
         <>

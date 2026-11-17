@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Tracking\Support;
 
+use App\Domain\Platform\Support\PayloadWebhook;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use Illuminate\Database\ConnectionInterface;
@@ -21,21 +22,20 @@ final class BlogSync
 
     private const LAST_KEY = 'payload-webhook:last';
 
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(private readonly AuditLogger $audit, private readonly PayloadWebhook $webhook) {}
 
     public function verify(Request $request): void
     {
-        $secret = (string) config('seguimiento.payload.webhook_secret');
-        $timestamp = (string) $request->header('X-Kipu-Timestamp', '');
-        $signature = (string) $request->header('X-Kipu-Signature', '');
-        $expected = 'sha256='.hash_hmac('sha256', $timestamp.'.'.$request->getContent(), $secret);
-        $fresh = ctype_digit($timestamp) && abs(time() - (int) $timestamp) <= (int) config('seguimiento.payload.tolerance_seconds', 300);
+        $key = $this->webhook->signedWith((string) $request->header(PayloadWebhook::TIMESTAMP_HEADER, ''), $request->getContent(), (string) $request->header(PayloadWebhook::SIGNATURE_HEADER, ''));
 
-        if ($secret === '' || ! $fresh || ! hash_equals($expected, $signature)) {
+        if ($key === null) {
             $this->remember(false, 'Firma inválida o vencida');
+            $this->webhook->recordRejection();
 
             throw ApiException::unauthorized('WEBHOOK_SIGNATURE', 'La firma del webhook de Payload no es válida o venció.');
         }
+
+        $this->webhook->recordSigned($key, mb_substr((string) $request->input('event', ''), 0, 20), mb_substr((string) $request->input('post.slug', ''), 0, 160), mb_substr((string) $request->input('post.title', ''), 0, 200));
     }
 
     public function handle(Request $request): array
@@ -138,8 +138,8 @@ final class BlogSync
                 'below_minimum' => $posts->where('status', '<>', 'publicado')->where('word_count', '<', 800)->count(),
             ],
             'last_webhook' => $last,
-            'admin_url' => config('seguimiento.payload.admin_url'),
-            'configured' => (string) config('seguimiento.payload.webhook_secret') !== '',
+            'admin_url' => $this->webhook->adminUrl(),
+            'configured' => $this->webhook->configured(),
             'posts' => $posts->map(fn (object $post) => [
                 'payload_id' => $post->payload_id,
                 'slug' => $post->slug,

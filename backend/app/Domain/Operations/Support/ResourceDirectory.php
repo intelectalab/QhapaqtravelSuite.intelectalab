@@ -327,12 +327,12 @@ final class ResourceDirectory
     public function options(): array
     {
         return [
-            'guides' => DB::table('ops_guides')->whereNull('deleted_at')->orderBy('full_name')->get(['id', 'full_name', 'status', 'languages'])
-                ->map(fn (object $row): array => ['value' => $row->id, 'label' => $row->full_name, 'hint' => implode(' · ', $this->languages($row->languages)).' · '.$row->status])->values(),
-            'drivers' => DB::table('ops_drivers')->whereNull('deleted_at')->orderBy('full_name')->get(['id', 'full_name', 'status', 'license_class'])
-                ->map(fn (object $row): array => ['value' => $row->id, 'label' => $row->full_name, 'hint' => trim(($row->license_class ?? '').' · '.$row->status, ' ·')])->values(),
+            'guides' => DB::table('ops_guides')->whereNull('deleted_at')->orderBy('full_name')->get(['id', 'code', 'full_name', 'status', 'languages'])
+                ->map(fn (object $row): array => ['value' => $row->id, 'code' => $row->code, 'label' => $row->full_name, 'hint' => implode(' · ', $this->languages($row->languages)).' · '.$row->status])->values(),
+            'drivers' => DB::table('ops_drivers')->whereNull('deleted_at')->orderBy('full_name')->get(['id', 'code', 'full_name', 'status', 'license_class'])
+                ->map(fn (object $row): array => ['value' => $row->id, 'code' => $row->code, 'label' => $row->full_name, 'hint' => trim(($row->license_class ?? '').' · '.$row->status, ' ·')])->values(),
             'vehicles' => DB::table('ops_vehicles')->whereNull('deleted_at')->orderBy('plate')->get(['id', 'plate', 'vehicle_type', 'capacity', 'status'])
-                ->map(fn (object $row): array => ['value' => $row->id, 'label' => "{$row->plate} · {$row->vehicle_type}", 'hint' => "{$row->capacity} plazas · {$row->status}"])->values(),
+                ->map(fn (object $row): array => ['value' => $row->id, 'code' => $row->plate, 'label' => "{$row->plate} · {$row->vehicle_type}", 'hint' => "{$row->capacity} plazas · {$row->status}"])->values(),
         ];
     }
 

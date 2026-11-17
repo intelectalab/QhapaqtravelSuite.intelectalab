@@ -9,7 +9,6 @@ import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
 import { MiniTable } from "@/components/ui/MiniTable";
 import { TintCardTitle, ToneScope } from "@/components/ui/Tinted";
-import { Button } from "@/components/ui/Button";
 import { AuditCard, StatusHistoryCard } from "@/features/finance/FinanceDetailParts";
 import { RetryPaymentAction } from "@/features/finance/Payments";
 import type { PaymentDetail } from "@/lib/finance";
@@ -56,11 +55,7 @@ export default async function PagoPage({ params }: PageProps<"/finanzas/pagos/[c
                 { label: "Motivo del rechazo", value: row.reject_reason ?? "—" },
                 { label: "Monto", value: formatMoney(row.amount, row.currency), strong: true },
               ]}
-              trigger={(show) => (
-                <Button variant="primary" icon={<RotateCcw size={16} />} onClick={show}>
-                  Reintentar validación
-                </Button>
-              )}
+              button={{ label: "Reintentar validación", icon: <RotateCcw size={16} />, variant: "primary" }}
             />
           ) : undefined
         }

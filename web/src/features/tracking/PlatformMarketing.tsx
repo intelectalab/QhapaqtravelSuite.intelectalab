@@ -1,6 +1,7 @@
 "use client";
 
 import { BadgeCheck, BookOpen, CircleAlert, Coins, ExternalLink, FileWarning, Rocket, Timer, Webhook } from "lucide-react";
+import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
@@ -78,9 +79,14 @@ export function BlogSyncPanel({ status }: { status: BlogSyncStatus }) {
           {status.configured ? <BadgeCheck size={16} className="text-ok" /> : <CircleAlert size={16} className="text-warn" />}
           Los artículos se escriben y publican en Payload; aquí se ve el índice sincronizado y si cumplen las reglas SEO.
         </span>
-        <a href={status.admin_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-accent hover:underline">
-          Abrir panel de Payload <ExternalLink size={13} />
-        </a>
+        <span className="inline-flex flex-wrap items-center gap-3">
+          <Link href="/plataforma/integraciones/blog-de-la-vitrina" className="font-semibold text-accent hover:underline">
+            {status.configured ? "Clave de firma" : "Generar la clave de firma"}
+          </Link>
+          <a href={status.admin_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-accent hover:underline">
+            Abrir panel de Payload <ExternalLink size={13} />
+          </a>
+        </span>
       </div>
       <DataTable screen="vitrina-blog" rows={status.posts} columns={columns} getKey={(row) => row.payload_id ?? row.slug} entityLabel="artículos" searchText={(row) => `${row.title} ${row.slug} ${row.focus_keyword}`} searchPlaceholder="Buscar artículo o slug" emptyTitle="Aún no hay artículos" />
     </div>

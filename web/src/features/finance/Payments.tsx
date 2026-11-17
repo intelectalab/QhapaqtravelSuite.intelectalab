@@ -14,7 +14,7 @@ import { cn } from "@/lib/cn";
 import type { PaymentRow, PaymentsOverview, TransferProofState } from "@/lib/finance";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { statusLabel } from "@/lib/tone";
-import { FinanceStep, SummaryBox } from "./FinanceStep";
+import { FinanceStep, SummaryBox, type StepButton } from "./FinanceStep";
 
 const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es"));
 
@@ -91,9 +91,9 @@ function ReasonStep({ row, step, label, title, description, submitLabel, icon, t
   );
 }
 
-export function RetryPaymentAction({ code, lockVersion, retries, summary, trigger }: { code: string; lockVersion: number; retries: number; summary: { label: string; value: ReactNode; strong?: boolean }[]; trigger?: (open: () => void) => ReactNode }) {
+export function RetryPaymentAction({ code, lockVersion, retries, summary, trigger, button }: { code: string; lockVersion: number; retries: number; summary: { label: string; value: ReactNode; strong?: boolean }[]; trigger?: (open: () => void) => ReactNode; button?: StepButton }) {
   return (
-    <FinanceStep step="payment_retry" itemKey={code} label="Reintentar validación" title="Reintentar validación" description="El pago vuelve a pendiente para validarlo otra vez, por ejemplo cuando el cliente reenvía la constancia." submitLabel="Volver a pendiente" trigger={trigger ?? ((open) => <RowIcon tone="neutral" label="Reintentar validación" icon={<RotateCcw size={15} />} onClick={open} />)}>
+    <FinanceStep button={button} step="payment_retry" itemKey={code} label="Reintentar validación" title="Reintentar validación" description="El pago vuelve a pendiente para validarlo otra vez, por ejemplo cuando el cliente reenvía la constancia." submitLabel="Volver a pendiente" trigger={trigger ?? ((open) => <RowIcon tone="neutral" label="Reintentar validación" icon={<RotateCcw size={15} />} onClick={open} />)}>
       <input type="hidden" name="lock_version" value={lockVersion} />
       <SummaryBox rows={[...summary, { label: "Intentos previos", value: retries }]} />
       <TextArea label="Nota (opcional)" name="note" rows={3} maxLength={500} placeholder="Ejemplo: el cliente envió la constancia correcta" />

@@ -14,6 +14,7 @@ use App\Domain\Platform\Http\Requests\TenantProvisionRequest;
 use App\Domain\Platform\Models\Plan;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Platform\Support\BookingRuleCatalog;
 use App\Domain\Platform\Support\PlatformInvoicer;
 use App\Domain\Platform\Support\TenantBootstrap;
 use App\Domain\Shared\Errors\ApiException;
@@ -39,6 +40,7 @@ final class ProvisionTenant
         private readonly DefaultSequences $sequences,
         private readonly DefaultScheduledJobs $jobs,
         private readonly PlatformInvoicer $invoicer,
+        private readonly BookingRuleCatalog $rules,
     ) {}
 
     public function validate(array $data): void
@@ -126,6 +128,7 @@ final class ProvisionTenant
                     'is_main' => true,
                 ]);
                 (new CrmCatalogSeeder)->run($tenant);
+                $this->rules->fillTenant((string) $tenant->getKey(), null);
                 $this->sequences->sync((string) $tenant->getKey(), CarbonImmutable::now($tenant->timezone ?: 'America/Lima')->year);
                 $this->jobs->sync((string) $tenant->getKey());
                 $template = $data['permission_template'] ?? 'standard';

@@ -66,6 +66,12 @@ export async function savePlatformBranding(_state: AdminActionState, form: FormD
   return send("/branding", "PUT", { brand: text(form, "brand"), accent: text(form, "accent"), menu: text(form, "menu"), tile_variant: text(form, "tile_variant") }, "No pudimos guardar la apariencia.");
 }
 
+export async function choosePlatformLogo(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
+  const result = await send("/branding/logo", "PUT", { mark: text(form, "mark") }, "No pudimos cambiar el logo.");
+  if (result.done) revalidatePath("/", "layout");
+  return result;
+}
+
 export async function resetPlatformBranding(_state: AdminActionState, form: FormData): Promise<AdminActionState> {
   return send("/branding/reset", "POST", { reason: text(form, "reason") }, "No pudimos restablecer la apariencia.");
 }

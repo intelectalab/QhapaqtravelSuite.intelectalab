@@ -16,7 +16,7 @@ import { TextField } from "@/components/ui/TextField";
 import type { CommissionRow, CommissionRule, CommissionsOverview } from "@/lib/finance";
 import { formatDate, formatMoney } from "@/lib/format";
 import { statusLabel } from "@/lib/tone";
-import { FinanceStep, SummaryBox } from "./FinanceStep";
+import { FinanceStep, SummaryBox, type StepButton } from "./FinanceStep";
 
 const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es"));
 
@@ -59,9 +59,9 @@ function PayCommissionAction({ row }: { row: CommissionRow }) {
   );
 }
 
-export function RecalculateCommissionAction({ code, lockVersion, status, summary, trigger }: { code: string; lockVersion: number; status: string; summary: { label: string; value: ReactNode; strong?: boolean }[]; trigger?: (open: () => void) => ReactNode }) {
+export function RecalculateCommissionAction({ code, lockVersion, status, summary, trigger, button }: { code: string; lockVersion: number; status: string; summary: { label: string; value: ReactNode; strong?: boolean }[]; trigger?: (open: () => void) => ReactNode; button?: StepButton }) {
   return (
-    <FinanceStep step="commission_recalculate" itemKey={code} label="Recalcular" title="Recalcular comisión" description="Vuelve a aplicar la regla vigente al total actual de la reserva." submitLabel="Recalcular" trigger={trigger ?? ((open) => <RowIcon tone="neutral" label="Recalcular" icon={<RefreshCw size={15} />} onClick={open} />)}>
+    <FinanceStep button={button} step="commission_recalculate" itemKey={code} label="Recalcular" title="Recalcular comisión" description="Vuelve a aplicar la regla vigente al total actual de la reserva." submitLabel="Recalcular" trigger={trigger ?? ((open) => <RowIcon tone="neutral" label="Recalcular" icon={<RefreshCw size={15} />} onClick={open} />)}>
       <input type="hidden" name="lock_version" value={lockVersion} />
       <SummaryBox rows={summary} />
       {status === "aprobada" && <p className="rounded-xl bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] px-3.5 py-2.5 text-[12.5px] text-fg-2">Ya estaba aprobada: vuelve a revisión y hay que aprobarla de nuevo.</p>}

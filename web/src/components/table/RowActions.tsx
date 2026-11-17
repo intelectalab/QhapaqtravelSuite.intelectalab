@@ -30,15 +30,16 @@ interface RowIconProps {
   disabledHint?: string;
   icon?: ReactNode;
   testId?: string;
+  status?: string;
   opensRow?: boolean;
 }
 
-export function RowIcon({ tone, label, href, onClick, disabledHint, icon, testId, opensRow: explicit }: RowIconProps) {
+export function RowIcon({ tone, label, href, onClick, disabledHint, icon, testId, status, opensRow: explicit }: RowIconProps) {
   const glyph = icon ?? ICONS[tone];
   const rowOpen = (explicit ?? opensRow(tone, label)) ? "" : undefined;
   if (disabledHint) {
     return (
-      <span title={disabledHint} aria-label={disabledHint} data-testid={testId} className={cn(BASE, "cursor-not-allowed bg-surface-2 text-fg-3 opacity-60")}>
+      <span title={disabledHint} aria-label={disabledHint} data-testid={testId} data-status={status} className={cn(BASE, "cursor-not-allowed bg-surface-2 text-fg-3 opacity-60")}>
         {glyph}
       </span>
     );
@@ -52,7 +53,7 @@ export function RowIcon({ tone, label, href, onClick, disabledHint, icon, testId
     );
   }
   return (
-    <button type="button" onClick={onClick} aria-label={label} title={label} data-testid={testId} data-row-open={rowOpen} className={className}>
+    <button type="button" onClick={onClick} aria-label={label} title={label} data-testid={testId} data-status={status} data-row-open={rowOpen} className={className}>
       {glyph}
     </button>
   );

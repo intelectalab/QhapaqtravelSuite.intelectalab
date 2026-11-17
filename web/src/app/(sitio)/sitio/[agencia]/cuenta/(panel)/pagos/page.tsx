@@ -13,6 +13,7 @@ export default async function AccountPaymentsPage({ params }: PageProps<"/sitio/
   const [data, me, profile, base] = await Promise.all([requireAccount<AccountReceivables>(agencia, "/me/receivables?status=open"), requireAccount<AccountMe>(agencia, "/me"), getSiteProfile(agencia), siteBase(agencia)]);
   const payable = data.totals.payable.filter((money) => Number(money.amount) > 0);
   const pending = data.totals.pending.filter((money) => Number(money.amount) > 0);
+  const tours = data.by_tour ?? [];
 
   return (
     <>
@@ -44,6 +45,23 @@ export default async function AccountPaymentsPage({ params }: PageProps<"/sitio/
               <b className="mt-1 block text-[20px] font-bold text-fg">{pending.length > 0 ? pending.map((money) => formatMoney(money.amount, money.currency)).join(" + ") : "—"}</b>
             </div>
           </div>
+
+          {tours.length > 1 && (
+            <div className="lift rounded-card border border-line bg-surface p-4 shadow-card">
+              <span className="text-[12.5px] font-semibold text-fg-3">Monto de cada tour</span>
+              <ul className="mt-2 grid gap-1.5">
+                {tours.map((tour) => (
+                  <li key={tour.code} className="flex items-center justify-between gap-3 rounded-xl px-2.5 py-1.5 text-[13.5px] transition-colors hover:bg-surface-2">
+                    <span className="min-w-0 truncate text-fg-2">
+                      {tour.title} <span className="text-fg-3">· {tour.code}</span>
+                    </span>
+                    <b className="flex-none font-semibold text-fg">{tour.amounts.map((money) => formatMoney(money.amount, money.currency)).join(" + ")}</b>
+                  </li>
+                ))}
+              </ul>
+              {data.split_hint && <p className="mt-2.5 text-[13px] text-fg-2">{data.split_hint}</p>}
+            </div>
+          )}
 
           <ul className="grid gap-4">
             {data.items.map((item) => {

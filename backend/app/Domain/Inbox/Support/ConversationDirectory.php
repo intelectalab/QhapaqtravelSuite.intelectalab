@@ -116,7 +116,7 @@ final class ConversationDirectory
                 'at' => $message->sent_at,
                 'author' => $message->direction === 'in' ? $row->contact_name : ($message->author ?? 'Sistema'),
                 'delivery' => $message->delivery_status,
-                'files' => $files->get($message->id, collect())->map(fn ($file): array => ['id' => $file->id, 'name' => $file->file_name, 'mime' => $file->mime, 'size' => (int) $file->size_bytes, 'available' => $file->scan_status === 'limpio'])->values(),
+                'files' => $files->get($message->id, collect())->map(fn ($file): array => ['id' => $file->id, 'name' => MessageCipher::open($file->file_name), 'mime' => $file->mime, 'size' => (int) $file->size_bytes, 'available' => $file->scan_status === 'limpio'])->values(),
             ])->values(),
             'card' => $this->contact($row),
         ];
@@ -148,7 +148,7 @@ final class ConversationDirectory
         }
 
         $contents = MessageCipher::openFile((string) $disk->get((string) $file->storage_path));
-        $name = (string) $file->file_name;
+        $name = MessageCipher::open($file->file_name);
         $fallback = Str::ascii($name) !== '' ? str_replace(['/', '\\', '%'], '-', Str::ascii($name)) : 'adjunto';
 
         return new StreamedResponse(function () use ($contents): void {
@@ -237,7 +237,7 @@ final class ConversationDirectory
             'channel' => $row->channel,
             'channel_label' => self::CHANNELS[$row->channel] ?? $row->channel,
             'contact' => ['name' => $row->contact_name, 'email' => $row->contact_email, 'phone' => $row->contact_phone],
-            'subject' => $row->subject,
+            'subject' => MessageCipher::open($row->subject),
             'status' => $row->status,
             'status_label' => self::STATUSES[$row->status] ?? $row->status,
             'priority' => $row->priority,

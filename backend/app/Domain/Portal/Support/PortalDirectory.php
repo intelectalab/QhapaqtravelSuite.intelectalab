@@ -307,7 +307,7 @@ final class PortalDirectory
             'trips' => $account->reservations()->map(fn ($row): array => ['code' => $row->code, 'title' => $row->title])->values(),
             'conversations' => $conversations->map(fn ($row): array => [
                 'code' => $row->code,
-                'subject' => $row->subject,
+                'subject' => MessageCipher::open($row->subject),
                 'status' => $row->status,
                 'last_message_at' => $row->last_message_at,
                 'reservation' => $row->reservation,

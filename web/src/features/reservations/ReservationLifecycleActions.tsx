@@ -1,17 +1,21 @@
 "use client";
 
 import { CircleCheck, CircleX, ClipboardList, Flag, PlaneTakeoff, Receipt, Send, UserRoundCog } from "lucide-react";
+import { reservationStep } from "@/app/(backoffice)/reservas/actions";
 import { RowIcon } from "@/components/table/RowActions";
 import { Button } from "@/components/ui/Button";
+import { useQuickAction } from "@/components/ui/QuickAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
+import { TimeField } from "@/components/ui/TimeField";
 import { formatDate } from "@/lib/format";
 import type { Advisor } from "@/lib/leads";
 import type { ReservationDetail, ReservationService } from "@/lib/reservations";
 import { Step } from "./ReservationActions";
 import { ConfirmChecklist } from "./ReservationConfirm";
+import { useReservationLock } from "./ReservationLock";
 
 const LIFT = "transition-transform duration-300 hover:-translate-y-0.5";
 
@@ -123,36 +127,46 @@ function RejectFields({ service, reasons, late }: { service: ReservationService;
   );
 }
 
+function RequestServiceAction({ code, service, subject }: { code: string; service: ReservationService; subject: string }) {
+  const lock = useReservationLock();
+  const { run, pending } = useQuickAction(reservationStep, { message: null, done: false });
+  const request = () => run({ code, step: "service_request", service: service.code, ...(lock === null ? {} : { lock_version: lock }) }, `Solicitud enviada a ${service.provider?.name ?? "el proveedor"}. Le llega un correo con la fecha, la hora y los pasajeros.`);
+  return <RowIcon tone="view" icon={<Send size={15} />} label={`Solicitar al proveedor: ${subject}`} onClick={request} disabledHint={pending ? "Enviando la solicitud…" : undefined} testId={`order-service-request:${service.code}`} />;
+}
+
 export function ServiceRowActions({ code, service, reasons }: { code: string; service: ReservationService; reasons: string[] }) {
   const subject = service.provider ? `${service.name} · ${service.provider.name}` : service.name;
-  if (service.status === "confirmado" && reasons.length > 0)
-    return (
-      <span className="flex flex-none gap-1.5">
-        <Step code={code} step="service_reject" formKey={`${service.code}-late`} label="Rechazo posterior" icon={<CircleX size={15} />} title="Registrar rechazo posterior" description={`${subject} estaba confirmado${service.confirmation ? ` (${service.confirmation})` : ""}. El servicio pasa a rechazado y la reserva vuelve a pendiente de proveedor.`} submitLabel="Registrar rechazo" trigger={(open) => <RowIcon tone="delete" icon={<CircleX size={15} />} label="Registrar rechazo posterior" onClick={open} testId={`service-late-reject:${service.code}`} />}>
-          <RejectFields service={service} reasons={reasons} late />
-        </Step>
-      </span>
-    );
-  if (!OPEN_SERVICE.includes(service.status)) return null;
+  const confirmed = service.status === "confirmado";
+  if (!OPEN_SERVICE.includes(service.status) && !confirmed) return null;
   return (
     <span className="flex flex-none gap-1.5">
       {service.status === "pendiente" &&
         (service.provider?.active ? (
-          <Step code={code} step="service_request" formKey={`${service.code}-request`} label="Solicitar" icon={<Send size={15} />} title="Solicitar al proveedor" description={`${subject}. Le llega un correo con la fecha, la hora y los pasajeros.`} submitLabel="Enviar solicitud" trigger={(open) => <RowIcon tone="view" icon={<Send size={15} />} label="Solicitar al proveedor" onClick={open} testId={`order-service-request:${service.code}`} />}>
-            <input type="hidden" name="service" value={service.code} />
-            <TextArea label="Nota para el proveedor (opcional)" name="note" rows={2} maxLength={500} placeholder="Por ejemplo: grupo con dos niños." />
-          </Step>
+          <RequestServiceAction code={code} service={service} subject={subject} />
         ) : (
           <RowIcon tone="view" icon={<Send size={15} />} label="Solicitar al proveedor" disabledHint={service.provider ? "El proveedor no está activo" : "El servicio no tiene proveedor asignado"} />
         ))}
-      <Step code={code} step="service_confirm" formKey={`${service.code}-confirm`} label="Confirmar" icon={<CircleCheck size={15} />} title="Registrar confirmación" description={subject} submitLabel="Registrar confirmación" trigger={(open) => <RowIcon tone="edit" icon={<CircleCheck size={15} />} label="Registrar confirmación" onClick={open} testId={`order-service-confirm:${service.code}`} />}>
-        <input type="hidden" name="service" value={service.code} />
-        <TextField label="Código de confirmación" name="confirmation_code" required minLength={4} maxLength={40} placeholder="El que dio el proveedor" />
-        <div className="grid grid-cols-2 gap-3">
-          <TextField label="Hora (opcional)" name="time" type="time" defaultValue={service.time ?? ""} />
-          <TextField label="Confirmó (opcional)" name="confirmed_by" maxLength={120} placeholder="Nombre de quien confirmó" />
-        </div>
-      </Step>
+      {confirmed ? (
+        <RowIcon tone="edit" icon={<CircleCheck size={15} />} label="Confirmado" disabledHint={service.confirmation ? `Confirmado por el proveedor con el código ${service.confirmation}` : "Confirmado por el proveedor"} testId={`order-service-confirm:${service.code}`} status={service.status} />
+      ) : (
+        <Step code={code} step="service_confirm" formKey={`${service.code}-confirm`} label="Confirmar" icon={<CircleCheck size={15} />} title="Registrar confirmación" description={subject} submitLabel="Registrar confirmación" successToast="Confirmación del proveedor registrada." trigger={(open) => <RowIcon tone="edit" icon={<CircleCheck size={15} />} label="Registrar confirmación" onClick={open} testId={`order-service-confirm:${service.code}`} status={service.status} />}>
+          {(state) => (
+            <>
+              <input type="hidden" name="service" value={service.code} />
+              <TextField label="Código de confirmación" name="confirmation_code" maxLength={40} placeholder="El que dio el proveedor" error={state.errors?.confirmation_code} />
+              <div className="grid grid-cols-2 gap-3">
+                <TimeField label="Hora (opcional)" name="time" step={5} defaultValue={service.time ?? null} error={state.errors?.time} />
+                <TextField label="Confirmó (opcional)" name="confirmed_by" maxLength={120} placeholder="Nombre de quien confirmó" error={state.errors?.confirmed_by} />
+              </div>
+            </>
+          )}
+        </Step>
+      )}
+      {confirmed && reasons.length > 0 && (
+        <Step code={code} step="service_reject" formKey={`${service.code}-late`} label="Rechazo posterior" icon={<CircleX size={15} />} title="Registrar rechazo posterior" description={`${subject} estaba confirmado${service.confirmation ? ` (${service.confirmation})` : ""}. El servicio pasa a rechazado y la reserva vuelve a pendiente de proveedor.`} submitLabel="Registrar rechazo" trigger={(open) => <RowIcon tone="delete" icon={<CircleX size={15} />} label="Registrar rechazo posterior" onClick={open} testId={`service-late-reject:${service.code}`} />}>
+          <RejectFields service={service} reasons={reasons} late />
+        </Step>
+      )}
       {service.status === "solicitado" && (
         <Step code={code} step="service_reject" formKey={`${service.code}-reject`} label="Rechazo" icon={<CircleX size={15} />} title="Registrar rechazo del proveedor" description={`${subject}. Si la reserva estaba confirmada, vuelve a pendiente de proveedor.`} submitLabel="Registrar rechazo" trigger={(open) => <RowIcon tone="delete" icon={<CircleX size={15} />} label="Registrar rechazo" onClick={open} />}>
           <RejectFields service={service} reasons={reasons} late={false} />

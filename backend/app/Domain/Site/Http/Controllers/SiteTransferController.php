@@ -7,7 +7,7 @@ namespace App\Domain\Site\Http\Controllers;
 use App\Domain\Iam\Models\User;
 use App\Domain\Portal\Support\PortalAccount;
 use App\Domain\Shared\Errors\ApiException;
-use App\Domain\Site\Actions\ReactivateWebReservation;
+use App\Domain\Site\Actions\RecreateWebReservation;
 use App\Domain\Site\Actions\UploadTransferProof;
 use App\Domain\Site\Support\TransferProofs;
 use App\Domain\Site\Support\TransferSettings;
@@ -73,19 +73,16 @@ final class SiteTransferController
         return $proofs->download($code);
     }
 
-    public function reactivation(string $code, ReactivateWebReservation $reactivate): JsonResponse
+    public function recreation(string $code, RecreateWebReservation $recreate): JsonResponse
     {
-        return response()->json(['data' => $reactivate->preview($code)]);
+        return response()->json(['data' => $recreate->preview($code)]);
     }
 
-    public function reactivate(Request $request, string $code, ReactivateWebReservation $reactivate): JsonResponse
+    public function recreate(Request $request, string $code, RecreateWebReservation $recreate): JsonResponse
     {
-        $data = $request->validate([
-            'mode' => ['required', Rule::in(array_keys(ReactivateWebReservation::MODES))],
-            'note' => ['nullable', 'string', 'max:300'],
-        ], ['mode.*' => 'Elige qué hacer con la reserva.', 'note.*' => 'La nota admite hasta 300 caracteres.']);
+        $data = $request->validate(['note' => ['nullable', 'string', 'max:300']], ['note.*' => 'La nota admite hasta 300 caracteres.']);
 
-        return response()->json(['data' => $reactivate->apply($code, $data['mode'], $data['note'] ?? null, $this->user($request))]);
+        return response()->json(['data' => $recreate->apply($code, $data['note'] ?? null, $this->user($request))], 201);
     }
 
     private function file(array $data): UploadedFile

@@ -176,7 +176,7 @@ final class ReservationChanges
     private function productAvailability(object $product, string $date, int $pax): array
     {
         if ($product->availability_model !== 'POR_SALIDA') {
-            return ['ok' => true, 'note' => 'Se pide al proveedor y queda sujeto a su confirmación.'];
+            return ['ok' => true, 'note' => 'Se solicita al proveedor y queda sujeto a confirmación.'];
         }
 
         $departure = DB::table('catalog_product_departures')->where('product_id', $product->id)->where('departure_date', $date)->whereNotIn('status', ['cerrada', 'cancelada'])->first(['ref', 'capacity', 'sold']);

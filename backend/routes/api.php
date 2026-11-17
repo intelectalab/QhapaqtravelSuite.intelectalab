@@ -270,7 +270,7 @@ Route::middleware(['auth:sanctum', 'tenant', 'tenant.db', 'tenant.active', 'perm
 Route::prefix('platform')->name('platform.')->group(function (): void {
     Route::post('auth/login', [PlatformController::class, 'login'])->middleware('throttle:login')->name('auth.login');
 
-    Route::middleware('auth:sanctum')->group(function (): void {
+    Route::middleware(['platform.agency-token', 'auth:sanctum'])->group(function (): void {
         Route::post('auth/mfa/verify', [PlatformController::class, 'verifyMfa'])->middleware(['platform.user:pending', 'ability:mfa:verify', 'throttle:mfa'])->name('auth.mfa.verify');
         Route::post('auth/logout', [PlatformController::class, 'logout'])->middleware('platform.user:pending')->name('auth.logout');
 

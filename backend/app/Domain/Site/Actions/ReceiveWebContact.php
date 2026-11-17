@@ -54,7 +54,7 @@ final class ReceiveWebContact
             'contact_name' => trim($data['name']),
             'contact_email' => $email,
             'contact_phone' => $data['phone'] ?? null,
-            'subject' => Str::limit('Formulario web: '.self::REASONS[$data['reason']].' — '.trim($data['message']), 195),
+            'subject' => MessageCipher::sealLabel(Str::limit('Formulario web: '.self::REASONS[$data['reason']].' — '.trim($data['message']), 195)),
             'status' => 'abierta',
             'priority' => $data['reason'] === 'reserva' ? 'alta' : 'media',
             'tags' => '{Web,Formulario}',

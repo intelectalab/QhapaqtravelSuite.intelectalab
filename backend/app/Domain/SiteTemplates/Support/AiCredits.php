@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\SiteTemplates\Support;
 
+use App\Domain\Platform\Support\AddonPurchases;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
@@ -28,7 +29,45 @@ final class AiCredits
 
     public const LOW_RATIO = 0.2;
 
-    public function __construct(private readonly TenantContext $context, private readonly TemplateCatalog $catalog) {}
+    public const MONTHLY_EXPIRY = 'Créditos mensuales sin usar';
+
+    public function __construct(private readonly TenantContext $context, private readonly TemplateCatalog $catalog, private readonly AddonPurchases $purchases) {}
+
+    private function rolledOver(Carbon $monthStart): bool
+    {
+        return DB::table('fin_ai_credit_ledger')->where('occurred_at', '>=', $monthStart)
+            ->where(fn ($query) => $query->where('movement', 'asignacion_plan')->orWhere(fn ($inner) => $inner->where('movement', 'vencimiento')->where('note', 'like', self::MONTHLY_EXPIRY.'%')))
+            ->exists();
+    }
+
+    private function monthlyGrants(Carbon $monthStart): array
+    {
+        $grants = [];
+        $plan = $this->catalog->tenantPlan($this->context->idOrFail());
+
+        if (($included = self::PLAN_INCLUDED[$plan->code ?? ''] ?? 0) > 0) {
+            $grants[] = ['contenido', $included, null, 'Incluido en el plan '.($plan->name ?? '')];
+        }
+
+        foreach ([self::PLAN_ADDON, 'ai_images'] as $addon) {
+            $item = $this->purchases->activeMonthly($addon);
+            $code = $item !== null ? (json_decode((string) $item->meta, true)['pack'] ?? null) : null;
+            $pack = $code !== null ? $this->packs(false)->firstWhere('code', $code) : null;
+
+            if ($pack === null || DB::table('fin_ai_credit_ledger')->where('pack_id', $pack->id)->where('occurred_at', '>=', $monthStart)->exists()) {
+                continue;
+            }
+
+            $note = ($this->isPlan($pack) ? 'Plan ' : '').$pack->name.' · '.$pack->currency.' '.number_format((float) $pack->price, 2, '.', '').' al mes';
+            $grants[] = [$pack->kind, (int) $pack->credits, $pack->id, $note];
+
+            if (($bonus = self::PLAN_IMAGE_BONUS[$pack->code] ?? 0) > 0) {
+                $grants[] = ['imagenes', $bonus, $pack->id, $note];
+            }
+        }
+
+        return $grants;
+    }
 
     public function balance(string $kind): int
     {
@@ -37,11 +76,60 @@ final class AiCredits
 
     public function ensure(string $kind, int $needed): void
     {
+        $this->grantMonthly();
         $balance = $this->balance($kind);
 
         if ($balance < $needed) {
-            throw new ApiException(429, 'AI_CREDITS_EXHAUSTED', 'AI_CREDITS_EXHAUSTED', 'No tiene créditos de '.mb_strtolower(self::KINDS[$kind]).' suficientes: este pedido usa '.$needed.' y su saldo es '.$balance.'. Compre un paquete para continuar.', [], ['kind' => $kind, 'needed' => $needed, 'balance' => $balance, 'packs' => $this->packs()->where('kind', $kind)->pluck('code')->values()->all()]);
+            $offer = $this->packs()->where('kind', $kind)->sortBy(fn (stdClass $pack): float => (float) $pack->price)->values();
+            $cheapest = $offer->first();
+            $hint = $cheapest !== null ? ' Desde S/ '.number_format((float) $cheapest->price, 2, '.', '').' + IGV en Contenido con IA › Planes y créditos.' : '';
+
+            throw new ApiException(429, 'AI_CREDITS_EXHAUSTED', 'AI_CREDITS_EXHAUSTED', 'No tiene créditos de '.mb_strtolower(self::KINDS[$kind]).' suficientes: este pedido usa '.$needed.' y su saldo es '.$balance.'. Contrate un plan de IA o compre un paquete para continuar.'.$hint, [], [
+                'kind' => $kind,
+                'needed' => $needed,
+                'balance' => $balance,
+                'packs' => $offer->pluck('code')->all(),
+                'offer' => $offer->map(fn (stdClass $pack): array => $this->presentPack($pack))->all(),
+                'manage_path' => '/canales/contenido-ia/planes',
+            ]);
         }
+    }
+
+    public function grantMonthly(): void
+    {
+        $now = Carbon::now($this->context->timezone());
+        $monthStart = $now->copy()->startOfMonth()->utc();
+        $previousStart = $now->copy()->startOfMonth()->subMonthNoOverflow()->utc();
+
+        if ($this->rolledOver($monthStart)) {
+            return;
+        }
+
+        DB::transaction(function () use ($now, $monthStart, $previousStart): void {
+            DB::select('select pg_advisory_xact_lock(hashtext(?))', [$this->context->idOrFail().':ai-credits:grant']);
+
+            if ($this->rolledOver($monthStart)) {
+                return;
+            }
+
+            $monthly = $this->packs(false)->where('billing', 'mensual')->pluck('id')->all();
+            $label = $now->copy()->subMonthNoOverflow()->locale('es')->translatedFormat('F Y');
+
+            foreach (array_keys(self::KINDS) as $kind) {
+                $granted = (int) DB::table('fin_ai_credit_ledger')->where('kind', $kind)->whereBetween('occurred_at', [$previousStart, $monthStart])
+                    ->where(fn ($query) => $query->where('movement', 'asignacion_plan')->orWhere(fn ($inner) => $inner->where('movement', 'compra_paquete')->whereIn('pack_id', $monthly)))->sum('credits');
+                $used = -(int) DB::table('fin_ai_credit_ledger')->where('kind', $kind)->whereBetween('occurred_at', [$previousStart, $monthStart])->whereIn('movement', ['consumo', 'reembolso'])->sum('credits');
+                $leftover = min($this->balance($kind), max(0, $granted - $used));
+
+                if ($leftover > 0) {
+                    $this->append($kind, 'vencimiento', -$leftover, null, null, self::MONTHLY_EXPIRY.' de '.$label);
+                }
+            }
+
+            foreach ($this->monthlyGrants($monthStart) as [$kind, $credits, $packId, $note]) {
+                $this->append($kind, 'asignacion_plan', $credits, $packId, null, $note);
+            }
+        });
     }
 
     public function append(string $kind, string $movement, int $credits, ?string $packId = null, ?string $jobId = null, ?string $note = null, ?string $userId = null): int
@@ -112,6 +200,7 @@ final class AiCredits
 
     public function summary(): array
     {
+        $this->grantMonthly();
         $plan = $this->contractedPlan();
         $monthStart = Carbon::now($this->context->timezone())->startOfMonth()->utc();
         $usage = DB::table('fin_ai_credit_ledger')->where('movement', 'consumo')->where('occurred_at', '>=', $monthStart)->groupBy('kind')->selectRaw('kind, -sum(credits) as used')->pluck('used', 'kind');

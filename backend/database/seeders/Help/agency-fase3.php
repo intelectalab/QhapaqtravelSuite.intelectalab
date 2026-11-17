@@ -43,6 +43,7 @@ return [
     $article('asistente-ia', 'General', '/asistente', 'Asistente con IA', 'Pide al asistente borradores de cotizaciones, respuestas o resúmenes. Nada se aplica sin que lo revises.', [
         ['Hacer un pedido', 'Escribe qué necesitas y elige sobre qué registro trabajar.'],
         ['Aplicar o descartar', 'Revisa el borrador y aplícalo o descártalo. Los datos sensibles del cliente no se envían al asistente.'],
+        ['Aplicar a una cotización ya enviada', 'Si la cotización está en borrador, el texto se agrega a la versión vigente. Si ya la enviaste, aplicar crea una versión nueva en borrador y pide confirmar: el cliente sigue viendo la versión anterior hasta que envíes la nueva. Si el cliente ya la aprobó o hay una aprobación interna pendiente, el aviso sale en rojo y pide un segundo clic porque esa aprobación se anula. Una cotización convertida en reserva no cambia.'],
     ], [
         ['¿Tiene límite?', 'Sí, un cupo mensual según tu plan. Lo ves en la misma pantalla.'],
     ], ['ia', 'asistente', 'borrador', 'cupo']),
@@ -124,7 +125,8 @@ return [
         ['Scripts propios', 'Un script propio pasa por revisión antes de cargarse en el sitio.'],
     ], [
         ['¿Se cargan sin permiso del visitante?', 'No. Las de marketing esperan el consentimiento, y en el pago no se carga ninguna.'],
-    ], ['pixel', 'analytics', 'meta', 'conversiones', 'cookies']),
+        ['¿Qué proveedores tengo en mi plan?', 'Starter usa Google Analytics 4, Google Tag Manager y Meta Pixel desde el navegador. Google Ads, TikTok, LinkedIn, Clarity, scripts propios y el envío desde el servidor piden Professional, Enterprise o el complemento Marketing Pro (S/ 39 al mes + IGV, en Suscripción y uso).'],
+    ], ['pixel', 'analytics', 'meta', 'conversiones', 'cookies', 'marketing pro']),
     $article('canales-aventuras', 'Canales', '/canales/aventuras', 'Blog de aventuras', 'Publica historias de tus viajeros en el sitio, con su consentimiento.', [
         ['Escribir una historia', 'Crea la historia con fotos y el tour relacionado.'],
         ['Pedir consentimiento', 'Envíala al cliente para que la apruebe desde su portal.'],
@@ -147,8 +149,9 @@ return [
     $article('reportes-visitas', 'Inteligencia', '/reportes/visitas', 'Visitas del sitio', 'Cuántas personas visitan tu sitio, qué páginas ven, de dónde llegan y desde qué dispositivo. Se mide sin cookies.', [
         ['Elegir el periodo', 'Cambia entre 7, 30 y 90 días.'],
         ['Explorar', 'Revisa la tendencia, las visitas en vivo, las páginas, las fuentes, los dispositivos y los países.'],
-        ['Exportar', 'Descarga los datos en CSV.'],
+        ['Exportar', 'Descarga los datos en CSV desde Professional o con Marketing Pro.'],
     ], [
         ['¿Coincide con Google Analytics?', 'No exactamente: aquí se cuenta sin cookies, así que suele mostrar algo más de visitas.'],
-    ], ['visitas', 'analitica', 'trafico', 'paginas']),
+        ['¿Cuánto historial veo?', 'En Starter, los últimos 30 días sin exportación. En Professional, Enterprise o con Marketing Pro, 13 meses con exportación en CSV.'],
+    ], ['visitas', 'analitica', 'trafico', 'paginas', 'marketing pro']),
 ];

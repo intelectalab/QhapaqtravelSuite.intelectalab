@@ -126,7 +126,6 @@ export interface NoShow {
   note: string | null;
   advisor_notified: boolean;
   incident: string | null;
-  charge: { receivable: string; status: string; pct: number; amount: string; currency: string } | null;
   voided_at: string | null;
   void_reason: string | null;
 }

@@ -11,6 +11,7 @@ use App\Domain\Platform\Actions\UpdatePlatformSettings;
 use App\Domain\Platform\Models\PlatformUser;
 use App\Domain\Platform\Support\OutgoingMail;
 use App\Domain\Platform\Support\PlatformBranding;
+use App\Domain\Platform\Support\PlatformLogo;
 use App\Domain\Platform\Support\PlatformNotifications;
 use App\Domain\Platform\Support\PlatformSearch;
 use App\Domain\Platform\Support\PlatformSettings;
@@ -64,6 +65,14 @@ final class PlatformSettingsController
         $branding->reset($data['reason'], $this->user($request));
 
         return response()->json(['data' => ['reset' => true]]);
+    }
+
+    public function saveLogo(Request $request, PlatformLogo $logo): JsonResponse
+    {
+        $data = $request->validate(['mark' => ['required', Rule::in(array_keys(PlatformLogo::MARKS))]], ['mark.*' => 'Elige uno de los logos disponibles.']);
+        $logo->choose($data['mark'], $this->user($request));
+
+        return response()->json(['data' => $logo->overview()]);
     }
 
     public function updateFormProtection(Request $request, UpdateFormProtection $forms): JsonResponse

@@ -81,7 +81,7 @@ it('órdenes: la orden avanza con su versión y la versión vieja responde 409 S
     withinTenant(tenantA(), fn () => DB::table('ops_orders')->where('code', 'OP-2026-0414')->update(['status' => 'planificada']));
     $version = lockOf('ops_orders', 'OP-2026-0414');
     expect($this->getJson('/api/v1/ops/orders/OP-2026-0414')->assertOk()->json('data.lock_version'))->toBe($version)
-        ->and(collect($this->getJson('/api/v1/ops/orders')->assertOk()->json('data.items'))->firstWhere('code', 'OP-2026-0414')['lock_version'])->toBe($version);
+        ->and(collect($this->getJson('/api/v1/ops/orders?page[size]=100')->assertOk()->json('data'))->firstWhere('code', 'OP-2026-0414')['lock_version'])->toBe($version);
 
     $this->postJson('/api/v1/ops/orders/OP-2026-0414/to-assignment', [], critical($version))->assertOk();
     expect(lockOf('ops_orders', 'OP-2026-0414'))->toBe($version + 1);

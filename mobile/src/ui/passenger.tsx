@@ -7,7 +7,9 @@ import { dayLabel } from "../format";
 import { colors, font, radius, space, type Tone } from "../theme";
 import { Card, Empty, Pill } from "./components";
 
-const KIND_ICON: Record<string, "bed-outline" | "bus-outline" | "walk-outline" | "restaurant-outline" | "airplane-outline" | "ticket-outline"> = {
+type IconName = "bed-outline" | "bus-outline" | "walk-outline" | "restaurant-outline" | "airplane-outline" | "ticket-outline" | "train-outline";
+
+const KIND_ICON: Record<string, IconName> = {
   alojamiento: "bed-outline",
   traslado: "bus-outline",
   transporte: "bus-outline",
@@ -15,6 +17,8 @@ const KIND_ICON: Record<string, "bed-outline" | "bus-outline" | "walk-outline" |
   alimentacion: "restaurant-outline",
   vuelo: "airplane-outline",
 };
+
+const MODE_ICON: Record<string, IconName> = { vuelo: "airplane-outline", bus: "bus-outline", tren: "train-outline" };
 
 const STATE_TONE: Record<string, Tone> = { confirmado: "ok", completado: "ok", en_curso: "sun", pendiente: "warn", solicitado: "warn", cancelado: "bad" };
 
@@ -27,7 +31,7 @@ export function ServiceCard({ service, showDay = false, expandable = false }: { 
     <>
       <View style={styles.row}>
         <View style={styles.icon}>
-          <Ionicons name={KIND_ICON[service.kind] ?? "ticket-outline"} size={20} color={colors.accent} />
+          <Ionicons name={(service.mode ? MODE_ICON[service.mode] : undefined) ?? KIND_ICON[service.kind] ?? "ticket-outline"} size={20} color={colors.accent} />
         </View>
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={styles.name}>{service.name}</Text>

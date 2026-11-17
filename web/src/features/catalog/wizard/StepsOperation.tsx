@@ -11,6 +11,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
+import { TimeField } from "@/components/ui/TimeField";
 import { SeasonCreateAction } from "@/features/catalog-rates/RateForms";
 import { cn } from "@/lib/cn";
 import { AVAILABILITY_HINT, AVAILABILITY_LABEL, type ItineraryItemDraft, type ProductComponentDraft, type ProductRateDraft, type ProductReview } from "@/lib/catalog";
@@ -160,7 +161,7 @@ export function ItineraryStep({ draft, set, options, errors }: StepProps) {
                   return (
                     <div className="flex flex-col gap-3">
                       <div className="grid gap-3 sm:grid-cols-[120px_minmax(0,1fr)] lg:grid-cols-[120px_minmax(0,1.4fr)_180px_minmax(0,1fr)]">
-                        <TextField label="Hora" name={`${base}.time`} type="time" value={item.time ?? ""} error={errors[`${base}.time`]} onChange={(event) => change({ time: event.target.value || null })} />
+                        <TimeField label="Hora" name={`${base}.time`} step={5} value={item.time ?? null} error={errors[`${base}.time`]} onChange={(next) => change({ time: next })} />
                         <TextField label="Actividad" name={`${base}.activity`} value={item.activity} error={errors[`${base}.activity`]} placeholder="Qué se hace" onChange={(event) => change({ activity: event.target.value })} />
                         <SelectField label="Tipo" name={`${base}.type`} value={item.type ?? ""} options={options.item_types.map((value) => ({ value, label: value }))} onChange={(value) => change({ type: value })} />
                         <TextField label="Ubicación" name={`${base}.location`} value={item.location ?? ""} placeholder="Opcional" onChange={(event) => change({ location: event.target.value })} />

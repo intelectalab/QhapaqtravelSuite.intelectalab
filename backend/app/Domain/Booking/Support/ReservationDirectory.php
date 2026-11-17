@@ -11,6 +11,7 @@ use App\Domain\Booking\Enums\ReservationStatus;
 use App\Domain\Crm\Support\Portfolio;
 use App\Domain\Finance\Support\NetSales;
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Audit\AuditActorName;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Http\CursorPage;
 use App\Domain\Shared\Tenancy\TenantContext;
@@ -45,6 +46,7 @@ final class ReservationDirectory
             $view = $this->view($viewer, $row->owner_id);
 
             return [
+                'id' => (string) $row->id,
                 ...$this->summary($row, $view),
                 'passengers' => (int) $row->passengers_count,
                 ...($view['price'] ? ['balance_pen' => (int) round((float) $row->balance_pen)] : []),
@@ -88,7 +90,7 @@ final class ReservationDirectory
             ->where(fn (Builder $where): Builder => $where->where(fn (Builder $own): Builder => $own->where('e.entity', 'Reserva')->where('e.entity_id', $row->code))
                 ->orWhere(fn (Builder $service): Builder => $service->where('e.entity', 'Servicio reserva')->whereIn('e.entity_id', $services ?: ['']))
                 ->orWhere(fn (Builder $receivable): Builder => $receivable->where('e.entity', 'Cuenta por cobrar')->whereIn('e.entity_id', $receivables ?: [''])))
-            ->select(['e.id', 'e.code', 'e.entity', 'e.entity_id', 'e.action', 'e.before_value', 'e.after_value', 'e.actor_type', 'e.occurred_at', 'e.ip', 'e.correlation_id', 'u.name as actor_name']);
+            ->select(['e.id', 'e.code', 'e.entity', 'e.entity_id', 'e.action', 'e.before_value', 'e.after_value', 'e.actor_type', 'e.actor_role', 'e.occurred_at', 'e.ip', 'e.correlation_id', 'u.name as actor_name']);
 
         return CursorPage::respond($request, $query, ['occurred_at' => 'e.occurred_at'], '-occurred_at', fn (object $event): array => [
             'id' => $event->id,
@@ -100,7 +102,7 @@ final class ReservationDirectory
             'action' => $event->action,
             'before' => $event->before_value,
             'after' => $event->after_value,
-            'actor' => $event->actor_name ?? ($event->actor_type === 'system' ? 'Sistema' : null),
+            'actor' => AuditActorName::of($event->actor_name, $event->actor_type, $event->actor_role),
             'occurred_at' => $event->occurred_at,
         ]);
     }
@@ -138,6 +140,8 @@ final class ReservationDirectory
             'sede' => $row->sede_name,
             'quote' => $row->quote_id ? DB::table('quote_quotes')->where('id', $row->quote_id)->first(['code', 'title']) : null,
             'cancel_reason' => $row->cancel_reason,
+            'replaces' => DB::table('booking_reservations')->whereIn('id', DB::table('booking_reservations')->where('id', $row->id)->whereNotNull('replaces_reservation_id')->select('replaces_reservation_id'))->value('code'),
+            'replaced_by' => DB::table('booking_reservations')->where('replaces_reservation_id', $row->id)->whereNull('deleted_at')->value('code'),
             ...($view['margin'] ? ['margin_pct' => $price > 0 ? round(($price - $cost) / $price * 100, 1) : null, 'economics' => ['sale_net' => round($price, 2), 'cost' => round($cost, 2), 'profit' => round($price - $cost, 2)]] : []),
             'passengers' => DB::table('booking_passengers')->where('reservation_id', $row->id)->orderBy('seq')
                 ->get(['id', 'full_name', 'doc_type', 'doc_number', 'pax_type', 'nationality', 'birth_date', 'age', 'phone', 'email', 'diet_notes', 'relationship', 'is_lead', 'is_placeholder'])
@@ -276,6 +280,14 @@ final class ReservationDirectory
 
         if (isset($filters['channel'])) {
             $query->whereIn('r.channel', array_map('trim', explode(',', $filters['channel'])));
+        }
+
+        if (isset($filters['code'])) {
+            $query->where('r.code', $filters['code']);
+        }
+
+        if (isset($filters['quote'])) {
+            $query->whereExists(fn (Builder $quote): Builder => $quote->from('quote_quotes as qf')->whereColumn('qf.id', 'r.quote_id')->where(Str::isUuid($filters['quote']) ? 'qf.id' : 'qf.code', $filters['quote']));
         }
 
         if (isset($filters['q'])) {

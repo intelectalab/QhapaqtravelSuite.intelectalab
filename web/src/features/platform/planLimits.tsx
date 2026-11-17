@@ -1,4 +1,4 @@
-import { CalendarCheck, Cloud, Gauge, HardDrive, KeyRound, Mail, MessageCircle, Store, Users, Webhook, type LucideIcon } from "lucide-react";
+import { CalendarCheck, Cloud, Gauge, HardDrive, KeyRound, Mail, MessageCircle, Sparkles, Store, Users, Webhook, type LucideIcon } from "lucide-react";
 import { formatNumber } from "@/lib/format";
 import type { PlanMetric, PlanSummary } from "@/lib/platform";
 import type { Tone } from "@/lib/tone";
@@ -24,6 +24,7 @@ export const PLAN_LIMITS: PlanLimitInfo[] = [
   { metric: "api_rate_per_min", label: "Llamadas por minuto", hint: "Máximo de consultas a la API en un minuto.", icon: Gauge, tone: "t3" },
   { metric: "webhooks", label: "Webhooks", hint: "Avisos automáticos a otros sistemas.", icon: Webhook, tone: "violet" },
   { metric: "api_keys", label: "Llaves de API", hint: "Accesos para conectar otros sistemas.", icon: KeyRound, tone: "sun" },
+  { metric: "ai_requests", label: "Pedidos de IA al mes", hint: "Pedidos al asistente de ventas y al importador de productos. Al 80 % se avisa y al llegar al cupo se pausan hasta el mes siguiente.", icon: Sparkles, tone: "violet" },
 ];
 
 export const KEY_LIMITS = PLAN_LIMITS.filter((limit) => limit.key);

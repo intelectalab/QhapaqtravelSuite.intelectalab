@@ -37,7 +37,7 @@ export async function changeTenantStatus(_state: StatusState, form: FormData): P
   return { message: null, done: true };
 }
 
-const LIMIT_METRICS = ["users", "sedes", "storage_gb", "reservations_month", "whatsapp_month", "email_month", "api_calls_month", "api_rate_per_min", "webhooks", "api_keys"] as const;
+const LIMIT_METRICS = ["users", "sedes", "storage_gb", "reservations_month", "whatsapp_month", "email_month", "api_calls_month", "api_rate_per_min", "webhooks", "api_keys", "ai_requests"] as const;
 
 const amount = (label: string) => z.coerce.number({ message: `Escribe ${label}.` }).min(0, `${label[0].toUpperCase()}${label.slice(1)} no puede ser negativo.`);
 

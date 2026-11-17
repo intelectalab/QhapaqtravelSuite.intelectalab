@@ -71,6 +71,7 @@ export const R = {
 export const API = {
   login: '/auth/login',
   mfaVerify: '/auth/mfa/verify',
+  platformMfaVerify: '/platform/auth/mfa/verify',
   passengerLink: '/portal/passenger/auth/link',
   passengerVerify: '/portal/passenger/auth/verify',
   reservation: (id: string) => `/reservations/${id}`,

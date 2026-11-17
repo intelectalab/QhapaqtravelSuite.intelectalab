@@ -17,7 +17,7 @@ import { NoShowAction, NoShowsCard } from "./NoShows";
 import { TimeSlot } from "./OpsBits";
 import { AssignmentControls, CheckinAction, CloseChecklist, TaskList } from "./OrderActions";
 import { RoomingPrefillAction } from "./Rooming";
-import { PendingVouchers } from "./Vouchers";
+import { PendingVouchers, ServiceIssueAction } from "./Vouchers";
 
 export function ClientOperationData({ order }: { order: OrderDetail }) {
   const web = order.web;
@@ -51,6 +51,20 @@ export function ClientOperationData({ order }: { order: OrderDetail }) {
       </div>
     </Card>
   );
+}
+
+const VOUCHER_READY = ["confirmado", "completado"];
+
+function ServiceVoucher({ order, service }: { order: OrderDetail; service: OrderDetail["services"][number] }) {
+  const voucher = order.vouchers.find((item) => item.service_code === service.code && item.status !== "anulado");
+  if (voucher)
+    return (
+      <span data-testid={`voucher-code:${service.code}`} title={`Voucher vigente · versión ${voucher.version}`} className="inline-flex flex-none items-center gap-1 rounded-full bg-[color-mix(in_srgb,var(--ok)_12%,transparent)] px-2.5 py-1 font-mono text-[11.5px] font-semibold text-ok">
+        {voucher.code}
+      </span>
+    );
+  if (!order.can.vouchers || ["completada", "cancelada"].includes(order.status) || !VOUCHER_READY.includes(service.status) || service.kind === "libre" || service.replaced || !service.provider) return null;
+  return <ServiceIssueAction service={{ code: service.code, name: service.name, status: service.status, confirmation: service.confirmation, provider: { name: service.provider.name }, reservation: { code: order.reservation.code } }} />;
 }
 
 export function ServicesSection({ order, editable }: { order: OrderDetail; editable: boolean }) {
@@ -140,7 +154,8 @@ export function ServicesSection({ order, editable }: { order: OrderDetail; edita
               {order.can.services && !["completada", "cancelada"].includes(order.status) && (
                 <ServiceRowActions code={order.reservation.code} service={{ code: service.code, name: service.name, date: service.date, time: service.time, kind: service.kind, status: service.status, confirmation: service.confirmation, reject_reason: service.reject_reason, replaced: service.replaced, provider: service.provider ? { name: service.provider.name, active: service.provider.active } : null, cost: service.cost, currency: service.currency }} reasons={order.reject_reasons} />
               )}
-              {editable && <ServiceCompleteAction service={service} today={order.today} orderCode={order.code} />}
+              <ServiceVoucher order={order} service={service} />
+              {editable && <ServiceCompleteAction service={service} order={order} />}
               {editable && <NoShowAction order={order} service={service} />}
             </li>
           ))}

@@ -16,10 +16,10 @@ import { TextField } from "@/components/ui/TextField";
 import { TintTile } from "@/components/ui/Tinted";
 import { DetailPanel } from "@/features/channels/ChannelUi";
 import { cn } from "@/lib/cn";
-import type { BankAccountOption, PayableRow, PayablesOverview } from "@/lib/finance";
+import type { BankAccountOption, PayableRow, PayablesOverview, SettlementDetail } from "@/lib/finance";
 import { formatDate, formatMoney } from "@/lib/format";
 import { statusLabel } from "@/lib/tone";
-import { FinanceStep, SummaryBox } from "./FinanceStep";
+import { FinanceStep, QuickFinanceStep, SummaryBox, type StepButton } from "./FinanceStep";
 
 const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es"));
 
@@ -37,21 +37,28 @@ function payableSummary(row: PayableRow) {
   ];
 }
 
-function CostFields({ options, today, usdRate, row }: { options: PayablesOverview["options"]; today: string; usdRate: number; row?: PayableRow }) {
-  const [currency, setCurrency] = useState(row?.currency ?? "PEN");
+export interface CostFieldOptions {
+  providers: { value: string; label: string }[];
+  cost_types: { value: string; label: string }[];
+  reservations?: (PayablesOverview["options"]["reservations"][number])[];
+}
+
+export function CostFields({ options, today, usdRate, row, reservation, defaultProvider }: { options: CostFieldOptions; today: string; usdRate: number; row?: PayableRow; reservation?: { code: string; currency: string }; defaultProvider?: string | null }) {
+  const [currency, setCurrency] = useState(row?.currency ?? reservation?.currency ?? "PEN");
+  const reservations = options.reservations ?? [];
   return (
     <>
-      <SelectField label="Reserva" name="reservation" options={options.reservations} defaultValue={row?.reservation?.code} placeholder="Elige la reserva" onChange={(value) => setCurrency(options.reservations.find((option) => option.value === value)?.currency ?? currency)} />
-      <SelectField label="Proveedor" name="provider" options={options.providers} defaultValue={row?.provider.ref} placeholder="Elige el proveedor" hint="Solo proveedores activos." />
+      {reservation ? <input type="hidden" name="reservation" value={reservation.code} /> : <SelectField label="Reserva" name="reservation" options={reservations} defaultValue={row?.reservation?.code} placeholder="Elige la reserva" onChange={(value) => setCurrency(reservations.find((option) => option.value === value)?.currency ?? currency)} />}
+      <SelectField label="Proveedor" name="provider" options={options.providers} defaultValue={row?.provider.ref ?? defaultProvider ?? undefined} placeholder="Elige el proveedor" hint={reservation && defaultProvider ? "Propuesto: el proveedor con mayor costo en esta reserva." : "Solo proveedores activos."} />
       <SelectField label="Tipo de costo" name="cost_type" options={options.cost_types} defaultValue={row?.cost_type ?? options.cost_types[0]?.value} />
-      <TextField label="Concepto" name="concept" required maxLength={255} defaultValue={row?.concept} placeholder="Ejemplo: traslado adicional aeropuerto por cambio de vuelo" />
+      <TextField label="Concepto" name="concept" required maxLength={255} defaultValue={row?.concept ?? (reservation ? `Costo adicional de ${reservation.code}` : undefined)} placeholder="Ejemplo: traslado adicional aeropuerto por cambio de vuelo" />
       <ChoiceGroup key={currency} label="Moneda" name="currency" options={[{ value: "PEN", label: "Soles" }, { value: "USD", label: "Dólares" }]} defaultValue={currency} onChange={setCurrency} />
       <div className="grid grid-cols-2 gap-3">
         <TextField label="Importe" name="amount" type="number" step="0.01" min="0.01" required defaultValue={row ? row.amount.toFixed(2) : undefined} />
         <DateField label="Vence" name="due_date" min={row ? undefined : today} required={Boolean(row)} defaultValue={row?.due_date ?? addDays(today, 15)} />
       </div>
       {currency === "USD" && <TextField label="Tipo de cambio" name="fx_rate" type="number" step="0.0001" min="0.5" max="20" defaultValue={String(row?.fx_rate ?? usdRate)} />}
-      <TextField label="Documento del proveedor (opcional)" name="supplier_doc" maxLength={30} defaultValue={row?.supplier_doc ?? ""} placeholder="F001-000123" />
+      <TextField label="Documento del proveedor (opcional)" name="provider_invoice" maxLength={30} defaultValue={row?.supplier_doc ?? ""} placeholder="F001-000123" />
       <TextArea label="Sustento (opcional)" name="evidence" rows={3} maxLength={1000} defaultValue={row?.evidence ?? ""} />
       <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[12.5px] text-fg-2">{row ? "Mientras no se apruebe, el costo se puede reasignar a otra reserva o proveedor." : "El costo nace abierto y solo impacta la rentabilidad de la reserva cuando se aprueba."}</p>
     </>
@@ -60,7 +67,7 @@ function CostFields({ options, today, usdRate, row }: { options: PayablesOvervie
 
 export function CreateCostAction({ data }: { data: PayablesOverview }) {
   return (
-    <FinanceStep step="payable_create" label="Registrar costo" icon={<FilePlus2 size={16} />} variant="primary" title="Registrar costo adicional" description="Un gasto no previsto de una reserva que se debe pagar a un proveedor." submitLabel="Registrar costo">
+    <FinanceStep step="payable_create" label="Registrar costo" icon={<FilePlus2 size={16} />} variant="primary" title="Registrar costo adicional" description="Un gasto no previsto de una reserva que se debe pagar a un proveedor." submitLabel="Registrar costo" successToast="Costo registrado. Resta margen cuando se aprueba.">
       <CostFields options={data.options} today={data.today} usdRate={data.usd_rate} />
     </FinanceStep>
   );
@@ -86,7 +93,7 @@ function EditPayableAction({ row, data }: { row: PayableRow; data: PayablesOverv
       </div>
       {row.managed && <input type="hidden" name="due_date" value={row.due_date} />}
       {row.managed && <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[12.5px] text-fg-2">Esta obligación se genera desde el servicio {row.service?.code} y se ajusta sola mientras no esté aprobada. Para pagar en otra fecha, apruébala y programa el pago; una diferencia de precio se registra como costo adicional.</p>}
-      <TextField label="Documento del proveedor" name="supplier_doc" maxLength={30} defaultValue={row.supplier_doc ?? ""} placeholder="F001-000123" />
+      <TextField label="Documento del proveedor" name="provider_invoice" maxLength={30} defaultValue={row.supplier_doc ?? ""} placeholder="F001-000123" />
       <TextArea label="Sustento" name="evidence" rows={3} maxLength={1000} defaultValue={row.evidence ?? ""} />
     </FinanceStep>
   );
@@ -102,10 +109,10 @@ function ApprovePayableAction({ row }: { row: PayableRow }) {
   );
 }
 
-export function SchedulePayableAction({ row, banks, today, trigger }: { row: Pick<PayableRow, "code" | "concept" | "balance" | "currency" | "lock_version" | "scheduled_date" | "scheduled_account" | "due_date"> & { provider: { name: string } }; banks: BankAccountOption[]; today: string; trigger?: (open: () => void) => ReactNode }) {
+export function SchedulePayableAction({ row, banks, today, trigger, button }: { row: Pick<PayableRow, "code" | "concept" | "balance" | "currency" | "lock_version" | "scheduled_date" | "scheduled_account" | "due_date"> & { provider: { name: string } }; banks: BankAccountOption[]; today: string; trigger?: (open: () => void) => ReactNode; button?: StepButton }) {
   const accounts = banks.filter((bank) => bank.currency === row.currency);
   return (
-    <FinanceStep step="payable_schedule" itemKey={row.code} label="Programar pago" title="Programar pago" description="Fija la fecha y la cuenta desde la que se pagará. Aparece en el flujo proyectado." submitLabel={row.scheduled_date ? "Reprogramar" : "Programar"} trigger={trigger ?? ((open) => <RowIcon tone="neutral" label={row.scheduled_date ? "Reprogramar pago" : "Programar pago"} icon={<CalendarClock size={15} />} onClick={open} />)}>
+    <FinanceStep button={button} step="payable_schedule" itemKey={row.code} label="Programar pago" title="Programar pago" description="Fija la fecha y la cuenta desde la que se pagará. Aparece en el flujo proyectado." submitLabel={row.scheduled_date ? "Reprogramar" : "Programar"} trigger={trigger ?? ((open) => <RowIcon tone="neutral" label={row.scheduled_date ? "Reprogramar pago" : "Programar pago"} icon={<CalendarClock size={15} />} onClick={open} />)}>
       <input type="hidden" name="lock_version" value={row.lock_version} />
       <SummaryBox rows={[{ label: "Obligación", value: `${row.code} · ${row.concept}` }, { label: "Proveedor", value: row.provider.name }, { label: "Vence", value: formatDate(row.due_date) }, { label: "Saldo", value: formatMoney(row.balance, row.currency), strong: true }]} />
       <DateField label="Fecha programada" name="scheduled_date" required min={today} defaultValue={row.scheduled_date ?? (row.due_date >= today ? row.due_date : today)} />
@@ -436,4 +443,16 @@ export function PayablesTable({ data }: { data: PayablesOverview }) {
       sorts={sorts}
     />
   );
+}
+
+export function ReservationCostAction({ reservation, form }: { reservation: { code: string; currency: string }; form: NonNullable<SettlementDetail["cost_form"]> }) {
+  return (
+    <FinanceStep step="payable_create" itemKey={reservation.code} label="Registrar costo" title="Registrar costo adicional" description={`Un gasto no previsto de ${reservation.code} que se debe pagar a un proveedor.`} submitLabel="Registrar costo" successToast="Costo registrado. Resta margen cuando se aprueba." button={{ label: "Registrar costo", icon: <FilePlus2 size={16} />, variant: "primary", testId: "cost-register" }}>
+      <CostFields options={form} today={form.today} usdRate={form.usd_rate} reservation={reservation} defaultProvider={form.default_provider} />
+    </FinanceStep>
+  );
+}
+
+export function ApproveCostButton({ code, lockVersion }: { code: string; lockVersion: number }) {
+  return <QuickFinanceStep step="payable_approve" itemKey={code} values={{ lock_version: lockVersion }} successToast={`Costo ${code} aprobado. Ya resta en la rentabilidad.`} button={{ label: "Aprobar", icon: <Stamp size={15} />, testId: "cost-approve" }} />;
 }

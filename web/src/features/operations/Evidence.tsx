@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type DragEvent } from "react";
 import { uploadEvidence, type OpsState } from "@/app/(backoffice)/operaciones/actions";
 import { RowIcon } from "@/components/table/RowActions";
+import { Badge } from "@/components/ui/Badge";
 import { SelectField } from "@/components/ui/SelectField";
 import { SOFT_TINT } from "@/components/ui/Tinted";
 import { TextArea } from "@/components/ui/TextArea";
@@ -20,7 +21,36 @@ const KIND_LABEL: Record<string, string> = { "application/pdf": "PDF" };
 
 const extensionLabel = (rules: EvidenceRules) => [...new Set(rules.mimes.map((mime) => KIND_LABEL[mime] ?? mime.replace("image/", "").replace("jpeg", "jpg").toUpperCase()))].join(", ");
 
-export function ServiceCompleteAction({ service, today, orderCode }: { service: Service; today: string; orderCode: string }) {
+function pendingNoShows(order: OrderDetail, service: Service) {
+  const assignment = order.assignments.find((item) => item.service_code === service.code);
+  const present = new Set(assignment?.checked_in ?? []);
+  if (!assignment || present.size === 0) return null;
+  const registered = new Set(order.no_shows.filter((item) => item.service.code === service.code).map((item) => item.passenger.id));
+  return order.passengers.filter((passenger) => !present.has(passenger.id) && !registered.has(passenger.id));
+}
+
+function NoShowPreview({ order, service }: { order: OrderDetail; service: Service }) {
+  const absent = pendingNoShows(order, service);
+  if (absent === null) return <ConfirmNote>Nadie tiene check-in en este servicio, así que no se registra ningún no-show automático. Si alguien no se presentó, regístralo con «Registrar no-show».</ConfirmNote>;
+  if (absent.length === 0) return <ConfirmNote>Todos los pasajeros tienen check-in o ya figuran como no-show.</ConfirmNote>;
+  return (
+    <ConfirmNote tone="warn">
+      <span className="block font-semibold">
+        {absent.length === 1 ? "Quedará como no-show 1 pasajero sin check-in" : `Quedarán como no-show ${absent.length} pasajeros sin check-in`}
+      </span>
+      <span className="mt-1.5 flex flex-wrap gap-1.5">
+        {absent.map((passenger) => (
+          <Badge key={passenger.id} tone="warn" dot={false}>
+            {passenger.full_name}
+          </Badge>
+        ))}
+      </span>
+    </ConfirmNote>
+  );
+}
+
+export function ServiceCompleteAction({ service, order }: { service: Service; order: OrderDetail }) {
+  const { today, code: orderCode } = order;
   if (!COMPLETABLE_SERVICE.includes(service.status)) return null;
   if (service.date > today) return <RowIcon tone="neutral" label="Marcar como completado" icon={<CheckCheck size={15} />} disabledHint={`Podrás completarlo desde el ${formatDate(service.date)}`} />;
   return (
@@ -36,6 +66,7 @@ export function ServiceCompleteAction({ service, today, orderCode }: { service: 
       trigger={(open) => <RowIcon tone="view" label="Marcar como completado" icon={<CheckCheck size={15} />} onClick={open} />}
     >
       <ConfirmNote>El servicio queda como prestado y, si tiene guía, conductor o vehículo, su asignación se da por finalizada. Es una de las condiciones para cerrar la operación.</ConfirmNote>
+      <NoShowPreview order={order} service={service} />
       <TextArea label="Observación" name="note" rows={3} maxLength={500} hint="Opcional. Queda en el historial del servicio." placeholder="El grupo llegó con 20 minutos de retraso; el proveedor cumplió el itinerario." />
     </OpsStep>
   );

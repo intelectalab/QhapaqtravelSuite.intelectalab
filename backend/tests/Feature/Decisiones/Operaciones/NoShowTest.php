@@ -42,7 +42,7 @@ it('G3-28: registra el no-show por pasajero desde la orden, avisa al asesor y pe
     $defaults = $this->getJson('/api/v1/settings')->assertOk()->json('data.sections.operations.values');
     expect($defaults['noshow_notify_advisor'])->toBeTrue()
         ->and($defaults['noshow_incident'])->toBeFalse()
-        ->and($defaults['noshow_charge'])->toBeFalse();
+        ->and($defaults)->not->toHaveKey('noshow_charge');
 
     expect($this->postJson("/api/v1/ops/reservation-services/{$setup->service_code}/no-shows", ['passenger_ids' => [$present]]))->toBeApiError(422, 'OPS-BR-52');
 
@@ -50,7 +50,7 @@ it('G3-28: registra el no-show por pasajero desde la orden, avisa al asesor y pe
     expect($created['registered'])->toBe(1)
         ->and($created['effects']['notified'])->toBe($owner !== null)
         ->and($created['effects']['incident'])->toBeNull()
-        ->and($created['effects']['charge'])->toBeNull();
+        ->and($created['effects'])->not->toHaveKey('charge');
 
     $id = $created['ids'][0];
     $row = rowOf('ops_no_shows', $id, column: 'id');
@@ -81,33 +81,20 @@ it('G3-28: registra el no-show por pasajero desde la orden, avisa al asesor y pe
     $this->postJson("/api/v1/ops/reservation-services/{$setup->service_code}/no-shows", ['passenger_ids' => [$absent]])->assertCreated();
 });
 
-it('G3-28: con incidencia y cargo encendidos abre la incidencia, cobra según la política del producto y libera el cargo al anular', function () {
+it('G3-28: con la incidencia encendida abre la incidencia al coordinador de la orden', function () {
     $setup = opsNoShowSetup();
     $absent = $setup->passengers[1];
-    withinTenant(tenantA(), function () use ($setup): void {
-        $product = DB::table('catalog_product_policies')->value('product_id');
-        DB::table('catalog_product_policies')->where('product_id', $product)->update(['no_show' => 'Si el pasajero no se presenta se cobra el 50 % del servicio.']);
-        DB::table('booking_reservation_services')->where('id', $setup->reservation_service_id)->update(['product_id' => $product]);
-    });
     actingAsSeed('U01');
-    opsNoShowSettings(['noshow_notify_advisor' => false, 'noshow_incident' => true, 'noshow_charge' => true]);
-    expect(opsNoShowAudit(['entity' => 'Configuración', 'entity_id' => 'operations.noshow_charge']))->toBeTrue();
+    opsNoShowSettings(['noshow_notify_advisor' => false, 'noshow_incident' => true]);
+    expect(opsNoShowAudit(['entity' => 'Configuración', 'entity_id' => 'operations.noshow_incident']))->toBeTrue();
 
     $created = $this->postJson("/api/v1/ops/reservation-services/{$setup->service_code}/no-shows", ['passenger_ids' => [$absent]])->assertCreated()->json('data');
     expect($created['effects']['notified'])->toBeFalse()
         ->and($created['effects']['incident'])->toStartWith('INC-')
-        ->and($created['effects']['charge'])->toMatchArray(['amount' => '200.00', 'pct' => 50, 'currency' => $setup->currency]);
+        ->and(rowOf('ops_incidents', $created['effects']['incident'])->type)->toBe('Pasajero')
+        ->and(rowOf('ops_incidents', $created['effects']['incident'])->severity)->toBe('baja');
 
-    $incident = rowOf('ops_incidents', $created['effects']['incident']);
-    $receivable = rowOf('fin_receivables', $created['effects']['charge']['receivable']);
-    expect($incident->type)->toBe('Pasajero')
-        ->and($receivable->kind)->toBe('penalidad')
-        ->and((string) $receivable->amount)->toBe('200.00')
-        ->and($receivable->status)->toBe('abierta')
-        ->and((string) rowOf('ops_no_shows', $created['ids'][0], column: 'id')->charge_amount)->toBe('200.00');
-
-    $this->deleteJson("/api/v1/ops/no-shows/{$created['ids'][0]}", ['reason' => 'El pasajero sí llegó tarde'])->assertOk()->assertJsonPath('data.charge_cancelled', true);
-    expect(rowOf('fin_receivables', $created['effects']['charge']['receivable'])->status)->toBe('cancelada');
+    $this->deleteJson("/api/v1/ops/no-shows/{$created['ids'][0]}", ['reason' => 'El pasajero sí llegó tarde'])->assertOk()->assertJsonPath('data.voided', true);
 });
 
 it('G3-28: al completar el servicio desde la orden, quien no tiene check-in queda como no-show', function () {
@@ -133,14 +120,4 @@ it('G3-28: no se registra antes de la fecha del servicio ni sin permiso de asign
     actingAsSeed('U17');
     $denied = $this->postJson("/api/v1/ops/reservation-services/{$setup->service_code}/no-shows", ['passenger_ids' => [$setup->passengers[0]]]);
     expect($denied->status())->toBeIn([403, 404]);
-});
-
-it('G3-28: el cargo toma el porcentaje de la política del producto', function () {
-    expect(NoShowEffects::chargePct('No-show se factura al 100 %.'))->toBe(100)
-        ->and(NoShowEffects::chargePct('Se cobra el 50% del servicio'))->toBe(50)
-        ->and(NoShowEffects::chargePct('No presentación sin cargo.'))->toBe(0)
-        ->and(NoShowEffects::chargePct('Consultar con la agencia.'))->toBeNull()
-        ->and(NoShowEffects::chargePct(null))->toBeNull()
-        ->and((string) NoShowEffects::chargeAmount('1000.00', 3, 100))->toBe('333.33')
-        ->and((string) NoShowEffects::chargeAmount('800.00', 2, 50))->toBe('200.00');
 });

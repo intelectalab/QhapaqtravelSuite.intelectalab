@@ -74,3 +74,21 @@ it('la personalización de la consola guarda los colores, los expone en /platfor
 
     expect($this->getJson('/api/v1/platform/branding')->json('data.branding'))->toBe(Branding::DEFAULTS);
 });
+
+it('el logo de KipuControl empieza en tocapu, cambia a la marca del kit con un clic, se publica y queda auditado', function () {
+    expect($this->getJson('/api/v1/public/software/brand')->assertOk()->json('data.logo'))->toBe('tocapu');
+
+    actingAsPlatform();
+
+    expect($this->getJson('/api/v1/platform/branding')->json('data.logo.current'))->toBe('tocapu');
+
+    $this->putJson('/api/v1/platform/branding/logo', ['mark' => 'kit'])->assertOk()->assertJsonPath('data.current', 'kit');
+
+    expect($this->getJson('/api/v1/public/software/brand')->json('data.logo'))->toBe('kit')
+        ->and(json_encode($this->getJson('/api/v1/platform/branding')->json('data.history'), JSON_UNESCAPED_UNICODE))->toContain('Marca del kit 2.13');
+
+    $this->putJson('/api/v1/platform/branding/logo', ['mark' => 'kit'])->assertUnprocessable()->assertJsonPath('code', 'CFG-BR-01');
+    $this->putJson('/api/v1/platform/branding/logo', ['mark' => 'otro'])->assertUnprocessable()->assertJsonValidationErrors('mark');
+
+    $this->putJson('/api/v1/platform/branding/logo', ['mark' => 'tocapu'])->assertOk()->assertJsonPath('data.current', 'tocapu');
+});

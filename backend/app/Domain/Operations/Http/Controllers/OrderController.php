@@ -12,8 +12,10 @@ use App\Domain\Operations\Support\OpsNotices;
 use App\Domain\Operations\Support\OrderDirectory;
 use App\Domain\Operations\Support\OrderFlow;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Http\CursorPage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 
 final class OrderController
 {
@@ -21,7 +23,9 @@ final class OrderController
 
     public function index(Request $request): JsonResponse
     {
-        return response()->json(['data' => $this->directory->list($this->user($request))]);
+        $list = $this->directory->list($this->user($request));
+
+        return response()->json(CursorPage::respondItems($request, $list['items']->all(), Arr::except($list, 'items')));
     }
 
     public function show(Request $request, string $code): JsonResponse

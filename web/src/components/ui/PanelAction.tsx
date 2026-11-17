@@ -4,6 +4,7 @@ import { startTransition, useActionState, useEffect, useState, type FormEvent, t
 import { FormError } from "@/features/auth/AuthForms";
 import { Button } from "./Button";
 import { SidePanel } from "./SidePanel";
+import { toast } from "./Toast";
 
 export interface PanelActionState {
   message: string | null;
@@ -28,9 +29,12 @@ interface PanelActionProps<S extends PanelActionState> {
   defaultOpen?: boolean;
   testId?: string;
   confirmTestId?: string;
+  successToast?: string | false | ((state: S) => string | false);
 }
 
-export function PanelAction<S extends PanelActionState>({ label, icon, variant = "secondary", size = "md", formId: explicitFormId, title, description, submitLabel, action, initial, onDone, children, footerExtra, trigger, defaultOpen = false, testId, confirmTestId = "dialog-confirm" }: PanelActionProps<S>) {
+const DEFAULT_TOAST = "Cambios guardados.";
+
+export function PanelAction<S extends PanelActionState>({ label, icon, variant = "secondary", size = "md", formId: explicitFormId, title, description, submitLabel, action, initial, onDone, children, footerExtra, trigger, defaultOpen = false, testId, confirmTestId = "dialog-confirm", successToast = DEFAULT_TOAST }: PanelActionProps<S>) {
   const [open, setOpen] = useState(defaultOpen);
   const [formKey, setFormKey] = useState(0);
   useEffect(() => {
@@ -41,6 +45,8 @@ export function PanelAction<S extends PanelActionState>({ label, icon, variant =
     if (next.done) {
       setOpen(false);
       setFormKey((key) => key + 1);
+      const text = typeof successToast === "function" ? successToast(next) : successToast;
+      if (text) toast(text, "ok");
       onDone?.(next);
     }
     return next;

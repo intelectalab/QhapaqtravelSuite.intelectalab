@@ -83,7 +83,7 @@ it('cierra una incidencia media con comentario y la orden la ve gestionada', fun
         ->and($row->closed_at)->not->toBeNull()
         ->and($check()['ok'])->toBeTrue()
         ->and(collect($this->getJson('/api/v1/ops/orders/OP-2026-0413')->json('data.incidents'))->firstWhere('code', 'INC-0087')['status'])->toBe('cerrada')
-        ->and(collect($this->getJson('/api/v1/ops/orders')->json('data.items'))->firstWhere('code', 'OP-2026-0413')['open_incidents'])->toBe(0)
+        ->and(collect($this->getJson('/api/v1/ops/orders?page[size]=100')->json('data'))->firstWhere('code', 'OP-2026-0413')['open_incidents'])->toBe(0)
         ->and(opsIncAudit(['entity' => 'Incidencia', 'entity_id' => 'INC-0087', 'action' => 'cerrar']))->toBeTrue();
 
     expect($this->postJson('/api/v1/ops/incidents/INC-0087/close', ['comment' => 'Otra vez.'], critical(opsIncLock('INC-0087'))))->toBeApiError(409, 'OPS-BR-05');

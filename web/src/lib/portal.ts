@@ -35,6 +35,7 @@ export interface PaxService {
   date: string;
   time: string | null;
   kind: string;
+  mode?: string | null;
   status: string;
   state: string;
   pax: number;
@@ -210,7 +211,7 @@ export interface PortalTrip {
   days: {
     date: string;
     number: number;
-    services: { code: string; name: string; time: string | null; kind: string; status: string; state: ServiceState; pax: number; nights: number | null; confirmation: string | null }[];
+    services: { code: string; name: string; time: string | null; kind: string; mode?: string | null; status: string; state: ServiceState; pax: number; nights: number | null; confirmation: string | null }[];
   }[];
   passengers: { seq: number; name: string; type: string; nationality: string | null; document: string | null; lead: boolean; missing: boolean }[];
   vouchers: { code: string; label: string; date: string; status: string; version: number; pax: number }[];

@@ -35,10 +35,16 @@ interface StepProps {
   onDone?: () => void;
   testId?: string;
   confirmTestId?: string;
-  children?: ReactNode;
+  successToast?: string;
+  children?: ReactNode | ((state: ReservationState) => ReactNode);
 }
 
-export function Step({ code, step, label, icon, variant = "secondary", title, description, submitLabel, trigger, defaultOpen, formKey, onDone, testId, confirmTestId, children }: StepProps) {
+const inline = async (state: ReservationState, form: FormData) => {
+  const next = await reservationStep(state, form);
+  return next.errors && Object.keys(next.errors).length > 0 ? { ...next, message: null } : next;
+};
+
+export function Step({ code, step, label, icon, variant = "secondary", title, description, submitLabel, trigger, defaultOpen, formKey, onDone, testId, confirmTestId, successToast, children }: StepProps) {
   const router = useRouter();
   return (
     <PanelAction<ReservationState>
@@ -49,20 +55,21 @@ export function Step({ code, step, label, icon, variant = "secondary", title, de
       title={title}
       description={description}
       submitLabel={submitLabel}
-      action={reservationStep}
+      action={typeof children === "function" ? inline : reservationStep}
       initial={initial}
       trigger={trigger}
       defaultOpen={defaultOpen}
       onDone={onDone ?? (() => router.refresh())}
       testId={testId}
       confirmTestId={confirmTestId}
+      successToast={successToast}
     >
-      {() => (
+      {(state) => (
         <>
           <input type="hidden" name="code" value={code} />
           <input type="hidden" name="step" value={step} />
           <ReservationLockInput />
-          {children}
+          {typeof children === "function" ? children(state) : children}
         </>
       )}
     </PanelAction>

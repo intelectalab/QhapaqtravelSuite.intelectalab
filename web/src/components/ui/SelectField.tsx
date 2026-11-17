@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { cn } from "@/lib/cn";
+import { FieldError } from "./FieldError";
 import { Select, type SelectOption } from "./Select";
 
 interface SelectFieldProps {
@@ -18,9 +19,10 @@ interface SelectFieldProps {
   className?: string;
   onChange?: (value: string) => void;
   disabled?: boolean;
+  testId?: string;
 }
 
-export function SelectField({ label, name, options, defaultValue = "", value, placeholder, hint, error, clearable, searchable, className, onChange, disabled }: SelectFieldProps) {
+export function SelectField({ label, name, options, defaultValue = "", value, placeholder, hint, error, clearable, searchable, className, onChange, disabled, testId }: SelectFieldProps) {
   const id = useId();
   const [inner, setInner] = useState(defaultValue);
   const current = value ?? inner;
@@ -42,11 +44,11 @@ export function SelectField({ label, name, options, defaultValue = "", value, pl
         searchable={searchable}
         ariaLabel={label}
         className={cn("h-12 w-full", error && "border-bad")}
-        testId={`field:${name}`}
+        testId={testId ?? `field:${name}`}
         disabled={disabled}
       />
       <input type="hidden" name={name} value={current} />
-      {error ? <div className="mt-1.5 text-[12.5px] font-medium text-bad">{error}</div> : hint && <div className="mt-1.5 text-[12.5px] text-fg-3">{hint}</div>}
+      {error ? <FieldError name={name} message={error} /> : hint && <div className="mt-1.5 text-[12.5px] text-fg-3">{hint}</div>}
     </div>
   );
 }

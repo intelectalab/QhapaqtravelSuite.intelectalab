@@ -15,9 +15,9 @@ final class NoShowDirectory
     private const SORTS = ['recorded_at' => 'n.recorded_at', 'service_date' => 's.service_date'];
 
     private const COLUMNS = [
-        'n.id', 'n.lock_version', 'n.source', 'n.recorded_at', 'n.note', 'n.advisor_notified_at', 'n.charge_pct', 'n.charge_amount', 'n.charge_currency', 'n.voided_at', 'n.void_reason',
+        'n.id', 'n.lock_version', 'n.source', 'n.recorded_at', 'n.note', 'n.advisor_notified_at', 'n.voided_at', 'n.void_reason',
         's.code as service_code', 's.name as service_name', 's.service_date', 'r.code as reservation_code', 'p.id as passenger_id', 'p.full_name as passenger', 'p.pax_type',
-        'u.name as recorded_by', 'i.code as incident_code', 'f.code as receivable_code', 'f.status as receivable_status',
+        'u.name as recorded_by', 'i.code as incident_code',
     ];
 
     public function forReservation(string $reservationId): Collection
@@ -52,7 +52,6 @@ final class NoShowDirectory
             ->join('booking_passengers as p', 'p.id', '=', 'n.passenger_id')
             ->leftJoin('iam_users as u', 'u.id', '=', 'n.created_by')
             ->leftJoin('ops_incidents as i', 'i.id', '=', 'n.incident_id')
-            ->leftJoin('fin_receivables as f', 'f.id', '=', 'n.receivable_id')
             ->whereNull('r.deleted_at');
     }
 
@@ -70,7 +69,6 @@ final class NoShowDirectory
             'note' => $row->note,
             'advisor_notified' => $row->advisor_notified_at !== null,
             'incident' => $row->incident_code,
-            'charge' => $row->receivable_code ? ['receivable' => $row->receivable_code, 'status' => $row->receivable_status, 'pct' => (int) $row->charge_pct, 'amount' => $row->charge_amount, 'currency' => $row->charge_currency] : null,
             'voided_at' => $row->voided_at,
             'void_reason' => $row->void_reason,
         ];

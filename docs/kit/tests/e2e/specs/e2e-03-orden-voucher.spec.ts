@@ -13,7 +13,7 @@ test.describe('E2E-03 · Orden operativa hasta voucher @fase1 @e2e03', () => {
   test('flujo completo de Operaciones', async ({ pageAs, apiAs }) => {
     // Arrange: reserva confirmada nueva (conversión por API)
     const sales = await apiAs('sales');
-    const q = await createApprovedQuote(sales, { clientCode: 'CLI-0003', productCode: 'PRD-001', serviceDate: '2026-10-20', pax: 2, currency: 'USD' });
+    const q = await createApprovedQuote(sales, { clientCode: 'CLI-0003', productCode: 'PRD-001', serviceDate: '2026-10-21', pax: 2, currency: 'USD' });
     const conv = await sales.postIdem(`/quotes/${q.id}/convert`, {}, idemKey(), q.lock_version);
     expect(conv.status()).toBe(201);
     const resCode: string = (await conv.json()).data.code;

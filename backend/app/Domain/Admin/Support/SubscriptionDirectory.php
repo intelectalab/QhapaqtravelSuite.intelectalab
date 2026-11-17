@@ -6,6 +6,7 @@ namespace App\Domain\Admin\Support;
 
 use App\Domain\Iam\Models\User;
 use App\Domain\Iam\Support\StaffSeats;
+use App\Domain\Platform\Support\AddonPurchases;
 use App\Domain\Platform\Support\EffectiveLimits;
 use App\Domain\Platform\Support\Entitlements;
 use App\Domain\Platform\Support\PlatformInvoicer;
@@ -59,9 +60,10 @@ final class SubscriptionDirectory
         $plan = $platform->table('plans')->where('id', $planId)->first(['code', 'name', 'rank', 'price_month', 'price_year', 'currency', 'support_level', 'module_count']);
         $limits = $platform->table('plan_limits')->where('plan_id', $planId)->get(['metric', 'value', 'hard'])->keyBy('metric');
         $today = Carbon::today('America/Lima')->toDateString();
-        $items = $platform->table('subscription_items')->where('subscription_id', $subscription->id ?? null)->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $today))->get(['addon_code', 'quantity', 'unit_price', 'starts_at', 'ends_at', 'meta']);
+        $items = $platform->table('subscription_items')->where('subscription_id', $subscription->id ?? null)->where('billing_mode', 'mensual')->where(fn ($query) => $query->whereNull('ends_at')->orWhere('ends_at', '>=', $today))->get(['addon_code', 'quantity', 'unit_price', 'starts_at', 'ends_at', 'meta']);
         $catalog = $platform->table('addons')->orderBy('price_month')->get();
         $labels = $catalog->pluck('label', 'code');
+        $catalog = $catalog->reject(fn (object $addon): bool => AddonPurchases::managedIn((string) $addon->code) !== null)->values();
         $planNames = $platform->table('plans')->orderBy('rank')->pluck('name', 'id');
         $featureLabels = $platform->table('features')->pluck('label', 'key')->all();
         $prices = $platform->table('addon_prices')->where('plan_id', $planId)->pluck('price', 'addon_code');

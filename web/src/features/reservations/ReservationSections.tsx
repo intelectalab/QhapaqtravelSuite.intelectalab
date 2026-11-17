@@ -109,6 +109,11 @@ export function SummarySection({ reservation }: { reservation: ReservationDetail
       </div>
 
       <div className="grid gap-5 xl:grid-cols-2">
+        <ServiceDigest reservation={reservation} services={active} />
+        <ReceivablePlan reservation={reservation} />
+      </div>
+
+      <div className="grid gap-5 xl:grid-cols-2">
         {(seesMargin || operationsView) && (
           <Card>
             <TintCardTitle icon={FileText} title="Datos de la reserva" />
@@ -165,6 +170,57 @@ export function SummarySection({ reservation }: { reservation: ReservationDetail
         </Card>
       </div>
     </div>
+  );
+}
+
+function ServiceDigest({ reservation, services }: { reservation: ReservationDetail; services: ReservationDetail["services"] }) {
+  return (
+    <Card>
+      <TintCardTitle icon={Route} title="Servicios" aside={<Link href={`/reservas/${reservation.code}?seccion=servicios`} scroll={false} className="text-[12.5px] font-semibold text-[var(--tint)] hover:underline">Ver detalle</Link>} />
+      {services.length === 0 ? (
+        <p className="text-[13.5px] text-fg-3">Esta reserva no tiene servicios todavía.</p>
+      ) : (
+        <ul className="flex flex-col">
+          {services.map((service) => (
+            <li key={service.code} data-testid={`reservation-service:${service.code}`} data-status={service.status} data-price={service.price === undefined ? undefined : amountAttr(service.price)} className="flex items-center justify-between gap-3 border-t border-line-2 py-2 text-[13px] first:border-t-0">
+              <span className="min-w-0">
+                <b className="block truncate font-semibold">{service.name}</b>
+                <span className="text-xs text-fg-3">{formatDate(service.date)}</span>
+              </span>
+              {service.price !== undefined && <span className="flex-none font-mono">{formatMoney(service.price, service.currency)}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+function ReceivablePlan({ reservation }: { reservation: ReservationDetail }) {
+  if (reservation.receivables === undefined) return null;
+  const receivables = reservation.receivables.filter((item) => item.status !== "cancelada");
+  return (
+    <Card>
+      <TintCardTitle icon={Receipt} title="Plan de cobro" aside={<Link href={`/reservas/${reservation.code}?seccion=pagos`} scroll={false} className="text-[12.5px] font-semibold text-[var(--tint)] hover:underline">Ver pagos</Link>} />
+      {receivables.length === 0 ? (
+        <p className="text-[13.5px] text-fg-3">Sin cuotas programadas.</p>
+      ) : (
+        <ul className="flex flex-col">
+          {receivables.map((item) => (
+            <li key={item.code} data-testid={`reservation-receivable:${item.kind}`} data-amount={amountAttr(item.amount)} data-due={item.due_date.slice(0, 10)} className="flex items-center justify-between gap-3 border-t border-line-2 py-2 text-[13px] first:border-t-0">
+              <span className="min-w-0">
+                <b className="block truncate font-semibold">{item.concept}</b>
+                <span className="text-xs text-fg-3">Vence {formatDate(item.due_date)}</span>
+              </span>
+              <span className="flex flex-none items-center gap-2">
+                <span className="font-mono">{formatMoney(item.amount, item.currency)}</span>
+                <StatusBadge status={item.status} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }
 

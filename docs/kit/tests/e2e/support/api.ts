@@ -31,7 +31,8 @@ async function freshToken(email: string, base: string): Promise<string> {
   const json = await res.json();
   const body = json?.data?.token ? json.data : json;
   if (body.mfa_required || body.abilities?.includes?.('mfa:verify')) {
-    const verify = () => ctx.post(API.mfaVerify.slice(1), {
+    const route = body.realm === 'platform' ? API.platformMfaVerify : API.mfaVerify;
+    const verify = () => ctx.post(route.slice(1), {
       headers: { Authorization: `Bearer ${body.token}` },
       data: { code: authenticator.generate(TOTP_SECRET) },
     });
@@ -87,7 +88,7 @@ export class Api {
   async idOf(listPath: string, code: string): Promise<string> {
     const r = await this.get(listPath, { 'filter[code]': code });
     const j = await r.json();
-    const row = (j.data ?? []).find((x: { code: string }) => x.code === code);
+    const row = (j.data ?? []).find((x: { code: string; ref?: string }) => x.code === code || x.ref === code);
     if (!row) throw new Error(`${code} no encontrado en ${listPath}`);
     return row.id;
   }

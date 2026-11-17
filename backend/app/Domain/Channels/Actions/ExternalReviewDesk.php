@@ -76,7 +76,7 @@ final class ExternalReviewDesk
                 'code' => $code,
                 'channel' => 'form',
                 'contact_name' => mb_substr((string) $review->author_display, 0, 160),
-                'subject' => Str::limit("Reseña de {$review->rating} estrellas en {$source}: ".($review->title ?? Str::limit((string) $review->body, 80)), 195),
+                'subject' => MessageCipher::sealLabel(Str::limit("Reseña de {$review->rating} estrellas en {$source}: ".($review->title ?? Str::limit((string) $review->body, 80)), 195)),
                 'status' => 'abierta',
                 'priority' => (int) $review->rating <= 2 ? 'alta' : 'media',
                 'tags' => '{Reseña,Postventa}',

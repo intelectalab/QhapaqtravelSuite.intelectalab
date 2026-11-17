@@ -213,7 +213,7 @@ export function CompanionsForm({ data }: { data: PaxCompanions }) {
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <TextField label={needsAddress ? "Dirección o nombre del hotel" : "Hotel o dirección"} value={pickup.address} disabled={!data.editable} required={needsAddress} onChange={(event) => setPickup({ ...pickup, address: event.target.value })} />
             <TextField label="Vuelo (si llegas en avión)" value={pickup.flight} disabled={!data.editable} onChange={(event) => setPickup({ ...pickup, flight: event.target.value })} />
-            <DateTimeField label="Llegada" name="pickup_arrival" className="sm:col-span-3 sm:max-w-md" value={pickup.arrival} disabled={!data.editable} onChange={(next) => setPickup({ ...pickup, arrival: next })} />
+            <DateTimeField label="Llegada" name="pickup_arrival" step={5} className="sm:col-span-3 sm:max-w-md" value={pickup.arrival} disabled={!data.editable} onChange={(next) => setPickup({ ...pickup, arrival: next })} />
           </div>
         </Card>
       )}

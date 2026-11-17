@@ -61,7 +61,7 @@ final class ConversationWorkflow
                 DB::table('collab_message_attachments')->insert([
                     'id' => (string) Str::uuid7(),
                     'message_id' => $messageId,
-                    'file_name' => $file['file_name'],
+                    'file_name' => MessageCipher::sealLabel((string) $file['file_name'], 'file_name'),
                     'mime' => $file['mime'],
                     'size_bytes' => $file['size'],
                     'storage_path' => $file['path'],

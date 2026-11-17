@@ -176,13 +176,13 @@ it('POST /integrations/email/inbound resuelve la agencia por buzón, guarda adju
 
     expect(inboxCtTenant(fn () => DB::table('collab_conversations')->where('channel_account_id', $account)->count()))->toBe(1)
         ->and($conversation->channel)->toBe('email')
-        ->and($conversation->subject)->toBe('Consulta por el tour a Machu Picchu')
+        ->and(MessageCipher::open($conversation->subject))->toBe('Consulta por el tour a Machu Picchu')
         ->and($conversation->contact_email)->toBe('gabriela.rios@correo.pe')
         ->and($conversation->client_id)->not->toBeNull()
         ->and($messages)->toHaveCount(2)
         ->and($messages->first()->body)->not->toContain('¿Tienen cupos para el 20?')
         ->and(MessageCipher::open($messages->first()->body))->toContain('¿Tienen cupos para el 20?')
-        ->and($attachment->file_name)->toBe('pasaporte.pdf')
+        ->and(MessageCipher::open($attachment->file_name))->toBe('pasaporte.pdf')
         ->and(Storage::disk((string) config('filesystems.default'))->exists($attachment->storage_path))->toBeTrue()
         ->and($event->status)->toBe('procesado')
         ->and($event->payload)->not->toContain(base64_encode("%PDF-1.4\n%prueba\n"));

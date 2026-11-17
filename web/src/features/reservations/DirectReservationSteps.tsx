@@ -115,16 +115,28 @@ function PriceLines({ plan, form }: { plan: DirectPlan; form: DirectPayload }) {
           <dd>{`${plan.rate_ref}${plan.season_factor && Number(plan.season_factor) !== 1 ? ` · temporada ×${Number(plan.season_factor).toFixed(2)}` : ""}`}</dd>
         </div>
       )}
+      {plan.tax && Number(plan.tax.tax) > 0 && (
+        <>
+          <div className="flex justify-between text-[12.5px]">
+            <dt className="text-fg-3">Valor de venta</dt>
+            <dd className="font-mono">{formatMoney(plan.tax.taxable, plan.currency)}</dd>
+          </div>
+          <div className="flex justify-between text-[12.5px]">
+            <dt className="text-fg-3">{`${plan.tax.included ? "IGV incluido" : "IGV"} ${plan.tax.pct} %`}</dt>
+            <dd className="font-mono">{formatMoney(plan.tax.tax, plan.currency)}</dd>
+          </div>
+        </>
+      )}
       <div className="flex justify-between border-t border-line-2 pt-1.5 text-[17px] font-bold">
         <dt>Total</dt>
         <dd data-testid="direct-total" data-amount={amountAttr(plan.total ?? "0")} className="font-mono">
           {formatMoney(plan.total ?? 0, plan.currency)}
         </dd>
       </div>
-      {plan.cost !== undefined && Number(plan.total) > 0 && (
+      {plan.cost !== undefined && Number(plan.tax?.taxable ?? plan.total) > 0 && (
         <div className="flex justify-between text-[12.5px]">
-          <dt className="text-fg-3">Margen</dt>
-          <dd className="font-semibold">{`${(((Number(plan.total) - Number(plan.cost)) / Number(plan.total)) * 100).toFixed(1)} %`}</dd>
+          <dt className="text-fg-3">Margen sobre el valor de venta</dt>
+          <dd className="font-semibold">{`${(((Number(plan.tax?.taxable ?? plan.total) - Number(plan.cost)) / Number(plan.tax?.taxable ?? plan.total)) * 100).toFixed(1)} %`}</dd>
         </div>
       )}
     </dl>

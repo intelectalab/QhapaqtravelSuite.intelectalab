@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Domain\Platform\Models\Plan;
-use App\Domain\Platform\Support\PlanFeatureRules;
+use App\Domain\Platform\Support\BookingRuleCatalog;
+use App\Domain\Platform\Support\PlanCatalog;
 use Database\Support\KitSeeds;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +33,7 @@ final class PlanCatalogSeeder
 
     private const KINDS = ['módulo' => 'module', 'límite' => 'limit', 'add-on' => 'addon', 'beta' => 'beta'];
 
-    private const FEATURES = [
+    public const FEATURES = [
         ['crm', 'CRM, leads y ficha del cliente', 'Comercial', [true, true, true]],
         ['catalog', 'Catálogo turístico y tarifas', 'Catálogo', [true, true, true]],
         ['quotes', 'Cotizaciones con versiones', 'Ventas', [true, true, true]],
@@ -52,6 +53,10 @@ final class PlanCatalogSeeder
         ['multi_sede', 'Varias sedes', 'Administración', [false, false, true]],
         ['ecommerce', 'Tienda en línea', 'Canales', [false, false, true]],
         ['cms', 'Sitio web', 'Canales', [false, false, true]],
+        ['site_templates', 'Plantillas del sitio', 'Canales', [true, true, true]],
+        ['ai_content', 'Contenido con IA', 'Canales', [true, true, true]],
+        ['web_tracking', 'Seguimiento y píxeles', 'Marketing', [true, true, true]],
+        ['web_analytics', 'Visitas del sitio', 'Inteligencia', [true, true, true]],
         ['mobile_apps', 'Apps móviles (operador y pasajero)', 'Móvil', [false, false, true], 'módulo', 'mobile_apps'],
         ['integrations', 'Integraciones con proveedores', 'Plataforma', [false, false, true]],
         ['audit_advanced', 'Auditoría avanzada y exportación', 'Plataforma', [false, false, true]],
@@ -62,13 +67,18 @@ final class PlanCatalogSeeder
         ['ai_quote_assistant', 'Asistente de cotización', 'Ventas', [false, false, false], 'beta'],
     ];
 
-    private const ADDONS = [
+    public const ADDONS = [
         ['extra_users', 'Usuarios adicionales', 'usuario', true, null, ['Starter', 'Professional'], ['Enterprise'], []],
         ['whatsapp_pack', 'Paquete de 1 000 mensajes de WhatsApp al mes', 'paquete', true, 65, self::ORDER, [], ['whatsapp_month' => 1000]],
         ['storage_pack', 'Almacenamiento adicional de 50 GB', 'paquete', true, 80, self::ORDER, [], ['storage_gb' => 50]],
         ['b2b_full', 'Canal B2B completo', 'módulo', false, 290, ['Professional'], ['Enterprise'], ['feature' => 'module.b2b']],
         ['mobile_apps', 'Apps móviles (operador y pasajero)', 'módulo', false, 390, ['Professional'], ['Enterprise'], ['feature' => 'module.mobile_apps']],
         ['custom_domain', 'Dominio propio con certificado SSL', 'dominio', false, 45, self::ORDER, [], ['feature' => 'module.custom_domain']],
+        ['marketing_pro', 'Marketing Pro', 'cuenta', false, 39, ['Starter'], ['Professional', 'Enterprise'], []],
+        ['ai_content', 'Contenido con IA', 'plan', false, 59, self::ORDER, [], []],
+        ['ai_images', 'Imágenes con IA', 'plan', false, 49, self::ORDER, [], [], ['ambos', 39]],
+        ['premium_template', 'Plantilla premium', 'plantilla', true, null, self::ORDER, [], [], ['unico', 290]],
+        ['ai_credit_pack', 'Paquete de créditos de IA', 'paquete', true, null, self::ORDER, [], [], ['unico', 39]],
     ];
 
     public function run(): array
@@ -105,6 +115,7 @@ final class PlanCatalogSeeder
         foreach (self::LIMITS as $source => $metric) {
             DB::table('plan_limits')->insert(['plan_id' => $plan->getKey(), 'metric' => $metric, 'value' => $limits[$source] ?? null, 'hard' => true]);
         }
+        DB::table('plan_limits')->insert(['plan_id' => $plan->getKey(), 'metric' => 'ai_requests', 'value' => $limits['aiRequests'] ?? PlanCatalog::AI_REQUESTS[$plan->name] ?? null, 'hard' => true]);
     }
 
     private function features(array $plans): void
@@ -135,13 +146,17 @@ final class PlanCatalogSeeder
     {
         $ids = fn (array $names) => '{'.implode(',', array_map(fn (string $name) => $plans[$name]->getKey(), $names)).'}';
 
-        foreach (self::ADDONS as [$code, $label, $unit, $quantity, $price, $available, $included, $grants]) {
-            $byPlan = array_map(fn (string $name): float => (float) ($price ?? ($seeds[$name]['limits']['extraUserPrice'] ?? 0)), $available);
+        foreach (self::ADDONS as $addon) {
+            [$code, $label, $unit, $quantity, $price, $available, $included, $grants] = $addon;
+            [$mode, $once] = $addon[8] ?? ['mensual', null];
+            $byPlan = array_map(fn (string $name): float => (float) ($price ?? ($mode === 'unico' ? $once : ($seeds[$name]['limits']['extraUserPrice'] ?? 0))), $available);
             DB::table('addons')->updateOrInsert(['code' => $code], [
                 'label' => $label,
                 'unit' => $unit,
                 'quantity_allowed' => $quantity,
-                'price_month' => $price ?? min($byPlan),
+                'price_month' => $mode === 'unico' ? null : ($price ?? min($byPlan)),
+                'billing_mode' => $mode,
+                'price_once' => $once,
                 'available_plans' => $ids($available),
                 'included_plans' => $ids($included),
                 'grants' => json_encode($grants),
@@ -156,32 +171,9 @@ final class PlanCatalogSeeder
 
     private function rules(): void
     {
-        foreach (KitSeeds::read('settings')['bookingRules'] ?? [] as $rule) {
-            DB::table('sys_booking_rule_catalog')->updateOrInsert(['code' => $rule['id']], [
-                'rule_group' => $rule['group'],
-                'name' => $rule['name'],
-                'description' => $rule['desc'],
-                'default_enabled' => (bool) ($rule['enabled'] ?? false),
-                'default_params' => json_encode((object) ($rule['params'] ?? [])),
-                'scope' => '{'.implode(',', array_map(fn (string $scope) => '"'.$scope.'"', $rule['scope'] ?? [])).'}',
-                'product_override' => (bool) ($rule['productOverride'] ?? false),
-                'min_plan' => $rule['minPlan'] ?? 'Starter',
-            ]);
-            DB::table('plan_rule_entitlements')->updateOrInsert(['rule_code' => $rule['id']], ['min_plan' => $rule['minPlan'] ?? 'Starter', 'is_demo' => true]);
-        }
-
-        foreach (PlanFeatureRules::RULES as $code => $rule) {
-            DB::table('sys_booking_rule_catalog')->updateOrInsert(['code' => $code], [
-                'rule_group' => PlanFeatureRules::GROUP,
-                'name' => $rule['name'],
-                'description' => $rule['description'],
-                'default_enabled' => true,
-                'default_params' => '{}',
-                'scope' => '{'.implode(',', array_map(fn (string $scope) => '"'.$scope.'"', $rule['scope'])).'}',
-                'product_override' => false,
-                'min_plan' => $rule['min_plan'],
-            ]);
-            DB::table('plan_rule_entitlements')->updateOrInsert(['rule_code' => $code], ['min_plan' => $rule['min_plan'], 'is_demo' => true]);
+        foreach (BookingRuleCatalogSeeder::definitions() as $rule) {
+            DB::table('sys_booking_rule_catalog')->updateOrInsert(['code' => $rule['code']], BookingRuleCatalog::catalogValues($rule));
+            DB::table('plan_rule_entitlements')->updateOrInsert(['rule_code' => $rule['code']], ['min_plan' => $rule['min_plan'], 'is_demo' => true]);
         }
     }
 }

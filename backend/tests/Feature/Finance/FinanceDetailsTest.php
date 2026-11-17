@@ -38,6 +38,21 @@ it('la liquidación muestra el estado de resultados y solo se cierra cuando todo
     });
 
     $this->postJson('/api/v1/finance/reservations/RES-2026-000346/settlement')->assertCreated();
-    expect($this->getJson('/api/v1/finance/reservations/RES-2026-000346/settlement')->json('data.closed'))->not->toBeNull();
+    $closed = $this->getJson('/api/v1/finance/reservations/RES-2026-000346/settlement')->json('data');
+    expect($closed['closed'])->not->toBeNull()
+        ->and($closed['can'])->toBe(['register_cost' => false, 'approve_cost' => false]);
     expect($this->postJson('/api/v1/finance/reservations/RES-2026-000346/settlement'))->toBeApiError(409, 'FIN-BR-37');
+    $snapshot = withinTenant(tenantA(), fn () => json_decode((string) DB::table('fin_settlements as s')->join('booking_reservations as r', 'r.id', '=', 's.reservation_id')->where('r.code', 'RES-2026-000346')->value('s.snapshot'), true));
+    expect($snapshot)->toHaveKey('statement')->not->toHaveKeys(['cost_form', 'can']);
+});
+
+it('la rentabilidad de la reserva trae los costos por aprobar y el formulario de costo', function () {
+    actingAsSeed('U01');
+    $code = withinTenant(tenantA(), fn () => DB::table('fin_payables as f')->join('booking_reservations as r', 'r.id', '=', 'f.reservation_id')->whereNull('f.deleted_at')->whereNotNull('f.provider_id')->whereNotIn('f.status', ['anulada', 'cancelada'])->orderBy('r.code')->value('r.code'));
+
+    $data = $this->getJson("/api/v1/finance/reservations/{$code}/settlement")->assertOk()->json('data');
+    expect($data)->toHaveKeys(['pending_extras', 'cost_form', 'can'])
+        ->and($data['cost_form']['providers'])->not->toBeEmpty()
+        ->and($data['cost_form']['default_provider'])->toBeString()
+        ->and($data['payables'][0])->toHaveKeys(['lock_version', 'provider_ref']);
 });

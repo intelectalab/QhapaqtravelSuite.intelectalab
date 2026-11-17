@@ -44,11 +44,11 @@ final readonly class FxTable
 
     public function display(BigDecimal $amount, string $from, string $to, string $marginPct): BigDecimal
     {
-        $value = $this->convert($amount, $from, $to);
+        if ($from === $to) {
+            return $amount;
+        }
 
-        return in_array($to, $this->chargeCurrencies, true)
-            ? $value
-            : $value->multipliedBy(BigDecimal::of(100)->plus($marginPct))->dividedBy(100, 6, RoundingMode::HALF_UP);
+        return $this->convert($amount, $from, $to)->multipliedBy(BigDecimal::of(100)->plus($marginPct))->dividedBy(100, 6, RoundingMode::HALF_UP);
     }
 
     public function isCharge(string $code): bool

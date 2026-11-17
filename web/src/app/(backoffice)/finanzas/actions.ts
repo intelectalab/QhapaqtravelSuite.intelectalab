@@ -13,6 +13,7 @@ interface FinanceStepConfig {
   collect?: string;
   json?: string[];
   booleans?: string[];
+  aliases?: Record<string, string>;
   failure: string;
 }
 
@@ -45,8 +46,8 @@ const STEPS: Record<string, FinanceStepConfig> = {
   payment_reject: { path: (key) => `/finance/payments/${key}/reject`, method: "POST", fields: ["reason", "lock_version"], failure: "No pudimos rechazar el pago." },
   payment_retry: { path: (key) => `/finance/payments/${key}/retry`, method: "POST", fields: ["note", "lock_version"], failure: "No pudimos reintentar la validación." },
   payment_revert: { path: (key) => `/finance/payments/${key}/revert`, method: "POST", fields: ["reason", "lock_version"], failure: "No pudimos revertir el pago." },
-  payable_create: { path: () => "/finance/payables", method: "POST", fields: ["reservation", "provider", "cost_type", "concept", "amount", "currency", "fx_rate", "due_date", "supplier_doc", "evidence"], failure: "No pudimos registrar el costo." },
-  payable_update: { path: (key) => `/finance/payables/${key}`, method: "PATCH", fields: ["reservation", "provider", "cost_type", "currency", "fx_rate", "concept", "amount", "due_date", "supplier_doc", "evidence", "lock_version"], failure: "No pudimos guardar los cambios." },
+  payable_create: { path: () => "/finance/payables", method: "POST", fields: ["reservation", "provider", "cost_type", "concept", "amount", "currency", "fx_rate", "due_date", "provider_invoice", "evidence"], aliases: { provider_invoice: "supplier_doc" }, failure: "No pudimos registrar el costo." },
+  payable_update: { path: (key) => `/finance/payables/${key}`, method: "PATCH", fields: ["reservation", "provider", "cost_type", "currency", "fx_rate", "concept", "amount", "due_date", "provider_invoice", "evidence", "lock_version"], aliases: { provider_invoice: "supplier_doc" }, failure: "No pudimos guardar los cambios." },
   payable_schedule: { path: (key) => `/finance/payables/${key}/schedule`, method: "POST", fields: ["scheduled_date", "bank_account", "lock_version"], failure: "No pudimos programar el pago." },
   payable_approve: { path: (key) => `/finance/payables/${key}/approve`, method: "POST", fields: ["lock_version"], failure: "No pudimos aprobar la obligación." },
   payable_pay: { path: (key) => `/finance/payables/${key}/payouts`, method: "POST", fields: ["method", "bank_account", "amount", "paid_on", "operation_ref", "fx_rate", "lock_version"], failure: "No pudimos registrar el pago al proveedor." },
@@ -99,7 +100,9 @@ export async function financeStep(_state: StepResult, form: FormData): Promise<S
   const key = encodeURIComponent(raw);
   const base = step.keyField ? { ...formValues(form, step.fields), [step.keyField]: raw } : formValues(form, step.fields);
   const body = { ...(step.collect ? { ...base, [step.collect]: collected(form, step.collect) } : base), ...parsed(form, step.json, step.booleans) };
-  const result = await sendStep(step.path(key), step.method, body, step.failure);
+  const aliases = step.aliases ?? {};
+  const named = Object.fromEntries(Object.entries(body).map(([name, value]) => [aliases[name] ?? name, value]));
+  const result = await sendStep(step.path(key), step.method, named, step.failure);
   if (result.done) revalidatePath("/finanzas", "layout");
   return result;
 }

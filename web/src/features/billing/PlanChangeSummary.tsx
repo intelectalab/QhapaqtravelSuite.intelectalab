@@ -1,13 +1,13 @@
-import { CircleAlert, ShieldCheck } from "lucide-react";
+import { CircleAlert, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { PlanChangePreview } from "@/lib/admin";
 
 type Audience = "tenant" | "platform";
 
-const COPY: Record<Audience, { keeps: string; blocked: string; gained: string; lost: string }> = {
-  tenant: { keeps: "Hasta entonces sigues con tu plan actual. No hay reembolso por el periodo en curso.", blocked: "Primero ajusta tu cuenta", gained: "Reglas de reserva que se habilitan", lost: "Reglas que dejan de aplicarse" },
-  platform: { keeps: "Hasta entonces la agencia sigue con su plan actual. No hay reembolso por el periodo en curso.", blocked: "La agencia primero debe ajustar su cuenta", gained: "Reglas de reserva que gana", lost: "Reglas que deja de aplicar" },
+const COPY: Record<Audience, { keeps: string; blocked: string; changes: string; gained: string; lost: string }> = {
+  tenant: { keeps: "Hasta entonces sigues con tu plan actual. No hay reembolso por el periodo en curso.", blocked: "Primero ajusta tu cuenta", changes: "Lo que cambia con el plan nuevo", gained: "Reglas de reserva que se habilitan", lost: "Reglas que dejan de aplicarse" },
+  platform: { keeps: "Hasta entonces la agencia sigue con su plan actual. No hay reembolso por el periodo en curso.", blocked: "La agencia primero debe ajustar su cuenta", changes: "Lo que cambia para la agencia", gained: "Reglas de reserva que gana", lost: "Reglas que deja de aplicar" },
 };
 
 export function PlanChangeNote({ tone = "mute", children }: { tone?: "mute" | "bad"; children: React.ReactNode }) {
@@ -54,6 +54,19 @@ export function PlanChangeSummary({ preview, currency, audience = "tenant" }: { 
           <ul className="list-disc space-y-1 pl-5">
             {preview.blockers.map((blocker) => (
               <li key={blocker}>{blocker}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {preview.warnings && preview.warnings.length > 0 && (
+        <div className="rounded-[14px] bg-[color-mix(in_srgb,var(--warn)_9%,transparent)] p-3.5 text-[12.5px] text-fg-2">
+          <p className="mb-1.5 flex items-center gap-1.5 font-semibold text-warn">
+            <TriangleAlert size={15} />
+            {copy.changes}
+          </p>
+          <ul className="list-disc space-y-1 pl-5">
+            {preview.warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
             ))}
           </ul>
         </div>

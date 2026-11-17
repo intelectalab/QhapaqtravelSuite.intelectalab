@@ -8,6 +8,7 @@ use App\Domain\Booking\Data\ProductData;
 use App\Domain\Booking\Rules\RuleResolver;
 use App\Domain\Booking\Support\TenantBookingEngine;
 use App\Domain\Catalog\Support\RateCurrencyPrices;
+use App\Domain\Shared\Money\Decimal;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Illuminate\Support\Facades\DB;
@@ -69,32 +70,52 @@ final class SiteCurrency
         return $code !== null && in_array($code, RateCurrencyPrices::PAYABLE, true) ? $code : null;
     }
 
-    public function override(string $productId, ?string $rateId, string $rateCurrency, ?string $requested): ?array
+    public function charge(?string $currency): ?string
     {
-        $code = $this->requested($requested);
-        if ($code === null || $rateId === null || $code === trim($rateCurrency) || ! $this->prices->enabled() || ! in_array($code, $this->prices->chargeCurrencies(), true)) {
+        $code = $this->requested($currency);
+        if ($code === null) {
             return null;
         }
 
-        $prices = DB::table('catalog_rate_prices as p')->join('catalog_rates as r', 'r.id', '=', 'p.rate_id')
-            ->where('r.product_id', $productId)->where('p.currency', $code)->pluck('p.price', 'p.rate_id')
-            ->map(fn (mixed $price): string => (string) $price)->all();
+        return in_array($code, $this->prices->chargeCurrencies(), true) ? $code : (in_array('USD', $this->prices->chargeCurrencies(), true) ? 'USD' : null);
+    }
 
-        return isset($prices[$rateId]) ? ['currency' => $code, 'prices' => $prices] : null;
+    public function override(string $productId, ?string $rateId, string $rateCurrency, ?string $requested): ?array
+    {
+        $code = $this->charge($requested);
+        if ($code === null || $rateId === null || $code === trim($rateCurrency) || ! $this->rules->forTenant()->on('R-MULTICURRENCY')) {
+            return null;
+        }
+
+        $prices = $this->prices->enabled() ? DB::table('catalog_rate_prices as p')->join('catalog_rates as r', 'r.id', '=', 'p.rate_id')
+            ->where('r.product_id', $productId)->where('p.currency', $code)->pluck('p.price', 'p.rate_id')
+            ->map(fn (mixed $price): string => (string) $price)->all() : [];
+
+        return ['currency' => $code, 'prices' => $prices, 'own' => isset($prices[$rateId])];
+    }
+
+    public function convert(BigDecimal|string $amount, string $from, string $to, ?string $rate = null): BigDecimal
+    {
+        if (trim($from) === trim($to)) {
+            return BigDecimal::of((string) $amount);
+        }
+
+        $value = $rate === null ? $this->engine->fx()->convert(BigDecimal::of((string) $amount), trim($from), trim($to)) : Decimal::convert($amount, trim($from), trim($to), $rate);
+
+        return $value->multipliedBy(BigDecimal::of(100)->plus((string) $this->marginPct()))->dividedBy(100, 6, RoundingMode::HALF_UP);
     }
 
     public function apply(ProductData $data, array $override): ProductData
     {
-        $fx = $this->engine->fx();
         $code = (string) $override['currency'];
-        $rates = array_map(function (array $rate) use ($override, $fx, $code): array {
+        $rates = array_map(function (array $rate) use ($override, $code): array {
             $id = (string) ($rate['id'] ?? '');
             if (isset($override['prices'][$id])) {
                 return [...$rate, 'price' => $override['prices'][$id], 'currency' => $code];
             }
 
             try {
-                $price = $fx->convert(BigDecimal::of((string) $rate['price']), trim((string) $rate['currency']), $code)->toScale(2, RoundingMode::HALF_UP);
+                $price = $this->convert((string) $rate['price'], (string) $rate['currency'], $code)->toScale(2, RoundingMode::HALF_UP);
             } catch (InvalidArgumentException) {
                 return $rate;
             }

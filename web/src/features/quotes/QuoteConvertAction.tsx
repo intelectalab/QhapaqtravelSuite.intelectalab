@@ -8,6 +8,7 @@ import { CheckItem, type CheckTone } from "@/components/ui/CheckItem";
 import { ChoiceGroup } from "@/components/ui/ChoiceGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { TextArea } from "@/components/ui/TextArea";
+import { uuid } from "@/lib/uuid";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { QuoteConversion } from "@/lib/quotes";
@@ -46,7 +47,7 @@ function Preconditions({ checks }: { checks: QuoteConversion["checks"] }) {
 
 export function QuoteConvertAction({ conversion, lockVersion, canVersion }: { conversion: QuoteConversion; lockVersion: number; canVersion: boolean }) {
   const router = useRouter();
-  const [key] = useState(() => crypto.randomUUID());
+  const [key] = useState(() => uuid());
   const blocked = conversion.blocked;
   const blockedItems = conversion.items.filter((item) => item.status === "bloqueado");
   const redatable = blockedItems.length > 0 && blockedItems.every((item) => item.alternatives.length > 0);

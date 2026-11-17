@@ -373,6 +373,7 @@ export function BookingPanel({ promoHint, onReserve, reserveLabel, onQuote }: { 
                 {current.list_total !== null && <s className="mr-2 text-[12px] text-fg-3">{formatMoney(current.list_total, current.currency)}</s>}
                 <b className="text-[20px] font-bold tabular-nums text-fg">{formatMoney(current.total, current.currency)}</b>
                 <Referential amount={current.total} currency={current.currency} />
+                {current.tax?.included && Number(current.tax.tax) > 0 && <span data-testid="site-tax-included" className="block text-[11.5px] text-fg-3">{t.common.taxIncluded(current.tax.pct, formatMoney(current.tax.tax, current.currency))}</span>}
               </dd>
             </div>
             {current.modes.length > 1 && (

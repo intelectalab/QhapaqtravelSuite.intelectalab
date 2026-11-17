@@ -8,14 +8,15 @@ import { TintTile } from "@/components/ui/Tinted";
 import { Notice } from "@/features/operations/OpsBits";
 import { OrderCreateAction, OrdersTable } from "@/features/operations/Orders";
 import { SupplierAlternativesNotice } from "@/features/operations/SupplierAlternatives";
-import type { OrderList, SupplierAlternativeList } from "@/lib/operations";
+import type { SupplierAlternativeList } from "@/lib/operations";
+import { getOrderList } from "@/lib/server/collections";
 import { getResource } from "@/lib/server/resource";
 
 export const metadata: Metadata = { title: "Órdenes operativas" };
 
 export default async function OrdenesPage() {
   const [data, alternatives] = await Promise.all([
-    getResource<OrderList>("/ops/orders", "No pudimos cargar las órdenes operativas."),
+    getOrderList(),
     getResource<SupplierAlternativeList>("/ops/supplier-responses?filter[type]=alternativa&filter[review_status]=pendiente", "No pudimos cargar las alternativas de proveedores."),
   ]);
 

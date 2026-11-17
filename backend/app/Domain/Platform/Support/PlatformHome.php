@@ -93,7 +93,7 @@ final class PlatformHome
 
         $definitive = $this->db()->table('integration_errors')->where('status', 'fallo_definitivo')->count();
         if ($definitive > 0) {
-            $alerts->push(['tone' => 'warn', 'kind' => 'tarea', 'title' => "{$definitive} ".($definitive === 1 ? 'error definitivo' : 'errores definitivos').' en integraciones', 'detail' => 'Necesitan revisión manual de la agencia', 'href' => '/plataforma/integraciones']);
+            $alerts->push(['tone' => 'warn', 'kind' => 'tarea', 'title' => "{$definitive} ".($definitive === 1 ? 'error definitivo' : 'errores definitivos').' en integraciones', 'detail' => 'Necesitan revisión manual de la agencia', 'href' => '/plataforma/integraciones/errores']);
         }
 
         $order = ['bad' => 0, 'warn' => 1, 'info' => 2, 'mute' => 3];

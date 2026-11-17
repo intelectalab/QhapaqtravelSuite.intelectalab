@@ -25,6 +25,7 @@ final class QuoteSaveRequest extends FormRequest
         return [
             'client_code' => [$required(1), 'string', 'max:30'],
             'opportunity_code' => ['nullable', 'string', 'max:30'],
+            'owner_id' => ['nullable', 'uuid'],
             'title' => [$required(1), 'string', 'max:200'],
             'travel_from' => [$required(2), 'date'],
             'travel_to' => [$required(2), 'date', 'after_or_equal:travel_from'],

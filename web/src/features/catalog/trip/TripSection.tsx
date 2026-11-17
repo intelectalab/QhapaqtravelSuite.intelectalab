@@ -15,6 +15,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
+import { TimeField } from "@/components/ui/TimeField";
 import { ConfirmAction, HiddenFields, PanelSection, STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
@@ -82,7 +83,7 @@ function TourAction({ data, tour }: { data: TripCatalogView; tour?: TripTour }) 
         <TextField label="Nombre" name="name" required maxLength={160} defaultValue={tour?.name} placeholder="Kayak al amanecer en el Titicaca" />
         <div className="grid grid-cols-3 gap-3">
           <TextField label="Día del tramo" name="day_offset" type="number" min={0} max={30} defaultValue={tour?.day_offset ?? 0} hint="0 = llegada" />
-          <TextField label="Hora" name="start_time" type="time" required defaultValue={tour?.start_time ?? "09:00"} />
+          <TimeField label="Hora" name="start_time" step={5} required defaultValue={tour?.start_time ?? "09:00"} />
           <TextField label="Horas" name="duration_hours" type="number" step="0.5" min={0.5} max={24} required defaultValue={tour?.duration_hours ?? 3} />
         </div>
       </PanelSection>

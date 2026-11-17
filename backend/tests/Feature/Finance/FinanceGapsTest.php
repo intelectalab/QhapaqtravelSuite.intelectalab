@@ -23,7 +23,7 @@ function gapOpenReceivableWithEmail(): object
 it('solicitar anticipo crea la cuota por lo que falta comprometer y avisa al cliente', function () {
     actingAsSeed('U07');
     $this->postJson('/api/v1/finance/receivables/CXC-00711/cancel', ['reason' => 'Se reemplaza por un anticipo'], critical())->assertOk();
-    $option = collect($this->getJson('/api/v1/finance/receivables')->assertOk()->json('data.advance_reservations'))->first() ?? throw new RuntimeException('Sin reservas con saldo por comprometer.');
+    $option = collect($this->getJson('/api/v1/finance/receivables')->assertOk()->json('meta.advance_reservations'))->first() ?? throw new RuntimeException('Sin reservas con saldo por comprometer.');
 
     $code = $this->postJson('/api/v1/finance/receivables/advances', ['reservation' => $option['value'], 'amount' => min(100, $option['available']), 'due_date' => '2026-10-05', 'concept' => 'Anticipo de prueba', 'notify' => true], critical())->assertCreated()->json('data.code');
     $row = rowOf('fin_receivables', $code);

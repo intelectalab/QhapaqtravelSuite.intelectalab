@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { FieldList } from "@/components/ui/Details";
-import { SelectField } from "@/components/ui/SelectField";
 import { SidePanel } from "@/components/ui/SidePanel";
 import { TextField } from "@/components/ui/TextField";
 import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
@@ -312,9 +311,10 @@ export function BillingForm({ billing, manage }: { billing: Subscription["billin
         <div className="sm:col-span-6">
           <TextField label="Contacto de facturación" name="contact" maxLength={150} defaultValue={billing.contact ?? undefined} disabled={!manage} />
         </div>
-        <div className="sm:col-span-6">
-          <SelectField label="Comprobante" name="doc_type" options={[{ value: "Factura", label: "Factura" }, { value: "Boleta", label: "Boleta" }]} defaultValue={billing.doc_type} disabled={!manage} hint="Las empresas con RUC 20 reciben factura electrónica." />
-        </div>
+        <p className="flex items-center gap-2 rounded-[12px] bg-surface-2 px-3.5 py-2.5 text-[12.5px] text-fg-2 sm:col-span-12">
+          <Receipt size={14} className="shrink-0 text-fg-3" />
+          Recibes siempre factura electrónica serie FQ01 al RUC indicado. Puede ser otro RUC, también uno 10 de persona natural.
+        </p>
         {manage && (
           <div className="flex items-end justify-end gap-3 sm:col-span-12">
             {state.message && <p className="mr-auto text-[12.5px] text-bad">{state.message}</p>}

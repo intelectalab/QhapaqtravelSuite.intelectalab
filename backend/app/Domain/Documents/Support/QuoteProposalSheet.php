@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Documents\Support;
 
+use App\Domain\Admin\Support\PriceTax;
 use App\Domain\Shared\Money\Decimal;
 use Illuminate\Support\Facades\DB;
 
@@ -68,7 +69,7 @@ final class QuoteProposalSheet
                 $discount->isPositive() ? ['label' => 'Servicios', 'value' => DocumentFormat::money((string) $version->sale_total, $currency)] : null,
                 $discount->isPositive() ? ['label' => 'Descuento ('.DocumentFormat::percent((string) $version->discount_pct).')', 'value' => '− '.DocumentFormat::money($discount, $currency)] : null,
                 $tax->isPositive() ? ['label' => 'Valor de venta', 'value' => DocumentFormat::money((string) $version->net_total, $currency)] : null,
-                $tax->isPositive() ? ['label' => 'IGV ('.DocumentFormat::percent((string) $version->tax_pct).')', 'value' => DocumentFormat::money($tax, $currency)] : null,
+                $tax->isPositive() ? ['label' => (PriceTax::storedIncluded($version) ? 'IGV incluido (' : 'IGV (').DocumentFormat::percent((string) $version->tax_pct).')', 'value' => DocumentFormat::money($tax, $currency)] : null,
             ])),
             'grand_total' => DocumentFormat::money((string) $version->grand_total, $currency),
             'currency_note' => $currency === 'USD' ? 'Importes en dólares estadounidenses. Tipo de cambio referencial: S/ '.number_format((float) $version->fx_rate, 3, '.', '').' por dólar.' : 'Importes en soles.',

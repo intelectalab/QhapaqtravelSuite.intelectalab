@@ -119,7 +119,7 @@ final class InboundMessages
             'contact_name' => Str::limit(trim((string) ($message['contact_name'] ?? '')) ?: ($email ?? ($phone !== null ? '+'.$phone : 'Contacto sin nombre')), 160, ''),
             'contact_email' => $email,
             'contact_phone' => $phone !== null ? Str::limit('+'.$phone, 30, '') : null,
-            'subject' => Str::limit(trim((string) ($message['subject'] ?? '')) ?: Str::limit(trim((string) $message['body']), 120), 200, ''),
+            'subject' => MessageCipher::sealLabel(Str::limit(trim((string) ($message['subject'] ?? '')) ?: Str::limit(trim((string) $message['body']), 120), 200, '')),
             'status' => 'abierta',
             'priority' => 'media',
             'tags' => self::TAGS[$channel] ?? '{}',
@@ -147,7 +147,7 @@ final class InboundMessages
             DB::table('collab_message_attachments')->insert([
                 'id' => (string) Str::uuid7(),
                 'message_id' => $messageId,
-                'file_name' => $stored['file_name'],
+                'file_name' => MessageCipher::sealLabel((string) $stored['file_name'], 'file_name'),
                 'mime' => $stored['mime'],
                 'size_bytes' => $stored['size'],
                 'storage_path' => $stored['path'],

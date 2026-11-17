@@ -8,6 +8,7 @@ use App\Domain\Crm\Support\CodeSequence;
 use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Brick\Math\BigDecimal;
+use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use stdClass;
@@ -16,10 +17,24 @@ final class TripBooking
 {
     public const TRANSPORT_KIND = ['vuelo' => 'tren_entrada', 'bus' => 'tren_entrada', 'tren' => 'tren_entrada', 'traslado' => 'traslado', 'movilidad' => 'traslado'];
 
+    public const MODE_NAMES = ['vuelo' => 'Vuelo', 'bus' => 'Bus', 'tren' => 'Tren', 'traslado' => 'Movilidad', 'movilidad' => 'Movilidad'];
+
     public function __construct(
         private readonly TenantContext $context,
         private readonly CodeSequence $codes,
     ) {}
+
+    public static function modeColumn(string $serviceAlias = 's'): Expression
+    {
+        return DB::raw("(select o.mode from booking_trip_items ti join catalog_transport_options o on o.id = ti.transport_option_id where ti.reservation_service_id = {$serviceAlias}.id limit 1) as transport_mode");
+    }
+
+    public static function serviceName(string $kind, ?string $mode, string $label): string
+    {
+        $prefix = $kind === 'tour' ? 'Tour' : (self::MODE_NAMES[(string) $mode] ?? 'Movilidad');
+
+        return Str::startsWith(Str::lower($label), Str::lower($prefix)) ? $label : $prefix.' '.$label;
+    }
 
     public function persist(string $reservationId, string $productId, ?string $mainServiceId, array $quote, array $pax, string $rate, ?string $userId = null): BigDecimal
     {
@@ -88,7 +103,7 @@ final class TripBooking
             'reservation_id' => $reservationId,
             'code' => $this->codes->next('booking_reservation_services', 'RS-'),
             'provider_id' => $item->provider_id,
-            'name' => Str::limit(($kind === 'tour' ? 'Tour ' : 'Movilidad ').$data['label'], 195),
+            'name' => Str::limit(self::serviceName($kind, $kind === 'tour' ? null : (string) $item->mode, (string) $data['label']), 195),
             'service_date' => $data['date'],
             'service_time' => $data['time'],
             'pax' => max(1, $people),

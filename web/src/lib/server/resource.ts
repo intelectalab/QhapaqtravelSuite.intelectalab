@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { REALMS } from "@/lib/realms";
 import { apiFetch } from "./api";
+import { fetchPages } from "./pages";
 
 export async function getResource<T>(path: string, failure: string): Promise<T | null> {
   const result = await apiFetch<T>(path);
@@ -12,6 +13,15 @@ export async function getResource<T>(path: string, failure: string): Promise<T |
   if (result.status === 403) return null;
   if (!result.ok || !result.data) throw new Error(result.error?.message ?? failure);
   return result.data;
+}
+
+export async function getCollection<T, M>(path: string, failure: string, limit = 5000): Promise<{ items: T[]; meta: M } | null> {
+  const result = await fetchPages<T, M>(path, limit);
+  if (result.status === 401) redirect(REALMS.agency.logout);
+  if (result.status === 403 && result.error?.code === "MFA_REQUIRED") redirect(REALMS.agency.mfaPage);
+  if (result.status === 403) return null;
+  if (!result.ok || !result.data) throw new Error(result.error?.message ?? failure);
+  return { items: result.data.data, meta: result.data.meta };
 }
 
 export interface StepResult {

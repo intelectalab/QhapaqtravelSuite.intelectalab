@@ -54,7 +54,7 @@ export interface QuoteVersion {
   snapshot: string;
   discount_pct: string;
   tax_pct: string;
-  totals: { sale: string; discount: string; net: string; tax: string; grand: string; cost: string | null; profit: string | null; margin_pct: string | null };
+  totals: { sale: string; discount: string; net: string; tax: string; grand: string; tax_included?: boolean; cost: string | null; profit: string | null; margin_pct: string | null };
   items: QuoteItem[];
   conditions?: string | null;
   markup_pct?: string | null;
@@ -215,7 +215,7 @@ export interface QuotePreviewLine {
 
 export interface QuotePreview {
   lines: QuotePreviewLine[];
-  totals: { sale_total: string; discount_total: string; net_total: string; tax_total: string; grand_total: string; cost_total: string | null; profit_total: string | null; margin_pct: string | null; tax_pct: string; grand_total_pen: string; per_pax: string | null };
+  totals: { sale_total: string; discount_total: string; net_total: string; tax_total: string; grand_total: string; cost_total: string | null; profit_total: string | null; margin_pct: string | null; tax_pct: string; tax_included?: boolean; grand_total_pen: string; per_pax: string | null };
   tax_default: string;
   itinerary?: QuoteItineraryBlock[];
   needs_internal_approval: boolean;

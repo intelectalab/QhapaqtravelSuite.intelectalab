@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Quotes\Actions;
 
+use App\Domain\Admin\Support\ApiKeyActor;
+use App\Domain\Admin\Support\PriceTax;
 use App\Domain\Admin\Support\TenantSettings;
 use App\Domain\Booking\Support\LineRates;
 use App\Domain\Booking\Support\TenantBookingEngine;
@@ -32,8 +34,6 @@ final class QuoteBuilder
 
     public const MAX_TAX = '18';
 
-    private const DOMESTIC = ['perú', 'peru', 'pe'];
-
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly SequenceService $sequences,
@@ -41,7 +41,7 @@ final class QuoteBuilder
         private readonly QuoteLifecycle $lifecycle,
         private readonly TenantBookingEngine $engines,
         private readonly LineRates $lineRates,
-        private readonly TenantSettings $settings,
+        private readonly PriceTax $tax,
     ) {}
 
     public static function validityDays(): int
@@ -58,18 +58,12 @@ final class QuoteBuilder
 
     public static function domestic(?string $country): bool
     {
-        return in_array(mb_strtolower(trim((string) $country)), self::DOMESTIC, true);
+        return PriceTax::domestic($country);
     }
 
     public function defaultTax(?string $country): string
     {
-        if ($country !== null && ! self::domestic($country)) {
-            return '0';
-        }
-
-        $tax = $this->settings->section('currency')['tax_pct'] ?? self::MAX_TAX;
-
-        return is_numeric($tax) ? (string) BigDecimal::of((string) $tax)->strippedOfTrailingZeros() : self::MAX_TAX;
+        return $this->tax->pct($country);
     }
 
     public function options(User $actor): array
@@ -151,7 +145,8 @@ final class QuoteBuilder
         $items = $step !== null && $step < 3 ? collect() : $this->atStep(3, null, fn (): Collection => $this->items($data['items'] ?? [], $data['currency'] ?? 'PEN', $client, $actor));
         $discount = $step !== null && $step < 4 ? '0.00' : $this->atStep(4, 'discount_pct', fn (): string => $this->discount((string) ($data['discount_pct'] ?? '0'), $actor));
         $tax = $this->atStep(4, 'tax_pct', fn (): string => $this->taxPct($data, $client));
-        $totals = QuotePricing::totals($items->all(), $discount, $tax);
+        $included = $this->tax->included();
+        $totals = QuotePricing::totals($items->all(), $discount, $tax, $included);
         $seeMargin = self::seesCost($actor);
         $fx = $this->fx((string) ($data['currency'] ?? 'PEN'));
         $pax = (int) ($data['pax_adt'] ?? 0) + (int) ($data['pax_chd'] ?? 0) + (int) ($data['pax_inf'] ?? 0);
@@ -175,6 +170,7 @@ final class QuoteBuilder
                 'profit_total' => $seeMargin ? $totals['profit_total'] : null,
                 'margin_pct' => $seeMargin ? $totals['margin_pct'] : null,
                 'tax_pct' => $tax,
+                'tax_included' => $included && BigDecimal::of($totals['tax_total'])->isPositive(),
                 'grand_total_pen' => (string) Decimal::round2(BigDecimal::of($totals['grand_total'])->multipliedBy($fx)),
                 'per_pax' => $pax > 0 ? (string) BigDecimal::of($totals['grand_total'])->dividedBy($pax, 2, RoundingMode::HALF_UP) : null,
             ],
@@ -198,7 +194,7 @@ final class QuoteBuilder
                 'code' => $code,
                 'client_id' => $client->id,
                 'opportunity_id' => $opportunity?->id,
-                'owner_id' => $actor->getKey(),
+                'owner_id' => ApiKeyActor::owner($actor, $data['owner_id'] ?? null),
                 'status' => 'borrador',
                 'current_version_no' => 1,
                 ...$this->header($data),
@@ -253,11 +249,11 @@ final class QuoteBuilder
 
         $discount = $this->discount((string) ($data['discount_pct'] ?? '0'), $actor);
         $tax = $this->taxPct($data, $client);
-        $totals = QuotePricing::totals($items->all(), $discount, $tax);
+        $totals = QuotePricing::totals($items->all(), $discount, $tax, $this->tax->included());
         $values = [
             'status' => 'borrador',
             'issued_on' => $this->today(),
-            'author_id' => $actor->getKey(),
+            'author_id' => ApiKeyActor::person($actor, 'quote_quotes', $quoteId),
             'discount_pct' => $discount,
             'tax_pct' => $tax,
             'notes' => trim((string) ($data['notes'] ?? '')) ?: null,

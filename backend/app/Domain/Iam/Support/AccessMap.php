@@ -44,11 +44,17 @@ final class AccessMap
     private function locked(string $tenantId): array
     {
         $features = app(Entitlements::class)->for($tenantId);
-
-        return collect((array) config('entitlements.screens'))
+        $screens = collect((array) config('entitlements.screens'));
+        $locked = $screens
             ->reject(fn (array $paths, string $feature): bool => (bool) ($features[$feature]['enabled'] ?? true))
-            ->flatMap(fn (array $paths, string $feature): array => collect($paths)->mapWithKeys(fn (string $path): array => [$path => ['feature' => $feature, 'label' => (string) ($features[$feature]['label'] ?? $feature)]])->all())
-            ->all();
+            ->flatMap(fn (array $paths, string $feature): array => collect($paths)->mapWithKeys(fn (string $path): array => [$path => ['feature' => $feature, 'label' => (string) ($features[$feature]['label'] ?? $feature)]])->all());
+        $open = $screens
+            ->filter(fn (array $paths, string $feature): bool => (bool) ($features[$feature]['enabled'] ?? true))
+            ->flatten()
+            ->filter(fn (string $path): bool => $locked->keys()->contains(fn (string $prefix): bool => str_starts_with($path, rtrim($prefix, '/').'/')))
+            ->mapWithKeys(fn (string $path): array => [$path => null]);
+
+        return $locked->merge($open)->all();
     }
 
     public function allows(User $user, string $path): bool

@@ -396,7 +396,7 @@ export const SERVICE_KINDS: Record<string, string> = {
   alojamiento: "Alojamiento",
   traslado: "Traslado",
   tour: "Tour",
-  tren_entrada: "Tren o entrada",
+  tren_entrada: "Pasajes y entradas",
   libre: "Servicio",
 };
 

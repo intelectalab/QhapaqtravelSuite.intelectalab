@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Support;
 
+use App\Domain\Admin\Support\PriceTax;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
@@ -24,6 +25,7 @@ final class DirectBookingPlan
         private readonly TenantContext $context,
         private readonly ReservationAssembler $assembler,
         private readonly LineRates $lineRates,
+        private readonly PriceTax $tax,
     ) {}
 
     public function today(): CarbonImmutable
@@ -97,6 +99,7 @@ final class DirectBookingPlan
         $channel = (string) ($data['channel'] ?? ($client ? $this->assembler->channelFor((string) $client) : 'Directo'));
         $rate = $this->rate($rates, $data, $date->toDateString(), $channel);
         $price = $this->price((string) $product->id, $rates, $rate, $date->toDateString(), $adults, $children);
+        $tax = $this->tax->apply($price['total']);
         $free = $departure ? (int) $departure->capacity - (int) $departure->sold : null;
         $available = $departure === null || $free >= $seats;
         $days = $product->duration_unit === 'días' ? max(1, (int) ceil((float) $product->duration_value)) : 1;
@@ -120,11 +123,13 @@ final class DirectBookingPlan
             'fx_rate' => $this->fx($price['currency']),
             'adult_price' => (string) $price['adult'],
             'child_price' => $children > 0 ? (string) $price['child'] : null,
-            'total' => (string) $price['total'],
+            'subtotal' => (string) $price['total'],
+            'tax' => PriceTax::view($tax),
+            'total' => (string) $tax['total'],
             'cost' => (string) $price['cost'],
             'available' => $available,
             'note' => $departure === null
-                ? 'Se pide al proveedor y queda sujeto a su confirmación.'
+                ? 'Se solicita al proveedor y queda sujeto a confirmación.'
                 : ($available ? "Salida {$departure->ref}: quedan {$free} cupos." : "Salida {$departure->ref}: solo quedan ".max(0, $free).' cupos.'),
         ];
     }

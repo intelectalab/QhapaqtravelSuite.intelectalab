@@ -62,7 +62,7 @@ final class CatalogImports
         $this->rules->ensure('R-AI-IMPORT', self::PERMISSION);
         $usage = $this->quota->usage($actor);
 
-        if ($usage['used'] >= $usage['limit']) {
+        if ($usage['exhausted']) {
             throw new ApiException(429, 'AI_QUOTA_EXCEEDED', 'AI_QUOTA_EXCEEDED', 'La agencia ya usó los '.$usage['limit'].' pedidos de IA del mes.');
         }
 

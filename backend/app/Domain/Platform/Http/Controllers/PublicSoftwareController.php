@@ -7,6 +7,7 @@ namespace App\Domain\Platform\Http\Controllers;
 use App\Domain\Platform\Actions\RegisterDemoRequest;
 use App\Domain\Platform\Http\Requests\DemoRequestStoreRequest;
 use App\Domain\Platform\Http\Requests\TenantProvisionRequest;
+use App\Domain\Platform\Support\PlatformLogo;
 use App\Domain\Platform\Support\PublicPlans;
 use App\Domain\Platform\Support\PublicShowcase;
 use Illuminate\Http\JsonResponse;
@@ -21,6 +22,11 @@ final class PublicSoftwareController
     public function overview(PublicShowcase $showcase): JsonResponse
     {
         return response()->json(['data' => $showcase->overview()]);
+    }
+
+    public function brand(PlatformLogo $logo): JsonResponse
+    {
+        return response()->json(['data' => ['logo' => $logo->current()]]);
     }
 
     public function demoOptions(PublicPlans $plans): JsonResponse

@@ -12,6 +12,7 @@ use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -41,9 +42,9 @@ final class FinanceDetailController
         return response()->json(['data' => $this->details->commission($code, $this->actor($request)) ?? throw ApiException::notFound('La comisión no existe.')]);
     }
 
-    public function settlement(string $code): JsonResponse
+    public function settlement(Request $request, string $code): JsonResponse
     {
-        return response()->json(['data' => $this->details->settlement($code) ?? throw ApiException::notFound('La reserva no existe.')]);
+        return response()->json(['data' => $this->details->settlement($code, $this->actor($request)) ?? throw ApiException::notFound('La reserva no existe.')]);
     }
 
     public function closeSettlement(Request $request, string $code, AuditLogger $audit, TenantContext $context, FinanceNotices $notices): JsonResponse
@@ -68,7 +69,7 @@ final class FinanceDetailController
             DB::table('fin_settlements')->insert([
                 'id' => (string) Str::uuid7(), 'tenant_id' => $context->idOrFail(), 'reservation_id' => $reservation->id, 'closed_at' => now(), 'closed_by' => $actor->getKey(),
                 'income_pen' => $statement['income'], 'cost_pen' => $statement['cost'], 'commissions_pen' => $statement['commissions'], 'net_pen' => $statement['net'],
-                'gross_margin_pct' => $statement['margin_pct'], 'snapshot' => json_encode($settlement, JSON_UNESCAPED_UNICODE), 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey(),
+                'gross_margin_pct' => $statement['margin_pct'], 'snapshot' => json_encode(Arr::except($settlement, ['cost_form', 'can']), JSON_UNESCAPED_UNICODE), 'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey(),
             ]);
             $audit->log('Liquidación de reserva', $reservation->code, 'cerrar', null, "neto S/ {$statement['net']}");
             $notices->settled((string) $reservation->id, $statement['net']);

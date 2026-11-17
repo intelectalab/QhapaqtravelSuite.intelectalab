@@ -21,7 +21,7 @@ import { cn } from "@/lib/cn";
 import type { FinanceOption, InvoiceCheck, InvoiceDraft, InvoiceInvoiceable, InvoicePending, InvoiceRow, InvoicesOverview } from "@/lib/finance";
 import { formatDate, formatMoney } from "@/lib/format";
 import { statusLabel, type Tone } from "@/lib/tone";
-import { FinanceStep, SummaryBox } from "./FinanceStep";
+import { FinanceStep, SummaryBox, type StepButton } from "./FinanceStep";
 
 const TYPE_TONE: Record<string, Tone> = { "01": "t1", "03": "t4", "07": "violet", "08": "sun" };
 
@@ -357,9 +357,9 @@ function IssueInvoiceFields({ code }: { code: string }) {
   );
 }
 
-export function IssueInvoiceAction({ code, trigger }: { code: string; trigger?: (open: () => void) => ReactNode }) {
+export function IssueInvoiceAction({ code, trigger, button }: { code: string; trigger?: (open: () => void) => ReactNode; button?: StepButton }) {
   return (
-    <FinanceStep step="invoice_issue" itemKey={code} label="Emitir comprobante" title="Emitir comprobante" description="Se numera con la serie del tipo elegido y se envía al OSE. La respuesta llega en segundos." submitLabel="Validar y emitir" trigger={trigger ?? ((open) => <Button size="sm" variant="secondary" icon={<FilePlus2 size={15} />} onClick={open} data-testid={`invoice-issue:${code}`}>Emitir</Button>)}>
+    <FinanceStep button={button} step="invoice_issue" itemKey={code} label="Emitir comprobante" title="Emitir comprobante" description="Se numera con la serie del tipo elegido y se envía al OSE. La respuesta llega en segundos." submitLabel="Validar y emitir" successToast="Comprobante enviado al OSE. Su estado se actualiza en segundos." trigger={trigger ?? ((open) => <Button size="sm" variant="secondary" icon={<FilePlus2 size={15} />} onClick={open} data-testid={`invoice-issue:${code}`}>Emitir</Button>)}>
       <IssueInvoiceFields code={code} />
     </FinanceStep>
   );
@@ -377,7 +377,7 @@ function IssueAnyFields({ options }: { options: InvoiceInvoiceable[] }) {
 
 export function IssueAnyInvoiceAction({ options }: { options: InvoiceInvoiceable[] }) {
   return (
-    <FinanceStep step="invoice_issue" itemKey="libre" label="Emitir comprobante" icon={<FilePlus2 size={16} />} variant="primary" title="Emitir comprobante" description="Para cualquier cuenta por cobrar con importe pendiente de facturar. Se numera con la serie del tipo elegido y se envía al OSE." submitLabel="Validar y emitir">
+    <FinanceStep step="invoice_issue" itemKey="libre" label="Emitir comprobante" icon={<FilePlus2 size={16} />} variant="primary" title="Emitir comprobante" description="Para cualquier cuenta por cobrar con importe pendiente de facturar. Se numera con la serie del tipo elegido y se envía al OSE." submitLabel="Validar y emitir" successToast="Comprobante enviado al OSE. Su estado se actualiza en segundos.">
       {options.length === 0 ? <p className="text-[13px] text-fg-3">No hay cuentas por cobrar con importe pendiente de facturar.</p> : <IssueAnyFields options={options} />}
     </FinanceStep>
   );

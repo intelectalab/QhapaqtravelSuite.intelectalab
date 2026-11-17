@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Domain\Admin\Http\Middleware\AuthenticateApiKey;
+use App\Domain\Admin\Http\Middleware\RequireApiScope;
+use App\Domain\Admin\Support\ApiKeyRoutes;
 use App\Exceptions\ApiExceptionRenderer;
 use App\Http\Middleware\AssignCorrelationId;
 use App\Http\Middleware\EnsureChannelEnabled;
@@ -13,6 +16,7 @@ use App\Http\Middleware\EnsureMinimumAppVersion;
 use App\Http\Middleware\EnsurePlatformUser;
 use App\Http\Middleware\EnsureTenantActive;
 use App\Http\Middleware\IdempotencyMiddleware;
+use App\Http\Middleware\RejectAgencyToken;
 use App\Http\Middleware\ResolvePublicSite;
 use App\Http\Middleware\ResolveTenant;
 use App\Http\Middleware\SecurityHeaders;
@@ -38,7 +42,10 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         apiPrefix: 'api/v1',
         health: '/up',
-        then: fn () => ContractMiddleware::apply(app(Router::class)),
+        then: function (): void {
+            ContractMiddleware::apply(app(Router::class));
+            ApiKeyRoutes::apply(app(Router::class));
+        },
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prependToGroup('api', AssignCorrelationId::class);
@@ -56,6 +63,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'feature' => EnsureFeature::class,
             'mfa' => EnsureMfaVerified::class,
             'platform.user' => EnsurePlatformUser::class,
+            'platform.agency-token' => RejectAgencyToken::class,
             'permissions.team' => SetPermissionsTeam::class,
             'ability' => CheckForAnyAbility::class,
             'idempotent' => IdempotencyMiddleware::class,
@@ -68,7 +76,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->priority([
             AssignCorrelationId::class,
+            AuthenticateApiKey::class,
+            RequireApiScope::class,
             ResolveTenant::class,
+            RejectAgencyToken::class,
             ResolvePublicSite::class,
             SetPostgresTenant::class,
             Authenticate::class,

@@ -6,7 +6,9 @@ namespace App\Domain\Admin\Actions;
 
 use App\Domain\Admin\Support\TenantDataExport;
 use App\Domain\Iam\Support\StaffSeats;
+use App\Domain\Landing\Support\SignupQuote;
 use App\Domain\Platform\Actions\CollectInvoice;
+use App\Domain\Platform\Support\AddonPurchases;
 use App\Domain\Platform\Support\DowngradeValidator;
 use App\Domain\Platform\Support\Entitlements;
 use App\Domain\Platform\Support\PlanRuleCarryOver;
@@ -193,6 +195,11 @@ final class ManageSubscription
         $result = $this->db()->transaction(function () use ($code, $quantity, $domain, $userId): array {
             $subscription = $this->subscription(true);
             $this->assertStatus($subscription, ['active', 'trialing'], 'Para contratar complementos, la suscripción debe estar activa.');
+
+            if (($place = AddonPurchases::managedIn($code)) !== null) {
+                throw ApiException::unprocessable('ADDON_MANAGED_ELSEWHERE', "Este complemento se contrata desde {$place}.", ['manage_in' => $place]);
+            }
+
             $addon = $this->addon($code, $subscription);
             $active = $this->items($subscription->id, $code)->first();
 
@@ -293,7 +300,11 @@ final class ManageSubscription
                 $subscription = $this->subscription(true);
                 $coupon = $this->db()->table('coupons')->whereRaw('upper(code) = ?', [$code])->lockForUpdate()->first();
 
-                if ($coupon === null || $coupon->status !== 'active' || ($coupon->valid_to !== null && $coupon->valid_to < Carbon::today('America/Lima')->toDateString())) {
+                if ($coupon !== null && $coupon->status === 'active' && SignupQuote::isExpired($coupon)) {
+                    throw ApiException::unprocessable('COUPON_INVALID', SignupQuote::expiredMessage($coupon));
+                }
+
+                if ($coupon === null || $coupon->status !== 'active') {
                     throw ApiException::unprocessable('COUPON_INVALID', 'El cupón no existe o ya no está vigente.');
                 }
 
@@ -468,6 +479,7 @@ final class ManageSubscription
             'price' => (string) $this->invoicer->price($target, $cycle),
             'proration' => $immediate && $subscription->status !== 'trialing' ? $this->proration($subscription, $current, $target, $cycle) : null,
             'blockers' => $blockers,
+            'warnings' => $toRank < $fromRank ? $this->validator->warnings((string) $subscription->tenant_id, (string) $target->id) : [],
             'rules' => $rules,
             'carry_over' => $rules['lost_codes'] === [] ? ['items' => [], 'notice' => null] : app(PlanRuleCarryOver::class)->summary((string) $subscription->tenant_id, $rules['lost_codes']),
         ];

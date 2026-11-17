@@ -9,6 +9,7 @@ use App\Domain\Growth\Shared\GrowthRules;
 use App\Domain\Iam\Models\User;
 use App\Domain\Inbox\Support\ConversationDirectory;
 use App\Domain\Integrations\Contracts\SalesAssistant;
+use App\Domain\Platform\Support\EffectiveLimits;
 use App\Domain\Platform\Support\UsageMeter;
 use App\Domain\Quotes\Actions\QuoteLifecycle;
 use App\Domain\Quotes\Models\Quote;
@@ -26,7 +27,7 @@ final class AssistantWorkflow
 
     public const SOURCES = ['quote' => 'Cotización', 'lead' => 'Lead', 'conversation' => 'Conversación'];
 
-    public const PLAN_QUOTA = ['Starter' => 100, 'Professional' => 1000, 'Enterprise' => 5000];
+    public const QUOTA_METRIC = 'ai_requests';
 
     public const PERMISSION = 'ai.assistant.use';
 
@@ -45,7 +46,7 @@ final class AssistantWorkflow
         $this->rules->ensure('R-AI-ASSISTANT', self::PERMISSION);
         $usage = $this->usage($actor);
 
-        if ($usage['used'] >= $usage['limit']) {
+        if ($usage['exhausted']) {
             throw new ApiException(429, 'AI_QUOTA_EXCEEDED', 'AI_QUOTA_EXCEEDED', 'La agencia ya usó los '.$usage['limit'].' pedidos de IA del mes. El cupo se renueva el 1 del mes siguiente o con un paquete adicional.');
         }
 
@@ -86,9 +87,9 @@ final class AssistantWorkflow
         return $this->present($this->find($id, $actor));
     }
 
-    public function apply(string $id, User $actor): array
+    public function apply(string $id, User $actor, bool $confirm = false, bool $voidApproval = false): array
     {
-        return DB::transaction(function () use ($id, $actor): array {
+        return DB::transaction(function () use ($id, $actor, $confirm, $voidApproval): array {
             $request = $this->find($id, $actor, true);
 
             if ($request->status !== 'completed') {
@@ -99,12 +100,12 @@ final class AssistantWorkflow
             $text = $this->draftText((string) $request->kind, $output);
             $result = ['text' => $text];
 
-            if ($request->source_type === 'quote' && in_array($request->kind, ['itinerary', 'quote_draft'], true)) {
-                $result += $this->applyToQuote((string) $request->source_id, $text, $actor);
+            if ($this->appliesToQuote($request)) {
+                $result += $this->applyToQuote((string) $request->source_id, $text, $actor, $confirm, $voidApproval);
             }
 
             DB::table('sys_ai_requests')->where('id', $request->id)->update(['status' => 'applied', 'applied_at' => now()]);
-            $this->audit->log('Pedido IA', (string) $request->id, 'aplicar', 'completed', isset($result['quote']) ? "{$result['quote']} · v{$result['version_no']}" : self::KINDS[$request->kind] ?? $request->kind);
+            $this->audit->log('Pedido IA', (string) $request->id, 'aplicar', 'completed', isset($result['quote']) ? "{$result['quote']} · v{$result['version_no']}".($result['impact'] === null ? '' : ' · confirmado: '.$result['impact']['message']) : self::KINDS[$request->kind] ?? $request->kind);
 
             return [...$this->present($this->find($id, $actor)), 'applied' => $result];
         });
@@ -129,13 +130,15 @@ final class AssistantWorkflow
     public function usage(User $actor): array
     {
         $start = Carbon::now($this->context->timezone())->startOfMonth()->utc();
-        $plan = (string) DB::table('tenants as t')->join('plans as p', 'p.id', '=', 't.plan_id')->where('t.id', $this->context->idOrFail())->value('p.name');
-        $limit = (int) ($this->rules->param('R-AI-ASSISTANT', 'monthlyQuota') ?? self::PLAN_QUOTA[$plan] ?? self::PLAN_QUOTA['Starter']);
+        $tenantId = $this->context->idOrFail();
+        $tenant = DB::table('tenants as t')->join('plans as p', 'p.id', '=', 't.plan_id')->where('t.id', $tenantId)->first(['p.id', 'p.name']);
+        $plan = (string) ($tenant->name ?? '');
+        $limit = $tenant === null ? 0 : EffectiveLimits::limit($tenantId, (string) $tenant->id, self::QUOTA_METRIC);
         $month = DB::table('sys_ai_requests')->where('created_at', '>=', $start);
         $totals = (clone $month)->selectRaw('count(*) as used, coalesce(sum(tokens_in), 0) as tokens_in, coalesce(sum(tokens_out), 0) as tokens_out, coalesce(sum(cost_usd), 0) as cost')->first();
         $byKind = (clone $month)->groupBy('kind')->selectRaw('kind, count(*) as total')->pluck('total', 'kind')->map(fn ($total): int => (int) $total)->all();
         $used = (int) ($totals->used ?? 0);
-        $pct = $limit > 0 ? round($used * 100 / $limit, 1) : 100.0;
+        $pct = $limit === null ? 0.0 : ($limit > 0 ? round($used * 100 / $limit, 1) : 100.0);
 
         return [
             'enabled' => $this->rules->enabled('R-AI-ASSISTANT'),
@@ -143,7 +146,8 @@ final class AssistantWorkflow
             'plan' => $plan,
             'used' => $used,
             'limit' => $limit,
-            'remaining' => max(0, $limit - $used),
+            'remaining' => $limit === null ? null : max(0, $limit - $used),
+            'exhausted' => $limit !== null && $used >= $limit,
             'pct' => $pct,
             'warning' => $pct >= 80,
             'by_kind' => $byKind,
@@ -156,7 +160,33 @@ final class AssistantWorkflow
         ];
     }
 
-    private function applyToQuote(string $quoteId, string $text, User $actor): array
+    public function quoteImpact(Quote $quote): ?array
+    {
+        if (in_array($quote->status, ['borrador', 'convertida'], true)) {
+            return null;
+        }
+
+        $current = (int) $quote->current_version_no;
+        $next = $current + 1;
+        $pending = DB::table('quote_internal_approvals')->where('quote_version_id', $quote->current_version_id)->where('status', 'pendiente')->value('created_at');
+        $base = "Esto crea la v{$next} en borrador y la v{$current} queda reemplazada. El cliente sigue viendo la v{$current} hasta que envíes la v{$next}.";
+
+        if ($quote->status === 'aprobada' || $pending !== null) {
+            $date = Carbon::parse($quote->status === 'aprobada' ? ($quote->approved_at ?? $quote->updated_at) : $pending)->setTimezone($this->context->timezone())->format('d/m/Y');
+            $warning = $quote->status === 'aprobada' ? "Se anulará la aprobación del cliente del {$date}." : "Se anulará la aprobación interna pendiente del {$date}.";
+
+            return ['level' => 'danger', 'status' => (string) $quote->status, 'current_version' => $current, 'new_version' => $next, 'message' => $base, 'warning' => $warning];
+        }
+
+        return ['level' => 'warning', 'status' => (string) $quote->status, 'current_version' => $current, 'new_version' => $next, 'message' => $base, 'warning' => null];
+    }
+
+    private function appliesToQuote(object $request): bool
+    {
+        return $request->source_type === 'quote' && in_array($request->kind, ['itinerary', 'quote_draft'], true);
+    }
+
+    private function applyToQuote(string $quoteId, string $text, User $actor, bool $confirm, bool $voidApproval): array
     {
         $quote = Quote::query()->whereKey($quoteId)->first() ?? throw ApiException::notFound('La cotización del pedido ya no existe.');
         Gate::forUser($actor)->authorize('view', $quote);
@@ -165,7 +195,13 @@ final class AssistantWorkflow
             throw ApiException::conflict('QTE-BR-18', 'Una cotización convertida en reserva ya no cambia.');
         }
 
-        if ($quote->status !== 'borrador') {
+        $impact = $this->quoteImpact($quote);
+
+        if ($impact !== null && (! $confirm || ($impact['level'] === 'danger' && ! $voidApproval))) {
+            throw ApiException::conflict('AI_APPLY_CONFIRM', $impact['warning'] === null ? $impact['message'] : $impact['warning'].' '.$impact['message'], ['impact' => $impact]);
+        }
+
+        if ($impact !== null) {
             $this->quotes->newVersion((string) $quote->code, $actor);
             $quote->refresh();
         }
@@ -177,7 +213,7 @@ final class AssistantWorkflow
             'updated_at' => now(),
         ]);
 
-        return ['quote' => (string) $quote->code, 'version_no' => (int) $version->version_no];
+        return ['quote' => (string) $quote->code, 'version_no' => (int) $version->version_no, 'impact' => $impact];
     }
 
     private function draftText(string $kind, array $output): string
@@ -279,6 +315,14 @@ final class AssistantWorkflow
             'created_at' => $row->created_at,
             'completed_at' => $row->completed_at,
             'applied_at' => $row->applied_at,
+            'apply_impact' => $row->status === 'completed' && $this->appliesToQuote($row) ? $this->impactFor((string) $row->source_id) : null,
         ];
+    }
+
+    private function impactFor(string $quoteId): ?array
+    {
+        $quote = Quote::query()->whereKey($quoteId)->first();
+
+        return $quote === null ? null : $this->quoteImpact($quote);
     }
 }

@@ -123,6 +123,31 @@ export function PassengerSide({ trip }: { trip: PassengerTrip }) {
         </ol>
       </Card>
       <Card>
+        <TintCardTitle icon={FileText} title="Vouchers" aside={trip.vouchers.length ? String(trip.vouchers.length) : undefined} />
+        {trip.vouchers.length === 0 ? (
+          <p className="text-[13px] text-fg-3">Aparecen aquí en cuanto Operaciones emite el voucher de cada servicio confirmado.</p>
+        ) : (
+          <ul className="flex flex-col gap-1.5">
+            {trip.vouchers.map((voucher) => (
+              <li key={voucher.code}>
+                <a href={`/operaciones/vouchers/${encodeURIComponent(voucher.code)}/pdf`} target="_blank" rel="noreferrer" data-testid={`pax-voucher-open:${voucher.code}`} className="lift flex items-center gap-3 rounded-xl border border-line px-3 py-2 text-[13px]">
+                  <span className="grid h-8 w-8 flex-none place-items-center rounded-lg bg-accent/10 text-accent">
+                    <Ticket size={15} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <b className="block truncate font-semibold">{voucher.label}</b>
+                    <span className="text-xs text-fg-3">
+                      {voucher.code} · {formatDate(voucher.date)} · versión {voucher.version}
+                    </span>
+                  </span>
+                  <ChannelBadge status={voucher.status} />
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+      <Card>
         <TintCardTitle icon={Users} title="Pasajeros" aside={`${trip.passengers.length}`} />
         <ul className="flex flex-wrap gap-2">
           {trip.passengers.map((passenger) => (

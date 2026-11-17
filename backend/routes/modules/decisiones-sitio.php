@@ -18,8 +18,8 @@ Route::name('sitio.')->group(function (): void {
     Route::get('finance/payments/{code}/transfer-proof', [SiteTransferController::class, 'proof'])->middleware('permission:finance.receivables|finance.payments.register')->name('finance.payments.transfer-proof');
 
     Route::middleware('permission:finance.payments.register')->group(function (): void {
-        Route::get('reservations/{code}/web-reactivation', [SiteTransferController::class, 'reactivation'])->name('reservations.web-reactivation.show');
-        Route::post('reservations/{code}/web-reactivation', [SiteTransferController::class, 'reactivate'])->name('reservations.web-reactivation.store');
+        Route::get('reservations/{code}/web-recreation', [SiteTransferController::class, 'recreation'])->name('reservations.web-recreation.show');
+        Route::post('reservations/{code}/web-recreation', [SiteTransferController::class, 'recreate'])->name('reservations.web-recreation.store');
     });
 
     Route::middleware('permission:channels.ecommerce.manage|crm.clients.manage')->group(function (): void {

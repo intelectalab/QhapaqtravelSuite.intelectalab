@@ -85,7 +85,7 @@ it('TB-04: el tour cobra adultos y niños, respeta la edad mínima con aviso y l
         ->and(tramosLine($usd, 'tour-TT-AQP-2')->meta['chd'])->toBe(0)
         ->and(tramosLine($usd, 'tour-TT-CUS-2')->amount->getAmount()->toFloat())->toBe(162.0)
         ->and(tramosLine($usd, 'tour-TT-CUS-2')->meta['date'])->toBe('2026-10-18')
-        ->and($quote->warnings)->toContain('Rafting en el río Chili: edad mínima 12 años; los niños menores no participan.');
+        ->and($quote->warnings)->toContain('No puede ir a Rafting en el río Chili: edad mínima 12 años (1 niño no paga ni ocupa cupo).');
 });
 
 it('TB-05: por vehículo elige el más chico que alcanza y, si ninguno alcanza, varias unidades del más grande', function () {

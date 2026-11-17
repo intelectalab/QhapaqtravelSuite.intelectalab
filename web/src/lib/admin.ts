@@ -543,6 +543,7 @@ export interface PlanChangePreview {
   price: string;
   proration: { days_left: number; period_days: number; charge: string; credit: string; net: string } | null;
   blockers: string[];
+  warnings?: string[];
   rules: { gained: string[]; lost: string[] };
   carry_over?: { items: { rule: string; count: number; noun: string; label: string; kept: string }[]; notice: string | null };
 }
@@ -594,6 +595,9 @@ export interface ApiKey {
   revoke_reason: string | null;
   created_at: string;
   created_by: string | null;
+  owner_mode: "fixed" | "round_robin";
+  owner_id: string | null;
+  owner_name: string | null;
   usage?: { calls_30d: number; rejected_24h: number };
 }
 
@@ -643,6 +647,8 @@ export interface ApiOverview {
   public_endpoints?: { method: string; path: string; scopes: string[]; label: string }[];
   scopes: Option[];
   events: Option[];
+  owner_modes: Option[];
+  advisors: { id: string; name: string; color: string | null }[];
   history: AuditEntry[];
   key_history: AuditEntry[];
   can_manage: boolean;

@@ -20,13 +20,13 @@ final class AuditTrail
         return DB::table('audit_events as e')->leftJoin('iam_users as u', 'u.id', '=', 'e.actor_id')
             ->where('e.entity', $entity)->whereIn('e.entity_id', $ids)
             ->orderByDesc('e.occurred_at')->orderByDesc('e.code')->limit($limit)
-            ->get(['e.code', 'e.action', 'e.before_value', 'e.after_value', 'e.actor_type', 'e.ip', 'e.occurred_at', 'u.name as actor'])
+            ->get(['e.code', 'e.action', 'e.before_value', 'e.after_value', 'e.actor_type', 'e.actor_role', 'e.ip', 'e.occurred_at', 'u.name as actor'])
             ->map(fn (object $row): array => [
                 'code' => $row->code,
                 'action' => $row->action,
                 'before' => $row->before_value,
                 'after' => $row->after_value,
-                'actor' => $row->actor ?? ($row->actor_type === 'system' ? 'Sistema' : null),
+                'actor' => AuditActorName::of($row->actor, $row->actor_type, $row->actor_role),
                 'ip' => $row->ip,
                 'at' => Carbon::parse($row->occurred_at)->toIso8601String(),
             ])->values()->all();

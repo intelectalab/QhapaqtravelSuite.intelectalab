@@ -23,6 +23,8 @@ final readonly class QuoteSelection
         public array $nights = [],
         public array $tours = [],
         public array $transport = [],
+        public ?array $tax = null,
+        public array $tourChildren = [],
     ) {}
 
     public static function fromArray(array $s): self
@@ -46,6 +48,8 @@ final readonly class QuoteSelection
             nights: array_map('intval', array_filter((array) ($s['nights'] ?? []), 'is_numeric')),
             tours: array_values(array_map(fn (mixed $item): string => (string) (is_array($item) ? ($item['id'] ?? '') : $item), (array) ($s['tours'] ?? []))),
             transport: array_values(array_map(fn (mixed $item): string => (string) (is_array($item) ? ($item['id'] ?? '') : $item), (array) ($s['transport'] ?? []))),
+            tax: isset($s['tax']) && is_array($s['tax']) ? $s['tax'] : null,
+            tourChildren: array_map('intval', array_filter((array) ($s['tour_children'] ?? $s['tourChildren'] ?? []), 'is_numeric')),
         );
     }
 }

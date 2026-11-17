@@ -21,7 +21,7 @@ function previewBody(array $overrides = []): array
     ];
 }
 
-it('la vista previa de precios calcula subtotal, descuento, IGV y total sin guardar nada', function () {
+it('la vista previa de precios calcula subtotal, descuento, IGV incluido y total sin guardar nada', function () {
     actingAsSeed('U03');
     $before = withinTenant(tenantA(), fn () => DB::table('quote_quotes')->count());
 
@@ -30,9 +30,9 @@ it('la vista previa de precios calcula subtotal, descuento, IGV y total sin guar
     expect(collect($data['lines'])->pluck('total')->all())->toBe(['1000.00', '241.00'])
         ->and($data['totals']['sale_total'])->toBe('1241.00')
         ->and($data['totals']['discount_total'])->toBe('62.05')
-        ->and($data['totals']['net_total'])->toBe('1178.95')
-        ->and($data['totals']['tax_total'])->toBe('212.21')
-        ->and($data['totals']['grand_total'])->toBe('1391.16')
+        ->and($data['totals']['net_total'])->toBe('999.11')
+        ->and($data['totals']['tax_total'])->toBe('179.84')
+        ->and($data['totals']['grand_total'])->toBe('1178.95')
         ->and(collect($data['lines'])->pluck('price_source')->unique()->all())->toBe(['manual'])
         ->and(withinTenant(tenantA(), fn () => DB::table('quote_quotes')->count()))->toBe($before);
 });

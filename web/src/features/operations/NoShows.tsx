@@ -9,7 +9,7 @@ import { InfoTip } from "@/components/ui/InfoTip";
 import { TextArea } from "@/components/ui/TextArea";
 import { TintCardTitle } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
-import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { NO_SHOW_SERVICE, type NoShow, type OrderDetail } from "@/lib/operations";
 import { ConfirmNote, OpsStep, ToggleChips } from "./OpsStep";
 
@@ -34,7 +34,7 @@ export function NoShowAction({ order, service }: { order: OrderDetail; service: 
       submitLabel="Registrar no-show"
       trigger={(open) => <RowIcon tone="neutral" label="Registrar no-show" icon={<UserX size={15} />} onClick={open} />}
     >
-      <ConfirmNote>Según Configuración › Operaciones, el registro puede avisar al asesor, abrir una incidencia o generar el cargo de la política del producto.</ConfirmNote>
+      <ConfirmNote>Según Configuración › Operaciones, el registro puede avisar al asesor y abrir una incidencia. No genera un cargo: la política de no-show solo impide devolver lo pagado.</ConfirmNote>
       <ToggleChips label="No se presentaron" name="passenger_ids" options={candidates.map((passenger) => ({ value: passenger.id, label: passenger.full_name, hint: passenger.pax_type }))} hint={present.size > 0 ? `${present.size} con check-in no aparecen en la lista.` : undefined} />
       <TextArea label="Nota" name="note" rows={2} maxLength={300} placeholder="Por ejemplo: no llegó al punto de encuentro." />
     </OpsStep>
@@ -48,11 +48,6 @@ function NoShowEffects({ item }: { item: NoShow }) {
       <Link key="incident" href={`/operaciones/incidencias/${encodeURIComponent(item.incident)}`} className="hover:underline">
         <Badge tone="warn" dot={false}>{item.incident}</Badge>
       </Link>
-    ),
-    item.charge && (
-      <Badge key="charge" tone={item.charge.status === "cancelada" ? "mute" : "bad"} dot={false}>
-        Cargo {item.charge.pct} % · {formatMoney(item.charge.amount, item.charge.currency)}
-      </Badge>
     ),
   ].filter(Boolean);
   return effects.length ? <span className="flex flex-wrap gap-1.5">{effects}</span> : null;
@@ -83,7 +78,7 @@ function NoShowRowActions({ item }: { item: NoShow }) {
         submitLabel="Anular registro"
         trigger={(open) => <RowIcon tone="delete" label="Anular no-show" icon={<Ban size={15} />} onClick={open} />}
       >
-        <ConfirmNote tone="warn">{item.charge && item.charge.status !== "cancelada" ? `También se cancela la cuenta por cobrar ${item.charge.receivable} si no tiene pagos.` : "El registro queda anulado en el historial con su motivo."}</ConfirmNote>
+        <ConfirmNote tone="warn">El registro queda anulado en el historial con su motivo.</ConfirmNote>
         <TextArea label="Motivo" name="reason" rows={2} required minLength={3} maxLength={300} placeholder="Por ejemplo: el pasajero llegó tarde y sí tomó el servicio." />
       </OpsStep>
     </span>

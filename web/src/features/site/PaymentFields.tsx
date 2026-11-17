@@ -42,14 +42,17 @@ export function PaymentFields({ methods, accounts, walletPhone, onChange, errors
         {methods.map((option) => {
           const Icon = ICONS[option.value] ?? CreditCard;
           const active = method === option.value;
+          const off = option.available === false;
           return (
-            <button key={option.value} type="button" role="radio" aria-checked={active} onClick={() => setMethod(option.value)} className={cn("lift flex flex-col items-center gap-1.5 rounded-2xl border px-3 py-3 text-[13px] font-semibold transition", active ? "border-brand bg-[color-mix(in_srgb,var(--brand)_8%,var(--surface))] text-fg" : "border-line bg-surface text-fg-2 hover:border-[color-mix(in_srgb,var(--brand)_40%,transparent)]")}>
+            <button key={option.value} type="button" role="radio" aria-checked={active} disabled={off} title={option.note ?? undefined} onClick={() => setMethod(option.value)} className={cn("lift flex flex-col items-center gap-1.5 rounded-2xl border px-3 py-3 text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-50", active ? "border-brand bg-[color-mix(in_srgb,var(--brand)_8%,var(--surface))] text-fg" : "border-line bg-surface text-fg-2 hover:border-[color-mix(in_srgb,var(--brand)_40%,transparent)]")}>
               <Icon size={18} className={active ? "text-brand" : "text-fg-3"} />
               {option.label}
+              {option.currency && <span className="text-[11px] font-normal text-fg-3">Solo en soles</span>}
             </button>
           );
         })}
       </div>
+      {methods.some((option) => option.available === false) && <p className="-mt-2 text-[12px] text-fg-3">{methods.find((option) => option.available === false)?.note}</p>}
 
       {method === "tarjeta" && (
         <div className="grid gap-3 sm:grid-cols-2">

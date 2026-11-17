@@ -109,6 +109,19 @@ final class CheckoutRules
             $errors['passengers'] = ["Por la edad a la fecha del viaje hay {$counts['ADT']} adultos, {$counts['CHD']} niños y {$counts['INF']} infantes; la reserva es para {$group['adt']}, {$group['chd']} y {$group['inf']}. Revisa las fechas de nacimiento o vuelve al carrito."];
         }
 
+        if ($errors === []) {
+            foreach ($terms['items'] as $item) {
+                foreach ($item['tours'] ?? [] as $tour) {
+                    $day = Carbon::parse($tour['date']);
+                    $fit = collect($valid)->filter(fn (array $passenger): bool => $passenger['pax_type'] === 'CHD' && Carbon::parse($passenger['birth_date'])->diffInYears($day) >= $tour['min_age'])->count();
+                    if ($fit !== $tour['children']) {
+                        $errors['passengers'] = ["{$tour['name']}: según las fechas de nacimiento, ".($fit === 1 ? '1 niño tiene' : "{$fit} niños tienen")." {$tour['min_age']} años o más y en el carrito ".($tour['children'] === 1 ? 'figura 1' : "figuran {$tour['children']}").'. Ajusta el tour en el carrito.'];
+                        break 2;
+                    }
+                }
+            }
+        }
+
         if ($errors !== []) {
             throw ApiException::unprocessable('SIT-BR-14', (string) array_values($errors)[0][0], $errors);
         }
@@ -205,6 +218,10 @@ final class CheckoutRules
             'terms.*' => 'Debes aceptar los términos y las políticas de cancelación.',
             'privacy.*' => 'Debes autorizar el tratamiento de tus datos para gestionar la reserva.',
         ])->validate();
+
+        if (! empty($values['method'])) {
+            CheckoutTerms::assertMethod((string) $values['method'], (string) $terms['currency']);
+        }
 
         return $values;
     }

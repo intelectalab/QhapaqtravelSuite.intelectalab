@@ -52,6 +52,7 @@ final class OrderDirectory
                 $ownIncidents = $incidents->where('order_id', $order->id);
 
                 return [
+                    'id' => $order->id,
                     'code' => $order->code,
                     'lock_version' => (int) $order->lock_version,
                     'title' => $order->title,

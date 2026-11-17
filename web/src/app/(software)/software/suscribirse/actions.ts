@@ -25,7 +25,7 @@ export async function checkCoupon(coupon: string, plan: string, cycle: SignupCyc
 
 export async function createSignup(form: FormData): Promise<ActionResult<{ token: string; state: string; totals: SignupTotals }>> {
   const body = {
-    ...formValues(form, ["plan", "cycle", "admin_name", "email", "password", "phone", "commercial_name", "ruc", "city", "business_type", "doc_type", "coupon", "expected_total"]),
+    ...formValues(form, ["plan", "cycle", "admin_name", "email", "password", "phone", "commercial_name", "ruc", "city", "business_type", "coupon", "expected_total"]),
     accept_terms: form.get("accept_terms") === "on",
     marketing_consent: form.get("marketing_consent") === "on",
     terms_version: "TYC-2026.1",

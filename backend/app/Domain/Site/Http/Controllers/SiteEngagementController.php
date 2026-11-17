@@ -7,12 +7,13 @@ namespace App\Domain\Site\Http\Controllers;
 use App\Domain\Site\Actions\NewsletterLifecycle;
 use App\Domain\Site\Actions\RecordWebEvents;
 use App\Domain\Site\Actions\WebChat;
+use App\Domain\Site\Support\SiteLocale;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 final class SiteEngagementController
 {
-    public function openChat(Request $request, WebChat $chat): JsonResponse
+    public function openChat(Request $request, WebChat $chat, SiteLocale $locale): JsonResponse
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'min:2', 'max:150'],
@@ -28,7 +29,7 @@ final class SiteEngagementController
             'consent.accepted' => 'Acepta el tratamiento de tus datos para chatear con nosotros.',
         ]);
 
-        return response()->json(['data' => $chat->open($data)], 201);
+        return response()->json(['data' => $chat->open($data, $locale->current())], 201);
     }
 
     public function chatMessage(Request $request, string $session, WebChat $chat): JsonResponse

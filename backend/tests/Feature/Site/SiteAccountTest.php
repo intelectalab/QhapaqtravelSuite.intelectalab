@@ -133,13 +133,13 @@ it('SIT-BR-20: el comprador web crea su cuenta, ve su reserva y paga el saldo; s
     $rejected = $this->postJson("/api/v1/public/me/receivables/{$due}/payments", ['method' => 'tarjeta', 'card_token' => 'tok_51_0002', 'card_holder' => 'ROSA Q'], [...acctAs($token), ...critical()])->assertOk()->json('data');
     expect($rejected['result'])->toBe('rechazado');
 
-    $informed = $this->postJson("/api/v1/public/me/receivables/{$due}/payments", ['method' => 'yape', 'operation_ref' => 'YP-552211'], [...acctAs($token), ...critical()])->assertOk()->json('data');
+    $informed = $this->postJson("/api/v1/public/me/receivables/{$due}/payments", ['method' => 'transferencia', 'operation_ref' => 'TR-552211'], [...acctAs($token), ...critical()])->assertOk()->json('data');
     expect($informed['result'])->toBe('por_validar');
     $waiting = $this->getJson('/api/v1/public/me/receivables?status=open', acctAs($token))->assertOk()->json('data.items.0');
     expect($waiting['can_pay'])->toBeFalse()->and($waiting['pending'])->toBe($open[0]['payable']);
     expect($this->postJson("/api/v1/public/me/receivables/{$due}/payments", ['method' => 'tarjeta', 'card_token' => 'tok_ok_1111', 'card_holder' => 'ROSA Q'], [...acctAs($token), ...critical()]))->toBeApiError(409, 'SIT-BR-20');
 
-    withinTenant(tenantA(), fn () => DB::table('fin_payments')->where('reference', 'YP-552211')->update(['status' => 'rechazado', 'reject_reason' => 'Operación no encontrada']));
+    withinTenant(tenantA(), fn () => DB::table('fin_payments')->where('reference', 'TR-552211')->update(['status' => 'rechazado', 'reject_reason' => 'Operación no encontrada']));
     $paid = $this->postJson("/api/v1/public/me/receivables/{$due}/payments", ['method' => 'tarjeta', 'card_token' => 'tok_ok_4444', 'card_holder' => 'ROSA Q'], [...acctAs($token), ...critical()])->assertOk()->json('data');
     $receivable = withinTenant(tenantA(), fn () => DB::table('fin_receivables')->where('code', $open[0]['code'])->first());
 

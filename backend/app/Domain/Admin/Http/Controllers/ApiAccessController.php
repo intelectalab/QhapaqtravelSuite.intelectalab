@@ -7,6 +7,7 @@ namespace App\Domain\Admin\Http\Controllers;
 use App\Domain\Admin\Actions\ManageApiAccess;
 use App\Domain\Admin\Actions\ManageWebhookDeliveries;
 use App\Domain\Admin\Support\ApiDirectory;
+use App\Domain\Admin\Support\ApiKeyActor;
 use App\Domain\Admin\Support\IpRange;
 use App\Domain\Iam\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -39,6 +40,7 @@ final class ApiAccessController
             'expires_at' => ['nullable', 'date', 'after:today'],
             'ips' => ['nullable', 'array', 'max:10'],
             'ips.*' => [IpRange::rule()],
+            ...$this->ownerRules(),
         ], [
             'name.*' => 'Ponle un nombre que diga para qué se usa.',
             'environment.*' => 'Elige el entorno.',
@@ -46,9 +48,34 @@ final class ApiAccessController
             'scopes.*' => 'Elige permisos de la lista.',
             'expires_at.*' => 'La fecha de vencimiento debe ser futura.',
             'ips.*' => 'Escribe direcciones IP o rangos CIDR válidos, separados por comas.',
+            ...$this->ownerMessages(),
         ]);
 
         return response()->json(['data' => $access->createKey($data, $this->user($request))], 201);
+    }
+
+    public function updateKeyOwner(Request $request, string $code, ManageApiAccess $access): JsonResponse
+    {
+        $data = $request->validate([...$this->ownerRules(), 'owner_mode' => ['required', 'in:'.implode(',', array_keys(ApiKeyActor::MODES))]], $this->ownerMessages());
+        $access->updateKeyOwner($code, $data, $this->user($request));
+
+        return response()->json(['data' => $access->key($code)]);
+    }
+
+    private function ownerRules(): array
+    {
+        return [
+            'owner_mode' => ['nullable', 'in:'.implode(',', array_keys(ApiKeyActor::MODES))],
+            'owner_id' => ['nullable', 'required_if:owner_mode,fixed', 'uuid'],
+        ];
+    }
+
+    private function ownerMessages(): array
+    {
+        return [
+            'owner_mode.*' => 'Elige quién se hace cargo de lo que se cree sin asesor.',
+            'owner_id.*' => 'Elige el asesor fijo.',
+        ];
     }
 
     public function revokeKey(Request $request, string $code, ManageApiAccess $access): JsonResponse

@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 final class ProfitabilityReport
 {
-    private const KINDS = ['alojamiento' => 'Alojamiento', 'tour' => 'Tours y excursiones', 'traslado' => 'Traslados', 'tren_entrada' => 'Trenes y entradas', 'libre' => 'Otros servicios'];
+    private const KINDS = ['alojamiento' => 'Alojamiento', 'tour' => 'Tours y excursiones', 'traslado' => 'Traslados', 'tren_entrada' => 'Pasajes y entradas', 'libre' => 'Otros servicios'];
 
     public const LIGHTS = ['r' => 'bad', 'a' => 'warn', 'g' => 'ok'];
 

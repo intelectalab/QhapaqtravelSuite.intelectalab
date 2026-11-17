@@ -17,4 +17,5 @@ Route::controller(PlatformSettingsController::class)->group(function (): void {
     Route::get('branding', 'branding')->name('branding.show');
     Route::put('branding', 'saveBranding')->name('branding.update');
     Route::post('branding/reset', 'resetBranding')->name('branding.reset');
+    Route::put('branding/logo', 'saveLogo')->name('branding.logo');
 });

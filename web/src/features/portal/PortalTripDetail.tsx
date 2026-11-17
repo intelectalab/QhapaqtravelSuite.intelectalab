@@ -7,6 +7,7 @@ import { HeroBand, HeroChip, HeroPanel, ToneScope } from "@/components/ui/Tinted
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { countdownLabel, PAX_TYPES, PHASES, SERVICE_STATES, type PortalTrip } from "@/lib/portal";
+import { serviceIcon } from "@/lib/reservations";
 import { toneStyle } from "@/lib/tone";
 import { AdvisorCard, EmptyLine, PortalBadge, RISE, rise, SectionCard } from "./PortalUi";
 
@@ -40,7 +41,7 @@ function Itinerary({ trip }: { trip: PortalTrip }) {
               </p>
               <ul className="mt-2 flex flex-col gap-2">
                 {day.services.map((service) => {
-                  const Icon = KIND_ICONS[service.kind] ?? CalendarDays;
+                  const Icon = serviceIcon(service.kind, service.mode, KIND_ICONS, CalendarDays);
                   const state = SERVICE_STATES[service.state];
                   return (
                     <li key={service.code} style={toneStyle(state.tone)} className="lift group flex items-center gap-3 rounded-tile border border-line bg-surface px-3.5 py-3">

@@ -7,8 +7,10 @@ namespace App\Domain\SiteTemplates\Actions;
 use App\Domain\Channels\Actions\ManageCmsContent;
 use App\Domain\Iam\Models\User;
 use App\Domain\Integrations\Contracts\SiteContentAi;
+use App\Domain\Platform\Support\AddonPurchases;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Sequences\SequenceService;
 use App\Domain\Shared\Tenancy\TenantContext;
 use App\Domain\SiteTemplates\Support\AiCredits;
@@ -56,6 +58,7 @@ final class AiContent
         private readonly SequenceService $sequences,
         private readonly AuditLogger $audit,
         private readonly ManageCmsContent $cms,
+        private readonly AddonPurchases $purchases,
     ) {}
 
     public function options(): array
@@ -307,9 +310,21 @@ final class AiContent
             }
 
             $this->audit->log(self::AUDIT_CREDITS, $pack->code, $isPlan ? 'contratar' : 'comprar', null, $note);
+            $billing = $this->bill($pack);
 
-            return ['pack' => $this->credits->presentPack($pack), 'summary' => $this->credits->summary()];
+            return ['pack' => $this->credits->presentPack($pack), 'summary' => $this->credits->summary(), 'billing' => $billing];
         });
+    }
+
+    private function bill(stdClass $pack): array
+    {
+        $price = Decimal::money($pack->price);
+
+        if ($pack->billing === 'mensual') {
+            return $this->purchases->monthly((string) ($pack->addon_code ?: AiCredits::PLAN_ADDON), ($this->credits->isPlan($pack) ? 'Plan ' : '').$pack->name, $price, ['pack' => $pack->code]);
+        }
+
+        return $this->purchases->once(AddonPurchases::CREDIT_PACK, "Paquete {$pack->name} · pago único", $price, ['pack' => $pack->code]);
     }
 
     private function generate(string $kind, string $type, array $target, string $locale, ?string $tone, ?string $notes, int $cost, int $attempt, User $user, ?string $replaces = null): array

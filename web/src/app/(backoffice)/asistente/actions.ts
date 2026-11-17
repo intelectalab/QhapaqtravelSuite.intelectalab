@@ -29,7 +29,8 @@ export async function askAssistant(_state: AssistantState, form: FormData): Prom
 export async function assistantStep(_state: StepResult, form: FormData): Promise<StepResult> {
   const id = encodeURIComponent(text(form, "id"));
   const step = text(form, "step") === "discard" ? "discard" : "apply";
-  const result = await sendStep(`/ai/requests/${id}/${step}`, "POST", {}, step === "apply" ? "No pudimos aplicar el borrador." : "No pudimos descartar el borrador.");
+  const body = step === "apply" ? { confirm: text(form, "confirm") === "1", void_approval: text(form, "void_approval") === "1" } : {};
+  const result = await sendStep(`/ai/requests/${id}/${step}`, "POST", body, step === "apply" ? "No pudimos aplicar el borrador." : "No pudimos descartar el borrador.");
   if (result.done) revalidatePath("/asistente");
   return result;
 }

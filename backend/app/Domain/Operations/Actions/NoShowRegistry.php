@@ -19,7 +19,7 @@ final class NoShowRegistry
 {
     public const SERVICE_STATUSES = ['confirmado', 'en_curso', 'completado'];
 
-    private const SERVICE_COLUMNS = ['id', 'code', 'name', 'status', 'service_date', 'reservation_id', 'product_id', 'pax', 'price_amount', 'currency', 'fx_rate'];
+    private const SERVICE_COLUMNS = ['id', 'code', 'name', 'status', 'service_date', 'reservation_id'];
 
     public function __construct(private readonly NoShowEffects $effects, private readonly OpsCommon $common, private readonly AuditLogger $audit) {}
 
@@ -108,28 +108,9 @@ final class NoShowRegistry
 
             DB::table('ops_no_shows')->where('id', $row->id)->update(['voided_at' => now(), 'voided_by' => $actor->getKey(), 'void_reason' => $reason, 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             $this->audit->log('No-show', $this->label($row), 'anular', 'registrado', "anulado · {$reason}", actor: $actor);
-            $released = $this->releaseCharge($row, $actor);
 
-            return ['id' => $row->id, 'voided' => true, 'charge_cancelled' => $released];
+            return ['id' => $row->id, 'voided' => true];
         });
-    }
-
-    private function releaseCharge(object $row, User $actor): bool
-    {
-        if ($row->receivable_id === null || DB::table('ops_no_shows')->where('receivable_id', $row->receivable_id)->whereNull('voided_at')->exists()) {
-            return false;
-        }
-
-        $receivable = DB::table('fin_receivables')->where('id', $row->receivable_id)->whereNull('deleted_at')->lockForUpdate()->first(['id', 'code', 'status', 'paid_amount']);
-
-        if ($receivable === null || in_array($receivable->status, ['pagada', 'cancelada'], true) || (float) $receivable->paid_amount > 0) {
-            return false;
-        }
-
-        DB::table('fin_receivables')->where('id', $receivable->id)->update(['status' => 'cancelada', 'cancelled_at' => now(), 'cancel_reason' => 'No-show anulado', 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
-        $this->audit->log('Cuenta por cobrar', $receivable->code, 'cancelar', $receivable->status, 'cancelada · no-show anulado', actor: $actor);
-
-        return true;
     }
 
     private function insert(object $service, ?string $assignmentId, array $passengerIds, Collection $roster, string $source, ?string $note, User $actor): Collection

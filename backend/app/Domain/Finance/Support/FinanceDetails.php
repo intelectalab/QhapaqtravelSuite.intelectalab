@@ -128,7 +128,7 @@ final class FinanceDetails
         ];
     }
 
-    public function settlement(string $reservationCode): ?array
+    public function settlement(string $reservationCode, ?User $viewer = null): ?array
     {
         $reservation = DB::table('booking_reservations as r')->join('crm_clients as c', 'c.id', '=', 'r.client_id')->where('r.code', $reservationCode)->whereNull('r.deleted_at')
             ->first(['r.id', 'r.code', 'r.title', 'r.status', 'r.currency', 'r.fx_rate', 'r.total_amount', 'r.travel_to', 'c.name as client']);
@@ -141,8 +141,9 @@ final class FinanceDetails
         $pen = fn ($amount, ?string $rate = null): BigDecimal => Decimal::of((string) $amount)->multipliedBy($rate ?? $fx)->toScale(2, RoundingMode::HALF_UP);
         $receivables = DB::table('fin_receivables')->where('reservation_id', $reservation->id)->whereNull('deleted_at')->where('status', '<>', 'cancelada')->orderBy('due_date')->get(['code', 'concept', 'amount', 'paid_amount', 'currency', 'fx_rate', 'status', 'due_date']);
         $payables = DB::table('fin_payables as f')->leftJoin('catalog_providers as p', 'p.id', '=', 'f.provider_id')->where('f.reservation_id', $reservation->id)->whereNull('f.deleted_at')->whereNotIn('f.status', ['anulada', 'cancelada'])
-            ->get(['f.code', 'f.kind', 'f.concept', 'f.amount', 'f.paid_amount', 'f.currency', 'f.fx_rate', 'f.status', 'f.approved_at', 'p.name as provider']);
-        $pendingExtras = $payables->filter(fn (object $row): bool => $row->kind === 'costo_adicional' && $row->approved_at === null);
+            ->get(['f.code', 'f.kind', 'f.concept', 'f.amount', 'f.paid_amount', 'f.currency', 'f.fx_rate', 'f.status', 'f.approved_at', 'f.lock_version', 'p.name as provider', 'p.ref as provider_ref']);
+        $pendingExtras = $payables->filter(fn (object $row): bool => $row->kind === 'costo_adicional' && $row->approved_at === null)->values();
+        $mainProvider = $payables->filter(fn (object $row): bool => $row->provider_ref !== null)->sortByDesc(fn (object $row): float => (float) $row->amount)->first();
         $payables = $payables->reject(fn (object $row): bool => $row->kind === 'costo_adicional' && $row->approved_at === null)->values();
         $commissions = DB::table('fin_commissions')->where('reservation_id', $reservation->id)->whereNull('deleted_at')->where('status', '<>', 'anulada')->get(['code', 'kind', 'amount', 'currency', 'fx_rate', 'status']);
         $income = $receivables->reduce(fn (BigDecimal $sum, object $row) => $sum->plus($pen($reservation->currency === 'PEN' ? Decimal::withoutIgv((string) $row->amount) : $row->amount, (string) ($row->fx_rate ?: $fx))), BigDecimal::zero());
@@ -179,6 +180,18 @@ final class FinanceDetails
             'receivables' => $receivables, 'payables' => $payables, 'commissions' => $commissions,
             'checks' => $checks, 'can_close' => $closed === null && collect($checks)->every(fn (array $check) => $check['ok']),
             'closed' => $closed,
+            'pending_extras' => $pendingExtras,
+            'cost_form' => [
+                'providers' => DB::table('catalog_providers')->whereNull('deleted_at')->where('status', 'activo')->orderBy('name')->get(['ref as value', 'name as label']),
+                'cost_types' => collect(PayableDirectory::COST_TYPES)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
+                'default_provider' => $mainProvider?->provider_ref,
+                'today' => $this->money->today(),
+                'usd_rate' => $this->money->usdRate(),
+            ],
+            'can' => [
+                'register_cost' => $closed === null && $viewer !== null && $viewer->can('finance.payables') && $viewer->can('finance.payments.register'),
+                'approve_cost' => $closed === null && $viewer !== null && $viewer->can('finance.payables'),
+            ],
         ];
     }
 

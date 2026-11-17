@@ -115,6 +115,8 @@ final class SiteAccountDirectory
         return [
             'items' => $list->map(fn (array $r): array => $this->receivable($r))->values()->all(),
             'totals' => ['payable' => $this->sum($open, 'payable'), 'pending' => $this->sum($open, 'pending')],
+            'by_tour' => $this->byTour($open),
+            'split_hint' => TransferDeadlines::SPLIT_HINT,
             'methods' => collect(CheckoutTerms::METHODS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values()->all(),
             'bank_accounts' => CheckoutTerms::bankAccounts(),
         ];
@@ -178,6 +180,14 @@ final class SiteAccountDirectory
         return DB::table('ops_vouchers as v')->join('booking_reservations as r', 'r.id', '=', 'v.reservation_id')->whereIn('v.reservation_id', $reservationIds)->where('v.status', '<>', 'anulado')
             ->orderBy('v.service_date')->get(['v.code', 'v.service_label', 'v.service_date', 'v.status', 'r.code as reservation'])
             ->map(fn (stdClass $v): array => ['code' => $v->code, 'label' => $v->service_label, 'date' => $v->service_date, 'status' => $v->status, 'reservation' => $v->reservation]);
+    }
+
+    private function byTour(Collection $open): array
+    {
+        $tours = $open->filter(fn (array $row): bool => BigDecimal::of($row['payable'])->isPositive())->groupBy('reservation')
+            ->map(fn (Collection $group, string $code): array => ['code' => $code, 'title' => $group->first()['reservation_title'], 'amounts' => $this->sum($group, 'payable')])->values();
+
+        return $tours->count() > 1 ? $tours->all() : [];
     }
 
     private function sum(Collection $rows, string $key): array

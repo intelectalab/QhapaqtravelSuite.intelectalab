@@ -7,6 +7,7 @@ namespace App\Domain\Site\Support;
 use App\Domain\Admin\Support\StaffNotices;
 use App\Domain\Channels\Support\EcommerceOrderRelease;
 use App\Domain\Shared\Audit\AuditLogger;
+use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Tenancy\TenantContext;
 use App\Domain\Site\Actions\SiteCheckout;
 use Carbon\CarbonImmutable;
@@ -20,6 +21,8 @@ final class TransferDeadlines
     public const EVENT_WARNING = 'transferencia.por_cancelar';
 
     public const EVENT_CANCELLED = 'transferencia.cancelada';
+
+    public const SPLIT_HINT = 'Puedes pagar todo junto o hacer una transferencia por cada tour.';
 
     private const LINK_DAYS = 3;
 
@@ -67,12 +70,29 @@ final class TransferDeadlines
             "Hola {$order->customer_name}:",
             "Recibimos el aviso de tu pago de {$order->currency} {$amount} por ".(CheckoutTerms::METHODS[$method] ?? $method)." para el pedido {$order->code}. Lo validamos en horario de atención.",
             $method === 'transferencia' && $accounts !== '' ? "Datos bancarios de {$agency}:\n{$accounts}" : null,
+            $method === 'transferencia' ? $this->perTour((string) $order->id) : null,
             "Sube aquí la foto o el PDF de tu constancia para validarla más rápido:\n{$this->link($order)}",
             $cancel['auto_cancel'] ? "Si no podemos validar el pago en {$cancel['cancel_hours']} horas, el pedido se cancela y los cupos se liberan. Con la constancia subida, el pedido no se cancela." : null,
             $agency,
         ];
 
         $this->notices->email((string) $order->customer_email, self::EVENT_PENDING, "Tu pago del pedido {$order->code} está en validación · {$agency}", implode("\n\n", array_filter($lines)), 'channel_ecom_order', (string) $order->id, 'client');
+    }
+
+    public function perTour(string $orderId): ?string
+    {
+        $tours = DB::table('fin_payments as p')->join('booking_reservations as r', 'r.id', '=', 'p.reservation_id')
+            ->where('r.ecom_order_id', $orderId)->where('p.kind', 'cobro')->where('p.status', 'pendiente')
+            ->groupBy('r.id', 'r.code', 'r.title', 'p.currency')->orderBy('r.code')
+            ->get(['r.code', 'r.title', 'p.currency', DB::raw('sum(p.amount) as amount')]);
+
+        if ($tours->pluck('code')->unique()->count() < 2) {
+            return null;
+        }
+
+        $lines = $tours->map(fn (stdClass $tour): string => "- {$tour->title} ({$tour->code}): {$tour->currency} ".Decimal::round2((string) $tour->amount))->implode("\n");
+
+        return "Monto de cada tour:\n{$lines}\n".self::SPLIT_HINT;
     }
 
     public function warnClient(stdClass $order, CarbonImmutable $cancelAt): void

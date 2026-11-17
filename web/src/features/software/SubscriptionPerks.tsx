@@ -5,7 +5,7 @@ export function SubscriptionPerks({ days }: { days: number }) {
   const perks: { icon: typeof Gift; tone: Tone; title: string; text: string }[] = [
     { icon: CalendarCheck, tone: "t4", title: `${days > 0 ? days : 14} días de prueba`, text: "Con todas las funciones del plan y sin pedir tarjeta." },
     { icon: Gift, tone: "ok", title: "2 meses gratis al año", text: "En el plan anual pagas 10 meses y usas 12." },
-    { icon: ReceiptText, tone: "t1", title: "Factura o boleta", text: "Precios en soles sin IGV; el 18 % se suma en el resumen antes de pagar." },
+    { icon: ReceiptText, tone: "t1", title: "Factura electrónica", text: "Con el RUC de tu agencia, también RUC 10. Precios en soles sin IGV; el 18 % se suma antes de pagar." },
     { icon: CreditCard, tone: "t3", title: "Tarjeta, Yape, Plin o PayPal", text: "Los datos de la tarjeta los captura la pasarela; nunca pasan por KipuControl." },
     { icon: RefreshCcw, tone: "violet", title: "Sin permanencia", text: "Sube o baja de plan cuando tu operación lo pida." },
     { icon: ShieldCheck, tone: "t2", title: "Tus datos en orden", text: "La información de cada agencia queda aislada y cada cambio queda auditado." },

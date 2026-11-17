@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, FileText, Gauge, MessageSquareText, Route, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { Check, Copy, FileText, Gauge, MessageSquareText, Route, Sparkles, Trash2, TriangleAlert, Wand2 } from "lucide-react";
 import { useActionState, useState } from "react";
 import { askAssistant, assistantStep, type AssistantState } from "@/app/(backoffice)/asistente/actions";
 import { Button } from "@/components/ui/Button";
@@ -13,7 +13,7 @@ import { TextField } from "@/components/ui/TextField";
 import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
 import { formatDateTime, formatNumber } from "@/lib/format";
-import { labelOptions, type AiRequest, type AiUsage } from "@/lib/growth";
+import { labelOptions, type AiApplyImpact, type AiRequest, type AiUsage } from "@/lib/growth";
 import type { StepResult } from "@/lib/server/resource";
 import { KpiRow, PlanNotice, StatusPill } from "./GrowthUi";
 
@@ -47,7 +47,7 @@ export function AssistantPanel({ usage, sourceType, sourceCode }: { usage: AiUsa
           </div>
           <TextArea label="Pedido" name="prompt" rows={6} required minLength={8} maxLength={4000} placeholder="Pareja que quiere 4 días en Cusco en mayo, con Machu Picchu y un día de descanso." hint="No incluyas tarjetas, documentos ni contraseñas: se eliminan antes de enviar." />
           <p className="text-[12.5px] text-fg-3">
-            Quedan {formatNumber(usage.remaining)} de {formatNumber(usage.limit)} pedidos este mes.
+            {usage.limit === null ? "Tu plan no tiene cupo mensual de pedidos." : `Quedan ${formatNumber(usage.remaining ?? 0)} de ${formatNumber(usage.limit)} pedidos este mes.`}
           </p>
         </>
       )}
@@ -55,16 +55,51 @@ export function AssistantPanel({ usage, sourceType, sourceCode }: { usage: AiUsa
   );
 }
 
+function ApplyConfirmation({ impact, onCancel, pending }: { impact: AiApplyImpact; onCancel: () => void; pending: boolean }) {
+  const danger = impact.level === "danger";
+  return (
+    <div role="alert" className={cn("basis-full rounded-xl border px-3.5 py-3 text-[13px]", danger ? "border-bad/40 bg-bad/10" : "border-warn/40 bg-[color-mix(in_srgb,var(--warn)_10%,transparent)]")} data-testid="assistant-apply-confirm">
+      <p className="flex items-start gap-2">
+        <TriangleAlert size={16} className={cn("mt-0.5 flex-none", danger ? "text-bad" : "text-warn")} />
+        <span>
+          {impact.warning && <b className="block font-semibold text-bad">{impact.warning}</b>}
+          {impact.message}
+        </span>
+      </p>
+      <input type="hidden" name="confirm" value="1" />
+      {danger && <input type="hidden" name="void_approval" value="1" />}
+      <span className="mt-2.5 flex flex-wrap gap-2">
+        <Button type="submit" name="step" value="apply" size="sm" variant="primary" className={danger ? "bg-bad hover:bg-bad/90" : undefined} icon={<Check size={14} />} disabled={pending}>
+          {danger ? `Anular y crear la v${impact.new_version}` : `Crear la v${impact.new_version}`}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel} disabled={pending}>
+          Cancelar
+        </Button>
+      </span>
+    </div>
+  );
+}
+
 function RequestActions({ request }: { request: AiRequest }) {
   const [state, run, pending] = useActionState(assistantStep, initial);
   const [copied, setCopied] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   if (request.status !== "completed") return null;
+  const impact = request.apply_impact ?? null;
   return (
     <form action={run} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="id" value={request.id} />
-      <Button type="submit" name="step" value="apply" size="sm" variant="primary" icon={<Check size={14} />} disabled={pending} title={request.source?.type === "quote" ? "Crea o anota la versión en borrador de la cotización" : "Marca el borrador como usado"}>
-        {request.source?.type === "quote" ? "Aplicar a la cotización" : "Usar borrador"}
-      </Button>
+      {impact && !confirming ? (
+        <Button type="button" size="sm" variant="primary" icon={<Check size={14} />} disabled={pending} onClick={() => setConfirming(true)} title={`Crea la v${impact.new_version} en borrador de la cotización`}>
+          Aplicar a la cotización
+        </Button>
+      ) : (
+        !impact && (
+          <Button type="submit" name="step" value="apply" size="sm" variant="primary" icon={<Check size={14} />} disabled={pending} title={request.source?.type === "quote" ? "Anota la versión en borrador de la cotización" : "Marca el borrador como usado"}>
+            {request.source?.type === "quote" ? "Aplicar a la cotización" : "Usar borrador"}
+          </Button>
+        )
+      )}
       {request.text && (
         <Button
           type="button"
@@ -82,6 +117,7 @@ function RequestActions({ request }: { request: AiRequest }) {
       <Button type="submit" name="step" value="discard" size="sm" variant="ghost" icon={<Trash2 size={14} />} disabled={pending}>
         Descartar
       </Button>
+      {impact && confirming && <ApplyConfirmation impact={impact} onCancel={() => setConfirming(false)} pending={pending} />}
       {state.message && <p className="basis-full text-[12px] text-bad">{state.message}</p>}
     </form>
   );
@@ -124,7 +160,7 @@ export function AssistantBoard({ usage }: { usage: AiUsage }) {
     <>
       <PlanNotice enabled={usage.enabled} feature="El asistente de ventas con IA" />
       <KpiRow>
-        <TintTile icon={Gauge} tone={usage.warning ? "bad" : "t1"} label="Cupo del mes" value={`${formatNumber(usage.used)} / ${formatNumber(usage.limit)}`} note={usage.warning ? "Más del 80 % usado" : `Plan ${usage.plan}`} info={<p>Pedidos de IA de toda la agencia en el mes, incluido el importador de productos. Al llegar al cupo se pausan hasta el mes siguiente.</p>} />
+        <TintTile icon={Gauge} tone={usage.warning ? "bad" : "t1"} label="Cupo del mes" value={usage.limit === null ? formatNumber(usage.used) : `${formatNumber(usage.used)} / ${formatNumber(usage.limit)}`} note={usage.warning ? "Más del 80 % usado" : `Plan ${usage.plan}`} info={<p>Pedidos de IA de toda la agencia en el mes, incluido el importador de productos. El cupo lo fija el plan; al llegar a él se pausan hasta el mes siguiente.</p>} />
         <TintTile icon={Route} tone="violet" label="Itinerarios" value={usage.by_kind.itinerary ?? 0} info={<p>Itinerarios día por día pedidos este mes.</p>} />
         <TintTile icon={FileText} tone="info" label="Borradores de cotización" value={usage.by_kind.quote_draft ?? 0} info={<p>Propuestas con productos del catálogo pedidas este mes.</p>} />
         <TintTile icon={MessageSquareText} tone="ok" label="Respuestas y resúmenes" value={(usage.by_kind.reply_draft ?? 0) + (usage.by_kind.summary ?? 0)} info={<p>Borradores de respuesta al cliente y resúmenes de conversaciones pedidos este mes.</p>} />
@@ -148,12 +184,12 @@ export function AssistantBoard({ usage }: { usage: AiUsage }) {
             <div className="grid h-32 w-32 place-items-center rounded-full bg-surface text-center">
               <div>
                 <p className="text-[26px] font-bold tracking-tight">{Math.round(pct)} %</p>
-                <p className="text-[11.5px] text-fg-3">de {formatNumber(usage.limit)}</p>
+                <p className="text-[11.5px] text-fg-3">{usage.limit === null ? "sin cupo" : `de ${formatNumber(usage.limit)}`}</p>
               </div>
             </div>
           </div>
           <dl className="mt-4 grid gap-2 text-[13px]">
-            <div className="flex justify-between"><dt className="text-fg-3">Disponibles</dt><dd className="font-semibold">{formatNumber(usage.remaining)}</dd></div>
+            <div className="flex justify-between"><dt className="text-fg-3">Disponibles</dt><dd className="font-semibold">{usage.remaining === null ? "Sin límite" : formatNumber(usage.remaining)}</dd></div>
             <div className="flex justify-between"><dt className="text-fg-3">Tokens del mes</dt><dd className="font-semibold">{formatNumber(usage.tokens_in + usage.tokens_out)}</dd></div>
             <div className="flex justify-between"><dt className="text-fg-3">Costo estimado</dt><dd className="font-semibold">USD {usage.cost_usd}</dd></div>
           </dl>

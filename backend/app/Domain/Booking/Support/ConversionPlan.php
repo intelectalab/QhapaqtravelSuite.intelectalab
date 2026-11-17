@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Booking\Support;
 
+use App\Domain\Admin\Support\PriceTax;
 use App\Domain\Admin\Support\TenantSettings;
 use App\Domain\Quotes\Models\Quote;
 use App\Domain\Shared\Errors\ApiException;
@@ -106,7 +107,7 @@ final class ConversionPlan
             ['key' => 'passengers', 'title' => 'Pasajeros', 'ok' => $quote->paxTotal() > 0, 'detail' => $quote->paxTotal() > 0 ? "{$paxText}. Se crean sus fichas por completar." : 'La cotización no tiene pasajeros.'],
             ['key' => 'dates', 'title' => 'Fechas del viaje', 'ok' => $from !== null && $to !== null, 'detail' => $from !== null && $to !== null ? "Del {$from} al {$to}." : 'Faltan las fechas del viaje.'],
             ['key' => 'prices', 'title' => 'Precios', 'ok' => $total->isPositive(), 'detail' => $total->isPositive()
-                ? 'Total '.Decimal::display($total, $currency).', neto '.Decimal::display($net, $currency).'.'
+                ? 'Total '.Decimal::display($total, $currency).($version !== null && PriceTax::storedIncluded($version) ? ' con IGV incluido' : '').', valor de venta '.Decimal::display($net, $currency).'.'
                 : 'El total debe ser mayor que cero.'],
             ['key' => 'currency', 'title' => 'Moneda', 'ok' => $currency !== '', 'detail' => "{$currency}{$fx}."],
             ['key' => 'conditions', 'title' => 'Condiciones', 'ok' => true, 'detail' => "Políticas guardadas de {$productCount} ".($productCount === 1 ? 'producto' : 'productos')."; {$terms}."],
@@ -117,7 +118,7 @@ final class ConversionPlan
     private function availabilityOf(Collection $items, Collection $products, array $departureByItem): array
     {
         $ids = array_values(array_unique(array_filter($departureByItem)));
-        $departures = DB::table('catalog_product_departures')->whereIn('id', $ids ?: [''])->get(['id', 'ref', 'capacity', 'sold'])->keyBy('id');
+        $departures = $ids === [] ? collect() : DB::table('catalog_product_departures')->whereIn('id', $ids)->get(['id', 'ref', 'capacity', 'sold'])->keyBy('id');
         $needed = [];
         $rows = [];
 
@@ -132,7 +133,7 @@ final class ConversionPlan
             }
 
             if ($product->availability_model !== 'POR_SALIDA') {
-                $rows[] = [...$base, 'ok' => true, 'status' => 'proveedor', 'note' => 'Se pide al proveedor y queda sujeto a su confirmación.'];
+                $rows[] = [...$base, 'ok' => true, 'status' => 'proveedor', 'note' => 'Se solicita al proveedor y queda sujeto a confirmación.'];
 
                 continue;
             }

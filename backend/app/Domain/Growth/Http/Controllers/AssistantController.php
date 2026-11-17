@@ -38,7 +38,9 @@ final class AssistantController
 
     public function apply(Request $request, string $id): JsonResponse
     {
-        return response()->json(['data' => $this->workflow->apply($id, GrowthRules::actor($request))]);
+        $data = $request->validate(['confirm' => ['sometimes', 'boolean'], 'void_approval' => ['sometimes', 'boolean']]);
+
+        return response()->json(['data' => $this->workflow->apply($id, GrowthRules::actor($request), (bool) ($data['confirm'] ?? false), (bool) ($data['void_approval'] ?? false))]);
     }
 
     public function discard(Request $request, string $id): JsonResponse

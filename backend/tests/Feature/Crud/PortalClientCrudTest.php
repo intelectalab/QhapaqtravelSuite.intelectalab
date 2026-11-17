@@ -129,7 +129,7 @@ it('el mensaje del portal abre un ticket que llega a la bandeja de la agencia as
 
     expect($conversation->channel)->toBe('portal')
         ->and($conversation->status)->toBe('abierta')
-        ->and($conversation->subject)->toBe('Cambio de hotel')
+        ->and(MessageCipher::open($conversation->subject))->toBe('Cambio de hotel')
         ->and($conversation->priority)->toBe('media')
         ->and($conversation->client_id)->toBe(idOf('crm_clients', 'CLI-0001'))
         ->and($conversation->assignee_id)->toBe(seedUser('U04')->id)

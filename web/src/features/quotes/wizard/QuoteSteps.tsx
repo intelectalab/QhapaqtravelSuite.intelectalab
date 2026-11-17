@@ -154,7 +154,7 @@ function Totals({ preview, currency, floor, compact = false }: { preview: QuoteP
       {!compact && (
         <>
           <Row label="Valor de venta" value={formatMoney(totals?.net_total ?? 0, currency)} />
-          <Row label={`IGV ${Number(totals?.tax_pct ?? 0)} %`} value={formatMoney(totals?.tax_total ?? 0, currency)} />
+          <Row label={`${totals?.tax_included ? "IGV incluido" : "IGV"} ${Number(totals?.tax_pct ?? 0)} %`} value={formatMoney(totals?.tax_total ?? 0, currency)} />
           <div className="flex justify-between border-t border-line-2 pt-1.5 text-[17px] font-bold">
             <dt>Total</dt>
             <dd data-testid="quote-total" className="font-mono transition-all duration-300">

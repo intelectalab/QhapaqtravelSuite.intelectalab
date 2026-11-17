@@ -79,6 +79,7 @@ export function BookingCustomizer({ heading = false }: { heading?: boolean }) {
   const tripLeg = (legId: string) => trip?.legs.find((leg) => leg.id === legId);
   const setNights = (legId: string, value: number) => update({ nights: { ...nights, [legId]: value } });
   const tours = extras.tours ?? [];
+  const tourChildren = extras.tour_children ?? {};
   const transport = extras.transport ?? [];
   const toggleTour = (id: string) => update(tours.includes(id) ? { tours: tours.filter((item) => item !== id), removed: extras.removed.filter((key) => key !== `tour-${id}`) } : { tours: [...tours, id] });
   const toggleTransport = (option: TripTransport, group: TripTransport[]) => {
@@ -227,19 +228,34 @@ export function BookingCustomizer({ heading = false }: { heading?: boolean }) {
                     <>
                       <p className="mb-2 mt-3 text-[12px] font-semibold text-fg-2">{t.booking.trip.tours}</p>
                       <div className="grid gap-2 sm:grid-cols-2">
-                        {leg.tours.map((tour) => (
-                          <Toggle key={tour.id} active={tours.includes(tour.id)} onClick={() => toggleTour(tour.id)}>
-                            <b className="block pr-6 text-[13.5px] font-semibold leading-snug text-fg">{tour.name}</b>
-                            <span className="mt-1 block text-[12px] text-fg-3">
-                              {t.booking.trip.day(tour.day_offset)} · {tour.time} · {t.booking.trip.hours(tour.hours)}
-                              {tour.min_age ? ` · ${t.booking.trip.minAge(tour.min_age)}` : ""}
-                            </span>
-                            <span className="mt-1 block text-[12px] tabular-nums text-fg-2">
-                              {formatMoney(tour.price_adult, tour.currency)} {t.booking.trip.adult}
-                              {Number(tour.price_child) > 0 ? ` · ${formatMoney(tour.price_child, tour.currency)} ${t.booking.trip.child}` : tour.min_age ? ` · ${t.booking.trip.childNA}` : ""}
-                            </span>
-                          </Toggle>
-                        ))}
+                        {leg.tours.map((tour) => {
+                          const asks = tours.includes(tour.id) && tour.children_rule === "ask" && pax.children > 0 && tour.min_age !== null;
+                          const fit = Math.min(pax.children, tourChildren[tour.id] ?? pax.children);
+                          return (
+                            <div key={tour.id} className="grid gap-1.5">
+                              <Toggle active={tours.includes(tour.id)} onClick={() => toggleTour(tour.id)}>
+                                <b className="block pr-6 text-[13.5px] font-semibold leading-snug text-fg">{tour.name}</b>
+                                <span className="mt-1 block text-[12px] text-fg-3">
+                                  {t.booking.trip.day(tour.day_offset)} · {tour.time} · {t.booking.trip.hours(tour.hours)}
+                                  {tour.min_age ? ` · ${t.booking.trip.minAge(tour.min_age)}` : ""}
+                                </span>
+                                <span className="mt-1 block text-[12px] tabular-nums text-fg-2">
+                                  {formatMoney(tour.price_adult, tour.currency)} {t.booking.trip.adult}
+                                  {Number(tour.price_child) > 0 && tour.children_rule !== "none" ? ` · ${formatMoney(tour.price_child, tour.currency)} ${t.booking.trip.child}` : tour.min_age ? ` · ${t.booking.trip.childNA}` : ""}
+                                </span>
+                              </Toggle>
+                              {asks && tour.min_age !== null && (
+                                <div className="rounded-xl border border-line bg-surface-2 px-3 py-2 text-[12.5px]" data-testid={`tour-children:${tour.id}`}>
+                                  <span className="flex items-center justify-between gap-2">
+                                    <span className="text-fg-2">{t.booking.trip.childrenAsk(tour.min_age)}</span>
+                                    <Stepper value={fit} min={0} max={pax.children} onChange={(value) => update({ tour_children: { ...tourChildren, [tour.id]: value } })} label={t.booking.trip.child} />
+                                  </span>
+                                  {fit < pax.children && <span className="mt-1 block text-warn">{t.booking.trip.childrenLeft(tour.name, tour.min_age)}</span>}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </>
                   )}

@@ -21,27 +21,27 @@ function prd011Selection(array $override = []): array
 
 const PRD011_EXPECTED_PEN = [
     'lines' => [
-        'base-adt' => ['qty' => 2, 'unit' => '5572.60', 'amount' => '11145.20', 'removable' => false],
-        'base-chd' => ['qty' => 1, 'unit' => '4076.60', 'amount' => '4076.60', 'removable' => false],
+        'base-adt' => ['qty' => 2, 'unit' => '5684.05', 'amount' => '11368.10', 'removable' => false],
+        'base-chd' => ['qty' => 1, 'unit' => '4158.13', 'amount' => '4158.13', 'removable' => false],
         'base-inf' => ['qty' => 1, 'unit' => '0.00', 'amount' => '0.00', 'removable' => false],
         'addon-ADD-1101' => ['qty' => 3, 'unit' => '50.00', 'amount' => '150.00', 'removable' => true],
-        'lodge-LEG-1-Doble' => ['qty' => 1, 'unit' => '317.90', 'amount' => '317.90', 'removable' => true],
-        'lodge-LEG-1-Simple' => ['qty' => 1, 'unit' => '261.80', 'amount' => '261.80', 'removable' => true],
-        'lodge-LEG-2-Doble' => ['qty' => 2, 'unit' => '254.32', 'amount' => '508.64', 'removable' => true],
-        'lodge-LEG-2-Simple' => ['qty' => 2, 'unit' => '205.70', 'amount' => '411.40', 'removable' => true],
-        'lodge-LEG-3-Doble' => ['qty' => 2, 'unit' => '231.88', 'amount' => '463.76', 'removable' => true],
-        'lodge-LEG-3-Simple' => ['qty' => 2, 'unit' => '187.00', 'amount' => '374.00', 'removable' => true],
-        'lodge-LEG-4-Doble' => ['qty' => 4, 'unit' => '224.40', 'amount' => '897.60', 'removable' => true],
-        'lodge-LEG-4-Simple' => ['qty' => 4, 'unit' => '179.52', 'amount' => '718.08', 'removable' => true],
+        'lodge-LEG-1-Doble' => ['qty' => 1, 'unit' => '324.26', 'amount' => '324.26', 'removable' => true],
+        'lodge-LEG-1-Simple' => ['qty' => 1, 'unit' => '267.04', 'amount' => '267.04', 'removable' => true],
+        'lodge-LEG-2-Doble' => ['qty' => 2, 'unit' => '259.41', 'amount' => '518.81', 'removable' => true],
+        'lodge-LEG-2-Simple' => ['qty' => 2, 'unit' => '209.81', 'amount' => '419.63', 'removable' => true],
+        'lodge-LEG-3-Doble' => ['qty' => 2, 'unit' => '236.52', 'amount' => '473.04', 'removable' => true],
+        'lodge-LEG-3-Simple' => ['qty' => 2, 'unit' => '190.74', 'amount' => '381.48', 'removable' => true],
+        'lodge-LEG-4-Doble' => ['qty' => 4, 'unit' => '228.89', 'amount' => '915.55', 'removable' => true],
+        'lodge-LEG-4-Simple' => ['qty' => 4, 'unit' => '183.11', 'amount' => '732.44', 'removable' => true],
     ],
     'adjustments' => [],
-    'subtotal' => '19324.98',
-    'total' => '19324.98',
+    'subtotal' => '19708.48',
+    'total' => '19708.48',
     'payment_mode' => 'adelanto',
     'modes' => ['total', 'adelanto'],
     'deposit_pct' => 30,
-    'deposit' => '5797.49',
-    'balance' => '13527.49',
+    'deposit' => '5912.54',
+    'balance' => '13795.94',
     'balance_due' => '2026-09-29',
     'warnings' => ['La salida es cercana: el saldo se cobra de inmediato.'],
     'rooms' => 8,
@@ -50,16 +50,16 @@ const PRD011_EXPECTED_PEN = [
 ];
 
 const PRD011_EXPECTED_USD = [
-    'addon_line' => ['unit' => '13.37', 'amount' => '40.11'],
-    'subtotal' => '5167.11', 'total' => '5167.11', 'deposit' => '1550.13', 'balance' => '3616.98',
+    'addon_line' => ['unit' => '13.64', 'amount' => '40.91'],
+    'subtotal' => '5167.91', 'total' => '5167.91', 'deposit' => '1550.37', 'balance' => '3617.54',
 ];
 
 const PRD011_VARIANTS = [
-    'removed_addon' => ['removed' => ['addon-ADD-1101'], 'total' => '19174.98', 'deposit' => '5752.49', 'balance' => '13422.49', 'rooms' => 8, 'nights' => 9],
-    'removed_lima_usd' => ['currency' => 'USD', 'removed' => ['lodge-LEG-1-Doble', 'lodge-LEG-1-Simple'], 'total' => '5012.11', 'deposit' => '1503.63', 'balance' => '3508.48', 'rooms' => 6, 'nights' => 8],
-    'rule_off_lodging' => ['rule' => 'R-LODGING', 'total' => '15371.80', 'deposit' => '4611.54', 'balance' => '10760.26', 'rooms' => 0, 'nights' => 0],
-    'rule_off_preview_remove' => ['rule' => 'R-PREVIEW-REMOVE', 'removed' => ['addon-ADD-1101'], 'total' => '19324.98', 'prototype_total' => '19174.98'],
-    'rule_off_deposit' => ['rule' => 'R-DEPOSIT', 'total' => '19324.98', 'payment_mode' => 'total', 'modes' => ['total'], 'deposit_pct' => 100, 'deposit' => '19324.98', 'balance' => '0.00', 'balance_due' => null],
+    'removed_addon' => ['removed' => ['addon-ADD-1101'], 'total' => '19558.48', 'deposit' => '5867.54', 'balance' => '13690.94', 'rooms' => 8, 'nights' => 9],
+    'removed_lima_usd' => ['currency' => 'USD', 'removed' => ['lodge-LEG-1-Doble', 'lodge-LEG-1-Simple'], 'total' => '5012.91', 'deposit' => '1503.87', 'balance' => '3509.04', 'rooms' => 6, 'nights' => 8],
+    'rule_off_lodging' => ['rule' => 'R-LODGING', 'total' => '15676.23', 'deposit' => '4702.87', 'balance' => '10973.36', 'rooms' => 0, 'nights' => 0],
+    'rule_off_preview_remove' => ['rule' => 'R-PREVIEW-REMOVE', 'removed' => ['addon-ADD-1101'], 'total' => '19708.48', 'prototype_total' => '19558.48'],
+    'rule_off_deposit' => ['rule' => 'R-DEPOSIT', 'total' => '19708.48', 'payment_mode' => 'total', 'modes' => ['total'], 'deposit_pct' => 100, 'deposit' => '19708.48', 'balance' => '0.00', 'balance_due' => null],
     'plan_starter' => ['plan' => 'Starter', 'total' => '15221.80', 'deposit' => '4566.54', 'balance' => '10655.26', 'rooms' => 0, 'nights' => 0],
 ];
 

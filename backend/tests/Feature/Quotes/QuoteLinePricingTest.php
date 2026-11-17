@@ -69,7 +69,7 @@ it('K4: quien ve costos edita el costo unitario y el margen real dispara la apro
     expect($missing->json('details.field'))->toBe('items.0.unit_cost');
 
     $typed = $this->postJson('/api/v1/quotes/pricing/preview', linePricingBody(['date' => '2027-06-10', 'rate_id' => null, 'unit_price' => '300', 'unit_cost' => '200'], $later))->assertOk()->json('data');
-    expect($typed['totals']['margin_pct'])->toBe('33.33')->and($typed['needs_internal_approval'])->toBeFalse();
+    expect($typed['totals']['margin_pct'])->toBe('21.33')->and($typed['needs_internal_approval'])->toBeFalse();
 });
 
 it('K4: Ventas no sobrescribe el costo y el precio manual conserva el costo de la tarifa', function () {

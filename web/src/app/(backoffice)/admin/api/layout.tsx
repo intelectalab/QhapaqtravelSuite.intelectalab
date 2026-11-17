@@ -40,7 +40,7 @@ export default async function ApiLayout({ children }: { children: ReactNode }) {
           data.can_manage ? (
             <>
               <WebhookCreateAction events={data.events} full={hooksFull} />
-              <ApiKeyCreateAction scopes={data.scopes} full={keysFull} />
+              <ApiKeyCreateAction scopes={data.scopes} owners={{ modes: data.owner_modes, advisors: data.advisors }} full={keysFull} />
             </>
           ) : undefined
         }

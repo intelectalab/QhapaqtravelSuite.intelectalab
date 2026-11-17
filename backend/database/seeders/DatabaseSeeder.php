@@ -15,5 +15,8 @@ class DatabaseSeeder extends Seeder
         if (! app()->isProduction()) {
             $this->call(DemoSeeder::class);
         }
+
+        $this->call(BookingRuleCatalogSeeder::class);
+        $this->call(PlanCatalogAdditionsSeeder::class);
     }
 }

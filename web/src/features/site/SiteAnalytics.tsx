@@ -7,6 +7,7 @@ import { recordSiteEvents } from "@/app/(sitio)/sitio/[agencia]/actions";
 import { cn } from "@/lib/cn";
 import { ANALYTICS_CONSENT_KEY, COOKIE_POLICY_VERSION, COOKIE_PREFERENCES_EVENT, SITE_TRACK_EVENT, type SiteEvent, type SiteEventName } from "@/lib/site-analytics";
 import { useStoredValue } from "@/lib/useStoredValue";
+import { uuid } from "@/lib/uuid";
 import { useSite } from "./SiteContext";
 
 interface Consent {
@@ -78,11 +79,11 @@ function sessionId(): string {
   try {
     const stored = sessionStorage.getItem(SESSION_KEY);
     if (stored) return stored;
-    const created = crypto.randomUUID().replaceAll("-", "").slice(0, 24);
+    const created = uuid().replaceAll("-", "").slice(0, 24);
     sessionStorage.setItem(SESSION_KEY, created);
     return created;
   } catch {
-    return crypto.randomUUID().replaceAll("-", "").slice(0, 24);
+    return uuid().replaceAll("-", "").slice(0, 24);
   }
 }
 

@@ -12,12 +12,17 @@ use Illuminate\Support\Facades\DB;
 
 final class ProductDirectory
 {
-    public function list(?User $viewer = null): Collection
+    public function list(?User $viewer = null, ?string $code = null): Collection
     {
         $from = self::pricesFrom($viewer);
         $unpriced = array_flip(self::storeWithoutRate());
+        $rows = $this->rows();
 
-        return $this->rows()->orderBy('p.name')->get()->map(fn (object $row) => [
+        if ($code !== null && $code !== '') {
+            $rows->where(fn (Builder $query) => $query->where('p.code', $code)->orWhere('p.ref', $code));
+        }
+
+        return $rows->orderBy('p.name')->get()->map(fn (object $row) => [
             ...$this->summary($row),
             'price_from' => $from[$row->id] ?? null,
             'store_without_rate' => isset($unpriced[$row->id]),
@@ -157,7 +162,9 @@ final class ProductDirectory
     private function summary(object $row): array
     {
         return [
+            'id' => $row->id,
             'code' => $row->code,
+            'ref' => $row->ref,
             'name' => $row->name,
             'lock_version' => (int) $row->lock_version,
             'type' => $row->type_name,

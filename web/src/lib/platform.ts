@@ -47,6 +47,25 @@ export interface WhatsappAppSummary {
   simulated: boolean;
 }
 
+export interface PayloadWebhookSummary {
+  status: "lista" | "sin_clave";
+  admin_url: string;
+  secret_set: boolean;
+  secret_hint: string | null;
+  secret_generated_at: string | null;
+  secret_rotated_at: string | null;
+  previous_secret_until: string | null;
+  previous_secret_valid: boolean;
+  still_previous: boolean;
+  last_signed: { at: string; event: string; slug: string; title: string; key: "actual" | "anterior" } | null;
+  rejections_24h: number;
+  last_rejection_at: string | null;
+  callback_url: string;
+  signature_header: string;
+  timestamp_header: string;
+  changed_at: string | null;
+}
+
 export interface OutgoingMailSummary {
   enabled: boolean;
   host: string;
@@ -119,7 +138,7 @@ export interface TenantSubscription {
 
 export const CYCLE_LABEL: Record<BillingCycle, string> = { monthly: "Mensual", annual: "Anual" };
 
-export type PlanMetric = "users" | "sedes" | "storage_gb" | "reservations_month" | "whatsapp_month" | "email_month" | "api_calls_month" | "api_rate_per_min" | "webhooks" | "api_keys";
+export type PlanMetric = "users" | "sedes" | "storage_gb" | "reservations_month" | "whatsapp_month" | "email_month" | "api_calls_month" | "api_rate_per_min" | "webhooks" | "api_keys" | "ai_requests";
 
 export interface PlanSummary {
   id: string;

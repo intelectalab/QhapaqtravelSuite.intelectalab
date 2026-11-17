@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Admin\Support;
 
 use App\Domain\Iam\Models\User;
+use App\Domain\Shared\Audit\AuditActorName;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Http\CursorPage;
 use App\Domain\Shared\Tenancy\TenantContext;
@@ -125,7 +126,7 @@ final class AuditDirectory
             'before' => $row->before_value,
             'after' => $row->after_value,
             'critical' => (bool) $row->is_critical,
-            'actor' => $row->actor_name ?? (self::ACTORS[$row->actor_type] ?? 'Sistema'),
+            'actor' => AuditActorName::of($row->actor_name, $row->actor_type, $row->actor_role, self::ACTORS[$row->actor_type] ?? 'Sistema'),
             'actor_code' => $row->actor_code,
             'role' => $row->actor_role,
             'correlation' => $row->correlation_id,
