@@ -16,7 +16,7 @@ final class AccessMap
         $permissions = $user->getAllPermissions()->pluck('name')->flip();
         $experience = RoleExperience::for($user);
         $backoffice = $experience['experience'] === 'backoffice';
-        $screens = collect(config('access.routes'))->map(fn (array $required) => $backoffice && $this->satisfies($required, $permissions->all()));
+        $screens = collect(config('access.routes'))->map(fn (array $required, string $path) => $backoffice ? $this->satisfies($required, $permissions->all()) : $this->isOwnHome($experience, $path));
         $platform = collect((array) config('access.platform_routes'));
 
         return [
@@ -62,7 +62,18 @@ final class AccessMap
         $routes = config('access.routes');
         $match = $this->match($path);
 
-        return RoleExperience::isBackoffice($user) && ($match === null || $this->satisfies($routes[$match], $user->getAllPermissions()->pluck('name')->flip()->all()));
+        $experience = RoleExperience::for($user);
+
+        if ($experience['experience'] !== 'backoffice') {
+            return $match !== null && $this->isOwnHome($experience, $match);
+        }
+
+        return $match === null || $this->satisfies($routes[$match], $user->getAllPermissions()->pluck('name')->flip()->all());
+    }
+
+    private function isOwnHome(array $experience, string $path): bool
+    {
+        return $experience['experience'] === 'mobile' && $path === $experience['home'];
     }
 
     public function requiredFor(string $path): array

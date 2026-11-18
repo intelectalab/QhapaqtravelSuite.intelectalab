@@ -298,7 +298,7 @@ export function conventionStatus(status: string): { label: string; tone: Tone } 
 
 const AGENCY_STATUS: Record<string, { label: string; tone: Tone }> = {
   pendiente_proveedor: { label: "En confirmación", tone: "warn" },
-  pendiente_pago: { label: "Prepago pendiente", tone: "warn" },
+  pendiente_pago: { label: "Pago pendiente", tone: "warn" },
   confirmada: { label: "Confirmada", tone: "ok" },
   cancelada: { label: "Anulada", tone: "bad" },
   calculada: { label: "Calculada", tone: "info" },

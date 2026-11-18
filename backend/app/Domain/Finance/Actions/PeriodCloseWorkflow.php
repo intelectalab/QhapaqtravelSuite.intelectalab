@@ -180,7 +180,7 @@ final class PeriodCloseWorkflow
             ->whereIn('r.name', ['finance', 'tenant_admin'])->whereNull('u.deleted_at')->where('u.status', 'activo')->whereNotNull('u.email')->distinct()->get(['u.email', 'u.name']);
 
         foreach ($recipients as $user) {
-            $this->mail->send((string) $user->email, (string) $user->name, "Periodo {$label} cerrado", "Hola {$user->name}:\n\n{$actor->name} cerró el periodo contable {$label}. Desde ahora no se emiten comprobantes con fecha de ese periodo; los ajustes van con nota de crédito o débito en el periodo siguiente.\n\n{$this->context->tenant()->commercial_name}");
+            $this->mail->send((string) $user->email, (string) $user->name, "Periodo {$label} cerrado", "Hola {$user->name}:\n\n{$actor->name} cerró el periodo contable {$label}. Desde ahora no se emiten comprobantes con fecha de ese periodo; si hay que corregir uno, se hace con nota de crédito en el periodo siguiente. Los pagos, la tesorería y la conciliación bancaria siguen abiertos.\n\n{$this->context->tenant()->commercial_name}");
         }
     }
 }

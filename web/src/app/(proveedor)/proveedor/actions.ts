@@ -44,8 +44,8 @@ export async function withdrawRateRequest(code: string): Promise<StepResult> {
 
 export async function registerInvoice(code: string, _state: StepResult, form: FormData): Promise<StepResult> {
   const file = form.get("file");
-  if (!(file instanceof File) || file.size === 0) return { message: "Adjunte la factura en PDF, XML o ZIP.", done: false };
-  if (file.size > MAX_FILE_BYTES) return { message: "El archivo supera los 700 KB. Adjunte el XML o un PDF más liviano.", done: false };
+  if (!(file instanceof File) || file.size === 0) return { message: "Adjunta la factura en PDF, XML o ZIP.", done: false };
+  if (file.size > MAX_FILE_BYTES) return { message: "El archivo supera los 700 KB. Adjunta el XML o un PDF más liviano.", done: false };
   const content = Buffer.from(await file.arrayBuffer()).toString("base64");
   const result = await sendStep(`/supplier/payables/${encodeURIComponent(code)}/invoices`, "POST", { ...formValues(form, ["number", "issue_date", "amount"]), file_name: file.name, file_content: content }, "No pudimos registrar la factura.");
   if (result.done) refresh("/proveedor/pagos");

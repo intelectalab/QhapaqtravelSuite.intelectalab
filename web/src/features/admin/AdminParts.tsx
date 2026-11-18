@@ -9,7 +9,7 @@ import { SwitchField } from "@/components/ui/SwitchField";
 import { TintCardTitle } from "@/components/ui/Tinted";
 import type { AuditEntry, Option } from "@/lib/admin";
 import { cn } from "@/lib/cn";
-import { formatDateTime, formatNumber } from "@/lib/format";
+import { formatDateTime, formatNumber, formatQuantity } from "@/lib/format";
 import { toneStyle, type Tone } from "@/lib/tone";
 
 export const RISE = "animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]";
@@ -56,14 +56,14 @@ export function UsageBar({ used, limit, label, unit, note }: { used: number; lim
   const pct = limit ? Math.min(100, (used / limit) * 100) : 0;
   const tone: Tone = limit === null ? "t4" : pct >= 100 ? "bad" : pct >= 80 ? "warn" : "t1";
   return (
-    <div style={toneStyle(tone)} className="lift group rounded-tile border border-line bg-surface px-4 py-3.5 shadow-card hover:border-[color-mix(in_srgb,var(--tint)_40%,transparent)]" title={limit === null ? `${label}: sin límite en tu plan` : `${formatNumber(used)} de ${formatNumber(limit)} ${unit} (${pct.toFixed(0)} %)`}>
+    <div style={toneStyle(tone)} className="lift group rounded-tile border border-line bg-surface px-4 py-3.5 shadow-card hover:border-[color-mix(in_srgb,var(--tint)_40%,transparent)]" title={limit === null ? `${label}: sin límite en tu plan` : `${formatQuantity(used, unit)} de ${formatNumber(limit)} ${unit} (${pct.toFixed(0)} %)`}>
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-[12.5px] font-medium text-fg-2">{label}</p>
         <p className="text-[12px] text-fg-3">{limit === null ? "Sin límite" : `${pct.toFixed(0)} %`}</p>
       </div>
       <p className="mt-1 text-[19px] font-bold tracking-tight">
-        {formatNumber(used)}
-        {limit !== null && <span className="text-[13px] font-medium text-fg-3"> / {formatNumber(limit)}</span>}
+        {formatQuantity(used, unit)}
+        {limit !== null && <span className="text-[13px] font-medium text-fg-3"> / {formatNumber(limit)}{formatQuantity(used, unit).endsWith("MB") ? ` ${unit}` : ""}</span>}
       </p>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-2">
         <div className="h-full origin-left rounded-full bg-[var(--tint)] motion-safe:animate-[fill-x_700ms_cubic-bezier(0.4,0,0.2,1)_backwards]" style={{ width: `${limit === null ? 100 : Math.max(pct, 2)}%`, opacity: limit === null ? 0.35 : 1 }} />

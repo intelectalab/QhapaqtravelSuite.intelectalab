@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Landing\Support;
 
 use App\Domain\Integrations\Contracts\FxRateProvider;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use App\Domain\Platform\Support\PlatformSettings;
 use App\Domain\Platform\Support\PublicPlans;
 use Illuminate\Support\Carbon;
@@ -18,7 +19,7 @@ final class LandingPlans
     {
         $catalog = $this->plans->catalog();
         $today = Carbon::today('America/Lima')->toDateString();
-        $rate = Cache::remember('landing:fx:'.$today, 3600, function () use ($today): ?array {
+        $rate = ! IntegrationReadiness::usable('fx') ? null : Cache::remember('landing:fx:'.$today, 3600, function () use ($today): ?array {
             $usd = collect($this->fx->latest(['USD'], $today))->first();
 
             return $usd === null ? null : ['currency' => 'USD', 'rate_pen' => $usd->ratePen, 'date' => $usd->rateDate, 'source' => $usd->source];
@@ -38,6 +39,8 @@ final class LandingPlans
             'trial' => ['days' => (int) (collect($catalog['plans'])->max('trial_days') ?: 14), 'card_required' => false],
             'cycles' => ['mensual' => 'Mensual', 'anual' => 'Anual (pagas 10 meses)', 'prueba' => 'Prueba de 14 días'],
             'charged_currency' => 'PEN',
+            'ruc_lookup' => IntegrationReadiness::usable('ruc'),
+            'online_payment' => IntegrationReadiness::usable('checkout'),
         ];
     }
 }

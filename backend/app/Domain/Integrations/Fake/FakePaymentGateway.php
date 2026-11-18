@@ -7,6 +7,7 @@ namespace App\Domain\Integrations\Fake;
 use App\Domain\Integrations\Contracts\PaymentGateway;
 use App\Domain\Integrations\Data\AdapterResult;
 use App\Domain\Integrations\Data\PaymentRequest;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use Illuminate\Support\Str;
 
 final class FakePaymentGateway implements PaymentGateway
@@ -21,6 +22,10 @@ final class FakePaymentGateway implements PaymentGateway
 
     public function createCharge(PaymentRequest $request): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('payments')) !== null) {
+            return $unavailable;
+        }
+
         $this->charges[] = $request;
 
         if ($request->method === 'session') {
@@ -48,11 +53,19 @@ final class FakePaymentGateway implements PaymentGateway
 
     public function refund(string $externalId, string $amount, string $currency, string $reason): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('payments')) !== null) {
+            return $unavailable;
+        }
+
         return AdapterResult::success('reembolsado', 'FAKE-REF-'.$externalId, ['simulated' => true]);
     }
 
     public function verifyWebhook(string $rawBody, string $signature): bool
     {
+        if (IntegrationReadiness::enforced()) {
+            return false;
+        }
+
         return $signature !== '' && hash_equals(self::sign($rawBody), $signature);
     }
 
@@ -63,6 +76,10 @@ final class FakePaymentGateway implements PaymentGateway
 
     public function healthcheck(): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::health('payments')) !== null) {
+            return $unavailable;
+        }
+
         return AdapterResult::success('ok', null, ['simulated' => true]);
     }
 }

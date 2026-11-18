@@ -13,7 +13,7 @@ import { TextArea } from "@/components/ui/TextArea";
 import { DateTimeField } from "@/components/ui/DateTimeField";
 import { TextField } from "@/components/ui/TextField";
 import { SummaryBox } from "@/features/finance/FinanceStep";
-import type { Option, PaymentLinkRow, PaymentTarget } from "@/lib/growth-ops";
+import type { MoneyKpi, Option, PaymentLinkKpis, PaymentLinkRow, PaymentTarget } from "@/lib/growth-ops";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import type { Tone } from "@/lib/tone";
 import { GrowthStep, NoticeCard } from "./GrowthStep";
@@ -85,7 +85,9 @@ function CopyLink({ url }: { url: string }) {
   );
 }
 
-export function PaymentLinksTable({ rows, canSend = true }: { rows: PaymentLinkRow[]; canSend?: boolean }) {
+const linkMoney = (kpi: MoneyKpi) => [Number(kpi.pen) > 0 ? formatMoney(kpi.pen, "PEN", { compact: true }) : null, Number(kpi.usd) > 0 ? formatMoney(kpi.usd, "USD", { compact: true }) : null].filter(Boolean).join(" · ") || "Sin montos";
+
+export function PaymentLinksTable({ rows, kpis, canSend = true }: { rows: PaymentLinkRow[]; kpis: PaymentLinkKpis; canSend?: boolean }) {
   const columns: Column<PaymentLinkRow>[] = [
     {
       id: "client",
@@ -139,9 +141,10 @@ export function PaymentLinksTable({ rows, canSend = true }: { rows: PaymentLinkR
   ];
 
   const metrics: MetricFilter<PaymentLinkRow>[] = [
-    { id: "active", label: "Activos", tone: "info", icon: <Clock3 size={19} />, matches: (row) => row.status === "activo" },
-    { id: "paid", label: "Pagados", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "pagado" },
-    { id: "expired", label: "Vencidos", tone: "warn", icon: <XCircle size={19} />, matches: (row) => row.status === "vencido" },
+    { id: "active", label: "Activos", tone: "info", icon: <Clock3 size={19} />, note: linkMoney(kpis.activo), info: <p>Links vigentes que el cliente todavía puede pagar; la nota suma sus montos por moneda. Al presionarla, la tabla muestra solo los links activos.</p>, matches: (row) => row.status === "activo" },
+    { id: "paid", label: "Pagados", tone: "ok", icon: <CircleCheck size={19} />, note: linkMoney(kpis.pagado), info: <p>Links cobrados: cada uno generó un pago aplicado a su cuota. La nota suma lo cobrado por moneda. Al presionarla, la tabla muestra esos links.</p>, matches: (row) => row.status === "pagado" },
+    { id: "expired", label: "Vencidos", tone: "warn", icon: <XCircle size={19} />, note: "Pasaron su fecha sin pago", info: <p>Links que llegaron a su vencimiento sin cobrarse; crea uno nuevo si el cliente aún debe la cuota. Al presionarla, la tabla muestra esos links.</p>, matches: (row) => row.status === "vencido" },
+    { id: "void", label: "Anulados", tone: "mute", icon: <Ban size={19} />, note: "Anulados por la agencia", info: <p>Links que la agencia anuló antes de que el cliente pagara. Al presionarla, la tabla muestra esos links.</p>, matches: (row) => row.status === "anulado" },
   ];
 
   const statuses = [...new Set(rows.map((row) => row.status))];

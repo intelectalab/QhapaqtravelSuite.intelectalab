@@ -1,7 +1,8 @@
 "use client";
 
-import { AlarmClock, Hourglass, MessageSquareReply, ShieldCheck } from "lucide-react";
+import { AlarmClock, CircleCheckBig, CircleX, Hourglass, MessageSquareReply, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -9,6 +10,7 @@ import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { SectionPanel } from "@/components/ui/SectionPanel";
 import { approvalHref, SLA_META, TYPE_TONES, type ApprovalItem, type ApprovalRule, type ApprovalSla, type ApprovalsOverview } from "@/lib/approvals";
+import { cn } from "@/lib/cn";
 import type { CsvExport } from "@/lib/csv";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { statusLabel } from "@/lib/tone";
@@ -63,7 +65,7 @@ function RecentDecisions({ rows }: { rows: ApprovalItem[] }) {
   );
 }
 
-function ApprovalTable({ rows, screen, overview, csv }: { rows: ApprovalItem[]; screen: string; overview: ApprovalsOverview; csv?: CsvExport<ApprovalItem> }) {
+function ApprovalTable({ rows, screen, overview, csv, decided = false }: { rows: ApprovalItem[]; screen: string; overview: ApprovalsOverview; csv?: CsvExport<ApprovalItem>; decided?: boolean }) {
   const columns: Column<ApprovalItem>[] = [
     {
       id: "request",
@@ -83,20 +85,13 @@ function ApprovalTable({ rows, screen, overview, csv }: { rows: ApprovalItem[]; 
               <span className="font-mono text-[12px] text-fg-3">{row.code}</span>
             )}
           </span>
-          <Link href={approvalHref(row)} className="mt-1 block max-w-[440px] truncate text-[13.5px] font-semibold hover:text-accent">
+          <Link href={approvalHref(row)} className="mt-1 line-clamp-2 text-[13.5px] font-semibold hover:text-accent">
             {row.title}
           </Link>
+          <span className="block text-[12px] text-fg-3">
+            {row.requester} · {formatDateTime(row.created_at, false)}
+          </span>
         </div>
-      ),
-    },
-    {
-      id: "requester",
-      header: "Solicitó",
-      cell: (row) => (
-        <span className="text-[13px]">
-          {row.requester}
-          <span className="block text-[12px] text-fg-3">{formatDateTime(row.created_at, false)}</span>
-        </span>
       ),
     },
     {
@@ -106,25 +101,19 @@ function ApprovalTable({ rows, screen, overview, csv }: { rows: ApprovalItem[]; 
       cell: (row) => (
         <span className="flex flex-col items-end">
           <span className="font-mono text-[13px] font-semibold">{formatMoney(row.amount, row.currency)}</span>
-          {row.impact && <span className="max-w-[240px] truncate text-[11.5px] text-fg-3" title={row.impact}>{row.impact}</span>}
-        </span>
-      ),
-    },
-    {
-      id: "sla",
-      header: "Plazo",
-      cell: (row) => (
-        <span title={row.due_at ? `Vence ${formatDateTime(row.due_at)}` : undefined}>
-          <Badge tone={SLA_META[row.sla].tone}>{SLA_META[row.sla].label}</Badge>
+          {row.impact && <span className="line-clamp-2 max-w-32 whitespace-normal text-[11.5px] text-fg-3" title={row.impact}>{row.impact}</span>}
         </span>
       ),
     },
     {
       id: "status",
-      header: "Estado",
+      header: "Estado y plazo",
       cell: (row) => (
-        <span className="flex flex-col gap-1">
+        <span className="flex flex-col items-start gap-1">
           <StatusBadge status={row.status} />
+          <span title={row.due_at ? `Vence ${formatDateTime(row.due_at)}` : undefined}>
+            <Badge tone={SLA_META[row.sla].tone}>{SLA_META[row.sla].label}</Badge>
+          </span>
           {row.levels > 1 && <span className="text-[11.5px] text-fg-3">Nivel {row.level} de {row.levels}</span>}
           {row.delegated_to && <span className="text-[11.5px] text-fg-3">Delegada a {row.delegated_to.name}</span>}
         </span>
@@ -150,8 +139,14 @@ function ApprovalTable({ rows, screen, overview, csv }: { rows: ApprovalItem[]; 
     },
   ];
 
-  const metrics: MetricFilter<ApprovalItem>[] = [
-    { id: "overdue", label: "Vencidas", tone: "bad", icon: <AlarmClock size={19} />, matches: (row) => row.sla === "overdue" },
+  const [weekAgo] = useState(() => Date.now() - 7 * 86_400_000);
+  const decidedMetrics: MetricFilter<ApprovalItem>[] = [
+    { id: "resolved", label: "Resueltas en 7 días", tone: "ok", icon: <CircleCheckBig size={19} />, note: overview.kpis.avg_hours !== null ? `${overview.kpis.avg_hours} h en promedio` : "Sin decisiones recientes", info: <p>Solicitudes aprobadas o rechazadas en los últimos 7 días; la nota es el tiempo promedio desde que se pidieron hasta que se decidieron.</p>, matches: (row) => row.decided_at !== null && ["aprobada", "rechazada"].includes(row.status) && new Date(row.decided_at).getTime() >= weekAgo },
+    { id: "approved", label: "Aprobadas", tone: "ok", icon: <ShieldCheck size={19} />, matches: (row) => row.status === "aprobada" },
+    { id: "rejected", label: "Rechazadas", tone: "bad", icon: <CircleX size={19} />, matches: (row) => row.status === "rechazada" },
+  ];
+  const openMetrics: MetricFilter<ApprovalItem>[] = [
+    { id: "overdue", label: "Vencidas", tone: "bad", icon: <AlarmClock size={19} />, note: "Plazo de respuesta vencido", info: <p>Solicitudes pendientes cuyo plazo de respuesta (SLA de la regla de aprobación) ya venció.</p>, matches: (row) => row.sla === "overdue" },
     { id: "warning", label: "Por vencer", tone: "warn", icon: <Hourglass size={19} />, matches: (row) => row.sla === "warning" },
     { id: "decide", label: "Puedo decidir", tone: "ok", icon: <ShieldCheck size={19} />, matches: (row) => row.can_decide },
     { id: "answer", label: "Consultas por responder", tone: "info", icon: <MessageSquareReply size={19} />, matches: (row) => row.can_answer },
@@ -178,7 +173,7 @@ function ApprovalTable({ rows, screen, overview, csv }: { rows: ApprovalItem[]; 
       entityLabel="solicitudes"
       searchText={(row) => `${row.code} ${row.title} ${row.requester} ${row.type_label}`}
       searchPlaceholder="Buscar solicitud, código o persona"
-      metrics={metrics}
+      metrics={decided ? decidedMetrics : openMetrics}
       filters={filters}
       sorts={sorts}
       csv={csv}
@@ -194,7 +189,7 @@ function RulesTable({ rules, canManage, types }: { rules: ApprovalRule[]; canMan
       header: "Tipo",
       mobile: "title",
       cell: (row) => (
-        <span className="flex items-center gap-2">
+        <span className="flex flex-col items-start gap-1">
           <Badge tone={TYPE_TONES[row.type] ?? "mute"} dot={false}>
             {row.type_label}
           </Badge>
@@ -205,17 +200,33 @@ function RulesTable({ rules, canManage, types }: { rules: ApprovalRule[]; canMan
     {
       id: "permission",
       header: "Aprueba",
+      wrap: true,
       cell: (row) => (
         <span className="text-[13px]" title={row.approvers.join(", ") || "Nadie tiene este permiso"}>
           {row.permission_label}
-          <span className="block max-w-[260px] truncate text-[12px] text-fg-3">{row.approvers.length > 0 ? row.approvers.join(", ") : "Sin aprobadores activos"}</span>
+          <span className="line-clamp-2 block text-[12px] text-fg-3">{row.approvers.length > 0 ? row.approvers.join(", ") : "Sin aprobadores activos"}</span>
+          <span className={cn("block text-[12px]", row.forbid_self ? "text-fg-3" : "font-semibold text-warn")}>{row.forbid_self ? "Sin autoaprobación" : "Autoaprobación permitida"}</span>
         </span>
       ),
     },
-    { id: "min", header: "Desde", align: "right", cell: (row) => <span className="font-mono text-[13px]">{row.min_amount > 0 ? formatMoney(row.min_amount) : "Cualquier monto"}</span> },
-    { id: "sla", header: "Plazo", align: "right", cell: (row) => <span className="font-mono text-[13px]">{row.sla_hours} h</span> },
-    { id: "self", header: "Autoaprobación", cell: (row) => <Badge tone={row.forbid_self ? "ok" : "warn"} dot={false}>{row.forbid_self ? "Prohibida" : "Permitida"}</Badge> },
-    { id: "status", header: "Estado", cell: (row) => <StatusBadge status={row.active ? "activa" : "inactiva"} /> },
+    {
+      id: "min",
+      header: "Desde y plazo",
+      align: "right",
+      cell: (row) => (
+        <span className="text-[13px]">
+          {row.min_amount > 0 ? <span className="block font-mono">{formatMoney(row.min_amount)}</span> : <span className="block">Cualquier monto</span>}
+          <span className="block text-[12px] text-fg-3">{row.sla_hours} h para decidir</span>
+        </span>
+      ),
+    },
+    {
+      id: "status",
+      header: "Estado",
+      cell: (row) => (
+        <StatusBadge status={row.active ? "activa" : "inactiva"} />
+      ),
+    },
     {
       id: "actions",
       header: "",
@@ -273,7 +284,7 @@ export function ApprovalsWorkspace({ overview, section }: { overview: ApprovalsO
             content: (
               <>
                 <RecentDecisions rows={history} />
-                <ApprovalTable rows={history} screen="aprobaciones-historial" overview={overview} csv={HISTORY_CSV} />
+                <ApprovalTable rows={history} screen="aprobaciones-historial" overview={overview} csv={HISTORY_CSV} decided />
               </>
             ),
           },

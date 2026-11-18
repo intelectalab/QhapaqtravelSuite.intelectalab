@@ -1,11 +1,11 @@
 "use client";
 
-import { Columns3 } from "lucide-react";
+import { CalendarX, Columns3, Percent, Target, Trophy } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { PipelineBoard } from "./PipelineBoard";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
-import type { Column, FilterConfig, SortOption } from "@/components/table/types";
+import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
@@ -120,6 +120,47 @@ export function OpportunitiesTable({ board, today }: { board: OpportunityBoard; 
     { id: "weighted", label: "Ponderado", type: "number", value: (item) => (OPEN_STAGES.includes(item.stage) ? weighted(item) : 0) },
     { id: "title", label: "Título", type: "text", value: (item) => item.title },
   ];
+  const { kpis } = board;
+  const month = today.slice(0, 7);
+  const metrics: MetricFilter<OpportunityItem>[] = [
+    {
+      id: "open",
+      label: "En el embudo",
+      tone: "t1",
+      icon: <Target size={19} />,
+      display: formatMoney(kpis.open_pen, "PEN", { compact: true }),
+      note: `${formatMoney(kpis.weighted_pen, "PEN", { compact: true })} ponderado`,
+      info: <p>Suma en soles de las oportunidades abiertas, de calificación a negociación. La nota multiplica cada una por la probabilidad de su etapa: es lo que se espera cerrar. Al presionarla, la tabla muestra solo las abiertas.</p>,
+      matches: (item) => OPEN_STAGES.includes(item.stage),
+    },
+    {
+      id: "won-month",
+      label: "Ganado este mes",
+      tone: "ok",
+      icon: <Trophy size={19} />,
+      display: formatMoney(kpis.won_month_pen, "PEN", { compact: true }),
+      info: <p>Monto en soles de las oportunidades ganadas con fecha de cierre en el mes en curso. Al presionarla, la tabla muestra esas oportunidades.</p>,
+      matches: (item) => item.stage === "ganada" && (item.closed_at ?? "").startsWith(month),
+    },
+    {
+      id: "close-rate",
+      label: "Tasa de cierre",
+      tone: "sun",
+      icon: <Percent size={19} />,
+      display: kpis.close_rate === null ? "Sin cierres" : `${kpis.close_rate} %`,
+      note: "Ganadas sobre cerradas",
+      info: <p>Oportunidades ganadas entre todas las cerradas, ganadas y perdidas. Las abiertas no cuentan. Al presionarla, la tabla muestra las cerradas.</p>,
+      matches: (item) => item.stage === "ganada" || item.stage === "perdida",
+    },
+    {
+      id: "overdue",
+      label: "Cierre vencido",
+      tone: "bad",
+      icon: <CalendarX size={19} />,
+      info: <p>Oportunidades abiertas cuya fecha de cierre esperada ya pasó. Al presionarla, la tabla muestra las que hay que mover o reprogramar.</p>,
+      matches: (item) => OPEN_STAGES.includes(item.stage) && item.expected_close_date < today,
+    },
+  ];
 
   return (
     <DataTable
@@ -130,6 +171,7 @@ export function OpportunitiesTable({ board, today }: { board: OpportunityBoard; 
       entityLabel="oportunidades"
       searchText={(item) => `${item.title} ${item.client.name} ${item.code} ${item.destination ?? ""}`}
       searchPlaceholder="Buscar título, cliente o destino"
+      metrics={metrics}
       filters={filters}
       sorts={sorts}
       defaultView="kanban"

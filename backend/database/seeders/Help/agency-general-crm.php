@@ -273,8 +273,8 @@ return [
             ['title' => 'Crear una meta', 'text' => 'Pulsa «Nueva meta», elige el alcance (asesor, equipo o sede), a quién corresponde y el período. Indica la meta de ventas y, si quieres, reservas, margen y conversión; para un asesor, también el bono base. Si apagas «Activar ahora», queda en borrador.'],
             ['title' => 'Seguir el avance', 'text' => 'Elige el período y revisa la meta, lo vendido, la proyección al cierre, las metas en riesgo y los bonos estimados. Con «Ver» abres el detalle de cada meta con el real contra la meta de cada indicador.'],
             ['title' => 'Ajustar una meta', 'text' => 'Con «Ajustar» cambias los valores de una meta en borrador o vigente. Escribe el motivo del ajuste: queda en el historial de la meta.'],
-            ['title' => 'Activar o cerrar el período', 'text' => 'Desde «Ver», una meta en borrador se activa con «Activar meta». Cuando el período termina, «Cerrar período» congela el resultado.'],
-            ['title' => 'Anular', 'text' => 'Con «Anular» y un motivo, una meta en borrador o vigente queda anulada en el historial; no se borra.'],
+            ['title' => 'Activar o cerrar el período', 'text' => 'Desde «Ver», una meta en borrador se activa con «Activar meta». Cuando el período termina, «Cerrar período» congela el resultado. Si una meta vigente sigue abierta después de su período, gerencia recibe cada mañana un aviso para cerrarla.'],
+            ['title' => 'Anular', 'text' => 'Con «Anular» y un motivo, una meta en borrador queda anulada en el historial; no se borra. Una meta vigente no se anula: se ajusta o se cierra al terminar su período.'],
         ],
         'faqs' => [
             ['question' => '¿Qué incluye la proyección?', 'answer' => 'Lo vendido más las oportunidades abiertas que cierran en el período, ponderadas por su probabilidad. Si la proyección queda bajo el 100 %, la meta figura en riesgo.'],

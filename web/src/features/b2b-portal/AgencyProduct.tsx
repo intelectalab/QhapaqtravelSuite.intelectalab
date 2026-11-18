@@ -17,6 +17,7 @@ import { PortalTitle, RISE, SectionCard } from "@/features/portal/PortalUi";
 import { agencyStatus, AVAILABILITY_TONES, PAY_MODES, type AgencyProduct, type CalendarDay, type PayMode, type PriceQuote } from "@/lib/b2b-portal";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
+import { LOAD_FAILED, withRetry } from "@/lib/retry";
 import { toneStyle } from "@/lib/tone";
 import { CreditMeter, NetInfo } from "./AgencyUi";
 
@@ -228,10 +229,12 @@ export function AgencyProductView({ data, initialDate }: { data: AgencyProduct; 
     if (booted.current) return;
     booted.current = true;
     if (startDate && product.bookable) {
-      simulateBooking({ product: product.code, date: startDate, adults: Math.max(1, Math.min(product.pax.max, product.seats)), children: 0 }).then((result) => {
-        setQuote(result.quote);
-        setMessage(result.message);
-      });
+      withRetry(() => simulateBooking({ product: product.code, date: startDate, adults: Math.max(1, Math.min(product.pax.max, product.seats)), children: 0 }))
+        .then((result) => {
+          setQuote(result.quote);
+          setMessage(result.message);
+        })
+        .catch(() => setMessage(LOAD_FAILED));
     }
   }, [product.code, product.bookable, product.pax.max, product.seats, startDate]);
 

@@ -10,11 +10,11 @@ import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format";
-import type { PaxDocuments, PaxSection, PaxService, PaxVoucher, PaxVouchers } from "@/lib/portal";
+import { TRIP_FIRST_SECTION, type PaxDocuments, type PaxSection, type PaxService, type PaxVoucher, type PaxVouchers } from "@/lib/portal";
 import { EmptyLine, PortalBadge, RISE, rise, SectionCard } from "./PortalUi";
 
 export const TRIP_SECTIONS: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/portal/viaje/hoteles", label: "Hoteles", icon: Hotel },
+  { href: TRIP_FIRST_SECTION, label: "Hoteles", icon: Hotel },
   { href: "/portal/viaje/transporte", label: "Transporte", icon: Bus },
   { href: "/portal/viaje/actividades", label: "Actividades", icon: Compass },
   { href: "/portal/viaje/vouchers", label: "Vouchers", icon: Ticket },

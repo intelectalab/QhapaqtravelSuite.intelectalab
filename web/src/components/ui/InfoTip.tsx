@@ -27,6 +27,19 @@ export function InfoTip({ children, label = "Más información", className }: { 
   );
 }
 
+export function InfoCover({ children, label, testId }: { children: ReactNode; label: string; testId?: string }) {
+  return (
+    <Popover.Root>
+      <Popover.Trigger aria-label={label} data-testid={testId} className="absolute inset-0 cursor-help rounded-[inherit] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--tint)]" />
+      <Popover.Portal>
+        <Popover.Content side="bottom" align="start" sideOffset={6} collisionPadding={12} onEscapeKeyDown={(event) => event.stopPropagation()} className={BUBBLE}>
+          {children}
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
 export interface CountItem {
   label: string;
   included: boolean;

@@ -87,7 +87,7 @@ export function SalesTeamsBoard({ overview }: { overview: SalesTeamsOverview }) 
               <div className="flex items-start justify-between gap-3">
                 <span className="min-w-0">
                   <b className="block truncate text-[14px] font-semibold">{team.name}</b>
-                  <span className="text-[12px] text-fg-3">{team.code} · {team.members.length} integrantes · {team.targets} metas</span>
+                  <span className="text-[12px] text-fg-3">{team.code} · {team.members.length === 1 ? "1 integrante" : `${team.members.length} integrantes`} · {team.targets} metas</span>
                 </span>
                 {overview.can.manage && (
                   <RowActions>

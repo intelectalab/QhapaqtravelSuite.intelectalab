@@ -404,7 +404,7 @@ export function RuleDeleteAction({ rule }: { rule: ApprovalRule }) {
 export function RulesResetAction() {
   return (
     <PanelAction<StepResult>
-      label="Restaurar valores por defecto"
+      label="Restaurar"
       icon={<ListRestart size={16} />}
       formId="restaurar-reglas"
       title="Restaurar matriz por defecto"

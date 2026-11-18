@@ -7,6 +7,7 @@ namespace App\Domain\Mobile\Support;
 use App\Domain\Channels\Support\ChannelKit;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final class OperatorAppPreview
@@ -17,9 +18,22 @@ final class OperatorAppPreview
 
     public function show(?string $date, ?string $staff): array
     {
-        $today = $this->kit->today();
         $staffList = $this->staff();
-        $selectedStaff = $staffList->firstWhere('code', $staff);
+
+        return $this->build($date, $staffList->firstWhere('code', $staff), $staffList);
+    }
+
+    public function own(OperatorResource $resource, ?string $date): array
+    {
+        $row = $resource->row;
+        $selected = ['id' => $resource->id(), 'code' => $row->code, 'name' => $row->full_name, 'phone' => $row->phone, 'role' => $resource->type === 'guide' ? 'guia' : 'conductor'];
+
+        return $this->build($date, $selected, null);
+    }
+
+    private function build(?string $date, ?array $selectedStaff, ?Collection $team): array
+    {
+        $today = $this->kit->today();
         $days = $this->base($selectedStaff)
             ->whereBetween('s.service_date', [Carbon::parse($today)->subDays(7)->toDateString(), Carbon::parse($today)->addDays(21)->toDateString()])
             ->selectRaw('s.service_date as day, count(*) as total')
@@ -35,22 +49,14 @@ final class OperatorAppPreview
             ->orderBy('s.service_time')
             ->get(['s.code', 's.name', 's.service_time', 's.service_kind', 's.status', 's.pax', 's.confirmation_code', 's.reservation_id', 'r.code as reservation', 'r.title as reservation_title', 'a.status as assignment_status', 'a.confirmed_at', 'a.started_at', 'a.finished_at', 'g.full_name as guide', 'd.full_name as driver', 'v.plate', 'v.vehicle_type', 'o.code as order_code']);
         $leads = DB::table('booking_passengers')->whereIn('reservation_id', $rows->pluck('reservation_id')->unique())->orderByDesc('is_lead')->orderBy('seq')->get(['reservation_id', 'full_name', 'phone'])->groupBy('reservation_id');
-        $devices = DB::table('ops_mobile_devices')->where('app', 'operador')->whereNull('revoked_at');
 
         return [
             'today' => $today,
             'date' => $day,
             'days' => $days->map(fn (object $row): array => ['date' => $row->day, 'services' => (int) $row->total])->values(),
-            'staff' => $staffList->values(),
+            'staff' => $team ? $team->values() : [$selectedStaff],
             'selected_staff' => $selectedStaff,
-            'devices' => [
-                'active' => (clone $devices)->count(),
-                'last_sync_at' => (clone $devices)->max('last_sync_at'),
-                'items' => (clone $devices)->join('iam_users as u', 'u.id', '=', 'ops_mobile_devices.user_id')->orderByRaw('ops_mobile_devices.last_sync_at desc nulls last')->limit(20)
-                    ->get(['ops_mobile_devices.id', 'u.name', 'ops_mobile_devices.platform', 'ops_mobile_devices.app_version', 'ops_mobile_devices.last_seen_at', 'ops_mobile_devices.last_sync_at'])
-                    ->map(fn (object $row): array => ['id' => $row->id, 'user' => $row->name, 'platform' => $row->platform, 'version' => $row->app_version, 'last_seen_at' => $row->last_seen_at, 'last_sync_at' => $row->last_sync_at])->values(),
-            ],
-            'sync' => $this->syncCounters(Carbon::parse($today)->subDays(6)->startOfDay()),
+            ...($team ? ['devices' => $this->devices(), 'sync' => $this->syncCounters(Carbon::parse($today)->subDays(6)->startOfDay())] : []),
             'kpis' => [
                 'services' => $rows->count(),
                 'pax' => (int) $rows->sum('pax'),
@@ -91,6 +97,19 @@ final class OperatorAppPreview
         $drivers = DB::table('ops_drivers as d')->whereNull('d.deleted_at')->whereExists(fn (Builder $sub) => $sub->from('ops_assignments as a')->whereColumn('a.driver_id', 'd.id'))->orderBy('d.full_name')->get(['d.id', 'd.code', 'd.full_name', 'd.phone'])->map(fn (object $row): array => ['id' => $row->id, 'code' => $row->code, 'name' => $row->full_name, 'phone' => $row->phone, 'role' => 'conductor']);
 
         return $guides->concat($drivers);
+    }
+
+    private function devices(): array
+    {
+        $devices = DB::table('ops_mobile_devices')->where('app', 'operador')->whereNull('revoked_at');
+
+        return [
+            'active' => (clone $devices)->count(),
+            'last_sync_at' => (clone $devices)->max('last_sync_at'),
+            'items' => (clone $devices)->join('iam_users as u', 'u.id', '=', 'ops_mobile_devices.user_id')->orderByRaw('ops_mobile_devices.last_sync_at desc nulls last')->limit(20)
+                ->get(['ops_mobile_devices.id', 'u.name', 'ops_mobile_devices.platform', 'ops_mobile_devices.app_version', 'ops_mobile_devices.last_seen_at', 'ops_mobile_devices.last_sync_at'])
+                ->map(fn (object $row): array => ['id' => $row->id, 'user' => $row->name, 'platform' => $row->platform, 'version' => $row->app_version, 'last_seen_at' => $row->last_seen_at, 'last_sync_at' => $row->last_sync_at])->values(),
+        ];
     }
 
     private function syncCounters(Carbon $since): array

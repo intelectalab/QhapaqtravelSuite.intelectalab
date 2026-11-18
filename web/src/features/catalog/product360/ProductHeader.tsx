@@ -52,7 +52,7 @@ export function ProductStatusNotice({ product, overview }: { product: ProductDet
     <div role="status" className={cn("mb-5 flex flex-wrap items-center gap-2 rounded-xl border px-4 py-3 text-[13.5px]", blocked ? "border-bad/30 bg-bad/[0.07] text-bad" : "border-t2/40 bg-t2/[0.1] text-fg")}>
       <TriangleAlert size={17} className={blocked ? "text-bad" : "text-t2"} />
       {blocked ? (
-        <span>Producto {status.label.toLowerCase()}: no se puede elegir en nuevas cotizaciones ni reservas (PRD-BR-002). Los documentos anteriores conservan su copia.</span>
+        <span>Producto {status.label.toLowerCase()}: no se puede elegir en nuevas cotizaciones ni reservas. Los documentos anteriores conservan su copia.</span>
       ) : (
         <span>
           Producto en estado <b>{status.label}</b>: aún no se vende. Checklist de activación: {overview.checklist.passed} de {overview.checklist.total} validaciones cumplidas.{" "}

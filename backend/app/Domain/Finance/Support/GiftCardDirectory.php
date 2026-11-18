@@ -79,7 +79,7 @@ final class GiftCardDirectory
         return DB::table('fin_gift_cards as g')
             ->leftJoin('crm_clients as c', 'c.id', '=', 'g.buyer_client_id')
             ->leftJoin('iam_users as u', 'u.id', '=', 'g.created_by')
-            ->select(['g.id', 'g.code', 'g.redeem_code_last4', 'g.initial_amount', 'g.balance', 'g.currency', 'g.recipient_name', 'g.recipient_email', 'g.message', 'g.deliver_at', 'g.expires_at', 'g.status', 'g.lock_version', 'g.created_at', 'c.code as buyer_code', 'c.name as buyer_name', 'u.name as created_by_name']);
+            ->select(['g.id', 'g.code', 'g.redeem_code_last4', 'g.initial_amount', 'g.balance', 'g.currency', 'g.recipient_name', 'g.recipient_email', 'g.message', 'g.deliver_at', 'g.delivered_at', 'g.expires_at', 'g.status', 'g.lock_version', 'g.created_at', 'c.code as buyer_code', 'c.name as buyer_name', 'u.name as created_by_name']);
     }
 
     private function kpis(): array
@@ -121,6 +121,7 @@ final class GiftCardDirectory
             'message' => $row->message,
             'buyer' => $row->buyer_code ? ['code' => $row->buyer_code, 'name' => $row->buyer_name] : null,
             'deliver_at' => $row->deliver_at ? Carbon::parse((string) $row->deliver_at)->toIso8601String() : null,
+            'delivered_at' => $row->delivered_at ? Carbon::parse((string) $row->delivered_at)->toIso8601String() : null,
             'expires_at' => $row->expires_at,
             'created_at' => Carbon::parse((string) $row->created_at)->toIso8601String(),
             'created_by' => $row->created_by_name ?? 'Sitio web',

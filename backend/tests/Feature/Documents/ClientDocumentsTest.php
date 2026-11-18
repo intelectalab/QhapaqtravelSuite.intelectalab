@@ -1,6 +1,7 @@
 <?php
 
 use App\Domain\Documents\Actions\ClientDocuments;
+use App\Domain\Platform\Support\Entitlements;
 use App\Domain\Shared\Money\Decimal;
 use App\Jobs\GenerateDocumentPdf;
 use Illuminate\Bus\UniqueLock;
@@ -255,6 +256,8 @@ it('el sitio público entrega el voucher del pedido solo con su token', function
     $this->get('/api/v1/public/orders/WEB-10432/vouchers/VOU-2026-01201.pdf', siteOf('andes', pdfAccept(['X-Order-Token' => 'otro'])))->assertNotFound();
     $this->get('/api/v1/public/orders/WEB-10432/vouchers/VOU-2026-01204.pdf', siteOf('andes', pdfAccept(['X-Order-Token' => 'token-del-pedido'])))->assertNotFound();
     $this->get('/api/v1/public/orders/WEB-10432/vouchers/VOU-2026-01201.pdf', siteOf('altiplano', pdfAccept(['X-Order-Token' => 'token-del-pedido'])))->assertNotFound();
+    DB::connection('pgsql_platform')->table('feature_overrides')->where('tenant_id', DB::connection('pgsql_platform')->table('tenants')->where('code', 'TNT-0002')->value('id'))->where('feature_key', 'module.ecommerce')->delete();
+    Entitlements::flush();
     expect($this->get('/api/v1/public/orders/WEB-10432/vouchers/VOU-2026-01201.pdf', siteOf('selva', pdfAccept(['X-Order-Token' => 'token-del-pedido']))))->toBeApiError(403, 'FEATURE_NOT_IN_PLAN');
 });
 

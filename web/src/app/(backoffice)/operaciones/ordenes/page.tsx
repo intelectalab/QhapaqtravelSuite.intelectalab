@@ -1,10 +1,9 @@
-import { CalendarDays, CalendarRange, Siren, Truck, UserRoundX } from "lucide-react";
+import { CalendarRange, Siren, Truck } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { InfoTip } from "@/components/ui/InfoTip";
-import { TintTile } from "@/components/ui/Tinted";
 import { Notice } from "@/features/operations/OpsBits";
 import { OrderCreateAction, OrdersTable } from "@/features/operations/Orders";
 import { SupplierAlternativesNotice } from "@/features/operations/SupplierAlternatives";
@@ -52,11 +51,6 @@ export default async function OrdenesPage() {
       )}
 
       {alternatives && <SupplierAlternativesNotice data={alternatives} scope="all" />}
-
-      <section className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <TintTile icon={CalendarDays} tone="t1" label="Servicios hoy" value={kpis.services_today} note={`${kpis.services_tomorrow} mañana`} info={<p>Tours, traslados y entradas de las órdenes activas con fecha de hoy. La nota cuenta los de mañana.</p>} />
-        <TintTile icon={UserRoundX} tone="warn" label="Servicios por asignar" value={kpis.pending_assignment} note="Falta guía, conductor o vehículo" info={<p>Servicios de órdenes activas que todavía no tienen recursos asignados. El filtro «Con servicios sin recursos» de abajo muestra las órdenes que los contienen.</p>} />
-      </section>
 
       <OrdersTable data={data} />
     </>

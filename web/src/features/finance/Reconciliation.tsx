@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, Clock3, CircleCheck, CircleX, FileQuestion, Link2, Lock, Sparkles, Upload, Wrench, Zap } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Clock3, CircleCheck, CircleX, FileQuestion, Gauge, Link2, Lock, Scale, Sparkles, Upload, Wrench, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { importStatement, loadLineCandidates } from "@/app/(backoffice)/finanzas/actions";
@@ -16,6 +16,7 @@ import { TextArea } from "@/components/ui/TextArea";
 import { cn } from "@/lib/cn";
 import type { BankLineRow, LineCandidate, ReconciliationOverview } from "@/lib/finance";
 import { formatDate, formatMoney } from "@/lib/format";
+import { LOAD_FAILED, withRetry } from "@/lib/retry";
 import type { StepResult } from "@/lib/server/resource";
 import { statusLabel } from "@/lib/tone";
 import { FinanceStep, SummaryBox } from "./FinanceStep";
@@ -54,11 +55,20 @@ function CandidatePicker({ code, credit }: { code: string; credit: boolean }) {
   const [picked, setPicked] = useState("");
 
   useEffect(() => {
-    loadLineCandidates(code).then((result) => {
-      setError(result.message);
-      setRows(result.rows);
-      setPicked(result.rows[0]?.code ?? "");
-    });
+    let alive = true;
+    withRetry(() => loadLineCandidates(code))
+      .then((result) => {
+        if (!alive) return;
+        setError(result.message);
+        setRows(result.rows);
+        setPicked(result.rows[0]?.code ?? "");
+      })
+      .catch(() => {
+        if (alive) setError(LOAD_FAILED);
+      });
+    return () => {
+      alive = false;
+    };
   }, [code]);
 
   if (error) return <p className="text-[13px] text-bad">{error}</p>;
@@ -170,7 +180,9 @@ export function CloseReconciliationAction({ data }: { data: ReconciliationOvervi
 }
 
 export function BankLinesTable({ data }: { data: ReconciliationOverview }) {
-  const { rows, can } = data;
+  const { rows, can, kpis } = data;
+  const openCount = rows.filter((row) => !row.closure).length;
+  const net = kpis.credits_pen - kpis.debits_pen;
 
   const columns: Column<BankLineRow>[] = [
     {
@@ -249,10 +261,11 @@ export function BankLinesTable({ data }: { data: ReconciliationOverview }) {
   ];
 
   const metrics: MetricFilter<BankLineRow>[] = [
-    { id: "suggested", label: "Sugeridas", tone: "info", icon: <Sparkles size={19} />, matches: (row) => row.status === "sugerido" },
-    { id: "pending", label: "Sin matching", tone: "sun", icon: <Clock3 size={19} />, matches: (row) => row.status === "pendiente" },
-    { id: "exceptions", label: "Excepciones", tone: "warn", icon: <FileQuestion size={19} />, matches: (row) => row.status === "excepcion" },
-    { id: "reconciled", label: "Conciliadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "conciliado" },
+    { id: "reconciled", label: "Avance", tone: kpis.progress === 100 ? "ok" : "t1", icon: <Gauge size={19} />, display: `${kpis.progress} %`, note: `${kpis.reconciled} de ${openCount} ${openCount === 1 ? "línea abierta conciliada" : "líneas abiertas conciliadas"}`, info: <p>Líneas del extracto aún sin cierre que ya están conciliadas, sobre el total de líneas abiertas. Al presionarla, la tabla muestra las líneas conciliadas del periodo abierto.</p>, matches: (row) => !row.closure && row.status === "conciliado" },
+    { id: "pending", label: "Sin matching", tone: "sun", icon: <Clock3 size={19} />, info: <p>Líneas que todavía no pasan por el matching automático contra pagos y obligaciones. Al presionarla, la tabla muestra esas líneas.</p>, matches: (row) => row.status === "pendiente" },
+    { id: "suggested", label: "Sugeridas", tone: "info", icon: <Sparkles size={19} />, info: <p>Líneas con un cruce propuesto que falta confirmar. Al presionarla, la tabla muestra esas líneas para aceptarlas o corregirlas.</p>, matches: (row) => row.status === "sugerido" },
+    { id: "exceptions", label: "Excepciones", tone: "warn", icon: <FileQuestion size={19} />, info: <p>Líneas sin un cobro u obligación que coincida dentro de la tolerancia de S/ 0.50; se resuelven con sustento. Al presionarla, la tabla muestra esas líneas.</p>, matches: (row) => row.status === "excepcion" },
+    { id: "net", label: "Neto del extracto", tone: net >= 0 ? "t3" : "warn", icon: <Scale size={19} />, display: formatMoney(net, "PEN", { compact: true }), note: `Abonos ${formatMoney(kpis.credits_pen, "PEN", { compact: true })} · Cargos ${formatMoney(kpis.debits_pen, "PEN", { compact: true })}`, info: <p>Abonos menos cargos de las líneas del extracto que aún no tienen cierre de conciliación. Al presionarla, la tabla muestra todas esas líneas abiertas.</p>, matches: (row) => !row.closure },
   ];
 
   const filters: FilterConfig<BankLineRow>[] = [

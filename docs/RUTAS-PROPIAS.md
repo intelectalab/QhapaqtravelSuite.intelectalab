@@ -413,6 +413,17 @@ Cambios de comportamiento en rutas del contrato: `POST /exports` (CRM) exige ade
 
 Guard de llaves de API (API-BR-01): middleware `App\Domain\Admin\Http\Middleware\AuthenticateApiKey` y `RequireApiScope:<scope>`. Todavía no está puesto en ninguna ruta del contrato (ver dudas del informe del 13 de noviembre); la tabla de endpoints de `/admin/api` se arma sola con las rutas que lo usen.
 
+### Integraciones de prueba: estado de las conexiones y correo de la agencia (4)
+
+Agregadas el 17 de noviembre de 2026 con la decisión «Integraciones de prueba» (`routes/modules/integraciones-de-prueba.php`). En producción (o con `INTEGRATIONS_REQUIRE_REAL=true`) ningún adaptador `fake` entrega resultados: responde 409 `INTEGRATION_UNAVAILABLE` con el aviso de la función.
+
+| Ruta | Grupo | Equivalente en el contrato o motivo |
+| --- | --- | --- |
+| `GET /integrations/readiness` | Lectura de pantalla | Estado de lo que pone la agencia (correo de salida, WhatsApp, OSE, pasarela: `conectado`, `en_proceso`, `sin_configurar`, y si se puede usar) y de lo que pone KipuControl (`features`: disponible o «Próximamente»). Lo leen el inicio («Completa tu configuración»), Integraciones y las pantallas que dependen de un proveedor. Cualquier usuario de la agencia; `can_manage` con `admin.settings.manage`. |
+| `GET /settings/outgoing-mail` | Lectura de pantalla | Correo de salida propio de la agencia (proveedor, correo, remitente, si la clave está guardada y cuándo se probó). Nunca devuelve la clave. Guardado en `sys_settings` › `notifications.outgoing_mail`. `admin.settings.manage`. |
+| `PUT /settings/outgoing-mail` | Editar, borrar o cambiar estado | Conecta el correo: `provider` (`gmail`, `outlook`, `zoho`, `otro`), `address`, `password` (clave de aplicación, cifrada; vacía mantiene la guardada si el correo no cambia), `from_name` y, con `otro`, `host`, `port` y `encryption`. Prueba la conexión y envía un correo de prueba antes de guardar: si falla, 422 `MAIL-TEST-FAILED` y no se guarda. Auditado sin la clave. |
+| `DELETE /settings/outgoing-mail` | Editar, borrar o cambiar estado | Desconecta el correo de la agencia y borra la clave. 422 `CFG-BR-01` si no había uno conectado. Auditado. |
+
 ### Decisiones · sitio: transferencias, reseñas externas, select_date y plazos de la bandeja (16)
 
 Agregadas el 13 de noviembre de 2026, con la tanda de decisiones del grupo sitio (`routes/modules/decisiones-sitio.php` y `routes/public/decisiones-sitio.php`).

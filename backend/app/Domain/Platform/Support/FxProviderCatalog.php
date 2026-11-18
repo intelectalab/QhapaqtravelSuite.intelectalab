@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Platform\Support;
 
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use Illuminate\Support\Facades\DB;
 
 final class FxProviderCatalog
@@ -32,7 +33,7 @@ final class FxProviderCatalog
         $stored = PlatformSettings::read(self::KEY);
 
         if (! array_key_exists('providers', $stored)) {
-            return array_map(fn (array $row): array => $this->normalize($row), self::DEFAULTS);
+            return array_map(fn (array $row): array => $this->normalize($row['driver'] === 'simulado' && IntegrationReadiness::enforced() ? [...$row, 'status' => 'por_validar'] : $row), self::DEFAULTS);
         }
 
         return array_values(array_map(fn (array $row): array => $this->normalize($row), (array) $stored['providers']));

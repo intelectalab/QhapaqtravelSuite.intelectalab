@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, CheckCheck, CircleCheck, CopyPlus, Download, FileClock, Ticket, TicketCheck, TicketX } from "lucide-react";
+import { Ban, CalendarClock, CheckCheck, CircleCheck, CopyPlus, Download, FileClock, Ticket, TicketCheck, TicketPlus, TicketX } from "lucide-react";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { DataTable } from "@/components/table/DataTable";
@@ -162,11 +162,15 @@ export function VouchersTable({ data }: { data: VoucherOverview }) {
     { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => <VoucherRowActions voucher={row} canIssue={data.can.issue} /> },
   ];
 
+  const month = data.today.slice(0, 7);
+  const upcoming = data.items.filter((row) => row.status === "emitido" && row.service.date >= data.today).length;
+  const redeemed = data.items.filter((row) => row.status === "utilizado" && row.used_via === "extranet" && (row.used_at ?? "").slice(0, 7) === month).length;
   const metrics: MetricFilter<Voucher>[] = [
-    { id: "issued", label: "Vigentes", tone: "ok", icon: <TicketCheck size={19} />, matches: (row) => row.status === "emitido" },
-    { id: "used", label: "Utilizados", tone: "violet", icon: <CircleCheck size={19} />, matches: (row) => row.status === "utilizado" },
-    { id: "void", label: "Anulados", tone: "bad", icon: <TicketX size={19} />, matches: (row) => row.status === "anulado" },
-    { id: "upcoming", label: "Servicio próximo", tone: "t4", icon: <Ticket size={19} />, matches: (row) => row.status === "emitido" && row.service.date >= data.today },
+    { id: "today", label: "Se usan hoy", tone: "t1", icon: <CalendarClock size={19} />, note: "Vigentes con servicio hoy", info: <p>Vouchers emitidos, aún sin usar, cuyo servicio es hoy. Al presionarla, la tabla muestra esos vouchers.</p>, matches: (row) => row.status === "emitido" && row.service.date === data.today },
+    { id: "issued", label: "Vigentes", tone: "ok", icon: <TicketCheck size={19} />, note: `${upcoming} con servicio de hoy en adelante`, info: <p>Vouchers emitidos que el pasajero todavía puede presentar; la nota cuenta los que tienen el servicio de hoy en adelante. Al presionarla, la tabla muestra los vigentes.</p>, matches: (row) => row.status === "emitido" },
+    { id: "used", label: "Utilizados", tone: "violet", icon: <CircleCheck size={19} />, note: `${redeemed} validados en recepción este mes`, info: <p>Vouchers ya usados en el servicio. La nota cuenta los que el propio proveedor registró como utilizados desde la extranet al recibir al pasajero durante el mes en curso. Al presionarla, la tabla muestra los utilizados.</p>, matches: (row) => row.status === "utilizado" },
+    { id: "month", label: "Emitidos este mes", tone: "info", icon: <TicketPlus size={19} />, note: "Incluye nuevas versiones", info: <p>Vouchers cuya última emisión o versión se hizo durante el mes en curso. Al presionarla, la tabla muestra esos vouchers.</p>, matches: (row) => row.issued_at.slice(0, 7) === month },
+    { id: "void", label: "Anulados", tone: "bad", icon: <TicketX size={19} />, info: <p>Vouchers anulados: el proveedor ya no debe aceptarlos. Al presionarla, la tabla muestra esos vouchers.</p>, matches: (row) => row.status === "anulado" },
   ];
 
   const filters: FilterConfig<Voucher>[] = [

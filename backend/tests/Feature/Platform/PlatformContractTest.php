@@ -25,7 +25,8 @@ it('AUD-BR-02 / T-26: platform/audit-events solo trae eventos de plataforma y fi
     $filtered = $this->getJson('/api/v1/platform/audit-events?filter[tenant]=TNT-0002')->assertOk()->json('data');
 
     expect(collect($all)->pluck('entity'))->not->toContain('Cotización')
-        ->and(collect($filtered)->pluck('entity_id')->unique()->all())->toBe(['TNT-0002']);
+        ->and(collect($filtered)->pluck('entity_id'))->toContain('TNT-0002')
+        ->and(collect($filtered)->every(fn (array $event): bool => str_contains((string) $event['entity_id'], 'TNT-0002')))->toBeTrue();
 });
 
 it('el Tenant Admin no entra a las rutas de plataforma nuevas', function (string $uri) {

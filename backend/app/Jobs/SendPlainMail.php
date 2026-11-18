@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Domain\Integrations\Mail\AgencyMailer;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Mail;
 
-final class SendPlainMail implements ShouldQueue
+final class SendPlainMail implements ShouldBeEncrypted, ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -23,6 +25,7 @@ final class SendPlainMail implements ShouldQueue
         public readonly ?string $name,
         public readonly string $subject,
         public readonly string $body,
+        public readonly ?array $sender = null,
     ) {
         $this->onQueue('notifications');
     }
@@ -32,8 +35,14 @@ final class SendPlainMail implements ShouldQueue
         return [60, 120, 240, 480, 960];
     }
 
-    public function handle(): void
+    public function handle(AgencyMailer $agency): void
     {
+        if ($this->sender !== null) {
+            $agency->deliver($this->sender, $this->to, $this->name, $this->subject, $this->body);
+
+            return;
+        }
+
         Mail::raw($this->body, fn ($message) => $message->to($this->to, $this->name)->subject($this->subject));
     }
 }

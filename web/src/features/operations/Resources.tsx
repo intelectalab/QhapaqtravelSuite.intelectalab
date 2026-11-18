@@ -192,11 +192,12 @@ function Avatar({ name, tone }: { name: string; tone: Tone }) {
   );
 }
 
-function personMetrics<T extends { status: string; upcoming: number }>(extra: MetricFilter<T>[] = []): MetricFilter<T>[] {
+function personMetrics<T extends { status: string; upcoming: number }>(rows: T[], noun: string, extra: MetricFilter<T>[] = []): MetricFilter<T>[] {
+  const available = rows.filter((row) => row.status === "disponible").length;
   return [
-    { id: "available", label: "Disponibles", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "disponible" },
-    { id: "busy", label: "Con servicios próximos", tone: "t1", icon: <CalendarCheck size={19} />, matches: (row) => row.upcoming > 0 },
-    { id: "off", label: "Fuera de servicio", tone: "mute", icon: <UserRoundX size={19} />, matches: (row) => ["vacaciones", "mantenimiento"].includes(row.status) },
+    { id: "available", label: "Disponibles", tone: "ok", icon: <CircleCheck size={19} />, display: `${available} de ${rows.length}`, info: <p>{noun} activos en estado disponible; no cuenta a los que están en descanso, de vacaciones o en mantenimiento. Al presionarla, la tabla muestra solo los disponibles.</p>, matches: (row) => row.status === "disponible" },
+    { id: "busy", label: "Con servicios próximos", tone: "t1", icon: <CalendarCheck size={19} />, info: <p>{noun} con al menos un servicio asignado de hoy en adelante. Al presionarla, la tabla muestra solo esos registros.</p>, matches: (row) => row.upcoming > 0 },
+    { id: "off", label: "Fuera de servicio", tone: "mute", icon: <UserRoundX size={19} />, info: <p>{noun} de vacaciones o en mantenimiento: no se pueden asignar. Al presionarla, la tabla muestra solo esos registros.</p>, matches: (row) => ["vacaciones", "mantenimiento"].includes(row.status) },
     ...extra,
   ];
 }
@@ -259,6 +260,7 @@ export function ResourcesBoard({ data, availability }: { data: ResourceOverview;
   ];
 
   const upcomingAssignments = data.assignments.filter((row) => row.date >= data.today);
+  const unassigned = data.assignments.filter((row) => row.status === "pendiente" && row.date >= data.today).length;
   const alerts = [...data.drivers.filter((row) => row.document !== "vigente").map((row) => ({ id: row.id, text: `Licencia de ${row.name}`, state: row.document, date: row.expires_on })), ...data.vehicles.filter((row) => row.document !== "vigente").map((row) => ({ id: row.id, text: `SOAT de ${row.plate}`, state: row.document, date: row.soat_expires_on }))];
 
   return (
@@ -292,10 +294,10 @@ export function ResourcesBoard({ data, availability }: { data: ResourceOverview;
                   searchText={(row) => `${row.label} ${row.order_code} ${row.order_title} ${row.guide?.name ?? ""} ${row.driver?.name ?? ""} ${row.vehicle?.name ?? ""}`}
                   searchPlaceholder="Buscar servicio, orden o recurso"
                   metrics={[
-                    { id: "pending", label: "Recursos incompletos", tone: "warn", icon: <UserRoundX size={19} />, matches: (row) => missingResources(row).length > 0 && !["completada", "cancelada"].includes(row.status) },
-                    { id: "assigned", label: "Por confirmar", tone: "info", icon: <Clock3 size={19} />, matches: (row) => row.status === "asignada" },
-                    { id: "confirmed", label: "Confirmadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "confirmada" },
-                    { id: "today", label: "Hoy", tone: "t4", icon: <CalendarCheck size={19} />, matches: (row) => row.date === data.today },
+                    { id: "pending", label: "Recursos incompletos", tone: "warn", icon: <UserRoundX size={19} />, note: `${unassigned} sin ningún recurso`, info: <p>Tours y traslados de hoy en adelante a los que les falta guía, conductor o vehículo; la nota cuenta los que aún no tienen ninguno. Al presionarla, la tabla muestra esos servicios.</p>, matches: (row) => missingResources(row).length > 0 && !["completada", "cancelada"].includes(row.status) },
+                    { id: "assigned", label: "Por confirmar", tone: "info", icon: <Clock3 size={19} />, info: <p>Servicios con recursos asignados que el guía o conductor todavía no confirma. Al presionarla, la tabla muestra esos servicios.</p>, matches: (row) => row.status === "asignada" },
+                    { id: "confirmed", label: "Confirmadas", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Servicios cuyos recursos ya confirmaron que los cubren. Al presionarla, la tabla muestra esos servicios.</p>, matches: (row) => row.status === "confirmada" },
+                    { id: "today", label: "Hoy", tone: "t4", icon: <CalendarCheck size={19} />, info: <p>Servicios con fecha de hoy. Al presionarla, la tabla muestra solo los de hoy.</p>, matches: (row) => row.date === data.today },
                   ]}
                   filters={[{ id: "status", label: "Estado", options: unique(upcomingAssignments.map((row) => row.status)).map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status }, { id: "order", label: "Orden", options: unique(upcomingAssignments.map((row) => row.order_code)).map((value) => ({ value, label: value })), value: (row) => row.order_code }]}
                   sorts={[{ id: "date", label: "Fecha", type: "date", value: (row) => `${row.date} ${row.time ?? ""}` }] satisfies SortOption<Assignment>[]}
@@ -309,7 +311,7 @@ export function ResourcesBoard({ data, availability }: { data: ResourceOverview;
               content: (
                 <>
                   {can && <div className={cn("mb-4 flex justify-end")}><GuideForm languages={data.languages} users={data.users?.guide} /></div>}
-                  <DataTable screen="operaciones-guias" rows={data.guides} columns={guideColumns} getKey={(row) => row.id} entityLabel="guías" searchText={(row) => `${row.name} ${row.code} ${row.license} ${row.languages.join(" ")}`} searchPlaceholder="Buscar guía o idioma" metrics={personMetrics<Guide>()} filters={[{ id: "language", label: "Idioma", options: data.languages, value: (row) => row.languages }, { id: "status", label: "Estado", options: PERSON_STATUS.map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status }] satisfies FilterConfig<Guide>[]} sorts={[{ id: "rating", label: "Calificación", type: "number", value: (row) => row.rating }, { id: "upcoming", label: "Servicios próximos", type: "number", value: (row) => row.upcoming }]} />
+                  <DataTable screen="operaciones-guias" rows={data.guides} columns={guideColumns} getKey={(row) => row.id} entityLabel="guías" searchText={(row) => `${row.name} ${row.code} ${row.license} ${row.languages.join(" ")}`} searchPlaceholder="Buscar guía o idioma" metrics={personMetrics<Guide>(data.guides, "Guías")} filters={[{ id: "language", label: "Idioma", options: data.languages, value: (row) => row.languages }, { id: "status", label: "Estado", options: PERSON_STATUS.map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status }] satisfies FilterConfig<Guide>[]} sorts={[{ id: "rating", label: "Calificación", type: "number", value: (row) => row.rating }, { id: "upcoming", label: "Servicios próximos", type: "number", value: (row) => row.upcoming }]} />
                 </>
               ),
             },
@@ -320,7 +322,7 @@ export function ResourcesBoard({ data, availability }: { data: ResourceOverview;
               content: (
                 <>
                   {can && <div className="mb-4 flex justify-end"><DriverForm users={data.users?.driver} /></div>}
-                  <DataTable screen="operaciones-conductores" rows={data.drivers} columns={driverColumns} getKey={(row) => row.id} entityLabel="conductores" searchText={(row) => `${row.name} ${row.code} ${row.license}`} searchPlaceholder="Buscar conductor o licencia" metrics={personMetrics<Driver>([{ id: "license", label: "Licencia por vencer", tone: "bad", icon: <IdCard size={19} />, matches: (row) => row.document !== "vigente" }])} filters={[{ id: "status", label: "Estado", options: PERSON_STATUS.map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status }]} sorts={[{ id: "expires", label: "Vencimiento de licencia", type: "date", value: (row) => row.expires_on }]} />
+                  <DataTable screen="operaciones-conductores" rows={data.drivers} columns={driverColumns} getKey={(row) => row.id} entityLabel="conductores" searchText={(row) => `${row.name} ${row.code} ${row.license}`} searchPlaceholder="Buscar conductor o licencia" metrics={personMetrics<Driver>(data.drivers, "Conductores", [{ id: "license", label: "Licencia por vencer", tone: "bad", icon: <IdCard size={19} />, note: "Vencidas o a 30 días", info: <p>Conductores con la licencia vencida o que vence en los próximos 30 días; se revisa contra la fecha de cada servicio. Al presionarla, la tabla muestra esos conductores.</p>, matches: (row) => row.document !== "vigente" }])} filters={[{ id: "status", label: "Estado", options: PERSON_STATUS.map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status }]} sorts={[{ id: "expires", label: "Vencimiento de licencia", type: "date", value: (row) => row.expires_on }]} />
                 </>
               ),
             },
@@ -331,7 +333,7 @@ export function ResourcesBoard({ data, availability }: { data: ResourceOverview;
               content: (
                 <>
                   {can && <div className="mb-4 flex justify-end"><VehicleForm carriers={data.carriers} /></div>}
-                  <DataTable screen="operaciones-vehiculos" rows={data.vehicles} columns={vehicleColumns} getKey={(row) => row.id} entityLabel="vehículos" searchText={(row) => `${row.plate} ${row.type} ${row.provider ?? ""}`} searchPlaceholder="Buscar placa o tipo" metrics={personMetrics<Vehicle>([{ id: "soat", label: "SOAT por vencer", tone: "bad", icon: <ShieldAlert size={19} />, matches: (row) => row.document !== "vigente" }])} filters={[{ id: "status", label: "Estado", options: VEHICLE_STATUS.map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status }]} sorts={[{ id: "capacity", label: "Plazas", type: "number", value: (row) => row.capacity }, { id: "soat", label: "Vencimiento de SOAT", type: "date", value: (row) => row.soat_expires_on }]} />
+                  <DataTable screen="operaciones-vehiculos" rows={data.vehicles} columns={vehicleColumns} getKey={(row) => row.id} entityLabel="vehículos" searchText={(row) => `${row.plate} ${row.type} ${row.provider ?? ""}`} searchPlaceholder="Buscar placa o tipo" metrics={personMetrics<Vehicle>(data.vehicles, "Vehículos", [{ id: "soat", label: "SOAT por vencer", tone: "bad", icon: <ShieldAlert size={19} />, note: "Vencidos o a 30 días", info: <p>Vehículos con el SOAT vencido o que vence en los próximos 30 días; se revisa contra la fecha de cada servicio. Al presionarla, la tabla muestra esos vehículos.</p>, matches: (row) => row.document !== "vigente" }])} filters={[{ id: "status", label: "Estado", options: VEHICLE_STATUS.map((value) => ({ value, label: statusLabel(value) })), value: (row) => row.status }]} sorts={[{ id: "capacity", label: "Plazas", type: "number", value: (row) => row.capacity }, { id: "soat", label: "Vencimiento de SOAT", type: "date", value: (row) => row.soat_expires_on }]} />
                 </>
               ),
             },

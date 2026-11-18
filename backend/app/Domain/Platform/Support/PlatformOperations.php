@@ -52,6 +52,7 @@ final class PlatformOperations
                 'cron' => $job->cron,
                 'cron_label' => $job->cron_label,
                 'queue' => $job->queue,
+                'queue_label' => self::QUEUES[$job->queue] ?? $job->queue,
                 'paused' => (bool) $job->paused,
                 'last_run_at' => $job->last_run_at ? Carbon::parse($job->last_run_at)->toIso8601String() : null,
                 'next_run_at' => $job->next_run_at ? Carbon::parse($job->next_run_at)->toIso8601String() : null,

@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Ban, CircleCheck, Hourglass, Plane, TriangleAlert, Wallet } from "lucide-react";
+import { Ban, CircleCheck, Hourglass, Plane, TriangleAlert, Wallet } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -62,12 +62,16 @@ export function ReservationsTable({ rows, today, can, prices = true, costs = fal
         </span>
       ),
     },
-    { id: "total", header: "Total", align: "right", cell: (row) => <span className="font-mono text-[13px] font-semibold">{formatMoney(row.total ?? 0, row.currency)}</span> },
     {
-      id: "balance",
-      header: "Por cobrar",
+      id: "total",
+      header: "Total y saldo",
       align: "right",
-      cell: (row) => ((row.balance_pen ?? 0) > 0 ? <span className="font-mono text-[13px] text-bad">{formatMoney(row.balance_pen ?? 0)}</span> : <span className="text-[12.5px] text-ok">Pagado</span>),
+      cell: (row) => (
+        <span className="text-[13px]">
+          <b className="block font-mono font-semibold">{formatMoney(row.total ?? 0, row.currency)}</b>
+          {(row.balance_pen ?? 0) > 0 ? <span className="block font-mono text-xs text-bad">Debe {formatMoney(row.balance_pen ?? 0)}</span> : <span className="block text-xs text-ok">Pagado</span>}
+        </span>
+      ),
     },
     {
       id: "status",
@@ -100,12 +104,11 @@ export function ReservationsTable({ rows, today, can, prices = true, costs = fal
   ];
 
   const metrics: MetricFilter<ReservationRow>[] = [
-    { id: "traveling", label: "De viaje ahora", tone: "t4", icon: <Plane size={19} />, matches: traveling },
-    { id: "confirmed", label: "Confirmadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "confirmada" },
-    { id: "operation", label: "En operación", tone: "violet", icon: <Activity size={19} />, matches: (row) => row.status === "en_operacion" },
-    { id: "pending", label: "Pendientes de pago o proveedor", tone: "sun", icon: <Hourglass size={19} />, matches: (row) => row.status === "pendiente_pago" || row.status === "pendiente_proveedor" },
-    { id: "balance", label: "Con saldo por cobrar", tone: "warn", icon: <Wallet size={19} />, matches: (row) => (row.balance_pen ?? 0) > 0 },
-    { id: "incidents", label: "Con incidencia", tone: "bad", icon: <TriangleAlert size={19} />, matches: (row) => row.open_incidents > 0 },
+    { id: "traveling", label: "De viaje ahora", tone: "t4", icon: <Plane size={19} />, note: `${rows.filter((row) => row.status === "en_operacion").length} en operación`, info: <p>Reservas no canceladas cuyas fechas de viaje incluyen el día de hoy. La nota cuenta las reservas en estado En operación. Al presionarla, la tabla muestra solo los viajes en curso.</p>, matches: traveling },
+    { id: "confirmed", label: "Confirmadas", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Reservas en estado confirmada que aún no empiezan a operarse. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => row.status === "confirmada" },
+    { id: "pending", label: "Pendientes de pago o proveedor", tone: "sun", icon: <Hourglass size={19} />, info: <p>Reservas que esperan el pago del cliente o la confirmación de un proveedor para confirmarse. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => row.status === "pendiente_pago" || row.status === "pendiente_proveedor" },
+    { id: "balance", label: "Con saldo por cobrar", tone: "warn", icon: <Wallet size={19} />, info: <p>Reservas cuyo total en soles todavía no está cobrado por completo. Al presionarla, la tabla muestra solo las que tienen saldo.</p>, matches: (row) => (row.balance_pen ?? 0) > 0 },
+    { id: "incidents", label: "Con incidencia", tone: "bad", icon: <TriangleAlert size={19} />, info: <p>Reservas con al menos una incidencia abierta en Operaciones. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => row.open_incidents > 0 },
   ];
 
   const filters: FilterConfig<ReservationRow>[] = [

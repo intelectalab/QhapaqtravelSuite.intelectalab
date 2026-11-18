@@ -77,7 +77,7 @@ final class SubscriptionDirectory
             'users' => StaffSeats::count(DB::table('iam_users')),
             'sedes' => DB::table('iam_sedes')->whereNull('deleted_at')->where('status', 'activa')->count(),
             'reservations_month' => DB::table('booking_reservations')->whereNull('deleted_at')->where('created_at', '>=', $month)->count(),
-            'storage_gb' => round(((int) $tenant->storage_used_bytes) / 1024 ** 3, 1),
+            'storage_gb' => round(((int) $tenant->storage_used_bytes) / 1024 ** 3, 4),
             'whatsapp_month' => (int) ($current['whatsapp_month'] ?? 0),
             'email_month' => (int) ($current['email_month'] ?? 0),
             'api_calls_month' => (int) ($current['api_calls_month'] ?? 0),
@@ -111,7 +111,7 @@ final class SubscriptionDirectory
                 'lock_version' => (int) $subscription->lock_version,
                 'trial_ends_at' => $subscription->trial_ends_at,
                 'scheduled' => $scheduled ? ['kind' => $scheduled->kind, 'plan' => $scheduled->plan, 'cycle' => $scheduled->to_cycle, 'effective_at' => $scheduled->effective_at] : null,
-                'coupon' => $coupon ? ['code' => $coupon->code, 'label' => $coupon->type === 'percent' ? rtrim(rtrim((string) $coupon->value, '0'), '.').' %' : 'S/ '.$coupon->value, 'remaining_cycles' => (int) $coupon->remaining_cycles] : null,
+                'coupon' => $coupon ? ['code' => $coupon->code, 'label' => $coupon->type === 'percent' ? rtrim(rtrim((string) $coupon->value, '0'), '.').' %' : Decimal::display($coupon->value, 'PEN'), 'remaining_cycles' => (int) $coupon->remaining_cycles] : null,
                 'customer_since' => $subscription->created_at,
                 'billing' => [
                     'ruc' => $subscription->billing_ruc,

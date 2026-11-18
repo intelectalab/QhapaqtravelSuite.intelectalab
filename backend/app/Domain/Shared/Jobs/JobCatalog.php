@@ -11,11 +11,13 @@ use App\Jobs\CatalogValidityAlerts;
 use App\Jobs\CheckPushReceipts;
 use App\Jobs\CloseTrials;
 use App\Jobs\ConsolidateUsage;
+use App\Jobs\DeliverGiftCards;
 use App\Jobs\DetectPendingSupplierServices;
 use App\Jobs\DispatchScheduledCampaigns;
 use App\Jobs\EvaluateMinimumGroup;
 use App\Jobs\ExpireApiKeys;
 use App\Jobs\ExpireAvailabilityHolds;
+use App\Jobs\ExpireGiftCards;
 use App\Jobs\ExpireInTripOffers;
 use App\Jobs\ExpireQuotes;
 use App\Jobs\ExpireSupplierAlternativeHolds;
@@ -28,6 +30,7 @@ use App\Jobs\MarkOverdueReceivables;
 use App\Jobs\MonitorIncidentSla;
 use App\Jobs\NotifyUpcomingTrips;
 use App\Jobs\PurgeWebhookDeliveries;
+use App\Jobs\RefreshFxRates;
 use App\Jobs\RelayOutbox;
 use App\Jobs\ReleaseAllotments;
 use App\Jobs\ReleaseDueAlerts;
@@ -40,7 +43,10 @@ use App\Jobs\ResourceDocumentAlerts;
 use App\Jobs\RetryFailedCharges;
 use App\Jobs\RetryIntegrationErrors;
 use App\Jobs\RunAutomations;
+use App\Jobs\SalesTargetsPendingClose;
 use App\Jobs\SchedulePaxMessages;
+use App\Jobs\ScheduleRecoveryAttempts;
+use App\Jobs\SendCorporateStatements;
 use App\Jobs\SendDueReviewRequests;
 use App\Jobs\SendPaymentReminders;
 use App\Jobs\SendScheduledReports;
@@ -88,6 +94,12 @@ final class JobCatalog
         'JOB-31' => ['class' => CashDepositAlerts::class, 'name' => 'Efectivo sin depositar', 'cron' => '0 10 * * *', 'label' => 'diario 10:00', 'queue' => 'notifications'],
         'JOB-30' => ['class' => EvaluateMinimumGroup::class, 'name' => 'Evaluar grupo mínimo de salidas', 'cron' => '0 6 * * *', 'label' => 'diario 06:00', 'queue' => 'default'],
         'JOB-33' => ['class' => RetryIntegrationErrors::class, 'name' => 'Reintentar errores de integración', 'cron' => '*/5 * * * *', 'label' => 'cada 5 min', 'queue' => 'integrations'],
+        'JOB-34' => ['class' => ScheduleRecoveryAttempts::class, 'name' => 'Recuperar carritos y cotizaciones sin respuesta', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'notifications'],
+        'JOB-35' => ['class' => SalesTargetsPendingClose::class, 'name' => 'Metas vencidas por cerrar', 'cron' => '0 8 * * *', 'label' => 'diario 08:00', 'queue' => 'low'],
+        'JOB-36' => ['class' => ExpireGiftCards::class, 'name' => 'Vencer vales de regalo', 'cron' => '25 0 * * *', 'label' => 'diario 00:25', 'queue' => 'default'],
+        'JOB-37' => ['class' => SendCorporateStatements::class, 'name' => 'Enviar estados de cuenta corporativos', 'cron' => '0 7 * * *', 'label' => 'diario 07:00', 'queue' => 'notifications'],
+        'JOB-39' => ['class' => DeliverGiftCards::class, 'name' => 'Enviar vales de regalo programados', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'notifications'],
+        'JOB-38' => ['class' => RefreshFxRates::class, 'name' => 'Actualizar el tipo de cambio del día', 'cron' => '0 8 * * *', 'label' => 'diario 08:00', 'queue' => 'integrations'],
         'JOB-TES-1' => ['class' => TreasuryOpenSessionCheck::class, 'name' => 'Cajas chicas sin abrir', 'cron' => '0 10 * * *', 'label' => 'diario 10:00', 'queue' => 'low'],
         'JOB-TES-2' => ['class' => TreasuryCashFlowSnapshot::class, 'name' => 'Foto del flujo de caja proyectado', 'cron' => '0 6 * * *', 'label' => 'diario 06:00', 'queue' => 'reports'],
         'JOB-TRAMOS-1' => ['class' => ExpireInTripOffers::class, 'name' => 'Vencer ofertas de venta en ruta', 'cron' => '*/15 * * * *', 'label' => 'cada 15 min', 'queue' => 'default'],

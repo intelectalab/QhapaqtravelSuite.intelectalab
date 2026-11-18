@@ -18,6 +18,8 @@ final class PlatformBillingSeeder
 {
     use SeedsTenant;
 
+    public const ALL_TENANTS = true;
+
     private const INVOICE_STATUS = ['pagada' => 'paid', 'fallida' => 'failed', 'pendiente' => 'open', 'anulada' => 'void', 'vencida' => 'uncollectible'];
 
     private const SUNAT_STATUS = ['aceptado' => 'accepted', 'observado' => 'observed', 'rechazado' => 'rejected'];
@@ -55,6 +57,29 @@ final class PlatformBillingSeeder
         $this->overrides();
         $this->usage();
         $this->metrics();
+    }
+
+    public function completeTenants(): array
+    {
+        $kit = collect(KitSeeds::read('tenants'))->pluck('id')->all();
+        $this->tenants = DB::table('tenants as t')->whereIn('t.code', $kit)
+            ->whereNotExists(fn ($query) => $query->from('subscriptions as s')->whereColumn('s.tenant_id', 't.id'))
+            ->get(['t.*'])->keyBy('code');
+        $this->plans = DB::table('plans')->get()->keyBy('name');
+        $this->operator = DB::table('platform_users')->where('email', 'ops@kipucontrol.com')->value('id');
+
+        if ($this->tenants->isEmpty()) {
+            return [];
+        }
+
+        $config = KitSeeds::read('platformConfig');
+        $this->subscriptions($config);
+        $this->paymentMethods($config);
+        $this->invoices();
+        $this->overrides(true);
+        $this->usage();
+
+        return $this->tenants->keys()->all();
     }
 
     private function settings(array $config): void
@@ -331,13 +356,17 @@ final class PlatformBillingSeeder
         }
     }
 
-    private function overrides(): void
+    private function overrides(bool $keepExisting = false): void
     {
         foreach (KitSeeds::read('featureFlags') as $flag) {
             foreach ($flag['overrides'] as $override) {
                 $tenant = $this->tenants[$override['tenantId']] ?? null;
 
                 if ($tenant === null || $this->operator === null) {
+                    continue;
+                }
+
+                if ($keepExisting && DB::table('feature_overrides')->where('tenant_id', $tenant->id)->where('feature_key', 'module.'.$flag['key'])->exists()) {
                     continue;
                 }
 

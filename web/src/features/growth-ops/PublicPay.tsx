@@ -4,10 +4,11 @@ import { CircleCheck, CreditCard, Gift, LockKeyhole, Search, Smartphone } from "
 import { useActionState, useState } from "react";
 import { buyGiftCard, giftCardBalance, payLink, type PublicStepResult } from "@/app/(sitio)/crecimiento-actions";
 import { Button } from "@/components/ui/Button";
+import { DateField } from "@/components/ui/DateField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
 import { FormError } from "@/features/auth/AuthForms";
-import type { PublicPayLink } from "@/lib/growth-ops";
+import { GIFT_DELIVERY_HOUR, type PublicPayLink } from "@/lib/growth-ops";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { tokenizeCard } from "@/lib/site";
@@ -136,6 +137,7 @@ export function GiftShopView({ agencia, agency }: { agencia: string; agency: str
               <TextField label="Correo de quien lo recibe" name="recipient_email" type="email" maxLength={190} />
             </div>
             <TextArea label="Mensaje (opcional)" name="message" rows={3} maxLength={500} />
+            <DateField label="Enviar el (opcional)" name="deliver_at" disablePast hint={`Lo enviamos ese día a las ${GIFT_DELIVERY_HOUR}. Si lo dejas vacío, sale apenas se pague.`} />
             <CardFields installments={1} />
             <Button type="submit" variant="primary" disabled={pending}>{pending ? "Procesando…" : `Comprar vale de ${formatMoney(amount || "0", currency)}`}</Button>
           </form>

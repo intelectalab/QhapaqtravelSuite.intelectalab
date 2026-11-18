@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, Coins, Mail, MessageCircle, Pause, Play, Plus, Repeat2, Send, ShoppingCart, FileText, Undo2 } from "lucide-react";
+import { CalendarClock, Mail, MessageCircle, Pause, Play, Plus, Repeat2, Send, ShoppingCart, FileText, Undo2 } from "lucide-react";
 import { useActionState, useState } from "react";
 import { saveRecoveryFlow, toggleRecoveryFlow } from "@/app/(backoffice)/marketing/recuperacion/actions";
 import { DataTable } from "@/components/table/DataTable";
@@ -13,13 +13,12 @@ import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { Tabs } from "@/components/ui/Tabs";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { delayLabel, labelOptions, type RecoveryAttempt, type RecoveryFlow, type RecoveryOverview } from "@/lib/growth";
 import type { StepResult } from "@/lib/server/resource";
 import { toneStyle } from "@/lib/tone";
-import { KpiRow, PlanNotice, StatusPill } from "./GrowthUi";
+import { PlanNotice, StatusPill } from "./GrowthUi";
 
 const initial: StepResult = { message: null, done: false };
 
@@ -129,6 +128,7 @@ function FlowCard({ flow, overview, index }: { flow: RecoveryFlow; overview: Rec
 }
 
 function AttemptsTable({ attempts, overview }: { attempts: RecoveryAttempt[]; overview: RecoveryOverview }) {
+  const { kpis } = overview;
   return (
     <DataTable
       screen="marketing-recuperacion-intentos"
@@ -138,9 +138,9 @@ function AttemptsTable({ attempts, overview }: { attempts: RecoveryAttempt[]; ov
       searchText={(attempt) => `${attempt.client ?? ""} ${attempt.origin.code ?? ""} ${attempt.flow.name}`}
       searchPlaceholder="Buscar por cliente, carrito o cotización"
       metrics={[
-        { id: "programado", label: "Programados", tone: "info", icon: <CalendarClock size={18} />, matches: (attempt) => attempt.status === "programado" },
-        { id: "enviado", label: "Enviados", tone: "t1", icon: <Send size={18} />, matches: (attempt) => attempt.status === "enviado" },
-        { id: "recuperado", label: "Recuperados", tone: "ok", icon: <Undo2 size={18} />, matches: (attempt) => attempt.status === "recuperado" },
+        { id: "programado", label: "Programados", tone: "info", icon: <CalendarClock size={19} />, display: kpis.scheduled, note: `${kpis.active} de ${overview.flows.length} flujos activos`, info: <p>Intentos que esperan su hora de envío; se descartan si el cliente compra antes o se da de baja. La nota cuenta los flujos encendidos, que son los que programan intentos. Al presionarla, la tabla muestra solo los programados.</p>, matches: (attempt) => attempt.status === "programado" },
+        { id: "enviado", label: "Enviados", tone: "violet", icon: <Send size={19} />, display: kpis.sent, info: <p>Intentos enviados por correo o WhatsApp, incluidos los que ya terminaron en una venta. Al presionarla, la tabla muestra los enviados y los recuperados.</p>, matches: (attempt) => attempt.status === "enviado" || attempt.status === "recuperado" },
+        { id: "recuperado", label: "Recuperados", tone: "ok", icon: <Undo2 size={19} />, display: kpis.recovered, note: kpis.recovered_amount && Number(kpis.recovered_amount) > 0 ? formatMoney(kpis.recovered_amount) : "Sin ventas recuperadas", info: <p>Intentos que terminaron en una reserva creada desde el carrito o la cotización; la nota suma el monto de esas reservas. Al presionarla, la tabla muestra solo los recuperados.</p>, matches: (attempt) => attempt.status === "recuperado" },
       ]}
       filters={[
         { id: "status", label: "Estado", options: labelOptions(overview.catalogs.statuses), value: (attempt) => attempt.status },
@@ -161,16 +161,9 @@ function AttemptsTable({ attempts, overview }: { attempts: RecoveryAttempt[]; ov
 }
 
 export function RecoveryBoard({ overview, attempts }: { overview: RecoveryOverview; attempts: RecoveryAttempt[] }) {
-  const { kpis } = overview;
   return (
     <>
       <PlanNotice enabled={overview.enabled} feature="La recuperación de carritos y cotizaciones" />
-      <KpiRow>
-        <TintTile icon={Repeat2} tone="t1" label="Flujos activos" value={kpis.active} note={`de ${overview.flows.length} flujos`} info={<p>Flujos de recuperación encendidos. Cada uno vigila carritos o cotizaciones sin avance y programa el mensaje.</p>} />
-        <TintTile icon={CalendarClock} tone="info" label="Programados" value={kpis.scheduled} info={<p>Intentos que esperan su hora de envío. Se descartan si el cliente compra antes o se da de baja.</p>} />
-        <TintTile icon={Send} tone="violet" label="Enviados" value={kpis.sent} info={<p>Intentos enviados por correo o WhatsApp, incluidos los que ya terminaron en una venta.</p>} />
-        <TintTile icon={Coins} tone="ok" label="Recuperados" value={kpis.recovered} note={kpis.recovered_amount && Number(kpis.recovered_amount) > 0 ? formatMoney(kpis.recovered_amount) : "Sin ventas recuperadas"} info={<p>Intentos que terminaron en una reserva creada desde el carrito o la cotización, con el monto de esa reserva.</p>} />
-      </KpiRow>
       <section className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
         <Tabs
           tabs={[

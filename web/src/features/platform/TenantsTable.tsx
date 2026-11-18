@@ -1,15 +1,17 @@
 "use client";
 
-import { CircleCheck, CirclePause, Hourglass } from "lucide-react";
+import { CircleCheck, CirclePause, Database, Hourglass, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
-import { formatDate, formatMoney } from "@/lib/format";
-import { formatBytes, type TenantSummary } from "@/lib/platform";
+import { formatDate, formatMoney, formatNumber } from "@/lib/format";
+import { formatBytes, type PlanSummary, type TenantSummary } from "@/lib/platform";
 import { TenantStatusAction } from "./TenantStatusAction";
+
+const GB = 1024 ** 3;
 
 const tenantHref = (tenant: TenantSummary) => `/plataforma/agencias/${tenant.code}`;
 
@@ -55,12 +57,6 @@ const columns: Column<TenantSummary>[] = [
   },
 ];
 
-const metrics: MetricFilter<TenantSummary>[] = [
-  { id: "active", label: "Activas", tone: "ok", icon: <CircleCheck size={19} />, matches: (tenant) => tenant.status === "activo" },
-  { id: "trial", label: "En prueba", tone: "info", icon: <Hourglass size={19} />, matches: (tenant) => tenant.status === "prueba" },
-  { id: "suspended", label: "Suspendidas", tone: "bad", icon: <CirclePause size={19} />, matches: (tenant) => tenant.status === "suspendido" },
-];
-
 const sorts: SortOption<TenantSummary>[] = [
   { id: "name", label: "Nombre", type: "text", value: (tenant) => tenant.name },
   { id: "mrr", label: "Ingreso mensual", type: "number", value: (tenant) => Number(tenant.mrr) },
@@ -72,7 +68,22 @@ const STATUS_LABEL: Record<TenantSummary["status"], string> = { activo: "Activa"
 
 const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es")).map((value) => ({ value, label: value }));
 
-export function TenantsTable({ tenants, initialPlan }: { tenants: TenantSummary[]; initialPlan?: string }) {
+export function TenantsTable({ tenants, plans, initialPlan }: { tenants: TenantSummary[]; plans: PlanSummary[]; initialPlan?: string }) {
+  const live = tenants.filter((tenant) => tenant.status !== "suspendido");
+  const users = tenants.reduce((sum, tenant) => sum + tenant.users, 0);
+  const monthly = tenants.reduce((sum, tenant) => sum + Number(tenant.mrr), 0);
+  const used = tenants.reduce((sum, tenant) => sum + tenant.storage_used_bytes, 0);
+  const limits = new Map(plans.map((plan) => [plan.code, plan.limits.storage_gb ?? null]));
+  const contracted = live.reduce((sum, tenant) => sum + (tenant.plan ? (limits.get(tenant.plan.code) ?? 0) : 0), 0);
+  const unlimited = live.some((tenant) => tenant.plan && limits.has(tenant.plan.code) && limits.get(tenant.plan.code) === null);
+  const pct = contracted > 0 ? Math.min(100, Math.round((used / (contracted * GB)) * 100)) : null;
+  const metrics: MetricFilter<TenantSummary>[] = [
+    { id: "mrr", label: "Ingreso mensual", tone: "ok", icon: <TrendingUp size={19} />, display: formatMoney(monthly), note: `${formatMoney(monthly * 12)} al año`, info: <p>Suma las suscripciones que se cobran (al día o con cobro pendiente) más sus complementos mensuales, sin IGV; las agencias en prueba y las suspendidas suman cero. Es la misma cifra de Inicio y Facturación. Al presionarla ves las agencias que aportan ingreso.</p>, matches: (tenant) => Number(tenant.mrr) > 0 },
+    { id: "active", label: "Activas", tone: "t1", icon: <CircleCheck size={19} />, note: `${formatNumber(users)} usuarios en plataforma${tenants.length > 0 ? ` · ${formatNumber(Math.round((users / tenants.length) * 10) / 10)} por agencia` : ""}`, info: <p>Agencias con suscripción activa. La nota suma los usuarios activos de todas las agencias, sin contar los eliminados. Al presionarla ves solo las agencias activas.</p>, matches: (tenant) => tenant.status === "activo" },
+    { id: "trial", label: "En prueba", tone: "info", icon: <Hourglass size={19} />, info: <p>Agencias que usan la plataforma en su periodo de prueba, sin cobro todavía. Al presionarla ves solo esas agencias.</p>, matches: (tenant) => tenant.status === "prueba" },
+    { id: "suspended", label: "Suspendidas", tone: "bad", icon: <CirclePause size={19} />, info: <p>Agencias sin acceso por falta de pago o por decisión de la plataforma. Al presionarla ves solo esas agencias.</p>, matches: (tenant) => tenant.status === "suspendido" },
+    { id: "storage", label: "Almacenamiento usado", tone: "sun", icon: <Database size={19} />, display: formatBytes(used), note: contracted > 0 ? `de ${formatNumber(contracted)} GB contratados${unlimited ? " y planes ilimitados" : ""}${pct !== null ? ` · ${pct} %` : ""}` : unlimited ? "Planes sin límite de almacenamiento" : undefined, info: <p>Lo usado sale del contador de archivos de cada agencia; lo contratado suma el límite de almacenamiento del plan de las agencias activas y en prueba. Al presionarla ves las agencias que ya guardan archivos.</p>, matches: (tenant) => tenant.storage_used_bytes > 0 },
+  ];
   const filters: FilterConfig<TenantSummary>[] = [
     { id: "plan", label: "Plan", options: unique(tenants.map((tenant) => tenant.plan?.name ?? "Sin plan")), value: (tenant) => tenant.plan?.name ?? "Sin plan" },
     { id: "status", label: "Estado", options: Object.entries(STATUS_LABEL).map(([value, label]) => ({ value, label })), value: (tenant) => tenant.status },

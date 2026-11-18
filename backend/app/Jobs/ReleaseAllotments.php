@@ -42,14 +42,14 @@ final class ReleaseAllotments extends TenantJob
             ]);
             DB::table('catalog_allotment_events')->insert([
                 'allotment_id' => $day->allotment_id,
-                'message' => mb_substr("Release automático: {$day->free} unidad(es) liberadas del {$day->service_date} (JOB-10)", 0, 300),
+                'message' => mb_substr("Liberación automática: {$day->free} unidad(es) liberadas del {$day->service_date} (JOB-10)", 0, 300),
             ]);
             $audit->log('Cupo', (string) $day->code, 'release_automatico', null, "{$day->service_date} · {$day->free} unidad(es) liberadas");
             $units += (int) $day->free;
         }
 
         foreach ($days->groupBy('allotment_id') as $allotmentId => $released) {
-            app(AllotmentNotices::class)->toProvider((string) $allotmentId, 'cupo.release', 'Release automático de cupo', 'Se liberaron por fecha límite de release: '.$released->map(fn (object $day): string => "{$day->service_date} ({$day->free})")->implode(', ').'.');
+            app(AllotmentNotices::class)->toProvider((string) $allotmentId, 'cupo.release', 'Liberación automática de cupo', 'Se liberaron por fecha límite de liberación: '.$released->map(fn (object $day): string => "{$day->service_date} ({$day->free})")->implode(', ').'.');
         }
 
         [$charges, $chargedTotal] = $this->charge($today, $audit);

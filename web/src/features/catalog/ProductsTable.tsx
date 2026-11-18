@@ -77,10 +77,10 @@ const buildColumns = (can: { edit: boolean; remove: boolean }): Column<ProductRo
 ];
 
 const metrics: MetricFilter<ProductRow>[] = [
-  { id: "active", label: "Activos", tone: "ok", icon: <CircleCheck size={19} />, matches: (product) => product.status === "ACTIVE" },
-  { id: "review", label: "En revisión o borrador", tone: "sun", icon: <Hourglass size={19} />, matches: (product) => product.status === "REVIEW" || product.status === "DRAFT" },
-  { id: "approved", label: "Aprobados sin activar", tone: "info", icon: <FilePen size={19} />, matches: (product) => product.status === "APPROVED" },
-  { id: "stopped", label: "Suspendidos o inactivos", tone: "bad", icon: <CirclePause size={19} />, matches: (product) => product.status === "SUSPENDED" || product.status === "INACTIVE" },
+  { id: "active", label: "Activos", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Productos activos, que se pueden cotizar y vender en los canales donde están publicados. Al presionarla, la tabla muestra solo esos productos.</p>, matches: (product) => product.status === "ACTIVE" },
+  { id: "review", label: "En revisión o borrador", tone: "sun", icon: <Hourglass size={19} />, info: <p>Productos en borrador o enviados a revisión, que todavía no se pueden vender. Al presionarla, la tabla muestra esos productos.</p>, matches: (product) => product.status === "REVIEW" || product.status === "DRAFT" },
+  { id: "approved", label: "Aprobados sin activar", tone: "info", icon: <FilePen size={19} />, info: <p>Productos ya aprobados que falta activar para empezar a venderlos. Al presionarla, la tabla muestra esos productos.</p>, matches: (product) => product.status === "APPROVED" },
+  { id: "stopped", label: "Suspendidos o inactivos", tone: "bad", icon: <CirclePause size={19} />, info: <p>Productos suspendidos o inactivos: no aparecen al cotizar ni en los canales de venta. Al presionarla, la tabla muestra esos productos.</p>, matches: (product) => product.status === "SUSPENDED" || product.status === "INACTIVE" },
 ];
 
 const sorts: SortOption<ProductRow>[] = [

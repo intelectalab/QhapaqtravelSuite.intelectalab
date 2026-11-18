@@ -17,22 +17,22 @@ export function SupplierHomeView({ home, session }: { home: SupplierHome; sessio
       <div className={RISE}>
         <h1 className="text-[26px] font-bold leading-tight tracking-tight sm:text-[30px]">{session.provider.name}</h1>
         <p className="mt-1 text-[14px] text-fg-2">
-          {kpis.pending ? `Tiene ${kpis.pending} ${kpis.pending === 1 ? "solicitud" : "solicitudes"} de ${session.agency.name} por responder.` : `Está al día con las solicitudes de ${session.agency.name}.`}
+          {kpis.pending ? `Tienes ${kpis.pending} ${kpis.pending === 1 ? "solicitud" : "solicitudes"} de ${session.agency.name} por responder.` : `Estás al día con las solicitudes de ${session.agency.name}.`}
         </p>
       </div>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TintTile icon={ClipboardList} tone={kpis.overdue ? "bad" : kpis.pending ? "warn" : "ok"} label="Solicitudes por responder" value={kpis.pending} note={kpis.overdue ? `${kpis.overdue} fuera de plazo · responda en 24 h` : kpis.alternatives ? `${kpis.alternatives} con alternativa en revisión` : "Responda en máximo 24 h"} info="Servicios que la agencia le solicitó y aún esperan su confirmación o rechazo. Las que tienen una alternativa suya en revisión se cuentan aparte en la nota." />
+        <TintTile icon={ClipboardList} tone={kpis.overdue ? "bad" : kpis.pending ? "warn" : "ok"} label="Solicitudes por responder" value={kpis.pending} note={kpis.overdue ? `${kpis.overdue} fuera de plazo · responde en 24 h` : kpis.alternatives ? `${kpis.alternatives} con alternativa en revisión` : "Responde en máximo 24 h"} info="Servicios que la agencia te solicitó y aún esperan tu confirmación o rechazo. Las que tienen una alternativa tuya en revisión se cuentan aparte en la nota." />
         <TintTile icon={CalendarCheck2} tone="t1" label="Servicios próximos 7 días" value={kpis.upcoming} note={`${kpis.upcoming_pax} pasajeros`} info="Servicios confirmados o en curso con fecha entre hoy y los próximos 7 días." />
-        <TintTile icon={Wallet} tone="t3" label="Por cobrar a la agencia" value={<MoneyLines values={kpis.receivable} empty="Sin saldo" />} note="Saldo por moneda, sin conversión" info="Saldo pendiente de las cuentas por pagar que la agencia registró a su nombre." />
-        <TintTile icon={Siren} tone={kpis.open_incidents ? "bad" : "ok"} label="Incidencias abiertas" value={kpis.open_incidents} note={kpis.open_incidents ? "Requieren seguimiento" : "Sin pendientes"} info="Incidencias abiertas o en proceso vinculadas a sus servicios o reportadas por su empresa." />
+        <TintTile icon={Wallet} tone="t3" label="Por cobrar a la agencia" value={<MoneyLines values={kpis.receivable} empty="Sin saldo" />} note="Saldo por moneda, sin conversión" info="Saldo pendiente de las cuentas por pagar que la agencia registró a tu nombre." />
+        <TintTile icon={Siren} tone={kpis.open_incidents ? "bad" : "ok"} label="Incidencias abiertas" value={kpis.open_incidents} note={kpis.open_incidents ? "Requieren seguimiento" : "Sin pendientes"} info="Incidencias abiertas o en proceso vinculadas a tus servicios o reportadas por tu empresa." />
       </section>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex flex-col gap-5">
           <SectionCard icon={Hourglass} title="Pendientes de confirmar" aside={<Link href="/proveedor/solicitudes" className="text-t1">Ver todas</Link>}>
             {home.pending.length === 0 ? (
-              <EmptyLine>No tiene solicitudes pendientes.</EmptyLine>
+              <EmptyLine>No tienes solicitudes pendientes.</EmptyLine>
             ) : (
               <ul className="flex flex-col gap-2">
                 {home.pending.map((row, index) => (
@@ -59,7 +59,7 @@ export function SupplierHomeView({ home, session }: { home: SupplierHome; sessio
           </SectionCard>
           <SectionCard icon={Wallet} title="Pagos por recibir" aside={<Link href="/proveedor/pagos" className="text-t1">Ver pagos</Link>}>
             {home.payments.length === 0 ? (
-              <EmptyLine>La agencia no tiene saldos pendientes con usted.</EmptyLine>
+              <EmptyLine>La agencia no tiene saldos pendientes contigo.</EmptyLine>
             ) : (
               <ul className="flex flex-col gap-2">
                 {home.payments.map((row, index) => (

@@ -2,7 +2,11 @@
 
 use Illuminate\Support\Facades\DB;
 
-beforeEach(fn () => lockPlatformBilling());
+beforeEach(function () {
+    lockPlatformBilling();
+    $db = DB::connection('pgsql_platform');
+    $db->table('feature_overrides')->where('tenant_id', $db->table('tenants')->where('code', 'TNT-0002')->value('id'))->where('feature_key', 'module.ecommerce')->delete();
+});
 
 function platFeatureValue(string $feature, string $plan): ?string
 {

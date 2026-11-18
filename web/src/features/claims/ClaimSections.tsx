@@ -1,6 +1,6 @@
 "use client";
 
-import { AlarmClock, BookOpen, Building2, CalendarOff, CalendarRange, Coins, Download, Hash, MapPin, Pencil, Plus, Settings2, Tags, Timer, TimerReset, Trash2 } from "lucide-react";
+import { AlarmClock, BookOpen, Building2, CalendarOff, CalendarRange, Download, Hash, MapPin, Pencil, Plus, Settings2, Tags, TimerReset, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { claimHolidayStep, requestClaimExport, saveClaimSettings, type ClaimExportResult } from "@/app/(backoffice)/crm/reclamaciones/actions";
@@ -14,9 +14,9 @@ import { FieldList } from "@/components/ui/Details";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
-import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
+import { TintCardTitle } from "@/components/ui/Tinted";
 import type { ClaimHoliday, ClaimReport, ClaimSheet, ClaimsOverview } from "@/lib/claims";
-import { formatDate, formatMoney, formatNumber } from "@/lib/format";
+import { formatDate, formatNumber } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { ClaimsTable } from "./ClaimsTable";
 
@@ -25,33 +25,6 @@ const initial: StepResult = { message: null, done: false };
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "set", "oct", "nov", "dic"];
 
 const plural = (count: number, one: string, many: string) => `${formatNumber(count)} ${count === 1 ? one : many}`;
-
-function claimedAmounts(claims: ClaimSheet[]) {
-  const totals = new Map<string, number>();
-  for (const claim of claims) {
-    if (!claim.good || claim.good.amount <= 0) continue;
-    totals.set(claim.good.currency, (totals.get(claim.good.currency) ?? 0) + claim.good.amount);
-  }
-  return [...totals.entries()];
-}
-
-export function ClaimTiles({ overview }: { overview: ClaimsOverview }) {
-  const { kpis, settings, claims, today } = overview;
-  const month = today.slice(0, 7);
-  const ofMonth = claims.filter((claim) => claim.received_on.startsWith(month));
-  const open = claims.filter((claim) => claim.book_status === "received" || claim.book_status === "in_review");
-  const amounts = claimedAmounts(open);
-  const answered = claims.filter((claim) => claim.deadline === "respondido_en_plazo" || claim.deadline === "respondido_fuera_de_plazo");
-  const late = answered.filter((claim) => claim.deadline === "respondido_fuera_de_plazo").length;
-  return (
-    <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <TintTile icon={CalendarRange} tone="t1" label="Hojas del mes" value={formatNumber(kpis.month)} info={<p>Recibidas desde el día 1: {plural(ofMonth.filter((claim) => claim.type_code === "reclamo").length, "reclamo", "reclamos")} y {plural(ofMonth.filter((claim) => claim.type_code === "queja").length, "queja", "quejas")}.</p>} />
-      <TintTile icon={Timer} tone="violet" label="Tiempo de respuesta" value={kpis.avg_days !== null ? `${kpis.avg_days} días` : "Sin datos"} note="Días hábiles, en promedio" info={<p>Desde que se recibe la hoja hasta que se responde, sin contar fines de semana ni feriados. Promedio de {plural(answered.length, "hoja respondida", "hojas respondidas")}.</p>} />
-      <TintTile icon={TimerReset} tone="ok" label="Respondidas a tiempo" value={kpis.on_time_pct !== null ? `${kpis.on_time_pct} %` : "Sin datos"} note={`Plazo de ${settings.response_days} días hábiles`} info={<p>{late === 0 ? "Ninguna respuesta salió fuera del plazo legal." : `${plural(late, "respuesta salió", "respuestas salieron")} fuera del plazo legal.`}</p>} />
-      <TintTile icon={Coins} tone="sun" label="Monto en reclamo" value={amounts.length ? amounts.map(([currency, amount]) => formatMoney(amount, currency, { compact: true })).join(" · ") : "—"} note="Hojas sin responder" info={<p>Suma del monto del bien contratado declarado por el consumidor en las hojas que aún no se responden.</p>} />
-    </section>
-  );
-}
 
 function monthly(claims: ClaimSheet[], today: string) {
   const [year, month] = today.split("-").map(Number);

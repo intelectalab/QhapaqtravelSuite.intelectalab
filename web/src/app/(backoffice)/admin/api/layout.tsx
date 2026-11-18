@@ -1,19 +1,16 @@
-import { AlertTriangle, AppWindow, BookOpen, CheckCircle2, Gauge, KeyRound, Send, Webhook } from "lucide-react";
+import { AlertTriangle, AppWindow, BookOpen, Gauge, KeyRound, Send, Webhook } from "lucide-react";
 import type { ReactNode } from "react";
 import { NoAccess } from "@/components/shell/NoAccess";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { PathSectionNav } from "@/components/ui/PathSectionNav";
 import { SectionLayout } from "@/components/ui/SectionNav";
-import { TintTile } from "@/components/ui/Tinted";
-import { KpiGrid } from "@/features/admin/AdminParts";
 import { ApiKeyCreateAction, SecretProvider, SecretSlot, WebhookCreateAction } from "@/features/admin/ApiAccess";
 import { cn } from "@/lib/cn";
-import { formatNumber, formatPercent } from "@/lib/format";
+import { formatNumber } from "@/lib/format";
 import { getApiAccess } from "@/lib/server/adminSections";
 
 const BASE = "/admin/api";
-const DAY_MS = 24 * 3600 * 1000;
 
 export default async function ApiLayout({ children }: { children: ReactNode }) {
   const data = await getApiAccess();
@@ -21,14 +18,7 @@ export default async function ApiLayout({ children }: { children: ReactNode }) {
   const activeKeys = data.keys.filter((key) => key.status === "active").length;
   const keysFull = data.limits.api_keys !== null && activeKeys >= data.limits.api_keys ? "Llegaste al máximo de claves activas de tu plan: revoca una antes de crear otra." : null;
   const hooksFull = data.limits.webhooks !== null && data.webhooks.length >= data.limits.webhooks ? "Llegaste al máximo de webhooks de tu plan." : null;
-  const finished = data.deliveries.filter((delivery) => delivery.status !== "pending");
-  const delivered = finished.filter((delivery) => delivery.status === "delivered").length;
-  const since = new Date().getTime() - DAY_MS;
-  const recent = finished.filter((delivery) => new Date(delivery.at).getTime() >= since);
-  const recentOk = recent.filter((delivery) => delivery.status === "delivered").length;
-  const ofLimit = (limit: number | null) => (limit === null ? "sin límite" : formatNumber(limit));
   const quota = data.limits.calls_month ? (data.calls_month / data.limits.calls_month) * 100 : null;
-  const failing = data.webhooks.filter((hook) => hook.failures > 0).length;
 
   return (
     <SecretProvider>
@@ -55,12 +45,6 @@ export default async function ApiLayout({ children }: { children: ReactNode }) {
           </p>
         </div>
       )}
-      <KpiGrid>
-        <TintTile icon={KeyRound} tone="accent" label="Claves activas" value={`${formatNumber(activeKeys)} / ${ofLimit(data.limits.api_keys)}`} note={`${formatNumber(data.keys.length - activeKeys)} revocadas o vencidas`} info={<p>Claves en estado activo frente al máximo que permite tu plan. Las revocadas y las vencidas no cuentan.</p>} />
-        <TintTile icon={Webhook} tone="info" label="Webhooks" value={`${formatNumber(data.webhooks.length)} / ${ofLimit(data.limits.webhooks)}`} note={`${formatNumber(data.webhooks.filter((hook) => hook.status === "active").length)} activos · ${formatNumber(failing)} con fallos`} info={<p>Webhooks registrados, activos o pausados, frente al máximo de tu plan.</p>} />
-        <TintTile icon={Gauge} tone={quota !== null && quota >= 80 ? "sun" : "ok"} label="Llamadas del mes" value={formatNumber(data.calls_month)} note={data.limits.calls_month ? `${formatNumber(Math.round(quota ?? 0))} % de ${formatNumber(data.limits.calls_month)}${data.limits.rate_per_min ? ` · ${formatNumber(data.limits.rate_per_min)} por minuto` : ""}` : "Sin cuota mensual"} info={<p>Llamadas a la API del mes en curso, según el consumo consolidado de tu agencia, frente a la cuota mensual del plan.</p>} />
-        <TintTile icon={CheckCircle2} tone={recent.length > 0 && recentOk / recent.length < 0.95 ? "warn" : "ok"} label="Entregas en 24 h" value={recent.length > 0 ? formatPercent((recentOk / recent.length) * 100, 1) : "Sin entregas"} note={recent.length > 0 ? `${formatNumber(recent.length)} entregas · ${formatNumber(recent.length - recentOk)} fallidas` : finished.length > 0 ? `${formatPercent((delivered / finished.length) * 100, 1)} en el historial` : undefined} info={<p>Entregas de webhooks que tu servidor aceptó en las últimas 24 horas, entre las que ya terminaron. Las que siguen en cola no cuentan.</p>} />
-      </KpiGrid>
       <SectionLayout
         nav={
           <PathSectionNav

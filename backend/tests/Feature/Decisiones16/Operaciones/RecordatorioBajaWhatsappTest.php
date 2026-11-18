@@ -44,8 +44,8 @@ it('duda 10: si el cliente se dio de baja de WhatsApp el recordatorio sale solo 
     withinTenant(tenantA(), fn () => DB::table('crm_clients')->where('id', $receivable->client_id)->update(['phone' => '+51 987 654 321']));
     t16opsWhatsapp();
     t16opsOptOut((string) $receivable->client_id);
-    $messaging = app(MessagingChannel::class);
-    assert($messaging instanceof FakeMessagingChannel);
+    $messaging = new FakeMessagingChannel;
+    app()->instance(MessagingChannel::class, $messaging);
     $before = count($messaging->sent);
 
     $sent = $this->postJson("/api/v1/finance/receivables/{$receivable->code}/reminders", [], critical())->assertCreated();

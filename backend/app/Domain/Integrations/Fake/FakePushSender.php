@@ -6,6 +6,7 @@ namespace App\Domain\Integrations\Fake;
 
 use App\Domain\Integrations\Contracts\PushSender;
 use App\Domain\Integrations\Data\AdapterResult;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use Illuminate\Support\Facades\Log;
 
 final class FakePushSender implements PushSender
@@ -16,6 +17,10 @@ final class FakePushSender implements PushSender
 
     public function send(array $tokens, string $title, string $body, array $data = []): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('push')) !== null) {
+            return $unavailable;
+        }
+
         self::$sent[] = ['tokens' => array_values($tokens), 'title' => $title, 'body' => $body, 'data' => $data];
         Log::info('Push simulado', ['tokens' => count($tokens), 'title' => $title]);
         $tickets = array_map(fn (string $token): array => ['token' => $token, 'id' => self::ticket($token, $title), 'status' => 'ok', 'error' => null], array_values(array_map('strval', $tokens)));
@@ -25,6 +30,10 @@ final class FakePushSender implements PushSender
 
     public function receipts(array $ticketIds): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('push')) !== null) {
+            return $unavailable;
+        }
+
         $receipts = [];
 
         foreach ($ticketIds as $id) {
@@ -38,6 +47,10 @@ final class FakePushSender implements PushSender
 
     public function healthcheck(): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::health('push')) !== null) {
+            return $unavailable;
+        }
+
         return AdapterResult::success('ok', null, ['simulated' => true]);
     }
 

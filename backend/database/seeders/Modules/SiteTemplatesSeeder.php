@@ -15,6 +15,8 @@ final class SiteTemplatesSeeder
 {
     use SeedsTenant;
 
+    public const ALL_TENANTS = true;
+
     public const ORDER = 80;
 
     private const TEAM = 'Equipo KipuControl';

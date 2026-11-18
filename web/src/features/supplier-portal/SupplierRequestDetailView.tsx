@@ -74,7 +74,7 @@ export function SupplierRequestDetailView({ detail }: { detail: SupplierRequestD
       </ToneScope>
 
       {proposal && (
-        <SectionCard icon={ClipboardList} title="Su alternativa" aside={PROPOSAL_STATUS[proposal.review_status]}>
+        <SectionCard icon={ClipboardList} title="Tu alternativa" aside={PROPOSAL_STATUS[proposal.review_status]}>
           <FieldList
             fields={[
               { label: "Tipo", value: proposal.kind },
@@ -169,7 +169,7 @@ export function SupplierRequestDetailView({ detail }: { detail: SupplierRequestD
             ) : (
               <p className="flex items-start gap-2 text-[13px] text-fg-3">
                 <MapPin size={15} className="mt-0.5 flex-none" />
-                {open ? "La agencia emite el voucher cuando usted confirma el servicio." : "Aún no se emite un voucher para este servicio."}
+                {open ? "La agencia emite el voucher cuando confirmas el servicio." : "Aún no se emite un voucher para este servicio."}
               </p>
             )}
           </SectionCard>

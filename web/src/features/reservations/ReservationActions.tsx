@@ -80,7 +80,7 @@ export function ReservationEditAction({ reservation, defaultOpen }: { reservatio
   return (
     <Step code={reservation.code} step="update" label="Editar" icon={<Pencil size={16} />} title="Editar reserva" description={`${reservation.title} · ${reservation.code}`} submitLabel="Guardar cambios" defaultOpen={defaultOpen}>
       <TextArea label="Notas para Operaciones" name="notes" rows={5} maxLength={2000} defaultValue={reservation.notes ?? ""} placeholder="Pedidos especiales, horarios de vuelo, alergias del grupo." />
-      <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[12.5px] text-fg-2">Para cambiar fechas, servicios o número de pasajeros con su impacto en el precio, usa Modificar o Reprogramar cuando estén disponibles.</p>
+      <p className="rounded-xl bg-surface-2 px-3.5 py-3 text-[12.5px] text-fg-2">Para cambiar fechas, servicios o número de pasajeros con su impacto en el precio, usa Modificar o Reprogramar en esta misma ficha.</p>
     </Step>
   );
 }

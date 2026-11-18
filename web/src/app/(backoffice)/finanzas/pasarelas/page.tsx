@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
-import { FeesTable, GatewayCards, GatewayFormAction, GatewayTiles, ImportAction, Simulator } from "@/features/vitrina/Gateways";
+import { FeesTable, GatewayCards, GatewayFormAction, ImportAction, Simulator } from "@/features/vitrina/Gateways";
 import { getResource } from "@/lib/server/resource";
 import type { GatewayFeesOverview, GatewaysOverview } from "@/lib/vitrina";
 
@@ -25,7 +25,6 @@ export default async function GatewaysPage() {
         info={<InfoTip>La comisión configurada es una estimación; al importar el reporte de liquidación se reemplaza por la real. PayPal se habilita con el add-on «Cobros con PayPal».</InfoTip>}
         actions={overview.can_manage ? <><ImportAction gateways={overview.items} /><GatewayFormAction overview={overview} /></> : undefined}
       />
-      <GatewayTiles fees={fees} />
       <GatewayCards overview={overview} />
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <FeesTable fees={fees} gateways={overview.items} />

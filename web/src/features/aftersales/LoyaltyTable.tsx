@@ -148,8 +148,8 @@ export function LoyaltyTable({ rows, meta, owners }: { rows: LoyaltyRow[]; meta:
     },
   ];
   const metrics: MetricFilter<LoyaltyRow>[] = [
-    { id: "dormant", label: "Sin comprar hace más de 180 días", tone: "warn", icon: <CircleSlash size={19} />, matches: (row) => row.days_since !== null && row.days_since > 180 },
-    { id: "promoters", label: "Promotores sin oportunidad abierta", tone: "ok", icon: <Crown size={19} />, matches: (row) => row.nps !== null && row.nps >= 9 && !row.has_open_opportunity },
+    { id: "dormant", label: "Sin comprar hace más de 180 días", tone: "warn", icon: <CircleSlash size={19} />, info: <p>Clientes de tu cartera cuya última compra fue hace más de 180 días. Al presionarla, la tabla muestra a quiénes conviene proponer una recompra.</p>, matches: (row) => row.days_since !== null && row.days_since > 180 },
+    { id: "promoters", label: "Promotores sin oportunidad abierta", tone: "ok", icon: <Crown size={19} />, info: <p>Clientes cuyo último NPS fue 9 o 10 y que hoy no tienen ninguna oportunidad abierta. Al presionarla, la tabla muestra solo esos.</p>, matches: (row) => row.nps !== null && row.nps >= 9 && !row.has_open_opportunity },
   ];
   const filters: FilterConfig<LoyaltyRow>[] = [
     { id: "segment", label: "Segmento", options: meta.segments.map((value) => ({ value, label: value })), value: (row) => row.segment ?? "" },

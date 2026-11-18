@@ -31,7 +31,7 @@ export function ReportIncidentPanel({ data }: { data: SupplierIncidents }) {
       variant="primary"
       formId="reportar-incidencia"
       title="Reportar incidencia"
-      description="Operaciones de la agencia la recibe al instante y le responde por este canal."
+      description="Operaciones de la agencia la recibe al instante y te responde por este canal."
       submitLabel="Reportar"
       action={reportIncident}
       initial={STEP_INITIAL}
@@ -39,14 +39,14 @@ export function ReportIncidentPanel({ data }: { data: SupplierIncidents }) {
     >
       {() =>
         data.services.length === 0 ? (
-          <p className="text-[13px] text-fg-3">No tiene servicios vigentes de los últimos 7 días a los cuales asociar una incidencia.</p>
+          <p className="text-[13px] text-fg-3">No tienes servicios vigentes de los últimos 7 días a los cuales asociar una incidencia.</p>
         ) : (
           <>
-            <SelectField label="Servicio relacionado" name="service" placeholder="Elija el servicio" searchable options={data.services} />
+            <SelectField label="Servicio relacionado" name="service" placeholder="Elige el servicio" searchable options={data.services} />
             <SelectField label="Tipo" name="type" defaultValue={data.types[0]} options={data.types.map((value) => ({ value, label: value }))} />
             <ChoiceGroup label="Impacto" name="severity" defaultValue="media" onChange={setSeverity} options={data.severities.map((value) => ({ value, label: supplierStatus(value, "severity").label }))} hint={`Operaciones responde en un máximo de ${data.sla_hours[severity] ?? 24} horas.`} />
             <TextField label="Asunto" name="title" required minLength={5} maxLength={150} placeholder="Sin habitaciones dobles disponibles" />
-            <TextArea label="Descripción y propuesta" name="description" rows={4} required minLength={10} maxLength={2000} placeholder="Qué ocurrió y qué propone su establecimiento." />
+            <TextArea label="Descripción y propuesta" name="description" rows={4} required minLength={10} maxLength={2000} placeholder="Qué ocurrió y qué propone tu establecimiento." />
           </>
         )
       }
@@ -132,7 +132,7 @@ export function SupplierIncidentsView({ data }: { data: SupplierIncidents }) {
 
   return (
     <>
-      <PortalTitle title="Incidencias" subtitle="Incidencias vinculadas a sus servicios. Operaciones de la agencia responde por este canal; las críticas también se escalan por teléfono." actions={<ReportIncidentPanel data={data} />} />
+      <PortalTitle title="Incidencias" subtitle="Incidencias vinculadas a tus servicios. Operaciones de la agencia responde por este canal; las críticas también se escalan por teléfono." actions={<ReportIncidentPanel data={data} />} />
       <DataTable
         screen="proveedor-incidencias"
         rows={data.items}
@@ -144,7 +144,7 @@ export function SupplierIncidentsView({ data }: { data: SupplierIncidents }) {
         sorts={sorts}
         searchText={(row) => `${row.code} ${row.title} ${row.reservation ?? ""}`}
         searchPlaceholder="Buscar incidencia o reserva"
-        emptyTitle="No hay incidencias vinculadas a su empresa"
+        emptyTitle="No hay incidencias vinculadas a tu empresa"
       />
     </>
   );

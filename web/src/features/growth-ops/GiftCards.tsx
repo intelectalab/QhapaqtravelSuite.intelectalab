@@ -8,10 +8,11 @@ import { Badge } from "@/components/ui/Badge";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { DateField } from "@/components/ui/DateField";
+import { GIFT_DELIVERY_HOUR } from "@/lib/growth-ops";
 import { TextField } from "@/components/ui/TextField";
 import { SummaryBox } from "@/features/finance/FinanceStep";
-import type { GiftCardRow, PaymentTarget } from "@/lib/growth-ops";
-import { formatDate, formatMoney } from "@/lib/format";
+import type { GiftCardKpis, GiftCardRow, PaymentTarget } from "@/lib/growth-ops";
+import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import type { Tone } from "@/lib/tone";
 import { GrowthStep } from "./GrowthStep";
 
@@ -35,7 +36,10 @@ export function IssueCardAction() {
       <TextField label="Para (nombre)" name="recipient_name" maxLength={160} />
       <TextField label="Correo del destinatario" name="recipient_email" type="email" maxLength={190} hint="Le enviamos el vale con su código de canje." />
       <TextArea label="Mensaje (opcional)" name="message" rows={3} maxLength={500} />
-      <DateField label="Vence (opcional)" name="expires_at" hint="Si lo dejas vacío, vence en 12 meses." />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <DateField label="Enviar el (opcional)" name="deliver_at" disablePast hint={`Sale ese día a las ${GIFT_DELIVERY_HOUR}. Vacío: sale al emitirlo.`} />
+        <DateField label="Vence (opcional)" name="expires_at" disablePast hint="Vacío: vence en 12 meses." />
+      </div>
     </GrowthStep>
   );
 }
@@ -66,7 +70,9 @@ function VoidCardAction({ row }: { row: GiftCardRow }) {
   );
 }
 
-export function GiftCardsTable({ rows, targets }: { rows: GiftCardRow[]; targets: PaymentTarget[] }) {
+const bothCurrencies = (pen: string, usd: string) => [Number(pen) > 0 ? formatMoney(pen, "PEN", { compact: true }) : null, Number(usd) > 0 ? formatMoney(usd, "USD", { compact: true }) : null].filter(Boolean).join(" · ") || formatMoney(0);
+
+export function GiftCardsTable({ rows, targets, kpis }: { rows: GiftCardRow[]; targets: PaymentTarget[]; kpis: GiftCardKpis }) {
   const columns: Column<GiftCardRow>[] = [
     {
       id: "card",
@@ -95,7 +101,16 @@ export function GiftCardsTable({ rows, targets }: { rows: GiftCardRow[]; targets
       ),
     },
     { id: "expires", header: "Vence", wideOnly: true, cell: (row) => <span className="text-[13px] text-fg-2">{formatDate(row.expires_at)}</span> },
-    { id: "status", header: "Estado", cell: (row) => <Badge tone={TONES[row.status]}>{row.status_label}</Badge> },
+    {
+      id: "status",
+      header: "Estado",
+      cell: (row) => (
+        <span className="grid justify-items-start gap-1">
+          <Badge tone={TONES[row.status]}>{row.status_label}</Badge>
+          {row.status === "activa" && row.deliver_at && !row.delivered_at && <span className="text-[11.5px] text-fg-3">Envío el {formatDateTime(row.deliver_at, false)}</span>}
+        </span>
+      ),
+    },
     {
       id: "actions",
       header: "",
@@ -111,9 +126,10 @@ export function GiftCardsTable({ rows, targets }: { rows: GiftCardRow[]; targets
   ];
 
   const metrics: MetricFilter<GiftCardRow>[] = [
-    { id: "active", label: "Activos", tone: "ok", icon: <Gift size={19} />, matches: (row) => row.status === "activa" },
-    { id: "used", label: "Agotados", tone: "mute", icon: <CircleCheck size={19} />, matches: (row) => row.status === "agotada" },
-    { id: "closed", label: "Vencidos o anulados", tone: "warn", icon: <Wallet size={19} />, matches: (row) => row.status === "vencida" || row.status === "anulada" },
+    { id: "active", label: "Vales activos", tone: "ok", icon: <Gift size={19} />, note: bothCurrencies(kpis.activa.balance_pen, kpis.activa.balance_usd), info: <p>Vales que se pueden canjear hoy; la nota suma su saldo por moneda. Al presionarla, la tabla muestra solo los vales activos.</p>, matches: (row) => row.status === "activa" },
+    { id: "redeemed", label: "Canjeado", tone: "info", icon: <HandCoins size={19} />, display: bothCurrencies(kpis.redeemed.pen, kpis.redeemed.usd), info: <p>Suma de todos los canjes registrados contra cuotas o reservas. Al presionarla, la tabla muestra los vales que ya usaron parte o todo su saldo.</p>, matches: (row) => row.used_pct > 0 },
+    { id: "used", label: "Agotados", tone: "mute", icon: <CircleCheck size={19} />, note: "Saldo usado por completo", info: <p>Vales cuyo saldo llegó a cero con los canjes. Al presionarla, la tabla muestra solo esos vales.</p>, matches: (row) => row.status === "agotada" },
+    { id: "closed", label: "Vencidos o anulados", tone: "warn", icon: <Wallet size={19} />, note: "Ya no se pueden canjear", info: <p>Vales que pasaron su fecha de vencimiento o que la agencia anuló. Al presionarla, la tabla muestra esos vales.</p>, matches: (row) => row.status === "vencida" || row.status === "anulada" },
   ];
 
   const filters: FilterConfig<GiftCardRow>[] = [

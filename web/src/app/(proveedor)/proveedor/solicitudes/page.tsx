@@ -6,6 +6,6 @@ import { supplierData } from "../data";
 export const metadata: Metadata = { title: "Solicitudes" };
 
 export default async function SupplierRequestsPage() {
-  const [data, company] = await Promise.all([supplierData<SupplierRequests>("/requests", "No pudimos cargar las solicitudes."), supplierData<SupplierCompany>("/company", "No pudimos cargar los datos de su empresa.")]);
+  const [data, company] = await Promise.all([supplierData<SupplierRequests>("/requests", "No pudimos cargar las solicitudes."), supplierData<SupplierCompany>("/company", "No pudimos cargar los datos de tu empresa.")]);
   return <SupplierRequestsView data={data} contact={company.provider.contact} />;
 }

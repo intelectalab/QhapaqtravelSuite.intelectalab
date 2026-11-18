@@ -133,7 +133,7 @@ export function CategorizeStep(props: StepProps) {
         hint={
           <span className="inline-flex items-center gap-1">
             Se aplican cuando el producto esté activo.
-            <InfoTip label="Cuándo se aplican">Un producto en borrador no es comercializable. Estos indicadores toman efecto al activarlo (PRD-BR-002).</InfoTip>
+            <InfoTip label="Cuándo se aplican">Un producto en borrador no es comercializable. Estos indicadores toman efecto al activarlo.</InfoTip>
           </span>
         }
       >

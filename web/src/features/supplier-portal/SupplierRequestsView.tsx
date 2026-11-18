@@ -119,13 +119,13 @@ export function SupplierRequestsView({ data, contact }: { data: SupplierRequests
 
   return (
     <>
-      <PortalTitle title="Solicitudes de servicio" subtitle={`Responda cada solicitud en máximo ${data.response_hours} horas. Solo ve el titular o grupo, los pasajeros y su tarifa neta.`} />
+      <PortalTitle title="Solicitudes de servicio" subtitle={`Responde cada solicitud en máximo ${data.response_hours} horas. Solo ves el titular o grupo, los pasajeros y tu tarifa neta.`} />
       {overdue.length > 0 && (
         <Card className="mb-5 border-[color-mix(in_srgb,var(--bad)_30%,transparent)] bg-[color-mix(in_srgb,var(--bad)_6%,var(--surface))]">
           <p className="flex items-start gap-2.5 text-[13.5px] text-fg-2">
             <AlarmClock size={18} className="mt-0.5 flex-none text-bad" />
             <span>
-              <b className="text-bad">{overdue.length === 1 ? "Una solicitud superó el plazo." : `${overdue.length} solicitudes superaron el plazo.`}</b> Mientras no responda, la agencia no puede emitir el voucher al pasajero.
+              <b className="text-bad">{overdue.length === 1 ? "Una solicitud superó el plazo." : `${overdue.length} solicitudes superaron el plazo.`}</b> Mientras no respondas, la agencia no puede emitir el voucher al pasajero.
             </span>
           </p>
         </Card>

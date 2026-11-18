@@ -412,6 +412,17 @@ export interface ReviewWidgetSettings {
   layout: "lista" | "cuadricula";
 }
 
+export type CustomerPreviewSection = "home" | "reservations" | "quotes" | "receivables" | "documents" | "wishlist";
+
+export const CUSTOMER_PREVIEW_SECTIONS: { id: CustomerPreviewSection; label: string; key: keyof CustomerPortal | null }[] = [
+  { id: "home", label: "Inicio", key: null },
+  { id: "reservations", label: "Mis viajes", key: "reservations" },
+  { id: "quotes", label: "Propuestas", key: "quotes" },
+  { id: "receivables", label: "Pagos", key: "payments" },
+  { id: "documents", label: "Documentos", key: "documents" },
+  { id: "wishlist", label: "Favoritos", key: "wishlist" },
+];
+
 export interface CustomerPortal {
   code: string;
   name: string;

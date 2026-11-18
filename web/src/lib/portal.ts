@@ -2,6 +2,8 @@ import { channelStatus, type Money } from "@/lib/channels";
 import type { CorporateBadge } from "@/lib/corporate";
 import type { Tone } from "@/lib/tone";
 
+export const TRIP_FIRST_SECTION = "/portal/viaje/hoteles";
+
 export type PortalRole = "customer" | "passenger";
 
 export interface PortalAdvisor {

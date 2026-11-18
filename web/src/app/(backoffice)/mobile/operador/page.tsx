@@ -3,7 +3,8 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { PreviewPicker } from "@/features/channels/ChannelUi";
 import { OperatorPhone, OperatorSide } from "@/features/mobile/OperatorApp";
-import type { OperatorPreview } from "@/lib/mobile";
+import type { OperatorDay, OperatorPreview } from "@/lib/mobile";
+import { getAccess } from "@/lib/server/dashboard";
 import { getResource } from "@/lib/server/resource";
 
 export const metadata: Metadata = { title: "App operador" };
@@ -12,6 +13,25 @@ export default async function OperatorAppPage({ searchParams }: PageProps<"/mobi
   const { fecha, persona } = await searchParams;
   const query = new URLSearchParams();
   if (typeof fecha === "string") query.set("date", fecha);
+  const access = await getAccess();
+
+  if (access?.experience === "mobile") {
+    const own = await getResource<OperatorDay>(`/mobile/operator/today${query.size ? `?${query.toString()}` : ""}`, "No pudimos cargar tus servicios.");
+
+    if (!own) {
+      return <PageHeader title="Mi día" subtitle="No pudimos cargar tus servicios. Si sigue pasando, pide a Operaciones que vincule tu usuario a tu ficha de guía o conductor." />;
+    }
+
+    return (
+      <>
+        <PageHeader title="Mi día" subtitle="Tus servicios asignados, con pasajeros y punto de contacto. Confirma, registra el check-in y reporta incidencias desde la app del teléfono." />
+        <div className="mx-auto w-full max-w-[380px]">
+          <OperatorPhone preview={own} />
+        </div>
+      </>
+    );
+  }
+
   if (typeof persona === "string") query.set("staff", persona);
   const preview = await getResource<OperatorPreview>(`/mobile/operator${query.size ? `?${query.toString()}` : ""}`, "No pudimos cargar la app del operador.");
 

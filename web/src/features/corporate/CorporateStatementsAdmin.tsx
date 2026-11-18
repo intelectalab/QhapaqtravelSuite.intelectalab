@@ -1,10 +1,10 @@
 "use client";
 
-import { Ban, FilePlus2, Mail } from "lucide-react";
+import { Ban, CalendarClock, FileCheck2, FileClock, FilePlus2, FileX2, Mail } from "lucide-react";
 import { generateStatement, sendStatement, voidStatement } from "@/app/(backoffice)/finanzas/estados-cuenta-corporativos/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
-import type { Column, FilterConfig, SortOption } from "@/components/table/types";
+import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { DownloadButton } from "@/components/ui/DownloadButton";
 import { SelectField } from "@/components/ui/SelectField";
@@ -41,7 +41,7 @@ export function GenerateStatementAction({ accounts }: { accounts: Accounts }) {
   );
 }
 
-export function StatementsTable({ statements, accounts }: { statements: CorporateStatement[]; accounts: Accounts }) {
+export function StatementsTable({ statements, accounts, kpis }: { statements: CorporateStatement[]; accounts: Accounts; kpis: StatementsPage["meta"]["kpis"] }) {
   const columns: Column<CorporateStatement>[] = [
     {
       id: "statement",
@@ -99,9 +99,16 @@ export function StatementsTable({ statements, accounts }: { statements: Corporat
     { id: "account", label: "Empresa", options: accounts.map((account) => ({ value: account.id, label: account.client_name })), value: (row) => row.account.id },
     { id: "status", label: "Estado", options: [{ value: "generado", label: "Generado" }, { value: "enviado", label: "Enviado" }, { value: "anulado", label: "Anulado" }], value: (row) => row.status },
   ];
+  const autoAccounts = new Set(accounts.filter((account) => account.statement_auto).map((account) => account.id));
+  const metrics: MetricFilter<CorporateStatement>[] = [
+    { id: "generated", label: "Generados sin enviar", tone: "info", icon: <FileClock size={19} />, info: <p>Estados en estado generado: listos para revisar y enviar a la empresa. Al presionarla, la tabla muestra esos estados.</p>, matches: (row) => row.status === "generado" },
+    { id: "sent", label: "Enviados", tone: "ok", icon: <FileCheck2 size={19} />, info: <p>Estados enviados por correo a los destinatarios de la cuenta. Al presionarla, la tabla muestra esos estados.</p>, matches: (row) => row.status === "enviado" },
+    { id: "void", label: "Anulados", tone: "mute", icon: <FileX2 size={19} />, note: "Se conservan como historial", info: <p>Estados anulados para regenerar el mes. Al presionarla, la tabla muestra esos estados.</p>, matches: (row) => row.status === "anulado" },
+    { id: "auto", label: "Cuentas con envío automático", tone: "t1", icon: <CalendarClock size={19} />, display: kpis.auto_accounts, note: `De ${accounts.length} cuentas`, info: <p>Cuentas corporativas activas o suspendidas con el envío automático encendido: reciben el mes anterior el día configurado. Al presionarla, la tabla muestra los estados de esas cuentas.</p>, matches: (row) => autoAccounts.has(row.account.id) },
+  ];
   const sorts: SortOption<CorporateStatement>[] = [
     { id: "month", label: "Mes", type: "text", value: (row) => row.month },
     { id: "closing", label: "Saldo final", type: "number", value: (row) => num(row.closing_balance) },
   ];
-  return <DataTable screen="finanzas-estados-corporativos" rows={statements} columns={columns} getKey={(row) => row.code} entityLabel="estados de cuenta" searchText={(row) => `${row.code} ${row.account.client_name} ${row.label}`} searchPlaceholder="Buscar empresa, mes o código" filters={filters} sorts={sorts} emptyTitle="Aún no hay estados de cuenta" />;
+  return <DataTable screen="finanzas-estados-corporativos" rows={statements} columns={columns} getKey={(row) => row.code} entityLabel="estados de cuenta" searchText={(row) => `${row.code} ${row.account.client_name} ${row.label}`} searchPlaceholder="Buscar empresa, mes o código" metrics={metrics} filters={filters} sorts={sorts} emptyTitle="Aún no hay estados de cuenta" />;
 }

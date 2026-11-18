@@ -18,6 +18,8 @@ final class PlatformOperationsSeeder
 {
     use SeedsTenant;
 
+    public const ALL_TENANTS = true;
+
     private ?string $operator = null;
 
     public function __construct(private readonly Tenant $tenant) {}

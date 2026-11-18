@@ -41,7 +41,7 @@ final class SupplierNotices
             ->map(fn (object $row): array => [
                 ...self::EVENTS[$row->event_code],
                 'title' => (string) $row->subject,
-                'detail' => trim((string) strtok((string) $row->body_rendered, "\n")) ?: 'Revise el detalle en la extranet.',
+                'detail' => trim((string) strtok((string) $row->body_rendered, "\n")) ?: 'Revisa el detalle en la extranet.',
                 'at' => Carbon::parse($row->created_at)->toIso8601String(),
             ])->values()->all();
     }

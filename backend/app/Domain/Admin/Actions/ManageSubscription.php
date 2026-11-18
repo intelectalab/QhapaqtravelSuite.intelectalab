@@ -339,7 +339,7 @@ final class ManageSubscription
             throw $exception;
         }
 
-        $label = $result['type'] === 'percent' ? "{$result['value']} %" : "S/ {$result['value']}";
+        $label = $result['type'] === 'percent' ? "{$result['value']} %" : Decimal::display($result['value'], 'PEN');
         $this->audit->log(self::ENTITY, 'cupon', 'cupon_aplicar', null, "{$result['code']} · {$label} por {$result['cycles']} ciclos");
 
         return $result;
@@ -423,8 +423,8 @@ final class ManageSubscription
         }
 
         $status = ['open' => 'pendiente de pago', 'failed' => 'con cobro rechazado', 'paid' => 'pagada', 'void' => 'anulada', 'uncollectible' => 'incobrable', 'draft' => 'en borrador'][$invoice->status] ?? $invoice->status;
-        $total = number_format((float) $invoice->total, 2, '.', ' ');
-        $this->mail->send($email, (string) ($subscription->billing_name ?: $email), "Factura {$number} de KipuControl", "Hola:\n\nTe reenviamos la factura {$number} de tu suscripción, emitida el {$invoice->issue_date} por S/ {$total} (incluye IGV). Estado: {$status}.\n\nPuedes verla y pagarla desde Administración, Suscripción y uso.\n\nKipuControl");
+        $total = Decimal::display($invoice->total, 'PEN');
+        $this->mail->send($email, (string) ($subscription->billing_name ?: $email), "Factura {$number} de KipuControl", "Hola:\n\nTe reenviamos la factura {$number} de tu suscripción, emitida el {$invoice->issue_date} por {$total} (incluye IGV). Estado: {$status}.\n\nPuedes verla y pagarla desde Administración, Suscripción y uso.\n\nKipuControl");
         $this->audit->log(self::ENTITY, "factura.{$number}", 'reenviar', null, $email);
 
         return $email;

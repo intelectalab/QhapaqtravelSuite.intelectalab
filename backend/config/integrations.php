@@ -17,7 +17,13 @@ return [
         'site_content_ai' => env('SITE_CONTENT_AI_PROVIDER', 'fake'),
         'accounting' => env('ACCOUNTING_PROVIDER', 'fake'),
         'travel_inventory' => env('TRAVEL_INVENTORY_PROVIDER', 'fake'),
+        'ruc' => env('RUC_LOOKUP_PROVIDER', 'fake'),
+        'checkout' => env('PLATFORM_CHECKOUT_PROVIDER', 'fake'),
+        'domains' => env('DOMAIN_PROVISIONER', 'fake'),
+        'tracking' => env('TRACKING_PROVIDER', 'fake'),
     ],
+
+    'require_real' => env('INTEGRATIONS_REQUIRE_REAL'),
 
     'retry' => [
         'max_attempts' => 5,

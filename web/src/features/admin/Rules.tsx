@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Layers, Link2, Lock, PencilRuler, Plus, Power, PowerOff, RotateCcw, SlidersHorizontal, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { Check, Layers, Link2, Lock, PencilRuler, Plus, Power, PowerOff, RotateCcw, SlidersHorizontal, Sparkles, Trash2, UserPen, Wand2 } from "lucide-react";
 import Link from "next/link";
 import { useOptimistic, useState, useTransition } from "react";
 import { applyRuleTemplate, createRule, deleteRule, requestRuleAutomation, resetRule, toggleRule, updateRule, updateRuleParams } from "@/app/(backoffice)/admin/reglas/actions";
@@ -241,7 +241,8 @@ function RuleRowActions({ rule }: { rule: BookingRule }) {
   );
 }
 
-export function RulesTable({ rules, manage }: { rules: BookingRule[]; manage: boolean }) {
+export function RulesTable({ rules, manage, plan }: { rules: BookingRule[]; manage: boolean; plan: string }) {
+  const locked = rules.some((rule) => rule.locked);
   const columns: Column<BookingRule>[] = [
     {
       id: "rule",
@@ -286,11 +287,11 @@ export function RulesTable({ rules, manage }: { rules: BookingRule[]; manage: bo
     { id: "actions", header: "", align: "right", mobile: "detail", cell: (rule) => (manage ? <RuleRowActions rule={rule} /> : null) },
   ];
   const metrics: MetricFilter<BookingRule>[] = [
-    { id: "on", label: "Activas", tone: "ok", icon: <Power size={19} />, matches: (rule) => rule.enabled },
-    { id: "off", label: "Inactivas", tone: "mute", icon: <PowerOff size={19} />, matches: (rule) => !rule.enabled },
-    { id: "modified", label: "Ajustadas", tone: "t1", icon: <SlidersHorizontal size={19} />, matches: (rule) => rule.modified },
-    { id: "custom", label: "Personalizadas", tone: "violet", icon: <Sparkles size={19} />, matches: (rule) => rule.custom },
-    ...(rules.some((rule) => rule.locked) ? [{ id: "locked", label: "Fuera de tu plan", tone: "warn" as const, icon: <Lock size={19} />, matches: (rule: BookingRule) => rule.locked }] : []),
+    { id: "on", label: "Activas", tone: "ok", icon: <Power size={19} />, note: locked ? undefined : `Plan ${plan}`, info: <p>Reglas encendidas que el sitio web, el widget, las cotizaciones y los portales aplican hoy{locked ? "" : `; la nota es tu plan contratado, que define qué reglas puedes encender`}. Al presionarla ves solo esas reglas.</p>, matches: (rule) => rule.enabled },
+    { id: "off", label: "Inactivas", tone: "mute", icon: <PowerOff size={19} />, info: <p>Reglas apagadas: desaparecen del sitio web, el widget y las cotizaciones. Al presionarla ves solo esas reglas.</p>, matches: (rule) => !rule.enabled },
+    { id: "modified", label: "Ajustadas", tone: "t1", icon: <SlidersHorizontal size={19} />, info: <p>Reglas cuyos parámetros cambiaste respecto del valor estándar. Al presionarla ves solo esas reglas.</p>, matches: (rule) => rule.modified },
+    { id: "custom", label: "Personalizadas", tone: "violet", icon: <Sparkles size={19} />, info: <p>Reglas que creó tu agencia, además de las estándar. Al presionarla ves solo esas reglas.</p>, matches: (rule) => rule.custom },
+    ...(locked ? [{ id: "locked", label: "Fuera de tu plan", tone: "warn" as const, icon: <Lock size={19} />, note: `Tu plan: ${plan}`, info: <p>Reglas disponibles desde un plan superior al tuyo; se ven con candado y no se pueden encender. Al presionarla ves solo esas reglas.</p>, matches: (rule: BookingRule) => rule.locked }] : []),
   ];
   const filters: FilterConfig<BookingRule>[] = [
     { id: "group", label: "Grupo", options: [...RULE_GROUPS, PLAN_GROUP].filter((group) => rules.some((rule) => rule.group === group)).map((group) => ({ value: group, label: group })), value: (rule) => rule.group },
@@ -433,6 +434,7 @@ const CHANGE_ACTIONS: Record<string, { label: string; tone: "ok" | "mute" | "t1"
 };
 
 export function RuleChangesTable({ entries }: { entries: AuditEntry[] }) {
+  const last = [...entries].sort((a, b) => b.at.localeCompare(a.at))[0];
   const columns: Column<AuditEntry>[] = [
     {
       id: "rule",
@@ -473,9 +475,10 @@ export function RuleChangesTable({ entries }: { entries: AuditEntry[] }) {
     },
   ];
   const metrics: MetricFilter<AuditEntry>[] = [
-    { id: "toggle", label: "Encendidas y apagadas", tone: "ok", icon: <Power size={19} />, matches: (entry) => entry.action === "activar" || entry.action === "desactivar" },
-    { id: "params", label: "Parámetros", tone: "t1", icon: <SlidersHorizontal size={19} />, matches: (entry) => entry.action === "editar_parametros" },
-    { id: "templates", label: "Plantillas y restablecer", tone: "violet", icon: <Layers size={19} />, matches: (entry) => entry.action === "aplicar_plantilla" || entry.action === "restablecer" },
+    { id: "last", label: "Último cambio", tone: "t4", icon: <UserPen size={19} />, display: last ? formatDateTime(last.at, false) : "Sin cambios", note: last ? `${last.entity_id} · ${last.actor}` : undefined, info: <p>El cambio de reglas más reciente, con la regla y quién lo hizo. Al presionarla ves solo ese cambio.</p>, matches: (entry) => entry.code === last?.code },
+    { id: "toggle", label: "Encendidas y apagadas", tone: "ok", icon: <Power size={19} />, info: <p>Cambios que encendieron o apagaron una regla. Al presionarla ves solo esos cambios.</p>, matches: (entry) => entry.action === "activar" || entry.action === "desactivar" },
+    { id: "params", label: "Parámetros", tone: "t1", icon: <SlidersHorizontal size={19} />, info: <p>Cambios en los valores de una regla, como edades, plazos o montos. Al presionarla ves solo esos cambios.</p>, matches: (entry) => entry.action === "editar_parametros" },
+    { id: "templates", label: "Plantillas y restablecer", tone: "violet", icon: <Layers size={19} />, info: <p>Plantillas por tipo de negocio aplicadas y reglas devueltas a su valor estándar. Al presionarla ves solo esos cambios.</p>, matches: (entry) => entry.action === "aplicar_plantilla" || entry.action === "restablecer" },
   ];
   const filters: FilterConfig<AuditEntry>[] = [
     { id: "action", label: "Cambio", options: [...new Set(entries.map((entry) => entry.action))].map((action) => ({ value: action, label: CHANGE_ACTIONS[action]?.label ?? action.replace(/_/g, " ") })), value: (entry) => entry.action },

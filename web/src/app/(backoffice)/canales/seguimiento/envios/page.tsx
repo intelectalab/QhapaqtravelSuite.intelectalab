@@ -12,5 +12,5 @@ export default async function EnviosPage() {
   ]);
   if (!overview || !dispatches) return null;
 
-  return <DispatchesTable rows={dispatches.rows} canManage={overview.can_manage} />;
+  return <DispatchesTable rows={dispatches.rows} canManage={overview.can_manage} kpis={overview.kpis} />;
 }

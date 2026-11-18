@@ -15,6 +15,7 @@ import { PlanChangeNote, PlanChangeSummary } from "@/features/billing/PlanChange
 import { ADMIN_INITIAL, type AddonOffer, type AdminActionState, type BillingCycle, type PlanChangePreview, type PlanOption, type SubscriptionOverview } from "@/lib/admin";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
+import { LOAD_FAILED, withRetry } from "@/lib/retry";
 
 type Subscription = NonNullable<SubscriptionOverview["subscription"]>;
 
@@ -35,9 +36,13 @@ function PlanPreview({ plan, cycle, current, currentCycle, currency }: { plan: s
   useEffect(() => {
     if (same) return;
     let alive = true;
-    previewPlanChange(plan, cycle).then((result) => {
-      if (alive) setState({ key, ...result });
-    });
+    withRetry(() => previewPlanChange(plan, cycle))
+      .then((result) => {
+        if (alive) setState({ key, ...result });
+      })
+      .catch(() => {
+        if (alive) setState({ key, preview: null, message: LOAD_FAILED });
+      });
     return () => {
       alive = false;
     };

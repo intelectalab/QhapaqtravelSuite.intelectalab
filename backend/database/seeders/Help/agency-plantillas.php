@@ -35,7 +35,7 @@ return [
         'summary' => 'Mejore descripciones, títulos SEO, traducciones, relatos y artículos del blog, y cree imágenes. Todo resultado espera su revisión antes de llegar al sitio.',
         'steps' => [
             ['title' => 'Pedir un texto', 'text' => 'En «Mejorar contenido» elija qué necesita, sobre qué tour, página o historia, el tono y el idioma. Antes de pulsar «Generar» verá el costo en créditos y su saldo.'],
-            ['title' => 'Revisar y aplicar', 'text' => 'Cada resultado muestra el antes y la propuesta. Revise cifras, horarios y precios y pulse «Aplicar»: el cambio queda en la auditoría con el texto anterior. «Otra versión» cobra de nuevo.'],
+            ['title' => 'Revisar y aplicar', 'text' => 'Cada resultado muestra el antes y la propuesta. Revisa cifras, horarios y precios y pulsa «Aplicar»: el cambio queda en la auditoría con el texto anterior. «Otra versión» cobra de nuevo.'],
             ['title' => 'Crear imágenes', 'text' => 'En «Imágenes» describa la escena, elija estilo, cantidad y calidad. Cada imagen nace con texto alternativo y la etiqueta «Imagen generada con IA»; úsela, edite su texto o descártela.'],
             ['title' => 'Comprar créditos', 'text' => 'En «Planes y créditos» contrate IA Básico (S/ 59 al mes) o IA Pro (S/ 149 al mes), o compre un paquete de pago único. Todo se suma a su factura de KipuControl con IGV. Los movimientos muestran cada asignación, compra y consumo con su saldo.'],
         ],

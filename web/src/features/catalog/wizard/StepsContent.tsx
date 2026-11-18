@@ -229,7 +229,7 @@ export function PublishStep({ draft, set, review, creating, onGo }: StepProps & 
 
   return (
     <div className="grid gap-8 xl:grid-cols-2">
-      <Group title="Canales solicitados" hint="Un producto en borrador no es comercializable: los canales se publican de verdad al activarlo (PRD-BR-002).">
+      <Group title="Canales solicitados" hint="Un producto en borrador no es comercializable: los canales se publican de verdad al activarlo.">
         <div className="flex flex-col gap-3">
           {Object.entries(CHANNEL_INFO).map(([channel, info]) => (
             <SwitchField key={channel} name={`channel.${channel}`} label={info.label} hint={info.hint} checked={channel === "erp" || draft.channels.includes(channel)} disabled={channel === "erp"} onCheckedChange={(on) => toggle(channel, on)} />
@@ -252,7 +252,7 @@ export function PublishStep({ draft, set, review, creating, onGo }: StepProps & 
           )}
         </Group>
         {checklist && (
-          <Group title="Preparación para activación (§42)">
+          <Group title="Preparación para activación">
             <div className="flex items-center justify-between text-[13px]">
               <span>
                 {checklist.passed} de {checklist.total} validaciones cumplidas

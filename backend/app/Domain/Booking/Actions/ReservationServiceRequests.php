@@ -161,7 +161,7 @@ final class ReservationServiceRequests
             $body = "Hola, {$provider->contact_name}:\n\nTe pedimos confirmar el servicio «{$service->name}» para el {$date}{$time}, {$service->pax} pasajeros.\n"
                 .($note ? "\n{$note}\n" : '')
                 ."\nResponde desde la extranet de proveedores con el código de confirmación.\n\nServicio {$service->code} · Reserva {$reservation->code}\n{$agency}";
-            $this->mail->send((string) $provider->email, $provider->contact_name, "Solicitud de servicio {$service->code} · {$agency}", $body);
+            $this->mail->sendAsAgency((string) $provider->email, $provider->contact_name, "Solicitud de servicio {$service->code} · {$agency}", $body);
         }
 
         $this->audit->log('Servicio reserva', $service->code, 'solicitar', $service->status, "solicitado a {$provider->name}", actor: $actor);

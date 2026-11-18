@@ -44,8 +44,8 @@ final class SupplierOperationsController
             'impact' => ['required', Rule::in(SupplierOperations::OBSERVATION_IMPACTS)],
             'proposal' => ['required', 'string', 'min:5', 'max:1000'],
         ], [
-            'reason.*' => 'Elija el motivo de la observación.',
-            'impact.*' => 'Elija el impacto.',
+            'reason.*' => 'Elige el motivo de la observación.',
+            'impact.*' => 'Elige el impacto.',
             'proposal.*' => 'Describa la propuesta del hotel (mínimo 5 caracteres).',
         ]);
 
@@ -63,7 +63,7 @@ final class SupplierOperationsController
         $data = $request->validate([
             'code' => ['required', 'string', 'min:4', 'max:40'],
             'confirm_future' => ['nullable', 'boolean'],
-        ], ['code.*' => 'Escriba el código del voucher.']);
+        ], ['code.*' => 'Escribe el código del voucher.']);
 
         return $this->json($vouchers->redeem($account, (string) $data['code'], (bool) ($data['confirm_future'] ?? false), $this->version($request)));
     }
@@ -88,11 +88,11 @@ final class SupplierOperationsController
             'title' => ['required', 'string', 'min:5', 'max:150'],
             'description' => ['required', 'string', 'min:10', 'max:2000'],
         ], [
-            'service.*' => 'Elija el servicio relacionado.',
-            'type.*' => 'Elija el tipo de incidencia.',
-            'severity.*' => 'Elija el impacto.',
-            'title.*' => 'Escriba el asunto (mínimo 5 caracteres).',
-            'description.*' => 'Describa lo ocurrido y su propuesta (mínimo 10 caracteres).',
+            'service.*' => 'Elige el servicio relacionado.',
+            'type.*' => 'Elige el tipo de incidencia.',
+            'severity.*' => 'Elige el impacto.',
+            'title.*' => 'Escribe el asunto (mínimo 5 caracteres).',
+            'description.*' => 'Describe lo ocurrido y tu propuesta (mínimo 10 caracteres).',
         ]);
 
         return $this->json(['code' => $incidents->report($account, $data)], 201);
@@ -101,7 +101,7 @@ final class SupplierOperationsController
     public function commentIncident(Request $request, string $code, SupplierIncidents $incidents): JsonResponse
     {
         $account = $this->account($request);
-        $data = $request->validate(['message' => ['required', 'string', 'min:2', 'max:1000']], ['message.*' => 'Escriba el comentario.']);
+        $data = $request->validate(['message' => ['required', 'string', 'min:2', 'max:1000']], ['message.*' => 'Escribe el comentario.']);
         $incidents->comment($account, $code, trim((string) $data['message']));
 
         return $this->json(['code' => $code]);

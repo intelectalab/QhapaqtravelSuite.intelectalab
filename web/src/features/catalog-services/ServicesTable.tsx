@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, CircleSlash, Hourglass, UserX } from "lucide-react";
+import { Boxes, CircleCheck, CircleSlash, Hourglass, UserX } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -51,11 +51,17 @@ export function ServicesTable({ overview }: { overview: ServicesOverview }) {
       ),
     },
   ];
+  const services = overview.services;
+  const next = services.filter((service) => service.state === "activo" && service.expires_in >= 0).sort((a, b) => a.valid_to.localeCompare(b.valid_to))[0];
+  const providers = [...new Map(services.map((service) => [service.provider.id, service.provider])).values()];
+  const activeProviders = providers.filter((provider) => provider.state === "activo").length;
+  const used = services.filter((service) => service.products.length > 0).length;
   const metrics: MetricFilter<ServiceRow>[] = [
-    { id: "active", label: "Activos", tone: "ok", icon: <CircleCheck size={19} />, matches: (service) => service.state === "activo" },
-    { id: "off", label: "Vencidos o inactivos", tone: "mute", icon: <CircleSlash size={19} />, matches: (service) => service.state !== "activo" },
-    { id: "expiring", label: "Vencen en 90 días", tone: "sun", icon: <Hourglass size={19} />, matches: (service) => service.state === "activo" && service.expires_in <= 90 },
-    { id: "provider", label: "Proveedor no activo", tone: "bad", icon: <UserX size={19} />, matches: (service) => service.provider.state !== "activo" },
+    { id: "active", label: "Activos", tone: "ok", icon: <CircleCheck size={19} />, note: `de ${services.length} servicios`, info: <p>Servicios activos y dentro de su vigencia, que se pueden usar como componentes de un producto. Al presionarla, la tabla muestra solo esos servicios.</p>, matches: (service) => service.state === "activo" },
+    { id: "used", label: "En productos", tone: "t1", icon: <Boxes size={19} />, note: `${services.length - used} sin usar todavía`, info: <p>Servicios que forman parte de al menos un producto como componente. Los que no se usan no afectan a ningún producto si los desactivas. Al presionarla, la tabla muestra los servicios en uso.</p>, matches: (service) => service.products.length > 0 },
+    { id: "expiring", label: "Vencen en 90 días", tone: "sun", icon: <Hourglass size={19} />, note: next ? `El próximo, ${next.name} el ${formatDate(next.valid_to)}` : "Ningún servicio activo por vencer", info: <p>Servicios activos cuya vigencia termina en los próximos 90 días; la nota dice cuál vence antes. Al vencer, bloquean la activación de los productos que los incluyen. Al presionarla, la tabla muestra esos servicios.</p>, matches: (service) => service.state === "activo" && service.expires_in <= 90 },
+    { id: "off", label: "Vencidos o inactivos", tone: "mute", icon: <CircleSlash size={19} />, info: <p>Servicios inactivos o con la vigencia terminada. No se pueden usar como componentes. Al presionarla, la tabla muestra esos servicios.</p>, matches: (service) => service.state !== "activo" },
+    { id: "provider", label: "Proveedor no activo", tone: "bad", icon: <UserX size={19} />, note: `${activeProviders} de ${providers.length} proveedores activos`, info: <p>Servicios de un proveedor inactivo o con el contrato vencido; la nota cuenta los proveedores distintos con servicios y cuántos están activos con contrato vigente. Al presionarla, la tabla muestra los servicios afectados.</p>, matches: (service) => service.provider.state !== "activo" },
   ];
   const filters: FilterConfig<ServiceRow>[] = [
     { id: "type", label: "Tipo", options: unique(overview.services.map((service) => service.type)), value: (service) => service.type },

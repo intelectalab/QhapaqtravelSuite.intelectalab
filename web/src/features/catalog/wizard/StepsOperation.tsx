@@ -32,7 +32,7 @@ export function ComponentsStep({ draft, set, options, errors, review }: StepProp
 
   return (
     <div className="flex flex-col gap-6">
-      <Group title="Proveedor principal" hint="Solo proveedores activos y con contrato vigente (PRD-BR-007). Si lo dejas vacío, se toma el del primer componente.">
+      <Group title="Proveedor principal" hint="Solo proveedores activos y con contrato vigente. Si lo dejas vacío, se toma el del primer componente.">
         <SelectField
           label="Proveedor principal"
           name="main_provider_id"
@@ -314,7 +314,7 @@ export function RatesStep({ draft, set, options, errors, review, saved, onAdd, o
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface-2/50 px-4 py-3 text-[13px] text-fg-2">
         {review?.summary.cost_breakdown && <span>Costo de componentes: <b className="font-semibold text-fg">{costRange(review.summary.cost_breakdown)}</b>, según el tamaño del grupo.</span>}
         <span>Toda tarifa necesita moneda y vigencia, y no se aceptan tarifas ya vencidas.</span>
-        <InfoTip label="Reglas de tarifas">PRD-BR-004: moneda y vigencia obligatorias. PRD-BR-005: una tarifa fuera de vigencia no se aplica ni se registra como vigente.</InfoTip>
+        <InfoTip label="Reglas de tarifas">Toda tarifa lleva moneda y vigencia. Una tarifa fuera de vigencia no se aplica ni se registra como vigente.</InfoTip>
       </div>
       <ErrorList errors={errors} prefix={["rates"]} />
       {!options.can_manage_rates && <p className="text-[13px] text-fg-3">Tu rol no carga tarifas. Las agrega quien gestiona tarifas.</p>}
@@ -461,7 +461,7 @@ export function AvailabilityStep({ draft, set, options, errors }: StepProps) {
               ]}
               onChange={(source) => change({ source })}
             />
-            {availability.source === "externa" && <p className="mt-2 text-[12.5px] text-fg-3">La disponibilidad externa es informativa hasta que exista una integración confirmada con el proveedor (PRD-BR-013).</p>}
+            {availability.source === "externa" && <p className="mt-2 text-[12.5px] text-fg-3">La disponibilidad externa es informativa hasta que exista una integración confirmada con el proveedor.</p>}
           </div>
         </div>
       </Group>

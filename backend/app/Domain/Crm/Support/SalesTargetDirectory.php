@@ -173,7 +173,7 @@ final class SalesTargetDirectory
         $projection = $frozen ? $actual['sales'] : $actual['sales'] + ($live['weighted_pipeline'] ?? 0);
         $progress = $goal > 0 ? round($actual['sales'] / $goal * 100, 1) : 0.0;
         $projectionPct = $goal > 0 ? round($projection / $goal * 100, 1) : 0.0;
-        $bonusPct = collect($policy['tiers'])->filter(fn (array $tier): bool => ($frozen ? $progress : $projectionPct) >= $tier['min'])->max('pay') ?? 0;
+        $bonusPct = collect($policy['tiers'])->filter(fn (array $tier): bool => $progress >= $tier['min'])->max('pay') ?? 0;
 
         return [
             'code' => $row->code,

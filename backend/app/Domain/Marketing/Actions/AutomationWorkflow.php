@@ -9,6 +9,8 @@ use App\Domain\Marketing\Support\AutomationDirectory;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Outbox\OutboxWriter;
+use App\Domain\Shared\Tenancy\TenantContext;
+use App\Jobs\SendAutomationMessages;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -18,6 +20,7 @@ final class AutomationWorkflow
         private readonly AuditLogger $audit,
         private readonly AutomationDirectory $directory,
         private readonly OutboxWriter $outbox,
+        private readonly TenantContext $context,
     ) {}
 
     public function configure(string $code, array $data, User $actor): void
@@ -117,12 +120,14 @@ final class AutomationWorkflow
 
             if ($sent->isNotEmpty()) {
                 $address = $automation->channel === 'email' ? 'email' : 'mobile';
+                $recipients = $sent->map(fn (array $item): array => ['subject_type' => $item['contact']['type'], 'subject_id' => $item['contact']['id'], 'address' => $item['contact'][$address], 'ref_type' => $item['ref_type'], 'ref_id' => $item['ref_id']])->values()->all();
                 $this->outbox->add('mkt_automation_run', $runId, 'marketing.automation.messages', [
                     'automation' => $automation->code,
                     'channel' => $automation->channel,
                     'template' => $template,
-                    'recipients' => $sent->map(fn (array $item): array => ['subject_type' => $item['contact']['type'], 'subject_id' => $item['contact']['id'], 'address' => $item['contact'][$address], 'ref_type' => $item['ref_type'], 'ref_id' => $item['ref_id']])->values()->all(),
+                    'recipients' => $recipients,
                 ]);
+                dispatch((new SendAutomationMessages((string) $automation->code, $recipients))->forTenant($this->context->idOrFail()))->afterCommit();
             }
 
             $this->audit->log('Automatización', $automation->code, 'ejecutar', "{$queue->count()} en cola", "{$sent->count()} enviados · {$suppressed->count()} suprimidos");

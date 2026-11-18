@@ -201,7 +201,7 @@ final class SiteAccount
         $link = rtrim((string) config('app.frontend_url'), '/').'/sitio/'.$tenant->subdomain.'/cuenta/verificar?email='.rawurlencode((string) $user->email).'&token='.self::verificationToken($user);
         $body = "Hola {$user->name}:\n\nGracias por crear tu cuenta en {$tenant->commercial_name}. Confirma tu correo aquí:\n{$link}\n\nCon tu cuenta ves tus reservas, tus vouchers y tus pagos en un solo lugar.";
 
-        app(QueuedMail::class)->send((string) $user->email, (string) $user->name, "Confirma tu correo · {$tenant->commercial_name}", $body);
+        app(QueuedMail::class)->sendAsAgency((string) $user->email, (string) $user->name, "Confirma tu correo · {$tenant->commercial_name}", $body);
     }
 
     private function assertEmailFree(string $email): void

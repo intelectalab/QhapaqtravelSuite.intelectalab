@@ -1,9 +1,9 @@
 "use client";
 
-import { CalendarRange, ChartColumn, Layers, ShoppingBag, UserRound } from "lucide-react";
+import { CalendarRange, ChartColumn, Layers, ShoppingBag, UserRound, Users } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { DataTable } from "@/components/table/DataTable";
-import type { Column, FilterConfig, SortOption } from "@/components/table/types";
+import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { BarChart } from "@/components/ui/Charts";
 import { Select } from "@/components/ui/Select";
@@ -59,7 +59,7 @@ export function CostCenterUsage({ center, currency, amount }: { center: CostCent
   );
 }
 
-export function CorporateSummaryView({ summary, purchases }: { summary: CorporateSummary; purchases: CorporatePurchases }) {
+export function CorporateSummaryCharts({ summary }: { summary: CorporateSummary }) {
   const cur = summary.currency;
   const months = summary.months.map((month) => ({ label: month.label, value: num(month.amount), caption: num(month.amount) > 0 ? formatMoney(month.amount, cur, { compact: true }) : "", detail: `${formatMoney(month.amount, cur)} · ${month.count} compras`, highlight: month.month >= summary.period.from.slice(0, 7) && month.month <= summary.period.to.slice(0, 7) }));
   const maxTraveler = Math.max(1, ...summary.travelers.map((row) => num(row.amount)));
@@ -114,14 +114,21 @@ export function CorporateSummaryView({ summary, purchases }: { summary: Corporat
           )}
         </SectionCard>
       </div>
-      <SectionCard icon={ShoppingBag} title="Compras del período" aside={purchases.items.length}>
-        <PurchasesTable data={purchases} centers={summary.cost_centers} />
-      </SectionCard>
     </div>
   );
 }
 
-function PurchasesTable({ data, centers }: { data: CorporatePurchases; centers: CostCenter[] }) {
+export function CorporateSummaryView({ summary, purchases }: { summary: CorporateSummary; purchases: CorporatePurchases }) {
+  return (
+    <SectionCard icon={ShoppingBag} title="Compras del período" aside={purchases.items.length}>
+      <PurchasesTable data={purchases} summary={summary} />
+    </SectionCard>
+  );
+}
+
+function PurchasesTable({ data, summary }: { data: CorporatePurchases; summary: CorporateSummary }) {
+  const centers = summary.cost_centers;
+  const cur = summary.currency;
   const columns: Column<CorporatePurchase>[] = [
     { id: "date", header: "Compra", cell: (row) => <span className="text-[13px]">{formatDate(row.date)}</span> },
     {
@@ -146,5 +153,9 @@ function PurchasesTable({ data, centers }: { data: CorporatePurchases; centers: 
     { id: "date", label: "Fecha de compra", type: "date", value: (row) => row.date },
     { id: "amount", label: "Importe", type: "number", value: (row) => num(row.amount) },
   ];
-  return <DataTable screen="portal-corporativo-compras" rows={data.items} columns={columns} getKey={(row) => row.id} entityLabel="compras" searchText={(row) => `${row.reservation} ${row.title} ${row.cost_center ?? ""} ${row.travelers.join(" ")}`} searchPlaceholder="Buscar reserva, viaje o viajero" filters={filters} sorts={sorts} emptyTitle="Sin compras en el período" />;
+  const metrics: MetricFilter<CorporatePurchase>[] = [
+    { id: "total", label: "Total comprado", tone: "t1", icon: <ShoppingBag size={19} />, display: formatMoney(summary.kpis.total, cur), note: `${summary.kpis.purchases} compras · ${summary.kpis.average_ticket ? `ticket promedio ${formatMoney(summary.kpis.average_ticket, cur)}` : summary.period.label}`, info: <p>Suma de las reservas de tu empresa creadas en el período, convertidas a la moneda de la cuenta; las compras de meses cerrados salen del estado de cuenta emitido. La nota divide ese total entre el número de compras. Al presionarla ves todas las compras del período.</p>, matches: () => true },
+    { id: "travelers", label: "Viajeros", tone: "info", icon: <Users size={19} />, display: summary.kpis.travelers, note: "Personas distintas que viajaron", info: <p>Pasajeros de las reservas del período y viajeros asignados en el reparto de costos. Al presionarla ves las compras que tienen viajeros asignados.</p>, matches: (row) => row.travelers.length > 0 },
+  ];
+  return <DataTable screen="portal-corporativo-compras" rows={data.items} columns={columns} getKey={(row) => row.id} entityLabel="compras" searchText={(row) => `${row.reservation} ${row.title} ${row.cost_center ?? ""} ${row.travelers.join(" ")}`} searchPlaceholder="Buscar reserva, viaje o viajero" metrics={metrics} filters={filters} sorts={sorts} emptyTitle="Sin compras en el período" />;
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Platform\Support;
 
 use App\Domain\Platform\Actions\StartTrial;
+use App\Domain\Shared\Money\Decimal;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Illuminate\Database\ConnectionInterface;
@@ -248,7 +249,7 @@ final class BillingDirectory
                 $current = [
                     'users' => (float) ($users[$tenant->id] ?? 0),
                     'sedes' => (float) ($sedes[$tenant->id] ?? 0),
-                    'storage_gb' => round((int) $tenant->storage_used_bytes / 1024 ** 3, 1),
+                    'storage_gb' => round((int) $tenant->storage_used_bytes / 1024 ** 3, 4),
                 ];
                 $metrics = collect(self::USAGE_METRICS)->map(function (string $metric) use ($current, $values, $planLimits): array {
                     $value = $current[$metric] ?? (float) ($values[$metric] ?? 0);
@@ -290,7 +291,7 @@ final class BillingDirectory
 
     public function couponLabel(object $coupon): string
     {
-        $value = $coupon->type === 'percent' ? rtrim(rtrim(number_format((float) $coupon->value, 2, '.', ''), '0'), '.').' %' : 'S/ '.number_format((float) $coupon->value, 2, '.', ' ');
+        $value = $coupon->type === 'percent' ? rtrim(rtrim(number_format((float) $coupon->value, 2, '.', ''), '0'), '.').' %' : Decimal::display($coupon->value, 'PEN');
         $cycles = (int) $coupon->duration_cycles;
 
         return "{$value} por {$cycles} ".($cycles === 1 ? 'mes' : 'meses');

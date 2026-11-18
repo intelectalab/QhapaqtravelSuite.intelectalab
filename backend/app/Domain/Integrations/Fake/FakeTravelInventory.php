@@ -6,6 +6,7 @@ namespace App\Domain\Integrations\Fake;
 
 use App\Domain\Integrations\Contracts\TravelInventory;
 use App\Domain\Integrations\Data\AdapterResult;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Illuminate\Support\Carbon;
@@ -28,6 +29,10 @@ final class FakeTravelInventory implements TravelInventory
 
     public function search(array $criteria): array
     {
+        if (IntegrationReadiness::enforced()) {
+            return [];
+        }
+
         $kind = (string) $criteria['kind'];
 
         return array_map(fn (int $index) => $this->offer($kind, $criteria, $index), [0, 1, 2]);
@@ -35,6 +40,10 @@ final class FakeTravelInventory implements TravelInventory
 
     public function find(string $provider, string $offerRef): ?array
     {
+        if (IntegrationReadiness::enforced()) {
+            return null;
+        }
+
         if (preg_match('/^SBX-([a-z]+)-(\d)-([A-Za-z0-9_-]+)$/', $offerRef, $match) !== 1 || ! isset(self::PROVIDERS[$match[1]])) {
             return null;
         }
@@ -53,6 +62,10 @@ final class FakeTravelInventory implements TravelInventory
 
     public function healthcheck(): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::health('travel_inventory')) !== null) {
+            return $unavailable;
+        }
+
         return AdapterResult::success('ok', null, ['simulated' => true]);
     }
 

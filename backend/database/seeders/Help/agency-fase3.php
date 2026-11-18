@@ -49,12 +49,14 @@ return [
     ], ['ia', 'asistente', 'borrador', 'cupo']),
     $article('marketing-recuperacion', 'Marketing', '/marketing/recuperacion', 'Recuperación de ventas', 'Flujos que escriben al cliente que dejó un carrito o una cotización sin cerrar, para retomar la venta.', [
         ['Crear un flujo', 'Elige qué se recupera, cuánto esperar y qué mensaje enviar.'],
-        ['Ver los intentos', 'En «Intentos» revisa a quién se escribió, cuándo y si volvió a comprar.'],
+        ['Cómo sale', 'Cada 15 minutos el sistema busca carritos sin actividad y cotizaciones enviadas sin respuesta que ya cumplieron la espera, y escribe al cliente. Entre un intento y el siguiente deja la misma espera, hasta el máximo de intentos del flujo.'],
+        ['Ver los intentos', 'En «Intentos» revisa a quién se escribió, cuándo y si volvió a comprar. Si el cliente compra después del mensaje, el intento queda «Recuperado» con la reserva y su importe.'],
     ], [
-        ['¿Se escribe a quien no dio permiso?', 'No. Solo a quien aceptó recibir comunicaciones.'],
+        ['¿Se escribe a quien no dio permiso?', 'No. Solo a quien aceptó recibir comunicaciones por ese canal; si no, el intento queda «Descartado».'],
+        ['¿Qué enlace recibe el cliente?', 'En una cotización, el enlace de su propuesta para revisarla y aprobarla; en un carrito, el carrito del sitio de la agencia.'],
     ], ['recuperacion', 'carrito', 'abandono', 'marketing']),
     $article('canales-ota', 'Canales', '/canales/ota', 'Conexión con OTAs', 'Conecta tu catálogo con agencias en línea, relaciona tus productos con los suyos y recibe sus reservas.', [
-        ['Conectar', 'Pulsa «Nueva conexión», elige la OTA y escribe su clave. Se guarda cifrada.'],
+        ['Conectar', 'Pulsa «Conectar OTA», elige la OTA y escribe su clave. Se guarda cifrada.'],
         ['Relacionar productos', 'En «Mapeos» indica qué producto tuyo corresponde a cada uno de la OTA.'],
         ['Reservas recibidas', 'En «Reservas» revisa lo que llegó desde cada OTA.'],
     ], [
@@ -95,7 +97,7 @@ return [
         ['¿Puedo cancelar un link?', 'Sí, mientras no esté pagado.'],
     ], ['link de pago', 'cobro', 'pago en linea']),
     $article('finanzas-vales', 'Finanzas', '/finanzas/vales', 'Vales de regalo', 'Vende y administra vales de regalo que el cliente usa para pagar sus viajes.', [
-        ['Emitir', 'Crea el vale con su monto y vigencia. El código se muestra una sola vez.'],
+        ['Emitir', 'Crea el vale con su monto y vigencia. El código se muestra una sola vez. Si eliges «Enviar el», el correo con el código sale ese día a las 8:00; mientras tanto el código queda guardado cifrado.'],
         ['Canjear o anular', 'Desde el detalle registra un canje o anula el vale.'],
     ], [
         ['¿Se pueden comprar en el sitio?', 'Sí, en la página de regalos del sitio, pagando con tarjeta.'],

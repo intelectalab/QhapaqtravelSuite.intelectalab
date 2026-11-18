@@ -8,7 +8,7 @@ import { ChannelBadge } from "@/features/channels/ChannelUi";
 import { SERVICE_KINDS } from "@/lib/channels";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/format";
-import type { OperatorPreview, OperatorService } from "@/lib/mobile";
+import type { OperatorDay, OperatorPreview, OperatorService } from "@/lib/mobile";
 import { toneStyle, type Tone } from "@/lib/tone";
 import { AppTabBar, PhoneFrame } from "./PhoneFrame";
 
@@ -50,7 +50,7 @@ function ServiceCard({ service, index }: { service: OperatorService; index: numb
   );
 }
 
-export function OperatorPhone({ preview }: { preview: OperatorPreview }) {
+export function OperatorPhone({ preview }: { preview: OperatorDay }) {
   const who = preview.selected_staff;
   return (
     <PhoneFrame

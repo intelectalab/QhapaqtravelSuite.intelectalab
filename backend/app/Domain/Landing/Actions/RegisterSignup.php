@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Landing\Actions;
 
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use App\Domain\Landing\Contracts\RucLookup;
+use App\Domain\Landing\Fake\FakeRucLookup;
 use App\Domain\Landing\Support\SignupQuote;
 use App\Domain\Landing\Support\SignupState;
 use App\Domain\Platform\Actions\PlatformSession;
@@ -49,6 +51,8 @@ final class RegisterSignup
             'phone' => ['nullable', 'string', 'max:30', 'regex:/^[0-9+()\s-]{6,30}$/'],
             'commercial_name' => ['required', 'string', 'min:2', 'max:150'],
             'ruc' => ['required', 'string'],
+            'legal_name' => ['nullable', 'string', 'max:200'],
+            'fiscal_address' => ['nullable', 'string', 'max:250'],
             'city' => ['required', 'string', 'min:2', 'max:80'],
             'business_type' => ['required', Rule::in(TenantProvisionRequest::BUSINESS_TYPES)],
             'doc_type' => ['nullable', 'in:factura'],
@@ -106,7 +110,7 @@ final class RegisterSignup
             $this->assertTrialDomain($email);
         }
 
-        $taxpayer = $this->ruc->find($ruc);
+        $taxpayer = IntegrationReadiness::usable('ruc') ? $this->ruc->find($ruc) : $this->declared($ruc, $data);
 
         if ($taxpayer === null || ! $taxpayer['active']) {
             throw ApiException::unprocessable('RUC_INVALID', $taxpayer === null ? 'El RUC no es válido: debe tener 11 dígitos, empezar en 10 o 20 y figurar en SUNAT.' : "El RUC figura en SUNAT como {$taxpayer['status']}. Usa un RUC activo.", ['field' => 'ruc']);
@@ -121,6 +125,22 @@ final class RegisterSignup
         }
 
         return $this->db()->transaction(fn (): array => $this->create($data, $email, $ruc, $cycle, $trial, $plan, $taxpayer, $coupon, $addons, $totals));
+    }
+
+    private function declared(string $ruc, array $data): ?array
+    {
+        if (preg_match('/^(10|20)\d{9}$/', $ruc) !== 1 || (int) $ruc[10] !== FakeRucLookup::checkDigit(substr($ruc, 0, 10))) {
+            return null;
+        }
+
+        $legalName = trim((string) ($data['legal_name'] ?? ''));
+        $address = trim((string) ($data['fiscal_address'] ?? ''));
+
+        if (mb_strlen($legalName) < 3 || mb_strlen($address) < 5) {
+            throw ApiException::unprocessable('VALIDATION_ERROR', 'Escribe la razón social y el domicilio fiscal tal como figuran en tu ficha RUC.', ['field' => mb_strlen($legalName) < 3 ? 'legal_name' : 'fiscal_address']);
+        }
+
+        return ['ruc' => $ruc, 'legal_name' => mb_substr($legalName, 0, 200), 'address' => mb_substr($address, 0, 250), 'active' => true, 'status' => 'DECLARADO', 'source' => 'Declarado por la agencia'];
     }
 
     private function create(array $data, string $email, string $ruc, string $cycle, bool $trial, object $plan, array $taxpayer, ?object $coupon, array $addons, array $totals): array

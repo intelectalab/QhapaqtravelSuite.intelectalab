@@ -1,7 +1,8 @@
 "use client";
 
-import { CalendarClock, Clock3, FilePen, Filter, Mail, Megaphone, MessageCircle, Send, Users } from "lucide-react";
+import { CalendarClock, CircleCheck, CircleX, Coins, FilePen, Filter, Hourglass, Mail, MailOpen, Megaphone, MessageCircle, Send, Users } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -9,7 +10,7 @@ import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { InfoTip } from "@/components/ui/InfoTip";
-import { formatDate, formatDateTime, formatMoney, formatPercent } from "@/lib/format";
+import { formatDate, formatDateTime, formatMoney, formatNumber, formatPercent } from "@/lib/format";
 import { campaignHref, rate, TEMPLATE_STATUS, type Campaign, type MarketingOverview, type MarketingTemplate } from "@/lib/marketing";
 import { toneStyle } from "@/lib/tone";
 import { CampaignCancelAction, CampaignDetailAction, CampaignDuplicateAction, CampaignFormAction } from "./CampaignForms";
@@ -90,13 +91,38 @@ function CampaignsTable({ overview }: { overview: MarketingOverview }) {
         ),
     },
   ];
+  const { kpis } = overview;
+  const [since] = useState(() => Date.now() - 90 * 86_400_000);
+  const sentRecently = (row: Campaign) => row.status === "enviada" && row.sent_at !== null && new Date(row.sent_at).getTime() >= since;
   const metrics: MetricFilter<Campaign>[] = [
+    {
+      id: "open",
+      label: "Apertura en 90 días",
+      tone: "info",
+      icon: <MailOpen size={19} />,
+      display: kpis.open_rate !== null ? formatPercent(kpis.open_rate, 0) : "Sin datos",
+      note: `${kpis.click_rate !== null ? `${formatPercent(kpis.click_rate, 0)} con clic · ` : ""}${formatNumber(kpis.delivered_90)} entregados`,
+      info: <p>Destinatarios que abrieron o leyeron el mensaje entre los entregados, en las campañas enviadas en los últimos 90 días; la nota suma los clics y los entregados de esas campañas. Al presionarla, la tabla muestra solo esas campañas con su apertura.</p>,
+      matches: sentRecently,
+    },
+    {
+      id: "revenue",
+      label: "Ingresos atribuidos",
+      tone: "ok",
+      icon: <Coins size={19} />,
+      display: formatMoney(kpis.revenue),
+      note: `${kpis.reservations} reservas en 90 días`,
+      info: <p>Reservas confirmadas de destinatarios creadas hasta 30 días después del envío y que no vienen de una cotización anterior, en soles con su tipo de cambio. Al presionarla, la tabla muestra las campañas que las trajeron.</p>,
+      matches: (row) => sentRecently(row) && row.attribution.revenue > 0,
+    },
     { id: "sent", label: "Enviadas", tone: "ok", icon: <Send size={19} />, matches: (row) => row.status === "enviada" },
     { id: "scheduled", label: "Programadas", tone: "info", icon: <CalendarClock size={19} />, matches: (row) => row.status === "programada" },
     { id: "draft", label: "Borradores", tone: "mute", icon: <FilePen size={19} />, matches: (row) => row.status === "borrador" },
-    { id: "sending", label: "Enviando", tone: "sun", icon: <Clock3 size={19} />, matches: (row) => row.status === "enviando" },
   ];
-  const filters: FilterConfig<Campaign>[] = [{ id: "channel", label: "Canal", options: [{ value: "email", label: "Email" }, { value: "whatsapp", label: "WhatsApp" }], value: (row) => row.channel }];
+  const filters: FilterConfig<Campaign>[] = [
+    { id: "channel", label: "Canal", options: [{ value: "email", label: "Email" }, { value: "whatsapp", label: "WhatsApp" }], value: (row) => row.channel },
+    { id: "status", label: "Estado", options: [...new Map(rows.map((row) => [row.status, row.status_label]))].map(([value, label]) => ({ value, label })), value: (row) => row.status },
+  ];
   const sorts: SortOption<Campaign>[] = [
     { id: "created", label: "Fecha de creación", type: "date", value: (row) => row.created_at },
     { id: "revenue", label: "Ingresos", type: "number", value: (row) => row.attribution.revenue },
@@ -267,6 +293,11 @@ function TemplatesTable({ overview }: { overview: MarketingOverview }) {
     { id: "channel", label: "Canal", options: [{ value: "email", label: "Email" }, { value: "whatsapp", label: "WhatsApp" }], value: (row) => row.channel },
     { id: "status", label: "Estado", options: Object.entries(TEMPLATE_STATUS).map(([value, item]) => ({ value, label: item.label })), value: (row) => row.status },
   ];
+  const metrics: MetricFilter<MarketingTemplate>[] = [
+    { id: "usable", label: "Listas para usar", tone: "ok", icon: <CircleCheck size={19} />, note: `${overview.templates.filter((row) => row.usable && row.uses > 0).length} en uso por campañas`, info: <p>Plantillas de email activas y de WhatsApp aprobadas por Meta: son las que se pueden elegir al crear una campaña. La nota cuenta las que ya usa al menos una campaña. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => row.usable },
+    { id: "review", label: "En revisión de Meta", tone: "sun", icon: <Hourglass size={19} />, info: <p>Plantillas de WhatsApp enviadas a Meta que aún no tienen respuesta; no se pueden usar hasta que se aprueben. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => row.status === "en_revision" },
+    { id: "rejected", label: "Rechazadas por Meta", tone: "bad", icon: <CircleX size={19} />, info: <p>Plantillas de WhatsApp que Meta no aprobó; hay que corregirlas y volver a enviarlas. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => row.status === "rechazada" },
+  ];
   return (
     <DataTable
       screen="marketing-plantillas"
@@ -276,6 +307,7 @@ function TemplatesTable({ overview }: { overview: MarketingOverview }) {
       entityLabel="plantillas"
       searchText={(row) => `${row.code} ${row.name} ${row.body}`}
       searchPlaceholder="Buscar plantilla"
+      metrics={metrics}
       filters={filters}
       toolbarEnd={manage ? <TemplateFormAction variables={overview.variables} /> : undefined}
     />

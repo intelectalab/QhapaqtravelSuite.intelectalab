@@ -25,7 +25,7 @@ final class SupplierVouchers
         return DB::transaction(function () use ($account, $code, $confirmFuture, $version): array {
             $code = Str::upper(trim($code));
             $voucher = (clone $account->vouchers())->where('v.code', $code)->lock('for update of v')->first(['v.*', 'r.code as reservation_code'])
-                ?? throw ApiException::notFound("El código {$code} no corresponde a un voucher emitido a su establecimiento.");
+                ?? throw ApiException::notFound("El código {$code} no corresponde a un voucher emitido a tu establecimiento.");
 
             if ($version !== null) {
                 IfMatch::assertMatches($version, (int) $voucher->lock_version, 'El voucher');
@@ -44,11 +44,11 @@ final class SupplierVouchers
             $days = (int) Carbon::parse(Carbon::now($this->context->timezone())->toDateString())->diffInDays(Carbon::parse($voucher->service_date), false);
 
             if ($days > self::EARLY_DAYS) {
-                throw ApiException::unprocessable('SUP-BR-32', "El servicio es dentro de {$days} días. Solo puede registrar el uso el día del servicio o el anterior.");
+                throw ApiException::unprocessable('SUP-BR-32', "El servicio es dentro de {$days} días. Solo puedes registrar el uso el día del servicio o el anterior.");
             }
 
             if ($days > 0 && ! $confirmFuture) {
-                throw ApiException::unprocessable('SUP-BR-32', 'El servicio es mañana. Registre el uso solo si el huésped ya se presentó y confírmelo.', ['requires_confirmation' => true]);
+                throw ApiException::unprocessable('SUP-BR-32', 'El servicio es mañana. Registra el uso solo si el huésped ya se presentó y confírmalo.', ['requires_confirmation' => true]);
             }
 
             DB::table('ops_vouchers')->where('id', $voucher->id)->update(['status' => 'utilizado', 'used_at' => now(), 'used_by' => $account->user->getKey(), 'used_via' => 'extranet', 'updated_by' => $account->user->getKey(), 'updated_at' => now()]);

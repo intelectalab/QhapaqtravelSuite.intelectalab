@@ -9,10 +9,12 @@ import { ExecutivePanel } from "@/features/dashboard/ExecutivePanel";
 import { FinancePanel } from "@/features/dashboard/FinancePanel";
 import { OperationsPanel } from "@/features/dashboard/OperationsPanel";
 import { SalesPanel } from "@/features/dashboard/SalesPanel";
+import { SetupChecklist } from "@/features/integrations/SetupChecklist";
 import { isAllowed } from "@/lib/access";
 import type { HomePanel, PanelName } from "@/lib/dashboard";
 import { capitalize, formatDate } from "@/lib/format";
 import { getAccess, getHomeDashboard } from "@/lib/server/dashboard";
+import { getReadiness } from "@/lib/server/integrations";
 import { currentUser } from "@/lib/server/me";
 
 export const metadata: Metadata = { title: "Panel de control" };
@@ -57,7 +59,7 @@ function PanelBody({ home, can }: { home: HomePanel; can: CanOpen }) {
 }
 
 export default async function InicioPage() {
-  const [me, home, access] = await Promise.all([currentUser(), getHomeDashboard(), getAccess()]);
+  const [me, home, access, readiness] = await Promise.all([currentUser(), getHomeDashboard(), getAccess(), getReadiness()]);
   const can: CanOpen = (href) => isAllowed(access?.screens ?? null, href);
   const look = LOOK[home.panel];
   const today = home.data?.today ?? new Date().toISOString().slice(0, 10);
@@ -88,6 +90,7 @@ export default async function InicioPage() {
             ))}
         </div>
       </div>
+      <SetupChecklist readiness={readiness} />
       <PanelBody home={home} can={can} />
     </>
   );

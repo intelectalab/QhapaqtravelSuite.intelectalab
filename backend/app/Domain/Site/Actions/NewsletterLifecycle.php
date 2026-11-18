@@ -16,6 +16,8 @@ use stdClass;
 
 final class NewsletterLifecycle
 {
+    private const CONTACT_TABLES = ['client' => 'crm_clients', 'lead' => 'crm_leads', 'subscriber' => 'mkt_contacts_subscribers'];
+
     public function __construct(private readonly TenantContext $context, private readonly AuditLogger $audit) {}
 
     public static function token(string $subscriberCode, string $email): string
@@ -26,6 +28,11 @@ final class NewsletterLifecycle
     public static function campaignToken(string $recipientId): string
     {
         return 'c'.$recipientId.'.'.hash_hmac('sha256', 'campaign|'.$recipientId, (string) config('app.key'));
+    }
+
+    public static function contactToken(string $type, string $id): string
+    {
+        return 'k'.$type.'-'.$id.'.'.hash_hmac('sha256', 'contact|'.$type.'|'.$id, (string) config('app.key'));
     }
 
     public static function unsubscribeUrl(string $subdomain, string $token): string
@@ -57,6 +64,10 @@ final class NewsletterLifecycle
             return $this->unsubscribeRecipient($match[1], $token);
         }
 
+        if (preg_match('/^k(client|lead|subscriber)-([0-9a-f-]{36})\./', $token, $match) === 1) {
+            return $this->unsubscribeContact($match[1], $match[2], $token);
+        }
+
         [$subscriber, $consent] = $this->resolve($token);
         $now = Carbon::now($this->context->timezone());
 
@@ -80,17 +91,9 @@ final class NewsletterLifecycle
         }
 
         $now = Carbon::now($this->context->timezone());
-        $source = "Enlace de baja de la campaña {$recipient->campaign}";
 
-        DB::transaction(function () use ($recipient, $now, $source): void {
-            $consent = DB::table('mkt_consents')->where('subject_type', $recipient->subject_type)->where('subject_id', $recipient->subject_id)->where('channel', 'email')->lockForUpdate()->first(['id', 'code', 'status']);
-
-            if ($consent !== null && $consent->status !== 'revocado') {
-                DB::table('mkt_consents')->where('id', $consent->id)->update(['status' => 'revocado', 'revoked_at' => $now, 'revoke_source' => $source, 'revoke_campaign_id' => $recipient->campaign_id, 'lock_version' => DB::raw('lock_version + 1'), 'updated_at' => $now]);
-                $this->event((string) $consent->id, 'revocado', $source, $now);
-                $this->audit->log('Consentimiento', (string) $consent->code, 'baja_email', 'otorgado', "revocado · {$source}");
-                app(UnsubscribeConfirmation::class)->send((string) $recipient->subject_type, (string) $recipient->subject_id, 'email', (string) $consent->id);
-            }
+        DB::transaction(function () use ($recipient, $now): void {
+            $this->revokeEmail((string) $recipient->subject_type, (string) $recipient->subject_id, "Enlace de baja de la campaña {$recipient->campaign}", $now, (string) $recipient->campaign_id);
 
             if ($recipient->unsubscribed_at === null) {
                 DB::table('mkt_campaign_recipients')->where('id', $recipient->id)->update(['unsubscribed_at' => $now, 'updated_at' => $now]);
@@ -98,6 +101,34 @@ final class NewsletterLifecycle
         });
 
         return ['email' => $recipient->address, 'status' => 'baja'];
+    }
+
+    private function unsubscribeContact(string $type, string $id, string $token): array
+    {
+        $table = self::CONTACT_TABLES[$type];
+        $email = DB::table($table)->where('id', $id)->value('email');
+
+        if ($email === null || ! hash_equals(self::contactToken($type, $id), $token)) {
+            throw ApiException::notFound('El enlace no es válido.');
+        }
+
+        DB::transaction(fn () => $this->revokeEmail($type, $id, 'Enlace de baja de un mensaje automático', Carbon::now($this->context->timezone())));
+
+        return ['email' => $email, 'status' => 'baja'];
+    }
+
+    private function revokeEmail(string $type, string $id, string $source, Carbon $now, ?string $campaignId = null): void
+    {
+        $consent = DB::table('mkt_consents')->where('subject_type', $type)->where('subject_id', $id)->where('channel', 'email')->lockForUpdate()->first(['id', 'code', 'status']);
+
+        if ($consent === null || $consent->status === 'revocado') {
+            return;
+        }
+
+        DB::table('mkt_consents')->where('id', $consent->id)->update(['status' => 'revocado', 'revoked_at' => $now, 'revoke_source' => $source, 'revoke_campaign_id' => $campaignId, 'lock_version' => DB::raw('lock_version + 1'), 'updated_at' => $now]);
+        $this->event((string) $consent->id, 'revocado', $source, $now);
+        $this->audit->log('Consentimiento', (string) $consent->code, 'baja_email', 'otorgado', "revocado · {$source}");
+        app(UnsubscribeConfirmation::class)->send($type, $id, 'email', (string) $consent->id);
     }
 
     private function resolve(string $token): array

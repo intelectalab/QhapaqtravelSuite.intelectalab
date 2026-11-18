@@ -35,7 +35,7 @@ final class ManageEcommerce
         $until = Carbon::now($tenant->timezone ?: 'America/Lima')->addDays(self::LINK_DAYS)->toDateString();
         $link = rtrim((string) config('app.frontend_url'), '/').'/sitio/'.$tenant->subdomain.'/confirmacion/'.$order->code.'/acceso?token='.SiteCheckout::paymentLink($order, $until);
         $body = "Hola {$order->customer_name}:\n\nTu pedido {$order->code} con {$tenant->commercial_name} está listo para el pago.".($note ? "\n\n{$note}" : '')."\n\nPaga aquí con tarjeta, transferencia, Yape o Plin:\n{$link}\n\nEl enlace vence el ".Carbon::parse($until)->format('d/m/Y').'.';
-        app(QueuedMail::class)->send((string) $order->customer_email, (string) $order->customer_name, "Completa el pago de tu pedido {$order->code} · {$tenant->commercial_name}", $body);
+        app(QueuedMail::class)->sendAsAgency((string) $order->customer_email, (string) $order->customer_name, "Completa el pago de tu pedido {$order->code} · {$tenant->commercial_name}", $body);
         $this->audit->log('Pedido web', $code, 'enviar_enlace_pago', $order->status, "{$order->customer_email} · vence {$until}", actor: $actor);
 
         return ['code' => $order->code, 'sent_to' => $order->customer_email, 'expires_on' => $until];

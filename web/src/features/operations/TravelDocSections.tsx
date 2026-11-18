@@ -13,7 +13,6 @@ import { ChipToggleGroup } from "@/components/ui/ChipToggleGroup";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { TravelDocList, TravelDocPassenger, TravelDocRow, TravelDocRules } from "@/lib/operations";
 import type { StepResult } from "@/lib/server/resource";
@@ -41,26 +40,6 @@ export const mapiState = (mapi: Mapi, date?: string, today?: string): { label: s
   if ((date && today && date < today) || (!date && mapi.used)) return { label: "Utilizada", tone: "mute" };
   return mapi.blocked ? { label: "Bloqueada", tone: "bad" } : { label: "Habilitada", tone: "ok" };
 };
-
-export function TravelDocTiles({ data }: { data: TravelDocList }) {
-  const totals = data.items.reduce((sum, row) => ({ complete: sum.complete + row.documents.complete, total: sum.total + row.documents.total }), { complete: 0, total: 0 });
-  const pending = data.passengers.filter((person) => person.status !== "completo");
-  const blocked = data.items.filter((row) => row.mapi && row.mapi.blocked && !row.mapi.used);
-  return (
-    <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-3">
-      <TintTile icon={FileCheck2} tone="ok" label="Avance documental" value={totals.total > 0 ? `${Math.round((totals.complete / totals.total) * 100)} %` : "—"} note={`${totals.complete} de ${totals.total} documentos validados`} info={<p>Documentos validados sobre todos los que piden las reservas con checklist, sin contar las canceladas.</p>} />
-      <TintTile icon={Users} tone="warn" label="Pasajeros pendientes" value={pending.length} note={`De ${data.passengers.length} pasajeros`} info={<p>Pasajeros con algún documento pendiente, por revisar, observado o que vence antes del regreso.</p>} />
-      <TintTile
-        icon={Lock}
-        tone={blocked.length ? "bad" : "ok"}
-        label="Entradas MAPI retenidas"
-        value={blocked.length}
-        note="Reservas con ingreso por venir"
-        info={blocked.length ? <p>No se emiten entradas a Machu Picchu sin la identidad validada de cada pasajero: {blocked.map((row) => row.code).join(", ")}.</p> : <p>Ninguna reserva con ingreso por venir tiene entradas retenidas.</p>}
-      />
-    </section>
-  );
-}
 
 export function TravelPassengersTable({ data }: { data: TravelDocList }) {
   const rows = data.passengers;
@@ -103,10 +82,11 @@ export function TravelPassengersTable({ data }: { data: TravelDocList }) {
     { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => <RowActions><RowIcon tone="view" label="Ver checklist" href={href(row.reservation)} /></RowActions> },
   ];
   const metrics: MetricFilter<TravelDocPassenger>[] = [
-    { id: "review", label: "Por revisar", tone: "info", icon: <Clock3 size={19} />, matches: (row) => row.status === "recibido" },
-    { id: "observed", label: "Observados o vencidos", tone: "bad", icon: <CircleAlert size={19} />, matches: (row) => row.status === "observado" || row.status === "vencido" },
-    { id: "minor", label: "Menores de edad", tone: "violet", icon: <Baby size={19} />, matches: (row) => row.minor },
-    { id: "attention", label: "Con atención especial", tone: "warn", icon: <HeartHandshake size={19} />, matches: (row) => row.attention },
+    { id: "pending", label: "Pasajeros pendientes", tone: "warn", icon: <Users size={19} />, note: `De ${rows.length} pasajeros`, info: <p>Pasajeros con algún documento pendiente, por revisar, observado o que vence antes del regreso. Al presionarla, la tabla muestra esos pasajeros.</p>, matches: (row) => row.status !== "completo" },
+    { id: "review", label: "Por revisar", tone: "info", icon: <Clock3 size={19} />, info: <p>Pasajeros con documentos recibidos que esperan la revisión de Operaciones. Al presionarla, la tabla muestra esos pasajeros.</p>, matches: (row) => row.status === "recibido" },
+    { id: "observed", label: "Observados o vencidos", tone: "bad", icon: <CircleAlert size={19} />, info: <p>Pasajeros con un documento observado o que vence antes del regreso. Al presionarla, la tabla muestra esos pasajeros.</p>, matches: (row) => row.status === "observado" || row.status === "vencido" },
+    { id: "minor", label: "Menores de edad", tone: "violet", icon: <Baby size={19} />, info: <p>Pasajeros menores de edad: suelen pedir permiso de viaje además de su identidad. Al presionarla, la tabla muestra esos pasajeros.</p>, matches: (row) => row.minor },
+    { id: "attention", label: "Con atención especial", tone: "t3", icon: <HeartHandshake size={19} />, info: <p>Pasajeros con una necesidad de atención especial registrada. Al presionarla, la tabla muestra esos pasajeros.</p>, matches: (row) => row.attention },
   ];
   const filters: FilterConfig<TravelDocPassenger>[] = [
     { id: "status", label: "Estado", options: [...new Set(rows.map((row) => row.status))].map((value) => ({ value, label: passengerLabel(value) })), value: (row) => row.status },
@@ -150,9 +130,15 @@ export function MapiTable({ data }: { data: TravelDocList }) {
     { id: "state", header: "Emisión", mobile: "detail", cell: (entry) => <Badge tone={state(entry).tone}>{state(entry).label}</Badge> },
     { id: "missing", header: "Pasajeros con faltantes", cell: (entry) => (entry.mapi.missing.length ? <span className="block max-w-[260px] text-[12.5px] text-fg-2">{entry.mapi.missing.map((item) => `${item.name}: ${item.documents.join(" y ").toLowerCase()}`).join(" · ")}</span> : <span className="text-[12.5px] text-ok">Todos listos</span>) },
   ];
+  const blocked = data.items.filter((row) => row.mapi && row.mapi.blocked && !row.mapi.used);
+  const metrics: MetricFilter<MapiEntry>[] = [
+    { id: "blocked", label: "Entradas MAPI retenidas", tone: blocked.length ? "bad" : "ok", icon: <Lock size={19} />, display: blocked.length, note: "Reservas con ingreso por venir", info: <p>No se emiten entradas a Machu Picchu sin la identidad validada de cada pasajero. La cifra cuenta las reservas con ingreso por venir y emisión retenida. Al presionarla, la tabla muestra sus entradas.</p>, matches: (entry) => entry.mapi.blocked && !entry.mapi.used },
+    { id: "enabled", label: "Habilitadas", tone: "ok", icon: <ShieldCheck size={19} />, info: <p>Entradas con todos los pasajeros listos: ya se pueden emitir. Al presionarla, la tabla muestra esas entradas.</p>, matches: (entry) => state(entry).label === "Habilitada" },
+    { id: "used", label: "Utilizadas", tone: "mute", icon: <FileCheck2 size={19} />, info: <p>Entradas cuyo ingreso ya pasó o que ya se usaron. Al presionarla, la tabla muestra esas entradas.</p>, matches: (entry) => state(entry).label === "Utilizada" },
+  ];
   const filters: FilterConfig<MapiEntry>[] = [{ id: "state", label: "Emisión", options: ["Bloqueada", "Habilitada", "Utilizada"].map((value) => ({ value, label: value })), value: (entry) => state(entry).label }];
   const sorts: SortOption<MapiEntry>[] = [{ id: "date", label: "Fecha de ingreso", type: "date", value: (entry) => entry.service.date }];
-  return <DataTable screen="operaciones-documentos-mapi" rows={rows} columns={columns} getKey={(entry) => entry.key} entityLabel="entradas" searchText={(entry) => `${entry.row.code} ${entry.row.title} ${entry.service.name}`} searchPlaceholder="Buscar reserva o servicio" filters={filters} sorts={sorts} emptyTitle="Sin reservas con entradas nominativas" />;
+  return <DataTable screen="operaciones-documentos-mapi" rows={rows} columns={columns} getKey={(entry) => entry.key} entityLabel="entradas" searchText={(entry) => `${entry.row.code} ${entry.row.title} ${entry.service.name}`} searchPlaceholder="Buscar reserva o servicio" metrics={metrics} filters={filters} sorts={sorts} emptyTitle="Sin reservas con entradas nominativas" />;
 }
 
 function TrekkingSwitch({ defaultValue }: { defaultValue: boolean }) {

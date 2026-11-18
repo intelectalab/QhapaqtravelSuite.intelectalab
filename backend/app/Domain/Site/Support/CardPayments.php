@@ -6,6 +6,7 @@ namespace App\Domain\Site\Support;
 
 use App\Domain\Integrations\Contracts\PaymentGateway;
 use App\Domain\Integrations\Data\PaymentRequest;
+use App\Domain\Integrations\Support\AgencyIntegrations;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Tenancy\TenantContext;
 
@@ -20,8 +21,14 @@ final class CardPayments
         return (string) config('integrations.drivers.payments', 'fake');
     }
 
+    public function available(): bool
+    {
+        return app(AgencyIntegrations::class)->usable('payments');
+    }
+
     public function openSession(string $scope, string $subject, string $amount, string $currency, string $email, ?string $returnUrl): array
     {
+        $this->assertAvailable();
         $result = $this->gateway->createCharge(new PaymentRequest($subject, $amount, $currency, 'session', $email, $returnUrl, ['tenant_id' => $this->context->idOrFail(), 'scope' => $scope]));
 
         if (! $result->ok || $result->externalId === null) {
@@ -45,6 +52,7 @@ final class CardPayments
 
     public function charge(string $scope, string $subject, string $amount, string $currency, string $email, string $token, ?string $sessionId): array
     {
+        $this->assertAvailable();
         $session = null;
 
         if ($sessionId !== null) {
@@ -69,6 +77,13 @@ final class CardPayments
             'txn' => $result->ok ? $result->externalId : null,
             'three_ds' => $result->payload['three_ds'] ?? null,
         ];
+    }
+
+    private function assertAvailable(): void
+    {
+        if (! $this->available()) {
+            throw ApiException::conflict('PAYMENT_GATEWAY_UNAVAILABLE', 'El pago con tarjeta no está disponible por ahora. Elige otro medio de pago o escríbele a la agencia.');
+        }
     }
 
     private function session(string $token): ?array

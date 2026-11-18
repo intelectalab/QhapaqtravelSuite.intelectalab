@@ -4,10 +4,13 @@ import { InfoTip } from "@/components/ui/InfoTip";
 import { AssistantBoard } from "@/features/growth/AssistantBoard";
 import type { AiUsage } from "@/lib/growth";
 import { getCachedResource } from "@/lib/server/resource";
+import { comingSoon } from "@/features/integrations/FeatureGate";
 
 export const metadata: Metadata = { title: "Asistente de ventas" };
 
 export default async function AsistentePage() {
+  const soon = await comingSoon("sales_ai", "Asistente de ventas");
+  if (soon) return soon;
   const usage = await getCachedResource<AiUsage>("/ai/usage", "No pudimos cargar el asistente.");
 
   if (!usage) {

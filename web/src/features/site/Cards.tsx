@@ -7,6 +7,7 @@ import { formatDate, formatMoney } from "@/lib/format";
 import { siteHref, type Departure, type DestinationCard as Destination, type ProductCard as Product, type Review } from "@/lib/site";
 import { Chip, Occupancy, PriceTag, RatingLine, Stars } from "./Bits";
 import { Scenery } from "./Scenery";
+import { Referential } from "./SiteMoney";
 import { useSite } from "./SiteContext";
 
 const RISE = "animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards]";
@@ -107,7 +108,12 @@ export function DestinationTile({ destination, base, index = 0, large = false, c
         {destination.tagline && <p className="mt-0.5 text-[13px] text-white/80">{destination.tagline}</p>}
         <div className="mt-3 flex items-center justify-between gap-2 text-[12.5px]">
           <span className="font-semibold">{t.cards.experiences(destination.count)}</span>
-          {destination.from && <span className="text-white/80">{t.common.fromPrice(formatMoney(destination.from.amount, destination.from.currency))}</span>}
+          {destination.from && (
+            <span className="text-right text-white/80">
+              {t.common.fromPrice(formatMoney(destination.from.amount, destination.from.currency))}
+              <Referential amount={destination.from.amount} currency={destination.from.currency} className="text-white/70" />
+            </span>
+          )}
         </div>
       </div>
     </Link>

@@ -13,25 +13,12 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
 import type { WebDomain, WebEvent, WebOverview, WidgetDefaults } from "@/lib/channels";
 import { formatDate, formatDateTime, formatMoney, formatNumber, formatPercent } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
-import { ChannelBadge, CodeSnippet, TileGrid } from "./ChannelUi";
+import { ChannelBadge, CodeSnippet } from "./ChannelUi";
 
 const initial: StepResult = { message: null, done: false };
-
-export function WebTiles({ overview }: { overview: WebOverview }) {
-  const { kpis } = overview;
-  return (
-    <TileGrid>
-      <TintTile icon={Users} tone="t4" label="Sesiones" value={formatNumber(kpis.sessions)} note="Visitantes únicos con actividad" info={<p>Sesiones distintas que enviaron al menos un evento desde el sitio o el widget, con el consentimiento del visitante.</p>} />
-      <TintTile icon={Activity} tone="violet" label="Eventos registrados" value={formatNumber(kpis.events)} note="Del sitio y del widget" info={<p>Vistas, productos vistos, carritos, checkouts y compras. La sección Eventos muestra los 50 más recientes.</p>} />
-      <TintTile icon={MousePointerClick} tone="sun" label="Traspasos al checkout" value={formatNumber(kpis.handoffs)} note="Reservas iniciadas desde el widget" info={<p>Veces que el widget pasó una selección al checkout{kpis.sessions > 0 ? `: ${formatPercent((kpis.handoffs / kpis.sessions) * 100, 1)} de las sesiones` : ""}.</p>} />
-      <TintTile icon={PackageCheck} tone="t1" label="Productos para el widget" value={formatNumber(overview.products.length)} note="Publicados en la tienda" info={<p>Solo los productos publicados en el canal e-commerce se pueden mostrar en el widget.</p>} />
-    </TileGrid>
-  );
-}
 
 function snippet(overview: WebOverview, method = overview.defaults.method): string {
   const config = overview.config;
@@ -387,8 +374,8 @@ export function DomainsTable({ rows, canManage }: { rows: WebDomain[]; canManage
     },
   ];
   const metrics: MetricFilter<WebDomain>[] = [
-    { id: "ok", label: "Verificados", tone: "ok", icon: <ShieldCheck size={19} />, matches: (row) => row.status === "verificado" },
-    { id: "pending", label: "Pendientes", tone: "warn", icon: <Globe size={19} />, matches: (row) => row.status !== "verificado" },
+    { id: "ok", label: "Verificados", tone: "ok", icon: <ShieldCheck size={19} />, info: <p>Dominios con el registro TXT comprobado en su DNS: son los únicos donde responde el widget. Al presionarla, la tabla muestra solo esos dominios.</p>, matches: (row) => row.status === "verificado" },
+    { id: "pending", label: "Pendientes", tone: "warn", icon: <Globe size={19} />, info: <p>Dominios agregados que todavía no se verifican: crea el registro TXT en tu DNS y pulsa Verificar. Al presionarla, la tabla muestra esos dominios.</p>, matches: (row) => row.status !== "verificado" },
   ];
   return <DataTable screen="canales-web-dominios" rows={rows} columns={columns} getKey={(row) => row.id} entityLabel="dominios" searchText={(row) => `${row.domain} ${row.cms ?? ""}`} searchPlaceholder="Buscar dominio" metrics={metrics} toolbarEnd={canManage ? <AddDomainAction /> : undefined} emptyTitle="Sin dominios" />;
 }
@@ -470,7 +457,7 @@ function IntegrationEvents({ overview }: { overview: WebOverview }) {
   );
 }
 
-export function EventsSection({ events }: { events: WebEvent[] }) {
+export function EventsSection({ events, kpis }: { events: WebEvent[]; kpis: WebOverview["kpis"] }) {
   const columns: Column<WebEvent>[] = [
     { id: "event", header: "Evento", mobile: "title", cell: (row) => <b className="text-[13.5px] font-semibold">{EVENT_LABELS[row.event] ?? row.event}</b> },
     { id: "detail", header: "Detalle", cell: (row) => <span className="block max-w-[260px] truncate text-[13px] text-fg-2">{row.params.title ?? row.params.page ?? "—"}</span> },
@@ -480,9 +467,15 @@ export function EventsSection({ events }: { events: WebEvent[] }) {
   ];
   const filters: FilterConfig<WebEvent>[] = [{ id: "event", label: "Evento", options: [...new Set(events.map((row) => row.event))].map((value) => ({ value, label: EVENT_LABELS[value] ?? value })), value: (row) => row.event }];
   const sorts: SortOption<WebEvent>[] = [{ id: "at", label: "Fecha", type: "date", value: (row) => row.at }];
+  const metrics: MetricFilter<WebEvent>[] = [
+    { id: "views", label: "Vistas de página", tone: "t4", icon: <Users size={19} />, note: `${formatNumber(kpis.events)} eventos de ${formatNumber(kpis.sessions)} sesiones en total`, info: <p>La nota cuenta todos los eventos del sitio y del widget y las sesiones distintas que enviaron al menos uno, con el consentimiento del visitante; la tabla muestra los 50 más recientes. Al presionarla, la tabla muestra solo las vistas de página.</p>, matches: (row) => row.event === "page_view" },
+    { id: "items", label: "Productos vistos", tone: "violet", icon: <Activity size={19} />, info: <p>Eventos de un visitante que abrió la ficha de un producto. Al presionarla, la tabla muestra solo esos eventos.</p>, matches: (row) => row.event === "view_item" },
+    { id: "handoffs", label: "Traspasos al checkout", tone: "sun", icon: <MousePointerClick size={19} />, display: formatNumber(kpis.handoffs), note: kpis.sessions > 0 ? `${formatPercent((kpis.handoffs / kpis.sessions) * 100, 1)} de las sesiones` : "Reservas iniciadas desde el widget", info: <p>Veces que el widget pasó una selección al checkout, sobre todas las sesiones. Al presionarla, la tabla muestra los eventos recientes de inicio de checkout.</p>, matches: (row) => row.event === "begin_checkout" },
+    { id: "purchases", label: "Compras", tone: "ok", icon: <PackageCheck size={19} />, info: <p>Eventos de compra registrados desde el sitio o el widget. Al presionarla, la tabla muestra solo esos eventos.</p>, matches: (row) => row.event === "purchase" },
+  ];
   return (
     <div className="flex flex-col gap-6">
-      <DataTable screen="canales-web-eventos" rows={events} columns={columns} getKey={(row) => String(row.id)} entityLabel="eventos" searchText={(row) => `${row.event} ${row.params.title ?? ""} ${row.params.page ?? ""} ${row.session} ${row.client ?? ""}`} searchPlaceholder="Buscar evento, página o sesión" filters={filters} sorts={sorts} emptyTitle="Aún no llegan eventos del sitio ni del widget" />
+      <DataTable screen="canales-web-eventos" rows={events} columns={columns} getKey={(row) => String(row.id)} entityLabel="eventos" searchText={(row) => `${row.event} ${row.params.title ?? ""} ${row.params.page ?? ""} ${row.session} ${row.client ?? ""}`} searchPlaceholder="Buscar evento, página o sesión" metrics={metrics} filters={filters} sorts={sorts} emptyTitle="Aún no llegan eventos del sitio ni del widget" />
       <div>
         <SectionHead icon={Activity} title="Eventos que se registran" />
         <ul className="flex flex-wrap gap-1.5">
@@ -503,7 +496,7 @@ export function WebIntegrationWorkspace({ overview, section }: { overview: WebOv
   if (section === "events")
     return (
       <div className="flex flex-col gap-8">
-        <EventsSection events={overview.events} />
+        <EventsSection events={overview.events} kpis={overview.kpis} />
         <IntegrationEvents overview={overview} />
       </div>
     );

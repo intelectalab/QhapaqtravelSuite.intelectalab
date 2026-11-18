@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Plane, Sprout, Star } from "lucide-react";
+import { Building2, Plane, Sprout, Star, Wallet } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -112,10 +112,11 @@ const buildColumns = (canManage: boolean): Column<ClientRow>[] => [
 ];
 
 const metrics: MetricFilter<ClientRow>[] = [
-  { id: "onTrip", label: "De viaje ahora", tone: "t4", icon: <Plane size={19} />, matches: (client) => client.onTrip },
-  { id: "vip", label: "VIP y grupos", tone: "sun", icon: <Star size={19} />, matches: (client) => client.segment === "VIP" || client.segment === "Grupos" },
-  { id: "companies", label: "Empresas", tone: "t1", icon: <Building2 size={19} />, matches: (client) => client.kind === "Empresa" },
-  { id: "noTrips", label: "Aún sin viajar", tone: "t3", icon: <Sprout size={19} />, matches: (client) => client.trips === 0 },
+  { id: "onTrip", label: "De viaje ahora", tone: "t4", icon: <Plane size={19} />, info: <p>Clientes con una reserva cuyo viaje está en curso hoy. Al presionarla, la tabla muestra solo a quienes están viajando.</p>, matches: (client) => client.onTrip },
+  { id: "balance", label: "Con saldo por cobrar", tone: "warn", icon: <Wallet size={19} />, info: <p>Clientes con cuentas por cobrar abiertas, según la columna Saldo en soles. Al presionarla, la tabla muestra solo a quienes aún deben.</p>, matches: (client) => client.balancePen > 0 },
+  { id: "vip", label: "VIP y grupos", tone: "sun", icon: <Star size={19} />, info: <p>Clientes del segmento VIP o Grupos en su ficha. Al presionarla, la tabla muestra solo esos clientes.</p>, matches: (client) => client.segment === "VIP" || client.segment === "Grupos" },
+  { id: "companies", label: "Empresas", tone: "t1", icon: <Building2 size={19} />, info: <p>Clientes registrados como empresa en lugar de persona. Al presionarla, la tabla muestra solo las empresas.</p>, matches: (client) => client.kind === "Empresa" },
+  { id: "noTrips", label: "Aún sin viajar", tone: "t3", icon: <Sprout size={19} />, info: <p>Clientes que todavía no tienen ningún viaje realizado o reservado. Al presionarla, la tabla muestra a quienes conviene hacer seguimiento para su primera compra.</p>, matches: (client) => client.trips === 0 },
 ];
 
 const sorts: SortOption<ClientRow>[] = [

@@ -9,6 +9,8 @@ export type LandingCatalog = Omit<PlansCatalog, "plans"> & {
   fx: { currency: string; rate_pen: string; date: string; source: string } | null;
   igv_pct: number;
   trial: { days: number; card_required: boolean };
+  ruc_lookup?: boolean;
+  online_payment?: boolean;
 };
 
 export interface SignupTotals {

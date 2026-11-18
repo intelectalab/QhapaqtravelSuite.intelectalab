@@ -12,6 +12,8 @@ use Illuminate\Support\Arr;
 
 final class TenantBootstrap
 {
+    public const ROLE_NAMES = ['tenant_admin' => 'Administración', 'manager' => 'Gerencia', 'sales' => 'Ventas'];
+
     public const SUPPLIER_PERMISSIONS = [
         'supplier.portal.view',
         'supplier.requests.respond',
@@ -73,7 +75,7 @@ final class TenantBootstrap
             $role = Role::query()->updateOrCreate(
                 ['name' => $seed['id'], 'guard_name' => 'api', 'tenant_id' => $tenant->getKey()],
                 [
-                    'display_name' => $seed['name'],
+                    'display_name' => self::ROLE_NAMES[$seed['id']] ?? $seed['name'],
                     'description' => $seed['desc'] ?? null,
                     'scope' => $seed['scope'],
                     'experience' => config("access.roles.{$seed['id']}.experience", 'backoffice'),

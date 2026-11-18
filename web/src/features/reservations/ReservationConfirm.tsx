@@ -6,6 +6,7 @@ import { previewConfirm } from "@/app/(backoffice)/reservas/actions";
 import { CheckItem } from "@/components/ui/CheckItem";
 import { formatDate } from "@/lib/format";
 import type { ConfirmPreview } from "@/lib/reservations";
+import { withRetry } from "@/lib/retry";
 import { ReservationRescheduleAction } from "./ReservationChangeActions";
 
 function Check({ ok, title, detail, delay, children }: { ok: boolean; title: string; detail: string; delay: number; children?: React.ReactNode }) {
@@ -22,11 +23,15 @@ export function ConfirmChecklist({ code }: { code: string }) {
 
   useEffect(() => {
     let active = true;
-    previewConfirm(code).then((result) => {
-      if (!active) return;
-      setPlan(result.plan);
-      setError(result.message);
-    });
+    withRetry(() => previewConfirm(code))
+      .then((result) => {
+        if (!active) return;
+        setPlan(result.plan);
+        setError(result.message);
+      })
+      .catch(() => {
+        if (active) setError("No pudimos revisar la disponibilidad. Cierra el panel y vuelve a abrirlo.");
+      });
     return () => {
       active = false;
     };

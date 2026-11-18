@@ -42,6 +42,8 @@ final class DemoSeeder extends Seeder
         (new HelpArticleSeeder)->run();
         $this->seedPlatformUsers();
 
+        $home = null;
+
         foreach (KitSeeds::read('tenants') as $tenantSeed) {
             if (! isset(self::DEMO_TENANTS[$tenantSeed['id']])) {
                 continue;
@@ -50,10 +52,11 @@ final class DemoSeeder extends Seeder
             $this->withinTenant($tenant, fn () => $this->seedTenantData($tenant, $tenantSeed, $permissions));
 
             if ($tenant->code === 'TNT-0001') {
+                $home = $tenant;
                 $this->withinTenant($tenant, fn () => (new CatalogDemoSeeder($tenant))->run());
                 $this->withinTenant($tenant, fn () => (new CrmDemoSeeder($tenant))->run());
 
-                foreach ($this->moduleSeeders() as $class) {
+                foreach ($this->moduleSeeders(false) as $class) {
                     $this->withinTenant($tenant, fn () => (new $class($tenant))->run());
                 }
 
@@ -69,6 +72,12 @@ final class DemoSeeder extends Seeder
 
             $this->withinTenant($tenant, fn () => app(DefaultSequences::class)->sync((string) $tenant->getKey(), Carbon::now($tenant->timezone ?: 'America/Lima')->year));
             $this->withinTenant($tenant, fn () => app(DefaultScheduledJobs::class)->sync((string) $tenant->getKey()));
+        }
+
+        if ($home !== null) {
+            foreach ($this->moduleSeeders(true) as $class) {
+                $this->withinTenant($home, fn () => (new $class($home))->run());
+            }
         }
 
         app(DefaultScheduledJobs::class)->syncPlatform();
@@ -139,10 +148,11 @@ final class DemoSeeder extends Seeder
         return (int) round((float) $amount * 1024 ** $power);
     }
 
-    private function moduleSeeders(): array
+    private function moduleSeeders(bool $allTenants): array
     {
         return collect(glob(database_path('seeders/Modules/*Seeder.php')) ?: [])
             ->map(fn (string $file): string => 'Database\\Seeders\\Modules\\'.basename($file, '.php'))
+            ->filter(fn (string $class): bool => defined("{$class}::ALL_TENANTS") === $allTenants)
             ->sortBy(fn (string $class): string => sprintf('%03d-%s', defined("{$class}::ORDER") ? constant("{$class}::ORDER") : 50, $class))
             ->values()
             ->all();

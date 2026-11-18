@@ -1,31 +1,9 @@
-import { ArrowRight, Database, TrendingUp, Users } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
-import { TintTile } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
-import { formatMoney, formatNumber } from "@/lib/format";
-import { formatBytes, type PlanSummary, type TenantSummary } from "@/lib/platform";
-
-const GB = 1024 ** 3;
-
-export function TenantsKpis({ tenants, plans }: { tenants: TenantSummary[]; plans: PlanSummary[] }) {
-  const live = tenants.filter((tenant) => tenant.status !== "suspendido");
-  const users = tenants.reduce((sum, tenant) => sum + tenant.users, 0);
-  const monthly = tenants.filter((tenant) => tenant.status === "activo").reduce((sum, tenant) => sum + Number(tenant.mrr), 0);
-  const used = tenants.reduce((sum, tenant) => sum + tenant.storage_used_bytes, 0);
-  const limits = new Map(plans.map((plan) => [plan.code, plan.limits.storage_gb ?? null]));
-  const contracted = live.reduce((sum, tenant) => sum + (tenant.plan ? (limits.get(tenant.plan.code) ?? 0) : 0), 0);
-  const unlimited = live.some((tenant) => tenant.plan && limits.has(tenant.plan.code) && limits.get(tenant.plan.code) === null);
-  const pct = contracted > 0 ? Math.min(100, Math.round((used / (contracted * GB)) * 100)) : null;
-
-  return (
-    <section aria-label="Resumen de agencias" className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <TintTile icon={Users} tone="info" label="Usuarios en plataforma" value={formatNumber(users)} note={tenants.length > 0 ? `${formatNumber(Math.round((users / tenants.length) * 10) / 10)} por agencia en promedio` : undefined} info="Suma los usuarios activos de todas las agencias, sin contar los eliminados." />
-      <TintTile icon={TrendingUp} tone="ok" label="Ingreso mensual" value={formatMoney(monthly)} note={`${formatMoney(monthly * 12)} al año`} info="Suma el precio mensual vigente de las agencias activas, sin IGV. El ingreso anual es ese monto por doce." />
-      <TintTile icon={Database} tone="sun" label="Almacenamiento usado" value={formatBytes(used)} note={contracted > 0 ? `de ${formatNumber(contracted)} GB contratados${unlimited ? " y planes ilimitados" : ""}${pct !== null ? ` · ${pct} %` : ""}` : unlimited ? "Planes sin límite de almacenamiento" : undefined} info="Lo usado sale del contador de archivos de cada agencia. Lo contratado suma el límite de almacenamiento del plan de las agencias activas y en prueba." />
-    </section>
-  );
-}
+import { formatMoney } from "@/lib/format";
+import type { PlanSummary, TenantSummary } from "@/lib/platform";
 
 export function PlanCards({ tenants, plans, current }: { tenants: TenantSummary[]; plans: PlanSummary[]; current?: string }) {
   const visible = plans.filter((plan) => plan.status !== "retired");

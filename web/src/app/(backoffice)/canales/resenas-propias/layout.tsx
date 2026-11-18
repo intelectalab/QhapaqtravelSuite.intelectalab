@@ -4,7 +4,6 @@ import { SectionLayout } from "@/components/ui/SectionNav";
 import { LayoutDashboard, Send, Settings, ShieldCheck, Star } from "lucide-react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
-import { OwnReviewTiles } from "@/features/channels/OwnReviews";
 import type { OwnReviewsOverview } from "@/lib/channels";
 import { getCachedResource } from "@/lib/server/resource";
 
@@ -22,7 +21,6 @@ export default async function OwnReviewsLayout({ children }: { children: ReactNo
         subtitle={overview.own_only ? "Opiniones de los viajeros de tu cartera." : "Opiniones de viajeros con reserva real, listas para el sitio y el widget."}
         info={<InfoTip>Solo opinan pasajeros de viajes realizados. Se publica con el consentimiento del viajero; rechazar u ocultar exige un motivo y la nota nunca lo es.</InfoTip>}
       />
-      <OwnReviewTiles kpis={overview.kpis} />
       <SectionLayout
         nav={
           <PathSectionNav

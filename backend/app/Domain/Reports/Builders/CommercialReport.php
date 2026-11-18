@@ -58,7 +58,7 @@ final class CommercialReport extends ReportBuilder
                 S::kpi('leads', $own ? 'Mis leads' : 'Leads recibidos', $leads->count()),
                 S::kpi('conversion', 'Conversión de leads', S::rate($converted->count(), $valid->count()), 'percent', "{$converted->count()} convertidos"),
                 S::kpi('pipeline', 'Pipeline abierto', round((float) $opps->whereIn('stage', self::OPEN)->sum('amount'), 2), 'money', $opps->whereIn('stage', self::OPEN)->count().' oportunidades'),
-                S::kpi('win_rate', 'Win rate', S::rate($won->count(), $decided->count()), 'percent', "{$won->count()} ganadas de {$decided->count()}"),
+                S::kpi('win_rate', 'Tasa de cierre', S::rate($won->count(), $decided->count()), 'percent', "{$won->count()} ganadas de {$decided->count()}"),
                 S::kpi('ticket', $own ? 'Mis ventas' : 'Ticket promedio', $own ? $salesTotal : ($sold->count() > 0 ? $salesTotal / $sold->count() : null), 'money'),
             ],
             'charts' => [
@@ -79,7 +79,7 @@ final class CommercialReport extends ReportBuilder
                 S::column('opportunities', 'Oport.', 'number'),
                 S::column('pipeline', 'Pipeline', 'money'),
                 S::column('won', 'Ganado', 'money'),
-                S::column('win_rate', 'Win rate', 'percent'),
+                S::column('win_rate', 'Tasa de cierre', 'percent'),
                 S::column('quotes', 'Cotiz.', 'number'),
                 S::column('approved', 'Aprob.', 'number'),
                 S::column('reservations', 'Reservas', 'number'),

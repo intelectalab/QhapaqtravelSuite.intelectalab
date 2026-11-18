@@ -11,8 +11,6 @@ import { SelectField } from "@/components/ui/SelectField";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
-import { TileGrid } from "@/features/channels/ChannelUi";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import type { GatewayAccount, GatewayFee, GatewayFeesOverview, GatewaysOverview } from "@/lib/vitrina";
@@ -22,18 +20,6 @@ const cents = (value: number) => Math.round(value * 100) / 100;
 
 function sumBy(totals: GatewayFeesOverview["totals"], key: "gross" | "fee" | "fee_tax" | "fx_spread" | "net"): string {
   return totals.map((total) => formatMoney(total[key], total.currency)).join(" · ") || "—";
-}
-
-export function GatewayTiles({ fees }: { fees: GatewayFeesOverview }) {
-  const cost = fees.totals.map((total) => ({ currency: total.currency, value: Number(total.fee) + Number(total.fee_tax) + Number(total.fx_spread), gross: Number(total.gross) }));
-  return (
-    <TileGrid>
-      <TintTile icon={CreditCard} tone="t1" label="Cobrado por pasarelas" value={sumBy(fees.totals, "gross")} note={`${fees.items.length} cobros`} info={<p>Suma bruta de los cobros hechos por pasarela, por moneda.</p>} />
-      <TintTile icon={Percent} tone="bad" label="Comisiones pagadas" value={cost.map((c) => formatMoney(c.value, c.currency)).join(" · ") || "—"} note={cost.map((c) => (c.gross ? `${((c.value / c.gross) * 100).toFixed(2)} % en ${c.currency}` : "")).join(" · ")} info={<p>Comisión de la pasarela más su IGV y el margen de cambio. La rentabilidad de cada reserva la descuenta.</p>} />
-      <TintTile icon={Wallet} tone="ok" label="Neto recibido" value={sumBy(fees.totals, "net")} info={<p>Lo que llega al banco: bruto menos comisión, IGV de la comisión y margen de cambio.</p>} />
-      <TintTile icon={FileUp} tone="sun" label="Por liquidar" value={fees.kpis.estimado ?? 0} note={`${fees.kpis.liquidado ?? 0} liquidadas · ${fees.kpis.ajustado ?? 0} ajustadas`} info={<p>Cobros con comisión estimada. Al importar el reporte de la pasarela se reemplaza por la real.</p>} />
-    </TileGrid>
-  );
 }
 
 export function GatewayFormAction({ gateway, overview }: { gateway?: GatewayAccount; overview: GatewaysOverview }) {
@@ -103,7 +89,7 @@ function GatewayCard({ gateway, overview }: { gateway: GatewayAccount; overview:
         <div><dt className="text-fg-3">Comisión</dt><dd className="font-semibold">{conditions}</dd></div>
         <div><dt className="text-fg-3">Liquidación</dt><dd className="font-semibold">{gateway.settle_days ? `${gateway.settle_days} días` : "Inmediata"}</dd></div>
         <div><dt className="text-fg-3">Moneda</dt><dd className="font-semibold">{gateway.currency}{Number(gateway.fx_spread_pct) > 0 ? ` · cambio ${gateway.fx_spread_pct} %` : ""}</dd></div>
-        <div><dt className="text-fg-3">Modo</dt><dd className="font-semibold">{gateway.mode === "produccion" ? "Producción" : "Pruebas"}{gateway.has_credentials ? " · credenciales en el vault" : ""}</dd></div>
+        <div><dt className="text-fg-3">Modo</dt><dd className="font-semibold">{gateway.mode === "produccion" ? "Producción" : "Pruebas"}{gateway.has_credentials ? " · credenciales guardadas" : ""}</dd></div>
       </dl>
       {gateway.totals.map((total) => (
         <div key={total.currency} className="flex flex-col gap-1">
@@ -133,9 +119,12 @@ export function FeesTable({ fees, gateways }: { fees: GatewayFeesOverview; gatew
     { id: "pct", header: "% efectivo", align: "right", wideOnly: true, cell: (row) => <span className="font-mono text-[12.5px]">{row.effective_pct} %</span> },
     { id: "status", header: "Estado", mobile: "detail", cell: (row) => <VitrinaBadge status={row.status} /> },
   ];
+  const cost = fees.totals.map((total) => ({ currency: total.currency, value: Number(total.fee) + Number(total.fee_tax) + Number(total.fx_spread), gross: Number(total.gross) }));
   const metrics: MetricFilter<GatewayFee>[] = [
-    { id: "estimated", label: "Estimadas", tone: "sun", icon: <Calculator size={19} />, matches: (row) => row.status === "estimado" },
-    { id: "settled", label: "Liquidadas", tone: "ok", icon: <Wallet size={19} />, matches: (row) => row.status !== "estimado" },
+    { id: "gross", label: "Cobrado por pasarelas", tone: "t1", icon: <CreditCard size={19} />, display: sumBy(fees.totals, "gross"), note: `Neto recibido ${sumBy(fees.totals, "net")}`, info: <p>Suma bruta de los cobros hechos por pasarela, por moneda. La nota muestra lo que llega al banco: bruto menos comisión, IGV de la comisión y margen de cambio. Al presionarla, la tabla muestra todos esos cobros.</p>, matches: () => true },
+    { id: "fees", label: "Comisiones pagadas", tone: "bad", icon: <Percent size={19} />, display: cost.map((c) => formatMoney(c.value, c.currency)).join(" · ") || "—", note: cost.map((c) => (c.gross ? `${((c.value / c.gross) * 100).toFixed(2)} % en ${c.currency}` : "")).filter(Boolean).join(" · ") || undefined, info: <p>Comisión de la pasarela más su IGV y el margen de cambio; la rentabilidad de cada reserva la descuenta. Al presionarla, la tabla muestra los cobros que pagaron comisión.</p>, matches: (row) => Number(row.fee) + Number(row.fee_tax) + Number(row.fx_spread) > 0 },
+    { id: "estimated", label: "Por liquidar", tone: "sun", icon: <Calculator size={19} />, note: "Con comisión estimada", info: <p>Cobros con comisión estimada. Al importar el reporte de la pasarela se reemplaza por la real. Al presionarla, la tabla muestra esos cobros.</p>, matches: (row) => row.status === "estimado" },
+    { id: "settled", label: "Liquidadas", tone: "ok", icon: <Wallet size={19} />, note: `${fees.kpis.liquidado ?? 0} liquidadas · ${fees.kpis.ajustado ?? 0} ajustadas`, info: <p>Cobros cuya comisión ya viene del reporte de liquidación de la pasarela; los ajustados cambiaron respecto a la estimación. Al presionarla, la tabla muestra esos cobros.</p>, matches: (row) => row.status !== "estimado" },
   ];
   const filters: FilterConfig<GatewayFee>[] = [{ id: "gateway", label: "Pasarela", options: gateways.map((g) => ({ value: g.id, label: g.label })), value: (row) => row.gateway.id }];
   const sorts: SortOption<GatewayFee>[] = [{ id: "date", label: "Fecha", type: "date", value: (row) => row.paid_on }, { id: "gross", label: "Bruto", type: "number", value: (row) => Number(row.gross) }];

@@ -21,7 +21,7 @@ export default async function SupplierLayout({ children }: { children: ReactNode
         children
       ) : (
         <Card className="mx-auto mt-10 max-w-xl">
-          <EmptyState icon={<Link2Off size={22} />} title="Su usuario no está vinculado a un proveedor" description="Pida a la agencia que vincule su usuario a la ficha de su empresa. Mientras tanto no verá solicitudes ni pagos." />
+          <EmptyState icon={<Link2Off size={22} />} title="Tu usuario no está vinculado a un proveedor" description="Pide a la agencia que vincule tu usuario a la ficha de tu empresa. Mientras tanto no verás solicitudes ni pagos." />
         </Card>
       )}
     </SupplierShell>

@@ -7,6 +7,7 @@ namespace App\Domain\Integrations\Fake;
 use App\Domain\Integrations\Contracts\ReviewsProvider;
 use App\Domain\Integrations\Data\AdapterResult;
 use App\Domain\Integrations\Data\ExternalReview;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use Illuminate\Support\Carbon;
 
 final class FakeReviewsProvider implements ReviewsProvider
@@ -22,6 +23,8 @@ final class FakeReviewsProvider implements ReviewsProvider
 
     public function fetch(array $sourceConfig, ?string $sinceDate = null): iterable
     {
+        IntegrationReadiness::refuse('reviews');
+
         $provider = (string) ($sourceConfig['provider'] ?? $sourceConfig['code'] ?? 'demo');
         $account = (string) ($sourceConfig['account'] ?? $provider);
         $today = Carbon::parse((string) ($sourceConfig['today'] ?? '2026-01-31'))->startOfDay();
@@ -49,6 +52,10 @@ final class FakeReviewsProvider implements ReviewsProvider
 
     public function reply(array $sourceConfig, string $externalId, string $text): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('reviews')) !== null) {
+            return $unavailable;
+        }
+
         if (in_array($sourceConfig['provider'] ?? null, self::REPLY_PROVIDERS, true)) {
             return AdapterResult::success('publicada', $externalId, ['simulated' => true]);
         }
@@ -58,6 +65,10 @@ final class FakeReviewsProvider implements ReviewsProvider
 
     public function healthcheck(): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::health('reviews')) !== null) {
+            return $unavailable;
+        }
+
         return AdapterResult::success('ok', null, ['simulated' => true]);
     }
 }

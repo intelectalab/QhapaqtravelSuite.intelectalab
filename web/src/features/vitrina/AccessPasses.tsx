@@ -11,8 +11,6 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { SimpleTable } from "@/components/ui/SimpleTable";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
-import { TileGrid } from "@/features/channels/ChannelUi";
 import { ConsoleAction } from "@/features/platform/ConsoleAction";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { ConsoleResult } from "@/lib/server/platformConsole";
@@ -23,17 +21,6 @@ const initial: ConsoleResult = { message: null, done: false };
 
 const BILLING: Record<string, string> = { unico: "Pago único", mensual: "Mensual", ambos: "Único o mensual" };
 
-export function PassTiles({ overview }: { overview: PassesOverview }) {
-  return (
-    <TileGrid>
-      <TintTile icon={Ticket} tone="t1" label="Pases activos" value={overview.kpis.active} info={<p>Pases vigentes. Una agencia tiene como máximo un pase activo.</p>} />
-      <TintTile icon={Clock} tone="sun" label="Vencen en 7 días" value={overview.kpis.expiring} info={<p>Pases activos cuya fecha de fin llega en los próximos 7 días. La agencia recibe avisos 7, 3 y 1 día antes.</p>} />
-      <TintTile icon={TrendingUp} tone="ok" label="Convertidos a plan" value={overview.kpis.converted} info={<p>Pases que terminaron en una suscripción pagada.</p>} />
-      <TintTile icon={Coins} tone="info" label="Ingresos por pases" value={formatMoney(overview.kpis.revenue, "PEN")} info={<p>Suma del precio de los pases no revocados, sin IGV. Los pagados se facturan al crearlos.</p>} />
-    </TileGrid>
-  );
-}
-
 export function NewPassAction({ overview }: { overview: PassesOverview }) {
   const available = overview.tenants.filter((tenant) => !tenant.has_active_pass);
   return (
@@ -43,7 +30,7 @@ export function NewPassAction({ overview }: { overview: PassesOverview }) {
       variant="primary"
       formId="pass-new"
       title="Nuevo pase Básico"
-      description={`Acceso por los días que elija (máximo ${overview.rules.max_days}) a las funciones marcadas. Al vencer, la agencia queda en solo lectura ${overview.rules.read_only_days} días.`}
+      description={`Acceso por los días que elijas (máximo ${overview.rules.max_days}) a las funciones marcadas. Al vencer, la agencia queda en solo lectura ${overview.rules.read_only_days} días.`}
       submitLabel="Crear pase"
       action={createPass}
       initial={initial}
@@ -101,9 +88,10 @@ export function PassesTable({ overview }: { overview: PassesOverview }) {
     },
   ];
   const metrics: MetricFilter<AccessPass>[] = [
-    { id: "active", label: "Activos", tone: "t1", icon: <Ticket size={19} />, matches: (row) => row.status === "activo" },
-    { id: "soon", label: "Vencen pronto", tone: "sun", icon: <Clock size={19} />, matches: (row) => row.days_left !== null && row.days_left <= 7 },
-    { id: "converted", label: "Convertidos", tone: "ok", icon: <TrendingUp size={19} />, matches: (row) => row.status === "convertido" },
+    { id: "active", label: "Activos", tone: "t1", icon: <Ticket size={19} />, info: <p>Pases vigentes; una agencia tiene como máximo un pase activo. Al presionarla ves solo los activos.</p>, matches: (row) => row.status === "activo" },
+    { id: "soon", label: "Vencen en 7 días", tone: "sun", icon: <Clock size={19} />, info: <p>Pases cuya fecha de fin llega en los próximos 7 días; la agencia recibe avisos 7, 3 y 1 día antes. Al presionarla ves solo esos pases.</p>, matches: (row) => row.days_left !== null && row.days_left <= 7 },
+    { id: "converted", label: "Convertidos a plan", tone: "ok", icon: <TrendingUp size={19} />, info: <p>Pases que terminaron en una suscripción pagada. Al presionarla ves solo esos pases.</p>, matches: (row) => row.status === "convertido" },
+    { id: "revenue", label: "Ingresos por pases", tone: "info", icon: <Coins size={19} />, display: formatMoney(overview.kpis.revenue, "PEN"), info: <p>Suma del precio de los pases no revocados, sin IGV; los pagados se facturan al crearlos. Al presionarla ves los pases no revocados.</p>, matches: (row) => row.status !== "revocado" },
   ];
   const sorts: SortOption<AccessPass>[] = [{ id: "ends", label: "Fin", type: "date", value: (row) => row.ends_on }];
   return <DataTable screen="plataforma-pases" rows={overview.items} columns={columns} getKey={(row) => row.code} entityLabel="pases" searchText={(row) => `${row.code} ${row.tenant.name} ${row.reason}`} searchPlaceholder="Buscar pase o agencia" metrics={metrics} sorts={sorts} emptyTitle="Aún no hay pases" />;

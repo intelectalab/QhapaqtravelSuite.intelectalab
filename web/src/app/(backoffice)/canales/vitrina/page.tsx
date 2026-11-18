@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
-import { AgencyShowcaseTabs, AgencyTiles, ListingFormAction, UpgradeBanner } from "@/features/vitrina/ShowcaseAgency";
+import { AgencyShowcaseTabs, ListingFormAction, UpgradeBanner } from "@/features/vitrina/ShowcaseAgency";
 import { getResource } from "@/lib/server/resource";
 import type { AgencyShowcase, ShowcaseBooking, ShowcaseFees } from "@/lib/vitrina";
 
@@ -26,7 +26,6 @@ export default async function ShowcasePage() {
         info={<InfoTip>Cada publicación pasa por moderación de la plataforma: fotos y textos propios, punto de encuentro real y agencia verificada. Marcar la asistencia alimenta el ranking y las reseñas verificadas.</InfoTip>}
         actions={<ListingFormAction options={data.options} />}
       />
-      <AgencyTiles data={data} />
       <UpgradeBanner data={data} />
       <AgencyShowcaseTabs data={data} bookings={bookings.items} fees={fees} />
     </>

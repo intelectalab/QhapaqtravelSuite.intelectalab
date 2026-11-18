@@ -56,7 +56,7 @@ final class InvoiceFollowUp
 
             $agency = $this->context->tenant()->commercial_name;
             $body = "Hola, {$invoice->customer_name}:\n\nTe enviamos tu comprobante electrónico {$invoice->number} por {$invoice->currency} {$invoice->total_amount}.\n{$invoice->amount_in_words}\n\n{$invoice->description}\n\nTambién lo encuentras en tu portal de cliente.\n{$agency}";
-            $this->mail->send((string) $to, (string) $invoice->customer_name, "Comprobante electrónico {$invoice->number} · {$agency}", $body);
+            $this->mail->sendAsAgency((string) $to, (string) $invoice->customer_name, "Comprobante electrónico {$invoice->number} · {$agency}", $body);
 
             DB::table('fin_invoices')->where('id', $invoice->id)->update(['delivered_at' => now(), 'lock_version' => DB::raw('lock_version + 1'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             FinanceHistory::record('invoice', $invoice->id, 'aceptado', "Entregado a {$to}", $actor);

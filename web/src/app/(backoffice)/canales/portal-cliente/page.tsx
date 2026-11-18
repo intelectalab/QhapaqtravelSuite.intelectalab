@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { PreviewPicker } from "@/features/channels/ChannelUi";
-import { CUSTOMER_PREVIEW_SECTIONS, CustomerPortalView } from "@/features/channels/CustomerPortal";
-import type { CustomerPortalPreview } from "@/lib/channels";
+import { CustomerPortalView } from "@/features/channels/CustomerPortal";
+import { CUSTOMER_PREVIEW_SECTIONS, type CustomerPortalPreview } from "@/lib/channels";
 import { getResource } from "@/lib/server/resource";
 
 export const metadata: Metadata = { title: "Portal del cliente" };

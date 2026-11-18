@@ -41,12 +41,12 @@ const LINK_PATHS: Record<SiteNavLinkId, string> = {
 
 const DEFAULT_LINKS = (Object.keys(LINK_PATHS) as SiteNavLinkId[]).map((id) => ({ id, visible: true }));
 
-function LocaleSwitch() {
+function LocaleSwitch({ variant = "header" }: { variant?: "header" | "bar" }) {
   const { locale, t } = useSite();
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
-    <div role="group" aria-label={t.header.language} className={cn("flex h-10 items-center rounded-xl border border-line p-0.5 transition-opacity", pending && "opacity-60")}>
+    <div role="group" aria-label={t.header.language} className={cn("items-center border border-line p-0.5 transition-opacity", variant === "bar" ? "flex h-7 rounded-lg" : "flex h-10 rounded-xl xl:hidden", pending && "opacity-60")}>
       {SITE_LOCALES.map((option) => (
         <button
           key={option}
@@ -54,7 +54,7 @@ function LocaleSwitch() {
           lang={option}
           aria-pressed={locale === option}
           title={LOCALE_NAME[option]}
-          data-testid={`site-locale:${option}`}
+          data-testid={`${variant === "bar" ? "site-bar-locale" : "site-locale"}:${option}`}
           onClick={() => {
             if (option === locale) return;
             trackSiteEvent("select_language", { language: option, previous: locale });
@@ -63,7 +63,7 @@ function LocaleSwitch() {
               router.refresh();
             });
           }}
-          className={cn("h-full rounded-[9px] px-2.5 text-[12px] font-bold uppercase tracking-wide transition", locale === option ? "bg-brand text-brand-fg" : "text-fg-3 hover:text-fg")}
+          className={cn("h-full font-bold uppercase tracking-wide transition", variant === "bar" ? "rounded-md px-2 text-[11px]" : "rounded-[9px] px-2.5 text-[12px]", locale === option ? "bg-brand text-brand-fg" : "text-fg-3 hover:text-fg")}
         >
           {option}
         </button>
@@ -82,7 +82,7 @@ export function AgencyMark({ name, initials, logo, inverted = false }: { name: s
       </span>
       <span className="min-w-0 leading-tight">
         <b className={cn("block truncate text-[16px] font-bold tracking-tight", inverted ? "text-white" : "text-fg")}>{name}</b>
-        <span className={cn("text-[10.5px] font-medium tracking-[0.14em]", inverted ? "text-white/60" : "text-fg-3")}>{t.header.tagline}</span>
+        <span className={cn("block truncate text-[10.5px] font-medium tracking-[0.14em]", inverted ? "text-white/60" : "text-fg-3")}>{t.header.tagline}</span>
       </span>
     </Link>
   );
@@ -122,10 +122,10 @@ function WishlistLink({ saved }: { saved: number | null }) {
 }
 
 export function SiteTopBar({ email, whatsapp, hours = null }: { email: string | null; whatsapp: string | null; hours?: string | null }) {
-  const { t } = useSite();
-  if (!email && !whatsapp && !hours) return null;
+  const { t, design } = useSite();
+  const empty = !email && !whatsapp && !hours;
   return (
-    <div className="border-b border-line bg-surface-2/60 text-[12px] text-fg-2">
+    <div className={cn("border-b border-line bg-surface-2/60 text-[12px] text-fg-2", empty && "hidden xl:block")}>
       <div className="mx-auto flex h-8 max-w-[1240px] items-center gap-5 px-4 sm:px-8">
         {whatsapp && (
           <a href={whatsapp} target="_blank" rel="noopener noreferrer" onClick={() => trackSiteEvent("contact_whatsapp", { source: "topbar" })} className="inline-flex items-center gap-1.5 font-semibold transition hover:text-fg">
@@ -145,6 +145,10 @@ export function SiteTopBar({ email, whatsapp, hours = null }: { email: string | 
             {hours}
           </span>
         )}
+        <div className="ml-auto hidden items-center gap-2 xl:flex">
+          {(design?.nav?.show_locale ?? true) && <LocaleSwitch variant="bar" />}
+          <CurrencySwitch variant="bar" />
+        </div>
       </div>
     </div>
   );
@@ -154,6 +158,7 @@ export function SiteHeader({ name, initials, logo, wishlist = null }: { name: st
   const { href, t, design } = useSite();
   const nav = design?.nav;
   const links = (nav?.links ?? DEFAULT_LINKS).filter((link) => link.visible && link.id in LINK_PATHS).map((link) => ({ path: LINK_PATHS[link.id], key: link.id }));
+  const desktopLinks = links.filter((link) => link.key !== "tailored" || !(nav?.show_quote ?? true));
   const pathname = usePathname();
   const search = useSearchParams();
   const [open, setOpen] = useState(false);
@@ -177,12 +182,14 @@ export function SiteHeader({ name, initials, logo, wishlist = null }: { name: st
   return (
     <header data-site-header data-scrolled={scrolled || open} className={cn("sticky top-0 z-40 transition-[background-color,box-shadow,border-color] duration-300", scrolled || open ? "border-b border-line bg-surface/90 shadow-[0_10px_30px_-24px_rgb(14_17_32/0.5)] backdrop-blur-md" : "border-b border-transparent bg-bg/60 backdrop-blur-sm")}>
       <div className="mx-auto flex h-[68px] max-w-[1240px] items-center gap-3 px-4 sm:px-8">
-        <AgencyMark name={name} initials={initials} logo={logo} />
+        <div className="min-w-0 xl:max-w-[240px] xl:flex-none">
+          <AgencyMark name={name} initials={initials} logo={logo} />
+        </div>
         <nav aria-label={t.header.sections} className="ml-4 hidden items-center gap-0.5 xl:flex">
-          {links.map((link) => {
+          {desktopLinks.map((link) => {
             const active = isActive(link.path);
             return (
-              <Link key={link.path} href={href(link.path)} className={cn("group relative rounded-lg px-3 py-2 text-[13.5px] font-semibold transition-colors", active ? "text-fg" : "text-fg-2 hover:text-fg")}>
+              <Link key={link.path} href={href(link.path)} className={cn("group relative whitespace-nowrap rounded-lg px-3 py-2 text-[13.5px] font-semibold transition-colors", active ? "text-fg" : "text-fg-2 hover:text-fg")}>
                 {t.header.links[link.key]}
                 <span aria-hidden data-site-nav-line className={cn("weave-line absolute inset-x-3 -bottom-0.5 h-[3px] origin-left rounded-full transition-transform duration-300", active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100")} />
               </Link>

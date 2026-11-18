@@ -13,6 +13,7 @@ import { PlanChangeNote, PlanChangeSummary } from "@/features/billing/PlanChange
 import type { PlanChangePreview } from "@/lib/admin";
 import { formatDate, formatMoney } from "@/lib/format";
 import { CYCLE_LABEL, type BillingCycle, type PlanEffective, type PlanSummary, type ProvisionOptions, type TenantDetail, type TenantSubscription } from "@/lib/platform";
+import { LOAD_FAILED, withRetry } from "@/lib/retry";
 
 const BUSINESS_TYPES = ["Agencia de viajes minorista", "Operador turístico", "DMC / receptivo", "Agencia corporativa", "Agencia mayorista"];
 
@@ -93,9 +94,13 @@ function TenantPlanPreview({ tenant, plan, cycle, effective, same }: { tenant: s
   useEffect(() => {
     if (same) return;
     let alive = true;
-    previewTenantPlan(tenant, plan, cycle, effective).then((result) => {
-      if (alive) setState({ key, ...result });
-    });
+    withRetry(() => previewTenantPlan(tenant, plan, cycle, effective))
+      .then((result) => {
+        if (alive) setState({ key, ...result });
+      })
+      .catch(() => {
+        if (alive) setState({ key, preview: null, message: LOAD_FAILED });
+      });
     return () => {
       alive = false;
     };

@@ -426,3 +426,19 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--site-accent) 15%, transparent);
   outline: none;
 }
+
+.overflow-hidden:has([data-table-toolbar]) {
+  overflow: clip;
+}
+
+[data-table-grid] td .truncate {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+[data-table-grid] td .font-mono {
+  white-space: nowrap;
+}

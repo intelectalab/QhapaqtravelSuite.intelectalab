@@ -4,7 +4,6 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TabbedCard } from "@/components/ui/RouteTabs";
-import { EcommerceTiles } from "@/features/channels/Ecommerce";
 import { getEcommerce } from "@/lib/server/ecommerce";
 
 export default async function EcommerceLayout({ children }: { children: ReactNode }) {
@@ -23,7 +22,6 @@ export default async function EcommerceLayout({ children }: { children: ReactNod
           </Button>
         }
       />
-      <EcommerceTiles kpis={overview.kpis} funnel={overview.funnel} products={overview.products.length} />
       <TabbedCard
         padded={false}
         tabs={[

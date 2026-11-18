@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgePercent, CircleCheck, CircleX, Clock3, ExternalLink, Eye, EyeOff, Gauge, Globe, Send, ShoppingBag, MousePointerClick, Star, Wallet } from "lucide-react";
+import { BadgePercent, CircleX, Clock3, ExternalLink, Eye, EyeOff, Globe, Send, ShoppingBag, Star, Wallet } from "lucide-react";
 import { cancelOrder, sendPaymentLink, togglePublication } from "@/app/(backoffice)/canales/ecommerce/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -9,12 +9,11 @@ import { FieldList } from "@/components/ui/Details";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { SectionPanel } from "@/components/ui/SectionPanel";
 import { TextArea } from "@/components/ui/TextArea";
-import { TintTile } from "@/components/ui/Tinted";
 import { channelStatus, type EcommerceOverview, type EcomOrder, type EcomProduct, type PromotionCatalog } from "@/lib/channels";
 import { formatDate, formatDateTime, formatMoney, formatNumber, formatPercent } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { toneStyle, type Tone } from "@/lib/tone";
-import { ChannelBadge, DetailPanel, MoneyLines, PanelSection, Stars, TileGrid } from "./ChannelUi";
+import { ChannelBadge, DetailPanel, MoneyLines, PanelSection, Stars } from "./ChannelUi";
 import { PromotionsTable } from "./Promotions";
 
 const initial: StepResult = { message: null, done: false };
@@ -39,30 +38,6 @@ function FunnelSteps({ steps }: { steps: EcommerceOverview["funnel"] }) {
         );
       })}
     </ol>
-  );
-}
-
-export function EcommerceTiles({ kpis, funnel, products }: { kpis: EcommerceOverview["kpis"]; funnel: EcommerceOverview["funnel"]; products: number }) {
-  const step = (id: string) => funnel.find((item) => item.id === id)?.value ?? 0;
-  return (
-    <TileGrid>
-      <TintTile icon={Wallet} tone="t4" label="Ingresos confirmados" value={<MoneyLines values={kpis.revenue} />} note={`${kpis.confirmed} pedidos pagados`} info={<p>Total de los pedidos web con el pago confirmado, en la moneda de cada pedido.</p>} />
-      <TintTile
-        icon={Gauge}
-        tone="violet"
-        label="Conversión"
-        value={formatPercent(kpis.conversion, 0)}
-        note="Pedidos pagados sobre creados"
-        info={
-          <div>
-            <p>Del sitio y el widget al pago. Cada paso muestra cuántos llegan y qué parte del paso anterior:</p>
-            <FunnelSteps steps={funnel} />
-          </div>
-        }
-      />
-      <TintTile icon={MousePointerClick} tone="t1" label="Visitas a la tienda" value={formatNumber(step("sessions"))} note={`${formatNumber(step("views"))} vistas · ${formatNumber(step("dates"))} eligieron fecha`} info={<p>Sesiones, vistas de página y sesiones que eligieron una fecha en el buscador o en la ficha, según los eventos del sitio y del widget, con el consentimiento del visitante.</p>} />
-      <TintTile icon={Globe} tone="sun" label="Productos publicados" value={formatNumber(kpis.published)} note={`De ${formatNumber(products)} en la tienda`} info={<p>Productos visibles en el sitio y el widget. Los demás están en la tienda pero sin publicar.</p>} />
-    </TileGrid>
   );
 }
 
@@ -193,7 +168,7 @@ function OrderDetail({ order }: { order: EcomOrder }) {
   );
 }
 
-function OrdersTable({ rows, canManage }: { rows: EcomOrder[]; canManage: boolean }) {
+function OrdersTable({ rows, canManage, kpis, funnel }: { rows: EcomOrder[]; canManage: boolean; kpis: EcommerceOverview["kpis"]; funnel: EcommerceOverview["funnel"] }) {
   const columns: Column<EcomOrder>[] = [
     {
       id: "order",
@@ -223,9 +198,24 @@ function OrdersTable({ rows, canManage }: { rows: EcomOrder[]; canManage: boolea
     },
   ];
   const metrics: MetricFilter<EcomOrder>[] = [
-    { id: "paid", label: "Pagados", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "confirmado" },
-    { id: "pending", label: "Pago pendiente", tone: "warn", icon: <Clock3 size={19} />, matches: (row) => row.status === "pago_pendiente" || row.status === "pago_por_validar" },
-    { id: "rejected", label: "Pago rechazado", tone: "bad", icon: <CircleX size={19} />, matches: (row) => row.status === "pago_rechazado" },
+    {
+      id: "paid",
+      label: "Ingresos confirmados",
+      tone: "ok",
+      icon: <Wallet size={19} />,
+      display: <MoneyLines values={kpis.revenue} />,
+      note: `${kpis.confirmed} pedidos pagados · ${formatPercent(kpis.conversion, 0)} de conversión`,
+      info: (
+        <div>
+          <p>Total de los pedidos web con el pago confirmado, en la moneda de cada pedido. La conversión son los pedidos pagados sobre los creados; cada paso del sitio y el widget al pago muestra cuántos llegan y qué parte del paso anterior, con el consentimiento del visitante:</p>
+          <FunnelSteps steps={funnel} />
+          <p className="mt-2">Al presionarla, la tabla muestra solo los pedidos pagados.</p>
+        </div>
+      ),
+      matches: (row) => row.status === "confirmado",
+    },
+    { id: "pending", label: "Pago pendiente", tone: "warn", icon: <Clock3 size={19} />, info: <p>Pedidos con el pago pendiente o por validar. Puedes reenviar el enlace de pago o anularlos. Al presionarla, la tabla muestra esos pedidos.</p>, matches: (row) => row.status === "pago_pendiente" || row.status === "pago_por_validar" },
+    { id: "rejected", label: "Pago rechazado", tone: "bad", icon: <CircleX size={19} />, info: <p>Pedidos cuyo pago fue rechazado; se pueden reintentar con un nuevo enlace o anular. Al presionarla, la tabla muestra esos pedidos.</p>, matches: (row) => row.status === "pago_rechazado" },
   ];
   const filters: FilterConfig<EcomOrder>[] = [
     { id: "status", label: "Estado", options: [...new Set(rows.map((row) => row.status))].map((value) => ({ value, label: channelStatus(value).label })), value: (row) => row.status },
@@ -314,11 +304,11 @@ function ProductsTable({ rows, canManage, siteUrl }: { rows: EcomProduct[]; canM
     { id: "actions", header: "", cell: (row) => <RowActions>{canManage && <PublicationAction product={row} />}</RowActions> },
   ];
   const metrics: MetricFilter<EcomProduct>[] = [
-    { id: "on", label: "Publicados", tone: "ok", icon: <Globe size={19} />, matches: (row) => row.published },
-    { id: "off", label: "Sin publicar", tone: "mute", icon: <EyeOff size={19} />, matches: (row) => !row.published },
-    { id: "selling", label: "Con ventas", tone: "t4", icon: <ShoppingBag size={19} />, matches: (row) => row.orders > 0 },
-    { id: "promo", label: "Con promoción", tone: "violet", icon: <BadgePercent size={19} />, matches: (row) => row.promotion !== null },
-    { id: "rated", label: "Con reseñas", tone: "sun", icon: <Star size={19} />, matches: (row) => row.rating_count > 0 },
+    { id: "on", label: "Publicados", tone: "ok", icon: <Globe size={19} />, note: `De ${formatNumber(rows.length)} en la tienda`, info: <p>Productos visibles en el sitio y el widget. Los demás están en la tienda pero sin publicar. Al presionarla, la tabla muestra solo los publicados.</p>, matches: (row) => row.published },
+    { id: "off", label: "Sin publicar", tone: "mute", icon: <EyeOff size={19} />, info: <p>Productos de la tienda que no se muestran en el sitio ni en el widget; solo se publican productos activos. Al presionarla, la tabla muestra esos productos.</p>, matches: (row) => !row.published },
+    { id: "selling", label: "Con ventas", tone: "t4", icon: <ShoppingBag size={19} />, info: <p>Productos con al menos un pedido web. Al presionarla, la tabla muestra esos productos con lo vendido.</p>, matches: (row) => row.orders > 0 },
+    { id: "promo", label: "Con promoción", tone: "violet", icon: <BadgePercent size={19} />, info: <p>Productos con una promoción vigente aplicada al precio web. Al presionarla, la tabla muestra esos productos.</p>, matches: (row) => row.promotion !== null },
+    { id: "rated", label: "Con reseñas", tone: "sun", icon: <Star size={19} />, info: <p>Productos con al menos una reseña publicada, que se muestra con su calificación en la tienda. Al presionarla, la tabla muestra esos productos.</p>, matches: (row) => row.rating_count > 0 },
   ];
   const sorts: SortOption<EcomProduct>[] = [
     { id: "name", label: "Producto", value: (row) => row.name },
@@ -333,7 +323,7 @@ export function EcommerceWorkspace({ overview, promotions, section }: { overview
       <SectionPanel
         active={section}
         tabs={[
-          { id: "orders", label: "Pedidos web", count: overview.orders.length, content: <OrdersTable rows={overview.orders} canManage={overview.can_manage} /> },
+          { id: "orders", label: "Pedidos web", count: overview.orders.length, content: <OrdersTable rows={overview.orders} canManage={overview.can_manage} kpis={overview.kpis} funnel={overview.funnel} /> },
           { id: "products", label: "Productos en la tienda", count: overview.products.length, content: <ProductsTable rows={overview.products} canManage={overview.can_manage} siteUrl={overview.site_url} /> },
           ...(promotions ? [{ id: "promotions", label: "Promociones y códigos", count: promotions.rows.filter((row) => row.state === "vigente").length, content: <PromotionsTable catalog={promotions} canManage={overview.can_manage} screen="canales-ecommerce-promociones" /> }] : []),
         ]}

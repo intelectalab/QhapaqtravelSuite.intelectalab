@@ -228,8 +228,8 @@ export function PricingRulesBoard({ overview }: { overview: PricingOverview }) {
       : []),
   ];
   const metrics: MetricFilter<PriceRule>[] = [
-    { id: "active", label: "Activas", tone: "ok", icon: <CircleCheck size={19} />, matches: (rule) => rule.status === "activa" },
-    { id: "inactive", label: "Inactivas", tone: "mute", icon: <CirclePause size={19} />, matches: (rule) => rule.status === "inactiva" },
+    { id: "active", label: "Activas", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Reglas que hoy entran en la cadena de cálculo del precio, en orden de prioridad. Al presionarla, la tabla muestra solo esas reglas.</p>, matches: (rule) => rule.status === "activa" },
+    { id: "inactive", label: "Inactivas", tone: "mute", icon: <CirclePause size={19} />, info: <p>Reglas guardadas que no se aplican a los precios nuevos hasta que las actives. Al presionarla, la tabla muestra esas reglas.</p>, matches: (rule) => rule.status === "inactiva" },
   ];
   const filters: FilterConfig<PriceRule>[] = [{ id: "kind", label: "Tipo", options: overview.options.kinds.map((kind) => ({ value: kind, label: kind })), value: (rule) => rule.kind }];
   return (

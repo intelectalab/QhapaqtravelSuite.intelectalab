@@ -1,10 +1,11 @@
-import { CircleCheck, Hourglass, ListChecks, Scale, Stamp, Users } from "lucide-react";
+import { Scale, Users } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { ChartsPanel } from "@/components/ui/ChartsPanel";
 import { InfoTip } from "@/components/ui/InfoTip";
-import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
+import { TintCardTitle } from "@/components/ui/Tinted";
 import { CalculateCommissionsAction, CommissionsTable, RuleFormAction } from "@/features/finance/Commissions";
 import { cn } from "@/lib/cn";
 import type { BeneficiarySummary, CommissionRule, CommissionsOverview } from "@/lib/finance";
@@ -94,20 +95,20 @@ export default async function ComisionesPage() {
       <PageHeader
         title="Comisiones"
         subtitle="Comisiones de vendedores, agencias y bonos por meta."
-        info={<InfoTip>Cada comisión guarda la regla con la que se calculó. Recalcular vuelve a aplicar la regla vigente; una comisión pagada ya no se recalcula y las diferencias se ajustan en el siguiente periodo.</InfoTip>}
+        info={
+          <>
+            <InfoTip>Cada comisión guarda la regla con la que se calculó. Recalcular vuelve a aplicar la regla vigente; una comisión pagada ya no se recalcula y las diferencias se ajustan en el siguiente periodo.</InfoTip>
+            <ChartsPanel title="Gráficos de comisiones" description="Lo que suma cada beneficiario, por estado de la comisión.">
+              <Card className="lift">
+                <TintCardTitle icon={Users} title="Por beneficiario" aside={<InfoTip label="De dónde sale">Todas las comisiones de la tabla agrupadas por vendedor o agencia, en soles. Cada barra se divide en por aprobar, por pagar y pagado; pasa el cursor para ver cada monto.</InfoTip>} />
+                <BeneficiaryBreakdown rows={data.by_beneficiary} />
+              </Card>
+            </ChartsPanel>
+          </>
+        }
         actions={data.can.operate && kpis.pending_reservations > 0 ? <CalculateCommissionsAction pending={kpis.pending_reservations} /> : undefined}
       />
-      <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <TintTile icon={Hourglass} tone="info" label="Por aprobar" value={formatMoney(kpis.calculada.pen, "PEN", { compact: true })} info={<p>Comisiones calculadas que esperan aprobación, en soles al tipo de cambio de cada reserva.</p>} />
-        <TintTile icon={Stamp} tone="sun" label="Aprobado por pagar" value={formatMoney(kpis.aprobada.pen, "PEN", { compact: true })} info={<p>Comisiones aprobadas que aún no se pagan en planilla, transferencia o nota de crédito.</p>} />
-        <TintTile icon={CircleCheck} tone="ok" label="Pagado" value={formatMoney(kpis.pagada.pen, "PEN", { compact: true })} info={<p>Comisiones ya pagadas, con su forma de pago y referencia.</p>} />
-        <TintTile icon={ListChecks} tone="violet" label="Reservas sin comisión" value={kpis.pending_reservations} note="Vendidas y aún sin calcular" info={<p>Reservas confirmadas con asesor o agencia con convenio que todavía no tienen comisión. Calcular pendientes las crea con la regla vigente.</p>} />
-      </section>
-      <div className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <Card>
-          <TintCardTitle icon={Users} title="Por beneficiario" aside="En soles" />
-          <BeneficiaryBreakdown rows={data.by_beneficiary} />
-        </Card>
+      <div className="mb-5">
         <RulesCard rules={data.rules} editable={data.can.rules} today={today} />
       </div>
       <CommissionsTable data={data} />

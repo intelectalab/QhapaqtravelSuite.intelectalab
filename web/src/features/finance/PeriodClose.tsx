@@ -46,7 +46,7 @@ export function ClosePeriodAction({ state }: { state: PeriodCloseState }) {
   return (
     <FinanceStep step="period_close" itemKey={state.period} label="Cerrar periodo" icon={<Lock size={16} />} variant="primary" title={`Cerrar ${state.label.toLowerCase()}`} description="Después del cierre no se emiten comprobantes con fecha de este periodo y no hay reapertura. Se avisa por correo a Finanzas." submitLabel="Cerrar periodo">
       <SummaryBox rows={[{ label: "Periodo", value: state.label }, { label: "Controles en orden", value: `${state.done} de ${state.total}`, strong: true }]} />
-      <p className="rounded-xl bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] px-3.5 py-2.5 text-[12.5px] text-fg-2">Los ajustes posteriores se registran con nota de crédito o débito en el periodo siguiente.</p>
+      <p className="rounded-xl bg-[color-mix(in_srgb,var(--warn)_12%,transparent)] px-3.5 py-2.5 text-[12.5px] text-fg-2">Los ajustes posteriores se registran con nota de crédito en el periodo siguiente.</p>
     </FinanceStep>
   );
 }

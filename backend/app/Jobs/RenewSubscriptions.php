@@ -13,6 +13,7 @@ use App\Domain\Platform\Support\Entitlements;
 use App\Domain\Platform\Support\PlatformInvoicer;
 use App\Domain\Platform\Support\ReadOnlyWindow;
 use App\Domain\Platform\Support\TenantNotice;
+use App\Domain\Shared\Money\Decimal;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -128,7 +129,7 @@ final class RenewSubscriptions extends PlatformJob
             'lock_version' => DB::raw('lock_version + 1'),
         ]);
         app(PlatformSession::class)->log('Suscripción', (string) $subscription->code, 'renovar', "{$subscription->current_period_start} → {$subscription->current_period_end}", "{$from->toDateString()} → {$to->toDateString()} · {$invoice['number']}".($change ? " · plan {$plan->name}" : ''));
-        app(TenantNotice::class)->send((string) $subscription->tenant_id, "Factura {$invoice['number']} de tu suscripción", "Renovamos tu plan {$plan->name} del {$from->format('d/m/Y')} al {$to->format('d/m/Y')}. Total: S/ {$invoice['total']} (incluye IGV). Lo cobraremos con tu medio de pago registrado.");
+        app(TenantNotice::class)->send((string) $subscription->tenant_id, "Factura {$invoice['number']} de tu suscripción", "Renovamos tu plan {$plan->name} del {$from->format('d/m/Y')} al {$to->format('d/m/Y')}. Total: ".Decimal::display($invoice['total'], 'PEN').' (incluye IGV). Lo cobraremos con tu medio de pago registrado.');
 
         return $invoice['id'].($change ? '|changed' : '').($blocked !== null ? '|blocked' : '');
     }

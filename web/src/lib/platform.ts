@@ -78,6 +78,7 @@ export interface OutgoingMailSummary {
   verified_at: string | null;
   last_test: { to: string; ok: boolean; at: string } | null;
   status: "activa" | "incompleta" | "apagada";
+  redirect: { to: string | null } | null;
   webhook_secrets: { ses: boolean };
 }
 

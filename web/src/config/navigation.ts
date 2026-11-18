@@ -188,7 +188,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/notificaciones", label: "Notificaciones", icon: Bell },
       { href: "/admin/suscripcion", label: "Suscripción y uso", icon: ReceiptText },
       { href: "/admin/api", label: "API y webhooks", icon: Link2 },
-      { href: "/admin/integraciones", label: "Integraciones y jobs", icon: Plug },
+      { href: "/admin/integraciones", label: "Integraciones y tareas", icon: Plug },
       { href: "/admin/auditoria", label: "Auditoría", icon: ShieldCheck },
     ],
   },

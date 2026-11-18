@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Landing\Fake;
 
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use App\Domain\Landing\Contracts\RucLookup;
 use Illuminate\Support\Facades\DB;
 
@@ -15,6 +16,8 @@ final class FakeRucLookup implements RucLookup
 
     public function find(string $ruc): ?array
     {
+        IntegrationReadiness::refuse('ruc');
+
         if (preg_match('/^(10|20)\d{9}$/', $ruc) !== 1 || ! $this->checksum($ruc)) {
             return null;
         }

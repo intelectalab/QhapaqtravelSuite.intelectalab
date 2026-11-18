@@ -174,7 +174,7 @@ final class BillingMetrics
 
         return $db->table('subscriptions as s')->join('tenants as t', 't.id', '=', 's.tenant_id')->join('plans as p', 'p.id', '=', 's.plan_id')
             ->where('s.status', '<>', 'canceled')
-            ->get(['s.id', 's.status', 's.cycle', 't.mrr', 'p.name as plan', 'p.price_month', 'p.price_year'])
+            ->get(['s.id', 's.tenant_id', 's.status', 's.cycle', 't.mrr', 'p.name as plan', 'p.price_month', 'p.price_year'])
             ->map(function (object $row) use ($addons): object {
                 $base = (float) $row->mrr > 0 ? (float) $row->mrr : ($row->cycle === 'annual' ? (float) $row->price_year / 12 : (float) $row->price_month);
                 $row->mrr = round($base + (float) ($addons[$row->id] ?? 0), 2);

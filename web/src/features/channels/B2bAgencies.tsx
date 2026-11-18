@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, Building2, CalendarRange, CircleCheck, CreditCard, Eye, Handshake, Landmark, Lock, LockOpen, Mail, Percent, Plus, RotateCcw, ShieldAlert, TrendingUp, User, Wallet } from "lucide-react";
+import { Ban, Building2, CalendarRange, CreditCard, Eye, Handshake, Landmark, Lock, LockOpen, Mail, Plus, RotateCcw, ShieldAlert, TrendingUp, User, Wallet } from "lucide-react";
 import { changeAgencyStatus, previewAgencyPortal, saveAgency } from "@/app/(backoffice)/canales/b2b/actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -11,29 +11,15 @@ import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
 import type { B2bAgency, B2bOverview } from "@/lib/channels";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
-import { ChannelBadge, DetailPanel, PanelSection, TileGrid, UsageBar } from "./ChannelUi";
+import { ChannelBadge, DetailPanel, PanelSection, UsageBar } from "./ChannelUi";
 
 const initial: StepResult = { message: null, done: false };
 
 type Catalogs = Pick<B2bOverview, "price_lists" | "clients">;
-
-export function B2bTiles({ kpis }: { kpis: B2bOverview["kpis"] }) {
-  const usage = kpis.credit_limit > 0 ? (kpis.credit_used / kpis.credit_limit) * 100 : 0;
-  return (
-    <TileGrid className="xl:grid-cols-5">
-      <TintTile icon={Handshake} tone="t1" label="Agencias activas" value={`${kpis.active} de ${kpis.total}`} note={kpis.restricted > 0 ? `${kpis.restricted} con restricción` : "Todas habilitadas"} />
-      <TintTile icon={Landmark} tone="info" label="Crédito otorgado" value={formatMoney(kpis.credit_limit, kpis.currency)} note={`Disponible ${formatMoney(Math.max(0, kpis.credit_limit - kpis.credit_used), kpis.currency)}`} info={<p>Suma de los límites de crédito de las agencias con convenio. Las de solo prepago no suman.</p>} />
-      <TintTile icon={CreditCard} tone="violet" label="Crédito utilizado" value={formatMoney(kpis.credit_used, kpis.currency)} note={`${formatPercent(usage, 0)} de la línea total`} info={<p>Saldo por cobrar de las reservas a crédito de las agencias, frente al crédito otorgado.</p>} />
-      <TintTile icon={TrendingUp} tone="t4" label="Ventas B2B" value={formatMoney(kpis.sales, kpis.currency)} note="Reservas vigentes de las agencias" />
-      <TintTile icon={Percent} tone="sun" label="Comisiones estimadas" value={formatMoney(kpis.commission, kpis.currency)} note="Según la comisión de cada convenio" />
-    </TileGrid>
-  );
-}
 
 export function AgencyFormAction({ agency, catalogs, iconOnly = false }: { agency?: B2bAgency; catalogs: Catalogs; iconOnly?: boolean }) {
   return (
@@ -237,7 +223,7 @@ function AgencyDetail({ agency, canPreview }: { agency: B2bAgency; canPreview: b
   );
 }
 
-export function B2bAgenciesTable({ rows, catalogs, canManage }: { rows: B2bAgency[]; catalogs: Catalogs; canManage: boolean }) {
+export function B2bAgenciesTable({ rows, kpis, catalogs, canManage }: { rows: B2bAgency[]; kpis: B2bOverview["kpis"]; catalogs: Catalogs; canManage: boolean }) {
   const columns: Column<B2bAgency>[] = [
     {
       id: "agency",
@@ -262,16 +248,11 @@ export function B2bAgenciesTable({ rows, catalogs, canManage }: { rows: B2bAgenc
               <b className="font-semibold">{formatMoney(row.credit_used, row.currency)}</b> <span className="text-fg-3">de {formatMoney(row.credit_limit, row.currency)}</span>
             </span>
             <UsageBar pct={row.usage_pct ?? 0} />
+            <span className={cn("text-[11.5px]", (row.usage_pct ?? 0) >= 90 ? "font-semibold text-bad" : "text-fg-3")}>Disponible {formatMoney(row.credit_available, row.currency)}</span>
           </span>
         ) : (
           <span className="text-[12.5px] text-fg-3">Solo prepago</span>
         ),
-    },
-    {
-      id: "available",
-      header: "Disponible",
-      align: "right",
-      cell: (row) => (row.credit_limit > 0 ? <span className={cn("font-mono text-[13px] font-semibold", (row.usage_pct ?? 0) >= 90 ? "text-bad" : "text-fg")}>{formatMoney(row.credit_available, row.currency)}</span> : <span className="text-[12.5px] text-fg-3">—</span>),
     },
     { id: "valid", header: "Vigencia", wideOnly: true, cell: (row) => <span className="text-[12.5px] text-fg-2">hasta {formatDate(row.valid_to)}</span> },
     { id: "status", header: "Estado", mobile: "detail", cell: (row) => <ChannelBadge status={row.effective_status} /> },
@@ -293,11 +274,13 @@ export function B2bAgenciesTable({ rows, catalogs, canManage }: { rows: B2bAgenc
       ),
     },
   ];
+  const usage = kpis.credit_limit > 0 ? (kpis.credit_used / kpis.credit_limit) * 100 : 0;
   const metrics: MetricFilter<B2bAgency>[] = [
-    { id: "active", label: "Activas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.effective_status === "activa" },
-    { id: "restricted", label: "Con restricción", tone: "bad", icon: <ShieldAlert size={19} />, matches: (row) => ["bloqueada", "vencida"].includes(row.effective_status) },
-    { id: "credit", label: "Crédito sobre 80 %", tone: "warn", icon: <CreditCard size={19} />, matches: (row) => (row.usage_pct ?? 0) >= 80 },
-    { id: "prepaid", label: "Solo prepago", tone: "violet", icon: <Wallet size={19} />, matches: (row) => row.credit_limit === 0 },
+    { id: "active", label: "Activas", tone: "ok", icon: <Handshake size={19} />, note: `de ${kpis.total} agencias`, info: <p>Agencias aliadas con el convenio vigente y sin bloqueo, que pueden reservar con su lista de precios. Al presionarla, la tabla muestra solo esas agencias.</p>, matches: (row) => row.effective_status === "activa" },
+    { id: "restricted", label: "Con restricción", tone: "bad", icon: <ShieldAlert size={19} />, info: <p>Agencias bloqueadas o con el convenio vencido: no pueden reservar a crédito. Al presionarla, la tabla muestra esas agencias.</p>, matches: (row) => ["bloqueada", "vencida"].includes(row.effective_status) },
+    { id: "used", label: "Crédito utilizado", tone: "violet", icon: <CreditCard size={19} />, display: formatMoney(kpis.credit_used, kpis.currency), note: `${formatPercent(usage, 0)} de ${formatMoney(kpis.credit_limit, kpis.currency)} otorgados`, info: <p>Saldo por cobrar de las reservas a crédito de las agencias, frente a la suma de los límites de crédito de las agencias con convenio; las de solo prepago no suman. Al presionarla, la tabla muestra las agencias que usan crédito.</p>, matches: (row) => row.credit_used > 0 },
+    { id: "credit", label: "Crédito sobre 80 %", tone: "warn", icon: <Landmark size={19} />, info: <p>Agencias que ya usan el 80 % o más de su línea de crédito; al llegar al límite no pueden reservar a crédito hasta que Finanzas aplique sus pagos. Al presionarla, la tabla muestra esas agencias.</p>, matches: (row) => (row.usage_pct ?? 0) >= 80 },
+    { id: "sales", label: "Ventas B2B", tone: "t4", icon: <TrendingUp size={19} />, display: formatMoney(kpis.sales, kpis.currency), note: `${formatMoney(kpis.commission, kpis.currency)} en comisiones estimadas`, info: <p>Reservas vigentes hechas por las agencias; la nota estima sus comisiones según la comisión de cada convenio. Al presionarla, la tabla muestra las agencias con ventas.</p>, matches: (row) => row.sales > 0 },
   ];
   const filters: FilterConfig<B2bAgency>[] = [
     { id: "status", label: "Estado", options: [...new Set(rows.map((row) => row.effective_status))].map((value) => ({ value, label: value.charAt(0).toUpperCase() + value.slice(1) })), value: (row) => row.effective_status },

@@ -73,10 +73,10 @@ export function CorporateAccountsTable({ accounts }: { accounts: CorporateAccoun
     },
   ];
   const metrics: MetricFilter<CorporateAccount>[] = [
-    { id: "activa", label: "Activas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "activa" },
-    { id: "suspendida", label: "Suspendidas", tone: "warn", icon: <CirclePause size={19} />, matches: (row) => row.status === "suspendida" },
-    { id: "aprobaciones", label: "Con aprobaciones pendientes", tone: "info", icon: <Clock size={19} />, matches: (row) => row.counts.pending_approvals > 0 },
-    { id: "saldo", label: "Con saldo por cobrar", tone: "t1", icon: <Building2 size={19} />, matches: (row) => num(row.balance) > 0 },
+    { id: "activa", label: "Activas", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Cuentas corporativas en estado activa. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => row.status === "activa" },
+    { id: "suspendida", label: "Suspendidas", tone: "warn", icon: <CirclePause size={19} />, info: <p>Cuentas que se suspendieron desde su ficha y siguen así. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => row.status === "suspendida" },
+    { id: "aprobaciones", label: "Con aprobaciones pendientes", tone: "info", icon: <Clock size={19} />, info: <p>Cuentas con solicitudes de viaje que la empresa aún no aprueba ni rechaza. Al presionarla, la tabla muestra solo esas, con cuántas tiene por aprobar.</p>, matches: (row) => row.counts.pending_approvals > 0 },
+    { id: "saldo", label: "Con saldo por cobrar", tone: "t1", icon: <Building2 size={19} />, info: <p>Cuentas cuyo saldo, lo comprado menos pagos y notas de crédito, es mayor que cero. Al presionarla, la tabla muestra solo las que deben.</p>, matches: (row) => num(row.balance) > 0 },
   ];
   const filters: FilterConfig<CorporateAccount>[] = [{ id: "status", label: "Estado", options: [{ value: "activa", label: "Activa" }, { value: "suspendida", label: "Suspendida" }, { value: "cerrada", label: "Cerrada" }], value: (row) => row.status }];
   const sorts: SortOption<CorporateAccount>[] = [

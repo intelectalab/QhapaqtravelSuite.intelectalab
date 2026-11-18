@@ -1,6 +1,6 @@
 "use client";
 
-import { Ban, CalendarClock, ClipboardList, Pencil, Plus, Siren, TriangleAlert, UserCog, Users } from "lucide-react";
+import { Ban, CalendarClock, CalendarDays, ClipboardList, Pencil, Plus, Siren, TriangleAlert, UserCog, UserRoundX } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -165,10 +165,11 @@ export function OrdersTable({ data }: { data: OrderList }) {
   ];
 
   const metrics: MetricFilter<OrderRow>[] = [
-    { id: "running", label: "En ejecución", tone: "t4", icon: <CalendarClock size={19} />, matches: (row) => row.status === "en_ejecucion" },
-    { id: "pending", label: "Con servicios sin recursos", tone: "warn", icon: <Users size={19} />, matches: (row) => row.assignments.pending > 0 && !CLOSED.includes(row.status) },
-    { id: "incidents", label: "Con incidencias abiertas", tone: "bad", icon: <Siren size={19} />, matches: (row) => row.open_incidents > 0 },
-    { id: "closed", label: "Completadas", tone: "ok", icon: <ClipboardList size={19} />, matches: (row) => row.status === "completada" },
+    { id: "today", label: "Servicios hoy", tone: "t1", icon: <CalendarDays size={19} />, display: data.kpis.services_today, note: `${data.kpis.services_tomorrow} mañana`, info: <p>Tours, traslados y entradas de las órdenes activas con fecha de hoy; la nota cuenta los de mañana. Al presionarla, la tabla muestra las órdenes activas que están en viaje hoy.</p>, matches: (row) => !CLOSED.includes(row.status) && row.date_from <= today && row.date_to >= today },
+    { id: "pending", label: "Servicios por asignar", tone: "warn", icon: <UserRoundX size={19} />, display: data.kpis.pending_assignment, note: "Falta guía, conductor o vehículo", info: <p>Servicios de órdenes activas que todavía no tienen recursos asignados. Al presionarla, la tabla muestra las órdenes que los contienen.</p>, matches: (row) => row.assignments.pending > 0 && !CLOSED.includes(row.status) },
+    { id: "running", label: "En ejecución", tone: "t4", icon: <CalendarClock size={19} />, info: <p>Órdenes cuyo viaje ya empezó y todavía no se cierra. Al presionarla, la tabla muestra esas órdenes.</p>, matches: (row) => row.status === "en_ejecucion" },
+    { id: "incidents", label: "Con incidencias abiertas", tone: "bad", icon: <Siren size={19} />, info: <p>Órdenes con al menos una incidencia abierta o en proceso. Al presionarla, la tabla muestra esas órdenes.</p>, matches: (row) => row.open_incidents > 0 },
+    { id: "closed", label: "Completadas", tone: "ok", icon: <ClipboardList size={19} />, info: <p>Órdenes en estado completada: su viaje terminó y la orden se cerró. Al presionarla, la tabla muestra esas órdenes.</p>, matches: (row) => row.status === "completada" },
   ];
 
   const filters: FilterConfig<OrderRow>[] = [

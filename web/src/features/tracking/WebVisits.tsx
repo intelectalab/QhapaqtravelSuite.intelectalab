@@ -59,7 +59,7 @@ export function TrendAndLive({ overview }: { overview: WebOverview }) {
           <h3 className="text-[14.5px] font-semibold">{weekly ? "Visitas por semana" : "Visitas por día"}</h3>
           <span className="text-[12.5px] text-fg-3">{secondsLabel(overview.kpis.avg_seconds)} por visita</span>
         </header>
-        <BarChart height={150} data={points.map((point) => ({ label: point.day, value: point.visits, caption: `${point.day.slice(8, 10)}/${point.day.slice(5, 7)}`, detail: `${point.day.slice(8, 10)}/${point.day.slice(5, 7)} · ${formatNumber(point.visits)} visitas · ${formatNumber(point.visitors)} visitantes` }))} />
+        <BarChart height={150} data={points.map((point) => ({ label: points.length > 12 ? point.day : new Date(`${point.day}T12:00:00Z`).toLocaleDateString("es-PE", { weekday: "short", timeZone: "UTC" }).replace(".", ""), value: point.visits, caption: `${point.day.slice(8, 10)}/${point.day.slice(5, 7)}`, detail: `${point.day.slice(8, 10)}/${point.day.slice(5, 7)} · ${formatNumber(point.visits)} visitas · ${formatNumber(point.visitors)} visitantes` }))} />
       </section>
       <section className="lift rounded-card border border-line bg-surface p-4">
         <h3 className="mb-2 flex items-center gap-2 text-[14.5px] font-semibold">

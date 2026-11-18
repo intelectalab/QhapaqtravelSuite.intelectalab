@@ -81,18 +81,18 @@ export function FlagsMatrix({ overview }: { overview: FlagsOverview }) {
   return (
     <Card padded={false} className="overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-[13.5px]">
+        <table className="w-full text-[13.5px]">
           <thead className="sticky top-0 z-10 bg-surface">
             <tr className="border-b border-line">
               <th className="px-5 py-3 text-left text-[12.5px] font-semibold text-fg-3">Funcionalidad</th>
               {overview.plans.map((plan) => (
-                <th key={plan.code} className="w-[120px] px-3 py-3 text-center">
+                <th key={plan.code} className="w-24 px-2 py-3 text-center">
                   <Badge tone={planTone(plan.rank)} dot={false}>
                     {plan.name}
                   </Badge>
                 </th>
               ))}
-              <th className="w-[110px] px-3 py-3 text-center text-[12.5px] font-semibold text-fg-3">Excepciones</th>
+              <th className="w-24 px-2 py-3 text-center text-[12.5px] font-semibold text-fg-3">Excepciones</th>
             </tr>
           </thead>
           <tbody>

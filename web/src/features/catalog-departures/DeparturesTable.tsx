@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarCheck, CalendarX, CircleDot, Users } from "lucide-react";
+import { CalendarDays, CalendarX, CircleDot, Ticket, Users } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { DataTable } from "@/components/table/DataTable";
@@ -12,7 +12,7 @@ import { DetailPanel, NameButton, OccupancyBar, PanelSection } from "@/features/
 import { HOLD_STATUS, type AvailabilityOverview } from "@/lib/catalog-availability";
 import { DEPARTURE_STATUS, type DepartureRow, type DeparturesOverview } from "@/lib/catalog-departures";
 import type { CsvExport } from "@/lib/csv";
-import { formatDate, monthName } from "@/lib/format";
+import { capitalize, formatDate, monthName } from "@/lib/format";
 import { DepartureCloseAction, DepartureEditAction } from "./DepartureForms";
 import { DepartureHoldAction, DepartureSellAction, type SellableDeparture } from "./DepartureSales";
 
@@ -105,11 +105,44 @@ export function DeparturesTable({ overview, availability }: { overview: Departur
       ),
     },
   ];
+  const isUpcoming = (departure: DepartureRow) => departure.future && departure.status !== "cancelada";
+  const upcoming = overview.departures.filter(isUpcoming);
+  const capacity = upcoming.reduce((sum, departure) => sum + departure.capacity, 0);
+  const sold = upcoming.reduce((sum, departure) => sum + departure.sold, 0);
+  const free = upcoming.reduce((sum, departure) => sum + departure.available, 0);
+  const months = [...new Set(upcoming.map((departure) => departure.date.slice(0, 7)))].sort().slice(0, 6);
   const metrics: MetricFilter<DepartureRow>[] = [
-    { id: "open", label: "Con cupo", tone: "ok", icon: <CircleDot size={19} />, matches: (departure) => departure.available > 0 },
-    { id: "full", label: "Completas", tone: "sun", icon: <Users size={19} />, matches: (departure) => departure.status === "completa" },
-    { id: "closed", label: "Cerradas", tone: "mute", icon: <CalendarCheck size={19} />, matches: (departure) => departure.status === "cerrada" },
-    { id: "cancelled", label: "Canceladas", tone: "bad", icon: <CalendarX size={19} />, matches: (departure) => departure.status === "cancelada" },
+    { id: "upcoming", label: "Próximas salidas", tone: "t1", icon: <CalendarDays size={19} />, note: `${capacity} cupos programados`, info: <p>Salidas de hoy en adelante que no están canceladas; la nota suma su capacidad. Al presionarla, la tabla muestra solo esas salidas.</p>, matches: isUpcoming },
+    {
+      id: "sold",
+      label: "Vendidos",
+      tone: "ok",
+      icon: <Users size={19} />,
+      display: sold,
+      note: capacity ? `${Math.round((sold / capacity) * 100)} % de ocupación` : "Sin capacidad",
+      info: (
+        <div>
+          <p>Cupos confirmados en las próximas salidas. Al presionarla, la tabla muestra las próximas salidas con al menos un cupo vendido. Ocupación por mes, con lo retenido:</p>
+          <ul className="mt-2 flex flex-col gap-1">
+            {months.map((month) => {
+              const rows = upcoming.filter((departure) => departure.date.startsWith(month));
+              const seats = rows.reduce((sum, departure) => sum + departure.capacity, 0);
+              const taken = rows.reduce((sum, departure) => sum + departure.sold + departure.held, 0);
+              return (
+                <li key={month} className="flex justify-between gap-3">
+                  <span>{capitalize(monthName(`${month}-01`))}</span>
+                  <b>{seats ? Math.round((taken / seats) * 100) : 0} %</b>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ),
+      matches: (departure) => isUpcoming(departure) && departure.sold > 0,
+    },
+    { id: "open", label: "Libres", tone: "violet", icon: <Ticket size={19} />, display: free, note: `En ${upcoming.filter((departure) => departure.available > 0).length} salidas con cupo`, info: <p>Capacidad menos vendidos y holds en las próximas salidas. Al presionarla, la tabla muestra las próximas salidas que todavía tienen cupo libre.</p>, matches: (departure) => isUpcoming(departure) && departure.available > 0 },
+    { id: "full", label: "Completas", tone: "sun", icon: <CircleDot size={19} />, info: <p>Salidas que se llenaron: una salida abierta pasa sola a completa cuando vendidos y holds alcanzan su capacidad. Al presionarla, la tabla muestra esas salidas.</p>, matches: (departure) => departure.status === "completa" },
+    { id: "cancelled", label: "Canceladas", tone: "bad", icon: <CalendarX size={19} />, info: <p>Salidas canceladas; no cuentan en las próximas salidas ni en los cupos. Al presionarla, la tabla muestra esas salidas.</p>, matches: (departure) => departure.status === "cancelada" },
   ];
   const filters: FilterConfig<DepartureRow>[] = [
     { id: "product", label: "Producto", options: unique(overview.departures.map((departure) => departure.product.name)), value: (departure) => departure.product.name },

@@ -205,7 +205,7 @@ export function TripStep({ form, set, options, errors, plan, checkError, checkin
                 onChange={(value) => set({ rate_id: value })}
                 options={[
                   { value: "", label: "Tarifa sugerida", hint: plan.rate_ref ?? "La del canal para la fecha" },
-                  ...plan.rates.map((rate) => ({ value: rate.id, label: `${rate.ref} · ${rate.type} ${rate.segment} · ${rate.channel}`, hint: rate.valid ? formatMoney(rate.price, rate.currency) : "No vigente para la fecha (PRD-BR-005)", disabled: !rate.valid })),
+                  ...plan.rates.map((rate) => ({ value: rate.id, label: `${rate.ref} · ${rate.type} ${rate.segment} · ${rate.channel}`, hint: rate.valid ? formatMoney(rate.price, rate.currency) : "No vigente para la fecha", disabled: !rate.valid })),
                 ]}
                 ariaLabel="Tarifa de la reserva"
                 className="h-12 w-full"

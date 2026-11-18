@@ -20,7 +20,7 @@ final class FinanceDetails
     {
         $row = DB::table('fin_receivables as f')->join('booking_reservations as r', 'r.id', '=', 'f.reservation_id')->join('crm_clients as c', 'c.id', '=', 'f.client_id')
             ->where('f.code', $code)->whereNull('f.deleted_at')
-            ->first(['f.*', 'r.code as reservation_code', 'r.title as reservation_title', 'r.status as reservation_status', 'c.code as client_code', 'c.name as client_name', 'c.email as client_email']);
+            ->first(['f.*', 'r.code as reservation_code', 'r.title as reservation_title', 'r.status as reservation_status', 'c.code as client_code', 'c.name as client_name', 'c.email as client_email', PaymentMethods::b2bCreditColumn('f', 'r')]);
 
         if ($row === null) {
             return null;
@@ -29,7 +29,7 @@ final class FinanceDetails
         return [
             'code' => $row->code, 'kind' => $row->kind, 'concept' => $row->concept, 'status' => $row->status, 'currency' => $row->currency, 'fx_rate' => (string) $row->fx_rate,
             'amount' => (string) $row->amount, 'paid' => (string) $row->paid_amount, 'balance' => (string) Decimal::of($row->amount)->minus((string) $row->paid_amount)->toScale(2),
-            'due_date' => $row->due_date, 'cancel_reason' => $row->cancel_reason, 'created_at' => $row->created_at, 'last_reminder_at' => $row->last_reminder_at, 'lock_version' => (int) $row->lock_version,
+            'due_date' => $row->due_date, 'cancel_reason' => $row->cancel_reason, 'created_at' => $row->created_at, 'last_reminder_at' => $row->last_reminder_at, 'lock_version' => (int) $row->lock_version, 'b2b_credit' => (bool) $row->b2b_credit,
             'balance_pen' => (string) $this->money->penExact(Decimal::of($row->amount)->minus((string) $row->paid_amount), $row->currency, $row->fx_rate),
             'reservation' => ['code' => $row->reservation_code, 'title' => $row->reservation_title, 'status' => $row->reservation_status],
             'client' => ['code' => $row->client_code, 'name' => $row->client_name, 'email' => $row->client_email],
@@ -163,9 +163,9 @@ final class FinanceDetails
         $checks = [
             ['key' => 'trip', 'label' => 'El viaje terminó', 'ok' => $reservation->status === 'completada', 'detail' => $reservation->status === 'completada' ? 'Reserva completada' : 'Estado actual: '.str_replace('_', ' ', (string) $reservation->status)],
             ['key' => 'receivables', 'label' => 'Tiene cuentas por cobrar', 'ok' => $receivables->isNotEmpty(), 'detail' => $receivables->isNotEmpty() ? $receivables->count().' cuota(s)' : 'La reserva no tiene cuotas: créalas antes de liquidar'],
-            ['key' => 'collected', 'label' => 'Todo cobrado', 'ok' => $receivables->isNotEmpty() && $collected->isGreaterThanOrEqualTo($collectedGross), 'detail' => 'Falta cobrar S/ '.$collectedGross->minus($collected)->toScale(2)],
+            ['key' => 'collected', 'label' => 'Todo cobrado', 'ok' => $receivables->isNotEmpty() && $collected->isGreaterThanOrEqualTo($collectedGross), 'detail' => 'Falta cobrar '.Decimal::display($collectedGross->minus($collected), 'PEN')],
             ['key' => 'extras', 'label' => 'Costos adicionales aprobados', 'ok' => $pendingExtras->isEmpty(), 'detail' => $pendingExtras->isEmpty() ? 'Sin costos por aprobar' : $pendingExtras->count().' costo(s) adicional(es) por aprobar'],
-            ['key' => 'paid', 'label' => 'Proveedores pagados', 'ok' => $paidOut->isGreaterThanOrEqualTo($cost), 'detail' => 'Falta pagar S/ '.$cost->minus($paidOut)->toScale(2)],
+            ['key' => 'paid', 'label' => 'Proveedores pagados', 'ok' => $paidOut->isGreaterThanOrEqualTo($cost), 'detail' => 'Falta pagar '.Decimal::display($cost->minus($paidOut), 'PEN')],
             ['key' => 'commissions', 'label' => 'Comisiones aprobadas', 'ok' => $commissions->whereIn('status', ['calculada', 'pendiente'])->isEmpty(), 'detail' => $commissions->whereIn('status', ['calculada', 'pendiente'])->count().' por aprobar'],
         ];
 

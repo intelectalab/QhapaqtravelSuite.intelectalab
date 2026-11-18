@@ -28,7 +28,7 @@ final class PlatformBranding
             'branding' => $this->current(),
             'defaults' => Branding::DEFAULTS,
             'variants' => collect(Branding::VARIANTS)->map(fn (string $label, string $value): array => ['value' => $value, 'label' => $label])->values(),
-            'agency' => ['name' => 'Consola de plataforma', 'initials' => 'QT'],
+            'agency' => ['name' => 'Consola de plataforma', 'initials' => 'KC'],
             'logo' => $this->logo->overview(),
             'history' => $this->audit->entries([self::ENTITY]),
             'can_manage' => true,

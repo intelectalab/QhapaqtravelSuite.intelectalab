@@ -21,6 +21,7 @@ return [
         'platform' => [
             'transport' => 'platform',
             'fallback' => env('MAIL_PLATFORM_FALLBACK', 'log'),
+            'redirect_to' => env('MAIL_REDIRECT_TO'),
         ],
 
         'ses' => [

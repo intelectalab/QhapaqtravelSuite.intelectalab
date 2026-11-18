@@ -30,7 +30,7 @@ export function BillingKpis({ overview }: { overview: Overview }) {
   const change = overview.mrr_change;
 
   return (
-    <section aria-label="Indicadores" className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+    <section aria-label="Indicadores" className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 min-[1600px]:grid-cols-5">
       <KpiTile
         tone="t1"
         label="Ingreso recurrente mensual"

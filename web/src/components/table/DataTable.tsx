@@ -144,23 +144,25 @@ export function DataTable<T>({
     <div>
       {metrics.length > 0 && (
         <MetricCardRow>
-          {[{ id: "", label: "Todos", tone: "t1" as const, icon: undefined, matches: () => true }, ...metrics].map((metric) => (
+          {metrics.map((metric) => (
             <MetricCard
-              key={metric.id || "all"}
+              key={metric.id}
               label={metric.label}
               icon={metric.icon}
               tone={metric.tone}
-              value={rows.filter(metric.matches).length}
+              note={metric.note}
+              info={metric.info}
+              value={metric.display ?? rows.filter(metric.matches).length}
               active={query.metric === metric.id}
               onClick={() => update({ metric: query.metric === metric.id ? "" : metric.id })}
-              testId={`kpi:${metric.id || "all"}`}
+              testId={`kpi:${metric.id}`}
             />
           ))}
         </MetricCardRow>
       )}
 
       <div ref={card} className="relative scroll-mt-20 rounded-card border border-line bg-surface shadow-card max-md:border-0 max-md:bg-transparent max-md:shadow-none">
-        <div className="sticky top-16 z-20 flex items-center gap-2 rounded-t-card border-b border-line bg-surface/95 px-3.5 py-3 backdrop-blur-md max-md:border-0 max-md:bg-bg/95 max-md:px-0">
+        <div data-table-toolbar className="sticky top-16 z-20 flex flex-wrap items-center gap-2 rounded-t-card border-b border-line bg-surface/95 px-3.5 py-3 backdrop-blur-md max-md:border-0 max-md:bg-bg/95 max-md:px-0">
           <SearchBox value={query.search} onChange={(search) => update({ search })} placeholder={searchPlaceholder} />
           {visible.length > 0 && !view && <Pager placement="top" page={currentPage} pages={pages} total={visible.length} rows={pageSize} onPage={goPage} onRows={chooseRows} entityLabel={entityLabel} />}
           <div className="ml-auto flex flex-none items-center gap-2">
@@ -269,7 +271,7 @@ export function DataTable<T>({
         ) : (
           <>
             <div className="scroll-thin overflow-x-auto max-md:hidden">
-              <table className="w-full border-collapse">
+              <table data-table-grid className="w-full border-collapse">
                 <thead>
                   <tr>
                     {selectable && (
@@ -278,7 +280,7 @@ export function DataTable<T>({
                       </th>
                     )}
                     {columns.map((column) => (
-                      <th key={column.id} className={cn("whitespace-nowrap border-b border-line px-3 py-2.5 text-left text-xs font-medium text-fg-3", column.align === "right" && "text-right", column.wideOnly && "max-[1600px]:hidden")}>
+                      <th key={column.id} className={cn("whitespace-nowrap border-b border-line px-2.5 py-2.5 text-left text-xs font-medium text-fg-3", column.align === "right" && "text-right", column.wideOnly && "max-[1600px]:hidden")}>
                         {column.header}
                       </th>
                     ))}
@@ -296,7 +298,7 @@ export function DataTable<T>({
                           </td>
                         )}
                         {columns.map((column) => (
-                          <td key={column.id} data-row-title={column === titleColumn ? "" : undefined} className={cn("whitespace-nowrap px-3 py-2.5 align-middle", column.align === "right" && "text-right", column.wideOnly && "max-[1600px]:hidden", column.className)}>
+                          <td key={column.id} data-row-title={column === titleColumn ? "" : undefined} className={cn("px-2.5 py-2.5 align-middle", column === titleColumn || column.wrap ? "min-w-36 whitespace-normal" : "whitespace-nowrap", column.align === "right" && "text-right", column.wideOnly && "max-[1600px]:hidden", column.className)}>
                             {column.cell(row)}
                           </td>
                         ))}
@@ -309,7 +311,7 @@ export function DataTable<T>({
                     <tr className="border-t-2 border-line bg-surface-2">
                       {selectable && <td />}
                       {columns.map((column) => (
-                        <td key={column.id} className={cn("whitespace-nowrap px-3 py-2.5 text-[13px] font-semibold", column.align === "right" && "text-right", column.wideOnly && "max-[1600px]:hidden")}>
+                        <td key={column.id} className={cn("whitespace-nowrap px-2.5 py-2.5 text-[13px] font-semibold", column.align === "right" && "text-right", column.wideOnly && "max-[1600px]:hidden")}>
                           {footerCells[column.id] ?? null}
                         </td>
                       ))}

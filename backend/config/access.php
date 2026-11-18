@@ -107,6 +107,7 @@ return [
         '/canales/aventuras' => ['cms.seo.manage', 'channels.cms.publish'],
         '/finanzas/pasarelas' => ['finance.gateways.manage'],
         '/mobile' => ['operations.assign'],
+        '/mobile/operador' => ['operations.assign'],
         '/reportes' => ['reports.view'],
         '/reportes/alertas' => ['ai.insights.view'],
         '/reportes/visitas' => ['analytics.web.view'],

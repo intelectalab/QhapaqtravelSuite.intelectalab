@@ -42,7 +42,7 @@ function ObservePanel({ list, room, reasons, impacts }: { list: SupplierRoomingL
     >
       {() => (
         <>
-          <SelectField label="Motivo" name="reason" placeholder="Elija el motivo" options={reasons.map((value) => ({ value, label: value }))} />
+          <SelectField label="Motivo" name="reason" placeholder="Elige el motivo" options={reasons.map((value) => ({ value, label: value }))} />
           <ChoiceGroup label="Impacto" name="impact" defaultValue="media" options={impacts.map((value) => ({ value, label: IMPACT_LABEL[value] ?? value }))} />
           <TextArea label="Propuesta del hotel" name="proposal" rows={3} required minLength={5} maxLength={1000} placeholder="Upgrade a junior suite sin costo adicional." />
         </>
@@ -133,7 +133,7 @@ function RoomingCard({ list, data, index }: { list: SupplierRoomingList; data: S
         </dl>
         {list.modified && (
           <p className="mt-3 flex items-center gap-2 rounded-tile bg-[color-mix(in_srgb,var(--warn)_10%,var(--surface))] px-3 py-2 text-[12.5px] text-warn">
-            <PencilLine size={14} /> La agencia está modificando esta lista. Podrá responder cuando la reenvíe.
+            <PencilLine size={14} /> La agencia está modificando esta lista. Podrás responder cuando la reenvíe.
           </p>
         )}
         {list.observed > 0 && (
@@ -161,7 +161,7 @@ function RoomingCard({ list, data, index }: { list: SupplierRoomingList; data: S
             </span>
           ) : (
             !list.modified && (
-              <ConfirmAction id={`acuse-${list.id}`} button label="Acusar recibo" icon={<FileCheck2 size={15} />} title="Acusar recibo" description={`La agencia sabrá que su hotel recibió la rooming list de ${list.reservation}.`} submitLabel="Acusar recibo" action={acknowledgeRooming.bind(null, list.id)} hidden={{ lock_version: list.lock_version }} />
+              <ConfirmAction id={`acuse-${list.id}`} button label="Acusar recibo" icon={<FileCheck2 size={15} />} title="Acusar recibo" description={`La agencia sabrá que tu hotel recibió la rooming list de ${list.reservation}.`} submitLabel="Acusar recibo" action={acknowledgeRooming.bind(null, list.id)} hidden={{ lock_version: list.lock_version }} />
             )
           )}
           {list.confirmed_at ? (
@@ -194,15 +194,15 @@ function RoomingCard({ list, data, index }: { list: SupplierRoomingList; data: S
 export function SupplierRoomingView({ data }: { data: SupplierRooming }) {
   return (
     <>
-      <PortalTitle title="Rooming lists" subtitle="Distribución de huéspedes que la agencia envió a su hotel. Acuse recibo, confirme las habitaciones o reporte una observación." />
+      <PortalTitle title="Rooming lists" subtitle="Distribución de huéspedes que la agencia envió a tu hotel. Acusa recibo, confirma las habitaciones o reporta una observación." />
       <section className="mb-6 grid gap-3 sm:grid-cols-3">
         <TintTile icon={CalendarCheck2} tone="t1" label="Llegan en 7 días" value={data.kpis.arrivals_week} note="Huéspedes con ingreso esta semana" info="Suma de huéspedes de las listas cuyo ingreso es hoy o en los próximos 7 días." />
         <TintTile icon={Hotel} tone="t3" label="En casa hoy" value={data.kpis.in_house} note="Huéspedes alojados" info="Huéspedes de listas con ingreso hasta hoy y salida posterior a hoy." />
-        <TintTile icon={BedDouble} tone={data.kpis.observed ? "bad" : "ok"} label="Habitaciones observadas" value={data.kpis.observed} note={data.kpis.observed ? "En gestión con Operaciones" : "Ninguna"} info="Habitaciones que su hotel observó y siguen pendientes de resolver por la agencia." />
+        <TintTile icon={BedDouble} tone={data.kpis.observed ? "bad" : "ok"} label="Habitaciones observadas" value={data.kpis.observed} note={data.kpis.observed ? "En gestión con Operaciones" : "Ninguna"} info="Habitaciones que tu hotel observó y siguen pendientes de resolver por la agencia." />
       </section>
       {data.items.length === 0 ? (
         <Card>
-          <EmptyLine>La agencia aún no le envió rooming lists.</EmptyLine>
+          <EmptyLine>La agencia aún no te envió rooming lists.</EmptyLine>
         </Card>
       ) : (
         <div className="flex flex-col gap-4">

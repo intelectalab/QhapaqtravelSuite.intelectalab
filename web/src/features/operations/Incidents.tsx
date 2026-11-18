@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock3, Hand, Lock, MessageSquarePlus, Pencil, Plus, RotateCcw, Siren, TimerOff, Wrench } from "lucide-react";
+import { Clock3, Hand, Lock, MessageSquarePlus, Pencil, Plus, RotateCcw, Siren, TimerOff, TimerReset, Wrench } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { DataTable } from "@/components/table/DataTable";
@@ -145,11 +145,17 @@ export function IncidentsTable({ data }: { data: IncidentList }) {
     },
   ];
 
+  const month = data.now.slice(0, 7);
+  const finished = data.items.filter((row) => !OPEN_INCIDENT.includes(row.status));
+  const onTime = finished.filter((row) => row.on_time).length;
+  const fromSuppliers = data.items.filter((row) => row.source === "extranet" && OPEN_INCIDENT.includes(row.status)).length;
+  const registered = data.items.filter((row) => row.created_at.slice(0, 7) === month).length;
   const metrics: MetricFilter<IncidentRow>[] = [
-    { id: "open", label: "Abiertas", tone: "info", icon: <Clock3 size={19} />, matches: (row) => row.status === "abierta" },
-    { id: "critical", label: "Críticas abiertas", tone: "bad", icon: <Siren size={19} />, matches: (row) => OPEN_INCIDENT.includes(row.status) && row.severity === "critica" },
-    { id: "process", label: "En proceso", tone: "sun", icon: <Wrench size={19} />, matches: (row) => row.status === "en_proceso" },
-    { id: "overdue", label: "Plazo vencido", tone: "warn", icon: <TimerOff size={19} />, matches: (row) => row.overdue },
+    { id: "open", label: "Abiertas", tone: "info", icon: <Clock3 size={19} />, note: `${fromSuppliers} de proveedores · ${registered} registradas este mes`, info: <p>Incidencias registradas que nadie ha tomado todavía. La nota cuenta las abiertas o en proceso que un hotel u operador reportó desde la extranet, y todas las creadas en el mes en curso desde la web, la app del operador o la extranet. Al presionarla, la tabla muestra las abiertas.</p>, matches: (row) => row.status === "abierta" },
+    { id: "critical", label: "Críticas abiertas", tone: "bad", icon: <Siren size={19} />, note: "Plazo de 4 horas", info: <p>Incidencias de severidad crítica abiertas o en proceso; Gerencia recibe la alerta al registrarlas. Al presionarla, la tabla muestra esas incidencias.</p>, matches: (row) => OPEN_INCIDENT.includes(row.status) && row.severity === "critica" },
+    { id: "process", label: "En proceso", tone: "sun", icon: <Wrench size={19} />, note: "Con responsable trabajando", info: <p>Incidencias que alguien de Operaciones tomó y todavía no resuelve. Al presionarla, la tabla muestra esas incidencias.</p>, matches: (row) => row.status === "en_proceso" },
+    { id: "overdue", label: "Plazo vencido", tone: "warn", icon: <TimerOff size={19} />, info: <p>Incidencias que pasaron su plazo de atención (crítica 4 h, alta 8 h, media 24 h, baja 72 h). Al presionarla, la tabla muestra esas incidencias.</p>, matches: (row) => row.overdue },
+    { id: "ontime", label: "Resueltas a tiempo", tone: finished.length && onTime / finished.length < 0.8 ? "warn" : "ok", icon: <TimerReset size={19} />, display: finished.length ? `${Math.round((onTime / finished.length) * 100)} %` : "—", note: `${onTime} de ${finished.length} resueltas o cerradas`, info: <p>Incidencias resueltas o cerradas antes de que venciera su plazo, sobre todas las resueltas o cerradas. Al presionarla, la tabla muestra las que se atendieron a tiempo.</p>, matches: (row) => !OPEN_INCIDENT.includes(row.status) && row.on_time === true },
   ];
 
   const filters: FilterConfig<IncidentRow>[] = [

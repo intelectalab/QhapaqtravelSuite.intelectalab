@@ -25,11 +25,8 @@ export function TemplatesKpis({ overview }: { overview: TemplatesAdminOverview }
   const { kpis } = overview;
 
   return (
-    <section aria-label="Resumen" className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <TintTile icon={LayoutTemplate} tone="t1" label="Publicadas" value={kpis.published} note={`${kpis.available} con diseño en el sitio · ${kpis.total} en el catálogo`} info="Plantillas con estado publicado. Solo las que tienen diseño propio en el sitio se pueden previsualizar y aplicar." />
+    <section aria-label="Resumen" className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       <TintTile icon={Clock3} tone={kpis.pending_submissions ? "sun" : "ok"} label="En revisión" value={kpis.pending_submissions} note="Envíos recibidos o validando" info="Envíos de versiones del equipo o de partners que esperan validaciones y revisión visual." />
-      <TintTile icon={Building2} tone="violet" label="Agencias con plantilla" value={kpis.agencies} note={`${kpis.agencies_self} la eligieron ellas mismas`} info="Agencias de la plataforma con su plantilla activa; las que nunca eligieron usan la plantilla por defecto." />
-      <TintTile icon={Wallet} tone="ok" label="Ventas premium" value={formatMoney(kpis.premium_amount)} note={`${kpis.premium_sales} ${kpis.premium_sales === 1 ? "compra" : "compras"}`} info="Suma de las compras de plantillas premium registradas por las agencias. Las cortesías no cuentan." />
     </section>
   );
 }
@@ -142,9 +139,10 @@ export function TemplatesCatalog({ overview }: { overview: TemplatesAdminOvervie
     },
   ];
   const metrics: MetricFilter<CatalogTemplate>[] = [
-    { id: "published", label: "Publicadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (template) => template.status === "publicado" },
-    { id: "review", label: "Borrador o en revisión", tone: "sun", icon: <Clock3 size={19} />, matches: (template) => template.status === "borrador" || template.status === "en_revision" },
-    { id: "retired", label: "Retiradas", tone: "mute", icon: <Archive size={19} />, matches: (template) => template.status === "retirado" },
+    { id: "published", label: "Publicadas", tone: "ok", icon: <CircleCheck size={19} />, note: `${overview.kpis.available} con diseño en el sitio · ${overview.kpis.total} en el catálogo`, info: <p>Plantillas con estado publicado; solo las que tienen diseño propio en el sitio se pueden previsualizar y aplicar. Al presionarla ves solo las publicadas.</p>, matches: (template) => template.status === "publicado" },
+    { id: "review", label: "Borrador o en revisión", tone: "sun", icon: <Clock3 size={19} />, info: <p>Plantillas que todavía no salen a la galería: en borrador o con una versión en revisión. Al presionarla ves solo esas plantillas.</p>, matches: (template) => template.status === "borrador" || template.status === "en_revision" },
+    { id: "retired", label: "Retiradas", tone: "mute", icon: <Archive size={19} />, info: <p>Plantillas fuera de la galería; las agencias que ya las usan las conservan. Al presionarla ves solo esas plantillas.</p>, matches: (template) => template.status === "retirado" },
+    { id: "premium", label: "Ventas premium", tone: "t1", icon: <Wallet size={19} />, display: formatMoney(overview.kpis.premium_amount), note: `${overview.kpis.premium_sales} ${overview.kpis.premium_sales === 1 ? "compra" : "compras"}`, info: <p>Suma de las compras de plantillas premium registradas por las agencias; las cortesías no cuentan. Al presionarla ves las plantillas premium del catálogo.</p>, matches: (template) => template.tier === "premium" },
   ];
   const filters: FilterConfig<CatalogTemplate>[] = [
     { id: "category", label: "Tipo", options: Object.entries(overview.catalog.categories).map(([value, label]) => ({ value, label })), value: (template) => template.category },
@@ -315,9 +313,10 @@ export function AssignmentsTable({ overview }: { overview: TemplatesAdminOvervie
     { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => <RowActions><AssignAction row={row} overview={overview} /></RowActions> },
   ];
   const metrics: MetricFilter<TemplateAssignment>[] = [
-    { id: "self", label: "Elegida por la agencia", tone: "violet", icon: <Eye size={19} />, matches: (row) => row.chosen_by === "agencia" },
-    { id: "platform", label: "Asignada por la plataforma", tone: "t1", icon: <LayoutTemplate size={19} />, matches: (row) => row.chosen_by === "admin_plataforma" },
-    { id: "update", label: "Con actualización", tone: "sun", icon: <RotateCcw size={19} />, matches: (row) => row.update_available !== null },
+    { id: "with", label: "Agencias con plantilla", tone: "ok", icon: <Building2 size={19} />, display: overview.kpis.agencies, info: <p>Agencias de la plataforma con su plantilla activa; las que nunca eligieron usan la plantilla por defecto. Al presionarla ves las agencias que tienen una plantilla.</p>, matches: (row) => row.template !== null },
+    { id: "self", label: "Elegida por la agencia", tone: "violet", icon: <Eye size={19} />, info: <p>Agencias que eligieron su plantilla desde su propio panel. Al presionarla ves solo esas agencias.</p>, matches: (row) => row.chosen_by === "agencia" },
+    { id: "platform", label: "Asignada por la plataforma", tone: "t1", icon: <LayoutTemplate size={19} />, info: <p>Agencias a las que el equipo de plataforma les asignó la plantilla, por ejemplo en un alta asistida. Al presionarla ves solo esas agencias.</p>, matches: (row) => row.chosen_by === "admin_plataforma" },
+    { id: "update", label: "Con actualización", tone: "sun", icon: <RotateCcw size={19} />, info: <p>Agencias cuya plantilla tiene una versión más nueva publicada. Al presionarla ves solo esas agencias.</p>, matches: (row) => row.update_available !== null },
   ];
 
   return <DataTable screen="plataforma-plantillas-agencias" rows={overview.assignments} columns={columns} getKey={(row) => row.tenant.code} entityLabel="agencias" searchText={(row) => `${row.tenant.name} ${row.tenant.code} ${row.template?.name ?? ""}`} searchPlaceholder="Buscar agencia" metrics={metrics} />;
@@ -357,8 +356,8 @@ export function AiPacksTable({ packs }: { packs: AiPack[] }) {
     { id: "actions", header: "", mobile: "hidden", align: "right", cell: (pack) => <RowActions><PackAction pack={pack} /></RowActions> },
   ];
   const metrics: MetricFilter<AiPack>[] = [
-    { id: "plans", label: "Planes mensuales", tone: "t1", icon: <Coins size={19} />, matches: (pack) => pack.is_plan },
-    { id: "paused", label: "Pausados", tone: "mute", icon: <Archive size={19} />, matches: (pack) => !pack.active },
+    { id: "plans", label: "Planes mensuales", tone: "t1", icon: <Coins size={19} />, info: <p>Planes de créditos que las agencias contratan cada mes. Al presionarla ves solo esos planes.</p>, matches: (pack) => pack.is_plan },
+    { id: "paused", label: "Pausados", tone: "mute", icon: <Archive size={19} />, info: <p>Paquetes y planes que ya no se ofrecen a las agencias. Al presionarla ves solo esos.</p>, matches: (pack) => !pack.active },
   ];
 
   return <DataTable screen="plataforma-paquetes-ia" rows={packs} columns={columns} getKey={(pack) => pack.code} entityLabel="paquetes" searchText={(pack) => `${pack.name} ${pack.code}`} searchPlaceholder="Buscar paquete" metrics={metrics} />;

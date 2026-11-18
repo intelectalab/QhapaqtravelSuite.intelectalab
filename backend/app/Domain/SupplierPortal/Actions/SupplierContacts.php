@@ -44,7 +44,7 @@ final class SupplierContacts
             $contact = $account->contact($id);
 
             if (DB::table('catalog_provider_contacts')->where('provider_id', $account->id())->count() <= 1) {
-                throw ApiException::conflict('SUP-BR-60', 'La agencia necesita al menos un contacto de su empresa.');
+                throw ApiException::conflict('SUP-BR-60', 'La agencia necesita al menos un contacto de tu empresa.');
             }
 
             DB::table('catalog_provider_contacts')->where('id', $contact->id)->delete();

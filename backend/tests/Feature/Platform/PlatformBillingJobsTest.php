@@ -184,6 +184,7 @@ it('PLT-03 convierte la prueba vencida con tarjeta y cobra la primera factura', 
 });
 
 it('PLT-04 marca la tarjeta vencida y avisa de la que vence en 30 días', function () {
+    platformDb()->table('payment_methods')->where('tenant_id', '<>', tenantA()->getKey())->update(['exp_month' => 12, 'exp_year' => 2030]);
     platformDb()->table('payment_methods')->where('tenant_id', tenantA()->getKey())->update(['exp_month' => 9, 'exp_year' => 2026]);
 
     expect(runPlatformJob(WarnExpiringCards::class))->toBe('1 aviso de tarjeta');

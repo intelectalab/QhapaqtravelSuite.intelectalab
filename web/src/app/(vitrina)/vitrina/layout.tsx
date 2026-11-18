@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const [overview, origin] = await Promise.all([getRlOverview(), rlOrigin()]);
   return {
     title: { absolute: `Free tours en Perú con guías locales · ${overview.brand.name}`, template: `%s · ${overview.brand.name}` },
-    description: "Reserve gratis free walking tours en Lima, Cusco, Arequipa y Puno. Agencias verificadas, guías oficiales y reseñas de asistentes.",
+    description: "Reserva gratis free walking tours en Lima, Cusco, Arequipa y Puno. Agencias verificadas, guías oficiales y reseñas de asistentes.",
     metadataBase: new URL(origin.endsWith("/") ? origin : `${origin}/`),
     openGraph: { siteName: overview.brand.name, locale: "es_PE", type: "website" },
   };

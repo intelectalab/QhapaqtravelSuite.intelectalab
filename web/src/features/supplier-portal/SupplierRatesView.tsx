@@ -13,7 +13,6 @@ import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
 import { ConfirmAction, HiddenFields, STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
 import { PortalTitle, SectionCard } from "@/features/portal/PortalUi";
 import { cn } from "@/lib/cn";
@@ -41,8 +40,8 @@ function RatePanel({ data, service, request }: { data: SupplierRates; service: S
         <>
           <HiddenFields values={{ service: service.ref }} />
           <TextField label={`Nueva tarifa neta (${service.currency}, sin IGV)`} name="proposed_cost" type="number" step="0.01" min="0.01" required defaultValue={request?.proposed ?? ""} icon={<Tags size={17} />} />
-          <DateField label="Rige desde" name="effective_from" min={data.earliest} required defaultValue={request?.effective_from ?? data.earliest} hint={`Con al menos ${data.notice_days} días de anticipación, según su contrato.`} />
-          <SelectField label="Motivo" name="reason_type" placeholder="Elija el motivo" defaultValue={request?.reason_type ?? ""} options={data.reasons.map((value) => ({ value, label: value }))} />
+          <DateField label="Rige desde" name="effective_from" min={data.earliest} required defaultValue={request?.effective_from ?? data.earliest} hint={`Con al menos ${data.notice_days} días de anticipación, según tu contrato.`} />
+          <SelectField label="Motivo" name="reason_type" placeholder="Elige el motivo" defaultValue={request?.reason_type ?? ""} options={data.reasons.map((value) => ({ value, label: value }))} />
           <TextArea label="Sustento" name="reason_detail" rows={4} maxLength={1000} defaultValue={request?.reason_detail ?? ""} placeholder="Explique qué cambia y por qué." />
         </>
       )}
@@ -65,8 +64,7 @@ function Change({ pct }: { pct: number | null }) {
 export function SupplierRatesView({ data }: { data: SupplierRates }) {
   const byRef = new Map(data.services.map((service) => [service.ref, service]));
   const pending = data.requests.filter((row) => row.status === "pendiente");
-  const active = data.services.filter((service) => service.status === "activo");
-  const expiring = active.filter((service) => service.valid_to < data.earliest);
+  const expiring = data.services.filter((service) => service.status === "activo").filter((service) => service.valid_to < data.earliest);
 
   const serviceColumns: Column<SupplierRateService>[] = [
     {
@@ -190,7 +188,7 @@ export function SupplierRatesView({ data }: { data: SupplierRates }) {
         return (
           <RowActions>
             <RatePanel data={data} service={service} request={row} />
-            <ConfirmAction id={row.code} label="Retirar solicitud" title={`Retirar ${row.code}`} description="La agencia deja de revisarla y la tarifa vigente no cambia. Puede enviar una nueva cuando quiera." submitLabel="Retirar" icon={<Undo2 size={15} />} action={withdrawRateRequest.bind(null, row.code)} hidden={{}} />
+            <ConfirmAction id={row.code} label="Retirar solicitud" title={`Retirar ${row.code}`} description="La agencia deja de revisarla y la tarifa vigente no cambia. Puedes enviar una nueva cuando quieras." submitLabel="Retirar" icon={<Undo2 size={15} />} action={withdrawRateRequest.bind(null, row.code)} hidden={{}} />
           </RowActions>
         );
       },
@@ -198,9 +196,14 @@ export function SupplierRatesView({ data }: { data: SupplierRates }) {
   ];
 
   const metrics: MetricFilter<SupplierRateRequest>[] = [
-    { id: "pending", label: "En revisión", icon: <Hourglass size={16} />, tone: "violet", matches: (row) => row.status === "pendiente" },
-    { id: "approved", label: "Aprobadas", icon: <PackageCheck size={16} />, tone: "ok", matches: (row) => row.status === "aprobada" },
-    { id: "closed", label: "Rechazadas o retiradas", icon: <Undo2 size={16} />, tone: "mute", matches: (row) => row.status === "rechazada" || row.status === "retirada" },
+    { id: "pending", label: "En revisión", icon: <Hourglass size={19} />, tone: "violet", note: pending.length ? "La agencia te responderá" : "Ninguno pendiente", info: <p>Solicitudes de cambio de tarifa que la agencia todavía revisa. Al presionarla ves solo esas solicitudes.</p>, matches: (row) => row.status === "pendiente" },
+    { id: "approved", label: "Aprobadas", icon: <PackageCheck size={19} />, tone: "ok", info: <p>Solicitudes que la agencia aprobó; crean una nueva vigencia desde la fecha pedida. Al presionarla ves solo esas solicitudes.</p>, matches: (row) => row.status === "aprobada" },
+    { id: "closed", label: "Rechazadas o retiradas", icon: <Undo2 size={19} />, tone: "mute", info: <p>Solicitudes que la agencia rechazó o que tú retiraste; la tarifa vigente no cambió. Al presionarla ves solo esas solicitudes.</p>, matches: (row) => row.status === "rechazada" || row.status === "retirada" },
+  ];
+  const serviceMetrics: MetricFilter<SupplierRateService>[] = [
+    { id: "active", label: "Servicios activos", icon: <Tags size={19} />, tone: "t1", note: `${data.services.length} en tu contrato`, info: <p>Servicios tuyos que la agencia tiene activos con una tarifa vigente. Al presionarla ves solo esos servicios.</p>, matches: (row) => row.status === "activo" },
+    { id: "bookings", label: "Reservas con tus servicios", icon: <PackageCheck size={19} />, tone: "ok", display: data.services.reduce((sum, service) => sum + service.bookings, 0), note: "Conservan la tarifa pactada", info: <p>Reservas de la agencia que incluyen tus servicios; un cambio de tarifa no las afecta. Al presionarla ves los servicios que tienen reservas.</p>, matches: (row) => row.bookings > 0 },
+    { id: "expiring", label: "Vigencias por vencer", icon: <CalendarRange size={19} />, tone: expiring.length ? "warn" : "t3", note: `Antes del ${formatDate(data.earliest)}`, info: <p>Servicios activos cuya tarifa vence antes de la fecha más temprana en que podrías pedir un cambio, según el aviso de tu contrato. Al presionarla ves solo esos servicios.</p>, matches: (row) => row.status === "activo" && row.valid_to < data.earliest },
   ];
   const filters: FilterConfig<SupplierRateRequest>[] = [{ id: "status", label: "Estado", options: [...new Set(data.requests.map((row) => row.status))].map((value) => ({ value, label: supplierStatus(value, "rate").label })), value: (row) => row.status }];
   const sorts: SortOption<SupplierRateRequest>[] = [
@@ -211,16 +214,9 @@ export function SupplierRatesView({ data }: { data: SupplierRates }) {
 
   return (
     <>
-      <PortalTitle title="Tarifas" subtitle="Sus tarifas netas contratadas con la agencia, sin IGV. Los cambios se solicitan y la agencia los aprueba." />
-      <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TintTile icon={Tags} tone="t1" label="Servicios activos" value={active.length} note={`${data.services.length} en su contrato`} />
-        <TintTile icon={Hourglass} tone="violet" label="Cambios en revisión" value={pending.length} note={pending.length ? "La agencia le responderá" : "Ninguno pendiente"} />
-        <TintTile icon={PackageCheck} tone="ok" label="Reservas con sus servicios" value={data.services.reduce((sum, service) => sum + service.bookings, 0)} note="Conservan la tarifa pactada" />
-        <TintTile icon={CalendarRange} tone={expiring.length ? "warn" : "t3"} label="Vigencias por vencer" value={expiring.length} note={`Antes del ${formatDate(data.earliest)}`} />
-      </section>
-
+      <PortalTitle title="Tarifas" subtitle="Tus tarifas netas contratadas con la agencia, sin IGV. Los cambios se solicitan y la agencia los aprueba." />
       <div className="flex flex-col gap-6">
-        <DataTable screen="proveedor-tarifas" rows={data.services} columns={serviceColumns} getKey={(row) => row.ref} entityLabel="servicios" searchText={(row) => `${row.ref} ${row.name} ${row.type}`} searchPlaceholder="Buscar servicio" emptyTitle="La agencia aún no registra servicios suyos" />
+        <DataTable screen="proveedor-tarifas" rows={data.services} columns={serviceColumns} getKey={(row) => row.ref} entityLabel="servicios" searchText={(row) => `${row.ref} ${row.name} ${row.type}`} searchPlaceholder="Buscar servicio" metrics={serviceMetrics} emptyTitle="La agencia aún no registra servicios suyos" />
 
         <SectionCard icon={Pencil} title="Solicitudes de actualización" aside={data.requests.length}>
           <DataTable screen="proveedor-solicitudes-tarifa" rows={data.requests} columns={requestColumns} getKey={(row) => row.code} entityLabel="solicitudes" metrics={metrics} filters={filters} sorts={sorts} searchText={(row) => `${row.code} ${row.service} ${row.reason_type}`} searchPlaceholder="Buscar solicitud" emptyTitle="Aún no envía solicitudes" />

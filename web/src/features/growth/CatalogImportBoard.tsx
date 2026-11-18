@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CircleCheck, FileSearch, Globe, Layers, PackagePlus, Plus, Sparkles, Upload, XCircle } from "lucide-react";
+import { Check, CircleCheck, FileSearch, Globe, PackagePlus, Plus, Sparkles, Upload, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { confirmImport, startImport } from "@/app/(backoffice)/catalogo/importar/actions";
@@ -12,12 +12,11 @@ import { FilePicker } from "@/components/ui/FilePicker";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
 import { formatDateTime, formatMoney } from "@/lib/format";
 import { labelOptions, type CatalogImportDetail, type ImportedProduct, type ImportsOverview } from "@/lib/growth";
 import type { StepResult } from "@/lib/server/resource";
-import { KpiRow, PlanNotice, StatusPill } from "./GrowthUi";
+import { PlanNotice, StatusPill } from "./GrowthUi";
 
 const initial: StepResult = { message: null, done: false };
 
@@ -120,12 +119,6 @@ export function CatalogImportBoard({ overview, details }: { overview: ImportsOve
   return (
     <>
       <PlanNotice enabled={overview.enabled} feature="El importador de productos con IA" />
-      <KpiRow>
-        <TintTile icon={Layers} tone="t1" label="Importaciones" value={kpis.total} info={<p>Importaciones iniciadas desde una página web, un PDF o una planilla.</p>} />
-        <TintTile icon={FileSearch} tone="sun" label="Por revisar" value={kpis.review} info={<p>Importaciones con productos detectados que esperan tu revisión antes de crearse.</p>} />
-        <TintTile icon={Sparkles} tone="violet" label="Productos detectados" value={kpis.detected} info={<p>Suma de los productos que la IA encontró en todas las importaciones, con su nivel de confianza.</p>} />
-        <TintTile icon={PackagePlus} tone="ok" label="Creados en borrador" value={kpis.created} info={<p>Productos que elegiste crear. Quedan en borrador en el catálogo hasta que completes tarifas y los actives.</p>} />
-      </KpiRow>
       <DataTable
         screen="catalogo-importar"
         rows={overview.imports}
@@ -134,9 +127,11 @@ export function CatalogImportBoard({ overview, details }: { overview: ImportsOve
         searchText={(row) => `${row.code} ${row.source ?? ""}`}
         searchPlaceholder="Buscar por código o fuente"
         metrics={[
-          { id: "revision", label: "Por revisar", tone: "sun", icon: <FileSearch size={18} />, matches: (row) => row.status === "revision" },
-          { id: "importado", label: "Importadas", tone: "ok", icon: <CircleCheck size={18} />, matches: (row) => row.status === "importado" },
-          { id: "fallido", label: "Con error", tone: "bad", icon: <XCircle size={18} />, matches: (row) => row.status === "fallido" },
+          { id: "revision", label: "Por revisar", tone: "sun", icon: <FileSearch size={19} />, note: `de ${kpis.total} importaciones`, info: <p>Importaciones con productos detectados que esperan tu revisión antes de crearse; la nota cuenta todas las importaciones iniciadas desde una página web, un PDF o una planilla. Al presionarla, la tabla muestra las que esperan revisión.</p>, matches: (row) => row.status === "revision" },
+          { id: "detectados", label: "Productos detectados", tone: "violet", icon: <Sparkles size={19} />, display: kpis.detected, info: <p>Suma de los productos que la IA encontró en todas las importaciones, con su nivel de confianza. Al presionarla, la tabla muestra las importaciones que detectaron al menos uno.</p>, matches: (row) => row.products_detected > 0 },
+          { id: "creados", label: "Creados en borrador", tone: "ok", icon: <PackagePlus size={19} />, display: kpis.created, info: <p>Productos que elegiste crear. Quedan en borrador en el catálogo hasta que completes tarifas y los actives. Al presionarla, la tabla muestra las importaciones de donde salieron.</p>, matches: (row) => row.products_created > 0 },
+          { id: "importado", label: "Importadas", tone: "info", icon: <CircleCheck size={19} />, info: <p>Importaciones ya revisadas y cerradas. Al presionarla, la tabla muestra esas importaciones.</p>, matches: (row) => row.status === "importado" },
+          { id: "fallido", label: "Con error", tone: "bad", icon: <XCircle size={19} />, info: <p>Importaciones en las que la IA no pudo leer la fuente. Al presionarla, la tabla muestra esas importaciones.</p>, matches: (row) => row.status === "fallido" },
         ]}
         filters={[
           { id: "status", label: "Estado", options: labelOptions(overview.catalogs.statuses), value: (row) => row.status },

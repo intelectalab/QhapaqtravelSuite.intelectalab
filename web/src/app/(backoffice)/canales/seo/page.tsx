@@ -22,7 +22,7 @@ export default async function SiteBrandPage() {
     <>
       <PageHeader
         title="Dominio y SEO"
-        subtitle="Su sitio con su dominio, certificado SSL automático, auditoría por página, redirecciones y sitemap."
+        subtitle="Tu sitio con tu dominio, certificado SSL automático, auditoría por página, redirecciones y sitemap."
         info={<InfoTip>Incluido en Enterprise; en Starter y Professional con el add-on «SEO y blog de aventuras». Un dominio pertenece a una sola agencia.</InfoTip>}
       />
       <BrandTiles domains={domains} seo={seo} redirects={redirects} />

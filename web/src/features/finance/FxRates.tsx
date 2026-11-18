@@ -44,34 +44,6 @@ function Change({ rate, previous }: { rate: number | null; previous: number | nu
   );
 }
 
-export function FxCards({ currencies }: { currencies: FxCurrency[] }) {
-  return (
-    <section className="mb-5 grid gap-3 md:grid-cols-3">
-      {currencies.map((currency, index) => (
-        <article key={currency.code} style={{ ...toneStyle(TONES[index % TONES.length]), animationDelay: `${index * 70}ms` }} className="lift animate-[rise-in_460ms_cubic-bezier(0.22,1,0.36,1)_backwards] rounded-tile border border-[color-mix(in_srgb,var(--tint)_22%,transparent)] bg-[color-mix(in_srgb,var(--tint)_7%,var(--surface))] p-4">
-          <div className="flex items-start justify-between gap-3">
-            <span className="flex items-center gap-2.5">
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--tint)] text-[13px] font-bold text-white shadow-[0_8px_18px_-10px_var(--tint)]">{currency.code}</span>
-              <span>
-                <b className="block text-[13.5px] font-semibold">{currency.name}</b>
-                <span className="text-[12px] text-fg-3">{currency.date ? `Al ${formatDate(currency.date)}` : "Sin registro"}</span>
-              </span>
-            </span>
-            <Change rate={currency.rate} previous={currency.previous} />
-          </div>
-          <p className="mt-3 text-[28px] font-bold leading-none tracking-[-0.03em]">{currency.rate === null ? "—" : `S/ ${fx(currency.rate)}`}</p>
-          <p className="mt-1 text-[12px] text-fg-3">{currency.source ?? "Registra el primer tipo de cambio"}</p>
-          {currency.trend.length > 1 && (
-            <div className="mt-2 text-[var(--tint)]">
-              <Sparkline values={currency.trend.map((point) => point.rate)} labels={currency.trend.map((point) => `${formatDate(point.date)} · S/ ${fx(point.rate)}`)} />
-            </div>
-          )}
-        </article>
-      ))}
-    </section>
-  );
-}
-
 export function FxRegisterAction({ currencies }: { currencies: FxCurrency[] }) {
   return (
     <PanelAction<StepResult>
@@ -102,7 +74,7 @@ export function FxRegisterAction({ currencies }: { currencies: FxCurrency[] }) {
   );
 }
 
-export function FxHistoryTable({ rows }: { rows: FxEntry[] }) {
+export function FxHistoryTable({ rows, currencies }: { rows: FxEntry[]; currencies: FxCurrency[] }) {
   const columns: Column<FxEntry>[] = [
     {
       id: "currency",
@@ -129,7 +101,33 @@ export function FxHistoryTable({ rows }: { rows: FxEntry[] }) {
     { id: "rate", label: "Tipo de cambio", type: "number", value: (row) => row.rate },
   ];
   const csv = { fileName: "historial-tipo-de-cambio", columns: [{ header: "Moneda", value: (row: FxEntry) => row.currency }, { header: "Fecha", value: (row: FxEntry) => row.date, type: "date" as const }, { header: "Tipo de cambio (S/)", value: (row: FxEntry) => row.rate, type: "number" as const }, { header: "Anterior (S/)", value: (row: FxEntry) => row.previous, type: "number" as const }, { header: "Fuente", value: (row: FxEntry) => row.source }, { header: "Registrado por", value: (row: FxEntry) => row.user }, { header: "Registrado el", value: (row: FxEntry) => row.at, type: "datetime" as const }] };
-  return <DataTable screen="monedas" rows={rows} columns={columns} getKey={(row) => row.id} entityLabel="registros" searchText={(row) => `${row.currency} ${row.source} ${row.user}`} searchPlaceholder="Buscar moneda o fuente" filters={filters} sorts={sorts} csv={csv} />;
+  const metrics: MetricFilter<FxEntry>[] = currencies.slice(0, 5).map((currency, index) => ({
+    id: currency.code,
+    label: `${currency.code} · ${currency.name}`,
+    tone: TONES[index % TONES.length],
+    icon: <Banknote size={19} />,
+    display: currency.rate === null ? "Sin registro" : `S/ ${fx(currency.rate)}`,
+    note: (
+      <span className="inline-flex flex-wrap items-center gap-1.5">
+        {currency.date ? `Al ${formatDate(currency.date)}` : "Registra el primer tipo de cambio"}
+        <Change rate={currency.rate} previous={currency.previous} />
+      </span>
+    ),
+    info: (
+      <>
+        <p className="mb-2">Tipo de cambio vigente en soles por unidad, {currency.source ? `según ${currency.source}` : "sin fuente todavía"}, y su variación frente al registro anterior. Al presionarla ves solo el historial de esta moneda.</p>
+        {currency.trend.length > 1 && (
+          <div className="w-[240px]" style={toneStyle(TONES[index % TONES.length])}>
+            <span className="text-[var(--tint)]">
+              <Sparkline values={currency.trend.map((point) => point.rate)} labels={currency.trend.map((point) => `${formatDate(point.date)} · S/ ${fx(point.rate)}`)} />
+            </span>
+          </div>
+        )}
+      </>
+    ),
+    matches: (row: FxEntry) => row.currency === currency.code,
+  }));
+  return <DataTable screen="monedas" rows={rows} columns={columns} getKey={(row) => row.id} entityLabel="registros" searchText={(row) => `${row.currency} ${row.source} ${row.user}`} searchPlaceholder="Buscar moneda o fuente" metrics={metrics} filters={filters} sorts={sorts} csv={csv} />;
 }
 
 function CurrencyToggle({ row, field }: { row: CurrencyRow; field: "active" | "is_charge" }) {
@@ -209,9 +207,9 @@ export function CurrenciesTable({ data }: { data: CurrenciesOverview }) {
     },
   ];
   const metrics: MetricFilter<CurrencyRow>[] = [
-    { id: "charge", label: "De cobro", tone: "t1", icon: <Coins size={19} />, matches: (row) => row.is_charge },
-    { id: "active", label: "Activas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.active },
-    { id: "inactive", label: "Inactivas", tone: "mute", icon: <CircleOff size={19} />, matches: (row) => !row.active },
+    { id: "charge", label: "De cobro", tone: "t1", icon: <Coins size={19} />, info: <p>Monedas en las que el sitio y el checkout pueden cobrar. Al presionarla ves solo esas monedas.</p>, matches: (row) => row.is_charge },
+    { id: "active", label: "Activas", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Monedas que se muestran en el sitio, el widget y las cotizaciones. Al presionarla ves solo esas monedas.</p>, matches: (row) => row.active },
+    { id: "inactive", label: "Inactivas", tone: "mute", icon: <CircleOff size={19} />, info: <p>Monedas apagadas que no se muestran en ningún lugar. Al presionarla ves solo esas monedas.</p>, matches: (row) => !row.active },
   ];
   return <DataTable screen="admin-monedas" rows={data.currencies} columns={columns} getKey={(row) => row.code} entityLabel="monedas" searchText={(row) => `${row.code} ${row.name}`} searchPlaceholder="Buscar moneda" metrics={metrics} />;
 }

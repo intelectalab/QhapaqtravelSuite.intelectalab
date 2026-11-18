@@ -7,6 +7,7 @@ namespace App\Domain\Integrations\Fake;
 use App\Domain\Integrations\Contracts\FiscalGateway;
 use App\Domain\Integrations\Data\AdapterResult;
 use App\Domain\Integrations\Data\FiscalDocument;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use App\Domain\Platform\Support\FiscalWebhookSecret;
 use Brick\Math\BigDecimal;
 
@@ -20,6 +21,10 @@ final class FakeFiscalGateway implements FiscalGateway
 
     public function issue(FiscalDocument $document): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('ose')) !== null) {
+            return $unavailable;
+        }
+
         if ($document->customerDocNumber === 'TIMEOUT') {
             return AdapterResult::transient('Tiempo de espera agotado (simulado).');
         }
@@ -120,16 +125,28 @@ final class FakeFiscalGateway implements FiscalGateway
 
     public function status(string $externalId): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('ose')) !== null) {
+            return $unavailable;
+        }
+
         return AdapterResult::success('aceptado', $externalId, ['simulated' => true]);
     }
 
     public function void(string $invoiceId, string $reason): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('ose')) !== null) {
+            return $unavailable;
+        }
+
         return AdapterResult::success('anulado', 'FAKE-BAJA-'.$invoiceId, ['simulated' => true]);
     }
 
     public function verifyWebhook(string $rawBody, string $signature): bool
     {
+        if (IntegrationReadiness::enforced()) {
+            return false;
+        }
+
         return $signature !== '' && hash_equals(self::sign($rawBody), $signature);
     }
 
@@ -140,6 +157,10 @@ final class FakeFiscalGateway implements FiscalGateway
 
     public function healthcheck(): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::health('ose')) !== null) {
+            return $unavailable;
+        }
+
         return AdapterResult::success('ok', null, ['simulated' => true]);
     }
 }

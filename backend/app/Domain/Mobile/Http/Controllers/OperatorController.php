@@ -6,6 +6,7 @@ namespace App\Domain\Mobile\Http\Controllers;
 
 use App\Domain\Iam\Models\User;
 use App\Domain\Mobile\Actions\OperatorActions;
+use App\Domain\Mobile\Support\OperatorAppPreview;
 use App\Domain\Mobile\Support\OperatorDirectory;
 use App\Domain\Mobile\Support\OperatorResource;
 use App\Domain\Operations\Support\IncidentDirectory;
@@ -62,6 +63,13 @@ final class OperatorController
     public function me(Request $request, OperatorDirectory $directory): JsonResponse
     {
         return response()->json(['data' => $directory->me($this->resource($request))]);
+    }
+
+    public function today(Request $request, OperatorAppPreview $preview): JsonResponse
+    {
+        $request->validate(['date' => ['nullable', 'date_format:Y-m-d']], ['date.*' => 'Revisa la fecha.']);
+
+        return response()->json(['data' => $preview->own($this->resource($request), $request->string('date')->toString() ?: null)]);
     }
 
     public function bootstrap(Request $request, OperatorDirectory $directory): JsonResponse

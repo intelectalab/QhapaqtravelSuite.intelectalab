@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Tracking\Fake;
 
 use App\Domain\Integrations\Data\AdapterResult;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use App\Domain\Tracking\Contracts\TagVerifier;
 use App\Domain\Tracking\Support\TrackingCatalog;
 
@@ -12,6 +13,10 @@ final class FakeTagVerifier implements TagVerifier
 {
     public function verify(object $tag, string $url): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('tracking')) !== null) {
+            return $unavailable;
+        }
+
         $provider = TrackingCatalog::provider((string) $tag->provider);
 
         if ($tag->provider !== 'script' && ! TrackingCatalog::idIsValid((string) $tag->provider, $tag->measurement_id)) {

@@ -251,7 +251,7 @@ return [
         ],
         'faqs' => [
             ['question' => '¿Qué pasa si llego a un límite?', 'answer' => 'Los usuarios y las sedes se bloquean al llegar al límite. Las reservas solo avisan. Los mensajes de WhatsApp y correo que lo superen quedan en cola hasta el siguiente mes o hasta sumar un paquete.'],
-            ['question' => '¿Cómo cambio de plan?', 'answer' => 'Esta pantalla no cambia el plan. Solicítalo al equipo de KipuControl y verás el nuevo plan aquí en cuanto se aplique.'],
+            ['question' => '¿Cómo cambio de plan?', 'answer' => 'Pulsa «Cambiar plan», elige el plan y el ciclo de pago y revisa la vista previa del importe. Las subidas se aplican hoy con prorrateo; las bajadas quedan para la renovación.'],
             ['question' => '¿Puedo corregir el RUC de una factura ya emitida?', 'answer' => 'No. Los datos de facturación se copian a cada factura al emitirla. Corrígelos aquí y se usarán desde la próxima.'],
         ],
         'keywords' => ['plan', 'factura', 'limite', 'consumo', 'pago'],
@@ -289,7 +289,7 @@ return [
         'audience' => 'agency',
         'module' => 'Administración',
         'screen' => '/admin/integraciones',
-        'title' => 'Integraciones y jobs',
+        'title' => 'Integraciones y tareas',
         'summary' => 'Estado de las integraciones con terceros, los procesos programados de tu agencia y los errores que necesitan atención.',
         'steps' => [
             ['title' => 'Probar una integración', 'text' => 'En la tarjeta de la integración pulsa «Probar conexión» y luego «Probar ahora». El panel muestra el registro de la prueba con cada paso, sus tiempos y el código de correlación. El resultado queda guardado en la misma tarjeta.'],

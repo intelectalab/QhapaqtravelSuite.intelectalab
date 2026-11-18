@@ -6,6 +6,7 @@ namespace App\Domain\SiteTemplates\Support;
 
 use App\Domain\Platform\Support\AddonPurchases;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -82,7 +83,7 @@ final class AiCredits
         if ($balance < $needed) {
             $offer = $this->packs()->where('kind', $kind)->sortBy(fn (stdClass $pack): float => (float) $pack->price)->values();
             $cheapest = $offer->first();
-            $hint = $cheapest !== null ? ' Desde S/ '.number_format((float) $cheapest->price, 2, '.', '').' + IGV en Contenido con IA › Planes y créditos.' : '';
+            $hint = $cheapest !== null ? ' Desde '.Decimal::display($cheapest->price, 'PEN').' + IGV en Contenido con IA › Planes y créditos.' : '';
 
             throw new ApiException(429, 'AI_CREDITS_EXHAUSTED', 'AI_CREDITS_EXHAUSTED', 'No tiene créditos de '.mb_strtolower(self::KINDS[$kind]).' suficientes: este pedido usa '.$needed.' y su saldo es '.$balance.'. Contrate un plan de IA o compre un paquete para continuar.'.$hint, [], [
                 'kind' => $kind,

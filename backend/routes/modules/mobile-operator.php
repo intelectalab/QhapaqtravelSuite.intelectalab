@@ -11,6 +11,7 @@ Route::prefix('mobile')->name('mobile.')->controller(OperatorController::class)-
 
     Route::middleware('permission:operations.view')->prefix('operator')->name('operator.')->group(function (): void {
         Route::get('me', 'me')->name('me');
+        Route::get('today', 'today')->name('today');
         Route::get('bootstrap', 'bootstrap')->name('bootstrap');
         Route::get('assignments/{id}', 'assignment')->name('assignments.show');
         Route::get('incidents', 'incidents')->name('incidents.index');

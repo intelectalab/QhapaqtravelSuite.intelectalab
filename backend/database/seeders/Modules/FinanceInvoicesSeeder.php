@@ -88,6 +88,7 @@ final class FinanceInvoicesSeeder
                 'line_amount' => $taxable,
                 'igv_amount' => round($total - $taxable, 2),
             ]);
+            $this->fiscalEvent($id, $seed, $issuer);
             $this->history('invoice', $id, 'emitido', 'Comprobante emitido y enviado al OSE', $issuer, $this->moment($seed['date'].' 10:00'));
             $this->history('invoice', $id, $seed['status'], $seed['status'] === 'observado' ? 'Respuesta del OSE con observaciones' : 'Respuesta del OSE', null, $this->moment($seed['date'].' 10:05'));
         }
@@ -96,5 +97,44 @@ final class FinanceInvoicesSeeder
             $last = (int) DB::table('fin_invoices')->where('tenant_id', $this->tenant->getKey())->where('series', $series)->max('correlative');
             $this->upsert('fin_document_series', ['series' => $series], ['doc_type' => $type, 'next_number' => $last + 1, 'active' => true]);
         }
+    }
+
+    public function completeFiscalEvents(): int
+    {
+        $added = 0;
+
+        foreach (KitSeeds::read('invoices') as $seed) {
+            $invoice = DB::table('fin_invoices')->where('tenant_id', $this->tenant->getKey())->where('number', $seed['id'])->first(['id', 'created_by']);
+
+            if ($invoice === null || DB::table('fin_fiscal_events')->where('invoice_id', $invoice->id)->where('action', 'send')->exists()) {
+                continue;
+            }
+
+            $this->fiscalEvent((string) $invoice->id, $seed, $invoice->created_by);
+            $added++;
+        }
+
+        return $added;
+    }
+
+    private function fiscalEvent(string $invoiceId, array $seed, ?string $issuer): void
+    {
+        if (DB::table('fin_fiscal_events')->where('invoice_id', $invoiceId)->where('action', 'send')->exists()) {
+            return;
+        }
+
+        $observed = $seed['status'] === 'observado';
+        DB::table('fin_fiscal_events')->insert([
+            'tenant_id' => $this->tenant->getKey(),
+            'invoice_id' => $invoiceId,
+            'action' => 'send',
+            'attempt' => 1,
+            'request_hash' => hash('sha256', $seed['id'].'|'.$seed['amount'].'|'.$seed['date']),
+            'response_code' => $observed ? '4287' : '0',
+            'response_message' => $observed ? 'El tipo de cambio no coincide con el del día de emisión.' : 'Aceptado por el OSE',
+            'status' => 'ok',
+            'created_by' => $issuer,
+            'created_at' => $this->moment($seed['date'].' 10:05'),
+        ]);
     }
 }

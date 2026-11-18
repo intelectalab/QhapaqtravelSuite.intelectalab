@@ -13,7 +13,6 @@ import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
 import { DetailPanel } from "@/features/channels/ChannelUi";
 import { cn } from "@/lib/cn";
 import type { BankAccountOption, PayableRow, PayablesOverview, SettlementDetail } from "@/lib/finance";
@@ -175,42 +174,6 @@ const reservationCell = (row: PayableRow) =>
     <span className="text-[13px] text-fg-3">Gasto general</span>
   );
 
-export function PayablesTiles({ data }: { data: PayablesOverview }) {
-  const { kpis, rows, by_provider: providers } = data;
-  const costs = rows.filter((row) => row.kind === "costo_adicional" && row.status !== "cancelada");
-  const impact = costs.filter((row) => row.approved).reduce((total, row) => total + row.amount_pen, 0);
-  const waiting = costs.filter((row) => !row.approved).length;
-  const top = providers[0];
-  return (
-    <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <TintTile icon={Wallet} tone="t1" label="Por pagar" value={formatMoney(kpis.payable_pen, "PEN", { compact: true })} note={kpis.payable_count === 1 ? "1 obligación abierta" : `${kpis.payable_count} obligaciones abiertas`} info={<p>Saldo de las obligaciones abiertas, en soles. Incluye {formatMoney(kpis.overdue_pen)} ya vencido y {formatMoney(kpis.due_week_pen)} que vence en los próximos 7 días.</p>} />
-      <TintTile icon={HandCoins} tone="ok" label="Pagado este mes" value={formatMoney(kpis.paid_month_pen, "PEN", { compact: true })} note={kpis.scheduled_week_pen > 0 ? `Programado a 7 días: ${formatMoney(kpis.scheduled_week_pen, "PEN", { compact: true })}` : "Nada programado esta semana"} info={<p>Pagos a proveedores registrados desde el día 1, al tipo de cambio de cada pago. La nota suma los pagos programados para los próximos 7 días.</p>} />
-      <TintTile icon={TrendingDown} tone="violet" label="Costos que restan margen" value={formatMoney(impact, "PEN", { compact: true })} note="Costos adicionales aprobados" info={<p>Un costo adicional resta en la rentabilidad de su reserva desde que se aprueba. {waiting === 0 ? "No hay costos esperando aprobación." : waiting === 1 ? "Hay 1 costo que aún no resta." : `Hay ${waiting} costos que aún no restan.`}</p>} />
-      <TintTile
-        icon={Building2}
-        tone="sun"
-        label="Mayor saldo"
-        value={top ? formatMoney(top.pen, "PEN", { compact: true }) : "—"}
-        note={top?.name ?? "Sin saldos pendientes"}
-        info={
-          providers.length ? (
-            <ul className="flex flex-col gap-1">
-              {providers.slice(0, 5).map((item) => (
-                <li key={item.name} className="flex justify-between gap-3">
-                  <span className="truncate">{item.name}</span>
-                  <b className="font-mono">{formatMoney(item.pen)}</b>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No hay saldos pendientes con proveedores.</p>
-          )
-        }
-      />
-    </section>
-  );
-}
-
 interface ProviderBalance {
   ref: string;
   name: string;
@@ -272,6 +235,7 @@ function ProviderDetail({ group, data }: { group: ProviderBalance; data: Payable
 
 export function ProviderBalancesTable({ data }: { data: PayablesOverview }) {
   const groups = providerBalances(data.rows);
+  const top = data.by_provider[0];
   const columns: Column<ProviderBalance>[] = [
     {
       id: "provider",
@@ -293,9 +257,10 @@ export function ProviderBalancesTable({ data }: { data: PayablesOverview }) {
     { id: "actions", header: "", mobile: "hidden", align: "right", cell: (group) => <RowActions><ProviderDetail group={group} data={data} /></RowActions> },
   ];
   const metrics: MetricFilter<ProviderBalance>[] = [
-    { id: "late", label: "Con saldo vencido", tone: "bad", icon: <AlarmClock size={19} />, matches: (group) => group.overdue > 0 },
-    { id: "owing", label: "Con saldo", tone: "warn", icon: <Wallet size={19} />, matches: (group) => group.balance > 0 },
-    { id: "clear", label: "Sin saldo", tone: "ok", icon: <CircleCheck size={19} />, matches: (group) => group.balance <= 0 },
+    { id: "late", label: "Con saldo vencido", tone: "bad", icon: <AlarmClock size={19} />, info: <p>Proveedores con al menos una obligación vencida y sin pagar. Al presionarla, la tabla muestra esos proveedores.</p>, matches: (group) => group.overdue > 0 },
+    { id: "owing", label: "Con saldo", tone: "warn", icon: <Wallet size={19} />, info: <p>Proveedores a los que todavía se les debe algo, en soles al tipo de cambio de cada documento. Al presionarla, la tabla muestra esos proveedores.</p>, matches: (group) => group.balance > 0 },
+    { id: "top", label: "Mayor saldo", tone: "sun", icon: <Building2 size={19} />, display: top ? formatMoney(top.pen, "PEN", { compact: true }) : "—", note: top?.name ?? "Sin saldos pendientes", info: top ? <><p>Proveedor al que más se le debe hoy. Al presionarla, la tabla muestra solo ese proveedor. Los cinco mayores saldos:</p><ul className="mt-1 flex flex-col gap-1">{data.by_provider.slice(0, 5).map((item) => <li key={item.name} className="flex justify-between gap-3"><span className="truncate">{item.name}</span><b className="font-mono">{formatMoney(item.pen)}</b></li>)}</ul></> : <p>No hay saldos pendientes con proveedores.</p>, matches: (group) => top !== undefined && group.name === top.name && group.balance > 0 },
+    { id: "clear", label: "Sin saldo", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Proveedores con todas sus obligaciones pagadas o anuladas. Al presionarla, la tabla muestra esos proveedores.</p>, matches: (group) => group.balance <= 0 },
   ];
   const sorts: SortOption<ProviderBalance>[] = [
     { id: "balance", label: "Saldo", type: "number", value: (group) => group.balance },
@@ -307,6 +272,9 @@ export function ProviderBalancesTable({ data }: { data: PayablesOverview }) {
 
 export function CostsTable({ data }: { data: PayablesOverview }) {
   const rows = data.rows.filter((row) => row.kind === "costo_adicional");
+  const isApproved = (row: PayableRow) => row.approved && row.status !== "cancelada";
+  const impact = rows.filter(isApproved).reduce((total, row) => total + row.amount_pen, 0);
+  const approvedCount = rows.filter(isApproved).length;
   const types = Object.fromEntries(data.options.cost_types.map((option) => [option.value, option.label]));
   const columns: Column<PayableRow>[] = [
     {
@@ -330,9 +298,9 @@ export function CostsTable({ data }: { data: PayablesOverview }) {
     { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => <PayableRowActions row={row} data={data} /> },
   ];
   const metrics: MetricFilter<PayableRow>[] = [
-    { id: "approved", label: "Aprobados", tone: "violet", icon: <TrendingDown size={19} />, matches: (row) => row.approved && row.status !== "cancelada" },
-    { id: "approve", label: "Por aprobar", tone: "warn", icon: <Stamp size={19} />, matches: (row) => !row.approved && row.status !== "cancelada" },
-    { id: "void", label: "Anulados", tone: "mute", icon: <Ban size={19} />, matches: (row) => row.status === "cancelada" },
+    { id: "approved", label: "Costos que restan margen", tone: "violet", icon: <TrendingDown size={19} />, display: formatMoney(impact, "PEN", { compact: true }), note: approvedCount === 1 ? "1 costo adicional aprobado" : `${approvedCount} costos adicionales aprobados`, info: <p>Un costo adicional resta en la rentabilidad de su reserva desde que se aprueba; la cifra los suma en soles. Al presionarla, la tabla muestra los costos aprobados.</p>, matches: isApproved },
+    { id: "approve", label: "Por aprobar", tone: "warn", icon: <Stamp size={19} />, note: "Aún no restan margen", info: <p>Costos adicionales registrados que esperan aprobación; todavía no afectan la rentabilidad. Al presionarla, la tabla muestra esos costos.</p>, matches: (row) => !row.approved && row.status !== "cancelada" },
+    { id: "void", label: "Anulados", tone: "mute", icon: <Ban size={19} />, info: <p>Costos adicionales anulados: no se pagan ni restan margen. Al presionarla, la tabla muestra esos costos.</p>, matches: (row) => row.status === "cancelada" },
   ];
   const filters: FilterConfig<PayableRow>[] = [
     { id: "type", label: "Tipo de costo", options: data.options.cost_types, value: (row) => row.cost_type ?? "" },
@@ -348,7 +316,7 @@ export function PayablesWorkspace({ data, section }: { data: PayablesOverview; s
 }
 
 export function PayablesTable({ data }: { data: PayablesOverview }) {
-  const { rows, today } = data;
+  const { rows, today, kpis } = data;
   const week = addDays(today, 7);
 
   const columns: Column<PayableRow>[] = [
@@ -409,10 +377,11 @@ export function PayablesTable({ data }: { data: PayablesOverview }) {
   ];
 
   const metrics: MetricFilter<PayableRow>[] = [
-    { id: "overdue", label: "Vencidas", tone: "bad", icon: <AlarmClock size={19} />, matches: (row) => row.status === "vencida" },
-    { id: "approve", label: "Por aprobar", tone: "warn", icon: <Stamp size={19} />, matches: (row) => !closed(row) && !row.approved },
-    { id: "week", label: "Vencen en 7 días", tone: "t1", icon: <HandCoins size={19} />, matches: (row) => !closed(row) && row.status !== "vencida" && row.due_date <= week },
-    { id: "paid", label: "Pagadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "pagada" },
+    { id: "open", label: "Por pagar", tone: "t1", icon: <Wallet size={19} />, display: formatMoney(kpis.payable_pen, "PEN", { compact: true }), note: kpis.payable_count === 1 ? "1 obligación abierta" : `${kpis.payable_count} obligaciones abiertas`, info: <p>Saldo de las obligaciones abiertas con proveedores, en soles al tipo de cambio de cada documento. Al presionarla, la tabla muestra las obligaciones con saldo.</p>, matches: (row) => !closed(row) },
+    { id: "overdue", label: "Vencido", tone: "bad", icon: <AlarmClock size={19} />, display: formatMoney(kpis.overdue_pen, "PEN", { compact: true }), note: kpis.overdue_count === 1 ? "1 obligación" : `${kpis.overdue_count} obligaciones`, info: <p>Saldo de las obligaciones cuya fecha de vencimiento ya pasó sin pagarse. Al presionarla, la tabla muestra esas obligaciones.</p>, matches: (row) => row.status === "vencida" },
+    { id: "week", label: "Vence en 7 días", tone: "sun", icon: <CalendarClock size={19} />, display: formatMoney(kpis.due_week_pen, "PEN", { compact: true }), note: kpis.scheduled_week_pen > 0 ? `Programado: ${formatMoney(kpis.scheduled_week_pen, "PEN", { compact: true })}` : "Nada programado esta semana", info: <p>Saldo de las obligaciones que vencen entre hoy y los próximos 7 días. La nota suma los pagos ya programados para esos días. Al presionarla, la tabla muestra esas obligaciones.</p>, matches: (row) => !closed(row) && row.status !== "vencida" && row.due_date <= week },
+    { id: "approve", label: "Por aprobar", tone: "warn", icon: <Stamp size={19} />, note: "Se pagan solo aprobadas", info: <p>Obligaciones abiertas que aún no se aprueban; una obligación se paga solo después de aprobarla. Al presionarla, la tabla muestra esas obligaciones.</p>, matches: (row) => !closed(row) && !row.approved },
+    { id: "paid", label: "Pagadas", tone: "ok", icon: <CircleCheck size={19} />, note: `Pagado este mes: ${formatMoney(kpis.paid_month_pen, "PEN", { compact: true })}`, info: <p>Obligaciones pagadas por completo. La nota suma los pagos a proveedores registrados desde el día 1, al tipo de cambio de cada pago. Al presionarla, la tabla muestra las obligaciones pagadas.</p>, matches: (row) => row.status === "pagada" },
   ];
 
   const filters: FilterConfig<PayableRow>[] = [

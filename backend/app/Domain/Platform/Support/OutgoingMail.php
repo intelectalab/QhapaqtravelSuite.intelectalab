@@ -68,6 +68,17 @@ final class OutgoingMail
         return $this->connectionFrom($this->raw(), $this->password());
     }
 
+    public function redirect(): ?array
+    {
+        if (app()->isProduction()) {
+            return null;
+        }
+
+        $to = trim((string) config('mail.mailers.platform.redirect_to'));
+
+        return ['to' => filter_var($to, FILTER_VALIDATE_EMAIL) === false ? null : mb_strtolower($to)];
+    }
+
     public function connectionFrom(array $values, string $password): array
     {
         return [
@@ -98,6 +109,7 @@ final class OutgoingMail
             'verified_at' => $raw['verified_at'] ?? null,
             'last_test' => isset($raw['last_test']) ? (array) $raw['last_test'] : null,
             'status' => $this->active() ? 'activa' : ($enabled ? 'incompleta' : 'apagada'),
+            'redirect' => $this->redirect(),
             'webhook_secrets' => collect(array_keys(self::WEBHOOK_PROVIDERS))->mapWithKeys(fn (string $provider): array => [$provider => $this->webhookSecret($provider) !== ''])->all(),
         ];
     }

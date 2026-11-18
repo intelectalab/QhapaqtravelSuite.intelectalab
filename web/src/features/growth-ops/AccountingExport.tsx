@@ -1,12 +1,12 @@
 "use client";
 
-import { CircleCheck, CircleDashed, Download, FileSpreadsheet, Save } from "lucide-react";
+import { CalendarCheck, CircleCheck, CircleDashed, CircleX, Download, FileSpreadsheet, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { downloadAccountingExport, saveAccountMappings } from "@/app/(backoffice)/finanzas/crecimiento-actions";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
-import type { Column, FilterConfig, SortOption } from "@/components/table/types";
+import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ChipToggleGroup } from "@/components/ui/ChipToggleGroup";
@@ -14,7 +14,7 @@ import { SelectField } from "@/components/ui/SelectField";
 import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
 import { FormError } from "@/features/auth/AuthForms";
-import type { AccountingExportRow, AccountMappings, Option } from "@/lib/growth-ops";
+import type { AccountingExportRow, AccountingKpis, AccountMappings, Option } from "@/lib/growth-ops";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatNumber } from "@/lib/format";
 import { GrowthStep } from "./GrowthStep";
@@ -59,7 +59,7 @@ function DownloadExport({ code }: { code: string }) {
   );
 }
 
-export function ExportsTable({ rows }: { rows: AccountingExportRow[] }) {
+export function ExportsTable({ rows, kpis, plans }: { rows: AccountingExportRow[]; kpis: AccountingKpis; plans: { ready: number; incomplete: number } }) {
   const columns: Column<AccountingExportRow>[] = [
     {
       id: "period",
@@ -80,12 +80,17 @@ export function ExportsTable({ rows }: { rows: AccountingExportRow[] }) {
   ];
 
   const filters: FilterConfig<AccountingExportRow>[] = [{ id: "target", label: "Destino", options: [...new Set(rows.map((row) => row.target_label))].map((value) => ({ value, label: value })), value: (row) => row.target_label }];
+  const metrics: MetricFilter<AccountingExportRow>[] = [
+    { id: "generated", label: "Exportaciones", tone: "ok", icon: <FileSpreadsheet size={19} />, display: kpis.generated, note: `${formatNumber(kpis.rows)} asientos · ${plans.ready === 1 ? "1 plan listo" : `${plans.ready} planes listos`}${plans.incomplete > 0 ? ` · ${plans.incomplete} incompletos` : ""}`, info: <p>Exportaciones generadas con éxito desde esta pantalla; la nota suma sus líneas de asiento y cuenta los sistemas contables con el plan de cuentas completo o con cuentas faltantes (se completan en Plan de cuentas). Al presionarla, la tabla muestra las exportaciones generadas.</p>, matches: (row) => row.status !== "fallido" },
+    { id: "last", label: "Último periodo", tone: "violet", icon: <CalendarCheck size={19} />, display: kpis.last ? formatDate(kpis.last.period_to) : "Sin exportar", note: kpis.last?.code, info: <p>Fecha final del periodo de la exportación más reciente. Al presionarla, la tabla muestra esa exportación.</p>, matches: (row) => kpis.last !== null && row.code === kpis.last.code },
+    { id: "failed", label: "Fallidas", tone: "bad", icon: <CircleX size={19} />, display: kpis.failed, note: "No generaron archivo", info: <p>Exportaciones que no se pudieron generar y no tienen archivo para descargar. Al presionarla, la tabla muestra esas exportaciones.</p>, matches: (row) => row.status === "fallido" },
+  ];
   const sorts: SortOption<AccountingExportRow>[] = [
     { id: "created", label: "Fecha de generación", type: "date", value: (row) => row.created_at },
     { id: "period", label: "Inicio del periodo", type: "date", value: (row) => row.period_from },
   ];
 
-  return <DataTable screen="finanzas-exportacion-contable" rows={rows} columns={columns} getKey={(row) => row.code} entityLabel="exportaciones" searchText={(row) => `${row.code} ${row.target_label}`} searchPlaceholder="Buscar exportación" filters={filters} sorts={sorts} emptyTitle="Aún no hay exportaciones" />;
+  return <DataTable screen="finanzas-exportacion-contable" rows={rows} columns={columns} getKey={(row) => row.code} entityLabel="exportaciones" searchText={(row) => `${row.code} ${row.target_label}`} searchPlaceholder="Buscar exportación" metrics={metrics} filters={filters} sorts={sorts} emptyTitle="Aún no hay exportaciones" />;
 }
 
 export function MappingEditor({ data }: { data: AccountMappings }) {

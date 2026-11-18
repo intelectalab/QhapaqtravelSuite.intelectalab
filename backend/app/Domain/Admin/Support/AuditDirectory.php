@@ -23,6 +23,8 @@ final class AuditDirectory
 
     private const ACTORS = ['system' => 'Sistema', 'platform_user' => 'Plataforma', 'api_client' => 'Integración por API'];
 
+    private ?array $roleNames = null;
+
     public function __construct(private readonly TenantContext $context) {}
 
     public function page(Request $request, User $viewer): array
@@ -105,6 +107,16 @@ final class AuditDirectory
         return ['a.id', 'a.code', 'a.occurred_at', 'a.entity', 'a.entity_id', 'a.action', 'a.before_value', 'a.after_value', 'a.is_critical', 'a.actor_type', 'a.actor_id', 'a.actor_role', 'a.ip', 'a.correlation_id', 'u.name as actor_name', 'u.code as actor_code'];
     }
 
+    private function roleName(?string $role): ?string
+    {
+        if ($role === null) {
+            return null;
+        }
+        $this->roleNames ??= DB::table('roles')->pluck('display_name', 'name')->all();
+
+        return $this->roleNames[$role] ?? $role;
+    }
+
     public function row(object $row): array
     {
         return [
@@ -128,7 +140,7 @@ final class AuditDirectory
             'critical' => (bool) $row->is_critical,
             'actor' => AuditActorName::of($row->actor_name, $row->actor_type, $row->actor_role, self::ACTORS[$row->actor_type] ?? 'Sistema'),
             'actor_code' => $row->actor_code,
-            'role' => $row->actor_role,
+            'role' => $this->roleName($row->actor_role),
             'correlation' => $row->correlation_id,
         ];
     }

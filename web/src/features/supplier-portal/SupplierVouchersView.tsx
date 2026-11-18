@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
 import { ConfirmAction, STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
 import { PortalTitle } from "@/features/portal/PortalUi";
 import { cn } from "@/lib/cn";
@@ -46,7 +45,7 @@ function RedeemCard({ data }: { data: SupplierVouchers }) {
         {early && <SwitchField label="El huésped ya se presentó" hint={`El servicio es ${dayDistance(match.days_to).toLowerCase()}. Regístrelo solo si ya llegó.`} name="confirm_future" checked={confirmed} onCheckedChange={setConfirmed} />}      </form>
       {state.message && <p className="rounded-xl bg-[color-mix(in_srgb,var(--bad)_10%,transparent)] px-3 py-2 text-[12.5px] text-bad">{state.message}</p>}
       {state.done && <p className="rounded-xl bg-[color-mix(in_srgb,var(--ok)_10%,transparent)] px-3 py-2 text-[12.5px] text-ok">Voucher registrado como utilizado.</p>}
-      <p className="text-[12px] text-fg-3">Solo se aceptan vouchers vigentes emitidos a su establecimiento, el día del servicio o el anterior.</p>
+      <p className="text-[12px] text-fg-3">Solo se aceptan vouchers vigentes emitidos a tu establecimiento, el día del servicio o el anterior.</p>
     </Card>
   );
 }
@@ -129,9 +128,11 @@ export function SupplierVouchersView({ data }: { data: SupplierVouchers }) {
     },
   ];
   const metrics: MetricFilter<SupplierVoucher>[] = [
-    { id: "issued", label: "Vigentes", icon: <Ticket size={16} />, tone: "t1", matches: (row) => row.status === "emitido" },
-    { id: "used", label: "Utilizados", icon: <BadgeCheck size={16} />, tone: "ok", matches: (row) => row.status === "utilizado" },
-    { id: "void", label: "Anulados", icon: <XCircle size={16} />, tone: "bad", matches: (row) => row.status === "anulado" },
+    { id: "today", label: "Para hoy", icon: <CalendarClock size={19} />, tone: "t1", display: data.kpis.today, note: "Vouchers vigentes con servicio hoy", info: <p>Vouchers emitidos a tu nombre, aún sin usar, cuya fecha de servicio es hoy. Al presionarla ves solo esos vouchers.</p>, matches: (row) => row.status === "emitido" && row.days_to === 0 },
+    { id: "issued", label: "Vigentes", icon: <Ticket size={19} />, tone: "info", info: <p>Vouchers emitidos a tu nombre que todavía no se usan. Al presionarla ves solo esos vouchers.</p>, matches: (row) => row.status === "emitido" },
+    { id: "month", label: "Utilizados este mes", icon: <BadgeCheck size={19} />, tone: "ok", display: data.kpis.used_month, note: "Prueba de prestación para tu pago", info: <p>Vouchers registrados como utilizados durante el mes en curso, por tu recepción o por la agencia. Al presionarla ves solo esos vouchers.</p>, matches: (row) => row.status === "utilizado" && row.used_at !== null && row.used_at.slice(0, 7) === data.today.slice(0, 7) },
+    { id: "used", label: "Utilizados", icon: <CheckCircle2 size={19} />, tone: "t3", info: <p>Todos los vouchers ya utilizados, de cualquier mes. Al presionarla ves solo esos vouchers.</p>, matches: (row) => row.status === "utilizado" },
+    { id: "void", label: "Anulados", icon: <XCircle size={19} />, tone: "bad", info: <p>Vouchers que la agencia anuló; ya no sirven para prestar el servicio. Al presionarla ves solo esos vouchers.</p>, matches: (row) => row.status === "anulado" },
   ];
   const filters: FilterConfig<SupplierVoucher>[] = [{ id: "status", label: "Estado", options: [...new Set(data.items.map((row) => row.status))].map((value) => ({ value, label: supplierStatus(value, "voucher").label })), value: (row) => row.status }];
   const sorts: SortOption<SupplierVoucher>[] = [
@@ -141,12 +142,10 @@ export function SupplierVouchersView({ data }: { data: SupplierVouchers }) {
 
   return (
     <>
-      <PortalTitle title="Vouchers" subtitle="Vouchers emitidos por la agencia a nombre de su establecimiento. Valide el código al recibir al huésped para registrarlo como utilizado." />
-      <section className="mb-6 grid items-stretch gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.6fr)]">
-        <TintTile icon={CalendarClock} tone="t1" label="Para hoy" value={data.kpis.today} note="Vouchers vigentes con servicio hoy" info="Vouchers emitidos a su nombre, aún sin usar, cuya fecha de servicio es hoy." />
-        <TintTile icon={BadgeCheck} tone="ok" label="Utilizados este mes" value={data.kpis.used_month} note="Prueba de prestación para su pago" info="Vouchers registrados como utilizados durante el mes en curso, por su recepción o por la agencia." />
+      <PortalTitle title="Vouchers" subtitle="Vouchers emitidos por la agencia a nombre de tu establecimiento. Valida el código al recibir al huésped para registrarlo como utilizado." />
+      <div className="mb-6">
         <RedeemCard data={data} />
-      </section>
+      </div>
       <DataTable
         screen="proveedor-vouchers"
         rows={data.items}
@@ -158,7 +157,7 @@ export function SupplierVouchersView({ data }: { data: SupplierVouchers }) {
         sorts={sorts}
         searchText={(row) => `${row.code} ${row.reservation} ${row.service} ${row.holder}`}
         searchPlaceholder="Buscar voucher, reserva o titular"
-        emptyTitle="La agencia aún no emitió vouchers a su nombre"
+        emptyTitle="La agencia aún no emitió vouchers a tu nombre"
       />
     </>
   );

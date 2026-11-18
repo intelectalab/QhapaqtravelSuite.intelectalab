@@ -9,6 +9,7 @@ export interface Column<T> {
   align?: "left" | "right";
   mobile?: "title" | "detail" | "hidden";
   wideOnly?: boolean;
+  wrap?: boolean;
   className?: string;
 }
 
@@ -33,6 +34,9 @@ export interface MetricFilter<T> {
   label: string;
   icon?: ReactNode;
   tone?: Tone;
+  note?: ReactNode;
+  info?: ReactNode;
+  display?: ReactNode;
   matches: (row: T) => boolean;
 }
 

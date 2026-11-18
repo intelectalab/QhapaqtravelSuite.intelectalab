@@ -32,7 +32,7 @@ return [
         'title' => 'Agencias',
         'summary' => 'Todas las agencias de la plataforma: dalas de alta, revisa su ficha, edita sus datos, cambia su plan y suspéndelas o reactívalas.',
         'steps' => [
-            ['title' => 'Dar de alta una agencia', 'text' => 'Pulsa «Nueva agencia» y completa empresa, subdominio, plan, cómo empieza («Con prueba gratis» o «Activa y facturando»), sede principal y administrador. Con «Crear agencia» se crean la sede, los 12 roles base y el administrador, que recibe un correo para crear su contraseña.'],
+            ['title' => 'Dar de alta una agencia', 'text' => 'Pulsa «Nueva agencia» y sigue los 11 pasos: agencia y plan (con cómo empieza, «Con prueba gratis» o «Activa y facturando»), empresa, país y moneda, sede principal, administrador, roles, permisos, configuración comercial y financiera, canales y revisión. Con «Crear y activar agencia» se crean la sede, los roles elegidos y el administrador, que recibe un correo para crear su contraseña.'],
             ['title' => 'Encontrar una agencia', 'text' => 'Arriba ves los usuarios en plataforma, el ingreso mensual y anual y el almacenamiento usado frente al contratado. Las tarjetas Activas, En prueba y Suspendidas filtran la lista. También puedes filtrar por Plan y Estado, buscar por agencia, RUC o correo y ordenar por nombre, ingreso, usuarios o fecha de alta. El pie suma las filas filtradas. Debajo, «Ver agencias» de cada plan filtra la lista por ese plan.'],
             ['title' => 'Revisar la ficha', 'text' => 'Pulsa el nombre o «Ver ficha». Verás el ingreso mensual, el plan, los datos fiscales, el uso contra el límite del plan (usuarios, sedes, almacenamiento, reservas, WhatsApp, correos y API), las funciones habilitadas y de dónde vienen, las sedes, los administradores y el historial de estado.'],
             ['title' => 'Editar datos o cambiar el plan', 'text' => 'En la ficha, «Editar» cambia nombre, razón social, RUC, tipo de negocio, domicilio, subdominio, país, idioma, monedas y zona horaria. «Cambiar plan» pide el nuevo plan y un motivo opcional que queda en el historial.'],
@@ -234,8 +234,9 @@ return [
         'faqs' => [
             ['question' => '¿Qué pasa con los correos si el correo de salida está apagado?', 'answer' => 'Nada falla: el sistema sigue funcionando y los correos quedan en el registro del servidor, sin salir. Cuando lo actives, los nuevos salen con la cuenta configurada.'],
             ['question' => '¿Puedo cambiar la cuenta de correo más adelante?', 'answer' => 'Sí. Edita «Correo de salida», cambia los datos y guarda. Si dejas la contraseña vacía, se conserva la guardada. El cambio rige desde el siguiente correo, sin tocar el servidor, y queda en la auditoría.'],
+            ['question' => '¿Qué es el «Desvío de desarrollo»?', 'answer' => 'Solo aparece en las instalaciones de prueba. Ahí ningún correo llega a los clientes o proveedores reales: todos van a una sola dirección de prueba, y el asunto empieza con «[Para …]» para que veas a quién iba. Si no hay dirección de desvío, los correos se quedan en la bandeja local de pruebas. En producción no existe el desvío.'],
         ],
-        'keywords' => ['correo', 'smtp', 'remitente', 'email', 'envio'],
+        'keywords' => ['correo', 'smtp', 'remitente', 'email', 'envio', 'desvio'],
         'roles' => [],
     ],
     [

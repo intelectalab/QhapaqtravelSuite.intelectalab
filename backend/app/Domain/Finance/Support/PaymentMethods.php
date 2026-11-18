@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Finance\Support;
 
+use Illuminate\Contracts\Database\Query\Expression;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -32,6 +33,11 @@ final class PaymentMethods
         return DB::table('fin_payment_methods')->where('active', true)->orderBy('label')->get(['code', 'label', 'requires_reference', 'is_b2b_credit'])
             ->map(fn (object $row): array => ['value' => $row->code, 'label' => $row->label, 'requires_reference' => (bool) $row->requires_reference, 'b2b' => (bool) $row->is_b2b_credit])
             ->values()->all();
+    }
+
+    public static function b2bCreditColumn(string $receivable, string $reservation): Expression
+    {
+        return DB::raw("exists(select 1 from channel_b2b_agencies ba where ba.deleted_at is null and ba.status = 'activa' and (ba.id = {$reservation}.agency_id or ba.crm_client_id = {$receivable}.client_id)) as b2b_credit");
     }
 
     public function labels(): array

@@ -76,6 +76,7 @@ export const PERMISSION_LABEL: Record<string, string> = {
   "finance.treasury": "Gestionar tesorería",
   "channels.b2b.manage": "Gestionar el canal B2B",
   "channels.ecommerce.manage": "Gestionar la tienda en línea",
+  "channels.cms.edit": "Editar el contenido del sitio web",
   "channels.cms.publish": "Publicar en el sitio web",
   "reports.view": "Ver reportes",
   "reports.export": "Exportar reportes",

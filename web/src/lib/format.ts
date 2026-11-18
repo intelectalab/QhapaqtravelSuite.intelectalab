@@ -22,6 +22,11 @@ export function formatNumber(value: number): string {
   return new Intl.NumberFormat(LOCALE).format(value).replace(/,/g, " ");
 }
 
+export function formatQuantity(value: number, unit: string): string {
+  if (unit === "GB" && value > 0 && value < 1) return `${formatNumber(Math.max(1, Math.round(value * 1024)))} MB`;
+  return formatNumber(value);
+}
+
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1 }).format(bytes / (1024 * 1024))} MB`;

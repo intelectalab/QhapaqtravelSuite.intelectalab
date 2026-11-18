@@ -4,7 +4,6 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TabbedCard } from "@/components/ui/RouteTabs";
-import { ExternalTiles } from "@/features/channels/ExternalReviews";
 import { InviteReservationAction } from "@/features/channels/ReviewSourceActions";
 import type { ExternalReviewsOverview } from "@/lib/channels";
 import { getCachedResource } from "@/lib/server/resource";
@@ -31,7 +30,6 @@ export default async function ExternalReviewsLayout({ children }: { children: Re
           </>
         }
       />
-      <ExternalTiles overview={overview} />
       <TabbedCard
         tabs={[
           { href: "/canales/resenas", label: "Bandeja de reseñas", count: overview.items.length },

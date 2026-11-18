@@ -6,11 +6,16 @@ namespace App\Domain\Integrations\Fake;
 
 use App\Domain\Integrations\Contracts\WhatsappCloud;
 use App\Domain\Integrations\Data\AdapterResult;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 
 final class FakeWhatsappCloud implements WhatsappCloud
 {
     public function verifyApp(string $appId, string $appSecret, string $apiVersion): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('whatsapp')) !== null) {
+            return $unavailable;
+        }
+
         if (preg_match('/^[0-9]{6,20}$/', $appId) !== 1 || strlen($appSecret) < 16 || str_starts_with($appSecret, 'rechazado')) {
             return AdapterResult::permanent('Meta no reconoció el ID o el secreto de la app.');
         }
@@ -20,6 +25,10 @@ final class FakeWhatsappCloud implements WhatsappCloud
 
     public function exchangeSignup(string $code, string $appId, string $appSecret): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('whatsapp')) !== null) {
+            return $unavailable;
+        }
+
         if (preg_match('/^[A-Za-z0-9_-]{6,200}$/', $code) !== 1 || str_starts_with($code, 'rechazado')) {
             return AdapterResult::permanent('Meta no aceptó el registro. Vuelve a intentarlo desde «Conectar WhatsApp».');
         }
@@ -37,6 +46,10 @@ final class FakeWhatsappCloud implements WhatsappCloud
 
     public function verifyNumber(string $phoneNumberId, string $accessToken): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('whatsapp')) !== null) {
+            return $unavailable;
+        }
+
         if (preg_match('/^[0-9]{5,30}$/', $phoneNumberId) !== 1 || strlen($accessToken) < 20 || str_starts_with($accessToken, 'rechazado')) {
             return AdapterResult::permanent('Meta no aceptó el token o el ID del número.');
         }
@@ -48,6 +61,10 @@ final class FakeWhatsappCloud implements WhatsappCloud
 
     public function healthcheck(): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::health('whatsapp')) !== null) {
+            return $unavailable;
+        }
+
         return AdapterResult::success('ok', null, ['simulated' => true]);
     }
 }

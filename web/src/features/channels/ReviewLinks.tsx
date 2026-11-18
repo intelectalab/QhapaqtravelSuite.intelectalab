@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, CircleX, ExternalLink, Link2, Loader2, MailCheck, MousePointerClick, PlugZap, Star } from "lucide-react";
+import { CircleCheck, CircleX, ExternalLink, Link2, Loader2, MailCheck, MousePointerClick, PlugZap, Send, Star } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { saveReviewLinks, testReviewLink } from "@/app/(backoffice)/canales/resenas/enlaces-actions";
@@ -179,9 +179,10 @@ export function PostTripInvitationsTable({ data }: { data: PostTripInvitations }
   ];
 
   const metrics: MetricFilter<PostTripInvitationRow>[] = [
-    { id: "pending", label: "Sin invitar", tone: "warn", icon: <MailCheck size={19} />, matches: (row) => row.invitation === null },
-    { id: "own", label: "Abrieron la propia", tone: "violet", icon: <Star size={19} />, matches: (row) => row.clicks.own > 0 },
-    { id: "external", label: "Clic en Google o TripAdvisor", tone: "t1", icon: <MousePointerClick size={19} />, matches: (row) => row.clicks.google + row.clicks.tripadvisor > 0 },
+    { id: "invited", label: "Invitadas", tone: data.rule_active ? "ok" : "mute", icon: <Send size={19} />, note: data.rule_active ? "Invitación postviaje activa" : "Invitación postviaje inactiva", info: <p>Reservas terminadas en los últimos {data.days} días con la invitación a reseñar enviada o programada por la regla R-REVIEW-INVITE de Reglas de reserva. Se invita a todos los pasajeros por igual, sin filtrar por satisfacción. Al presionarla, la tabla muestra esas reservas.</p>, matches: (row) => row.invitation !== null },
+    { id: "pending", label: "Sin invitar", tone: "warn", icon: <MailCheck size={19} />, info: <p>Reservas terminadas que todavía no tienen invitación a reseñar. Al presionarla, la tabla muestra esas reservas.</p>, matches: (row) => row.invitation === null },
+    { id: "own", label: "Abrieron la propia", tone: "violet", icon: <Star size={19} />, info: <p>Reservas en las que algún pasajero abrió el enlace a la reseña propia de la agencia. Al presionarla, la tabla muestra esas reservas.</p>, matches: (row) => row.clicks.own > 0 },
+    { id: "external", label: "Clic en Google o TripAdvisor", tone: "t1", icon: <MousePointerClick size={19} />, info: <p>Reservas en las que algún pasajero pulsó el enlace a Google o TripAdvisor que aparece debajo de la reseña propia. Al presionarla, la tabla muestra esas reservas.</p>, matches: (row) => row.clicks.google + row.clicks.tripadvisor > 0 },
   ];
 
   const sorts: SortOption<PostTripInvitationRow>[] = [
@@ -192,7 +193,6 @@ export function PostTripInvitationsTable({ data }: { data: PostTripInvitations }
   return (
     <div className="grid gap-4 p-1">
       <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-fg-2">
-        <Badge tone={data.rule_active ? "ok" : "warn"}>{data.rule_active ? "Invitación postviaje activa" : "Invitación postviaje inactiva"}</Badge>
         <span>Viajes terminados en los últimos {data.days} días.</span>
         <span className="text-fg-3">Debajo de la reseña propia: {data.platforms.filter((platform) => platform.loaded).map((platform) => platform.label).join(" y ") || "ninguna plataforma cargada"}.</span>
       </div>

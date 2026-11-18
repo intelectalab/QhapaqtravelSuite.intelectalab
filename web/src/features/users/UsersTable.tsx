@@ -48,11 +48,11 @@ export function UsersTable({ users, options, viewerId, initialSearch }: { users:
   ];
 
   const metrics: MetricFilter<TeamUser>[] = [
-    { id: "active", label: "Activos internos", tone: "ok", icon: <UserCheck size={19} />, matches: (user) => user.status === "activo" && !user.channel },
-    ...(users.some((user) => user.channel) ? [{ id: "channel", label: "Activos de canal", tone: "t4" as const, icon: <Handshake size={19} />, matches: (user: TeamUser) => user.status === "activo" && Boolean(user.channel) }] : []),
-    { id: "pending", label: "Invitados sin entrar", tone: "sun", icon: <Clock size={19} />, matches: (user) => user.status === "pendiente" },
-    { id: "mfa", label: "Sin 2 pasos", tone: "bad", icon: <ShieldAlert size={19} />, matches: (user) => user.mfa.required && !user.mfa.enabled && user.status !== "inactivo" },
-    { id: "inactive", label: "Desactivados", tone: "mute", icon: <UserX size={19} />, matches: (user) => user.status === "inactivo" },
+    { id: "active", label: "Activos internos", tone: "ok", icon: <UserCheck size={19} />, info: <p>Personas del equipo de la agencia con acceso activo; cuentan para el límite de usuarios del plan. Al presionarla ves solo esas personas.</p>, matches: (user) => user.status === "activo" && !user.channel },
+    ...(users.some((user) => user.channel) ? [{ id: "channel", label: "Activos de canal", tone: "t4" as const, icon: <Handshake size={19} />, info: <p>Clientes, agencias aliadas, proveedores y pasajeros con acceso activo a su portal; no cuentan para el límite del plan. Al presionarla ves solo esas cuentas.</p>, matches: (user: TeamUser) => user.status === "activo" && Boolean(user.channel) }] : []),
+    { id: "pending", label: "Invitados sin entrar", tone: "sun", icon: <Clock size={19} />, info: <p>Personas invitadas que aún no crean su contraseña; el enlace vence a las 72 horas. Al presionarla ves solo esas invitaciones.</p>, matches: (user) => user.status === "pendiente" },
+    { id: "mfa", label: "Sin 2 pasos", tone: "bad", icon: <ShieldAlert size={19} />, info: <p>Usuarios no desactivados cuyo rol exige verificación en dos pasos y todavía no la activan. Al presionarla ves solo esos usuarios.</p>, matches: (user) => user.mfa.required && !user.mfa.enabled && user.status !== "inactivo" },
+    { id: "inactive", label: "Desactivados", tone: "mute", icon: <UserX size={19} />, info: <p>Usuarios sin acceso; su historial se conserva. Al presionarla ves solo esos usuarios.</p>, matches: (user) => user.status === "inactivo" },
   ];
 
   const filters: FilterConfig<TeamUser>[] = [

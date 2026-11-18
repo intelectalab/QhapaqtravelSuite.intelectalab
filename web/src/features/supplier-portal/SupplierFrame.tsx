@@ -31,15 +31,15 @@ export function SupplierFrame({ frame, pathname }: { frame: Frame; pathname: str
   const balances = Object.entries(frame.receivable).filter(([, amount]) => Math.abs(amount) > 0.004);
   const on = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   return (
-    <section aria-label="Resumen de su cuenta" className="mb-6 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
+    <section aria-label="Resumen de tu cuenta" className="mb-6 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
       <FrameTile
         href="/proveedor/solicitudes"
         icon={ClipboardList}
         tone={frame.pending ? "warn" : "ok"}
         label="Solicitudes por responder"
         value={frame.pending}
-        note={frame.alternatives ? `${frame.alternatives} con alternativa en revisión` : `Responda en máximo ${frame.response_hours} h`}
-        info="Servicios que la agencia le solicitó y esperan su confirmación o rechazo. Las alternativas que propuso y la agencia aún revisa se cuentan aparte."
+        note={frame.alternatives ? `${frame.alternatives} con alternativa en revisión` : `Responde en máximo ${frame.response_hours} h`}
+        info="Servicios que la agencia te solicitó y esperan tu confirmación o rechazo. Las alternativas que propusiste y la agencia aún revisa se cuentan aparte."
         active={on("/proveedor/solicitudes")}
       />
       <FrameTile
@@ -59,7 +59,7 @@ export function SupplierFrame({ frame, pathname }: { frame: Frame; pathname: str
         label="Saldo por cobrar a la agencia"
         value={balances.length === 0 ? "Sin saldo" : balances.map(([currency, amount]) => formatMoney(amount, currency)).join(" + ")}
         note="Por moneda, sin conversión"
-        info="Saldo pendiente de las cuentas por pagar que la agencia registró a su nombre."
+        info="Saldo pendiente de las cuentas por pagar que la agencia registró a tu nombre."
         active={on("/proveedor/pagos")}
       />
       <FrameTile
@@ -69,7 +69,7 @@ export function SupplierFrame({ frame, pathname }: { frame: Frame; pathname: str
         label="Incidencias abiertas"
         value={frame.open_incidents}
         note={frame.open_incidents ? "Requieren seguimiento" : "Sin pendientes"}
-        info="Incidencias abiertas o en proceso vinculadas a sus servicios o reportadas por su empresa."
+        info="Incidencias abiertas o en proceso vinculadas a tus servicios o reportadas por tu empresa."
         active={on("/proveedor/incidencias")}
       />
     </section>

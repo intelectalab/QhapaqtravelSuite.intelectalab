@@ -7,5 +7,5 @@ export const metadata: Metadata = { title: "Reglas de reserva" };
 export default async function ReglasPage() {
   const data = await getRules();
   if (!data) return null;
-  return <RulesTable rules={data.rules} manage={data.can_manage} />;
+  return <RulesTable rules={data.rules} manage={data.can_manage} plan={data.plan} />;
 }

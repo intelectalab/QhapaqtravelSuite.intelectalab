@@ -33,7 +33,10 @@ use App\Domain\Integrations\Fake\FakeSalesAssistant;
 use App\Domain\Integrations\Fake\FakeSiteContentAi;
 use App\Domain\Integrations\Fake\FakeTravelInventory;
 use App\Domain\Integrations\Fake\FakeWhatsappCloud;
+use App\Domain\Integrations\Mail\AgencyMailbox;
+use App\Domain\Integrations\Mail\AgencyMailer;
 use App\Domain\Integrations\Mail\PlatformMailTransport;
+use App\Domain\Integrations\Mail\RoutedMessagingChannel;
 use App\Domain\Integrations\Mail\SmtpConnector;
 use App\Domain\Integrations\Support\ConfiguredCaptchaVerifier;
 use App\Domain\Platform\Support\OutgoingMail;
@@ -60,8 +63,6 @@ final class IntegrationServiceProvider extends ServiceProvider
         TravelInventory::class => ['config' => 'integrations.drivers.travel_inventory', 'drivers' => ['fake' => FakeTravelInventory::class]],
     ];
 
-    private const REAL_REQUIRED_IN_PRODUCTION = [FiscalGateway::class, PaymentGateway::class, MalwareScanner::class];
-
     public function register(): void
     {
         $this->mergeConfigFrom(config_path('integrations.php'), 'integrations');
@@ -69,18 +70,22 @@ final class IntegrationServiceProvider extends ServiceProvider
 
         foreach (self::DRIVERS as $contract => $definition) {
             $this->app->singleton($contract, function (Application $app) use ($contract, $definition) {
-                $driver = (string) $app['config']->get($definition['config'], 'fake');
+                $adapter = $this->driver($app, $contract, $definition);
 
-                if ($driver === 'fake' && $app->isProduction() && in_array($contract, self::REAL_REQUIRED_IN_PRODUCTION, true)) {
-                    throw new InvalidArgumentException(class_basename($contract).': el adaptador `fake` no está permitido en producción.');
-                }
-
-                $class = $definition['drivers'][$driver]
-                    ?? throw new InvalidArgumentException(sprintf('Adaptador «%s» no implementado para %s (proveedor por definir).', $driver, class_basename($contract)));
-
-                return $app->make($class);
+                return $contract === MessagingChannel::class && $adapter instanceof MessagingChannel
+                    ? new RoutedMessagingChannel($adapter, $app->make(AgencyMailbox::class), $app->make(AgencyMailer::class), $app->make(SmtpConnector::class))
+                    : $adapter;
             });
         }
+    }
+
+    private function driver(Application $app, string $contract, array $definition): object
+    {
+        $driver = (string) $app['config']->get($definition['config'], 'fake');
+        $class = $definition['drivers'][$driver]
+            ?? throw new InvalidArgumentException(sprintf('Adaptador «%s» no implementado para %s (proveedor por definir).', $driver, class_basename($contract)));
+
+        return $app->make($class);
     }
 
     public function boot(): void

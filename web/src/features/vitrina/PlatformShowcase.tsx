@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, CheckCircle2, Eye, Pause, Percent, Play, Plus, ShieldCheck, Ticket, TrendingUp, XCircle } from "lucide-react";
+import { Building2, CheckCircle2, Pause, Percent, Play, Plus, ShieldCheck, TrendingUp, XCircle } from "lucide-react";
 import type { ReactNode } from "react";
 import { decideListing, moderateAgency, publishPost, savePost } from "@/app/plataforma/(consola)/vitrina/actions";
 import { DataTable } from "@/components/table/DataTable";
@@ -11,8 +11,6 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
-import { TileGrid } from "@/features/channels/ChannelUi";
 import { ConsoleAction } from "@/features/platform/ConsoleAction";
 import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import type { ConsoleResult } from "@/lib/server/platformConsole";
@@ -31,20 +29,7 @@ const STEPS: { key: keyof FunnelMonth; label: string }[] = [
   { key: "plan_pagado", label: "Planes pagados" },
 ];
 
-export function ShowcaseTiles({ overview }: { overview: ModerationOverview }) {
-  const k = overview.kpis;
-  return (
-    <TileGrid className="xl:grid-cols-5">
-      <TintTile icon={Eye} tone="info" label="Visitas del mes" value={formatNumber(k.month_visits)} info={<p>Visitas a fichas de tours registradas en el embudo de la vitrina este mes.</p>} />
-      <TintTile icon={Ticket} tone="t1" label="Reservas del mes" value={formatNumber(k.month_bookings)} note={k.month_visits ? `${((k.month_bookings / k.month_visits) * 100).toFixed(1)} % de conversión` : undefined} info={<p>Reservas hechas en la vitrina este mes, según el embudo.</p>} />
-      <TintTile icon={Building2} tone="violet" label="Agencias" value={k.agencies} note={`${k.pending_agencies} por verificar`} info={<p>Agencias en la vitrina, con o sin cuenta de KipuControl.</p>} />
-      <TintTile icon={ShieldCheck} tone="sun" label="Por moderar" value={k.pending_listings} note={`${k.published} publicadas`} info={<p>Publicaciones enviadas a revisión por las agencias.</p>} />
-      <TintTile icon={Percent} tone="ok" label="Cargos y comisiones" value={formatMoney(k.fees, "PEN")} info={<p>Suma de cargos por asistente y comisiones de tours de pago de todas las reservas no canceladas.</p>} />
-    </TileGrid>
-  );
-}
-
-function ListingsQueue({ listings }: { listings: ShowcaseListing[] }) {
+function ListingsQueue({ listings, kpis }: { listings: ShowcaseListing[]; kpis: ModerationOverview["kpis"] }) {
   const columns: Column<ShowcaseListing>[] = [
     { id: "title", header: "Tour", mobile: "title", cell: (row) => <span className="min-w-0"><b className="block truncate text-[13.5px]">{row.title}</b><span className="block max-w-[340px] truncate text-[12px] text-fg-3">{row.meeting_point}</span>{row.reject_reason && <span className="block text-[12px] text-bad">{row.reject_reason}</span>}</span> },
     { id: "agency", header: "Agencia", cell: (row) => <span className="text-[13px]">{row.agency.name}<span className="block text-[12px]">{row.agency.verified ? <span className="text-ok">Verificada</span> : <span className="text-warn">Sin verificar</span>}</span></span> },
@@ -65,7 +50,11 @@ function ListingsQueue({ listings }: { listings: ShowcaseListing[] }) {
         ) : null,
     },
   ];
-  return <DataTable screen="plataforma-vitrina-moderacion" rows={listings} columns={columns} getKey={(row) => row.code} entityLabel="publicaciones" searchText={(row) => `${row.title} ${row.agency.name} ${row.city}`} searchPlaceholder="Buscar tour o agencia" emptyTitle="Sin publicaciones por revisar" />;
+  const metrics: MetricFilter<ShowcaseListing>[] = [
+    { id: "pending", label: "Por moderar", tone: "sun", icon: <ShieldCheck size={19} />, note: `${kpis.published} publicadas en la vitrina`, info: <p>Publicaciones que las agencias enviaron a revisión y esperan tu decisión. Al presionarla ves solo esas publicaciones.</p>, matches: (row) => row.status === "en_revision" },
+    { id: "rejected", label: "Rechazadas", tone: "bad", icon: <XCircle size={19} />, info: <p>Publicaciones rechazadas con su motivo, a la espera de que la agencia las corrija. Al presionarla ves solo esas publicaciones.</p>, matches: (row) => row.status === "rechazado" },
+  ];
+  return <DataTable screen="plataforma-vitrina-moderacion" rows={listings} columns={columns} getKey={(row) => row.code} entityLabel="publicaciones" searchText={(row) => `${row.title} ${row.agency.name} ${row.city}`} searchPlaceholder="Buscar tour o agencia" metrics={metrics} emptyTitle="Sin publicaciones por revisar" />;
 }
 
 function AgencyActions({ agency }: { agency: Agency }) {
@@ -88,7 +77,7 @@ function AgencyActions({ agency }: { agency: Agency }) {
   );
 }
 
-function AgenciesTable({ agencies }: { agencies: Agency[] }) {
+function AgenciesTable({ agencies, kpis }: { agencies: Agency[]; kpis: ModerationOverview["kpis"] }) {
   const columns: Column<Agency>[] = [
     { id: "name", header: "Agencia", mobile: "title", cell: (row) => <span className="min-w-0"><b className="block truncate text-[13.5px]">{row.name}</b><span className="text-[12px] text-fg-3">{row.has_account ? "Con cuenta KipuControl" : "Sin cuenta"} · {row.email}</span></span> },
     { id: "city", header: "Ciudad", cell: (row) => <span className="text-[13px]">{cityLabel(row.city)}</span> },
@@ -100,8 +89,9 @@ function AgenciesTable({ agencies }: { agencies: Agency[] }) {
     { id: "actions", header: "", cell: (row) => <AgencyActions agency={row} /> },
   ];
   const metrics: MetricFilter<Agency>[] = [
-    { id: "review", label: "Por verificar", tone: "sun", icon: <ShieldCheck size={19} />, matches: (row) => row.status === "en_revision" },
-    { id: "account", label: "Con cuenta", tone: "t1", icon: <Building2 size={19} />, matches: (row) => row.has_account },
+    { id: "review", label: "Por verificar", tone: "sun", icon: <ShieldCheck size={19} />, note: `de ${kpis.agencies} agencias en la vitrina`, info: <p>Agencias que esperan la verificación de su RUC y su licencia antes de publicar. La nota cuenta todas las agencias de la vitrina, con o sin cuenta de KipuControl. Al presionarla ves solo las que faltan verificar.</p>, matches: (row) => row.status === "en_revision" },
+    { id: "account", label: "Con cuenta", tone: "t1", icon: <Building2 size={19} />, info: <p>Agencias de la vitrina que además tienen cuenta en KipuControl. Al presionarla ves solo esas agencias.</p>, matches: (row) => row.has_account },
+    { id: "fees", label: "Cargos y comisiones", tone: "ok", icon: <Percent size={19} />, display: formatMoney(kpis.fees, "PEN"), info: <p>Suma de cargos por asistente y comisiones de tours de pago de todas las reservas no canceladas. Al presionarla ves las agencias que generan cargos.</p>, matches: (row) => Number(row.fees) > 0 },
   ];
   const sorts: SortOption<Agency>[] = [{ id: "bookings", label: "Reservas", type: "number", value: (row) => row.bookings }];
   return <DataTable screen="plataforma-vitrina-agencias" rows={agencies} columns={columns} getKey={(row) => row.code} entityLabel="agencias" searchText={(row) => `${row.name} ${row.email} ${row.city} ${row.ruc ?? ""}`} searchPlaceholder="Buscar agencia, correo o RUC" metrics={metrics} sorts={sorts} emptyTitle="Sin agencias" />;
@@ -204,8 +194,8 @@ export function PlatformShowcaseTabs({ overview, funnel, posts }: { overview: Mo
   return (
     <TabCard
       tabs={[
-        { id: "moderacion", label: "Moderación", count: overview.kpis.pending_listings, content: <ListingsQueue listings={overview.listings} /> },
-        { id: "agencias", label: "Agencias", count: overview.agencies.length, content: <AgenciesTable agencies={overview.agencies} /> },
+        { id: "moderacion", label: "Moderación", count: overview.kpis.pending_listings, content: <ListingsQueue listings={overview.listings} kpis={overview.kpis} /> },
+        { id: "agencias", label: "Agencias", count: overview.agencies.length, content: <AgenciesTable agencies={overview.agencies} kpis={overview.kpis} /> },
         { id: "embudo", label: "Embudo", content: <FunnelPanel months={funnel} /> },
         { id: "blog", label: "Blog SEO", count: posts.items.length, content: <PostsPanel posts={posts} /> },
       ]}

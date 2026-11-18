@@ -43,6 +43,7 @@ final class PublicPayController
             'recipient_name' => ['nullable', 'string', 'max:160'],
             'recipient_email' => ['nullable', 'email:rfc', 'max:190'],
             'message' => ['nullable', 'string', 'max:500'],
+            'deliver_at' => ['nullable', 'date'],
             'card_token' => ['required', 'string', 'max:120'],
         ], GiftCards::messages());
 

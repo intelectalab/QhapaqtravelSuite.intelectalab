@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleAlert, CircleCheck, Scale, TriangleAlert } from "lucide-react";
+import { CircleAlert, CircleCheck, Coins, Lock, Scale, TriangleAlert } from "lucide-react";
 import { PROFIT_CSV } from "@/lib/finance-csv";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
@@ -30,7 +30,7 @@ function MarginMeter({ row, target }: { row: ProfitRow; target: number }) {
 }
 
 export function ProfitabilityTable({ data }: { data: ProfitabilityOverview }) {
-  const { rows, target } = data;
+  const { rows, target, floor, kpis } = data;
 
   const columns: Column<ProfitRow>[] = [
     {
@@ -77,9 +77,11 @@ export function ProfitabilityTable({ data }: { data: ProfitabilityOverview }) {
   ];
 
   const metrics: MetricFilter<ProfitRow>[] = [
-    { id: "ok", label: "En meta", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.band === "ok" },
-    { id: "warn", label: "Vigilar", tone: "warn", icon: <CircleAlert size={19} />, matches: (row) => row.band === "warn" },
-    { id: "bad", label: "Bajo mínimo", tone: "bad", icon: <TriangleAlert size={19} />, matches: (row) => row.band === "bad" },
+    { id: "margin", label: "Margen bruto", tone: "t1", icon: <Coins size={19} />, display: formatMoney(kpis.margin_pen, "PEN", { compact: true }), note: `Ingresos ${formatMoney(kpis.income_pen, "PEN", { compact: true })} · utilidad neta ${formatMoney(kpis.net_pen, "PEN", { compact: true })}`, info: <p>Ingresos menos costos de las reservas vigentes, en soles: venta neta sin IGV menos servicios no cancelados y costos adicionales aprobados. La nota resta además las comisiones ({formatMoney(kpis.commissions_pen, "PEN", { compact: true })}) para la utilidad neta. Al presionarla, la tabla muestra todas las reservas que lo forman.</p>, matches: () => true },
+    { id: "ok", label: "En meta", tone: "ok", icon: <CircleCheck size={19} />, note: `Margen promedio ${formatPercent(kpis.margin_pct)} · meta ${target} %`, info: <p>Reservas cuyo margen llega a la meta de {target} %. La nota muestra el margen bruto sobre ingresos de todas las reservas; la meta y el mínimo se configuran en Tesorería › Parámetros. Al presionarla, la tabla muestra las reservas en meta.</p>, matches: (row) => row.band === "ok" },
+    { id: "warn", label: "Vigilar", tone: "warn", icon: <CircleAlert size={19} />, note: `Entre ${floor} % y ${target} %`, info: <p>Reservas con margen por debajo de la meta pero sobre el mínimo de {floor} %. Al presionarla, la tabla muestra esas reservas.</p>, matches: (row) => row.band === "warn" },
+    { id: "bad", label: "Bajo mínimo", tone: "bad", icon: <TriangleAlert size={19} />, note: `Menos de ${floor} %`, info: <p>Reservas con margen por debajo del mínimo de {floor} %. Al presionarla, la tabla muestra esas reservas para revisarlas.</p>, matches: (row) => row.band === "bad" },
+    { id: "settled", label: "Liquidadas", tone: "violet", icon: <Lock size={19} />, info: <p>Reservas con la liquidación cerrada: su margen ya no cambia. Al presionarla, la tabla muestra esas reservas.</p>, matches: (row) => row.settled_at !== null },
   ];
 
   const filters: FilterConfig<ProfitRow>[] = [

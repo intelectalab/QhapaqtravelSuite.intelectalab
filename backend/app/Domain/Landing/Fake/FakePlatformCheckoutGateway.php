@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Landing\Fake;
 
 use App\Domain\Integrations\Data\AdapterResult;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use App\Domain\Landing\Contracts\PlatformCheckoutGateway;
 
 final class FakePlatformCheckoutGateway implements PlatformCheckoutGateway
@@ -15,6 +16,10 @@ final class FakePlatformCheckoutGateway implements PlatformCheckoutGateway
 
     public function charge(string $reference, string $amount, string $currency, string $method, array $payment): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('checkout')) !== null) {
+            return $unavailable;
+        }
+
         return match ($method) {
             'tarjeta' => $this->card((string) ($payment['card_token'] ?? '')),
             'yape', 'plin' => $this->wallet($method, $reference, $payment),

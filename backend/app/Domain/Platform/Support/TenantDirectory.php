@@ -70,7 +70,7 @@ final class TenantDirectory
         $used = [
             'users' => (float) $summary['users'],
             'sedes' => (float) $summary['sedes'],
-            'storage_gb' => round(((int) $tenant->storage_used_bytes) / 1024 ** 3, 1),
+            'storage_gb' => round(((int) $tenant->storage_used_bytes) / 1024 ** 3, 4),
             'reservations_month' => (float) UsageMeter::used($tenantId, 'reservations_month'),
             'whatsapp_month' => (float) UsageMeter::used($tenantId, 'whatsapp_month'),
             'email_month' => (float) UsageMeter::used($tenantId, 'email_month'),
@@ -130,6 +130,7 @@ final class TenantDirectory
             'sedes' => DB::connection(self::CONNECTION)->table('iam_sedes')->whereNull('deleted_at')
                 ->selectRaw('tenant_id, count(*) as total')->groupBy('tenant_id')->pluck('total', 'tenant_id')->all(),
             'plans' => Plan::on(self::CONNECTION)->get()->keyBy('id'),
+            'mrr' => app(BillingMetrics::class)->subscriptions()->whereIn('status', BillingMetrics::BILLABLE)->pluck('mrr', 'tenant_id')->all(),
         ];
     }
 
@@ -151,7 +152,7 @@ final class TenantDirectory
             'users' => (int) ($counts['users'][$tenant->getKey()] ?? 0),
             'sedes' => (int) ($counts['sedes'][$tenant->getKey()] ?? 0),
             'modules' => $tenant->modules,
-            'mrr' => $tenant->mrr,
+            'mrr' => number_format((float) ($counts['mrr'][$tenant->getKey()] ?? 0), 2, '.', ''),
             'storage_used_bytes' => $tenant->storage_used_bytes,
             'trial_ends_at' => $tenant->trial_ends_at?->toIso8601String(),
             'suspend_reason' => $tenant->suspend_reason,

@@ -94,6 +94,6 @@ final class SubscribeNewsletter
         $base = rtrim((string) config('app.frontend_url'), '/').'/sitio/'.$tenant->subdomain.'/boletin';
         $body = 'Hola'.($name ? " {$name}" : '').":\n\nConfirma que quieres recibir ofertas y novedades de {$tenant->commercial_name}:\n{$base}/confirmar?token={$token}\n\nSi no fuiste tú, ignora este correo. Puedes darte de baja cuando quieras:\n{$base}/baja?token={$token}";
 
-        app(QueuedMail::class)->send($email, $name, "Confirma tu suscripción · {$tenant->commercial_name}", $body);
+        app(QueuedMail::class)->sendAsAgency($email, $name, "Confirma tu suscripción · {$tenant->commercial_name}", $body);
     }
 }

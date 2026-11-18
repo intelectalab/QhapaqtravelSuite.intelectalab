@@ -27,14 +27,14 @@ export function BrandTiles({ domains, seo, redirects }: { domains: DomainsOvervi
       <TintTile icon={Globe} tone="t1" label="Dominios" value={domains.kpis.total} note={`${domains.kpis.verified} verificados`} info={<p>Dominios propios registrados, sin contar los retirados. Mientras no estén verificados, el sitio sigue en {domains.fallback_host}.</p>} />
       <TintTile icon={FileSearch} tone={seo.kpis.average !== null && seo.kpis.average >= 80 ? "ok" : "sun"} label="Puntaje SEO medio" value={seo.kpis.average === null ? "—" : `${seo.kpis.average} / 100`} note={`${seo.kpis.pages} páginas auditadas`} info={<p>Promedio de la auditoría por página: título, descripción, H1, texto, imágenes con alt, datos estructurados, canónica, velocidad y palabra clave.</p>} />
       <TintTile icon={MousePointerClick} tone="info" label="Clics orgánicos (28 d)" value={formatNumber(seo.kpis.clicks_28d)} note="Search Console" info={<p>Clics desde Google de los últimos 28 días, sumados por página. Se actualizan con el adaptador de Search Console.</p>} />
-      <TintTile icon={Route} tone="violet" label="Redirecciones activas" value={redirects.kpis.active} note={`${formatNumber(redirects.kpis.hits)} visitas recuperadas`} info={<p>Rutas antiguas que llevan a su página nueva sin perder posicionamiento.</p>} />
+      <TintTile icon={Route} tone="violet" label="Redirecciones activas" value={redirects.kpis.active} note={`${formatNumber(redirects.kpis.hits)} visitas recuperadas`} info={<p>Rutas antiguas que llevan a tu página nueva sin perder posicionamiento.</p>} />
     </TileGrid>
   );
 }
 
 function AddDomainAction({ purposes }: { purposes: string[] }) {
   return (
-    <PanelAction<StepResult> label="Agregar dominio" icon={<Plus size={15} />} size="sm" formId="seo-domain-new" title="Agregar dominio" description="Le daremos los registros DNS que debe crear en su proveedor de dominio." submitLabel="Agregar" action={addDomain} initial={initialStep}>
+    <PanelAction<StepResult> label="Agregar dominio" icon={<Plus size={15} />} size="sm" formId="seo-domain-new" title="Agregar dominio" description="Te daremos los registros DNS que debes crear en tu proveedor de dominio." submitLabel="Agregar" action={addDomain} initial={initialStep}>
       {() => (
         <>
           <TextField label="Dominio o subdominio" name="host" required placeholder="tours.miagencia.pe" maxLength={253} />
@@ -89,11 +89,11 @@ export function DomainsPanel({ domains }: { domains: DomainsOverview }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-[70ch] text-[13px] text-fg-2">1) Cree el registro TXT de verificación, 2) apunte el CNAME a sites.kipucontrol.com y 3) pulse Verificar. El certificado se renueva solo 30 días antes de vencer.</p>
+        <p className="max-w-[70ch] text-[13px] text-fg-2">1) Crea el registro TXT de verificación, 2) apunta el CNAME a sites.kipucontrol.com y 3) pulsa Verificar. El certificado se renueva solo 30 días antes de vencer.</p>
         <AddDomainAction purposes={domains.purposes} />
       </div>
       {domains.items.length === 0 ? (
-        <p className="rounded-tile border border-dashed border-line px-5 py-10 text-center text-[13.5px] text-fg-2">Aún no hay dominios propios. Su sitio funciona en {domains.fallback_host}.</p>
+        <p className="rounded-tile border border-dashed border-line px-5 py-10 text-center text-[13.5px] text-fg-2">Aún no hay dominios propios. Tu sitio funciona en {domains.fallback_host}.</p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">{domains.items.map((domain) => <DomainCard key={domain.id} domain={domain} />)}</div>
       )}

@@ -28,11 +28,11 @@ final class SupplierInvoices
         $bytes = base64_decode((string) $data['file_content'], true);
 
         if ($bytes === false || $bytes === '') {
-            throw ApiException::unprocessable('SUP-BR-40', 'Adjunte el archivo de la factura (PDF, XML o ZIP).');
+            throw ApiException::unprocessable('SUP-BR-40', 'Adjunta el archivo de la factura (PDF, XML o ZIP).');
         }
 
         if (strlen($bytes) > self::MAX_BYTES) {
-            throw ApiException::unprocessable('SUP-BR-40', 'El archivo supera los 700 KB. Adjunte el XML o un PDF más liviano.');
+            throw ApiException::unprocessable('SUP-BR-40', 'El archivo supera los 700 KB. Adjunta el XML o un PDF más liviano.');
         }
 
         $this->guard->ensureClean($bytes, (string) $data['file_name'], 'Factura de proveedor', $payableCode);
@@ -51,7 +51,7 @@ final class SupplierInvoices
                 }
 
                 if ($this->active($payable->id) !== null) {
-                    throw ApiException::conflict('SUP-BR-42', 'Ya registró una factura para este documento. Si tiene un error, Finanzas la observará o rechazará y podrá subirla de nuevo.');
+                    throw ApiException::conflict('SUP-BR-42', 'Ya registró una factura para este documento. Si tiene un error, Finanzas la observará o rechazará y podrás subirla de nuevo.');
                 }
 
                 $previous = DB::table('supplier_invoices')->where('provider_id', $account->id())->where('number', $number)->first(['id', 'payable_id', 'status', 'deleted_at']);

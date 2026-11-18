@@ -13,12 +13,11 @@ import { SwitchField } from "@/components/ui/SwitchField";
 import { Tabs } from "@/components/ui/Tabs";
 import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
 import { conditionLabel, labelOptions, type PriceRule, type PriceRulesPage } from "@/lib/growth";
 import type { StepResult } from "@/lib/server/resource";
-import { KpiRow, Pct, PlanNotice, StatusPill } from "./GrowthUi";
+import { Pct, PlanNotice, StatusPill } from "./GrowthUi";
 
 const initial: StepResult = { message: null, done: false };
 
@@ -188,15 +187,10 @@ function Simulator({ page }: { page: PriceRulesPage }) {
 
 export function PriceRulesBoard({ page }: { page: PriceRulesPage }) {
   const { counts, catalogs } = page.meta;
+  const topRaise = page.data.filter((rule) => rule.active).reduce((best, rule) => Math.max(best, Number(rule.adjust_pct)), 0);
   return (
     <>
       <PlanNotice enabled={page.meta.enabled} feature="Los precios dinámicos" />
-      <KpiRow>
-        <TintTile icon={CircleCheck} tone="ok" label="Reglas activas" value={counts.active} note={`de ${counts.total} reglas`} info={<p>Reglas encendidas que hoy ajustan el precio por ocupación, anticipación, día, temporada o demanda.</p>} />
-        <TintTile icon={CirclePause} tone="mute" label="Inactivas" value={counts.inactive} info={<p>Reglas guardadas que no se aplican. Puedes probarlas en el simulador antes de activarlas.</p>} />
-        <TintTile icon={Gauge} tone="violet" label="Mayor alza" value={page.data.filter((rule) => rule.active).reduce((best, rule) => Math.max(best, Number(rule.adjust_pct)), 0) + " %"} info={<p>El ajuste positivo más alto entre las reglas activas, antes de aplicar el techo.</p>} />
-        <TintTile icon={CalendarDays} tone="info" label="Con vigencia" value={page.data.filter((rule) => rule.valid_from || rule.valid_to).length} info={<p>Reglas limitadas a un rango de fechas de viaje.</p>} />
-      </KpiRow>
       <section className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
         <Tabs
           tabs={[
@@ -213,8 +207,10 @@ export function PriceRulesBoard({ page }: { page: PriceRulesPage }) {
                   searchText={(rule) => `${rule.code} ${rule.name} ${rule.product?.name ?? ""}`}
                   searchPlaceholder="Buscar por nombre o producto"
                   metrics={[
-                    { id: "activas", label: "Activas", tone: "ok", icon: <CircleCheck size={18} />, matches: (rule) => rule.active },
-                    { id: "inactivas", label: "Inactivas", tone: "mute", icon: <CirclePause size={18} />, matches: (rule) => !rule.active },
+                    { id: "activas", label: "Reglas activas", tone: "ok", icon: <CircleCheck size={19} />, note: `de ${counts.total} reglas`, info: <p>Reglas encendidas que hoy ajustan el precio por ocupación, anticipación, día, temporada o demanda. Al presionarla, la tabla muestra solo esas reglas.</p>, matches: (rule) => rule.active },
+                    { id: "inactivas", label: "Inactivas", tone: "mute", icon: <CirclePause size={19} />, info: <p>Reglas guardadas que no se aplican. Puedes probarlas en el simulador antes de activarlas. Al presionarla, la tabla muestra esas reglas.</p>, matches: (rule) => !rule.active },
+                    { id: "alza", label: "Mayor alza", tone: "violet", icon: <Gauge size={19} />, display: `${topRaise} %`, info: <p>El ajuste positivo más alto entre las reglas activas, antes de aplicar el techo. Al presionarla, la tabla muestra la regla o reglas activas con ese ajuste.</p>, matches: (rule) => rule.active && topRaise > 0 && Number(rule.adjust_pct) === topRaise },
+                    { id: "vigencia", label: "Con vigencia", tone: "info", icon: <CalendarDays size={19} />, info: <p>Reglas limitadas a un rango de fechas de viaje. Al presionarla, la tabla muestra esas reglas.</p>, matches: (rule) => Boolean(rule.valid_from || rule.valid_to) },
                   ]}
                   filters={[{ id: "basis", label: "Base", options: labelOptions(catalogs.bases), value: (rule) => rule.basis }]}
                   sorts={[{ id: "priority", label: "Prioridad", type: "number", value: (rule) => rule.priority }]}

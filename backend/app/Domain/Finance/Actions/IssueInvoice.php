@@ -8,6 +8,8 @@ use App\Domain\Finance\Support\Consolidation;
 use App\Domain\Finance\Support\FinanceHistory;
 use App\Domain\Finance\Support\InvoiceRules;
 use App\Domain\Iam\Models\User;
+use App\Domain\Integrations\Support\AgencyIntegrations;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use App\Domain\Shared\Audit\AuditLogger;
 use App\Domain\Shared\Errors\ApiException;
 use App\Domain\Shared\Money\Decimal;
@@ -26,6 +28,8 @@ final class IssueInvoice
 
     public function __invoke(array $data, User $actor): object
     {
+        app(AgencyIntegrations::class)->assertReady('ose');
+
         return DB::transaction(function () use ($data, $actor): object {
             $receivable = $this->rules->receivable((string) $data['receivable_id'], true);
 
@@ -71,7 +75,7 @@ final class IssueInvoice
                 'amount_in_words' => $checked['amount_in_words'],
                 'description' => $description,
                 'status' => 'pendiente_envio',
-                'fiscal_provider' => 'OSE (simulado)',
+                'fiscal_provider' => IntegrationReadiness::real('ose') ? 'OSE' : 'OSE (simulado)',
                 'issued_by' => $actor->getKey(),
                 'created_by' => $actor->getKey(),
                 'updated_by' => $actor->getKey(),

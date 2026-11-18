@@ -19,7 +19,7 @@ function nextDays(count: number): { value: string; weekday: string; day: string 
 export async function generateMetadata({ params }: PageProps<"/vitrina/tour/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const [listing, origin] = await Promise.all([getRlListing(slug), rlOrigin()]);
-  const description = `${listing.highlights.slice(0, 3).join(" · ")}. ${listing.model === "pago" ? "Reserve en línea" : "Reserve gratis"} con ${listing.agency.name}.`;
+  const description = `${listing.highlights.slice(0, 3).join(" · ")}. ${listing.model === "pago" ? "Reserva en línea" : "Reserva gratis"} con ${listing.agency.name}.`;
   return { title: listing.title, description, alternates: { canonical: `${origin}/tour/${listing.slug}` }, openGraph: { title: listing.title, description, type: "website" } };
 }
 

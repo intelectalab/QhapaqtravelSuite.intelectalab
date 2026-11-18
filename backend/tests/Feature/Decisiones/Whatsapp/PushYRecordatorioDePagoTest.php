@@ -97,8 +97,8 @@ it('el recordatorio de pago sale solo por correo sin WhatsApp conectado y por lo
         ->and($only->json('data.whatsapp.note'))->toContain('no tiene WhatsApp conectado');
 
     wadecConnectWhatsapp();
-    $messaging = app(MessagingChannel::class);
-    assert($messaging instanceof FakeMessagingChannel);
+    $messaging = new FakeMessagingChannel;
+    app()->instance(MessagingChannel::class, $messaging);
     $before = count($messaging->sent);
 
     $both = $this->postJson("/api/v1/finance/receivables/{$receivable->code}/reminders", [], critical())->assertCreated();

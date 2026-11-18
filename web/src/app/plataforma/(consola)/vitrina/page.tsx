@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
-import { PlatformShowcaseTabs, ShowcaseTiles } from "@/features/vitrina/PlatformShowcase";
+import { PlatformShowcaseTabs } from "@/features/vitrina/PlatformShowcase";
 import { platformGet } from "@/lib/server/platform";
 import type { FunnelMonth, ModerationOverview, PostsOverview } from "@/lib/vitrina";
 
@@ -21,7 +21,6 @@ export default async function PlatformShowcasePage() {
         subtitle={`Sitio gratuito multiagencia en ${overview.brand.domain} (nombre provisional). Atrae agencias y les muestra los beneficios de los planes.`}
         info={<InfoTip>Toda publicación pasa por moderación: fotos y textos propios, punto de encuentro real y agencia verificada con RUC y licencia. Rechazar exige un motivo que recibe la agencia.</InfoTip>}
       />
-      <ShowcaseTiles overview={overview} />
       <PlatformShowcaseTabs overview={overview} funnel={funnel.months} posts={posts} />
     </>
   );

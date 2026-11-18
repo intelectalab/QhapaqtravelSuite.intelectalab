@@ -4,10 +4,13 @@ import { InfoTip } from "@/components/ui/InfoTip";
 import { OtaBoard, type MappingSet } from "@/features/growth/OtaBoard";
 import type { OtaBooking, OtaMapping, OtaOverview, Option } from "@/lib/growth";
 import { getCachedResource, getResource } from "@/lib/server/resource";
+import { comingSoon } from "@/features/integrations/FeatureGate";
 
 export const metadata: Metadata = { title: "OTAs" };
 
 export default async function OtaPage() {
+  const soon = await comingSoon("ota", "OTAs");
+  if (soon) return soon;
   const [overview, bookings] = await Promise.all([
     getCachedResource<OtaOverview>("/channels/ota/connections", "No pudimos cargar las conexiones con OTAs."),
     getCachedResource<OtaBooking[]>("/channels/ota/bookings?page[size]=100", "No pudimos cargar las reservas recibidas."),

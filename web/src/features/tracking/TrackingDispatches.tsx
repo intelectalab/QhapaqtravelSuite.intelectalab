@@ -1,18 +1,19 @@
 "use client";
 
-import { RefreshCw } from "lucide-react";
+import { AlertTriangle, Copy, RefreshCw, Send, ShieldOff } from "lucide-react";
+import type { ReactNode } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { retryDispatch } from "@/app/(backoffice)/canales/seguimiento/actions";
-import { formatDateTime, formatMoney } from "@/lib/format";
+import { formatDateTime, formatMoney, formatNumber } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
-import { DISPATCH_STATUS, type Dispatch } from "@/lib/tracking";
+import { DISPATCH_STATUS, type Dispatch, type TrackingOverview } from "@/lib/tracking";
 import { Hidden, initialStep, ProviderChip } from "./TrackingUi";
 
-export function DispatchesTable({ rows, canManage }: { rows: Dispatch[]; canManage: boolean }) {
+export function DispatchesTable({ rows, canManage, kpis }: { rows: Dispatch[]; canManage: boolean; kpis: TrackingOverview["kpis"] }) {
   const columns: Column<Dispatch>[] = [
     { id: "at", header: "Fecha", cell: (row) => <span className="text-[12.5px] text-fg-2">{formatDateTime(row.occurred_at)}</span> },
     { id: "event", header: "Evento", mobile: "title", cell: (row) => <b className="text-[13.5px] font-semibold">{row.event_label}</b> },
@@ -57,7 +58,13 @@ export function DispatchesTable({ rows, canManage }: { rows: Dispatch[]; canMana
         ) : null,
     },
   ];
-  const metrics: MetricFilter<Dispatch>[] = (["enviado", "fallido", "sin_consentimiento", "duplicado"] as const).map((status) => ({ id: status, label: DISPATCH_STATUS[status].label, tone: DISPATCH_STATUS[status].tone, matches: (row: Dispatch) => row.status === status }));
+  const card = (status: "enviado" | "fallido" | "sin_consentimiento" | "duplicado", icon: ReactNode, info: string, note?: string): MetricFilter<Dispatch> => ({ id: status, label: DISPATCH_STATUS[status].label, tone: DISPATCH_STATUS[status].tone, icon, note, info: <p>{info} Al presionarla, la tabla muestra solo esos envíos.</p>, matches: (row: Dispatch) => row.status === status });
+  const metrics: MetricFilter<Dispatch>[] = [
+    card("enviado", <Send size={19} />, "Envíos aceptados por los proveedores, según el registro de envíos; la nota cuenta los de las últimas 24 horas y los que el proveedor deduplicó por event_id.", `${formatNumber(kpis.sent_24h)} en 24 h · ${formatNumber(kpis.deduplicated_24h)} deduplicadas`),
+    card("fallido", <AlertTriangle size={19} />, "Envíos con error. Los que todavía se pueden reintentar (hasta 10 intentos) se reintentan con el mismo event_id; se guardan 90 días.", `${formatNumber(kpis.failed)} se pueden reintentar`),
+    card("sin_consentimiento", <ShieldOff size={19} />, "Conversiones que no se enviaron porque el visitante no aceptó la categoría de cookies de esa etiqueta."),
+    card("duplicado", <Copy size={19} />, "Conversiones que ya se habían enviado con el mismo event_id; el proveedor las cuenta una sola vez."),
+  ];
   const filters: FilterConfig<Dispatch>[] = [
     { id: "provider", label: "Proveedor", options: [...new Map(rows.map((row) => [row.provider, row.tag_name])).entries()].map(([value, label]) => ({ value, label })), value: (row) => row.provider },
     { id: "channel", label: "Canal", options: [{ value: "servidor", label: "Servidor" }, { value: "navegador", label: "Navegador" }], value: (row) => row.channel },

@@ -3,6 +3,7 @@ import { ChartPie, Megaphone } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { ChartsPanel } from "@/components/ui/ChartsPanel";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TintCardTitle } from "@/components/ui/Tinted";
 import { LeadsTable } from "@/features/leads/LeadsTable";
@@ -30,20 +31,26 @@ export default async function LeadsPage({ searchParams }: PageProps<"/crm/leads"
         title="Leads"
         subtitle={`${leads.length} leads · ${rate} % se convirtieron en clientes`}
         actions={catalogs ? <LeadCreateAction catalogs={catalogs} advisors={advisors} defaultOpen={nuevo === "1"} /> : undefined}
-        info={<InfoTip>Cada lead se revisa contra los leads y clientes que ya existen, se asigna, se contacta y se califica antes de convertirlo en cliente y oportunidad. Los duplicados no cuentan para la conversión.</InfoTip>}
+        info={
+          <>
+            <InfoTip>Cada lead se revisa contra los leads y clientes que ya existen, se asigna, se contacta y se califica antes de convertirlo en cliente y oportunidad. Los duplicados no cuentan para la conversión.</InfoTip>
+            <ChartsPanel title="Gráficos de leads" description="Todos los leads de la lista, por fuente y por estado.">
+              <section className="grid gap-4 lg:grid-cols-2">
+                <Card className="lift">
+                  <TintCardTitle icon={Megaphone} title="Leads por fuente" aside={<InfoTip label="De dónde sale">Todos los leads que ves en la lista, agrupados por la fuente con la que se registraron.</InfoTip>} />
+                  <ReportChartView tone="t1" chart={{ key: "source", title: "Leads por fuente", type: "hbar", format: "number", series: tally(leads, (lead) => lead.source) }} />
+                </Card>
+                <Card className="lift">
+                  <TintCardTitle icon={ChartPie} title="Leads por estado" aside={<InfoTip label="De dónde sale">Los mismos leads, según el estado en que están hoy. Pasa el cursor por la dona para ver el detalle.</InfoTip>} />
+                  <ReportChartView tone="t4" chart={{ key: "status", title: "Leads por estado", type: "donut", format: "number", series: tally(leads, (lead) => statusLabel(lead.status)) }} />
+                </Card>
+              </section>
+            </ChartsPanel>
+          </>
+        }
       />
       <ConsultModeNotice permissions={["crm.leads.manage"]} what="registrar ni gestionar leads" />
       <LeadJourney leads={leads} />
-      <section className="mb-5 grid gap-4 lg:grid-cols-2">
-        <Card className="lift">
-          <TintCardTitle icon={Megaphone} title="Leads por fuente" aside={<InfoTip label="De dónde sale">Todos los leads que ves en la lista, agrupados por la fuente con la que se registraron.</InfoTip>} />
-          <ReportChartView tone="t1" chart={{ key: "source", title: "Leads por fuente", type: "hbar", format: "number", series: tally(leads, (lead) => lead.source) }} />
-        </Card>
-        <Card className="lift">
-          <TintCardTitle icon={ChartPie} title="Leads por estado" aside={<InfoTip label="De dónde sale">Los mismos leads, según el estado en que están hoy. Pasa el cursor por la dona para ver el detalle.</InfoTip>} />
-          <ReportChartView tone="t4" chart={{ key: "status", title: "Leads por estado", type: "donut", format: "number", series: tally(leads, (lead) => statusLabel(lead.status)) }} />
-        </Card>
-      </section>
       <LeadsTable leads={leads} catalogs={catalogs} />
     </>
   );

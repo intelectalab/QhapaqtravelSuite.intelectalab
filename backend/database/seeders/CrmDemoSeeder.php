@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Domain\Platform\Models\Tenant;
+use App\Domain\Quotes\Actions\QuoteAccessTokens;
 use App\Domain\Quotes\Support\QuotePricing;
 use Database\Support\KitSeeds;
 use Illuminate\Support\Carbon;
@@ -261,6 +262,10 @@ final class CrmDemoSeeder
         foreach ($seed['services'] ?? [] as $service) {
             $status = $service['status'];
             $code = ($service['confirmationCode'] ?? '') ?: null;
+            $date = $this->day($service['date']);
+            $direct = $status === 'confirmado' && $code === null;
+            $status = $direct && $date < Carbon::today('America/Lima')->toDateString() ? 'completado' : $status;
+            $code = $direct && $status === 'confirmado' ? 'Compra directa' : $code;
             $kind = $this->serviceKind($service);
             $this->insert('booking_reservation_services', ['code' => $service['id']], [
                 'reservation_id' => $reservationId,
@@ -268,10 +273,10 @@ final class CrmDemoSeeder
                 'product_id' => $products[$service['productId'] ?? ''] ?? null,
                 'requires_assignment' => in_array($kind, ['tour', 'traslado'], true),
                 'name' => Str::limit($service['name'], 195),
-                'service_date' => $this->day($service['date']),
+                'service_date' => $date,
                 'service_time' => preg_match('/^\d{1,2}:\d{2}$/', (string) ($service['time'] ?? '')) ? $service['time'] : null,
                 'pax' => count($seed['passengers'] ?? []) ?: null,
-                'status' => $status === 'confirmado' && $code === null ? 'completado' : $status,
+                'status' => $status,
                 'currency' => $seed['currency'],
                 'fx_rate' => $seed['currency'] === 'USD' ? $this->fx : 1,
                 'cost_amount' => $service['cost'] ?? 0,
@@ -335,7 +340,7 @@ final class CrmDemoSeeder
 
     private function seedQuoteTracking(string $quoteId, array $seed): void
     {
-        foreach (['quote_sends', 'quote_views', 'quote_negotiations'] as $table) {
+        foreach (['quote_sends', 'quote_views', 'quote_negotiations', 'quote_access_tokens'] as $table) {
             DB::table($table)->where('quote_id', $quoteId)->delete();
         }
 
@@ -351,6 +356,8 @@ final class CrmDemoSeeder
 
         DB::table('quote_sends')->insert([...$base, 'id' => (string) Str::uuid7(), 'version_no' => $seed['currentVersion'] ?? 1, 'channel' => $email ? 'Email' : 'WhatsApp', 'recipient' => $email ?? 'Cliente', 'message' => null, 'sent_by' => $owner, 'sent_at' => $sentAt, 'created_by' => $owner, 'created_at' => $sentAt]);
 
+        $this->seedQuoteLink($quoteId, $seed, $owner, $sentAt);
+
         if ($seed['viewedAt'] ?? null) {
             DB::table('quote_views')->insert([...$base, 'id' => (string) Str::uuid7(), 'version_no' => $seed['currentVersion'] ?? 1, 'viewed_at' => $this->date($seed['viewedAt']), 'source' => 'portal']);
         }
@@ -362,6 +369,24 @@ final class CrmDemoSeeder
         if ($seed['approvedAt'] ?? null) {
             DB::table('quote_quotes')->where('id', $quoteId)->update(['approved_at' => $this->date($seed['approvedAt']), 'approved_by_name' => trim((string) preg_replace('/\s*\(cliente\)$/i', '', (string) ($seed['approvedBy'] ?? ''))) ?: null, 'approval_channel' => 'Portal', 'approval_version_no' => $seed['currentVersion'] ?? 1]);
         }
+    }
+
+    private function seedQuoteLink(string $quoteId, array $seed, ?string $owner, ?string $sentAt): void
+    {
+        if (in_array($seed['status'], ['convertida', 'rechazada', 'cancelada'], true)) {
+            return;
+        }
+
+        $id = (string) Str::uuid7();
+        DB::table('quote_access_tokens')->insert([
+            'id' => $id,
+            'tenant_id' => $this->tenant->getKey(),
+            'quote_id' => $quoteId,
+            'token_hash' => QuoteAccessTokens::hash(app(QuoteAccessTokens::class)->plain($id, $quoteId)),
+            'expires_at' => DB::table('quote_quotes')->where('id', $quoteId)->value('valid_until'),
+            'created_by' => $owner,
+            'created_at' => $sentAt ?? now(),
+        ]);
     }
 
     private function seedQuoteVersions(string $quoteId, array $seed): void

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CircleCheck, Eye, FilePlus2, FileMinus2, MailCheck, RefreshCw, Send, SendHorizontal, TriangleAlert } from "lucide-react";
+import { Check, CircleCheck, Eye, FilePlus2, FileMinus2, MailCheck, Receipt, RefreshCw, Send, SendHorizontal, TriangleAlert } from "lucide-react";
 import { INVOICES_CSV } from "@/lib/finance-csv";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
@@ -20,6 +20,7 @@ import { TextField } from "@/components/ui/TextField";
 import { cn } from "@/lib/cn";
 import type { FinanceOption, InvoiceCheck, InvoiceDraft, InvoiceInvoiceable, InvoicePending, InvoiceRow, InvoicesOverview } from "@/lib/finance";
 import { formatDate, formatMoney } from "@/lib/format";
+import { LOAD_FAILED, withRetry } from "@/lib/retry";
 import { statusLabel, type Tone } from "@/lib/tone";
 import { FinanceStep, SummaryBox, type StepButton } from "./FinanceStep";
 
@@ -160,6 +161,10 @@ function InvoicePreview({ row, canIssue, reasons }: { row: InvoiceRow; canIssue:
 
 export function InvoicesTable({ data }: { data: InvoicesOverview }) {
   const { rows, can, reasons } = data;
+  const [monthStart] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  });
 
   const columns: Column<InvoiceRow>[] = [
     {
@@ -225,11 +230,13 @@ export function InvoicesTable({ data }: { data: InvoicesOverview }) {
     },
   ];
 
+  const { kpis } = data;
   const metrics: MetricFilter<InvoiceRow>[] = [
-    { id: "accepted", label: "Aceptados", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "aceptado" },
-    { id: "observed", label: "Observados", tone: "warn", icon: <TriangleAlert size={19} />, matches: (row) => row.status === "observado" },
-    { id: "rejected", label: "Rechazados", tone: "bad", icon: <TriangleAlert size={19} />, matches: (row) => row.status === "rechazado" },
-    { id: "credit", label: "Notas de crédito", tone: "violet", icon: <FileMinus2 size={19} />, matches: (row) => row.doc_type === "07" },
+    { id: "month", label: "Emitido este mes", tone: "t1", icon: <Receipt size={19} />, display: formatMoney(kpis.month_pen, "PEN", { compact: true }), note: `${kpis.month_count === 1 ? "1 comprobante" : `${kpis.month_count} comprobantes`}${kpis.uninvoiced_pen > 0 ? ` · ${formatMoney(kpis.uninvoiced_pen, "PEN", { compact: true })} cobrado por facturar` : ""}`, info: <p>Suma en soles de las facturas y boletas emitidas desde el día 1 del mes y ya enviadas al OSE, sin notas de crédito, anuladas ni rechazadas. La nota suma los cobros aplicados que aún no tienen comprobante (están en «Cobros por facturar»). Al presionarla, la tabla muestra los comprobantes del mes.</p>, matches: (row) => row.issue_date >= monthStart && row.doc_type !== "07" && !["anulado", "rechazado", "pendiente_envio"].includes(row.status) },
+    { id: "accepted", label: "Aceptados por el OSE", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Comprobantes con respuesta de aceptación del operador de servicios electrónicos. Al presionarla, la tabla muestra solo esos comprobantes.</p>, matches: (row) => row.status === "aceptado" },
+    { id: "observed", label: "Observados", tone: kpis.observed > 0 ? "warn" : "mute", icon: <TriangleAlert size={19} />, note: kpis.waiting > 0 ? `${kpis.waiting} esperando respuesta del OSE` : kpis.observed > 0 ? "Revisa la observación del OSE" : "Sin observaciones", info: <p>Comprobantes que el OSE aceptó con observaciones; siguen siendo válidos. La nota avisa de los que aún esperan respuesta. Al presionarla, la tabla muestra los observados.</p>, matches: (row) => row.status === "observado" },
+    { id: "rejected", label: "Rechazados", tone: "bad", icon: <TriangleAlert size={19} />, note: "No valen: emite uno nuevo", info: <p>Comprobantes que el OSE rechazó: no tienen validez y hay que volver a emitirlos. Al presionarla, la tabla muestra esos comprobantes.</p>, matches: (row) => row.status === "rechazado" },
+    { id: "credit", label: "Notas de crédito", tone: "violet", icon: <FileMinus2 size={19} />, note: kpis.credit_notes_pen > 0 ? formatMoney(kpis.credit_notes_pen, "PEN", { compact: true }) : undefined, info: <p>Notas de crédito emitidas para anular o corregir un comprobante aceptado; la nota suma su total en soles. Al presionarla, la tabla muestra solo las notas de crédito.</p>, matches: (row) => row.doc_type === "07" },
   ];
 
   const filters: FilterConfig<InvoiceRow>[] = [
@@ -298,18 +305,29 @@ function IssueInvoiceFields({ code }: { code: string }) {
   const [check, setCheck] = useState<InvoiceCheck | null>(null);
 
   useEffect(() => {
-    loadInvoiceDraft(code).then((result) => {
-      setError(result.message);
-      if (!result.draft) return;
-      setDraft(result.draft);
-      setForm({ receivable_id: code, doc_type: result.draft.doc_type, customer_doc_type: result.draft.customer_doc_type, customer_doc_number: result.draft.customer_doc_number, customer_name: result.draft.customer_name, domiciled: result.draft.domiciled ? "1" : "0", amount: result.draft.amount, description: result.draft.description, fx_rate: result.draft.fx_rate ?? "" });
-    });
+    let alive = true;
+    withRetry(() => loadInvoiceDraft(code))
+      .then((result) => {
+        if (!alive) return;
+        setError(result.message);
+        if (!result.draft) return;
+        setDraft(result.draft);
+        setForm({ receivable_id: code, doc_type: result.draft.doc_type, customer_doc_type: result.draft.customer_doc_type, customer_doc_number: result.draft.customer_doc_number, customer_name: result.draft.customer_name, domiciled: result.draft.domiciled ? "1" : "0", amount: result.draft.amount, description: result.draft.description, fx_rate: result.draft.fx_rate ?? "" });
+      })
+      .catch(() => {
+        if (alive) setError(LOAD_FAILED);
+      });
+    return () => {
+      alive = false;
+    };
   }, [code]);
 
   useEffect(() => {
     if (!form.receivable_id) return;
     const timer = setTimeout(() => {
-      checkInvoice({ ...form, domiciled: form.domiciled === "1", fx_rate: form.fx_rate || null }).then(setCheck);
+      checkInvoice({ ...form, domiciled: form.domiciled === "1", fx_rate: form.fx_rate || null })
+        .then(setCheck)
+        .catch(() => setCheck(null));
     }, 300);
     return () => clearTimeout(timer);
   }, [form]);

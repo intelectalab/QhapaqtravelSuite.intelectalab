@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Ban, BellRing, CheckCheck, CircleOff, Clock, Eye, FlaskConical, Languages, Mail, MessageCircle, MonitorSmartphone, Plus, Power, PowerOff, RefreshCw, RotateCcw, Send, SendHorizontal, Smartphone, Trash2, Variable, X, XCircle } from "lucide-react";
+import { AlertTriangle, Ban, BellRing, CheckCheck, CircleOff, Clock, Eye, FlaskConical, Languages, Mail, MessageCircle, MonitorSmartphone, Plus, Power, PowerOff, RefreshCw, RotateCcw, Send, SendHorizontal, Smartphone, Timer, Trash2, Variable, X, XCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPaxTemplate, deletePaxTemplate, duplicatePaxTemplate, paxMessageStep, previewPaxTemplate, reschedulePaxMessages, sendPaxMessage, testPaxTemplate, togglePaxTemplate, updatePaxTemplate } from "@/app/(backoffice)/admin/comunicaciones/actions";
 import { DataTable } from "@/components/table/DataTable";
@@ -18,7 +18,8 @@ import { TextField } from "@/components/ui/TextField";
 import { TintCardTitle, ToneScope } from "@/components/ui/Tinted";
 import { ADMIN_INITIAL, CHANNEL_LABELS, fillTemplate, offsetLabel, type AdminActionState, type Option, type PaxMessage, type PaxTemplate, type PaxTemplatesOverview } from "@/lib/admin";
 import { cn } from "@/lib/cn";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatPercent } from "@/lib/format";
+import { LOAD_FAILED, withRetry } from "@/lib/retry";
 import { toneStyle, type Tone } from "@/lib/tone";
 import { CheckChips, FieldLabel, ToggleField } from "./AdminParts";
 
@@ -180,9 +181,13 @@ function RealPreview({ template, channel, reservation, sample }: { template: Pax
   const key = `${template.code}:${channel}:${reservation}`;
   useEffect(() => {
     let alive = true;
-    previewPaxTemplate(template.code, channel, reservation || undefined).then((result) => {
-      if (alive) setState({ key, result });
-    });
+    withRetry(() => previewPaxTemplate(template.code, channel, reservation || undefined))
+      .then((result) => {
+        if (alive) setState({ key, result });
+      })
+      .catch(() => {
+        if (alive) setState({ key, result: { ok: false, message: LOAD_FAILED } });
+      });
     return () => {
       alive = false;
     };
@@ -351,10 +356,10 @@ export function PaxTemplatesTable({ data }: { data: PaxTemplatesOverview }) {
     { id: "actions", header: "", align: "right", mobile: "detail", cell: (template) => <TemplateRowActions template={template} data={data} /> },
   ];
   const metrics: MetricFilter<PaxTemplate>[] = [
-    { id: "active", label: "Activas", tone: "ok", icon: <BellRing size={19} />, matches: (template) => template.active },
-    { id: "inactive", label: "Inactivas", tone: "mute", icon: <CircleOff size={19} />, matches: (template) => !template.active },
-    { id: "whatsapp", label: "Con WhatsApp", tone: "t4", icon: <MessageCircle size={19} />, matches: (template) => template.channels.includes("whatsapp") },
-    { id: "blocked", label: "Regla apagada", tone: "warn", icon: <AlertTriangle size={19} />, matches: (template) => template.rule !== null && !template.rule.enabled },
+    { id: "active", label: "Activas", tone: "ok", icon: <BellRing size={19} />, info: <p>Plantillas encendidas: programan sus mensajes solas para las reservas vigentes. Al presionarla ves solo esas plantillas.</p>, matches: (template) => template.active },
+    { id: "inactive", label: "Inactivas", tone: "mute", icon: <CircleOff size={19} />, info: <p>Plantillas apagadas que no programan nada hasta que las actives. Al presionarla ves solo esas plantillas.</p>, matches: (template) => !template.active },
+    { id: "whatsapp", label: "Con WhatsApp", tone: "t4", icon: <MessageCircle size={19} />, info: <p>Plantillas que salen también por WhatsApp; necesitan estar aprobadas por Meta. Al presionarla ves solo esas plantillas.</p>, matches: (template) => template.channels.includes("whatsapp") },
+    { id: "blocked", label: "Regla apagada", tone: "warn", icon: <AlertTriangle size={19} />, info: <p>Plantillas que dependen de una regla de reserva apagada y por eso no programan envíos. Al presionarla ves solo esas plantillas.</p>, matches: (template) => template.rule !== null && !template.rule.enabled },
   ];
   const filters: FilterConfig<PaxTemplate>[] = [
     { id: "event", label: "Momento", options: data.events, value: (template) => template.event },
@@ -517,18 +522,22 @@ export function PaxMessagesTable({ messages, channels, mode, data }: { messages:
       : []),
   ];
   const soon = (message: PaxMessage) => message.scheduled_at !== null && new Date(message.scheduled_at).getTime() - now <= 48 * 3600 * 1000;
+  const next = upcoming ? [...messages].filter((message) => message.scheduled_at).sort((a, b) => (a.scheduled_at ?? "").localeCompare(b.scheduled_at ?? ""))[0] : undefined;
+  const outgoing = messages.filter((message) => message.direction === "saliente" && ["enviado", "entregado", "leido", "fallido"].includes(message.status));
+  const read = outgoing.filter((message) => message.status === "leido").length;
   const metrics: MetricFilter<PaxMessage>[] = upcoming
     ? [
-        { id: "soon", label: "En las próximas 48 h", tone: "sun", icon: <Clock size={19} />, matches: soon },
-        { id: "auto", label: "Automáticos", tone: "t1", icon: <BellRing size={19} />, matches: (message) => message.origin === "auto" },
-        { id: "manual", label: "Manuales", tone: "violet", icon: <Send size={19} />, matches: (message) => message.origin !== "auto" },
+        { id: "soon", label: "En las próximas 48 h", tone: "sun", icon: <Clock size={19} />, note: `${messages.length} programados en total`, info: <p>Mensajes programados, automáticos o manuales, que salen en las próximas 48 horas; la nota cuenta todos los programados. Al presionarla ves solo los de las próximas 48 horas.</p>, matches: soon },
+        { id: "next", label: "Próximo envío", tone: "info", icon: <Timer size={19} />, display: next?.scheduled_at ? formatDateTime(next.scheduled_at, false) : "Nada programado", note: next ? `${next.template_name ?? "Mensaje"}${next.reservation ? ` · ${next.reservation}` : ""}` : undefined, info: <p>El mensaje programado que sale primero, con su plantilla y su reserva. Al presionarla ves solo ese mensaje.</p>, matches: (message) => message.code === next?.code },
+        { id: "auto", label: "Automáticos", tone: "t1", icon: <BellRing size={19} />, info: <p>Mensajes que programó una plantilla activa según el momento del viaje. Al presionarla ves solo esos mensajes.</p>, matches: (message) => message.origin === "auto" },
+        { id: "manual", label: "Manuales", tone: "violet", icon: <Send size={19} />, info: <p>Mensajes que alguien del equipo programó a mano o como prueba. Al presionarla ves solo esos mensajes.</p>, matches: (message) => message.origin !== "auto" },
       ]
     : [
-        { id: "read", label: "Leídos", tone: "ok", icon: <Eye size={19} />, matches: (message) => message.status === "leido" },
-        { id: "delivered", label: "Entregados sin leer", tone: "t1", icon: <CheckCheck size={19} />, matches: (message) => message.status === "entregado" },
-        { id: "sent", label: "Enviados sin confirmar entrega", tone: "info", icon: <Send size={19} />, matches: (message) => message.status === "enviado" },
-        { id: "failed", label: "Fallidos", tone: "bad", icon: <XCircle size={19} />, matches: (message) => message.status === "fallido" },
-        { id: "canceled", label: "Cancelados", tone: "mute", icon: <CircleOff size={19} />, matches: (message) => message.status === "cancelado" },
+        { id: "read", label: "Tasa de lectura", tone: "ok", icon: <Eye size={19} />, display: outgoing.length > 0 ? formatPercent((read / outgoing.length) * 100, 0) : "Sin envíos", note: `${read} leídos de ${outgoing.length} que salieron`, info: <p>Mensajes salientes con acuse de lectura entre todos los que ya salieron, entregados, leídos o fallidos. Al presionarla ves los mensajes leídos.</p>, matches: (message) => message.status === "leido" },
+        { id: "delivered", label: "Entregados sin leer", tone: "t1", icon: <CheckCheck size={19} />, info: <p>Mensajes que llegaron al pasajero pero aún no tienen acuse de lectura. Al presionarla ves solo esos mensajes.</p>, matches: (message) => message.status === "entregado" },
+        { id: "sent", label: "Enviados sin confirmar entrega", tone: "info", icon: <Send size={19} />, info: <p>Mensajes que salieron y cuyo canal todavía no confirma la entrega. Al presionarla ves solo esos mensajes.</p>, matches: (message) => message.status === "enviado" },
+        { id: "failed", label: "Fallidos", tone: "bad", icon: <XCircle size={19} />, info: <p>Mensajes que el canal rechazó o que agotaron sus intentos. Al presionarla ves solo esos mensajes.</p>, matches: (message) => message.status === "fallido" },
+        { id: "canceled", label: "Cancelados", tone: "mute", icon: <CircleOff size={19} />, info: <p>Mensajes programados que se cancelaron antes de salir, por ejemplo porque la reserva cambió. Al presionarla ves solo esos mensajes.</p>, matches: (message) => message.status === "cancelado" },
       ];
   const templates = [...new Map(messages.filter((message) => message.template).map((message) => [message.template as string, message.template_name ?? (message.template as string)])).entries()].map(([value, label]) => ({ value, label }));
   const filters: FilterConfig<PaxMessage>[] = [

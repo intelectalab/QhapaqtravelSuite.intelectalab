@@ -27,7 +27,7 @@ export async function payLink(agencia: string, token: string, _state: PublicStep
 }
 
 export async function buyGiftCard(agencia: string, _state: PublicStepResult, form: FormData): Promise<PublicStepResult> {
-  const body = Object.fromEntries(["amount", "currency", "buyer_name", "buyer_email", "recipient_name", "recipient_email", "message", "card_token"].map((field) => [field, String(form.get(field) ?? "").trim() || null]));
+  const body = Object.fromEntries(["amount", "currency", "buyer_name", "buyer_email", "recipient_name", "recipient_email", "message", "deliver_at", "card_token"].map((field) => [field, String(form.get(field) ?? "").trim() || null]));
   const result = await sendSite<Record<string, string | null>>(agencia, "/gift-cards", body, { "Idempotency-Key": randomUUID() });
   if (!result.ok) return failure(result, "No pudimos completar la compra.");
   return { message: null, done: true, data: result.data };

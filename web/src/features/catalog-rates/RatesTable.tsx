@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarClock, CircleCheck, CircleSlash, History } from "lucide-react";
+import { CalendarClock, CircleCheck, CircleSlash, History, Hourglass, Percent } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { DataTable } from "@/components/table/DataTable";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { FieldList } from "@/components/ui/Details";
 import { DetailPanel, NameButton } from "@/features/catalog-shared/CatalogPanels";
 import { PRODUCT_STATUS } from "@/lib/catalog";
-import { RATE_STATE, type RateRow, type RatesOverview } from "@/lib/catalog-rates";
+import { daysBetween, RATE_STATE, type RateRow, type RatesOverview } from "@/lib/catalog-rates";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
 import { RateEditAction, RateToggleAction } from "./RateForms";
@@ -111,11 +111,20 @@ export function RatesTable({ overview }: { overview: RatesOverview }) {
       ),
     },
   ];
+  const live = overview.rates.filter((rate) => rate.state === "vigente");
+  const expiringSoon = (rate: RateRow) => rate.state === "vigente" && daysBetween(overview.today, rate.valid_to) <= 30;
+  const firstExpiry = live.filter(expiringSoon).map((rate) => rate.valid_to).sort()[0];
+  const products = new Set(live.map((rate) => rate.product.id)).size;
+  const margins = live.map((rate) => rate.margin_pct).filter((value): value is number => value !== null);
+  const average = margins.length ? margins.reduce((sum, value) => sum + value, 0) / margins.length : null;
   const metrics: MetricFilter<RateRow>[] = [
-    { id: "vigente", label: "Vigentes", tone: "ok", icon: <CircleCheck size={19} />, matches: (rate) => rate.state === "vigente" },
-    { id: "programada", label: "Programadas", tone: "info", icon: <CalendarClock size={19} />, matches: (rate) => rate.state === "programada" },
-    { id: "vencida", label: "Vencidas", tone: "mute", icon: <History size={19} />, matches: (rate) => rate.state === "vencida" },
-    { id: "inactiva", label: "Inactivas", tone: "bad", icon: <CircleSlash size={19} />, matches: (rate) => rate.state === "inactiva" },
+    { id: "vigente", label: "Vigentes", tone: "ok", icon: <CircleCheck size={19} />, note: `${products} productos cotizables · ${Math.max(0, overview.options.products.length - products)} sin tarifa`, info: <p>Tarifas activas cuya vigencia incluye hoy: son las únicas que se pueden elegir al cotizar o reservar. La nota cuenta los productos con al menos una y los que no tienen ninguna, que no se pueden cotizar. Al presionarla, la tabla muestra solo las vigentes.</p>, matches: (rate) => rate.state === "vigente" },
+    { id: "por-vencer", label: "Vencen en 30 días", tone: "sun", icon: <Hourglass size={19} />, note: firstExpiry ? `La primera, ${formatDate(firstExpiry)}` : "Nada por renovar", info: <p>Tarifas vigentes cuya vigencia termina en los próximos 30 días. Al presionarla, la tabla muestra esas tarifas para renovarlas a tiempo.</p>, matches: expiringSoon },
+    { id: "programada", label: "Programadas", tone: "info", icon: <CalendarClock size={19} />, info: <p>Tarifas activas cuya vigencia empieza más adelante. Al presionarla, la tabla muestra esas tarifas.</p>, matches: (rate) => rate.state === "programada" },
+    { id: "vencida", label: "Vencidas", tone: "bad", icon: <History size={19} />, note: "No se pueden elegir al cotizar", info: <p>Tarifas activas cuya vigencia ya terminó. No se pueden elegir al cotizar ni reservar; renuévalas o inactívalas. Al presionarla, la tabla muestra esas tarifas.</p>, matches: (rate) => rate.state === "vencida" },
+    average !== null
+      ? { id: "margen", label: "Margen promedio", tone: "violet", icon: <Percent size={19} />, display: `${average.toFixed(1)} %`, note: "Sobre tarifas vigentes", info: <p>Promedio simple de (venta − costo) / venta en las tarifas vigentes. Solo lo ve quien tiene acceso a la rentabilidad. Al presionarla, la tabla muestra las tarifas vigentes con margen.</p>, matches: (rate) => rate.state === "vigente" && rate.margin_pct !== null }
+      : { id: "inactiva", label: "Inactivas", tone: "mute", icon: <CircleSlash size={19} />, info: <p>Tarifas que se desactivaron a mano y no se usan en ninguna fecha. Al presionarla, la tabla muestra esas tarifas.</p>, matches: (rate) => rate.state === "inactiva" },
   ];
   const filters: FilterConfig<RateRow>[] = [
     { id: "product", label: "Producto", options: unique(overview.rates.map((rate) => rate.product.name)), value: (rate) => rate.product.name },

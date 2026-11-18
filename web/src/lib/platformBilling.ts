@@ -370,6 +370,7 @@ export interface PlatformJob {
   cron: string;
   cron_label: string;
   queue: string;
+  queue_label: string;
   paused: boolean;
   last_run_at: string | null;
   next_run_at: string | null;

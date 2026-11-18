@@ -1,16 +1,15 @@
-import { BadgeDollarSign, ChartColumn, ShoppingBag, Users, Wallet } from "lucide-react";
+import { BadgeDollarSign } from "lucide-react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { TabbedCard, type RouteTab } from "@/components/ui/RouteTabs";
-import { TintTile } from "@/components/ui/Tinted";
+import { ChartsPanel } from "@/components/ui/ChartsPanel";
 import { CorporateApprovalsView } from "@/features/corporate/CorporateApprovalsView";
 import { CorporateMovementsView } from "@/features/corporate/CorporateMovementsView";
-import { CorporatePeriodPicker, CorporateSummaryView } from "@/features/corporate/CorporatePortal";
+import { CorporatePeriodPicker, CorporateSummaryCharts, CorporateSummaryView } from "@/features/corporate/CorporatePortal";
 import { CorporateStatementsView } from "@/features/corporate/CorporateStatementsView";
 import { CorporateTeamView } from "@/features/corporate/CorporateTeamView";
 import { PortalTitle } from "@/features/portal/PortalUi";
-import { num, type CorporateApproval, type CorporateApprovalsMeta, type CorporateMovements, type CorporatePanel, type CorporatePurchases, type CorporateStatements, type CorporateSummary, type CorporateTraveler, type CostCenter, type PortalUser } from "@/lib/corporate";
-import { formatMoney } from "@/lib/format";
+import { type CorporateApproval, type CorporateApprovalsMeta, type CorporateMovements, type CorporatePanel, type CorporatePurchases, type CorporateStatements, type CorporateSummary, type CorporateTraveler, type CostCenter, type PortalUser } from "@/lib/corporate";
 import { apiFetch } from "@/lib/server/api";
 import { PORTAL_HOME, portalData } from "@/lib/server/portal";
 
@@ -52,22 +51,25 @@ export default async function CorporatePanelPage({ searchParams }: { searchParam
             {panel.scope ? ` · ${panel.scope}` : ""}
           </>
         }
-        actions={<CorporatePeriodPicker periods={panel.periods} value={summary.period.key} />}
+        actions={
+          <span className="flex flex-wrap items-center gap-2">
+            {section === "resumen" && (
+              <ChartsPanel title="Gráficos de compras" description={`Gasto de tu empresa en ${summary.period.label}: por mes, por centro de costo y por viajero.`}>
+                <CorporateSummaryCharts summary={summary} />
+              </ChartsPanel>
+            )}
+            <CorporatePeriodPicker periods={panel.periods} value={summary.period.key} />
+          </span>
+        }
       />
       {panel.read_only && (
         <p role="status" className="mb-5 rounded-[14px] border border-[color-mix(in_srgb,var(--warn)_30%,transparent)] bg-[color-mix(in_srgb,var(--warn)_7%,var(--surface))] px-4 py-3 text-[13px] text-fg-2">
           El panel está en solo lectura: puedes consultar compras, movimientos y estados de cuenta, pero no aprobar, invitar usuarios ni cambiar centros de costo. Escribe a tu agencia si necesitas hacerlo.
         </p>
       )}
-      <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TintTile icon={ShoppingBag} tone="t1" label="Total comprado" value={formatMoney(summary.kpis.total, cur)} note={`${summary.kpis.purchases} compras · ${summary.period.label}`} info="Suma de las reservas de tu empresa creadas en el período, convertidas a la moneda de la cuenta. Las compras de meses cerrados salen del estado de cuenta emitido." />
-        <TintTile icon={Wallet} tone={num(summary.kpis.balance) > 0 ? "sun" : "ok"} label="Saldo por pagar" value={formatMoney(summary.kpis.balance, cur)} note="A la fecha, todas las compras" info="Compras menos pagos aplicados y notas de crédito, desde la primera compra hasta hoy." />
-        <TintTile icon={Users} tone="info" label="Viajeros" value={summary.kpis.travelers} note="Personas distintas que viajaron" info="Pasajeros de las reservas del período y viajeros asignados en el reparto de costos." />
-        <TintTile icon={ChartColumn} tone="violet" label="Ticket promedio" value={summary.kpis.average_ticket ? formatMoney(summary.kpis.average_ticket, cur) : "—"} note="Por compra" info="Total comprado dividido entre el número de compras del período." />
-      </section>
       <TabbedCard tabs={tabs} active={link(section)}>
         {section === "resumen" && <CorporateSummaryView summary={summary} purchases={await portalData<CorporatePurchases>(`/corporate/purchases${query}`, "No pudimos cargar las compras.")} />}
-        {section === "movimientos" && <CorporateMovementsView data={await portalData<CorporateMovements>(`/corporate/movements${query}`, "No pudimos cargar los movimientos.")} centers={summary.cost_centers} period={summary.period.key} />}
+        {section === "movimientos" && <CorporateMovementsView data={await portalData<CorporateMovements>(`/corporate/movements${query}`, "No pudimos cargar los movimientos.")} centers={summary.cost_centers} period={summary.period.key} balance={summary.kpis.balance} />}
         {section === "estado" && <CorporateStatementsView data={await portalData<CorporateStatements>("/corporate/statements", "No pudimos cargar los estados de cuenta.")} />}
         {section === "aprobaciones" && <ApprovalsSection />}
         {section === "usuarios" && <TeamSection currency={cur} />}

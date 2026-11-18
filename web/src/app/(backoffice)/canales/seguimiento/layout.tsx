@@ -1,12 +1,8 @@
-import { AlertTriangle, Send, ShieldCheck, Target } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TabbedCard } from "@/components/ui/RouteTabs";
-import { TintTile } from "@/components/ui/Tinted";
-import { TileGrid } from "@/features/channels/ChannelUi";
-import { formatNumber } from "@/lib/format";
 import { getCachedResource } from "@/lib/server/resource";
 import type { TrackingOverview } from "@/lib/tracking";
 
@@ -32,12 +28,6 @@ export default async function SeguimientoLayout({ children }: { children: ReactN
           </Link>
         }
       />
-      <TileGrid>
-        <TintTile icon={Target} tone="t4" label="Etiquetas activas" value={formatNumber(kpis.active)} note={`${kpis.configured} configuradas`} info={<p>Etiquetas en estado activo, sin contar las pausadas ni las eliminadas. Salen de la lista de etiquetas del sitio.</p>} />
-        <TintTile icon={Send} tone="ok" label="Conversiones enviadas (24 h)" value={formatNumber(kpis.sent_24h)} note={`${kpis.deduplicated_24h} deduplicadas por event_id`} info={<p>Envíos aceptados por los proveedores en las últimas 24 horas, según el registro de envíos.</p>} />
-        <TintTile icon={AlertTriangle} tone={kpis.failed > 0 ? "bad" : "info"} label="Envíos con error" value={formatNumber(kpis.failed)} note={kpis.failed > 0 ? "Revisa la pestaña Envíos" : "Todo en orden"} info={<p>Envíos fallidos que todavía se pueden reintentar (hasta 10 intentos). Se guardan 90 días.</p>} />
-        <TintTile icon={ShieldCheck} tone={kpis.in_review > 0 ? "sun" : "violet"} label="Por revisar" value={formatNumber(kpis.in_review)} note="Scripts o cambios por aprobar" info={<p>Scripts propios en revisión y cambios de scripts activos que esperan la aprobación de otra persona.</p>} />
-      </TileGrid>
       <TabbedCard
         tabs={[
           { href: "/canales/seguimiento", label: "Etiquetas", count: rows.length - scripts },

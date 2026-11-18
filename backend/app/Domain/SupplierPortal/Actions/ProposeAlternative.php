@@ -28,11 +28,11 @@ final class ProposeAlternative
             }
 
             if (DB::table('supplier_request_responses')->where('reservation_service_id', $service->id)->where('type', 'alternativa')->where('review_status', 'pendiente')->exists()) {
-                throw ApiException::conflict('SUP-BR-04', 'Ya propuso una alternativa para esta solicitud. Espere la respuesta de Operaciones.');
+                throw ApiException::conflict('SUP-BR-04', 'Ya propusiste una alternativa para esta solicitud. Espera la respuesta de Operaciones.');
             }
 
             if ($data['alt_kind'] === 'Otra fecha' && empty($data['alt_date'])) {
-                throw ApiException::unprocessable('SUP-BR-08', 'Indique la fecha que propone.');
+                throw ApiException::unprocessable('SUP-BR-08', 'Indica la fecha que propones.');
             }
 
             if (! empty($data['alt_date']) && $data['alt_date'] === $service->service_date) {
@@ -44,7 +44,7 @@ final class ProposeAlternative
                 $alternativeService = $account->catalogService((string) $data['alt_service']);
 
                 if ($alternativeService->status !== 'activo') {
-                    throw ApiException::unprocessable('SUP-BR-08', 'El servicio alternativo debe ser un servicio activo de su empresa.');
+                    throw ApiException::unprocessable('SUP-BR-08', 'El servicio alternativo debe ser un servicio activo de tu empresa.');
                 }
             }
 

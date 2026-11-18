@@ -66,6 +66,11 @@ function BantForm({ lead }: { lead: LeadDetail }) {
           {enough ? "Alcanza para calificarlo." : "Necesita 50 o más para calificarlo."}
         </span>
       </div>
+      {!lead.bant && lead.score > 0 && (
+        <p className="-mt-1 text-[12.5px] text-fg-3">
+          Hoy tiene <b className="text-fg-2">{lead.score} de 100</b> por los datos con que llegó (contacto, fecha, pasajeros, producto y fuente). Aún no tiene calificación BANT; al guardarla, su puntaje pasa a ser el de estas cuatro preguntas.
+        </p>
+      )}
       {BANT.map((criterion) => (
         <ChoiceGroup
           key={criterion.name}

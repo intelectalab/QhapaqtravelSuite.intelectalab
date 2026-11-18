@@ -1,7 +1,7 @@
 "use client";
 
-import { Archive, ArrowRight, Eye, FileText, Globe, Image as ImageIcon, Loader2, Plus, Scale, Search, SendHorizontal } from "lucide-react";
-import { useState, useTransition } from "react";
+import { Archive, CircleCheck, Eye, EyeOff, FilePen, FileText, Globe, Image as ImageIcon, Loader2, Plus, Scale, Search, SendHorizontal } from "lucide-react";
+import { useState, useTransition, type ReactNode } from "react";
 import { archiveContent, previewContent, saveContent, transitionContent } from "@/app/(backoffice)/canales/cms/actions";
 import { Button } from "@/components/ui/Button";
 import { DataTable } from "@/components/table/DataTable";
@@ -17,32 +17,19 @@ import { TextField } from "@/components/ui/TextField";
 import { CMS_ACTIONS, CMS_FLOW, channelStatus, type CmsContent, type CmsOverview, type CmsPreview } from "@/lib/channels";
 import { formatDate, formatDateTime } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
-import { toneStyle } from "@/lib/tone";
 import { ChannelBadge, DetailPanel, PanelSection, Timeline } from "./ChannelUi";
 
 const initial: StepResult = { message: null, done: false };
 
 const TYPE_ICON: Record<string, typeof FileText> = { Página: Globe, Artículo: FileText, Banner: ImageIcon, "Página legal": Scale, Landing: Globe };
 
-export function CmsFlow({ kpis }: { kpis: Record<string, number> }) {
-  return (
-    <ol className="mb-5 flex flex-wrap items-stretch gap-2">
-      {CMS_FLOW.map((status, index) => {
-        const meta = channelStatus(status);
-        return (
-          <li key={status} className="flex items-center gap-2">
-            <span style={{ ...toneStyle(meta.tone), animationDelay: `${index * 70}ms` }} className="lift flex min-w-[132px] animate-[rise-in_420ms_cubic-bezier(0.22,1,0.36,1)_backwards] flex-col rounded-tile border border-[color-mix(in_srgb,var(--tint)_25%,transparent)] bg-[color-mix(in_srgb,var(--tint)_8%,var(--surface))] px-3.5 py-2.5">
-              <span className="text-[12px] font-semibold text-[var(--tint)]">{meta.label}</span>
-              <b className="text-[22px] leading-tight tracking-tight">{kpis[status] ?? 0}</b>
-            </span>
-            {index < CMS_FLOW.length - 2 && <ArrowRight size={15} className="text-fg-3" />}
-            {index === CMS_FLOW.length - 2 && <span aria-hidden className="mx-1 h-8 w-px bg-line" />}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
+const FLOW_CARD: Record<string, { icon: ReactNode; info: string }> = {
+  borrador: { icon: <FilePen size={19} />, info: "Contenidos en preparación que todavía no se envían a revisión." },
+  en_revision: { icon: <SendHorizontal size={19} />, info: "Contenidos enviados a revisión que esperan a un editor." },
+  aprobado: { icon: <CircleCheck size={19} />, info: "Contenidos aprobados listos para publicar; para publicar hace falta el título SEO." },
+  publicado: { icon: <Globe size={19} />, info: "Contenidos publicados: son los únicos que llegan al sitio web y los portales." },
+  despublicado: { icon: <EyeOff size={19} />, info: "Contenidos retirados de los canales; el motivo queda en la bitácora." },
+};
 
 function EditorPreview({ code, formId }: { code?: string; formId: string }) {
   const [pending, start] = useTransition();
@@ -255,13 +242,9 @@ export function CmsTable({ overview }: { overview: CmsOverview }) {
       ),
     },
   ];
-  const metrics: MetricFilter<CmsContent>[] = [
-    { id: "pages", label: "Páginas", tone: "t1", icon: <Globe size={19} />, matches: (row) => row.type === "Página" || row.type === "Landing" },
-    { id: "articles", label: "Artículos", tone: "violet", icon: <FileText size={19} />, matches: (row) => row.type === "Artículo" },
-    { id: "banners", label: "Banners", tone: "sun", icon: <ImageIcon size={19} />, matches: (row) => row.type === "Banner" },
-    { id: "legal", label: "Legales", tone: "mute", icon: <Scale size={19} />, matches: (row) => row.type === "Página legal" },
-  ];
+  const metrics: MetricFilter<CmsContent>[] = CMS_FLOW.map((status) => ({ id: status, label: channelStatus(status).label, tone: channelStatus(status).tone, icon: FLOW_CARD[status].icon, info: <p>{FLOW_CARD[status].info} Al presionarla, la tabla muestra solo esos contenidos.</p>, matches: (row: CmsContent) => row.status === status }));
   const filters: FilterConfig<CmsContent>[] = [
+    { id: "type", label: "Tipo", options: [...new Set(rows.map((row) => row.type))].sort((a, b) => a.localeCompare(b, "es")).map((value) => ({ value, label: value })), value: (row) => row.type },
     { id: "status", label: "Estado", options: CMS_FLOW.map((value) => ({ value, label: channelStatus(value).label })), value: (row) => row.status },
     { id: "channel", label: "Canal", options: overview.channels.map((value) => ({ value, label: value })), value: (row) => row.channel },
   ];

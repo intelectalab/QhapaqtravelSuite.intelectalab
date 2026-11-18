@@ -167,9 +167,9 @@ export function B2bPriceListsTable({ data, canManage }: { data: B2bProductRates;
     { id: "actions", header: "", cell: (row) => <RowActions><ManageRates product={row} agencies={data.agencies} canManage={canManage} /></RowActions> },
   ];
   const metrics: MetricFilter<Product>[] = [
-    { id: "assigned", label: "Con agencias", tone: "ok", icon: <PackageCheck size={19} />, matches: (row) => row.assignments.length > 0 },
-    { id: "empty", label: "Sin agencias", tone: "warn", icon: <PackageX size={19} />, matches: (row) => row.assignments.length === 0 },
-    { id: "credit", label: "Con crédito", tone: "violet", icon: <Handshake size={19} />, matches: (row) => row.assignments.some((rate) => rate.credit_allowed) },
+    { id: "assigned", label: "Con agencias", tone: "ok", icon: <PackageCheck size={19} />, info: <p>Productos con tarifa B2B asignada al menos a una lista de precios, que las agencias ya pueden reservar. Al presionarla, la tabla muestra esos productos.</p>, matches: (row) => row.assignments.length > 0 },
+    { id: "empty", label: "Sin agencias", tone: "warn", icon: <PackageX size={19} />, info: <p>Productos sin tarifa B2B asignada: ninguna agencia los puede reservar todavía. Al presionarla, la tabla muestra esos productos.</p>, matches: (row) => row.assignments.length === 0 },
+    { id: "credit", label: "Con crédito", tone: "violet", icon: <Handshake size={19} />, info: <p>Productos con al menos una tarifa B2B que permite reservar a crédito. Al presionarla, la tabla muestra esos productos.</p>, matches: (row) => row.assignments.some((rate) => rate.credit_allowed) },
   ];
   const filters: FilterConfig<Product>[] = [{ id: "agency", label: "Agencia", options: data.agencies.map((agency) => ({ value: agency.code, label: agency.name })), value: (row) => row.assignments.map((rate) => rate.agency.code) }];
   const sorts: SortOption<Product>[] = [

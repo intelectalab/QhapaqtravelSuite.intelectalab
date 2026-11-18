@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { TintCardTitle } from "@/components/ui/Tinted";
 import { AuditTrail } from "@/features/admin/AdminParts";
 import { UsageGrid } from "@/features/admin/Subscription";
-import { ModulesCard, PlanPeriodCard } from "@/features/admin/SubscriptionPanels";
+import { ModulesCard, PlanPeriodCard, SubscriptionKpis } from "@/features/admin/SubscriptionPanels";
 import { formatDate } from "@/lib/format";
 import { getSubscription } from "@/lib/server/subscription";
 
@@ -28,6 +28,7 @@ export default async function SuscripcionPage() {
 
   return (
     <>
+      <SubscriptionKpis data={data} />
       <div className="mb-5 grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <Card>
           <TintCardTitle icon={Gauge} title="Consumo del periodo" aside="Avisos al 80 % y al 100 %" />

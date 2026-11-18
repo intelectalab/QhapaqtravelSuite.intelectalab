@@ -7,6 +7,7 @@ namespace App\Domain\Admin\Support;
 use App\Domain\Admin\Actions\PaxMessageScheduler;
 use App\Domain\Iam\Models\User;
 use App\Domain\Shared\Http\CursorPage;
+use App\Domain\Shared\Money\Decimal;
 use App\Domain\Shared\Tenancy\TenantContext;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
@@ -175,7 +176,7 @@ final class PaxTemplateDirectory
         ];
 
         if ($balance && (float) $balance->balance > 0) {
-            $values['saldo'] = ($balance->currency === 'USD' ? 'US$ ' : 'S/ ').number_format((float) $balance->balance, 2, '.', ',');
+            $values['saldo'] = Decimal::display($balance->balance, $balance->currency === 'USD' ? 'USD' : 'PEN');
             $values['fecha_saldo'] = Carbon::parse($balance->due)->locale('es')->translatedFormat('j \\d\\e F');
         }
 

@@ -39,6 +39,10 @@ final class SalesPanel
                 'conversion' => [
                     'opportunities' => $closed->isEmpty() ? null : round($won / $closed->count() * 100, 1),
                     'leads' => $leads->isEmpty() ? null : round($leads->filter(fn (string $status): bool => $status === 'convertido')->count() / $leads->count() * 100, 1),
+                    'won' => $won,
+                    'closed' => $closed->count(),
+                    'leads_converted' => $leads->filter(fn (string $status): bool => $status === 'convertido')->count(),
+                    'leads_total' => $leads->count(),
                 ],
                 'commission' => $commissions,
             ],

@@ -89,7 +89,7 @@ final class TravelDocWorkflow
         $client = DB::table('booking_reservations as r')->join('crm_clients as c', 'c.id', '=', 'r.client_id')->where('r.id', $item->reservation_id)->first(['c.id', 'c.name', 'c.email']);
         $label = TravelDocDirectory::LABELS[$item->doc_type] ?? $item->doc_type;
         $notices = app(StaffNotices::class);
-        $notices->email($client?->email, 'documentos.observado', "Revisa un documento de tu viaje {$item->reservation_code} · ".$notices->agency(), "Hola, {$client?->name}:\n\nRevisamos el documento «{$label}» de {$item->full_name} y necesitamos que lo corrijas:\n{$reason}\n\nPuedes cargar el documento corregido desde tu portal.\n\n".$notices->agency(), 'ops_travel_doc', (string) $item->id, 'client', ['client_id' => $client?->id, 'reservation_id' => $item->reservation_id]);
+        $notices->email($client?->email, 'documentos.observado', "Revisa un documento de tu viaje {$item->reservation_code} · ".$notices->agency(), "Hola, {$client?->name}:\n\nRevisamos el documento «{$label}» de {$item->full_name} y necesitamos que lo corrijas:\n{$reason}\n\nEnvíanos el documento corregido respondiendo este correo o escribiendo a tu asesor; nosotros lo cargamos en tu reserva.\n\n".$notices->agency(), 'ops_travel_doc', (string) $item->id, 'client', ['client_id' => $client?->id, 'reservation_id' => $item->reservation_id]);
 
         return (string) $item->id;
     }

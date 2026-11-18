@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { ProgressBar } from "@/components/ui/MiniTable";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
+import { LOAD_FAILED, withRetry } from "@/lib/retry";
 import type { ApprovalItem } from "@/lib/approvals";
 import { loadApprovalOrigin, type ApprovalOriginData } from "./origin";
 
@@ -113,12 +114,18 @@ export function ApprovalOrigin({ item }: { item: ApprovalItem }) {
   useEffect(() => {
     if (!applies) return;
     let active = true;
-    loadApprovalOrigin({ type: item.type, target: item.target, version: item.version_no, reservation: item.reservation, subject: payment ? { type: "fin_payments", code: payment } : null, currency: item.currency }).then((result) => {
-      if (!active) return;
-      setOrigin(result.origin);
-      setMessage(result.message);
-      setLoading(false);
-    });
+    withRetry(() => loadApprovalOrigin({ type: item.type, target: item.target, version: item.version_no, reservation: item.reservation, subject: payment ? { type: "fin_payments", code: payment } : null, currency: item.currency }))
+      .then((result) => {
+        if (!active) return;
+        setOrigin(result.origin);
+        setMessage(result.message);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!active) return;
+        setMessage(LOAD_FAILED);
+        setLoading(false);
+      });
     return () => {
       active = false;
     };

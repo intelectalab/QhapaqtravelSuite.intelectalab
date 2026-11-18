@@ -38,7 +38,7 @@ export function ConfirmPanel({ row, contact, size = "md", asIcon = false }: { ro
       formId={`confirmar-${row.code}`}
       trigger={asIcon ? (open) => <RowIcon tone="edit" label="Confirmar" icon={<CheckCircle2 size={15} />} onClick={open} /> : undefined}
       title="Confirmar servicio"
-      description="El código se imprime en el voucher del pasajero y se valida en su recepción."
+      description="El código se imprime en el voucher del pasajero y se valida en tu recepción."
       submitLabel="Confirmar servicio"
       action={confirmRequest.bind(null, row.code)}
       initial={initial}
@@ -81,7 +81,7 @@ export function AlternativePanel({ row, kinds, catalog, today, size = "md", asIc
           <Summary row={row} />
           <SelectField label="Tipo de alternativa" name="alt_kind" options={kinds.map((value) => ({ value, label: value }))} defaultValue={kind} onChange={setKind} />
           {(kind === "Otra fecha" || kind === "Otro") && <DateField label="Fecha propuesta" name="alt_date" min={today} required={kind === "Otra fecha"} icon={<CalendarClock size={17} />} />}
-          {catalog.length > 0 && <SelectField label="Servicio o tarifa propuesta" name="alt_service" options={catalog} placeholder="El mismo servicio" searchable clearable hint="Solo servicios activos de su catálogo." />}
+          {catalog.length > 0 && <SelectField label="Servicio o tarifa propuesta" name="alt_service" options={catalog} placeholder="El mismo servicio" searchable clearable hint="Solo servicios activos de tu catálogo." />}
           <div className="grid grid-cols-2 gap-3">
             <TextField label={`Tarifa neta (${row.currency})`} name="alt_net_cost" type="number" step="0.01" min="0.01" icon={<Wallet size={16} />} placeholder={String(row.net_cost)} hint="Déjela vacía si no cambia." />
             <DateField label="Mantener bloqueo hasta" name="hold_until" min={today} hint="Después vence sola." />
@@ -105,7 +105,7 @@ export function RejectPanel({ row, reasons, today, size = "md", asIcon = false }
       formId={`rechazar-${row.code}`}
       trigger={asIcon ? (open) => <RowIcon tone="delete" label="Rechazar" icon={<XCircle size={15} />} onClick={open} /> : undefined}
       title="Rechazar servicio"
-      description="La agencia recibe el motivo y busca otra opción para el pasajero. Si puede atenderlo otro día, propóngalo."
+      description="La agencia recibe el motivo y busca otra opción para el pasajero. Si puedes atenderlo otro día, propónlo."
       submitLabel="Enviar rechazo"
       action={rejectRequest.bind(null, row.code)}
       initial={initial}
@@ -115,7 +115,7 @@ export function RejectPanel({ row, reasons, today, size = "md", asIcon = false }
         <>
           <Summary row={row} />
           <input type="hidden" name="lock_version" value={row.lock_version} />
-          <SelectField label="Motivo" name="reason" placeholder="Elija el motivo" options={reasons.map((value) => ({ value, label: value }))} />
+          <SelectField label="Motivo" name="reason" placeholder="Elige el motivo" options={reasons.map((value) => ({ value, label: value }))} />
           <TextArea label="Detalle" name="note" rows={3} required minLength={5} maxLength={1000} placeholder="Explique la situación para que la agencia pueda resolverla." />
           <SwitchField label="Proponer otra fecha" name="propose_alternative" hint="Se crea un servicio alternativo para que la agencia lo solicite." checked={alternative} onCheckedChange={setAlternative} />
           {alternative && <DateField label="Fecha alternativa" name="alt_date" min={today} required />}

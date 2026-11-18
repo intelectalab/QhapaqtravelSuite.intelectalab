@@ -39,14 +39,12 @@ export function OperationsKpis({ overview }: { overview: OperationsOverview }) {
   const flagged = overview.jobs.filter((job) => job.last_status === "error" || job.last_status === "advertencia").length;
   const pending = overview.queues.reduce((sum, queue) => sum + queue.pending, 0);
   const failed = overview.queues.reduce((sum, queue) => sum + queue.failed, 0);
-  const open = overview.errors.filter((error) => error.status !== "resuelto").length;
 
   return (
-    <section aria-label="Resumen" className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <section aria-label="Resumen" className="mb-5 grid gap-3 sm:grid-cols-3">
       <TintTile icon={ServerCog} tone="t1" label="Tareas de plataforma" value={overview.jobs.length} note={`${overview.jobs.filter((job) => job.paused).length} pausadas`} info="Tareas programadas propias de la plataforma: cobranza, renovaciones, pruebas y métricas." />
       <TintTile icon={AlertTriangle} tone={flagged ? "warn" : "ok"} label="Con aviso en su última corrida" value={flagged} info="Tareas de plataforma cuya última corrida terminó con error o advertencia." />
       <TintTile icon={Layers} tone={failed ? "bad" : "violet"} label="Trabajos en cola" value={pending} note={`${failed} fallidos`} info="Trabajos pendientes en todas las colas del servidor; los fallidos son los que agotaron sus reintentos." />
-      <TintTile icon={Plug} tone={open ? "bad" : "ok"} label="Errores abiertos en agencias" value={open} info="Errores de integración, notificación o tareas de las agencias que aún no se resuelven." />
     </section>
   );
 }
@@ -70,7 +68,7 @@ function JobCard({ job, index }: { job: PlatformJob; index: number }) {
         <header className="mb-2 flex items-start justify-between gap-2">
           <div className="min-w-0">
             <b className="block text-[14px] font-semibold">{job.name}</b>
-            <code className="text-[12px] text-fg-3">{job.command}</code>
+            <span className="text-[12px] text-fg-3">{job.code}</span>
           </div>
           {job.paused ? <Badge tone="mute">Pausada</Badge> : job.last_status && <StatusBadge status={job.last_status} />}
         </header>
@@ -88,7 +86,7 @@ function JobCard({ job, index }: { job: PlatformJob; index: number }) {
           </div>
           <div>
             <dt className="text-fg-3">Cola</dt>
-            <dd className="font-medium">{job.queue}</dd>
+            <dd className="font-medium">{job.queue_label}</dd>
           </div>
           <div>
             <dt className="text-fg-3">Última</dt>
@@ -137,7 +135,6 @@ export function QueuesPanel({ queues }: { queues: QueueStat[] }) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <b className="block text-[13px] font-semibold">{queue.label}</b>
-                  <code className="text-[11.5px] text-fg-3">{queue.queue}</code>
                 </span>
                 <span className="text-right text-[11.5px] text-fg-3">
                   <b className="block text-[13px] text-fg">{queue.pending} en cola</b>
@@ -218,9 +215,9 @@ const healthColumns: Column<TenantHealthRow>[] = [
 ];
 
 const healthMetrics: MetricFilter<TenantHealthRow>[] = [
-  { id: "ok", label: "Sin incidencias", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.health === "ok" },
-  { id: "atencion", label: "Requieren atención", tone: "warn", icon: <AlertTriangle size={19} />, matches: (row) => row.health === "atencion" },
-  { id: "critico", label: "Críticas", tone: "bad", icon: <XCircle size={19} />, matches: (row) => row.health === "critico" },
+  { id: "ok", label: "Sin incidencias", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Agencias sin errores abiertos ni tareas con aviso. Al presionarla ves solo esas agencias.</p>, matches: (row) => row.health === "ok" },
+  { id: "atencion", label: "Requieren atención", tone: "warn", icon: <AlertTriangle size={19} />, info: <p>Agencias con algún error abierto o una tarea con aviso que conviene revisar. Al presionarla ves solo esas agencias.</p>, matches: (row) => row.health === "atencion" },
+  { id: "critico", label: "Críticas", tone: "bad", icon: <XCircle size={19} />, info: <p>Agencias con fallas que afectan su operación y piden acción inmediata. Al presionarla ves solo esas agencias.</p>, matches: (row) => row.health === "critico" },
 ];
 
 const healthSorts: SortOption<TenantHealthRow>[] = [
@@ -296,9 +293,10 @@ const errorColumns: Column<IntegrationError>[] = [
 ];
 
 const errorMetrics: MetricFilter<IntegrationError>[] = [
-  { id: "retrying", label: "Reintentando", tone: "warn", icon: <RefreshCw size={19} />, matches: (error) => error.status === "reintentando" },
-  { id: "failed", label: "Falla definitiva", tone: "bad", icon: <XCircle size={19} />, matches: (error) => error.status === "fallo_definitivo" },
-  { id: "resolved", label: "Resueltos", tone: "ok", icon: <CircleCheck size={19} />, matches: (error) => error.status === "resuelto" },
+  { id: "open", label: "Errores abiertos", tone: "bad", icon: <Plug size={19} />, info: <p>Errores de integración, notificación o tareas de las agencias que aún no se resuelven: los que se reintentan y los de falla definitiva. Al presionarla ves solo los abiertos.</p>, matches: (error) => error.status !== "resuelto" },
+  { id: "retrying", label: "Reintentando", tone: "warn", icon: <RefreshCw size={19} />, info: <p>Errores temporales que se reintentan solos con espera creciente. Al presionarla ves solo esos errores.</p>, matches: (error) => error.status === "reintentando" },
+  { id: "failed", label: "Falla definitiva", tone: "bad", icon: <XCircle size={19} />, info: <p>Errores que agotaron sus reintentos o no se pueden reintentar; se resuelven a mano. Al presionarla ves solo esos errores.</p>, matches: (error) => error.status === "fallo_definitivo" },
+  { id: "resolved", label: "Resueltos", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Errores que se resolvieron con un reintento correcto o que alguien marcó como resueltos. Al presionarla ves solo esos errores.</p>, matches: (error) => error.status === "resuelto" },
 ];
 
 const errorSorts: SortOption<IntegrationError>[] = [{ id: "at", label: "Fecha", type: "date", value: (error) => error.at }];

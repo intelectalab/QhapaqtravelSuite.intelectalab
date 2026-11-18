@@ -166,7 +166,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
             />
           </Panel>
           <div id="checklist">
-            <Panel title="Preparación para activación (§42)" hint={`${overview.checklist.passed} de ${overview.checklist.total} validaciones cumplidas. Pulsa una pendiente para ir a su paso.`}>
+            <Panel title="Preparación para activación" hint={`${overview.checklist.passed} de ${overview.checklist.total} validaciones cumplidas. Pulsa una pendiente para ir a su paso.`}>
               <ChecklistLinks items={overview.checklist.items} options={options} editor={editor} />
             </Panel>
           </div>
@@ -288,7 +288,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       label: "Tarifas",
       count: editor.rates.length,
       render: () => (
-        <Panel title="Tarifas" hint="Toda tarifa tiene moneda y vigencia (PRD-BR-004); las vencidas no se aplican (PRD-BR-005)." action={<span className="flex gap-2">{editAt(ctx, 5, "Agregar o desactivar")}<ModuleLink href="/catalogo/tarifas" label="Tarifas y temporadas" /></span>}>
+        <Panel title="Tarifas" hint="Toda tarifa tiene moneda y vigencia; las vencidas no se aplican." action={<span className="flex gap-2">{editAt(ctx, 5, "Agregar o desactivar")}<ModuleLink href="/catalogo/tarifas" label="Tarifas y temporadas" /></span>}>
           <ResolveRate code={product.code} />
           <SimpleTable
             columns={[{ header: "Tarifa" }, { header: "Tipo · segmento · canal" }, { header: "Vigencia" }, ...(options.sees_cost ? [{ header: "Costo", align: "right" as const }] : []), { header: "Venta", align: "right" }, { header: "Estado" }]}
@@ -355,7 +355,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
               { label: "Modelo", value: AVAILABILITY_LABEL[editor.availability.model] ?? editor.availability.model },
               { label: "Qué significa", value: <span className="whitespace-normal">{AVAILABILITY_HINT[editor.availability.model]}</span> },
               { label: "Capacidad", value: editor.availability.capacity ?? "Sin capacidad de referencia" },
-              { label: "Fuente", value: editor.availability.source === "externa" ? "Proveedor externo (informativa, PRD-BR-013)" : "Inventario propio" },
+              { label: "Fuente", value: editor.availability.source === "externa" ? "Proveedor externo (informativa)" : "Inventario propio" },
               { label: "Salidas futuras", value: overview.kpis.future_departures },
             ]}
           />
@@ -429,7 +429,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       label: "Proveedores",
       count: overview.providers.length,
       render: () => (
-        <Panel title="Proveedores involucrados" hint="Solo proveedores activos con contrato vigente pueden operar el producto (PRD-BR-007)." action={<span className="flex flex-wrap gap-2">{options.can_update && product.status !== "ARCHIVED" && <MainProviderChangeAction product={product} options={options} current={product.ids.provider} />}{editAt(ctx, 3)}<ModuleLink href="/catalogo/proveedores" label="Proveedores" /></span>}>
+        <Panel title="Proveedores involucrados" hint="Solo proveedores activos con contrato vigente pueden operar el producto." action={<span className="flex flex-wrap gap-2">{options.can_update && product.status !== "ARCHIVED" && <MainProviderChangeAction product={product} options={options} current={product.ids.provider} />}{editAt(ctx, 3)}<ModuleLink href="/catalogo/proveedores" label="Proveedores" /></span>}>
           <SimpleTable
             columns={[{ header: "Proveedor" }, { header: "Tipo" }, { header: "Servicios" }, { header: "Contrato" }, { header: "Pago" }, { header: "Calificación", align: "right" }, { header: "Estado" }]}
             rows={(overview.providers ?? []).map((provider) => ({
@@ -667,7 +667,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       label: "Canales",
       count: editor.channels.length,
       render: () => (
-        <Panel title="Canales" hint={product.status === "ACTIVE" ? "Publica o retira el producto de cada canal." : "Los canales elegidos se hacen efectivos al activar el producto (PRD-BR-002)."} action={product.status === "ACTIVE" ? undefined : editAt(ctx, 9)}>
+        <Panel title="Canales" hint={product.status === "ACTIVE" ? "Publica o retira el producto de cada canal." : "Los canales elegidos se hacen efectivos al activar el producto."} action={product.status === "ACTIVE" ? undefined : editAt(ctx, 9)}>
           <ChannelSwitches code={product.code} active={product.status === "ACTIVE"} chosen={editor.channels} canPublish={options.can_publish} />
         </Panel>
       ),
@@ -677,7 +677,7 @@ export function productTabs(ctx: ProductTabContext): ProductTab[] {
       label: "Versiones",
       count: overview.versions.length,
       render: () => (
-        <Panel title="Versiones" hint="Las versiones no vigentes se consultan pero no se editan (PRD-BR-017)." action={options.can_update && product.status !== "ARCHIVED" ? <NewVersionAction code={product.code} /> : undefined}>
+        <Panel title="Versiones" hint="Las versiones no vigentes se consultan pero no se editan." action={options.can_update && product.status !== "ARCHIVED" ? <NewVersionAction code={product.code} /> : undefined}>
           <SimpleTable columns={[{ header: "Versión" }, { header: "Estado" }, { header: "Vigente desde" }, { header: "Motivo" }, { header: "Autor" }]} rows={overview.versions.map((row) => ({ key: `${row.version}-${row.created_at}`, cells: [<b key="v" className="font-mono">{row.version}</b>, <Badge key="s" tone={row.status === "vigente" ? "ok" : row.status === "borrador" ? "info" : "mute"}>{statusLabel(row.status)}</Badge>, row.valid_from ? formatDate(row.valid_from) : "—", row.reason ?? "—", row.author ?? "—"] }))} empty="Sin versiones." />
           <CompareVersions code={product.code} versions={overview.versions.map((row) => row.version)} />
         </Panel>

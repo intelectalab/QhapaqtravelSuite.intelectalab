@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, FileDown, FileSpreadsheet, Receipt, ReceiptText, ShoppingBag, Wallet } from "lucide-react";
+import { Download, FileDown, FileSpreadsheet, Receipt, ReceiptText, Scale, ShoppingBag, Wallet } from "lucide-react";
 import { requestExport } from "@/app/(portal)/portal/corporativo/actions";
 import { DataTable } from "@/components/table/DataTable";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
@@ -58,7 +58,7 @@ export function ExportList({ exports }: { exports: CorporateExport[] }) {
   );
 }
 
-export function CorporateMovementsView({ data, centers, period }: { data: CorporateMovements; centers: CostCenter[]; period: string }) {
+export function CorporateMovementsView({ data, centers, period, balance }: { data: CorporateMovements; centers: CostCenter[]; period: string; balance: string }) {
   const cur = data.currency;
   const columns: Column<CorporateMovement>[] = [
     { id: "date", header: "Fecha", cell: (row) => <span className="text-[13px]">{formatDate(row.date)}</span> },
@@ -80,9 +80,10 @@ export function CorporateMovementsView({ data, centers, period }: { data: Corpor
     { id: "balance", header: "Saldo", align: "right", cell: (row) => <b className="font-mono text-[13px]">{formatMoney(row.balance, cur)}</b> },
   ];
   const metrics: MetricFilter<CorporateMovement>[] = [
-    { id: "compras", label: "Compras", tone: "t1", icon: <ShoppingBag size={19} />, matches: (row) => row.kind === "compra" },
-    { id: "pagos", label: "Pagos", tone: "ok", icon: <Wallet size={19} />, matches: (row) => row.kind === "pago" },
-    { id: "notas", label: "Notas de crédito", tone: "violet", icon: <ReceiptText size={19} />, matches: (row) => row.kind === "nota_credito" },
+    { id: "saldo", label: "Saldo final", tone: num(data.totals.closing_balance) > 0 ? "sun" : "ok", icon: <Scale size={19} />, display: formatMoney(data.totals.closing_balance, cur), note: `Inicial ${formatMoney(data.opening_balance, cur)} · por pagar hoy ${formatMoney(balance, cur)}`, info: <p>Saldo al {formatDate(data.period.to)}: el saldo inicial al {formatDate(data.period.from)} más las compras y menos los pagos y notas de crédito del período. La nota muestra el saldo por pagar a la fecha, con todas las compras. Al presionarla ves todos los movimientos del período.</p>, matches: () => true },
+    { id: "compras", label: "Compras", tone: "t1", icon: <ShoppingBag size={19} />, display: formatMoney(data.totals.charges, cur), note: "Cargos del período", info: <p>Compras de tu empresa registradas en el período como cargos a la cuenta. Al presionarla ves solo las compras.</p>, matches: (row) => row.kind === "compra" },
+    { id: "pagos", label: "Pagos", tone: "ok", icon: <Wallet size={19} />, display: formatMoney(data.totals.payments, cur), note: "Abonos del período", info: <p>Pagos aplicados a la cuenta en el período. Al presionarla ves solo los pagos.</p>, matches: (row) => row.kind === "pago" },
+    { id: "notas", label: "Notas de crédito", tone: "violet", icon: <ReceiptText size={19} />, display: formatMoney(data.totals.credits, cur), note: "Abonos del período", info: <p>Notas de crédito emitidas a tu empresa en el período, que reducen el saldo. Al presionarla ves solo las notas.</p>, matches: (row) => row.kind === "nota_credito" },
   ];
   const filters: FilterConfig<CorporateMovement>[] = [
     { id: "kind", label: "Tipo", options: [{ value: "compra", label: "Compra" }, { value: "pago", label: "Pago" }, { value: "nota_credito", label: "Nota de crédito" }], value: (row) => row.kind },
@@ -95,20 +96,6 @@ export function CorporateMovementsView({ data, centers, period }: { data: Corpor
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          { label: "Saldo inicial", value: data.opening_balance, note: `Al ${formatDate(data.period.from)}` },
-          { label: "Compras del período", value: data.totals.charges, note: "Cargos" },
-          { label: "Pagos y notas de crédito", value: String(num(data.totals.payments) + num(data.totals.credits)), note: "Abonos" },
-          { label: "Saldo final", value: data.totals.closing_balance, note: `Al ${formatDate(data.period.to)}` },
-        ].map((item, index) => (
-          <div key={item.label} style={rise(index)} className={cn("lift rounded-tile border border-line px-4 py-3", RISE)}>
-            <p className="text-[12.5px] text-fg-3">{item.label}</p>
-            <p className="mt-0.5 font-mono text-[18px] font-bold tracking-tight">{formatMoney(item.value, cur)}</p>
-            <p className="text-[11.5px] text-fg-3">{item.note}</p>
-          </div>
-        ))}
-      </div>
       <DataTable
         screen="portal-corporativo-movimientos"
         rows={data.rows}

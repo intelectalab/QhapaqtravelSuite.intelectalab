@@ -29,7 +29,7 @@ final class SupplierAccount
         $provider = $user->provider_id ? DB::table('catalog_providers')->where('id', $user->provider_id)->whereNull('deleted_at')->first(self::PROVIDER_COLUMNS) : null;
 
         if ($provider === null) {
-            throw ApiException::forbidden('SUP-BR-01', 'Su usuario no está vinculado a un proveedor.');
+            throw ApiException::forbidden('SUP-BR-01', 'Tu usuario no está vinculado a un proveedor.');
         }
 
         return new self($user, $provider);
@@ -52,7 +52,7 @@ final class SupplierAccount
     public function service(string $code): object
     {
         return $this->services()->where('s.code', $code)->first(['s.*', 'r.code as reservation_code', 'r.title as reservation_title', 'r.status as reservation_status'])
-            ?? throw ApiException::notFound('La solicitud no corresponde a su establecimiento.');
+            ?? throw ApiException::notFound('La solicitud no corresponde a tu establecimiento.');
     }
 
     public function payables(): Builder
@@ -68,19 +68,19 @@ final class SupplierAccount
     public function payable(string $code): object
     {
         return $this->payables()->where('p.code', $code)->first(['p.*'])
-            ?? throw ApiException::notFound('Ese documento no corresponde a su empresa.');
+            ?? throw ApiException::notFound('Ese documento no corresponde a tu empresa.');
     }
 
     public function catalogService(string $ref): object
     {
         return DB::table('catalog_services')->where('provider_id', $this->provider->id)->where('ref', $ref)->whereNull('deleted_at')->first()
-            ?? throw ApiException::notFound('Ese servicio no corresponde a su empresa.');
+            ?? throw ApiException::notFound('Ese servicio no corresponde a tu empresa.');
     }
 
     public function rateRequest(string $code): object
     {
         return DB::table('supplier_rate_requests')->where('provider_id', $this->provider->id)->where('code', $code)->first()
-            ?? throw ApiException::notFound('Esa solicitud de tarifa no corresponde a su empresa.');
+            ?? throw ApiException::notFound('Esa solicitud de tarifa no corresponde a tu empresa.');
     }
 
     public function roomingLists(): Builder
@@ -97,7 +97,7 @@ final class SupplierAccount
     {
         $list = Str::isUuid($id) ? $this->roomingLists()->where('l.id', $id)->lock('for update of l')->first(['l.*', 'r.code as reservation_code']) : null;
 
-        return $list ?? throw ApiException::notFound('Esa rooming list no corresponde a su hotel.');
+        return $list ?? throw ApiException::notFound('Esa rooming list no corresponde a tu hotel.');
     }
 
     public function roomingRoom(string $id): object
@@ -105,7 +105,7 @@ final class SupplierAccount
         $room = Str::isUuid($id) ? DB::table('ops_rooming_rooms as rr')->joinSub($this->roomingLists()->select(['l.id as list_id', 'l.reservation_id', 'r.code as reservation_code', 'l.check_in', 'l.check_out']), 'x', 'x.list_id', '=', 'rr.rooming_list_id')
             ->where('rr.id', $id)->first(['rr.*', 'x.reservation_id', 'x.reservation_code', 'x.check_in', 'x.check_out']) : null;
 
-        return $room ?? throw ApiException::notFound('Esa habitación no corresponde a su hotel.');
+        return $room ?? throw ApiException::notFound('Esa habitación no corresponde a tu hotel.');
     }
 
     public function vouchers(): Builder
@@ -131,13 +131,13 @@ final class SupplierAccount
     public function incident(string $code): object
     {
         return $this->incidents()->where('i.code', $code)->first(['i.*', 'r.code as reservation_code'])
-            ?? throw ApiException::notFound('Esa incidencia no corresponde a su empresa.');
+            ?? throw ApiException::notFound('Esa incidencia no corresponde a tu empresa.');
     }
 
     public function contact(string $id): object
     {
         $contact = preg_match('/^[0-9a-f-]{36}$/i', $id) === 1 ? DB::table('catalog_provider_contacts')->where('provider_id', $this->provider->id)->where('id', $id)->first() : null;
 
-        return $contact ?? throw ApiException::notFound('Ese contacto no corresponde a su empresa.');
+        return $contact ?? throw ApiException::notFound('Ese contacto no corresponde a tu empresa.');
     }
 }

@@ -7,6 +7,7 @@ namespace App\Domain\Integrations\Fake;
 use App\Domain\Integrations\Contracts\FxRateProvider;
 use App\Domain\Integrations\Data\AdapterResult;
 use App\Domain\Integrations\Data\FxRate;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 
 final class FakeFxRateProvider implements FxRateProvider
 {
@@ -18,6 +19,8 @@ final class FakeFxRateProvider implements FxRateProvider
 
     public function latest(array $currencies, string $date): array
     {
+        IntegrationReadiness::refuse('fx');
+
         $out = [];
         foreach ($currencies as $code) {
             if (isset($this->rates[$code])) {
@@ -30,6 +33,10 @@ final class FakeFxRateProvider implements FxRateProvider
 
     public function healthcheck(): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::health('fx')) !== null) {
+            return $unavailable;
+        }
+
         if ($this->missing !== []) {
             return AdapterResult::permanent('Faltan credenciales: '.implode(', ', $this->missing).'.');
         }

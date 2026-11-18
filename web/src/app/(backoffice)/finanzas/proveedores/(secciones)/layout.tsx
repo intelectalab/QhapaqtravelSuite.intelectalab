@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TabbedCard } from "@/components/ui/RouteTabs";
-import { CreateCostAction, PayablesTiles } from "@/features/finance/Payables";
+import { CreateCostAction } from "@/features/finance/Payables";
 import type { PayablesOverview } from "@/lib/finance";
 import { getCachedResource } from "@/lib/server/resource";
 
@@ -24,7 +24,6 @@ export default async function PayablesLayout({ children }: { children: ReactNode
         info={<InfoTip>Una obligación se paga solo después de aprobarla. Los costos adicionales impactan la rentabilidad de la reserva desde su aprobación.</InfoTip>}
         actions={data.can.operate ? <CreateCostAction data={data} /> : undefined}
       />
-      <PayablesTiles data={data} />
       <TabbedCard
         tabs={[
           { href: "/finanzas/proveedores", label: "Por documento", count: data.rows.length },

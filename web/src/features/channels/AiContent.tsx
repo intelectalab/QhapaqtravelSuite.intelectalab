@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, Ban, Check, CircleCheck, Coins, ImageIcon, ImagePlus, ListChecks, RefreshCw, Sparkles, TextCursorInput, Trash2, TriangleAlert, Wand2 } from "lucide-react";
+import { Ban, Check, CircleCheck, Coins, ImageIcon, ImagePlus, RefreshCw, Sparkles, TextCursorInput, Trash2, TriangleAlert, Wand2 } from "lucide-react";
 import { startTransition, useActionState, useMemo, useState, useTransition } from "react";
 import { aiJobAction, createAiImages, createAiJob, purchaseAiPack, updateAiImage } from "@/app/(backoffice)/canales/contenido-ia/actions";
 import { DataTable } from "@/components/table/DataTable";
@@ -14,33 +14,17 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
 import { FormError } from "@/features/auth/AuthForms";
 import { cn } from "@/lib/cn";
 import { formatDateTime, formatNumber } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { AI_STATUS_TONE, type AiCreditsSummary, type AiImage, type AiJob, type AiKind, type AiLedgerRow, type AiOptions, type AiPack, type AiPacksOverview } from "@/lib/siteTemplates";
-import { TileGrid } from "./ChannelUi";
 
 const initial: StepResult = { message: null, done: false };
 
 const credits = (value: number) => `${formatNumber(value)} ${value === 1 ? "crédito" : "créditos"}`;
 
 const money = (pack: Pick<AiPack, "price" | "currency">) => `${pack.currency === "PEN" ? "S/" : pack.currency} ${Number(pack.price).toLocaleString("es-PE", { maximumFractionDigits: 2 })}`;
-
-export function AiCreditTiles({ summary, jobs }: { summary: AiCreditsSummary; jobs: AiJob[] }) {
-  const content = summary.balances.contenido;
-  const images = summary.balances.imagenes;
-
-  return (
-    <TileGrid>
-      <TintTile icon={Sparkles} tone={content.low ? "sun" : "t1"} label="Créditos de contenido" value={formatNumber(content.balance)} note={`${summary.plan_included.contenido} del plan al mes${summary.ai_plan ? ` + ${formatNumber(summary.ai_plan.credits)} de ${summary.ai_plan.name}` : ""}`} info="Saldo del libro de créditos de su agencia: asignaciones y compras menos lo que consumieron los pedidos listos. Un pedido fallido no descuenta." />
-      <TintTile icon={ImageIcon} tone={images.low ? "sun" : "violet"} label="Créditos de imágenes" value={formatNumber(images.balance)} note={`${summary.costs.imagen} por imagen estándar · ${summary.costs.imagen_hd} por HD`} info="Saldo de créditos de imágenes en el libro de créditos. Se compran por paquete o vienen con IA Pro." />
-      <TintTile icon={ListChecks} tone="t4" label="Pedidos" value={jobs.length} note={`${jobs.filter((job) => job.status === "listo").length} por revisar · ${jobs.filter((job) => job.status === "aplicado").length} aplicados`} info="Pedidos de texto e imágenes registrados por su equipo. Ninguno se publica sin que una persona lo aplique." />
-      <TintTile icon={Award} tone="ok" label="Plan de IA" value={summary.ai_plan?.name ?? "Solo su plan"} note={summary.ai_plan ? `${money(summary.ai_plan)} al mes` : "Sin plan adicional"} info="El último plan de IA contratado según el libro de créditos." />
-    </TileGrid>
-  );
-}
 
 function BeforeAfter({ job }: { job: AiJob }) {
   const render = (value: AiJob["before"]) =>
@@ -113,7 +97,7 @@ export function ReviewQueue({ jobs }: { jobs: AiJob[] }) {
         </div>
       ))}
       {pending.length === 0 ? (
-        <EmptyState icon={<Sparkles size={20} />} title="Nada por revisar" description="Elija qué mejorar y pulse Generar. Verá el antes y el después para aplicar o descartar." />
+        <EmptyState icon={<Sparkles size={20} />} title="Nada por revisar" description="Elige qué mejorar y pulsa Generar. Verás el antes y el después para aplicar o descartar." />
       ) : (
         pending.map((job) => (
           <article key={job.code} className="lift rounded-card border border-line bg-surface p-4 shadow-card">
@@ -128,7 +112,7 @@ export function ReviewQueue({ jobs }: { jobs: AiJob[] }) {
             <BeforeAfter job={job} />
             <p className="mt-2 flex items-center gap-1.5 text-[12px] text-warn">
               <TriangleAlert size={13} />
-              {job.warning ?? "Revise cifras, horarios y precios antes de aplicar."}
+              {job.warning ?? "Revisa cifras, horarios y precios antes de aplicar."}
             </p>
             <JobActions job={job} />
           </article>
@@ -243,7 +227,7 @@ export function AiImagesView({ images, options, costs, balance }: { images: AiIm
   return (
     <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
       <Card>
-        <CardHeader title="Crear imágenes" subtitle="Para fotos reales de sus tours, use su propio material: convierte mejor." />
+        <CardHeader title="Crear imágenes" subtitle="Para fotos reales de tus tours, usa tu propio material: convierte mejor." />
         <form
           className="flex flex-col gap-3.5"
           onSubmit={(event) => {
@@ -326,10 +310,10 @@ export function AiHistory({ jobs, options }: { jobs: AiJob[]; options: AiOptions
     { id: "status", header: "Estado", cell: (job) => <Badge tone={AI_STATUS_TONE[job.status]}>{job.status_label}</Badge> },
   ];
   const metrics: MetricFilter<AiJob>[] = [
-    { id: "listo", label: "Por revisar", tone: "sun", icon: <Sparkles size={19} />, matches: (job) => job.status === "listo" },
-    { id: "aplicado", label: "Aplicados", tone: "ok", icon: <CircleCheck size={19} />, matches: (job) => job.status === "aplicado" },
-    { id: "descartado", label: "Descartados", tone: "mute", icon: <Ban size={19} />, matches: (job) => job.status === "descartado" },
-    { id: "fallido", label: "Fallidos sin cobro", tone: "bad", icon: <TriangleAlert size={19} />, matches: (job) => job.status === "fallido" },
+    { id: "listo", label: "Por revisar", tone: "sun", icon: <Sparkles size={19} />, note: `de ${jobs.length} pedidos`, info: <p>Pedidos de texto e imágenes que la IA ya generó y esperan que una persona los aplique o descarte; ninguno se publica solo. La nota cuenta todos los pedidos de tu equipo. Al presionarla, la tabla muestra los que esperan revisión.</p>, matches: (job) => job.status === "listo" },
+    { id: "aplicado", label: "Aplicados", tone: "ok", icon: <CircleCheck size={19} />, info: <p>Pedidos cuya propuesta se aplicó al contenido. Al presionarla, la tabla muestra esos pedidos.</p>, matches: (job) => job.status === "aplicado" },
+    { id: "descartado", label: "Descartados", tone: "mute", icon: <Ban size={19} />, info: <p>Pedidos cuya propuesta se descartó sin cambiar el contenido. Al presionarla, la tabla muestra esos pedidos.</p>, matches: (job) => job.status === "descartado" },
+    { id: "fallido", label: "Fallidos sin cobro", tone: "bad", icon: <TriangleAlert size={19} />, info: <p>Pedidos en los que la IA falló; no descuentan créditos. Al presionarla, la tabla muestra esos pedidos.</p>, matches: (job) => job.status === "fallido" },
   ];
   const filters: FilterConfig<AiJob>[] = [{ id: "kind", label: "Tipo", options: Object.entries(options.kinds).map(([value, label]) => ({ value, label })), value: (job) => job.kind }];
   const sorts: SortOption<AiJob>[] = [
@@ -351,7 +335,7 @@ function PackAction({ pack, contracted }: { pack: AiPack; contracted: boolean })
       size="sm"
       formId={`pack-${pack.code}`}
       title={`${pack.is_plan ? "Contratar" : "Comprar"} ${pack.name}`}
-      description="Se cobra en su próxima factura de KipuControl. Los créditos se suman al momento."
+      description="Se cobra en tu próxima factura de KipuControl. Los créditos se suman al momento."
       submitLabel={`${pack.is_plan ? "Contratar" : "Comprar"} por ${money(pack)}`}
       action={purchaseAiPack}
       initial={initial}
@@ -379,7 +363,7 @@ function PackAction({ pack, contracted }: { pack: AiPack; contracted: boolean })
   );
 }
 
-export function AiPlans({ packs, ledger }: { packs: AiPacksOverview; ledger: AiLedgerRow[] }) {
+export function AiPlans({ packs, ledger, summary }: { packs: AiPacksOverview; ledger: AiLedgerRow[]; summary: AiCreditsSummary }) {
   const columns: Column<AiLedgerRow>[] = [
     { id: "date", header: "Fecha", mobile: "title", cell: (row) => <span className="text-[13px]">{formatDateTime(row.occurred_at)}</span> },
     { id: "kind", header: "Tipo", cell: (row) => <span className="text-[13px]">{row.kind_label}</span> },
@@ -388,16 +372,20 @@ export function AiPlans({ packs, ledger }: { packs: AiPacksOverview; ledger: AiL
     { id: "balance", header: "Saldo", align: "right", cell: (row) => <span className="font-mono text-[13px]">{row.balance_after}</span> },
     { id: "note", header: "Detalle", wideOnly: true, cell: (row) => <span className="text-[12.5px] text-fg-3">{row.note ?? row.job ?? "—"}</span> },
   ];
+  const content = summary.balances.contenido;
+  const images = summary.balances.imagenes;
   const metrics: MetricFilter<AiLedgerRow>[] = [
-    { id: "in", label: "Entradas", tone: "ok", icon: <Coins size={19} />, matches: (row) => row.credits > 0 },
-    { id: "out", label: "Consumos y vencimientos", tone: "bad", icon: <Sparkles size={19} />, matches: (row) => row.credits < 0 },
+    { id: "contenido", label: "Créditos de contenido", tone: content.low ? "sun" : "t1", icon: <Sparkles size={19} />, display: formatNumber(content.balance), note: `${summary.plan_included.contenido} del plan al mes${summary.ai_plan ? ` + ${formatNumber(summary.ai_plan.credits)} de ${summary.ai_plan.name}` : ""}`, info: <p>Saldo del libro de créditos de tu agencia: asignaciones y compras menos lo que consumieron los pedidos listos; un pedido fallido no descuenta. La nota suma lo incluido en tu plan y el último plan de IA contratado. Al presionarla, la tabla muestra los movimientos de contenido.</p>, matches: (row) => row.kind === "contenido" },
+    { id: "imagenes", label: "Créditos de imágenes", tone: images.low ? "sun" : "violet", icon: <ImageIcon size={19} />, display: formatNumber(images.balance), note: `${summary.costs.imagen} por imagen estándar · ${summary.costs.imagen_hd} por HD`, info: <p>Saldo de créditos de imágenes en el libro de créditos. Se compran por paquete o vienen con IA Pro. Al presionarla, la tabla muestra los movimientos de imágenes.</p>, matches: (row) => row.kind === "imagenes" },
+    { id: "in", label: "Entradas", tone: "ok", icon: <Coins size={19} />, info: <p>Asignaciones del plan, compras de paquetes y otros movimientos que suman créditos. Al presionarla, la tabla muestra solo esos movimientos.</p>, matches: (row) => row.credits > 0 },
+    { id: "out", label: "Consumos y vencimientos", tone: "bad", icon: <Wand2 size={19} />, info: <p>Créditos que consumieron los pedidos listos y los que vencieron sin usarse. Al presionarla, la tabla muestra solo esos movimientos.</p>, matches: (row) => row.credits < 0 },
   ];
 
   return (
     <div className="flex flex-col gap-5">
       <div className="grid gap-4 md:grid-cols-3">
         <article className="lift rounded-card border border-line bg-surface p-4 shadow-card">
-          <p className="text-[14px] font-semibold">Incluido en su plan</p>
+          <p className="text-[14px] font-semibold">Incluido en tu plan</p>
           <p className="mt-1.5 text-[24px] font-bold tracking-tight">{formatNumber(packs.plan_included.contenido)}</p>
           <p className="text-[12.5px] text-fg-3">créditos de contenido al mes, sin costo adicional</p>
         </article>
@@ -417,7 +405,7 @@ export function AiPlans({ packs, ledger }: { packs: AiPacksOverview; ledger: AiL
         ))}
       </div>
       <Card>
-        <CardHeader title="Paquetes de créditos" subtitle="Precios referenciales sin IGV. Se cobran en su factura de KipuControl." />
+        <CardHeader title="Paquetes de créditos" subtitle="Precios referenciales sin IGV. Se cobran en tu factura de KipuControl." />
         {packs.packs.length === 0 ? (
           <EmptyState icon={<Coins size={20} />} title="Sin paquetes a la venta" description="KipuControl todavía no publicó paquetes de créditos." />
         ) : (

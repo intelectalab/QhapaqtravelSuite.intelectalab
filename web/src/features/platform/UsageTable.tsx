@@ -7,7 +7,7 @@ import type { Column, FilterConfig, MetricFilter, SortOption } from "@/component
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, StatusBadge } from "@/components/ui/Badge";
 import { cn } from "@/lib/cn";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, formatQuantity } from "@/lib/format";
 import { planTone, type PlanMetric } from "@/lib/platform";
 import type { UsageItem, UsageMetric } from "@/lib/platformBilling";
 import { PLAN_LIMITS } from "./planLimits";
@@ -18,7 +18,7 @@ const info = (metric: PlanMetric) => PLAN_LIMITS.find((limit) => limit.metric ==
 
 const level = (pct: number | null) => (pct === null ? "bg-fg-3/40" : pct >= 100 ? "bg-bad" : pct >= 80 ? "bg-warn" : "bg-ok");
 
-const compact = (value: number) => (value >= 10_000 ? `${formatNumber(Math.round(value / 1000))} mil` : formatNumber(value));
+const compact = (value: number, unit = "") => (value >= 10_000 ? `${formatNumber(Math.round(value / 1000))} mil` : formatQuantity(value, unit.trim()));
 
 function Meter({ metric }: { metric: UsageMetric | undefined }) {
   if (!metric) return null;
@@ -26,9 +26,9 @@ function Meter({ metric }: { metric: UsageMetric | undefined }) {
   const unit = meta?.unit ? ` ${meta.unit}` : "";
   const limit = metric.limit === null ? "sin tope" : metric.limit === 0 ? "no incluido" : `${compact(metric.limit)}${unit}`;
   return (
-    <div className="group w-full min-w-[96px]" title={`${meta?.label ?? metric.metric}: ${formatNumber(metric.value)}${unit} de ${limit}${metric.pct !== null ? ` (${metric.pct} %)` : ""}`}>
+    <div className="group w-full min-w-[96px]" title={`${meta?.label ?? metric.metric}: ${compact(metric.value, unit)}${compact(metric.value, unit).endsWith("MB") ? "" : unit} de ${limit}${metric.pct !== null ? ` (${metric.pct} %)` : ""}`}>
       <p className="mb-1 font-mono text-[12.5px]">
-        <b className="font-semibold">{compact(metric.value)}</b>
+        <b className="font-semibold">{compact(metric.value, unit)}</b>
         <span className="text-fg-3"> / {limit}</span>
       </p>
       <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheck, CircleSlash, FileClock, Star } from "lucide-react";
+import { CircleCheck, CircleSlash, FileClock, Layers, Star } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -74,10 +74,17 @@ export function ProvidersTable({ overview }: { overview: ProvidersOverview }) {
       ),
     },
   ];
+  const providers = overview.providers;
+  const next = providers.filter((provider) => provider.state === "activo" && provider.contract_days >= 0).sort((a, b) => a.contract_end.localeCompare(b.contract_end))[0];
+  const services = providers.reduce((sum, provider) => sum + provider.services.length, 0);
+  const rated = providers.filter((provider) => provider.rating > 0);
+  const average = rated.length ? rated.reduce((sum, provider) => sum + provider.rating, 0) / rated.length : null;
   const metrics: MetricFilter<ProviderRow>[] = [
-    { id: "active", label: "Activos", tone: "ok", icon: <CircleCheck size={19} />, matches: (provider) => provider.state === "activo" },
-    { id: "expiring", label: "Contrato por vencer", tone: "sun", icon: <FileClock size={19} />, matches: (provider) => provider.contract_days >= 0 && provider.contract_days <= 95 },
-    { id: "off", label: "Vencidos o inactivos", tone: "bad", icon: <CircleSlash size={19} />, matches: (provider) => provider.state !== "activo" },
+    { id: "active", label: "Activos", tone: "ok", icon: <CircleCheck size={19} />, note: `de ${providers.length} proveedores`, info: <p>Proveedores en estado activo, con su contrato vigente. Al presionarla, la tabla muestra solo esos proveedores.</p>, matches: (provider) => provider.state === "activo" },
+    { id: "expiring", label: "Contrato por vencer", tone: "sun", icon: <FileClock size={19} />, note: next ? `El próximo, ${next.name} el ${formatDate(next.contract_end)}` : "Ningún contrato activo por vencer", info: <p>Proveedores cuyo contrato termina en los próximos 95 días; la nota dice cuál vence antes. Renuévalo desde su ficha para no bloquear sus servicios. Al presionarla, la tabla muestra esos proveedores.</p>, matches: (provider) => provider.contract_days >= 0 && provider.contract_days <= 95 },
+    { id: "off", label: "Vencidos o inactivos", tone: "bad", icon: <CircleSlash size={19} />, info: <p>Proveedores inactivos o con el contrato vencido. Sus servicios no se pueden usar hasta renovarlo. Al presionarla, la tabla muestra esos proveedores.</p>, matches: (provider) => provider.state !== "activo" },
+    { id: "no-services", label: "Sin servicios", tone: "t1", icon: <Layers size={19} />, note: `${services} servicios entre todos`, info: <p>Proveedores que aún no tienen ningún servicio registrado; la nota suma los servicios de todos los proveedores, activos o no. Al presionarla, la tabla muestra los proveedores sin servicios.</p>, matches: (provider) => provider.services.length === 0 },
+    { id: "rating", label: "Calificación promedio", tone: "violet", icon: <Star size={19} />, display: average === null ? "—" : average.toFixed(1), note: `${rated.length} proveedores calificados`, info: <p>Promedio simple de la calificación de 1 a 5 de los proveedores que ya tienen una. Al presionarla, la tabla muestra los proveedores calificados.</p>, matches: (provider) => provider.rating > 0 },
   ];
   const filters: FilterConfig<ProviderRow>[] = [
     { id: "type", label: "Tipo", options: unique(overview.providers.map((provider) => provider.type)), value: (provider) => provider.type },
@@ -109,5 +116,5 @@ export function ProvidersTable({ overview }: { overview: ProvidersOverview }) {
       { header: "Estado", value: (provider) => SUPPLY_STATE[provider.state].label },
     ],
   };
-  return <DataTable screen="proveedores" rows={overview.providers} columns={columns} getKey={(provider) => provider.ref} entityLabel="proveedores" searchText={(provider) => `${provider.ref} ${provider.name} ${provider.ruc} ${provider.type} ${provider.city ?? ""} ${provider.contact_name}`} searchPlaceholder="Buscar nombre, RUC o ciudad" metrics={metrics} filters={filters} sorts={sorts} csv={csv} />;
+  return <DataTable screen="proveedores" rows={providers} columns={columns} getKey={(provider) => provider.ref} entityLabel="proveedores" searchText={(provider) => `${provider.ref} ${provider.name} ${provider.ruc} ${provider.type} ${provider.city ?? ""} ${provider.contact_name}`} searchPlaceholder="Buscar nombre, RUC o ciudad" metrics={metrics} filters={filters} sorts={sorts} csv={csv} />;
 }

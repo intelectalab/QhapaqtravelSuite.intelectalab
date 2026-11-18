@@ -1,6 +1,6 @@
 "use client";
 
-import { AlarmClock, ExternalLink, Hourglass, Inbox } from "lucide-react";
+import { AlarmClock, CalendarRange, ExternalLink, Hourglass, Inbox, TimerReset } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { Button } from "@/components/ui/Button";
@@ -8,13 +8,34 @@ import { RowActions } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Badge } from "@/components/ui/Badge";
 import { BOOK_STATUS_TONE, DEADLINE, type ClaimSheet, type ClaimsOverview, type Deadline } from "@/lib/claims";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoney, formatNumber } from "@/lib/format";
 import { ClaimAlertsAction, ClaimCloseAction, ClaimDetailAction, ClaimFormAction, ClaimLinkAction, ClaimResendAction } from "./ClaimForms";
 
 const unique = (values: (string | null)[]) => [...new Set(values.filter((value): value is string => Boolean(value)))];
 
+const plural = (count: number, one: string, many: string) => `${formatNumber(count)} ${count === 1 ? one : many}`;
+
+const isOpen = (row: ClaimSheet) => row.book_status === "received" || row.book_status === "in_review";
+
+const isAnswered = (row: ClaimSheet) => row.deadline === "respondido_en_plazo" || row.deadline === "respondido_fuera_de_plazo";
+
+function claimedAmounts(claims: ClaimSheet[]) {
+  const totals = new Map<string, number>();
+  for (const claim of claims) {
+    if (!claim.good || claim.good.amount <= 0) continue;
+    totals.set(claim.good.currency, (totals.get(claim.good.currency) ?? 0) + claim.good.amount);
+  }
+  return [...totals.entries()];
+}
+
 export function ClaimsTable({ overview, publicUrl }: { overview: ClaimsOverview; publicUrl?: string | null }) {
   const rows = overview.claims;
+  const { kpis, settings } = overview;
+  const month = overview.today.slice(0, 7);
+  const ofMonth = rows.filter((row) => row.received_on.startsWith(month));
+  const amounts = claimedAmounts(rows.filter(isOpen));
+  const answered = rows.filter(isAnswered);
+  const late = answered.filter((row) => row.deadline === "respondido_fuera_de_plazo").length;
   const columns: Column<ClaimSheet>[] = [
     {
       id: "sheet",
@@ -22,7 +43,7 @@ export function ClaimsTable({ overview, publicUrl }: { overview: ClaimsOverview;
       mobile: "title",
       cell: (row) => (
         <div className="min-w-0">
-          <span className="flex items-center gap-2">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <Badge tone={row.type_code === "reclamo" ? "warn" : "violet"} dot={false}>
               {row.type}
             </Badge>
@@ -37,6 +58,7 @@ export function ClaimsTable({ overview, publicUrl }: { overview: ClaimsOverview;
     {
       id: "consumer",
       header: "Consumidor",
+      wrap: true,
       cell: (row) => (
         <span className="text-[13px]">
           {row.consumer.name}
@@ -44,12 +66,13 @@ export function ClaimsTable({ overview, publicUrl }: { overview: ClaimsOverview;
         </span>
       ),
     },
-    { id: "received", header: "Recibida", cell: (row) => <span className="text-[13px]">{formatDate(row.received_on)}</span> },
     {
       id: "deadline",
-      header: "Plazo",
+      wrap: true,
+      header: "Recibida y plazo",
       cell: (row) => (
-        <span className="flex flex-col gap-1">
+        <span className="flex flex-col items-start gap-1">
+          <span className="text-[13px]">{formatDate(row.received_on)}</span>
           <Badge tone={DEADLINE[row.deadline].tone}>{DEADLINE[row.deadline].label}</Badge>
           {row.due_date && !row.response && row.book_status !== "closed" && <span className="text-[11.5px] text-fg-3">{row.days_left !== null && row.days_left >= 0 ? `Quedan ${row.days_left} días hábiles` : `Venció el ${formatDate(row.due_date)}`}</span>}
         </span>
@@ -74,9 +97,37 @@ export function ClaimsTable({ overview, publicUrl }: { overview: ClaimsOverview;
     },
   ];
   const metrics: MetricFilter<ClaimSheet>[] = [
-    { id: "open", label: "Sin respuesta", tone: "info", icon: <Inbox size={19} />, matches: (row) => row.book_status === "received" || row.book_status === "in_review" },
-    { id: "soon", label: "Por vencer", tone: "warn", icon: <Hourglass size={19} />, matches: (row) => row.deadline === "por_vencer" },
-    { id: "late", label: "Vencidas", tone: "bad", icon: <AlarmClock size={19} />, matches: (row) => row.deadline === "vencido" },
+    {
+      id: "month",
+      label: "Hojas del mes",
+      tone: "t1",
+      icon: <CalendarRange size={19} />,
+      display: formatNumber(kpis.month),
+      note: `${plural(ofMonth.filter((row) => row.type_code === "reclamo").length, "reclamo", "reclamos")} · ${plural(ofMonth.filter((row) => row.type_code === "queja").length, "queja", "quejas")}`,
+      info: <p>Hojas de reclamación y queja recibidas desde el día 1 del mes. Al presionarla, la tabla muestra solo las de este mes.</p>,
+      matches: (row) => row.received_on.startsWith(month),
+    },
+    {
+      id: "open",
+      label: "Sin respuesta",
+      tone: "info",
+      icon: <Inbox size={19} />,
+      note: amounts.length ? `${amounts.map(([currency, amount]) => formatMoney(amount, currency, { compact: true })).join(" · ")} en reclamo` : undefined,
+      info: <p>Hojas recibidas o en revisión que aún no tienen respuesta. La nota suma el monto del bien contratado que declaró el consumidor en esas hojas. Al presionarla, la tabla muestra solo esas.</p>,
+      matches: isOpen,
+    },
+    { id: "soon", label: "Por vencer", tone: "warn", icon: <Hourglass size={19} />, info: <p>Hojas sin responder cuyo plazo legal entra en la ventana de alerta de {settings.alert_days} días hábiles. Al presionarla, la tabla muestra las que hay que responder primero.</p>, matches: (row) => row.deadline === "por_vencer" },
+    { id: "late", label: "Vencidas", tone: "bad", icon: <AlarmClock size={19} />, info: <p>Hojas sin responder cuyo plazo de {settings.response_days} días hábiles ya pasó. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => row.deadline === "vencido" },
+    {
+      id: "on-time",
+      label: "Respondidas a tiempo",
+      tone: "ok",
+      icon: <TimerReset size={19} />,
+      display: kpis.on_time_pct !== null ? `${kpis.on_time_pct} %` : "Sin datos",
+      note: kpis.avg_days !== null ? `${kpis.avg_days} días hábiles en promedio` : `Plazo de ${settings.response_days} días hábiles`,
+      info: <p>Hojas respondidas dentro del plazo de {settings.response_days} días hábiles, entre todas las respondidas. La nota es el tiempo promedio desde que se recibe hasta que se responde, sin contar fines de semana ni feriados. {late === 0 ? "Ninguna respuesta salió fuera del plazo." : `${plural(late, "respuesta salió", "respuestas salieron")} fuera del plazo.`} Al presionarla, la tabla muestra las {plural(answered.length, "hoja respondida", "hojas respondidas")}.</p>,
+      matches: isAnswered,
+    },
   ];
   const filters: FilterConfig<ClaimSheet>[] = [
     { id: "type", label: "Tipo", options: unique(rows.map((row) => row.type)).map((value) => ({ value, label: value })), value: (row) => row.type },

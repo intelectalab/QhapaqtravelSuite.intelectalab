@@ -7,6 +7,7 @@ namespace App\Domain\Integrations\Fake;
 use App\Domain\Integrations\Contracts\SalesAssistant;
 use App\Domain\Integrations\Data\AdapterResult;
 use App\Domain\Integrations\Data\AiCompletion;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Illuminate\Support\Str;
@@ -19,6 +20,8 @@ final class FakeSalesAssistant implements SalesAssistant
 
     public function complete(string $kind, string $prompt, array $context): AiCompletion
     {
+        IntegrationReadiness::refuse('sales_ai');
+
         $destination = $this->destination($prompt, $context);
         $days = $this->number($prompt, '/(\d{1,2})\s*d[ií]as?/iu', 3, 1, 15);
         $pax = $this->number($prompt, '/(\d{1,2})\s*(pax|personas|pasajeros|adultos|viajeros)/iu', (int) ($context['client']['pax'] ?? 2), 1, 40);
@@ -38,6 +41,8 @@ final class FakeSalesAssistant implements SalesAssistant
 
     public function extractProducts(string $sourceType, string $source, array $context): AiCompletion
     {
+        IntegrationReadiness::refuse('catalog_import');
+
         $products = $sourceType === 'csv' ? $this->fromCsv($source) : $this->fromDocument($source, $context);
 
         return $products === []
@@ -52,6 +57,10 @@ final class FakeSalesAssistant implements SalesAssistant
 
     public function healthcheck(): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::health('sales_ai')) !== null) {
+            return $unavailable;
+        }
+
         return AdapterResult::success('ok', null, ['simulated' => true]);
     }
 

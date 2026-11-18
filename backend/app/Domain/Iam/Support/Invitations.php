@@ -42,7 +42,7 @@ final class Invitations
     {
         $body = "Hola {$name}:\n\n{$agency} te dio acceso a tu portal de cliente. Ahí verás tus propuestas, tus viajes, tus pagos y tus documentos.\n\nCrea tu contraseña aquí (el enlace vence en ".self::HOURS." horas):\n{$this->link($token)}\n\nNunca te enviaremos tu contraseña por correo.";
 
-        app(QueuedMail::class)->send($email, $name, "Tu portal de cliente · {$agency}", $body);
+        app(QueuedMail::class)->sendAsAgency($email, $name, "Tu portal de cliente · {$agency}", $body);
     }
 
     private function link(string $token): string

@@ -60,22 +60,22 @@ export function SupplierCompanyView({ data }: { data: SupplierCompany }) {
 
   return (
     <>
-      <PortalTitle title="Mi empresa" subtitle="Sus datos registrados en la agencia, el contrato vigente y los contactos con los que coordinan." />
+      <PortalTitle title="Mi empresa" subtitle="Tus datos registrados en la agencia, el contrato vigente y los contactos con los que coordinan." />
 
       {contract.alert && (
         <div style={toneStyle(contractTone)} className={cn("mb-5 flex items-start gap-3 rounded-tile border border-[color-mix(in_srgb,var(--tint)_30%,transparent)] bg-[color-mix(in_srgb,var(--tint)_7%,var(--surface))] px-4 py-3", RISE)}>
           <FileSignature size={18} className="mt-0.5 flex-none text-[var(--tint)]" />
           <p className="text-[13.5px] text-fg-2">
-            <b className="text-[var(--tint)]">{contract.alert}.</b> {contract.days_left < 0 ? "La agencia no puede solicitarle nuevos servicios hasta renovarlo." : "Coordine la renovación con la agencia para seguir recibiendo solicitudes."}
+            <b className="text-[var(--tint)]">{contract.alert}.</b> {contract.days_left < 0 ? "La agencia no puede solicitarte nuevos servicios hasta renovarlo." : "Coordine la renovación con la agencia para seguir recibiendo solicitudes."}
           </p>
         </div>
       )}
 
       <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TintTile icon={ClipboardList} tone="t1" label="Servicios atendidos" value={data.activity.services} note={`En ${data.activity.reservations} reservas`} info="Servicios que la agencia le solicitó, sin contar los cancelados." />
-        <TintTile icon={Tags} tone="t3" label="Servicios en catálogo" value={data.activity.catalog} note="Activos con tarifa neta" info="Servicios activos registrados a su nombre en el catálogo de la agencia." />
-        <TintTile icon={CalendarRange} tone={contractTone} label="Vigencia del contrato" value={contract.days_left < 0 ? "Vencido" : `${contract.days_left} días`} note={`Hasta el ${formatDate(contract.end)}`} info="Días que faltan para el fin del contrato registrado en su ficha de proveedor." />
-        <TintTile icon={Users} tone="violet" label="Contactos" value={data.contacts.length} note={`${data.users.length} ${data.users.length === 1 ? "usuario" : "usuarios"} en la extranet`} info="Contactos de su empresa que la agencia usa para coordinar; abajo puede editarlos." />
+        <TintTile icon={ClipboardList} tone="t1" label="Servicios atendidos" value={data.activity.services} note={`En ${data.activity.reservations} reservas`} info="Servicios que la agencia te solicitó, sin contar los cancelados." />
+        <TintTile icon={Tags} tone="t3" label="Servicios en catálogo" value={data.activity.catalog} note="Activos con tarifa neta" info="Servicios activos registrados a tu nombre en el catálogo de la agencia." />
+        <TintTile icon={CalendarRange} tone={contractTone} label="Vigencia del contrato" value={contract.days_left < 0 ? "Vencido" : `${contract.days_left} días`} note={`Hasta el ${formatDate(contract.end)}`} info="Días que faltan para el fin del contrato registrado en tu ficha de proveedor." />
+        <TintTile icon={Users} tone="violet" label="Contactos" value={data.contacts.length} note={`${data.users.length} ${data.users.length === 1 ? "usuario" : "usuarios"} en la extranet`} info="Contactos de tu empresa que la agencia usa para coordinar; abajo puedes editarlos." />
       </section>
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_400px]">
@@ -94,12 +94,12 @@ export function SupplierCompanyView({ data }: { data: SupplierCompany }) {
                 { label: "Teléfono", value: provider.phone ?? "—" },
               ]}
             />
-            <p className="mt-3 text-[12px] text-fg-3">Para cambiar la razón social, el RUC o las condiciones del contrato escriba a Compras de la agencia.</p>
+            <p className="mt-3 text-[12px] text-fg-3">Para cambiar la razón social, el RUC o las condiciones del contrato escribe a Compras de la agencia.</p>
           </SectionCard>
 
           <SectionCard icon={Users} title="Contactos" aside={<ContactPanel />}>
             {data.contacts.length === 0 ? (
-              <EmptyLine>Agregue al menos un contacto para que la agencia sepa a quién escribir.</EmptyLine>
+              <EmptyLine>Agrega al menos un contacto para que la agencia sepa a quién escribir.</EmptyLine>
             ) : (
               <ul className="grid gap-2 md:grid-cols-2">
                 {data.contacts.map((contact, index) => (
@@ -122,7 +122,7 @@ export function SupplierCompanyView({ data }: { data: SupplierCompany }) {
                     <RowActions>
                       <ContactPanel contact={contact} />
                       {data.contacts.length > 1 ? (
-                        <ConfirmAction id={`contacto-${contact.id}`} label="Quitar contacto" title={`Quitar a ${contact.name}`} description="La agencia dejará de verlo como contacto de su empresa." submitLabel="Quitar" action={deleteContact.bind(null, contact.id)} hidden={{}} />
+                        <ConfirmAction id={`contacto-${contact.id}`} label="Quitar contacto" title={`Quitar a ${contact.name}`} description="La agencia dejará de verlo como contacto de tu empresa." submitLabel="Quitar" action={deleteContact.bind(null, contact.id)} hidden={{}} />
                       ) : (
                         <RowIcon tone="delete" label="Quitar contacto" disabledHint="La agencia necesita al menos un contacto" />
                       )}

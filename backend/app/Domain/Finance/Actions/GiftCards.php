@@ -19,6 +19,7 @@ use App\Domain\Shared\Tenancy\TenantContext;
 use App\Domain\Site\Support\CardPayments;
 use Brick\Math\BigDecimal;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -31,6 +32,8 @@ final class GiftCards
     public const KINDS = ['emision' => 'Emisión', 'canje' => 'Canje', 'reverso' => 'Reverso', 'ajuste' => 'Ajuste', 'anulacion' => 'Anulación', 'vencimiento' => 'Vencimiento'];
 
     private const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+    private const DELIVERY_HOUR = 8;
 
     public function __construct(
         private readonly TenantContext $context,
@@ -67,6 +70,7 @@ final class GiftCards
             'recipient_email.*' => 'Escribe un correo válido para el destinatario.',
             'message.max' => 'El mensaje admite hasta 500 caracteres.',
             'deliver_at.date' => 'La fecha de entrega no es válida.',
+            'deliver_at.*' => 'La fecha de entrega no es válida.',
             'expires_at.date' => 'La fecha de vencimiento no es válida.',
             'redeem_code.*' => 'Escribe el código de canje del vale.',
             'card_token.*' => 'Completa los datos de la tarjeta.',
@@ -80,6 +84,7 @@ final class GiftCards
         $this->gate->require(self::RULE);
         $amount = $this->amount((string) $data['amount']);
         $expires = $this->expiry($data['expires_at'] ?? null);
+        $deliverAt = $this->deliveryDate($data['deliver_at'] ?? null, $expires, $data['recipient_email'] ?? null);
         $buyer = null;
 
         if (! empty($data['buyer_client_id'])) {
@@ -87,7 +92,7 @@ final class GiftCards
             $buyer = DB::table('crm_clients')->whereNull('deleted_at')->where(Str::isUuid($key) ? 'id' : 'code', $key)->value('id') ?? throw ApiException::unprocessable('CLIENT_NOT_FOUND', 'El cliente comprador no existe.');
         }
 
-        return DB::transaction(function () use ($data, $actor, $amount, $expires, $buyer): array {
+        return DB::transaction(function () use ($data, $actor, $amount, $expires, $buyer, $deliverAt): array {
             [$code, $redeem] = $this->create([
                 'initial_amount' => (string) $amount,
                 'currency' => $data['currency'],
@@ -95,12 +100,11 @@ final class GiftCards
                 'recipient_name' => $data['recipient_name'] ?? null,
                 'recipient_email' => $data['recipient_email'] ?? null,
                 'message' => $data['message'] ?? null,
-                'deliver_at' => $data['deliver_at'] ?? null,
                 'expires_at' => $expires,
-            ], 'Emisión manual', $actor);
+            ], 'Emisión manual', $actor, $deliverAt);
 
-            $this->deliver($code, $redeem, $data['recipient_email'] ?? null);
-            $this->audit->log('Vale de regalo', $code, 'emitir', after: 'Emisión manual · '.Decimal::display($amount, (string) $data['currency']).' · vence '.$expires);
+            $this->deliverOrSchedule($code, $redeem, $data['recipient_email'] ?? null, $deliverAt);
+            $this->audit->log('Vale de regalo', $code, 'emitir', after: 'Emisión manual · '.Decimal::display($amount, (string) $data['currency']).' · vence '.$expires.($deliverAt ? ' · envío programado '.$deliverAt->format('d/m/Y H:i') : ''));
 
             return [...($this->directory->find($code) ?? []), 'redeem_code' => $redeem];
         });
@@ -111,13 +115,14 @@ final class GiftCards
         $this->gate->require(self::RULE);
         $amount = $this->amount((string) $data['amount']);
         $currency = (string) $data['currency'];
+        $deliverAt = $this->deliveryDate($data['deliver_at'] ?? null, $this->expiry(null), $data['recipient_email'] ?? $data['buyer_email']);
         $card = $this->cards->charge('gift_card', 'VALE-'.mb_strtoupper(Str::random(8)), (string) $amount, $currency, (string) $data['buyer_email'], (string) $data['card_token'], null);
 
         if (! $card['approved']) {
             throw ApiException::unprocessable('PAYMENT_DECLINED', (string) $card['message'], ['code' => $card['code']]);
         }
 
-        return DB::transaction(function () use ($data, $amount, $currency, $card): array {
+        return DB::transaction(function () use ($data, $amount, $currency, $card, $deliverAt): array {
             $expires = $this->expiry(null);
             [$code, $redeem] = $this->create([
                 'initial_amount' => (string) $amount,
@@ -126,9 +131,9 @@ final class GiftCards
                 'recipient_email' => $data['recipient_email'] ?? $data['buyer_email'],
                 'message' => $data['message'] ?? null,
                 'expires_at' => $expires,
-            ], 'Compra en el sitio · pasarela '.$card['txn'], null);
+            ], 'Compra en el sitio · pasarela '.$card['txn'], null, $deliverAt);
 
-            $this->deliver($code, $redeem, $data['recipient_email'] ?? $data['buyer_email']);
+            $this->deliverOrSchedule($code, $redeem, $data['recipient_email'] ?? $data['buyer_email'], $deliverAt);
             $this->audit->log('Vale de regalo', $code, 'emitir', after: 'Compra en el sitio · '.Decimal::display($amount, $currency).' · '.($card['masked'] ?? 'tarjeta'));
 
             return [
@@ -138,7 +143,8 @@ final class GiftCards
                 'currency' => $currency,
                 'expires_at' => $expires,
                 'recipient_name' => $data['recipient_name'] ?? $data['buyer_name'],
-                'message' => 'Listo. Enviamos el vale por correo; guarda el código de canje, solo se muestra esta vez.',
+                'deliver_at' => $deliverAt?->toIso8601String(),
+                'message' => $deliverAt ? 'Listo. Enviaremos el vale por correo el '.$deliverAt->format('d/m/Y').'; guarda el código de canje, solo se muestra esta vez.' : 'Listo. Enviamos el vale por correo; guarda el código de canje, solo se muestra esta vez.',
             ];
         });
     }
@@ -260,7 +266,7 @@ final class GiftCards
 
             $redeemed = DB::table('fin_gift_card_movements')->where('gift_card_id', $card->id)->where('kind', 'canje')->exists();
             $balance = BigDecimal::of((string) $card->balance);
-            DB::table('fin_gift_cards')->where('id', $card->id)->update(['status' => 'anulada', 'balance' => '0.00', 'updated_by' => $actor->getKey()]);
+            DB::table('fin_gift_cards')->where('id', $card->id)->update(['status' => 'anulada', 'balance' => '0.00', 'redeem_code_encrypted' => null, 'updated_by' => $actor->getKey()]);
 
             if ($balance->isPositive()) {
                 $this->movement((string) $card->id, 'anulacion', $balance->negated(), BigDecimal::zero(), null, null, $reason ? mb_substr($reason, 0, 300) : null, $actor);
@@ -296,7 +302,7 @@ final class GiftCards
         }
     }
 
-    private function create(array $values, string $note, ?User $actor): array
+    private function create(array $values, string $note, ?User $actor, ?Carbon $deliverAt = null): array
     {
         $redeem = $this->redeemCode();
         $id = (string) Str::uuid7();
@@ -309,6 +315,8 @@ final class GiftCards
             'code' => $code,
             'redeem_code_hash' => self::hash($redeem),
             'redeem_code_last4' => mb_substr(str_replace('-', '', $redeem), -4),
+            'deliver_at' => $deliverAt,
+            'redeem_code_encrypted' => $deliverAt ? Crypt::encryptString($redeem) : null,
             'balance' => $values['initial_amount'],
             'status' => 'activa',
             'created_by' => $actor?->getKey(),
@@ -317,6 +325,61 @@ final class GiftCards
         $this->movement($id, 'emision', BigDecimal::of((string) $values['initial_amount']), BigDecimal::of((string) $values['initial_amount']), null, null, $note, $actor);
 
         return [$code, $redeem];
+    }
+
+    public function deliverDue(): int
+    {
+        $sent = 0;
+        $due = DB::table('fin_gift_cards')->where('status', 'activa')->whereNull('delivered_at')->whereNotNull('redeem_code_encrypted')->where('deliver_at', '<=', now())->orderBy('deliver_at')->limit(200)->pluck('code');
+
+        foreach ($due as $code) {
+            $sent += DB::transaction(function () use ($code): int {
+                $card = DB::table('fin_gift_cards')->where('code', $code)->lockForUpdate()->first(['id', 'code', 'status', 'recipient_email', 'redeem_code_encrypted', 'delivered_at']);
+
+                if ($card === null || $card->status !== 'activa' || $card->delivered_at !== null || $card->redeem_code_encrypted === null) {
+                    return 0;
+                }
+
+                $this->deliver((string) $card->code, Crypt::decryptString((string) $card->redeem_code_encrypted), $card->recipient_email);
+                DB::table('fin_gift_cards')->where('id', $card->id)->update(['redeem_code_encrypted' => null]);
+                $this->audit->log('Vale de regalo', (string) $card->code, 'entregar', after: 'Envío programado al destinatario');
+
+                return 1;
+            });
+        }
+
+        return $sent;
+    }
+
+    private function deliveryDate(?string $value, string $expires, ?string $email): ?Carbon
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        $zone = $this->context->timezone();
+        $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($value)) ? Carbon::parse(trim($value), $zone)->setTime(self::DELIVERY_HOUR, 0) : Carbon::parse($value, $zone);
+
+        if ($date->lessThanOrEqualTo(Carbon::now($zone))) {
+            return null;
+        }
+
+        if ($email === null || trim($email) === '') {
+            throw ApiException::unprocessable('GIFT_CARD_DELIVERY_EMAIL', 'Para programar el envío, escribe el correo de quien recibe el vale.');
+        }
+
+        if ($date->toDateString() > $expires) {
+            throw ApiException::unprocessable('GIFT_CARD_DELIVERY_AFTER_EXPIRY', 'La fecha de envío debe ser anterior al vencimiento del vale.');
+        }
+
+        return $date->utc();
+    }
+
+    private function deliverOrSchedule(string $code, string $redeem, ?string $email, ?Carbon $deliverAt): void
+    {
+        if ($deliverAt === null) {
+            $this->deliver($code, $redeem, $email);
+        }
     }
 
     private function deliver(string $code, string $redeem, ?string $email): void
@@ -332,6 +395,7 @@ final class GiftCards
             'Tienes un vale de regalo de '.$this->context->tenant()->commercial_name,
             'Hola '.($card->recipient_name ?? '').', recibiste un vale por '.Decimal::display((string) $card->initial_amount, (string) $card->currency).'. Código de canje: '.$redeem.'. Vence el '.Carbon::parse((string) $card->expires_at)->format('d/m/Y').'.'.($card->message ? ' Mensaje: '.$card->message : ''),
         ));
+        DB::table('fin_gift_cards')->where('code', $code)->update(['delivered_at' => now()]);
     }
 
     private function movement(string $cardId, string $kind, BigDecimal $amount, BigDecimal $after, ?string $reservationId, ?string $receivableId, ?string $note, ?User $actor): void

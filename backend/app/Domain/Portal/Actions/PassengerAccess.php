@@ -55,7 +55,7 @@ final class PassengerAccess
         $tenant = $this->context->tenant();
         $link = rtrim((string) config('app.frontend_url'), '/').'/sitio/'.$tenant->subdomain.'/mi-viaje/entrar?token='.$token;
         $body = "Hola {$user->name}:\n\nEste es tu enlace para ver el viaje {$reservation->code} con {$tenant->commercial_name}: itinerario, vouchers, avisos y contactos.\n\n{$link}\n\nVence en ".self::MINUTES.' minutos y sirve una sola vez. Si no lo pediste, ignora este correo.';
-        app(QueuedMail::class)->send($email, (string) $user->name, "Tu viaje {$reservation->code} · {$tenant->commercial_name}", $body);
+        app(QueuedMail::class)->sendAsAgency($email, (string) $user->name, "Tu viaje {$reservation->code} · {$tenant->commercial_name}", $body);
     }
 
     public function verify(string $token): array

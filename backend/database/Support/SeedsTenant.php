@@ -19,6 +19,13 @@ trait SeedsTenant
 
     abstract protected function tenant(): Tenant;
 
+    public function useShift(int $days): static
+    {
+        $this->shiftDays = $days;
+
+        return $this;
+    }
+
     protected function shift(): int
     {
         return $this->shiftDays ??= (int) Carbon::parse(self::KIT_TODAY)->diffInDays(Carbon::parse(Carbon::today('America/Lima')->toDateString()), false);
@@ -44,6 +51,17 @@ trait SeedsTenant
     protected function day(?string $date): ?string
     {
         return $date ? Carbon::parse($date)->addDays($this->shift())->toDateString() : null;
+    }
+
+    protected function shiftDeadlines(string $value): string
+    {
+        $months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+        return preg_replace_callback('/\bhasta el (\d{1,2}) de ('.implode('|', $months).')\b/u', function (array $match) use ($months): string {
+            $date = Carbon::create((int) substr(self::KIT_TODAY, 0, 4), array_search($match[2], $months, true) + 1, (int) $match[1])->addDays($this->shift());
+
+            return 'hasta el '.$date->day.' de '.$months[$date->month - 1];
+        }, $value) ?? $value;
     }
 
     protected function moment(?string $value): ?string

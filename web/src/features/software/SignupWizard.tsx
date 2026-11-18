@@ -102,6 +102,7 @@ function NoRucNotice({ onWrite }: { onWrite: () => void }) {
 export function SignupWizard({ catalog, businessTypes, leadOptions, initialPlan, initialCycle, attribution }: { catalog: LandingCatalog; businessTypes: string[]; leadOptions: DemoOptions; initialPlan?: string; initialCycle: SignupCycle; attribution: Record<string, string> }) {
   const router = useRouter();
   const plans = catalog.plans.filter((plan) => plan.self_service);
+  const rucLookup = catalog.ruc_lookup !== false;
   const [step, setStep] = useState(0);
   const [planCode, setPlanCode] = useState(plans.some((plan) => plan.code === initialPlan) ? (initialPlan as string) : (plans[1] ?? plans[0])?.code);
   const [cycle, setCycle] = useState<SignupCycle>(initialCycle);
@@ -203,15 +204,25 @@ export function SignupWizard({ catalog, businessTypes, leadOptions, initialPlan,
             {Object.entries(attribution).map(([key, value]) => (
               <input key={key} type="hidden" name={key} value={value} />
             ))}
-            <div className="flex items-end gap-2">
-              <div className="flex-1">
-                <TextField label="RUC de tu agencia" name="ruc" required inputMode="numeric" maxLength={11} icon={<Building2 size={16} />} placeholder="20XXXXXXXXX" onBlur={(event) => event.target.value.length === 11 && findRuc(event.target.value)} error={rucMessage ?? errors.ruc} />
+            {rucLookup ? (
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <TextField label="RUC de tu agencia" name="ruc" required inputMode="numeric" maxLength={11} icon={<Building2 size={16} />} placeholder="20XXXXXXXXX" onBlur={(event) => event.target.value.length === 11 && findRuc(event.target.value)} error={rucMessage ?? errors.ruc} />
+                </div>
+                <Button type="button" variant="secondary" className="mb-[2px] h-12" icon={pending ? <LoaderCircle size={16} className="animate-spin" /> : <Search size={16} />} onClick={(event) => findRuc(((event.currentTarget.closest("form")?.elements.namedItem("ruc") as HTMLInputElement | null)?.value ?? ""))}>
+                  Consultar
+                </Button>
               </div>
-              <Button type="button" variant="secondary" className="mb-[2px] h-12" icon={pending ? <LoaderCircle size={16} className="animate-spin" /> : <Search size={16} />} onClick={(event) => findRuc(((event.currentTarget.closest("form")?.elements.namedItem("ruc") as HTMLInputElement | null)?.value ?? ""))}>
-                Consultar
-              </Button>
-            </div>
-            {!taxpayer && <NoRucNotice onWrite={() => setLeadOpen(true)} />}
+            ) : (
+              <div className="grid gap-4" data-testid="declared-taxpayer">
+                <TextField label="RUC de tu agencia" name="ruc" required inputMode="numeric" maxLength={11} icon={<Building2 size={16} />} placeholder="20XXXXXXXXX" error={errors.ruc} />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <TextField label="Razón social" name="legal_name" required minLength={3} maxLength={200} hint="Tal como figura en tu ficha RUC." error={errors.legal_name} />
+                  <TextField label="Domicilio fiscal" name="fiscal_address" required minLength={5} maxLength={250} error={errors.fiscal_address} />
+                </div>
+              </div>
+            )}
+            {rucLookup && !taxpayer && <NoRucNotice onWrite={() => setLeadOpen(true)} />}
             {taxpayer && (
               <p className="rounded-[14px] border border-[color-mix(in_srgb,var(--ok)_35%,var(--line))] bg-[color-mix(in_srgb,var(--ok)_7%,var(--surface))] px-4 py-3 text-[13px]">
                 <b className="block">{taxpayer.legal_name}</b>

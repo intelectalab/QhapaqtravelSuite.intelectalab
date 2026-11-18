@@ -6,6 +6,6 @@ import { supplierData } from "../data";
 export const metadata: Metadata = { title: "Pagos" };
 
 export default async function SupplierPaymentsPage() {
-  const data = await supplierData<SupplierPayables>("/payables", "No pudimos cargar sus pagos.");
+  const data = await supplierData<SupplierPayables>("/payables", "No pudimos cargar tus pagos.");
   return <SupplierPaymentsView data={data} />;
 }

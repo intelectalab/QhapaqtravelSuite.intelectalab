@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, CircleCheck, Clock3, FileText, MessageCircle, Pause, Play, Plus, Smartphone, XCircle } from "lucide-react";
+import { BadgeCheck, CircleCheck, Clock3, FileText, MessageCircle, Pause, Play, Plus, XCircle } from "lucide-react";
 import { useActionState, useState } from "react";
 import { saveWhatsappTemplate, whatsappTemplateStep } from "@/app/(backoffice)/admin/whatsapp/actions";
 import { DataTable } from "@/components/table/DataTable";
@@ -10,11 +10,10 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
 import { formatDateTime } from "@/lib/format";
 import { labelOptions, type WhatsappOverview, type WhatsappTemplate } from "@/lib/growth";
 import type { StepResult } from "@/lib/server/resource";
-import { KpiRow, PlanNotice, StatusPill } from "./GrowthUi";
+import { PlanNotice, StatusPill } from "./GrowthUi";
 
 const initial: StepResult = { message: null, done: false };
 
@@ -109,12 +108,6 @@ export function WhatsappBoard({ overview }: { overview: WhatsappOverview }) {
   return (
     <>
       <PlanNotice enabled={overview.enabled} feature="WhatsApp Business oficial" />
-      <KpiRow>
-        <TintTile icon={Smartphone} tone="t1" label="Número" value={account ? account.phone ?? account.name : "Sin conectar"} note={account?.mode ?? "Se abre en modo de prueba con la primera plantilla"} info={<p>Cuenta de WhatsApp Business registrada en la bandeja omnicanal. En modo de prueba los envíos se simulan.</p>} />
-        <TintTile icon={CircleCheck} tone="ok" label="Aprobadas" value={kpis.approved} note={`de ${kpis.total} plantillas`} info={<p>Plantillas que Meta aprobó. Son las únicas que se pueden enviar fuera de la ventana de 24 horas.</p>} />
-        <TintTile icon={Clock3} tone="sun" label="En revisión" value={kpis.in_review} info={<p>Plantillas enviadas a Meta, nuevas o editadas, que esperan respuesta.</p>} />
-        <TintTile icon={XCircle} tone="bad" label="Rechazadas" value={kpis.rejected} info={<p>Plantillas que Meta rechazó. Edita el texto para volver a enviarlas.</p>} />
-      </KpiRow>
       <DataTable
         screen="admin-whatsapp"
         rows={overview.templates}
@@ -123,9 +116,9 @@ export function WhatsappBoard({ overview }: { overview: WhatsappOverview }) {
         searchText={(template) => `${template.name} ${template.body} ${template.purpose_label}`}
         searchPlaceholder="Buscar por nombre o texto"
         metrics={[
-          { id: "aprobada", label: "Aprobadas", tone: "ok", icon: <CircleCheck size={18} />, matches: (template) => template.status === "aprobada" },
-          { id: "enviada", label: "En revisión", tone: "sun", icon: <Clock3 size={18} />, matches: (template) => template.status === "enviada" },
-          { id: "rechazada", label: "Rechazadas", tone: "bad", icon: <XCircle size={18} />, matches: (template) => template.status === "rechazada" },
+          { id: "aprobada", label: "Aprobadas", tone: "ok", icon: <CircleCheck size={19} />, note: `de ${kpis.total} plantillas · ${account ? `${account.phone ?? account.name}${account.mode ? ` (${account.mode})` : ""}` : "número sin conectar"}`, info: <p>Plantillas que Meta aprobó; son las únicas que se pueden enviar fuera de la ventana de 24 horas. La nota muestra la cuenta de WhatsApp Business registrada en la bandeja omnicanal (en modo de prueba los envíos se simulan). Al presionarla ves solo las aprobadas.</p>, matches: (template) => template.status === "aprobada" },
+          { id: "enviada", label: "En revisión", tone: "sun", icon: <Clock3 size={19} />, info: <p>Plantillas enviadas a Meta, nuevas o editadas, que esperan respuesta. Al presionarla ves solo esas plantillas.</p>, matches: (template) => template.status === "enviada" },
+          { id: "rechazada", label: "Rechazadas", tone: "bad", icon: <XCircle size={19} />, info: <p>Plantillas que Meta rechazó; edita el texto para volver a enviarlas. Al presionarla ves solo esas plantillas.</p>, matches: (template) => template.status === "rechazada" },
         ]}
         filters={[
           { id: "purpose", label: "Uso", options: labelOptions(catalogs.purposes), value: (template) => template.purpose },

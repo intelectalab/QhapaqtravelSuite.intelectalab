@@ -51,8 +51,8 @@ final class SupplierPortalController
             'confirmed_by_name' => ['nullable', 'string', 'max:120'],
             'note' => ['nullable', 'string', 'max:500'],
         ], [
-            'confirmation_code.*' => 'Escriba el código de confirmación (mínimo 4 caracteres, sin espacios).',
-            'service_time.*' => 'Escriba la hora en formato 24 h, por ejemplo 14:00.',
+            'confirmation_code.*' => 'Escribe el código de confirmación (mínimo 4 caracteres, sin espacios).',
+            'service_time.*' => 'Escribe la hora en formato 24 h, por ejemplo 14:00.',
             'confirmed_by_name.*' => 'El nombre de quien confirma es muy largo.',
             'note.*' => 'La observación admite hasta 500 caracteres.',
         ]);
@@ -69,7 +69,7 @@ final class SupplierPortalController
             'note' => ['required', 'string', 'min:5', 'max:1000'],
             'alt_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:'.Carbon::today()->toDateString()],
         ], [
-            'reason.*' => 'Elija el motivo del rechazo.',
+            'reason.*' => 'Elige el motivo del rechazo.',
             'note.*' => 'Explique brevemente el motivo (mínimo 5 caracteres).',
             'alt_date.*' => 'La fecha alternativa debe ser hoy o posterior.',
         ]);
@@ -88,10 +88,10 @@ final class SupplierPortalController
             'hold_until' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:'.Carbon::today()->toDateString()],
             'note' => ['required', 'string', 'min:5', 'max:1000'],
         ], [
-            'alt_kind.*' => 'Elija el tipo de alternativa.',
+            'alt_kind.*' => 'Elige el tipo de alternativa.',
             'alt_date.*' => 'La fecha propuesta debe ser hoy o posterior.',
-            'alt_service.*' => 'Elija un servicio de su catálogo.',
-            'alt_net_cost.*' => 'Escriba una tarifa neta válida.',
+            'alt_service.*' => 'Elige un servicio de tu catálogo.',
+            'alt_net_cost.*' => 'Escribe una tarifa neta válida.',
             'hold_until.*' => 'El bloqueo debe mantenerse hasta hoy o una fecha posterior.',
             'note.*' => 'Describa la alternativa (mínimo 5 caracteres).',
         ]);
@@ -146,11 +146,11 @@ final class SupplierPortalController
             'file_name' => ['required', 'string', 'max:200', 'regex:/\.(pdf|xml|zip)$/i'],
             'file_content' => ['required', 'string'],
         ], [
-            'number.*' => 'Escriba la serie y el número, por ejemplo F001-4521.',
+            'number.*' => 'Escribe la serie y el número, por ejemplo F001-4521.',
             'issue_date.*' => 'La fecha de emisión no puede ser futura.',
-            'amount.*' => 'Escriba el importe de la factura.',
-            'file_name.*' => 'Adjunte la factura en PDF, XML o ZIP.',
-            'file_content.*' => 'Adjunte la factura en PDF, XML o ZIP.',
+            'amount.*' => 'Escribe el importe de la factura.',
+            'file_name.*' => 'Adjunta la factura en PDF, XML o ZIP.',
+            'file_content.*' => 'Adjunta la factura en PDF, XML o ZIP.',
         ]);
 
         return $this->json($invoices->register($account, $code, $data), 201);
@@ -193,10 +193,10 @@ final class SupplierPortalController
             'reason_type' => ['required', Rule::in(SupplierRateRequests::REASONS)],
             'reason_detail' => ['nullable', 'string', 'max:1000'],
         ], [
-            'service.*' => 'Elija el servicio.',
-            'proposed_cost.*' => 'Escriba la nueva tarifa (mayor a cero).',
-            'effective_from.*' => 'Indique desde qué fecha rige.',
-            'reason_type.*' => 'Elija el motivo.',
+            'service.*' => 'Elige el servicio.',
+            'proposed_cost.*' => 'Escribe la nueva tarifa (mayor a cero).',
+            'effective_from.*' => 'Indica desde qué fecha rige.',
+            'reason_type.*' => 'Elige el motivo.',
             'reason_detail.*' => 'El sustento admite hasta 1000 caracteres.',
         ]);
     }
@@ -209,10 +209,10 @@ final class SupplierPortalController
             'phone' => ['nullable', 'string', 'max:30', 'regex:/^[0-9+()\s-]{6,30}$/'],
             'email' => ['nullable', 'email', 'max:190'],
         ], [
-            'name.*' => 'Escriba el nombre del contacto.',
+            'name.*' => 'Escribe el nombre del contacto.',
             'role.*' => 'El cargo admite hasta 80 caracteres.',
-            'phone.*' => 'Escriba un teléfono válido.',
-            'email.*' => 'Escriba un correo válido.',
+            'phone.*' => 'Escribe un teléfono válido.',
+            'email.*' => 'Escribe un correo válido.',
         ]);
     }
 

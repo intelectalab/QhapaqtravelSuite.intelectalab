@@ -6,19 +6,19 @@ import type { ReactNode } from "react";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
-import type { CustomerPortal, CustomerPortalPreview } from "@/lib/channels";
+import { CUSTOMER_PREVIEW_SECTIONS, type CustomerPortal, type CustomerPortalPreview, type CustomerPreviewSection } from "@/lib/channels";
 import { cn } from "@/lib/cn";
 import { formatDate, formatMoney } from "@/lib/format";
 import { ChannelBadge, MoneyLines, UsageBar } from "./ChannelUi";
 
-export const CUSTOMER_PREVIEW_SECTIONS: { id: string; label: string; icon: LucideIcon; key: keyof CustomerPortal | null }[] = [
-  { id: "home", label: "Inicio", icon: Home, key: null },
-  { id: "reservations", label: "Mis viajes", icon: MapPinned, key: "reservations" },
-  { id: "quotes", label: "Propuestas", icon: ScrollText, key: "quotes" },
-  { id: "receivables", label: "Pagos", icon: ReceiptText, key: "payments" },
-  { id: "documents", label: "Documentos", icon: FileText, key: "documents" },
-  { id: "wishlist", label: "Favoritos", icon: Heart, key: "wishlist" },
-];
+const SECTION_ICONS: Record<CustomerPreviewSection, LucideIcon> = {
+  home: Home,
+  reservations: MapPinned,
+  quotes: ScrollText,
+  receivables: ReceiptText,
+  documents: FileText,
+  wishlist: Heart,
+};
 
 export function PortalFrame({ title, nav, children }: { title: string; nav?: ReactNode; children: ReactNode }) {
   return (
@@ -207,7 +207,7 @@ function PreviewNav({ client, section }: { client: CustomerPortal; section: stri
   return (
     <nav aria-label="Secciones del portal" className="scroll-thin flex gap-1 overflow-x-auto border-b border-line bg-surface px-3 py-2">
       {CUSTOMER_PREVIEW_SECTIONS.map((item) => {
-        const Icon = item.icon;
+        const Icon = SECTION_ICONS[item.id];
         const active = item.id === section;
         const count = item.key ? (client[item.key] as unknown[]).length : null;
         return (

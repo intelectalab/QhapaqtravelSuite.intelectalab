@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: PageProps<"/vitrina/[ciudad]"
   const name = cityName(ciudad);
   return {
     title: `Free tours en ${name} (${new Date().getFullYear()})`,
-    description: `Free walking tours y experiencias en ${name} con guías locales verificados. Reserve gratis con su nombre y correo.`,
+    description: `Free walking tours y experiencias en ${name} con guías locales verificados. Reserva gratis con tu nombre y correo.`,
     alternates: { canonical: `${await rlOrigin()}/${ciudad}` },
   };
 }
@@ -63,7 +63,7 @@ export default async function CityPage({ params, searchParams }: PageProps<"/vit
         <div className="px-6 py-12 sm:px-12 sm:py-16">
           <Crumbs items={[{ label: "Inicio", href: rlPath(base) }, { label: name }]} />
           <h1 className="rl-h1 mt-4 max-w-[18ch]">Free tours en {name}</h1>
-          <p className="mt-3 max-w-[56ch] text-[16px] opacity-90">Tours a pie y experiencias con guías locales. Reserve gratis; en los free tours paga al final con propina.</p>
+          <p className="mt-3 max-w-[56ch] text-[16px] opacity-90">Tours a pie y experiencias con guías locales. Reserva gratis; en los free tours pagas al final con propina.</p>
           <div className="mt-6 flex flex-wrap gap-2 text-[13px] font-semibold">
             <span className="rl-tag rl-tag-glass">{all.items.length} tours</span>
             <span className="rl-tag rl-tag-glass">{options.zona.length} zonas</span>

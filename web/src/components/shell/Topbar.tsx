@@ -1,51 +1,29 @@
 "use client";
 
-import { Menu, Moon, Sun } from "lucide-react";
-import { useMemo, type ReactNode } from "react";
+import { Menu } from "lucide-react";
+import { useMemo } from "react";
 import { GlobalSearch } from "@/features/account/GlobalSearch";
 import { NotificationBell } from "@/features/account/NotificationBell";
 import { HelpButton } from "@/features/help/HelpButton";
 import { readPlatformNotifications, searchPlatform } from "@/app/plataforma/(consola)/configuracion/actions";
 import { AGENCY_HELP, PLATFORM_HELP } from "@/lib/help";
-import { applyTheme, parseTheme, THEME_STORAGE_KEY, type Theme } from "@/lib/theme";
-import { useStoredValue } from "@/lib/useStoredValue";
 import { QuickCreate } from "./QuickCreate";
+import { ThemeToggle } from "./ThemeToggle";
 import { useWorkspace } from "./Workspace";
 
-const keepTheme = (theme: Theme) => theme;
-
-function TopIcon({ label, onClick, children }: { label: string; onClick?: () => void; children: ReactNode }) {
-  return (
-    <button type="button" onClick={onClick} aria-label={label} title={label} className="relative grid h-10 w-10 flex-none place-items-center rounded-xl text-fg-2 transition hover:bg-surface-2 hover:text-fg">
-      {children}
-    </button>
-  );
-}
-
-function ThemeToggle() {
-  const [theme, storeTheme] = useStoredValue(THEME_STORAGE_KEY, parseTheme, keepTheme);
-  const toggle = () => {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    applyTheme(next);
-    storeTheme(next);
-  };
-  return (
-    <TopIcon label={theme === "dark" ? "Usar tema claro" : "Usar tema oscuro"} onClick={toggle}>
-      {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-    </TopIcon>
-  );
-}
+const FIELD_PREFIX = "/mobile/";
 
 export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const { searchHint, navigation, groups } = useWorkspace();
   const agency = navigation === "agency";
   const screens = useMemo(() => groups.flatMap((group) => group.screens.map((screen) => ({ href: screen.href, label: screen.label, group: group.label }))), [groups]);
+  const fieldOnly = agency && screens.every((screen) => screen.href.startsWith(FIELD_PREFIX));
   return (
     <header className="sticky top-0 z-30 flex h-16 flex-none items-center gap-3 border-b border-line bg-surface/85 px-4 backdrop-blur-md sm:px-6 xl:px-8">
       <button type="button" onClick={onOpenMenu} aria-label="Abrir menú" className="grid h-10 w-10 place-items-center rounded-xl text-fg-2 lg:hidden">
         <Menu size={22} />
       </button>
-      {agency ? (
+      {fieldOnly ? null : agency ? (
         <GlobalSearch hint={searchHint} screens={screens} />
       ) : (
         <GlobalSearch hint={searchHint} search={searchPlatform} screens={screens} title="Buscar en la plataforma" description="Busca agencias, facturas de la plataforma, planes, cupones y pantallas de la consola por código o nombre." placeholder="Agencia, RUC, factura, plan, cupón o pantalla" />

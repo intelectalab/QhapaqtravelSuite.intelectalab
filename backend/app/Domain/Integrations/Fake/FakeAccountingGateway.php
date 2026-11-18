@@ -6,6 +6,7 @@ namespace App\Domain\Integrations\Fake;
 
 use App\Domain\Integrations\Contracts\AccountingGateway;
 use App\Domain\Integrations\Data\AdapterResult;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 
 final class FakeAccountingGateway implements AccountingGateway
 {
@@ -20,6 +21,8 @@ final class FakeAccountingGateway implements AccountingGateway
 
     public function render(string $target, array $entries): array
     {
+        IntegrationReadiness::refuse('accounting');
+
         [$separator, $header] = self::LAYOUTS[$target] ?? self::LAYOUTS['csv'];
         $lines = [implode($separator, $header)];
 
@@ -38,6 +41,10 @@ final class FakeAccountingGateway implements AccountingGateway
 
     public function healthcheck(): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::health('accounting')) !== null) {
+            return $unavailable;
+        }
+
         return AdapterResult::success('ok', null, ['simulated' => true]);
     }
 

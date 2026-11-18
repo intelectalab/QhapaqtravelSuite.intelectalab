@@ -30,7 +30,7 @@ export default async function CuotaPage({ params }: PageProps<"/finanzas/cobros/
   const row = await getReceivable(code);
   const paidPct = Number(row.amount) > 0 ? (Number(row.paid) / Number(row.amount)) * 100 : 0;
   const open = row.status !== "pagada" && row.status !== "cancelada" && Number(row.balance) > 0;
-  const payable = { code: row.code, concept: row.concept, balance: Number(row.balance), currency: row.currency, fx_rate: row.currency === "PEN" ? null : Number(row.fx_rate), client: { name: row.client.name } };
+  const payable = { code: row.code, concept: row.concept, balance: Number(row.balance), currency: row.currency, fx_rate: row.currency === "PEN" ? null : Number(row.fx_rate), b2b_credit: row.b2b_credit, client: { name: row.client.name } };
 
   return (
     <ToneScope tone={statusTone(row.status)}>

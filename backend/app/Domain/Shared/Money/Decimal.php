@@ -46,9 +46,9 @@ final class Decimal
         return $value === null ? null : (string) self::round2($value);
     }
 
-    public static function display(BigDecimal|string|int $value, string $currency): string
+    public static function display(mixed $value, string $currency): string
     {
-        $amount = self::round2($value);
+        $amount = self::round2(self::of($value));
         [$integer, $fraction] = explode('.', (string) $amount->abs());
         $grouped = ltrim(strrev(implode(' ', str_split(strrev($integer), 3))));
         $symbol = ['PEN' => 'S/', 'USD' => 'US$', 'EUR' => '€'][$currency] ?? $currency;

@@ -165,7 +165,7 @@ final class TreasuryOperations
             $expected = $this->balance($account);
 
             if (! Decimal::money($data['counted'])->isEqualTo($expected)) {
-                throw ApiException::conflict('TES-BR-07', 'El conteo de apertura (S/ '.Decimal::money($data['counted']).") no coincide con el saldo del último cierre (S/ {$expected}). Revisa el efectivo o registra un arqueo antes de abrir.");
+                throw ApiException::conflict('TES-BR-07', 'El conteo de apertura ('.Decimal::display($data['counted'], 'PEN').') no coincide con el saldo del último cierre ('.Decimal::display($expected, 'PEN').'). Revisa el efectivo o registra un arqueo antes de abrir.');
             }
 
             $code = $this->sequences->next('cash_session');
@@ -205,11 +205,11 @@ final class TreasuryOperations
                 }
 
                 if ($settings && $amount->isGreaterThan((string) $settings->max_petty_expense)) {
-                    throw ApiException::unprocessable('TES-BR-11', 'El gasto supera el máximo por caja chica (S/ '.$settings->max_petty_expense.'). Págalo desde un banco.');
+                    throw ApiException::unprocessable('TES-BR-11', 'El gasto supera el máximo por caja chica ('.Decimal::display($settings->max_petty_expense, 'PEN').'). Págalo desde un banco.');
                 }
 
                 if ($data['receipt_type'] === 'sworn_statement' && $settings && $amount->isGreaterThan((string) $settings->sworn_statement_max)) {
-                    throw ApiException::unprocessable('TES-BR-12', 'Con declaración jurada solo se sustentan gastos de hasta S/ '.$settings->sworn_statement_max.'.');
+                    throw ApiException::unprocessable('TES-BR-12', 'Con declaración jurada solo se sustentan gastos de hasta '.Decimal::display($settings->sworn_statement_max, 'PEN').'.');
                 }
 
                 if (filled($data['issuer_ruc'] ?? null) && filled($data['series_number'] ?? null) && DB::table('fin_expense_receipts')->where('issuer_ruc', $data['issuer_ruc'])->where('series_number', $data['series_number'])->exists()) {
@@ -286,7 +286,7 @@ final class TreasuryOperations
             }
 
             if ($difference->abs()->isGreaterThan($tolerance)) {
-                app(StaffNotices::class)->toManagers('arqueo.diferencia', "Arqueo {$code} con diferencia de S/ {$difference}", "{$account->name}: contado S/ {$counted}, esperado S/ {$expected}. Necesita tu aprobación.", 'fin_cash_count', $id, null, (string) $actor->getKey());
+                app(StaffNotices::class)->toManagers('arqueo.diferencia', "Arqueo {$code} con diferencia de ".Decimal::display($difference, 'PEN'), "{$account->name}: contado ".Decimal::display($counted, 'PEN').', esperado '.Decimal::display($expected, 'PEN').'. Necesita tu aprobación.', 'fin_cash_count', $id, null, (string) $actor->getKey());
             }
 
             if ($kind === 'closing') {
@@ -356,7 +356,7 @@ final class TreasuryOperations
             DB::table('fin_treasury_movements')->whereIn('id', $expenses->pluck('id'))->update(['replenishment_id' => $id]);
             $this->event($id, null, 'requested', $data['note'] ?? null, $actor);
             $this->audit->log('Reposición de caja', $code, 'solicitar', null, "{$account->code} · S/ {$amount} · {$expenses->count()} gastos");
-            app(StaffNotices::class)->toRoles(['finance', 'manager'], 'reposicion.solicitada', "Reposición {$code} por aprobar", "{$account->name}: S/ {$amount} en {$expenses->count()} gasto(s) rendido(s).", 'fin_cash_replenishment', $id, null, [], (string) $actor->getKey());
+            app(StaffNotices::class)->toRoles(['finance', 'manager'], 'reposicion.solicitada', "Reposición {$code} por aprobar", "{$account->name}: ".Decimal::display($amount, 'PEN')." en {$expenses->count()} gasto(s) rendido(s).", 'fin_cash_replenishment', $id, null, [], (string) $actor->getKey());
 
             return $code;
         });
@@ -408,7 +408,7 @@ final class TreasuryOperations
             DB::table('fin_cash_replenishments')->where('id', $replenishment->id)->update(['status' => 'paid', 'paid_by' => $actor->getKey(), 'paid_at' => now(), 'paid_from_account_id' => $from->id, 'transfer_id' => DB::table('fin_treasury_transfers')->where('code', $transfer)->value('id'), 'updated_by' => $actor->getKey(), 'updated_at' => now()]);
             $this->event($replenishment->id, 'approved', 'paid', $transfer, $actor);
             $this->audit->log('Reposición de caja', $code, 'pagar', 'approved', $transfer);
-            app(StaffNotices::class)->toUser((string) $replenishment->requested_by, 'reposicion.pagada', "Reposición {$code} pagada", "S/ {$replenishment->amount} transferidos a la caja.", 'fin_cash_replenishment', (string) $replenishment->id, null, (string) $actor->getKey());
+            app(StaffNotices::class)->toUser((string) $replenishment->requested_by, 'reposicion.pagada', "Reposición {$code} pagada", Decimal::display($replenishment->amount, 'PEN').' transferidos a la caja.', 'fin_cash_replenishment', (string) $replenishment->id, null, (string) $actor->getKey());
 
             return $transfer;
         });
@@ -454,7 +454,7 @@ final class TreasuryOperations
             return;
         }
 
-        app(StaffNotices::class)->toRoles(['finance'], 'caja.bajo_umbral', "{$account->name} bajo el {$threshold} % del fondo", 'Saldo S/ '.$this->balance($account)." de un fondo de S/ {$fund}. Solicita la reposición.", 'fin_treasury_account', (string) $account->id, null, $account->custodian_id ? [(string) $account->custodian_id] : [], (string) $actor->getKey());
+        app(StaffNotices::class)->toRoles(['finance'], 'caja.bajo_umbral', "{$account->name} bajo el {$threshold} % del fondo", 'Saldo '.Decimal::display($this->balance($account), 'PEN').' de un fondo de '.Decimal::display($fund, 'PEN').'. Solicita la reposición.', 'fin_treasury_account', (string) $account->id, null, $account->custodian_id ? [(string) $account->custodian_id] : [], (string) $actor->getKey());
     }
 
     private function markDeposited(object $account, BigDecimal $amount, string $transferId): void

@@ -35,7 +35,7 @@ final class SupplierIncidents
             $from = Carbon::now($this->context->timezone())->subDays(SupplierOperations::INCIDENT_WINDOW_DAYS)->toDateString();
 
             if (in_array($service->status, ['cancelado', 'rechazado'], true) || $service->service_date < $from) {
-                throw ApiException::unprocessable('SUP-BR-51', 'Solo puede reportar incidencias de servicios vigentes de los últimos '.SupplierOperations::INCIDENT_WINDOW_DAYS.' días.');
+                throw ApiException::unprocessable('SUP-BR-51', 'Solo puedes reportar incidencias de servicios vigentes de los últimos '.SupplierOperations::INCIDENT_WINDOW_DAYS.' días.');
             }
 
             return $this->open($account, [

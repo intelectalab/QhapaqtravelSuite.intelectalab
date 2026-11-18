@@ -22,7 +22,7 @@ import { TextField } from "@/components/ui/TextField";
 import { TintCardTitle, ToneScope } from "@/components/ui/Tinted";
 import { ADMIN_INITIAL, type AdminActionState, type ApiKey, type AuditEntry, type ApiOverview, type Option, type Webhook, type WebhookDelivery, type WebhookDeliveryDetail } from "@/lib/admin";
 import { cn } from "@/lib/cn";
-import { formatDate, formatDateTime, formatNumber } from "@/lib/format";
+import { formatDate, formatDateTime, formatNumber, formatPercent } from "@/lib/format";
 import type { Tone } from "@/lib/tone";
 import { AuditTrail, CheckChips, FieldLabel, RISE, SecretReveal } from "./AdminParts";
 
@@ -230,6 +230,8 @@ export function ApiKeyEndpoints({ data }: { data: ApiOverview }) {
 
 export function ApiKeysTable({ data }: { data: ApiOverview }) {
   const live = (data.public_endpoints ?? []).length > 0;
+  const activeKeys = data.keys.filter((apiKey) => apiKey.status === "active").length;
+  const quota = data.limits.calls_month ? (data.calls_month / data.limits.calls_month) * 100 : null;
   const columns: Column<ApiKey>[] = [
     {
       id: "key",
@@ -237,8 +239,8 @@ export function ApiKeysTable({ data }: { data: ApiOverview }) {
       mobile: "title",
       cell: (apiKey) => (
         <div className="min-w-0">
-          <p className="truncate text-[13.5px] font-semibold">{apiKey.name}</p>
-          <p className="font-mono text-[11.5px] text-fg-3">{apiKey.masked}</p>
+          <p className="text-[13.5px] font-semibold">{apiKey.name}</p>
+          <p className="break-all font-mono text-[11.5px] text-fg-3">{apiKey.masked}</p>
         </div>
       ),
     },
@@ -303,9 +305,10 @@ export function ApiKeysTable({ data }: { data: ApiOverview }) {
     },
   ];
   const metrics: MetricFilter<ApiKey>[] = [
-    { id: "active", label: "Activas", tone: "ok", icon: <KeyRound size={19} />, matches: (apiKey) => apiKey.status === "active" },
-    { id: "live", label: "En producción", tone: "t1", icon: <ShieldCheck size={19} />, matches: (apiKey) => apiKey.environment === "live" && apiKey.status === "active" },
-    { id: "inactive", label: "Revocadas o vencidas", tone: "mute", icon: <Ban size={19} />, matches: (apiKey) => apiKey.status !== "active" },
+    { id: "active", label: "Activas", tone: "ok", icon: <KeyRound size={19} />, display: `${formatNumber(activeKeys)} / ${data.limits.api_keys === null ? "sin límite" : formatNumber(data.limits.api_keys)}`, note: data.limits.api_keys === null ? "Tu plan no limita las claves" : "Máximo de claves activas de tu plan", info: <p>Claves en estado activo frente al máximo que permite tu plan; las revocadas y las vencidas no cuentan. Al presionarla ves solo las claves activas.</p>, matches: (apiKey) => apiKey.status === "active" },
+    { id: "live", label: "En producción", tone: "t1", icon: <ShieldCheck size={19} />, info: <p>Claves activas del entorno de producción, las que usan tus sistemas reales. Al presionarla ves solo esas claves.</p>, matches: (apiKey) => apiKey.environment === "live" && apiKey.status === "active" },
+    { id: "calls", label: "Llamadas del mes", tone: quota !== null && quota >= 80 ? "sun" : "info", icon: <Gauge size={19} />, display: formatNumber(data.calls_month), note: data.limits.calls_month ? `${formatNumber(Math.round(quota ?? 0))} % de ${formatNumber(data.limits.calls_month)}${data.limits.rate_per_min ? ` · ${formatNumber(data.limits.rate_per_min)} por minuto` : ""}` : "Sin cuota mensual", info: <p>Llamadas a la API del mes en curso, según el consumo consolidado de tu agencia, frente a la cuota mensual del plan. Al presionarla ves las claves que hicieron llamadas en los últimos 30 días.</p>, matches: (apiKey) => (apiKey.usage?.calls_30d ?? 0) > 0 },
+    { id: "inactive", label: "Revocadas o vencidas", tone: "mute", icon: <Ban size={19} />, info: <p>Claves que ya no autentican porque se revocaron o pasaron su fecha de vencimiento. Al presionarla ves solo esas claves.</p>, matches: (apiKey) => apiKey.status !== "active" },
   ];
   const filters: FilterConfig<ApiKey>[] = [
     { id: "status", label: "Estado", options: Object.entries(KEY_STATUS).map(([value, item]) => ({ value, label: item.label })), value: (apiKey) => apiKey.status },
@@ -512,6 +515,12 @@ function DeliveryDetail({ delivery, canManage }: { delivery: WebhookDelivery; ca
 }
 
 export function DeliveriesTable({ data, webhook }: { data: ApiOverview; webhook?: string }) {
+  const [since] = useState(() => Date.now() - 24 * 3600 * 1000);
+  const finished = data.deliveries.filter((delivery) => delivery.status !== "pending");
+  const delivered = finished.filter((delivery) => delivery.status === "delivered").length;
+  const isRecent = (delivery: WebhookDelivery) => delivery.status !== "pending" && new Date(delivery.at).getTime() >= since;
+  const recent = finished.filter(isRecent);
+  const recentOk = recent.filter((delivery) => delivery.status === "delivered").length;
   const columns: Column<WebhookDelivery>[] = [
     {
       id: "event",
@@ -561,9 +570,10 @@ export function DeliveriesTable({ data, webhook }: { data: ApiOverview; webhook?
     },
   ];
   const metrics: MetricFilter<WebhookDelivery>[] = [
-    { id: "ok", label: "Entregadas", tone: "ok", icon: <CheckCircle2 size={19} />, matches: (delivery) => delivery.status === "delivered" },
-    { id: "retry", label: "Reintentando", tone: "sun", icon: <RotateCw size={19} />, matches: (delivery) => delivery.status === "retrying" },
-    { id: "failed", label: "Fallidas", tone: "bad", icon: <XCircle size={19} />, matches: (delivery) => delivery.status === "failed" },
+    { id: "day", label: "Entregas en 24 h", tone: recent.length > 0 && recentOk / recent.length < 0.95 ? "warn" : "ok", icon: <Activity size={19} />, display: recent.length > 0 ? formatPercent((recentOk / recent.length) * 100, 1) : "Sin entregas", note: recent.length > 0 ? `${formatNumber(recent.length)} entregas · ${formatNumber(recent.length - recentOk)} fallidas` : finished.length > 0 ? `${formatPercent((delivered / finished.length) * 100, 1)} en el historial` : undefined, info: <p>Entregas de webhooks que tu servidor aceptó en las últimas 24 horas, entre las que ya terminaron; las que siguen en cola no cuentan. Al presionarla ves las entregas terminadas de las últimas 24 horas.</p>, matches: isRecent },
+    { id: "ok", label: "Entregadas", tone: "ok", icon: <CheckCircle2 size={19} />, info: <p>Entregas que tu servidor aceptó con una respuesta correcta. Al presionarla ves solo esas entregas.</p>, matches: (delivery) => delivery.status === "delivered" },
+    { id: "retry", label: "Reintentando", tone: "sun", icon: <RotateCw size={19} />, info: <p>Entregas que fallaron y tienen un reintento programado. Al presionarla ves solo esas entregas.</p>, matches: (delivery) => delivery.status === "retrying" },
+    { id: "failed", label: "Fallidas", tone: "bad", icon: <XCircle size={19} />, info: <p>Entregas que agotaron sus reintentos sin que tu servidor las aceptara. Al presionarla ves solo esas entregas.</p>, matches: (delivery) => delivery.status === "failed" },
   ];
   const filters: FilterConfig<WebhookDelivery>[] = [
     { id: "webhook", label: "Webhook", options: data.webhooks.map((hook) => ({ value: hook.code, label: hook.description ?? hook.code })), value: (delivery) => delivery.webhook },

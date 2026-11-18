@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CheckCheck, Code2, Copy, ExternalLink, Eye, Gauge, Inbox, KeyRound, LayoutTemplate, Link2, MessageSquareReply, MessagesSquare, Send, Settings2, Sparkles, Star, TriangleAlert } from "lucide-react";
+import { Check, CheckCheck, Code2, Copy, ExternalLink, Eye, Inbox, KeyRound, LayoutTemplate, Link2, MessageSquareReply, Settings2, Sparkles, Star, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { markExternalPublished, replyExternalReview, saveReviewWidget } from "@/app/(backoffice)/canales/resenas/actions";
 import { DataTable } from "@/components/table/DataTable";
@@ -15,31 +15,16 @@ import { PanelAction } from "@/components/ui/PanelAction";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
 import type { ReactNode } from "react";
 import { channelStatus, type ExternalReview, type ExternalReviewsOverview, type ReviewSource, type ReviewSourceAdmin, type ReviewWidgetSettings } from "@/lib/channels";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, formatNumber, formatPercent } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { avatarTone, toneStyle } from "@/lib/tone";
-import { ChannelBadge, CodeSnippet, DetailPanel, PanelSection, Stars, TileGrid } from "./ChannelUi";
+import { ChannelBadge, CodeSnippet, DetailPanel, PanelSection, Stars } from "./ChannelUi";
 import { EscalateReviewAction, ReviewSourceActions } from "./ReviewSourceActions";
 
 const initial: StepResult = { message: null, done: false };
-
-export function ExternalTiles({ overview }: { overview: ExternalReviewsOverview }) {
-  const { kpis, sources } = overview;
-  const answered = overview.items.filter((review) => review.status === "pendiente_publicar" || review.status === "publicada").length;
-  const best = sources.filter((source) => source.rating !== null).sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))[0];
-  return (
-    <TileGrid>
-      <TintTile icon={Star} tone="sun" label="Calificación ponderada" value={kpis.average !== null ? <span className="flex items-center gap-2">{kpis.average.toFixed(2)} <Stars value={kpis.average} size={13} /></span> : "—"} note={best ? `Mejor en ${best.label}` : undefined} info={<p>Promedio de las plataformas conectadas, pesado por cuántas reseñas tiene cada una.</p>} />
-      <TintTile icon={MessagesSquare} tone="t1" label="Reseñas publicadas" value={formatNumber(kpis.total)} note={`En ${kpis.connected} de ${sources.length} plataformas conectadas`} info={<p>Total que informa cada plataforma en su última sincronización. La administración de la agencia conecta cada plataforma en la pestaña Conectores; la credencial nunca se vuelve a mostrar.</p>} />
-      <TintTile icon={Gauge} tone="violet" label="Tasa de respuesta" value={kpis.inbox > 0 ? formatPercent((answered / kpis.inbox) * 100, 0) : "—"} note="Con respuesta guardada o publicada" info={<p>Reseñas de la bandeja que ya tienen respuesta: {formatNumber(answered)} de {formatNumber(kpis.inbox)}.</p>} />
-      <TintTile icon={Send} tone={kpis.invites_active ? "ok" : "mute"} label="Invitaciones postviaje" value={kpis.invites_active ? "Activas" : "Inactivas"} note={`${formatNumber(kpis.invites_sent)} enviadas en 30 días`} info={<p>Estado de la regla de invitación a reseña (R-REVIEW-INVITE) en Reglas de reserva, y las invitaciones enviadas, abiertas o respondidas en los últimos 30 días. Se invita a todos los pasajeros por igual, sin filtrar por satisfacción.</p>} />
-    </TileGrid>
-  );
-}
 
 export function ConnectorsGrid({ sources, actions }: { sources: ReviewSource[]; actions?: (source: ReviewSource) => ReactNode }) {
   return (
@@ -242,11 +227,16 @@ export function ExternalInbox({ overview }: { overview: ExternalReviewsOverview 
       ),
     },
   ];
+  const { kpis, sources } = overview;
+  const isAnswered = (row: ExternalReview) => row.status === "pendiente_publicar" || row.status === "publicada";
+  const answered = rows.filter(isAnswered).length;
+  const best = sources.filter((source) => source.rating !== null).sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))[0];
   const metrics: MetricFilter<ExternalReview>[] = [
-    { id: "open", label: "Sin responder", tone: "warn", icon: <Inbox size={19} />, matches: (row) => row.status === "sin_responder" },
-    { id: "critical", label: "Críticas", tone: "bad", icon: <TriangleAlert size={19} />, matches: (row) => row.rating <= 3 },
-    { id: "toPublish", label: "Por publicar", tone: "info", icon: <MessageSquareReply size={19} />, matches: (row) => row.status === "pendiente_publicar" },
-    { id: "done", label: "Respondidas", tone: "ok", icon: <CheckCheck size={19} />, matches: (row) => row.status === "publicada" },
+    { id: "rating", label: "Calificación ponderada", tone: "sun", icon: <Star size={19} />, display: kpis.average !== null ? kpis.average.toFixed(2) : "—", note: `${formatNumber(kpis.total)} reseñas en ${kpis.connected} de ${sources.length} plataformas${best ? ` · mejor en ${best.label}` : ""}`, info: <p>Promedio de las plataformas conectadas, pesado por cuántas reseñas tiene cada una según su última sincronización; la nota suma ese total. Al presionarla, la tabla muestra las reseñas de 4 y 5 estrellas de la bandeja.</p>, matches: (row) => row.rating >= 4 },
+    { id: "open", label: "Sin responder", tone: "warn", icon: <Inbox size={19} />, info: <p>Reseñas de la bandeja que todavía no tienen respuesta. Al presionarla, la tabla muestra esas reseñas.</p>, matches: (row) => row.status === "sin_responder" },
+    { id: "critical", label: "Críticas", tone: "bad", icon: <TriangleAlert size={19} />, info: <p>Reseñas de 3 estrellas o menos; se pueden escalar a una conversación con el cliente. Al presionarla, la tabla muestra esas reseñas.</p>, matches: (row) => row.rating <= 3 },
+    { id: "toPublish", label: "Por publicar", tone: "info", icon: <MessageSquareReply size={19} />, info: <p>Respuestas guardadas que falta publicar en la plataforma: por API cuando lo permite o copiándolas a mano y marcándolas como publicadas. Al presionarla, la tabla muestra esas reseñas.</p>, matches: (row) => row.status === "pendiente_publicar" },
+    { id: "done", label: "Tasa de respuesta", tone: "ok", icon: <CheckCheck size={19} />, display: kpis.inbox > 0 ? formatPercent((answered / kpis.inbox) * 100, 0) : "—", note: `${formatNumber(answered)} de ${formatNumber(kpis.inbox)} con respuesta`, info: <p>Reseñas de la bandeja con respuesta guardada o publicada. Al presionarla, la tabla muestra esas reseñas.</p>, matches: isAnswered },
   ];
   const filters: FilterConfig<ExternalReview>[] = [
     { id: "source", label: "Plataforma", options: [...new Set(rows.map((row) => row.source))].map((value) => ({ value, label: value })), value: (row) => row.source },

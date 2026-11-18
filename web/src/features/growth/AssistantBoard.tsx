@@ -189,8 +189,8 @@ export function AssistantBoard({ usage }: { usage: AiUsage }) {
             </div>
           </div>
           <dl className="mt-4 grid gap-2 text-[13px]">
-            <div className="flex justify-between"><dt className="text-fg-3">Disponibles</dt><dd className="font-semibold">{usage.remaining === null ? "Sin límite" : formatNumber(usage.remaining)}</dd></div>
-            <div className="flex justify-between"><dt className="text-fg-3">Tokens del mes</dt><dd className="font-semibold">{formatNumber(usage.tokens_in + usage.tokens_out)}</dd></div>
+            <div className="flex justify-between"><dt className="text-fg-3">Pedidos disponibles</dt><dd className="font-semibold">{usage.remaining === null ? "Sin límite" : formatNumber(usage.remaining)}</dd></div>
+            <div className="flex justify-between"><dt className="text-fg-3">Tokens usados en el mes</dt><dd className="font-semibold">{formatNumber(usage.tokens_in + usage.tokens_out)}</dd></div>
             <div className="flex justify-between"><dt className="text-fg-3">Costo estimado</dt><dd className="font-semibold">USD {usage.cost_usd}</dd></div>
           </dl>
           <p className="mt-4 text-[12px] text-fg-3">Los datos del cliente se reducen a nombre, fechas, pasajeros y preferencias. Tarjetas, documentos y contraseñas se eliminan antes de enviar el pedido.</p>

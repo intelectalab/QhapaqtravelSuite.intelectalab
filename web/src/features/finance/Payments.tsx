@@ -2,7 +2,7 @@
 
 import { CircleCheck, CircleX, Hourglass, Landmark, Paperclip, RotateCcw, Undo2 } from "lucide-react";
 import { PAYMENTS_CSV } from "@/lib/finance-csv";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -138,6 +138,10 @@ function proofFirst(rows: PaymentRow[]): PaymentRow[] {
 export function PaymentsTable({ data }: { data: PaymentsOverview }) {
   const { can } = data;
   const rows = proofFirst(data.rows);
+  const [monthStart] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  });
 
   const columns: Column<PaymentRow>[] = [
     {
@@ -210,11 +214,14 @@ export function PaymentsTable({ data }: { data: PaymentsOverview }) {
     },
   ];
 
+  const { kpis } = data;
+  const rejectedPen = data.rows.filter((row) => row.status === "rechazado").reduce((sum, row) => sum + row.pen, 0);
   const metrics: MetricFilter<PaymentRow>[] = [
-    { id: "pending", label: "Por validar", tone: "warn", icon: <Hourglass size={19} />, matches: (row) => row.status === "pendiente" },
-    { id: "applied", label: "Aplicados", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "aplicado" },
-    { id: "unmatched", label: "Sin línea de banco", tone: "t1", icon: <Landmark size={19} />, matches: (row) => !row.bank_line && row.status !== "revertido" && row.status !== "rechazado" },
-    { id: "reverted", label: "Revertidos o rechazados", tone: "bad", icon: <Undo2 size={19} />, matches: (row) => row.status === "revertido" || row.status === "rechazado" },
+    { id: "pending", label: "Por validar", tone: "warn", icon: <Hourglass size={19} />, display: formatMoney(kpis.pending_pen, "PEN", { compact: true }), note: `${kpis.pending_count === 1 ? "1 pago espera" : `${kpis.pending_count} pagos esperan`} confirmarse en el banco`, info: <p>Monto en soles de los pagos de clientes reportados que aún no se validan contra el banco. Al presionarla, la tabla muestra esos pagos por validar.</p>, matches: (row) => row.kind === "cobro" && row.status === "pendiente" },
+    { id: "applied", label: "Aplicado este mes", tone: "ok", icon: <CircleCheck size={19} />, display: formatMoney(kpis.applied_month_pen, "PEN", { compact: true }), note: `${kpis.applied_month_count === 1 ? "1 pago" : `${kpis.applied_month_count} pagos`} · ${kpis.to_apply_count ?? 0} por aplicar`, info: <p>Pagos aplicados a una cuota con fecha desde el día 1 del mes. «Por aplicar» cuenta los pagos ya confirmados que aún no saldan ninguna cuota. Al presionarla, la tabla muestra los pagos aplicados este mes.</p>, matches: (row) => row.status === "aplicado" && row.paid_on >= monthStart },
+    { id: "unmatched", label: "Sin línea de banco", tone: "t1", icon: <Landmark size={19} />, info: <p>Pagos vigentes que todavía no se emparejan con un movimiento del extracto bancario en Conciliación. Al presionarla, la tabla muestra esos pagos.</p>, matches: (row) => !row.bank_line && row.status !== "revertido" && row.status !== "rechazado" },
+    { id: "reverted", label: "Revertidos", tone: "bad", icon: <Undo2 size={19} />, display: formatMoney(kpis.reverted_pen, "PEN", { compact: true }), note: `${kpis.reverted_count === 1 ? "1 pago desaplicado" : `${kpis.reverted_count} pagos desaplicados`} de su cuota`, info: <p>Monto de los pagos revertidos: dejaron de contar en el saldo de su cuota. Al presionarla, la tabla muestra esos pagos.</p>, matches: (row) => row.status === "revertido" },
+    { id: "rejected", label: "Rechazados", tone: "mute", icon: <CircleX size={19} />, display: formatMoney(rejectedPen, "PEN", { compact: true }), note: `${kpis.rejected_count === 1 ? "1 pago" : `${kpis.rejected_count} pagos`} · se pueden reintentar`, info: <p>Monto de los pagos rechazados al validar. Con una nueva constancia vuelven a pendiente con Reintentar validación. Al presionarla, la tabla muestra esos pagos.</p>, matches: (row) => row.status === "rechazado" },
   ];
 
   const filters: FilterConfig<PaymentRow>[] = [

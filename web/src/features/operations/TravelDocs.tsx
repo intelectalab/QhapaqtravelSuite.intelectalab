@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, CircleAlert, Clock3, Eye, FileSearch, FileWarning, Plane, ShieldCheck } from "lucide-react";
+import { BadgeCheck, CircleAlert, Clock3, Eye, FileCheck2, FileSearch, FileWarning, Plane, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -77,11 +77,13 @@ export function TravelDocsTable({ data }: { data: TravelDocList }) {
     { id: "actions", header: "", mobile: "hidden", align: "right", cell: (row) => (<RowActions><RowIcon tone="view" label="Ver checklist" href={href(row.code)} />{data.can.manage && (row.progress < 100 ? <RowIcon tone="edit" label="Revisar documentos" icon={<FileSearch size={15} />} href={href(row.code)} /> : <RowIcon tone="edit" label="Revisar documentos" icon={<FileSearch size={15} />} disabledHint="Checklist completo" />)}</RowActions>) },
   ];
 
+  const totals = data.items.reduce((sum, row) => ({ complete: sum.complete + row.documents.complete, total: sum.total + row.documents.total }), { complete: 0, total: 0 });
   const metrics: MetricFilter<TravelDocRow>[] = [
-    { id: "ready", label: "Listos para viajar", tone: "ok", icon: <ShieldCheck size={19} />, matches: (row) => row.documents.total > 0 && row.progress === 100 },
-    { id: "review", label: "Con archivos por revisar", tone: "info", icon: <Clock3 size={19} />, matches: (row) => row.documents.received > 0 },
-    { id: "observed", label: "Observados o vencidos", tone: "bad", icon: <CircleAlert size={19} />, matches: (row) => row.documents.observed > 0 || row.expired > 0 },
-    { id: "soon", label: "Salen en 15 días", tone: "warn", icon: <Plane size={19} />, matches: (row) => row.days_to_travel >= 0 && row.days_to_travel <= 15 && row.progress < 100 },
+    { id: "progress", label: "Avance documental", tone: "t1", icon: <FileCheck2 size={19} />, display: totals.total > 0 ? `${Math.round((totals.complete / totals.total) * 100)} %` : "—", note: `${totals.complete} de ${totals.total} documentos validados`, info: <p>Documentos validados sobre todos los que piden las reservas con checklist, sin contar las canceladas. Al presionarla, la tabla muestra las reservas con checklist.</p>, matches: (row) => row.documents.total > 0 },
+    { id: "ready", label: "Listos para viajar", tone: "ok", icon: <ShieldCheck size={19} />, info: <p>Reservas con todos los documentos del checklist validados. Al presionarla, la tabla muestra esas reservas.</p>, matches: (row) => row.documents.total > 0 && row.progress === 100 },
+    { id: "review", label: "Con archivos por revisar", tone: "info", icon: <Clock3 size={19} />, info: <p>Reservas con documentos recibidos que Operaciones aún no valida ni observa. Al presionarla, la tabla muestra esas reservas.</p>, matches: (row) => row.documents.received > 0 },
+    { id: "observed", label: "Observados o vencidos", tone: "bad", icon: <CircleAlert size={19} />, info: <p>Reservas con algún documento observado o que vence antes del regreso. Al presionarla, la tabla muestra esas reservas.</p>, matches: (row) => row.documents.observed > 0 || row.expired > 0 },
+    { id: "soon", label: "Salen en 15 días", tone: "warn", icon: <Plane size={19} />, info: <p>Reservas que viajan en los próximos 15 días y todavía no completan su checklist. Al presionarla, la tabla muestra esas reservas.</p>, matches: (row) => row.days_to_travel >= 0 && row.days_to_travel <= 15 && row.progress < 100 },
   ];
 
   const upcoming = (row: TravelDocRow) => row.travel_to >= data.today && row.status !== "completada";

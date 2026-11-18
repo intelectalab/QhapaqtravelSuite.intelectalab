@@ -26,7 +26,7 @@ export async function bookTour(_state: BookingResult, form: FormData): Promise<B
     marketing_consent: form.get("marketing_consent") === "1",
     ...(text(form, "utm_source") ? { utm_source: text(form, "utm_source") } : {}),
   };
-  if (body.name.length < 2 || !body.email.includes("@")) return { ok: false, message: "Escriba su nombre y un correo válido." };
+  if (body.name.length < 2 || !body.email.includes("@")) return { ok: false, message: "Escribe tu nombre y un correo válido." };
   const result = await apiFetch<RlBooking>(`/showcase/listings/${encodeURIComponent(slug)}/bookings`, { method: "POST", body, auth: false });
   if (!result.ok || !result.data) return failure(result, "No pudimos registrar la reserva. Inténtelo de nuevo.");
   return { ok: true, message: null, booking: result.data };
@@ -34,7 +34,7 @@ export async function bookTour(_state: BookingResult, form: FormData): Promise<B
 
 export async function cancelBooking(_state: RlFormResult, form: FormData): Promise<RlFormResult> {
   const result = await apiFetch<{ code: string; status: string }>(`/showcase/bookings/${encodeURIComponent(text(form, "token"))}/cancel`, { method: "POST", body: {}, auth: false });
-  if (result.status === 404) return { ok: false, message: "No encontramos la reserva. Revise que el enlace sea el de su correo de confirmación." };
+  if (result.status === 404) return { ok: false, message: "No encontramos la reserva. Revisa que el enlace sea el de tu correo de confirmación." };
   if (!result.ok || !result.data) return failure(result, "No pudimos cancelar la reserva.");
   return { ok: true, message: `La reserva ${result.data.code} quedó cancelada. Gracias por avisar: el cupo queda libre para otro viajero.` };
 }
@@ -52,5 +52,5 @@ export async function registerAgency(_state: RlFormResult, form: FormData): Prom
   };
   const result = await apiFetch<{ code: string; wants_pass: boolean }>("/showcase/agencies", { method: "POST", body, auth: false });
   if (!result.ok || !result.data) return failure(result, "No pudimos enviar el registro.");
-  return { ok: true, message: `Recibimos el registro de ${body.name} (${result.data.code}). Le escribiremos a ${body.email} para verificar la agencia${result.data.wants_pass ? " y, al aprobarla, activar su Pase Básico de 30 días" : ""}.` };
+  return { ok: true, message: `Recibimos el registro de ${body.name} (${result.data.code}). Le escribiremos a ${body.email} para verificar la agencia${result.data.wants_pass ? " y, al aprobarla, activar tu Pase Básico de 30 días" : ""}.` };
 }

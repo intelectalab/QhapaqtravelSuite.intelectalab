@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, CircleAlert, Smile, ThumbsDown } from "lucide-react";
+import { Bot, CircleAlert, Gauge, LifeBuoy, Smile, ThumbsDown } from "lucide-react";
 import Link from "next/link";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
@@ -33,6 +33,8 @@ const casesCsv: CsvExport<CaseItem> = {
 };
 
 const unique = (values: string[]) => [...new Set(values)];
+
+const caseOpen = (row: CaseItem) => row.status === "abierta" || row.status === "en_proceso";
 
 export function ScoreBadge({ score, category }: { score: number; category: SurveyItem["category"] }) {
   return (
@@ -101,8 +103,9 @@ export function CasesTable({ overview }: { overview: AfterSalesOverview }) {
     },
   ];
   const metrics: MetricFilter<CaseItem>[] = [
-    { id: "high", label: "Prioridad alta o crítica", tone: "warn", icon: <CircleAlert size={19} />, matches: (row) => (row.priority === "alta" || row.priority === "critica") && (row.status === "abierta" || row.status === "en_proceso") },
-    { id: "nps", label: "Por NPS de detractor", tone: "bad", icon: <Bot size={19} />, matches: (row) => row.origin === "nps_auto" },
+    { id: "open", label: "Casos abiertos", tone: "info", icon: <LifeBuoy size={19} />, note: "Reclamos y quejas en curso", info: <p>Casos de postventa abiertos o en atención, incluidos los que abre una encuesta de 6 o menos. Al presionarla, la tabla muestra solo los que siguen en curso.</p>, matches: caseOpen },
+    { id: "high", label: "Prioridad alta o crítica", tone: "warn", icon: <CircleAlert size={19} />, info: <p>Casos abiertos o en atención con prioridad alta o crítica. Al presionarla, la tabla muestra los que hay que atender primero.</p>, matches: (row) => (row.priority === "alta" || row.priority === "critica") && caseOpen(row) },
+    { id: "nps", label: "Por NPS de detractor", tone: "bad", icon: <Bot size={19} />, info: <p>Casos que se abrieron solos porque el cliente puntuó la encuesta con 6 o menos, estén abiertos o cerrados. Al presionarla, la tabla muestra solo esos.</p>, matches: (row) => row.origin === "nps_auto" },
   ];
   const filters: FilterConfig<CaseItem>[] = [
     { id: "type", label: "Tipo", options: unique(rows.map((row) => row.type)).map((value) => ({ value, label: value })), value: (row) => row.type },
@@ -114,6 +117,8 @@ export function CasesTable({ overview }: { overview: AfterSalesOverview }) {
 
 export function SurveysTable({ overview }: { overview: AfterSalesOverview }) {
   const rows = overview.surveys;
+  const { kpis, today } = overview;
+  const yearAgo = `${Number(today.slice(0, 4)) - 1}${today.slice(4, 10)}`;
   const columns: Column<SurveyItem>[] = [
     {
       id: "client",
@@ -140,8 +145,18 @@ export function SurveysTable({ overview }: { overview: AfterSalesOverview }) {
     },
   ];
   const metrics: MetricFilter<SurveyItem>[] = [
-    { id: "promoters", label: "Promotores", tone: "ok", icon: <Smile size={19} />, matches: (row) => row.category === "promotor" },
-    { id: "detractors", label: "Detractores", tone: "bad", icon: <ThumbsDown size={19} />, matches: (row) => row.category === "detractor" },
+    {
+      id: "nps",
+      label: "NPS últimos 12 meses",
+      tone: kpis.nps !== null && kpis.nps >= 50 ? "ok" : kpis.nps !== null && kpis.nps < 0 ? "bad" : "sun",
+      icon: <Gauge size={19} />,
+      display: kpis.nps ?? "Sin datos",
+      note: kpis.average !== null ? `Promedio ${kpis.average} · ${kpis.responses} respuestas` : `${kpis.responses} respuestas`,
+      info: <p>Porcentaje de promotores (9 y 10) menos porcentaje de detractores (0 a 6), con las encuestas respondidas en los últimos 12 meses por los clientes de tu cartera. La nota es el puntaje promedio de 0 a 10 de esas mismas encuestas. Al presionarla, la tabla muestra solo esas encuestas.</p>,
+      matches: (row) => row.responded_at >= yearAgo,
+    },
+    { id: "promoters", label: "Promotores", tone: "ok", icon: <Smile size={19} />, info: <p>Encuestas con puntaje de 9 o 10, de todas las registradas. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => row.category === "promotor" },
+    { id: "detractors", label: "Detractores", tone: "bad", icon: <ThumbsDown size={19} />, info: <p>Encuestas con puntaje de 0 a 6, de todas las registradas; cada una abre un caso de postventa. Al presionarla, la tabla muestra solo esas.</p>, matches: (row) => row.category === "detractor" },
   ];
   const sorts: SortOption<SurveyItem>[] = [
     { id: "date", label: "Fecha", type: "date", value: (row) => row.responded_at },

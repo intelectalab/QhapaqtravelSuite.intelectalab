@@ -5,7 +5,6 @@ import { InfoTip } from "@/components/ui/InfoTip";
 import { SectionLayout } from "@/components/ui/SectionNav";
 import { ChangePlanAction, CouponAction, SubscriptionBanners } from "@/features/admin/SubscriptionActions";
 import { SubscriptionNav } from "@/features/admin/SubscriptionNav";
-import { SubscriptionKpis } from "@/features/admin/SubscriptionPanels";
 import { getPlanRules, getSubscription } from "@/lib/server/subscription";
 
 export default async function SuscripcionLayout({ children }: { children: ReactNode }) {
@@ -32,7 +31,6 @@ export default async function SuscripcionLayout({ children }: { children: ReactN
         }
       />
       {subscription && <SubscriptionBanners subscription={subscription} overdue={manage ? overdue : []} near={near} currency={plan?.currency ?? "PEN"} />}
-      <SubscriptionKpis data={data} />
       <SectionLayout nav={<SubscriptionNav addons={data.addons.length} invoices={data.invoices.length} />}>{children}</SectionLayout>
     </>
   );

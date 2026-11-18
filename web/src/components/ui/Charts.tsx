@@ -111,18 +111,24 @@ export interface BarDatum {
 export function BarChart({ data, height = 118, reference }: { data: BarDatum[]; height?: number; reference?: { value: number; label: string } }) {
   const [active, setActive] = useState<string | null>(null);
   const max = Math.max(...data.map((item) => item.value), reference?.value ?? 0) || 1;
+  const dense = data.length > 12;
+  const every = dense ? Math.ceil(data.length / 8) : 1;
+  const edge = (index: number) => (!dense ? "left-1/2 -translate-x-1/2" : index < data.length * 0.2 ? "left-0" : index >= data.length * 0.8 ? "right-0" : "left-1/2 -translate-x-1/2");
 
   return (
-    <div className="grid items-end gap-3.5" style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }} onPointerLeave={() => setActive(null)}>
+    <div className={cn("grid items-end", dense ? "gap-1" : "gap-3.5")} style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }} onPointerLeave={() => setActive(null)}>
       {data.map((item, index) => {
         const isActive = active === item.label;
         const dimmed = active !== null && !isActive;
+        const last = index === data.length - 1;
+        const tick = last || (index % every === 0 && data.length - 1 - index >= every / 2);
+        const shown = !dense || isActive || (active === null && tick);
         return (
           <div key={item.label} className="flex cursor-default flex-col items-center gap-1.5" onPointerEnter={() => setActive(item.label)}>
             <div className="relative flex w-full items-end" style={{ height }}>
               {reference && <span aria-hidden className="pointer-events-none absolute inset-x-[-7px] border-t border-dashed border-bad/60" style={{ bottom: `${(reference.value / max) * height}px` }} title={reference.label} />}
               {isActive && (
-                <span className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg bg-fg px-2 py-1 text-[11.5px] font-semibold text-bg shadow-lg motion-safe:animate-[drop-in_160ms_ease-out]" style={{ bottom: `${Math.max(6, (item.value / max) * height) + 8}px` }}>
+                <span className={cn("pointer-events-none absolute z-10 whitespace-nowrap rounded-lg bg-fg px-2 py-1 text-[11.5px] font-semibold text-bg shadow-lg motion-safe:animate-[drop-in_160ms_ease-out]", edge(index))} style={{ bottom: `${Math.max(6, (item.value / max) * height) + 8}px` }}>
                   {item.detail ?? item.caption}
                 </span>
               )}
@@ -133,12 +139,16 @@ export function BarChart({ data, height = 118, reference }: { data: BarDatum[]; 
                   isActive && "scale-x-[1.06] brightness-110",
                   dimmed && "opacity-45",
                 )}
-                style={{ height: `${Math.max(6, (item.value / max) * height)}px`, animationDelay: `${index * 70}ms` }}
+                style={{ height: `${Math.max(6, (item.value / max) * height)}px`, animationDelay: `${index * (dense ? 25 : 70)}ms` }}
               />
             </div>
-            <span className={cn("font-mono text-[11.5px] text-fg-3 transition-colors", isActive && "text-fg")}>
-              {item.label.charAt(0).toUpperCase() + item.label.slice(1)} <b className="font-semibold text-fg">{item.caption}</b>
-            </span>
+            {dense ? (
+              <span className={cn("whitespace-nowrap font-mono text-[11.5px] text-fg-3 transition-opacity", isActive && "font-semibold text-fg", !shown && "invisible")}>{item.caption}</span>
+            ) : (
+              <span className={cn("font-mono text-[11.5px] text-fg-3 transition-colors", isActive && "text-fg")}>
+                {item.label.charAt(0).toUpperCase() + item.label.slice(1)} <b className="font-semibold text-fg">{item.caption}</b>
+              </span>
+            )}
           </div>
         );
       })}

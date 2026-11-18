@@ -3,7 +3,6 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TabbedCard } from "@/components/ui/RouteTabs";
 import { ContractCreateAction } from "@/features/catalog-allotments/AllotmentForms";
-import { AllotmentTiles } from "@/features/catalog-allotments/AllotmentTiles";
 import { SupplyAlerts } from "@/features/catalog-shared/SupplyAlerts";
 import { formatDate } from "@/lib/format";
 import { getAllotments } from "@/lib/server/allotments";
@@ -32,7 +31,6 @@ export default async function CuposLayout({ children }: { children: ReactNode })
             : []),
         ]}
       />
-      <AllotmentTiles overview={overview} />
       <TabbedCard
         tabs={[
           { href: "/catalogo/cupos", label: "Grilla por fecha" },

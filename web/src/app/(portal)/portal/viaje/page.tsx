@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { TRIP_SECTIONS } from "@/features/portal/PassengerServices";
+import { TRIP_FIRST_SECTION } from "@/lib/portal";
 
 export default function PassengerTripIndex() {
-  redirect(TRIP_SECTIONS[0].href);
+  redirect(TRIP_FIRST_SECTION);
 }

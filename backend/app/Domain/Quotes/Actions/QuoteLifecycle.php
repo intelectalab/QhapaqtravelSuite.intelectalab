@@ -9,6 +9,7 @@ use App\Domain\Crm\Support\Advisors;
 use App\Domain\Iam\Models\User;
 use App\Domain\Integrations\Contracts\MessagingChannel;
 use App\Domain\Integrations\Data\OutboundMessage;
+use App\Domain\Integrations\Support\AgencyIntegrations;
 use App\Domain\Quotes\Enums\QuoteStatus;
 use App\Domain\Quotes\Models\Quote;
 use App\Domain\Quotes\StateMachines\QuoteStateMachine;
@@ -254,6 +255,10 @@ final class QuoteLifecycle
             throw ApiException::unprocessable('QTE-BR-23', 'Elige al menos un canal.', ['field' => 'channels']);
         }
 
+        foreach (array_intersect_key(['Email' => 'email', 'WhatsApp' => 'whatsapp'], array_flip($channels)) as $integration) {
+            app(AgencyIntegrations::class)->assertReady($integration);
+        }
+
         [$quote, $version, $link, $recipients] = DB::transaction(function () use ($code, $channels, $to, $message, $actor): array {
             [$quote, $version] = $this->load($code, $actor);
             $status = $this->effectiveStatus($quote);
@@ -486,7 +491,7 @@ final class QuoteLifecycle
     private function mail(Quote $quote, object $version, string $recipient, ?string $message, string $url): void
     {
         $agency = $this->context->tenant()->commercial_name;
-        app(QueuedMail::class)->send($recipient, null, "Cotización {$quote->code} · {$agency}", $this->body($quote, $version, $message, $url));
+        app(QueuedMail::class)->sendAsAgency($recipient, null, "Cotización {$quote->code} · {$agency}", $this->body($quote, $version, $message, $url));
     }
 
     private function whatsapp(Quote $quote, object $version, string $phone, ?string $message, string $url): void

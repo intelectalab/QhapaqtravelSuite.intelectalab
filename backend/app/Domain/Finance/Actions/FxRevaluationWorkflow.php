@@ -91,7 +91,7 @@ final class FxRevaluationWorkflow
                     'created_by' => $actor->getKey(), 'updated_by' => $actor->getKey(), 'created_at' => now(), 'updated_at' => now(),
                 ]);
                 $this->audit->log('Diferencia cambiaria', $code, 'registrar', "{$account->code} · {$period}", ($diff->isNegative() ? 'pérdida 676 · S/ ' : 'ganancia 776 · S/ ').$diff->abs());
-                app(StaffNotices::class)->toRoles(['finance', 'accounting'], 'tesoreria.diferencia_cambiaria', "Diferencia cambiaria {$code}", "{$account->name} · {$period}: ".($diff->isNegative() ? 'pérdida' : 'ganancia')." de S/ {$diff->abs()}.", 'fin_fx_revaluation', null, null, [], (string) $actor->getKey());
+                app(StaffNotices::class)->toRoles(['finance', 'accounting'], 'tesoreria.diferencia_cambiaria', "Diferencia cambiaria {$code}", "{$account->name} · {$period}: ".($diff->isNegative() ? 'pérdida' : 'ganancia').' de '.Decimal::display($diff->abs(), 'PEN').'.', 'fin_fx_revaluation', null, null, [], (string) $actor->getKey());
                 $created[] = $code;
             }
 

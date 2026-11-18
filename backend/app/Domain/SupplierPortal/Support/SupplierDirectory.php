@@ -367,7 +367,7 @@ final class SupplierDirectory
         $overdue = $pending->where('overdue', true);
 
         if ($overdue->isNotEmpty()) {
-            $alerts[] = ['kind' => 'request', 'tone' => 'bad', 'title' => $overdue->count() === 1 ? 'Una solicitud superó el plazo de respuesta' : "{$overdue->count()} solicitudes superaron el plazo de respuesta", 'detail' => 'Mientras no responda, la agencia no puede emitir el voucher al pasajero.', 'href' => '/proveedor/solicitudes'];
+            $alerts[] = ['kind' => 'request', 'tone' => 'bad', 'title' => $overdue->count() === 1 ? 'Una solicitud superó el plazo de respuesta' : "{$overdue->count()} solicitudes superaron el plazo de respuesta", 'detail' => 'Mientras no respondas, la agencia no puede emitir el voucher al pasajero.', 'href' => '/proveedor/solicitudes'];
         }
 
         if ($contract['alert'] !== null) {
@@ -376,22 +376,22 @@ final class SupplierDirectory
 
         $rooming = $this->operations->pendingRooming($account);
         if ($rooming > 0) {
-            $alerts[] = ['kind' => 'rooming', 'tone' => 'warn', 'title' => $rooming === 1 ? 'Una rooming list espera su respuesta' : "{$rooming} rooming lists esperan su respuesta", 'detail' => 'Acuse recibo y confirme las habitaciones para que la agencia cierre la distribución.', 'href' => '/proveedor/rooming'];
+            $alerts[] = ['kind' => 'rooming', 'tone' => 'warn', 'title' => $rooming === 1 ? 'Una rooming list espera tu respuesta' : "{$rooming} rooming lists esperan tu respuesta", 'detail' => 'Acusa recibo y confirma las habitaciones para que la agencia cierre la distribución.', 'href' => '/proveedor/rooming'];
         }
 
         $withoutInvoice = $open->where('can_invoice', true);
         if ($withoutInvoice->isNotEmpty()) {
-            $alerts[] = ['kind' => 'invoice', 'tone' => 'info', 'title' => $withoutInvoice->count() === 1 ? 'Un documento espera su factura' : "{$withoutInvoice->count()} documentos esperan su factura", 'detail' => 'La agencia programa el pago cuando registra la factura.', 'href' => '/proveedor/pagos'];
+            $alerts[] = ['kind' => 'invoice', 'tone' => 'info', 'title' => $withoutInvoice->count() === 1 ? 'Un documento espera tu factura' : "{$withoutInvoice->count()} documentos esperan tu factura", 'detail' => 'La agencia programa el pago cuando registra la factura.', 'href' => '/proveedor/pagos'];
         }
 
         $reviewed = DB::table('supplier_rate_requests')->where('provider_id', $account->id())->whereIn('status', ['aprobada', 'rechazada'])->where('reviewed_at', '>=', Carbon::now()->subDays(15))->orderByDesc('reviewed_at')->first(['code', 'status']);
         if ($reviewed !== null) {
-            $alerts[] = ['kind' => 'rate', 'tone' => $reviewed->status === 'aprobada' ? 'ok' : 'warn', 'title' => "Solicitud {$reviewed->code} ".($reviewed->status === 'aprobada' ? 'aprobada' : 'rechazada'), 'detail' => 'Revise el detalle en Tarifas.', 'href' => '/proveedor/tarifas'];
+            $alerts[] = ['kind' => 'rate', 'tone' => $reviewed->status === 'aprobada' ? 'ok' : 'warn', 'title' => "Solicitud {$reviewed->code} ".($reviewed->status === 'aprobada' ? 'aprobada' : 'rechazada'), 'detail' => 'Revisa el detalle en Tarifas.', 'href' => '/proveedor/tarifas'];
         }
 
         $rate = DB::table('supplier_rate_requests')->where('provider_id', $account->id())->where('status', 'pendiente')->count();
         if ($rate > 0) {
-            $alerts[] = ['kind' => 'rate', 'tone' => 'violet', 'title' => $rate === 1 ? 'Una actualización de tarifa en revisión' : "{$rate} actualizaciones de tarifa en revisión", 'detail' => 'La agencia le confirmará la decisión antes de la fecha propuesta.', 'href' => '/proveedor/tarifas'];
+            $alerts[] = ['kind' => 'rate', 'tone' => 'violet', 'title' => $rate === 1 ? 'Una actualización de tarifa en revisión' : "{$rate} actualizaciones de tarifa en revisión", 'detail' => 'La agencia te confirmará la decisión antes de la fecha propuesta.', 'href' => '/proveedor/tarifas'];
         }
 
         return $alerts;
@@ -432,8 +432,8 @@ final class SupplierDirectory
             'end' => $account->provider->contract_end,
             'days_left' => $daysLeft,
             'alert' => match (true) {
-                $daysLeft < 0 => 'Su contrato con la agencia está vencido',
-                $daysLeft < self::CONTRACT_WARNING_DAYS => "Su contrato vence en {$daysLeft} días",
+                $daysLeft < 0 => 'Tu contrato con la agencia está vencido',
+                $daysLeft < self::CONTRACT_WARNING_DAYS => "Tu contrato vence en {$daysLeft} días",
                 default => null,
             },
         ];

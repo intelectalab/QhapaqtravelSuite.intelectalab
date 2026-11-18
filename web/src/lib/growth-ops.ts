@@ -48,6 +48,8 @@ export interface PaymentTarget {
 
 export type PaymentLinkKpis = Record<PaymentLinkRow["status"], MoneyKpi>;
 
+export const GIFT_DELIVERY_HOUR = "8:00";
+
 export interface GiftCardRow {
   id: string;
   code: string;
@@ -62,6 +64,8 @@ export interface GiftCardRow {
   recipient_email: string | null;
   message: string | null;
   buyer: { code: string; name: string } | null;
+  deliver_at: string | null;
+  delivered_at: string | null;
   expires_at: string;
   created_at: string;
   created_by: string;

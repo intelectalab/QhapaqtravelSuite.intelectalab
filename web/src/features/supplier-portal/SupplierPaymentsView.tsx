@@ -11,7 +11,6 @@ import { FilePicker } from "@/components/ui/FilePicker";
 import { PanelAction } from "@/components/ui/PanelAction";
 import { DateField } from "@/components/ui/DateField";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
 import { STEP_INITIAL } from "@/features/catalog-shared/CatalogPanels";
 import { DetailPanel, MoneyLines, PanelSection, Timeline } from "@/features/channels/ChannelUi";
 import { PortalTitle } from "@/features/portal/PortalUi";
@@ -63,7 +62,7 @@ function PayableDetail({ row }: { row: SupplierPayable }) {
           ...(row.service ? [{ label: "Servicio", value: row.service }] : []),
         ]}
       />
-      <PanelSection title="Su factura">
+      <PanelSection title="Tu factura">
         {row.invoice ? (
           <FieldList
             fields={[
@@ -127,7 +126,7 @@ export function SupplierPaymentsView({ data }: { data: SupplierPayables }) {
     { id: "status", header: "Estado", cell: (row) => <SupplierBadge status={row.status} scope="payable" /> },
     {
       id: "invoice",
-      header: "Su factura",
+      header: "Tu factura",
       mobile: "detail",
       cell: (row) =>
         row.invoice ? (
@@ -153,10 +152,10 @@ export function SupplierPaymentsView({ data }: { data: SupplierPayables }) {
   ];
 
   const metrics: MetricFilter<SupplierPayable>[] = [
-    { id: "open", label: "Por cobrar", icon: <Wallet size={16} />, tone: "t3", matches: (row) => row.balance > 0.004 },
-    { id: "overdue", label: "Vencidos", icon: <AlarmClock size={16} />, tone: "bad", matches: (row) => row.status === "vencida" },
-    { id: "invoice", label: "Sin factura", icon: <ReceiptText size={16} />, tone: "warn", matches: (row) => row.can_invoice },
-    { id: "paid", label: "Pagados", icon: <BadgeCheck size={16} />, tone: "ok", matches: (row) => row.status === "pagada" },
+    { id: "open", label: "Saldo por cobrar", icon: <Wallet size={19} />, tone: "t3", display: <MoneyLines values={data.totals.balance} empty="Sin saldo" />, note: "Por moneda, sin conversión", info: <p>Lo que la agencia aún te debe, sumado por moneda sin convertir. Al presionarla ves los documentos con saldo pendiente.</p>, matches: (row) => row.balance > 0.004 },
+    { id: "overdue", label: "Vencidos", icon: <AlarmClock size={19} />, tone: data.totals.overdue ? "bad" : "t1", note: data.totals.overdue ? "Consulte con Pagos de la agencia" : "Ninguno", info: <p>Documentos cuya fecha de vencimiento ya pasó sin pago completo. Al presionarla ves solo esos documentos.</p>, matches: (row) => row.status === "vencida" },
+    { id: "invoice", label: "Sin factura", icon: <ReceiptText size={19} />, tone: data.totals.without_invoice ? "warn" : "ok", note: data.totals.without_invoice ? "Súbala para que se programe el pago" : "Todo facturado", info: <p>Documentos que esperan tu factura; la agencia programa el pago cuando la registras. Al presionarla ves solo esos documentos.</p>, matches: (row) => row.can_invoice },
+    { id: "paid", label: "Cobrado", icon: <BadgeCheck size={19} />, tone: "ok", display: <MoneyLines values={data.totals.paid} empty="Aún sin pagos" />, note: "Pagos registrados por la agencia", info: <p>Pagos que la agencia registró a tu nombre, sumados por moneda. Al presionarla ves los documentos ya pagados.</p>, matches: (row) => row.status === "pagada" },
   ];
   const filters: FilterConfig<SupplierPayable>[] = [
     { id: "status", label: "Estado", options: [...new Set(data.rows.map((row) => row.status))].map((value) => ({ value, label: supplierStatus(value, "payable").label })), value: (row) => row.status },
@@ -169,13 +168,7 @@ export function SupplierPaymentsView({ data }: { data: SupplierPayables }) {
 
   return (
     <>
-      <PortalTitle title="Pagos" subtitle={data.payment_terms ? `Condición de pago de su contrato: ${data.payment_terms}. La agencia programa el pago cuando registra su factura.` : "La agencia programa el pago cuando registra su factura."} />
-      <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <TintTile icon={Wallet} tone="t3" label="Saldo por cobrar" value={<MoneyLines values={data.totals.balance} empty="Sin saldo" />} note="Por moneda, sin conversión" />
-        <TintTile icon={BadgeCheck} tone="ok" label="Cobrado" value={<MoneyLines values={data.totals.paid} empty="Aún sin pagos" />} note="Pagos registrados por la agencia" />
-        <TintTile icon={ReceiptText} tone={data.totals.without_invoice ? "warn" : "ok"} label="Documentos sin factura" value={data.totals.without_invoice} note={data.totals.without_invoice ? "Súbala para que se programe el pago" : "Todo facturado"} />
-        <TintTile icon={AlarmClock} tone={data.totals.overdue ? "bad" : "t1"} label="Vencidos" value={data.totals.overdue} note={data.totals.overdue ? "Consulte con Pagos de la agencia" : "Ninguno"} />
-      </section>
+      <PortalTitle title="Pagos" subtitle={data.payment_terms ? `Condición de pago de tu contrato: ${data.payment_terms}. La agencia programa el pago cuando registra tu factura.` : "La agencia programa el pago cuando registra tu factura."} />
       <DataTable
         screen="proveedor-pagos"
         rows={data.rows}
@@ -187,7 +180,7 @@ export function SupplierPaymentsView({ data }: { data: SupplierPayables }) {
         sorts={sorts}
         searchText={(row) => `${row.code} ${row.concept} ${row.reservation ?? ""} ${row.invoice?.number ?? ""}`}
         searchPlaceholder="Buscar documento, reserva o factura"
-        emptyTitle="La agencia aún no registra cuentas por pagar a su nombre"
+        emptyTitle="La agencia aún no registra cuentas por pagar a tu nombre"
       />
     </>
   );

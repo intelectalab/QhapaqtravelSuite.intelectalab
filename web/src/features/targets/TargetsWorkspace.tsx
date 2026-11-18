@@ -1,16 +1,17 @@
 "use client";
 
-import { AlertTriangle, Award, Coins, Crosshair, History, Medal, TrendingUp, Users } from "lucide-react";
+import { AlertTriangle, Award, Coins, Crosshair, History, Medal, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import Link from "next/link";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
-import type { Column, FilterConfig, SortOption } from "@/components/table/types";
+import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { TintCardTitle, TintTile } from "@/components/ui/Tinted";
+import { MetricCard, MetricCardRow } from "@/components/ui/MetricCard";
+import { TintCardTitle } from "@/components/ui/Tinted";
 import { cn } from "@/lib/cn";
 import { formatMoney, formatPercent } from "@/lib/format";
 import { HEALTH, targetHref, type SalesTarget, type TargetsOverview } from "@/lib/targets";
@@ -115,9 +116,19 @@ export function TargetsWorkspace({ overview }: { overview: TargetsOverview }) {
         </span>
       ),
     },
-    { id: "goal", header: "Meta", align: "right", cell: (row) => <span className="font-mono text-[13px]">{formatMoney(row.goals.sales)}</span> },
-    { id: "real", header: "Real", align: "right", cell: (row) => <span className="font-mono text-[13px] font-semibold">{formatMoney(row.actual.sales)}</span> },
-    { id: "progress", header: "Avance", cell: (row) => <div className="w-[160px]"><ProgressBar progress={row.progress_pct} projection={row.projection_pct} /><span className="mt-1 block text-[11.5px] text-fg-3">{formatPercent(row.progress_pct, 0)} · proyección {formatPercent(row.projection_pct, 0)}</span></div> },
+    {
+      id: "real",
+      header: "Vendido y meta",
+      align: "right",
+      cell: (row) => (
+        <span className="font-mono text-[13px]">
+          <b className="block font-semibold">{formatMoney(row.actual.sales)}</b>
+          <span className="block text-[11.5px] text-fg-3">de {formatMoney(row.goals.sales)}</span>
+          {(row.bonus?.estimated ?? 0) > 0 && <span className="block text-[11.5px] text-fg-3">bono {formatMoney(row.bonus?.estimated ?? 0)}</span>}
+        </span>
+      ),
+    },
+    { id: "progress", header: "Avance", cell: (row) => <div className="w-[140px]"><ProgressBar progress={row.progress_pct} projection={row.projection_pct} /><span className="mt-1 block text-[11.5px] text-fg-3">{formatPercent(row.progress_pct, 0)} · proyección {formatPercent(row.projection_pct, 0)}</span></div> },
     { id: "bookings", header: "Reservas", align: "right", cell: (row) => <Indicator real={row.actual.bookings} goal={row.goals.bookings} format={String} /> },
     { id: "margin", header: "Margen", align: "right", cell: (row) => <Indicator real={row.actual.margin} goal={row.goals.margin} format={(value) => formatMoney(value, "PEN", { compact: true })} /> },
     { id: "conversion", header: "Conversión", align: "right", cell: (row) => <Indicator real={row.actual.conversion ?? 0} goal={row.goals.conversion} format={(value) => formatPercent(value, 0)} /> },
@@ -135,6 +146,30 @@ export function TargetsWorkspace({ overview }: { overview: TargetsOverview }) {
     { id: "projection", label: "Proyección", type: "number", value: (row) => row.projection_pct },
     { id: "sales", label: "Vendido", type: "number", value: (row) => row.actual.sales },
   ];
+  const isLive = (row: SalesTarget) => row.scope_type === "asesor" && row.status !== "borrador" && row.status !== "anulada";
+  const compact = (value: number) => formatMoney(value, "PEN", { compact: true });
+  const metrics: MetricFilter<SalesTarget>[] = [
+    {
+      id: "sold",
+      label: overview.can.manage ? "Vendido por asesores" : "Vendido",
+      tone: "ok",
+      icon: <Coins size={19} />,
+      display: formatMoney(real),
+      note: goal > 0 ? `${formatPercent((real / goal) * 100, 0)} de ${compact(goal)} · proyecta ${compact(projection)}` : `Proyecta ${compact(projection)}`,
+      info: <p>Reservas confirmadas creadas en el período por los asesores con meta activa o cerrada, en soles con el tipo de cambio de cada reserva, frente a la suma de sus metas. La proyección suma lo vendido y las oportunidades abiertas que cierran en el período, por su probabilidad. Al presionarla, la tabla muestra esas metas.</p>,
+      matches: isLive,
+    },
+    { id: "risk", label: "En riesgo", tone: "bad", icon: <AlertTriangle size={19} />, display: risk, note: "Proyección bajo el 100 %", info: <p>Metas de asesor cuya proyección no alcanza la meta: en riesgo desde el 80 %, crítico por debajo.</p>, matches: (row) => isLive(row) && (row.health === "en_riesgo" || row.health === "critico") },
+    {
+      id: "bonus",
+      label: "Bonos estimados",
+      tone: "sun",
+      icon: <Award size={19} />,
+      display: formatMoney(bonus),
+      info: <p>Bono base de cada meta por el tramo que alcanza lo vendido hasta hoy (no la proyección): {overview.policy.tiers.map((tier) => `${tier.min} % paga ${tier.pay} %`).join(", ")}. Al presionarla, la tabla muestra las metas con bono; el monto está bajo lo vendido.</p>,
+      matches: (row) => isLive(row) && (row.bonus?.estimated ?? 0) > 0,
+    },
+  ];
   const history = overview.targets
     .filter((target) => target.period_key !== period && (target.status === "cerrada" || target.health === "por_cerrar"))
     .sort((a, b) => b.period_from.localeCompare(a.period_from))
@@ -145,30 +180,27 @@ export function TargetsWorkspace({ overview }: { overview: TargetsOverview }) {
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <PeriodPicker periods={overview.periods} value={period} onChange={setPeriod} />
       </div>
-      <section className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <TintTile icon={Crosshair} tone="t1" label={overview.can.manage ? "Meta de asesores" : "Mi meta"} value={formatMoney(goal)} info={<p>Suma de la meta de ventas de las metas de asesor activas o cerradas del período elegido. No incluye borradores.</p>} />
-        <TintTile icon={Coins} tone="ok" label="Vendido" value={formatMoney(real)} note={goal > 0 ? `${formatPercent((real / goal) * 100, 0)} de la meta` : undefined} info={<p>Reservas confirmadas creadas en el período por esos asesores, en soles con el tipo de cambio de cada reserva.</p>} />
-        <TintTile icon={TrendingUp} tone="violet" label="Proyección al cierre" value={formatMoney(projection)} note="Incluye oportunidades ponderadas" info={<p>Lo vendido más las oportunidades abiertas que cierran en el período, multiplicadas por su probabilidad.</p>} />
-        <TintTile icon={AlertTriangle} tone="bad" label="En riesgo" value={risk} note="Proyección bajo el 100 %" info={<p>Metas de asesor cuya proyección no alcanza la meta: en riesgo desde el 80 %, crítico por debajo.</p>} />
-        <TintTile icon={Award} tone="sun" label="Bonos estimados" value={formatMoney(bonus)} info={<p>Bono base de cada meta por el tramo que alcanza su proyección: {overview.policy.tiers.map((tier) => `${tier.min} % paga ${tier.pay} %`).join(", ")}.</p>} />
-      </section>
-
-      <section className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <section className="mb-5 grid grid-cols-[minmax(0,1fr)] gap-4 min-[1600px]:grid-cols-[minmax(0,1fr)_320px]">
         <div>
           {overview.can.manage ? (
-            <Card padded={false} className="overflow-hidden">
-              <DataTable screen="metas-periodo" rows={tableRows} columns={columns} getKey={(row) => row.code} entityLabel="metas" searchText={(row) => `${row.scope.name} ${row.code} ${row.scope_label}`} searchPlaceholder="Buscar asesor, equipo o sede" filters={filters} sorts={sorts} emptyTitle="Sin metas en este período" />
-            </Card>
-          ) : advisors.length === 0 ? (
-            <Card>
-              <EmptyState icon={<Crosshair size={20} />} title="Sin metas de asesor en este período" description={overview.can.manage ? "Crea una meta para empezar a medir el avance." : "Cuando Gerencia active tu meta la verás aquí."} />
-            </Card>
+            <DataTable screen="metas-periodo" rows={tableRows} columns={columns} getKey={(row) => row.code} entityLabel="metas" searchText={(row) => `${row.scope.name} ${row.code} ${row.scope_label}`} searchPlaceholder="Buscar asesor, equipo o sede" metrics={metrics} filters={filters} sorts={sorts} emptyTitle="Sin metas en este período" />
           ) : (
-            <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-              {advisors.map((target, index) => (
-                <AdvisorCard key={target.code} target={target} overview={overview} index={index} />
-              ))}
-            </div>
+            <>
+              <MetricCardRow>
+                {metrics.map((metric) => <MetricCard key={metric.id} label={metric.label} value={metric.display} icon={metric.icon} tone={metric.tone} note={metric.note} info={metric.info} testId={`stat:${metric.id}`} />)}
+              </MetricCardRow>
+              {advisors.length === 0 ? (
+                <Card>
+                  <EmptyState icon={<Crosshair size={20} />} title="Sin metas de asesor en este período" description="Cuando Gerencia active tu meta la verás aquí." />
+                </Card>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+                  {advisors.map((target, index) => (
+                    <AdvisorCard key={target.code} target={target} overview={overview} index={index} />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
         <Card>

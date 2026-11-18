@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, BedDouble, CalendarClock, ChevronLeft, ChevronRight, CircleCheck, Hourglass, Lock, TimerOff, TrainFront, Undo2 } from "lucide-react";
+import { AlertTriangle, BedDouble, CalendarClock, ChevronLeft, ChevronRight, CircleCheck, Coins, Gauge, Hourglass, Lock, ShieldAlert, TimerOff, TrainFront, TrendingDown, TrendingUp, Eye } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -13,9 +13,9 @@ import { ProgressBar } from "@/components/ui/MiniTable";
 import { Select } from "@/components/ui/Select";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { DateField } from "@/components/ui/DateField";
-import { ALERT_TYPE, ALLOTMENT_STATUS, KIND_LABEL, RECOMMENDATION, type AllotmentAlert, type AllotmentCell, type AllotmentGrid, type AllotmentPickup, type AllotmentRow, type AllotmentSummary, type AllotmentsOverview, type PickupRow } from "@/lib/catalog-allotments";
+import { ALERT_TYPE, ALLOTMENT_STATUS, isClosed, KIND_LABEL, RECOMMENDATION, type AllotmentAlert, type AllotmentCell, type AllotmentGrid, type AllotmentPickup, type AllotmentRow, type AllotmentSummary, type AllotmentsOverview, type PickupRow } from "@/lib/catalog-allotments";
 import { cn } from "@/lib/cn";
-import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
+import { formatDate, formatDateTime, formatMoney, formatNumber } from "@/lib/format";
 import { CellButton, CellLegend, DayPanel, weekday } from "./AllotmentDay";
 import { RunReleaseJobAction } from "./AllotmentForms";
 
@@ -145,11 +145,42 @@ export function ContractsTable({ overview }: { overview: AllotmentsOverview }) {
       ),
     },
   ];
+  const isOpen = (row: AllotmentRow) => !isClosed(row.status);
+  const open = overview.contracts.filter(isOpen);
+  const capacity = open.reduce((sum, row) => sum + row.window.capacity, 0);
+  const used = open.reduce((sum, row) => sum + row.window.used, 0);
+  const utilization = capacity ? Math.round((used / capacity) * 100) : 0;
+  const exposure = open.reduce((sum, row) => sum + row.exposure_pen, 0);
+  const penalties = overview.contracts.reduce((sum, row) => sum + row.penalties_pen, 0);
   const metrics: MetricFilter<AllotmentRow>[] = [
-    { id: "activo", label: "Activos", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "activo" },
-    { id: "en_release", label: "En release", tone: "sun", icon: <Hourglass size={19} />, matches: (row) => row.status === "en_release" },
-    { id: "liberado", label: "Liberados", tone: "mute", icon: <Undo2 size={19} />, matches: (row) => row.status === "liberado" },
-    { id: "vencido", label: "Vencidos", tone: "bad", icon: <TimerOff size={19} />, matches: (row) => row.status === "vencido" },
+    { id: "vigentes", label: "Contratos vigentes", tone: "ok", icon: <CircleCheck size={19} />, note: `de ${overview.contracts.length} contratos`, info: <p>Contratos activos o en release. Los liberados y vencidos se ven con el filtro de estado. Al presionarla, la tabla muestra solo los vigentes.</p>, matches: isOpen },
+    { id: "en_release", label: "En release", tone: "sun", icon: <Hourglass size={19} />, info: <p>Contratos con una fecha futura que venció su plazo de release sin venderse ni retenerse. El release automático la devuelve al proveedor. Al presionarla, la tabla muestra esos contratos.</p>, matches: (row) => row.status === "en_release" },
+    { id: "uso", label: "Uso en 30 días", tone: utilization < 40 ? "warn" : "ok", icon: <Gauge size={19} />, display: `${utilization} %`, note: `${formatNumber(used)} de ${formatNumber(capacity)} unidades`, info: <p>Unidades consumidas por reservas confirmadas sobre el cupo vigente (bloqueado menos liberado) de los próximos 30 días, en los contratos vigentes. Al presionarla, la tabla muestra los contratos vigentes con su uso.</p>, matches: (row) => isOpen(row) && row.utilization !== null },
+    { id: "exposicion", label: "Exposición a penalidad", tone: "bad", icon: <ShieldAlert size={19} />, display: formatMoney(exposure, "PEN"), note: "Retenido después del release", info: <p>Lo que se pagaría si las unidades retenidas después del release no se venden: unidades × tarifa neta × penalidad del contrato. Los montos en dólares se pasan a soles al tipo de cambio {overview.usd_rate.toFixed(3)}. Al presionarla, la tabla muestra los contratos vigentes con exposición.</p>, matches: (row) => isOpen(row) && row.exposure_pen > 0 },
+    {
+      id: "penalidades",
+      label: "Penalidades devengadas",
+      tone: "violet",
+      icon: <Coins size={19} />,
+      display: formatMoney(penalties, "PEN"),
+      note: "Cargos por no uso",
+      info: (
+        <div>
+          <p>Cargos que registró el release por fechas pasadas con unidades sin usar ni liberar. Cada cargo con monto genera una cuenta por pagar al proveedor. Al presionarla, la tabla muestra los contratos con penalidad:</p>
+          <ul className="mt-2 flex flex-col gap-1">
+            {overview.contracts
+              .filter((row) => row.penalties > 0)
+              .map((row) => (
+                <li key={row.code} className="flex justify-between gap-3">
+                  <span className="truncate">{row.provider.name}</span>
+                  <b>{formatMoney(row.penalties, row.currency)}</b>
+                </li>
+              ))}
+          </ul>
+        </div>
+      ),
+      matches: (row) => row.penalties_pen > 0,
+    },
   ];
   const filters: FilterConfig<AllotmentRow>[] = [
     { id: "kind", label: "Tipo", options: Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label })), value: (row) => row.kind },
@@ -204,18 +235,19 @@ export function ReleaseAlertsTable({ overview }: { overview: AllotmentsOverview 
       ),
     },
   ];
+  const units = (type: AllotmentAlert["type"]) => formatNumber(overview.alerts.filter((alert) => alert.type === type).reduce((sum, alert) => sum + alert.units, 0));
   const metrics: MetricFilter<AllotmentAlert>[] = [
-    { id: "vencido", label: "Release vencido", tone: "bad", icon: <TimerOff size={19} />, matches: (alert) => alert.type === "vencido" },
-    { id: "proximo", label: "Vence pronto", tone: "warn", icon: <CalendarClock size={19} />, matches: (alert) => alert.type === "proximo" },
-    { id: "retenido", label: "Retenidas", tone: "violet", icon: <Lock size={19} />, matches: (alert) => alert.type === "retenido" },
-    { id: "sobreventa", label: "Sobreventa", tone: "bad", icon: <AlertTriangle size={19} />, matches: (alert) => alert.type === "sobreventa" },
+    { id: "vencido", label: "Release vencido", tone: "bad", icon: <TimerOff size={19} />, note: `${units("vencido")} unidades sin liberar`, info: <p>Fechas cuyo plazo de release ya venció con unidades sin vender ni liberar. El release automático las devuelve al proveedor en su próxima ejecución. Al presionarla, la tabla muestra esas fechas.</p>, matches: (alert) => alert.type === "vencido" },
+    { id: "proximo", label: "Release en 3 días", tone: "warn", icon: <CalendarClock size={19} />, note: `${units("proximo")} unidades por vencer`, info: <p>Fechas con unidades sin vender cuyo plazo de release vence en los próximos tres días. Si no se venden ni se retienen, el release automático las devuelve al proveedor. Al presionarla, la tabla muestra esas fechas.</p>, matches: (alert) => alert.type === "proximo" },
+    { id: "retenido", label: "Retenidas", tone: "violet", icon: <Lock size={19} />, note: `${units("retenido")} unidades`, info: <p>Fechas con unidades retenidas después del release: si no se venden, generan penalidad. Al presionarla, la tabla muestra esas fechas.</p>, matches: (alert) => alert.type === "retenido" },
+    { id: "sobreventa", label: "Sobreventa", tone: "bad", icon: <AlertTriangle size={19} />, note: `${units("sobreventa")} unidades de más`, info: <p>Fechas con más unidades vendidas que el cupo vigente. Pide una ampliación al proveedor o reubica las reservas. Al presionarla, la tabla muestra esas fechas.</p>, matches: (alert) => alert.type === "sobreventa" },
   ];
   const job = overview.job;
   return (
     <div className="p-5">
       {job && (
         <p className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl bg-surface-2 px-3.5 py-2.5 text-[12.5px] text-fg-2">
-          <b className="font-semibold text-fg">Release automático</b>
+          <b className="font-semibold text-fg">Liberación automática</b>
           <span>{job.paused ? "En pausa" : job.schedule}</span>
           <span className="text-fg-3">·</span>
           <span>{job.last_run_at ? `Última vez ${formatDateTime(job.last_run_at, false)}: ${job.result ?? "sin resultado"}` : "Aún no se ejecutó"}</span>
@@ -303,6 +335,12 @@ export function PickupReport({ pickup }: { pickup: AllotmentPickup }) {
       ),
     },
   ];
+  const sold = (recommendation: PickupRow["recommendation"]) => pickup.rows.filter((row) => row.recommendation === recommendation).reduce((sum, row) => sum + row.window.used, 0);
+  const metrics: MetricFilter<PickupRow>[] = [
+    { id: "ampliar", label: RECOMMENDATION.ampliar.label, tone: "ok", icon: <TrendingUp size={19} />, note: `${sold("ampliar")} unidades vendidas`, info: <p>Contratos con un uso del 85 % o más del cupo vigente para estadías de los próximos {pickup.horizon} días: conviene pedir más cupo al proveedor. La nota suma lo vendido. Al presionarla, la tabla muestra esos contratos.</p>, matches: (row) => row.recommendation === "ampliar" },
+    { id: "reducir", label: RECOMMENDATION.reducir.label, tone: "warn", icon: <TrendingDown size={19} />, note: `${sold("reducir")} unidades vendidas`, info: <p>Contratos con cupo que usan menos del 25 %: conviene liberar unidades antes del release para no pagar penalidad. La nota suma lo vendido. Al presionarla, la tabla muestra esos contratos.</p>, matches: (row) => row.recommendation === "reducir" },
+    { id: "mantener", label: RECOMMENDATION.mantener.label, tone: "info", icon: <Eye size={19} />, note: `${sold("mantener")} unidades vendidas`, info: <p>Los demás contratos sin liberar, con un uso entre el 25 % y el 85 % del cupo o sin cupo en el periodo: se mantienen y se vigilan. La nota suma lo vendido. Al presionarla, la tabla muestra esos contratos.</p>, matches: (row) => row.recommendation === "mantener" },
+  ];
   return (
     <>
       {current && (
@@ -320,7 +358,7 @@ export function PickupReport({ pickup }: { pickup: AllotmentPickup }) {
         </div>
       )}
       <div className="p-5">
-        <DataTable screen="cupos-pickup" rows={pickup.rows} columns={columns} getKey={(row) => row.code} entityLabel="contratos" searchText={(row) => `${row.code} ${row.name} ${row.provider.name}`} searchPlaceholder="Buscar contrato" />
+        <DataTable screen="cupos-pickup" rows={pickup.rows} columns={columns} getKey={(row) => row.code} entityLabel="contratos" searchText={(row) => `${row.code} ${row.name} ${row.provider.name}`} searchPlaceholder="Buscar contrato" metrics={metrics} />
       </div>
     </>
   );

@@ -6,6 +6,7 @@ namespace App\Domain\Platform\Support;
 
 use App\Domain\Iam\Support\StaffSeats;
 use App\Domain\Shared\Errors\ApiException;
+use App\Domain\Shared\Money\Decimal;
 use App\Domain\SiteTemplates\Support\AiCredits;
 use App\Domain\Tracking\Support\TrackingCatalog;
 use App\Domain\Tracking\Support\TrackingPlan;
@@ -141,7 +142,7 @@ final class DowngradeValidator
         $tags = $this->db()->table('mkt_tracking_tags')->where('tenant_id', $tenantId)->whereIn('status', ['activo', 'pausado', 'en_revision'])
             ->where(fn ($query) => $query->whereIn('provider', $providers)->orWhereRaw("coalesce((config->>'server_side')::boolean, false)"))->count();
         $price = $this->db()->table('addons')->where('code', TrackingPlan::ADDON)->value('price_month');
-        $offer = $price !== null ? ' (S/ '.number_format((float) $price, 2, '.', '').' al mes + IGV)' : '';
+        $offer = $price !== null ? ' ('.Decimal::display($price, 'PEN').' al mes + IGV)' : '';
         $warnings = [];
 
         if ($tags > 0) {

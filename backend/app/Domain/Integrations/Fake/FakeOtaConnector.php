@@ -6,11 +6,16 @@ namespace App\Domain\Integrations\Fake;
 
 use App\Domain\Integrations\Contracts\OtaConnector;
 use App\Domain\Integrations\Data\AdapterResult;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 
 final class FakeOtaConnector implements OtaConnector
 {
     public function verify(string $ota, string $accountRef, string $credentials): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('ota')) !== null) {
+            return $unavailable;
+        }
+
         if (mb_strlen($credentials) < 8) {
             return AdapterResult::permanent('La OTA rechazó la clave: revisa que esté completa.');
         }
@@ -24,6 +29,10 @@ final class FakeOtaConnector implements OtaConnector
 
     public function pushAvailability(string $ota, string $accountRef, string $credentials, array $listings): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('ota')) !== null) {
+            return $unavailable;
+        }
+
         if (str_starts_with($accountRef, 'caida')) {
             return AdapterResult::transient('La OTA no respondió a tiempo. Se reintentará en la próxima sincronización.');
         }
@@ -33,6 +42,10 @@ final class FakeOtaConnector implements OtaConnector
 
     public function healthcheck(): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::health('ota')) !== null) {
+            return $unavailable;
+        }
+
         return AdapterResult::success('ok', null, ['simulated' => true]);
     }
 }

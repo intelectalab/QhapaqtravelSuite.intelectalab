@@ -69,7 +69,7 @@ export function MobileAppVersionsBoard({ summary, canEdit }: { summary: MobileAp
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <p className="flex items-center gap-1.5 text-[13px] text-fg-2">
-          La app del operador y del pasajero envía su versión en cada pedido. Si es menor a la mínima, la API responde 426.
+          La app del operador y del pasajero envía su versión en cada pedido. Si es menor a la mínima, la app pide actualizarse antes de seguir.
           <InfoTip>Vale para todas las agencias: la versión depende del binario publicado en cada tienda, no de la agencia.</InfoTip>
         </p>
         {canEdit && <EditVersions summary={summary} />}

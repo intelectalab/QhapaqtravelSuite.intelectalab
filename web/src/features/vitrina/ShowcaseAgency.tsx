@@ -15,8 +15,6 @@ import { SimpleTable } from "@/components/ui/SimpleTable";
 import { SwitchField } from "@/components/ui/SwitchField";
 import { TextArea } from "@/components/ui/TextArea";
 import { TextField } from "@/components/ui/TextField";
-import { TintTile } from "@/components/ui/Tinted";
-import { TileGrid } from "@/features/channels/ChannelUi";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { StepResult } from "@/lib/server/resource";
 import { cityLabel, FEE_BASIS, LANGUAGE_LABELS, monthLabel, type AgencyShowcase, type ShowcaseBooking, type ShowcaseFees, type ShowcaseListing } from "@/lib/vitrina";
@@ -24,23 +22,12 @@ import { initialStep, Meter, QuickAction, TabCard, VitrinaBadge } from "./Vitrin
 
 const CITIES = ["lima", "cusco", "arequipa", "puno", "trujillo", "huaraz", "iquitos"];
 
-export function AgencyTiles({ data }: { data: AgencyShowcase }) {
-  return (
-    <TileGrid>
-      <TintTile icon={Globe} tone="t1" label="Publicados" value={data.kpis.published} note={`${data.kpis.in_review} en revisión`} info={<p>Tours de su agencia aprobados por la plataforma y visibles en la vitrina.</p>} />
-      <TintTile icon={Ticket} tone="info" label="Reservas de la vitrina" value={data.kpis.bookings} note={`${data.kpis.pax} personas`} info={<p>Reservas recibidas en la vitrina, sin contar las canceladas por el viajero.</p>} />
-      <TintTile icon={Users} tone="ok" label="Asistencia" value={data.kpis.attendance_pct === null ? "—" : `${data.kpis.attendance_pct} %`} note="Asistió entre asistió y no-show" info={<p>Se calcula con las reservas que ya marcó como «asistió» o «no se presentó». Mejora su posición en el ranking.</p>} />
-      <TintTile icon={Percent} tone="sun" label="Cargo del mes" value={formatMoney(data.kpis.month_fee, "PEN")} note={`Plan ${data.plan.label} · ${data.plan.commission_pct} % en tours de pago`} info={<p>Suma de cargos por asistente y comisiones de tours de pago con salida este mes. Se factura el día 1.</p>} />
-    </TileGrid>
-  );
-}
-
 export function UpgradeBanner({ data }: { data: AgencyShowcase }) {
   if (data.plan.has_plan) return null;
   return (
     <section className="mb-5 flex flex-col gap-4 rounded-card border border-[color-mix(in_srgb,var(--t1)_30%,transparent)] bg-[color-mix(in_srgb,var(--t1)_7%,var(--surface))] p-5 lg:flex-row lg:items-center">
       <div className="min-w-0 flex-1">
-        <p className="flex items-center gap-2 text-[15px] font-semibold"><Sparkles size={17} className="text-[var(--t1)]" /> Su agencia puede vender más con un plan</p>
+        <p className="flex items-center gap-2 text-[15px] font-semibold"><Sparkles size={17} className="text-[var(--t1)]" /> Tu agencia puede vender más con un plan</p>
         <ul className="mt-2 grid gap-1.5 text-[13px] text-fg-2 sm:grid-cols-2">
           {data.benefits.slice(1, 5).map(([title, note]) => (
             <li key={title}><b className="text-fg">{title}.</b> {note}</li>
@@ -136,9 +123,9 @@ export function ListingsTable({ data }: { data: AgencyShowcase }) {
     },
   ];
   const metrics: MetricFilter<ShowcaseListing>[] = [
-    { id: "live", label: "Publicados", tone: "ok", icon: <Globe size={19} />, matches: (row) => row.status === "publicado" },
-    { id: "review", label: "En revisión", tone: "sun", icon: <BadgeCheck size={19} />, matches: (row) => row.status === "en_revision" },
-    { id: "rejected", label: "Rechazados", tone: "bad", icon: <CircleSlash size={19} />, matches: (row) => row.status === "rechazado" },
+    { id: "live", label: "Publicados", tone: "ok", icon: <Globe size={19} />, info: <p>Tours de tu agencia aprobados por la plataforma y visibles en la vitrina. Al presionarla, la tabla muestra solo esos tours.</p>, matches: (row) => row.status === "publicado" },
+    { id: "review", label: "En revisión", tone: "sun", icon: <BadgeCheck size={19} />, info: <p>Tours enviados a la moderación de la plataforma, que revisa fotos y textos propios, el punto de encuentro y la agencia. Al presionarla, la tabla muestra esos tours.</p>, matches: (row) => row.status === "en_revision" },
+    { id: "rejected", label: "Rechazados", tone: "bad", icon: <CircleSlash size={19} />, info: <p>Tours que la moderación no aprobó; corrígelos y vuelve a enviarlos. Al presionarla, la tabla muestra esos tours.</p>, matches: (row) => row.status === "rechazado" },
   ];
   const filters: FilterConfig<ShowcaseListing>[] = [{ id: "model", label: "Tipo", options: [{ value: "propina", label: "Free tour" }, { value: "pago", label: "De pago" }], value: (row) => row.model }];
   const sorts: SortOption<ShowcaseListing>[] = [
@@ -148,7 +135,7 @@ export function ListingsTable({ data }: { data: AgencyShowcase }) {
   return <DataTable screen="canales-vitrina" rows={data.items} columns={columns} getKey={(row) => row.code} entityLabel="publicaciones" searchText={(row) => `${row.title} ${row.slug} ${row.city} ${row.zone ?? ""}`} searchPlaceholder="Buscar tour, ciudad o zona" metrics={metrics} filters={filters} sorts={sorts} emptyTitle="Aún no publica tours en la vitrina" />;
 }
 
-export function BookingsTable({ rows }: { rows: ShowcaseBooking[] }) {
+export function BookingsTable({ rows, data }: { rows: ShowcaseBooking[]; data: AgencyShowcase }) {
   const columns: Column<ShowcaseBooking>[] = [
     { id: "code", header: "Reserva", mobile: "title", cell: (row) => <span><b className="font-mono text-[12.5px]">{row.code}</b><span className="block text-[12px] text-fg-3">{row.listing.title}</span></span> },
     { id: "date", header: "Salida", cell: (row) => <span className="whitespace-nowrap text-[13px]">{formatDate(row.service_date)} · {row.start_time}</span> },
@@ -168,10 +155,15 @@ export function BookingsTable({ rows }: { rows: ShowcaseBooking[] }) {
         ) : null,
     },
   ];
+  const [month] = useState(() => new Date().toISOString().slice(0, 7));
+  const { kpis, plan } = data;
+  const went = rows.filter((row) => row.status === "asistio").length;
   const metrics: MetricFilter<ShowcaseBooking>[] = [
-    { id: "pending", label: "Por marcar", tone: "info", icon: <CalendarCheck size={19} />, matches: (row) => row.can_mark },
-    { id: "went", label: "Asistieron", tone: "ok", icon: <UserCheck size={19} />, matches: (row) => row.status === "asistio" },
-    { id: "noshow", label: "No-show", tone: "warn", icon: <CircleSlash size={19} />, matches: (row) => row.status === "no_show" },
+    { id: "bookings", label: "Reservas de la vitrina", tone: "t1", icon: <Ticket size={19} />, display: kpis.bookings, note: `${kpis.pax} personas`, info: <p>Reservas recibidas en la vitrina, sin contar las canceladas por el viajero; la nota suma sus personas. Al presionarla, la tabla muestra esas reservas.</p>, matches: (row) => row.status !== "cancelada" },
+    { id: "pending", label: "Por marcar", tone: "info", icon: <CalendarCheck size={19} />, info: <p>Reservas en las que falta marcar si el viajero asistió o no se presentó. Al presionarla, la tabla muestra esas reservas.</p>, matches: (row) => row.can_mark },
+    { id: "attendance", label: "Asistencia", tone: "ok", icon: <Users size={19} />, display: kpis.attendance_pct === null ? "—" : `${kpis.attendance_pct} %`, note: `${went} asistieron`, info: <p>Reservas marcadas como «asistió» entre las que ya marcaste como «asistió» o «no se presentó». Mejora tu posición en el ranking. Al presionarla, la tabla muestra las reservas ya marcadas.</p>, matches: (row) => row.status === "asistio" || row.status === "no_show" },
+    { id: "noshow", label: "No-show", tone: "warn", icon: <CircleSlash size={19} />, info: <p>Viajeros que no se presentaron. Si era un cargo por asistente, no se cobra. Al presionarla, la tabla muestra esas reservas.</p>, matches: (row) => row.status === "no_show" },
+    { id: "fee", label: "Cargo del mes", tone: "sun", icon: <Percent size={19} />, display: formatMoney(kpis.month_fee, "PEN"), note: `Plan ${plan.label} · ${plan.commission_pct} % en tours de pago`, info: <p>Suma de cargos por asistente y comisiones de tours de pago con salida este mes. Se factura el día 1. Al presionarla, la tabla muestra las reservas de este mes con cargo.</p>, matches: (row) => row.service_date.startsWith(month) && Number(row.fee_amount) > 0 },
   ];
   const sorts: SortOption<ShowcaseBooking>[] = [{ id: "date", label: "Salida", type: "date", value: (row) => row.service_date }];
   return <DataTable screen="canales-vitrina-reservas" rows={rows} columns={columns} getKey={(row) => row.code} entityLabel="reservas" searchText={(row) => `${row.code} ${row.traveler_name} ${row.traveler_email} ${row.listing.title}`} searchPlaceholder="Buscar reserva, viajero o tour" metrics={metrics} sorts={sorts} emptyTitle="Sin reservas de la vitrina" />;
@@ -202,13 +194,13 @@ export function BenefitsPanel({ data }: { data: AgencyShowcase }) {
   return (
     <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
       <Card>
-        <CardHeader title={`Lo que le da su plan ${data.plan.label} en la vitrina`} />
+        <CardHeader title={`Lo que te da tu plan ${data.plan.label} en la vitrina`} />
         <div className="grid gap-3 sm:grid-cols-2">
           {plans.map(([plan, pct]) => {
             const mine = plan === data.plan.code;
             return (
               <div key={plan} className={`lift rounded-tile border p-4 ${mine ? "border-brand bg-[color-mix(in_srgb,var(--brand)_7%,var(--surface))]" : "border-line"}`}>
-                <p className="text-[12.5px] font-semibold text-fg-3">{plan === "none" ? "Sin plan" : plan.charAt(0).toUpperCase() + plan.slice(1)}{mine ? " · su plan" : ""}</p>
+                <p className="text-[12.5px] font-semibold text-fg-3">{plan === "none" ? "Sin plan" : plan.charAt(0).toUpperCase() + plan.slice(1)}{mine ? " · tu plan" : ""}</p>
                 <p className="mt-1 text-[22px] font-bold tracking-tight">{pct} %</p>
                 <p className="text-[12px] text-fg-3">comisión en tours de pago</p>
                 <p className="mt-2 text-[12.5px] text-fg-2">{plan === "none" ? `${data.rules.free_monthly_bookings} reservas gratis al mes; luego ${formatMoney(data.rules.fee_per_attendee, data.rules.fee_currency)} por asistente.` : "Free tours sin cargo por asistente."}</p>
@@ -234,7 +226,7 @@ export function AgencyShowcaseTabs({ data, bookings, fees }: { data: AgencyShowc
     <TabCard
       tabs={[
         { id: "publicaciones", label: "Publicaciones", count: data.items.length, content: <ListingsTable data={data} /> },
-        { id: "reservas", label: "Reservas", count: bookings.length, content: <BookingsTable rows={bookings} /> },
+        { id: "reservas", label: "Reservas", count: bookings.length, content: <BookingsTable rows={bookings} data={data} /> },
         { id: "cargos", label: "Cargos y comisiones", content: <FeesPanel fees={fees} /> },
         { id: "beneficios", label: "Beneficios del plan", content: <BenefitsPanel data={data} /> },
       ]}

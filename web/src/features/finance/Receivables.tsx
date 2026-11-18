@@ -22,10 +22,11 @@ import { IssueInvoiceAction } from "./Invoices";
 
 const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es"));
 
-export type PayableReceivable = Pick<ReceivableRow, "code" | "concept" | "balance" | "currency" | "fx_rate"> & { client: { name: string } };
+export type PayableReceivable = Pick<ReceivableRow, "code" | "concept" | "balance" | "currency" | "fx_rate" | "b2b_credit"> & { client: { name: string } };
 
-function PaymentFields({ row, methods, today, usdRate }: { row: PayableReceivable; methods: PaymentMethodOption[]; today: string; usdRate: number }) {
-  const [method, setMethod] = useState(methods[0]?.value ?? "");
+function PaymentFields({ row, methods: all, today, usdRate }: { row: PayableReceivable; methods: PaymentMethodOption[]; today: string; usdRate: number }) {
+  const methods = all.filter((option) => row.b2b_credit || !option.b2b);
+  const [method, setMethod] = useState((methods.find((option) => !option.b2b) ?? methods[0])?.value ?? "");
   const selected = methods.find((option) => option.value === method);
   return (
     <>
@@ -261,11 +262,15 @@ export function ReceivablesTable({ data, reservation }: { data: ReceivablesOverv
     },
   ];
 
+  const { kpis } = data;
+  const usdOpen = rows.filter((row) => row.currency === "USD" && !closed(row)).reduce((sum, row) => sum + row.balance, 0);
+  const inWeek = (row: ReceivableRow) => !closed(row) && row.status !== "vencida" && row.due_date <= weekIso;
+  const weekCount = rows.filter(inWeek).length;
   const metrics: MetricFilter<ReceivableRow>[] = [
-    { id: "overdue", label: "Vencidas", tone: "bad", icon: <AlarmClock size={19} />, matches: (row) => row.status === "vencida" },
-    { id: "week", label: "Vencen en 7 días", tone: "warn", icon: <CalendarClock size={19} />, matches: (row) => !closed(row) && row.status !== "vencida" && row.due_date <= weekIso },
-    { id: "open", label: "Con saldo", tone: "t1", icon: <Landmark size={19} />, matches: (row) => !closed(row) },
-    { id: "paid", label: "Pagadas", tone: "ok", icon: <CircleCheck size={19} />, matches: (row) => row.status === "pagada" },
+    { id: "open", label: "Por cobrar", tone: "t1", icon: <Landmark size={19} />, display: formatMoney(kpis.receivable_pen, "PEN", { compact: true }), note: usdOpen > 0 ? `Incluye ${formatMoney(usdOpen, "USD", { compact: true })} en dólares` : "Todo en soles", info: <p>Saldo pendiente de las cuotas abiertas, parciales y vencidas, en soles al tipo de cambio de cada cuota. Al presionarla, la tabla muestra las cuotas que aún tienen saldo.</p>, matches: (row) => !closed(row) },
+    { id: "overdue", label: "Vencido", tone: "bad", icon: <AlarmClock size={19} />, display: formatMoney(kpis.overdue_pen, "PEN", { compact: true }), note: kpis.receivable_pen > 0 ? `${Math.round((kpis.overdue_pen / kpis.receivable_pen) * 100)} % de lo que falta cobrar · ${kpis.overdue_count === 1 ? "1 cuota" : `${kpis.overdue_count} cuotas`}` : "Sin saldos pendientes", info: <p>Saldo de las cuotas cuya fecha de vencimiento ya pasó y siguen sin pagarse completas. Al presionarla, la tabla muestra solo esas cuotas vencidas.</p>, matches: (row) => row.status === "vencida" },
+    { id: "week", label: "Vence en 7 días", tone: "sun", icon: <CalendarClock size={19} />, display: formatMoney(kpis.due_week_pen, "PEN", { compact: true }), note: weekCount === 1 ? "1 cuota" : `${weekCount} cuotas`, info: <p>Saldo de las cuotas que vencen entre hoy y los próximos 7 días. Al presionarla, la tabla muestra esas cuotas para recordarlas a tiempo.</p>, matches: inWeek },
+    { id: "paid", label: "Pagadas", tone: "ok", icon: <CircleCheck size={19} />, note: `Cobrado este mes: ${formatMoney(kpis.collected_month_pen, "PEN", { compact: true })}`, info: <p>Cuotas pagadas por completo. La nota suma los pagos de clientes aplicados desde el día 1 del mes, al tipo de cambio de cada pago. Al presionarla, la tabla muestra las cuotas pagadas.</p>, matches: (row) => row.status === "pagada" },
   ];
 
   const filters: FilterConfig<ReceivableRow>[] = [

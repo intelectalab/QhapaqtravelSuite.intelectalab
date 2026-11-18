@@ -6,6 +6,7 @@ namespace App\Domain\Integrations\Fake;
 
 use App\Domain\Integrations\Contracts\SiteContentAi;
 use App\Domain\Integrations\Data\AdapterResult;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 
 final class FakeSiteContentAi implements SiteContentAi
 {
@@ -25,6 +26,8 @@ final class FakeSiteContentAi implements SiteContentAi
 
     public function write(string $kind, array $source, array $options): array
     {
+        IntegrationReadiness::refuse('site_content_ai');
+
         $attempt = max(0, (int) ($options['attempt'] ?? 0));
         $after = match ($kind) {
             'meta_seo' => $this->seo($source, $attempt),
@@ -40,6 +43,8 @@ final class FakeSiteContentAi implements SiteContentAi
 
     public function draw(string $prompt, string $style, int $width, int $height, int $variant): string
     {
+        IntegrationReadiness::refuse('site_content_ai');
+
         $hue = (abs(crc32($prompt.'|'.$style)) + $variant * 37) % 360;
         $second = ($hue + 30) % 360;
         $sun = 40 + ($hue % 120);
@@ -65,6 +70,10 @@ final class FakeSiteContentAi implements SiteContentAi
 
     public function healthcheck(): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::health('site_content_ai')) !== null) {
+            return $unavailable;
+        }
+
         return AdapterResult::success('ok', null, ['simulated' => true]);
     }
 

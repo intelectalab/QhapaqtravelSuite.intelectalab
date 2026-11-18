@@ -22,8 +22,8 @@ export default async function PlantillasPage({ searchParams }: PageProps<"/canal
     <>
       <PageHeader
         title="Plantillas del sitio"
-        subtitle="Elija el diseño de su sitio público y véalo con sus propios datos antes de aplicarlo."
-        info={<InfoTip>Cambiar de plantilla solo cambia la presentación: sus tours, precios, reservas, blog, SEO y dominio quedan igual. Puede volver a la anterior desde el historial.</InfoTip>}
+        subtitle="Elige el diseño de tu sitio público y míralo con tus propios datos antes de aplicarlo."
+        info={<InfoTip>Cambiar de plantilla solo cambia la presentación: tus tours, precios, reservas, blog, SEO y dominio quedan igual. Puede volver a la anterior desde el historial.</InfoTip>}
         actions={
           <Button href={`/sitio/${theme.subdomain}`} icon={<Eye size={16} />}>
             Ver mi sitio

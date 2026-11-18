@@ -115,7 +115,7 @@ export interface SalesData {
     pipeline: { amount: number; count: number; weighted: number };
     quotes: { open: number; expiring: number };
     activities: { due: number; pending: number };
-    conversion: { opportunities: number | null; leads: number | null };
+    conversion: { opportunities: number | null; leads: number | null; won: number; closed: number; leads_converted: number; leads_total: number };
     commission: { amount: number; by_currency: { currency: string; amount: number }[] };
   };
   stages: { code: string; name: string; count: number; amount: number }[];

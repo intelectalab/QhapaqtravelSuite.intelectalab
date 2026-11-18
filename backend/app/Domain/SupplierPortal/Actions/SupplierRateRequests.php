@@ -28,7 +28,7 @@ final class SupplierRateRequests
             $service = $account->catalogService($data['service']);
 
             if (ServiceDirectory::serviceState($service, CatalogAccess::today()) !== 'activo') {
-                throw ApiException::unprocessable('SUP-BR-61', 'Solo puede actualizar la tarifa de un servicio activo.');
+                throw ApiException::unprocessable('SUP-BR-61', 'Solo puedes actualizar la tarifa de un servicio activo.');
             }
 
             $this->validate($service, $data);

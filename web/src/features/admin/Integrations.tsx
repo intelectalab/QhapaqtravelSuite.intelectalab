@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertOctagon, CheckCircle2, CircleDashed, CreditCard, FileCheck2, Globe2, Mail, MapPinned, MessageCircle, Pause, Play, Plug, PlugZap, RefreshCw, Settings2, ShieldCheck, Truck, XCircle, Zap } from "lucide-react";
+import { AlertOctagon, CheckCircle2, CircleDashed, CreditCard, FileCheck2, Globe2, Mail, MapPinned, MessageCircle, Pause, Play, Plug, PlugZap, RefreshCw, Settings2, ShieldCheck, Timer, Truck, XCircle, Zap } from "lucide-react";
 import { useState } from "react";
 import { configureAdapter, resolveIntegrationError, retryIntegrationError, runJob, setJobStatus, testAdapter, type ConnectionTestState } from "@/app/(backoffice)/admin/integraciones/actions";
 import { DataTable } from "@/components/table/DataTable";
@@ -242,10 +242,12 @@ export function JobsTable({ data }: { data: IntegrationsOverview }) {
       ),
     },
   ];
+  const next = data.jobs.filter((job) => !job.paused && job.next_run_at).sort((a, b) => (a.next_run_at ?? "").localeCompare(b.next_run_at ?? ""))[0];
   const metrics: MetricFilter<ScheduledJob>[] = [
-    { id: "ok", label: "Sin problemas", tone: "ok", icon: <CheckCircle2 size={19} />, matches: (job) => job.status === "ok" && !job.paused },
-    { id: "warn", label: "Con avisos o error", tone: "bad", icon: <AlertOctagon size={19} />, matches: (job) => job.status === "advertencia" || job.status === "error" },
-    { id: "paused", label: "En pausa", tone: "mute", icon: <Pause size={19} />, matches: (job) => job.paused },
+    { id: "next", label: "Próximo proceso", tone: "t1", icon: <Timer size={19} />, display: next?.next_run_at ? formatDateTime(next.next_run_at, false) : "Sin programar", note: next?.name, info: <p>La ejecución programada más cercana entre los procesos que no están en pausa. Al presionarla ves solo ese proceso.</p>, matches: (job) => job.code === next?.code },
+    { id: "ok", label: "Sin problemas", tone: "ok", icon: <CheckCircle2 size={19} />, info: <p>Procesos activos cuya última ejecución terminó bien. Al presionarla ves solo esos procesos.</p>, matches: (job) => job.status === "ok" && !job.paused },
+    { id: "warn", label: "Con avisos o error", tone: "bad", icon: <AlertOctagon size={19} />, info: <p>Procesos cuya última ejecución dejó una advertencia o terminó con error. Al presionarla ves solo esos procesos.</p>, matches: (job) => job.status === "advertencia" || job.status === "error" },
+    { id: "paused", label: "En pausa", tone: "mute", icon: <Pause size={19} />, info: <p>Procesos detenidos a mano que no corren hasta que los reanudes. Al presionarla ves solo esos procesos.</p>, matches: (job) => job.paused },
   ];
   const filters: FilterConfig<ScheduledJob>[] = [{ id: "queue", label: "Cola", options: [...new Map(data.jobs.map((job) => [job.queue, job.queue_label])).entries()].map(([value, label]) => ({ value, label })), value: (job) => job.queue }];
   const sorts: SortOption<ScheduledJob>[] = [
@@ -375,9 +377,9 @@ export function ErrorsTable({ data }: { data: IntegrationsOverview }) {
     },
   ];
   const metrics: MetricFilter<IntegrationError>[] = [
-    { id: "retrying", label: "Reintentando", tone: "sun", icon: <RefreshCw size={19} />, matches: (error) => error.status === "reintentando" },
-    { id: "final", label: "Fallo definitivo", tone: "bad", icon: <XCircle size={19} />, matches: (error) => error.status === "fallo_definitivo" },
-    { id: "resolved", label: "Resueltos", tone: "ok", icon: <CheckCircle2 size={19} />, matches: (error) => error.status === "resuelto" },
+    { id: "retrying", label: "Reintentando", tone: "sun", icon: <RefreshCw size={19} />, info: <p>Errores temporales (tiempo de espera, 5xx, 429) que se reintentan solos con espera creciente. Al presionarla ves solo esos errores.</p>, matches: (error) => error.status === "reintentando" },
+    { id: "final", label: "Fallo definitivo", tone: "bad", icon: <XCircle size={19} />, info: <p>Errores permanentes o que agotaron sus reintentos; se resuelven a mano. Al presionarla ves solo esos errores.</p>, matches: (error) => error.status === "fallo_definitivo" },
+    { id: "resolved", label: "Resueltos", tone: "ok", icon: <CheckCircle2 size={19} />, info: <p>Errores que se resolvieron con un reintento correcto o que alguien marcó como resueltos. Al presionarla ves solo esos errores.</p>, matches: (error) => error.status === "resuelto" },
   ];
   const filters: FilterConfig<IntegrationError>[] = [
     { id: "source", label: "Origen", options: Object.entries(SOURCES).map(([value, label]) => ({ value, label })), value: (error) => error.source },

@@ -5,7 +5,7 @@ import { ChevronDown, ChevronsUpDown, Lock, LogOut, PanelLeftClose, PanelLeftOpe
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { groupFor, isUnder, type NavGroup, type Screen } from "@/config/navigation";
+import { groupFor, screenFor, type NavGroup, type Screen } from "@/config/navigation";
 import { cn } from "@/lib/cn";
 import { initials, shortName } from "@/lib/format";
 import type { NavCounts } from "@/lib/dashboard";
@@ -39,6 +39,7 @@ export function Sidebar({ collapsed, onToggle, onExpand, onNavigate, tagged = tr
   const pathname = usePathname();
   const { groups, account, navigation } = useWorkspace();
   const activeGroup = groupFor(pathname, groups);
+  const activeHref = screenFor(pathname, groups)?.href;
   const [openGroups, setOpenGroups] = useStoredValue(`kipucontrol-menu-groups:${navigation}`, parseOpen, serializeOpen);
   const [dismissed, setDismissed] = useState<string | null>(null);
   const isOpen = (id: string) => openGroups.includes(id) || (activeGroup?.id === id && dismissed !== `${id}:${pathname}`);
@@ -49,7 +50,7 @@ export function Sidebar({ collapsed, onToggle, onExpand, onNavigate, tagged = tr
       if (activeGroup?.id === id) setDismissed(`${id}:${pathname}`);
       return;
     }
-    setDismissed(null);
+    if (dismissed === `${id}:${pathname}`) setDismissed(null);
     setOpenGroups([...openGroups, id]);
   };
   const openFromRail = (id: string) => {
@@ -105,7 +106,7 @@ export function Sidebar({ collapsed, onToggle, onExpand, onNavigate, tagged = tr
               open={isOpen(group.id)}
               active={activeGroup?.id === group.id}
               onToggle={() => toggleGroup(group.id)}
-              pathname={pathname}
+              activeHref={activeHref}
               onNavigate={onNavigate}
               tagged={tagged}
             />
@@ -113,13 +114,17 @@ export function Sidebar({ collapsed, onToggle, onExpand, onNavigate, tagged = tr
         )}
       </nav>
 
-      <UserMenu collapsed={collapsed} tagged={tagged} />
+      <SidebarUserMenu collapsed={collapsed} tagged={tagged} />
     </aside>
   );
 }
 
-function UserMenu({ collapsed, tagged }: { collapsed: boolean; tagged: boolean }) {
+function SidebarUserMenu({ collapsed, tagged }: { collapsed: boolean; tagged: boolean }) {
   const { person, logoutHref, navigation } = useWorkspace();
+  return <ShellUserMenu collapsed={collapsed} tagged={tagged} person={person} logoutHref={logoutHref} account={navigation === "agency" ? { href: "/cuenta", label: "Mi cuenta y mi agencia" } : null} />;
+}
+
+export function ShellUserMenu({ collapsed, tagged, person, logoutHref, account }: { collapsed: boolean; tagged: boolean; person: { name: string; email: string; detail: string; color: string | null }; logoutHref: string; account: { href: string; label: string } | null }) {
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger data-testid={tagged ? "user-menu" : undefined} className={cn("relative flex flex-none items-center gap-2.5 border-t border-white/[0.08] py-3.5 text-left outline-none transition hover:bg-white/[0.04]", collapsed ? "justify-center" : "px-[18px]")}>
@@ -144,11 +149,11 @@ function UserMenu({ collapsed, tagged }: { collapsed: boolean; tagged: boolean }
             <span className="block truncate text-xs text-fg-3">{person.email}</span>
           </div>
           <DropdownMenu.Separator className="my-1 h-px bg-line" />
-          {navigation === "agency" && (
+          {account && (
             <DropdownMenu.Item asChild>
-              <Link href="/cuenta" data-testid="user-menu-account" className="flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13.5px] font-medium outline-none data-[highlighted]:bg-surface-2">
+              <Link href={account.href} data-testid="user-menu-account" className="flex items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13.5px] font-medium outline-none data-[highlighted]:bg-surface-2">
                 <UserRound size={16} className="text-fg-3" />
-                Mi cuenta y mi agencia
+                {account.label}
               </Link>
             </DropdownMenu.Item>
           )}
@@ -182,10 +187,10 @@ function RailItem({ group, active, onClick }: { group: NavGroup; active: boolean
   );
 }
 
-function GroupBlock({ group, open, active, onToggle, pathname, onNavigate, tagged }: { group: NavGroup; open: boolean; active: boolean; onToggle: () => void; pathname: string; onNavigate?: () => void; tagged: boolean }) {
+function GroupBlock({ group, open, active, onToggle, activeHref, onNavigate, tagged }: { group: NavGroup; open: boolean; active: boolean; onToggle: () => void; activeHref?: string; onNavigate?: () => void; tagged: boolean }) {
   const count = groupCount(group, useWorkspace().counts);
   const current = active && !open;
-  const screen = current ? group.screens.find((item) => isUnder(pathname, item.href)) : undefined;
+  const screen = current ? group.screens.find((item) => item.href === activeHref) : undefined;
   return (
     <div className="mb-0.5">
       <button
@@ -206,7 +211,7 @@ function GroupBlock({ group, open, active, onToggle, pathname, onNavigate, tagge
       {open && (
         <div className="mb-2 flex flex-col gap-0.5 animate-in">
           {group.screens.map((screen) => (
-            <ScreenLink key={screen.href} screen={screen} active={isUnder(pathname, screen.href)} onNavigate={onNavigate} tagged={tagged} />
+            <ScreenLink key={screen.href} screen={screen} active={screen.href === activeHref} onNavigate={onNavigate} tagged={tagged} />
           ))}
         </div>
       )}

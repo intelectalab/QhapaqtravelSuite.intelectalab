@@ -20,6 +20,8 @@ final class VitrinaSeeder
 {
     use SeedsTenant;
 
+    public const ALL_TENANTS = true;
+
     public const ORDER = 90;
 
     private const PROVIDERS = ['Pasarela local (tarjetas)' => 'pasarela_local', 'PayPal' => 'paypal', 'Yape / Plin (QR)' => 'yape'];

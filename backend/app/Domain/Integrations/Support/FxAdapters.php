@@ -32,6 +32,8 @@ final class FxAdapters
         $missing = array_map(fn (string $field): string => $fields[$field], IntegrationSecrets::missing($fields, $this->catalog->credentials($provider)));
 
         if ($this->simulated()) {
+            IntegrationReadiness::refuse('fx');
+
             return new FakeFxRateProvider(self::SIMULATED_RATES[$provider['driver']] ?? self::SIMULATED_RATES['simulado'], $provider['driver'] === 'simulado' ? 'Simulado (demo)' : $provider['name'].' (simulado)', $missing);
         }
 

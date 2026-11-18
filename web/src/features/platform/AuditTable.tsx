@@ -1,22 +1,27 @@
 "use client";
 
-import { Building2, KeyRound, Layers, ReceiptText, ServerCog } from "lucide-react";
+import { Boxes, CalendarDays, ShieldAlert } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { DataTable } from "@/components/table/DataTable";
 import { RowActions, RowIcon } from "@/components/table/RowActions";
 import type { Column, FilterConfig, MetricFilter, SortOption } from "@/components/table/types";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
-import { formatDateTime } from "@/lib/format";
+import { AuditActivity, TopEntities } from "@/features/admin/Audit";
+import { formatDate, formatDateTime, formatNumber } from "@/lib/format";
 import { actionMeta, type AuditEvent } from "@/lib/platformBilling";
-import type { Tone } from "@/lib/tone";
 
-const GROUPS: { id: AuditEvent["group"]; label: string; tone: Tone; icon: React.ReactNode }[] = [
-  { id: "agencias", label: "Agencias", tone: "t1", icon: <Building2 size={19} /> },
-  { id: "facturacion", label: "Facturación", tone: "ok", icon: <ReceiptText size={19} /> },
-  { id: "catalogo", label: "Planes y funcionalidades", tone: "violet", icon: <Layers size={19} /> },
-  { id: "tareas", label: "Tareas", tone: "t4", icon: <ServerCog size={19} /> },
-  { id: "sesiones", label: "Sesiones y accesos", tone: "info", icon: <KeyRound size={19} /> },
+const DAY = 86_400_000;
+
+const limaDay = (value: string | Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date(value));
+
+const GROUPS: { id: AuditEvent["group"]; label: string }[] = [
+  { id: "agencias", label: "Agencias" },
+  { id: "facturacion", label: "Facturación" },
+  { id: "catalogo", label: "Planes y funcionalidades" },
+  { id: "tareas", label: "Tareas" },
+  { id: "sesiones", label: "Sesiones y accesos" },
 ];
 
 const detail = (event: AuditEvent) => {
@@ -95,14 +100,63 @@ const columns: Column<AuditEvent>[] = [
   },
 ];
 
-const metrics: MetricFilter<AuditEvent>[] = GROUPS.map((group) => ({ id: group.id, label: group.label, tone: group.tone, icon: group.icon, matches: (event: AuditEvent) => event.group === group.id }));
-
 const sorts: SortOption<AuditEvent>[] = [{ id: "at", label: "Fecha", type: "date", value: (event) => event.at }];
 
 const unique = (values: string[]) => [...new Set(values)].sort((a, b) => a.localeCompare(b, "es")).map((value) => ({ value, label: value }));
 
 export function AuditTable({ events }: { events: AuditEvent[] }) {
+  const [today] = useState(() => Date.now());
+  const counts = new Map<string, number>();
+  for (const event of events) counts.set(limaDay(event.at), (counts.get(limaDay(event.at)) ?? 0) + 1);
+  const daily = Array.from({ length: 14 }, (_, index) => {
+    const date = limaDay(new Date(today - (13 - index) * DAY));
+    return { date, total: counts.get(date) ?? 0 };
+  });
+  const peak = daily.reduce<(typeof daily)[number] | null>((best, day) => (day.total > (best?.total ?? 0) ? day : best), null);
+  const entities = new Map<string, number>();
+  for (const event of events) entities.set(event.entity, (entities.get(event.entity) ?? 0) + 1);
+  const top = [...entities.entries()].map(([label, total]) => ({ label, total })).sort((a, b) => b.total - a.total).slice(0, 5);
+  const critical = events.filter((event) => event.critical).length;
+  const actors = new Set(events.map((event) => event.actor ?? "Sistema")).size;
+  const metrics: MetricFilter<AuditEvent>[] = [
+    { id: "critical", label: "Críticos", tone: "bad", icon: <ShieldAlert size={19} />, note: `${events.length > 0 ? `${Math.round((critical / events.length) * 100)} % de ` : ""}${formatNumber(events.length)} eventos · ${formatNumber(actors)} ${actors === 1 ? "persona o proceso" : "personas y procesos"}`, info: <p>Suspensiones, cambios de plan, anulaciones, accesos denegados y demás acciones marcadas como críticas al registrarse; la nota compara con los eventos de la tabla (los 500 más recientes) y cuenta quiénes los dejaron. Al presionarla ves solo los críticos.</p>, matches: (event) => event.critical },
+    {
+      id: "peak",
+      label: "Día de más actividad",
+      tone: "violet",
+      icon: <CalendarDays size={19} />,
+      display: peak ? formatDate(peak.date) : "Sin eventos",
+      note: peak ? `${formatNumber(peak.total)} eventos · últimas 2 semanas` : undefined,
+      info: (
+        <>
+          <p className="mb-2">Eventos registrados por día en las últimas dos semanas, en hora de Lima. Al presionarla ves los eventos del día con más actividad.</p>
+          <div className="w-[270px]">
+            <AuditActivity daily={daily} />
+          </div>
+        </>
+      ),
+      matches: (event) => peak !== null && limaDay(event.at) === peak.date,
+    },
+    {
+      id: "top",
+      label: "Lo más registrado",
+      tone: "sun",
+      icon: <Boxes size={19} />,
+      display: top[0]?.label ?? "Sin eventos",
+      note: top[0] && events.length > 0 ? `${Math.round((top[0].total / events.length) * 100)} % de los eventos` : undefined,
+      info: (
+        <>
+          <p className="mb-2">Tipos de registro con más eventos. Al presionarla ves los eventos del primero.</p>
+          <div className="w-[270px]">
+            <TopEntities items={top} total={events.length} />
+          </div>
+        </>
+      ),
+      matches: (event) => top[0] !== undefined && event.entity === top[0].label,
+    },
+  ];
   const filters: FilterConfig<AuditEvent>[] = [
+    { id: "group", label: "Área", options: GROUPS.map((group) => ({ value: group.id, label: group.label })), value: (event) => event.group },
     { id: "action", label: "Acción", options: unique(events.map((event) => actionMeta(event.action).label)), value: (event) => actionMeta(event.action).label },
     { id: "tenant", label: "Agencia", options: unique(events.flatMap((event) => (event.tenant ? [event.tenant.name] : []))), value: (event) => event.tenant?.name ?? "" },
     { id: "actor", label: "Quién", options: unique(events.map((event) => event.actor ?? "Sistema")), value: (event) => event.actor ?? "Sistema" },

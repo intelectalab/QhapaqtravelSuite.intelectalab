@@ -32,6 +32,15 @@ async function visitor(): Promise<string> {
   }
 }
 
+async function browserAgent(): Promise<Record<string, string>> {
+  try {
+    const agent = (await requestHeaders()).get("user-agent");
+    return agent ? { "User-Agent": agent } : {};
+  } catch {
+    return {};
+  }
+}
+
 async function writeHeaders(method: string, path: string, body: unknown, token: string | null, extra: Record<string, string>): Promise<Record<string, string>> {
   if (method === "GET") return {};
   const result: Record<string, string> = {};
@@ -55,6 +64,7 @@ export async function apiFetch<T>(path: string, init: { method?: string; body?: 
     method,
     headers: {
       Accept: "application/json",
+      ...(await browserAgent()),
       ...(init.body !== undefined && init.form === undefined ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init.form !== undefined ? { "Idempotency-Key": randomUUID() } : await writeHeaders(method, path, init.body, token, extra)),

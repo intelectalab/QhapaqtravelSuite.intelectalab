@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
-import { CmsFlow, CmsTable, ContentFormAction } from "@/features/channels/CmsContents";
+import { CmsTable, ContentFormAction } from "@/features/channels/CmsContents";
 import type { CmsOverview } from "@/lib/channels";
 import { getResource } from "@/lib/server/resource";
 
@@ -22,7 +22,6 @@ export default async function CmsPage() {
         info={<InfoTip>Solo lo publicado llega a los canales. Para publicar hace falta el título SEO; devolver o despublicar pide un motivo que queda en la bitácora.</InfoTip>}
         actions={overview.can_publish ? <ContentFormAction overview={overview} /> : undefined}
       />
-      <CmsFlow kpis={overview.kpis} />
       <CmsTable overview={overview} />
     </>
   );

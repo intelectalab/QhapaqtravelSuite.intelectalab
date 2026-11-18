@@ -40,7 +40,7 @@ export function SupplierIncidentDetailView({ detail }: { detail: SupplierInciden
                   <span className={cn("grid h-8 w-8 flex-none place-items-center rounded-full text-white", log.mine ? "bg-t3" : "bg-t1")}>{log.mine ? <Building2 size={15} /> : <MessagesSquare size={15} />}</span>
                   <span className={cn("max-w-[560px] rounded-tile px-3.5 py-2.5 text-[13px]", log.mine ? "bg-[color-mix(in_srgb,var(--t3)_10%,var(--surface))]" : "bg-surface-2")}>
                     <span className="block text-[12px] font-semibold text-fg-3">
-                      {log.mine ? "Usted" : log.author} · {formatDateTime(log.at, false)}
+                      {log.mine ? "Tú" : log.author} · {formatDateTime(log.at, false)}
                     </span>
                     <span className="block whitespace-pre-line text-fg">{log.message}</span>
                   </span>

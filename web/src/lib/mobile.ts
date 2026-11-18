@@ -36,16 +36,19 @@ export interface OperatorDevice {
   last_sync_at: string | null;
 }
 
-export interface OperatorPreview {
+export interface OperatorDay {
   today: string;
   date: string;
   days: { date: string; services: number }[];
   staff: OperatorStaff[];
   selected_staff: OperatorStaff | null;
-  devices: { active: number; last_sync_at: string | null; items: OperatorDevice[] };
-  sync: { since: string; received: number; applied: number; offline: number; conflicts: number; rejected: number };
   kpis: { services: number; pax: number; assigned: number; confirmed: number; done: number };
   services: OperatorService[];
+}
+
+export interface OperatorPreview extends OperatorDay {
+  devices: { active: number; last_sync_at: string | null; items: OperatorDevice[] };
+  sync: { since: string; received: number; applied: number; offline: number; conflicts: number; rejected: number };
 }
 
 export interface TripService {

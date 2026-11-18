@@ -3,7 +3,6 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TabbedCard } from "@/components/ui/RouteTabs";
 import { ClaimFormAction } from "@/features/claims/ClaimForms";
-import { ClaimTiles } from "@/features/claims/ClaimSections";
 import type { ClaimsOverview } from "@/lib/claims";
 import { getCachedResource } from "@/lib/server/resource";
 
@@ -24,7 +23,6 @@ export default async function ClaimBookLayout({ children }: { children: ReactNod
         info={<InfoTip>Cada hoja lleva un correlativo por sede y se conserva {settings.retention_years} años. Las alertas se activan {settings.alert_days} días hábiles antes del vencimiento. Valida los plazos vigentes con asesoría legal.</InfoTip>}
         actions={overview.can.manage ? <ClaimFormAction overview={overview} /> : undefined}
       />
-      <ClaimTiles overview={overview} />
       <TabbedCard
         tabs={[
           { href: "/crm/reclamaciones", label: "Hojas de reclamación", count: overview.claims.length },

@@ -70,7 +70,7 @@ function ScriptCard({ tag, canManage, canApprove, own }: { tag: TrackingTag; can
         </ul>
       </div>
       <footer className="mt-4 flex flex-wrap justify-end gap-2">
-        {canApprove && reviewable && (own ? <Button variant="ghost" size="sm" disabled title="403 SCRIPT_SELF_APPROVAL">Lo aprueba otra persona</Button> : (
+        {canApprove && reviewable && (own ? <Button variant="ghost" size="sm" disabled title="La aprueba otra persona con permiso de aprobación">Lo aprueba otra persona</Button> : (
           <>
             <Decide tag={tag} decision="rechazar" />
             <Decide tag={tag} decision="aprobar" />

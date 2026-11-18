@@ -141,6 +141,7 @@ export function OutgoingMailCard({ mail, version, index }: { mail: OutgoingMailS
           { label: "Contraseña", value: mail.password_set ? "Guardada" : "Sin configurar" },
           { label: "Conexión probada", value: mail.verified_at ? formatDateTime(mail.verified_at) : "—" },
           { label: "Acuses de entrega", value: webhookStatus(mail.webhook_secrets) },
+          ...(mail.redirect ? [{ label: "Desvío de desarrollo", value: mail.redirect.to ? <span>{"Todo llega a "}<span className="font-mono text-[12.5px]">{mail.redirect.to}</span></span> : <span className="text-warn">Sin dirección: los correos se quedan en Mailpit</span> }] : []),
           ...(test ? [{ label: "Última prueba", value: <span className={test.ok ? "text-ok" : "text-bad"}>{`${test.ok ? "Enviada" : "Falló"} a ${test.to} · ${formatDateTime(test.at)}`}</span> }] : []),
         ]}
       />

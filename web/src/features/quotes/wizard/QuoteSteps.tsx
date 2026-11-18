@@ -27,7 +27,7 @@ const rateOptions = (rates: QuoteRateOption[], date: string, suggested: string |
   { value: MANUAL_RATE, label: "Precio manual", hint: "Sin tarifa: escribes precio y costo" },
   ...rates.map((rate) => {
     const valid = Boolean(date) && rateValidOn(rate, date);
-    return { value: rate.id, label: rateLabel(rate), hint: valid ? formatMoney(rate.price, rate.currency) : "No vigente para la fecha (PRD-BR-005)", disabled: !valid };
+    return { value: rate.id, label: rateLabel(rate), hint: valid ? formatMoney(rate.price, rate.currency) : "No vigente para la fecha", disabled: !valid };
   }),
 ];
 

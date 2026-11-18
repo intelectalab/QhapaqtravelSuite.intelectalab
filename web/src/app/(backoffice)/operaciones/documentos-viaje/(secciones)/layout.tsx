@@ -5,7 +5,6 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { TabbedCard } from "@/components/ui/RouteTabs";
 import { Notice } from "@/features/operations/OpsBits";
-import { TravelDocTiles } from "@/features/operations/TravelDocSections";
 import type { TravelDocList } from "@/lib/operations";
 import { getCachedResource } from "@/lib/server/resource";
 
@@ -44,7 +43,6 @@ export default async function TravelDocsLayout({ children }: { children: ReactNo
           . No se emiten entradas a Machu Picchu sin el documento validado de cada pasajero.
         </Notice>
       )}
-      <TravelDocTiles data={data} />
       <TabbedCard
         tabs={[
           { href: "/operaciones/documentos-viaje", label: "Por reserva", count: data.items.length },

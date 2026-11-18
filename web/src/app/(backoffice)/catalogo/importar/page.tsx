@@ -4,10 +4,13 @@ import { InfoTip } from "@/components/ui/InfoTip";
 import { CatalogImportBoard } from "@/features/growth/CatalogImportBoard";
 import type { CatalogImportDetail, ImportsOverview } from "@/lib/growth";
 import { getCachedResource, getResource } from "@/lib/server/resource";
+import { comingSoon } from "@/features/integrations/FeatureGate";
 
 export const metadata: Metadata = { title: "Importar con IA" };
 
 export default async function ImportarPage() {
+  const soon = await comingSoon("catalog_import", "Importar con IA");
+  if (soon) return soon;
   const overview = await getCachedResource<ImportsOverview>("/catalog/imports", "No pudimos cargar las importaciones.");
 
   if (!overview) {

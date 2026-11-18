@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Tracking\Fake;
 
 use App\Domain\Integrations\Data\AdapterResult;
+use App\Domain\Integrations\Support\IntegrationReadiness;
 use App\Domain\Tracking\Contracts\ConversionGateway;
 
 final class FakeConversionGateway implements ConversionGateway
@@ -13,6 +14,10 @@ final class FakeConversionGateway implements ConversionGateway
 
     public function send(string $provider, array $payload): AdapterResult
     {
+        if (($unavailable = IntegrationReadiness::unavailable('tracking')) !== null) {
+            return $unavailable;
+        }
+
         if (($payload['secret_ref'] ?? null) === null) {
             return new AdapterResult(false, 'fallido', null, 'permanente', 'Falta el token del proveedor. Guárdalo en la etiqueta para enviar desde el servidor.', ['http_status' => 401]);
         }

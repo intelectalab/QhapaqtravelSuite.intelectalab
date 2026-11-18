@@ -23,6 +23,6 @@ final class ReservationMailer
         $agency = $this->context->tenant()->commercial_name;
         $body = "Hola, {$row->name}:\n\n{$message}\n\nReserva {$row->code}\n{$agency}";
 
-        app(QueuedMail::class)->send((string) $row->email, (string) $row->name, "{$subject} · {$agency}", $body);
+        app(QueuedMail::class)->sendAsAgency((string) $row->email, (string) $row->name, "{$subject} · {$agency}", $body);
     }
 }

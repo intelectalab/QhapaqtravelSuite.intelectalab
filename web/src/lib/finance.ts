@@ -55,6 +55,7 @@ export interface ReceivableRow {
   reservation: { code: string; title: string; status: string };
   client: { code: string; name: string };
   owner: string | null;
+  b2b_credit: boolean;
   pending_extras?: SettlementDetail["payables"];
   cost_form?: { providers: FinanceOption[]; cost_types: FinanceOption[]; default_provider: string | null; today: string; usd_rate: number };
   can?: { register_cost: boolean; approve_cost: boolean };
@@ -693,6 +694,7 @@ export interface ReceivableDetail {
   status: string;
   currency: string;
   fx_rate: string;
+  b2b_credit: boolean;
   amount: string;
   paid: string;
   balance: string;

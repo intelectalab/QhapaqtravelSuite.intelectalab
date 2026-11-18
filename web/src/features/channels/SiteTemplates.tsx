@@ -90,10 +90,10 @@ export function SiteTemplateTiles({ theme, gallery }: { theme: ThemeOverview; ga
 
   return (
     <TileGrid>
-      <TintTile icon={Palette} tone="t1" label="Plantilla activa" value={active ? active.template.name : "Sin plantilla"} note={active ? `v${active.version} · ${active.chosen_by_label}` : undefined} info="El tema activo de su sitio público. Si nunca eligió una, su sitio usa la plantilla por defecto de KipuControl." />
+      <TintTile icon={Palette} tone="t1" label="Plantilla activa" value={active ? active.template.name : "Sin plantilla"} note={active ? `v${active.version} · ${active.chosen_by_label}` : undefined} info="El tema activo de tu sitio público. Si nunca elegiste una, tu sitio usa la plantilla por defecto de KipuControl." />
       <TintTile icon={LayoutTemplate} tone="violet" label="Disponibles" value={`${available.length} de ${gallery.length}`} note={`${gallery.filter((template) => template.tier === "premium").length} premium · ${gallery.length - available.length} llegan pronto`} info="Plantillas publicadas en la galería. Las que aún no tienen diseño propio en el sitio aparecen como «Llega pronto»." />
-      <TintTile icon={Gauge} tone={performance?.measured && (performance.performance ?? 0) >= 90 ? "ok" : "sun"} label="Rendimiento móvil" value={performance?.measured ? `${performance.performance} / 100` : "Por medir"} note="Lighthouse de la versión publicada" info="Puntaje Lighthouse móvil que el equipo registró al publicar la versión de su plantilla activa." />
-      <TintTile icon={RefreshCw} tone={active?.update_available ? "sun" : "ok"} label="Actualización" value={active?.update_available ? `v${active.update_available}` : "Al día"} note={active?.update_available ? "Hay una versión nueva" : "Sin cambios pendientes"} info="Compara la versión que usa su sitio con la última publicada de la misma plantilla." />
+      <TintTile icon={Gauge} tone={performance?.measured && (performance.performance ?? 0) >= 90 ? "ok" : "sun"} label="Rendimiento móvil" value={performance?.measured ? `${performance.performance} / 100` : "Por medir"} note="Lighthouse de la versión publicada" info="Puntaje Lighthouse móvil que el equipo registró al publicar la versión de tu plantilla activa." />
+      <TintTile icon={RefreshCw} tone={active?.update_available ? "sun" : "ok"} label="Actualización" value={active?.update_available ? `v${active.update_available}` : "Al día"} note={active?.update_available ? "Hay una versión nueva" : "Sin cambios pendientes"} info="Compara la versión que usa tu sitio con la última publicada de la misma plantilla." />
     </TileGrid>
   );
 }
@@ -107,7 +107,7 @@ function ApplyAction({ template, lockVersion, defaultOpen = false, label = "Apli
       size="sm"
       formId={`apply-${template.code}`}
       title={`Aplicar ${template.name}`}
-      description="Su sitio cambia de presentación en cuanto confirme. Puede volver a la anterior desde el historial."
+      description="Tu sitio cambia de presentación en cuanto confirmes. Puede volver a la anterior desde el historial."
       submitLabel="Aplicar ahora"
       action={applyTemplate}
       initial={initial}
@@ -119,8 +119,8 @@ function ApplyAction({ template, lockVersion, defaultOpen = false, label = "Apli
           <input type="hidden" name="lock_version" value={lockVersion} />
           <TemplateMock tokens={template.tokens} big />
           <ul className="mt-4 flex flex-col gap-2 text-[13.5px] text-fg-2">
-            <li className="flex gap-2"><Check size={16} className="mt-0.5 flex-none text-ok" />Sus tours, precios, reservas, blog, SEO, dominio y redirecciones no cambian.</li>
-            <li className="flex gap-2"><Check size={16} className="mt-0.5 flex-none text-ok" />Conserva sus colores y textos; puede ajustarlos después en Personalizar.</li>
+            <li className="flex gap-2"><Check size={16} className="mt-0.5 flex-none text-ok" />Tus tours, precios, reservas, blog, SEO, dominio y redirecciones no cambian.</li>
+            <li className="flex gap-2"><Check size={16} className="mt-0.5 flex-none text-ok" />Conserva tus colores y textos; puedes ajustarlos después en Personalizar.</li>
             <li className="flex gap-2"><Check size={16} className="mt-0.5 flex-none text-ok" />Secciones: {template.sections.map(sectionLabel).join(", ")}.</li>
           </ul>
         </>
@@ -138,7 +138,7 @@ function PurchaseAction({ template }: { template: GalleryTemplate }) {
       size="sm"
       formId={`purchase-${template.code}`}
       title={`Comprar ${template.name}`}
-      description="Las plantillas premium son diseños de autor. Se pagan una sola vez y quedan disponibles mientras su cuenta esté activa, con sus actualizaciones."
+      description="Las plantillas premium son diseños de autor. Se pagan una sola vez y quedan disponibles mientras tu cuenta esté activa, con sus actualizaciones."
       submitLabel={`Comprar por ${templatePrice(template)}`}
       action={purchaseTemplate}
       initial={initial}
@@ -153,7 +153,7 @@ function PurchaseAction({ template }: { template: GalleryTemplate }) {
             <dt className="text-fg-3">Autor</dt>
             <dd>{template.author.name}</dd>
             <dt className="text-fg-3">Se factura en</dt>
-            <dd>Su próxima factura de KipuControl</dd>
+            <dd>Tu próxima factura de KipuControl</dd>
           </dl>
         </>
       )}
@@ -235,7 +235,7 @@ function RestoreAction({ id, name }: { id: string; name: string }) {
       size="sm"
       formId={`restore-${id}`}
       title={`Restaurar ${name}`}
-      description="Su sitio vuelve a esta plantilla con la personalización que tenía. La actual queda en el historial."
+      description="Tu sitio vuelve a esta plantilla con la personalización que tenía. La actual queda en el historial."
       submitLabel="Restaurar"
       action={restoreTemplate}
       initial={initial}
@@ -254,7 +254,7 @@ export function ActiveTheme({ theme }: { theme: ThemeOverview }) {
   return (
     <div className="mb-5 grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
       <Card>
-        <CardHeader title="Su plantilla activa" subtitle={active.applied_at ? `Activa desde el ${formatDate(active.applied_at, "long")}` : undefined} />
+        <CardHeader title="Tu plantilla activa" subtitle={active.applied_at ? `Activa desde el ${formatDate(active.applied_at, "long")}` : undefined} />
         <div className="group grid items-start gap-4 sm:grid-cols-2">
           <TemplateMock tokens={tokens} big />
           <div className="flex flex-col gap-3">
@@ -277,7 +277,7 @@ export function ActiveTheme({ theme }: { theme: ThemeOverview }) {
         </div>
       </Card>
       <Card>
-        <CardHeader title="Historial" subtitle="Puede volver a una plantilla anterior cuando quiera." />
+        <CardHeader title="Historial" subtitle="Puedes volver a una plantilla anterior cuando quieras." />
         {theme.history.length === 0 ? (
           <EmptyState icon={<History size={20} />} title="Sin cambios de plantilla" description="Cuando aplique otra plantilla, la anterior aparecerá aquí para restaurarla." />
         ) : (
@@ -377,7 +377,7 @@ export function TemplateGallery({ gallery, theme, applyCode }: { gallery: Galler
       )}
       <div className="mt-4 flex items-start gap-3 rounded-card border border-line bg-surface-2/60 px-4 py-3 text-[13px] text-fg-2">
         <Sparkles size={17} className="mt-0.5 flex-none text-[var(--violet)]" />
-        <p>¿Quiere un diseño propio? El equipo de KipuControl o un estudio partner puede crear una plantilla exclusiva para su marca con el mismo contrato técnico. Las plantillas nuevas aparecen aquí cuando pasan la revisión de calidad.</p>
+        <p>¿Quiere un diseño propio? El equipo de KipuControl o un estudio partner puede crear una plantilla exclusiva para tu marca con el mismo contrato técnico. Las plantillas nuevas aparecen aquí cuando pasan la revisión de calidad.</p>
       </div>
     </section>
   );

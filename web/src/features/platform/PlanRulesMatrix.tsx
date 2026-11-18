@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { planTone } from "@/lib/platform";
 import type { PlanRuleChange, PlanRuleMatrix as Matrix } from "@/lib/platformBilling";
 import type { ConsoleResult } from "@/lib/server/platformConsole";
+import { LOAD_FAILED, withRetry } from "@/lib/retry";
 import { toneStyle } from "@/lib/tone";
 import { ConsoleAction } from "./ConsoleAction";
 
@@ -142,9 +143,13 @@ function RuleImpact({ rule, plan }: { rule: string; plan: string }) {
 
   useEffect(() => {
     let alive = true;
-    previewPlanRule(rule, plan).then((result) => {
-      if (alive) setState({ key, ...result });
-    });
+    withRetry(() => previewPlanRule(rule, plan))
+      .then((result) => {
+        if (alive) setState({ key, ...result });
+      })
+      .catch(() => {
+        if (alive) setState({ key, change: null, message: LOAD_FAILED });
+      });
     return () => {
       alive = false;
     };
